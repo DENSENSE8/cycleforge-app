@@ -1,11 +1,10 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { Clipboard, Copy, ExternalLink, Pencil, RefreshCw } from '@/components/Icons';
+import { Clipboard, Copy, ExternalLink, Pencil } from '@/components/Icons';
 import {
   OrderIdChip,
   OrderIdChipPlaceholder,
-  TrackingOrSkuScanChip,
   PlatformChip,
   getLast8,
 } from '@/components/ui/CopyChip';
@@ -13,12 +12,12 @@ import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColu
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
+import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { dashboardOrderRowChipsClass } from '@/lib/dashboard-order-row-layout';
 import { cn } from '@/utils/_cn';
 import { useClipboardHistory, recordCopy } from '@/lib/clipboard-history';
-import { getTrackingUrl } from '@/utils/order-links';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 
 /**
@@ -29,7 +28,8 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  *   • Platform — primary **open listing** (new tab); hover: Copy listing link
  *     (+ Edit listing link when the host row supplies an editor)
  *   • Order id — primary **copy**; hover: Open on platform
- *   • Tracking filled — primary **copy**; hover: Open tracking page · Replace tracking
+ *   • Tracking filled — {@link TrackingNumberMenuChip} (copy · Open page · Replace
+ *     → host opens the order inspector replace flow)
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
  *
  * Grid surfaces (`layout="cells"` / {@link useOrderIdentityCellNodes}) render
@@ -58,9 +58,9 @@ export interface OrderIdentityChipsProps {
   trackingAction?: React.ReactNode;
   /** Optional callback when operator pastes clipboard tracking into empty slot. */
   onPasteTracking?: (tracking: string) => void;
-  /** Optional callback to replace an EXISTING tracking number (from the chip
-   *  menu → "Replace tracking", reads the OS clipboard). */
-  onReplaceTracking?: (tracking: string) => void;
+  /** Optional callback from the filled-tracking menu → "Replace tracking".
+   *  Host opens the order inspector replace flow — never clipboard-steals. */
+  onReplaceTracking?: () => void;
   /** Opens the host row's listing-link (`item_number`) editor — surfaces the
    *  "Edit listing link" hover action on the platform cell (Pending grid). */
   onEditListingLink?: () => void;
@@ -144,7 +144,6 @@ export function useOrderIdentityCellNodes({
   const plain = variant === 'plain';
   const history = useClipboardHistory();
   const lastTracking = history.find((e) => e.kind === 'tracking' && e.value.trim());
-  const trackingUrl = tracking ? getTrackingUrl(tracking) : null;
 
   // Aggregate open/close across the chip menus (only one is realistically open at
   // a time, but hover hand-off briefly overlaps) → bubble a single boolean up.
@@ -189,34 +188,6 @@ export function useOrderIdentityCellNodes({
       icon: <ExternalLink />,
       tone: 'accent',
       onSelect: () => openExternal(marketplaceOrderUrl),
-    });
-  }
-
-  // Clicking the tracking chip already copies (TrackingOrSkuScanChip → handleCopy),
-  // so the menu carries the secondary "Open tracking page" + "Replace tracking"
-  // (paste a new number from the OS clipboard, overwriting the existing one).
-  const trackingItems: CopyChipHoverMenuItem[] = [];
-  if (tracking && trackingUrl) {
-    trackingItems.push({
-      id: 'open-trk',
-      label: 'Open tracking page',
-      icon: <ExternalLink />,
-      tone: 'accent',
-      onSelect: () => openExternal(trackingUrl),
-    });
-  }
-  if (tracking && onReplaceTracking) {
-    trackingItems.push({
-      id: 'replace-trk',
-      label: 'Replace tracking',
-      icon: <RefreshCw />,
-      onSelect: async () => {
-        try {
-          const text = await navigator.clipboard.readText();
-          const next = String(text || '').trim();
-          if (next) onReplaceTracking(next);
-        } catch {}
-      },
     });
   }
 
@@ -322,9 +293,12 @@ export function useOrderIdentityCellNodes({
   );
 
   const trackingChipNode = tracking ? (
-    <CopyChipHoverMenu menuLabel="Tracking actions" items={trackingItems} onOpenChange={handleMenuOpenChange}>
-      <TrackingOrSkuScanChip value={tracking} plain={plain} />
-    </CopyChipHoverMenu>
+    <TrackingNumberMenuChip
+      value={tracking}
+      plain={plain}
+      onReplaceTracking={onReplaceTracking}
+      onMenuOpenChange={handleMenuOpenChange}
+    />
   ) : (
     // Empty tracking: the paste / Add-TRK affordance (labels) wins; otherwise a
     // staged row folds its serial into this trailing identity cell.

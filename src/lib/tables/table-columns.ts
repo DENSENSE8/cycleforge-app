@@ -42,8 +42,10 @@ export type ColumnType =
   | 'date'
   /** External / marketplace link (platform). */
   | 'external'
-  /** Geo / tracking destination (map pin). */
-  | 'location';
+  /** Geo / bin / staging place (folded map header glyph). */
+  | 'location'
+  /** Carrier tracking number (MapPin header glyph — distinct from bin `location`). */
+  | 'tracking';
 
 export interface TableColumnSpec {
   /** Must equal the ChipColumn.key or RowMetaColumns slot key it controls. */
@@ -135,8 +137,15 @@ const GRID_COL = (key: string, label: string, type?: ColumnType): TableColumnSpe
  */
 export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // Unbox / History / Testing receiving-line grids (`RECEIVING_GRID_COLUMNS`).
-  // `status` = the merged lifecycle track (dot · stage · day · time, 2026-08-02);
-  // `date` joined the list when that column absorbed it.
+  // `status` = the merged lifecycle track (dot · stage name, 2026-08-02);
+  // `date` joined the list when that column absorbed the clock.
+  //
+  // `rest` no longer maps to a grid TRACK — the `stage` column that carried
+  // `hideKey: 'rest'` was deleted 2026-08-02. It stays because it is still the
+  // vocabulary for the legacy row primitives under this same tableId: the
+  // board-layout `ReceivingLineOrderRow` / `ReceivingPoSummary` pass a `rest`
+  // cluster to `RowMetaColumns`, which asks `useIsColumnHidden('rest')`.
+  // Dropping the entry would take that toggle away, not clean anything up.
   receiving: [
     META_STATUS,
     GRID_COL('date', 'Date', 'date'),
@@ -254,7 +263,7 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   'import-exception': [
     GRID_COL('order', 'Order', 'id'),
     GRID_COL('source', 'Account', 'external'),
-    GRID_COL('tracking', 'Tracking', 'location'),
+    GRID_COL('tracking', 'Tracking', 'tracking'),
     GRID_COL('sheet', 'Sheet row', 'number'),
     GRID_COL('seen', 'Seen', 'number'),
     GRID_COL('first', 'First seen', 'date'),

@@ -1,6 +1,11 @@
 /**
- * Carton / embedded ticket chat: readable body, quiet chrome.
- * Compact densifies spacing — it must NOT collapse bubble body to text-role-micro.
+ * Carton / embedded ticket stream: readable body, quiet chrome, flat rows.
+ *
+ * Migrated 2026-08-02 when `SupportChatThread` was deleted and the conversation
+ * became the `MergedRecordStream` ledger. The assertions were re-pointed and
+ * re-expressed, never dropped — the compact variant once shrank the message body
+ * to `text-role-micro` at a 360px station push, which is the regression the
+ * first two cases exist to catch, and it is just as reachable in a ledger row.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,7 +13,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 const ROOT = process.cwd();
-const THREAD = join(ROOT, 'src/components/support/zendesk/chat/SupportChatThread.tsx');
+const STREAM = join(ROOT, 'src/components/support/zendesk/chat/MergedRecordStream.tsx');
 const HEADER = join(ROOT, 'src/components/support/zendesk/chat/SupportChatHeader.tsx');
 /**
  * The subject moved out of the header on 2026-08-02 — one field, composed by
@@ -17,19 +22,27 @@ const HEADER = join(ROOT, 'src/components/support/zendesk/chat/SupportChatHeader
  */
 const SUBJECT = join(ROOT, 'src/components/support/zendesk/chat/TicketSubjectField.tsx');
 
+/** Strip comments so a docblock QUOTING a banned class cannot fail its own rule. */
+function code(path: string): string {
+  return readFileSync(path, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+}
+
 describe('support chat type hierarchy (embedded)', () => {
-  const thread = readFileSync(THREAD, 'utf8');
+  const stream = readFileSync(STREAM, 'utf8');
+  const streamCode = code(STREAM);
   const header = readFileSync(HEADER, 'utf8');
   const subject = readFileSync(SUBJECT, 'utf8');
 
-  it('bubble body always uses text-role-data (never micro when compact)', () => {
-    assert.match(thread, /text-role-data leading-relaxed/);
+  it('message body always uses text-role-data (never micro when compact)', () => {
+    assert.match(stream, /text-role-data leading-relaxed/);
     assert.doesNotMatch(
-      thread,
+      stream,
       /compact\s*\?\s*['`][^'`]*text-role-micro[^'`]*leading-snug/,
     );
-    // No compact ternary that puts micro on the bubble shell.
-    assert.doesNotMatch(thread, /rounded-bl-md px-2\.5 py-1\.5 text-role-micro/);
+    // No compact ternary that shrinks the body role itself.
+    assert.doesNotMatch(stream, /compact \? 'text-role-micro' : 'text-role-data'/);
   });
 
   it('embedded subject uses text-role-caption, not micro', () => {
@@ -45,7 +58,33 @@ describe('support chat type hierarchy (embedded)', () => {
     assert.doesNotMatch(header, /function TicketSubjectEditor/);
   });
 
-  it('passes onOpenPhoto into renderInlineMarkdown', () => {
-    assert.match(thread, /renderInlineMarkdown\(c\.body, \{ onOpenPhoto \}\)/);
+  it('renders block markdown, and passes onOpenPhoto through', () => {
+    // A reply arrives with headings, lists and quotes; rendering only the inline
+    // grammar showed the customer literal `###` in the ledger.
+    assert.match(stream, /renderBlockMarkdown\(msg\.body, \{ onOpenPhoto \}\)/);
+  });
+
+  it('bubbles are banned — flat rows on one shared left reading edge', () => {
+    // Direction is the leading mark, never a fill. These are the exact classes
+    // the deleted bubble thread used.
+    assert.doesNotMatch(stream, /bg-blue-600 text-white/);
+    assert.doesNotMatch(stream, /rounded-bl-md/);
+    assert.doesNotMatch(stream, /max-w-\[78%\]/);
+    assert.match(stream, /divide-y divide-border-hairline/);
+  });
+
+  it('the Zendesk field band is gone from the chat header', () => {
+    // Status / priority / assignee / staff moved to the surfaces that own them
+    // (pane header identity row, Connections display, details popover).
+    assert.doesNotMatch(header, /ZendeskSelect/);
+    assert.doesNotMatch(header, /STATUS_OPTIONS|PRIORITY_OPTIONS/);
+    assert.doesNotMatch(header, /useAssignTicket|useTicketAssignment/);
+  });
+
+  it('the stream is content — the host owns the scroll port', () => {
+    assert.doesNotMatch(streamCode, /overflow-y-auto/);
+    assert.doesNotMatch(streamCode, /overflow-y-scroll/);
+    // No reserved height for a body that may be small.
+    assert.doesNotMatch(streamCode, /min-h-\[/);
   });
 });

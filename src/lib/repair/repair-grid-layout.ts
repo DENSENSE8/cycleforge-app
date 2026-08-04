@@ -13,7 +13,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { formatPhoneNumber } from '@/utils/phone';
@@ -109,6 +112,17 @@ export function isRepairGridFrozen(key: string): boolean {
   return REPAIR_GRID_LOCKED_KEYS.includes(key as RepairGridColumnKey);
 }
 
+/**
+ * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
+ *
+ * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Repair
+ * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
+ * widths. See {@link gridFrozenLeft}.
+ */
+export function repairGridFrozenLeft(key: string): string {
+  return gridFrozenLeft(REPAIR_GRID_COLUMNS, key);
+}
+
 
 /** Default direction when a column sort is first activated. */
 export function defaultDirForRepairGridSort(key: RepairGridColumnKey): GridSortDir {
@@ -175,10 +189,9 @@ export function repairPriceSortValue(repair: RSRecord): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Shared spreadsheet chrome — same helpers as outbound OrdersGridView / Incoming.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as REPAIR_GRID_FROZEN_CELL,
-  ordersQueueFrozenLeft as repairGridFrozenLeft,
-  ordersQueueGridCell as repairGridCell,
-  ordersQueueRowShellClass as repairGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as REPAIR_GRID_FROZEN_CELL,
+  ledgerGridCell as repairGridCell,
+  ledgerGridRowShellClass as repairGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

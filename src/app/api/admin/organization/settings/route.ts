@@ -6,11 +6,13 @@ import {
   getComplianceAnswers,
   getGs1SettingsRaw,
   getPhotoAnalysisSettings,
+  getSupportSettings,
   type OrgSettings,
 } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { syncAgentRootsFromSettings } from '@/lib/nas-agent-client';
 import { normalizeProvider } from '@/lib/photos/analyze-provider';
+import { normalizeVisionLane } from '@/lib/support/vision-lane';
 import {
   isLicensedGln,
   isPlaceholderGs1Prefix,
@@ -35,7 +37,7 @@ export const dynamic = 'force-dynamic';
  * ladder, but nothing in the product ever WROTE them; this route is that gap.
  *
  * GET   → { stationNasPhotoFolders, nasPhotoServers, nasStorageTargets,
- *           photoAnalysis, gs1, compliance, gs1Requirement }
+ *           photoAnalysis, gs1, compliance, gs1Requirement, support }
  * PATCH → body may contain any subset of keys; merged into jsonb settings.
  */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
@@ -53,6 +55,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const compliance = org
     ? getComplianceAnswers(org.settings)
     : { hasNewInventory: null, sellsOnAmazon: null, gs1Status: null, answeredAt: null };
+  const support = org ? getSupportSettings(org.settings) : {};
   return NextResponse.json({
     stationNasPhotoFolders: org?.settings.stationNasPhotoFolders ?? {},
     nasPhotoServers: org?.settings.nasPhotoServers ?? { test: '', prod: '', active: 'prod' },
@@ -70,6 +73,12 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       companyPrefix: gs1.companyPrefix,
       gln: gs1.gln,
     }),
+        // Raw org request — null visionLane means "inherit env / local-first".
+        // Never return the resolved lane; the vision-lane resolver owns that.
+        support: {
+          visionLane: support.visionLane ?? null,
+          vertical: support.vertical ?? null,
+        },
   });
 }, { permission: 'admin.view' });
 
@@ -343,11 +352,60 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     patch.compliance = next;
   }
 
+  // ── support (vision lane + reply persona vertical) ──────────────────────
+  //
+  // jsonb `||` replaces the whole `support` key, so merge over the CURRENT
+  // value — a visionLane-only patch must not clobber `vertical`. The value
+  // stored is the org's REQUEST; the vision-lane resolver remains the only
+  // place precedence (org → env → local-only) and cloud-availability gating live.
+  if ('support' in body) {
+    const raw = (body as Record<string, unknown>).support;
+    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+      return NextResponse.json(
+        { error: 'support must be an object of { visionLane, vertical }' },
+        { status: 400 },
+      );
+    }
+    const r = raw as Record<string, unknown>;
+    const currentOrg = await getOrganization(ctx.organizationId as OrgId);
+    const current = currentOrg ? getSupportSettings(currentOrg.settings) : {};
+    const next: Record<string, unknown> = { ...current };
+
+    if ('visionLane' in r) {
+      if (r.visionLane === null || r.visionLane === '') {
+        delete next.visionLane; // clear → inherit env / local-first
+      } else {
+        const lane = normalizeVisionLane(typeof r.visionLane === 'string' ? r.visionLane : null);
+        if (!lane) {
+          return NextResponse.json(
+            { error: 'visionLane must be local-only | cloud-multimodal | null' },
+            { status: 400 },
+          );
+        }
+        next.visionLane = lane;
+      }
+    }
+
+    if ('vertical' in r) {
+      if (r.vertical === null) {
+        delete next.vertical;
+      } else if (typeof r.vertical !== 'string') {
+        return NextResponse.json({ error: 'vertical must be a string or null' }, { status: 400 });
+      } else {
+        const v = r.vertical.trim().slice(0, 80);
+        if (v) next.vertical = v;
+        else delete next.vertical;
+      }
+    }
+
+    patch.support = next;
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json(
       {
         error:
-          'Provide stationNasPhotoFolders, nasPhotoServers, nasStorageTargets, photoAnalysis, gs1, and/or compliance',
+          'Provide stationNasPhotoFolders, nasPhotoServers, nasStorageTargets, photoAnalysis, gs1, compliance, and/or support',
       },
       { status: 400 },
     );

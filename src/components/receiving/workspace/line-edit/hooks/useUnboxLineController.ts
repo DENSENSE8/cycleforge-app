@@ -87,18 +87,19 @@ export function useUnboxLineController(
    * TWO durable buffers, one per GRAIN of text on this line (split 2026-07-31,
    * migration `2026-07-31b_receiving_lines_label_note.sql`):
    *
-   *   itemNote  ← `receiving_line.notes`      — the operator's item note. NEVER
-   *               printed. Feeds the receive payload / push-to-PO. Composed in
-   *               the Notes dock ({@link LineNotesCard}).
-   *   labelNote ← `receiving_line.label_note` — the PRINTED face center text
-   *               (carton face center + As Listed disclosure). Composed in the
-   *               label editor ({@link LabelEditPopover} / As Listed).
+   *   itemNote  ← `receiving_line.notes`      — the operator's item note
+   *               (Zoho / receive). On Unbox overview the live draft also
+   *               drives the carton sticker center (preview + Print · Receive).
+   *               Composed in the Notes dock ({@link LineNotesCard}).
+   *   labelNote ← `receiving_line.label_note` — durable printed face center
+   *               (Testing reprint + LabelEditPopover / As Listed). Stamped
+   *               from itemNote on carton print so reprint stays aligned.
    *
-   * They were one buffer until now, so an operator could not write a note that
-   * did not print, nor re-word a label without rewriting the record's note. The
-   * migration backfills `label_note := notes`, so both start equal on existing
-   * cartons and every pre-split carton reprints an identical face; they diverge
-   * from the first edit onward.
+   * They were one buffer until the split, so an operator could not write a note
+   * that did not print, nor re-word a label without rewriting the record's
+   * note. The migration backfills `label_note := notes`, so both start equal on
+   * existing cartons; they diverge when LabelEditPopover edits without the dock
+   * (overview still prefers the dock draft for live center).
    */
   const [itemNote, setItemNote] = useState(row.notes ?? '');
   const [labelNote, setLabelNote] = useState(row.label_note ?? '');
@@ -318,7 +319,7 @@ export function useUnboxLineController(
     [core.patch],
   );
 
-  /** Persist the operator's item note — `notes`, never the printed face. */
+  /** Persist the operator's item note — `notes` only (not `label_note`). */
   const persistItemNote = useCallback(
     (nextItemNote: string) => {
       setItemNote(nextItemNote);
@@ -404,6 +405,17 @@ export function useUnboxLineController(
     };
   }, [row.sku, row.item_name, serialInput, labelConditionCode, authUser?.organizationSlug]);
 
+  // Unbox overview: dock draft (`itemNote`) is the live carton face center —
+  // preview + Print · Receive. Editor still seeds from `labelNote`; columns
+  // stay separate (dock save patches `notes` only; print stamps `label_note`).
+  const liveCartonPayload = useMemo(
+    () =>
+      cartonLabel.defaultPayload
+        ? { ...cartonLabel.defaultPayload, notes: itemNote }
+        : null,
+    [cartonLabel.defaultPayload, itemNote],
+  );
+
   const labelCtx: WorkspaceLabelContext = useMemo(
     () => ({
       hasCarton: row.receiving_id != null && row.receiving_id > 0,
@@ -414,7 +426,7 @@ export function useUnboxLineController(
       // not the operator's item note — the two are separate buffers now.
       disclosureNote: labelNote,
       ticketDigits,
-      cartonPayload: cartonLabel.defaultPayload,
+      cartonPayload: liveCartonPayload,
       unitInput,
       asListedPayload,
       ticketPayload,
@@ -426,7 +438,7 @@ export function useUnboxLineController(
       core.receivingType,
       labelNote,
       ticketDigits,
-      cartonLabel.defaultPayload,
+      liveCartonPayload,
       unitInput,
       asListedPayload,
       ticketPayload,
@@ -461,8 +473,13 @@ export function useUnboxLineController(
       let didPrint = false;
       switch (k) {
         case 'carton':
-          if (cartonLabel.defaultPayload) {
-            printReceivingLabel(cartonLabel.defaultPayload);
+          if (liveCartonPayload) {
+            printReceivingLabel(liveCartonPayload);
+            // Stamp label_note from what just printed so Testing / reprint /
+            // LabelEditPopover stay aligned with the overview face.
+            if (itemNote.trim() !== labelNote.trim()) {
+              persistLabelNote(itemNote);
+            }
             didPrint = true;
           }
           break;
@@ -488,7 +505,16 @@ export function useUnboxLineController(
       if (didPrint) markLabelPrinted();
       return didPrint;
     },
-    [cartonLabel.defaultPayload, unitInput, asListedPayload, ticketPayload, markLabelPrinted],
+    [
+      liveCartonPayload,
+      itemNote,
+      labelNote,
+      persistLabelNote,
+      unitInput,
+      asListedPayload,
+      ticketPayload,
+      markLabelPrinted,
+    ],
   );
 
   /** Print the currently selected preview label (dock "Print only"). */
@@ -501,12 +527,12 @@ export function useUnboxLineController(
    * the active selection / unit fallback.
    */
   const runPrimaryPrint = useCallback(() => {
-    if (cartonLabel.defaultPayload) {
+    if (liveCartonPayload) {
       printKind('carton');
       return;
     }
     printKind(activeLabelKind);
-  }, [cartonLabel.defaultPayload, printKind, activeLabelKind]);
+  }, [liveCartonPayload, printKind, activeLabelKind]);
 
   const applyAsListedAndPrint = useCallback(
     (draft: AsListedLabelDraft) => {
@@ -553,7 +579,8 @@ export function useUnboxLineController(
   );
 
   // Back-compat aliases for callers still using the old carton field names.
-  const labelPayload = cartonLabel.defaultPayload;
+  // Overview preview/print center is dock-driven (`liveCartonPayload`).
+  const labelPayload = liveCartonPayload;
   const labelDraftDefaults = cartonLabel.draftDefaults;
   const buildLabelPayload = cartonLabel.buildPayload;
   const applyAndPrintLabel = useCallback(
@@ -873,8 +900,8 @@ export function useUnboxLineController(
     qa, setQa, disp, setDisp,
     cond, setCond, unitLabelCondition, setUnitLabelCondition, isMultiQtyLine,
     // notes — TWO durable buffers, one per grain (2026-07-31 split):
-    //   itemNote  = `receiving_line.notes`      — operator note, never printed
-    //   labelNote = `receiving_line.label_note` — the printed face center text
+    //   itemNote  = `receiving_line.notes` — operator note; Unbox overview live center
+    //   labelNote = `receiving_line.label_note` — durable printed face (stamped on carton print)
     itemNote, setItemNote, persistItemNote,
     labelNote, setLabelNote, persistLabelNote,
     prevLineNotes,

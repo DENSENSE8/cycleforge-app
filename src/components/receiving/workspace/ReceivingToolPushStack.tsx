@@ -10,8 +10,9 @@
  * exclusive with Displays, Claim, Ticket, and `detail:receiving` (wired by
  * LineEditPanel).
  *
- * Trailing gutter is {@link TICKET_PUSH_HOST_PAD_CLASS} on the LineEditPanel
- * host; top/bottom is {@link UnboxPushColumn}'s `my-2`.
+ * Flush planes (2026-08-03): host pad is empty
+ * ({@link TICKET_PUSH_HOST_PAD_CLASS}); column is coplanar via
+ * {@link UnboxPushColumn} / {@link DETAIL_STACK_PUSH_COLUMN_CLASS}.
  */
 
 import type { ReactNode } from 'react';
@@ -31,12 +32,6 @@ const TOOL_ARIA: Record<UnboxToolPushId, string> = {
   'move-photos': 'Move photos between purchase orders',
   'photo-note': 'Send photos to a ticket',
   audit: 'Carton audit log',
-};
-
-const TOOL_COLLAPSE: Record<UnboxToolPushId, string> = {
-  'move-photos': 'Hide move photos',
-  'photo-note': 'Hide photo note',
-  audit: 'Hide audit log',
 };
 
 export function ReceivingToolPushStack({
@@ -91,7 +86,6 @@ export function ReceivingToolPushStack({
       resizeLabel="Resize tool panel"
       resizeTestId="unbox-tool-push-resize"
       resizeTooltip="Drag to resize panel · double-click for default"
-      collapseLabel={TOOL_COLLAPSE[tool]}
       onClose={onClose}
     >
       {body}

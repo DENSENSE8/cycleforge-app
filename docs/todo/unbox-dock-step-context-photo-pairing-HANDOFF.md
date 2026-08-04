@@ -1,9 +1,10 @@
 # Unbox bottom dock — per-step leading zone + photo pairing · HANDOFF
 
 **Date:** 2026-08-02 · **Lane:** WS-DOGFOOD (`main`, uncommitted) ·
-**Status:** **Stream B shipped** (2026-08-02) · **Stream A is a plan** — §0 is
-resolved and the rules section is demoted; §2 below is now the plan-of-record,
-not a description of code. See **§7 — What shipped**.
+**Status:** **BOTH streams shipped** (2026-08-02). Stream B first, then Stream A
+the same day when the operator ruled that **no step card may carry an action
+button** — which is a stronger form of §2 than §2 asked for. See
+**§6 — What shipped**.
 **Sibling handoff:** [`unbox-procedure-deck-FOLLOWUPS-HANDOFF.md`](./unbox-procedure-deck-FOLLOWUPS-HANDOFF.md)
 — the deck's own tail. **Do not do that work here.**
 **Binding rules:** [`display/station-workbench.md`](../../.claude/rules/display/station-workbench.md)
@@ -13,7 +14,20 @@ not a description of code. See **§7 — What shipped**.
 
 ---
 
-## 0. RESOLVED 2026-08-02 — the rules section is demoted to a plan
+## 0. RESOLVED 2026-08-02 — demoted for a day, then SHIPPED
+
+**Final state: the rules section is restored, and the code now matches it.**
+`.claude/rules/display/station-workbench.md` carries *The dock's LEADING zone is
+the step's ACTION surface; its TRAILING terminal is the carton's*, backed by
+`steps/dock/procedure-step-dock.guard.test.ts`.
+
+The account below is the intermediate state, kept because the lesson is the
+point: a rule may only describe code that exists. It was demoted, and it came
+back through the front door — by being built.
+
+---
+
+### The intermediate state (superseded)
 
 `.claude/rules/display/station-workbench.md` carried a ruled, present-tense
 section titled **“The dock's LEADING zone is step-contextual; its TRAILING
@@ -335,15 +349,49 @@ Decisions worth not re-litigating:
   ```
   npx playwright test tests/e2e/unbox-photo-aspect-pairing.spec.ts --project=qa-desktop
   ```
-- **Clearance was NOT re-measured** — correctly: nothing was added to the dock,
-  so `STATION_TERMINAL_PAGER_SCROLL_CLEARANCE` is untouched. That check comes
-  back the day Stream A does.
+- **Clearance is reserved but NOT measured.** Stream A added a dock row, so
+  `reserveScrollClearance` moved `'pager'` → `'step-action'` (`pb-40` → `pb-48`,
+  the same ~2rem the pager cost). The geometric check the rules require —
+  `data-procedure-zone="queued"` bottom vs `[data-unbox-step-dock]` top — has
+  **not** been run, because the dev server never came back up during this
+  session. Do it before trusting the number:
+  ```
+  npx playwright test tests/e2e/unbox-photo-aspect-pairing.spec.ts --project=qa-desktop
+  ```
+  and add the overlap probe alongside it.
+- **No UI ran at all for Stream A.** Typecheck, lint and every guard are green;
+  nothing has been seen on screen.
 
-### Left for Stream A
+### Stream A — shipped the same day, in a stronger form than §2 asked for
 
-The dock's leading zone. It now has a concrete second control to justify the
-registry (`CartonPhotoPairPanel` beside the camera) instead of one hypothetical
-caller — which was §4's whole argument for sequencing it this way.
+§2 proposed a step-contextual leading zone *beside* the card's own controls.
+The operator ruled harder: **a step card carries no action button at all.** So
+the move is total, not additive.
+
+| Landed as |
+|---|
+| `steps/dock/` — `UNBOX_STEP_DOCK_CONTROLS` (7 keys) + `UNBOX_STEPS_WITHOUT_DOCK_ACTION` (3, each with a reason) |
+| `CartonPhotoDockControl` — camera + `Link a photo` popover hosting `CartonPhotoPairPanel` (which lost its own open-state; the popover owns it) |
+| `AcknowledgeDockControl` — one component for `contents` + `label`, the two acknowledgement steps |
+| `SlotDockControls` — `item_photos` (camera) + `condition` (grade chips), composed by the adapter |
+| `UnboxStepDock` — the band; crossfades on `activeKey` with `motionRole.swap.scan` |
+| `buildUnboxStepDock` in `unbox-tabs.tsx`, beside `buildUnboxOverview` |
+| Bodies rewritten to READ: carton + item photo bodies fetch their own aspect/line-scoped galleries; `label` is the face; `condition` states the grade and whether anyone graded it |
+| `reserveScrollClearance="step-action"` + `STATION_TERMINAL_STEP_ACTION_SCROLL_CLEARANCE` (`pb-48`) — a dock row with no clearance is the 4px overlap the pager already shipped once |
+
+**`contents` gained a control it never had.** The `contents_confirmed_at` gate
+had no product affordance at all — the step could only be satisfied by calling
+the API. Moving the actions to the dock is what made that absence visible.
+
+**Three steps deliberately have NO dock action**, declared with reasons:
+`arrival_check` (a camera there would void the `require_one` receive gate),
+`classify` and `serial` (their bodies ARE editors; every control is the editing,
+not a button that commits). The guard requires each step to be in exactly one of
+the two maps — so an empty dock band is always a decision, never a gap.
+
+**The guard bites on the real regression**, which is one import: a step body
+reaching for `Button` / `IconButton` / `ReceivingPhotoButton` fails CI. Verified
+by temporarily re-adding the import to `LabelStepBody` — `not ok 4`.
 
 ---
 

@@ -58,7 +58,6 @@ export function PickupSidebarRail() {
       selectedId={selected}
       limit={200}
       preserveServerOrder
-      railInset="gutter"
       staggerRevealMotion="sidebar"
       eyebrowTitle="Local Pickup"
       emptyText="No local pickup orders yet."

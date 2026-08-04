@@ -2,7 +2,7 @@
  * Today's saved-view identity — the two inputs `useSavedViews` takes.
  *
  * A saved view is an OPERATOR-defined facet combination. Today's lane strip
- * (Everything · Do next · Assigned · Needs attention) is the SYSTEM's, so a view
+ * (All · Do next · Assigned · Needs attention) is the SYSTEM's, so a view
  * named after a lane is the duplication `display/workbench.md` → Tabs vs. saved
  * views bans: the tab already owns that answer, and the two desync the moment
  * the lane's predicate changes. `scope` is in `paramKeys` so a view can pin the

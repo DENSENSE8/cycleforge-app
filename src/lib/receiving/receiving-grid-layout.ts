@@ -4,17 +4,20 @@
  *
  * Same spreadsheet family as Pending / Incoming (Date as a per-row column —
  * no sticky day-band headers on these rails):
- *   select · title · date · qty · cond · stage · location · platform · order · tracking · serial
+ *   select · order · title · status · date · qty · cond · location · platform · tracking · serial
  *
  * Incoming keeps its own Expected / Age / Status columns
- * ({@link INCOMING_GRID_COLUMNS}). Stage label (Unboxed / Scanned / Tested) is
- * a header prop — the track key stays `stage`. Date is the civil day of the
- * activity-axis stamp (Unboxed / Scanned / Tested). Location is triage shelf
- * placement (`staging_location_label`).
+ * ({@link INCOMING_GRID_COLUMNS}). The activity-axis stamp (Unboxed / Scanned /
+ * Tested) renders as `date` (day + time) and its stage NAME as `status`;
+ * there is no separate `stage` track. Location is triage shelf placement
+ * (`staging_location_label`).
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -25,12 +28,14 @@ export type ReceivingGridColumnKey =
   | 'date'
   | 'qty'
   | 'condition'
-  | 'stage'
   | 'location'
   | 'platform'
   | 'order'
   | 'tracking'
-  | 'serial';
+  | 'serial'
+  | 'zoho'
+  /** Trailing structural filler — absorbs leftover sheet width; not a fact column. */
+  | '_fill';
 
 /**
  * EXTENDS the house model — it does not re-declare it. Every shared field
@@ -48,15 +53,18 @@ export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> 
 
 /**
  * Canonical Unbox / History / Testing columns. Fact tracks are content-hard
- * `minmax(X,X)`; only `title` flexes. `order` hides under legacy `orderid`;
- * `stage` hides under meta `rest`.
+ * `minmax(X,X)`; Product is also a fixed preferred track (Sheets/Notion
+ * overflow — same unlock as Incoming). Drag-resize sets exact px via
+ * `--cf-col-title`; leftover sheet width is absorbed by trailing `_fill`
+ * (`minmax(0rem, 1fr)`), not a stretched Product. Select-only freeze stays:
+ * Order / Product scroll with the facts.
  *
  * ## Default (`core`) set — deliberately lean
  *
- * A receiving line is scanned by: what is it (`title`), when did it land
- * (`date`), how many (`qty`), where is it in the flow (`stage`), where did
- * triage place it (`location`), and the two identifiers an operator actually
- * types or scans (`order` = PO#, `tracking`). That is the whole default grid.
+ * A receiving line is scanned by: which PO (`order`), what is it (`title`),
+ * what state (`status`), when did it reach it (`date`), how many (`qty`), where
+ * did triage place it (`location`), and the other identifier an operator scans
+ * (`tracking`). That is the whole default grid.
  *
  * `condition`, `platform` and `serial` are `optional` — not because they are
  * unimportant, but because on THIS surface they are usually empty at the moment
@@ -66,50 +74,70 @@ export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> 
  * lane where they matter turn them on once, and it follows them across devices.
  */
 export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
+  // Sheets-class freeze: only the select gutter is sticky. Order / Product scroll
+  // with the fact columns (2026-08-04). Operator-editable freeze panes (pin any
+  // column, like Google Sheets) are a future capability — do not hard-freeze
+  // title/order again as a permanent house answer.
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
+  // PO number — scrollable fact track. Still always-on (no hideKey): it is the
+  // scan handle, but it no longer steals sticky budget from the sheet plane.
+  //
+  // `align: 'start'` — a transaction identity is a name you read, not a
+  // magnitude compared down the column. Declared exception to `ALIGN_BY_TYPE.id`
+  // (2026-08-02); `serial` below keeps `end` as a reference attribute.
+  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', align: 'start', labelFitRem: 4.5 },
+  // Fixed preferred track — NOT `1fr`. A fill track made Product drag-resize a
+  // floor-only change while `1fr` kept stretching to the card (narrower = no
+  // visible move). Content-sized so resize is Sheets-exact and the sheet can
+  // scroll when columns exceed the port.
   {
     key: 'title',
-    frozen: true,
-    width: 'minmax(12rem, 1fr)',
+    width: 'minmax(16rem, 16rem)',
     label: 'Product Title',
     gridLabel: 'Product',
     type: 'text',
     labelFitRem: 8,
   },
-  // The row's lifecycle answer in ONE track: dot · stage name · day · time
-  // (`ReceivingStatusCell`). Added 2026-08-02, replacing the split where `date`
-  // held `Jul 31`, `stage` held `4:19 PM`, and the STAGE NAME appeared only in
-  // the `stage` column's runtime header label — so a row could not be read
-  // without keeping the header in your head. `type: 'tag'` (a categorical
-  // label, start-aligned and drag-resizable, unlike the fixed-format types).
-  { key: 'status', width: 'minmax(11rem, 11rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
-  // Civil day of the activity-axis stamp — Pending/Incoming Date column recipe.
-  // Demoted to `optional` when `status` absorbed it: both render the same day,
-  // and two tracks for one fact is what the merge removed. Kept (not deleted)
-  // so a staffer who wants the split back can opt in — and so an existing
-  // `hidden`/`shown` delta stays meaningful.
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Date', gridLabel: 'Date', type: 'date', hideKey: 'date', tier: 'optional', labelFitRem: 4.5 },
-  // 3.5rem / fit 3.5 matches the Pending grid exactly, so the header reads
-  // `Qty` instead of a bare `#`. The glyph fallback was ambiguous here: the
-  // type registry maps BOTH `number` and `id` to the hash mark, so a label-less
-  // qty column was indistinguishable from the Order column two tracks over.
+  // The row's lifecycle STATE — dot · stage name (`ReceivingStatusCell`). It
+  // exists because the stage name used to appear only in the `stage` column's
+  // runtime header label, so a row could not be read without keeping the header
+  // in your head. `type: 'tag'` (a categorical label, start-aligned and
+  // drag-resizable, unlike the fixed-format types).
+  //
+  // It briefly also carried the day + time (2026-08-02) and gave them back the
+  // same day: a state and a stamp are two facts, and merging them cost the
+  // stamps their alignment down the axis, made the track size for
+  // longest-word + longest-stamp, and welded two sorts into one. 6rem holds
+  // `Matched` / `Unboxed` / `Received` beside the dot.
+  { key: 'status', width: 'minmax(6rem, 6rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
+  // WHEN it reached that stage — day + time (`Jul 31 4:19 PM`) in one track.
+  // Stamp face: typed floor is 12rem (`resolveGridColumnMinTrackRem` /
+  // `dateFace: 'stamp'`). Narrower tracks left-clipped end-aligned nowrap
+  // stamps under overflow-hidden (`g 3 4:54 PM`).
+  {
+    key: 'date',
+    width: 'minmax(12rem, 12rem)',
+    label: 'Date',
+    gridLabel: 'Date',
+    type: 'date',
+    dateFace: 'stamp',
+    hideKey: 'date',
+    labelFitRem: 4.5,
+  },
+  // Qty keeps the word label — Order scrolls on this surface again, and both
+  // `number` and `id` map to the hash glyph, so a bare `#` would collide with
+  // `# Order` in one scan path. Incoming still freezes Order and may keep
+  // `headerGlyphOnly`.
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
-  // Stage clock — hide with meta `rest`. Sized for the RUNTIME label (`Unboxed` /
-  // `Scanned` / `Tested`, injected by the header's `stageLabel` prop), not for the
-  // placeholder `Stage` declared here.
-  //
-  // Measured: inset 16px + one mark slot 16px + `UNBOXED` 45.6px = 77.6px in an
-  // 80px track. It clipped to `UNBO…` only because a sorted header used to draw
-  // the type glyph AND the chevron (93.6px); the header now reuses one mark slot,
-  // so 5rem holds all three stage words in either sort state.
-  //
-  // `type: 'date'` only so the header draws the clock glyph — the cell is a
-  // prose stage word, so `align: 'start'` overrides the numeric `date → end` default.
-  // Demoted to `optional` alongside `date` — `status` now carries this stamp
-  // WITH the stage name beside it, which is the half this column could never
-  // show in the row itself.
-  { key: 'stage', width: 'minmax(5rem, 5rem)', label: 'Stage', type: 'date', align: 'start', hideKey: 'rest', tier: 'optional', labelFitRem: 4.5 },
+  // A `stage` track sat here until 2026-08-02, carrying the activity-axis CLOCK
+  // under a runtime header label (Unboxed / Scanned / Tested). Both halves left:
+  // the clock moved into `date` when that column grew to day + time, and the
+  // stage NAME became the `status` track. What remained was a second column
+  // rendering the same `ctx.stageDisplay` string as `date`, so a staffer who
+  // opted it back on from the column-display rail read one clock twice. Deleted
+  // rather than left demoted — the whole per-mount `stageLabel` header chain
+  // went with it. Do not reintroduce it: `date` + `status` answer both questions.
   // Triage shelf placement (Arrival Location Placement) — core for Unbox Queue.
   {
     key: 'location',
@@ -121,23 +149,33 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     labelFitRem: 4.5,
   },
   { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
-  // `align: 'start'` — the PO / order number is this row's transaction identity
-  // (a name you read), not a magnitude. Declared exception to `ALIGN_BY_TYPE.id`
-  // ruled 2026-08-02; `serial` below keeps `end` as a reference attribute.
-  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', align: 'start', hideKey: 'orderid', labelFitRem: 4.5 },
-  { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'tracking', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
   { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', hideKey: 'serial', tier: 'optional', labelFitRem: 4.5 },
+  // Vendor receipt state — what the purchasing source says about this row's PO
+  // (`zoho_po_mirror.status`). `tag`, so it start-aligns and drag-resizes like
+  // every other categorical chip; NEVER folded into `status`, which is the
+  // LOCAL lifecycle state. Two facts, two columns.
+  //
+  // `optional` here, and that is the point of the tier: on History the vendor
+  // status is historical enrichment, so the column is available and off. The
+  // lanes where it VARIES — the bulk-paste results and the recently-removed
+  // lane — promote it to `core` on their own descriptor. Flipping it here would
+  // turn it on for every receiving grid and re-create the always-the-same-value
+  // problem the lane note exists to solve.
+  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', label: 'Vendor', type: 'tag', hideKey: 'zoho', tier: 'optional', labelFitRem: 4.5 },
+  // Trailing filler — geometry only. Absorbs zoom-out / wide-card slack so fact
+  // tracks stay content-hard. No label, type, hideKey, or tier: never in Column
+  // display; Column discovery stays triage ▤ / header menus.
+  { key: '_fill', width: 'minmax(0rem, 1fr)', sortable: false, resizable: false },
 ] as const;
 
 /**
- * Frozen identity pane — `select · title`. Derived from the column model's
- * `frozen` flag (one declaration for freeze + immovability + offset math), not
- * from the house key list: the pane is a per-surface answer, and Orders already
- * freezes a third track. See `grid-column-editability.ts`.
+ * Frozen pane — select gutter only (Sheets-class). Derived from the column
+ * model's `frozen` flag. Operator-editable freeze (pin any column) is future.
  */
 const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozenKeys(RECEIVING_GRID_COLUMNS);
 
-/** Data columns that support click-to-sort (excludes select). */
+/** Data columns that support click-to-sort (excludes select / paint chrome). */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(
   (c) => c.sortable !== false && c.key !== 'select',
 ).map((c) => c.key);
@@ -156,21 +194,30 @@ export function isReceivingGridFrozen(key: string): boolean {
   return RECEIVING_GRID_LOCKED_KEYS.includes(key as ReceivingGridColumnKey);
 }
 
+/**
+ * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
+ *
+ * Receiving's pane is select-only (Sheets-class); offsets still derive from
+ * THIS surface's columns, never Orders'.
+ */
+export function receivingGridFrozenLeft(key: string): string {
+  return gridFrozenLeft(RECEIVING_GRID_COLUMNS, key);
+}
+
 
 /** Default direction when first activating a column sort. */
 export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): GridSortDir {
-  // Date / stage: most recent first (ops scan).
-  if (key === 'date' || key === 'stage') return 'desc';
+  // Date: most recent first (ops scan).
+  if (key === 'date') return 'desc';
   return 'asc';
 }
 
 // (flipReceivingGridSortDir retired — the TanStack sort surface owns the
 //  asc ↔ desc cycle via LedgerGridSurface / useGridSurface.)
 
-// Shared spreadsheet chrome — same helpers as outbound OrdersGridView / Incoming.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as RECEIVING_GRID_FROZEN_CELL,
-  ordersQueueFrozenLeft as receivingGridFrozenLeft,
-  ordersQueueGridCell as receivingGridCell,
-  ordersQueueRowShellClass as receivingGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as RECEIVING_GRID_FROZEN_CELL,
+  ledgerGridCell as receivingGridCell,
+  ledgerGridRowShellClass as receivingGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

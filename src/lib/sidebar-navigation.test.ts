@@ -4,6 +4,8 @@ import {
   APP_SIDEBAR_NAV,
   getSidebarNavItems,
   isSidebarRouteMobileRestricted,
+  isSidebarNavActive,
+  isSidebarTopPinActive,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   getSidebarHref,
@@ -21,16 +23,25 @@ test('getSidebarNavItems returns the full sidebar list by default', () => {
   assert.deepEqual(getSidebarNavItems(), APP_SIDEBAR_NAV);
 });
 
-test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Chat under Media', () => {
+test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans between Media and Chat', () => {
   const items = getSidebarNavItems();
+  const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
+  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat']);
 
   const home = items.find((item) => item.id === 'home');
   assert.ok(home, 'home should ship on prod nav');
   assert.equal(home.kind, 'top', 'home is top-pinned above Search');
 
+  const plans = items.find((item) => item.id === 'plans-live');
+  assert.ok(plans, 'plans-live should ship on prod nav');
+  assert.equal(plans.kind, 'top', 'plans-live is top-pinned between Media and Chat');
+  assert.equal(plans.label, 'Plans');
+  assert.equal(plans.href, '/?mode=forge&view=live');
+  assert.equal(plans.requires, 'operations.plans.view');
+
   const aiChat = items.find((item) => item.id === 'ai-chat');
   assert.ok(aiChat, 'ai-chat should ship on prod nav');
-  assert.equal(aiChat.kind, 'top', 'ai-chat is top-pinned under Media');
+  assert.equal(aiChat.kind, 'top', 'ai-chat is top-pinned after Plans');
   assert.equal(aiChat.label, 'Chat');
 
   const operations = items.find((item) => item.id === 'operations');
@@ -41,15 +52,32 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Chat 
     'operations belongs to the Monitor drill',
   );
 
-  // Sourcing is acquisition — it belongs to the Inventory domain (D9), not to a
-  // page-shape bucket. `kind: 'stock'` was the latter and is retired.
+  // Sourcing is its own spine domain section (not nested under Inventory).
   const sourcing = items.find((item) => item.id === 'sourcing');
   assert.ok(sourcing, 'sourcing should ship on prod nav');
   assert.equal(sourcing.kind, 'domain');
   assert.equal(
     sourcing.kind === 'domain' ? sourcing.domainGroup : null,
-    'inventory',
-    'sourcing belongs to the Inventory drill',
+    'sourcing',
+    'sourcing belongs to the Sourcing domain section',
+  );
+});
+
+test('plans-live pin requires operations.plans.view', () => {
+  const without = getSidebarNavItems({ permissions: new Set(['photos.view', 'dashboard.view']) });
+  assert.equal(
+    without.some((item) => item.id === 'plans-live'),
+    false,
+    'plans-live drops without operations.plans.view',
+  );
+
+  const withPlans = getSidebarNavItems({
+    permissions: new Set(['photos.view', 'dashboard.view', 'operations.plans.view']),
+  });
+  assert.equal(
+    withPlans.some((item) => item.id === 'plans-live'),
+    true,
+    'plans-live ships with operations.plans.view',
   );
 });
 
@@ -70,11 +98,12 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
 
 test('prod nav ships every unparked page; only redirect surfaces stay off', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
-  // Dogfood parking is retired: Sourcing ships in Overview; Chat is top-pinned
-  // under Media. `fba` stays off the spine because /fba is a permanent redirect
-  // into Shipping, which already owns that surface (no second front door).
+  // Dogfood parking is retired: Sourcing ships; Chat is top-pinned after Plans.
+  // `fba` stays off the spine because /fba is a permanent redirect into Shipping,
+  // which already owns that surface (no second front door).
   assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');
-  assert.equal(navIds.has('ai-chat'), true, 'ai-chat ships top-pinned under Media');
+  assert.equal(navIds.has('plans-live'), true, 'plans-live ships top-pinned between Media and Chat');
+  assert.equal(navIds.has('ai-chat'), true, 'ai-chat ships top-pinned after Plans');
   assert.equal(navIds.has('fba'), false, 'fba redirects into Shipping — no spine row');
   // Studio was promoted out of the parked set — it is a live page, footer-pinned
   // above Admin since 2026-08-02, so it must be present on prod nav.
@@ -105,10 +134,10 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     'packer',
     'products',
     'inventory',
-    'warehouse',
   ]) {
     assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
   }
+  assert.equal(navIds.has('warehouse'), false, 'Locations folded under Inventory L2');
   assert.equal(navIds.has('receiving'), false, 'parent Receiving L1 is gone — modes are L1');
   // Dashboard + the print hub dissolved into domain homes (D2 / D5): the routes
   // still resolve, the L1 rows do not exist.
@@ -227,8 +256,9 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
       assert.equal(params.get('q'), null, `${page.id}/${mode.id} should clear q`);
     }
   }
-  // Receiving Board + Orders + Sales Board + Local Pickup History.
-  assert.equal(checked, 4, `expected 4 dashboard-board modes, found ${checked}`);
+  // Sales Board + Local Pickup History (Orders moved to `/shipping/orders`;
+  // Inbound Board folded into `/incoming`).
+  assert.equal(checked, 2, `expected 2 dashboard-board modes, found ${checked}`);
 });
 
 // A page's bare href must resolve to one of its declared modes (its default).
@@ -399,15 +429,16 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba')), 'combine');
   assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarChild('fba', at('/fba', 'mode=plan')), 'plan');
-  // Desk Shipping children: Labels / Ready / FBA. Scan out is its own floor L1.
+  // Desk Shipping children: Labels / FBA. Ready is an FBA stage tab. Scan out is its own floor L1.
   assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'labels');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), 'ready');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'labels');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), 'ready');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba', 'fbaMode=ready')), 'fba');
   // Redirect-window: legacy path still resolves nav key until the edge 308 lands.
-  assert.equal(resolveSidebarChild('outbound', at('/outbound', 'mode=ready')), 'ready');
+  assert.equal(resolveSidebarChild('outbound', at('/outbound', 'mode=ready')), 'fba');
   assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
   assert.equal(getSidebarRouteKey('/shipping/scan-out'), 'outbound');
@@ -433,6 +464,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(dashPage('mode=receiving'), 'incoming');
   assert.equal(dashPage('mode=sales'), 'sales');
   assert.equal(dashPage('mode=pickup'), 'sales');
+  assert.equal(getSidebarNavPageId('/shipping/orders'), 'outbound');
+  assert.equal(
+    getSidebarNavPageId('/shipping/orders', new URLSearchParams('context=support')),
+    'support',
+  );
   assert.equal(getSidebarPageNav('dashboard'), undefined, 'no dashboard L1 page nav');
   // Review split (D10): packing QA is Fulfillment, pairing / catalog-link are
   // Catalog. Every `/review` URL still resolves — the page never moved.
@@ -449,12 +485,24 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // The route key is untouched, so the Review surface still mounts its own panel.
   assert.equal(getSidebarRouteKey('/review'), 'review');
   assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
-  assert.equal(resolveSidebarChild('incoming', at('/dashboard', 'mode=inbound')), 'board');
-  assert.equal(resolveSidebarChild('incoming', at('/incoming')), 'incoming');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/orders')), 'orders');
+  // Inbound is a leaf desk — no L2 children; dashboard inbound bookmarks still
+  // resolve the page id to `incoming` until the proxy redirects them.
+  assert.equal(resolveSidebarChild('incoming', at('/dashboard', 'mode=inbound')), null);
+  assert.equal(resolveSidebarChild('incoming', at('/incoming')), null);
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'orders');
+  // Support › Inquiries aliases the To-ship desk — Support owns the pin.
+  assert.equal(
+    resolveSidebarChild('support', at('/shipping/orders', 'context=support')),
+    'orders',
+  );
+  assert.equal(
+    resolveSidebarChild('outbound', at('/shipping/orders', 'context=support')),
+    null,
+  );
   assert.equal(resolveSidebarChild('support', at('/support')), 'tickets');
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
@@ -502,4 +550,48 @@ test('/search declares its own route key and reserves a context column', () => {
   assert.equal(searchNav!.kind, 'top');
   // The fallback still exists and still means "nothing claims this path".
   assert.equal(getSidebarRouteKey('/no-such-route'), 'unknown');
+});
+
+test('isSidebarNavActive is pathname-only (query strings do not change the match)', () => {
+  assert.equal(isSidebarNavActive('/', '/'), true);
+  assert.equal(isSidebarNavActive('/search', '/search'), true);
+  assert.equal(isSidebarNavActive('/search/extra', '/search'), true);
+  assert.equal(isSidebarNavActive('/ops/photos', '/ops/photos'), true);
+  assert.equal(isSidebarNavActive('/ai-chat', '/ai-chat'), true);
+  assert.equal(isSidebarNavActive('/dashboard', '/ai-chat'), false);
+
+  // Query on href is stripped — pathname matching stays path-only.
+  assert.equal(isSidebarNavActive('/', '/?mode=forge&view=live'), true);
+  assert.equal(isSidebarNavActive('/search', '/?mode=forge&view=live'), false);
+
+  // Pack / Test / Shipping aliases normalize.
+  assert.equal(isSidebarNavActive('/pack', '/pack'), true);
+  assert.equal(isSidebarNavActive('/packer', '/pack'), true);
+  assert.equal(isSidebarNavActive('/test', '/test'), true);
+  assert.equal(isSidebarNavActive('/tech', '/test'), true);
+  assert.equal(isSidebarNavActive('/shipping/labels', '/shipping'), true);
+  assert.equal(isSidebarNavActive('/outbound', '/shipping'), true);
+
+  assert.equal(isSidebarNavActive(null, '/'), false);
+});
+
+test('isSidebarTopPinActive: forge lights Plans, not Home', () => {
+  const home = { id: 'home', href: '/' };
+  const plans = { id: 'plans-live', href: '/?mode=forge&view=live' };
+  const forge = new URLSearchParams('mode=forge&view=live');
+  const today = new URLSearchParams();
+  const inbox = new URLSearchParams('mode=inbox');
+
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: forge }), true);
+  assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: forge }), false);
+
+  assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: today }), true);
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: today }), false);
+
+  assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: inbox }), true);
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: inbox }), false);
+
+  // Off Home, neither pin is current.
+  assert.equal(isSidebarTopPinActive(home, { pathname: '/search', searchParams: today }), false);
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/search', searchParams: forge }), false);
 });

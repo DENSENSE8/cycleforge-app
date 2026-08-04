@@ -17,8 +17,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -105,7 +107,7 @@ export const IMPORT_EXCEPTION_GRID_COLUMNS: readonly ImportExceptionGridColumn[]
     key: 'tracking',
     width: 'minmax(8rem, 8rem)',
     label: 'Tracking',
-    type: 'location',
+    type: 'tracking',
     hideKey: 'tracking',
     labelFitRem: 4.5,
   },
@@ -174,17 +176,9 @@ export function importExceptionGridTemplate(
   return gridTemplate(columns);
 }
 
-const IMPORT_EXCEPTION_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
 /** Sticky offset for a frozen cell — row px + the widths of the locked columns before it. */
 export function importExceptionGridFrozenLeft(key: ImportExceptionGridColumnKey): string {
-  const idx = IMPORT_EXCEPTION_LOCKED_KEYS.indexOf(key);
-  const parts = [IMPORT_EXCEPTION_ROW_PX];
-  for (const k of IMPORT_EXCEPTION_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = IMPORT_EXCEPTION_GRID_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(IMPORT_EXCEPTION_GRID_COLUMNS, key);
 }
 
 
@@ -200,9 +194,9 @@ export function defaultDirForImportExceptionGridSort(
   return 'asc';
 }
 
-// Shared spreadsheet chrome — the SAME helpers every other house grid uses.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as IMPORT_EXCEPTION_GRID_FROZEN_CELL,
-  ordersQueueGridCell as importExceptionGridCell,
-  ordersQueueRowShellClass as importExceptionGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as IMPORT_EXCEPTION_GRID_FROZEN_CELL,
+  ledgerGridCell as importExceptionGridCell,
+  ledgerGridRowShellClass as importExceptionGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

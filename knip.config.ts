@@ -69,6 +69,14 @@ const config: KnipConfig = {
     // from photo-aspects; remaining helpers mount next.
     'src/lib/photos/photo-aspects.ts',
     'src/lib/receiving/photo-aspect-counts.ts',
+
+    // Guided ProcedureDeck / step bodies / step dock — parked on `unbox-work`
+    // (`../cycleforge-unbox`). Main dogfood mounts PO lines + label instead.
+    // Keep DS + step vocabulary on main for checklist/ring + guards; ignore
+    // the unmounted centre-deck surface and its private face helpers.
+    'src/design-system/components/procedure/ProcedureDeck.tsx',
+    'src/components/receiving/workspace/line-edit/steps/**',
+    'src/components/receiving/workspace/line-edit/UnboxStepDock.tsx',
   ],
 
   ignoreDependencies: [

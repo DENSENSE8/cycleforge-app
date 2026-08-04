@@ -26,6 +26,8 @@ const INCOMING_HEADER_LAYOUT: LedgerHeaderLayoutApi<IncomingGridColumn> = {
   frozenLeft: incomingGridFrozenLeft,
   isFrozen: isIncomingGridFrozen,
   isSortable: isIncomingGridSortable,
+  // Sheets-class (Unbox golden): only the select gutter is frozen — edge cue hangs there.
+  frozenEdgeKey: 'select',
 };
 
 /**

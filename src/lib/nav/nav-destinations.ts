@@ -90,7 +90,10 @@ export function buildNavDestinations(pages: readonly SidebarPageNav[]): NavDesti
       sectionId,
       // The href makes a URL fragment findable ("/ops/photos" → Media) without
       // letting it outrank a label; the section makes "fulfillment labels" work.
-      keywords: [page.href, section].filter((v): v is string => Boolean(v)),
+      // Inbound desk also answers "incoming" (former L2 mode name).
+      keywords: [page.href, section, page.id === 'incoming' ? 'incoming' : null].filter(
+        (v): v is string => Boolean(v),
+      ),
     });
 
     for (const child of page.children ?? []) {

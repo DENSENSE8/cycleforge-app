@@ -35,19 +35,31 @@ export function resolveSupportTerminal(input: {
   }
 }
 
+/**
+ * The dock label follows the composer's VISIBILITY MODE at rest, not only once a
+ * draft exists.
+ *
+ * It used to read "Reply" on an empty composer whose toggle said `Internal` and
+ * whose placeholder said "Internal note — not emailed…" — three controls in one
+ * band telling two different stories, and the button only became honest after
+ * the operator had already typed. The mode is known before the first keystroke,
+ * so the button says what pressing it will do from the first frame.
+ */
 function resolveTicketTerminal(bridge: ThreadComposerBridge | null): TerminalActionVm {
   const hasDraft = bridge?.hasDraft ?? false;
   const isPublic = bridge?.isPublic ?? false;
   const submitting = bridge?.submitting ?? false;
-  const label = !hasDraft
-    ? 'Reply'
+  const label = submitting
+    ? isPublic
+      ? 'Sending…'
+      : 'Saving…'
     : isPublic
-      ? submitting
-        ? 'Sending…'
-        : 'Send reply'
-      : submitting
-        ? 'Saving…'
-        : 'Add note';
+      ? hasDraft
+        ? 'Send reply'
+        : 'Reply'
+      : hasDraft
+        ? 'Add note'
+        : 'Note';
 
   return {
     ...dockBase,
@@ -57,7 +69,9 @@ function resolveTicketTerminal(bridge: ThreadComposerBridge | null): TerminalAct
       : !bridge.canPost
         ? 'You need helpdesk access to post'
         : !hasDraft
-          ? 'Focus the ticket reply composer'
+          ? isPublic
+            ? 'Focus the composer to write a reply to the customer'
+            : 'Focus the composer to write an internal note'
           : isPublic
             ? 'Send this reply to the customer'
             : 'Post this internal note',
@@ -77,6 +91,8 @@ function resolveTicketTerminal(bridge: ThreadComposerBridge | null): TerminalAct
       bridge.submit();
     },
     icon: hasDraft ? (
+      <Send className="h-4 w-4 shrink-0" />
+    ) : isPublic ? (
       <Send className="h-4 w-4 shrink-0" />
     ) : (
       <Ticket className="h-4 w-4 shrink-0" />

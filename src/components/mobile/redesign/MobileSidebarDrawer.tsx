@@ -80,6 +80,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },
+  { kind: 'leaf', id: 'checklist', label: 'Checklists', href: '/m/checklist' },
 ];
 
 const isLeafActive = (pathname: string | null, href: string) => {

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getSkuCatalogById,
   getSkuCatalogDetail,
+  setSkuCatalogGtin,
   softDeleteSkuCatalog,
   upsertSkuCatalog,
 } from '@/lib/neon/sku-catalog-queries';
+import { classifyGtinEntry } from '@/lib/interop/gs1-keys';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { parseBody } from '@/lib/schemas/parse';
 import { SkuCatalogUpdateBody } from '@/lib/schemas/sku-catalog';
@@ -49,8 +51,13 @@ export async function GET(
 /**
  * PATCH /api/sku-catalog/[id] — Update a SKU catalog entry.
  *
- * Body: { productTitle?, category?, upc?, ean?, imageUrl?, isActive? }
+ * Body: { productTitle?, category?, upc?, ean?, gtin?, imageUrl?, isActive? }
  * `sku` is the natural key and is not editable here.
+ *
+ * `gtin` is the one field with its own write path and its own failure modes:
+ * 400 when the digits are not a GTIN this tenant may claim (see
+ * `classifyGtinEntry`), 409 when another SKU in the org already holds them,
+ * and `null` to clear it back to the internally-minted number.
  */
 export async function PATCH(
   req: NextRequest,
@@ -72,6 +79,42 @@ export async function PATCH(
     const before = await getSkuCatalogById(id, gate.ctx.organizationId);
     if (!before) {
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
+
+    // The GTIN is written by its own helper, not folded into the upsert below:
+    // that upsert is COALESCE-per-column (omitted = preserve, no way to clear),
+    // and a licensed identifier must be both clearable and out of reach of the
+    // inventory sync that shares it. Validated BEFORE the upsert so a refused
+    // GTIN fails the whole PATCH rather than leaving a half-applied edit.
+    let gtinDigits: string | null | undefined;
+    if (parsed.gtin !== undefined) {
+      if (parsed.gtin === null) {
+        gtinDigits = null;
+      } else {
+        const verdict = classifyGtinEntry(parsed.gtin);
+        if (!verdict.ok) {
+          return NextResponse.json(
+            { success: false, error: verdict.message, refusal: verdict.refusal },
+            { status: 400 },
+          );
+        }
+        gtinDigits = verdict.digits;
+      }
+
+      const written = await setSkuCatalogGtin(id, gtinDigits, gate.ctx.organizationId);
+      if (!written.ok) {
+        if (written.reason === 'not-found') {
+          return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+        }
+        return NextResponse.json(
+          {
+            success: false,
+            error: `GTIN ${gtinDigits} is already on ${written.conflictSku}.`,
+            conflictSku: written.conflictSku,
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const updated = await upsertSkuCatalog({

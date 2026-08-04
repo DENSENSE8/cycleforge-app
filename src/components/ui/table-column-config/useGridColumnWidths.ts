@@ -19,6 +19,8 @@ interface UseGridColumnWidthsResult {
   columnVars: CSSProperties;
   /** Commit a drag-resized width (optimistic + persisted). */
   setWidth: (key: string, px: number) => void;
+  /** Drop one column's persisted width (back to SoT track). */
+  clearWidth: (key: string) => void;
   /** Clear every persisted width back to the SoT tracks. */
   resetWidths: () => void;
 }
@@ -92,7 +94,17 @@ export function useGridColumnWidths(tableId: string | undefined): UseGridColumnW
     [widths, writeWidths],
   );
 
+  const clearWidth = useCallback(
+    (key: string) => {
+      if (!(key in widths)) return;
+      const next = { ...widths };
+      delete next[key];
+      void writeWidths(next);
+    },
+    [widths, writeWidths],
+  );
+
   const resetWidths = useCallback(() => void writeWidths({}), [writeWidths]);
 
-  return { widths, columnVars, setWidth, resetWidths };
+  return { widths, columnVars, setWidth, clearWidth, resetWidths };
 }

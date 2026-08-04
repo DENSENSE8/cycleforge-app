@@ -10,12 +10,13 @@ import { ReceivingPlatformCell } from './ReceivingPlatformCell';
 import { ReceivingQtyCell } from './ReceivingQtyCell';
 import { ReceivingSelectCell } from './ReceivingSelectCell';
 import { ReceivingSerialCell } from './ReceivingSerialCell';
-import { ReceivingStageCell } from './ReceivingStageCell';
 import { ReceivingStatusCell } from './ReceivingStatusCell';
 import { ReceivingTitleCell } from './ReceivingTitleCell';
 import { ReceivingTrackingCell } from './ReceivingTrackingCell';
+import { ReceivingZohoCell } from './ReceivingZohoCell';
 import {
   receivingDataCellClass,
+  receivingDataCellHighlightStyle,
   type ReceivingGridCellCtx,
 } from './receiving-grid-cell-types';
 
@@ -47,8 +48,6 @@ export function renderReceivingGridCell(
       return <ReceivingQtyCell {...props} />;
     case 'condition':
       return <ReceivingConditionCell {...props} />;
-    case 'stage':
-      return <ReceivingStageCell {...props} />;
     case 'status':
       return <ReceivingStatusCell {...props} />;
     case 'location':
@@ -61,7 +60,22 @@ export function renderReceivingGridCell(
       return <ReceivingTrackingCell {...props} />;
     case 'serial':
       return <ReceivingSerialCell {...props} />;
+    case 'zoho':
+      return <ReceivingZohoCell {...props} />;
+    case '_fill':
+      // Seamless blank plane — no vertical rule into the filler.
+      return (
+        <span
+          className={receivingDataCellClass(col, false, ctx)}
+          aria-hidden
+        />
+      );
     default:
-      return <span className={receivingDataCellClass(col, rule, ctx)} />;
+      return (
+        <span
+          className={receivingDataCellClass(col, rule, ctx)}
+          style={receivingDataCellHighlightStyle(col, ctx)}
+        />
+      );
   }
 }

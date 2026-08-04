@@ -37,7 +37,7 @@
  * component renders the record and does not animate itself.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
@@ -45,8 +45,9 @@ import {
 import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal';
 import { WorkspaceCard } from '@/design-system/components';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportContext } from '@/hooks/useSupportContext';
-import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
+import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
@@ -64,14 +65,44 @@ export function SupportTicketFocus({
   onClose,
   contextOpen,
   onToggleContext,
+  ticketBridge,
+  onBridgeChange,
+  providerTicketId,
+  photoStaging,
+  onPasteImages,
 }: {
   ticketId: number;
   onClose: () => void;
   /** Whether the `RightRailHost` currently holds this ticket's displays. */
   contextOpen: boolean;
   onToggleContext: () => void;
+  /**
+   * The composer bridge, OWNED BY THE WORKSPACE rather than by this component.
+   * The rail's Assist display drafts into the same composer the dock commits,
+   * and the rail is mounted as a sibling of this pane — so the one piece of
+   * state both need lives in their common parent. Holding it here and pushing
+   * it sideways would be two owners of one composer.
+   */
+  ticketBridge: ThreadComposerBridge | null;
+  onBridgeChange: (bridge: ThreadComposerBridge | null) => void;
+  /**
+   * Resolved by the workspace, not re-derived here. The staged photos, the
+   * composer and the drafting route must agree on which ticket they mean, and
+   * three copies of `bundle?.providerTicketId ?? ticketId` is three chances to
+   * disagree.
+   */
+  providerTicketId: number;
+  /**
+   * Photo staging, owned by the workspace — the paste lands here and the draft
+   * is prepared in the rail, and the two are siblings.
+   */
+  photoStaging: TicketPhotoStaging;
+  /**
+   * An image was pasted onto this surface. The host stages it AND asks the rail
+   * for a draft; this component only reports the gesture.
+   */
+  onPasteImages: (files: File[]) => void;
 }) {
-  const [ticketBridge, setTicketBridge] = useState<ThreadComposerBridge | null>(null);
 
   const anchor = useMemo(() => ({ ticket: String(ticketId) }), [ticketId]);
   const { data: contextBundle } = useSupportContext(anchor, true);
@@ -79,13 +110,17 @@ export function SupportTicketFocus({
 
   // Live helpdesk ticket for the top-right details stack (same query cache as
   // the conversation below).
-  const providerTicketId = ticket?.providerTicketId ?? ticketId;
   const { data: liveBundle } = useZendeskTicketBundle(providerTicketId);
   const liveTicket = liveBundle?.ticket ?? null;
 
-  // Host-owned staging — shared by the conversation's dropzone and the dock.
-  const photoStaging = useTicketPhotoStaging(providerTicketId);
   const requesterEmail = liveTicket ? requesterFrom(liveTicket).email : null;
+
+  // Paste an image ANYWHERE on the open ticket. Document scope, because the
+  // operator has usually just clicked a message, not the composer — and this
+  // component only mounts while a ticket is open, so nothing claims paste on
+  // the queue. The thread body's own dropzone runs with `paste: false` so one
+  // gesture keeps one meaning.
+  usePhotoDropzone(onPasteImages, { documentPaste: true });
   const receivingId = contextBundle?.linkable?.receivingId ?? undefined;
 
   // Ticket-terminal: one dock, one meaning, on every display the rail shows.
@@ -145,6 +180,12 @@ export function SupportTicketFocus({
               // The split header above already carries the subject; drawing it
               // again here was the duplicate.
               hideTitle
+              // …and the chat header's one-line requester is superseded by the
+              // RequesterDetailBand below, which answers the same question with
+              // the linkage and the counts attached. With the title gone too,
+              // SupportChatHeader has nothing left to draw and renders null.
+              hideRequesterBand
+              showRequesterDetail
               // Linkage is a rail display now, so the chat header's own
               // Links control and slide-over stay off.
               hideLinkedContext
@@ -162,7 +203,7 @@ export function SupportTicketFocus({
             receivingId,
           }}
           terminalVm={terminalVm}
-          onBridgeChange={setTicketBridge}
+          onBridgeChange={onBridgeChange}
         />
       </div>
     </TicketComposerStagingProvider>

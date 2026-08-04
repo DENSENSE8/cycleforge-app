@@ -15,7 +15,8 @@ interface PackerDashboardProps {
 export default function PackerDashboard({ packerId }: PackerDashboardProps) {
   useRealtimeToasts('packer');
   const queryClient = useQueryClient();
-  const { activeOrderPane, setActiveOrderPane } = usePackerOrderPane();
+  const { activeOrderPane, setActiveOrderPane, activeFbaPane, setActiveFbaPane } =
+    usePackerOrderPane();
 
   // Invalidate the packer-logs query in place (station-table-unification §Phase 2).
   useRefreshSignal('packer.logs', () => {
@@ -29,7 +30,11 @@ export default function PackerDashboard({ packerId }: PackerDashboardProps) {
           <PackerRightPane
             packerId={packerId}
             activeOrderPane={activeOrderPane}
-            onCloseActiveOrder={() => setActiveOrderPane(null)}
+            activeFbaPane={activeFbaPane}
+            onCloseActiveOrder={() => {
+              setActiveOrderPane(null);
+              setActiveFbaPane(null);
+            }}
           />
         </div>
       </div>

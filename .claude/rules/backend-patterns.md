@@ -48,6 +48,29 @@ against the DB, not "does the SQL in this repo name a column that exists".
   composes transition + inventory event + workflow tap as one chokepoint, gated by `isUnifiedEngineApplyTransition`.
   Prefer it when the flag path applies; it is mid-strangler, so it is not yet a hard requirement.
 
+## Receiving lines transition through a dedicated sibling chokepoint
+
+- **Never** `UPDATE receiving_line SET workflow_status = …` directly. Call `transitionReceivingLine()`
+  (`src/lib/receiving/state-machine.ts`) — the receiving-line-specific sibling of serial-unit `transition()`
+  above, not a call into it. Same shape: an atomic write + one `inventory_events` INSERT, executor-pattern
+  `db`/`orgId` args so a caller can either own the transaction or run inside `withTenantTransaction`.
+- **An exception is an orthogonal code on the row, never a terminal status.** A missing/short/damaged/
+  mismatched package does **not** force `workflow_status` into a dead-end "FAILED" value. It sets
+  `receiving_line.exception_code` **in the same write** (`COALESCE($n, exception_code)` — an explicit
+  `undefined` leaves it untouched), alongside whatever `workflow_status` the transition already computed.
+  Status and exception are two independent facts on the row; corrupting one to encode the other breaks
+  every metric that reads `workflow_status` as a lifecycle stage.
+- **The exception vocabulary is a closed, seeded taxonomy — never free text.** SoT: `src/lib/receiving/
+  exception-codes.ts` — three sub-vocabularies under one `flow_context = 'receiving_exception'`: OS&D
+  codes (`NO_PO` · `CARRIER_MISMATCH` · `SHORT` · `OVER` · `DAMAGED` · `WRONG_ITEM` · `RETURN_NO_ORDER`),
+  photo-policy override codes (`PHOTO_WAIVED_*`, narrowed by `PHOTO_POLICY_OVERRIDE_CODES` so an operator
+  can't waive the photo gate with `NO_PO`), and loss codes (`LOST_IN_TRANSIT` … `STOLEN`, narrowed by
+  `LOSS_EXCEPTION_CODES`). A QA-fail reason is the same family via `QA_FAIL_EXCEPTION_STATUS` — see
+  `source-of-truth.md` → Note vs label grain. **Array position is the `sort_order` contract** — a new code
+  goes at the end of the composed array, never spliced in (pinned by `exception-codes.test.ts`).
+- Station-facing behavior for an exception session (continue-scanning, amber card, never silent success)
+  is documented in `display/station.md` §6.
+
 ## API route handler skeleton
 
 Every operator/mutation route follows this shape:
@@ -150,6 +173,27 @@ compiler stays quiet about exactly the sites you missed.
   tooling can never see. That is why "mid-strangler, not yet a hard requirement" needs a date
   attached rather than an open end — the losing branch is zombie code the moment nobody is
   scheduled to delete it.
+
+## AI generation routes
+
+Generation is **not a mutation**: no audit row, but always a per-org rate limit
+(`checkRateLimitForOrg`) and a capability-connected gate — `/api/support/suggest`
+is the reference. Provider and persona resolution are pure functions over
+`(org settings, env)` with a local-first default, split so the pure half is
+unit-testable with zero network (`reply-persona.ts` + `reply-persona-deps.ts`,
+the same shape as `analyze-core.ts` / `analyze.ts`).
+
+**A shared prompt must not name a vendor.** `SUPPORT_SYSTEM_PROMPT` opened with
+one vendor's brand until 2026-08-02 — shared multi-tenant code, so a second
+tenant got a model claiming to work for a company they have no relationship
+with. That is the operator-copy vendor rule (`AGENTS.md` → capability nouns or
+runtime provider labels) pointed at a **customer**, which makes it worse, not a
+different rule. Framing resolves per org and falls back to a generic noun,
+never to the dogfood tenant's vertical.
+
+**Anything that decides what a customer SEES is a required parameter with no
+default** — which lane ran, whether a photo leaves the tenant's hardware (see
+*A safety classification is a REQUIRED parameter*).
 
 ## New polymorphic / typed-fact tables
 

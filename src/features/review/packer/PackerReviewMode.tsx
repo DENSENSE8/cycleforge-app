@@ -3,7 +3,7 @@
 /**
  * Review · Packing detail — Unbox-family Station Workbench (PackOrderPanel /
  * LineEditPanel anatomy):
- *   StationContextBar + CartonContextCard (bar) + StationMoreDetails
+ *   StationContextBar + CartonContextCard (two-row) + StationMoreDetails
  *   → StationWorkbench → SectionTabsSlider
  *   → StationTerminalDock → SlicedActionDock (Approve · Flag menu)
  *
@@ -57,6 +57,11 @@ import { useScopedPackerPhotos } from '@/hooks/useScopedPackerPhotos';
 import { OutcomeChip } from '@/features/review/OutcomeChip';
 import { ReviewOrderIdentity } from '@/features/review/packer/ReviewOrderIdentity';
 import type { PackReviewQueueRow } from '@/lib/packing/pack-review-queue-types';
+import { PackProfileEditor } from '@/components/packing/PackProfileEditor';
+import { Button } from '@/design-system/primitives';
+import { Pencil } from '@/components/Icons';
+import type { PackTier } from '@/lib/packing/pack-tier-classifier';
+import { DEFAULT_TIER_MINUTES } from '@/lib/packing/pack-tier-classifier';
 
 type ReviewView = 'photos' | 'tracking' | 'note' | 'timeline';
 
@@ -87,6 +92,21 @@ export function PackerReviewMode({
   const queryClient = useQueryClient();
   const [note, setNote] = useState('');
   const [reviewView, setReviewView] = useState<ReviewView>('photos');
+  const [packEditorOpen, setPackEditorOpen] = useState(false);
+
+  const packTierLabel = useMemo(() => {
+    const t = (row.packTier || '').toUpperCase();
+    if (t === 'SMALL') return 'Small';
+    if (t === 'MEDIUM') return 'Medium';
+    if (t === 'LARGE') return 'Large';
+    return null;
+  }, [row.packTier]);
+
+  const packTierForEditor = useMemo((): PackTier | null => {
+    const t = (row.packTier || '').toUpperCase();
+    if (t === 'SMALL' || t === 'MEDIUM' || t === 'LARGE') return t;
+    return null;
+  }, [row.packTier]);
 
   const reduceMotion = useReducedMotion();
   const cardPresence = useMotionPresence(framerPresence.stationCard);
@@ -325,6 +345,28 @@ export function PackerReviewMode({
         }
         moreDetails={
           <StationMoreDetails>
+            {packTierLabel ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                Pack {packTierLabel}
+                {row.estimatedPackMinutes != null
+                  ? ` · ${row.estimatedPackMinutes}m`
+                  : packTierForEditor
+                    ? ` · ${DEFAULT_TIER_MINUTES[packTierForEditor]}m`
+                    : ''}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
+                Pack size unknown
+              </span>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Pencil className="h-3.5 w-3.5" />}
+              onClick={() => setPackEditorOpen(true)}
+            >
+              {row.skuCatalogId != null ? 'Edit pack size' : 'Link catalog'}
+            </Button>
             <OutcomeChip outcome={row.outcome} />
             <PaneHeaderCloseButton
               onClick={clearSelection}
@@ -338,6 +380,7 @@ export function PackerReviewMode({
       <StationWorkbench
         className="min-h-0 flex-1"
         reserveScrollClearance={false}
+        reserveIdentityClearance="stacked"
         tabs={
           <motion.div initial="hidden" animate="show" variants={revealContainer}>
             <motion.div variants={revealItem}>
@@ -351,6 +394,15 @@ export function PackerReviewMode({
           </motion.div>
         }
         dock={<StationTerminalDock vm={terminalVm} />}
+      />
+
+      <PackProfileEditor
+        open={packEditorOpen}
+        onOpenChange={setPackEditorOpen}
+        skuCatalogId={row.skuCatalogId}
+        label={[row.itemNumber, row.productTitle].filter(Boolean).join(' · ') || row.orderId}
+        initialTier={packTierForEditor}
+        initialMinutes={row.estimatedPackMinutes}
       />
     </motion.div>
   );

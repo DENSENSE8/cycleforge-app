@@ -18,6 +18,7 @@ export function DetailStackRailRegistrar({
   modal,
   closeOnOutsideClick,
   push,
+  edgeCollapse,
   ariaLabel,
   children,
 }: {
@@ -38,6 +39,9 @@ export function DetailStackRailRegistrar({
   /** Defaults to `true` (the panel reflows the work surface). Pass `false` only
    *  with a reason — see `RightRailPanel.push`. */
   push?: boolean;
+  /** Defaults to `true`. Pass `false` to omit the outset edge-collapse chevron
+   *  (Unbox parity — header `→|` is the only dismiss). */
+  edgeCollapse?: boolean;
   /** Accessible name for the aside — pass one whenever `modal` is false. */
   ariaLabel?: string;
   children: ReactNode;
@@ -51,6 +55,7 @@ export function DetailStackRailRegistrar({
     modal,
     closeOnOutsideClick,
     push,
+    edgeCollapse,
     ariaLabel,
     enabled,
   });

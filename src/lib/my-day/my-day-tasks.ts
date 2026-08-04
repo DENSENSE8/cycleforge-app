@@ -41,7 +41,7 @@ export const MY_DAY_LANE_FILTERS: readonly MyDayLaneFilter[] = [
  * strip now has to seat the due-horizon chips the KPI band used to hold.
  */
 const LANE_LABEL: Record<MyDayLaneFilter, string> = {
-  all: 'Everything',
+  all: 'All',
   do_next: 'Do next',
   assigned: 'Assigned',
   attention: 'Needs attention',

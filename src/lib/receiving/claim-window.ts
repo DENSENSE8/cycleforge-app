@@ -11,7 +11,7 @@
  * dynamic `server-only` graph toward the client bundle
  * (`.claude/rules/build-gotchas.md` → bundle altitude).
  *
- * Views stay dumb: this resolves label + tone + description, the cell renders them
+ * Views stay dumb: this resolves label + tip + description, the cell renders them
  * (Kinetic Ledger law 4 — presentation kinds resolve via SoT).
  */
 
@@ -44,12 +44,17 @@ export interface ClaimCountdownFace {
   daysRemaining: number;
   /** Compact cell text — `EXPIRED` / `3d`. Never a sentence; this sits in a grid row. */
   label: string;
-  /** The full explanation, for the tooltip and the accessible name. */
+  /** One-line hover tip for the Status track — action-oriented, not a paragraph. */
+  tip: string;
+  /**
+   * Longer explanation for inspector / right-rail detail (not the grid hover).
+   * Grid cells use {@link tip}.
+   */
   description: string;
   /**
    * Text-color class only — no background or ring. The Incoming status track is
    * height-critical (its header records a regression where cell text "blew row
-   * height into an address block"), and the sibling `Seller` marker in that same
+   * height into an address block"), and the sibling Unv. chip in that same
    * cell established text-only as the pattern there. No weight class: the
    * `role-eyebrow` role already bakes 600.
    */
@@ -69,6 +74,7 @@ export function claimCountdownFace(claimByDate: string, todayKey: string): Claim
       urgency: 'expired',
       daysRemaining,
       label: 'EXPIRED',
+      tip: 'eBay claim expired · write off',
       description: `eBay claim window closed ${ago} day${ago === 1 ? '' : 's'} ago (${claimByDate}) — this purchase can no longer be claimed. Write the carton off with a loss reason so it leaves the queue with a record.`,
       tone: 'text-rose-700',
     };
@@ -79,6 +85,10 @@ export function claimCountdownFace(claimByDate: string, todayKey: string): Claim
       urgency: 'due',
       daysRemaining,
       label: `${daysRemaining}d`,
+      tip:
+        daysRemaining === 0
+          ? 'eBay claim due today — file now'
+          : `Claim due in ${daysRemaining}d`,
       description:
         daysRemaining === 0
           ? `eBay claim window closes TODAY (${claimByDate}) — file the item-not-received claim now or the money is gone.`
@@ -91,6 +101,7 @@ export function claimCountdownFace(claimByDate: string, todayKey: string): Claim
     urgency: 'upcoming',
     daysRemaining,
     label: `${daysRemaining}d`,
+    tip: `Claim closes in ${daysRemaining}d`,
     description: `eBay claim window closes ${claimByDate} (${daysRemaining} days) — the deadline to report this purchase as never received.`,
     tone: 'text-text-soft',
   };

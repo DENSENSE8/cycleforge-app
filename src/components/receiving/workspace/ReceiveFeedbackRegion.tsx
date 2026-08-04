@@ -3,10 +3,11 @@
 /* ──────────────────────────────────────────────────────────────────────────
  * ReceiveFeedbackRegion
  *
- * The single inline home for receive feedback, mounted below the label preview
- * in LineEditPanel. Replaces the old bottom-right toast entirely — feedback now
- * lives where the operator's eyes already are (the label / receive area), which
- * is the bulk of the perceived-speed win. One crossfading region, three states:
+ * The single inline home for receive feedback. On Unbox it co-mounts in the
+ * absolute dock float stack above the notes + Print · Receive shell (not the
+ * in-flow StationWorkbench footer — an absolute dock would cover that slot).
+ * Replaces the old bottom-right toast entirely — feedback lives where the
+ * operator's eyes already are. One crossfading region, three states:
  *
  *   receiving                → ReceiveInlineProgress  (compact indeterminate bar)
  *   receiveResult: success   → ReceiveSuccessChecklist (staggered green checks)

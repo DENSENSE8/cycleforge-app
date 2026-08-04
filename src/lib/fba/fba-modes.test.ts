@@ -15,6 +15,7 @@ test('resolveFbaMode defaults to combine', () => {
   assert.equal(resolveFbaMode(null), 'combine');
   assert.equal(resolveFbaMode('bogus'), 'combine');
   assert.equal(resolveFbaMode('plan'), 'plan');
+  assert.equal(resolveFbaMode('ready'), 'ready');
 });
 
 test('resolveFbaModeFromSearchParams prefers fbaMode over outbound mode', () => {
@@ -22,11 +23,13 @@ test('resolveFbaModeFromSearchParams prefers fbaMode over outbound mode', () => 
   assert.equal(resolveFbaModeFromSearchParams(params), 'plan');
   assert.equal(resolveFbaModeFromSearchParams(new URLSearchParams('mode=fba')), 'combine');
   assert.equal(resolveFbaModeFromSearchParams(new URLSearchParams('mode=shipped')), 'shipped');
+  assert.equal(resolveFbaModeFromSearchParams(new URLSearchParams('fbaMode=ready')), 'ready');
 });
 
 test('fbaOutboundHref builds /shipping/fba deep links', () => {
   assert.equal(fbaOutboundHref(), '/shipping/fba');
   assert.equal(fbaOutboundHref({ fbaMode: 'plan' }), '/shipping/fba?fbaMode=plan');
+  assert.equal(fbaOutboundHref({ fbaMode: 'ready' }), '/shipping/fba?fbaMode=ready');
   assert.equal(
     fbaOutboundHref({ fbaMode: 'combine', openShipmentId: 42 }),
     '/shipping/fba?openShipmentId=42',

@@ -1,12 +1,7 @@
 'use client';
 
-import { useMemo, useState, type RefObject } from 'react';
-import {
-  LedgerGridSurface,
-  useGridColumnDisplay,
-  useGridColumnVisibility,
-} from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { useMemo, type RefObject } from 'react';
+import { LedgerGridSurface, useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
@@ -25,8 +20,8 @@ import {
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
-import { receivingStageColumnLabel } from '@/components/dashboard/queue-table/queue-table-chrome';
 import { makeReceivingGridDescriptor } from './receiving-grid-descriptor';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { ReceivingGridColumnHeader } from './ReceivingGridColumnHeader';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
 
@@ -56,15 +51,13 @@ interface ReceivingGridViewProps {
    */
   handleToggleRow?: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
-  /** Stage clock axis — drives column header + cell stamps. */
+  /** Activity-axis stamp — drives the `date` cell + the column sort. */
   activityAxis?: ReceivingActivityAxis;
   /** History reads status dots as uniform received-green. */
   isHistory?: boolean;
-  /** Override stage header label (e.g. Testing History → "Tested"). */
-  stageLabel?: string;
   /** Selection bus scope (defaults to receiving). */
   selectionScope?: string;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly ReceivingGridColumn[];
   /**
    * Staff-prefs identity for per-staff column config. Unbox / History are
@@ -80,6 +73,42 @@ interface ReceivingGridViewProps {
   className?: string;
   /** Testid on the outer card shell. */
   testId?: string;
+  /**
+   * Controlled column sort (compare panes). When omitted, uses durable URL
+   * `?colsort=` / `?coldir=`.
+   */
+  controlledSort?: ReceivingGridColumnKey | null;
+  controlledSortDir?: 'asc' | 'desc' | null;
+  onControlledSortChange?: (
+    key: ReceivingGridColumnKey,
+    dir?: 'asc' | 'desc',
+  ) => void;
+  onControlledSortClear?: () => void;
+  /** Enable Sheets header context menu (Unbox / compare). Default true. */
+  enableColumnMenu?: boolean;
+  /**
+   * Select-gutter chrome. Unbox History uses `'sheets'` (empty hit-plane +
+   * row wash); default `'always'` keeps Recent / Queue / Docked History.
+   * Ignored when {@link clickSelect} is true (no select column).
+   */
+  selectGutterChrome?: GridSelectGutterChrome;
+  /**
+   * Unbox History click-select golden: no select column; click toggles bulk;
+   * double-click opens; header paint-bucket paints selected rows.
+   */
+  clickSelect?: boolean;
+  /**
+   * Unbox compare crosshair — carton `receiving_id` to wash as linked peer.
+   * Omitted on single-pane mounts.
+   */
+  linkedReceivingId?: number | null;
+  /** Pointer enter/leave on a carton row (compare host only). */
+  onCrosshairHover?: (receivingId: number | null) => void;
+  /**
+   * Unbox triage-band host for the column-display trigger (staff / filter /
+   * week row). When set, the Columns control portals there.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 function poFoldKey(row: ReceivingLineRow): string {
@@ -89,8 +118,8 @@ function poFoldKey(row: ReceivingLineRow): string {
 
 /**
  * Unbox / History / Testing spreadsheet — receiving-domain adapter over
- * {@link LedgerGrid}. Same shell recipe as {@link IncomingGridView} / Pending
- * (airtable skin + scrollX + click-to-sort), with stage + serial columns.
+ * {@link LedgerGrid}. Sheets-class flush shell (`surface="sheet"`) — sticky
+ * header + frozen select gutter — matching the Workbench spreadsheet recipe.
  */
 export function ReceivingGridView({
   filteredGroupedRecords,
@@ -107,7 +136,6 @@ export function ReceivingGridView({
   handleSelectGroup,
   activityAxis = 'unboxed',
   isHistory = false,
-  stageLabel,
   selectionScope = RECEIVING_SELECTION_SCOPE,
   columns = RECEIVING_GRID_COLUMNS,
   tableId = 'receiving',
@@ -115,32 +143,55 @@ export function ReceivingGridView({
   scrollRef,
   className,
   testId = 'receiving-grid-body',
+  controlledSort,
+  controlledSortDir,
+  onControlledSortChange,
+  onControlledSortClear,
+  enableColumnMenu = true,
+  selectGutterChrome = 'always',
+  clickSelect = false,
+  linkedReceivingId = null,
+  onCrosshairHover,
+  columnTriggerPortalTarget = null,
 }: ReceivingGridViewProps) {
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
   // clear it via the route's param spec. TanStack still owns the asc↔desc cycle.
   const {
-    sort: columnSort,
-    dir: sortDir,
+    sort: urlSort,
+    dir: urlSortDir,
     setSort,
+    toggleColumnSort,
+    clear: clearSort,
   } = useUrlColumnSort<ReceivingGridColumnKey>({
     isColumn: isReceivingGridSortable,
     defaultDir: defaultDirForReceivingGridSort,
   });
 
-  const resolvedStageLabel = stageLabel ?? receivingStageColumnLabel(activityAxis);
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
+  // Pane mounts can pass controlled sort so compare panes don't fight over URL.
+  const columnSort = controlledSort !== undefined ? controlledSort : urlSort;
+  const sortDir = controlledSortDir !== undefined ? controlledSortDir : urlSortDir;
+  const applySort =
+    onControlledSortChange
+    ?? ((key: ReceivingGridColumnKey, dir?: 'asc' | 'desc') => setSort(key, dir));
+  const applyToggle =
+    onControlledSortChange
+      ? (key: ReceivingGridColumnKey) => {
+          const nextDir =
+            columnSort === key && sortDir === 'asc'
+              ? 'desc'
+              : columnSort === key && sortDir === 'desc'
+                ? 'asc'
+                : defaultDirForReceivingGridSort(key);
+          onControlledSortChange(key, nextDir);
+        }
+      : toggleColumnSort;
+  const applyClear =
+    onControlledSortClear
+    ?? clearSort;
 
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  // Header, rows, group summaries and the grid template all read `visible` —
-  // a hidden column loses its TRACK rather than rendering an empty ruled cell.
-  const { columns: visible } = useGridColumnVisibility<ReceivingGridColumn>({
-    columns,
-    tableId,
-  });
   const { displayByKey } = useGridColumnDisplay(tableId);
-
-  const descriptor = useMemo(() => makeReceivingGridDescriptor(visible), [visible]);
+  const { fillsById } = useGridRowFills(tableId);
 
   const { orderGroupsByDate, flatRows } = useMemo(() => {
     const flatFromGroups = filteredGroupedRecords
@@ -184,77 +235,95 @@ export function ReceivingGridView({
   }, [filteredGroupedRecords, daySections, serverSorted, columnSort, sortDir, activityAxis]);
 
   return (
-    <>
-      <LedgerGridSurface<ReceivingLineRow, ReceivingGridColumnKey>
-        ariaLabel="Receiving carton lines"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={flatRows}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        showDayHeaders={showDayHeaders}
-        scrollRef={scrollRef}
-        className={className}
-        testId={testId}
-        tableId={tableId}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <ReceivingGridColumnHeader
-            isMobile={isMobile}
-            selectMode={selectMode}
-            selectionScope={selectionScope}
-            columns={visible}
-            stageLabel={resolvedStageLabel}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group, baseStripeIndex) => (
-          <ReceivingGridGroupRow
-            group={group}
-            baseStripeIndex={baseStripeIndex}
-            isMobile={isMobile}
-            selectMode={selectMode}
-            selectedId={selectedId}
-            selectedIds={selectedIds}
-            handleSelectRow={handleSelectRow}
-            handleToggleRow={handleToggleRow}
-            handleSelectGroup={handleSelectGroup}
-            activityAxis={activityAxis}
-            isHistory={isHistory}
-            columns={visible}
-            columnDisplay={displayByKey}
-          />
-        )}
-        renderRow={(row, stripeIndex) => (
-          <ReceivingGridGroupRow
-            group={{ key: `k:${row.id}`, rows: [row] }}
-            baseStripeIndex={stripeIndex}
-            isMobile={isMobile}
-            selectMode={selectMode}
-            selectedId={selectedId}
-            selectedIds={selectedIds}
-            handleSelectRow={handleSelectRow}
-            handleToggleRow={handleToggleRow}
-            handleSelectGroup={handleSelectGroup}
-            activityAxis={activityAxis}
-            isHistory={isHistory}
-            columns={visible}
-            columnDisplay={displayByKey}
-          />
-        )}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={tableId}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
+      ariaLabel="Receiving carton lines"
+      columns={columns}
+      makeDescriptor={makeReceivingGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={flatRows}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={applySort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      showDayHeaders={showDayHeaders}
+      scrollRef={scrollRef}
+      className={className}
+      testId={testId}
+      tableId={tableId}
+      surface="sheet"
+      columnTriggerPortalTarget={columnTriggerPortalTarget}
+      renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
+        <ReceivingGridColumnHeader
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectionScope={selectionScope}
+          selectGutterChrome={selectGutterChrome}
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={applyToggle}
+          onResizeColumn={onResizeColumn}
+          onResetColumn={onResetColumn}
+          columnMenu={
+            enableColumnMenu
+              ? {
+                  tableId,
+                  allColumns: columns,
+                  activeSort: columnSort,
+                  sortDir,
+                  onSortColumn: (key, dir) =>
+                    applySort(key as ReceivingGridColumnKey, dir),
+                  onClearSort: applyClear,
+                }
+              : undefined
+          }
+        />
+      )}
+      renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+        <ReceivingGridGroupRow
+          group={group}
+          baseStripeIndex={baseStripeIndex}
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectedId={selectedId}
+          selectedIds={selectedIds}
+          handleSelectRow={handleSelectRow}
+          handleToggleRow={handleToggleRow}
+          handleSelectGroup={handleSelectGroup}
+          activityAxis={activityAxis}
+          isHistory={isHistory}
+          columns={visible}
+          columnDisplay={displayByKey}
+          selectGutterChrome={selectGutterChrome}
+          clickSelect={clickSelect}
+          rowFillsById={clickSelect ? fillsById : undefined}
+          linkedReceivingId={linkedReceivingId}
+          onCrosshairHover={onCrosshairHover}
+        />
+      )}
+      renderRow={(row, stripeIndex, { columns: visible }) => (
+        <ReceivingGridGroupRow
+          group={{ key: `k:${row.id}`, rows: [row] }}
+          baseStripeIndex={stripeIndex}
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectedId={selectedId}
+          selectedIds={selectedIds}
+          handleSelectRow={handleSelectRow}
+          handleToggleRow={handleToggleRow}
+          handleSelectGroup={handleSelectGroup}
+          activityAxis={activityAxis}
+          isHistory={isHistory}
+          columns={visible}
+          columnDisplay={displayByKey}
+          selectGutterChrome={selectGutterChrome}
+          clickSelect={clickSelect}
+          rowFillsById={clickSelect ? fillsById : undefined}
+          linkedReceivingId={linkedReceivingId}
+          onCrosshairHover={onCrosshairHover}
+        />
+      )}
+    />
   );
 }

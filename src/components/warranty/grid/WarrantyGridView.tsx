@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
@@ -32,7 +31,7 @@ interface WarrantyGridViewProps {
   /** The claim open at the record plane (`?open=`), highlighted in the map. */
   openClaimId: number | null;
   onOpenClaim: (id: number) => void;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly WarrantyGridColumn[];
 }
 
@@ -111,16 +110,6 @@ export function WarrantyGridView({
     defaultDir: defaultDirForWarrantyGridSort,
   });
 
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  const { columns: visible } = useGridColumnVisibility<WarrantyGridColumn>({
-    columns,
-    tableId: WARRANTY_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeWarrantyGridDescriptor(visible), [visible]);
-
   // One-shot "settle" re-render after the grid first has data — same reason as
   // PickupGridView: the virtualized LedgerGrid mounts its scroll element in the
   // same commit the data arrives, and with no async label/selection churn in
@@ -147,7 +136,7 @@ export function WarrantyGridView({
     return [['', groups]];
   }, [rows, columnSort, sortDir]);
 
-  const renderLeaf = (claim: WarrantyClaimListRow) => (
+  const renderLeaf = (claim: WarrantyClaimListRow, visible: readonly WarrantyGridColumn[]) => (
     <WarrantyGridRow
       key={claim.id}
       claim={claim}
@@ -158,42 +147,37 @@ export function WarrantyGridView({
   );
 
   return (
-    <>
-      <LedgerGridSurface<WarrantyClaimListRow, WarrantyGridColumnKey>
-        ariaLabel="Warranty claims"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.id)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        searchEmptyMessage={searchEmptyMessage}
-        isSearching={isSearching}
-        scrollRef={scrollRef}
-        testId="warranty-grid-body"
-        tableId={WARRANTY_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <WarrantyGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={WARRANTY_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
+      ariaLabel="Warranty claims"
+      columns={columns}
+      makeDescriptor={makeWarrantyGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.id)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      searchEmptyMessage={searchEmptyMessage}
+      isSearching={isSearching}
+      scrollRef={scrollRef}
+      testId="warranty-grid-body"
+      tableId={WARRANTY_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <WarrantyGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((claim) => renderLeaf(claim, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

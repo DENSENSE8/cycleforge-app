@@ -42,8 +42,10 @@ House identity: **Kinetic Ledger**. Inherits: `../ui-design-system.md` (tokens, 
 - Product lives exclusively in the left rail.
 - Right pane stacks issue / customer / signature (repair) or cart / identity / conditional signature (sales).
 - **Pricing:** Catalog projection supplies display price. No invented `130` default — empty price blocks submit.
-- **Cart SoT:** `CounterDraft.retailLines` for counter transactions. `salesCartStore` stays staff `/pickup` only.
-- **Writes:** Repair → `/api/kiosk/repair/submit`. Sales → `/api/kiosk/intake` (`serviceLine` + `Idempotency-Key`).
+- **Cart SoT:** `CounterDraft.retailLines` only (the deleted `salesCartStore` must not return).
+- **Pay step-up:** `GET /api/kiosk/staff-for-stepup` + `StaffPinPad` — never card data on tablet.
+- **Order Pickup:** two-key lookup (`orderNumber` + phone) via `/api/kiosk/pickup/*`; not staff LCPU `/pickup`.
+- **Writes:** Repair → `/api/kiosk/repair/submit`. Sales → `/api/kiosk/intake` (`buildKioskSalesIntakeBody` + `Idempotency-Key`).
 
 ---
 
@@ -58,7 +60,7 @@ House identity: **Kinetic Ledger**. Inherits: `../ui-design-system.md` (tokens, 
 
 **Always**
 - Compose `ProductSelector` with a mode-specific `apiBasePath`.
-- Keep `/api/kiosk/settings` and `/api/kiosk/sales/*` on the kiosk host allowlist.
+- Keep `/api/kiosk/settings`, `/api/kiosk/sales/*`, `/api/kiosk/staff-for-stepup`, and `/api/kiosk/pickup/*` on the kiosk host allowlist.
 - Gate incomplete shell work on `/kiosk/v2` (or a flag) — never silent-swap main `/kiosk`.
 
 **Never**

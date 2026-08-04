@@ -9,7 +9,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -153,6 +156,17 @@ export function isCatalogGridFrozen(key: string): boolean {
   return CATALOG_GRID_LOCKED_KEYS.includes(key as CatalogGridColumnKey);
 }
 
+/**
+ * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
+ *
+ * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Catalog
+ * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
+ * widths. See {@link gridFrozenLeft}.
+ */
+export function catalogGridFrozenLeft(key: string): string {
+  return gridFrozenLeft(CATALOG_GRID_COLUMNS, key);
+}
+
 
 export function defaultDirForCatalogGridSort(key: CatalogGridColumnKey): GridSortDir {
   return key === 'orders' || key === 'channels' || key === 'manuals' || key === 'qc'
@@ -200,10 +214,9 @@ export function compareCatalogGridRows(
   }
 }
 
-// Shared spreadsheet chrome — same helpers as outbound OrdersGridView / Repair.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as CATALOG_GRID_FROZEN_CELL,
-  ordersQueueFrozenLeft as catalogGridFrozenLeft,
-  ordersQueueGridCell as catalogGridCell,
-  ordersQueueRowShellClass as catalogGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as CATALOG_GRID_FROZEN_CELL,
+  ledgerGridCell as catalogGridCell,
+  ledgerGridRowShellClass as catalogGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

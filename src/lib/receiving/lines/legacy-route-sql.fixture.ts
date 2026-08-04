@@ -24,6 +24,12 @@
  * un-triaged box reported a PO search that had failed. Rationale and the
  * consumer audit live in build-sql.ts's header; this file carries the same two
  * lines so the parity guard remains byte-exact.
+ *
+ * EDITED 2026-08-03 for a deliberate behavior change in build-sql.ts: line
+ * `image_url` resolves Zoho `image_document_id` → `/api/zoho/items/{id}/image`
+ * (then `items.image_url`) instead of bare `sc.image_url`, matching
+ * get-title-by-sku / sku-catalog search. Shared fragment:
+ * `RECEIVING_LINE_IMAGE_URL_SQL` from ./sql-receiving-image.
  */
 /* eslint-disable */
 import {
@@ -33,7 +39,7 @@ import {
 } from '@/lib/receiving/delivered-unscanned';
 import { notInboundMirrorTerminalPredicate } from '@/lib/inbound/mirror';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
-import { UNBOX_OPENED_PREDICATE_SQL } from '@/lib/receiving/unbox-scan-opened';
+import { UNBOX_OPENED_PREDICATE_SQL } from '@/lib/receiving/unbox-scan-opened-sql';
 import { priorityRankSql, laneRankSql } from '@/lib/receiving/display/precedence';
 import {
   normalizeReceivingHistorySearchField,
@@ -47,6 +53,7 @@ import {
   sqlReceivingCartonZendeskTicketColumn,
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
+import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
 import { parseReceivingView } from '@/lib/receiving/receiving-views';
 
 function currentLineIsMatchSql(alias: string): string {
@@ -157,7 +164,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 stn.latest_status_category   AS shipment_status_category,
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
-                sc.image_url,
+                ${RECEIVING_LINE_IMAGE_URL_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -314,7 +321,7 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                   stn.latest_status_category   AS shipment_status_category,
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at             AS shipment_delivered_at,
-                  sc.image_url,
+                  ${RECEIVING_LINE_IMAGE_URL_SQL},
                   sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -1093,9 +1100,16 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
     // The activity rail needs it so a line whose PO Zoho already received reads
     // "Received" (green) instead of falling back to its local unbox-pipeline
     // workflow_status — see getReceivingStatusDot.
+    // 2026-08-02: the mirror's own `last_synced_at` rides along with the status.
+    // A mirror status is as fresh as the last poll, not as fresh as now, and the
+    // `zoho` row chip discloses that age in its tooltip — the same honesty the
+    // Check rail's "as of …" already shipped. Selected wherever the status is,
+    // so no surface can render the claim without the caveat available.
     const needsZohoMirror =
       view === 'incoming' || view === 'scanned' || view === 'activity';
-    const zohoStatusSelect = needsZohoMirror ? `, mirror.status AS zoho_status` : '';
+    const zohoStatusSelect = needsZohoMirror
+      ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at`
+      : '';
     // view=viewed only: surface the viewer's own viewed_at so the rail labels
     // each row with "when you opened it" (mapRow folds it into last_activity_at)
     // instead of the unrelated scan/line time.
@@ -1203,7 +1217,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 stn.latest_status_category   AS shipment_status_category,
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
-                sc.image_url,
+                ${RECEIVING_LINE_IMAGE_URL_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the

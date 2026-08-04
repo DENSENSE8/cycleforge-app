@@ -46,6 +46,8 @@
     "branding:guard": "node scripts/branding-guard.mjs",
     "schema:drift-guard": "node scripts/schema-drift-guard.mjs",
     "schema:drift-guard:check": "node scripts/schema-drift-guard.mjs --check",
+    "schema:model-parity": "node scripts/schema-model-parity-guard.mjs",
+    "schema:model-parity:check": "node scripts/schema-model-parity-guard.mjs --check",
     "report:packing-today": "tsx scripts/report-packing-today.ts",
     "tenancy:canary": "node scripts/tenancy-canary.mjs",
     "tenancy:canary:check": "node scripts/tenancy-canary.mjs --check",

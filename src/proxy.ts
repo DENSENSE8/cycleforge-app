@@ -46,6 +46,10 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/pair(?:$|\/)/,         // tablet exchanges a pairing code for a device token (code IS the capability)
   /^\/api\/kiosk\/intake(?:$|\/)/,       // device-authed intake write (gated by withKioskAuth inside the handler)
   /^\/api\/kiosk\/repair(?:$|\/)/,       // device-authed headless repair intake (withKioskAuth; NOT the staff enroll/revoke/devices siblings)
+  /^\/api\/kiosk\/sales(?:$|\/)/,        // device-authed retail catalog (withKioskAuth)
+  /^\/api\/kiosk\/settings(?:$|\/)/,     // device-authed brand/settings (withKioskAuth)
+  /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/, // device-authed PIN step-up roster (withKioskAuth)
+  /^\/api\/kiosk\/pickup(?:$|\/)/,       // device-authed order pickup lookup/collect (withKioskAuth)
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
   /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)
@@ -238,9 +242,7 @@ function resolveMobileUaRewrite(pathname: string, ua: string | null): string | n
  * source for the `/receiving?mode=` legacy family:
  *   `?mode=pickup`  → `/pickup`             (Local Pickup mode)
  *   `?mode=repair`  → `/repair`             (Repair mode)
- *   `?mode=history` → `/receiving/history`  (unchanged HERE — lane 04 repoints
- *                     it at the `/dashboard` inbound mode once that mode exists;
- *                     pointing at it now would land on the dashboard default)
+ *   `?mode=history` → `/incoming?lane=docked` (Inbound desk Docked lane)
  * The rest of the matrix:
  *   `/pickup?job=…`  → `resolveWalkInJobRedirect` below
  *   `/walk-in?mode=repair` / `?category=repairs` → `/repair`
@@ -261,12 +263,80 @@ function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextReque
             : mode === 'repair'
               ? '/repair'
               : mode === 'history'
-                ? '/receiving/history'
+                ? '/incoming'
                 : null;
   if (!dest) return null;
   const next = url.clone();
   next.pathname = dest;
   next.searchParams.delete('mode'); // being on the surface route IS the mode
+  if (mode === 'history') next.searchParams.set('lane', 'docked');
+  return next;
+}
+
+/**
+ * `/receiving/history` → Inbound desk Docked lane (`/incoming?lane=docked`).
+ * Preserves history search/sort params (`sort`, `rh_*`, `page`, `dir`).
+ */
+function resolveReceivingHistoryRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/receiving/history' && url.pathname !== '/receiving/history/') return null;
+  const next = url.clone();
+  next.pathname = '/incoming';
+  next.searchParams.set('lane', 'docked');
+  return next;
+}
+
+/**
+ * Dashboard inbound domain → Inbound desk Docked lane.
+ * `/dashboard?mode=inbound|receiving` → `/incoming?lane=docked` (+ sort / rh_*).
+ */
+function resolveDashboardInboundRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/dashboard' && url.pathname !== '/dashboard/') return null;
+  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
+  if (mode !== 'inbound' && mode !== 'receiving') return null;
+  const next = url.clone();
+  next.pathname = '/incoming';
+  next.searchParams.delete('mode');
+  next.searchParams.set('lane', 'docked');
+  return next;
+}
+
+/**
+ * Dashboard bare outbound → Shipping · To-ship desk.
+ * `/dashboard` (and outbound lifecycle bookmarks) → `/shipping/orders`.
+ * Sales (`?mode=sales|pickup`) and retired front doors stay elsewhere.
+ */
+function resolveDashboardOutboundRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/dashboard' && url.pathname !== '/dashboard/') return null;
+  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
+  if (
+    mode === 'sales' ||
+    mode === 'pickup' ||
+    mode === 'inbound' ||
+    mode === 'receiving' ||
+    mode === 'search'
+  ) {
+    return null;
+  }
+  // Legacy warranty / fba presence flags still client-redirect on the dashboard.
+  if (url.searchParams.has('warranty') || url.searchParams.has('fba')) return null;
+  const next = url.clone();
+  next.pathname = '/shipping/orders';
+  next.searchParams.delete('mode');
+  return next;
+}
+
+/**
+ * Support › Inquiries → shared To-ship desk with support context.
+ * `/support?mode=orders` → `/shipping/orders?context=support`.
+ */
+function resolveSupportOrdersRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/support' && url.pathname !== '/support/') return null;
+  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
+  if (mode !== 'orders') return null;
+  const next = url.clone();
+  next.pathname = '/shipping/orders';
+  next.searchParams.delete('mode');
+  next.searchParams.set('context', 'support');
   return next;
 }
 
@@ -568,7 +638,9 @@ export function proxy(req: NextRequest): NextResponse {
       isProduction: process.env.NODE_ENV === 'production',
     });
     if (kioskDest) {
-      return applySecurityHeaders(NextResponse.redirect(new URL(`${kioskDest}/`), 308));
+      // Preserve path so staff same-origin preview `/kiosk/v2` lands on the
+      // tenant kiosk shell, not the kiosk root.
+      return applySecurityHeaders(NextResponse.redirect(new URL(`${kioskDest}${pathname}`), 308));
     }
     if (process.env.NODE_ENV === 'production') {
       const url = req.nextUrl.clone();
@@ -595,6 +667,10 @@ export function proxy(req: NextRequest): NextResponse {
     const surfaceRedirect =
       resolveAuditLogRedirect(req.nextUrl) ??
       resolveReceivingSurfaceRedirect(req.nextUrl) ??
+      resolveReceivingHistoryRedirect(req.nextUrl) ??
+      resolveDashboardInboundRedirect(req.nextUrl) ??
+      resolveDashboardOutboundRedirect(req.nextUrl) ??
+      resolveSupportOrdersRedirect(req.nextUrl) ??
       resolveWalkInJobRedirect(req.nextUrl) ??
       resolveWalkInRepairModeRedirect(req.nextUrl) ??
       resolvePackSurfaceRedirect(req.nextUrl) ??

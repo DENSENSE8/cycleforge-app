@@ -49,6 +49,7 @@ export function UnboxLabelPreview({
   return (
     <>
       <WorkspaceLabelPreviewCard
+        chrome="procedure"
         sku={sku || unitMatrixValue}
         title={title || sku}
         condition={c.unitInput?.condition ?? row.condition_grade}

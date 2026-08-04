@@ -48,26 +48,28 @@ function code(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 }
 
-/** The locked root order (§1.1 of the desk→domain split prompt). */
+/** The locked root order (operator 2026-08-03). */
 const SPINE_ORDER = [
-  'monitor',
   'floor',
-  'inbound',
-  'catalog',
-  'inventory',
   'fulfillment',
   'sales',
+  'inbound',
+  'monitor',
   'support',
+  'sourcing',
+  'catalog',
+  'inventory',
 ] as const;
 
 /** Flat L1 order inside each domain drill. */
 const DOMAIN_FLAT_ORDER: Record<DomainGroupId, readonly string[]> = {
-  inbound: ['incoming'],
-  catalog: ['products'],
-  inventory: ['inventory', 'sourcing', 'warehouse'],
   fulfillment: ['outbound'],
   sales: ['sales'],
+  inbound: ['incoming'],
   support: ['support'],
+  sourcing: ['sourcing'],
+  catalog: ['products'],
+  inventory: ['inventory'],
 };
 
 /** Labels an operator could not predict — never a root drill again. */
@@ -87,6 +89,9 @@ const ALLOWED_MAIN: ReadonlySet<MainGroupId> = new Set(['monitor']);
 const ALLOWED_DOMAIN: ReadonlySet<string> = new Set(DOMAIN_GROUPS.map((g) => g.id));
 
 const LIST_SRC = code(sourceOf('./SidebarNavList.tsx'));
+const SPINE_TOP_PINS = code(sourceOf('./SpineTopPins.tsx'));
+const HEADER = code(sourceOf('../../layout/GlobalHeader.tsx'));
+const HEADER_ACTIONS_SRC = code(sourceOf('../../layout/GlobalHeaderActions.tsx'));
 const MASTER_SRC = code(sourceOf('./MasterNav.tsx'));
 const MOTION_SRC = code(
   sourceOf('../../../design-system/foundations/motion-framer.ts'),
@@ -95,45 +100,46 @@ const ACCENT_SRC = code(sourceOf('../../../lib/nav/spine-section-accent.ts'));
 const VIEW_SRC = code(sourceOf('./MasterNavView.tsx'));
 const SEARCH_BAR_SRC = code(sourceOf('../tech/TechRailSearchBar.tsx'));
 
-test('MAIN_GROUPS is Live Ops alone — Studio left for the footer', () => {
+test('MAIN_GROUPS is Operations alone — Studio left for the footer', () => {
   assert.deepEqual(
     MAIN_GROUPS.map((g) => g.id),
     ['monitor'],
   );
   assert.deepEqual(
     MAIN_GROUPS.map((g) => g.label),
-    ['Live Ops'],
+    ['Operations'],
   );
   assert.equal(MAIN_GROUPS[0]!.icon, ChartPie, 'monitor section icon is ChartPie');
 });
 
-test('DOMAIN_GROUPS is Inbound → Catalog → Inventory → Outbound → Sales → Support', () => {
+test('DOMAIN_GROUPS is Shipping → Sales → Inbound → Support → Sourcing → Products → Inventory', () => {
   assert.deepEqual(
     DOMAIN_GROUPS.map((g) => g.id),
-    ['inbound', 'catalog', 'inventory', 'fulfillment', 'sales', 'support'],
+    ['fulfillment', 'sales', 'inbound', 'support', 'sourcing', 'catalog', 'inventory'],
   );
   assert.deepEqual(
     DOMAIN_GROUPS.map((g) => g.label),
-    ['Inbound', 'Catalog', 'Inventory', 'Outbound', 'Sales', 'Support'],
+    ['Shipping', 'Sales', 'Inbound', 'Support', 'Sourcing', 'Products', 'Inventory'],
   );
   for (const g of DOMAIN_GROUPS) {
     assert.equal(typeof g.icon, 'function', `${g.id} must declare a section icon`);
   }
 });
 
-test('SPINE_SECTIONS is Monitor → Scan Stations → the six domains, ending at Support', () => {
+test('SPINE_SECTIONS is Scan Stations → Shipping → Sales → Inbound → Operations → Support → Sourcing → Products → Inventory', () => {
   assert.deepEqual(SPINE_SECTIONS.map((d) => d.id), [...SPINE_ORDER]);
   assert.deepEqual(
     SPINE_SECTIONS.map((d) => d.label),
     [
-      'Live Ops',
       'Scan Stations',
-      'Inbound',
-      'Catalog',
-      'Inventory',
-      'Outbound',
+      'Shipping',
       'Sales',
+      'Inbound',
+      'Operations',
       'Support',
+      'Sourcing',
+      'Products',
+      'Inventory',
     ],
   );
   assert.equal(
@@ -182,13 +188,18 @@ test('spineSectionIdForPage resolves main / station / domain, and nothing else',
   assert.equal(spineSectionIdForPage(null), null);
 });
 
-test('Home then Search then Media then Chat are kind top', () => {
+test('Home then Search then Media then Plans then Chat are kind top', () => {
   const topIds = APP_SIDEBAR_NAV.filter((item) => item.kind === 'top').map((item) => item.id);
-  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'ai-chat']);
+  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat']);
   const home = APP_SIDEBAR_NAV.find((item) => item.id === 'home');
   assert.equal(home?.kind, 'top');
   assert.equal(home?.label, 'Home');
   assert.equal(home?.icon, Home);
+  const plans = APP_SIDEBAR_NAV.find((item) => item.id === 'plans-live');
+  assert.equal(plans?.kind, 'top');
+  assert.equal(plans?.label, 'Plans');
+  assert.equal(plans?.href, '/?mode=forge&view=live');
+  assert.equal(plans?.requires, 'operations.plans.view');
   const aiChat = APP_SIDEBAR_NAV.find((item) => item.id === 'ai-chat');
   assert.equal(aiChat?.kind, 'top');
   assert.equal(aiChat?.label, 'Chat');
@@ -314,15 +325,16 @@ test('Catalog owns the product-label + manuals URLs — no second print row', ()
   const products = APP_SIDEBAR_NAV.find((item) => item.id === 'products');
   assert.ok(products && products.kind === 'domain');
   assert.equal(products.domainGroup, 'catalog');
-  assert.equal(products.label, 'Catalog', 'Products relabels to Catalog (D11)');
+  assert.equal(products.label, 'Products', 'Catalog section ships as Products on the spine');
   assert.equal(products.href, '/products');
 
   const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'products');
   assert.ok(page);
-  // Reference (not "Catalog") so the section and its browse mode differ (D11).
+  // Reference (not "Products") so browse mode and page label differ.
   const catalogMode = page!.children?.find((m) => m.id === 'catalog');
   assert.ok(catalogMode, 'products keeps the stable `catalog` mode id');
   assert.equal(catalogMode!.label, 'Reference');
+  assert.equal(page!.label, 'Products');
 });
 
 /**
@@ -343,12 +355,12 @@ test('carrier Postage stays Outbound → Shipping, never Catalog/Inventory label
       `Catalog child ${mode.id} must not point at a carrier route`,
     );
   }
-  const warehouse = SIDEBAR_PAGE_NAV.find((p) => p.id === 'warehouse');
-  for (const mode of warehouse?.children ?? []) {
+  const inventory = SIDEBAR_PAGE_NAV.find((p) => p.id === 'inventory');
+  for (const mode of inventory?.children ?? []) {
     assert.equal(
       mode.to().pathname.startsWith('/shipping'),
       false,
-      `Locations mode ${mode.id} must not point at a carrier route`,
+      `Inventory child ${mode.id} must not point at a carrier route`,
     );
   }
 });
@@ -402,18 +414,24 @@ test('Review splits: packing → Outbound child, pairing / catalog-link → Cata
   }
 });
 
-test('Inventory absorbs Sourcing + Locations (ex-Warehouse)', () => {
-  const warehouse = APP_SIDEBAR_NAV.find((item) => item.id === 'warehouse');
-  assert.ok(warehouse && warehouse.kind === 'domain');
-  assert.equal(warehouse.domainGroup, 'inventory');
-  assert.equal(warehouse.label, 'Locations', 'Warehouse relabels to Locations (D8)');
-  // The bin/rack label printer is the Locations default tab — do not lose it.
-  const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'warehouse');
-  assert.deepEqual(page?.children?.map((m) => m.id), ['labels', 'racks', 'rooms', 'bins', 'map']);
+test('Inventory owns Locations as an L2 child; Sourcing is its own spine section', () => {
+  assert.equal(
+    APP_SIDEBAR_NAV.find((item) => item.id === 'warehouse'),
+    undefined,
+    'Locations is no longer a spine L1',
+  );
+  const inventory = APP_SIDEBAR_NAV.find((item) => item.id === 'inventory');
+  assert.ok(inventory && inventory.kind === 'domain');
+  assert.equal(inventory.domainGroup, 'inventory');
+
+  const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'inventory');
+  assert.ok(page?.children?.some((m) => m.id === 'locations'), 'Inventory lost Locations L2');
+  const locations = page?.children?.find((m) => m.id === 'locations');
+  assert.equal(locations?.to().pathname, '/inventory/locations');
 
   const sourcing = APP_SIDEBAR_NAV.find((item) => item.id === 'sourcing');
   assert.ok(sourcing && sourcing.kind === 'domain');
-  assert.equal(sourcing.domainGroup, 'inventory', 'Sourcing lives under Inventory (D9)');
+  assert.equal(sourcing.domainGroup, 'sourcing', 'Sourcing is its own spine section');
 });
 
 test('SIDEBAR_PAGE_NAV domain pages declare a known domainGroup', () => {
@@ -461,6 +479,10 @@ test('SidebarNavList: the flat map is built from SPINE_SECTIONS; no label twins'
   assert.doesNotMatch(LIST_SRC, /['"]Library['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Analytics Monitor['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Live Ops['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Outbound['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Operations['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Products['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Shipping['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Triage Desk['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Print Stations['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Workflow Studio['"]/);
@@ -486,26 +508,39 @@ test('SidebarNavList: the flat map is built from SPINE_SECTIONS; no label twins'
 });
 
 /**
- * THE DRILL IS GONE (2026-08-02) — one flat scrolling map.
- *
- * Six of the eight sections held exactly one page, so the drill charged a click
- * to reveal a row carrying the section's own name (`Catalog › Catalog`). This
- * asserts the removal at both ends: no state, no chrome, and — the part a
- * reader is most likely to undo by accident — **no section HEADER row**, which
- * would re-create that duplicate anywhere a section shares a name with a page
- * beneath it.
+ * Scan Stations is the ONE Vercel-style list-replace drill (2026-08-03).
+ * Domains stay on the flat map — restoring an all-sections drill would bring
+ * back `Catalog › Catalog`. Floor alone earns Back + ChevronsRight (») because
+ * it holds multiple categories — a single › would collide with disclosure.
  */
-test('SidebarNavList: no drill — no state, no chrome, no section header row', () => {
+test('SidebarNavList: Scan Stations is the only Vercel drill; domains stay flat', () => {
+  // No all-sections drill state (the deleted shape).
   for (const src of [LIST_SRC, MASTER_SRC, VIEW_SRC]) {
-    assert.doesNotMatch(src, /drillId|onDrillChange|setDrillId|renderDrill|renderRoot/);
+    assert.doesNotMatch(src, /\bdrillId\b|\bonDrillChange\b|\bsetDrillId\b|\brenderDrill\b|\brenderRoot\b/);
   }
-  // The back / disclosure chevrons went with the affordance they belonged to.
-  assert.doesNotMatch(LIST_SRC, /ChevronLeft|ChevronRight/);
-  // A section contributes a RULE and an accessible name, never a visible row —
-  // `section.icon` rendering again is the header coming back.
-  assert.doesNotMatch(LIST_SRC, /section\.icon|SectionIcon/);
-  assert.match(LIST_SRC, /border-t border-border-soft/);
-  assert.match(LIST_SRC, /aria-label=\{section\.label\}/);
+  // Floor-only drill plumbing.
+  assert.match(LIST_SRC, /stationsDrillOpen/);
+  assert.match(LIST_SRC, /onStationsDrillChange/);
+  assert.match(LIST_SRC, /renderStationsEnterRow/);
+  assert.match(LIST_SRC, /renderStationsDrill/);
+  assert.match(LIST_SRC, /ChevronsRight/);
+  assert.doesNotMatch(LIST_SRC, /\bChevronRight\b/);
+  assert.match(LIST_SRC, /ChevronLeft/);
+  assert.match(LIST_SRC, /Back to pages/);
+  assert.match(LIST_SRC, /Open \$\{section\.label\}/);
+  // Enter row shares renderPageHeader chrome (h-9) + drill trailing — no navigate.
+  const enterRow = LIST_SRC.match(/const renderStationsEnterRow[\s\S]*?\n {2}\};\n/)?.[0];
+  assert.ok(enterRow, 'renderStationsEnterRow block missing');
+  assert.doesNotMatch(enterRow, /onNavigate/);
+  assert.match(enterRow, /renderPageHeader/);
+  assert.match(enterRow, /drill:\s*true/);
+  assert.doesNotMatch(enterRow, /text-role-eyebrow/);
+  // Enter + back + every L1 page header share one fixed row height.
+  assert.match(LIST_SRC, /flex h-9 w-full items-center/);
+  assert.match(LIST_SRC, /grid h-9 w-full grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
+  // Sections are spaced, not ruled.
+  assert.match(LIST_SRC, /index > 0 && 'mt-1'/);
+  assert.doesNotMatch(LIST_SRC, /index > 0 && 'mt-1 border-t/);
 });
 
 /**
@@ -525,10 +560,31 @@ test('SidebarNavList: a section with no visible page renders nothing', () => {
   assert.equal(isSidebarPageReachable({ children: [{ id: 'x' }] } as never), true);
 });
 
-test('SidebarNavList: Home/Search/Media/Chat top pin; footer filter above Settings/Admin', () => {
-  assert.match(LIST_SRC, /kind === ['"]top['"]/);
-  assert.match(LIST_SRC, /border-b border-border-soft/);
-  assert.match(LIST_SRC, /renderRow\(page, ['"]top['"]/);
+test('SidebarNavList: top pins are band icons, not rows; footer filter above Settings/Admin', () => {
+  // Home / Search / Media / Plans / Chat stopped being spine ROWS on
+  // 2026-08-03: they cost the map vertical space as rows. They are icons in
+  // the spine's own 40px top band now (`SpineTopPins`), where the height is
+  // already reserved by the header seam so they cost the map nothing. They
+  // remain `kind: 'top'` in the registry — ⌘K and the flat search still rank
+  // them — so what must never come back is the ROW, not the entry.
+  assert.doesNotMatch(LIST_SRC, /kind === ['"]top['"]/);
+  assert.doesNotMatch(LIST_SRC, /renderRow\(page, ['"]top['"]/);
+  assert.match(SPINE_TOP_PINS, /kind === ['"]top['"]/);
+  assert.match(SPINE_TOP_PINS, /export function TopDestinationPins/);
+  assert.match(SPINE_TOP_PINS, /export function SpineTopPins/);
+  // ONE resident home while the spine is open: the band inside MasterNavView.
+  // Collapsed cold-load reachability is a gated peek on the toggle
+  // (`SidebarCollapseControl` + `TopDestinationPins layout="cluster"`) — never
+  // a permanent second door in GlobalHeader / GlobalHeaderActions.
+  assert.match(VIEW_SRC, /SpineTopPins/);
+  assert.doesNotMatch(HEADER, /<SpineTopPins|<TopDestinationPins/);
+  assert.doesNotMatch(HEADER_ACTIONS_SRC, /HeaderTopPins|SpineTopPins|TopDestinationPins/);
+  const COLLAPSE = code(sourceOf('../../layout/SidebarCollapseControl.tsx'));
+  assert.match(COLLAPSE, /sidebarCollapsed/);
+  assert.match(COLLAPSE, /TopDestinationPins/);
+  assert.match(COLLAPSE, /layout="cluster"/);
+  assert.match(COLLAPSE, /useRailHoverPreview/);
+  assert.match(HEADER, /SidebarCollapseControl/);
   assert.match(LIST_SRC, /renderRow\(page, ['"]bottom['"]/);
   assert.match(LIST_SRC, /TechRailSearchBar/);
   // ONE placeholder: the box searches every destination, everywhere. It used to
@@ -544,25 +600,23 @@ test('SidebarNavList: Home/Search/Media/Chat top pin; footer filter above Settin
 });
 
 /**
- * The spine's filter band is a ROW, not a dock.
+ * The filter band is a ROW (~33px), shared by MasterNav spine and station
+ * recent rails. `density` defaults to `row`; the taller `default` /
+ * `inset-field` dock is an escape hatch only. The band owns its whole padding
+ * story — never a host `className` with raw padding, because `inset-field` is a
+ * Tier-2 intent and both survive `cn()` with the intent winning in CSS order.
  *
- * `TechRailSearchBar` is shared: station rails (Testing / Shipping / Unbox) pin
- * it under a scrollable carton list, where the taller `inset-field` inset reads
- * correctly. In the spine it sits in a list of 30px rows, so the same 49px band
- * read as a separate surface. The fix is a density variant on the COMPONENT —
- * never a `className` with raw padding from the host, because `inset-field` is a
- * Tier-2 intent and both survive `cn()` with the intent winning in CSS order, so
- * the override would silently no-op.
- *
- * The 32px `SearchField size="compact"` control is untouched either way: that is
- * the floor's touch target on a station rail, and it is not a navigator's 2px to
- * spend. The 12px horizontal inset is shared so the search glyph keeps the nav
- * rows' glyph column.
+ * The 32px `SearchField size="compact"` control is untouched either way. The
+ * 12px horizontal inset is shared so the search glyph keeps the nav rows'
+ * glyph column.
  */
-test('spine search band is row-dense; station rails keep the dock inset', () => {
+test('spine + station rail search band is row-dense by default', () => {
   assert.match(SEARCH_BAR_SRC, /density\?: 'default' \| 'row'/);
-  assert.match(SEARCH_BAR_SRC, /density === 'row' \? 'px-3' : 'inset-field'/);
-  assert.match(SEARCH_BAR_SRC, /density = 'default'/, 'station rails must not opt in');
+  assert.match(SEARCH_BAR_SRC, /density === 'row'\s*\?\s*'px-3'\s*:\s*'inset-field'/);
+  // Rail footers must not inherit spreadsheet `--cf-density` zoom — they share
+  // height with context-rail siblings that sit outside the zoom host.
+  assert.match(SEARCH_BAR_SRC, /--cf-density['"]?:\s*['"]1['"]/);
+  assert.match(SEARCH_BAR_SRC, /density = 'row'/, 'row is the shared default');
   // The band owns its whole padding story — the host names a density and never
   // reaches in with a className.
   const mount = LIST_SRC.match(/<TechRailSearchBar[\s\S]*?\/>/)?.[0];
@@ -583,9 +637,12 @@ test('SidebarNavList: a query flattens the body to ranked destinations', () => {
   assert.match(LIST_SRC, /splitNavHighlight/);
   assert.doesNotMatch(LIST_SRC, /toLowerCase\(\)\.includes\(/);
   // Keyed on the MODE, never the query: typing updates in place instead of
-  // replaying the crossfade on every keystroke.
-  // Two KINDS of body, and only two — the map or the ranked results.
-  assert.match(LIST_SRC, /key=\{searching \? ['"]search['"] : ['"]map['"]\}/);
+  // replaying the crossfade on every keystroke. Three KINDS of body: map,
+  // Scan Stations drill, or ranked results.
+  assert.match(
+    LIST_SRC,
+    /key=\{searching \? ['"]search['"] : stationsDrillOpen \? ['"]stations-drill['"] : ['"]map['"]\}/,
+  );
   // Results are keyboard-reachable from the box that produced them.
   assert.match(LIST_SRC, /handleFilterKeyDown/);
   assert.match(LIST_SRC, /ArrowDown/);
@@ -615,17 +672,29 @@ test('SidebarNavList: destinations sit one step above modes in the type ladder',
   );
   // Modes must NOT be bumped with them — that would flatten the ladder again.
   assert.match(LIST_SRC, /text-role-caption font-medium/);
-  // Counts stay micro; bumping them would compete with the label they annotate.
-  assert.match(LIST_SRC, /text-role-micro font-semibold tabular-nums/);
+  // The third rung of this ladder used to be the count badge, pinned at
+  // `role-micro` so it could not compete with the label it annotated. The badge
+  // was deleted 2026-08-03 (see the no-badge test below), so the rung is gone
+  // rather than resized — there is no longer a third kind of text in a spine
+  // row. Its absence is asserted there; re-pinning it here would resurrect it.
 });
 
-test('SidebarNavList: the drill back header is deleted, not restyled', () => {
-  assert.doesNotMatch(LIST_SRC, /text-center text-role-body/);
-  assert.doesNotMatch(LIST_SRC, /grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
-  assert.doesNotMatch(LIST_SRC, /Back to pages/);
+test('SidebarNavList: Scan Stations drill back header is the Vercel back+title row', () => {
+  const drill = LIST_SRC.match(/const renderStationsDrill[\s\S]*?\n {2}\};\n/)?.[0];
+  assert.ok(drill, 'renderStationsDrill block missing');
+  assert.match(drill, /text-center text-role-body/);
+  assert.match(drill, /grid-cols-\[1\.25rem_1fr_1\.25rem\]/);
+  assert.match(drill, /Back to pages/);
+  assert.match(drill, /ChevronLeft/);
+  // Domains must not grow a twin back header.
+  assert.equal(
+    (LIST_SRC.match(/Back to pages/g) ?? []).length,
+    1,
+    'only Scan Stations owns a Back header',
+  );
 });
 
-test('SidebarNavList: pages lead, modes nest, no accordion', () => {
+test('SidebarNavList: pages lead, modes nest; multi-child L1 is accordion expand-only', () => {
   // Pages and modes no longer share a size — see "destinations sit one step
   // above modes". Destinations are role-body; modes stay role-caption/medium.
   assert.match(LIST_SRC, /text-role-body font-semibold/);
@@ -636,9 +705,39 @@ test('SidebarNavList: pages lead, modes nest, no accordion', () => {
     'a semibold caption row is the old flat ladder — destinations are role-body',
   );
   assert.doesNotMatch(LIST_SRC, /text-role-eyebrow font-semibold/);
-  assert.doesNotMatch(LIST_SRC, /ChevronDown/);
-  assert.doesNotMatch(LIST_SRC, /aria-expanded/);
+  // Every in-place nest draws the disclosure chevron (Receiving · Locations /
+  // Catalog / …). Scan Stations uses a separate `drill` trailing (ChevronsRight)
+  // so enter does not look like disclose.
+  const pageHeader = LIST_SRC.match(/const renderPageHeader[\s\S]*?\n {2}\};\n/)?.[0];
+  assert.ok(pageHeader, 'renderPageHeader block missing');
+  assert.match(pageHeader, /disclosure\?:/);
+  assert.match(pageHeader, /opts\.disclosure/);
+  assert.match(pageHeader, /ChevronDown/);
+  assert.doesNotMatch(pageHeader, /\bChevronRight\b/);
+  assert.match(pageHeader, /drill\?:/);
+  assert.match(pageHeader, /opts\.drill/);
+  assert.match(pageHeader, /ChevronsRight/);
   assert.doesNotMatch(LIST_SRC, /onToggleRow/);
+  // Multi-child L1: accordion disclose only — never navigate from the parent.
+  assert.match(LIST_SRC, /expandedPages/);
+  assert.match(LIST_SRC, /openPage\(page\.id\)/);
+  assert.match(LIST_SRC, /closePage\(page\.id\)/);
+  assert.match(
+    LIST_SRC,
+    /hasChildren && \(isPageActive \|\| expandedPages\.has\(page\.id\)\)/,
+  );
+  assert.match(
+    LIST_SRC,
+    /disclosure: hasChildren \? \{ expanded: showChildren \} : undefined/,
+  );
+  // Leaf L1 (no children) still navigates; Receiving subgroup may still land
+  // on its first bench when opening.
+  assert.match(LIST_SRC, /onNavigate\(page\.id\)/);
+  // Receiving path: accordion disclosure — open navigates to the first bench
+  // (closes any other page nest); close only when not owning the active page.
+  assert.match(LIST_SRC, /openSubgroup\(subgroup\)/);
+  assert.match(LIST_SRC, /closeSubgroup\(subgroup\)/);
+  assert.match(LIST_SRC, /disclosure: \{ expanded: subgroupExpanded \}/);
   assert.match(LIST_SRC, /spineAccentFor/);
   assert.match(LIST_SRC, /accent\.childActive/);
 });
@@ -665,7 +764,18 @@ test('SidebarNavList: child rows keep their glyph, at the parent-light page stro
   assert.match(modeRow, /navIconStrokeClass\(\s*'page'/);
   // The indent + type ladder is what carries subordination now, so neither may
   // quietly go away in place of the stroke that used to do it.
-  assert.match(modeRow, /pl-7/);
+  //
+  // The indent MECHANISM (2026-08-03, centered same day): a nesting rail
+  // gutter (`ml-2` + `w-3.5`) centres a `w-px` under the parent glyph
+  // (`px-2` + half of `w-3.5` = 15px) without an arbitrary `ml-[15px]`.
+  assert.match(modeRow, /ml-2 flex w-3\.5/);
+  assert.match(modeRow, /w-px self-stretch/);
+  assert.doesNotMatch(modeRow, /ml-4 border-l|ml-\[15px\]/);
+  assert.match(
+    modeRow,
+    /bg-border-default.*bg-border-soft|bg-border-soft.*bg-border-default/s,
+    'the rail must mark the active row — a uniform hairline says only "nested", not "here"',
+  );
   assert.match(modeRow, /text-role-caption font-medium/);
   assert.match(modeRow, /accent\.childActiveIcon/);
   assert.match(modeRow, /accent\.childIdleIcon/);
@@ -675,11 +785,49 @@ test('SidebarNavList: child rows keep their glyph, at the parent-light page stro
   assert.doesNotMatch(LIST_SRC, /navIconStrokeClass\(\s*'mode'/);
 });
 
+/**
+ * No badges in the spine — and the cardinality lands in the accessible name.
+ *
+ * The trailing count was deleted 2026-08-03. It carried *structural
+ * cardinality* (how many child pages a page has — immutable, learned once) in
+ * the one shape every product on the operator's screen uses for **unread work**,
+ * so it collected attention it could never repay.
+ *
+ * Two halves, and the second is why this is a test rather than a deletion:
+ * removing the badge must not remove the FACT. A screen-reader user has no
+ * cheap way to discover that "Catalog" leads to seven pages, so the count moves
+ * into `aria-label` — where it competes with nothing.
+ *
+ * The vacated slot must also stay empty. `source-of-truth.md` → *Per-staff queue
+ * depths* keeps live depths in `InboxQueueLinks`, and the spine's registry is
+ * safe to re-rank on every keystroke only because it does no I/O. A depth badge
+ * here would quietly buy that cost back.
+ */
+test('SidebarNavList: no trailing count badge; cardinality moves to the accessible name', () => {
+  const header = LIST_SRC.match(/const renderPageHeader[\s\S]*?\n {2}\};\n/)?.[0];
+  assert.ok(header, 'renderPageHeader block missing');
+
+  assert.doesNotMatch(header, /opts\.count/, 'the trailing count badge is deleted, not hidden');
+  assert.doesNotMatch(
+    header,
+    /tabular-nums/,
+    'a right-aligned numeral in a nav row reads as a notification badge',
+  );
+  // The slot is gone entirely — not repurposed. A live queue depth here is a
+  // separate ruling with a real per-render I/O cost; it must not arrive as a
+  // side effect of a presentation change.
+  assert.doesNotMatch(header, /count|badge|depth/i);
+
+  // …but the fact survives, on both row kinds that have children.
+  assert.match(LIST_SRC, /ariaLabel: hasChildren \? `\$\{page\.label\} — \$\{childCount\} pages`/);
+  assert.match(LIST_SRC, /\$\{members\.length\} stations/);
+});
+
 test('SidebarNavList: idle page/section rows use default ink (type comfort); icons stay muted', () => {
   assert.match(LIST_SRC, /idlePageIcon/);
-  assert.match(ACCENT_SRC, /text-text-default hover:bg-surface-canvas/);
+  assert.match(ACCENT_SRC, /text-text-default hover:bg-surface-hover/);
   assert.match(ACCENT_SRC, /idlePageIcon: 'text-text-muted'/);
-  assert.doesNotMatch(LIST_SRC, /text-text-muted hover:bg-surface-canvas hover:text-text-default/);
+  assert.doesNotMatch(LIST_SRC, /text-text-muted hover:bg-surface-hover hover:text-text-default/);
 });
 
 /**
@@ -783,27 +931,21 @@ test('SidebarNavList: page rows and mode rows share ONE 15ms row cascade', () =>
  * array. Keying on either replays the whole cascade on every keystroke, under
  * the operator's cursor, in a list they are actively reading.
  */
-test('SidebarNavList: the row cascade never keys on the filter', () => {
-  // The drill's `drill-rows-${section.id}` container is gone with the drill.
-  // The one surviving cascade belongs to the ACTIVE page's children, which
-  // genuinely mount on navigation; the map itself paints instantly.
+test('SidebarNavList: the nest cascade always plays on open', () => {
+  // Every in-place dropdown (L1 children · Receiving) mounts through
+  // `renderStaggeredNest` — always `initial="hidden"` so open gets the 15ms
+  // stagger. Search replaces the whole body, so there is no mid-type remount.
   assert.doesNotMatch(LIST_SRC, /drill-rows-/);
   assert.doesNotMatch(LIST_SRC, /key=\{[^}]*navFilter/);
   assert.doesNotMatch(LIST_SRC, /key=\{[^}]*drillFilter/);
   assert.doesNotMatch(LIST_SRC, /key=\{[^}]*groupPages/);
-  // Rows that newly match mid-type inherit `visible` instead of fading in solo.
-  assert.match(LIST_SRC, /rowStaggerInitial[^=]*=\s*filterTouched\s*\?\s*false\s*:\s*'hidden'/);
-  // Gate on TOUCHED, never on "a filter is active" — keying off the value
-  // re-armed the cascade the moment the operator cleared the box, so
-  // backspacing to empty re-faded the whole list. Clearing is still filtering.
-  assert.doesNotMatch(LIST_SRC, /rowStaggerInitial[^=]*=\s*navFilter/);
-  assert.doesNotMatch(LIST_SRC, /rowStaggerInitial[^=]*=\s*drillFilter/);
-  // Touch flag syncs from the preserved query on SECTION enter (ref read) —
-  // empty → cascade; non-empty → skip so root→drill keeps the narrowed list.
-  assert.match(
-    LIST_SRC,
-    /setFilterTouched\(Boolean\(navFilterRef\.current\.trim\(\)\)\)[\s\S]{0,40}\}, \[activePage\.id\]\)/,
-  );
+  assert.doesNotMatch(LIST_SRC, /rowStaggerInitial|filterTouched/);
+  assert.match(LIST_SRC, /const renderStaggeredNest/);
+  assert.match(LIST_SRC, /initial=["']hidden["']/);
+  assert.match(LIST_SRC, /nest-\$\{page\.id\}/);
+  assert.match(LIST_SRC, /nest-subgroup-\$\{subgroup\}/);
+  assert.match(LIST_SRC, /framerVariants\.spineRowStaggerContainer/);
+  assert.match(LIST_SRC, /framerVariants\.spineRowStaggerItem/);
 });
 
 /**
@@ -826,8 +968,21 @@ test('SidebarNavList: no transform travel at all — no whileHover, no row scale
   assert.doesNotMatch(ACCENT_SRC, /SPINE_ICON_LIFT_CLASS/);
   // Deleted at BOTH ends — an exported constant with a live importer is
   // invisible to knip, so only this assertion can see a half-finished removal.
-  assert.doesNotMatch(LIST_SRC, /translate-|scale-|rotate-/);
+  //
+  // `translate-` and `scale-` stay banned outright: both move a ROW, and a
+  // structural anchor in a 20-row column must not travel under the pointer.
+  // `rotate-` is allowed for disclosure chevrons (Receiving / Locations nests)
+  // facing their own state — not travel. Scan Stations uses ChevronsRight enter
+  // instead of a rotated disclosure.
+  assert.doesNotMatch(LIST_SRC, /translate-|scale-/);
   assert.doesNotMatch(ACCENT_SRC, /translate-|scale-|rotate-/);
+  const rotations = LIST_SRC.match(/[\w:-]*rotate-[\w[\]-]+/g) ?? [];
+  assert.deepEqual(
+    rotations,
+    ['-rotate-90'],
+    'the only rotation in the spine is the nest disclosure chevron',
+  );
+  assert.match(LIST_SRC, /motion-safe:transition-transform/);
   assert.doesNotMatch(LIST_SRC, /whileHover|whileTap/);
   assert.doesNotMatch(LIST_SRC, /hover:scale|active:scale|group-hover:scale/);
   assert.doesNotMatch(LIST_SRC, /hover:font-|group-hover:font-/);
@@ -839,38 +994,40 @@ test('SidebarNavList: no transform travel at all — no whileHover, no row scale
   );
   // Hover is a colour change and nothing else.
   assert.match(LIST_SRC, /transition-colors duration-150/);
-  assert.doesNotMatch(LIST_SRC, /transition-transform|transition-all/);
+  assert.doesNotMatch(LIST_SRC, /transition-all/);
+  // A bare (unguarded) transform transition would slip past the reduced-motion
+  // floor; only the `motion-safe:` form is legal.
+  assert.doesNotMatch(LIST_SRC, /(?<!motion-safe:)transition-transform/);
 });
 
 /**
- * The neutral ladder has THREE separable rungs on a white spine, and the inset
- * hairline is what keeps rung 2 (a child / owning row) apart from rung 1 (a
- * plain hover), since they share a fill.
- *
- * Rung 3 stays a SOLID inverse fill rather than a pale grey: the hue map's
- * active row was a solid chip with white text, and de-chroming it into a wash
- * would have demoted the one row whose job is to be found without looking.
- * Inverse ink on `surface-inverse` (#0f172a) is ≈17:1 — past the WCAG AA 4.5:1
- * floor these 12–14px rows need, and past what several retired hues cleared.
+ * The neutral ladder has TWO soft rungs on a white spine (2026-08-03): hover
+ * wash (`surface-hover`) vs one shared sunken selected wash — no inverse fill,
+ * no `surface-strong` chip, no inset hairline. Cloudflare's Account-home row is
+ * the target grain.
  */
-test('spine accents: three separable neutral rungs, each active row a seated chip', () => {
-  // Rung 3 — the active destination.
-  assert.match(SPINE_NEUTRAL_ACCENT.activePage, /bg-surface-inverse\b/);
-  assert.match(SPINE_NEUTRAL_ACCENT.activePage, /text-text-inverse\b/);
-  assert.match(SPINE_NEUTRAL_ACCENT.activePage, /ring-1 ring-inset ring-/);
-  // Rung 2 — child / section-owning rows: same fill as hover, plus the hairline.
-  for (const field of ['childActive', 'sectionActive'] as const) {
-    assert.match(SPINE_NEUTRAL_ACCENT[field], /bg-surface-strong\b/, field);
-    assert.match(SPINE_NEUTRAL_ACCENT[field], /ring-1 ring-inset ring-/, `${field} hairline`);
+test('spine accents: selected and expanded share one soft sunken wash', () => {
+  // No inverse destination chip — that read as a different kind of chrome.
+  for (const [field, value] of Object.entries(SPINE_NEUTRAL_ACCENT)) {
+    assert.doesNotMatch(value, /surface-inverse|text-inverse/, `no inverse on ${field}`);
+    assert.doesNotMatch(value, /bg-surface-strong\b/, `no strong chip on ${field}`);
   }
-  // Rung 1 — hover. Every idle row answers the pointer, or the deleted glyph
-  // lift leaves the row with no hover affordance at all.
+  // Soft selected wash — active page, child, and expanded section share it.
+  for (const field of ['activePage', 'childActive', 'sectionActive'] as const) {
+    assert.match(SPINE_NEUTRAL_ACCENT[field], /bg-surface-sunken\b/, field);
+    assert.match(SPINE_NEUTRAL_ACCENT[field], /text-text-default\b/, `${field} ink`);
+    assert.doesNotMatch(SPINE_NEUTRAL_ACCENT[field], /ring-/, `${field} has no hard ring`);
+  }
+  assert.equal(SPINE_NEUTRAL_ACCENT.activePage, SPINE_NEUTRAL_ACCENT.childActive);
+  assert.equal(SPINE_NEUTRAL_ACCENT.activePage, SPINE_NEUTRAL_ACCENT.sectionActive);
+  // Hover is softer than selected so the two washes stay separable.
   for (const field of ['idlePage', 'childIdle', 'sectionIdle'] as const) {
-    assert.match(SPINE_NEUTRAL_ACCENT[field], /hover:bg-surface-/, `${field} hover wash`);
+    assert.match(SPINE_NEUTRAL_ACCENT[field], /hover:bg-surface-hover/, `${field} hover wash`);
   }
-  // The rungs must not collapse into each other.
-  assert.notEqual(SPINE_NEUTRAL_ACCENT.activePage, SPINE_NEUTRAL_ACCENT.childActive);
   assert.notEqual(SPINE_NEUTRAL_ACCENT.childActive, SPINE_NEUTRAL_ACCENT.childIdle);
+  // Scan Stations enter shares page chrome (`active: floorActive` → activePage).
+  assert.match(LIST_SRC, /active: floorActive/);
+  assert.match(LIST_SRC, /drill:\s*true/);
 });
 
 /**
@@ -926,13 +1083,16 @@ test('MasterNav merges the registries as { ...page } — the parity guard above 
 });
 
 /**
- * The auto-drill effect is gone, and with it the focus hazard it carried: a
- * spine that re-entered a section on every cross-section navigation had to be
- * pinned against stealing focus from the page it had just opened. A flat map
- * has nothing to enter.
+ * Scan Stations auto-enters its drill on cross-section navigation onto a floor
+ * bench. Manual Back leaves the root map without stealing focus. Domains never
+ * get this effect.
  */
-test('MasterNav: no drill state, and still never steals focus', () => {
-  assert.doesNotMatch(MASTER_SRC, /setDrillId|drillId|prevSectionRef/);
+test('MasterNav: Scan Stations drill auto-enters floor; never steals focus', () => {
+  assert.match(MASTER_SRC, /stationsDrillOpen/);
+  assert.match(MASTER_SRC, /setStationsDrillOpen/);
+  assert.match(MASTER_SRC, /prevSectionRef/);
+  assert.match(MASTER_SRC, /activeSection === ['"]floor['"]/);
+  assert.doesNotMatch(MASTER_SRC, /\bdrillId\b|\bsetDrillId\b/);
   assert.doesNotMatch(MASTER_SRC, /\.focus\s*\(/);
   assert.doesNotMatch(MASTER_SRC, /autoFocus/);
 });

@@ -119,11 +119,11 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     });
   }
 
-  test('/dashboard?mode=inbound: the Monitor mode drops the panel too', async ({ page }) => {
-    // `DashboardOrdersContextPanel` returns null for inbound (it is a Monitor, not
-    // a Workbench), so the route-key contract is overridden per-mode.
-    await gotoSurface(page, '/dashboard?mode=inbound');
-    await expect(page.locator(CONTEXT_PANEL)).toHaveCount(0);
+  test('/incoming?lane=docked: Docked keeps the inbound sidebar panel', async ({ page }) => {
+    // Docked (former Receiving Board) lives on the Inbound desk with a resident
+    // facet rail — not a panel-less Monitor.
+    await gotoSurface(page, '/incoming?lane=docked');
+    await expect(page.locator(CONTEXT_PANEL).first()).toBeVisible();
   });
 
   for (const route of [...SIDEBAR_ROUTES, ...STATION_ROUTES]) {

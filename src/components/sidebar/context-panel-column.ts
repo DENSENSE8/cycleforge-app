@@ -1,4 +1,3 @@
-import { elevationCastClass } from '@/design-system/tokens/shadows';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -7,9 +6,9 @@ import { cn } from '@/utils/_cn';
  *
  * ```
  *   ┌──────────────────────────────────────┐
- *   │ ┌ context panel ┐ ┌ workspace ──────┐│
- *   │ │  scan bar     │ │                 ││
- *   │ │  recents rail │ │                 ││
+ *   │ context panel │ workspace ───────────│
+ *   │  scan bar     │                      │
+ *   │  recents rail │                      │
  *   └──────────────────────────────────────┘
  *     content region (the nav spine is a separate surface entirely)
  * ```
@@ -28,6 +27,11 @@ import { cn } from '@/utils/_cn';
  *   the nav aside, the page list had to paint over it, and a route with no rail
  *   (the Media library) had the list paint over the work canvas instead. With the
  *   rail in the content region there is exactly one left-edge surface.
+ *
+ * **Depth (ruled 2026-08-03):** flush coplanar column on the shared
+ * {@link CONTEXT_PANEL_HOST_CLASS} ground — hairline against the center, flat
+ * elevation. Outer `m-*` islands are not depth (see source-of-truth → Depth
+ * elevation · Frame column budget).
  *
  * Formerly `station-column.ts` / `STATION_PANEL_*`, when the station benches were
  * the only surfaces that mounted here.
@@ -59,10 +63,21 @@ export const CONTEXT_PANEL_RESIZE = {
  * Collapse contract for every context-panel rail (picker / scan + recents /
  * feed — whatever the route mounts in {@link ContextPanelLayout}).
  *
- * Open: collapse chevron on the trailing {@link HorizontalEdgeResizeHandle}
- * (`onCollapse`). Collapsed: width-drawer to 0 + a slim expand strip on the
- * canvas ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Persists beside
- * {@link CONTEXT_PANEL_RESIZE} — one shared preference across routes.
+ * Open: paths into the same preference —
+ * 1. **Primary (visible):** {@link RailFilterCollapseButton} in
+ *    `TechRailSearchBar` `trailingAction` (far right / age column of the
+ *    bottom filter bar) — the only display collapse glyph;
+ * 2. drag the trailing edge past min (`useHorizontalEdgeResize`
+ *    `onCollapseBeyondMin` / `collapseBelowPx` ≈ min − 48) — release-time
+ *    only; live layout still floors at {@link CONTEXT_PANEL_RESIZE.minWidthPx}.
+ *
+ * The resize sash has **no** top chevron on this rail (filter-trailing only).
+ *
+ * Collapsed: width-drawer to 0 + a slim expand strip on the canvas
+ * ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Persists beside
+ * {@link CONTEXT_PANEL_RESIZE} — one shared preference across routes. Do not
+ * put a close icon in-row or in the UNBOXED eyebrow — filter trailing track
+ * (same column as relative-age) + drag-past-min only.
  */
 export const CONTEXT_PANEL_COLLAPSE = {
   storageKey: 'context-panel-collapsed',
@@ -71,52 +86,47 @@ export const CONTEXT_PANEL_COLLAPSE = {
 } as const;
 
 /**
- * Outer margin between the context-panel card and the canvas host (`m-2` =
- * 8px). **Station top-padding SoT twin:** bookmark chrome
- * (`STATION_BOOKMARK_CANVAS_INSET_TOP` / `RIGHT` in `station-bookmark.ts`) and
- * Unbox push vertical gutter ({@link CONTEXT_PANEL_OUTER_MARGIN_Y}) share this
- * 8px so identity + sidebar + push cards share one top edge under GlobalHeader.
- *
- * Change the scale here, then update the bookmark `top-*` / `right-*` twins and
- * the Y-only export to match. Guard:
- * `unbox-push-gutter.guard.test.ts` (canvas gutter twins).
+ * @deprecated Floating-island gutters retired 2026-08-03 (flush planes). Kept
+ * as named exports so docs / guards that still mention the twin can migrate;
+ * **do not compose onto column shells**. Bookmark chrome top inset is
+ * {@link STATION_IDENTITY_INSET_TOP} (`top-0`) — flush under
+ * GlobalHeader, not a twin of this retired margin.
  */
 export const CONTEXT_PANEL_OUTER_MARGIN = 'm-2';
 
 /**
- * Vertical-only twin of {@link CONTEXT_PANEL_OUTER_MARGIN}.
- *
- * Unbox right-edge push columns / expand strips use this when trailing gutter
- * is host padding (`TICKET_PUSH_HOST_PAD_CLASS` = `pr-2`) — full `m-2` would
- * double-inset the right edge. Never replace this with host `py-2`: that
- * stacks under `StationContextBar`'s absolute `top-2` and drops the carton
- * identity below the sidebar card.
+ * @deprecated See {@link CONTEXT_PANEL_OUTER_MARGIN}. Unbox flush push columns
+ * no longer use vertical outer gutters.
  */
 export const CONTEXT_PANEL_OUTER_MARGIN_Y = 'my-2';
 
 /**
  * Parked expand strip when the context panel is collapsed.
- * Canvas chrome only — not a second white card.
+ * Slim in-flow chrome on the shared ground — not a second floating card.
+ * Width = age / collapse column ({@link SIDEBAR_RAIL_TRAILING_TRACK_CLASS});
+ * expand control sits in the **bottom** cell (same seat as the filter collapse).
  */
 export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
   'relative',
-  CONTEXT_PANEL_OUTER_MARGIN,
-  'flex w-8 shrink-0 flex-col items-center pt-3',
+  'flex h-full w-8 shrink-0 flex-col items-center border-r border-border-soft bg-surface-card',
+);
+
+/**
+ * Bottom cell of a parked left-dock strip — same height band as
+ * `TechRailSearchBar` density=`row`, so expand sits where collapse was.
+ */
+export const CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS = cn(
+  'flex h-8 w-full shrink-0 items-center justify-center',
+  'border-t border-border-hairline',
 );
 
 /**
  * The in-DISPLAY context panel column (picker / rail / scan bar).
  *
- * A discrete floating slate: full radius, border on every edge, its own gutter
- * from {@link CONTEXT_PANEL_HOST_CLASS}. It keeps its own internal scrollport,
- * so the radius and shadow never move with the rail content. This is the ONLY
- * card in the frame.
- *
- * Its cast goes LEFT ({@link elevationCastClass}) rather than straight down.
- * The panel is pinned to the left of a wide frame, so its left edge is the one
- * read against the canvas; a downward-only cast left that edge flat. Casting
- * away from centre puts the whole app under one light in the middle of the
- * screen.
+ * Flush coplanar card on {@link CONTEXT_PANEL_HOST_CLASS}: full host height,
+ * trailing hairline against the center, **flat** elevation (no outer margin,
+ * no full-card radius, no cast shadow). Depth is the surface step against the
+ * canvas/sunken ground — not a decorative island.
  *
  * `relative` anchors the trailing-edge resize grip
  * (`HorizontalEdgeResizeHandle` `placement="outset"`). `w-[360px]` is the
@@ -124,35 +134,25 @@ export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
  * from {@link CONTEXT_PANEL_RESIZE}.
  */
 export const CONTEXT_PANEL_COLUMN_CLASS = cn(
-  // The gutter is the panel's OWN margin, not host padding. Host padding would
-  // also inset the workspace beside it; bookmark chrome matches this margin
-  // via `top-2` / `right-2` (see display/station-workbench.md).
   'relative',
-  CONTEXT_PANEL_OUTER_MARGIN,
-  'flex w-[360px] shrink-0 flex-col overflow-hidden',
-  'border border-border-soft bg-surface-card rounded-2xl',
-  elevationCastClass('left'),
+  'flex h-full w-[360px] shrink-0 flex-col overflow-hidden',
+  'border-r border-border-soft bg-surface-card',
 );
 
 /**
  * Host for {@link CONTEXT_PANEL_COLUMN_CLASS} + the workspace inside the content
- * region: the **ground plane** the panel casts onto.
+ * region: the **ground plane** the flush columns sit on.
  *
- * `appCanvasClass` is load-bearing, not decoration. The panel is `bg-surface-card`
- * (white); on a white host its overlay elevation has nothing to cast against and
- * the card reads as a flat rectangle with a stray border. Canvas sits a real step
- * below card white, which is what makes the depth read (see
- * `tokens/shadows.ts` — "depth needs a ground plane").
+ * `appCanvasClass` is load-bearing, not decoration. Card white rails need a
+ * real step below them so plane depth reads (see `tokens/shadows.ts` /
+ * source-of-truth Depth elevation). The center work column may step further to
+ * `bg-surface-sunken` (StationPanelRoot) while this host stays canvas.
  *
  * `overflow-hidden` stays on the host so the row never scrolls as a unit; both
  * children own their own internal scrollports.
  */
 export const CONTEXT_PANEL_HOST_CLASS = cn(
-  // No padding and no gap: the panel carries its own margin
-  // ({@link CONTEXT_PANEL_OUTER_MARGIN}); bookmark chrome insets with
-  // `STATION_BOOKMARK_CANVAS_INSET_TOP` so identity + more-details share the
-  // panel’s top edge (see station-bookmark.ts — never stack host `py-*` under
-  // that absolute float).
+  // No padding and no gap: flush columns meet at hairlines.
   //
   // `min-w-0` is load-bearing since the right-rail push column became a flex
   // SIBLING of this host: without it the host's min-content width wins the row

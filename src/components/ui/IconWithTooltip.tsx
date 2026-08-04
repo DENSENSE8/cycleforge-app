@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useId, useRef, type ComponentType } from 'react';
-import { useSiteTooltipOptional } from '@/components/providers/SiteTooltipProvider';
+import type { ComponentType } from 'react';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 
 interface IconWithTooltipProps {
@@ -12,9 +12,11 @@ interface IconWithTooltipProps {
 }
 
 /**
- * Shared primitive for an icon with a hover tooltip.
- * Uses SiteTooltipProvider for a consistent, high-performance portal tooltip
- * with a native `title` fallback.
+ * Compact icon with a meaning/help tooltip.
+ *
+ * Uses {@link HoverTooltip} (sans-serif, wraps, viewport-clamped) — not
+ * SiteTooltipProvider, which is reserved for copyable values (monospace +
+ * nowrap). Workflow / delivery status glyphs are meaning text, not copy chips.
  */
 export function IconWithTooltip({
   Icon,
@@ -22,21 +24,15 @@ export function IconWithTooltip({
   iconClassName,
   className,
 }: IconWithTooltipProps) {
-  const anchorId = useId();
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const ctx = useSiteTooltipOptional();
-  const getRect = useCallback(() => ref.current?.getBoundingClientRect() ?? null, []);
-
   return (
-    <span
-      ref={ref}
-      onMouseEnter={() => ctx?.activate({ anchorId, value: label, getRect })}
-      onMouseLeave={() => ctx?.scheduleClose(anchorId)}
-      title={ctx ? undefined : label}
-      aria-label={label}
+    <HoverTooltip
+      label={label}
+      focusable={false}
       className={cn('inline-flex cursor-default items-center', className)}
     >
-      <Icon className={cn('h-3.5 w-3.5', iconClassName)} />
-    </span>
+      <span aria-label={label}>
+        <Icon className={cn('h-3.5 w-3.5 shrink-0', iconClassName)} />
+      </span>
+    </HoverTooltip>
   );
 }

@@ -111,9 +111,10 @@ export interface SurfaceDefinition {
   /**
    * Scan policy: which focus-locked scan classifier this Station surface owns.
    * `null` = not a scan surface (Workbench/Monitor). Consumed by the
-   * surface-aware scan classifier (Phase 3a).
+   * surface-aware scan classifier (Phase 3a). Pickup opens/matches LCPU orders
+   * (no serial reclassification — that stays Unbox-only).
    */
-  scan: 'unbox' | 'triage' | null;
+  scan: 'unbox' | 'triage' | 'pickup' | null;
   /** Default `?view=`/sub-view for the surface, if it has one. */
   defaultView?: string;
   /** Workflow node type this surface binds to (Studio node → surface binding). */
@@ -180,6 +181,9 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   // pickup is receiving work, and the operator switches to it from the receiving
   // mode rail.) Sales history lives on Dashboard (`?mode=sales` / `?mode=pickup`),
   // not here; counter intake for sales still opens from `/pickup?job=sales`.
+  // Local Pickup — hybrid Station scan loop (open/match LCPU) + Workbench
+  // ops-queue map. Create stays on the workbench New Pickup CTA; kiosk intake
+  // (later) shares the same POST /api/local-pickup-orders contract.
   pickup: {
     key: 'pickup',
     label: 'Local Pickup',
@@ -189,7 +193,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     permission: 'receiving.view',
     pageKey: 'receiving',
     modeKey: 'pickup',
-    scan: null,
+    scan: 'pickup',
     workflowNodeType: 'receiving',
     legacy: { pathname: '/receiving', params: { mode: 'pickup' } },
   },

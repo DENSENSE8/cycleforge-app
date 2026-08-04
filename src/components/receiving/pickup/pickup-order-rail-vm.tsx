@@ -8,17 +8,32 @@
 
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import {
+  pickupOrderNeedsProcess,
   pickupOrderStatusDot,
   pickupOrderStatusLabel,
 } from '@/lib/local-pickup/order-status';
 import type { PickupOrderGroup } from './pickup-lines';
 
+function groupNeedsProcess(group: PickupOrderGroup): boolean {
+  return pickupOrderNeedsProcess({
+    status: group.orderStatus,
+    receivingId: group.receivingId,
+    itemCount: group.itemCount,
+  });
+}
+
 export function getPickupOrderStatusDot(group: PickupOrderGroup): string {
-  return pickupOrderStatusDot(group.orderStatus);
+  return pickupOrderStatusDot(group.orderStatus, {
+    receivingId: group.receivingId,
+    needsProcess: groupNeedsProcess(group),
+  });
 }
 
 export function getPickupOrderStatusDotLabel(group: PickupOrderGroup): string {
-  return pickupOrderStatusLabel(group.orderStatus);
+  return pickupOrderStatusLabel(group.orderStatus, {
+    receivingId: group.receivingId,
+    needsProcess: groupNeedsProcess(group),
+  });
 }
 
 export function pickupOrderToRailVM(group: PickupOrderGroup): RailRowVM {

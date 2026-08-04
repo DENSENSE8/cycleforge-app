@@ -71,6 +71,11 @@ export interface SearchFieldProps {
   isSearching?: boolean;
   rightElement?: ReactNode;
   leadingIcon?: ReactNode;
+  /**
+   * Hide the leading search glyph when a parent draws its own affordance
+   * outside the field. Prefer the in-field glyph for scoped search chrome.
+   */
+  hideLeadingIcon?: boolean;
   autoFocus?: boolean;
   /** Debounce delay in ms before onChange fires. Default 320ms. */
   debounceMs?: number;
@@ -125,6 +130,7 @@ export function SearchField({
   isSearching = false,
   rightElement,
   leadingIcon,
+  hideLeadingIcon = false,
   autoFocus = false,
   debounceMs = 320,
   hideUnderline = false,
@@ -298,14 +304,14 @@ export function SearchField({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={handlePaste}
-        className="inline-flex h-4 w-4 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
+        className="inline-flex h-3.5 w-3.5 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
         aria-label="Paste from clipboard"
       >
-        <Clipboard className="h-4 w-4" />
+        <Clipboard className="h-3 w-3" />
       </button>
     ) : hasValue ? (
       hideClear ? (
-        <span className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
       ) : (
         <button
           type="button"
@@ -318,14 +324,19 @@ export function SearchField({
         </button>
       )
     ) : (
+      // Empty-field paste is secondary (Cmd/Ctrl+V still works) — hover-reveal
+      // only on THIS field (or a `group/search-bar` host like TechRailSearchBar),
+      // never the whole rail/nav. Same quiet chrome as StationScanBar paste.
+      // Glyph is intentionally smaller than the leading Search icon — paste is
+      // a quiet affordance, not a second primary control.
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={handlePaste}
-        className="inline-flex h-4 w-4 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
+        className="pointer-events-none inline-flex h-3.5 w-3.5 items-center justify-center text-text-faint opacity-0 transition-[opacity,color] duration-100 ease-out hover:text-blue-600 active:scale-95 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover/search-bar:pointer-events-auto group-hover/search-bar:opacity-100 group-focus-within/search-bar:pointer-events-auto group-focus-within/search-bar:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
         aria-label="Paste from clipboard"
       >
-        <Clipboard className="h-4 w-4" />
+        <Clipboard className="h-3 w-3" />
       </button>
     );
 
@@ -337,9 +348,11 @@ export function SearchField({
           hideUnderline ? 'border-transparent' : toneClassName[tone]
         }`.trim()}
       >
-        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-text-faint transition-colors duration-100 ease-out group-focus-within:text-text-default">
-          {icon}
-        </span>
+        {hideLeadingIcon ? null : (
+          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-text-faint transition-colors duration-100 ease-out group-focus-within:text-text-default">
+            {icon}
+          </span>
+        )}
 
         <input
           ref={setInputRef}

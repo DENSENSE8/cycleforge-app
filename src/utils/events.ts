@@ -228,6 +228,26 @@ export function dispatchReceivingDetailsOverlayClose(): void {
   window.dispatchEvent(new CustomEvent('receiving-close-details-overlay'));
 }
 
+/**
+ * Close the global assistant dock (header Sparkles / ⌘J).
+ * Unbox station push openers dispatch this so AI and Ticket/Claim/Displays/tool
+ * cannot both occupy a full right column (source-of-truth → Right-rail modality).
+ */
+export const ASSISTANT_DOCK_CLOSE_EVENT = 'assistant-dock-close';
+
+/** Fired when the assistant dock transitions closed→open (Sparkles / ⌘J). */
+export const ASSISTANT_DOCK_OPEN_EVENT = 'assistant-dock-open';
+
+export function dispatchAssistantDockClose(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ASSISTANT_DOCK_CLOSE_EVENT));
+}
+
+export function dispatchAssistantDockOpen(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ASSISTANT_DOCK_OPEN_EVENT));
+}
+
 // ── Dashboard shipped search ─────────────────────────────────────────────────
 
 /** When `=1`, embedded Shipped sidebar focuses search, then strips this param from the URL. */
@@ -237,5 +257,5 @@ export function dashboardShippedFocusSearchHref(): string {
   const p = new URLSearchParams();
   p.set('shipped', '');
   p.set(DASHBOARD_SHIPPED_FOCUS_SEARCH_PARAM, '1');
-  return `/dashboard?${p.toString()}`;
+  return `/shipping/orders?${p.toString()}`;
 }

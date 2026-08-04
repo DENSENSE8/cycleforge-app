@@ -2,12 +2,14 @@
 
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { TrackingChip } from '@/components/ui/CopyChip';
-import { receivingDataCellClass, type ReceivingGridCellProps } from './receiving-grid-cell-types';
+import { receivingDataCellClass,
+  receivingDataCellHighlightStyle, type ReceivingGridCellProps } from './receiving-grid-cell-types';
 
 export function ReceivingTrackingCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { isPickup, pickupLabel, trackingValue } = ctx;
   return (
-    <div data-col="tracking" className={receivingDataCellClass(col, rule, ctx)}>
+    <div data-col="tracking" className={receivingDataCellClass(col, rule, ctx)}
+      style={receivingDataCellHighlightStyle(col, ctx)}>
       {isPickup && pickupLabel ? (
         <FulfillmentPickupPill dense />
       ) : (

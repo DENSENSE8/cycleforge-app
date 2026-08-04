@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react';
-import { elevationCastClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
 /** Shared layout tokens — one place to tune inset / width / header offset. */
@@ -83,18 +82,16 @@ export function detailStackCollapseStripStyle(): CSSProperties {
 }
 
 /**
- * The detail-stack aside surface shell — everything but placement / z-band.
- * Defined once; fixed float variants and in-flow push columns compose this
- * (rounded inset card) with their own geometry.
+ * The detail-stack aside surface shell — elevated float recipe for modal /
+ * overlay inspectors and the **narrow-viewport** Unbox push exception.
+ * In-flow flush push columns use {@link DETAIL_STACK_PUSH_COLUMN_CLASS} instead.
  */
 export const DETAIL_STACK_ASIDE_SURFACE =
   'isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
 
 /**
- * The IN-FLOW push column — the right-edge mirror of
- * {@link CONTEXT_PANEL_COLUMN_CLASS}.
- *
- * Two things here are deliberate and easy to get wrong:
+ * The IN-FLOW flush push column — right-edge mirror of
+ * {@link CONTEXT_PANEL_COLUMN_CLASS} (ruled 2026-08-03 exact flush planes).
  *
  * - **The card itself is the element that tweens its width**, not an
  *   `overflow-hidden` host wrapping a fixed-width absolute child (the spine's
@@ -103,29 +100,22 @@ export const DETAIL_STACK_ASIDE_SURFACE =
  *   would shear it. `ContextPanelLayout` solved exactly this on the left edge by
  *   animating the card at `overflow-visible` with an inner clip shell — this is
  *   that recipe mirrored, not a second drawer.
- * - **The cast goes RIGHT** (`elevationCastClass('right')`). The context panel
- *   casts left because it is pinned to the left of the frame; this card is
- *   pinned to the right, so casting away from centre keeps the whole app under
- *   one light in the middle of the screen.
- *
- * `m-2` matches {@link CONTEXT_PANEL_OUTER_MARGIN} so both cards sit on the
- * canvas with the same gutter. The gutter is the card's OWN margin, never host
- * padding — host padding would also inset the workspace between them.
+ * - **Flat elevation + leading hairline** against the sunken/canvas center —
+ *   outer `m-*` islands and cast shadows are not depth (source-of-truth → Depth
+ *   elevation · Frame column budget).
  */
 export const DETAIL_STACK_PUSH_COLUMN_CLASS = cn(
-  'relative m-2 flex min-h-0 shrink-0 flex-col overflow-hidden',
-  'rounded-2xl border border-border-soft bg-surface-card',
-  elevationCastClass('right'),
+  'relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden',
+  'border-l border-border-soft bg-surface-card',
 );
 
 /**
  * Parked push column — the in-flow twin of
- * {@link detailStackCollapseStripClassName}. Same 32px strip, but it takes its
- * width from the flow instead of floating over it, so the work surface keeps the
- * space the open panel gave back.
+ * {@link detailStackCollapseStripClassName}. Same 32px strip, flush on the
+ * shared ground (no outer margin island).
  */
 export const DETAIL_STACK_PUSH_STRIP_CLASS =
-  'relative m-2 flex w-8 shrink-0 flex-col items-center pt-3';
+  'relative flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card pt-3';
 
 /** Default detail stack — panel band (`z-panel`). */
 export const detailStackAsideClassName = `fixed z-panel ${DETAIL_STACK_ASIDE_SURFACE}`;

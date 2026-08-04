@@ -19,16 +19,7 @@ import { ChevronRight } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
-import {
-  TrackingChip,
-  SerialChip,
-  FnskuChip,
-  OrderIdChip,
-  SkuScanRefChip,
-  TicketChip,
-  BinChip,
-  getLast8,
-} from '@/components/ui/CopyChip';
+import { TimelineRefChip } from '@/components/ui/timeline-ref-chip';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
@@ -270,52 +261,6 @@ function ActorLabel({ item }: { item: TimelineItem }) {
       <span className="truncate text-text-soft">{item.actor}</span>
     </span>
   );
-}
-
-/** Render an identifier through the shared CopyChip family (last-8 + copy). */
-function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
-  const v = String(refItem.value || '').trim();
-  if (!v) return null;
-  let chip: ReactNode;
-  switch (refItem.kind) {
-    case 'tracking':
-      chip = <TrackingChip value={v} display={getLast8(v)} dense fitDisplayWidth />;
-      break;
-    case 'serial':
-      chip = (
-        <SerialChip
-          value={v}
-          display={refItem.display}
-          width="w-fit max-w-full"
-          dense
-        />
-      );
-      break;
-    case 'fnsku':
-      chip = <FnskuChip value={v} width="w-fit max-w-full" />;
-      break;
-    case 'sku':
-      chip = <SkuScanRefChip value={v} display={getLast8(v)} dense />;
-      break;
-    case 'bin':
-      chip = <BinChip value={v} dense />;
-      break;
-    case 'ticket':
-      chip = <TicketChip value={v} display={getLast8(v)} />;
-      break;
-    case 'id':
-    default:
-      chip = <OrderIdChip value={v} display={v} dense />;
-      break;
-  }
-  if (refItem.href) {
-    return (
-      <Link href={refItem.href} className="inline-flex min-w-0 max-w-full" onClick={(e) => e.stopPropagation()}>
-        {chip}
-      </Link>
-    );
-  }
-  return chip;
 }
 
 /**
@@ -659,11 +604,18 @@ export function EventTimeline({
          * The second line is EARNED BY THE CHIPS, not spent by default.
          *
          * Station anatomy puts the id chips on their own line so a column of
-         * last-8s lines up down a multi-unit feed. When a row has no identity
-         * chip that line carries only `3:14pm · Kai` — half a row of height for
-         * a clock. Chipless rows therefore fall back to the compact one-line
-         * `metaTrail` form the component already renders below, which is the
-         * same layout, not a third one.
+         * last-8s lines up down a multi-unit feed. That alignment is now
+         * MEASURED, not assumed — dogfood carton 6159 at 1440 renders 5 identity
+         * chips in the History feed at exactly ONE left x (561px). It holds
+         * because the chip span is the first child of `metaBits` on every
+         * two-line row; anything inserted ahead of it breaks the column the
+         * second line exists to make.
+         *
+         * When a row has no identity chip that line carries only
+         * `3:14pm · Kai` — half a row of height for a clock. Chipless rows
+         * therefore fall back to the compact one-line `metaTrail` form the
+         * component already renders below, which is the same layout, not a
+         * third one.
          *
          * This became common once single-unit feeds stopped repeating a serial
          * that disambiguated nothing (`mergeStationUnitJourneys`): on a one-unit

@@ -29,14 +29,14 @@ export const STATION_WORKBENCH_HEADER_COLUMN = `${STATION_WORKBENCH_COLUMN} px-6
  * Top clearance assumes a floating {@link StationContextBar}
  * (`STATION_IDENTITY_SCROLL_CLEARANCE`); bottom assumes absolute terminal dock.
  * Prefer composing via StationWorkbench (reads the live clearance token) —
- * these literals stay in sync with that constant (`pt-16`).
+ * these literals stay in sync with that constant (`pt-14`).
  */
 export const STATION_WORKBENCH_BODY_COLUMN =
-  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} pt-16 pb-32`;
+  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} pt-14 pb-32`;
 
 /**
  * Docked terminal band — lighter bottom padding (in-flow dock, not absolute float).
  * Top clearance still assumes floating identity.
  */
 export const STATION_WORKBENCH_BODY_DOCKED =
-  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} pt-16 pb-6`;
+  `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} pt-14 pb-6`;

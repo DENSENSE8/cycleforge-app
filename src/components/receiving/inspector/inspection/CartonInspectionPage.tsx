@@ -9,13 +9,12 @@
  * Progress reuses the details-stack carton pipeline (`ReceivingCartonPipeline`
  * + stage rows) on a Panel surface; photos use the same
  * `ReceivingPhotosSection` (read-only) below the stepper. Header floats as a
- * top context bookmark (station-bookmark SoT) with PO title · tracking · PO#
+ * top context identity (`station-identity-chrome` SoT) with PO title · tracking · PO#
  * plus quiet actions — never an in-flow pinned band.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -26,19 +25,17 @@ import {
 import { Button, IconButton, Panel } from '@/design-system/primitives';
 import {
   Camera,
+  ChevronDown,
   ChevronRight,
   Copy,
   History,
-  Link2,
   Loader2,
+  Maximize2,
   Wrench,
 } from '@/components/Icons';
 import {
-  ConditionGradeChip,
-  EmptySkuChipFace,
   PoChip,
   SerialChip,
-  SkuScanRefChip,
   TrackingChip,
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -48,32 +45,33 @@ import { resolveStationGlyph } from '@/lib/timeline/timeline-glyphs';
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
 import { CartonUnitJourneyHistory } from './CartonUnitJourneyHistory';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
+import { ReceivingLineContentsRow } from '@/components/receiving/contents/ReceivingLineContentsRow';
+import { receivingLineContentsTitle } from '@/components/receiving/contents/receiving-line-contents-title';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
 import { CartonPhotoTriage } from './CartonPhotoTriage';
 import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import { deriveCartonReadiness } from '@/lib/receiving/carton-readiness';
 import {
-  HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_CLUSTER,
-  HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
-} from '@/components/layout/header-shell';
-import {
   STATION_IDENTITY_SCROLL_CLEARANCE,
-  stationBookmarkPanelClass,
+  stationIdentityPanelClass,
   stationContextBarHostClass,
-} from '@/components/station/entity-context/station-bookmark';
-import {
-  buildCartonReadCopyText,
-  shareCartonLink,
-} from '@/lib/receiving/carton-read-utilities';
+} from '@/components/station/entity-context/station-identity-chrome';
+import { buildCartonReadCopyText } from '@/lib/receiving/carton-read-utilities';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { formatDateTimePST } from '@/utils/date';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
@@ -95,6 +93,9 @@ import {
   type CartonInspectorPayload,
   type CartonInspectorReceiving,
 } from '../carton-inspector-model';
+
+/** Record-meta keys that read full-bleed under the compact 3-track fact grid. */
+const WIDE_RECORD_META_KEYS = new Set(['poId', 'receiveId', 'created', 'updated']);
 
 const EXCEPTION_TONE: Record<CartonException['tone'], string> = {
   info: 'border-blue-200 bg-blue-50/80',
@@ -225,15 +226,6 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   const photosPresence = useMotionPresence(framerPresence.collapseHeight);
   const photosTransition = useMotionTransition(framerTransition.stationCollapse);
 
-  const handleShare = useCallback(async () => {
-    const result = await shareCartonLink(
-      receivingId,
-      receiving?.zoho_purchaseorder_number,
-    );
-    if (result === 'copied') toast.success('Link copied to clipboard');
-    else if (result === 'failed') toast.error('Could not copy link');
-  }, [receivingId, receiving?.zoho_purchaseorder_number]);
-
   const handleCopy = useCallback(async () => {
     if (!receiving || copyingAll) return;
     setCopyingAll(true);
@@ -256,7 +248,6 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
         photoCount={photosSettled ? cartonPhotos.length : null}
         photosOpen={photosOpen}
         onTogglePhotos={() => setPhotosOpen(!photosOpen)}
-        onShare={() => void handleShare()}
         onCopy={() => void handleCopy()}
         onAudit={() => setAuditOpen(true)}
       />
@@ -310,17 +301,12 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
               stream, and reading it next to the other two event streams beats
               reading it under the line list it does not describe.
 
-              The tracks are ASYMMETRIC because the two columns are not peers
-              (2026-08-02): col 1 answers a BOUNDED question — the median carton
-              is one line plus a sparse fact set — while col 2 is an unbounded
-              stream that grows with every scan. Equal tracks guaranteed the
-              imbalance: measured at 1440 on carton 50354 the left content ended
-              212px down against 826px on the right. A rail cannot out-run a
-              timeline and should not try; it should stop pretending to be its
-              peer. Same shape every record surface uses for the same reason
-              (Linear / GitHub / Shopify: metadata rail, wide stream).
+              Tracks are 2fr | 1fr (ruled 2026-08-03): contents + record need
+              the wider column so long line titles wrap honestly; progress /
+              activity stay readable on the narrower timeline. The prior 22rem
+              rail starved the title.
             */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <ContentsColumn
                 receiving={receiving}
                 lines={lines ?? []}
@@ -366,7 +352,6 @@ function DispositionBar({
   photoCount,
   photosOpen,
   onTogglePhotos,
-  onShare,
   onCopy,
   onAudit,
 }: {
@@ -378,10 +363,10 @@ function DispositionBar({
   photoCount: number | null;
   photosOpen: boolean;
   onTogglePhotos: () => void;
-  onShare: () => void;
   onCopy: () => void;
   onAudit: () => void;
 }) {
+  const router = useRouter();
   const title = identity ? cartonHeaderTitle(identity) : `Carton ${receivingId}`;
   const tracking = identity?.tracking ?? null;
   const poNumber = identity?.poNumber ?? null;
@@ -395,7 +380,7 @@ function DispositionBar({
         borderless
         role="banner"
         className={cn(
-          stationBookmarkPanelClass,
+          stationIdentityPanelClass,
           'pointer-events-auto flex min-h-10 w-full max-w-full items-center justify-between gap-3 overflow-visible px-3 py-1.5',
         )}
       >
@@ -433,57 +418,41 @@ function DispositionBar({
             </span>
           </Button>
 
-          <div className={HEADER_ICON_CLUSTER}>
-            <div className={HEADER_ICON_WRAP}>
-              <HoverTooltip label="Share receiving link" asChild>
-                <IconButton
-                  size="md"
-                  disabled={utilsDisabled}
-                  onClick={onShare}
-                  ariaLabel="Share receiving link"
-                  className={HEADER_ICON_BTN_CLASS}
-                  icon={<Link2 className={TOP_CHROME_ICON_GLYPH} />}
-                />
-              </HoverTooltip>
-            </div>
-            <div className={HEADER_ICON_WRAP}>
-              <HoverTooltip label="Copy package + PO details" asChild>
-                <IconButton
-                  size="md"
-                  disabled={utilsDisabled || copyingAll}
-                  onClick={onCopy}
-                  ariaLabel="Copy all receiving details"
-                  className={HEADER_ICON_BTN_CLASS}
-                  icon={<Copy className={cn(TOP_CHROME_ICON_GLYPH, copyingAll && 'animate-pulse')} />}
-                />
-              </HoverTooltip>
-            </div>
-            <div className={HEADER_ICON_WRAP}>
-              <HoverTooltip label="Audit log" asChild>
-                <IconButton
-                  size="md"
-                  disabled={utilsDisabled}
-                  onClick={onAudit}
-                  ariaLabel="View audit log"
-                  className={HEADER_ICON_BTN_CLASS}
-                  icon={<History className={TOP_CHROME_ICON_GLYPH} />}
-                />
-              </HoverTooltip>
-            </div>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={utilsDisabled || copyingAll}
+            onClick={onCopy}
+            ariaLabel="Copy all receiving details"
+            icon={<Copy className={cn(copyingAll && 'animate-pulse')} />}
+            className="shrink-0 text-text-soft"
+          >
+            Copy
+          </Button>
 
-          <HoverTooltip label="Work on this carton" asChild>
-            <Link
-              href={openInUnboxHref(receivingId)}
-              aria-label="Work on this carton"
-              className={cn(
-                'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-soft hover:bg-surface-canvas hover:text-text-default',
-                focusRing('control', 'accent'),
-              )}
-            >
-              <Wrench className="h-4 w-4" />
-            </Link>
-          </HoverTooltip>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={utilsDisabled}
+            onClick={onAudit}
+            ariaLabel="View audit log"
+            icon={<History />}
+            className="shrink-0 text-text-soft"
+          >
+            History
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={utilsDisabled}
+            onClick={() => router.push(openInUnboxHref(receivingId))}
+            ariaLabel="Work on this carton"
+            icon={<Wrench />}
+            className="shrink-0 text-text-soft"
+          >
+            Unbox
+          </Button>
         </div>
       </Panel>
     </div>
@@ -524,9 +493,9 @@ function ContentsColumn({
       {facts.length > 0 || recordMeta.length > 0 ? (
         <Panel padding="sm" radius="xl" elevation="none" className="space-y-4">
           {facts.length > 0 ? (
-            <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-2">
               {facts.slice(0, 6).map((f) => (
-                <div key={f.key} className="min-w-0 max-w-full shrink-0 space-y-0.5">
+                <div key={f.key} className="min-w-0 space-y-0.5">
                   <p className="text-role-micro uppercase tracking-widest text-text-soft">{f.label}</p>
                   <FactValue fact={f} />
                 </div>
@@ -535,11 +504,22 @@ function ContentsColumn({
           ) : null}
 
           {recordMeta.length > 0 ? (
-            <div className="flex flex-wrap items-start justify-start gap-x-6 gap-y-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-3">
               {recordMeta.map((m) => (
-                <div key={m.key} className="min-w-0 max-w-full shrink-0 space-y-1">
+                <div
+                  key={m.key}
+                  className={cn(
+                    'min-w-0 space-y-1',
+                    WIDE_RECORD_META_KEYS.has(m.key) && 'col-span-3',
+                  )}
+                >
                   <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
-                  <p className="truncate text-role-caption tabular-nums text-text-default">
+                  <p
+                    className={cn(
+                      'text-role-caption tabular-nums text-text-default',
+                      WIDE_RECORD_META_KEYS.has(m.key) ? 'break-words' : 'truncate',
+                    )}
+                  >
                     {m.key === 'created' || m.key === 'updated'
                       ? formatDateTimePST(m.value)
                       : m.value}
@@ -554,10 +534,10 @@ function ContentsColumn({
               href={receiving.listing_url.trim()}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-muted hover:underline"
             >
-              Open the source listing
-              <ChevronRight className="h-3.5 w-3.5" />
+              Source listing
+              <ChevronRight className="h-3 w-3" />
             </a>
           ) : null}
         </Panel>
@@ -566,10 +546,10 @@ function ContentsColumn({
           href={receiving.listing_url.trim()}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-role-caption text-text-accent hover:underline"
+          className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-muted hover:underline"
         >
-          Open the source listing
-          <ChevronRight className="h-3.5 w-3.5" />
+          Source listing
+          <ChevronRight className="h-3 w-3" />
         </a>
       ) : null}
 
@@ -622,29 +602,16 @@ function ProgressRail({
         be a second front door to one surface.
       */}
       <div className="space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Progress</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-muted">Progress</p>
         <Panel padding="sm" radius="xl" elevation="none">
           <ReceivingCartonPipeline log={log} readiness={readiness} />
         </Panel>
       </div>
 
-      {/* Milestones → activity → what is wrong → per-unit journeys. */}
-      {events.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Activity</p>
-          <EventsList events={events} />
-        </div>
-      ) : null}
-
       {/*
-        FINDINGS sits ABOVE History (hoisted 2026-08-02). `carton-read.md`
-        already rules that exceptions outrank `lifecycle.done` for the
-        disposition header; the same logic says an unresolved finding must not
-        be the last thing an operator scrolls to. History is unbounded — it
-        grows with every unit and photo — so "last in the column" meant "below
-        the fold" on exactly the cartons that had something wrong with them.
-        Findings stay under Activity, not above Progress: the reader still
-        needs to know WHERE the carton is before they can act on what is wrong.
+        FINDINGS sits under Progress and ABOVE Activity/History (2026-08-03).
+        With Activity collapsed by default, exceptions must not hide behind the
+        disclosure header. Progress still leads — WHERE before WHAT IS WRONG.
       */}
       {disposition.exceptions.length > 0 ? (
         <div className="space-y-2">
@@ -666,6 +633,13 @@ function ProgressRail({
         </div>
       ) : null}
 
+      {/*
+        Activity is a disclosure (ruled 2026-08-03): the stream is unbounded and
+        used to bury Findings + History. Progress stays the lead answer; the
+        event list opens on demand with a count on the header.
+      */}
+      {events.length > 0 ? <ActivitySection events={events} /> : null}
+
       <div className="space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
         <Panel padding="sm" radius="xl" elevation="none">
@@ -677,72 +651,171 @@ function ProgressRail({
 }
 
 /**
- * CONTENTS items — one card per line: title, then its meta atoms.
+ * CONTENTS items — one card per line via {@link ReceivingLineContentsRow}.
  *
  * Shared ATOMS only, never `PoLinesAccordion` / `PoLineRow` (D6: no lobotomized
  * work chrome). It also deliberately does not mount `PoLineMetaGrid`: that is
- * the Unbox accordion's FIXED-TRACK grid, and its whole job is keeping the
- * condition chip at the same x across many stacked rows. On this surface there
- * is no column to line up with — so it spread four chips across ~360px of
- * nothing and, worse, applied `META_COL.indentWide`, the dot-track indent from a
- * queue this card has no dot track for. The result read as centered.
- *
- * House one-row anatomy instead: left-aligned, title → meta, no stretch.
+ * the Unbox accordion's FIXED-TRACK grid. House one-row anatomy: Zoho thumb ·
+ * title pinned top · details pinned bottom.
  */
 function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
+  const galleryPhotos = useMemo(
+    () =>
+      lines
+        .map((l) => (l.image_url || '').trim())
+        .filter(Boolean),
+    [lines],
+  );
+  const gallery = usePhotoGallery({ photos: galleryPhotos });
+
   return (
-    <ul className="flex min-w-0 flex-col gap-2">
-      {lines.map((line) => {
-        const title = line.item_name?.trim() || line.sku?.trim() || 'Untitled line';
-        const sku = (line.sku || '').trim();
-        const serials = (line.serials ?? [])
-          .map((s) => (s.serial_number || '').trim())
-          .filter(Boolean);
-        return (
-          <li
-            key={line.id}
-            className="relative min-w-0 overflow-hidden rounded-xl border border-border-soft bg-surface-card"
-          >
-            <div className="w-full min-w-0 space-y-1 px-3 py-1.5 text-left">
-              <p
-                className="min-w-0 truncate text-role-caption font-semibold text-text-default"
-                title={title}
-              >
-                {title}
-              </p>
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 leading-none">
-                <span className="tabular-nums text-role-eyebrow uppercase tracking-widest">
-                  <ProgressBadge
-                    received={line.quantity_received ?? 0}
-                    expected={line.quantity_expected}
-                  />
-                </span>
-                {sku ? (
-                  <SkuScanRefChip value={sku} display={getLast8(sku)} dense />
-                ) : (
-                  <EmptySkuChipFace dense />
-                )}
-                <ConditionGradeChip grade={line.condition_grade} dense />
-                {serials.map((sn) => (
-                  <SerialChip key={sn} value={sn} width="w-fit max-w-full" dense />
-                ))}
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <ul className="flex min-w-0 flex-col gap-2">
+        {lines.map((line) => {
+          const imageUrl = (line.image_url || '').trim() || null;
+          const galleryIndex = imageUrl ? galleryPhotos.indexOf(imageUrl) : -1;
+          const serials = (line.serials ?? [])
+            .map((s) => (s.serial_number || '').trim())
+            .filter(Boolean);
+          return (
+            <li
+              key={line.id}
+              className="relative min-w-0 overflow-hidden rounded-xl border border-border-soft bg-surface-card px-3 py-1.5"
+            >
+              <ReceivingLineContentsRow
+                title={receivingLineContentsTitle(line)}
+                imageUrl={imageUrl}
+                sku={(line.sku || '').trim()}
+                conditionGrade={line.condition_grade}
+                serials={serials}
+                qtySlot={
+                  <span className="tabular-nums text-role-eyebrow uppercase tracking-widest">
+                    <ProgressBadge
+                      received={line.quantity_received ?? 0}
+                      expected={line.quantity_expected}
+                    />
+                  </span>
+                }
+                titleMode="wrap"
+                onOpenImage={
+                  galleryIndex >= 0
+                    ? () => gallery.openViewer(galleryIndex)
+                    : undefined
+                }
+              />
+            </li>
+          );
+        })}
+      </ul>
+      {gallery.photoItems.length > 0 ? <PhotoViewerPortal g={gallery} /> : null}
+    </>
   );
 }
 
-function EventsList({ events }: { events: CartonInspectorEvent[] }) {
+/**
+ * Activity — latest event on display; expand for the full stream; maximize for
+ * a page-level overlay of the same list.
+ *
+ * `events` arrive newest-first (`readTimeline` ORDER BY occurred_at DESC). The
+ * collapsed surface shows `events[0]` so the operator still sees what just
+ * happened without opening the unbounded feed.
+ */
+function ActivitySection({ events }: { events: CartonInspectorEvent[] }) {
+  const [listOpen, setListOpen] = useState(false);
+  const [pageOpen, setPageOpen] = useState(false);
+  const presence = useMotionPresence(framerPresence.collapseHeight);
+  const transition = useMotionTransition(framerTransition.stationCollapse);
+
+  const newest = events[0]!;
+  const countLabel = `${events.length} ${events.length === 1 ? 'event' : 'events'}`;
+  const canExpandList = events.length > 1;
+  const visibleEvents = listOpen || !canExpandList ? events : [newest];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => canExpandList && setListOpen((v) => !v)}
+          aria-expanded={listOpen}
+          disabled={!canExpandList}
+          className={cn(
+            // Eyebrow disclosure — Button chrome fights the section-label density.
+            'ds-raw-button flex min-w-0 flex-1 items-baseline gap-1.5 rounded-md text-left',
+            focusRing('control', 'accent'),
+            !canExpandList && 'cursor-default',
+          )}
+        >
+          <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+            {canExpandList ? (
+              <ChevronDown
+                className={cn(
+                  'h-3.5 w-3.5 shrink-0 transition-transform duration-150',
+                  listOpen && 'rotate-180',
+                )}
+              />
+            ) : null}
+            Activity
+          </span>
+          <span className="text-role-micro tabular-nums uppercase tracking-widest text-text-soft">
+            {countLabel}
+          </span>
+        </button>
+
+        <HoverTooltip label="Expand activity" asChild>
+          <IconButton
+            size="sm"
+            ariaLabel="Expand activity on page"
+            onClick={() => setPageOpen(true)}
+            icon={<Maximize2 />}
+            className="shrink-0 text-text-soft"
+          />
+        </HoverTooltip>
+      </div>
+
+      <AnimatePresence initial={false} mode="sync">
+        <motion.div
+          key={listOpen ? 'activity-all' : 'activity-latest'}
+          initial={listOpen ? presence.initial : false}
+          animate={presence.animate}
+          exit={presence.exit}
+          transition={transition}
+          className="overflow-hidden"
+        >
+          <EventsList events={visibleEvents} chipScope={events} />
+        </motion.div>
+      </AnimatePresence>
+
+      <Dialog open={pageOpen} onOpenChange={setPageOpen}>
+        <DialogContent className="flex max-h-[min(85vh,52rem)] w-[min(42rem,calc(100vw-2rem))] max-w-none flex-col gap-3 overflow-hidden">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Activity · {countLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <EventsList events={events} chipScope={events} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function EventsList({
+  events,
+  chipScope,
+}: {
+  events: CartonInspectorEvent[];
+  /** Full feed used to decide whether serial chips disambiguate — not just the visible slice. */
+  chipScope?: CartonInspectorEvent[];
+}) {
   // Same rule the unit journeys use (`mergeStationUnitJourneys`): an identity
   // chip exists to say WHICH unit a row is about, so on a feed with one distinct
   // serial it repeats the same last-8 down the column and disambiguates nothing.
   // Keeping it here while the journeys below dropped it would put two answers to
   // one question on a single page.
+  const scope = chipScope ?? events;
   const distinctSerials = new Set(
-    events.map((e) => e.serial_number?.trim()).filter((s): s is string => Boolean(s)),
+    scope.map((e) => e.serial_number?.trim()).filter((s): s is string => Boolean(s)),
   );
   const chipDisambiguates = distinctSerials.size > 1;
 
@@ -757,7 +830,7 @@ function EventsList({ events }: { events: CartonInspectorEvent[] }) {
         return (
           <li key={e.id} className="space-y-1 px-3 py-2">
             <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
+              <span className="min-w-0 break-words text-role-caption font-semibold text-text-default">
                 {e.notes?.trim() || e.event_type || 'Event'}
               </span>
               <span className="shrink-0 whitespace-nowrap text-role-caption tabular-nums text-text-muted">

@@ -5,20 +5,21 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { motion, motionRole } from '@/design-system/motion';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
-import { ChevronRight } from '@/components/Icons';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
 import {
   CONTEXT_PANEL_COLLAPSE,
-  CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,
   CONTEXT_PANEL_COLUMN_CLASS,
   CONTEXT_PANEL_HOST_CLASS,
   CONTEXT_PANEL_RESIZE,
 } from '@/components/sidebar/context-panel-column';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ContextPanelCollapseProvider } from '@/components/sidebar/context-panel-collapse-context';
+import { LeftDockCollapseStrip } from '@/components/sidebar/tech/left-dock-toggle';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { useHorizontalEdgeResize } from '@/design-system/hooks';
-import { IconButton } from '@/design-system/primitives';
+import {
+  EDGE_RESIZE_COLLAPSE_SLACK_PX,
+  useHorizontalEdgeResize,
+} from '@/design-system/hooks';
 import {
   contextRailCostPx,
   getRightRailFrame,
@@ -67,8 +68,11 @@ const SidebarContextPanel = dynamic(
  * Every mounted context rail is drag-resizable on the trailing edge via
  * {@link useHorizontalEdgeResize} + {@link HorizontalEdgeResizeHandle}; width
  * persists in localStorage ({@link CONTEXT_PANEL_RESIZE}). Collapse via
- * `onCollapse` on that handle ({@link CONTEXT_PANEL_COLLAPSE}) — width-drawer
- * to 0 + slim expand strip. One shared preference across routes.
+ * `onCollapse` on that handle **or** drag-past-min
+ * (`onCollapseBeyondMin`) **or** the filter-bar trailing
+ * {@link RailFilterCollapseButton} — all write {@link CONTEXT_PANEL_COLLAPSE}
+ * (width-drawer to 0 + slim expand strip). Display collapse is filter-trailing
+ * only — no top-of-sash chevron. One shared preference across routes.
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.
@@ -78,6 +82,11 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   // Two families, one question: station benches (scan bar + rail) and classic
   // routes (picker / feed) both mount their panel here now.
   const hasPanel = useHasSidebarContext() || isStationSurfaceRoute(pathname);
+  // Collapse preference before resize so drag-past-min can write the same key.
+  const [collapsed, setCollapsed] = useLocalStorage(
+    CONTEXT_PANEL_COLLAPSE.storageKey,
+    false,
+  );
   // Every mounted context rail shares Unbox's resize + collapse grammar.
   // Hooks must run unconditionally (hasPanel flips on navigation).
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
@@ -89,11 +98,10 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     edge: 'trailing',
     label: 'Resize sidebar',
     testId: 'context-panel-resize',
+    collapseBelowPx:
+      CONTEXT_PANEL_RESIZE.minWidthPx - EDGE_RESIZE_COLLAPSE_SLACK_PX,
+    onCollapseBeyondMin: () => setCollapsed(true),
   });
-  const [collapsed, setCollapsed] = useLocalStorage(
-    CONTEXT_PANEL_COLLAPSE.storageKey,
-    false,
-  );
 
   // Publish what this rail would COST IF OPEN — never a measurement of the
   // current DOM. The push resolver has to be able to ask "what would I get back
@@ -157,60 +165,53 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           isDragging={isDragging}
           edge="trailing"
           placement="outset"
-          onCollapse={() => setCollapsed(true)}
+          tooltipLabel="Drag to resize · drag past minimum to hide · double-click for default"
         />
       ) : null}
     </>
   );
 
   return (
-    <div className={cn(CONTEXT_PANEL_HOST_CLASS, 'relative')}>
-      {/* The strip is the OPERATOR's restore control, so it renders only for a
-          collapse they chose. A push-park renders none: the rail returns on its
-          own when the panel closes, and a restore button that cannot restore
-          (the mask would immediately re-apply) is worse than no button. That is
-          also why a push-park costs 0 in `resolveRightRailFrame`, not 32 — the
-          arithmetic matches what actually renders. */}
-      {isCollapsed && collapsed ? (
-        <div
-          className={CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}
-          data-context-panel-collapsed
-        >
-          <HoverTooltip label="Show sidebar" asChild>
-            <IconButton
-              size="sm"
-              tone="neutral"
-              ariaLabel="Show sidebar"
-              icon={<ChevronRight className="h-4 w-4" />}
-              onClick={() => setCollapsed(false)}
-              data-testid="context-panel-expand"
-            />
-          </HoverTooltip>
-        </div>
-      ) : null}
+    <ContextPanelCollapseProvider collapse={() => setCollapsed(true)}>
+      <div className={cn(CONTEXT_PANEL_HOST_CLASS, 'relative')}>
+        {/* The strip is the OPERATOR's restore control, so it renders only for a
+            collapse they chose. A push-park renders none: the rail returns on its
+            own when the panel closes, and a restore button that cannot restore
+            (the mask would immediately re-apply) is worse than no button. That is
+            also why a push-park costs 0 in `resolveRightRailFrame`, not 32 — the
+            arithmetic matches what actually renders. */}
+        {isCollapsed && collapsed ? (
+          <LeftDockCollapseStrip
+            onExpand={() => setCollapsed(false)}
+            label="Show sidebar"
+            testId="context-panel-expand"
+            hostDataAttrs={{ 'data-context-panel-collapsed': true }}
+          />
+        ) : null}
 
-      {/* `data-context-panel` is the panel's identity hook, so a test can ask
-          "did the route's rail render?" without keying off its width class. */}
-      <motion.div
-        className={cn(
-          CONTEXT_PANEL_COLUMN_CLASS,
-          // Outset grip sits outside the card; clip content on an inner shell
-          // so the pill is not sheared by `overflow-hidden`.
-          'overflow-visible',
-          isCollapsed && 'pointer-events-none m-0 border-0 opacity-0',
-        )}
-        data-context-panel
-        data-collapsed={isCollapsed ? 'true' : 'false'}
-        initial={false}
-        animate={{ width: isCollapsed ? 0 : width }}
-        transition={transition}
-        // Collapsed column stays mounted so the scan session does not remount
-        // on expand — same latch idiom as SidebarNavColumn.
-        inert={isCollapsed || undefined}
-      >
-        {panelBody}
-      </motion.div>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
-    </div>
+        {/* `data-context-panel` is the panel's identity hook, so a test can ask
+            "did the route's rail render?" without keying off its width class. */}
+        <motion.div
+          className={cn(
+            CONTEXT_PANEL_COLUMN_CLASS,
+            // Outset grip sits outside the card; clip content on an inner shell
+            // so the pill is not sheared by `overflow-hidden`.
+            'overflow-visible',
+            isCollapsed && 'pointer-events-none m-0 border-0 opacity-0',
+          )}
+          data-context-panel
+          data-collapsed={isCollapsed ? 'true' : 'false'}
+          initial={false}
+          animate={{ width: isCollapsed ? 0 : width }}
+          transition={transition}
+          // Collapsed column stays mounted so the scan session does not remount
+          // on expand — same latch idiom as SidebarNavColumn.
+          inert={isCollapsed || undefined}
+        >
+          {panelBody}
+        </motion.div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+      </div>
+    </ContextPanelCollapseProvider>
   );
 }

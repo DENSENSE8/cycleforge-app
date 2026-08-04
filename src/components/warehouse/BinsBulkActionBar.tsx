@@ -12,6 +12,10 @@ import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { Printer } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import {
+  isSpecialBinBarcode,
+  printSpecialBinLabelFromRow,
+} from '@/lib/print/printSpecialBinLabel';
 
 interface Props {
   selected: Set<number>;
@@ -61,15 +65,34 @@ export function BinsBulkActionBar({ selected, rows, onClearSelection }: Props) {
 
   const printLabels = useCallback(() => {
     if (selectedRows.length === 0) return;
-    // Dispatch a window event the LabelPrintWorkspace listens for.
-    // Decoupled so the bulk bar doesn't depend on the workspace mount state.
-    window.dispatchEvent(
-      new CustomEvent('inventory:bulk-print', {
-        detail: { binIds: Array.from(selected) },
-      }),
-    );
-    toast.success(`Queued ${selectedRows.length} label${selectedRows.length === 1 ? '' : 's'} — open the Labels tab to print.`);
-  }, [selected, selectedRows]);
+    const specials = selectedRows.filter((r) => isSpecialBinBarcode(r.barcode));
+    const structured = selectedRows.filter((r) => r.barcode && !isSpecialBinBarcode(r.barcode));
+
+    // Special bare-barcode bins → 2×1 face immediately (no Labels-tab queue).
+    let printed = 0;
+    for (const row of specials) {
+      if (printSpecialBinLabelFromRow(row)) printed += 1;
+    }
+    if (printed > 0) {
+      toast.success(
+        `Printed ${printed} special bin label${printed === 1 ? '' : 's'} (2×1)`,
+      );
+    }
+
+    // Structured aisle/bay bins still go through the Labels tab / 3×2 printer.
+    if (structured.length > 0) {
+      window.dispatchEvent(
+        new CustomEvent('inventory:bulk-print', {
+          detail: { binIds: structured.map((r) => r.id) },
+        }),
+      );
+      toast.success(
+        `Queued ${structured.length} location label${structured.length === 1 ? '' : 's'} — open the Labels tab to print.`,
+      );
+    } else if (printed === 0) {
+      toast.error('No printable barcodes in the selection');
+    }
+  }, [selectedRows]);
 
   if (count === 0) return null;
 

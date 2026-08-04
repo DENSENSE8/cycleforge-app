@@ -3,13 +3,16 @@
  * Row shell builds this once; cells stay column-scoped.
  */
 
+import type { CSSProperties } from 'react';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import {
   gridCellAlignClass,
-  gridColumnHighlightClass,
+  gridColumnHighlightStyle,
+  gridColumnTextEmphasisClass,
   type GridColumnDisplayPref,
 } from '@/design-system/components/grid';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
   receivingGridCell,
   type ReceivingGridColumn,
@@ -55,6 +58,13 @@ export type ReceivingGridCellCtx = {
   statusDot: string;
   /** Per-hideKey display prefs from staff column-display panel. */
   columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
+  /** Select-gutter face visibility. Defaults to `'always'` at call sites. */
+  selectGutterChrome?: GridSelectGutterChrome;
+  /**
+   * Unbox History click-select: body click toggles bulk; gutter is an empty
+   * spacer (select-all lives in the header only).
+   */
+  clickSelect?: boolean;
 };
 
 export type ReceivingGridCellProps = {
@@ -69,8 +79,17 @@ export function receivingDataCellClass(col: ReceivingGridColumn, rule = true, ct
   return cn(
     receivingGridCell({ rule, inset: 'grid' }),
     gridCellAlignClass(col),
-    gridColumnHighlightClass(pref?.highlight),
+    gridColumnTextEmphasisClass(pref?.text),
   );
+}
+
+/** Staff column-display highlight wash — inline style, not a Tailwind class. */
+export function receivingDataCellHighlightStyle(
+  col: ReceivingGridColumn,
+  ctx?: ReceivingGridCellCtx,
+): CSSProperties | undefined {
+  const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
+  return gridColumnHighlightStyle(pref?.highlight);
 }
 
 /** True when this column should wrap its primary value in chip chrome. */

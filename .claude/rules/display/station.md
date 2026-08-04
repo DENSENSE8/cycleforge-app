@@ -42,8 +42,8 @@ Top-to-bottom, a station is four parts and nothing more:
 | Part | Module | Rule |
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
-| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Absolute-float identity shell (`density="bar"`) over the work canvas. Unbox golden; Triage/Testing/Shipping/Pack/Pickup compose via thin adapters. Never fork. |
-| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). **Always pane top-right** — same place whether Displays/push is open or closed (procedure chrome ≠ panel chrome). **Selected face** when checklist display is live. Hover peeks the checklist (**2 rows**); hover is **off** while any push rail is open. Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — not on the Displays strip. Never fork a second ring. |
+| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Absolute-float two-row identity over the work canvas (`reserveIdentityClearance="stacked"`). Unbox golden; Triage/Testing/Shipping/Pack compose via thin adapters. Never fork. |
+| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). **Dock-anchored under the terminal** (Unbox: `UnboxDockHost` progress row) — same place whether Displays/push is open or closed. **Selected face** when checklist display is live. Hover peeks a Cursor-style `top-end` overlap just above the ring (viewport-clamped) with a footer to open Displays; hover is **off** while any push rail is open. Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — not on the Displays strip. Never fork a second ring. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down banner** (singleton, app root) | `OfflineBanner` (`src/components/layout/OfflineBanner.tsx`) | First-class, non-blocking, mounted once. |
@@ -55,10 +55,10 @@ Top-to-bottom, a station is four parts and nothing more:
   identical and keeps the focus affordance inside the input box so sidebar bands never clip it.*
 - **Compose the entity-context header, never fork it.** Inbound carton benches (Unbox, Triage, Testing)
   and Shipping / Pack / Pickup active-order chrome import `CartonContextCard` + `StationContextBar`
-  from `@/components/station/entity-context`. Thin adapters map controller bags → props with
-  `density="bar"`; omit optional props to hide claim / photos / classify. *Rationale: the condensed
-  one-row bookmark identity is the Unbox golden — a second header grammar splits operator muscle
-  memory across stations.*
+  from `@/components/station/entity-context`. Thin adapters map controller bags → props; omit
+  optional props to hide claim / photos / classify / lifecycle / PO$. Pair hosts with
+  `reserveIdentityClearance="stacked"`. *Rationale: the two-row flush identity is the Unbox golden —
+  a second header grammar splits operator muscle memory across stations.*
 - **The card region uses `flex-1 overflow-y-auto`; the scan bar stays pinned above it.** See `StationPacking` — scan
   bar in the header band, results in the scroll body. *Rationale: the bar must never scroll out from under a working
   operator.*
@@ -142,6 +142,75 @@ The bar is dumb; classification is a pure layer.
 - **Act-and-clear, with an auto-hide for completed work.** On completion the controller starts a timer
   (`COMPLETED_ORDER_AUTO_HIDE_MS`) and then hides the card, falling back to the empty scan-ready state. *Rationale: a
   finished entity must get out of the way so the bench is visibly ready for the next scan.*
+
+---
+
+## Procedure cockpit — primary work surface, two views, one derivation
+
+*(Unnumbered on purpose — the numbered sections are cross-referenced by other rule files; do not
+renumber them to slot this in.)*
+
+For a bench whose work is a **derived procedure** (Unbox golden; Testing / Triage are the port
+targets). Identity + principles: [`instrument-panel.md`](instrument-panel.md).
+
+**The centre focus deck is the most prominent component on the bench** — larger visual weight
+than Displays, items reference, or the dock. The operator glances here between physical acts.
+Full law: [`../source-of-truth.md`](../source-of-truth.md) → Scan-station procedure focus deck.
+
+| Where | Surface | Answers | Module | Prominence |
+|---|---|---|---|---|
+| **Centre** | focus deck | *What do I do right now?* | `ProcedureDeck` via a domain wrapper — flat expandable list (full faces · one expanded body) | **Primary — hero surface** |
+| **Right edge** | checklist display | *Where am I in the whole job?* | `ProcedureChecklist` as a Displays body | Secondary navigation |
+| **Under dock (terminal)** | progress ring | opens / closes the checklist | `ScanStationProgressControl` | Entry to checklist only |
+
+- **One derivation, however many views.** Both surfaces read the same hook
+  (Unbox: `useUnboxProcedureSteps`). Two views was never the hazard — two derivations drifting was.
+- **Step advance is content crossfade, not layout motion.** When the pointer moves, the
+  deck expands the new focus body in place; title crossfades via `swap.scan`; evidence
+  uses `procedureFocusBody`. No peek pile, no `layout="position"` settle on this surface.
+- **The checklist is a DISPLAY the operator picks, not a region.** It is mutually exclusive with the
+  other Displays tabs, and it is not a `RightRailHost` occupant. A surface that should stay visible
+  while the operator works is a display they chose, never a second permanent consumer of the edge.
+- **Live is a requirement, not polish (P6).** The hook subscribes to the carton's photo realtime
+  channel so a capture taken on the **phone** lands on the bench without a refocus. A display that
+  lags the scan is worse than none — the operator trusts it and re-shoots.
+- **A checklist row click moves the CENTRE's focus.** The map navigates the work, which is why the
+  focus pointer is a shared store (`procedure-focus-store.ts`), carton-keyed and ephemeral — never a
+  URL param, because Station selection is ephemeral by contract.
+- **Steps are evidence-derived.** `skipped` is a waiver without evidence and never renders a check.
+  Hand-ticked lists (`checklist_templates` + `/api/checklists`) were deleted 2026-08-01 and stay
+  deleted.
+
+### Ring placement + interaction matrix
+
+The ring is **always dock-anchored under the terminal — the same place open or
+closed** — because it is the control that opens the checklist column, so it must
+not move when the column appears, and it must not occupy the right-edge inspector
+corner (pane top-right stays carton `↑ ↓` only).
+
+| Current state | Ring click |
+|---|---|
+| Displays closed | Open the checklist display |
+| Displays open on checklist | Close Displays |
+| Displays open on another tab | **Switch** to checklist — do not close |
+
+Bare 16px SVG, **no numeral inside**, no card plate behind it; `tone="selected"` while the checklist
+is live. It is **not** `GoalRing` (daily-goal pace, GlobalHeader) — that swap is the most-repeated
+mistake on this surface. Hover peek uses `previewPlacement="top-end"` (Cursor-style
+overlap just above the ring, viewport-clamped) plus a footer action that opens
+the checklist in the right-edge Displays rail.
+
+### Anti-patterns
+
+- **A checklist cell on the Displays icon strip.** The ring is the only entry; a second door is
+  control duplication.
+- **An always-on procedure column.** That is a third right-edge grammar; one was built and retired
+  within a day — [`../source-of-truth.md`](../source-of-truth.md) → Right-rail modality.
+- **A hand-ticked step**, or a `skipped` step drawn as done.
+- **A per-station re-derivation** of step order. `deriveProcedureSteps` is the vocabulary SoT and
+  `resolveActiveStep` is the pointer.
+- **Demoting the deck below another centre surface** — PO accordion, label preview peer, procedure
+  sidebar, or tab strip that splits attention with the focus deck.
 
 ---
 
@@ -252,9 +321,10 @@ The bar is dumb; classification is a pure layer.
   "no motion," and it must be free at the primitive, not per call site.*
 - **Keep flourishes minimal on a high-frequency scan stream.** The scan-sweep shimmer in `StationScanBar` is a brief
   `motionBezier.easeOut` sweep; the active card uses opacity + transform only. **Never animate layout** (width/height/
-  padding) on the card — for height use `grid-template-rows` / the collapse preset. Under reduced motion, suppress
-  `layout` props on station cards. *Rationale: at scan cadence, layout animation thrashes and reads as lag;
-  opacity+transform stays on the compositor.*
+  padding) on the **scan-result card** — for height use `grid-template-rows` / the collapse preset. **Procedure Focus
+  Deck layout is the exception** — see `motion-crossfade.md` → sanctioned layout #2. Under reduced motion, suppress
+  `layout` props on station scan cards. *Rationale: at scan cadence, layout animation on the result card thrashes and
+  reads as lag; opacity+transform stays on the compositor.*
 
 ---
 
@@ -282,6 +352,16 @@ The phone station is **not a distinct archetype** — it is this same Station we
 ## 11. Anti-patterns checklist
 
 - **Don't put a browsable, clickable list in the scan column.** That's a Workbench; split the region (§1).
+- **Don't render the active entity TWICE.** A Station draws it in exactly ONE region — the **middle**. The scan
+  column carries the scan bar and the recent rail; never an identity card, a scan-session summary, or a
+  checklist. Two renders of one entity is not redundancy, it is two things that can disagree, on the surface
+  whose whole job is telling an operator what is in their hands. **Unbox is the control** — `ReceivingSidebarPanel`
+  holds no identity at all, and `LineEditPanel` mounts `StationContextBar` above `StationWorkbench`.
+  When a session's state lives in the scan column, publish the computed value across the tree boundary
+  (`tech-active-order-changed` · `lib/testing/testing-scan-session-bridge`) and render it in the workspace —
+  one derivation, one display. **Move the display, don't delete it:** Shipping's `ActiveOrderScanFeedback` is the
+  only carrier of the amber **No order** exception state (§6) and of Undo, so deleting it would have taken the
+  silent-success fix with it. Guard: `station-sidebar-identity.guard.test.ts` (shrink-only allowlist).
 - **Don't make the station react to hover/click.** It reacts to *scans* only; pointer-reactive detail is a Workbench
   tell.
 - **Don't let focus drift.** No un-refocused submit, no missing `useRegisterScanTarget`, no modal that swallows the bar
@@ -305,10 +385,13 @@ The phone station is **not a distinct archetype** — it is this same Station we
   named scale, status tones from `workflowStageDot`.
 - **Don't ship a hybrid Station+Workbench page without a return-to-scan CTA.** When the page hosts a workbench strip
   (Recent / Queue / History / …) beside a scan dock, chrome **must** expose a solid primary in
-  `WorkbenchTrailingCluster.actions` (top-right of the context bar, **above KPIs**) on every strip tab that closes the
-  focus overlay, lands the bench data table, and re-focuses the station scan bar. Unbox is the reference
-  (`UnboxWorkspaceHeader`); Testing / Pack / Shipping compose the same altitude. Detail:
-  [`workbench.md`](workbench.md) → Multi-region pages.
+  `WorkbenchTrailingCluster.actions` (top-right of the context bar, **at or above any KPI display, never below**) on every strip tab that **resumes**
+  — re-opens the station's most recent record (which also marks it in the sidebar rail) and re-focuses the scan bar.
+  It does **not** land a bare data table (ruled 2026-08-03): the button is already inside the station's chrome, so
+  "go here" is not a meaning it can carry, and the table-first version's row pulse silently could not fire on the feed
+  it landed. **This is not the single-active-entity exception** — resuming replaces the active card with one carton, as
+  a scan would; §5 still holds. Unbox is the reference (`UnboxWorkspaceHeader`); Testing / Pack / Shipping compose the
+  same altitude. Detail: [`workbench.md`](workbench.md) → Multi-region pages.
 
 ---
 
@@ -319,7 +402,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
 | Driven by | a scanner / keyboard-wedge / camera |
 | Primary input | focus-locked `StationScanBar`, global hotkey target |
 | Selection | ephemeral, one at a time, **never** in the URL |
-| Hybrid exit | return-to-scan CTA in `WorkbenchTrailingCluster.actions` (every strip tab, above KPIs) |
+| Hybrid exit | return-to-scan CTA in `WorkbenchTrailingCluster.actions` (every strip tab, at or above any KPI display) — **resumes** the MRU record, never lands a bare table |
 | What crossfades | the **active card** (`framerPresence.stationCard`, `mode="wait"`) |
 | Confirm model | scan-to-confirm (`PackChecklist`), optimistic + `clientEventId` idempotency |
 | Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert()` |

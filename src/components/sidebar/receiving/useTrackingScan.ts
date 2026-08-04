@@ -70,13 +70,29 @@ import type {
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { PhotoRequestPublisher } from '@/components/sidebar/receiving/usePhotoRequestPublisher';
 import { useSetting } from '@/hooks/useSettings';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
+import { stageReturnCartonToReturnsTestBin } from '@/lib/receiving/stage-return-to-returns-bin';
+import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 
 // `TrackingScanResult` now lives in `scan-types` (shared with scan-apply);
 // re-exported here for the existing import surface (ReceivingSidebarPanel, …).
 export type { TrackingScanResult };
+
+/**
+ * Fire-and-forget: when a scanned carton is a return intake, stage it into
+ * RETURNS-TEST. Never blocks the open path.
+ */
+function maybeStageReturnCarton(
+  receivingId: number | null | undefined,
+  row: ReceivingLineRow | null | undefined,
+): void {
+  if (receivingId == null || receivingId <= 0 || !row) return;
+  if (!isReturnIntake(row)) return;
+  void stageReturnCartonToReturnsTestBin({ receivingId, row });
+}
 
 interface UseTrackingScanArgs {
   staffId: string;
@@ -107,7 +123,16 @@ export interface TrackingScanState {
   trackingLookupInFlight: number;
   submitTrackingScan: (
     rawTracking?: string,
-    opts?: { mode?: ScanResolutionMode; onResult?: (result: TrackingScanResult) => void },
+    opts?: {
+      mode?: ScanResolutionMode;
+      onResult?: (result: TrackingScanResult) => void;
+      /**
+       * Resolve the carton (lookup / cache) and echo `onResult`, but do not
+       * open the detail pane, pin a leading row, or prepend feeds. Used by
+       * Arrival batch-sort accumulation.
+       */
+      resolveOnly?: boolean;
+    },
   ) => void;
 }
 
@@ -212,7 +237,11 @@ export function useTrackingScan({
   const submitTrackingScan = useCallback(
     (
       rawTracking?: string,
-      opts?: { mode?: ScanResolutionMode; onResult?: (result: TrackingScanResult) => void },
+      opts?: {
+        mode?: ScanResolutionMode;
+        onResult?: (result: TrackingScanResult) => void;
+        resolveOnly?: boolean;
+      },
     ) => {
       const trackingNumber = (rawTracking ?? bulkTracking).trim();
       if (!trackingNumber) return;
@@ -221,12 +250,14 @@ export function useTrackingScan({
       // lets the server deep-scan ticket#, PO#, and tracking# before creating
       // any carton (no more dash-heuristic misrouting a PO# to Unfound).
       const lookupMode: ScanResolutionMode = opts?.mode ?? 'auto';
+      const resolveOnly = opts?.resolveOnly === true;
 
       // Capture the page-mode generation at submit. `isCurrent()` is checked at
       // every OPEN/SELECT commit below; when false the carton still flows into the
       // queue feed but does not seize the (now different) active view.
       const launchGeneration = scanGenerationRef.current;
       const isCurrent = () => scanGenerationRef.current === launchGeneration;
+      const shouldOpen = () => isCurrent() && !resolveOnly;
 
       setBulkTracking('');
       const scanStartedAt = Date.now();
@@ -234,13 +265,13 @@ export function useTrackingScan({
       // scan launched in, even if the operator switches modes mid-lookup.
       const scanSurface = intakeSurfaceRef.current;
       setTrackingLookupInFlight((n) => n + 1);
-      if (scanSurface === 'triage') {
+      if (scanSurface === 'triage' && !resolveOnly) {
         onTriageScanStart?.(trackingNumber);
       }
       // Unbox empty-pane-first: rail shows raw tracking#; right pane always
       // replaces with an optimistic unmatched empty PO-items workspace. Lookup
       // (or Phase-0 / local-tracking) fills header / accordion / label in place.
-      if (scanSurface === 'unbox') {
+      if (scanSurface === 'unbox' && !resolveOnly) {
         upsertReceivingRailRows(queryClient, [buildPendingScanStubRow(trackingNumber)]);
         const paneStub = buildOptimisticUnmatchedPaneStub(trackingNumber);
         setLineAccordionBootstrap(accordionBootstrapRef.current);
@@ -257,7 +288,7 @@ export function useTrackingScan({
           }),
         );
       };
-      if (scanSurface !== 'unbox') {
+      if (scanSurface !== 'unbox' && !resolveOnly) {
         armScanLoader();
       }
 
@@ -329,6 +360,16 @@ export function useTrackingScan({
               // Unbox → the open chokepoint (stub drop, Unboxed upsert, Arrival
               // purge, touch-scan stamp); triage → triage feed + the sanctioned
               // triage→Unbox-Queue mirror.
+              fireResult({
+                tracking: trackingNumber,
+                matched: true,
+                po_ids: internal.poIds,
+                receiving_id: internal.receivingId,
+              });
+              if (resolveOnly) {
+                emitReceiving('receiving-scan-resolved');
+                return;
+              }
               if (intakeSurfaceRef.current === 'unbox') {
                 if (internal.receivingId != null) {
                   applyUnboxCartonOpened(queryClient, {
@@ -363,16 +404,11 @@ export function useTrackingScan({
               // for this to render their matched/unmatched result) — the code
               // short-circuit must too, or a phone scan of an R-/unit handle never
               // reports back.
-              fireResult({
-                tracking: trackingNumber,
-                matched: true,
-                po_ids: internal.poIds,
-                receiving_id: internal.receivingId,
-              });
               setScanMatchedRows(internal.rows);
               setLineAccordionBootstrap(accordionBootstrapRef.current);
               setSelectedLine(internal.pick);
               setScanDriven(true);
+              maybeStageReturnCarton(internal.receivingId, internal.pick);
               if (internal.via === 'serial') {
                 toast.success('Found via serial number', {
                   description: 'Jumped to the PO that received this unit.',
@@ -407,6 +443,10 @@ export function useTrackingScan({
                 po_ids: cached.poIds,
                 receiving_id: cached.receivingId,
               });
+              if (resolveOnly) {
+                emitReceiving('receiving-scan-resolved');
+                return;
+              }
               // Stamp scanned_by for the signed-in operator (same lightweight
               // touch-scan the local-tracking short-circuit uses) — no blocking
               // lookup-po round-trip. Use the carton's own tracking number.
@@ -431,6 +471,7 @@ export function useTrackingScan({
                 }).catch(() => {});
                 clearUnboxPendingRail();
               }
+              maybeStageReturnCarton(cached.receivingId, cached.row);
               // Open via the rail's own select event so the sidebar selectedLine,
               // rail highlight, and right-pane workspace stay in lockstep — this
               // is the identical path a Recent-rail row click takes.
@@ -438,7 +479,7 @@ export function useTrackingScan({
               // mid-scan. The row is already in the feed cache either way, so a
               // stale scan simply stays visible in the queue rather than yanking
               // the current view to it.
-              if (isCurrent()) dispatchSelectLine(cached.row);
+              if (shouldOpen()) dispatchSelectLine(cached.row);
               window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
               return;
             }
@@ -467,6 +508,10 @@ export function useTrackingScan({
               po_ids: local.poIds,
               receiving_id: local.receivingId,
             });
+            if (resolveOnly) {
+              emitReceiving('receiving-scan-resolved');
+              return;
+            }
             if (intakeSurfaceRef.current === 'unbox') {
               // Client short-circuit skips lookup-po — the open chokepoint drops
               // the stub, upserts Unboxed, purges Arrival, and fires touch-scan
@@ -505,11 +550,12 @@ export function useTrackingScan({
               }
               deferInvalidateTriageAndUnboxQueueFeeds(queryClient);
             }
-            if (isCurrent()) {
+            if (shouldOpen()) {
               setScanMatchedRows(local.rows);
               setLineAccordionBootstrap(accordionBootstrapRef.current);
               setSelectedLine(local.pick);
               setScanDriven(true);
+              maybeStageReturnCarton(local.receivingId, local.pick);
               if (autoPushCameraRef.current) void publishPhotoRequestFor(local.receivingId, trackingNumber);
               refocusScanInput({
                 intakeSurface: intakeSurfaceRef.current,
@@ -607,8 +653,28 @@ export function useTrackingScan({
           }
 
           if (resolution.kind === 'matched') {
+            if (resolveOnly) {
+              fireResult({
+                tracking: trackingNumber,
+                matched: true,
+                po_ids: Array.isArray(data.po_ids) ? (data.po_ids as string[]) : [],
+                receiving_id: Number(data.receiving_id) || undefined,
+              });
+              emitReceiving('receiving-scan-resolved');
+              return;
+            }
             applyMatchedCarton(applyCtx, data);
           } else {
+            if (resolveOnly) {
+              fireResult({
+                tracking: trackingNumber,
+                matched: false,
+                po_ids: Array.isArray(data.po_ids) ? (data.po_ids as string[]) : [],
+                receiving_id: Number(data.receiving_id) || undefined,
+              });
+              emitReceiving('receiving-scan-resolved');
+              return;
+            }
             applyUnmatchedCarton(applyCtx, data);
           }
         } catch (err) {

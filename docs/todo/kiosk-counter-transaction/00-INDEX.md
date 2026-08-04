@@ -2,7 +2,7 @@
 
 **Parent SoT:** [`../kiosk-counter-transaction-PLAN.md`](../kiosk-counter-transaction-PLAN.md) — decisions, schema, rationale.
 **This file:** how the five phases split across agents, what may run at once, and what must not.
-**Created:** 2026-07-29 · **Status:** none started
+**Created:** 2026-07-29 · **Status:** Buy/Sell live on kiosk; Order Pickup twin live (device lookup/collect)
 
 ---
 

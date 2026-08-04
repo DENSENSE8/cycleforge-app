@@ -2,11 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import {
-  PaneHeader,
-  PaneHeaderCloseButton,
-  PaneHeaderLabel,
-} from '@/components/ui/pane-header';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { PaneHeaderLabel } from '@/components/ui/pane-header';
 
 type OpenPaneDetail = { poId?: string; poNumber?: string };
 
@@ -71,16 +68,15 @@ export function ZohoSplitPane() {
       ariaLabel="Purchase order viewer"
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <PaneHeader
-          leftSlot={<PaneHeaderLabel eyebrow="Purchase order" value="Zoho" />}
-          rightSlot={
-            <PaneHeaderCloseButton
-              onClick={close}
-              ariaLabel="Close purchase order viewer"
-              title="Close purchase order viewer"
-            />
-          }
-        />
+        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
+          <DeskRailChromeRow
+            onClose={close}
+            closeTitle="Close purchase order viewer"
+          />
+          <div className="px-2 pb-2 pt-1">
+            <PaneHeaderLabel eyebrow="Purchase order" value="Zoho" />
+          </div>
+        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-role-caption text-text-soft">

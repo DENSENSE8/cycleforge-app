@@ -3,7 +3,7 @@
 /**
  * Dashboard · Sales — front-desk transaction history (Sales · Local Pickup).
  *
- * Sibling of {@link DashboardReceivingView}: same permission-gate recipe, but
+ * Sibling of the Inbound desk Docked lane: same permission-gate recipe, but
  * the region body is the existing {@link WalkInHistoryHub} (chrome + feeds) —
  * do not fork a second transaction feed. Wire values `?mode=sales` |
  * `?mode=pickup` both land here (`getDashboardDomainFromSearch` → `sales`).

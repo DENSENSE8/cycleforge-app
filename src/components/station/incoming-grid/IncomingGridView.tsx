@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo, useState, type RefObject } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { useMemo, type RefObject } from 'react';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
@@ -20,6 +19,7 @@ import {
   type IncomingGridColumn,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/incoming-grid-layout';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { makeIncomingGridDescriptor } from './incoming-grid-descriptor';
 import { IncomingGridColumnHeader } from './IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from './IncomingGridGroupRow';
@@ -34,12 +34,19 @@ interface IncomingGridViewProps {
   selectMode: boolean;
   selectedId: number | null;
   selectedIds: Set<number>;
-  /** Row-body click — opens the record in the Incoming inspector. */
+  /** Row-body activate — opens the record (dblclick when clickSelect). */
   handleSelectRow: (row: ReceivingLineRow) => void;
-  /** Select-gutter click — bulk membership only. */
+  /** Bulk membership — gutter when split planes; whole-row click when clickSelect. */
   handleToggleRow: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /**
+   * Unbox Sheets click-select: plain click toggles bulk; double-click / Enter
+   * opens the inspector. Select track stays for header select-all only.
+   */
+  clickSelect?: boolean;
+  /** Select-gutter face chrome — `'sheets'` when clickSelect. */
+  selectGutterChrome?: GridSelectGutterChrome;
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly IncomingGridColumn[];
   /**
    * Staff-prefs identity for per-staff column config. Incoming owns its own
@@ -59,8 +66,8 @@ function poFoldKey(row: ReceivingLineRow): string {
 
 /**
  * Incoming POS spreadsheet — receiving-domain adapter over {@link LedgerGrid}.
- * Same shell recipe as outbound {@link OrdersGridView} (rounded card + airtable
- * skin + scrollX + click-to-sort headers), with Incoming columns / PO fold.
+ * Unbox Sheets golden: flush `surface="sheet"` + click-select (no checkbox
+ * faces); double-click opens the Incoming inspector.
  */
 export function IncomingGridView({
   filteredGroupedRecords,
@@ -74,6 +81,8 @@ export function IncomingGridView({
   handleSelectRow,
   handleToggleRow,
   handleSelectGroup,
+  clickSelect = false,
+  selectGutterChrome = 'always',
   columns = INCOMING_GRID_COLUMNS,
   tableId = 'incoming',
   scrollRef,
@@ -93,18 +102,6 @@ export function IncomingGridView({
     isColumn: isIncomingGridSortable,
     defaultDir: defaultDirForIncomingGridSort,
   });
-
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  // Header, rows, group summaries and the grid template all read `visible` —
-  // a hidden column loses its TRACK rather than rendering an empty ruled cell.
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  const { columns: visible } = useGridColumnVisibility<IncomingGridColumn>({
-    columns,
-    tableId,
-  });
-
-  const descriptor = useMemo(() => makeIncomingGridDescriptor(visible), [visible]);
 
   const { orderGroupsByDate, flatRows } = useMemo(() => {
     const flat = Object.values(filteredGroupedRecords).flatMap((day) =>
@@ -135,69 +132,68 @@ export function IncomingGridView({
   }, [filteredGroupedRecords, serverSorted, columnSort, sortDir]);
 
   return (
-    <>
-      <LedgerGridSurface<ReceivingLineRow, IncomingGridColumnKey>
-        ariaLabel="Incoming cartons"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={flatRows}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        scrollRef={scrollRef}
-        className={className}
-        testId="incoming-grid-body"
-        tableId={tableId}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <IncomingGridColumnHeader
-            isMobile={isMobile}
-            selectMode={selectMode}
-            selectionScope={RECEIVING_SELECTION_SCOPE}
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group, baseStripeIndex) => (
-          <IncomingGridGroupRow
-            group={group}
-            baseStripeIndex={baseStripeIndex}
-            isMobile={isMobile}
-            selectMode={selectMode}
-            selectedId={selectedId}
-            selectedIds={selectedIds}
-            handleSelectRow={handleSelectRow}
-            handleToggleRow={handleToggleRow}
-            handleSelectGroup={handleSelectGroup}
-            columns={visible}
-          />
-        )}
-        renderRow={(row, stripeIndex) => (
-          <IncomingGridGroupRow
-            group={{ key: `k:${row.id}`, rows: [row] }}
-            baseStripeIndex={stripeIndex}
-            isMobile={isMobile}
-            selectMode={selectMode}
-            selectedId={selectedId}
-            selectedIds={selectedIds}
-            handleSelectRow={handleSelectRow}
-            handleToggleRow={handleToggleRow}
-            handleSelectGroup={handleSelectGroup}
-            columns={visible}
-          />
-        )}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={tableId}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+      ariaLabel="Incoming cartons"
+      columns={columns}
+      makeDescriptor={makeIncomingGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={flatRows}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      scrollRef={scrollRef}
+      className={className}
+      testId="incoming-grid-body"
+      tableId={tableId}
+      surface="sheet"
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <IncomingGridColumnHeader
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectionScope={RECEIVING_SELECTION_SCOPE}
+          selectGutterChrome={selectGutterChrome}
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+          onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+        <IncomingGridGroupRow
+          group={group}
+          baseStripeIndex={baseStripeIndex}
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectedId={selectedId}
+          selectedIds={selectedIds}
+          handleSelectRow={handleSelectRow}
+          handleToggleRow={handleToggleRow}
+          handleSelectGroup={handleSelectGroup}
+          clickSelect={clickSelect}
+          selectGutterChrome={selectGutterChrome}
+          columns={visible}
+        />
+      )}
+      renderRow={(row, stripeIndex, { columns: visible }) => (
+        <IncomingGridGroupRow
+          group={{ key: `k:${row.id}`, rows: [row] }}
+          baseStripeIndex={stripeIndex}
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectedId={selectedId}
+          selectedIds={selectedIds}
+          handleSelectRow={handleSelectRow}
+          handleToggleRow={handleToggleRow}
+          handleSelectGroup={handleSelectGroup}
+          clickSelect={clickSelect}
+          selectGutterChrome={selectGutterChrome}
+          columns={visible}
+        />
+      )}
+    />
   );
 }

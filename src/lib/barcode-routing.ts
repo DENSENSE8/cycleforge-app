@@ -13,6 +13,8 @@
  *   - Anything else falls back to SKU lookup (safer default).
  */
 
+import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
+
 export type ScanType =
   | 'sku'
   | 'bin'
@@ -109,7 +111,11 @@ function pathToRoute(path: string, value: string): ScanRoute | null {
     // position=00 means this label identifies a whole rack (zone/aisle/
     // bay/level), not a single bin slot. Route to the rack-detail view.
     if (isRackCode(code)) {
-      return { type: 'bin', value: code, redirect: `/warehouse?tab=racks&code=${code}` };
+      return {
+        type: 'bin',
+        value: code,
+        redirect: inventoryLocationsHref({ tab: 'racks', extra: { code } }),
+      };
     }
     return { type: 'bin', value: code, redirect: `/inventory?bin=${code}` };
   }
@@ -132,7 +138,11 @@ function routeLocationCode(value: string, code: string): ScanRoute {
   // position=00 means this label identifies a whole rack (zone/aisle/bay/
   // level), not a single bin slot. Route to the rack-detail view.
   if (isRackCode(normalized)) {
-    return { type: 'bin', value: normalized, redirect: `/warehouse?tab=racks&code=${normalized}` };
+    return {
+      type: 'bin',
+      value: normalized,
+      redirect: inventoryLocationsHref({ tab: 'racks', extra: { code: normalized } }),
+    };
   }
   return { type: 'bin', value: normalized, redirect: `/inventory?bin=${normalized}` };
 }
@@ -352,7 +362,8 @@ function scannedLocationCode(raw: string): string | null {
   // the barcode.
   const bin = /^\/inventory\?bin=(.+)$/.exec(redirect);
   if (bin) return decodeURIComponent(bin[1]).trim() || null;
-  const rack = /^\/warehouse\?tab=racks&code=(.+)$/.exec(redirect);
+  const rack =
+    /^\/(?:warehouse|inventory\/locations)\?tab=racks&code=(.+)$/.exec(redirect);
   if (rack) return decodeURIComponent(rack[1]).trim() || null;
   return null;
 }

@@ -92,7 +92,7 @@ async function installApiMocks(page) {
             title: 'Shipped Orders Missing Tester',
             summary: '2 shipped orders were missing a tester for March 16, 2026 to March 20, 2026 PST.',
             confidence: 'high',
-            modeLabel: 'Local Ops Query',
+            childLabel: 'Local Ops Query',
             timeframe: {
               kind: 'last_week',
               label: 'Last Week',
@@ -139,7 +139,7 @@ async function installApiMocks(page) {
           title: 'Shipped Orders By Packer',
           summary: '12 shipped orders were recorded for March 16, 2026 to March 20, 2026 PST.',
           confidence: 'high',
-          modeLabel: 'Local Ops Query',
+          childLabel: 'Local Ops Query',
           timeframe: {
             kind: 'last_week',
             label: 'Last Week',

@@ -15,8 +15,17 @@ export function ScannedBadge({ expected }: { expected: number | null }) {
 
 /** Exported for UnmatchedItemsSection so unfound line rows render the exact
  *  same qty/condition meta as matched PO items. */
-export function ProgressBadge({ received, expected }: { received: number; expected: number | null }) {
-  const qtyClass = cn(qtyProgress, 'normal-case tracking-normal');
+export function ProgressBadge({
+  received,
+  expected,
+  className,
+}: {
+  received: number;
+  expected: number | null;
+  /** Override size/tone tokens — e.g. `text-role-micro` on a dense eyebrow. */
+  className?: string;
+}) {
+  const qtyClass = cn(qtyProgress, 'normal-case tracking-normal', className);
   if (expected == null || expected <= 0) {
     return <span className={cn(qtyClass, 'text-text-soft')}>{received} received</span>;
   }

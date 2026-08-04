@@ -43,6 +43,12 @@ interface ShippingInformationSectionProps {
   showShippingTimestamp?: boolean;
   editableShippingFields?: EditableShippingFields;
   prepackedSku?: PrepackedSkuInfo | null;
+  /**
+   * One-shot auto-start for the primary tracking row's replace editor (queue
+   * "Replace tracking" → inspector). Passed through to the first
+   * {@link TrackingNumberRow} only.
+   */
+  replaceTrackingNonce?: number;
 }
 
 export function ShippingInformationSection({
@@ -54,6 +60,7 @@ export function ShippingInformationSection({
   showShippingTimestamp = false,
   editableShippingFields,
   prepackedSku,
+  replaceTrackingNonce = 0,
 }: ShippingInformationSectionProps) {
   const accountSourceLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
 
@@ -220,6 +227,7 @@ export function ShippingInformationSection({
               label={`Tracking Number${allTrackingRows.length > 1 ? ` ${index + 1}` : ''}`}
               value={draftValue}
               placeholder="Enter tracking number"
+              replaceNonce={index === 0 ? replaceTrackingNonce : 0}
               // Per-STN, not per-order: each tracking number links to its own
               // ticket(s). Needs a real shipment id — a tracking number typed but
               // not yet registered has no STN row to anchor to.

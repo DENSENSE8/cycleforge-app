@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { orgInitials } from '@/lib/identity/switch-org';
 import { useSwitchOrg } from '@/lib/identity/use-switch-org';
 import { Gs1ComplianceCard } from './Gs1ComplianceCard';
+import { SupportVisionLaneCard } from './SupportVisionLaneCard';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 /**
@@ -408,6 +409,12 @@ export function OrganizationSection() {
         and the server-side `answeredAt` stamp already are.
       */}
       <Gs1ComplianceCard />
+
+      {/*
+        Same route as GS1 (organization/settings). Stores the org's vision-lane
+        REQUEST only — resolveSupportVisionLane remains the precedence SoT.
+      */}
+      <SupportVisionLaneCard />
 
       <div className="space-y-5 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Regional</h3>

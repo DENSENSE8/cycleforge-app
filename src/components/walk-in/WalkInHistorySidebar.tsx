@@ -3,7 +3,7 @@
 /**
  * Sales sidebar — Walk-In station deep-links.
  *
- * L2 modes (Local Pickup · Sales) live in GlobalHeader (`HeaderModeSwitcher` →
+ * L2 modes (Local Pickup · Sales) live in GlobalHeader (`HeaderPageSwitcher` →
  * `?mode=`). Per-mode **table tabs** live in the page chrome
  * (`WalkInDeskHeader` → `WorkbenchChromeHeader`) — modes ≠ tabs.
  *

@@ -7,10 +7,14 @@
  * `/receiving` page. History + Incoming + Repair are table-only (they hide the
  * workspace overlay even if one is open in state, so a quick peek doesn't lose
  * unfinished edits).
+ *
+ * `/incoming?lane=docked` is the Docked feed (former Receiving Board) and
+ * resolves as history for pane/overlay purposes.
  */
 
 import { useSearchParams, usePathname } from 'next/navigation';
-import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
+import { parseIncomingView, type IncomingView } from '@/lib/receiving/incoming-view';
+import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import {
   UNBOX_SURFACE_ROUTE,
   TRIAGE_SURFACE_ROUTE,
@@ -27,7 +31,7 @@ export interface ReceivingDashboardMode {
   isIncomingMode: boolean;
   isRepairMode: boolean;
   isTableOnlyMode: boolean;
-  /** Incoming right-pane sub-view from `?incview=` (`pos` default | `email`). */
+  /** Incoming right-pane sub-view from `?incview=` (`pos` default | `email` | `removed`). */
   incomingView: IncomingView;
 }
 
@@ -35,6 +39,7 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
   const searchParams = useSearchParams();
   const pathname = usePathname() ?? '';
   // Graduated surface routes are path-based; the legacy page reads `?mode=`.
+  // Inbound desk: Pipeline stays `incoming`; Docked is `history`.
   const mode = pathname.startsWith(HISTORY_SURFACE_ROUTE)
     ? 'history'
     : pathname.startsWith(UNBOX_SURFACE_ROUTE)
@@ -42,7 +47,9 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
       : pathname.startsWith(TRIAGE_SURFACE_ROUTE)
         ? 'triage'
         : pathname.startsWith(INCOMING_SURFACE_ROUTE)
-          ? 'incoming'
+          ? parseInboundLane(searchParams.get('lane')) === 'docked'
+            ? 'history'
+            : 'incoming'
           : pathname.startsWith(PICKUP_SURFACE_ROUTE)
             ? 'pickup'
             : pathname.startsWith(REPAIR_SURFACE_ROUTE)
@@ -51,7 +58,7 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
   const isHistoryMode = mode === 'history';
   const isIncomingMode = mode === 'incoming';
   const isRepairMode = mode === 'repair';
-  const incomingView: IncomingView = searchParams.get('incview') === 'email' ? 'email' : 'pos';
+  const incomingView: IncomingView = parseIncomingView(searchParams.get('incview'));
   return {
     mode,
     isTriageMode: mode === 'triage',

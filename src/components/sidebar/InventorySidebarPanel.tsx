@@ -6,11 +6,12 @@ import { InventoryGraphSidebar } from '@/components/inventory/sidebar/InventoryG
 import { InventoryTriageSidebar } from '@/components/inventory/sidebar/InventoryTriageSidebar';
 import { InventoryPulseSidebar } from '@/components/inventory/sidebar/InventoryPulseSidebar';
 import { ReplenishSidebarPanel } from '@/components/sidebar/ReplenishSidebarPanel';
+import { WarehouseSidebarPanel } from '@/components/sidebar/WarehouseSidebarPanel';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 
 /**
  * Sidebar panel for the inventory area. L2 modes (ledger · triage · pulse ·
- * graph · replenish) live in GlobalHeader (`HeaderModeSwitcher` ←
+ * graph · replenish · locations) live in GlobalHeader (`HeaderPageSwitcher` ←
  * SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
  *
  * Body switches on path / `?section=` the same way the main pane does.
@@ -21,6 +22,17 @@ export function InventorySidebarPanel() {
     const section =
         searchParams.get('section') === 'replenish' ? 'replenish' : 'inventory';
 
+    if (
+        pathname?.startsWith('/inventory/locations') ||
+        pathname === '/warehouse' ||
+        pathname?.startsWith('/warehouse/')
+    ) {
+        return (
+            <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
+                <WarehouseSidebarPanel />
+            </div>
+        );
+    }
     if (pathname?.startsWith('/inventory/graph')) {
         return (
             <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>

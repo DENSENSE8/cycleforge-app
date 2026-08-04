@@ -163,6 +163,68 @@ export async function getSkuCatalogByGtin(gtin: string, orgId?: OrgId): Promise<
   return result.rows[0] ?? null;
 }
 
+/** Outcome of a GTIN write: the new row, or the SKU already holding those digits. */
+type SetSkuCatalogGtinResult =
+  | { ok: true; row: SkuCatalogRow }
+  | { ok: false; reason: 'not-found' }
+  | { ok: false; reason: 'conflict'; conflictSku: string };
+
+/**
+ * Set (or clear) `sku_catalog.gtin` for one row.
+ *
+ * ## Why this is not a field on `upsertSkuCatalog`
+ *
+ * That helper is the SYNC path's upsert, and every one of its columns is
+ * `COALESCE(EXCLUDED.x, sku_catalog.x)` — omitted means preserve, and there is
+ * deliberately no way to clear. A GTIN needs the opposite: an operator must be
+ * able to remove a wrong one, and clearing is meaningful (it hands the row back
+ * to `getOrCreateInternalGtin`, which re-mints the same deterministic internal
+ * number). Folding it in would also put a licensed identifier one careless
+ * param away from being stamped by an inventory sync.
+ *
+ * ## The conflict is reported, not thrown
+ *
+ * `idx_sku_catalog_org_gtin` (2026-08-02c) makes the digits unique per org, so
+ * the reachable failure is "another SKU in THIS org already claims this GTIN" —
+ * an operator mistake with an obvious fix (find that SKU), not a 500. The
+ * lookup runs inside the same transaction as the write, so the reported SKU is
+ * the one that actually blocked it.
+ *
+ * Validation is the caller's: `classifyGtinEntry` in `@/lib/interop/gs1-keys`
+ * decides what a human is allowed to type. This function stores digits.
+ */
+export async function setSkuCatalogGtin(
+  id: number,
+  gtin: string | null,
+  orgId: OrgId,
+): Promise<SetSkuCatalogGtinResult> {
+  const digits = (gtin ?? '').replace(/\D/g, '') || null;
+
+  return withTenantTransaction(orgId, async (client) => {
+    if (digits) {
+      const clash = await client.query<{ sku: string }>(
+        `SELECT sku FROM sku_catalog
+          WHERE gtin = $1 AND organization_id = $2 AND id <> $3
+          LIMIT 1`,
+        [digits, orgId, id],
+      );
+      const conflictSku = clash.rows[0]?.sku;
+      if (conflictSku) return { ok: false, reason: 'conflict', conflictSku };
+    }
+
+    const updated = await client.query<SkuCatalogRow>(
+      `UPDATE sku_catalog
+          SET gtin = $1, updated_at = NOW()
+        WHERE id = $2 AND organization_id = $3
+        RETURNING *`,
+      [digits, id, orgId],
+    );
+    const row = updated.rows[0];
+    if (!row) return { ok: false, reason: 'not-found' };
+    return { ok: true, row };
+  });
+}
+
 export async function upsertSkuCatalog(params: {
   sku: string;
   productTitle: string;

@@ -4,13 +4,17 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { WORKBENCH_TABLE_VIEWPORT } from '@/components/dashboard/workbench-shell';
+import {
+  WORKBENCH_SHEET_HOST,
+  WORKBENCH_TABLE_VIEWPORT,
+} from '@/components/dashboard/workbench-shell';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { OutboundSort } from '@/components/outbound/outbound-sidebar-shared';
+import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
 interface LabelsQueueTableProps {
@@ -75,7 +79,7 @@ export function LabelsQueueTable({
 
   return (
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
-      <div className={WORKBENCH_TABLE_VIEWPORT}>
+      <div className={cn(WORKBENCH_SHEET_HOST, WORKBENCH_TABLE_VIEWPORT)}>
         <OrdersGridView
           ariaLabel="Labels queue"
           records={records}

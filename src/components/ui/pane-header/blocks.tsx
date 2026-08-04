@@ -520,7 +520,8 @@ export function PaneHeaderActionBar({
 // ─── PaneHeaderPagination ─────────────────────────────────────────────────────
 // Compact workbench trailing control — icon + range label + chevron, sibling of
 // {@link QueueSortSwitch}. Prev/next live in the popover
-// so the resting chrome stays one labeled pill.
+// so the resting chrome stays one labeled pill. `iconOnly` drops the range /
+// caret (Incoming Pipeline — Unbox triage density).
 
 interface PaneHeaderPaginationProps {
   /** Current 1-based page index. */
@@ -530,6 +531,11 @@ interface PaneHeaderPaginationProps {
   onPrev: () => void;
   onNext: () => void;
   className?: string;
+  /**
+   * List glyph only — range lives in aria-label + HoverTooltip + the popover.
+   * Incoming Pipeline icon-only chrome.
+   */
+  iconOnly?: boolean;
 }
 
 export function PaneHeaderPagination({
@@ -539,6 +545,7 @@ export function PaneHeaderPagination({
   onPrev,
   onNext,
   className,
+  iconOnly = false,
 }: PaneHeaderPaginationProps) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -550,28 +557,45 @@ export function PaneHeaderPagination({
   const canPrev = safePage > 1;
   const canNext = safePage < totalPages;
   const rangeLabel = total > 0 ? `${rangeStart}–${rangeEnd}` : '—';
+  const tipLabel =
+    total > 0 ? `${rangeLabel} of ${total.toLocaleString()}` : 'No results';
+  const ariaLabel =
+    total > 0
+      ? `Page ${safePage} of ${totalPages}, showing ${rangeLabel} of ${total}`
+      : 'No results';
+
+  const trigger = (
+    <ToolbarButton
+      ref={buttonRef}
+      type="button"
+      iconOnly={iconOnly}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      aria-label={ariaLabel}
+      onClick={() => setOpen((o) => !o)}
+      className={iconOnly ? undefined : 'normal-case tracking-wide'}
+    >
+      <List className="h-3.5 w-3.5 shrink-0" />
+      {iconOnly ? null : (
+        <>
+          <span className="whitespace-nowrap tabular-nums">{rangeLabel}</span>
+          <ChevronDown
+            className={cn('h-3 w-3 shrink-0 opacity-70 transition-transform', open && 'rotate-180')}
+          />
+        </>
+      )}
+    </ToolbarButton>
+  );
 
   return (
     <div className={cn('shrink-0', className)} data-pane-header-pagination="">
-      <ToolbarButton
-        ref={buttonRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={
-          total > 0
-            ? `Page ${safePage} of ${totalPages}, showing ${rangeLabel} of ${total}`
-            : 'No results'
-        }
-        onClick={() => setOpen((o) => !o)}
-        className="normal-case tracking-wide"
-      >
-        <List className="h-3.5 w-3.5 shrink-0" />
-        <span className="whitespace-nowrap tabular-nums">{rangeLabel}</span>
-        <ChevronDown
-          className={cn('h-3 w-3 shrink-0 opacity-70 transition-transform', open && 'rotate-180')}
-        />
-      </ToolbarButton>
+      {iconOnly ? (
+        <HoverTooltip label={tipLabel} asChild>
+          {trigger}
+        </HoverTooltip>
+      ) : (
+        trigger
+      )}
 
       <Popover
         open={open}

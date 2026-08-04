@@ -7,7 +7,7 @@
 
 import { useMemo, type Ref } from 'react';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   LABELS_PRODUCTS_TAB_LABEL,
@@ -81,12 +81,12 @@ export function LabelsProductsWorkspaceHeader({
             className="w-48 shrink-0 lg:w-64"
           />
         ) : isProducts ? (
-          <ToolbarSearchToggle
+          <TechRailSearchBar
+            variant="chrome"
             value={search}
             onChange={onSearch}
-            onClear={() => onSearch('')}
             placeholder="Filter SKU, title…"
-            tone="blue"
+            className="w-40 shrink-0 lg:w-56"
           />
         ) : undefined
       }

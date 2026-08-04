@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useState, type RefObject } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { useCallback, useMemo, type RefObject } from 'react';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import type { RowGroup } from '@/lib/group-rows';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
@@ -31,7 +30,7 @@ interface CatalogGridViewProps {
   sort: CatalogGridColumnKey | null;
   dir: GridSortDir | null;
   onSortChange: (key: CatalogGridColumnKey, dir: GridSortDir) => void;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly CatalogGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
@@ -64,18 +63,6 @@ export function CatalogGridView({
     getId: (r) => r.id,
   });
 
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  // Header, rows and the grid template all read `visible` — a hidden column
-  // loses its TRACK rather than rendering an empty ruled cell.
-  const { columns: visible } = useGridColumnVisibility<CatalogGridColumn>({
-    columns,
-    tableId: CATALOG_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeCatalogGridDescriptor(visible), [visible]);
-
   const orderGroupsByDate = useMemo<[string, RowGroup<CatalogListRow>[]][]>(
     () => [['', rows.map((r) => ({ key: String(r.id), rows: [r] }))]],
     [rows],
@@ -88,7 +75,7 @@ export function CatalogGridView({
   );
 
   const renderLeaf = useCallback(
-    (row: CatalogListRow) => (
+    (row: CatalogListRow, visible: readonly CatalogGridColumn[]) => (
       <CatalogGridRow
         key={row.id}
         row={row}
@@ -100,46 +87,39 @@ export function CatalogGridView({
         columns={visible}
       />
     ),
-    [selectedId, selectedIds, inventoryProviderLabel, onOpen, onToggleSelect, visible],
+    [selectedId, selectedIds, inventoryProviderLabel, onOpen, onToggleSelect],
   );
 
   return (
-    <>
-      <LedgerGridSurface<CatalogListRow, CatalogGridColumnKey>
-        ariaLabel="Product catalog"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.id)}
-        sort={sort}
-        dir={dir}
-        onSortChange={onSortChange}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        scrollRef={scrollRef}
-        className={className}
-        testId="catalog-grid-body"
-        tableId={CATALOG_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <CatalogGridColumnHeader
-            selectionScope={selectionScope}
-            columns={visible}
-            activeSort={sort}
-            sortDir={dir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => renderLeaf(group.rows[0])}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={CATALOG_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
+      ariaLabel="Product catalog"
+      columns={columns}
+      makeDescriptor={makeCatalogGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.id)}
+      sort={sort}
+      dir={dir}
+      onSortChange={onSortChange}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      scrollRef={scrollRef}
+      className={className}
+      testId="catalog-grid-body"
+      tableId={CATALOG_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <CatalogGridColumnHeader
+          selectionScope={selectionScope}
+          columns={visible}
+          activeSort={sort}
+          sortDir={dir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => renderLeaf(group.rows[0], visible)}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

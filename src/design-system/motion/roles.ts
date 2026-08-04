@@ -12,10 +12,11 @@
  * different literals and neither was wrong. The catalog stays — it is the
  * implementation — but new surfaces pick a role.
  *
- * FIVE roles, and the count is the point. A sixth role is a claim that a new
- * JOB exists. Wanting a different duration for an existing job is the drift
- * this layer exists to stop; change the preset (and every surface with that
- * job) instead of adding a role.
+ * FIVE roles became six when procedure stack layout earned its own job
+ * (2026-08-03). A seventh role is a claim that a new JOB exists. Wanting a
+ * different duration for an existing job is the drift this layer exists to
+ * stop; change the preset (and every surface with that job) instead of adding a
+ * role.
  *
  * PURE VALUE MODULE — no React, no hooks, no `'use client'`. Hosts consume
  * `presence` through `useMotionPresence` and `transition` through
@@ -124,6 +125,20 @@ export const motionRole = {
   feedback: {
     pulse: {
       transition: framerTransition.chipCopyFeedback,
+      regions: ['station', 'workbench'] as const satisfies readonly MotionRegion[],
+    },
+  },
+
+  /**
+   * Procedure Focus Deck layout settle — **deferred / unused** (flat foundation
+   * 2026-08-03). `ProcedureDeck` is a plain expandable list; step advance uses
+   * `swap.scan` + `procedureFocusBody` only. Keep the role in the catalog so a
+   * future deliberate revive does not invent a seventh job — do not wire it on
+   * the deck without amending SoT.
+   */
+  procedure: {
+    advance: {
+      transition: framerTransition.procedureStackLayout,
       regions: ['station', 'workbench'] as const satisfies readonly MotionRegion[],
     },
   },

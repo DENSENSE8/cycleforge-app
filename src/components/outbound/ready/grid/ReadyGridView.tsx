@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { AllocationHit } from '@/lib/channel-allocation';
@@ -34,7 +33,7 @@ interface ReadyGridViewProps {
   /** Settled with none matching the search/tab — a different answer. */
   searchEmptyMessage?: string;
   isSearching?: boolean;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly ReadyGridColumn[];
 }
 
@@ -82,7 +81,8 @@ function compareReadyRows(
  * Recently-tested / Ready spreadsheet — outbound-native adapter over
  * {@link LedgerGridSurface}. Flat history: no fold, no day band, no selection.
  *
- * The tab + search filters live in `ReadyWorkspaceView` (URL state); this
+ * The tab + search filters live in `FbaWorkspaceHeader` / `ReadyWorkspaceBody`
+ * (URL state); this
  * receives the already-filtered hits and owns only display order.
  */
 export function ReadyGridView({
@@ -106,16 +106,6 @@ export function ReadyGridView({
     defaultDir: defaultDirForReadyGridSort,
   });
 
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  const { columns: visible } = useGridColumnVisibility<ReadyGridColumn>({
-    columns,
-    tableId: READY_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeReadyGridDescriptor(visible), [visible]);
-
   // One-shot settle re-render after first data — see PickupGridView for why the
   // virtualizer can otherwise miss its scrollport on first paint.
   const [, settleTick] = useState(0);
@@ -136,47 +126,42 @@ export function ReadyGridView({
     return [['', ordered.map((hit) => ({ key: `hit:${hit.testingResultId}`, rows: [hit] }))]];
   }, [rows, columnSort, sortDir]);
 
-  const renderLeaf = (hit: AllocationHit) => (
+  const renderLeaf = (hit: AllocationHit, visible: readonly ReadyGridColumn[]) => (
     <ReadyGridRow key={hit.testingResultId} hit={hit} columns={visible} />
   );
 
   return (
-    <>
-      <LedgerGridSurface<AllocationHit, ReadyGridColumnKey>
-        ariaLabel="Recently tested units"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.testingResultId)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        searchEmptyMessage={searchEmptyMessage}
-        isSearching={isSearching}
-        scrollRef={scrollRef}
-        testId="ready-grid-body"
-        tableId={READY_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <ReadyGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={READY_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
+      ariaLabel="Recently tested units"
+      columns={columns}
+      makeDescriptor={makeReadyGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.testingResultId)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      searchEmptyMessage={searchEmptyMessage}
+      isSearching={isSearching}
+      scrollRef={scrollRef}
+      testId="ready-grid-body"
+      tableId={READY_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <ReadyGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((hit) => renderLeaf(hit, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

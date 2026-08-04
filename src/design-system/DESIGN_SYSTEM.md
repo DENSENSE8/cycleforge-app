@@ -13,6 +13,12 @@ multi-tenant. **Legible throughput** over document calm.
 - Multi-tenant **reseller operations** (warehouse floors, boards, tables, timelines, Studio graph, mobile scan).
 - Industry blend: **ops density** (Carbon / Stripe Dashboard) + **Linear chrome discipline** + **POS/scan floors** + **Studio canvas**.
 - Not a document product skin. Calm chrome is fine; document whitespace as the product shape is not.
+- **Exact flush + plane depth:** work columns share one canvas ground; depth =
+  surface steps + `elevationClass` + `nestedCorner` — not floating gutter islands
+  between spine · context · center · right. Frame budget (center floor · single
+  right edge for AI vs detail):
+  [`.claude/rules/source-of-truth.md`](../../.claude/rules/source-of-truth.md) →
+  **Depth elevation** · **Frame column budget** · **Right-rail modality**.
 
 ### Five laws
 
@@ -111,8 +117,8 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 
 - `PanelRow.tsx` — base row with label, accessory, actions, divider
 - `IconButton.tsx` — icon-only button with tone variants
-- `SearchField.tsx` — decoupled draft architecture, debounced, tone-colored
-- `ToolbarSearchToggle.tsx` — **SoT for workbench chrome scoped search**: collapsed Search icon → expands on hover/focus/click (composes `SearchField`). Quiet header rails only — not modal/station always-open fields.
+- `SearchField.tsx` — decoupled draft architecture, debounced, tone-colored; hover-reveal paste glyph (smaller than the leading Search icon)
+- ~~`ToolbarSearchToggle.tsx`~~ — **deleted 2026-08-03.** Workbench / rail scoped search SoT is `TechRailSearchBar` (`@/components/sidebar/tech/TechRailSearchBar`): always-open field + paste; `variant="chrome"` for headers (in-field Search glyph in a sunken bordered well), `variant="rail"` for footers.
 - `DeferredQtyInput.tsx` — number input with internal draft, clamped on blur
 - `StatusText.tsx` — uppercase label with colored underline
 - `StickyHeader.tsx` — sticky top/bottom with optional frosted-glass backdrop
@@ -128,16 +134,18 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - Search/labels: `StatusMicroLabel`
 - Overlays: `AssignmentOverlayCard`, `Tooltip`
 - **Workbench spreadsheet (SoT):** `components/grid/`
-  - `LedgerGrid` — virtualized sticky-header spreadsheet shell (`scrollX`, `gridSkin="airtable"`, optional day bands). Golden path: Pending / To Ship via `OrdersGridView`. Under ancestor page scroll + `scrollX` it runs **split-x mode**: the header band lives outside the inner h-scroll box (an `overflow-x` container captures `position: sticky` on both axes) and is translated via the synced `--cf-grid-sx` offset.
-  - Outer frame: compose `TABLE_SURFACE_CLIP_CLASS` from `tokens/table-surface.ts` (rounded-xl + raised + overflow-hidden; sunken frozen header). Airtable draws **continuous** column rules (`border-default`) through header + body; shell clips corners.
+  - `LedgerGrid` — virtualized sticky-header spreadsheet shell (`scrollX`, `gridSkin="airtable"`, optional day bands). Golden path: Pending / To Ship via `OrdersGridView`. Under ancestor page scroll + `scrollX` it runs **split-x mode**: the header band lives outside the inner h-scroll box (an `overflow-x` container captures `position: sticky` on both axes) and is translated via the synced `--cf-grid-sx` offset. H-scroll affordance: **sticky bottom X gutter** (`GridStickyXScrollbar` + `useSyncedHorizontalScrollbar` — always reachable for triage; body keeps `no-scrollbar`) plus `cf-grid-overflow-start` / `-end` inset shadows via `applyGridOverflowXClasses` (right edge visible at rest when columns sit off-card). Dense / admin tables use `TableStickyXScroll`.
+  - Outer frame: `TABLE_SURFACE_CLIP_CLASS` (framed card — rounded-xl + raised) or `TABLE_SURFACE_SHEET_CLASS` (flush Sheets plane — hairline only, `border-l-0`; Receiving golden via `LedgerGridSurface` `surface="sheet"` + `WORKBENCH_SHEET_HOST`). Airtable draws **continuous** column rules (`border-default`) through header + body.
   - `LedgerCellEditor` — Sheets-style in-cell edit commit shell.
   - `VirtualGroupedSections` — shared date→groups/rows virtualizer (LedgerGrid + station/receiving feeds).
-  - **Column visibility (ONE rule, one place):** `useGridColumnVisibility({ columns, tableId, forceHidden })` resolves descriptor default tier + the staffer's persisted delta + ephemeral viewport collapse into the visible track list; the view passes that list to the header, rows, group summaries **and** its geometry fn, so a hidden column loses its TRACK. `useGridFields(tableId, columns)` backs `GridColumnDetailsPanel`, generated from the descriptor and opened from `GridColumnGutter` — a control in a **gutter beside the card**, never page chrome (retired 2026-08-02 with `GridFieldsMenu`) and never inside the header band, where it would either reserve a permanent track or cover the last column's label. Column models carry `tier: 'core' | 'optional'` — `optional` ships OFF so grids open lean and staff opt in; prefs persist as a delta (`hidden`/`shown`) in `staff_preferences.tableColumns[tableId]`, never an absolute list. **Do not** call `useIsColumnHidden()` from a grid family — that is the retired cell-granularity path (it left an empty ruled band where the track should have gone) and now serves only the legacy `ChipColumns`/`RowMetaColumns` row primitives. Guard: `grid-column-tier.guard.test.ts` + `grid-column-visibility.test.ts`.
+  - **Column visibility (ONE rule, one place):** `useGridColumnVisibility({ columns, tableId, forceHidden })` resolves descriptor default tier + the staffer's persisted delta + ephemeral viewport collapse into the visible track list; the view passes that list to the header, rows, group summaries **and** its geometry fn, so a hidden column loses its TRACK. `useGridFields(tableId, columns)` backs `GridColumnDetailsPanel`, generated from the descriptor and opened from `GridColumnGutter` — hover-revealed over the card's top-right corner and reserving no layout, never page chrome (retired 2026-08-02 with `GridFieldsMenu`) and never a resident track or gutter, both of which charge standing rent (a row's width, or a page's) for an occasional action. Column models carry `tier: 'core' | 'optional'` — `optional` ships OFF so grids open lean and staff opt in; prefs persist as a delta (`hidden`/`shown`) in `staff_preferences.tableColumns[tableId]`, never an absolute list. **Do not** call `useIsColumnHidden()` from a grid family — that is the retired cell-granularity path (it left an empty ruled band where the track should have gone) and now serves only the legacy `ChipColumns`/`RowMetaColumns` row primitives. Guard: `grid-column-tier.guard.test.ts` + `grid-column-visibility.test.ts`.
   - **Column width is a per-staff drag:** `ColumnResizeHandle` on each resizable header cell mutates only the surface's `--cf-col-<key>` var (so header, rows, summaries and the frozen pane's sticky-left `calc()` reflow together with no React render), committing once on drop through `useGridColumnWidths` → `staff_preferences.tableColumns[t].widths`, applied back via `LedgerGrid` `columnVars`. `isGridColumnResizable` is the one rule for who gets a grip: variable-content tracks yes; `select` and the fixed-format types (`number` · `id` · `location`) no — their cells render a last-8 chip or a short numeral run, so a drag only moves whitespace. Override with `resizable` on the column model.
   - **Column sort is URL-durable:** `useUrlColumnSort({ isColumn, defaultDir })` owns `?colsort=`/`?coldir=` — deliberately NOT `?sort=`/`?dir=`, which are already taken by *server* ordering vocabularies on `/incoming` (`useIncomingFilters`) and History (`normalizeHistorySort`). Both params are registered in `MODE_SCOPED_PARAMS` + `stripCrossSurfaceParams`, so a column sort clears on mode/surface switch. Pending/Testing (`useQueueDisplaySort`) and Repair (`useRepairDisplaySort`) keep their composite wrappers.
   - **Headless state engine (TanStack Table v8 — state math ONLY):** `useGridSurface` (`"use no memo"` — React Compiler trap) owns column defs + sorting + visibility + column order; markup, virtualization, grouping/folds, fetch, and mutations stay house. `grid-surface-descriptor.ts` (`buildLedgerColumnDefs`, `makeGridSurfaceDescriptor`, `GridSurfaceDescriptor`) lifts a house column-model list (`ORDERS_QUEUE_COLUMNS` / `INCOMING_GRID_COLUMNS` / `RECEIVING_GRID_COLUMNS`) into TanStack defs carrying the house model on `meta.gridColumn`. **Never** mount a foreign UI grid (AG Grid / MUI / Glide) and never let TanStack own widths/markup — geometry stays on the house CSS-var templates.
   - `LedgerGridSurface` — descriptor-driven station composer (card shell + skeleton + teaching empty + TanStack sort surface + `LedgerGrid`). Adopters: `IncomingGridView`, `ReceivingGridView`. Pending composes `LedgerGrid` directly (full-bleed ancestor scroll, URL `?sort=` SoT, force-hide, drag order).
-  - Shared VALUE cells for grid rows/summaries: `@/components/ui/grid-cells` (`GridCellDash`, `GridDateCellValue`, `GridAgeCellValue`, `GridPlatformMarkValue`, `GridStaffCellValue`, `GridDateTimeCellValue`) — compose these, never re-type the em-dash / age-tone / date-tooltip / brand-mark markup per surface.
+  - Shared VALUE cells for grid rows/summaries: `@/components/ui/grid-cells` (`GridCellDash`, `GridDateCellValue`, `GridAgeCellValue`, `GridPlatformMarkValue`, `GridStaffCellValue`, `GridDateTimeCellValue`, `GridStatusCellValue`) — compose these, never re-type the em-dash / age-tone / date-tooltip / brand-mark markup per surface.
+  - **Row anatomy — a fact belongs to its own COLUMN** (2026-08-02): a column is the only address at which a fact can be sorted, hidden, resized, highlighted and aligned with its own kind. So **no status dot in the identity cell** — the title column shows the title; the dot rides the `status` track. **The status cell is `GridStatusCellValue`**: the house 3-layer chip with the dot **inside** it, tone from the surface's lifecycle registry (`workflowStage().badge`, `pickupOrderStatusChipClass`, …) and the ring derived from the resolved ink (`ring-current/20`), so no registry needs a new field — never a page-local status chip (four surfaces had one). A civil day and its stamp share ONE column. **The `META_COL` dot track on list/accordion rows is NOT this** and stays correct: a list has no columns, so the row's left edge is the only address a state mark can have. Full set + the `order`-freeze / `#`-header preconditions: `.claude/rules/display/workbench-ops-queue.md` → Row anatomy.
+  - **Frozen-pane sticky offset:** `gridFrozenLeft(columns, key)` (`components/grid/grid-column-geometry.ts`) — one implementation, taking the SURFACE's own columns, with the width fallback as the track's rem FLOOR. Ten hand-rolled copies pushed `var(--cf-col-KEY, ${col.width})` instead, and `col.width` is a `minmax()` grid-track string: illegal inside `calc()`, so `left` computed to `auto` and the pane silently did not pin at all (invisible to review, because a staffer who had drag-resized the preceding column set the var to a real px and saw it work). Guard: `grid-frozen-left.guard.test.ts`.
   - **Do not** fork sticky header / scrollX / virtual body chrome for ops queues — compose `LedgerGrid` + a domain thin composer (`OrdersGridView`, receiving/station wrappers). Domain cell registries stay out of DS.
   - **Two expand jobs (never merge):** Maximize2 / non-edit open = domain `onOpenRecord` (detail pane); multi-child fold = `CollapsibleGroupRow` + `groupRowsBy` (summary → child rows).
   - Sibling SoT for non-virtualized HTML tables: `components/DataTable/` (lifecycle/admin tables — `{ key, header, cell, align, width }` schema; **no TanStack, no virtualizer** — that simplicity is its job). Boards / pickers / rails stay their own surfaces.
@@ -149,6 +157,52 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - `CopyChip.tsx` — semantic chip family (TrackingChip, FnskuChip, SerialChip, OrderIdChip, TicketChip, SourceOrderChip)
   - `TabSwitch.tsx` — universal tab switcher with variant support
 - Sidebar intake chrome: `sidebar-intake/` (intakeFormClasses, SidebarIntakeFormShell) — **create / import / prefs only**. Record right-rail peeks use `PaneHeader` + `PaneHeaderLabel` (see `.claude/rules/display/right-rail-inspector.md`).
+
+### Procedure & scan progress (`components/procedure/` + station chrome)
+
+The **instrument-panel** families — a Station's derived procedure and the chrome that reads it.
+House law: [`.claude/rules/display/instrument-panel.md`](../../.claude/rules/display/instrument-panel.md).
+
+A procedure has **TWO views and exactly ONE derivation**. Two surfaces was never the hazard; two
+derivations drifting was.
+
+| Job | Compose | Never |
+|---|---|---|
+| "What do I do right now" | `ProcedureDeck` (centre — flat 40px faces, outline selection, evidence band under the list) | Expanding the selected face; a sibling evidence region *above* the face list |
+| "Where am I in the whole job" | `ProcedureChecklist` (a Displays body) | A pinned always-on procedure column |
+| Open / close that checklist | `ScanStationProgressControl` | A second entry on the Displays icon strip |
+| Draw procedure completion | `ScanStationProgressRing` | `GoalRing` — a different product concept |
+| Daily goal pace (GlobalHeader) | `GoalRing` | Copying it onto a station bench |
+| Inspector body facts | `OrderFactList` + `OrderFactRow` (`@/components/order-record`) | Card soup; a hero title in the header |
+
+**Import path:** `@/design-system/components/procedure` — exports `ProcedureDeck`,
+`PROCEDURE_STEP_FACE_HEIGHT` (a Tailwind class string, `'h-10'` — 40px; not a number),
+`ProcedureChecklist`, and `type ProcedureStepRow`.
+
+**Step vocabulary** (`procedure/types.ts`): `ProcedureStepState = 'done' | 'active' | 'pending' |
+'skipped'`. **`skipped` is NOT `done`** — it is a human waiver recorded *without* evidence and must
+never render with a check mark. A step goes `done` because the evidence exists, never because
+someone remembered to tick it (org-editable hand-ticked lists were deleted 2026-08-01 and stay
+deleted).
+
+| Always | Never |
+|---|---|
+| Hand the deck **every** step, in vocabulary order | Filter or re-sort before passing — the deck is a transform (`procedure-deck-order.guard.test.ts`) |
+| Derive both views from one hook (Unbox: `useUnboxProcedureSteps`) | Let a second surface compute its own answer |
+| Keep the ring bare — 16px, no numeral, no plate behind it | Put a numeral inside it or a card shell around it |
+| Let exactly **one** queued card peek below the focus card | Stack a multi-layer pile (it reads as a failed paint, not depth) |
+| Encode state in glyph + tone | Encode state in opacity — dimming is a FOCUS channel |
+| Re-dispatch focus to the scan bar after any pointer click | Leave focus on a control the next wedge scan would type into |
+
+**Two known debts — do not propagate:**
+
+1. `ScanStationProgressRing` hardcodes `#E2E8F0` (track) / `#94A3B8` (idle) / `#334155` (selected).
+   That predates the no-page-local-hex law; a named `instrument-selected` recipe is the fix. Do
+   **not** copy those literals to a second surface meanwhile.
+2. `ProcedureDeckProps` and `ProcedureCardFace` are module-private, and `ProcedureStepState` is not
+   in the barrel. A station porting the deck must supply a `face()` mapper whose return type it
+   cannot import. **Export them in the same change that first consumes them** — exporting ahead of a
+   consumer adds a new knip finding and fails the gate.
 
 ## CopyChip Semantic Rules
 

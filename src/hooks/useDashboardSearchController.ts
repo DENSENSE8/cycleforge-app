@@ -48,13 +48,15 @@ export function useDashboardSearchController() {
   // FBA renders its own detail surface, not the shipped/unshipped panel.
   const detailsEnabled = true;
 
-  const updateSearch = useCallback((mutate: (params: URLSearchParams) => void, nextPathname = '/dashboard') => {
+  const deskPath = pathname || '/shipping/orders';
+
+  const updateSearch = useCallback((mutate: (params: URLSearchParams) => void, nextPathname = deskPath) => {
     const nextParams = new URLSearchParams(searchParams.toString());
     mutate(nextParams);
-    const targetPath = nextPathname || pathname || '/dashboard';
+    const targetPath = nextPathname || pathname || '/shipping/orders';
     const nextSearch = nextParams.toString();
     router.replace(nextSearch ? `${targetPath}?${nextSearch}` : targetPath, { scroll: false });
-  }, [pathname, router, searchParams]);
+  }, [deskPath, pathname, router, searchParams]);
 
   const setSearch = useCallback(async (nextValue: string) => {
     const trimmed = nextValue.trim();
@@ -69,13 +71,13 @@ export function useDashboardSearchController() {
       if (trimmed) params.set('search', trimmed);
       else params.delete('search');
       params.delete('openOrderId');
-    }, '/dashboard');
+    });
   }, [searchParams, updateSearch]);
 
   const setOrderView = useCallback((nextView: DashboardOrderView) => {
     updateSearch((params) => {
       normalizeDashboardOrderViewParams(params, nextView);
-    }, '/dashboard');
+    });
   }, [updateSearch]);
 
   const setShippedFilter = useCallback((value: ShippedTypeFilter) => {
@@ -83,7 +85,7 @@ export function useDashboardSearchController() {
     updateSearch((params) => {
       if (value === 'all') params.delete('shippedFilter');
       else params.set('shippedFilter', value);
-    }, '/dashboard');
+    });
   }, [updateSearch]);
 
   const setShippedSearchField = useCallback((value: ShippedSearchField) => {
@@ -91,7 +93,7 @@ export function useDashboardSearchController() {
     updateSearch((params) => {
       if (value === 'all') params.delete('shippedSearchField');
       else params.set('shippedSearchField', value);
-    }, '/dashboard');
+    });
   }, [updateSearch]);
 
   const setDetailsOpenBehavior = useCallback((value: DetailsOpenBehaviorPreference) => {
@@ -101,15 +103,14 @@ export function useDashboardSearchController() {
   const openIntakeForm = useCallback(() => {
     updateSearch((params) => {
       params.set('new', 'true');
-    }, '/dashboard');
+    });
   }, [updateSearch]);
 
   const closeIntakeForm = useCallback(() => {
     updateSearch((params) => {
       params.delete('new');
-    }, '/dashboard');
+    });
   }, [updateSearch]);
-
   useEffect(() => {
     writeShippedFilterPreference(shippedFilter);
   }, [shippedFilter]);

@@ -13,7 +13,6 @@ import {
 } from './locations-cache';
 
 export type {
-  LocationRecord,
   RoomStructure,
 } from './locations-cache';
 

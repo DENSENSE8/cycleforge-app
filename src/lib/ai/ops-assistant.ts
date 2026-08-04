@@ -24,7 +24,7 @@ function buildDashboardHref(timeframe: AiTimeframe): string {
   if (typeof timeframe.weekOffset === 'number' && timeframe.weekOffset > 0) {
     params.set('shippedWeekOffset', String(timeframe.weekOffset));
   }
-  return `/dashboard?${params.toString()}`;
+  return `/shipping/orders?${params.toString()}`;
 }
 
 function buildStaffHref(dimension: ShippingDimension, staffId: number | null): string | undefined {
@@ -116,7 +116,7 @@ function buildSampleRecords(records: ShippedOrder[]): AiSampleRecord[] {
       record.packed_by_name ? `Packer ${record.packed_by_name}` : null,
       record.tested_by_name ? `Tester ${record.tested_by_name}` : null,
     ].filter(Boolean).join(' | '),
-    href: `/dashboard?shipped=&search=${encodeURIComponent(String(record.order_id || record.id))}`,
+    href: `/shipping/orders?shipped=&search=${encodeURIComponent(String(record.order_id || record.id))}`,
   }));
 }
 

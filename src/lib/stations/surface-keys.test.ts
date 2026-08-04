@@ -35,7 +35,13 @@ test('registry: every SURFACE_KEY has a structurally complete entry', () => {
     assert.ok(def.permission.length > 0, `${key}: permission required`);
     assert.ok(def.pageKey.length > 0, `${key}: pageKey required (Option A: station_definitions.page_key)`);
     assert.ok(def.modeKey.length > 0, `${key}: modeKey required`);
-    assert.ok(def.scan === null || def.scan === 'unbox' || def.scan === 'triage', `${key}: scan policy`);
+    assert.ok(
+      def.scan === null ||
+        def.scan === 'unbox' ||
+        def.scan === 'triage' ||
+        def.scan === 'pickup',
+      `${key}: scan policy`,
+    );
     if (def.archetype === 'workbench') {
       assert.ok(
         isWorkbenchBranchId(def.workbenchBranch),

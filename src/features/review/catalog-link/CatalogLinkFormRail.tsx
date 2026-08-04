@@ -41,7 +41,6 @@ import {
   CursorPositionReadout,
   PaneHeader,
   PaneHeaderActionBar,
-  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   type PaneHeaderActionBarAction,
@@ -148,6 +147,8 @@ function RecordRailHeader({
           nextDisabled={atLast}
           prevTitle="Previous row"
           nextTitle="Next row"
+          onClose={onClose}
+          closeTitle="Close details"
           rightSlot={
             hasQueue ? (
               <CursorPositionReadout
@@ -156,10 +157,9 @@ function RecordRailHeader({
               />
             ) : undefined
           }
-          className="min-w-0 flex-1"
+          className="min-w-0 flex-1 w-full px-0 py-0"
         />
       }
-      rightSlot={<PaneHeaderCloseButton onClick={onClose} title="Close details" />}
       belowSlot={
         <div className="flex min-w-0 items-center gap-2 px-4 pb-2">
           <PaneHeaderIconBadge Icon={BadgeIcon} bg={badgeBg} tint={badgeTint} size="sm" />

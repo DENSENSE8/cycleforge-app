@@ -1,8 +1,10 @@
 'use client';
 
 import { KpiTile } from '@/design-system/components/monitor';
-import type { ReadyWorkspaceCounts } from './ReadyWorkspaceHeader';
-import type { ReadyWorkspaceTab } from '@/utils/ready-workspace-state';
+import type {
+  ReadyWorkspaceCounts,
+  ReadyWorkspaceTab,
+} from '@/utils/ready-workspace-state';
 
 const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
 const TILE_CELL_CLASS = 'min-w-0 grow basis-32';

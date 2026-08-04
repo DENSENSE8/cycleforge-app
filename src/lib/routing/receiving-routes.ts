@@ -25,6 +25,7 @@ import {
 } from '@/lib/receiving/surface-path';
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_OPTIONS } from '@/lib/receiving/receiving-modes';
+import { parseInboundDeskSort } from '@/lib/receiving/inbound-lane';
 import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
@@ -129,6 +130,52 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     ustage: paramEnum(['staged', 'unstaged'] as const),
     /** Queue priority-lane facet — triage lane values. Omitted = all lanes. */
     ulane: paramEnumUpper(['PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD'] as const),
+    /**
+     * KPI-tile row filter (`UnboxChromeKpiCluster` ↔ `ReceivingLinesTable`).
+     * Values match filterable metric ids in `unbox-metrics.ts` — informational
+     * tiles (`queue-depth`, `oldest-wait`) never write this param.
+     */
+    ukpi: paramEnum([
+      'opened-today',
+      'awaiting-test',
+      'stuck',
+      'priority',
+      'viewed-today',
+      'unfinished',
+    ] as const),
+    /**
+     * TradingView-like compare layout — `single` (default, omitted) · `split`
+     * · `quad`. Pane recipes ride `c0`…`c3`.
+     */
+    clayout: paramEnum(['single', 'split', 'quad'] as const),
+    c0: paramText,
+    c1: paramText,
+    c2: paramText,
+    c3: paramText,
+    /**
+     * History linked parent→child drill vs folded list. Default (omitted) =
+     * list (classic single PO-fold grid). `drill` opts into linked dual panes.
+     * Orthogonal to `clayout` compare.
+     */
+    hlayout: paramEnum(['drill', 'list'] as const),
+    /** Selected PO-group key while History drill is active (`po:…` / `src:…` / `line:…`). */
+    drillPo: paramText,
+    /**
+     * History tab search triple (`rh_*`). Same keys as `/receiving/history` and
+     * Incoming Docked — Unbox History chrome + drill parent-map footer write
+     * `?rh_q=`. Must be owned here or `useSurfaceParamHygiene` strips the query
+     * on the next commit (filter flashes then resets).
+     */
+    [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
+    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
+      'all',
+      'po',
+      'tracking',
+      'sku',
+      'product',
+      'serial',
+    ] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
   },
   carries: SCAN_SURFACE_CARRIES,
 });
@@ -148,11 +195,16 @@ export const TRIAGE_ROUTE_PARAMS = defineRouteParams({
   carries: SCAN_SURFACE_CARRIES,
 });
 
-/** `/incoming` — expected/in-transit cartons. */
+/**
+ * `/incoming` — Inbound desk: Pipeline (expected/in-transit) + Docked (landed
+ * activity, former Receiving Board). `?lane=docked` selects Docked; omit = Pipeline.
+ */
 export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   route: INCOMING_SURFACE_ROUTE,
   owns: {
-    /** Right-pane sub-view (`pos` default | `email` | `removed`). */
+    /** Desk lane (`pipeline` default, omitted | `docked`). */
+    lane: paramEnum(['pipeline', 'docked'] as const),
+    /** Right-pane sub-view (`pos` default | `email` | `removed`) — Pipeline only. */
     incview: paramEnum(['pos', 'email', 'removed'] as const),
     /**
      * Bulk tracking paste filter — canonical keys, comma-joined. Names specific
@@ -173,15 +225,14 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
       'AWAITING_TRACKING',
       'WRONG_DESTINATION',
     ] as const),
-    /** Source tab (`all` default | `zoho` | `ebay`). */
+    /** Source tab (`all` default | `zoho` | `ebay`) — Pipeline only. */
     inbound: paramEnum(['all', 'zoho', 'ebay'] as const),
-    /** Server ORDER BY. `zoho_newest` is the default and is omitted. */
-    sort: paramEnum([
-      'zoho_newest',
-      'zoho_oldest',
-      'expected_soonest',
-      'recently_added',
-    ] as const),
+    /**
+     * Server ORDER BY — Pipeline ∪ Docked union so hygiene does not strip the
+     * other lane’s sort on a deep link. Lane switch clears the incompatible id
+     * via `clearCrossLaneParams`.
+     */
+    sort: paramRoundTrip(parseInboundDeskSort),
     /** PO purchase-date range → `zoho_po_mirror.po_date`. Civil day keys. */
     po_from: paramDateKey,
     po_to: paramDateKey,
@@ -189,6 +240,16 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     page: paramPositiveInt,
     /** Shared receiving search box. */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
+    /** Docked (history) search field / carton-source scope. */
+    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
+      'all',
+      'po',
+      'tracking',
+      'sku',
+      'product',
+      'serial',
+    ] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
   },
   carries: BROWSE_SURFACE_CARRIES,
 });
@@ -200,7 +261,7 @@ const PICKUP_ROUTE_PARAMS = defineRouteParams({
     /** Selected local-pickup order id. */
     lcpu: paramPositiveInt,
     /** Status tab over the pickup lines. */
-    status: paramEnum(['all', 'draft', 'done'] as const),
+    status: paramEnum(['all', 'process', 'draft', 'done'] as const),
     /** Pickup's own list filter (distinct from History's namespaced `rh_q`). */
     q: paramText,
   },

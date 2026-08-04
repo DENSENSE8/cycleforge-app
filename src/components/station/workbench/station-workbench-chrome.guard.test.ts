@@ -8,6 +8,7 @@ import {
   MAX_W_3XL_BASELINE,
   IDENTITY_FORK_ALLOWLIST,
   MAX_W_3XL_ESCAPE,
+  NON_STATION_COLUMN_SURFACES,
   PANEL_ROOT_BASELINE,
   PANEL_ROOT_FINGERPRINT,
   STATION_FAMILY_ROOTS,
@@ -190,5 +191,79 @@ test('Guard E: <StationTerminalDock> mounts go through the terminal registry', (
       `useStationTerminalAction + STATION_TERMINAL_REGISTRY. Move onto the registry, or add a ` +
       `documented entry to TERMINAL_HAND_VM_ALLOWLIST with a port follow-up:\n  - ` +
       offenders.join('\n  - '),
+  );
+});
+
+// ── Guard H — declared NON-Station surfaces ───────────────────────────────────
+/**
+ * Pickup and Repair intake sat in the Scan Stations spine section and compose
+ * no station chrome. That is a DECISION (see NON_STATION_COLUMN_SURFACES), and
+ * a decision nothing checks is indistinguishable from an unfinished port — the
+ * silence the handoff asked to break.
+ *
+ * Asserted in both directions: the file still exists (a moved surface must
+ * re-declare, not silently drop off), and it composes no station column shell.
+ * Adding a bookmark to a listed surface fails here until the entry is deleted,
+ * and deleting the entry IS the act of joining the family.
+ */
+test('Guard H: declared non-Station surfaces compose no station column shell', () => {
+  const STATION_CHROME = [
+    '<StationWorkbench',
+    '<StationContextBar',
+    '<StationPanelRoot',
+    '<CartonContextCard',
+  ] as const;
+
+  const missing: string[] = [];
+  const offenders: string[] = [];
+
+  for (const relPath of NON_STATION_COLUMN_SURFACES) {
+    const full = join(SRC_ROOT, relPath);
+    if (!existsSync(full)) {
+      missing.push(relPath);
+      continue;
+    }
+    const src = readFileSync(full, 'utf8');
+    const hits = STATION_CHROME.filter((needle) => src.includes(needle));
+    if (hits.length > 0) offenders.push(`${relPath} → ${hits.join(', ')}`);
+  }
+
+  assert.deepEqual(
+    missing,
+    [],
+    'NON_STATION_COLUMN_SURFACES names a file that no longer exists. A surface that ' +
+      'moved must re-declare where it landed — dropping the entry silently is how the ' +
+      'decision goes missing again:\n  - ' + missing.join('\n  - '),
+  );
+  assert.deepEqual(
+    offenders,
+    [],
+    'These surfaces are DECLARED non-Station but now compose station column chrome. ' +
+      'If they genuinely grew a scan loop, finish the port (StationWorkbench + a ' +
+      'CartonContextCard adapter) and DELETE the NON_STATION_COLUMN_SURFACES entry — ' +
+      'half-ported station chrome on a form is the lobotomized-work-chrome ' +
+      'anti-pattern:\n  - ' + offenders.join('\n  - '),
+  );
+});
+
+test('bodyAlign=end uses flex gap — space-y dies under Items mb-auto', () => {
+  // Unbox pins Items with `mb-auto` on the justify-end column. `space-y-*`
+  // puts margin-bottom on that child; mb-auto overrides it and the
+  // Items↔procedure cards go flush whenever free space runs out. Flex `gap`
+  // survives auto margins.
+  const src = readFileSync(
+    join(SRC_ROOT, 'components/station/workbench/StationWorkbench.tsx'),
+    'utf8',
+  ).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/.*$/gm, ' ');
+
+  assert.match(
+    src,
+    /bodyAlign\s*===\s*['"]end['"]\s*\?[\s\S]*?gap-4/,
+    'bodyAlign=end must space siblings with flex gap-4',
+  );
+  assert.equal(
+    /bodyAlign\s*===\s*['"]end['"]\s*&&\s*['"][^'"]*space-y-/.test(src),
+    false,
+    'do not pair bodyAlign=end with space-y — mb-auto on Items collapses it',
   );
 });

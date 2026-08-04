@@ -132,12 +132,16 @@ export function useReceivingMode(): ReceivingModeState {
   const triageView = resolveTriageView(searchParams.get('triview'));
   const triageQuery = searchParams.get('triq') ?? '';
 
-  // Returning to a scan surface from History / Pickup / Incoming → focus the
-  // tracking field. Entering Pickup → clear any open line. The scan-bar +
-  // selection hooks listen for these events.
+  // Returning to a scan surface from History / Incoming → focus the
+  // tracking field. Entering Pickup → clear any open line + focus the
+  // pickup scan wedge. The scan-bar + selection hooks listen for these events.
   useEffect(() => {
     if (mode === 'pickup') {
       window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('receiving-focus-scan'));
+      });
+      return;
     }
     if (isScanSurface) {
       requestAnimationFrame(() => {

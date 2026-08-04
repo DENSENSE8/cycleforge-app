@@ -1,28 +1,39 @@
 'use client';
 
-import { Gs1DataMatrix } from '@/components/barcode/Gs1DataMatrix';
-import type { LabelFaceModel } from '@/lib/print/labelFace';
-
 /**
  * On-screen render of a printed 2×1" label face from a {@link LabelFaceModel}.
- * The single preview shared by the receiving (PO/carton) and testing (unit)
- * labels — both feed it a model built by their domain adapter, so the preview
- * and the printed sticker can never drift. `embedded` strips the bordered card
- * chrome for use inside a menu/popover.
  *
- * The preview is a THEMED surface (semantic tokens) so it sits naturally inside
- * the app — a white sticker in light mode, a dark card in dark mode. The
- * DataMatrix is drawn on a TRANSPARENT background and tagged `label-preview-matrix`;
- * in a dark scheme globals.css inverts it to white modules so the code reads on
- * the dark card instead of floating as a black-on-white square. The PRINT path
- * is separate (buildFaceInfoHtml / printLabel) and always renders black-on-white
- * paper — the inversion here is preview-only.
+ * Renders the SAME HTML document Chrome prints ({@link buildLabelHtml} with
+ * `preview: true`) inside a scaled iframe — so the Unbox / Testing / Products
+ * preview cannot drift from the physical sticker. `embedded` strips the
+ * bordered card chrome for use inside a menu/popover.
  *
- * Row height is pinned to the 96px (6rem) DataMatrix so the text column spans
- * the same box: with no vertical padding the top row (topLeft · topRight) sits
- * flush with the matrix's top edge and the bottom row (bottomLeft · bottomRight)
- * with its bottom edge.
+ * The iframe is always black-on-white paper (print-faithful). Host width is
+ * measured and the 2in×1in document is scaled up to at most 2.5× (~480×240)
+ * so it stays readable without overflowing narrow popovers.
+ *
+ * Text-slot updates (center note, corners, HRI) patch the live iframe DOM via
+ * {@link patchLabelFaceDocument} — rewriting `srcDoc` on every keystroke would
+ * tear down the document and flash the sticker. Full rebuild only when matrix /
+ * symbology / scale / kind identity changes.
  */
+
+import { useEffect, useRef, useState } from 'react';
+import {
+  buildFaceInfoHtml,
+  patchLabelFaceDocument,
+  type LabelFaceModel,
+} from '@/lib/print/labelFace';
+
+/** CSS px per CSS inch (browser convention). */
+const CSS_PX_PER_IN = 96;
+/** Intrinsic label width in inches (matches print shell default). */
+const LABEL_WIDTH_IN = 2;
+/** Intrinsic label height in inches. */
+const LABEL_HEIGHT_IN = 1;
+/** Cap so the sticker stays readable but not giant on a wide card. */
+const MAX_SCALE = 2.5;
+
 export function LabelFacePreview({
   model,
   embedded,
@@ -30,88 +41,128 @@ export function LabelFacePreview({
   model: LabelFaceModel;
   embedded?: boolean;
 }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const modelRef = useRef(model);
+  modelRef.current = model;
+  const [html, setHtml] = useState<string | null>(null);
+  const [scale, setScale] = useState(1);
+
+  const matrixValue = model.matrix.value?.trim() ?? '';
+
+  // Full print-shell rebuild — matrix / kind identity only. Text slots patch
+  // in place below so dock typing does not flash the iframe.
+  useEffect(() => {
+    if (!matrixValue) {
+      setHtml(null);
+      return;
+    }
+    let cancelled = false;
+    const faceHtml = buildFaceInfoHtml(modelRef.current);
+    void import('@/lib/print/printLabel')
+      .then(({ buildLabelHtml }) => {
+        if (cancelled) return;
+        setHtml(
+          buildLabelHtml({
+            name: 'Label',
+            ...faceHtml,
+            dataMatrix: modelRef.current.matrix,
+            hri: modelRef.current.hri,
+            preview: true,
+          }),
+        );
+      })
+      .catch((err) => {
+        console.error('[LabelFacePreview] failed to load print shell', err);
+        if (!cancelled) setHtml(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [matrixValue, model.matrix.symbology, model.matrix.scale, model.kind]);
+
+  // Patch face text slots without touching srcDoc.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !html) return;
+
+    const apply = () => {
+      const doc = iframe.contentDocument;
+      if (!doc?.body) return;
+      patchLabelFaceDocument(doc, modelRef.current);
+    };
+
+    iframe.addEventListener('load', apply);
+    apply();
+    return () => iframe.removeEventListener('load', apply);
+  }, [
+    html,
+    model.hri,
+    model.topLeft,
+    model.topRight,
+    model.center,
+    model.bottomLeft,
+    model.bottomRight,
+    model.kind,
+  ]);
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const update = () => {
+      const widthPx = el.clientWidth;
+      if (widthPx <= 0) return;
+      const fit = widthPx / (LABEL_WIDTH_IN * CSS_PX_PER_IN);
+      setScale(Math.min(MAX_SCALE, Math.max(0.5, fit)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  if (!matrixValue) return null;
+
   const shell = embedded
-    ? 'w-full bg-surface-card'
+    ? 'w-full bg-transparent'
     : 'w-full rounded-lg border border-border-soft/80 bg-surface-card px-3 py-3 shadow-sm';
-  // quietZone=0 makes the ink fill the box edge-to-edge so the top/bottom rows
-  // line up with the matrix's visible edges — preview only; the printed symbol
-  // keeps its scanner-safe quiet zone.
-  const matrixCol = (
-    <div className="flex shrink-0 flex-col items-center justify-center gap-0.5 [&_svg]:block">
-      {model.matrix.value ? (
-        // Transparent bg + `label-preview-matrix` → globals.css inverts the code
-        // to white modules in a dark scheme so it reads on the dark card.
-        <div className="label-preview-matrix">
-          <Gs1DataMatrix
-            value={model.matrix.value}
-            size={84}
-            symbology={model.matrix.symbology}
-            quietZone={0}
-            bgColor="transparent"
-          />
-        </div>
-      ) : null}
-      {model.hri ? (
-        <span className="font-mono text-role-micro leading-none tracking-wide text-text-default">
-          {model.hri}
-        </span>
-      ) : null}
-    </div>
-  );
 
-  // Product face — product title fills a full top row, condition·color beneath.
-  if (model.kind === 'product') {
-    return (
-      <div className={shell}>
-        <div className="flex min-h-[6rem] flex-nowrap items-stretch gap-4">
-          <div className="min-w-0 flex flex-1 flex-col justify-between">
-            <span className="line-clamp-2 text-role-micro leading-snug tracking-tight text-text-default">
-              {model.topLeft}
-            </span>
-            <div className="flex items-baseline justify-between gap-2 text-role-micro leading-none">
-              <span className="font-semibold text-text-default">{model.bottomLeft}</span>
-              <span className="shrink-0 tabular-nums font-semibold text-text-default">
-                {model.bottomRight}
-              </span>
-            </div>
-          </div>
-          {matrixCol}
-        </div>
-      </div>
-    );
-  }
+  const scaledW = LABEL_WIDTH_IN * CSS_PX_PER_IN * scale;
+  const scaledH = LABEL_HEIGHT_IN * CSS_PX_PER_IN * scale;
 
-  // Receiving face — 4-corner carton grid.
   return (
     <div className={shell}>
-      <div className="flex min-h-[6rem] flex-nowrap items-stretch gap-4">
-        <div className="min-w-0 flex flex-1 flex-col justify-between">
-          <div className="flex items-baseline justify-between gap-2 text-base leading-none">
-            <span className="truncate font-semibold text-text-default">{model.topLeft}</span>
-            <span className="shrink-0 tabular-nums font-semibold text-text-default">
-              {model.topRight}
-            </span>
-          </div>
-          <div className="flex min-h-0 flex-1 min-w-0 items-center justify-center px-0.5">
-            {/* The printed center band = `receiving_line.label_note`, never the
-                operator's item note. Tagged so a spec can assert THIS text
-                rather than "somewhere on the page" — the item note lives in a
-                textarea whose value is also a matchable text node. */}
-            <span
-              data-testid="label-face-center"
-              className="line-clamp-3 w-full text-center text-role-caption font-semibold leading-tight tracking-normal text-text-default normal-case"
-            >
-              {model.center}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-2 text-base leading-none">
-            <span className="font-semibold text-text-default">{model.bottomLeft}</span>
-            <span className="shrink-0 tabular-nums font-semibold text-text-default">
-              {model.bottomRight}
-            </span>
-          </div>
+      <div ref={hostRef} className="w-full">
+        <div
+          className="relative mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-border-soft/60"
+          style={{ width: scaledW, height: scaledH, maxWidth: '100%' }}
+        >
+          {html ? (
+            <iframe
+              ref={iframeRef}
+              title="Label preview"
+              srcDoc={html}
+              sandbox="allow-same-origin"
+              tabIndex={-1}
+              // Sub-pixel overflow inside the 2×1in doc used to paint iframe
+              // scrollbars; transform:scale then blew them up to "big" chrome.
+              scrolling="no"
+              className="pointer-events-none absolute left-0 top-0 overflow-hidden border-0"
+              style={{
+                width: `${LABEL_WIDTH_IN}in`,
+                height: `${LABEL_HEIGHT_IN}in`,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                overflow: 'hidden',
+              }}
+            />
+          ) : (
+            <div
+              className="h-full w-full animate-pulse bg-surface-strong"
+              aria-hidden
+            />
+          )}
         </div>
-        {matrixCol}
       </div>
     </div>
   );

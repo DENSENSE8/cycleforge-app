@@ -56,6 +56,8 @@ import {
 } from './LedgerGridColumnHeader';
 import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
+import type { LedgerGridColumnMenuApi } from './LedgerGridColumnContextMenu';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 
 /** How this surface answers "may an operator select rows here?". */
 export type GridHeaderSelectMode = 'always' | 'prop' | 'never';
@@ -74,10 +76,23 @@ export interface GridColumnHeaderBaseProps<
   onSortColumn?: (key: K) => void;
   /** Commit a drag-resized width (px). Presence enables the resize grips. */
   onResizeColumn?: (key: string, px: number) => void;
+  /** Drop a column's persisted width (double-click grip → SoT default). */
+  onResetColumn?: (key: string) => void;
+  /** Sheets-class header context menu (Receiving / Unbox). */
+  columnMenu?: LedgerGridColumnMenuApi<C>;
   /** Per-mount glyph override; falls back to the factory config, then the type glyph. */
   glyphFor?: (column: C) => ReactNode;
   /** Per-mount label override (e.g. Receiving's `stage` → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
+  /**
+   * Select-all chrome. Defaults to `'always'`. Receiving's Unbox History
+   * passes `'sheets'`.
+   */
+  selectGutterChrome?: GridSelectGutterChrome;
+  /**
+   * Leading chrome for a `_paint` track (Unbox History) — paint-bucket icon.
+   */
+  leadingChrome?: ReactNode;
 }
 
 /** Selection props, derived from the config's `selectMode`. */
@@ -130,8 +145,12 @@ export function makeLedgerGridColumnHeader<
       sortDir = null,
       onSortColumn,
       onResizeColumn,
+      onResetColumn,
       glyphFor,
       labelFor,
+      columnMenu,
+      selectGutterChrome,
+      leadingChrome,
     } = props;
 
     // `'prop'` is the only mode that reads a caller-supplied `selectMode`;
@@ -148,6 +167,8 @@ export function makeLedgerGridColumnHeader<
         isMobile={isMobile}
         selectMode={resolvedSelectMode}
         selectionScope={scope}
+        selectGutterChrome={selectGutterChrome}
+        leadingChrome={leadingChrome}
         className={className}
         activeSort={activeSort}
         sortDir={sortDir}
@@ -156,8 +177,10 @@ export function makeLedgerGridColumnHeader<
         // cast here replaces twelve at the call sites.
         onSortColumn={onSortColumn ? (key: string) => onSortColumn(key as K) : undefined}
         onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
         glyphFor={glyphFor ?? configGlyphFor}
         labelFor={labelFor ?? configLabelFor}
+        columnMenu={columnMenu}
       />
     );
   };

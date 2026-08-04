@@ -3,10 +3,9 @@
 /**
  * Mid-canvas right-edge sliced action tab — flush to the work-canvas right edge.
  *
- * Same bookmark family as {@link StationMoreDetails}: left corners rounded,
- * right edge sliced (no radius / border). Secondary surface jumps only
- * (e.g. Triage → Open in Unbox) — never the primary terminal CTA
- * (`SlicedActionDock` / `StationTerminalDock`).
+ * Left corners rounded, right edge sliced (no radius / border). Secondary
+ * surface jumps only (e.g. Triage → Open in Unbox) — never the primary
+ * terminal CTA (`SlicedActionDock` / `StationTerminalDock`).
  *
  * Mount on the panel’s `relative` full-height canvas root with
  * {@link stationRightEdgeActionHostClass}. Do **not** nest under
@@ -17,9 +16,9 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
 import {
-  stationBookmarkPadClass,
+  stationIdentityPadClass,
   stationRightEdgeActionClass,
-} from './station-bookmark';
+} from './station-identity-chrome';
 
 export function StationRightEdgeAction({
   children,
@@ -38,7 +37,7 @@ export function StationRightEdgeAction({
       borderless
       className={cn(
         stationRightEdgeActionClass,
-        stationBookmarkPadClass,
+        stationIdentityPadClass,
         'flex shrink-0 items-center overflow-visible',
         className,
       )}

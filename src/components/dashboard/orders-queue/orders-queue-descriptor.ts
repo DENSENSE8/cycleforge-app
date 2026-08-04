@@ -86,3 +86,20 @@ export function makeOrdersGridDescriptor(
     ORDERS_GRID_CAPABILITIES,
   );
 }
+
+/**
+ * Stable `LedgerGridSurface` factories — one per column mode. The surface
+ * memoizes the descriptor on `[makeDescriptor, visible]`; an inline arrow
+ * would rebuild TanStack columnDefs every render (plumbing guard).
+ */
+export function makeOrdersGridDescriptorDefault(
+  columns: readonly OrdersQueueColumn[],
+): GridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn> {
+  return makeOrdersGridDescriptor('fulfillment.default', columns);
+}
+
+export function makeOrdersGridDescriptorTested(
+  columns: readonly OrdersQueueColumn[],
+): GridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn> {
+  return makeOrdersGridDescriptor('fulfillment.tested', columns);
+}

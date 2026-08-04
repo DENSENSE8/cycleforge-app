@@ -14,6 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { markdownToHtml } from '@/lib/support/markdown';
 import { cn } from '@/utils/_cn';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { seedComposerDraft } from '@/lib/threads/composer-draft';
+import { requestConfirm } from '@/design-system/components/confirm';
 import {
   NOTE_INSERT_TRIGGER_BTN,
   NOTE_OVERLAY_ICON,
@@ -37,8 +39,6 @@ export function SupportChatComposer({
   ticketId,
   requesterEmail,
   staging,
-  seedBody,
-  seedToken,
   receivingId,
   onBridgeChange,
   variant = 'inline',
@@ -47,10 +47,6 @@ export function SupportChatComposer({
   ticketId: number;
   requesterEmail?: string | null;
   staging: TicketPhotoStaging;
-  /** Draft text to drop into the editor (e.g. an accepted AI suggestion). */
-  seedBody?: string;
-  /** Bump this to re-apply seedBody even if the text is unchanged. */
-  seedToken?: number;
   /** Carton context for media library “Current carton” tab. */
   receivingId?: number;
   /** Exposes the embedded composer to a station terminal dock. */
@@ -67,13 +63,12 @@ export function SupportChatComposer({
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const stationDock = variant === 'station-dock';
 
-  // Populate the editor when the parent seeds a draft (AI "Use draft"). Keyed on
-  // seedToken so re-using the same text still applies; never clobbers ongoing typing
-  // unless the agent explicitly accepts a new suggestion.
-  useEffect(() => {
-    if (seedBody) setBody(seedBody);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seedToken]);
+  // A draft reaches this editor through ONE door: `bridge.setDraft` below,
+  // which routes every insert through `seedComposerDraft`'s overwrite rule.
+  // The `seedBody` / `seedToken` props it replaced (2026-08-02) overwrote
+  // `body` unconditionally on every token bump — safe only because nothing had
+  // ever called them. Do not re-add a second seeding path beside the bridge.
+
   // Default to internal note — public replies are the deliberate exception.
   const [isPublic, setIsPublic] = useState(false);
   const [ccs, setCcs] = useState<string[]>([]);
@@ -165,6 +160,19 @@ export function SupportChatComposer({
         composerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       },
       submit,
+      setDraft: (text, opts) =>
+        seedComposerDraft({
+          currentBody: body,
+          text,
+          mode: opts?.mode,
+          applyBody: setBody,
+          applyMode: setIsPublic,
+          confirm: requestConfirm,
+          onApplied: () => {
+            composerRef.current?.focus();
+            composerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          },
+        }),
     });
     return () => onBridgeChange(null);
     // submit closes over the current draft, visibility, CCs, and staged photos.

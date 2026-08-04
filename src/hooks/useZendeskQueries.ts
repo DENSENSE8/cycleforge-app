@@ -389,33 +389,9 @@ export function useUpdateTicket() {
   });
 }
 
-interface CommentVars {
-  id: number;
-  body: string;
-  html_body?: string;
-  isPublic: boolean;
-}
+// `CommentVars` + `useAddComment` were deleted 2026-08-02 with their only
+// consumer, `PackZendeskSection` — itself dead code inside the pack scan
+// column's unreachable standalone branch. Ticket replies go through the
+// composer waist (`SupportChatComposer` / `ThreadComposerBridge`), which is the
+// one path that also owns visibility and draft-overwrite rules.
 
-/** Add a public reply or internal note. Not optimistic — the server assigns id/author/time. */
-export function useAddComment() {
-  const qc = useQueryClient();
-  return useMutation<ZendeskTicket, HttpError, CommentVars>({
-    mutationFn: async ({ id, body, html_body, isPublic }) => {
-      const res = await fetch(`/api/zendesk/tickets/${id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body, html_body, public: isPublic }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) throw new HttpError(res.status, data?.error || 'Failed to add comment');
-      return data.ticket as ZendeskTicket;
-    },
-    onSuccess: (_t, { id, isPublic }) => {
-      toast.success(isPublic ? 'Reply sent' : 'Internal note added');
-      void qc.invalidateQueries({ queryKey: zendeskKeys.comments(id) });
-      void qc.invalidateQueries({ queryKey: zendeskKeys.ticket(id) });
-      void qc.invalidateQueries({ queryKey: zendeskKeys.bundle(id) });
-    },
-    onError: () => toast.error('Could not add the comment'),
-  });
-}

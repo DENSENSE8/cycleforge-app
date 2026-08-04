@@ -2,13 +2,12 @@
  * Unbox side displays — which tab the right-edge Displays push column shows.
  *
  * Pure: no React, no imports. The workbench body no longer hosts a tab strip
- * (`overview` IS the centre), so this vocabulary covers only the eight surfaces
+ * (`overview` IS the centre), so this vocabulary covers only the surfaces
  * that moved to {@link ReceivingDisplaysPushStack}.
  *
  * `checklist` is a valid Displays body id and deep-link (`?display=checklist`) but
- * is **ring-only** — it does not appear on the icon strip (2026-08-02). The pane
- * scan-progress ring is the sole Checklist entry. It is a second VIEW of the centre's
- * work cards, never a second derivation — both read `useUnboxProcedureSteps`.
+ * is **ring-only** — it does not appear on the icon strip. Optional procedure
+ * status (not a required twin of a centre ProcedureDeck on main).
  *
  * `null` means the Displays column is CLOSED — there is no separate open flag,
  * so there is nothing to keep in sync and no vestigial "active tab while
@@ -29,8 +28,8 @@ export type UnboxSideTab =
 /** All display body ids — includes ring-only `checklist`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'checklist',
-  'classify',
   'pairing',
+  'classify',
   'listings',
   'units',
   'po-note',

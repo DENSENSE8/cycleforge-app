@@ -20,6 +20,10 @@ import { REPAIR_FAILURE_REASONS } from '@/lib/repair/repair-failure-reasons';
 import { RECEIVING_EXCEPTION_CODES, RECEIVING_EXCEPTION_META } from '@/lib/receiving/exception-codes';
 import { SKU_STOCK_REASONS } from '@/lib/sku/sku-stock-reasons';
 import { SERIAL_ABSENT_REASONS } from '@/lib/receiving/serial-absent-reasons';
+import {
+  STATION_COMMAND_CODES,
+  STATION_COMMAND_FLOW_CONTEXT,
+} from '@/lib/stations/station-command-codes';
 
 export interface PlatformRow {
   id: number;
@@ -179,6 +183,18 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
          VALUES ($1, $2, $3, NULL, 'either', 'serial_absent_reason', $4)
          ON CONFLICT (organization_id, flow_context, code) DO NOTHING`,
         [organizationId, r.code, r.label, saSort],
+      );
+    }
+    // Station command barcodes (flow_context='station_command') — physical CMD-*
+    // stickers that arm scan-station session modes. Built-in registry SoT is
+    // station-command-codes.ts; seeded for Admin view + 2×1 print. Mirrors
+    // migration 2026-08-04_reason_codes_station_command.sql.
+    for (const r of STATION_COMMAND_CODES) {
+      await client.query(
+        `INSERT INTO reason_codes (organization_id, code, label, category, direction, flow_context, sort_order)
+         VALUES ($1, $2, $3, NULL, 'either', $4, $5)
+         ON CONFLICT (organization_id, flow_context, code) DO NOTHING`,
+        [organizationId, r.code, r.label, STATION_COMMAND_FLOW_CONTEXT, r.sortOrder],
       );
     }
     await syncEbayAccountsToPlatformAccounts(organizationId, client);

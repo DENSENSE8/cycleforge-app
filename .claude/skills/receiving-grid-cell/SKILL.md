@@ -19,7 +19,10 @@ Full map: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`. Display law:
 2. The specific cell under `src/components/station/receiving-grid/cells/` (not the whole tree)
 3. Align helpers — `resolveGridColumnAlign` / `gridCellAlignClass` from `@/design-system/components/grid`
 4. Shared value atoms if needed — `src/components/ui/grid-cells.tsx`
-5. Row shell only if wiring columns → cells — `ReceivingGridRow.tsx` (thin)
+5. Row shell only if wiring columns → cells — `ReceivingGridRow.tsx` (thin). Prefer
+   `LedgerGridLeafRow` + `render*GridCell` (Receiving / Incoming / Catalog / Ready /
+   Bins already follow this). Cell chrome SoT: `ledgerGridCell` in
+   `@/design-system/components/grid`.
 6. Header only if the task is header/sort/resize — grow `LedgerGridColumnHeader`; thin adapter `ReceivingGridColumnHeader.tsx` (do not re-fork select-all / sort / frozen chrome)
 
 ## Column → file

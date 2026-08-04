@@ -15,11 +15,15 @@ const HOSTS: Array<{ rel: string; label: string }> = [
   { rel: 'components/sidebar/ReceivingSidebarPanel.tsx', label: 'Receiving (Unbox/Triage/Pickup)' },
   { rel: 'components/sidebar/TestingSidebarPanel.tsx', label: 'Testing' },
   { rel: 'components/sidebar/ShippingSidebarPanel.tsx', label: 'Shipping' },
-  { rel: 'components/station/StationPacking.tsx', label: 'Pack' },
+  { rel: 'components/station/PackScanColumn.tsx', label: 'Pack' },
   { rel: 'components/fba/sidebar/FbaWorkspaceSidebar.tsx', label: 'FBA' },
   {
     rel: 'components/support/zendesk/queue/SupportTicketsRecentRail.tsx',
     label: 'Support tickets',
+  },
+  {
+    rel: 'design-system/components/grid/LedgerDrillParentMap.tsx',
+    label: 'LedgerDrill parent map',
   },
 ];
 

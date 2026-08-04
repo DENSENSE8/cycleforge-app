@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-02T16:35:25Z",
-  "totalRoutes": 906,
+  "generatedAt": "2026-08-04T19:02:52Z",
+  "totalRoutes": 916,
   "summary": {
-    "permissionGated": 767,
-    "authenticatedNoPermission": 51,
-    "anonymousIntentional": 86,
+    "permissionGated": 775,
+    "authenticatedNoPermission": 52,
+    "anonymousIntentional": 87,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -1668,6 +1668,15 @@
       "exemptReason": "cron endpoint"
     },
     {
+      "path": "/api/cron/zendesk/ticket-watch/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "cron endpoint"
+    },
+    {
       "path": "/api/cron/zoho/fulfillment-sync/route.ts",
       "methods": [
         "GET"
@@ -2783,6 +2792,24 @@
       "exemptReason": null
     },
     {
+      "path": "/api/kiosk/pickup/collect/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/pickup/lookup/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/kiosk/repair/ecwid-categories/route.ts",
       "methods": [
         "GET"
@@ -2847,6 +2874,15 @@
     },
     {
       "path": "/api/kiosk/settings/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/staff-for-stepup/route.ts",
       "methods": [
         "GET"
       ],
@@ -3168,6 +3204,16 @@
       "path": "/api/my-day/route.ts",
       "methods": [
         "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/my-day/watch/route.ts",
+      "methods": [
+        "GET",
+        "POST"
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
@@ -4830,6 +4876,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving-lines/incoming/tracking-status/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving-lines/route.ts",
       "methods": [
         "DELETE",
@@ -5240,6 +5295,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/photo-move-targets/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/po-search/route.ts",
       "methods": [
         "GET"
@@ -5304,6 +5368,15 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.scan_po",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/returns-test-bin/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {
@@ -6456,6 +6529,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/sku-catalog/by-item-number/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/sku-catalog/flag-missing/route.ts",
       "methods": [
         "POST"
@@ -7279,6 +7361,15 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/requester/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "integrations.zendesk",
       "exemptReason": null
     },
     {

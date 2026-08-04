@@ -2,7 +2,10 @@ import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   getProcedure,
   registerBuiltinProcedures,
+  resolveContextFromFlags,
   resolveProcedureSteps,
+  type ProcedureResolveContext,
+  type ProcedureVariant,
 } from '@/lib/stations/procedure';
 import {
   deriveReceivingStepFlags,
@@ -141,20 +144,24 @@ function isCaptureStepKey(key: string): key is CaptureStepKey {
   return Object.prototype.hasOwnProperty.call(GATED_KEYS, key);
 }
 
-export interface CaptureStepVocabularyInput {
-  /** Unfound carton — identity resolution comes first (mirrors the unfound stepper). */
-  isUnfound: boolean;
-  /**
-   * Local pickup — the goods were handed over, not shipped, so there is no
-   * carrier dunnage to photograph. Drops `packing_material` only; the arrival
-   * and item evidence steps still apply to what was handed over.
-   */
-  isLocalPickup: boolean;
-  /**
-   * Return — the serial identifies WHICH unit is being graded, so it is captured
-   * before the grade rather than after. Order swap only; both steps still render.
-   */
-  isReturn: boolean;
+/**
+ * How the bench selects a capture tree. Prefer {@link ProcedureResolveContext}
+ * (`flow` + modifiers). Legacy three-boolean {@link ProcedureVariant} still
+ * maps through {@link resolveContextFromFlags} for older call sites / tests.
+ */
+export type CaptureStepVocabularyInput = ProcedureResolveContext | ProcedureVariant;
+
+/** Normalize vocabulary input to a flow context. */
+function resolveCaptureVocabulary(
+  input: CaptureStepVocabularyInput,
+): ProcedureResolveContext {
+  if (input && typeof input === 'object' && 'flow' in input) return input;
+  const v = input as ProcedureVariant;
+  return resolveContextFromFlags({
+    isUnfound: !!v.isUnfound,
+    isReturn: !!v.isReturn,
+    isLocalPickup: !!v.isLocalPickup,
+  });
 }
 
 /**
@@ -172,7 +179,7 @@ export interface CaptureStepVocabularyInput {
  * one procedure. `intake` (the scan) has already happened by the time this
  * renders, and `commit` (print · receive) belongs to the terminal dock. So the
  * declaration in `@/lib/stations/procedure` owns which steps exist, their order,
- * their labels, their photo stages and the variant rules; this module owns only
+ * their labels, their photo stages and the named flows; this module owns only
  * the GATES — what counts as done, which needs the live row and is why the two
  * halves stay split.
  */
@@ -182,7 +189,7 @@ export function captureStepVocabulary(
   registerBuiltinProcedures();
   const unbox = getProcedure('unbox');
   if (!unbox) return [];
-  return resolveProcedureSteps(unbox, input, 'capture').map((step) => ({
+  return resolveProcedureSteps(unbox, resolveCaptureVocabulary(input), 'capture').map((step) => ({
     key: step.key,
     label: step.label,
     stage: step.photoStage,

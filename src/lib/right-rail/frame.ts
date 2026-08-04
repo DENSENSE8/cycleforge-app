@@ -52,11 +52,11 @@
 import { CONTEXT_PANEL_COLLAPSE, CONTEXT_PANEL_WIDTH_PX } from '@/components/sidebar/context-panel-column';
 import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
 
-/** `m-2` on both the context-panel card and the push column (8px each side). */
-export const RIGHT_RAIL_GUTTER_PX = 8;
+/** Flush planes — no outer gutter island between rail / center / push (2026-08-03). */
+export const RIGHT_RAIL_GUTTER_PX = 0;
 
-/** What a parked context rail still costs: the 32px strip plus its margins. */
-export const CONTEXT_RAIL_PARKED_PX = CONTEXT_PANEL_COLLAPSE.stripWidthPx + RIGHT_RAIL_GUTTER_PX * 2;
+/** What a parked context rail still costs: the slim strip only (no margin islands). */
+export const CONTEXT_RAIL_PARKED_PX = CONTEXT_PANEL_COLLAPSE.stripWidthPx;
 
 /**
  * The work surface's floor — the width below which pushing stops being a favour.
@@ -176,12 +176,25 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
-const state: RightRailFrameInput = {
+/**
+ * Frame inputs are split across writers:
+ *  - RightRailHost → `wantsPush` / `desiredWidthPx` (inspector / assistant slot)
+ *  - UnboxPushColumn → `stationPushActive` / `stationPushDesiredWidthPx`
+ *
+ * `resolveRightRailFrame` sees the OR of both push demands so a station push
+ * can park the context rail at 1440 even while the assistant stays `push: false`.
+ */
+const state: RightRailFrameInput & {
+  stationPushActive: boolean;
+  stationPushDesiredWidthPx: number;
+} = {
   frameWidthPx: 0,
   railCostOpenPx: 0,
   railOperatorCollapsed: false,
   wantsPush: false,
   desiredWidthPx: DETAIL_STACK_RESIZE.defaultWidthPx,
+  stationPushActive: false,
+  stationPushDesiredWidthPx: DETAIL_STACK_RESIZE.defaultWidthPx,
 };
 
 let snapshot: RightRailFrameResolution = resolveRightRailFrame(state);
@@ -192,8 +205,19 @@ const SERVER_SNAPSHOT: RightRailFrameResolution = {
   capPx: DETAIL_STACK_RESIZE.defaultWidthPx,
 };
 
+function frameInputFromState(): RightRailFrameInput {
+  const station = state.stationPushActive;
+  return {
+    frameWidthPx: state.frameWidthPx,
+    railCostOpenPx: state.railCostOpenPx,
+    railOperatorCollapsed: state.railOperatorCollapsed,
+    wantsPush: state.wantsPush || station,
+    desiredWidthPx: station ? state.stationPushDesiredWidthPx : state.desiredWidthPx,
+  };
+}
+
 function recompute() {
-  const next = resolveRightRailFrame(state);
+  const next = resolveRightRailFrame(frameInputFromState());
   // Cached snapshot: `useSyncExternalStore` re-renders on identity change, so a
   // no-op publish (a ResizeObserver firing at the same width) must not churn.
   if (
@@ -254,7 +278,37 @@ export function setRightRailDemand(next: {
   recompute();
 }
 
-/** The rail's open cost including its `m-2` gutters — one spelling, used by both sides. */
+/**
+ * Unbox station push (`UnboxPushColumn`) — separate writer from RightRailHost so
+ * assistant `push: false` cannot clear the park-rail demand a Displays/Claim/
+ * Ticket/tool column needs at 1440.
+ */
+export function setStationPushDemand(next: {
+  active: boolean;
+  desiredWidthPx: number;
+}): void {
+  if (
+    state.stationPushActive === next.active &&
+    state.stationPushDesiredWidthPx === next.desiredWidthPx
+  ) {
+    return;
+  }
+  state.stationPushActive = next.active;
+  state.stationPushDesiredWidthPx = next.desiredWidthPx;
+  recompute();
+}
+
+/** The rail's open cost — flush column width (no outer gutter islands). */
 export function contextRailCostPx(openWidthPx = CONTEXT_PANEL_WIDTH_PX): number {
   return openWidthPx + RIGHT_RAIL_GUTTER_PX * 2;
 }
+
+/**
+ * Viewport pad for station Unbox push resize — leave at least
+ * {@link MIN_WORK_SURFACE_PX} (784) for the sunken center given a typical open
+ * context rail. Callers may still clamp with a per-surface `maxWidth` ceiling.
+ * Numeric twin of {@link MIN_WORK_SURFACE_PX} (not an alias export — knip
+ * duplicate), so station push callers name the pad without importing the
+ * frame-ladder constant.
+ */
+export const UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX = 784;

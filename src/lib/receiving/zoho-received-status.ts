@@ -16,14 +16,29 @@
  * the fix is the documented one (split the pure half into a leaf module the
  * heavy one re-exports), not a fourth comment asking humans to remember.
  *
- * **NOT the same list as `ZOHO_TERMINAL_STATUSES`** (`delivered-unscanned.ts`),
- * which additionally carries `cancelled` / `rejected`. That answers a different
- * question — "is this still incoming?" — and a cancelled PO is emphatically not
- * a received one. Do not collapse the two.
+ * **TWO lists live here, and they are NOT the same.** `ZOHO_RECEIVED_LIKE`
+ * answers *"did the vendor receive it?"*; `ZOHO_TERMINAL` answers *"is it still
+ * incoming?"* and additionally carries `cancelled` / `rejected`. A cancelled PO
+ * is emphatically not a received one. They sit side by side so that distinction
+ * is visible where they are declared rather than in a comment pointing at
+ * another file — do not collapse them.
+ *
+ * `ZOHO_TERMINAL_STATUSES` moved here from `delivered-unscanned.ts` on
+ * 2026-08-02: that module `await import`s `@/lib/tenancy/db`, and a dynamic
+ * import is still an edge in the client graph, so a client surface reaching for
+ * the pure constant pulled `server-only` into the browser and failed the build.
+ * `delivered-unscanned.ts` re-exports it; every existing import path works.
  */
 
 /** Zoho statuses that mean "the vendor side considers this PO received". */
 export const ZOHO_RECEIVED_LIKE_STATUSES = ['received', 'billed', 'closed'] as const;
+
+/**
+ * Zoho PO statuses that mean "no longer incoming" — received, closed out, or
+ * cancelled — so the PO must not show on the Incoming surface even if a local
+ * EXPECTED row lingers. A NULL/missing mirror status is treated as still-incoming.
+ */
+export const ZOHO_TERMINAL_STATUSES = ['billed', 'closed', 'cancelled', 'received', 'rejected'] as const;
 
 type ZohoReceivedLikeStatus = (typeof ZOHO_RECEIVED_LIKE_STATUSES)[number];
 

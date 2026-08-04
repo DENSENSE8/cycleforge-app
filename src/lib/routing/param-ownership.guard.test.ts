@@ -63,7 +63,7 @@ const OWNED_TREES = [
   'app/products',
   'components/dashboard',
   'components/sidebar/DashboardOrdersContextPanel.tsx',
-  // Shipped / unshipped boards mount on `/dashboard` and own most of its URL
+  // Shipped / unshipped boards mount on `/shipping/orders` and own most of its URL
   // writes — without these trees the ownership guard was blind to every
   // `shippedFilter` / `ostatus` / `stage` read (caught only by the hand-off sweep).
   'components/shipped',
@@ -231,9 +231,8 @@ test('SHARED_OWNED_KEYS only lists keys that are actually shared (it shrinks)', 
  */
 const SORT_WITHOUT_DIRECTION: Readonly<Record<string, string>> = {
   '/unbox': 'History tab ORDER BY — `unboxed_newest` / `scanned_newest`, both directional values.',
-  '/incoming': 'Server ORDER BY enum — `zoho_newest` / `zoho_oldest` / `expected_soonest`.',
+  '/incoming': 'Server ORDER BY — Pipeline (`zoho_newest`…) and Docked (`scanned_newest` / `unboxed_newest`); directional values, no separate `?dir=`.',
   '/shipping/labels': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
-  '/shipping/ready': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
   '/shipping/fba': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
   '/shipping/scan-out': 'SHIPPING_COMMON display sort — `priority` / `newest`.',
   '/products': 'Pairing backlog ordering — `volume` / `confidence` / `count` / `title`, a rank choice rather than a sortable column.',

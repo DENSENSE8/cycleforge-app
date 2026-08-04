@@ -51,6 +51,11 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useTestingLineController } from '@/components/tech/hooks/useTestingLineController';
 import { useTestingPrimaryAction } from './testing-panel/useTestingPrimaryAction';
 import { TestingCartonHeader } from './testing-panel/TestingCartonHeader';
+import { TestingScanSessionFeedback } from './testing-panel/TestingScanSessionFeedback';
+import {
+  sessionMatchesLine,
+  useTestingScanSession,
+} from '@/lib/testing/testing-scan-session-bridge';
 import type { LabelTypeOption } from './testing-panel/LabelTypeSelect';
 import { TestingPoUnboxingSection } from './testing-panel/TestingPoUnboxingSection';
 import { TestingPanelModals } from './testing-panel/TestingPanelModals';
@@ -360,6 +365,12 @@ export function TestingPanel({
     build: buildTerminal,
   });
 
+  // Scan session published by the Testing scan band (sibling tree — see
+  // testing-scan-session-bridge). The display belongs to this region; the
+  // reducer stays with the scan bar that feeds it.
+  const scanSession = useTestingScanSession();
+  const scanSessionForThisLine = sessionMatchesLine(scanSession, row);
+
   const useTicketComposerDock =
     activeTestingView === 'ticket' && claimTicketId != null;
 
@@ -408,6 +419,15 @@ export function TestingPanel({
           ambientWash={false}
           className="relative z-0 flex-1 bg-transparent"
           reserveScrollClearance
+          reserveIdentityClearance="stacked"
+          entityContext={
+            // STN↔unit confirm state for the scan that opened this line — the
+            // Testing bench's pass/fail card. Absent (not stale) whenever the
+            // session belongs to a different carton than the one on screen.
+            scanSessionForThisLine ? (
+              <TestingScanSessionFeedback session={scanSession} />
+            ) : null
+          }
           tabs={
             <SectionTabsSlider
               tabs={testingTabs}

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
-import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
 import { StationAmbientWash } from './StationAmbientWash';
 
 /**
  * Station panel root — **SoT for the Unbox-family outer shell**: the
- * `relative flex h-full min-h-0 flex-col bg-surface-canvas` column plus the
+ * `relative flex h-full min-h-0 flex-col bg-surface-sunken` column (sunken
+ * center plane on the shared canvas host) plus the
  * {@link StationAmbientWash} depth backdrop. Compose this instead of
  * hand-rolling that recipe on every station right-pane (Unbox / Triage /
  * Testing …).
@@ -30,7 +30,10 @@ export function StationPanelRoot({
 }) {
   return (
     <div
-      className={cn('relative flex h-full min-h-0 flex-col', appSurfaceFillClass('canvas'), className)}
+      className={cn(
+        'relative flex h-full min-h-0 flex-col bg-surface-sunken',
+        className,
+      )}
     >
       {wash ? <StationAmbientWash /> : null}
       {children}

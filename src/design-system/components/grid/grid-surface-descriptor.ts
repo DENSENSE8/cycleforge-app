@@ -19,6 +19,7 @@
 import { createColumnHelper, type ColumnDef, type RowData } from '@tanstack/react-table';
 import { isGridIdentityColumn } from './grid-column-editability';
 import { gridContentMinWidthRem } from './grid-column-geometry';
+import type { DateColumnFace } from './grid-column-type-track';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
 /** Structural shape every house grid column model satisfies. */
@@ -29,7 +30,32 @@ export interface LedgerGridColumnModel {
   label?: string;
   gridLabel?: string;
   labelFitRem?: number;
+  /**
+   * This column's header IS its type glyph — no word beside it, at any track
+   * width. The full `label` still renders `sr-only`, so the column stays
+   * nameable.
+   *
+   * Declare it when the glyph alone is the complete header (`qty` → `#`: a
+   * quantity needs no word). **Do NOT get there by starving `labelFitRem`** —
+   * that works today and silently flips back to the word the moment anyone
+   * widens the track or bumps the density, a bug that reappears months later
+   * with no diff to blame. And do NOT get there with `gridLabel: '#'` either:
+   * the type glyph for `number` IS a hash, so the header rendered `# #`
+   * (shipped 2026-08-02, caught at the bench).
+   */
+  headerGlyphOnly?: boolean;
   type?: ColumnType;
+  /**
+   * Date DISPLAY FACE — only meaningful when `type === 'date'`. Drives the
+   * typed track floor ({@link resolveGridColumnMinTrackRem}): day-only,
+   * day+time stamp, or compact duration. Default when unset is `'day'`.
+   */
+  dateFace?: DateColumnFace;
+  /**
+   * Explicit content-floor rem. Prefer {@link dateFace} for dates; use this
+   * only for a rare override that disagrees with the type/face map.
+   */
+  minTrackRem?: number;
   /**
    * Justification OVERRIDE. Leave unset — `type` already decides
    * (`resolveGridColumnAlign`), and deriving is what keeps a column's header
@@ -41,7 +67,7 @@ export interface LedgerGridColumnModel {
   /**
    * Drag-resize OVERRIDE. Leave unset — `isGridColumnResizable` already decides
    * from `type`: variable-content tracks get a grip, the fixed-format
-   * identifier / magnitude types (`number` · `id` · `location`, which render a
+   * identifier / magnitude types (`number` · `id` · `location` · `tracking`, which render a
    * last-8 chip or a short numeral run) do not, because dragging one only moves
    * whitespace. Set this where the column is DECLARED when a surface genuinely
    * disagrees — e.g. an `id` column that holds a full free-text reference.

@@ -1,18 +1,11 @@
 'use client';
 
 /**
- * Dashboard page — thin composition layer.
+ * Dashboard page — Sales domain host + legacy outbound redirect shell.
  *
- * Logic lives in focused hooks:
- *   - useDashboardSearchController .. URL ⇄ active view + search (existing)
- *   - useDashboardSelectedOrder ..... selected order + details context (existing)
- *   - useOrderRailSelection ......... always-on multi-select + rail publish
- *   - useDashboardViewWarmup ........ React Query prefetch warm-up
- *   - useDashboardRealtime .......... realtime invalidation + toasts
- *
- * Render is pure composition: <DashboardOrdersView> (table + rail) and
- * <DashboardOrderDetails> (the slide-in panel). The sign-in BootGate reuses the
- * shared `warmActiveView` warm-up so the splash holds until data is painted.
+ * Outbound To-ship graduated to `/shipping/orders` (P2 page-mode condensation).
+ * Bare `/dashboard` and outbound lifecycle bookmarks 308 there (proxy + client).
+ * Sales (`?mode=sales|pickup`) stays until the dedicated `/sales` desk pass (P3).
  */
 
 import { Suspense, useCallback, useEffect } from 'react';
@@ -23,15 +16,10 @@ import { BootSplash } from '@/components/boot/BootSplash';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { consumeBootSplash } from '@/lib/boot-flag';
 import { warmActiveView } from '@/lib/queries/dashboard-warm';
-import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
-import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
-import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
-import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
-import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
-import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
-import { DashboardReceivingView } from '@/components/dashboard/receiving/DashboardReceivingView';
 import { DashboardSalesView } from '@/components/dashboard/DashboardSalesView';
-import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
+import {
+  RedirectDashboardOutboundToShippingOrders,
+} from '@/components/outbound/orders/OutboundOrdersDesk';
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
 import {
   getDashboardDomainFromSearch,
@@ -40,7 +28,6 @@ import {
   retiredFbaViewTarget,
   retiredSearchModeTarget,
 } from '@/lib/dashboard/dashboard-domains';
-import { refreshDomain } from '@/lib/refresh/bus';
 
 function DashboardPageContent() {
   const router = useRouter();
@@ -48,7 +35,6 @@ function DashboardPageContent() {
   const domain = getDashboardDomainFromSearch(searchParams);
   const searchModeRetired = isRetiredSearchMode(searchParams);
   const fbaViewRetired = isRetiredFbaView(searchParams);
-  const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
 
   // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
   // Support › Warranty. Preserve open claim + filters for bookmarks / e2e.
@@ -58,61 +44,33 @@ function DashboardPageContent() {
     router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
   }, [router, searchParams]);
 
-  // Retired `?fba` lifecycle tab — FBA's home is `/shipping/fba` (IA row L).
-  // Deleting the view member alone let an old bookmark fall through to Pending;
-  // this sends it where FBA actually lives. Third instance of the same mechanism.
+  // Retired `?fba` lifecycle tab — FBA's home is `/shipping/fba`.
   useEffect(() => {
     if (!fbaViewRetired) return;
     router.replace(retiredFbaViewTarget());
   }, [router, fbaViewRetired]);
 
-  // Retired Search mode (`?mode=search`) — same client-redirect mechanism as
-  // `?warranty=` above, for the same reason: Next `redirects()` emits 308 and
-  // cannot drop `mode` while preserving `q`.
+  // Retired Search mode (`?mode=search`).
   useEffect(() => {
     if (!searchModeRetired) return;
     router.replace(retiredSearchModeTarget(searchParams));
   }, [router, searchModeRetired, searchParams]);
 
-  const isOutbound = domain === 'outbound';
+  // Inbound desk moved to `/incoming?lane=docked` (proxy also 308s).
+  useEffect(() => {
+    if (domain !== 'inbound') return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('mode');
+    next.set('lane', 'docked');
+    const qs = next.toString();
+    router.replace(qs ? `/incoming?${qs}` : '/incoming?lane=docked');
+  }, [domain, router, searchParams]);
 
-  // Rail publish path — separate from Pack/Shipping's capsule path
-  // (`useDashboardBulkSelection`). The bottom capsule is gone here (plan D2),
-  // so the rail IS the selection plane — and the store is the only path to it,
-  // because both rail bodies (`ShippedDetailsPanel` at 1 row, `OrderRailShell`
-  // at 2+) are mounted off the ROOT layout rather than under this page.
-  // Plan: docs/todo/order-rail-selection-plane-PLAN.md
-  const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(orderView);
-
-  // Only the outbound (Shipping) mode resolves/opens the order panel — receiving
-  // rows are cartons, sales rows are transactions, and search rows are hits.
-  const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
-    useDashboardSelectedOrder(detailsEnabled && isOutbound);
-
-  useDashboardRealtime();
-  useDashboardViewWarmup({ orderView, searchQuery, enabled: isOutbound });
-
-  const refreshDashboard = useCallback(() => {
-    refreshDomain('orders.outbound');
-  }, []);
-
-  if (searchParams.has('warranty') || searchModeRetired || fbaViewRetired) {
+  if (searchParams.has('warranty') || searchModeRetired || fbaViewRetired || domain === 'inbound') {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
   }
 
-  // Inbound (`?mode=inbound`) is the receiving-cartons domain — Triage/Unbox
-  // table tabs. It owns its whole region (own chrome + own table) and never
-  // mounts the outbound order panel, so the two domains can't intermix rows.
-  if (domain === 'inbound') {
-    return (
-      <div className="flex min-h-0 w-full flex-1">
-        <DashboardReceivingView />
-      </div>
-    );
-  }
-
   // Sales (`?mode=sales` | `?mode=pickup`) — front-desk transaction history.
-  // Same isolation: own region, no order panel.
   if (domain === 'sales') {
     return (
       <div className="flex min-h-0 w-full flex-1">
@@ -121,35 +79,10 @@ function DashboardPageContent() {
     );
   }
 
-  return (
-    <div className="flex min-h-0 w-full flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <DashboardOrdersView
-        orderView={orderView}
-        onSelectView={setOrderView}
-        selectMode={selectMode}
-        selectionEnabled={selectionEnabled}
-        selectionOverlays={selectionOverlays}
-        />
-      </div>
-
-      <DashboardOrderDetails
-        detailsEnabled={detailsEnabled}
-        selectedShipped={selectedShipped}
-        selectedContext={selectedContext}
-        onClose={requestCloseSelectedOrder}
-        onUpdate={refreshDashboard}
-      />
-    </div>
-  );
+  // Bare outbound → `/shipping/orders` (proxy 308 + client fallback).
+  return <RedirectDashboardOutboundToShippingOrders />;
 }
 
-/**
- * Wraps the dashboard in a single sign-in loading splash. On a fresh sign-in
- * (flag armed by /signin), the splash holds while the active view's data is
- * warmed, then reveals the page fully painted. On refreshes / in-app
- * navigations the gate reveals immediately, so it never lingers.
- */
 function DashboardBootGate({ children }: { children: React.ReactNode }) {
   const prefetch = useCallback(
     (queryClient: QueryClient) => warmActiveView(queryClient, window.location.search),
@@ -165,7 +98,6 @@ function DashboardBootGate({ children }: { children: React.ReactNode }) {
 export default function DashboardPage() {
   return (
     <>
-      {/* Leaf route — page is the always-mounted host (see SurfaceParamHygiene). */}
       <SurfaceParamHygiene />
       <Suspense fallback={<BootSplash />}>
         <DashboardBootGate>

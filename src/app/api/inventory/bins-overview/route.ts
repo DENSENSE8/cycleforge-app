@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBinsOverview } from '@/lib/neon/location-queries';
 import { withAuth } from '@/lib/auth/withAuth';
+import { specialBinBarcodesForOverview } from '@/lib/inventory/special-bins';
+import { getReceivingReturnsTestBin } from '@/lib/settings/accessors';
+import { getOrganization } from '@/lib/tenancy/organizations';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,13 +13,24 @@ export const dynamic = 'force-dynamic';
  *
  * Aggregated bins list for the inventory hub. Returns one row per bin with
  * fill / stale / low / over-capacity flags pre-computed, plus the global
- * count buckets for the filter chips.
+ * count buckets for the filter chips. Includes special bare-barcode bins
+ * (RETURNS-TEST / TECH-PARTS / UNSORTED) even without row/col labels.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const room = req.nextUrl.searchParams.get('room');
     const q = req.nextUrl.searchParams.get('q');
-    const data = await getBinsOverview({ room, q, orgId: ctx.organizationId });
+    const org = await getOrganization(ctx.organizationId as OrgId);
+    const returnsBarcode = org
+      ? getReceivingReturnsTestBin(org.settings, process.env.RETURNS_TEST_BIN_BARCODE)
+      : undefined;
+    const specialBarcodes = specialBinBarcodesForOverview(returnsBarcode);
+    const data = await getBinsOverview({
+      room,
+      q,
+      orgId: ctx.organizationId,
+      specialBarcodes,
+    });
     return NextResponse.json({ success: true, ...data });
   } catch (err: any) {
     console.error('[GET /api/inventory/bins-overview] error:', err);

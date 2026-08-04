@@ -5,6 +5,7 @@ import {
   TABLE_FROZEN_HEADER_CLASS,
   TABLE_SURFACE_CLASS,
   TABLE_SURFACE_CLIP_CLASS,
+  TABLE_SURFACE_SHEET_CLASS,
 } from './table-surface';
 
 describe('table-surface SoT', () => {
@@ -23,8 +24,21 @@ describe('table-surface SoT', () => {
     assert.equal(TABLE_FROZEN_HEADER_CLASS, 'bg-surface-card');
   });
 
-  it('clips every ops table with overflow-hidden (one recipe)', () => {
+  it('clips framed ops tables with overflow-hidden', () => {
     assert.match(TABLE_SURFACE_CLIP_CLASS, /\boverflow-hidden\b/);
     assert.doesNotMatch(TABLE_SURFACE_CLIP_CLASS, /clip-path/);
+  });
+
+  it('Sheets plane: hairline only — no radius, no raised lift, rail-abutting border-l-0', () => {
+    assert.doesNotMatch(TABLE_SURFACE_SHEET_CLASS, /\brounded-xl\b/);
+    assert.doesNotMatch(TABLE_SURFACE_SHEET_CLASS, /\bshadow-elev/);
+    assert.ok(
+      !TABLE_SURFACE_SHEET_CLASS.includes(ELEVATION_CLASS.raised.default),
+      'sheet plane must not carry raised elevation',
+    );
+    assert.match(TABLE_SURFACE_SHEET_CLASS, /\bborder-l-0\b/);
+    assert.match(TABLE_SURFACE_SHEET_CLASS, /\bborder-border-soft\b/);
+    assert.match(TABLE_SURFACE_SHEET_CLASS, /\bbg-surface-card\b/);
+    assert.match(TABLE_SURFACE_SHEET_CLASS, /\boverflow-hidden\b/);
   });
 });

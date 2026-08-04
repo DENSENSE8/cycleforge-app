@@ -25,7 +25,7 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { Button } from '@/design-system/primitives';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { productDetailHref } from '@/components/products/products-view';
@@ -47,7 +47,6 @@ import {
   type CatalogGridColumnKey,
 } from '@/lib/products/catalog-grid-layout';
 import { CATALOG_SELECTION_SCOPE } from '@/lib/selection/catalog-scopes';
-import { useDebounce } from '@/hooks';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
@@ -67,7 +66,6 @@ export function ProductsCatalogWorkspace() {
   const refine = useMemo(() => parseCatalogRefine(searchParams), [searchParams]);
   const refineHot = catalogRefineIsHot(refine);
 
-  const [searchInput, setSearchInput] = useState(q);
   const [filterOpen, setFilterOpen] = useState(false);
   const [items, setItems] = useState<CatalogListRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -83,10 +81,6 @@ export function ProductsCatalogWorkspace() {
     isColumn: isCatalogGridSortable,
     defaultDir: defaultDirForCatalogGridSort,
   });
-
-  useEffect(() => {
-    setSearchInput(q);
-  }, [q]);
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>, refinePatch?: Partial<CatalogRefineFilters> | null) => {
@@ -106,14 +100,12 @@ export function ProductsCatalogWorkspace() {
     [router, searchParams],
   );
 
-  // Draft → debounced `?q=` (same cadence as Receiving / Outbound chrome).
-  const debouncedSearch = useDebounce(searchInput, 250);
-  useEffect(() => {
-    const next = debouncedSearch.trim();
-    const current = q.trim();
-    if (next === current) return;
-    updateParams({ q: next || null });
-  }, [debouncedSearch, q, updateParams]);
+  const setCatalogSearch = useCallback(
+    (next: string) => {
+      updateParams({ q: next.trim() || null });
+    },
+    [updateParams],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -233,16 +225,13 @@ export function ProductsCatalogWorkspace() {
               }
               solidTone="accent"
               search={
-                <ToolbarSearchToggle
-                  value={searchInput}
-                  onChange={setSearchInput}
-                  onClear={() => {
-                    setSearchInput('');
-                    updateParams({ q: null });
-                  }}
+                <TechRailSearchBar
+                  variant="chrome"
+                  value={q}
+                  onChange={setCatalogSearch}
                   placeholder="Filter SKU, title, inventory id…"
-                  isSearching={loading && Boolean(searchInput.trim())}
-                  tone="blue"
+                  isSearching={loading && Boolean(q.trim())}
+                  className="w-40 shrink-0 lg:w-56"
                 />
               }
               right={

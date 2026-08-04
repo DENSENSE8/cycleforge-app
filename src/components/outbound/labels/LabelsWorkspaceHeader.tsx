@@ -14,7 +14,7 @@ import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -107,12 +107,12 @@ export function LabelsWorkspaceHeader({
       controlsSlotProps={{ 'data-labels-controls': '' }}
       className={className}
       search={
-        <ToolbarSearchToggle
+        <TechRailSearchBar
+          variant="chrome"
           value={search}
           onChange={onSearch}
-          onClear={() => onSearch('')}
           placeholder="Filter order #, SKU, title…"
-          tone="blue"
+          className="w-40 shrink-0 lg:w-56"
         />
       }
       // Same Urgent + lane popover as Dashboard · To Ship / Shipping · Pending.

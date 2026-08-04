@@ -351,12 +351,12 @@ export function SerialCard({
 
   const Shell = embedded ? 'div' : 'section';
   const shellClass = embedded
-    ? 'w-full group'
+    ? 'h-11 w-full min-w-0 overflow-x-auto overflow-y-hidden group'
     : 'rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60 group';
 
   return (
     <Shell className={shellClass}>
-      <div className="flex items-center gap-2">
+      <div className="flex h-11 items-center gap-2">
         {onConditionChange ? (
           // Condition picker: full pill row when the line opens (for selection),
           // collapsing to a filled circle (grade hue) + white Tags.
@@ -440,12 +440,16 @@ export function SerialCard({
             width="w-14"
           />
         ) : (
-          /* ds-raw-button: solid-emerald scan-submit CTA with add-glyph / Saving… text-swap */
+          /* ds-raw-button: solid-emerald scan-submit CTA with add-glyph / Saving… text-swap.
+             Embedded (dock) uses h-9 so the TextField h-11 row fits the fixed
+             dock entry band; standalone keeps h-11. */
           <button
             type="button"
             onClick={() => void submit()}
             disabled={!scan.trim() || isSubmitting || disabled}
-            className={`inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong ${
+            className={`inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong ${
+              embedded ? 'h-9' : 'h-11'
+            } ${
               editing || (showSavingLabel && isSubmitting) ? 'px-4' : 'w-14'
             }`}
           >

@@ -4,6 +4,10 @@
  * Headerless workspace label preview — shared by Unbox and Testing.
  * Clean face at rest; hover/focus reveals the label-type selector (top-left)
  * and Edit label CTA (top-right).
+ *
+ * Chrome:
+ * - `worksheet` (default) — glass + nested field for standalone Testing / non-deck hosts.
+ * - `procedure` — bare face; ProcedureDeck's Smart Stack evidence card owns the frame.
  */
 
 import { useState, type ReactNode } from 'react';
@@ -37,6 +41,7 @@ export function WorkspaceLabelPreviewCard({
   faceOverride,
   onEdit,
   onApplyAndPrint,
+  chrome = 'worksheet',
 }: {
   sku: string;
   title: string;
@@ -52,6 +57,11 @@ export function WorkspaceLabelPreviewCard({
   /** Caller-owned editor (carton / as-listed / ticket). Unit uses built-in popover. */
   onEdit?: () => void;
   onApplyAndPrint?: (draft: ProductLabelDraft) => void;
+  /**
+   * `worksheet` — glass + nested field (Testing / standalone).
+   * `procedure` — bare host; deck focus card owns chrome (Unbox Label step).
+   */
+  chrome?: 'worksheet' | 'procedure';
 }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const productTitle = title.trim();
@@ -60,41 +70,58 @@ export function WorkspaceLabelPreviewCard({
     faceOverride ?? unitLabelToFace({ sku, title: productTitle, condition, color, matrix });
   const builtInEditor = !faceOverride && Boolean(onApplyAndPrint);
   const canEdit = Boolean(onEdit) || builtInEditor;
+  const procedure = chrome === 'procedure';
 
   const typeSelect: ReactNode =
     labelOptions.length > 1 ? (
       <LabelTypeSelect value={activeLabel} options={labelOptions} onChange={onLabelChange} />
     ) : null;
 
+  const faceHost = (
+    <div
+      className={
+        procedure
+          ? 'group relative'
+          : `group relative ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`
+      }
+    >
+      <LabelFacePreview model={face} embedded />
+      {typeSelect ? (
+        <div className="pointer-events-none absolute left-1.5 top-1.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+          <div className="rounded-md bg-surface-card/95 px-1.5 py-0.5 shadow-sm ring-1 ring-border-soft/60 backdrop-blur-sm">
+            {typeSelect}
+          </div>
+        </div>
+      ) : null}
+      {canEdit ? (
+        <div
+          className={`pointer-events-none absolute ${WORKSPACE_NESTED_OVERLAY_CORNER} w-[104px] opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100`}
+        >
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Pencil />}
+            onClick={() => (onEdit ? onEdit() : setEditorOpen(true))}
+            className="w-full whitespace-nowrap px-2"
+          >
+            Edit label
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+
   return (
     <>
-      {/* Nested glass + rounded-xl inset — same concentric corners as Notes.
-          Face stays sticker density (print-faithful); only the frame matches. */}
-      <WorkspaceCard variant="glass" bodyDensity="nested">
-        <div className={`group relative ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`}>
-          <LabelFacePreview model={face} embedded />
-          {typeSelect ? (
-            <div className="pointer-events-none absolute left-1.5 top-1.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
-              <div className="rounded-md bg-surface-card/95 px-1.5 py-0.5 shadow-sm ring-1 ring-border-soft/60 backdrop-blur-sm">
-                {typeSelect}
-              </div>
-            </div>
-          ) : null}
-          {canEdit ? (
-            <div className={`pointer-events-none absolute ${WORKSPACE_NESTED_OVERLAY_CORNER} w-[104px] opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100`}>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<Pencil />}
-                onClick={() => (onEdit ? onEdit() : setEditorOpen(true))}
-                className="w-full whitespace-nowrap px-2"
-              >
-                Edit label
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      </WorkspaceCard>
+      {procedure ? (
+        faceHost
+      ) : (
+        // Nested glass + rounded-xl inset — same concentric corners as Notes.
+        // Face stays sticker density (print-faithful); only the frame matches.
+        <WorkspaceCard variant="glass" bodyDensity="nested">
+          {faceHost}
+        </WorkspaceCard>
+      )}
 
       {builtInEditor && !onEdit && onApplyAndPrint ? (
         <ProductLabelEditPopover

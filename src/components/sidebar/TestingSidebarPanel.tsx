@@ -9,7 +9,6 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
-import { TestingScanSessionFeedback } from '@/components/sidebar/receiving/TestingScanSessionFeedback';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { useIsMobile } from '@/hooks';
@@ -24,6 +23,7 @@ import {
   INITIAL_TESTING_SCAN_SESSION,
   testingScanSessionReducer,
 } from '@/lib/testing/testing-scan-session';
+import { publishTestingScanSession } from '@/lib/testing/testing-scan-session-bridge';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import {
@@ -115,6 +115,12 @@ export function TestingSidebarPanel({
     testingScanSessionReducer,
     INITIAL_TESTING_SCAN_SESSION,
   );
+  // The session DISPLAY lives in the workspace (one region per active entity —
+  // see TestingScanSessionFeedback). The reducer stays here because the scan bar
+  // feeds it; only the computed value crosses the tree boundary.
+  useEffect(() => {
+    publishTestingScanSession(session);
+  }, [session]);
   const [picker, setPicker] = useState<ResolvedTestingScan & { kind: 'multi' } | null>(null);
   const [boxPanel, setBoxPanel] = useState<{ id: number; lines: ReceivingLineRow[] } | null>(null);
   const [manifestPanel, setManifestPanel] = useState<{ ref: string } | null>(null);
@@ -323,7 +329,6 @@ export function TestingSidebarPanel({
           {/* Flush 40px band — same ScanBandShell geometry as Unbox (no py around the bar). */}
           <ScanBandShell themeColor={themeColor}>{scanBarBlock}</ScanBandShell>
           <div className={SIDEBAR_GUTTER}>
-            <TestingScanSessionFeedback session={session} />
             {lastUnitPhotoRequest ? (
               <div className="mt-1.5">
                 <UnitPhotoRequestStatus
@@ -432,9 +437,6 @@ export function TestingSidebarPanel({
 
       {isMobile ? (
         <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className={SIDEBAR_GUTTER}>
-            <TestingScanSessionFeedback session={session} />
-          </div>
           <ScanBandShell themeColor={themeColor}>{scanBarBlock}</ScanBandShell>
         </div>
       ) : null}

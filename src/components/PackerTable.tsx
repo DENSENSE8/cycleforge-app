@@ -50,7 +50,7 @@ function byNewestCreated(a: PackerRecord, b: PackerRecord): number {
 }
 
 export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTableProps) {
-  // Shared `?staff=` header filter (P1-WORK-02) — the StationPacking header's
+  // Shared `?staff=` header filter (P1-WORK-02) — the pack scan column header's
   // StaffFilterButton writes it; when set it swaps whose pack history renders.
   // Absent (the default) = the signed-in packer's own logs, unchanged.
   const { staffId: staffFilterId } = useStaffFilter();

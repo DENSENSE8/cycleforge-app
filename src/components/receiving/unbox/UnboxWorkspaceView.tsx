@@ -1,33 +1,46 @@
 'use client';
 
 /**
- * Unbox browse workbench — tabs (Queue · Viewed · History) + KPI strip +
- * ReceivingLinesTable. Sidebar owns scan I/O + short Unboxed recent dock;
- * main pane is the table workbench (TestingWorkspaceView pattern).
+ * Unbox browse workbench — pinned two-row chrome (row 1: tabs · KPI cluster ·
+ * return-to-scan CTA; row 2: search · refine/week filters — the data-table
+ * triage band) over `ReceivingLinesTable` or TradingView-like compare host.
+ *
+ * Multi-select opens `ReceivingLineRailShell` on RightRailHost (no bottom
+ * capsule). When the line workspace overlays browse, publishing + the shell
+ * are suppressed so Ticket/Claim/tool stacks keep the right edge.
  */
 
-import { Suspense, useState } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
-// Light leaf modules — NOT the heavy table component, so its board/column/
-// grouping import graph stays out of this route chunk (code-split below).
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { UnboxKpiStrip } from '@/components/receiving/unbox/UnboxKpiStrip';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
 import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
+import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
+import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
+import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
+import { UnboxCompareChrome } from '@/components/receiving/unbox/compare/UnboxCompareChrome';
+import { HistoryDrillChrome } from '@/components/receiving/unbox/HistoryDrillChrome';
+import { HistoryRowPaintChrome } from '@/components/receiving/unbox/HistoryRowPaintChrome';
+import {
+  gridZoomStyle,
+  type GridZoomPercent,
+} from '@/design-system/components/grid/grid-zoom';
+import {
+  parseUnboxCompareLayout,
+  UNBOX_COMPARE_LAYOUT_PARAM,
+} from '@/lib/receiving/unbox-compare-layout';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
-import { useReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
-import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
+import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
+import { toast } from '@/lib/toast';
 
-// Code-split the heavy table (board lanes, column config, grouping, deep-link)
-// off the Unbox route chunk: chrome + KPI paint from the small chunk first and
-// the table chunk streams in behind the same structured skeleton.
 const ReceivingLinesTable = dynamic(
   () => import('@/components/station/ReceivingLinesTable'),
   { loading: () => <UnboxTableCardSkeleton /> },
@@ -43,62 +56,92 @@ function formatReceivingCopyRow(r: ReceivingLineRow): string {
     .join(' • ');
 }
 
-export function UnboxWorkspaceView(_props: {
-  /** Kept for UnboxLineWorkspace API; table selection is event-driven. */
+export function UnboxWorkspaceView(props: {
+  /** Non-null while UnboxLineWorkspace overlays browse — suppress the selection rail. */
   selectedLine: ReceivingLineRow | null;
 }) {
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  const [zoom, setZoom] = useState<GridZoomPercent>(100);
+  const searchParams = useSearchParams();
+  const compareLayout = parseUnboxCompareLayout(
+    searchParams.get(UNBOX_COMPARE_LAYOUT_PARAM),
+  );
+  const isCompare = compareLayout !== 'single';
+  const lineWorkspaceOpen = props.selectedLine != null;
 
   useSurfacePaintMark('unbox:chrome', true);
 
-  const { selectMode, selectedRows, bulkActions } =
-    useReceivingLineBulkSelection({
+  const { selectMode, claimRow, setClaimRow, exitSelectMode } =
+    useReceivingLineRailSelection({
       scope: RECEIVING_SELECTION_SCOPE,
       active: true,
       formatCopyRow: formatReceivingCopyRow,
+      // R7 exclusivity — line workspace owns Ticket/Claim/tool push stacks.
+      publish: !lineWorkspaceOpen,
     });
+
+  const onZoomChange = useCallback((percent: GridZoomPercent) => {
+    setZoom(percent);
+  }, []);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <DashboardScrollShell
         className="h-full bg-transparent"
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={WORKBENCH_SHEET_CHROME}>
             <UnboxWorkspaceHeader
               tab={unboxView}
               onSelectTab={setUnboxView}
               controlsSlotRef={setControlsEl}
+              historyDrillChrome={
+                unboxView === 'history' && !isCompare ? (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <HistoryRowPaintChrome />
+                    <HistoryDrillChrome />
+                  </div>
+                ) : null
+              }
+              compareChrome={
+                <UnboxCompareChrome onZoomChange={onZoomChange} />
+              }
             />
           </div>
         }
       >
-        <div className={WORKBENCH_BODY_COLUMN}>
-          <div className="mb-4">
-            <UnboxKpiStrip mode={unboxView} />
-          </div>
-
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Structured fallback (searchParams suspension path) mirrors the
-                table card + row anatomy — never a bare gray box. The dynamic()
-                chunk-load path shows the same skeleton via its loading option. */}
-            <Suspense fallback={<UnboxTableCardSkeleton />}>
+        <div
+          className={WORKBENCH_SHEET_HOST}
+          style={gridZoomStyle(zoom)}
+          data-grid-zoom={zoom}
+        >
+          <Suspense fallback={<UnboxTableCardSkeleton />}>
+            {isCompare ? (
+              <UnboxCompareHost selectMode={selectMode} />
+            ) : (
               <ReceivingLinesTable
                 key={unboxView}
                 selectMode={selectMode}
                 embedded
                 toolbarPortalTarget={controlsEl}
               />
-            </Suspense>
-          </div>
+            )}
+          </Suspense>
         </div>
       </DashboardScrollShell>
 
-      {selectMode ? (
-        <ContextualSelectionBar
-          scope={RECEIVING_SELECTION_SCOPE}
-          rows={selectedRows}
-          actions={bulkActions}
+      <ReceivingLineRailShell surface="lines" enabled={!lineWorkspaceOpen} />
+
+      {claimRow ? (
+        <ReceivingClaimModal
+          open
+          row={claimRow}
+          onClose={() => setClaimRow(null)}
+          onTicketCreated={(tk) => {
+            toast.success(`Claim filed — ${tk}`);
+            setClaimRow(null);
+            exitSelectMode();
+          }}
         />
       ) : null}
     </div>

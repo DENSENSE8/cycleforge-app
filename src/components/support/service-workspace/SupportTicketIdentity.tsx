@@ -4,9 +4,17 @@
  * Support · Tickets identity — the dense identity block in the thread's
  * {@link PaneHeader} (Workbench branch `service-workspace`).
  *
- * Status dot · eyebrow carrying the short durable key · subject as the scannable
- * value; compact {@link SupportTicketIdMark} trailing. Open / details / close are
- * the header's icon actions.
+ * Status control · subject as the scannable value · priority · compact
+ * {@link SupportTicketIdMark} trailing. Open / details / close are the header's
+ * icon actions.
+ *
+ * **The status dot became the status control on 2026-08-02.** Status is the most
+ * load-bearing fact on a ticket and it was being told twice, quietly, in two
+ * places: an 8px dot here, and a dropdown in the chat header's field band one
+ * row below. The band is gone; the fact kept the position operators already
+ * scan and gained the weight — and the editing — it had been missing. Priority
+ * rides beside it because it is the same kind of fact and had the same second
+ * home. Do not restore either as a read-only echo elsewhere on this surface.
  *
  * Composes {@link PaneHeaderLabel} rather than hand-rolling the type ladder —
  * the right-rail inspector law caps rail identity at caption density and bans a
@@ -20,6 +28,10 @@
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TicketSubjectField } from '@/components/support/zendesk/chat/TicketSubjectField';
+import {
+  TicketPrioritySelect,
+  TicketStatusSelect,
+} from '@/components/support/zendesk/chat/SupportTicketFields';
 import { resolveSupportTicketDisplayLabel } from '@/lib/support/ticket-refs';
 import type { SupportContextTicket } from '@/lib/support/context-types';
 import { cn } from '@/utils/_cn';
@@ -68,14 +80,28 @@ export function SupportTicketIdentity({
 
   return (
     <div className="flex min-w-0 w-full items-center gap-2 px-0.5">
-      <HoverTooltip label={dot.label} focusable={false}>
-        <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.cls)} aria-hidden />
-      </HoverTooltip>
+      {/* Status leads — the dot's old position, now the control itself. The dot
+          survives only as the loading/unknown face, where there is no ticket to
+          set a status on. */}
+      {live ? (
+        <div className="shrink-0">
+          <TicketStatusSelect ticket={live} size="rail" />
+        </div>
+      ) : (
+        <HoverTooltip label={dot.label} focusable={false}>
+          <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.cls)} aria-hidden />
+        </HoverTooltip>
+      )}
       {/* The subject's ONE home on `/support`. It is click-to-edit here rather
           than in the Ticket tab's chat header, which used to draw the same
           string one row below this — the same fact twice, editable in only one
           of the two. Same field either way; never a second implementation. */}
       <TicketSubjectField ticketId={providerTicketId} subject={subject} compact />
+      {live ? (
+        <div className="shrink-0">
+          <TicketPrioritySelect ticket={live} size="rail" />
+        </div>
+      ) : null}
       <SupportTicketIdMark label={displayLabel} />
     </div>
   );

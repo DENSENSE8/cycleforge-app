@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Copy, ExternalLink, RefreshCw } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -29,6 +29,12 @@ export interface TrackingNumberRowProps {
    */
   onReplace?: (next: string) => void | Promise<void>;
   /**
+   * One-shot auto-start for the replace editor (queue "Replace tracking" →
+   * inspector). Increments from the host; each change seeds `replaceDraft` with
+   * the current value. Omit / `0` = no auto-start.
+   */
+  replaceNonce?: number;
+  /**
    * Click-to-edit the value inline. The shipped panel leaves this off (edits go
    * through its modal); the receiving panel turns it on so tracking stays
    * hand-editable while still rendering identically when not being edited.
@@ -55,6 +61,7 @@ export function TrackingNumberRow({
   onChange,
   onBlur,
   onReplace,
+  replaceNonce = 0,
   allowEdit = false,
   headerAccessory,
   headerAccessoryClassName,
@@ -69,6 +76,15 @@ export function TrackingNumberRow({
   const isReplacing = replaceDraft !== null;
   const displayValue = String(value || '').trim();
   const iconClassName = 'h-3.5 w-3.5';
+
+  // Queue "Replace tracking" arms a nonce on the open inspector; each bump
+  // seeds the replace editor. Do not depend on `displayValue` — parent field
+  // churn must not re-enter replace while the operator is typing.
+  useEffect(() => {
+    if (!replaceNonce || !onReplace) return;
+    setReplaceDraft(String(value || '').trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: nonce is the trigger
+  }, [replaceNonce, onReplace]);
 
   const commitReplace = async () => {
     const next = String(replaceDraft ?? '').trim();

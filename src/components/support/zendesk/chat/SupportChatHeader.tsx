@@ -1,31 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import type { ZendeskTicket } from '@/lib/zendesk';
-import {
-  useAssignTicket,
-  useTicketAssignment,
-  useUpdateTicket,
-  useZendeskAgents,
-} from '@/hooks/useZendeskQueries';
-import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { ChevronLeft, ExternalLink, Link2, Package } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
-import { ZendeskSelect, type SelectOption } from '../ZendeskSelect';
-import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../badges';
 import { SupportDetailsStack } from './SupportDetailsStack';
 import { TicketSubjectField } from './TicketSubjectField';
 import { initials, requesterFrom } from './support-chat-utils';
 
-const UNASSIGNED = 'unassigned';
-
 /**
- * Chat header. Zendesk row (status / priority / Zendesk assignee) updates the ticket
- * in the external helpdesk; the staff assign control on the right notifies our staff inbox.
+ * Ticket identity band for hosts that have no pane header of their own — the
+ * requester, the editable subject, and the icon actions.
+ *
+ * **The Zendesk field band is gone (2026-08-02).** It carried four dropdowns —
+ * status, priority, helpdesk assignee, our staff assignment — in a wrapping row
+ * under the subject, and it was the loudest thing on a surface whose job is
+ * reading a conversation. Status and priority now live where the operator
+ * already looks for them:
+ *
+ *  - `/support` — the pane header's identity row ({@link SupportTicketIdentity}),
+ *    which is also where the status was already being told, quietly, by an 8px
+ *    dot. One home, real weight.
+ *  - every other host (Unbox ticket push, the Links rail's Customer segment) —
+ *    the {@link SupportDetailsStack} popover this header already mounts, which
+ *    is the secondary-detail surface those hosts have.
+ *
+ * Assignment demoted to the rail's Connections display on `/support`, and to
+ * that same popover elsewhere.
+ *
+ * When a host hides BOTH the requester band and the title there is nothing left
+ * to draw, and this renders `null` rather than an empty bordered strip — that is
+ * `/support`, where the pane header owns identity outright.
  */
 export function SupportChatHeader({
   ticket,
@@ -68,10 +76,6 @@ export function SupportChatHeader({
   /** When the ticket is linked to an order — open Support · Orders for that pk. */
   ordersHref?: string | null;
 }) {
-  const update = useUpdateTicket();
-  const assign = useAssignTicket();
-  const { data: agents = [] } = useZendeskAgents();
-  const { data: assignment } = useTicketAssignment(ticket.id);
   const url = hideExternalLink ? null : zendeskTicketUrl(ticket.id);
   // Runtime provider name so the deep-link reads the org's own helpdesk.
   const { label: helpdeskLabel } = useCapabilityProviderLabel('helpdesk');
@@ -79,29 +83,8 @@ export function SupportChatHeader({
   const requester = requesterFrom(ticket);
   const reqName = requester.name || requester.email || 'Requester';
 
-  const assigneeOptions: SelectOption[] = [
-    { value: UNASSIGNED, label: 'Unassigned' },
-    ...agents.map((a) => ({ value: String(a.id), label: a.name, sublabel: a.email ?? undefined })),
-  ];
-
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  useEffect(() => {
-    let alive = true;
-    getActiveStaff()
-      .then((list) => alive && setStaff(list))
-      .catch(() => {
-        /* staffCache swallows; leave empty */
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const staffOptions: SelectOption[] = [
-    // Distinct from Zendesk agent "Unassigned" so the header doesn't show two identical faces.
-    { value: UNASSIGNED, label: 'Staff' },
-    ...staff.map((s) => ({ value: String(s.id), label: s.name })),
-  ];
+  // Nothing left to draw — the host owns identity (see the docblock).
+  if (hideRequesterBand && hideTitle) return null;
 
   const titleEditor = hideTitle ? null : (
     <TicketSubjectField
@@ -193,7 +176,9 @@ export function SupportChatHeader({
                 </a>
               </HoverTooltip>
             ) : null}
-            <SupportDetailsStack ticket={ticket} />
+            {/* The editable home for status / priority / assignment on hosts
+                with no pane header — see the docblock. */}
+            <SupportDetailsStack ticket={ticket} fields="edit" />
             {url ? (
               <HoverTooltip label={openLabel} asChild>
                 <a
@@ -210,58 +195,6 @@ export function SupportChatHeader({
           </div>
         </div>
       )}
-
-      <div
-        className={cn(
-          'flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5',
-          hideRequesterBand && hideTitle ? null : compact ? 'mt-1.5' : 'mt-3',
-        )}
-      >
-        {/* Zendesk ticket fields — external/helpdesk controls on the left. */}
-        <div className={cn('flex shrink-0 flex-wrap items-center', compact ? 'gap-1' : 'gap-1.5')}>
-          <ZendeskSelect
-            value={String(ticket.status)}
-            options={STATUS_OPTIONS}
-            size={compact ? 'rail' : 'dense'}
-            disabled={update.isPending}
-            onChange={(status) => update.mutate({ id: ticket.id, patch: { status: status as ZendeskTicket['status'] } })}
-          />
-          <ZendeskSelect
-            value={ticket.priority ? String(ticket.priority) : null}
-            options={PRIORITY_OPTIONS}
-            placeholder="Priority"
-            size={compact ? 'rail' : 'dense'}
-            disabled={update.isPending}
-            onChange={(priority) =>
-              update.mutate({ id: ticket.id, patch: { priority: priority as ZendeskTicket['priority'] } })
-            }
-          />
-          <ZendeskSelect
-            value={ticket.assignee_id ? String(ticket.assignee_id) : UNASSIGNED}
-            options={assigneeOptions}
-            placeholder="Agent"
-            size={compact ? 'rail' : 'dense'}
-            disabled={update.isPending}
-            onChange={(v) => update.mutate({ id: ticket.id, patch: { assignee_id: v === UNASSIGNED ? null : Number(v) } })}
-          />
-        </div>
-
-        <div className={cn('ml-auto flex shrink-0 items-center', compact ? 'gap-1' : 'gap-1.5')}>
-          <ZendeskSelect
-            value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
-            options={staffOptions}
-            placeholder="Assign staff"
-            size={compact ? 'rail' : 'dense'}
-            align="right"
-            disabled={assign.isPending}
-            onChange={(v) => {
-              const staffId = v === UNASSIGNED ? null : Number(v);
-              const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
-              assign.mutate({ id: ticket.id, staffId, staffName });
-            }}
-          />
-        </div>
-      </div>
     </div>
   );
 }

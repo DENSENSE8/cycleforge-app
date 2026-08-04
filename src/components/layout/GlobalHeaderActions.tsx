@@ -233,15 +233,12 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
     return <div className="flex h-full items-center gap-1.5">{iconCluster}</div>;
   }
 
-  // `/search` owns its entry field in the context rail — hide the header
-  // launcher so the page isn't dual-input. AI stays mounted (far-right).
-  const onSearchPage =
-    pathname === '/search' || (pathname?.startsWith('/search/') ?? false);
-
   // Order: find · be told · ask — AI last, at the right edge it opens.
+  // Search stays mounted on `/search` (and carton detail) so find is always
+  // reachable from the header — page-rail entry is additive, not a replacement.
   return (
     <div className={cn(HEADER_ICON_CLUSTER, 'justify-end', HEADER_RAIL_WIDTH)}>
-      {!onSearchPage ? <GlobalHeaderSearch /> : null}
+      <GlobalHeaderSearch />
       {iconCluster}
       <GlobalHeaderAssistantButton />
     </div>

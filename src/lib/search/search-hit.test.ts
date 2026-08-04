@@ -241,7 +241,7 @@ test('orderRecordHref: canonical record path, encoded', () => {
 });
 
 test('searchScopeHref: URL-searchable surfaces get the query applied; others null', () => {
-  assert.equal(searchScopeHref('ORDER', 'bose revolve'), '/dashboard?search=bose%20revolve');
+  assert.equal(searchScopeHref('ORDER', 'bose revolve'), '/shipping/orders?search=bose%20revolve');
   assert.equal(searchScopeHref('SERIAL_UNIT', 'samsung'), '/inventory/units?q=samsung');
   assert.equal(searchScopeHref('SKU', 'wave radio'), '/inventory/skus?q=wave%20radio');
   assert.equal(searchScopeHref('RECEIVING', 'x'), null);

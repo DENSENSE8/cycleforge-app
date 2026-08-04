@@ -1,27 +1,22 @@
 'use client';
 
 /**
- * Station chrome — floating identity shell + corner utilities.
+ * Station chrome — flush identity strip + corner utilities.
  *
  * Identity uses {@link STATION_WORKBENCH_IDENTITY_COLUMN} — the same max-width
  * + horizontal pad as StationWorkbench body — so CartonContextCard
- * density=bar matches the line-edit tabs/cards edge-for-edge.
+ * matches the line-edit tabs/cards edge-for-edge.
  *
- * Placement: absolute overlay at the panel top
- * ({@link stationContextBarHostClass}) — no in-flow canvas band behind the
- * shell; top inset is {@link STATION_BOOKMARK_CANVAS_INSET_TOP} (twin of
- * `CONTEXT_PANEL_OUTER_MARGIN`) so identity shares the sidebar card’s top edge.
- * Hosts must reserve top scroll clearance ({@link STATION_IDENTITY_SCROLL_CLEARANCE}
- * via StationWorkbench `reserveIdentityClearance`). Never stack ancestor `py-*`
- * under this float.
+ * Placement: absolute overlay flush under GlobalHeader
+ * ({@link stationContextBarHostClass}). Hosts must reserve top scroll clearance
+ * ({@link STATION_IDENTITY_SCROLL_CLEARANCE} via StationWorkbench
+ * `reserveIdentityClearance`). Never stack ancestor `py-*` under this float.
  *
- *   1. Identity — centered workbench column, full width of that column
- *   2. More details — {@link StationMoreDetails}, absolute at the
- *      work-canvas top + right (out of flow so identity stays centered)
+ *   1. Identity — centered workbench column
+ *   2. More details — {@link StationMoreDetails}, absolute top-right
  *
- * Unbox may omit `moreDetails` here and mount it on the pane outer host
- * (canvas top + right gutters + `z-raised` on that host) so Ticket push does
- * not slide the icon cluster left with the squeezed Unbox column.
+ * Unbox may omit `moreDetails` here and mount it on the pane outer host so
+ * Ticket push does not slide the icon cluster left with the squeezed column.
  */
 
 import type { ReactNode } from 'react';
@@ -29,18 +24,18 @@ import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
 import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 import {
-  stationBookmarkPadClass,
-  stationBookmarkPanelClass,
+  stationIdentityPadClass,
+  stationIdentityPanelClass,
   stationContextBarHostClass,
   stationMoreDetailsHostClass,
-} from './station-bookmark';
+} from './station-identity-chrome';
 
 export function StationContextBar({
   identity,
   moreDetails,
   className,
 }: {
-  /** CartonContextCard density=bar (or pack identity equivalent). */
+  /** CartonContextCard (or pack identity equivalent). */
   identity: ReactNode;
   /** {@link StationMoreDetails} cluster — optional for identity-only hosts. */
   moreDetails?: ReactNode;
@@ -63,8 +58,8 @@ export function StationContextBar({
           elevation="none"
           borderless
           className={cn(
-            stationBookmarkPanelClass,
-            stationBookmarkPadClass,
+            stationIdentityPanelClass,
+            stationIdentityPadClass,
             // Keep overflow visible so IdentityLinkChip hover menus (top-full)
             // are not clipped; horizontal bleed is fixed via bar px + scan rule.
             'flex min-h-10 w-full max-w-full items-center overflow-visible',

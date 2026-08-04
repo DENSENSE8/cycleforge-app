@@ -3,11 +3,12 @@
 /**
  * My Day — Home Today's Workbench, composed from the house shells.
  *
- *   chrome    → `WorkbenchChromeHeader` `density="band"` (the Unbox / Triage /
- *               History face) — lane tabs left, collapsed search, the due-horizon
- *               refine in `right`, Fields in the `trailing` cluster
- *   collection→ `LedgerGridSurface` + `GridSurfaceDescriptor` via `MyDayGridView`
+ *   chrome    → `WorkbenchChromeHeader` `density="band"` on `WORKBENCH_SHEET_CHROME`
+ *               (Unbox flush — no side gutters) — lane tabs left, TechRailSearchBar,
+ *               due-horizon refine in `right`, Add (watch ticket) in `trailing`
+ *   collection→ `LedgerGridSurface` `surface="sheet"` via `MyDayGridView`
  *   record    → `RightRailHost` (non-modal) via `MyDayTaskInspectorRail`
+ *               or `MyDayWatchRail` (`?watch=1` — ticket / tracking intake)
  *   rail      → `HomeContextPanel` (saved views), via the `home` route key
  *   feed      → `useMyDayFeed`, still the one client of `GET /api/my-day`
  *
@@ -41,18 +42,21 @@
  * grid owns its own scroll (`display/workbench.md` → Sticky docking).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
   withScopeDivider,
 } from '@/components/dashboard/workbench-shell';
-import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
-import { useDebounce } from '@/hooks';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { cn } from '@/utils/_cn';
 import { MyDayDueHorizonChips } from './MyDayDueHorizonChips';
 import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
 import { MyDayTaskInspectorRail } from './MyDayTaskInspector';
+import { MyDayWatchRail } from './MyDayWatchRail';
+import { MyDayWatchTicketAction } from './MyDayWatchTicketAction';
 import { MyDayGridView } from './grid/MyDayGridView';
 import { useMyDayFeed } from './useMyDayFeed';
 import { useMyDayView } from './useMyDayView';
@@ -72,19 +76,19 @@ import {
 
 export function MyDayWorkspace() {
   const { data, isLoading, isError } = useMyDayFeed();
-  const { lane, taskId, query, horizon, setLane, setTaskId, setQuery, toggleHorizon } =
-    useMyDayView();
-
-  // The field is a local draft debounced into `?q=` — typing must not push a
-  // history entry per keystroke, and the URL stays the durable answer so a
-  // shared link (and a saved view) reproduces the refinement.
-  const [draft, setDraft] = useState(query);
-  useEffect(() => setDraft(query), [query]);
-  const debouncedDraft = useDebounce(draft, 250);
-  useEffect(() => {
-    if (debouncedDraft.trim() === query.trim()) return;
-    setQuery(debouncedDraft.trim());
-  }, [debouncedDraft, query, setQuery]);
+  const {
+    lane,
+    taskId,
+    query,
+    horizon,
+    watchOpen,
+    setLane,
+    setTaskId,
+    setQuery,
+    toggleHorizon,
+    openWatch,
+    closeWatch,
+  } = useMyDayView();
 
   const tasks = useMemo(() => myDayTasksFromFeed(data), [data]);
   const counts = useMemo(() => myDayLaneCounts(tasks), [tasks]);
@@ -114,7 +118,7 @@ export function MyDayWorkspace() {
 
   // All first, then the specific lanes — the tab strip IS the filter, so the
   // unfiltered view has to be a tab rather than an implied empty state.
-  // Same strip grammar as Unbox: the leading SCOPE tab (here "Everything", the
+  // Same strip grammar as Unbox: the leading SCOPE tab (here "All", the
   // unfiltered view) is separated from the lanes that filter within it by one
   // hairline — `withScopeDivider` owns that placement for both surfaces.
   const tabs = useMemo(
@@ -132,27 +136,22 @@ export function MyDayWorkspace() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas text-text-default">
-      <div className={WORKBENCH_CHROME_COLUMN}>
+      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
         <WorkbenchChromeHeader
           density="band"
+          className="rounded-none border-l-0 border-t-0 shadow-sm"
           tabs={tabs}
           activeTab={lane}
           onTabChange={(id) => setLane(id as MyDayLaneFilter)}
           solidTone="accent"
-          // Collapsed at rest. Today's search REFINES the list already on
-          // screen, so it is not one of the two always-open entry-path
-          // exceptions (`/ops/photos`, `/search`) — `ui-design-system.md` →
-          // Scoped search chrome.
+          // Always-open TechRailSearchBar — filter+paste, not icon-first expand.
           search={
-            <ToolbarSearchToggle
-              value={draft}
-              onChange={setDraft}
-              onClear={() => {
-                setDraft('');
-                setQuery('');
-              }}
+            <TechRailSearchBar
+              variant="chrome"
+              value={query}
+              onChange={(v) => setQuery(v.trim())}
               placeholder="Filter tasks…"
-              tone="blue"
+              className="w-40 shrink-0 lg:w-56"
             />
           }
           // `right` is the REFINE cluster — controls that narrow the rows below
@@ -171,17 +170,14 @@ export function MyDayWorkspace() {
               />
             ) : null
           }
-          // No `trailing` cluster at all — honest absence of every slot it
-          // holds (`WorkbenchTrailingCluster` would render null anyway):
-          //  · Sort — Today's ordering IS the column sort (`?colsort=`), which
-          //    the grid header already owns; a `QueueSortSwitch` here would be
-          //    a second sort vocabulary over one list, and `source-of-truth.md`
-          //    → Grid column sort allows exactly one param per surface.
-          //  · Import / Add — nothing creates a Today task: rows are a
-          //    projection of work assignments and interrupts owned elsewhere.
-          //  · Column display — never chrome. It is the grid's own top-right
-          //    header lip (`MyDayGridView` → `onOpenColumnDetails`), which is
-          //    where the retired `fields` slot went 2026-08-02.
+          // Trailing = solid Add CTA (opens Watch rail — ticket or tracking).
+          // Sort stays on the grid header (`?colsort=`); column display stays on
+          // the grid lip — neither belongs in this cluster.
+          trailing={
+            <WorkbenchTrailingCluster
+              actions={<MyDayWatchTicketAction onOpen={openWatch} />}
+            />
+          }
         />
       </div>
 
@@ -193,11 +189,11 @@ export function MyDayWorkspace() {
         the chrome is still one non-scrolling layer outside the scroll port, and
         the grid still owns the only sticky layer inside it.
       */}
-      <div className={`min-h-0 flex-1 ${WORKBENCH_BODY_COLUMN}`}>
+      <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
         <MyDayOnboardingPanel />
 
         {isError ? (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
+          <div className="mx-4 my-6 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
             <p className="text-role-caption font-semibold text-rose-700">
               Could not load My Day. Try refreshing.
             </p>
@@ -217,7 +213,7 @@ export function MyDayWorkspace() {
                 ? `Nothing ${myDayDueHorizonLabel(horizon).toLowerCase()} here — click the tile again to clear it.`
                 : query.trim()
                   ? `No tasks match “${query.trim()}”. Clear the filter to see the rest.`
-                  : `Nothing in ${myDayLaneLabel(lane)} right now — try Everything.`
+                  : `Nothing in ${myDayLaneLabel(lane)} right now — try All.`
             }
             isFiltered={isFiltered}
             selectedTaskId={taskId}
@@ -227,6 +223,7 @@ export function MyDayWorkspace() {
       </div>
 
       <MyDayTaskInspectorRail task={selectedTask} onClose={() => setTaskId(null)} />
+      <MyDayWatchRail open={watchOpen} onClose={closeWatch} />
     </div>
   );
 }

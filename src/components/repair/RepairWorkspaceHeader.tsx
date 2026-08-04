@@ -12,12 +12,11 @@
  * Favorites stay in `RepairSidebarPanel`; queue chrome no longer lives there.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
-import { useDebounce } from '@/hooks';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useRepairDisplaySort } from '@/hooks/useRepairDisplaySort';
 import { REPAIR_DISPLAY_SORT_OPTIONS } from '@/lib/repair/repair-display-sort';
 import {
@@ -64,19 +63,17 @@ export function RepairWorkspaceHeader() {
   );
 
   const urlSearch = searchParams.get('search') ?? '';
-  const [draft, setDraft] = useState(urlSearch);
-  useEffect(() => {
-    setDraft(urlSearch);
-  }, [urlSearch]);
-  const debouncedDraft = useDebounce(draft, 250);
-  useEffect(() => {
-    if (debouncedDraft.trim() === urlSearch.trim()) return;
-    replaceParams((params) => {
-      const next = debouncedDraft.trim();
-      if (next) params.set('search', next);
-      else params.delete('search');
-    });
-  }, [debouncedDraft, replaceParams, urlSearch]);
+
+  const setRepairSearch = useCallback(
+    (next: string) => {
+      replaceParams((params) => {
+        const trimmed = next.trim();
+        if (trimmed) params.set('search', trimmed);
+        else params.delete('search');
+      });
+    },
+    [replaceParams],
+  );
 
   const openNewRepair = useCallback(() => {
     replaceParams((params) => {
@@ -92,17 +89,12 @@ export function RepairWorkspaceHeader() {
       onTabChange={setTab}
       solidTone="accent"
       search={
-        <ToolbarSearchToggle
-          value={draft}
-          onChange={setDraft}
-          onClear={() => {
-            setDraft('');
-            replaceParams((params) => {
-              params.delete('search');
-            });
-          }}
+        <TechRailSearchBar
+          variant="chrome"
+          value={urlSearch}
+          onChange={setRepairSearch}
           placeholder="Filter repairs, tickets, SKU…"
-          tone="blue"
+          className="w-40 shrink-0 lg:w-56"
         />
       }
       trailing={

@@ -11,6 +11,10 @@ and a **per-step + total time breakdown**.
 **Companion brief:** [`step-document-reveal-GEMINI-RESEARCH-BRIEFING.md`](./step-document-reveal-GEMINI-RESEARCH-BRIEFING.md)
 — same surface, different question (rendering a document *inside* a step). Answers must not conflict;
 where they interact, say so.
+
+**Companion (section host / dock clearance — research before implement):**
+[`station-multi-section-scroll-host-GEMINI-RESEARCH-BRIEFING.md`](./station-multi-section-scroll-host-GEMINI-RESEARCH-BRIEFING.md)
+— Items + Procedure as sibling stacks under one divider above the floating dock.
 **Plan under review:** [`unbox-guided-procedure-INDEX.md`](./unbox-guided-procedure-INDEX.md) (shared
 decisions D1–D11) + [`unbox-guided-procedure-FRONTEND-PLAN.md`](./unbox-guided-procedure-FRONTEND-PLAN.md)
 (FE-0 … FE-8). **The plan is written but not started.** You are reviewing a design before it is built.

@@ -51,10 +51,23 @@ test('RightRailHost persists via DETAIL_STACK_COLLAPSE.storageKey', () => {
 });
 
 test('collapse lives on HorizontalEdgeResizeHandle.onCollapse', () => {
+  // Host still wires onCollapse through the DS handle; the callback may be
+  // conditional on the occupant's `edgeCollapse` flag (Incoming opts out for
+  // Unbox parity). The affordance path must remain the handle — never a
+  // page-local twin.
   assert.match(HOST_SRC, /onCollapse=\{/);
+  assert.match(HOST_SRC, /allowEdgeCollapse/);
+  assert.match(HOST_SRC, /edgeCollapse/);
   assert.match(HOST_SRC, /HorizontalEdgeResizeHandle/);
   assert.match(HANDLE_SRC, /onCollapse\?:/);
   assert.match(HANDLE_SRC, /edge-resize-collapse/);
+});
+
+test('Incoming details opts out of outset edge collapse', () => {
+  const panel = code(
+    sourceOf('../sidebar/receiving/IncomingDetailsPanel.tsx'),
+  );
+  assert.match(panel, /edgeCollapse=\{false\}/);
 });
 
 test('collapse / expand affordances use IconButton (not raw buttons)', () => {

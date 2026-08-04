@@ -17,11 +17,26 @@ interface Props {
   selected: Set<number>;
   onSelectChange: (next: Set<number>) => void;
   onRowClick: (row: BinsOverviewRow) => void;
+  /** Sheets flush mount (Locations desk). Default framed for legacy embeds. */
+  surface?: 'framed' | 'sheet';
 }
 
-export function BinsTable({ rows, loading, selected, onSelectChange, onRowClick }: Props) {
+export function BinsTable({
+  rows,
+  loading,
+  selected,
+  onSelectChange,
+  onRowClick,
+  surface = 'framed',
+}: Props) {
   return (
-    <div className="flex min-h-[240px] min-w-0 flex-col">
+    <div
+      className={
+        surface === 'sheet'
+          ? 'flex min-h-0 min-w-0 flex-1 flex-col'
+          : 'flex min-h-[240px] min-w-0 flex-col'
+      }
+    >
       <BinsGridView
         rows={rows}
         loading={loading}
@@ -29,6 +44,7 @@ export function BinsTable({ rows, loading, selected, onSelectChange, onRowClick 
         onSelectChange={onSelectChange}
         onRowClick={onRowClick}
         emptyMessage="No bins match the current filters."
+        surface={surface}
       />
     </div>
   );

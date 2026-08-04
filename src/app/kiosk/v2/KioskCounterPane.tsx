@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Button, TextField } from '@/design-system/primitives';
 import { Loader2, Check } from '@/components/Icons';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
@@ -16,11 +16,18 @@ import {
   phoneDigits,
   type CounterDraft,
 } from '@/components/counter/counter-intake-steps';
+import { buildKioskSalesIntakeBody } from '@/lib/counter/kiosk-intake-payload';
+import {
+  KioskPaymentStepUpSheet,
+  type KioskPaymentStepUpResult,
+} from '@/components/kiosk/KioskPaymentStepUpSheet';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 interface KioskCounterPaneProps {
   selectedItems: SelectedItem[];
   selectedProduct: ProductSelection | null;
+  /** Catalog price from the left-rail selection — empty until a priced SKU is picked. */
+  servicePrice: string;
   onReset: () => void;
 }
 
@@ -31,18 +38,22 @@ function formatCents(cents: number): string {
 /**
  * Landscape right-pane counter transaction.
  *
- * Cart SoT is `CounterDraft.retailLines` (same as `CounterIntakeForm`) — and as
- * of 2026-08-02 it is the only counter cart. This used to read "not
- * `salesCartStore`, which remains the staff `/pickup` walk-in cart"; `/pickup`
- * never imported that store either, and it was deleted with zero consumers.
- * Submit posts to `/api/kiosk/intake` with `serviceLine` + Idempotency-Key.
+ * Cart SoT is `CounterDraft.retailLines` (same as `CounterIntakeForm`).
+ * Submit posts to `/api/kiosk/intake` via `buildKioskSalesIntakeBody` + Idempotency-Key.
+ * Pay-at-register requires device staff PIN step-up (never card data on tablet).
  */
-export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: KioskCounterPaneProps) {
+export function KioskCounterPane({
+  selectedItems,
+  selectedProduct,
+  servicePrice,
+  onReset,
+}: KioskCounterPaneProps) {
   const [draft, setDraft] = useState<CounterDraft>(emptyCounterDraft);
   const [showOrderLookup, setShowOrderLookup] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CounterTransactionResult | null>(null);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
   const idemKey = useRef<string | null>(null);
 
   useEffect(() => {
@@ -64,7 +75,8 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
               productModel: selectedProduct.model,
               sourceSku: selectedProduct.sourceSku ?? null,
               serialNumber: d.service?.serialNumber ?? '',
-              price: '',
+              // Catalog price only — never invent a default (kiosk-shell honesty).
+              price: servicePrice.trim() || '',
               repairReasons: d.service?.repairReasons ?? [],
               repairNotes: d.service?.repairNotes ?? '',
               signatureDataUrl: d.signatureDataUrl,
@@ -73,7 +85,7 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
           : null,
       };
     });
-  }, [selectedItems, selectedProduct]);
+  }, [selectedItems, selectedProduct, servicePrice]);
 
   const patch = (next: Partial<CounterDraft>) => setDraft((d) => ({ ...d, ...next }));
 
@@ -84,6 +96,9 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
 
   const blockReason = useMemo(() => {
     if (!hasAnyLine(draft)) return 'Select items from the catalog on the left.';
+    if (draft.service && !draft.service.price.trim()) {
+      return 'Selected service has no catalog price yet.';
+    }
     if (!draft.phone.trim()) return 'Enter a phone number.';
     if (phoneDigits(draft.phone).length < 7) return 'Phone number looks incomplete.';
     if (needsSignature(draft) && !draft.signatureDataUrl) {
@@ -99,39 +114,16 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
     });
   };
 
-  const submit = async (takePayment: boolean) => {
-    if (submitting || blockReason) return;
-    setSubmitting(true);
-    setError(null);
-    if (!idemKey.current) idemKey.current = safeRandomUUID();
-    try {
+  const postIntake = useCallback(
+    async (opts: { takePayment: boolean; staffId?: number; pin?: string }) => {
+      if (!idemKey.current) idemKey.current = safeRandomUUID();
       const res = await fetch('/api/kiosk/intake', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           'Idempotency-Key': idemKey.current,
         },
-        body: JSON.stringify({
-          service: 'sales',
-          customer: {
-            phone: draft.phone,
-            name: draft.name || null,
-            email: draft.email || null,
-          },
-          retailLines: draft.retailLines,
-          serviceLine: draft.service
-            ? {
-                ...draft.service,
-                signatureDataUrl: draft.signatureDataUrl,
-                signatureStrokes: draft.signatureStrokes,
-              }
-            : null,
-          priorOrder: draft.priorOrderNumber.trim()
-            ? { orderNumber: draft.priorOrderNumber.trim(), phone: draft.phone }
-            : null,
-          ticketWork: draft.service ? { mode: 'create' } : { mode: 'none' },
-          takePayment,
-        }),
+        body: JSON.stringify(buildKioskSalesIntakeBody(draft, opts)),
       });
 
       const body = (await res.json().catch(() => ({}))) as {
@@ -139,6 +131,9 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
         error?: string;
       };
 
+      if (res.status === 403 && body.error === 'STEPUP_FAILED') {
+        throw new Error('PIN incorrect. Try again.');
+      }
       if (res.status === 403 && body.error?.includes('STEPUP')) {
         throw new Error('A manager needs to authorize payment on this tablet.');
       }
@@ -146,13 +141,50 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
         throw new Error(body.error?.trim() || 'Transaction failed');
       }
       idemKey.current = null;
-      setResult(body.transaction);
+      return body.transaction;
+    },
+    [draft],
+  );
+
+  const submitSave = async () => {
+    if (submitting || blockReason) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const tx = await postIntake({ takePayment: false });
+      setResult(tx);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not complete this transaction.');
     } finally {
       setSubmitting(false);
     }
   };
+
+  const onStepUpAuthorized = useCallback(
+    async (creds: KioskPaymentStepUpResult) => {
+      try {
+        const tx = await postIntake({
+          takePayment: true,
+          staffId: creds.staffId,
+          pin: creds.pin,
+        });
+        setStepUpOpen(false);
+        setResult(tx);
+        return { ok: true as const };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Could not complete this transaction.';
+        // Keep pad open for PIN retries; surface other failures on the pane.
+        if (message.includes('PIN incorrect')) {
+          return { ok: false as const, error: message };
+        }
+        setStepUpOpen(false);
+        setError(message);
+        return { ok: false as const, error: message };
+      }
+    },
+    [postIntake],
+  );
 
   if (result) {
     return (
@@ -192,7 +224,7 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
   const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-10 pb-20">
+    <div className="mx-auto w-full max-w-2xl space-y-10">
       <section className="space-y-4">
         <div className="flex items-center justify-between border-b border-border-soft pb-2">
           <h3 className={SECTION_LABEL}>1. Order Details</h3>
@@ -212,6 +244,11 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
                   <span className="ml-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
                     Service
                   </span>
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums">
+                  {draft.service.price.trim()
+                    ? `$${Number.parseFloat(draft.service.price).toFixed(2)}`
+                    : '—'}
                 </span>
               </li>
             )}
@@ -319,30 +356,39 @@ export function KioskCounterPane({ selectedItems, selectedProduct, onReset }: Ki
             size="lg"
             className="flex-1"
             disabled={submitting || !!blockReason}
-            onClick={() => void submit(true)}
+            onClick={() => {
+              setError(null);
+              setStepUpOpen(true);
+            }}
           >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…
-              </>
-            ) : (
-              'Pay at register'
-            )}
+            Pay at register
           </Button>
           <Button
             variant="secondary"
             size="lg"
             className="flex-1"
             disabled={submitting || !!blockReason}
-            onClick={() => void submit(false)}
+            onClick={() => void submitSave()}
           >
-            Save (No payment)
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…
+              </>
+            ) : (
+              'Save (No payment)'
+            )}
           </Button>
         </div>
         <p className="text-xs uppercase tracking-widest text-text-faint">
           Card details are never entered on this tablet.
         </p>
       </section>
+
+      <KioskPaymentStepUpSheet
+        open={stepUpOpen}
+        onClose={() => setStepUpOpen(false)}
+        onAuthorized={onStepUpAuthorized}
+      />
     </div>
   );
 }

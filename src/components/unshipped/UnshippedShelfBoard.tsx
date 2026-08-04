@@ -2,27 +2,30 @@
 
 /**
  * Unshipped · Pending Grid — To Ship fulfillment queue as a single connected
- * spreadsheet (`OrdersGridView` / `LedgerGrid`). Board|Grid switcher retired;
- * search uses the same grid surface (filtered records).
+ * spreadsheet (`OrdersGridView` → `LedgerGridSurface` `surface="sheet"`).
+ * Board|Grid switcher retired; search uses the same grid surface (filtered records).
  *
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
  *
- * Scroll: KPI strip lives above the framed table in the page scroll body; the
- * table card uses `TABLE_SURFACE_CLIP_CLASS` (rounded + overflow-hidden) so
- * airtable column lines clip cleanly at the corners. Column header sticks
- * inside the grid when the card self-scrolls; no page-level sticky/split-x.
+ * Scroll: KPI strip is pinned in `DashboardOrdersView` sheet chrome; the
+ * table host uses `WORKBENCH_SHEET_HOST` + a bounded viewport so the grid
+ * self-scrolls. Column header sticks inside the grid; no page-level sticky.
  */
 
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { workbenchTableViewportClass } from '@/components/dashboard/workbench-shell';
+import {
+  WORKBENCH_SHEET_HOST,
+  workbenchTableViewportClass,
+} from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { useEventBridge } from '@/hooks';
+import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 
 export interface UnshippedShelfBoardProps {
@@ -88,13 +91,8 @@ export function UnshippedShelfBoard({
             {searchToolbar}
           </div>
         )}
-      {/* Framed ops table — rounded + overflow-hidden clips the airtable grid.
-          Bounded to the viewport remainder (WORKBENCH_TABLE_VIEWPORT) so the
-          grid self-scrolls instead of growing the page: an unbounded host let
-          the card run past the fold, which hid its bottom edge and the raised
-          elevation with it (the card only looked lifted while the empty/loading
-          state kept it short). */}
-      <div className={workbenchTableViewportClass({ bulkBarInset })}>
+      {/* Flush sheet host — bounded viewport so the grid self-scrolls. */}
+      <div className={cn(WORKBENCH_SHEET_HOST, workbenchTableViewportClass({ bulkBarInset }))}>
         <OrdersGridView
           ariaLabel="Shelved unshipped orders"
           records={records}

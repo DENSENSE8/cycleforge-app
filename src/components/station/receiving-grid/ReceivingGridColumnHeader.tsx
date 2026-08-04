@@ -1,9 +1,7 @@
 'use client';
 
-import { Clock } from '@/components/Icons';
 import {
   makeLedgerGridColumnHeader,
-  type GridColumnHeaderProps,
   type LedgerHeaderLayoutApi,
 } from '@/design-system/components/grid';
 import {
@@ -27,9 +25,21 @@ const RECEIVING_HEADER_LAYOUT: LedgerHeaderLayoutApi<ReceivingGridColumn> = {
   frozenLeft: receivingGridFrozenLeft,
   isFrozen: isReceivingGridFrozen,
   isSortable: isReceivingGridSortable,
+  // Sheets-class: only the select gutter is frozen — edge cue hangs there.
+  frozenEdgeKey: 'select',
 };
 
-const BaseReceivingGridColumnHeader = makeLedgerGridColumnHeader<
+/**
+ * Sticky column header for Unbox / History / Testing.
+ *
+ * This family kept a hand-written wrapper until 2026-08-02, and its only job
+ * was the `stage` track: a `stageLabel` prop relabelled that header per MOUNT
+ * (Unboxed / Scanned / Tested) and a `glyphFor` gave it a clock. The column is
+ * gone — the stamp lives in `date`, the stage name in `status` — so the wrapper
+ * is the plain factory result. Labels come from the column SoT, like every
+ * sibling family.
+ */
+export const ReceivingGridColumnHeader = makeLedgerGridColumnHeader<
   ReceivingGridColumn,
   ReceivingGridColumnKey,
   'prop'
@@ -37,32 +47,4 @@ const BaseReceivingGridColumnHeader = makeLedgerGridColumnHeader<
   layout: RECEIVING_HEADER_LAYOUT,
   defaultColumns: RECEIVING_GRID_COLUMNS,
   selectMode: 'prop',
-  glyphFor: (column) =>
-    column.key === 'stage' ? (
-      <Clock className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-    ) : undefined,
 });
-
-/**
- * Sticky column header for Unbox / History / Testing.
- *
- * This is the one family that keeps a hand-written wrapper, and the reason is
- * `stageLabel`: the same `stage` TRACK renders as Unboxed / Scanned / Tested
- * depending on which rail mounted it, so the label is per-MOUNT state, not a
- * family constant like Repair's glyphs. The wrapper translates it into the
- * factory's `labelFor` prop and forwards everything else untouched.
- */
-export function ReceivingGridColumnHeader({
-  stageLabel = 'Stage',
-  ...rest
-}: GridColumnHeaderProps<ReceivingGridColumn, ReceivingGridColumnKey, 'prop'> & {
-  /** Overrides the `stage` column header label (Unboxed / Scanned / Tested). */
-  stageLabel?: string;
-}) {
-  return (
-    <BaseReceivingGridColumnHeader
-      {...rest}
-      labelFor={(column) => (column.key === 'stage' ? stageLabel : undefined)}
-    />
-  );
-}

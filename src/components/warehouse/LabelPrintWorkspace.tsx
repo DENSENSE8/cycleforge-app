@@ -43,7 +43,9 @@ export function LabelPrintWorkspace() {
                 {queuedBins.length} bin{queuedBins.length === 1 ? '' : 's'} queued from Bins
               </p>
               <p className="mt-0.5 text-role-caption text-blue-700">
-                Bulk-grid print lands in the next update. For now, step through each bin below to print it.
+                Special bins (RETURNS-TEST, TECH-PARTS, UNSORTED) print as 2×1
+                from the Bins grid. Structured location labels use the 3×2
+                printer below — step through each queued bin.
               </p>
             </div>
             <Button

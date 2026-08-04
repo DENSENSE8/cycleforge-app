@@ -80,7 +80,7 @@ interface WorkspaceCardProps {
    * Raised intensity for `variant="glass"` only (ignored on solid). Defaults to
    * `default` — primary work cards. Use `soft` for quieter secondary glass;
    * flush bookmark chrome uses `elevationClass('raised', 'soft')` via
-   * station-bookmark SoT (not this prop).
+   * station identity chrome SoT (not this prop).
    */
   elevation?: RaisedIntensity;
   children: ReactNode;

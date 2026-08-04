@@ -21,13 +21,14 @@ import {
   type UnshippedSegmentId,
 } from '@/components/unshipped/useOutboundSidebarScope';
 import { OutboundSavedViewsList } from '@/components/unshipped/OutboundSavedViewsList';
+import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 
 const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
 const ROW =
   'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors';
 const ROW_IDLE = 'hover:bg-surface-hover text-text-muted';
-const ROW_ACTIVE = 'bg-blue-50 ring-1 ring-inset ring-blue-400 text-text-default';
+const ROW_ACTIVE = NAV_ROW.selectedClass;
 
 type SegmentRow = {
   id: UnshippedSegmentId;

@@ -34,14 +34,16 @@ function expectedAlign(type: ColumnType | undefined, override?: 'left' | 'center
   return resolveGridColumnAlign({ type }) === 'end' ? 'right' : 'left';
 }
 
-test('digit / id / date columns resolve to end-alignment', () => {
-  for (const type of ['number', 'id', 'date', 'location'] as ColumnType[]) {
+test('magnitude columns resolve to end-alignment — number, id, and date', () => {
+  for (const type of ['number', 'id', 'date'] as ColumnType[]) {
     assert.equal(expectedAlign(type), 'right', `${type} should end-align`);
   }
 });
 
-test('word / tag columns resolve to start-alignment', () => {
-  for (const type of ['text', 'longtext', 'tag', 'external'] as ColumnType[]) {
+test('label columns resolve to start-alignment — location stays start', () => {
+  // `location` stayed start on 2026-08-02; `date` rejoined magnitudes 2026-08-03.
+  // Admin/settings tables inherit via the same SoT rather than hand-typing align.
+  for (const type of ['text', 'longtext', 'tag', 'external', 'location', 'tracking'] as ColumnType[]) {
     assert.equal(expectedAlign(type), 'left', `${type} should start-align`);
   }
 });
@@ -62,14 +64,22 @@ test('the module stays server-safe — no use client directive', () => {
   );
 });
 
+test('sticky X scroll is a client island (TableStickyXScroll), not a file-level directive', () => {
+  assert.match(
+    SOURCE,
+    /TableStickyXScroll/,
+    'DataTable must compose TableStickyXScroll for triage h-scroll',
+  );
+});
+
 test('the module imports nothing client-only enough to defeat that', () => {
   // `SkeletonList` is the specific trap: it is 'use client' AND pulls
   // framer-motion, so importing it for the loading state would ship the whole
   // motion runtime to a static admin page.
   //
-  // Scoped to IMPORT lines — the docblock above names both on purpose, and an
-  // assertion over the whole file would fail on the very comment that explains
-  // the rule.
+  // `TableStickyXScroll` is an intentional client island for the sticky X
+  // gutter — allowed. Scoped to IMPORT lines — the docblock names traps on
+  // purpose, and an assertion over the whole file would fail on comments.
   const imports = SOURCE.split('\n').filter((line) => /^\s*import\b/.test(line));
   for (const banned of ['SkeletonList', 'framer-motion', 'motion/react']) {
     const hit = imports.find((line) => line.includes(banned));

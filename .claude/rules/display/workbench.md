@@ -73,30 +73,38 @@ Workbench map ──Return-to-scan CTA──► Station primary work
 ### Placement (mandatory)
 
 The return-to-scan CTA lives at the **top-right of the workbench context bar** — `WorkbenchChromeHeader`
-`trailing` → `WorkbenchTrailingCluster` **`actions`** — **above the KPI strip** (`WORKBENCH_CHROME_COLUMN` /
-`WORKBENCH_BODY_COLUMN`). Never in the GlobalHeader, never in the scan column, never below the KPI tiles,
-never as a quiet icon in `right` filters.
+`trailing` → `WorkbenchTrailingCluster` **`actions`** — **at or above the KPI display, never below it**
+(`WORKBENCH_CHROME_COLUMN` / `WORKBENCH_BODY_COLUMN`). Never in the GlobalHeader, never in the scan
+column, never below the KPI tiles, never as a quiet icon in `right` filters. The default shape below
+has the KPI strip in the body (scrolling, below the pinned chrome); Unbox is a **documented exception**
+that pins the KPI cluster inline in the same chrome row as the CTA instead — same "never below" rule,
+different row. Detail: [`workbench-ops-queue.md`](workbench-ops-queue.md) → Sticky docking.
 
 ```text
 ┌─ WorkbenchChromeHeader (pinned) ──────────────────────────────┐
 │  [Recent] [Queue] [History]   …search…filters… │ Sort │ CTA   │
 └───────────────────────────────────────────────────────────────┘
-┌─ KPI strip (scrolls with body) ───────────────────────────────┐
+┌─ KPI strip (scrolls with body; Unbox pins this inline in chrome instead — see above) ─┐
 │  UNFINISHED · VIEWED TODAY · …                                  │
 └───────────────────────────────────────────────────────────────┘
-┌─ Data table / collection map ────────────────────────────┐ ▤ ← column display
-│  column header band                                      │   (gutter, outside
-├──────────────────────────────────────────────────────────┤    the card)
+┌─ Data table / collection map ───────────────────────[▤]──┐ ← column display,
+│  column header band                                      │   revealed on hover
+├──────────────────────────────────────────────────────────┤   over the card
 ```
 
-**Column display belongs to the GRID, and sits in a gutter beside it**
-(2026-08-02). Chrome Fields is retired: a control that mutates the column set of
-a card does not belong on page chrome floating above that card. But it does not
-belong *inside* the card's header band either — parked at the band's right edge
-it either reserves a permanent track (taxing every row of every grid forever to
-host an occasional action) or covers the last column's label. The gutter spends
-**page** width beside the card instead, so no track narrows and nothing is
-covered — and it adds no sticky layer, because it is outside the scroll port.
+**Column display belongs to the GRID, and reserves nothing** (2026-08-02).
+Chrome Fields is retired: a control that mutates the column set of a card does
+not belong on page chrome floating above that card. It does not get resident
+space on the card either — that was tried twice in one day and billed twice. A
+permanent `w-9` header track plus `pr-9` charges every ROW of every grid; a
+permanent gutter beside the card charges every PAGE. Both pay a standing rent
+for an action used a few times a shift.
+
+So it is **hover-revealed over the card's top-right corner** (`GridColumnGutter`),
+with `focus-within` keeping it keyboard-reachable and `open` pinning it while its
+own rail shows. It overlaps the trailing label only while the operator's cursor
+is already there — transient occlusion, not the resident kind that covered
+`TRACKING`. Being absolutely positioned, it adds no sticky layer.
 
 ### Return-to-scan contract (every scan station)
 
@@ -106,9 +114,13 @@ Hybrid Station+Workbench pages **must** expose a solid primary CTA that rejoins 
 |---|---|
 | **Where** | `WorkbenchTrailingCluster.actions` (trailing cluster, after Sort) |
 | **When** | On **every** strip tab (not honest-absence on the bench tab) |
-| **Look** | Solid `Button` `variant="primary"` + leading station glyph + short uppercase verb (Unbox: **“Unbox”**) |
-| **Click** | (1) Close carton/line overlay so the **data table** is visible · (2) Switch to the **bench tab** (strip-first / working set — Unbox: Recent) · (3) Best-effort highlight of the station’s MRU row in that table (`receiving-highlight-line` — no `select-line`, which would re-open the overlay) · (4) Focus the **station scan bar** (`receiving-focus-scan` / surface equivalent) |
+| **Look** | Solid `Button` `variant="primary"` + leading station glyph + short uppercase verb (Unbox: **“Unbox”**) + `WORKBENCH_CHROME_PILL_CLASS` (same soft radius as the band History tab on all sides — never `rounded-*-none` against the trailing hairline). Law: `source-of-truth.md` → Workbench chrome pill |
+| **Click** | **It RESUMES** (ruled 2026-08-03): (1) Resolve the station’s **MRU record** · (2) Switch to the **bench tab** (strip-first / working set — Unbox: Recent) **without clearing the pick** — `clearLine: false`, because `setUnboxView` dispatches `receiving-clear-line` by default · (3) **Open** that record (`receiving-select-line`, which on a rail that takes a selected id also marks the left sidebar — one signal, never a second parked-cursor field) · (4) Focus the **station scan bar** (`receiving-focus-scan` / surface equivalent) |
+| **Why not land a table** | The button sits in the station’s **own** chrome, so “go to Unbox” is not available as a meaning — the operator is already there. The close-overlay-first version also *silently failed*: the MRU comes from `view=unbox_opened` while Recent is `view=viewed` (two memberships, and since 2026-08-01 a browse click no longer stamps a view), and `useReceivingRowSelection` nulls a highlight absent from its rows — so the row pulse routinely could not fire, and the click read as a tab change. Opening the record has no such failure mode. |
+| **Never** | Close an open record on this path — including when the MRU lookup throws. “I could not find your last carton” is not a reason to discard the one on screen. |
+| **Honest absence** | A station whose bench holds no single resumable record (a per-staff *history* rail, or no MRU feed at all — Labels) ships the CTA **without** the resume step. Do not mint a working-set rail, and do not give a history rail a selection it never had, just to earn step 3. |
 | **Reference** | `UnboxWorkspaceHeader` — compose the same altitude on Testing / Pack / Shipping with their own labels |
+| **Ports** | [`docs/todo/return-to-scan-PORTS.md`](../../../docs/todo/return-to-scan-PORTS.md) — **read this before porting.** Per-surface registry (which rails mark a resumed record and which cannot), the copy-this handler recipe, the two traps, and the guard to grow. Symptom it exists to prevent: *“the Unbox button just goes to the Recents tab.”* |
 
 ### Back to list (the other exit)
 
@@ -177,7 +189,7 @@ Every operator action on a collection surface belongs to exactly **one primary p
 |---|---|---|
 | **In-cell** | cell-anchored editor / popover | single-value typed fields |
 | **Row-scoped** | hover controls + single-selected row menu | one-click record affordances |
-| **Multi-select** | `ContextualSelectionBar` + `SelectionAction[]` | N records at once |
+| **Multi-select** | gutter hit-plane (`GridRowCheckbox`) + `ContextualSelectionBar` + `SelectionAction[]` — **except Unbox click-select golden:** plain row click toggles bulk (no select column); double-click / Enter opens the record (History → carton; Incoming Pipeline → inspector) | N records at once |
 | **Record** | detail inspector / full record page | relational, multi-step, side-effectful |
 
 Identity columns are collection-map read-only (`GRID_IDENTITY_COLUMN_KEYS`). Plane redundancy is required where the

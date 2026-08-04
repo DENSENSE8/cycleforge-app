@@ -92,7 +92,45 @@ Do not "finish" these without re-reading the reason.
 
 ## 3. Open work
 
-### 3.1 `save_without_pair` now counts returns — decide what the metric means (P1)
+> **Worked 2026-08-02.** §3.1 · §3.2 · §3.4 · §3.5 · §3.6 are **closed** (each
+> marked below with what landed). One item was spun out:
+> [`triage-complete-never-true-HANDOFF.md`](./triage-complete-never-true-HANDOFF.md).
+>
+> **§3.3 second pass, same day:** the primary witness (6159) is measured at 1440
+> and both doubted questions are answered — the asymmetry holds at 4+ lines
+> (ratio 0.56, stream 1.8× taller) and journey chips align at one x. Two
+> non-blocking witnesses remain unmeasured because the operator's dev server on
+> `:3050` went down mid-probe.
+
+### 3.1 ~~`save_without_pair` now counts returns~~ — CLOSED (predicate fixed; the metric is dead for a different reason)
+
+**The premise did not hold, and the real finding is bigger.** `WAIVED` was never
+going to pollute the bucket, because **nothing lands in it at all**:
+`receiving_triage.triage_complete` is true on **0 of 2474 dogfood rows**, so the
+denominator is zero, the route returns `save_without_pair_rate: null`, and
+`TriageKpiStrip` (which returns null on a null rate) **has never rendered**.
+Root cause measured: `staging_location_id` is null on all 2474 rows, so
+`completeTriage`'s readiness gate never opens. Spun out whole, with the
+evidence, to [`triage-complete-never-true-HANDOFF.md`](./triage-complete-never-true-HANDOFF.md).
+
+The predicate was fixed anyway, so it is correct for the day the denominator
+stops being zero — *"skipped the pairing step"* won, per the operator:
+
+- `PAIRING_ANSWERED_STATES = ['MATCHED','WAIVED']` now lives in `triage-focus.ts`
+  beside `isTriagePaired`, which has treated both as done since C6, and the
+  metrics route **derives its SQL from that tuple** rather than hand-typing
+  `<> 'MATCHED'`. One vocabulary, two readers — a second copy is exactly how
+  "waived" would have been filed as "skipped" in a KPI while the bench called it
+  done.
+- The route keeps its `COALESCE(rt.pairing_state,'UNFOUND')`, and that is not the
+  banned shape: it is a filter over rows that already have a triage row
+  (`triage_complete = true` requires one), so the null it fills means "completed
+  triage, recorded no pairing answer" — which is what the metric counts.
+- Pinned: `triage-focus.test.ts` → *pairing answered vocabulary* (3 cases,
+  incl. that the set is exactly the two answers, so the SQL complement stays
+  exhaustive).
+
+### 3.1b (original text, for the record)
 
 `src/app/api/receiving/triage/metrics/route.ts:51` counts
 `COALESCE(rt.pairing_state,'UNFOUND') <> 'MATCHED'`. Since `settleReturnPairing`
@@ -109,54 +147,160 @@ different, which is why this was left alone:
 **Ask the operator which number they act on before editing.** Whichever wins, pin it
 with a test — there is none today.
 
-### 3.2 Sweep the other COALESCE-invented states (P2)
+### 3.2 ~~Sweep the other COALESCE-invented states~~ — CLOSED
 
-`grep -rn "COALESCE(rt\.\|COALESCE(ru\." src/app/api src/lib`. Most are
-`COALESCE(x, false)` inside a `WHERE`, which is safe (a filter, not a displayed
-fact). The dangerous shape is **a COALESCE default that reaches the UI as a value**,
-which is what `/api/receiving/[id]:96-97` did.
+Swept. Exactly one invented **value** reached the UI, at three sites, all the
+same one: `COALESCE(rt.pairing_state, 'UNFOUND')` in `/api/receiving/[id]` and
+twice in `lines/build-sql.ts`. All three now select `rt.pairing_state` raw.
 
-Rule to apply: if the column is nullable *because the row may not exist*, the API
-should distinguish **absent** from **recorded**. Either return `null` and let the
-model decide, or return the street row's presence alongside it. Do not add more
-`COALESCE(...,'SOMETHING')` to display paths.
+- **The model decides what absence means, from a recorded fact.**
+  `isCartonUnmatched` (carton-inspector-model.ts) raises "No matched PO" on a
+  recorded `pairing_state = 'UNFOUND'` **or** `source = 'unmatched'` — the
+  latter stamped on the carton by the intake scan when the tracking number
+  matched no PO. `cartonFlags` and `cartonExceptions` now share one predicate
+  (`cartonLacksMatchedPo`) so the chip and the header's settled-ness cannot
+  disagree.
+- **Measured before changing anything: zero disagreement across all 2790
+  dogfood cartons.** The new predicate raises the finding on exactly the same
+  **1192** cartons the COALESCE did — every carton the default used to catch is
+  a `source = 'unmatched'` row. What changes is the **751** cartons with no
+  triage row: they stop reporting a PO search that never happened, and the
+  record footer stops printing "Pairing state: UNFOUND" as a fact.
+- **`build-sql.ts` was a deliberate behavior change**, so the frozen
+  `legacy-route-sql.fixture.ts` carries the identical edit and says so in its
+  header (its own contract). Parity guard still byte-exact: 74/74.
+- Pinned: 4 new cases in `carton-inspector-model.test.ts` — absent-vs-recorded
+  both directions, a flag/exception agreement sweep over
+  `pairing_state × source × is_return`, and `cartonRecordMeta` omitting the row.
 
-### 3.3 Multi-line / multi-PO cartons are still unmeasured (P2)
+**The rest of the grep is genuinely safe**, and the distinction is worth
+keeping: `COALESCE(rt.triage_complete, false)` and
+`COALESCE(ru.intake_path = 'unbox_only', false)` fill the absence of a
+**completion stamp**, and "no stamp" *is* false — unlike `UNFOUND`, which is an
+answer. The `COALESCE(x, false)` predicates in `feed-membership-projection.ts`
+are filters.
 
-Everything measured in this pass came from single-line cartons. From the original
-prompt's §2.4, still open: does the left rail need help at 4+ lines? Does the
-`purchase_orders.length > 1` list duplicate what CONTENTS already says? Should
-CONTENTS group by PO?
+**One left, out of scope and unverified:** `/api/local-pickups:150` selects
+`COALESCE(rt.door_received_at, r.created_at) AS received_at` — a row-creation
+time displayed under a received-at label. That is the dangerous shape on a
+different surface, and on a walk-in "received == created" may well be true.
+Someone who owns Local Pickup should confirm before it is touched.
 
-Also unverified: the **two-line journey row** on a genuinely multi-unit carton. The
-rule is guarded at the source level and unit-tested in `merge-station-unit-journeys.test.ts`,
-but no one has looked at a real multi-serial carton in a browser. Find one on
-dogfood (`SELECT receiving_id FROM ... GROUP BY HAVING COUNT(DISTINCT serial) > 1`)
-and check that the chips still line up down the column.
+### 3.3 Multi-line / multi-PO cartons — MEASURED in data AND in pixels on the primary witness (P3)
 
-### 3.4 The journey-thumb ruling is still unwritten (P2)
+Both layout questions are answered, from the whole tenant rather than one carton.
+Rulings written into `carton-read.md`:
 
-Straight from the original prompt §2.3, untouched: `/carton/[id]` now has three
-photo surfaces (the `Photos · N` triage band, the unit-journey thumb strips, the
-shared `PhotoViewerPortal`). The thumbs are *probably* right — evidence attached to
-a journey event, not a second browser — but that is undocumented and the two
-surfaces can disagree about what they show.
+- **The rail does NOT need help at 4+ lines — the opposite.** 4+ line cartons are
+  **17 of 2792 (0.6%)**, and on exactly those the stream out-grows the rail
+  *hardest*: **5.1 lines vs 39.8 events**, ~8:1. Line count and event count are
+  positively correlated (a carton with more in it gets worked more), so the
+  asymmetric-track premise strengthens at the size that was expected to break it.
+  Pulling the same way: **1297 cartons (46%) have zero lines.**
+- **The one inverting shape is not worth a layout.** 4 cartons (0.14%) have 4+
+  lines and an empty stream. Carton **2402** is the extreme — 12 lines, 8 POs,
+  0 events, 0 photos, 0 serials. Nothing has ever happened to it.
+- **The `purchase_orders` list does not duplicate CONTENTS.** A contents row
+  renders title · ProgressBadge · SKU · condition · serials and **no PO number**,
+  so the rollup is the only place the breakdown appears. And it is nearly
+  hypothetical: **9 of 2792 cartons (0.3%)** carry more than one PO. Grouping
+  CONTENTS by PO would add a header tier to 99.7% of cartons to serve 9 —
+  rejected. The real gap is that the two cannot be *joined*; if that needs
+  closing, put a PO chip on the row, do not re-shape the column.
 
-**Deliverable: one paragraph in `carton-read.md`.** Either "journey thumbs are event
-context and stay" or "journey thumbs deep-link into the triage band's matching
-bucket". Do not build a third browse UI, and do not fork the viewer.
+**Measured 2026-08-02 (second pass) — the primary witness is done; both
+questions that were actually in doubt are answered.** Shapes re-confirmed
+against the DB first (`lines` / distinct `receiving_line_zoho.zoho_purchaseorder_id`),
+so the witnesses below are still the witnesses.
 
-### 3.5 `trace-aggregator.ts` drops `notes` too (P3)
+**Carton 6159 at 1440×900, dogfood:**
 
-Same projection defect as `journey.ts`, but nothing renders `TraceEvent` today — dead
-weight rather than a visible bug. Add the field when a consumer appears, or delete
-the shape.
+| | Measured |
+|---|---|
+| Tracks | **352 / 1020** px |
+| Extents | **733 / 1310** px — ratio **0.56** |
+| Dead canvas | left **203k** px² · right **0** |
+| Journey chips | **5**, at **one** distinct left x (561px) |
 
-### 3.6 The "No matched PO" hint still reads wrong for the cartons that keep it (P3)
+- **The asymmetry holds at 4+ lines, in pixels, not just row counts.** The rail
+  does grow with lines (256px at one line → 733px at seven) and still loses by
+  **1.8×** — on a carton *favourable* to it, since 14 events is well under the
+  39.8 average for this size. Written into `carton-read.md`.
+- **Absolute dead area went UP (178k → 203k) while the ratio improved.** Not a
+  regression: taller columns have more room to leave empty. **Compare by ratio,
+  not by area.** This is the trap in the original before/after framing and it is
+  now called out in the rule.
+- **Chip alignment is real and now has a reason attached** — the chip span is the
+  first child of `metaBits` on every two-line row, so anything inserted ahead of
+  it breaks the column the second line exists to make. Recorded in
+  `EventTimeline.tsx`'s second-line docblock, beside the claim it verifies.
 
-`ctaHint: 'Record or match contents in Unbox'` is fine for a PO carton with no match.
-It was misleading for returns — those no longer raise the finding at all — but check
-the wording still fits once §3.3 surfaces multi-PO cartons.
+**Still unmeasured, and not blocking:** 2402 (inverting edge) and 5678 (a second
+chip witness). **The dev server on `:3050` went down mid-probe** — it was up for
+6159 and gone by 5678, no `.next/dev/lock` left behind, so it exited cleanly. An
+agent must not restart it; ask the operator. Neither carton gates a ruling
+(2402's verdict is "not worth a layout" whichever way its pixels fall).
+
+| Carton | Shape (re-confirmed) | Tests | Status |
+|---|---|---|---|
+| **6159** | 7 lines · 1 PO · 5 serials · 14 events | rail vs stream at 4+ lines | **DONE** |
+| **5678** | 1 line · 1 PO · 6 serials | journey chip alignment, multi-serial | pending server |
+| **2402** | 12 lines · 8 POs · 0 events | the inverting edge + the PO rollup | pending server |
+
+**The probe is a throwaway, deliberately.** It ran from `tests/e2e/` and was
+removed again — a dogfood-only spec that hard-fails without the operator's dev
+server does not belong in a suite. `carton-column-balance.spec.ts` stays the
+permanent guard and stays on QA.
+
+### 3.4 ~~The journey-thumb ruling~~ — CLOSED: thumbs are event context, and they stay
+
+Written into `carton-read.md`. The verdict and why: the band answers *which
+photos prove this carton* (match confidence × subject, carton-scoped); the
+strips answer *what was photographed at this point in THIS unit's life*
+(per-stage, unit-scoped, folded in at the stage timestamp). A thumb is an
+attribute of the journey row it sits on the way a `SerialChip` is — remove it and
+the row stops saying a photo was taken at that step, which the band cannot say
+because it has no per-unit timeline. **Not a second browser; do not unify.**
+
+Deep-linking into the band's bucket was the alternative and is rejected in the
+doc: it makes a thumb a navigation control on a reading surface, scrolls the
+operator off the journey they are reading, and hands the band's filter state to
+the strip.
+
+The third surface — the viewer — is **shared, not forked**, and the doc names
+the two things that keep it honest: `CartonUnitJourneyHistory` passes
+`galleryPhotos`/`galleryMatchIds` so a thumb opens the whole carton set instead
+of the capped per-unit preview (deleting that override silently narrows the
+lightbox and the strip still looks right), and both surfaces read **one**
+`useReceivingPhotos` query — this component used to hold its own
+`['receiving-photos', id]`, so the page fetched twice and the copies could
+disagree after a delete.
+
+### 3.5 ~~`trace-aggregator.ts` drops `notes`~~ — CLOSED, and it dropped four, not one
+
+`TraceEvent` was missing `notes`, `actor_staff_id`, `bin_barcode` and `bin_name`
+— every field `inventoryEventsToTimeline` had learned to read — while its own
+docblock claimed it was "shaped so the client can feed it straight through"
+that adapter. All four added.
+
+**The guard is the point.** Plain assignability would not have caught this and
+did not: each adapter field is optional (`notes?`, `actor_staff_id?`, …) so
+existing callers keep compiling, which is the same property that let the
+projection drop all four in silence. So the assertion is on the **keys**, and it
+lives in `trace-aggregator.ts` itself, not beside the adapter's tests — because
+`**/*.test.ts` is excluded from tsconfig and tsx strips types without checking
+them, so a type-level assertion in a test file is evaluated by nothing.
+Verified by deleting the field and its mapper line: tsc fails with
+`["TraceEvent drops fields inventoryEventsToTimeline reads:", "notes"]`.
+
+### 3.6 ~~The "No matched PO" hint~~ — CLOSED: wording verified, no change
+
+The hint's audience, measured: **1194 cartons** keep the finding, and
+`MAX(distinct POs) = 0` across all of them — so §3.3's multi-PO cartons never
+keep it (`cartonHasLinkedPo` suppresses every one), and the worry that prompted
+this item cannot arise. The split inside those 1194 is what makes both halves of
+`'Record or match contents in Unbox'` live: **1007 (84%) have no lines at all**
+(→ *record*), **187 have lines but no PO** (→ *match*).
 
 ---
 
@@ -173,6 +317,12 @@ the wording still fits once §3.3 surfaces multi-PO cartons.
 | A RETURN is paired — it has no PO to find | `triage-focus.ts` C6, mirrored in the model |
 | `WAIVED`, never `MATCHED`, for a return with no order | `settleReturnPairing` |
 | Read surface cannot upload / delete / reassign / write | `carton-inspector.guard.test.ts` |
+| `pairing_state` is never COALESCEd on a display path; the model reads recorded `source='unmatched'` | `carton-inspector-model.ts` + tests |
+| `WAIVED` is an ANSWER — the metric counts the complement of `PAIRING_ANSWERED_STATES` | `triage-focus.ts` + tests |
+| Journey thumbs are event context; the viewer is shared, the sources differ on purpose | `carton-read.md` |
+| The asymmetric tracks hold at 4+ lines (measured 8:1 in rows, 1.8× in pixels on 6159) — do not re-tune for a bigger contents list | `carton-read.md` |
+| Column balance is compared by RATIO, never by dead-canvas area — area scales with column height | `carton-read.md` |
+| The journey chip span leads `metaBits` on every two-line row; that is what makes the last-8 column | `EventTimeline.tsx` docblock |
 
 ---
 

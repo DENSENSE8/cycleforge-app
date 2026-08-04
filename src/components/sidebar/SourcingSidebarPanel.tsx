@@ -2,7 +2,7 @@
 
 /**
  * Sidebar for /sourcing. Owns per-mode search/filter inputs. L2 modes live in
- * GlobalHeader (`HeaderModeSwitcher` ← SIDEBAR_PAGE_NAV) — no mode rail twin.
+ * GlobalHeader (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV) — no mode rail twin.
  *
  * URL-state contract:
  *   ?mode=scout|watchlist           (bare = queue, the default demand surface)

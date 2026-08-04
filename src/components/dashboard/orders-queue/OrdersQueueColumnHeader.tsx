@@ -2,6 +2,10 @@
 
 import { GRID_HEADER_ROW_INDEX } from '@/design-system/components/grid/grid-row-index';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
+import {
+  gridTrackRemToPx,
+  resolveGridColumnMinTrackRem,
+} from '@/design-system/components/grid/grid-column-type-track';
 
 import {
   DndContext,
@@ -20,12 +24,17 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, Calendar, ChevronUp, ChevronDown } from '@/components/Icons';
+import { Calendar, ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import {
+  GridRowCheckbox,
+  isEmptyGutterChrome,
+  type GridSelectGutterChrome,
+} from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -49,6 +58,10 @@ import {
   type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
 import { ColumnResizeHandle } from '@/design-system/components/grid/ColumnResizeHandle';
+import {
+  resolveColumnResizeEdges,
+  type GridColumnResizeEdge,
+} from '@/design-system/components/grid/grid-column-resize-edges';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -74,7 +87,9 @@ export function OrdersQueueColumnHeader({
   selectionScope,
   className,
   onResizeColumn,
+  onResetColumn,
   gridSkin = false,
+  selectGutterChrome = 'always',
   columns = ORDERS_QUEUE_COLUMNS,
   onReorderColumns,
   onResetColumnOrder,
@@ -89,12 +104,16 @@ export function OrdersQueueColumnHeader({
   className?: string;
   /** Commit a column's drag-resized width (px). Presence enables the handles. */
   onResizeColumn?: (key: string, px: number) => void;
+  /** Drop a column's persisted width (double-click grip → SoT default). */
+  onResetColumn?: (key: string) => void;
   /**
    * Pending Grid view skin. Adaptive label+glyph taller header, always-visible
    * select-all, flush row chrome (cells own padding), content-min h-scroll.
    * Off → board/Packed header.
    */
   gridSkin?: boolean;
+  /** Select-gutter face — `'sheets'` = invisible hit plane (To-ship click-select). */
+  selectGutterChrome?: GridSelectGutterChrome;
   /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
    *  Default = canonical order. */
   columns?: readonly OrdersQueueColumn[];
@@ -134,6 +153,10 @@ export function OrdersQueueColumnHeader({
 
   const template = ordersQueueGridTemplateFor(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
+  const frozenEdgeKey = 'title';
+  const resizeEdges = onResizeColumn
+    ? resolveColumnResizeEdges(dataColumns, frozenEdgeKey)
+    : null;
   // `columns` is already the RESOLVED visible list (`useGridColumnVisibility` in
   // the view), so every movable key here has a rendered header cell — sortable
   // targets and drop indices read the same list, with no second hidden-ness test.
@@ -176,31 +199,18 @@ export function OrdersQueueColumnHeader({
       <div
         className={cn(
           ordersQueueGridCell({ inset: 'none', rule: true }),
-          'justify-center',
+          isEmptyGutterChrome(selectGutterChrome) ? 'items-stretch p-0' : 'justify-center',
           ORDERS_QUEUE_FROZEN_CELL,
         )}
         style={{ left: ordersQueueFrozenLeft('select') }}
       >
         {selectActive && selectionScope ? (
-          <button
-            type="button"
-            onClick={onToggleAll}
-            aria-label={allSelected ? 'Deselect all' : 'Select all'}
-            aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
-            role="checkbox"
-            className={cn(
-              'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-              allSelected
-                ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                : someSelected
-                  ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
-                  : 'border-border-default bg-surface-card hover:border-border-strong',
-            )}
-          >
-            {allSelected ? <Check className="h-3 w-3" /> : someSelected ? (
-              <span className="h-0.5 w-2 rounded-full bg-current" />
-            ) : null}
-          </button>
+          <GridRowCheckbox
+            checked={allSelected ? true : someSelected ? 'mixed' : false}
+            onToggle={onToggleAll}
+            label={allSelected ? 'Deselect all' : 'Select all'}
+            chrome={selectGutterChrome}
+          />
         ) : (
           <span className="h-4 w-4 shrink-0" aria-hidden />
         )}
@@ -211,13 +221,26 @@ export function OrdersQueueColumnHeader({
         const sortable = Boolean(onReorderColumns) && !isOrdersQueueFrozen(column.key);
         const sortActive = Boolean(onSortColumn) && isQueueColumnSort(column.key);
         const isActiveSort = activeSort === column.key;
+        const edges =
+          onResizeColumn && ORDERS_QUEUE_RESIZABLE_KEYS.includes(column.key)
+            ? (resizeEdges?.get(column.key) ?? ['end'])
+            : undefined;
+        const onResize = edges && onResizeColumn
+          ? (px: number) => onResizeColumn(column.key, px)
+          : undefined;
+        const onReset = edges && onResetColumn
+          ? () => onResetColumn(column.key)
+          : undefined;
         return sortable ? (
           <SortableHeaderCell
             key={column.key}
             column={column}
             last={last}
             gridSkin={gridSkin}
-            onResize={onResizeColumn ? (px) => onResizeColumn(column.key, px) : undefined}
+            onResize={onResize}
+            onReset={onReset}
+            resizeEdges={edges}
+            frozenEdgeKey={frozenEdgeKey}
             onResetOrder={onResetColumnOrder}
             sortActive={sortActive}
             isActiveSort={isActiveSort}
@@ -230,7 +253,10 @@ export function OrdersQueueColumnHeader({
             column={column}
             last={last}
             gridSkin={gridSkin}
-            onResize={onResizeColumn ? (px) => onResizeColumn(column.key, px) : undefined}
+            onResize={onResize}
+            onReset={onReset}
+            resizeEdges={edges}
+            frozenEdgeKey={frozenEdgeKey}
             sortActive={sortActive}
             isActiveSort={isActiveSort}
             sortDir={isActiveSort ? sortDir : null}
@@ -271,6 +297,9 @@ function SortableHeaderCell({
   last,
   gridSkin,
   onResize,
+  onReset,
+  resizeEdges,
+  frozenEdgeKey,
   onResetOrder,
   sortActive,
   isActiveSort,
@@ -281,6 +310,9 @@ function SortableHeaderCell({
   last: boolean;
   gridSkin: boolean;
   onResize?: (px: number) => void;
+  onReset?: () => void;
+  resizeEdges?: readonly GridColumnResizeEdge[];
+  frozenEdgeKey: string;
   onResetOrder?: () => void;
   sortActive?: boolean;
   isActiveSort?: boolean;
@@ -296,6 +328,9 @@ function SortableHeaderCell({
       last={last}
       gridSkin={gridSkin}
       onResize={onResize}
+      onReset={onReset}
+      resizeEdges={resizeEdges}
+      frozenEdgeKey={frozenEdgeKey}
       onResetOrder={onResetOrder}
       sortActive={sortActive}
       isActiveSort={isActiveSort}
@@ -324,6 +359,9 @@ function HeaderCell({
   column,
   last,
   onResize,
+  onReset,
+  resizeEdges,
+  frozenEdgeKey = 'title',
   gridSkin = false,
   drag,
   onResetOrder,
@@ -335,6 +373,9 @@ function HeaderCell({
   column: OrdersQueueColumn;
   last: boolean;
   onResize?: (px: number) => void;
+  onReset?: () => void;
+  resizeEdges?: readonly GridColumnResizeEdge[];
+  frozenEdgeKey?: string;
   gridSkin?: boolean;
   drag?: HeaderCellDragProps;
   onResetOrder?: () => void;
@@ -346,7 +387,6 @@ function HeaderCell({
   const label = column.label ?? column.key;
   const showTextLabel = gridSkin ? ordersQueueHeaderShowsLabel(column) : true;
   const visibleLabel = gridSkin ? (column.gridLabel ?? label) : label;
-  const resizable = Boolean(onResize) && ORDERS_QUEUE_RESIZABLE_KEYS.includes(column.key);
   const frozen = isOrdersQueueFrozen(column.key);
   const cellInset = gridSkin ? 'grid' : 'cell';
 
@@ -394,6 +434,9 @@ function HeaderCell({
         ? 'none'
         : undefined;
 
+  const minTrackRem = resolveGridColumnMinTrackRem(column);
+  const minWidthPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+
   const cell = (
     <div
       ref={drag?.setNodeRef}
@@ -428,7 +471,20 @@ function HeaderCell({
       onDoubleClick={onResetOrder}
     >
       {inner}
-      {resizable && onResize ? <ColumnResizeHandle colKey={column.key} label={label} onCommit={onResize} /> : null}
+      {onResize && onReset && resizeEdges
+        ? resizeEdges.map((edge) => (
+            <ColumnResizeHandle
+              key={edge}
+              colKey={column.key}
+              label={label}
+              onCommit={onResize}
+              onReset={onReset}
+              edge={edge}
+              flush={edge === 'end' && column.key === frozenEdgeKey}
+              minWidthPx={minWidthPx}
+            />
+          ))
+        : null}
     </div>
   );
 

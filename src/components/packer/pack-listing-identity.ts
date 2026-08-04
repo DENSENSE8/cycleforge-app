@@ -6,7 +6,7 @@
  * Both packing surfaces read from here so the sidebar active-order card and the
  * workbench identity bar can never disagree about which listing an operator is
  * about to seal:
- *   - `StationPacking` (sidebar active-order card)
+ *   - `PackOrderWorkspace` (the pack bench's active-entity pane)
  *   - `PackOrderIdentity` → `CartonContextCard` (workbench identity bar)
  *
  * URL + label derivation stays in the `external-item-url` SoT; this only maps

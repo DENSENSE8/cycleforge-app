@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence } from '@/design-system/motion';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -8,7 +8,7 @@ import { dispatchNavigateShippedDetails } from '@/utils/events';
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { useRailHeaderActions } from '@/components/dashboard/rail/OrderRailActions';
+import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { type PaneHeaderActionBarAction } from '@/components/ui/pane-header';
@@ -34,6 +34,10 @@ import { RecordPaneHeader } from '@/components/order-record/RecordPaneHeader';
 import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
 import { getAccountSourceLabel } from '@/utils/order-links';
 import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
+import {
+  consumeReplaceTrackingIntent,
+  subscribeReplaceTrackingIntent,
+} from '@/lib/order-inspector/replace-tracking-intent';
 
 export type { ShippedActiveInput };
 
@@ -107,6 +111,23 @@ export function ShippedDetailsPanel({
     initialShipped,
     defaultSection: inspectorContext.defaultTab,
   });
+
+  // Queue "Replace tracking" arms a one-shot intent, then opens this panel.
+  // Consume AFTER the default-tab reset effect (declared inside
+  // useShippedPanelViewState) so fulfillment's docs-first default does not
+  // clobber Shipping. Re-arm while the same order is open still fires via
+  // the subscriber.
+  const [replaceTrackingNonce, setReplaceTrackingNonce] = useState(0);
+  useEffect(() => {
+    const applyIntent = () => {
+      const orderId = Number(initialShipped.id);
+      if (!consumeReplaceTrackingIntent(orderId)) return;
+      setActiveSection('shipping');
+      setReplaceTrackingNonce((n) => n + 1);
+    };
+    applyIntent();
+    return subscribeReplaceTrackingIntent(applyIntent);
+  }, [initialShipped.id, setActiveSection]);
 
   const { copiedAll, copiedOrderId, handleCopyAll, handleCopyOrderId } = useShippedCopyActions(
     shipped,
@@ -409,6 +430,7 @@ export function ShippedDetailsPanel({
           isDeleteArmed={isDeleteArmed}
           isDeletingOrder={isDeleting}
           onDeleteOrder={handleDelete}
+          replaceTrackingNonce={replaceTrackingNonce}
         />
         )}
 

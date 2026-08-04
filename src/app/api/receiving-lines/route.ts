@@ -1410,6 +1410,22 @@ function normalizeRow(row: Record<string, unknown>) {
     receiving_support_notes:  (row.receiving_support_notes as string | null) ?? null,
     receiving_zoho_notes:     (row.receiving_zoho_notes as string | null) ?? null,
     receiving_listing_url:    (row.receiving_listing_url as string | null) ?? null,
+    // Purchasing-source PO receipt state, and how old that answer is.
+    //
+    // `zoho_status` was SELECTed by the builders and read by `ReceivingLineRow`
+    // for months while this allowlist dropped it — the same silent-`undefined`
+    // trap as the procedure gates above, which is why both now carry a guard.
+    // `zoho_status_synced_at` rides with it because a mirror status is as fresh
+    // as the last poll, not as fresh as now, and the `zoho` chip discloses that
+    // age in its tooltip rather than implying the vendor just changed it.
+    zoho_status:              (row.zoho_status as string | null) ?? null,
+    zoho_status_synced_at:    (row.zoho_status_synced_at as string | null) ?? null,
+    // view=incoming_removed only — the two removal signals the row shape does
+    // not already carry. Precedence is NOT decided here: the client resolves it
+    // through `resolveIncomingRemovalReason`, so there is one ladder.
+    removed_written_off:      row.removed_written_off === true,
+    removed_aged_out:         row.removed_aged_out === true,
+    removed_at:               (row.removed_at as string | null) ?? null,
     // Incoming-view only; null on other views (SELECT omits the columns).
     delivery_state:           (row.delivery_state as string | null) ?? null,
     po_date:                  (row.po_date as string | null) ?? null,

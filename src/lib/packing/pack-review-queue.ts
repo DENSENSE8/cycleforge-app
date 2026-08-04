@@ -74,40 +74,71 @@ export async function getPackReviewQueue(
       l.created_at,
       stn.tracking_number_raw AS tracking,
       o.order_id,
-      o.product_title
+      o.product_title,
+      o.item_number,
+      o.sku_catalog_id,
+      enr.pack_tier,
+      enr.estimated_pack_minutes,
+      enr.sku_catalog_id AS enr_sku_catalog_id
     FROM latest l
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = l.shipment_id
     LEFT JOIN LATERAL (
-      SELECT order_id, product_title
+      SELECT order_id, product_title, item_number, sku_catalog_id
       FROM orders
       WHERE shipment_id = l.shipment_id AND organization_id = $1::uuid
       ORDER BY id DESC
       LIMIT 1
     ) o ON true
+    LEFT JOIN LATERAL (
+      SELECT enr.pack_tier, enr.estimated_pack_minutes, enr.sku_catalog_id
+      FROM station_activity_logs sal
+      LEFT JOIN packer_log_enrichment enr ON enr.sal_id = sal.id
+      WHERE sal.packer_log_id = l.entity_id
+        AND sal.organization_id = $1::uuid
+        AND sal.station = 'PACK'
+        AND sal.activity_type = 'PACK_COMPLETED'
+      ORDER BY sal.created_at DESC
+      LIMIT 1
+    ) enr ON true
     WHERE ${predicate}
     ORDER BY l.created_at DESC
     LIMIT ${limitParam}
   `;
 
   const res = await tenantQuery(orgId, sql, params);
-  return res.rows.map((r) => {
-    const row = r as Record<string, unknown>;
-    const toNum = (v: unknown): number | null => (v == null ? null : Number(v));
-    return {
-      packerLogId: Number(row.packer_log_id),
-      outcome: String(row.outcome),
-      detectedTracking: (row.detected_tracking as string | null) ?? null,
-      detectedOrderId: (row.detected_order_id as string | null) ?? null,
-      shipmentId: toNum(row.shipment_id),
-      reviewNote: (row.review_note as string | null) ?? null,
-      verifiedByStaffId: toNum(row.verified_by_staff_id),
-      ocrConfidence: toNum(row.ocr_confidence),
-      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
-      orderId: (row.order_id as string | null) ?? null,
-      productTitle: (row.product_title as string | null) ?? null,
-      tracking: (row.tracking as string | null) ?? null,
-    };
-  });
+  return res.rows.map((r) => mapPackReviewRow(r as Record<string, unknown>));
+}
+
+function mapPackReviewRow(row: Record<string, unknown>): PackReviewQueueRow {
+  const toNum = (v: unknown): number | null => (v == null ? null : Number(v));
+  const catalogFromOrder = toNum(row.sku_catalog_id);
+  const catalogFromEnr = toNum(row.enr_sku_catalog_id);
+  // Prefer enrichment catalog when present (may be more resolved than order FK).
+  const skuCatalogId =
+    catalogFromEnr != null && Number.isFinite(catalogFromEnr)
+      ? catalogFromEnr
+      : catalogFromOrder != null && Number.isFinite(catalogFromOrder)
+        ? catalogFromOrder
+        : null;
+  const mins = toNum(row.estimated_pack_minutes);
+  return {
+    packerLogId: Number(row.packer_log_id),
+    outcome: String(row.outcome),
+    detectedTracking: (row.detected_tracking as string | null) ?? null,
+    detectedOrderId: (row.detected_order_id as string | null) ?? null,
+    shipmentId: toNum(row.shipment_id),
+    reviewNote: (row.review_note as string | null) ?? null,
+    verifiedByStaffId: toNum(row.verified_by_staff_id),
+    ocrConfidence: toNum(row.ocr_confidence),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    orderId: (row.order_id as string | null) ?? null,
+    productTitle: (row.product_title as string | null) ?? null,
+    tracking: (row.tracking as string | null) ?? null,
+    skuCatalogId,
+    itemNumber: (row.item_number as string | null) ?? null,
+    packTier: (row.pack_tier as string | null) ?? null,
+    estimatedPackMinutes: mins != null && Number.isFinite(mins) ? mins : null,
+  };
 }
 
 /** Latest verification row for one packer_log (any outcome), or null. */
@@ -130,16 +161,32 @@ export async function getPackReviewRowByPackerLogId(
       e.created_at,
       stn.tracking_number_raw AS tracking,
       o.order_id,
-      o.product_title
+      o.product_title,
+      o.item_number,
+      o.sku_catalog_id,
+      enr.pack_tier,
+      enr.estimated_pack_minutes,
+      enr.sku_catalog_id AS enr_sku_catalog_id
     FROM pack_verification_events e
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = e.shipment_id
     LEFT JOIN LATERAL (
-      SELECT order_id, product_title
+      SELECT order_id, product_title, item_number, sku_catalog_id
       FROM orders
       WHERE shipment_id = e.shipment_id AND organization_id = $1::uuid
       ORDER BY id DESC
       LIMIT 1
     ) o ON true
+    LEFT JOIN LATERAL (
+      SELECT enr.pack_tier, enr.estimated_pack_minutes, enr.sku_catalog_id
+      FROM station_activity_logs sal
+      LEFT JOIN packer_log_enrichment enr ON enr.sal_id = sal.id
+      WHERE sal.packer_log_id = e.entity_id
+        AND sal.organization_id = $1::uuid
+        AND sal.station = 'PACK'
+        AND sal.activity_type = 'PACK_COMPLETED'
+      ORDER BY sal.created_at DESC
+      LIMIT 1
+    ) enr ON true
     WHERE e.organization_id = $1::uuid
       AND e.entity_type = 'PACKER_LOG'
       AND e.entity_id = $2::bigint
@@ -149,20 +196,5 @@ export async function getPackReviewRowByPackerLogId(
 
   const res = await tenantQuery(orgId, sql, [orgId, packerLogId]);
   if (res.rows.length === 0) return null;
-  const row = res.rows[0] as Record<string, unknown>;
-  const toNum = (v: unknown): number | null => (v == null ? null : Number(v));
-  return {
-    packerLogId: Number(row.packer_log_id),
-    outcome: String(row.outcome),
-    detectedTracking: (row.detected_tracking as string | null) ?? null,
-    detectedOrderId: (row.detected_order_id as string | null) ?? null,
-    shipmentId: toNum(row.shipment_id),
-    reviewNote: (row.review_note as string | null) ?? null,
-    verifiedByStaffId: toNum(row.verified_by_staff_id),
-    ocrConfidence: toNum(row.ocr_confidence),
-    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
-    orderId: (row.order_id as string | null) ?? null,
-    productTitle: (row.product_title as string | null) ?? null,
-    tracking: (row.tracking as string | null) ?? null,
-  };
+  return mapPackReviewRow(res.rows[0] as Record<string, unknown>);
 }

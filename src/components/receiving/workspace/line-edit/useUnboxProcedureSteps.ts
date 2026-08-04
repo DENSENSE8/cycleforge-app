@@ -48,6 +48,11 @@ import { refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { isReturnIntake, isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
+import {
+  resolveContextFromFlags,
+  UNBOX_FLOW_LABEL,
+  type UnboxFlowId,
+} from '@/lib/stations/procedure';
 import { conditionLabel } from '@/lib/conditions';
 import {
   formatDateTimePST,
@@ -140,6 +145,10 @@ function stepSummary(
 interface UnboxProcedureStepsResult {
   /** Every step, in vocabulary order, with state + summary + time. */
   steps: ProcedureStepRow[];
+  /** Named Unbox flow for this carton (Found · Unfound · Return). */
+  flow: UnboxFlowId;
+  /** Operator-voiced flow label for checklist / receipt chrome. */
+  flowLabel: string;
   /** The step the operator is on. `null` ⇒ every step settled. */
   activeKey: string | null;
   /** What a skip would advance TO — the skip target, not the next card. */
@@ -206,13 +215,16 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   const classified = isIntakeClassified(row);
 
   const vocabulary = useMemo(
-    () => ({
-      isUnfound: !row.zoho_purchaseorder_id,
-      isLocalPickup: isLocalPickupFulfillment(row),
-      isReturn: isReturnIntake(row),
-    }),
+    () =>
+      resolveContextFromFlags({
+        isUnfound: !row.zoho_purchaseorder_id,
+        isLocalPickup: isLocalPickupFulfillment(row),
+        isReturn: isReturnIntake(row),
+      }),
     [row],
   );
+  const flow = vocabulary.flow;
+  const flowLabel = UNBOX_FLOW_LABEL[flow];
 
   // Aspect + stage per step, straight off the declaration — never inferred from
   // the key. Both the capture bodies and the evidence-time fold below read this,
@@ -369,6 +381,8 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
 
   return {
     steps,
+    flow,
+    flowLabel,
     activeKey,
     nextStep,
     prevStep,

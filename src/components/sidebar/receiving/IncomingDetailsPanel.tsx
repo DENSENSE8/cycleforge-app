@@ -2,6 +2,7 @@
 
 import { Trash2 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 import DeleteButton from '@/components/ui/DeleteButton';
 import { Button } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
@@ -36,7 +37,8 @@ export type { IncomingDetailsPanelProps } from './incoming-details/incoming-deta
  * decision, so the grid underneath stays scrollable, clickable and undimmed.
  * `closeOnOutsideClick` stays OFF (the dismiss layer is `fixed inset-0`, which
  * would swallow the very sibling-row clicks this flip exists to keep live);
- * close is the header X or Escape on RightRailHost.
+ * close is the header `→|` or Escape on RightRailHost. Outset edge-collapse is
+ * suppressed (`edgeCollapse={false}`) — Unbox parity.
  */
 export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
   const { onClose } = props;
@@ -60,12 +62,16 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
   const visibleTabs = tabsForData(data);
   const { statusLabel, vendorName } = incomingDetailsHeaderMeta(data);
   const identity = headerPo || headerOrder || headerTracking;
+  // Selection actions self-gate on the rail-actions store — only light when
+  // History/Incoming is publishing via useReceivingLineRailSelection.
+  const selectionActions = useRailHeaderActions();
 
   return (
     <DetailStackRailRegistrar
       id={INCOMING_DETAILS_RAIL_ID}
       onClose={onClose}
       modal={false}
+      edgeCollapse={false}
       ariaLabel={incomingDetailsAriaLabel(identity)}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -83,6 +89,7 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
           tab={tab}
           onTabChange={setTab}
           onClose={onClose}
+          selectionActions={selectionActions}
         />
 
         <div className="min-h-0 flex-1 overflow-y-auto">

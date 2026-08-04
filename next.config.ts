@@ -112,10 +112,15 @@ const nextConfig: NextConfig = {
             // the mapping turns out wrong. Switch to 308 at sunset, not before.
             // The stale `?mode=` rides along to the destination and is dropped
             // there by the boundary parse — it is not declared on any mode spec.
-            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'ready' }], destination: '/shipping/ready', permanent: false },
+            // Ready folded into FBA as `?fbaMode=ready` (lifecycle stage tab).
+            { source: '/shipping/ready', destination: '/shipping/fba?fbaMode=ready', permanent: true },
+            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'ready' }], destination: '/shipping/fba?fbaMode=ready', permanent: false },
             { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'fba' }], destination: '/shipping/fba', permanent: false },
             { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'scan-out' }], destination: '/shipping/scan-out', permanent: false },
             { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'labels' }], destination: '/shipping/labels', permanent: false },
+            // Locations desk folded under Inventory (P4 condensation).
+            // Orphan children `/warehouse/rma` and `/warehouse/replenishment` stay.
+            { source: '/warehouse', destination: '/inventory/locations', permanent: true },
             // D2 — the product detail page moved under a static segment:
             // `/products/:sku` → `/products/sku/:sku`. A BARE dynamic child
             // cannot coexist with the view segments `/products` will grow,

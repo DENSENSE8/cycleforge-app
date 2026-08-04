@@ -3,7 +3,7 @@
 /**
  * Support · Tickets primary surface — Orders/Unbox workbench recipe.
  *
- * Chrome: WorkbenchChromeHeader status tabs + ToolbarSearchToggle + sort
+ * Chrome: WorkbenchChromeHeader status tabs + TechRailSearchBar + sort
  * Body:   full ticket queue (SupportTicketRow) + pagination
  *
  * URL: `/support` (+ `tstatus` / `tq`). Row open writes `?ticket=` for Station focus.
@@ -26,7 +26,7 @@ import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
 } from '@/components/dashboard/workbench-shell';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   DEFAULT_TICKET_STATUS,
@@ -138,39 +138,21 @@ export function SupportTicketsBoard() {
 
   const [sort, setSort] = useState<SortKey>('recent');
   const [page, setPage] = useState(1);
-  const [text, setText] = useState(searchQuery);
-  const [debounced, setDebounced] = useState(searchQuery);
-
-  // Keep local field in sync when URL `tq` changes (back / mode restore).
-  useEffect(() => {
-    setText(searchQuery);
-    setDebounced(searchQuery);
-  }, [searchQuery]);
-
-  useEffect(() => {
-    const h = setTimeout(() => setDebounced(text.trim()), 300);
-    return () => clearTimeout(h);
-  }, [text]);
-
-  useEffect(() => {
-    if (debounced === searchQuery) return;
-    setSearch(debounced);
-  }, [debounced, searchQuery, setSearch]);
 
   useEffect(() => {
     setPage(1);
-  }, [status, debounced, sort]);
+  }, [status, searchQuery, sort]);
 
   const params = useMemo<TicketListParams>(
     () => ({
-      query: debounced,
+      query: searchQuery,
       status,
       page,
       perPage: 25,
       sortBy: SORTS[sort].sortBy,
       sortOrder: SORTS[sort].sortOrder,
     }),
-    [debounced, status, page, sort],
+    [searchQuery, status, page, sort],
   );
 
   const { data, isLoading, isFetching, error } = useZendeskTickets(params);
@@ -208,15 +190,12 @@ export function SupportTicketsBoard() {
             onTabChange={(id) => setStatus(parseTicketStatus(id))}
             solidTone="accent"
             search={
-              <ToolbarSearchToggle
-                value={text}
-                onChange={setText}
-                onClear={() => {
-                  setText('');
-                  setSearch('');
-                }}
+              <TechRailSearchBar
+                variant="chrome"
+                value={searchQuery}
+                onChange={setSearch}
                 placeholder="Search tickets…"
-                tone="blue"
+                className="w-40 shrink-0 lg:w-56"
               />
             }
             right={
@@ -290,10 +269,10 @@ export function SupportTicketsBoard() {
                     used, so a Solved tab with genuinely nothing solved told the operator
                     their filter was wrong. Zero on a "what needs me" lane is an all-clear,
                     not an absence — say so. */}
-                {debounced ? (
+                {searchQuery ? (
                   <EmptyState
                     title="No tickets match that search"
-                    description={`Nothing in ${status === 'all' ? 'any status' : status} matches “${debounced}”.`}
+                    description={`Nothing in ${status === 'all' ? 'any status' : status} matches “${searchQuery}”.`}
                   />
                 ) : status === 'open' || status === 'pending' ? (
                   <EmptyState

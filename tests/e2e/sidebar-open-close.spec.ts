@@ -33,12 +33,37 @@ const NAV_COLUMN = '[data-sidebar-nav-column]';
 const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
 /** GlobalHeader's sidebar control — the leftmost header button. */
 const SIDEBAR_TOGGLE = 'header button';
+/** Collapsed-toggle pin peek (Home · Search · Media · Chat). */
+const TOP_PINS_PEEK = '[data-testid="sidebar-top-pins-peek"]';
 /** `SIDEBAR_SPINE_WIDTH_PX`. */
 const SPINE_WIDTH = 240;
-/** `armSidebarPeek`'s dwell before the collapsed spine slides in. */
-const EDGE_PEEK_MS = 2_000;
 
 const ROUTE = '/reports';
+
+/**
+ * Routes the geometry probe runs on, chosen to bracket the map's real range.
+ *
+ * Children are drawn for the ACTIVE page only, so the map's height depends on
+ * which page you are standing on — measuring one route measures one point on a
+ * curve. `/reports` owns no spine row, so nothing expands: the floor. `/products`
+ * is Catalog, the widest page in the registry at 7 children: the ceiling.
+ */
+const MEASURED_SURFACES = [
+  /**
+   * `belowFoldBudget` is a **ratchet, and it only ever shrinks** — the house
+   * rule for every other baseline in this repo. It records what is true today,
+   * not what is acceptable forever.
+   *
+   * The floor's budget is 0 and must stay 0. The ceiling's is 1: on `/products`
+   * the map measures 732px against a 685px port, so the last row (Support) sits
+   * just past the edge. That predates this phase and is not introduced by it —
+   * it is the honest cost of drawing seven child pages under the widest page in
+   * the registry, and 47px of scroll on one route is a different order of
+   * problem from the 335px the two-line pattern would have cost everywhere.
+   */
+  { name: 'floor — no page expanded', route: '/reports', belowFoldBudget: 0 },
+  { name: 'ceiling — Catalog, 7 children', route: '/products', belowFoldBudget: 1 },
+] as const;
 
 async function gotoSurface(page: Page, route: string) {
   await page.goto(route, { waitUntil: 'domcontentloaded' });
@@ -137,16 +162,55 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineOpen(page);
   });
 
-  test('resting at the left edge opens it after the dwell', async ({ page }) => {
+  test('collapsed toggle hover peeks Home Search Media Chat; click still opens the spine', async ({
+    page,
+  }) => {
     await gotoSurface(page, ROUTE);
     await expectSpineClosed(page);
 
-    // `armSidebarPeek` — a fixed 24px strip, mounted only while collapsed.
-    const box = page.viewportSize()!;
-    await page.mouse.move(3, Math.round(box.height / 2));
-    await page.waitForTimeout(EDGE_PEEK_MS + 1_000);
+    const toggle = page.locator(SIDEBAR_TOGGLE).first();
+    await expect(toggle).toHaveAttribute('aria-label', 'Show sidebar');
 
+    // Hover peeks the four top destinations (replaced the old 2s left-edge dwell).
+    await toggle.hover();
+    const peek = page.locator(TOP_PINS_PEEK);
+    await expect(peek, 'collapsed hover must reveal quick destination pins').toBeVisible();
+    await expect(peek.getByRole('button', { name: 'Home' })).toBeVisible();
+    await expect(peek.getByRole('button', { name: 'Search' })).toBeVisible();
+    await expect(peek.getByRole('button', { name: 'Media' })).toBeVisible();
+    await expect(peek.getByRole('button', { name: 'Chat' })).toBeVisible();
+
+    // Click the toggle (not a pin) — still opens the full spine.
+    await toggle.click();
     await expectSpineOpen(page);
+    await expect(peek).toHaveCount(0);
+  });
+
+  test('peek pin navigates without opening the spine', async ({ page }) => {
+    await gotoSurface(page, ROUTE);
+    await expectSpineClosed(page);
+
+    const toggle = page.locator(SIDEBAR_TOGGLE).first();
+    await toggle.hover();
+    const peek = page.locator(TOP_PINS_PEEK);
+    await expect(peek).toBeVisible();
+
+    await peek.getByRole('button', { name: 'Search' }).click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/search');
+    await expectSpineClosed(page);
+  });
+
+  test('open spine does not mount the toggle pin peek', async ({ page }) => {
+    await gotoSurface(page, ROUTE);
+    await toggleSpine(page);
+    await expectSpineOpen(page);
+
+    const toggle = page.locator(SIDEBAR_TOGGLE).first();
+    await expect(toggle).toHaveAttribute('aria-label', 'Hide sidebar');
+    await toggle.hover();
+    // Give the old openDelay a beat so a regression would flash the peek.
+    await page.waitForTimeout(300);
+    await expect(page.locator(TOP_PINS_PEEK)).toHaveCount(0);
   });
 
   test('the open spine survives an in-app jump to another page', async ({ page }) => {
@@ -161,8 +225,14 @@ test.describe('sidebar spine — open and close', () => {
     // The contract: a push column covers nothing, so auto-closing on navigation
     // would reflow the frame twice per jump for no gain — closing is the
     // toggle and nothing else (`ResponsiveLayout`'s navOpen docblock).
+    //
+    // Addressed by aria-label PREFIX, not by name. This used to click
+    // "Go to Search", which stopped being a spine row on 2026-08-03 when
+    // Home/Search/Media/Chat became `HeaderTopPins` icons — the test then failed
+    // for a reason that had nothing to do with the contract it exists to pin.
+    // Any destination row proves "a client-side jump leaves the column open".
     const before = page.url();
-    await page.getByRole('button', { name: 'Go to Search' }).click();
+    await page.locator(`${NAV_COLUMN} ${PAGES_MENU} button[aria-label^="Go to "]`).first().click();
     await expect.poll(() => page.url(), { message: 'the row navigated' }).not.toBe(before);
 
     await expectSpineOpen(page);
@@ -173,16 +243,124 @@ test.describe('sidebar spine — open and close', () => {
     await toggleSpine(page);
     await expectSpineOpen(page);
 
-    // Both ends of the spine: the org control at the top band and the staff
-    // footer at the bottom. If MasterNav renders but one of these throws, the
-    // list above is still visible — so name them separately.
-    await expect(
-      page.locator(`${NAV_COLUMN} [data-master-nav-org]`),
-      'the org workspace control is missing from the spine top band',
-    ).toBeVisible();
+    // The staff footer is the spine's identity chrome now. The org control that
+    // used to sit in the 40px top band was deleted 2026-08-03 — single-org is
+    // the norm, so a permanent row naming it restated something that never
+    // changes. The BAND stays and is deliberately empty (it is the seam that
+    // puts the spine's bottom hairline on the header's Y), so asserting on it
+    // would pin dead space; assert the footer, which is real content.
     await expect(
       page.locator(`${NAV_COLUMN} [data-staff-account-footer]`),
       'the staff account footer is missing from the spine',
     ).toBeVisible();
   });
+
+  /**
+   * ## The geometry gate for every spine layout change
+   *
+   * Not a pass/fail assertion about taste — a **measurement**, reported to the
+   * log, with one hard assertion: the map must not grow so far past its port
+   * that the spine stops being a map. `.claude/rules/verify.md` is explicit that
+   * geometry claims come from the real runner, and the numbers in the phase
+   * handoffs before this one were MODELLED (rows × an assumed row height) and
+   * labelled as such precisely because a model is not a result.
+   *
+   * It also measures the **two-line row** cost in situ rather than estimating
+   * it. The search-results list already renders exactly the pattern a
+   * "Cloudflare-shaped" row would use — bold label over a muted parent line —
+   * so the honest way to price that pattern is to render one and measure it,
+   * not to guess at 44–48px.
+   */
+  for (const surface of MEASURED_SURFACES) {
+    test(`MEASURE — the flat map against its scrollport (${surface.name})`, async ({ page }) => {
+      await gotoSurface(page, surface.route);
+      await toggleSpine(page);
+      await expectSpineOpen(page);
+
+      const map = await page.evaluate(() => {
+        const port = document.querySelector<HTMLElement>('[data-spine-scrollport]');
+        // The MAP's own box, not `port.scrollHeight`. scrollHeight can never
+        // report less than clientHeight, so on a map that fits it returns the
+        // PORT's height and the overflow reads as a flat 0 — which looks like a
+        // measurement and is really just the port measuring itself.
+        const list = port?.querySelector<HTMLElement>('ul[aria-label="Sections"]');
+        if (!port || !list) return null;
+        const portRect = port.getBoundingClientRect();
+        const rows = Array.from(port.querySelectorAll<HTMLElement>('button')).map((b) => {
+          const r = b.getBoundingClientRect();
+          return {
+            label: (b.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 32),
+            top: Math.round(r.top),
+            height: Math.round(r.height),
+          };
+        });
+        return {
+          portHeight: Math.round(portRect.height),
+          portBottom: Math.round(portRect.bottom),
+          contentHeight: Math.round(list.getBoundingClientRect().height),
+          rows,
+        };
+      });
+      expect(map, 'the scrollport probe handle is missing').not.toBeNull();
+
+      // A row whose TOP is past the port's bottom edge cannot be seen at rest.
+      // The port clips every row, so its edge is the honest thing to measure —
+      // the same reasoning the grid specs use for a virtualized last row.
+      const belowFold = map!.rows.filter((r) => r.top >= map!.portBottom);
+      const heights = map!.rows.map((r) => r.height);
+      const childRow = heights.length ? Math.min(...heights) : 0;
+      const pageRow = heights.length ? Math.max(...heights) : 0;
+
+      // Price the two-line pattern by RENDERING one, not by assuming 44–48px.
+      // The search results already draw it: bold label over a muted parent line.
+      // It must be a result that actually HAS the second line — `contextFor`
+      // returns null when the parent would merely repeat the label, and
+      // measuring one of those prices a single-line row as if it were two.
+      await page.getByPlaceholder('Go to…').fill('a');
+      await expect(page.locator('[role="listbox"] [role="option"]').first()).toBeVisible();
+      const twoLine = await page.evaluate(() => {
+        const opts = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]'));
+        const withContext = opts.filter((o) => o.querySelectorAll('span.block').length >= 2);
+        const without = opts.filter((o) => o.querySelectorAll('span.block').length === 1);
+        const h = (els: HTMLElement[]) =>
+          els.length ? Math.round(Math.max(...els.map((e) => e.getBoundingClientRect().height))) : 0;
+        return { withContext: h(withContext), without: h(without), n: withContext.length };
+      });
+      await page.getByPlaceholder('Go to…').fill('');
+
+      // 73 of 81 destinations carry a context line (buildNavDestinations over
+      // the live registry), so "every row gains a line" is the honest model,
+      // not a worst case.
+      const delta = twoLine.withContext - pageRow;
+      const projected = map!.contentHeight + map!.rows.length * delta;
+      /* eslint-disable no-console */
+      console.log(
+        `\n=== SPINE MAP GEOMETRY @ 1440x900 — ${surface.name} (${surface.route}) ===\n` +
+          `port height          : ${map!.portHeight}px\n` +
+          `map content height   : ${map!.contentHeight}px\n` +
+          `headroom             : ${map!.portHeight - map!.contentHeight}px\n` +
+          `rows                 : ${map!.rows.length}\n` +
+          `page row / child row : ${pageRow}px / ${childRow}px\n` +
+          `two-line row         : ${twoLine.withContext}px (measured on ${twoLine.n} rows` +
+          `, 1-line peer ${twoLine.without}px) → delta +${delta}px\n` +
+          `projected all-2-line : ${projected}px  (${projected <= map!.portHeight ? 'FITS' : `OVERFLOWS by ${projected - map!.portHeight}px`})\n` +
+          `below the fold (${belowFold.length}) : ${belowFold.map((r) => r.label).join(' | ') || '—'}\n` +
+          '==========================================================\n',
+      );
+      /* eslint-enable no-console */
+
+      // The one hard line, and it is about the map AS BUILT — not the projection.
+      // The flatten exists so the map is navigable at rest; rows past the port's
+      // edge are the failure the previous two phases were bought to avoid, so
+      // the budget ratchets DOWN and is never raised to land a layout change.
+      expect(
+        belowFold.length,
+        `${belowFold.length} row(s) sit below the fold on ${surface.route} ` +
+          `(map ${map!.contentHeight}px vs port ${map!.portHeight}px), budget ` +
+          `${surface.belowFoldBudget}: ${belowFold.map((r) => r.label).join(', ')} — ` +
+          'a spine change just cost the map its at-rest legibility. Baselines only ' +
+          'shrink; see docs/todo/spine-cloudflare-nav-HANDOFF.md §4',
+      ).toBeLessThanOrEqual(surface.belowFoldBudget);
+    });
+  }
 });

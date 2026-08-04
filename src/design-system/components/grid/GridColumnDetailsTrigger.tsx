@@ -2,62 +2,150 @@
 
 /**
  * Column-display control — the SOLE operator entry to `GridColumnDetailsPanel`
- * since chrome Fields was retired (2026-08-02), and since the same day it lives
- * in a **gutter outside the table card**, not inside the header band.
+ * since chrome Fields was retired (2026-08-02).
  *
- * ## Two moves, two different reasons
+ * ## Where it lives
  *
- * 1. **Off page chrome, onto the grid** — Fields mutates the column set of the
- *    card it sat above, so a page-chrome control acting on that card was an
- *    altitude mismatch (and seven surfaces shipped both doors onto one rail).
- * 2. **Off the header band, into a gutter** — parked at the band's right edge it
- *    either reserved a permanent `w-9` track plus `pr-9` (taxing every row of
- *    every grid forever to host an occasional action) or, once that padding was
- *    dropped, it *overlaid the last column's label* — it covered `TRACKING`.
- *    Both are the same mistake in opposite directions: the control was competing
- *    for space that belongs to the data.
+ * **Default:** hover-revealed over the grid card's top-right corner (Notion /
+ * Airtable grammar — table chrome on the table). Reserves no column track and
+ * no page gutter.
  *
- * A gutter settles it. The reserved width is **page** space beside the card, not
- * column space inside it, so no track ever narrows and nothing is ever covered.
- * That is also why this control is plainly visible rather than hover-revealed:
- * hiding it was only ever a way to buy back the width it was stealing, and once
- * it steals none, a hidden control is just a discoverability cost with nothing
- * bought. Mount via {@link GridColumnGutter}.
+ * **Unbox triage band (2026-08-03):** when {@link triggerPortalTarget} is set,
+ * the same trigger portals into the Unbox header refine row (staff / filter /
+ * week) so it sits with those icon controls. Open state + rail stay here —
+ * one door, one room; only the paint host moves.
+ *
+ * Mount via {@link GridColumnGutter}.
  */
 
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { ColumnsThree } from '@/components/Icons';
+import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { cn } from '@/utils/_cn';
+import type { TableId } from '@/lib/tables/table-columns';
+import type { LedgerGridColumnModel } from './grid-surface-descriptor';
+import { useGridFields } from './useGridColumnVisibility';
+
+type OpenColumnDetailsFn = (hideKey?: string | null) => void;
+
+type GridColumnFieldsApi = {
+  fields: ReadonlyArray<{ key: string; label: string; visible: boolean }>;
+  setFieldVisible: (hideKey: string, visible: boolean) => void;
+};
+
+const GridColumnDetailsOpenContext = createContext<OpenColumnDetailsFn | null>(
+  null,
+);
+
+const GridColumnFieldsContext = createContext<GridColumnFieldsApi | null>(null);
+
+/** Open the Fields rail for this grid card (optionally seeded on a hideKey). */
+export function useOpenGridColumnDetails(): OpenColumnDetailsFn {
+  return useContext(GridColumnDetailsOpenContext) ?? (() => undefined);
+}
+
+/** Visibility list + writer for Sheets header menus (Add / Hide column). */
+export function useGridColumnFieldsApi(): GridColumnFieldsApi | null {
+  return useContext(GridColumnFieldsContext);
+}
 
 /**
- * Lays a grid card out beside its column-display gutter.
+ * Mounts the column-display trigger + the rail it opens.
  *
- * `children` is the framed table card — it stays the flex CHILD (it already
- * carries `flex-1 min-w-0`), so this adds one row wrapper and no extra box
- * inside the card. Honest absence: with no `onOpen`, the card renders alone and
- * no gutter is reserved.
+ * `children` is the framed table card. The wrapper is a positioning context
+ * for the default card-corner float. When {@link triggerPortalTarget} is set
+ * (Unbox triage band), the trigger paints there instead — still owned here so
+ * open state and panel cannot fork.
+ *
+ * `columns` is the family's **FULL canonical model**, never the resolved-visible
+ * list — the rail must offer the tracks that are currently OFF.
  */
-export function GridColumnGutter({
-  onOpen,
-  open = false,
+export function GridColumnGutter<C extends LedgerGridColumnModel>({
+  tableId,
+  columns,
   children,
+  triggerPortalTarget = null,
 }: {
-  onOpen?: () => void;
-  open?: boolean;
-  children: React.ReactNode;
+  /** Staff-prefs identity — the panel's bucket and the visibility key. */
+  tableId: TableId;
+  /** FULL canonical column model (pre-visibility). */
+  columns: readonly C[];
+  children: ReactNode;
+  /**
+   * Optional host (e.g. Unbox `data-unbox-controls` slot). When set, the
+   * trigger portals there as a resident icon — no card-corner float.
+   */
+  triggerPortalTarget?: HTMLElement | null;
 }) {
-  if (!onOpen) return <>{children}</>;
-  return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 items-stretch gap-2">
-      {children}
-      {/* Top-aligned into the 44px header band's optical centre — the control
-          names the header row, so it should read level with it, not float at
-          the card's vertical middle. */}
-      <div className="shrink-0 pt-1.5">
-        <GridColumnDetailsTrigger onOpen={onOpen} open={open} />
-      </div>
+  const [open, setOpen] = useState(false);
+  const [seedKey, setSeedKey] = useState<string | null>(null);
+  const openDetails = useCallback<OpenColumnDetailsFn>((hideKey) => {
+    setSeedKey(hideKey ?? null);
+    setOpen(true);
+  }, []);
+  const { fields, setFieldVisible } = useGridFields(tableId, columns);
+  const fieldsApi = useMemo<GridColumnFieldsApi>(
+    () => ({
+      fields: fields.map((f) => ({
+        key: f.key,
+        label: f.label,
+        visible: f.visible,
+      })),
+      setFieldVisible,
+    }),
+    [fields, setFieldVisible],
+  );
+
+  const trigger = (
+    <GridColumnDetailsTrigger onOpen={() => openDetails(null)} open={open} />
+  );
+
+  const cardCornerTrigger = (
+    <div
+      className={cn(
+        'pointer-events-none absolute right-1.5 top-1.5 z-header rounded-lg bg-surface-card shadow-sm',
+        'motion-safe:transition-opacity motion-safe:duration-100',
+        'opacity-0 group-hover/grid-card:opacity-100 group-focus-within/grid-card:opacity-100',
+        'group-hover/grid-card:pointer-events-auto group-focus-within/grid-card:pointer-events-auto',
+        open && 'opacity-100',
+        open && 'pointer-events-auto',
+      )}
+    >
+      {trigger}
     </div>
+  );
+
+  return (
+    <GridColumnDetailsOpenContext.Provider value={openDetails}>
+      <GridColumnFieldsContext.Provider value={fieldsApi}>
+        <div className="group/grid-card relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
+          {children}
+          {triggerPortalTarget
+            ? createPortal(trigger, triggerPortalTarget)
+            : cardCornerTrigger}
+          <GridColumnDetailsPanel
+            open={open}
+            onClose={() => {
+              setOpen(false);
+              setSeedKey(null);
+            }}
+            tableId={tableId}
+            columns={columns}
+            initialHideKey={seedKey}
+          />
+        </div>
+      </GridColumnFieldsContext.Provider>
+    </GridColumnDetailsOpenContext.Provider>
   );
 }
 
@@ -80,7 +168,6 @@ export function GridColumnDetailsTrigger({
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={onOpen}
-          className={cn(!open && 'text-text-faint hover:text-text-default')}
         >
           <ColumnsThree className="h-3.5 w-3.5 shrink-0" />
         </ToolbarButton>

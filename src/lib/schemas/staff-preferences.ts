@@ -181,12 +181,47 @@ export const StaffPreferencesPutBody = z
                 z.string().max(64),
                 z
                   .object({
+                    // Free `#rrggbb` (Sheets-style). Legacy named washes still
+                    // accepted on write so older clients / prefs round-trip;
+                    // readers normalize via `normalizeGridColumnHighlight`.
                     highlight: z
-                      .enum(['none', 'blue', 'amber', 'rose', 'emerald'])
+                      .union([
+                        z.literal('none'),
+                        z.enum(['blue', 'amber', 'rose', 'emerald']),
+                        z.string().regex(/^#[0-9a-fA-F]{6}$/),
+                      ])
                       .optional(),
                     cell: z.enum(['default', 'chip']).optional(),
+                    /**
+                     * Named text emphasis (never free hex). Absent / default =
+                     * house text color.
+                     */
+                    text: z
+                      .enum([
+                        'default',
+                        'muted',
+                        'emphasis',
+                        'warning',
+                        'critical',
+                      ])
+                      .optional(),
                   })
                   .strict(),
+              )
+              .optional(),
+            /**
+             * Per-row fill washes (Unbox History paint-bucket). Keyed by
+             * stringified row id; same highlight vocabulary as column
+             * `display.highlight` (Rose + siblings via GRID_HIGHLIGHT_PRESETS).
+             */
+            rowFills: z
+              .record(
+                z.string().max(64),
+                z.union([
+                  z.literal('none'),
+                  z.enum(['blue', 'amber', 'rose', 'emerald']),
+                  z.string().regex(/^#[0-9a-fA-F]{6}$/),
+                ]),
               )
               .optional(),
           })

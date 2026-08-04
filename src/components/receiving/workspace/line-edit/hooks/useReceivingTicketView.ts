@@ -15,7 +15,10 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
+import {
+  dispatchAssistantDockClose,
+  dispatchReceivingDetailsOverlayClose,
+} from '@/utils/events';
 import { clearPeerRightEdgeParams } from '../unbox-right-edge';
 
 const TICKET_VIEW_PARAM = 'ticketView';
@@ -62,6 +65,8 @@ export function useReceivingTicketView(currentLineId: number | null): ReceivingT
         // write (a sibling effect would race and lose) + suspend details.
         clearPeerRightEdgeParams(next, 'ticket');
         dispatchReceivingDetailsOverlayClose();
+        // Product law: AI and Ticket cannot both occupy a full right column.
+        dispatchAssistantDockClose();
       } else {
         next.delete(TICKET_VIEW_PARAM);
       }
@@ -71,9 +76,13 @@ export function useReceivingTicketView(currentLineId: number | null): ReceivingT
     [router, pathname, searchParams],
   );
 
-  // Deep-link / reload with `?ticketView=1` already set — suspend details once.
+  // Deep-link / reload with `?ticketView=1` already set — suspend details + AI.
+  // setTicketView(true) already dispatches both; this covers cold deep-links
+  // while assistant:dock-open is still '1' in localStorage.
   useEffect(() => {
-    if (ticketView) dispatchReceivingDetailsOverlayClose();
+    if (!ticketView) return;
+    dispatchReceivingDetailsOverlayClose();
+    dispatchAssistantDockClose();
   }, [ticketView]);
 
   // Clear on a genuine sibling-line switch. Compare against the previous line id

@@ -10,7 +10,11 @@ import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
 import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
-import { LedgerGrid, type GridSurfaceCapabilities } from '@/design-system/components/grid';
+import {
+  LedgerGrid,
+  TableStickyXScroll,
+  type GridSurfaceCapabilities,
+} from '@/design-system/components/grid';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
 import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
@@ -156,18 +160,20 @@ export function StationListTable<TRecord>({
 }: StationListTableProps<TRecord>) {
   const { isMobile } = useUIModeOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const allowHorizontalScroll = !noHorizontalScroll;
 
   // Body class logic mirrors OrdersGridView / LedgerGrid scroll scaffolds.
+  // X triage bar lives on {@link TableStickyXScroll} / LedgerGrid sticky gutter —
+  // the body port keeps `no-scrollbar` and only owns Y (plus clipped X when off).
   const rootClass = autoHeight
     ? 'flex min-w-0 w-full bg-surface-card relative'
     : 'flex h-full min-w-0 flex-1 bg-surface-card relative';
   const columnClass = autoHeight ? 'flex flex-col w-full min-w-0' : 'flex-1 flex flex-col overflow-hidden';
-  const xScroll = noHorizontalScroll ? 'overflow-x-hidden' : 'overflow-x-auto';
   const bodyScrollClass = autoHeight
     ? growToContent
       ? 'overflow-x-clip w-full'
-      : `${xScroll} overflow-y-auto no-scrollbar w-full ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}`
-    : `flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`;
+      : `overflow-y-auto no-scrollbar w-full ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}`
+    : 'flex-1 overflow-y-auto no-scrollbar w-full';
   const bodyScrollStyle =
     autoHeight && !growToContent && maxBodyHeightPx != null ? { maxHeight: maxBodyHeightPx } : undefined;
   const emptyPadClass = autoHeight ? 'py-10' : 'py-40';
@@ -267,6 +273,7 @@ export function StationListTable<TRecord>({
             orderGroupsByDate={orderGroupsByDate}
             daySections={daySections}
             showDayHeaders
+            scrollX={allowHorizontalScroll}
             aria-label={ariaLabel ?? bannerTitle}
             columnHeader={columnHeader}
             renderRow={renderRow}
@@ -280,8 +287,14 @@ export function StationListTable<TRecord>({
             data-testid="column-table-body"
           />
         ) : (
-          <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
-            <div className="flex flex-col w-full">
+          <TableStickyXScroll
+            enabled={allowHorizontalScroll}
+            className={cn(!autoHeight && 'min-h-0 flex-1')}
+            bodyClassName={bodyScrollClass}
+            bodyStyle={bodyScrollStyle}
+            bodyRef={scrollRef}
+          >
+            <div data-testid="column-table-body" className="flex w-full flex-col">
               {dayBands.map(([date, groupsOrRows]) => (
                 <DenseDaySection<TRecord>
                   key={date}
@@ -292,7 +305,7 @@ export function StationListTable<TRecord>({
                 />
               ))}
             </div>
-          </div>
+          </TableStickyXScroll>
         )}
         {footer}
       </div>

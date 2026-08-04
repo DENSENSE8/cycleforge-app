@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import {
+  NAV_ROW,
   QUEUE_ROW,
   QUEUE_ROW_META_INDENT,
   ledgerRowFillClass,
@@ -16,6 +17,8 @@ import {
  *   • Ops/station rows use QUEUE_ROW.px + metaIndentFor (never page-local px-4
  *     or hand-rolled select-gutter calcs).
  *   • CollapsibleGroupRow nest padding is tokenized; no always-on pl-5.
+ *   • Navigator rails (facet / saved-view / day-tree) use NAV_ROW — never the
+ *     queue blue selectedClass.
  */
 
 function readSibling(relativePath: string): string {
@@ -137,6 +140,54 @@ describe('queue-row left-edge chrome', () => {
     assert.ok(!selectedWins.includes('bg-violet-50'), 'selection must not keep the flag fill');
   });
 
+  it('ledgerRowFillClass linked wash is quieter than selection and outranked by it', () => {
+    assert.equal(QUEUE_ROW.linkedLedgerClass, 'bg-surface-sunken');
+    assert.ok(
+      !QUEUE_ROW.linkedLedgerClass.includes('blue-'),
+      'linked peer wash must not reuse selection blue',
+    );
+
+    const linked = ledgerRowFillClass({
+      selected: false,
+      linked: true,
+      capabilities: { rowTriageFlags: false },
+    });
+    assert.ok(linked.includes('bg-surface-sunken'), 'linked peer paints sunken wash');
+    assert.ok(!linked.includes('bg-blue-50'), 'linked peer is not selection');
+
+    const selectedBeatsLinked = ledgerRowFillClass({
+      selected: true,
+      linked: true,
+      capabilities: { rowTriageFlags: false },
+    });
+    assert.ok(selectedBeatsLinked.includes('bg-blue-50'), 'selection outranks linked');
+    assert.ok(
+      !selectedBeatsLinked.includes('bg-surface-sunken'),
+      'selection must not keep the linked fill',
+    );
+
+    const linkedBeatsFlag = ledgerRowFillClass({
+      selected: false,
+      linked: true,
+      flagClass: 'bg-violet-50',
+      capabilities: { rowTriageFlags: true },
+    });
+    assert.ok(linkedBeatsFlag.includes('bg-surface-sunken'), 'linked outranks triage flag');
+    assert.ok(!linkedBeatsFlag.includes('bg-violet-50'), 'linked must not keep flag fill');
+  });
+
+  it('UnboxCompareHost wires crosshair props into panes', () => {
+    const src = readSibling('../receiving/unbox/compare/UnboxCompareHost.tsx');
+    assert.ok(src.includes('linkedReceivingId'), 'host must pass linkedReceivingId');
+    assert.ok(src.includes('stickyReceivingId'), 'host must pass stickyReceivingId');
+    assert.ok(src.includes('onCrosshairHover'), 'host must pass onCrosshairHover');
+    assert.ok(src.includes('onCrosshairSelect'), 'host must pass onCrosshairSelect');
+    assert.ok(
+      src.includes('resolveUnboxCompareCrosshair'),
+      'host must resolve hover ?? sticky via SoT helper',
+    );
+  });
+
   it('OrdersQueueTableRow gridSkin uses capability-gated ledgerRowFillClass', () => {
     const src = readSibling('../dashboard/orders-queue/OrdersQueueTableRow.tsx');
     assert.ok(
@@ -147,5 +198,37 @@ describe('queue-row left-edge chrome', () => {
       src.includes('ORDERS_GRID_CAPABILITIES'),
       'Pending gridSkin must pass ORDERS_GRID_CAPABILITIES so triage wash stays opt-in',
     );
+  });
+
+  it('NAV_ROW.selectedClass stays quiet (no blue hue)', () => {
+    assert.equal(NAV_ROW.selectedClass, 'bg-surface-sunken font-semibold text-text-default');
+    assert.doesNotMatch(
+      NAV_ROW.selectedClass,
+      /blue-/,
+      'NAV_ROW must not carry a blue selected wash — that is QUEUE_ROW',
+    );
+  });
+
+  it('ops navigators compose NAV_ROW, not QUEUE_ROW.selectedClass', () => {
+    const files = [
+      ['SidebarSectionList', '../sidebar/SidebarSectionList.tsx'],
+      ['SavedViewsList', '../saved-views/SavedViewsList.tsx'],
+      ['PhotoLibrarySidebarPanel', '../photos/PhotoLibrarySidebarPanel.tsx'],
+      ['OutboundSidebarFilterMap', '../unshipped/OutboundSidebarFilterMap.tsx'],
+    ] as const;
+
+    for (const [name, path] of files) {
+      const src = readSibling(path);
+      assert.ok(src.includes('NAV_ROW'), `${name} must import/use NAV_ROW`);
+      assert.ok(
+        !src.includes('QUEUE_ROW.selectedClass'),
+        `${name} must not use QUEUE_ROW.selectedClass (navigator ≠ record pick)`,
+      );
+      assert.doesNotMatch(
+        src,
+        /bg-blue-50[^'"]*ring-1 ring-inset ring-blue-400/,
+        `${name} must not hand-roll the queue blue selected ring`,
+      );
+    }
   });
 });

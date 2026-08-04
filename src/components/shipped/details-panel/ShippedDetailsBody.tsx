@@ -70,6 +70,11 @@ export interface ShippedDetailsBodyProps {
   isDeleteArmed: boolean;
   isDeletingOrder: boolean;
   onDeleteOrder: () => void;
+  /**
+   * One-shot auto-start for the primary tracking replace editor (queue
+   * "Replace tracking"). Forwarded into the dispatch details stack.
+   */
+  replaceTrackingNonce?: number;
 }
 
 /**
@@ -97,6 +102,7 @@ export function ShippedDetailsBody({
   isDeleteArmed,
   isDeletingOrder,
   onDeleteOrder,
+  replaceTrackingNonce = 0,
 }: ShippedDetailsBodyProps) {
   const { documentsMode, recordCtas, showDispatchExtras, showDelete, showEditorDock } =
     inspectorContext;
@@ -174,6 +180,7 @@ export function ShippedDetailsBody({
           showShippingTimestamp={false}
           activeSection={activeSection}
           showQuickLinks={showQuickLinks}
+          replaceTrackingNonce={replaceTrackingNonce}
         />
       );
     }

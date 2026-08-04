@@ -4,7 +4,7 @@
  * no unbox/serial/receive lifecycle, no inline title PATCH), so this is a
  * deliberately smaller column set than receiving — Product · SKU · Order · Date ·
  * Qty · Cond · Price · Status — but it composes the SAME shared geometry
- * (`ordersQueueColVar` / `receivingGridCell` / `RECEIVING_GRID_FROZEN_CELL`) so a
+ * (`receivingGridCell` / `RECEIVING_GRID_FROZEN_CELL`) so a
  * pickup grid lines up pixel-for-pixel with every other station spreadsheet.
  *
  * Frozen pane = `select` (empty gutter, keeps the station left rhythm) + `title`
@@ -13,8 +13,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -108,23 +110,13 @@ export function pickupGridTemplate(
   return gridTemplate(columns);
 }
 
-// Row left-pad — same token every station grid uses so the frozen gutter aligns.
-const PICKUP_GRID_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
 /**
  * Sticky offset for a frozen cell — row px + the summed widths of the locked
- * columns that precede it. Self-computed over {@link PICKUP_GRID_COLUMNS} (not
- * `ordersQueueFrozenLeft`, whose fallbacks read the ORDERS widths) so pickup's
- * own select/title widths drive the offset.
+ * columns that precede it — bound to {@link PICKUP_GRID_COLUMNS}, so this
+ * surface's own pane and widths drive the offset.
  */
 export function pickupGridFrozenLeft(key: PickupGridColumnKey): string {
-  const idx = PICKUP_GRID_LOCKED_KEYS.indexOf(key);
-  const parts = [PICKUP_GRID_ROW_PX];
-  for (const k of PICKUP_GRID_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = PICKUP_GRID_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(PICKUP_GRID_COLUMNS, key);
 }
 
 
@@ -134,9 +126,9 @@ export function defaultDirForPickupGridSort(key: PickupGridColumnKey): GridSortD
   return 'asc';
 }
 
-// Shared spreadsheet chrome — the SAME helpers the receiving/outbound grids use.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as PICKUP_GRID_FROZEN_CELL,
-  ordersQueueGridCell as pickupGridCell,
-  ordersQueueRowShellClass as pickupGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as PICKUP_GRID_FROZEN_CELL,
+  ledgerGridCell as pickupGridCell,
+  ledgerGridRowShellClass as pickupGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

@@ -30,6 +30,8 @@ import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseIncomingView } from '@/lib/receiving/incoming-view';
+import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 
 export interface ReceivingModeState {
   mode: ReceivingModeDescriptor;
@@ -56,7 +58,16 @@ function resolveTableMode(
   if (pathname.startsWith(UNBOX_SURFACE_ROUTE)) {
     return resolveUnboxReceivingTableMode(getUnboxWorkspaceTabFromSearch(searchParams));
   }
-  return getReceivingModeDescriptor(resolveLiveReceivingMode(pathname, searchParams)).id;
+  const base = getReceivingModeDescriptor(resolveLiveReceivingMode(pathname, searchParams)).id;
+  // Incoming's `?incview=` picks the LANE within the mode. `removed` is the
+  // inverted membership ("where did it go"), and it is a genuinely different
+  // server view — not a filter on `incoming` — so it resolves to its own
+  // descriptor rather than being patched into that one's buildParams.
+  // Only applies on Pipeline; Docked (`history`) ignores `incview`.
+  if (base === 'incoming' && parseIncomingView(searchParams.get('incview')) === 'removed') {
+    return 'incoming_removed';
+  }
+  return base;
 }
 
 export function useReceivingModeContext(): ReceivingModeState {
@@ -64,7 +75,9 @@ export function useReceivingModeContext(): ReceivingModeState {
   const searchParams = useSearchParams();
   const tableMode = resolveTableMode(pathname, searchParams);
   const mode = getReceivingTableModeDescriptor(tableMode);
-  const isIncomingMode = mode.id === 'incoming';
+  // Both Incoming lanes are "Incoming mode" for chrome purposes — the header,
+  // KPI strip and inspector are the same; only the server view differs.
+  const isIncomingMode = mode.id === 'incoming' || mode.id === 'incoming_removed';
   const isHistoryMode = mode.id === 'history';
 
   const historySearch = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q)?.trim() ?? '';
@@ -125,10 +138,20 @@ export function useReceivingModeContext(): ReceivingModeState {
   // "Delivered · not scanned" is an Incoming sub-facet fed by a separate
   // shipment-level query; it owns its own empty copy, so the descriptor needs to
   // know about it. Derived early so it can flow into the mode context.
+  // Scoped to the DEFAULT lane. Both facets swap in their own shipment-level
+  // feed, which answers "what is still waiting" — the opposite question from
+  // the removed lane, so a `?state=` left in the URL while switching to it must
+  // not hijack the fetch.
+  const isDefaultIncomingLane = mode.id === 'incoming';
   const isDeliveredUnscannedFacet =
-    isIncomingMode && incomingState === 'DELIVERED_UNOPENED';
+    isDefaultIncomingLane && incomingState === 'DELIVERED_UNOPENED';
   const isDeliveredNotUnboxedFacet =
-    isIncomingMode && incomingState === 'DELIVERED_NOT_UNBOXED';
+    isDefaultIncomingLane && incomingState === 'DELIVERED_NOT_UNBOXED';
+
+  // Bulk tracking paste. Parsed once here so the mode descriptors, the query
+  // key and the grid's column tiers all read the same list.
+  const trackingIn = parseTrackingInParam(searchParams.get(TRACKING_IN_PARAM)).keys;
+  const trackingInKey = trackingIn.join(',');
 
   const staffFilterId = parseStaffParam(
     searchParams.get('staff') ?? searchParams.get('staffId'),
@@ -167,6 +190,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       listSearch,
       queueStage,
       queueLane,
+      trackingIn,
     }),
     [
       historySearch,
@@ -186,6 +210,10 @@ export function useReceivingModeContext(): ReceivingModeState {
       listSearch,
       queueStage,
       queueLane,
+      // Depend on the JOINED key, not the array: `parseTrackingInParam` returns
+      // a fresh array every render, so the array itself would defeat the memo
+      // and re-key the react-query fetch on every keystroke elsewhere.
+      trackingInKey,
     ],
   );
 

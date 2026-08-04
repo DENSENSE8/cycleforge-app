@@ -107,7 +107,7 @@ test.describe('Outbound · Ready tested-history grid', () => {
 
   test('renders the LedgerGrid surface — not a hand-rolled table', async ({ page }) => {
     await mockReady(page);
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
 
     const body = gridBody(page);
     await expect(body).toBeVisible({ timeout: 20_000 });
@@ -118,7 +118,7 @@ test.describe('Outbound · Ready tested-history grid', () => {
 
   test('every core column owns a track; rationale columns stay opt-in', async ({ page }) => {
     await mockReady(page);
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     for (const col of READY_GRID_COLUMNS) {
@@ -136,7 +136,7 @@ test.describe('Outbound · Ready tested-history grid', () => {
 
   test('a hit with no disposition falls back to its allocation state', async ({ page }) => {
     await mockReady(page);
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     const staged = rows(page).filter({ hasText: 'Mid Turntable' }).first();
@@ -145,7 +145,7 @@ test.describe('Outbound · Ready tested-history grid', () => {
 
   test('the action cell only offers Stage FBA where it applies', async ({ page }) => {
     await mockReady(page);
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     const fbaRow = rows(page).filter({ hasText: 'Zulu Amplifier' }).first();
@@ -163,7 +163,7 @@ test.describe('Outbound · Ready tested-history grid', () => {
 
   test('column sort is URL-durable on ?colsort= and survives a reload', async ({ page }) => {
     await mockReady(page);
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     await headerCell(page, 'title').click();
@@ -182,7 +182,7 @@ test.describe('Outbound · Ready tested-history grid', () => {
 
   test('an untested hit sorts last in BOTH directions', async ({ page }) => {
     await mockReady(page);
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     const lastTitle = async () =>
@@ -199,13 +199,13 @@ test.describe('Outbound · Ready tested-history grid', () => {
   test('settled-empty distinguishes absence from no-match', async ({ page }) => {
     await mockReady(page, []);
 
-    await page.goto('/shipping/ready', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready', { waitUntil: 'domcontentloaded' });
     await expect(gridBody(page).getByText(/No tested units yet/)).toBeVisible({ timeout: 20_000 });
 
     // A tab filter narrows the same zero rows — the answer must change from
     // "nothing tested" to "nothing matches", and the grid must still render its
     // teaching box rather than bare headers over a void (the band-vs-row bug).
-    await page.goto('/shipping/ready?rtab=fba', { waitUntil: 'domcontentloaded' });
+    await page.goto('/shipping/fba?fbaMode=ready&rtab=fba', { waitUntil: 'domcontentloaded' });
     await expect(gridBody(page).getByText(/No tested units match this view/)).toBeVisible({
       timeout: 20_000,
     });

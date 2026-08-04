@@ -25,7 +25,7 @@ interface PackerScanReadyPayload {
 }
 
 /**
- * Phone listener for desktop packing scans. When StationPacking completes a
+ * Phone listener for desktop packing scans. When PackScanColumn completes a
  * tracking pack and publishes `packer.scan_ready` on `packer:{staffId}`, the
  * same staff's phone opens `/m/p/{packerLogId}/photos` (order pack photos).
  *

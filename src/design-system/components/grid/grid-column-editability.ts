@@ -8,13 +8,19 @@
  *
  * **Membership is declared on the column model** (`frozen: true`), not by a
  * house-wide key list, because the pane is a per-surface answer to "what does
- * an operator scan first here": Orders freezes `select · order · title` (the
- * order is the container and the scan anchor on a dispatch queue), while
- * Catalog / Receiving / Incoming / Repair / Pickup freeze `select · title`
- * (no order context, or the PO is secondary to the item being scanned).
+ * an operator scan first here". The **order-anchored** surfaces — Orders,
+ * Receiving (Unbox / History / Testing) and Incoming — freeze
+ * `select · order · title`: the order or PO is the container an operator
+ * arrives by, read off a pick list, a carton label or a vendor email, so it has
+ * to stay on screen while the fact columns scroll. Catalog / Repair / Pickup
+ * freeze `select · title` — Catalog has no order context at all, and on the
+ * other two the order is not what the row is found by (Repair quotes an RS-####
+ * ticket; Pickup's order is already the group header).
  * {@link GRID_IDENTITY_COLUMN_KEYS} remains the house DEFAULT for that answer
  * and the key-only fallback for surfaces with no column model in hand.
  *
+ * **Receiving exception (Sheets golden, 2026-08-04):** freeze `select` only —
+ * Order / Product scroll. Operator-editable freeze panes are future work.
  * The pane must be a **contiguous prefix** of the canonical column order —
  * `gridFrozenLeft`-style offset math sums the widths of the frozen columns
  * before a given one, so a frozen column with a scrolling column ahead of it
@@ -47,18 +53,15 @@ export function isGridColumnInCellEditable(key: string): boolean {
  * Column types whose cell content has a FIXED rendered width, so a drag-resize
  * can only add or steal whitespace around it.
  *
- * These are the identifier / magnitude tracks — serial, tracking, order id, SKU,
- * qty — and every one of them renders through the `CopyChip` family's last-8
- * preview or a short tabular numeral run. Their width is decided by the display
- * format, not by the data, which is why the house sizes them once in the column
- * SoT and does not offer a grip: dragging one wider produces a wider empty gutter
- * beside the same eight characters.
+ * **`number` only** (Sheets parity 2026-08): qty / short tabular numerals stay
+ * fixed. Identifier (`id`) and `location` tracks are operator-resizable — the
+ * chip face may still be last-8, but the *track* around it is adjustable so
+ * operators can widen Order / Tracking / Loc the way they drag a Sheets column.
  *
- * Everything else — titles, conditions, statuses, platforms, dates, staff names —
- * has content whose length genuinely varies per row and per tenant, which is
- * exactly what a resize is for.
+ * Titles, conditions, statuses, platforms, dates, staff names remain variable
+ * by type (not in this set).
  */
-const FIXED_WIDTH_COLUMN_TYPES = new Set(['number', 'id', 'location']);
+const FIXED_WIDTH_COLUMN_TYPES = new Set(['number']);
 
 /**
  * Structural shape for the resize test — see the dependency note below.
@@ -84,8 +87,25 @@ interface ResizableLike {
  */
 export function isGridColumnResizable(column: ResizableLike): boolean {
   if (column.resizable != null) return column.resizable;
-  if (column.key === 'select') return false;
+  if (column.key === 'select' || column.key === '_paint') return false;
   return !(column.type && FIXED_WIDTH_COLUMN_TYPES.has(column.type));
+}
+
+/**
+ * Trailing structural filler (`_fill`) — absorbs leftover sheet width via
+ * `minmax(0rem, 1fr)`. Not a fact column: empty header/body, never in Column
+ * display, never sortable/resizable. Receiving (Unbox History) golden.
+ */
+export function isGridColumnFillTrack(column: { key: string }): boolean {
+  return column.key === '_fill';
+}
+
+/**
+ * Header-only row-paint chrome (`_paint`) — paint-bucket in the header; empty
+ * body cell. Not a fact column, never sortable/resizable/Fields.
+ */
+export function isGridColumnPaintTrack(column: { key: string }): boolean {
+  return column.key === '_paint';
 }
 
 /**

@@ -120,7 +120,7 @@ export default function KioskV2Page() {
 
   if (mode === 'ready' || mode === 'prompt') {
     return (
-      <div className="relative h-dvh w-full overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden">
         {mode === 'prompt' && (
           <div className="fixed inset-0 z-panelOverlay flex items-center justify-center bg-scrim/60 backdrop-blur-sm">
             <div className="w-full max-w-sm rounded-2xl bg-surface-card p-8 text-center shadow-xl">

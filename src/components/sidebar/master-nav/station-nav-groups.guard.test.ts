@@ -161,12 +161,16 @@ test('Scan out is floor modeless; Fulfillment Shipping owns the carrier modes', 
   const outbound = SIDEBAR_PAGE_NAV.find((p) => p.id === 'outbound');
   assert.ok(outbound && outbound.kind === 'domain');
   assert.equal(outbound.domainGroup, 'fulfillment');
-  for (const id of ['labels', 'ready', 'fba']) {
+  for (const id of ['labels', 'fba']) {
     assert.ok(
       outbound.children?.some((m) => m.id === id),
       `Shipping lost its ${id} carrier mode`,
     );
   }
+  assert.ok(
+    !outbound.children?.some((m) => m.id === 'ready'),
+    'Ready is an FBA stage tab, not a Shipping L2 child',
+  );
 });
 
 function getSidebarPageNavModes(id: string) {
@@ -186,31 +190,53 @@ test('The flat map reads STATION_SUBGROUPS — Receiving header comes from SoT o
   // Free-form uppercase eyebrow twins remain banned; Receiving page-style header
   // reads STATION_SUBGROUPS (label + icon; no hardcoded "Receiving" string in list).
   assert.doesNotMatch(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
-  assert.doesNotMatch(LIST_SRC, /text-role-eyebrow uppercase tracking-widest text-text-soft/);
   assert.doesNotMatch(LIST_SRC, /text-role-micro font-semibold text-text-faint/);
+  // Eyebrow voice is gone from the list entirely (2026-08-03 polish): Scan
+  // Stations uses the same body/semibold chrome as Locations. The ban this
+  // replaces was on free-form eyebrow TWINS, and that half is unchanged: no
+  // hardcoded section or subgroup name may appear in this file.
+  assert.doesNotMatch(
+    LIST_SRC,
+    /text-role-eyebrow uppercase tracking-widest text-text-soft/,
+    'no eyebrow voice in the list — section header matches page-row type',
+  );
+  assert.match(LIST_SRC, /renderStationsEnterRow|renderStationsDrill/);
+  assert.match(LIST_SRC, /\{section\.label\}/);
   assert.doesNotMatch(LIST_SRC, /['"]Receiving['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Scan Stations['"]/);
   assert.match(LIST_SRC, /STATION_SUBGROUPS/);
   assert.match(LIST_SRC, /stationSubgroup/);
   assert.match(LIST_SRC, /subgroupDef/);
   assert.match(LIST_SRC, /renderPageHeader/);
-  // The Receiving SUBGROUP header survives the 2026-08-02 flatten while the
-  // SECTION header does not, and the difference is not arbitrary: `Receiving`
-  // is a real page-shaped destination whose name matches none of the stations
-  // beneath it (Arrival · Unbox · Local Pickup · Repair Service), so it adds a
-  // name rather than repeating one. A section header repeated the page under it.
-  assert.doesNotMatch(LIST_SRC, /onDrillChange|drillId/);
+  // Receiving discloses inside the Scan Stations drill — accordion open.
+  assert.match(LIST_SRC, /openSubgroup/);
+  assert.match(LIST_SRC, /closeSubgroup/);
+  assert.match(LIST_SRC, /expandedSubgroups/);
+  assert.match(LIST_SRC, /disclosure: \{ expanded: subgroupExpanded \}/);
+  // All-sections drill state stays retired; floor uses stationsDrillOpen.
+  assert.doesNotMatch(LIST_SRC, /\bonDrillChange\b|\bdrillId\b/);
+  assert.match(LIST_SRC, /stationsDrillOpen/);
 });
 
 /**
  * The flatten INVERTED this one, and the reason is worth keeping.
  *
  * Inside a drill only one section was ever on screen, so a rule between its
- * nests was noise — that is what the old assertion banned. Flat, the rule
+ * nests was noise — that is what the old assertion banned. Flat, spacing
  * between SECTIONS is the only thing left saying the root axis is deliberately
  * mixed (Scan Stations is an INPUT MODEL among business DOMAINS), because the
- * section labels that used to say it are gone.
+ * section labels that used to say it are gone. Horizontal hairlines between
+ * those blocks were retired 2026-08-03 — soft `mt-1` only, below the top pins.
  */
-test('the flat map separates sections with a hairline; nests inside one stay quiet', () => {
-  assert.match(LIST_SRC, /index > 0 && 'mt-1 border-t border-border-soft pt-1'/);
-  assert.match(LIST_SRC, /border-b border-border-soft/);
+test('the flat map spaces sections without horizontal hairlines', () => {
+  assert.match(LIST_SRC, /index > 0 && 'mt-1'/);
+  assert.doesNotMatch(LIST_SRC, /index > 0 && 'mt-1 border-t border-border-soft/);
+  // Peer L1 rows may take a soft gap; subgroup children must stay flush so the
+  // nesting rail does not break into horizontal ticks.
+  assert.doesNotMatch(LIST_SRC, /expanded && 'space-y-/);
+  // Footer search / staff chrome may keep a top rule — the map itself must not.
+  assert.doesNotMatch(
+    LIST_SRC.match(/const renderMap[\s\S]*?\n {2}\};\n/)?.[0] ?? '',
+    /border-t border-border-soft/,
+  );
 });

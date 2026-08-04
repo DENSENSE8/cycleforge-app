@@ -66,5 +66,9 @@ export function shippedOrderToPackReviewRow(
       (order.shipping_tracking_number || '').trim() ||
       fallback?.tracking ||
       null,
+    skuCatalogId: fallback?.skuCatalogId ?? null,
+    itemNumber: fallback?.itemNumber ?? null,
+    packTier: fallback?.packTier ?? null,
+    estimatedPackMinutes: fallback?.estimatedPackMinutes ?? null,
   };
 }

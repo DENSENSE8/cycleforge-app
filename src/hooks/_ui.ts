@@ -35,16 +35,22 @@ export interface DeviceInfo {
 
 const OVERRIDE_KEY = 'cf-device-mode';
 
-/** Detect actual mobile hardware via Client Hints API → UA string fallback. */
+/**
+ * Phones only — same intent as `MOBILE_UA_RE` in `src/proxy.ts`.
+ * Exclude iPad / Android tablets so they keep the desktop shell (no
+ * MobileShell `safe-area-padding` bottom band). Android phones include
+ * "Mobile"; tablets omit it. Bare `iPad` must not force mobile mode.
+ */
+const MOBILE_UA_RE = /iPhone|iPod|Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
+
+/** Detect actual mobile (phone) hardware via Client Hints → UA fallback. */
 function detectMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
   // Modern: User-Agent Client Hints (Chrome, Edge, Opera — 2026 standard)
-  const uaData = (navigator as any).userAgentData;
+  const uaData = (navigator as { userAgentData?: { mobile?: boolean } }).userAgentData;
   if (uaData && typeof uaData.mobile === 'boolean') return uaData.mobile;
-  // Fallback: classic UA string sniff for Safari / Firefox
-  return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent,
-  );
+  // Fallback: classic UA string sniff for Safari / Firefox (phones only)
+  return MOBILE_UA_RE.test(navigator.userAgent);
 }
 
 /** Check whether a camera exists on this device. */

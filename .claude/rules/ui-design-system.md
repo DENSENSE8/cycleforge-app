@@ -90,11 +90,10 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 
 - **Station (`floor`):** scan bar + single active-entity card; fact stacks and `divide-y` rows *inside* the card. No browse grids competing with scan focus.
 - **Workbench (`ops`):** primary = list **or** table **or** board **or** master–detail (data shape decides). Fact stacks for record bodies. Scroll region `flex-1 overflow-y-auto`; sticky chrome with `border-t`/`border-b` as needed.
-  - **Scoped search chrome:** icon-first `ToolbarSearchToggle` (`@/design-system/primitives`) — collapsed at rest, expands on hover/focus. Never an always-open `SearchField` in the workbench header search slot **when search is a refinement of an on-screen list**.
-    - **Entry-path exception (principle).** When search **is** the surface's primary entry path — not a refinement — an always-open / always-synced query field is allowed. Known cases:
+  - **Scoped search chrome:** always-open `TechRailSearchBar` `variant="chrome"` (`@/components/sidebar/tech/TechRailSearchBar`) — same primitive as MasterNav / station-rail footers (`variant="rail"`). Leading Search glyph **inside** the field + hover-reveal paste (chrome seats the field in a flush sunken plane — no rounded bubble; edge-to-edge with the triage row). The retired icon-first `ToolbarSearchToggle` is deleted.
+    - **Entry-path surfaces** may still mount a bare always-open `SearchField` / `SearchBar` when search **is** the job (not a list refinement):
       1. **`/ops/photos` (Media Library)** — always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket).
-      2. **`/search`** — the cross-entity results surface; the context-rail `SearchBar` in `SearchSidebarPanel` is the entry field (always open + synced to `?q=`). The global header launcher is hidden on this route so the page is not dual-input. Typing here *is* the job.
-      Everywhere else, search refines a list already on screen, so collapsed-at-rest correctly demotes it. Do not grow this list case-by-case without re-checking the principle.
+      2. **`/search`** — the cross-entity results surface; the context-rail `SearchBar` in `SearchSidebarPanel` is the always-open entry field (synced to `?q=`). Typing here *is* the job. The global header search launcher stays mounted on this route (and carton detail) so find remains reachable from chrome — rail entry is additive, not a replacement.
   - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.
@@ -128,6 +127,48 @@ Check who owns the scroll before you write `overflow-*`.
   `max-h-*`, or `flex-1 min-h-0` inside an ancestor chain that resolves to a fixed height.
   Prove it or drop the `overflow-*`.
 
+**The definite-height contract, spelled out (ruled 2026-08-04 —
+`docs/todo/station-multi-section-scroll-host-RULING.md`):**
+
+```css
+/* Outer host: rigidly constrained, never auto */
+.host { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+/* The one active immersive floor */
+.floor-active { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+```
+
+`min-height: 0` on **both** levels is load-bearing — flex's default `min-height: auto` makes a
+child refuse to shrink below its content size, so without it the container inflates to fit
+content instead of triggering `overflow`. This is the same failure shape as the `space-y-*` +
+`flex-1` void above, one level deeper. If the floor hosts `layout`-animated content (a Motion
+`motion.div layout`/`layoutId` descendant — e.g. `ProcedureDeck`), the element carrying
+`overflow-y-auto` must also carry Motion's `layoutScroll` prop, or Motion silently mismeasures
+that ancestor's scroll offset when computing layout-projection math
+(`docs/todo/station-multi-section-scroll-host-MOTION-FINDINGS.md` §1.4 — this is *already* a
+live, independent bug on `StationWorkbench`'s existing single port).
+
+**Two immersive ports never coexist.** When a host grants one section the floor, the **outer**
+scroller must go `overflow-hidden` for the duration — never leave two active scrollports on the
+same axis. An operator cannot know which one their wheel is about to move, and `overscroll-behavior:
+contain` is not a substitute for disabling the outer port outright (Slack / Discord thread-panel
+precedent: scroll chaining to the parent view is deliberately cut, not merely contained).
+
+**Do not lean on `scroll-padding-bottom` to keep a target clear of an absolute-positioned
+sibling (a floating dock, a fixed composer).** The pairing has open, unresolved Chromium bugs —
+[issue 40055750](https://issues.chromium.org/issues/40055750) and
+[issue 365913982](https://issues.chromium.org/issues/365913982) both report `scroll-padding`
+corrupting what `Element.scrollIntoView()` considers "in view," and a
+[Playwright report](https://github.com/microsoft/playwright/issues/3105) documents
+`scrollIntoView` failing specifically when the target sits under a sticky/covering element — close
+to this exact shape. **Use a physical trailing spacer element instead**: a zero-content sentinel
+node sized to the clearance rem, appended after the last scrollable child. It makes `scrollHeight`
+honestly larger, so a plain `scrollIntoView({ block: 'end' })` on the real target clears the
+overlay without depending on the browser's scroll-padding viewport-rect math at all. `sticky` is
+**not** the right tool for "keep the last card above the dock" either — a sticky element is
+constrained to its own containing block's bounds, so once the block ends, so does the stick; let
+`padding-bottom` (or the spacer) plus `justify-content: flex-end` hold the resting position
+instead.
+
 **`rounded-*-[inherit]` on a child is not a clip.** `border-radius: inherit` copies the
 parent's radius *value* onto the child's own box, so a 4px accent rail inherits a 16px card
 radius and renders as a lens/notch. For an edge accent use a **border on the element itself**
@@ -150,17 +191,61 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
   - Title: `truncate text-role-caption font-semibold text-text-default`.
   - Meta: `truncate text-role-eyebrow uppercase tracking-widest text-text-soft` (the role bakes 600 + condensed).
   - Title vs meta separate by **color and case**, not by weight — both sit at 600 (see the weight cap below).
-- **Queue/station left edge** (`QUEUE_ROW` in `src/components/ui/queue-row-chrome.ts` + `META_COL` in `RowMetaColumns.tsx`):
+- **Queue/station left edge — list & accordion rows only** (`QUEUE_ROW` in
+  `src/components/ui/queue-row-chrome.ts` + `META_COL` in `RowMetaColumns.tsx`):
   - Stack: `QUEUE_ROW.px` → optional select gutter (`QUEUE_ROW.selectGutter`) → `META_COL` dot track → title.
-  - Meta indent via `metaIndentFor(track, selectMode)` — never hand-rolled `calc` or page-local `px-4`.
+  - The `META_COL` dot track is **correct here and only here**: a list row has no columns, so the
+    row's own left edge is the only address a state mark can have.
+  - Meta indent via `metaIndentFor(track, selectChildPage)` — never hand-rolled `calc` or page-local `px-4`.
   - Wide track (`indentWide` / `dotTrackWide`) only for received/expected qty surfaces (Receiving).
   - `CollapsibleGroupRow` nest children: no extra horizontal padding when `showChevron={false}`
     (`queueGroupNestClass`); nest cue is border + wash only.
+- **On a `LedgerGrid` surface a fact belongs to its own COLUMN — never to a neighbour's cell**
+  (ruled 2026-08-02). Concretely: **no status dot in the identity cell.** The dot belongs to the
+  `status` track, leading its chip (`GridStatusCellValue`).
+  - **Why, and it is not taste:** a column is the only address at which a fact can be sorted,
+    hidden, resized, highlighted and aligned with its own kind. A dot parked in the title cell has
+    none of that — it cannot be turned off by the operator who does not want it, it moves when the
+    *title* is resized, and it spends the title's truncation budget on every row to repeat what the
+    status column already says.
+  - This is the one place the grid families **diverge from the list rows above**. A dot on the row's
+    left edge is right for a list (no columns exist) and wrong for a grid (a column does). Both
+    rules are live; do not delete one to make them agree.
+  - A dot may still lead a value *inside its own column* — that is the fact at its own address.
 - **Selection never size/height-shifts.** Keep row content identical across states:
-  - list / accordion selected: `QUEUE_ROW.selectedClass` (`bg-blue-50 ring-1 ring-inset ring-blue-400`)
+  - list / accordion selected (**record pick**): `QUEUE_ROW.selectedClass` (`bg-blue-50 ring-1 ring-inset ring-blue-400`)
   - airtable LedgerGrid selected: `QUEUE_ROW.selectedLedgerClass` / `ledgerRowStateClass(true)` (`bg-blue-50` fill only — inset ring fights cell rules + sticky `bg-inherit` and reads as a top/right L-glow)
+  - **navigator selected** (facet / saved-view / capture-day / Desk segment — orienting a filter, not a record): `NAV_ROW.selectedClass` (`bg-surface-sunken font-semibold text-text-default`) — quiet, no hue fill. Same module as `QUEUE_ROW` (`queue-row-chrome.ts`). Never reuse `QUEUE_ROW.selectedClass` on a context-rail navigator.
   - focused (no click): `bg-gray-50 ring-1 ring-inset ring-gray-200`
   - default: `hover:bg-gray-50`; constant `py-1.5`.
+
+## Conversation & message rows
+
+There was no house law for a message row until 2026-08-02, and that vacuum is
+exactly why a chat template filled it (the support ticket thread shipped bubbles).
+
+- **Tone is information, never decoration.** Direction (inbound / outbound) is the
+  leading mark's identity — an avatar, a station glyph — not a bubble fill. A
+  surface where twenty messages share one accent fill is spending its only free
+  signalling channel on saying "this is a chat".
+- **Backgrounds default to transparent.** Internal / not-emailed notes may tint
+  with `bg-surface-sunken`, paired with a label **in the row**, so the state
+  survives for a colour-blind operator.
+- **One shared left reading edge.** Ragged variable-width blobs are banned; they
+  destroy the scan speed a dense list exists to buy. Prove it by measuring —
+  every row's `getBoundingClientRect().left` must resolve to ONE value.
+- **Day banding is required** for any thread spanning >24h — compose
+  `DateGroupHeader`, never a second one.
+- **No per-row redundancy.** A chip repeated on every row (`PUBLIC`, the author on
+  consecutive messages) is paid for N times and read once.
+- **Block markdown must render** — headings, lists, blockquotes — on the house type
+  scale. There is **no Tailwind typography plugin in this repo**, so `prose` does
+  not exist and the block scale is defined once in the renderer
+  (`src/lib/support/markdown.ts` → `renderBlockMarkdown`), never per call site. The
+  grammar escapes first, then tokenizes, and never reaches
+  `dangerouslySetInnerHTML`.
+- **Assume the thread is long.** Render a bounded tail with an explicit
+  "show earlier" page, or virtualize — never an unbounded map.
 
 ## Eyebrow headers + chips (micro-typography scale)
 
@@ -170,6 +255,18 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
 - Action buttons in a header bleed their hit-box with negative margin (`-my-0.5` / `-my-1.5`), they don't grow the row.
 - Chip/badge = 3 layers: `rounded {bg-x-50} {text-x-700} ring-1 ring-inset {ring-x-200} inset-chip
   text-role-micro uppercase tracking-widest`. Pills (`rounded-full`) drop vertical padding to keep row height.
+- **A grid STATUS cell is that chip with a dot leading it, inside** — `GridStatusCellValue`
+  (`@/components/ui/grid-cells`), never a page-local chip. Tone comes from the surface's lifecycle
+  registry (`workflowStage().badge`, `pickupOrderStatusChipClass`, …); the third layer derives from
+  the resolved ink (`ring-current/20`), so no registry needs a new field.
+  - **Why a chip and not bare text:** a state is a categorical label, and bare text in a ruled band
+    reads as one more data value. Four surfaces had each grown their own local chip for this exact
+    job before the primitive existed.
+  - **Why the dot is inside:** a dot beside a chip is two objects in one cell — the shape a column
+    exists to prevent. Inside, they read as one token and travel together under a drag-resize.
+  - **The dot is not redundant with the tone.** It carries the finer vocabulary — receiving's
+    `getStatusDotBg` goes emerald the moment a line is quantity-complete, whichever stage the chip
+    names. Two facts, one token, and the dot is the one that moves first.
 - **Typed identifiers** use the semantic `CopyChip` family — never interchange chip variants (see `DESIGN_SYSTEM.md`).
 
 ## Type: three cuts, one face each, capped at 600
@@ -204,19 +301,80 @@ load-bearing (condensed keeps 10–11px chrome inside a grid column; mono keeps 
 - **Numerals align by default** — `role-display`/`-title`/`-data` bind `tabular-nums` intrinsically; a
   surface that genuinely wants proportional figures opts out with `proportional-nums`. Mono never
   ligates (`fi`/`fl` in a serial would render a string the operator can't retype).
-- **LedgerGrid column justification is a hard SoT** — digit / date / tracking / SKU tracks
-  **end**-align; word / tag / platform tracks **start**-align. Resolve via
-  `resolveGridColumnAlign` (`grid-header-align.ts`); never hand-type `justify-end` on a cell.
-  **Exception, ruled 2026-08-02:** an identifier that is the row's own **transaction identity**
-  (PO # · sales order # · `order`) aligns **start** — it is a name you read, not a magnitude you
-  compare — while a **catalog item number / SKU** stays end-aligned as a reference attribute.
-  Same `type: 'id'`, different role; express it with an explicit `align: 'start'` on that
-  surface's column model, never by changing `ALIGN_BY_TYPE.id`. Shipped 2026-08-02 on the Orders
-  and Receiving `order` columns; `date` / `tracking` stay unadjudicated (and their spec assertions
-  stay red on purpose).
+- **LedgerGrid column justification is a hard SoT, and the test is MAGNITUDE vs LABEL** — not
+  digit-ness. A magnitude is compared *down* the column (qty · price · SKU · serial · ticket ·
+  **date**) and **end**-aligns so the ones place stacks; a label is *read* one row at a time
+  (title · condition · status · platform · **tracking** · **order #**) and **start**-aligns,
+  because reading starts at the left edge. Resolve via `resolveGridColumnAlign`
+  (`grid-header-align.ts`); never hand-type `justify-end` on a cell.
+  **Rulings:** an identifier that is the row's own **transaction identity** (PO # · sales order #
+  · `order`) aligns **start** while a **catalog item number / SKU** stays end as a reference
+  attribute — same `type: 'id'`, different role, so it is an explicit `align: 'start'` on that
+  surface's column model and never a change to `ALIGN_BY_TYPE.id`. **`location` (bin) and
+  `tracking` (carrier #) are `start` in the type map** (2026-08-02 bench: end-aligned last-8s
+  floated right and broke the scan line; 2026-08-04 split glyphs — folded map vs MapPin).
+  **`date` is `end` in the type map** (2026-08-03 — civil days / durations compare
+  down the column with qty; reverses the date half of the 2026-08-02 pass).
   Full table: [source-of-truth.md](source-of-truth.md) → Grid column justification.
 - Guard: `typography-tokens.guard.test.ts` (raw px, retired tokens, the weight cap, the family
   bindings). Genuine one-off: same-line `ds-allow-weight`. Codemod: `scripts/codemods/cap-font-weight.mjs`.
+
+## Instrument typography + telemetry rows
+
+The type rules above, applied to the surfaces where an operator reads state back off a bench.
+Identity: [`display/instrument-panel.md`](display/instrument-panel.md).
+
+**Telemetry row anatomy** — the readout unit. Label above or beside, value below or after; never a
+sentence that assembles fields into prose.
+
+```tsx
+<div className="space-y-1">
+  <p className="text-role-micro uppercase">TRACKING</p>   {/* condensed cut, intrinsic */}
+  <span className="font-mono tabular-nums">…7719</span>   {/* mono ⇒ retypable */}
+</div>
+```
+
+- **The label takes a role, not a family.** `text-role-eyebrow` / `text-role-micro` bind the
+  condensed cut themselves, which is what keeps a 10–11px label legible inside a grid column.
+- **Mono is a contract, not a texture.** It marks a value the operator may have to retype or read
+  aloud — serial · FNSKU · tracking · SKU · order id. A platform label, a staff name, or a status
+  word is **not** mono. "Sci-fi monospace everywhere" is the anti-pattern; mono everywhere means
+  mono signals nothing.
+- **Numerals align by default** on the data roles; a readout that must line up in a column keeps
+  `tabular-nums`, and mono never ligates (an `fi` in a serial would render a string nobody can
+  retype).
+- **Emphasis is contrast and tracking, never weight** — the 600 cap is unchanged here. A telemetry
+  row that needs its value to out-rank its label moves the *label* to `text-text-faint`; it does not
+  add ink to the value.
+
+### Instrument-selected surface (D10 — ruled 2026-08-02)
+
+**Yes, unify — one named recipe, once the ring's colors are tokens.** The selected state means *this
+instrument is the one you are reading now*, and it appears in two places today with two different
+implementations:
+
+| Surface | Selected today | Target |
+|---|---|---|
+| Displays icon-rail cell | `bg-surface-sunken` | unchanged — this is already the recipe |
+| `ScanStationProgressRing` stroke | hardcoded `#334155` | resolve from the same ink ramp as the rail's selected cell |
+
+The ring hardcodes `#E2E8F0` (track) / `#94A3B8` (idle) / `#334155` (selected). Those literals
+predate the no-page-local-hex law and are **debt, not precedent** — do not copy them onto a second
+surface, and do not "fix" the mismatch by hardcoding the rail to match the ring. The migration is
+the ring adopting tokens; the named recipe lands in the same change, not before it (a token nothing
+consumes is a knip finding).
+
+### Bans specific to instrument chrome
+
+- **No numeral inside the scan progress ring.** It is a 16px bare SVG at ~3ft; a numeral in it is
+  unreadable and turns a glanceable mark into a thing you stop and parse. Progress counts belong in
+  the control's accessible label and the checklist body.
+- **No card plate behind the ring**, and no glow / arc / faux-3D treatment — decoration untied to
+  live state is the P1 violation.
+- **No fourth typeface** for a "technical" or "HUD" feel. Three cuts, one face each. Reaching for a
+  display face to signal *instrument* is exactly what the one-macro-family rule protects against.
+- **No `font-bold` to make a readout look instrumental.** The 700 cut is not loaded; it renders as
+  synthesized faux-bold and reads as blur at bench distance.
 
 ## Presentation kinds (data drives UI)
 
@@ -246,21 +404,51 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 
 - Import from `@/components/Icons`. Always pair an icon with text (e.g. `<Check className="h-3.5 w-3.5"/> Resolve`),
   except the status dot — and **GlobalHeader Mode / Recents / Pins** (icon-only with `HoverTooltip`; active mode, History, or pin glyph).
-- **Nav chrome law:** MasterNav L1 page rows render SoT page icons
-  (lighter stroke); L2 modes (GlobalHeader Mode menu, header “now” identity, scan rails) keep glyphs
-  with heavier stroke. CommandBar Pages / mobile page rows stay label-only until those surfaces
+- **Nav chrome law — ONE stroke for every altitude of the spine**
+  (rewritten 2026-08-02; it used to read *"L2 modes keep glyphs with heavier stroke"*).
+  **Every MasterNav row draws its SoT glyph** — root destinations *and* child rows (a page's modes,
+  a station inside a subgroup) — all at the light page stroke (**1.5**, down from 2: these draw at
+  14px beside 12–14px text, where a 2-weight stroke on a 24-unit viewBox is a heavy graphic rather
+  than chrome). A child row is the switch between one page's siblings, which is the job the
+  GlobalHeader Mode menu draws with the *same icon set* — two doors onto one destination must not
+  disagree about whether it has a face. **What child rows do not get is a heavier stroke:** at 2.25
+  a child glyph out-draws its own parent at 1.5, inverting the ladder it was meant to express.
+  Subordination is the indent (`pl-7`), the caption/medium type against the parent's body/semibold,
+  and the muted ink. The heavier 2.25 stays where a glyph is the **whole control** rather than a
+  label's companion — GlobalHeader Mode menu, header “now” identity, scan rails,
+  `HorizontalButtonSlider` — so `STATION_GLYPH_KEYS` uniqueness stays live.
+  CommandBar Pages / mobile page rows stay label-only until those surfaces
   are migrated. Stroke SoT: `nav-weight.tsx`. **Exception — GlobalHeader icon
   actions:** native SVG stroke only (`TOP_CHROME_ICON_GLYPH` in
   `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
   Quick Access **pins** are `HeaderPinsSwitcher` (hairline after Recents) — never a pin list in the avatar menu.
-  **Section drills:** root shows Analytics Monitor / Scan Stations / Inbound / Catalog / Inventory /
-  Fulfillment / Sales / Support (`SPINE_SECTIONS`); drill body is back + that
-  section's pages. **Workflow Studio is a FOOTER PIN above Admin**, not a drill (2026-08-02).
-  No `Triage Desk` / `Print Stations` grab-bag, and no scan bench inside a domain.
-  Swap via `framerPresence.spineDrill` (opacity-only) — never a page-local `x` slide.
-  Detail: `display/workbench.md`.
+  **The spine body is a flat map for domains; Scan Stations alone is a Vercel list-replace
+  drill (2026-08-03).** Root shows a Scan Stations enter row (`ChevronRight`) plus flat domain
+  pages; entering replaces the map with Back + Receiving · Testing · Packing · Scan out.
+  Domains stay flat — restoring an all-sections drill would bring back `Catalog › Catalog`.
+  Order: `SPINE_SECTIONS`. **Workflow Studio is a FOOTER PIN above Admin**, not a section.
+  No grab-bag desks, no scan bench inside a domain. A multi-child page draws its children only
+  while it is the ACTIVE page. Body swap (map ⇄ stations-drill ⇄ ranked search) via
+  `framerPresence.spineBodySwap` (opacity-only) — never a page-local `x` slide.
+  Detail: `display/workbench-master-detail.md`.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
+- **A leading glyph aligns to a text gutter OPTICALLY — put the INK on the gutter,
+  not the box** (ruled 2026-08-02, after three reports against a passing E2E).
+  For text and borders, box *is* ink. For an icon button it is not: an `sm` (28px)
+  `IconButton` around a 14px glyph insets 7px, and a lucide glyph draws ~2px inside
+  its own viewBox — so a box parked on a `px-4` edge draws its mark **~9px inside**
+  the heading, avatar or card border directly beneath it.
+  - **Do:** let the control's box overhang (a scale token — `pl-2` on the row, or
+    `-ml-2` — never arbitrary px, so it tracks `--cf-density`). **A hit box may
+    bleed past the content edge; the mark the operator reads may not sit off it.**
+  - **Don't:** trust `getBoundingClientRect()` on an `<svg>` — that is the element
+    box, and it will report "aligned" for a mark you can see is not. Measure
+    `getBBox()` (viewBox units, less half the stroke, scaled to the render).
+  - **Don't align a shared shell to one occupant.** Reference the *content gutter*
+    every occupant shares. A band tuned against a sibling that is also a
+    glyph-in-a-box agrees with that one surface and misses every other — and it is
+    the one surface anyone thinks to measure. Reference: `UNBOX_PUSH_TOP_BAND`.
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a
   bare glyph-button where the glyph is the whole hit target. The 44px mobile tap floor is `size="touch"` (the old

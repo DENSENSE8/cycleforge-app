@@ -305,7 +305,7 @@ test.describe('Home → Today workbench', () => {
     await expect(view).toBeVisible({ timeout: 15_000 });
 
     // Walk away from the view, then apply it: the params must come back.
-    await page.getByRole('button', { name: /^Everything\b/ }).first().click();
+    await page.getByRole('button', { name: /^All\b/ }).first().click();
     await expect(page).not.toHaveURL(/[?&]scope=assigned\b/);
 
     await view.click();
@@ -350,7 +350,7 @@ test.describe('Home → Today workbench', () => {
     // settings both carry links whose names contain "Orders", so a name regex
     // proves nothing about the chrome. The href is the SoT (`QUEUE_SURFACE_LINKS`
     // in `aggregate-my-day.ts`).
-    const chrome = page.locator('main').getByRole('button', { name: /^Everything\b/ });
+    const chrome = page.locator('main').getByRole('button', { name: /^All\b/ });
     await expect(chrome.first()).toBeVisible();
 
     const chromeBox = (await chrome.first().boundingBox())!;
@@ -368,5 +368,121 @@ test.describe('Home → Today workbench', () => {
         'a queue door reappeared in the Today chrome band',
       ).toBe(false);
     }
+  });
+
+  test('flush sheet grid + Add watch CTA live in the chrome trailing cluster', async ({
+    page,
+  }) => {
+    await openToday(page);
+
+    // Sheets flush — no framed island; Unbox golden port.
+    await expect(page.locator(`${GRID}[data-table-surface="sheet"]`).first()).toBeVisible();
+
+    const add = page.getByRole('button', { name: 'Watch a ticket or tracking number' });
+    await expect(add).toBeVisible();
+
+    // Shares the chrome band row with All (trailing cluster, top-right).
+    const allTab = page.locator('main').getByRole('button', { name: /^All\b/ }).first();
+    const allBox = (await allTab.boundingBox())!;
+    const addBox = (await add.boundingBox())!;
+    const sharesBandRow =
+      addBox.y < allBox.y + allBox.height &&
+      addBox.y + addBox.height > allBox.y;
+    expect(sharesBandRow, 'Add CTA must sit on the chrome band row').toBe(true);
+    expect(addBox.x > allBox.x, 'Add CTA must be trailing (right of tabs)').toBe(true);
+
+    await add.click();
+    await expect(page).toHaveURL(/[?&]watch=1\b/);
+    await expect(page.getByRole('region', { name: 'Watch ticket or tracking' })).toBeVisible();
+    await expect(page.getByLabel('Ticket number')).toBeVisible();
+  });
+
+  test('Add → Watch ticket appends to the Ticket list and stays open', async ({ page }) => {
+    const ticketId = 991122;
+    let tickets = [] as Array<{ ticketId: number; subject: string | null; updatedAtMs: number }>;
+
+    await page.route('**/api/my-day/watch', async (route) => {
+      const method = route.request().method();
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true, tickets, tracking: [] }),
+        });
+        return;
+      }
+      if (method !== 'POST') {
+        await route.continue();
+        return;
+      }
+      const body = route.request().postDataJSON() as { kind: string; value: string };
+      expect(body.kind).toBe('ticket');
+      tickets = [
+        {
+          ticketId,
+          subject: `Watched ticket #${ticketId}`,
+          updatedAtMs: Date.now(),
+        },
+      ];
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          kind: 'ticket',
+          ticketId,
+          subject: `Watched ticket #${ticketId}`,
+          taskId: `support-${ticketId}`,
+        }),
+      });
+    });
+
+    await openToday(page);
+    await page.getByRole('button', { name: 'Watch a ticket or tracking number' }).click();
+    await expect(page.getByRole('region', { name: 'Watch ticket or tracking' })).toBeVisible();
+    // Icon density strip names the selected display (Ticket).
+    await expect(page.getByRole('button', { name: 'Ticket' })).toBeVisible();
+    await page.getByLabel('Ticket number').fill(String(ticketId));
+    await page.getByRole('button', { name: /^Watch$/ }).click();
+
+    // Stays on the Watch rail — Displays pattern (append to list, do not select task).
+    await expect(page).toHaveURL(/[?&]watch=1\b/);
+    await expect(page).not.toHaveURL(/[?&]task=/);
+    await expect(page.getByRole('list', { name: 'Watched ticket list' })).toBeVisible();
+    await expect(page.getByText(`#${ticketId}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Stop$/ })).toBeVisible();
+  });
+
+  test('Stop watching clears the assignment and closes the inspector', async ({ page }) => {
+    const feedRes = await page.request.get('/api/my-day');
+    expect(feedRes.ok()).toBe(true);
+    const feed = (await feedRes.json()) as {
+      interrupts: Array<{ id: string; kind: string; ticketId?: number; title: string }>;
+    };
+    const interrupt = feed.interrupts.find((i) => i.kind === 'support_followup' && i.ticketId);
+    test.skip(!interrupt, 'QA org has no support_followup — re-run provision:qa-org');
+
+    const ticketId = interrupt!.ticketId!;
+    let cleared = false;
+    await page.route(`**/api/zendesk/tickets/${ticketId}/assign`, async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.continue();
+        return;
+      }
+      const body = route.request().postDataJSON() as { staffId: number | null };
+      expect(body.staffId).toBeNull();
+      cleared = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, assignment: null }),
+      });
+    });
+
+    await openToday(page, `?task=${encodeURIComponent(interrupt!.id)}`);
+    await expect(page.locator(INSPECTOR)).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Stop watching' }).click();
+    expect(cleared).toBe(true);
+    await expect(page.locator(INSPECTOR)).toHaveCount(0);
   });
 });

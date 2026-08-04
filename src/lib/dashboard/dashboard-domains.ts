@@ -51,9 +51,6 @@ const DASHBOARD_DOMAIN_PARAM = 'mode';
 /** `?mode=` value that selects the inbound (receiving cartons) domain. */
 export const DASHBOARD_INBOUND_MODE = 'inbound';
 
-/** Mode-level gate: `/dashboard` is `dashboard.view`, but inbound shows receiving data. */
-export const DASHBOARD_INBOUND_PERMISSION = 'receiving.view';
-
 /**
  * `?mode=` values that select the sales (front-desk history) domain.
  * `sales` is the default history feed; `pickup` is Local Pickup history —
@@ -125,7 +122,7 @@ export function retiredFbaViewTarget(): string {
  * Where a retired `?mode=search` URL goes.
  *   • `openOrderId` → that order's one shell, `/o/[id]`.
  *   • `q`           → the cross-entity search route.
- *   • bare          → the dashboard's default domain.
+ *   • bare          → To-ship desk (`/shipping/orders`; was `/dashboard` outbound).
  */
 export function retiredSearchModeTarget(
   searchParams: Pick<URLSearchParams, 'get'>,
@@ -134,7 +131,7 @@ export function retiredSearchModeTarget(
   if (openOrderId) return `/o/${encodeURIComponent(openOrderId)}`;
   const q = String(searchParams.get('q') || searchParams.get('dq') || '').trim();
   if (q) return `/search?q=${encodeURIComponent(q)}`;
-  return '/dashboard';
+  return '/shipping/orders';
 }
 
 /**
@@ -159,9 +156,9 @@ export function retiredWalkInHistoryTarget(
   return `/dashboard?${params.toString()}`;
 }
 
-// The inbound Triage/Unbox tab contract lives with its view
-// (`components/dashboard/receiving/dashboard-receiving-tabs.ts`), which reads the
+// The inbound Triage/Unbox tab contract lives with the Docked lane
+// (`components/sidebar/receiving/incoming/inbound-docked-tabs.ts`), which reads the
 // `?sort=` axis (HISTORY_SORT_OPTIONS) directly. That axis is the INBOUND
-// domain's server ordering; the outbound display sort is `QueueSortSwitch`'s own
+// desk's Docked server ordering; the outbound display sort is `QueueSortSwitch`'s own
 // state and grid COLUMN sort is `?colsort=`/`?coldir=` (`useUrlColumnSort`) —
 // three different jobs, three different keys, never overloaded onto one.

@@ -606,7 +606,7 @@ export function CommandBar() {
                         navigate({
                           id: `search-all:${query.trim()}`,
                           label: `Search: ${query.trim()}`,
-                          href: `/dashboard?search=${encodeURIComponent(query.trim())}`,
+                          href: `/shipping/orders?search=${encodeURIComponent(query.trim())}`,
                         })
                       }
                     />

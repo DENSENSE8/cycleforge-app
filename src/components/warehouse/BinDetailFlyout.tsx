@@ -21,16 +21,19 @@ import Link from 'next/link';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { AuditTimeline } from '@/components/audit/AuditTimeline';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import {
-  PaneHeader,
-  PaneHeaderCloseButton,
-  PaneHeaderLabel,
-} from '@/components/ui/pane-header';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
-import { ExternalLink } from '@/components/Icons';
+import { ExternalLink, Printer } from '@/components/Icons';
 import DeleteButton from '@/components/ui/DeleteButton';
+import { IconButton } from '@/design-system/primitives';
+import {
+  isSpecialBinBarcode,
+  printSpecialBinLabelFromRow,
+} from '@/lib/print/printSpecialBinLabel';
+import { toast } from '@/lib/toast';
 
 interface BinContentRow {
   id: number;
@@ -106,8 +109,44 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
       ariaLabel={`Bin ${identity}`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <PaneHeader
-          leftSlot={
+        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
+          <DeskRailChromeRow
+            onClose={onClose}
+            closeTitle="Close bin detail"
+            trailing={
+              row.barcode ? (
+                <div className="flex items-center gap-1">
+                  {isSpecialBinBarcode(row.barcode) ? (
+                    <HoverTooltip label="Reprint 2×1 special-bin label" asChild>
+                      <IconButton
+                        size="xs"
+                        tone="neutral"
+                        ariaLabel="Reprint bin label"
+                        icon={<Printer className="h-4 w-4" />}
+                        onClick={() => {
+                          if (printSpecialBinLabelFromRow(row)) {
+                            toast.success('Printing 2×1 bin label');
+                          }
+                        }}
+                      />
+                    </HoverTooltip>
+                  ) : null}
+                  <HoverTooltip label="Open full bin page" asChild>
+                    <IconButton
+                      size="xs"
+                      tone="neutral"
+                      ariaLabel="Open full bin page"
+                      icon={<ExternalLink className="h-4 w-4" />}
+                      onClick={() => {
+                        window.open(`/bin/${encodeURIComponent(row.barcode!)}`, '_blank', 'noopener');
+                      }}
+                    />
+                  </HoverTooltip>
+                </div>
+              ) : null
+            }
+          />
+          <div className="flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-1">
             <PaneHeaderLabel
               eyebrow="Bin"
               // Identifier → the mono cut, per the typeface SoT. It was
@@ -116,36 +155,13 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
               value={identity}
               valueTitle={identity ?? undefined}
             />
-          }
-          rightSlot={
-            <>
-              {row.barcode ? (
-                <HoverTooltip label="Open full bin page">
-                  <Link
-                    href={`/bin/${encodeURIComponent(row.barcode)}`}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-soft hover:bg-surface-sunken"
-                    aria-label="Open full bin page"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Link>
-                </HoverTooltip>
-              ) : null}
-              {/* Mandatory: non-modal, so there is no scrim to click off. */}
-              <PaneHeaderCloseButton
-                onClick={onClose}
-                ariaLabel="Close bin detail"
-                title="Close bin detail"
-              />
-            </>
-          }
-          belowSlot={
-            <p className="truncate border-b border-border-hairline px-3 pb-1.5 text-role-caption text-text-soft">
+            <p className="truncate text-role-caption text-text-soft">
               {row.room ?? '—'}
               {row.zone_letter ? ` [${row.zone_letter}]` : ''} · Row {row.row_label ?? '—'} · Col{' '}
               {row.col_label ?? '—'}
             </p>
-          }
-        />
+          </div>
+        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-4 p-4">

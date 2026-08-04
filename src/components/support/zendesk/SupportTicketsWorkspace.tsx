@@ -22,7 +22,7 @@
  * the `AnimatePresence` now belong to the shell.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SupportTicketFocus } from '@/components/support/service-workspace/SupportTicketFocus';
 import {
@@ -30,6 +30,9 @@ import {
   useSupportTicketDisplays,
 } from '@/components/support/service-workspace';
 import { SupportContextDetailPanel } from '@/components/support/context';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { useSupportContext } from '@/hooks/useSupportContext';
+import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { SupportTicketsBoard } from './SupportTicketsBoard';
 
 export function SupportTicketsWorkspace() {
@@ -51,16 +54,63 @@ export function SupportTicketsWorkspace() {
     [ticketId],
   );
 
-  // Connections · Conversations · Timeline. Built here, unconditionally, because
-  // the rail is mounted here — the hook is inert (and its query disabled) while
-  // no ticket is open.
-  const displays = useSupportTicketDisplays(anchor);
+  // The thread's composer bridge is owned HERE because two siblings need it:
+  // the thread's own terminal dock, and the rail's Assist display, which drafts
+  // into the same composer. One owner, one composer.
+  const [ticketBridge, setTicketBridge] = useState<ThreadComposerBridge | null>(null);
 
   // Open by default (the old private aside was unconditional), but dismissible —
   // a non-modal push column has no scrim, so its close button must lead
   // somewhere, and it survives a ticket→ticket step because it is a workspace
   // preference, not a property of the record.
   const [contextOpen, setContextOpen] = useState(true);
+
+  // Same cached query the thread and the rail already read — one fetch, three
+  // readers. Resolved HERE so the provider ticket id has one derivation: the
+  // staged photos, the composer and the drafting route must all agree on which
+  // ticket they are talking about.
+  const { data: contextBundle } = useSupportContext(anchor ?? {}, anchor != null);
+  const providerTicketId = contextBundle?.ticket?.providerTicketId ?? ticketId ?? 0;
+
+  // The vision loop's shared state. Staging is owned here for the same reason
+  // the bridge is: the paste lands on the THREAD and the draft is prepared in
+  // the RAIL, and they are siblings. Two owners would be two bags of photos.
+  const photoStaging = useTicketPhotoStaging(providerTicketId);
+  const [assistRunId, setAssistRunId] = useState(0);
+  const [displayFocus, setDisplayFocus] = useState<{ id: string; req: number }>({
+    id: '',
+    req: 0,
+  });
+
+  /**
+   * An image was pasted onto the ticket. Stage it, bring the rail forward on
+   * Assist, and ask for one draft covering the whole paste.
+   *
+   * Selecting the display is DATA (`focusDisplay` + a request id), not a
+   * dispatched event: the rail may still be closed at this instant, so an event
+   * would fire before anything was listening.
+   */
+  const handlePastedImages = useCallback((files: File[]) => {
+    if (!files.length) return;
+    photoStaging.addFiles(files);
+    setContextOpen(true);
+    setAssistRunId((n) => n + 1);
+    setDisplayFocus((prev) => ({ id: 'assist', req: prev.req + 1 }));
+  }, [photoStaging]);
+
+  const vision = useMemo(
+    () => ({
+      stagedPhotos: photoStaging.staged,
+      stagingUploading: photoStaging.uploading,
+      autoRunId: assistRunId,
+    }),
+    [photoStaging.staged, photoStaging.uploading, assistRunId],
+  );
+
+  // Connections · Conversations · Timeline · Assist. Built here, unconditionally,
+  // because the rail is mounted here — the hook is inert (and its query
+  // disabled) while no ticket is open.
+  const displays = useSupportTicketDisplays(anchor, ticketBridge, vision);
 
   return (
     <>
@@ -75,6 +125,11 @@ export function SupportTicketsWorkspace() {
               onClose={clearTicket}
               contextOpen={contextOpen}
               onToggleContext={() => setContextOpen((o) => !o)}
+              ticketBridge={ticketBridge}
+              onBridgeChange={setTicketBridge}
+              providerTicketId={providerTicketId}
+              photoStaging={photoStaging}
+              onPasteImages={handlePastedImages}
             />
           ) : null
         }
@@ -90,6 +145,8 @@ export function SupportTicketsWorkspace() {
           onClose={() => setContextOpen(false)}
           push
           displays={displays}
+          focusDisplay={displayFocus.id}
+          focusRequestId={displayFocus.req}
         />
       ) : null}
     </>

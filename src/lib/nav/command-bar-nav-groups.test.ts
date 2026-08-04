@@ -46,7 +46,7 @@ test('every spine section with pages emits a band whose label + icon come from t
   }
 });
 
-test('pin contains Home Search Media Chat; footer contains Studio Admin Settings', () => {
+test('pin contains Home Search Media Plans Chat; footer contains Studio Admin Settings', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
@@ -55,7 +55,7 @@ test('pin contains Home Search Media Chat; footer contains Studio Admin Settings
 
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['home', 'search', 'ops-photos', 'ai-chat'],
+    ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat'],
   );
   // Workflow Studio joined the footer band 2026-08-02 — it left SPINE_SECTIONS,
   // so the palette must find it here rather than dropping it entirely.
@@ -106,13 +106,25 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
 
   assert.ok(idsIn('inbound').includes('incoming'), 'Inbound missing Incoming');
   assert.ok(idsIn('catalog').includes('products'), 'Catalog missing the products page');
-  for (const id of ['inventory', 'sourcing', 'warehouse']) {
-    assert.ok(idsIn('inventory').includes(id), `Inventory missing ${id}`);
-  }
+  assert.ok(idsIn('inventory').includes('inventory'), 'Inventory missing inventory page');
+  assert.equal(
+    idsIn('inventory').includes('warehouse'),
+    false,
+    'Locations is Inventory L2, not a spine page',
+  );
+  assert.ok(idsIn('sourcing').includes('sourcing'), 'Sourcing missing its page');
   assert.ok(idsIn('fulfillment').includes('outbound'), 'Fulfillment missing Shipping');
   assert.ok(idsIn('support').includes('support'), 'Support missing its page');
   // Scan benches never appear under a domain band.
-  for (const band of ['inbound', 'catalog', 'inventory', 'fulfillment', 'sales', 'support']) {
+  for (const band of [
+    'inbound',
+    'catalog',
+    'inventory',
+    'sourcing',
+    'fulfillment',
+    'sales',
+    'support',
+  ]) {
     for (const bench of ['triage', 'receive', 'tech', 'packer', 'scan-out']) {
       assert.equal(idsIn(band).includes(bench), false, `${bench} leaked into ${band}`);
     }

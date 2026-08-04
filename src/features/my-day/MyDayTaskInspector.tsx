@@ -19,8 +19,10 @@
  * record change and holds no draft to flush.
  */
 
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, ExternalLink, X } from '@/components/Icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { ChevronRight, ExternalLink, Loader2, X } from '@/components/Icons';
 import { OrderIdChip, TicketChip, getLast8 } from '@/components/ui/CopyChip';
 import { DateTimeValue } from '@/design-system/components/DateTimeValue';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
@@ -35,6 +37,7 @@ import {
   type MyDayTask,
 } from '@/lib/my-day/my-day-tasks';
 import { assignmentHeaderContextText } from '@/design-system/components/work-order-assignment/work-order-assignment-shared';
+import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
 /** Stable id — see the docblock. Do NOT key this on the task. */
@@ -69,11 +72,44 @@ function MyDayTaskInspectorBody({
   task: MyDayTask;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const [stopping, setStopping] = useState(false);
   const status = workStatusLabel(task.status);
   const context =
     task.source.kind === 'work_order'
       ? assignmentHeaderContextText(task.source.row)
       : 'Needs attention';
+
+  const supportTicketId =
+    task.source.kind === 'interrupt' &&
+    task.source.item.kind === 'support_followup' &&
+    task.source.item.ticketId != null
+      ? task.source.item.ticketId
+      : null;
+
+  const stopWatching = useCallback(async () => {
+    if (supportTicketId == null) return;
+    setStopping(true);
+    try {
+      const res = await fetch(`/api/zendesk/tickets/${supportTicketId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ staffId: null }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || `Could not stop watching (${res.status})`);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['my-day'] });
+      toast.success(`Stopped watching ticket #${supportTicketId}`);
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not stop watching');
+    } finally {
+      setStopping(false);
+    }
+  }, [onClose, queryClient, supportTicketId]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
@@ -102,6 +138,9 @@ function MyDayTaskInspectorBody({
       <div className="flex flex-wrap gap-2">
         <TaskChip label={myDayLaneLabel(task.lane)} toneClass={myDayLaneChipClass(task.lane)} />
         {status ? <TaskChip label={status} toneClass={workStatusChipClass(task.status)} /> : null}
+        {supportTicketId != null ? (
+          <TaskChip label="Watching" toneClass="bg-surface-accent text-text-accent ring-border-accent" />
+        ) : null}
       </div>
 
       <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
@@ -125,11 +164,23 @@ function MyDayTaskInspectorBody({
         </Field>
       </Panel>
 
-      <Link href={task.href} className="inline-flex">
-        <Button variant="primary" icon={<ExternalLink />} iconRight={<ChevronRight />}>
-          {task.source.kind === 'interrupt' ? 'Investigate' : 'Open in workspace'}
-        </Button>
-      </Link>
+      <div className="flex flex-col gap-2">
+        <Link href={task.href} className="inline-flex">
+          <Button variant="primary" icon={<ExternalLink />} iconRight={<ChevronRight />}>
+            {task.source.kind === 'interrupt' ? 'Investigate' : 'Open in workspace'}
+          </Button>
+        </Link>
+        {supportTicketId != null ? (
+          <Button
+            variant="secondary"
+            disabled={stopping}
+            icon={stopping ? <Loader2 className="animate-spin" /> : undefined}
+            onClick={() => void stopWatching()}
+          >
+            {stopping ? 'Stopping…' : 'Stop watching'}
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

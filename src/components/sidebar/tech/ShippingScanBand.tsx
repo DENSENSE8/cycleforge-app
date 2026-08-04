@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import {
   type StationInputMode,
   useStationTestingController,
 } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 
@@ -27,6 +25,19 @@ interface ShippingScanBandProps {
  * Shipping-mode scan band — order / FNSKU / repair / serial input. Used by
  * {@link ShippingSidebarPanel} and the legacy {@link StationTesting} embed.
  * Flush 40px {@link ScanBandShell} — same geometry as Unbox / Testing (no py).
+ *
+ * **The scan column carries the BAR and nothing else** (2026-08-02). It used to
+ * render `ActiveOrderScanFeedback` under the bar as well, so a scanned order was
+ * drawn twice — here, and in the middle as `ShippingEntityContextHeader` + the
+ * Ship tab. Two renders of one entity are two things that can disagree, on the
+ * surface whose only job is telling an operator what is in their hands. The card
+ * moved to `ActiveOrderWorkspace` (the Station focus surface), which is Unbox's
+ * shape: `ReceivingSidebarPanel` carries no identity at all.
+ *
+ * This component still OWNS the controller — it is the only
+ * `useStationTestingController` instance in the app, and the middle receives its
+ * active order through `tech-active-order-changed` (`useTechOrderPanes`). Moving
+ * the controller out is a separate job; moving the DISPLAY out is this one.
  */
 export function ShippingScanBand({
   userId,
@@ -159,9 +170,6 @@ export function ShippingScanBand({
   if (scanOnly) {
     return (
       <div className="min-w-0 shrink-0">
-        <div className={SIDEBAR_GUTTER}>
-          <ActiveOrderScanFeedback activeOrder={activeOrder} />
-        </div>
         <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
       </div>
     );
@@ -170,9 +178,6 @@ export function ShippingScanBand({
   return (
     <div className="shrink-0 min-w-0">
       <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
-      <div className={SIDEBAR_GUTTER}>
-        <ActiveOrderScanFeedback activeOrder={activeOrder} />
-      </div>
     </div>
   );
 }

@@ -361,6 +361,12 @@ export function StationScanBar({
                   'ds-allow-control-size rounded-none',
                   STATION_SCAN_BAR_RIGHT_CELL,
                   STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                  // Secondary affordance — quiet at rest; reveal only on THIS
+                  // scan bar hover/focus, never the whole rail.
+                  'pointer-events-none opacity-0 transition-opacity duration-100',
+                  'group-hover:pointer-events-auto group-hover:opacity-100',
+                  'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+                  'focus-visible:pointer-events-auto focus-visible:opacity-100',
                 )}
                 title="Paste from clipboard"
                 ariaLabel="Paste from clipboard"

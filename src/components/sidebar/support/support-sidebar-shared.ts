@@ -22,6 +22,7 @@ import {
   PhoneOutgoing,
 } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
@@ -45,8 +46,8 @@ export type SupportMode =
  *   claim detail (`?open=`). Phone-support home for “is this still covered?”.
  * - issues    → Reported-Issues console (Workbench + Monitor KPI rollup):
  *   pick an in-app feedback row → fact stack (`?issueId=`).
- * - orders    → To Ship exception loop (Workbench + Station focus pane):
- *   lane filter → notes / OOS → order detail + SupportContextHub (`?openOrderId=`).
+ * - orders    → aliases Shipping · To ship (`/shipping/orders?context=support`);
+ *   ticket focus when `?openOrderId=`. Nav + proxy redirect; not a second board.
  *
  * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
  */
@@ -64,30 +65,38 @@ export function parseSupportMode(raw: string | null | undefined): SupportMode {
 }
 
 /**
- * Deep link into Support · Orders for a durable order row pk.
- * Prefer this over Dashboard when the agent is already in the ticket loop.
+ * Deep link into Support › Inquiries — aliases the shared To-ship desk with
+ * support context (ticket affordances on order focus).
  */
 export function supportOrdersHref(orderPk: number): string {
   const id = Number(orderPk);
-  if (!Number.isFinite(id) || id <= 0) return '/support?mode=orders';
-  return `/support?mode=orders&openOrderId=${id}`;
+  if (!Number.isFinite(id) || id <= 0) {
+    return shippingOrdersHref({ context: 'support' });
+  }
+  return shippingOrdersHref({ context: 'support', openOrderId: id });
 }
 
 /**
- * Deep link: open the order on Support · Orders and land on the New ticket
+ * Deep link: open the order on Support › Inquiries and land on the New ticket
  * create form (order-anchored). Used by "Report an issue" on the order body.
  */
 export function supportCreateTicketHref(orderPk: number): string {
   const id = Number(orderPk);
-  if (!Number.isFinite(id) || id <= 0) return '/support?mode=orders&createTicket=1';
-  return `/support?mode=orders&openOrderId=${id}&createTicket=1`;
+  if (!Number.isFinite(id) || id <= 0) {
+    return shippingOrdersHref({ context: 'support', createTicket: true });
+  }
+  return shippingOrdersHref({
+    context: 'support',
+    openOrderId: id,
+    createTicket: true,
+  });
 }
 
-/** Escape hatch: full Dashboard Shipping detail for the same order pk. */
+/** Escape hatch: full To-ship desk detail for the same order pk (no support context). */
 export function dashboardOrderHref(orderPk: number): string {
   const id = Number(orderPk);
-  if (!Number.isFinite(id) || id <= 0) return '/dashboard';
-  return `/dashboard?openOrderId=${id}`;
+  if (!Number.isFinite(id) || id <= 0) return shippingOrdersHref();
+  return shippingOrdersHref({ openOrderId: id });
 }
 
 /**

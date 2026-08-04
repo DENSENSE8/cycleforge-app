@@ -83,7 +83,7 @@ export function useToShipFilterActions() {
       const params = new URLSearchParams(searchParams.toString());
       mutator(params);
       const qs = params.toString();
-      router.replace(qs ? `${pathname || '/dashboard'}?${qs}` : pathname || '/dashboard', {
+      router.replace(qs ? `${pathname || '/shipping/orders'}?${qs}` : pathname || '/shipping/orders', {
         scroll: false,
       });
     },

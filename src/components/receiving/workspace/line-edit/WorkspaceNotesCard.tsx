@@ -8,11 +8,11 @@
  * controller bag; the panel owns placement (dock vs mid-canvas).
  *
  * GRAIN: this composer owns the **item note** (`receiving_line.notes`) — the
- * operator's durable note on this line. It does **not** print. The printed face
- * is a separate buffer (`receiving_line.label_note`) edited in the label editor
- * (`LabelEditPopover` / As Listed); see the two-buffer note in
- * `useUnboxLineController`. Until 2026-07-31 these were one column, so a note
- * could not be written without printing it.
+ * operator's durable note on this line (Zoho / receive payload). On Unbox
+ * overview the dock draft also live-drives the carton sticker center; save
+ * still patches `notes` only. Durable `label_note` is edited in the label
+ * editor (`LabelEditPopover` / As Listed) and stamped from the dock draft on
+ * carton print — see the two-buffer note in `useUnboxLineController`.
  *
  * It hydrates from the row and saves on blur / Send. With the overview Receive
  * CTA mounted, Enter saves then fires print+receive.
@@ -35,6 +35,11 @@ interface WorkspaceNotesCardProps {
   onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
+  /**
+   * Pass-through to OmnichannelComposerDock. UnboxDockHost nests this as a
+   * notes-mode zone and must pass `bare` so the host is the only raised shell.
+   */
+  chrome?: 'raised' | 'bare';
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;
   /** Enter → same primary as the trailing Receive CTA (print + receive). */
@@ -48,6 +53,7 @@ export function WorkspaceNotesCard({
   c,
   onActionFeedback,
   animateMount = true,
+  chrome = 'raised',
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
@@ -77,6 +83,7 @@ export function WorkspaceNotesCard({
         onSaveOverallNote={saveOverallNote}
         showSyncToPo={!c.isUnfound}
         animateMount={animateMount}
+        chrome={chrome}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}

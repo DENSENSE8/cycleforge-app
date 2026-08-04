@@ -16,6 +16,17 @@ test('resolveLiveReceivingMode is path-first for graduated routes', () => {
   assert.equal(resolveLiveReceivingMode('/pickup', sp), 'pickup');
 });
 
+test('resolveLiveReceivingMode: /incoming?lane=docked → history', () => {
+  assert.equal(
+    resolveLiveReceivingMode('/incoming', new URLSearchParams('lane=docked')),
+    'history',
+  );
+  assert.equal(
+    resolveLiveReceivingMode('/incoming', new URLSearchParams('lane=pipeline')),
+    'incoming',
+  );
+});
+
 test('resolveLiveReceivingMode falls back to ?mode= on legacy /receiving', () => {
   assert.equal(
     resolveLiveReceivingMode('/receiving', new URLSearchParams('mode=history')),

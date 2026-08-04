@@ -13,14 +13,12 @@
  * survives a refresh/deep-link — the gap the plan's D1 implementation note
  * flagged in the prior local-state-only `triageQuery`.
  *
- * A bare `<SearchBar size="compact">`: this band is bottom-anchored, a compact
- * station-style filter — NOT the global header search (the app's only search) —
- * see sidebar-search-bar.guard.test.ts.
+ * Thin host over {@link TechRailSearchBar} (same row-dense band as MasterNav
+ * and other station rails) — NOT the global header search (the app's only
+ * search) — see sidebar-search-bar.guard.test.ts.
  */
 
-import { useEffect, useState } from 'react';
-import { Search } from '@/components/Icons';
-import { SearchBar } from '@/components/ui/SearchBar';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 
 export function TriageCartonSearchBar({
   value,
@@ -31,31 +29,11 @@ export function TriageCartonSearchBar({
   /** Debounced commit — writes `?triq=`. */
   onChange: (next: string) => void;
 }) {
-  // Local echo so typing feels instant; the URL commit is debounced so a fast
-  // typist doesn't spam router.replace (mirrors useTriagePanel's matchQuery
-  // debounce for the same reason).
-  const [draft, setDraft] = useState(value);
-  useEffect(() => {
-    setDraft(value);
-  }, [value]);
-  useEffect(() => {
-    const id = setTimeout(() => {
-      if (draft.trim() !== value.trim()) onChange(draft);
-    }, 250);
-    return () => clearTimeout(id);
-  }, [draft, value, onChange]);
-
   return (
-    <div className="shrink-0 border-t border-border-hairline bg-surface-card inset-field">
-      <SearchBar
-        value={draft}
-        onChange={setDraft}
-        onClear={() => setDraft('')}
-        placeholder="Find a scanned carton…"
-        size="compact"
-        leadingIcon={<Search className="h-3.5 w-3.5" />}
-        hideUnderline
-      />
-    </div>
+    <TechRailSearchBar
+      value={value}
+      onChange={onChange}
+      placeholder="Find a scanned carton…"
+    />
   );
 }

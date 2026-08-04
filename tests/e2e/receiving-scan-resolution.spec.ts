@@ -447,7 +447,7 @@ test.describe('/api/scan/resolve — every printed payload form', () => {
       what: 'bare flat RACK code (position=00) opens the rack view, not the bin view',
       input: 'A0101100',
       kind: 'location',
-      route: '/warehouse?tab=racks&code=A0101100',
+      route: '/inventory/locations?tab=racks&code=A0101100',
     },
     {
       what: 'legacy borrowed-GLN label, parens form',
@@ -459,13 +459,13 @@ test.describe('/api/scan/resolve — every printed payload form', () => {
       what: 'legacy borrowed-GLN label, FNC1 form (industrial scanner)',
       input: `414${BORROWED_GLN}${GS}254A0101100`,
       kind: 'location',
-      route: '/warehouse?tab=racks&code=A0101100',
+      route: '/inventory/locations?tab=racks&code=A0101100',
     },
     {
       what: 'legacy location Digital Link URL',
       input: `/414/${BORROWED_GLN}/254/A0101100`,
       kind: 'location',
-      route: '/warehouse?tab=racks&code=A0101100',
+      route: '/inventory/locations?tab=racks&code=A0101100',
     },
     {
       what: 'carton handle',

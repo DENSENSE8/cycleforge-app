@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
   filterPageChildren,
   getSidebarPageNav,
   isSidebarPageReachable,
+  spineSectionIdForPage,
   type SidebarNavItem,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
@@ -28,6 +29,10 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
  * Router-wired master nav container. Reads the active page + child from the URL,
  * writes navigation through `useSidebarChildNav`. The page switcher + Recents live in
  * GlobalHeader — this spine is page-list identity only (no MRU chips).
+ *
+ * **Scan Stations is the one Vercel-style drill** (2026-08-03): multiple floor
+ * categories (Receiving · Testing · Packing · Scan out) replace the root map
+ * behind a Back control. Other domains stay on the flat map.
  */
 export function MasterNav({
   permissions,
@@ -43,6 +48,8 @@ export function MasterNav({
 }) {
   const { pageId, childId } = useActiveSidebarChild();
   const navigate = useSidebarChildNav();
+
+  const [stationsDrillOpen, setStationsDrillOpen] = useState(false);
 
   // Per-org nav override applied (Phase 4). Falls back to the static defaults
   // when no override is published — behavior is unchanged until an org opts in.
@@ -74,10 +81,21 @@ export function MasterNav({
 
   const otherPages = useMemo(() => pages, [pages]);
 
-  // There is no drill state here any more (2026-08-02). The spine body is one
-  // flat map, so there is nothing to auto-enter on a cross-section navigation
-  // and nothing for a Back button to leave — which also retires the whole
-  // "auto-drill must not steal focus" hazard the effect that lived here carried.
+  const activeSection = spineSectionIdForPage(activePage);
+
+  // Enter the Scan Stations drill when navigating onto a floor bench from
+  // another section (or from a top/footer pin). Manual Back leaves the root map
+  // while the URL can stay on a bench — do not force-reopen until the next
+  // cross-section transition onto the floor.
+  const prevSectionRef = useRef<typeof activeSection>(null);
+  useEffect(() => {
+    if (activeSection === 'floor' && activeSection !== prevSectionRef.current) {
+      setStationsDrillOpen(true);
+    } else if (activeSection !== 'floor') {
+      setStationsDrillOpen(false);
+    }
+    prevSectionRef.current = activeSection;
+  }, [activeSection]);
 
   const handleNavigate = useCallback(
     (nextPageId: string, nextChildId?: string) => {
@@ -105,6 +123,8 @@ export function MasterNav({
       otherPages={otherPages}
       onNavigate={handleNavigate}
       onRowHover={handleRowHover}
+      stationsDrillOpen={stationsDrillOpen}
+      onStationsDrillChange={setStationsDrillOpen}
       className={className}
     />
   );

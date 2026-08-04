@@ -1,16 +1,19 @@
 /**
- * Ops table / spreadsheet surface shell — the one framed recipe for Workbench
- * collection tables (`DataTable`, `LedgerGridSurface`, Pending / Packed
- * `OrdersGridView`).
+ * Ops table / spreadsheet surface shell — two recipes, one module.
  *
- * **One recipe:** rounded-xl card + raised lift + `overflow-hidden` so cell grid
- * lines and fills clip cleanly at the corners. Frozen header is card-white
- * ({@link TABLE_FROZEN_HEADER_CLASS}); airtable skin draws continuous column
- * rules through header + body — borders carry hierarchy, not fill contrast.
+ * **Framed card** ({@link TABLE_SURFACE_CLIP_CLASS}): rounded-xl + raised lift +
+ * `overflow-hidden` so cell grid lines clip at the corners. Use for admin
+ * `DataTable`, Orders hand-compose, and any surface that still needs a raised
+ * island inside gutters.
  *
- * Pending / Packed both use {@link TABLE_SURFACE_CLIP_CLASS}. Page-scroll sticky
- * + rounded clip fought each other — the card clips; the column header sticks
- * inside self-scroll surfaces when the grid owns Y.
+ * **Sheets plane** ({@link TABLE_SURFACE_SHEET_CLASS}): hairline perimeter only —
+ * no `rounded-xl`, no raised lift. Use when a Workbench spreadsheet abuts a
+ * context rail (or fills a flush workbench body) as one continuous plane.
+ * Golden: Receiving / Unbox browse via `LedgerGridSurface` `surface="sheet"`.
+ *
+ * Frozen header is card-white ({@link TABLE_FROZEN_HEADER_CLASS}); airtable skin
+ * draws continuous column rules through header + body — borders carry hierarchy,
+ * not fill contrast.
  *
  * Never hand-roll `rounded-* border … shadow-*` / header fills for this job.
  */
@@ -31,6 +34,26 @@ export const TABLE_SURFACE_CLASS = [
  * clean against the airtable cell grid.
  */
 export const TABLE_SURFACE_CLIP_CLASS = `${TABLE_SURFACE_CLASS} overflow-hidden`;
+
+/**
+ * Sheets-class flush spreadsheet plane — hairline rules only, no card island.
+ *
+ * - No `rounded-xl` / no `elevationClass('raised')` — the grid is coplanar with
+ *   the work frame, not a floating padded card.
+ * - `border-l-0` — the context rail (or collapse strip) already owns the
+ *   trailing hairline; a left border would double it.
+ * - `overflow-hidden` clips airtable paints at the sheet edge; sticky header
+ *   still docks inside the LedgerGrid scrollport.
+ *
+ * Pair with `WORKBENCH_SHEET_HOST` (`workbench-shell.tsx`) so the host does
+ * not re-introduce side/bottom gutters around this shell.
+ */
+export const TABLE_SURFACE_SHEET_CLASS = [
+  'relative',
+  'border border-l-0 border-border-soft',
+  'bg-surface-card',
+  'overflow-hidden',
+].join(' ');
 
 /**
  * Frozen column-header band — card-white (same plane as body rows). Hierarchy

@@ -17,6 +17,7 @@
 import { useState } from 'react';
 import { Check, Plus, Star, Trash2 } from '@/components/Icons';
 import { useSavedViews } from '@/hooks/useSavedViews';
+import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 import { cn } from '@/utils/_cn';
 
 const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
@@ -74,14 +75,14 @@ export function SavedViewsList({
                   className={cn(
                     'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-role-caption transition-colors',
                     isActive
-                      ? 'bg-blue-50 font-semibold text-text-default ring-1 ring-inset ring-blue-400'
+                      ? NAV_ROW.selectedClass
                       : 'text-text-muted hover:bg-surface-hover',
                   )}
                 >
                   <Check
                     className={cn(
                       'h-3.5 w-3.5 shrink-0',
-                      isActive ? 'text-blue-600' : 'text-transparent',
+                      isActive ? 'text-text-default' : 'text-transparent',
                     )}
                   />
                   <span className="truncate">{view.name}</span>

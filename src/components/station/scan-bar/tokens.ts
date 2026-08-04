@@ -47,6 +47,13 @@ export const STATION_SCAN_BAR_INPUT_CLASS =
 export const STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS =
   'border-0 border-b-2 border-b-border-soft';
 
+/**
+ * Session capture mode (Arrival batch-sort) — amber bottom rule overrides the
+ * staff theme so the operator cannot miss that the bar is armed for batching.
+ */
+export const STATION_SCAN_BAR_SESSION_CAPTURE_BOTTOM_RULE_CLASS =
+  'border-0 border-b-2 border-b-amber-500';
+
 /** Staff-themed idle bottom rule — single chrome story for every station scan bar. */
 export const STATION_SCAN_BAR_BOTTOM_RULE_CLASS: Record<StationTheme, string> = {
   green: 'border-0 border-b-2 border-b-emerald-500',

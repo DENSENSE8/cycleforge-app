@@ -24,7 +24,9 @@ import { test, expect } from '@playwright/test';
  * `selectMode` ON and `handleSelectRow` always took the bulk-toggle early
  * return — no `dispatchSelectLine`, no `incomingDetails`, no panel. Fixed
  * 2026-08-01 by splitting the planes (`rowClickOpens`): the row body opens the
- * record and the gutter checkbox owns bulk membership. They assert for real now.
+ * record and the gutter checkbox owns bulk membership. Joined Unbox click-select
+ * golden 2026-08-04: single click toggles bulk; double-click / Enter opens the
+ * inspector (no row checkbox faces).
  *
  * NOT covered here, and WHY (a pre-existing reachability gap, not a modality
  * gap — measured 2026-07-31):
@@ -93,9 +95,8 @@ test.describe('Queue inspectors — non-modal right rail', () => {
     const target = await poLinkedRowIndex(page, rows);
     if (target == null) test.skip(true, 'no PO-linked Incoming rows on this tenant');
 
-    // The ROW BODY is the record plane — this click must open the inspector.
-    // (It used to hit the bulk-toggle early return and do nothing at all.)
-    await rows.nth(target!).click();
+    // Unbox click-select golden: double-click opens the inspector.
+    await rows.nth(target!).dblclick();
 
     const inspector = page.locator('aside[role="region"]');
     await expect(inspector).toBeVisible({ timeout: 10_000 });
@@ -140,7 +141,7 @@ test.describe('Queue inspectors — non-modal right rail', () => {
       firstTarget == null ? null : await poLinkedRowIndex(page, rows, firstTarget + 1);
     if (secondTarget == null) test.skip(true, 'needs two PO-linked Incoming rows');
 
-    await rows.nth(firstTarget!).click();
+    await rows.nth(firstTarget!).dblclick();
     const inspector = page.locator('aside[role="region"]');
     await expect(inspector).toBeVisible({ timeout: 10_000 });
 
@@ -162,7 +163,7 @@ test.describe('Queue inspectors — non-modal right rail', () => {
       obs.observe(document.body, { childList: true, subtree: true });
     });
 
-    await rows.nth(secondTarget!).click();
+    await rows.nth(secondTarget!).dblclick();
     await expect(inspector).toBeVisible();
     // Still exactly one right-edge region — store single-slot exclusivity.
     await expect(page.locator('aside[role="region"]')).toHaveCount(1);
@@ -171,10 +172,11 @@ test.describe('Queue inspectors — non-modal right rail', () => {
     ).toBe(false);
   });
 
-  test('the Incoming gutter checkbox does bulk WITHOUT opening a record', async ({ page }) => {
-    // The other half of the two-plane split. Fixing "row click opens" is only
-    // correct if the multi-select plane survives it — the gutter must toggle
-    // membership and must NOT mount the inspector.
+  test('Incoming click-select: single click toggles bulk WITHOUT opening; dblclick opens', async ({
+    page,
+  }) => {
+    // Unbox Sheets click-select golden on Incoming Pipeline: no checkbox gutter
+    // faces — the row is role=checkbox; click toggles membership; dblclick opens.
     await page.goto('/incoming');
     await expect(page.getByTestId('incoming-grid-body')).toBeVisible({ timeout: 30_000 });
 
@@ -186,16 +188,24 @@ test.describe('Queue inspectors — non-modal right rail', () => {
       .catch(() => false);
     if (!hasRows) test.skip(true, 'no Incoming rows on this tenant');
 
-    const box = rows.first().getByRole('checkbox').first();
-    await expect(box).toHaveAttribute('aria-checked', 'false');
+    const row = rows.first();
+    await expect(row).toHaveAttribute('aria-checked', 'false');
 
-    await box.click();
-    await expect(box).toHaveAttribute('aria-checked', 'true');
-    // No record opened — the check is not a row click.
+    await row.click();
+    await expect(row).toHaveAttribute('aria-checked', 'true');
+    // No record opened — single click is bulk only.
     await expect(page.locator('aside[role="region"]')).toHaveCount(0);
 
-    await box.click();
-    await expect(box).toHaveAttribute('aria-checked', 'false');
+    await row.click();
+    await expect(row).toHaveAttribute('aria-checked', 'false');
+
+    const target = await poLinkedRowIndex(page, rows);
+    if (target == null) test.skip(true, 'no PO-linked Incoming rows on this tenant');
+
+    await rows.nth(target!).dblclick();
+    const inspector = page.locator('aside[role="region"]');
+    await expect(inspector).toBeVisible({ timeout: 10_000 });
+    await expectNonModalRegion(page, inspector, /^Incoming .*details$/);
   });
 
   test('Repair details opens as a named region without scrim or scroll lock', async ({ page }) => {

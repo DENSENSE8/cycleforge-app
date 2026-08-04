@@ -40,6 +40,70 @@ export function GridCellDash({ className }: { className?: string }) {
 }
 
 /**
+ * The row's lifecycle STATE — a leading dot inside the house chip.
+ *
+ * ## Why a chip, and why the dot is inside it (ruled 2026-08-02)
+ *
+ * The status column is where a state lives, and a state is a categorical label:
+ * the house vocabulary for that is the 3-layer chip (fill · ink · inset ring —
+ * `ui-design-system.md` → Eyebrow headers + chips), not bare text. Bare text in
+ * a ruled band reads as another data value, which is why several surfaces had
+ * quietly grown their own local chip for exactly this job (`PickupStatusChip`,
+ * My Day's `GridTagChip`, Ready's `CHIP`) — four spellings of one thing.
+ *
+ * The dot sits INSIDE the chip rather than beside it, because a dot floating in
+ * the cell next to a chip is two objects in one cell — the shape a column is
+ * supposed to prevent. Inside, the pair reads as one status token, shares the
+ * cell's alignment, and travels together under a drag-resize.
+ *
+ * **The dot is not redundant with the chip's tone.** It carries the finer
+ * vocabulary: receiving's `getStatusDotBg` paints emerald the moment a line is
+ * quantity-complete, whichever lifecycle stage the chip names. Two facts, one
+ * token, and the dot is the one that changes first.
+ *
+ * `toneClass` comes from the surface's lifecycle registry (`workflowStage().badge`,
+ * `pickupOrderStatusChipClass`, …) — **never a local map**. The ring derives from
+ * the resolved ink (`ring-current/20`) so the third layer needs no new field on
+ * any registry.
+ */
+export function GridStatusCellValue({
+  label,
+  toneClass,
+  dotClass,
+  tooltip,
+  className,
+}: {
+  label?: string | null;
+  toneClass: string;
+  dotClass?: string | null;
+  tooltip?: string | null;
+  className?: string;
+}) {
+  if (!label) return <GridCellDash />;
+  const chip = (
+    <span
+      className={cn(
+        'inline-flex min-w-0 items-center gap-1.5 rounded ring-1 ring-inset ring-current/20',
+        'inset-chip text-role-micro uppercase tracking-widest',
+        toneClass,
+        className,
+      )}
+    >
+      {dotClass ? (
+        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClass)} aria-hidden />
+      ) : null}
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
+  );
+  if (!tooltip) return chip;
+  return (
+    <HoverTooltip label={tooltip} focusable={false}>
+      {chip}
+    </HoverTooltip>
+  );
+}
+
+/**
  * Civil-day date value — compact label (e.g. `Jul 21`) with the full day in a
  * tooltip; missing → em dash. Callers resolve the label/tooltip through their
  * date SoT helper (`formatQueueRowDateCell`, `incomingDateCell`).

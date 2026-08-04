@@ -84,12 +84,14 @@ test('labels stay short enough for a grid cell', () => {
   }
 });
 
-test('every face carries a description for the tooltip / accessible name', () => {
+test('every face carries a short tip for the grid hover and a longer description', () => {
   for (const d of ['2026-07-01', '2026-07-29', '2026-08-03', '2026-09-30']) {
     const f = claimCountdownFace(d, TODAY);
+    assert.ok(f.tip.length > 8, 'tip must explain, not restate the label');
+    assert.ok(f.tip.length <= 48, `tip "${f.tip}" must stay one short line`);
     assert.ok(f.description.length > 20, 'description must explain, not restate the label');
     assert.match(f.description, /eBay claim window/);
-    // The deadline itself must be legible, not only the delta.
+    // The deadline itself must be legible in the long form, not only the delta.
     assert.ok(f.description.includes(d), 'description must name the actual date');
   }
 });

@@ -176,13 +176,11 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
         return (
           <div data-col="notes" className={cn(dataCell(col, rule), 'min-w-0')}>
             {row.notes ? (
-              // ds-allow-title: truncation-only on a non-interactive cell — native title surfaces the clipped notes
-              <span
-                className="min-w-0 truncate text-role-caption text-text-muted"
-                title={row.notes}
-              >
-                {row.notes}
-              </span>
+              <HoverTooltip label={row.notes} focusable={false}>
+                <span className="min-w-0 truncate text-role-caption text-text-muted">
+                  {row.notes}
+                </span>
+              </HoverTooltip>
             ) : (
               <GridCellDash />
             )}
@@ -192,7 +190,20 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
         return (
           <div
             data-col="actions"
-            className={cn(dataCell(col, rule), 'justify-center gap-1')}
+            className={cn(
+              dataCell(col, rule),
+              'min-w-0 justify-center gap-1',
+              // Quiet secondary chrome — reveal on row hover/focus (or while
+              // refresh is in flight / row selected). Same family as Orders
+              // queue row actions + empty-field paste.
+              refreshing || isSelected
+                ? 'opacity-100'
+                : cn(
+                    'opacity-0 pointer-events-none',
+                    'group-hover/tx-row:pointer-events-auto group-hover/tx-row:opacity-100',
+                    'group-focus-within/tx-row:pointer-events-auto group-focus-within/tx-row:opacity-100',
+                  ),
+            )}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
@@ -210,7 +221,7 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
                 onClick={() => onRefresh(row)}
                 disabled={refreshing || row.status !== 'open'}
                 aria-label="Refresh from Zoho"
-                className="rounded-md p-1.5 text-text-soft hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-md p-1.5 text-text-soft transition-opacity hover:bg-blue-50 hover:text-blue-700 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
               </button>
@@ -221,7 +232,7 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
                 type="button"
                 onClick={() => onOpenEdit(row)}
                 aria-label="Edit exception"
-                className="rounded-md p-1.5 text-text-soft hover:bg-surface-sunken hover:text-text-default"
+                className="rounded-md p-1.5 text-text-soft transition-opacity hover:bg-surface-sunken hover:text-text-default focus-visible:opacity-100"
               >
                 <Pencil className="h-4 w-4" />
               </button>
@@ -248,6 +259,7 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
         }
       }}
       className={cn(
+        'group/tx-row',
         trackingExceptionsGridRowShellClass(false, { scrollMinContent: true }),
         ledgerRowFillClass({
           selected: isSelected,

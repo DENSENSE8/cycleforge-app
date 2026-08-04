@@ -126,6 +126,10 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
       onClose={onClose}
       count={entries.length}
       bodyClassName="px-0 py-0"
+      // Anchored bottom-left and grows upward — cap it compact so a long recents
+      // list scrolls inside instead of stretching into a near-full-height slab
+      // against the top chrome. Same cap as the sibling SyncStatusPopover.
+      maxHeightClass="max-h-[420px]"
       headerActions={
         entries.length > 0 ? (
           <Button

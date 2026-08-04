@@ -95,7 +95,8 @@ interface VirtualGroupedSectionsProps<T> {
 }
 
 const HEADER_ESTIMATE = 36;
-const ROW_ESTIMATE = 44;
+/** Leaf/summary row estimate — Receiving golden is `h-10` (40); measureElement corrects per surface. */
+const ROW_ESTIMATE = 40;
 
 export function VirtualGroupedSections<T>({
   orderGroupsByDate,
@@ -230,16 +231,19 @@ export function VirtualGroupedSections<T>({
             // this wrapper is removed from the a11y tree and the real row /
             // rowgroup roles live on the rendered content itself.
             role="presentation"
-            // The active header pins via position:sticky (top:0); every other item
-            // is absolutely positioned by the virtualizer transform. When embedded
-            // in a shared ancestor scroll region, subtract `scrollMargin` to lay out
-            // within this list's own wrapper (start is measured from the region top).
-            className={`left-0 top-0 w-full ${pinned ? 'z-20' : header ? 'z-10' : 'z-0'}`}
+            // The active header pins via position:sticky; every other item is
+            // absolutely positioned with `top` (not `transform: translateY`).
+            // Transform creates a containing block that breaks sticky-left frozen
+            // cells (select pane) — they jitter/bounce while Y-scrolling. TanStack
+            // Virtual's position mode uses top/left for the same reason. When
+            // embedded in a shared ancestor scroll region, subtract `scrollMargin`
+            // to lay out within this list's own wrapper.
+            className={`left-0 w-full ${pinned ? 'z-20' : header ? 'z-10' : 'z-0'}`}
             data-sticky-day={pinned ? 'true' : undefined}
             style={
               pinned
                 ? { position: 'sticky', top: stickyHeaderTop }
-                : { position: 'absolute', transform: `translateY(${vRow.start - scrollMargin}px)` }
+                : { position: 'absolute', top: vRow.start - scrollMargin }
             }
           >
             {item.kind === 'header' ? (

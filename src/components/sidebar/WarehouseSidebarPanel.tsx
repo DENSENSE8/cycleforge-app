@@ -8,7 +8,7 @@
  *   - The SKU/bin finder (always visible)
  *   - Tab-specific body: a small contextual hint per tab. Every workspace
  *     (rooms board, location label printer, bins table, warehouse map) lives in
- *     the main area via WarehouseShell so it can use the full content width.
+ *     the main area via LocationsWorkspace so it can use the full content width.
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';

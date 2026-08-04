@@ -92,8 +92,8 @@ function navigateSearchHref(
 function readSyncedQuery(pathname: string | null): string | null {
   if (typeof window === 'undefined') return null;
   const sp = new URLSearchParams(window.location.search);
-  // `/search` owns its entry field in SearchSidebarPanel — header is unmounted
-  // there (GlobalHeaderActions), so no sync branch for that route.
+  // Header search stays mounted on `/search`; that page keeps its own rail
+  // field — no URL sync branch needed here (dashboard legacy mode only).
   if (pathname === '/dashboard' && sp.get('mode') === 'search') {
     return sp.get('q') ?? '';
   }

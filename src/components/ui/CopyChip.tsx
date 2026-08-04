@@ -135,6 +135,35 @@ export const CHIP_TONES = {
 
 export type ChipTone = keyof typeof CHIP_TONES;
 
+/**
+ * Marks the OUTER wrapper of an underlined chip face — the element that owns
+ * the chip's own horizontal breathing room (`px-1.5`). Every face in this
+ * module carries it: the real {@link CopyChip}, plus the four presentational
+ * siblings that must stay pixel-aligned with it ({@link EmptySkuChipFace},
+ * {@link SerialChipSkeleton}, `GroupCountChip`, {@link PlatformChip}).
+ *
+ * **Why an attribute and not a prop.** A chip standing in a rail or a fact row
+ * needs that padding; a chip inside a LedgerGrid cell must not have it, because
+ * the cell already owns the inset (`ORDERS_QUEUE_CELL_INSET` = `px-2`) and the
+ * two stack — every chip value sat 6px inside its column's content edge, so no
+ * chip lined up with the plain-text cells above or below it. That is a property
+ * of the CONTAINER, not of each call site: `outerPad="flush"` at ~12 chip call
+ * sites across 14 grid families is a prop everyone has to remember, which is
+ * the shape that drifts (`pattern-evolution.md`). One rule in
+ * `styles/globals.css` — `[data-cf-grid] [data-chip-face]` — makes the grid
+ * cell answer it once, for every family, including the next one.
+ *
+ * A chip rendered in a portaled popover is outside `[data-cf-grid]` and keeps
+ * its padding, which is correct: it is no longer in a ruled column.
+ *
+ * Module-private: every face lives in this file, and exporting it would invite a
+ * surface to stamp the marker on something that is not a chip face — which
+ * would silently zero that element's padding inside any grid.
+ *
+ * Guard: `copy-chip-grid-flush.guard.test.ts`.
+ */
+const CHIP_FACE_ATTR = { 'data-chip-face': '' } as const;
+
 // --- Base CopyChip ---
 
 export interface CopyChipProps {
@@ -159,6 +188,12 @@ export interface CopyChipProps {
   onCopy?: (value: string) => void;
   /**
    * Outer wrapper horizontal padding — `flush` aligns with sidebar grids where the chip icon lives in another column.
+   *
+   * **Inside a LedgerGrid you do not need this.** Every chip face carries
+   * `data-chip-face`, and `[data-cf-grid] [data-chip-face]` zeroes the inline
+   * padding in `styles/globals.css` — the grid CELL owns the whole horizontal
+   * inset story there, so a chip value lands at the same x as a plain-text
+   * value in the column above it. See {@link CHIP_FACE_ATTR}.
    */
   outerPad?: 'chip' | 'flush';
   /** When true, skip the global hover copy tooltip (e.g. chip has its own action menu). */
@@ -249,6 +284,7 @@ export function CopyChip({
   return (
     <div
       ref={chipRef}
+      {...CHIP_FACE_ATTR}
       className={`relative inline-flex items-center justify-start ${outerPx} ${wrapperWidth}`}
       onMouseEnter={hoverTooltipEnabled ? openTooltip : undefined}
       onMouseLeave={hoverTooltipEnabled ? closeTooltip : undefined}
@@ -370,18 +406,31 @@ export function OrderIdChipPlaceholder({ plain }: { plain?: boolean } = {}) {
 export const PoChip = ({
   value,
   display,
+  dense,
   disableCopy,
   width = 'w-fit max-w-full',
 }: {
   value: string;
+  /**
+   * Override the face. Defaults to the house last-8 preview — do not pass
+   * `getLast8(value)` by hand; that is the default.
+   */
   display?: string;
+  dense?: boolean;
   disableCopy?: boolean;
   width?: string;
 }) => (
   <CopyChip
     value={value}
-    display={resolveChipDisplay(display ?? value)}
+    // Last-8 is the display SoT for EVERY typed id chip (`copy-chip-format.ts`),
+    // and this chip is the one that never baked it: six of its seven call sites
+    // were passing `display={getLast8(value)}` by hand, so the derivation lived
+    // in six places and the seventh — a new one — silently rendered a full PO
+    // beside a last-8 tracking. Defaulting it here is the mapping moving to its
+    // one module; the explicit call sites keep passing an identical value.
+    display={resolveChipDisplay(display ?? getLast8(value))}
     tone="id"
+    dense={dense}
     width={width}
     disableCopy={disableCopy}
   />
@@ -514,6 +563,7 @@ export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
   const tone = CHIP_TONES.sku;
   return (
     <span
+      {...CHIP_FACE_ATTR}
       className="relative inline-flex w-fit max-w-full items-center justify-start px-1.5"
       aria-label="No SKU"
     >
@@ -735,6 +785,7 @@ export const SerialChipSkeleton = ({
   const tone = CHIP_TONES.serial;
   return (
     <div
+      {...CHIP_FACE_ATTR}
       className={`relative inline-flex items-center justify-start px-1.5 ${width}`}
       aria-hidden
     >
@@ -785,7 +836,7 @@ export const SkuSerialChip = ({
 function GroupCountChip({ count, tone, dense }: { count: number; tone: ChipTone; dense?: boolean }) {
   const toneDef = CHIP_TONES[tone];
   return (
-    <div className="relative flex w-fit max-w-full items-center justify-start px-1.5">
+    <div {...CHIP_FACE_ATTR} className="relative flex w-fit max-w-full items-center justify-start px-1.5">
       <span className="inline-flex w-auto max-w-full items-center gap-0.5">
         <span className={`inline-flex shrink-0 items-center justify-center ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${toneDef.iconClass}`}>
           {toneDef.icon}
@@ -974,6 +1025,7 @@ export const PlatformChip = ({
   return (
     <div
       ref={chipRef}
+      {...CHIP_FACE_ATTR}
       className="relative flex w-fit max-w-full items-center justify-start px-1.5"
       onMouseEnter={openTooltip}
       onMouseLeave={closeTooltip}

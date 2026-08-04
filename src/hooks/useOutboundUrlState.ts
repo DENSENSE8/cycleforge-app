@@ -20,8 +20,9 @@ export function useOutboundUrlState() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Path-first: being on `/shipping/ready` IS ready mode. `?mode=` survives only
+  // Path-first: being on `/shipping/fba` IS fba mode. `?mode=` survives only
   // as a read-fallback for a legacy link that has not been redirected yet.
+  // Ready is `?fbaMode=ready` on the FBA path (parseOutboundMode maps ready→fba).
   const mode = useMemo(
     () => outboundModeFromPath(pathname) ?? parseOutboundMode(searchParams.get('mode')),
     [pathname, searchParams],

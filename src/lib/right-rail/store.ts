@@ -93,20 +93,28 @@ export interface RightRailPanel {
    * resident edge pushes (`source-of-truth.md` → Right-rail modality), so an
    * occupant that floats has to say why.
    *
-   * `false` is a greppable per-occupant freeze, and today it means one of three
+   * `false` is a greppable per-occupant freeze, and today it means one of two
    * things, each recorded at its call site:
    *  - the occupant is ambient chat with its own flush-right dock (`assistant`);
    *  - the occupant opens on a STATION page whose right edge is already pushed
    *    by `UnboxPushColumn`, and two push mechanisms on one edge is exactly what
-   *    this store exists to prevent;
-   *  - the occupant configures the surface it would be squeezing, so a push
-   *    would make its own effect indistinguishable from the reflow
-   *    (`detail:grid-column-details`).
+   *    this store exists to prevent.
    *
    * The actual push/overlay decision is `resolveRightRailFrame`
    * (`src/lib/right-rail/frame.ts`) — this flag only says whether to ask.
    */
   push?: boolean;
+  /**
+   * Whether the host may park this occupant via the outset edge-collapse
+   * chevron (`HorizontalEdgeResizeHandle.onCollapse`). **Defaults to `true`.**
+   *
+   * Pass `false` for Unbox-parity occupants whose header already owns the
+   * in-band `→|` dismiss (e.g. Incoming details) — a second collapse twin on
+   * the leading edge is exactly what Unbox banned. Resize grip stays; only
+   * the hover-reveal chevron is omitted. Header `→|` / Escape remain the
+   * dismiss path.
+   */
+  edgeCollapse?: boolean;
   /** Accessible name for the aside. Required in spirit for non-modal occupants
    *  (`role="region"` needs a name); the host falls back to a generic label. */
   ariaLabel?: string;
@@ -158,6 +166,7 @@ export function registerRightRailPanel(input: {
   modal?: boolean;
   closeOnOutsideClick?: boolean;
   push?: boolean;
+  edgeCollapse?: boolean;
   ariaLabel?: string;
 }): () => void {
   seq += 1;
@@ -171,6 +180,7 @@ export function registerRightRailPanel(input: {
     modal: input.modal,
     closeOnOutsideClick: input.closeOnOutsideClick,
     push: input.push,
+    edgeCollapse: input.edgeCollapse,
     ariaLabel: input.ariaLabel,
     seq: mySeq,
   });
@@ -200,9 +210,20 @@ export function updateRightRailPanelNode(input: {
   modal?: boolean;
   closeOnOutsideClick?: boolean;
   push?: boolean;
+  edgeCollapse?: boolean;
   ariaLabel?: string;
 }): void {
-  const { id, node, onClose, elevated, modal, closeOnOutsideClick, push, ariaLabel } = input;
+  const {
+    id,
+    node,
+    onClose,
+    elevated,
+    modal,
+    closeOnOutsideClick,
+    push,
+    edgeCollapse,
+    ariaLabel,
+  } = input;
   const current = panels.get(id);
   if (
     !current ||
@@ -214,6 +235,7 @@ export function updateRightRailPanelNode(input: {
       // `push` participates in change detection: an occupant that flipped its
       // policy must re-emit, or the host would keep rendering the old geometry.
       current.push === push &&
+      current.edgeCollapse === edgeCollapse &&
       current.ariaLabel === ariaLabel)
   )
     return;
@@ -225,6 +247,7 @@ export function updateRightRailPanelNode(input: {
     modal,
     closeOnOutsideClick,
     push,
+    edgeCollapse,
     ariaLabel,
   });
   recomputeTop();

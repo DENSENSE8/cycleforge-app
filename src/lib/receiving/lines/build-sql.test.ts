@@ -17,8 +17,8 @@ import assert from 'node:assert/strict';
 
 import {
   UNBOX_OPENED_PREDICATE_SQL,
-  UNBOX_OPENED_PREDICATE_COLUMN_ONLY_SQL,
-} from '@/lib/receiving/unbox-scan-opened';
+  unboxOpenedPredicateSql,
+} from '@/lib/receiving/unbox-scan-opened-sql';
 import { parseReceivingLinesQuery } from './query';
 import {
   buildReceivingLinesListSql,
@@ -213,7 +213,7 @@ test('unbox_opened membership: flag ON reads the committed column only', () => {
     unboxRailColumnRead: true,
   });
   assert.ok(
-    built.list.sql.includes(UNBOX_OPENED_PREDICATE_COLUMN_ONLY_SQL),
+    built.list.sql.includes(unboxOpenedPredicateSql(true)),
     'flag-on reads the committed receiving_unbox.opened_at column only',
   );
   assert.ok(
@@ -378,4 +378,147 @@ test('serials column: rlt.serial_projection surfaced as `serials` in all list bu
   assert.ok(byReceiving.lines.sql.includes(COL), 'by-receiving builder must surface serials from rlt.serial_projection');
   // Byte-stable against the legacy fixture is already asserted by the equality
   // suites above; this just pins the projection read as intentional, not incidental.
+});
+
+// ── ?tracking_in= — the bulk paste filter, and the lane relaxation it earns ───
+
+const listFor = (qs: string, opts: Partial<LegacySqlOpts> = {}) =>
+  buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams(qs)),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+    ...opts,
+  });
+
+const NOT_ZOHO_RECEIVED =
+  `COALESCE(mirror.status, '') NOT IN ('billed','closed','cancelled','received','rejected')`;
+
+test('tracking_in filters on the INDEXED normalized column, with no last-8 OR arm', () => {
+  const built = listFor('view=incoming&tracking_in=1Z999AA10123456784,9400111899223344556677');
+
+  assert.ok(
+    built.list.sql.includes('stn.tracking_number_normalized = ANY($2::text[])'),
+    'must be an indexed equality against the unique btree',
+  );
+  // A `right(...) = last8` arm here would defeat the index — measured at ~357k
+  // cost for a single key on the sibling lookup. Scan-side prefix tolerance is
+  // the scan matcher's job, and it already has it, so the assertion is that the
+  // paste adds NO last-8 arms of its own rather than that none exist.
+  const last8s = (sql: string) =>
+    sql.split('right(stn.tracking_number_normalized, 8)').length - 1;
+  assert.equal(
+    last8s(built.list.sql),
+    last8s(listFor('view=incoming').list.sql),
+    'the paste filter must not add a last-8 fallback arm',
+  );
+  assert.deepEqual(built.list.params[1], ['1Z999AA10123456784', '9400111899223344556677']);
+  // The count query shares the same WHERE and therefore the same params.
+  assert.deepEqual(built.count.params[1], built.list.params[1]);
+});
+
+test('tracking_in canonicalizes, dedupes and caps — a bookmark can never over-ask', () => {
+  const built = listFor('view=incoming&tracking_in=1z999-aa1 01,1Z999AA101,,%20');
+  assert.deepEqual(built.list.params[1], ['1Z999AA101']);
+
+  const many = Array.from({ length: 137 }, (_, i) => `TRACK${String(i).padStart(6, '0')}`);
+  const capped = listFor(`view=incoming&tracking_in=${many.join(',')}`);
+  assert.equal((capped.list.params[1] as string[]).length, 100);
+});
+
+test('tracking_in RELAXES the Incoming lane — a vendor-received row must come back', () => {
+  // The whole point: paste 40, see 40. Without this the six the vendor already
+  // marked received vanish with no explanation, which is the invisibility the
+  // param exists to end.
+  const plain = listFor('view=incoming');
+  const pasted = listFor('view=incoming&tracking_in=1Z999AA10123456784');
+  assert.ok(plain.list.sql.includes(NOT_ZOHO_RECEIVED), 'the default lane keeps its predicate');
+  assert.ok(!pasted.list.sql.includes(NOT_ZOHO_RECEIVED), 'a named tracking outranks the lane predicate');
+
+  // Universal Incoming keeps the guard INSIDE each source arm, so the relaxation
+  // has to reach both without dropping the source-membership test with it.
+  const universal = listFor('view=incoming&tracking_in=1Z999AA10123456784', { universalIncoming: true });
+  assert.ok(!universal.list.sql.includes(NOT_ZOHO_RECEIVED));
+  assert.ok(
+    universal.list.sql.includes(`rz.zoho_purchaseorder_id IS NOT NULL`)
+      && universal.list.sql.includes(`rl.inbound_source_type = 'ebay'`),
+    'both source arms survive the relaxation',
+  );
+});
+
+test('tracking_in suppresses the delivery-state facet — a stale chip must not eat pasted rows', () => {
+  // `stn.has_exception = true` also appears in the delivery_state CASE that
+  // every Incoming row is labelled with, so presence proves nothing — the facet
+  // is the SECOND occurrence, in the WHERE.
+  const stalledArms = (sql: string) => sql.split('stn.has_exception = true').length - 1;
+
+  const plain = listFor('view=incoming');
+  const faceted = listFor('view=incoming&delivery_state=STALLED');
+  assert.equal(stalledArms(faceted.list.sql), stalledArms(plain.list.sql) + 1,
+    'the facet narrows the WHERE on its own');
+
+  const pasted = listFor('view=incoming&delivery_state=STALLED&tracking_in=1Z999AA10123456784');
+  assert.equal(stalledArms(pasted.list.sql), stalledArms(plain.list.sql),
+    'naming a tracking outranks a facet the operator armed earlier');
+});
+
+test('the relaxation is SCOPED — no other view or predicate loosens', () => {
+  const scanned = listFor('view=scanned&tracking_in=1Z999AA10123456784');
+  assert.ok(
+    scanned.list.sql.includes(NOT_ZOHO_RECEIVED),
+    'view=scanned keeps its own zoho exclusion; the bypass belongs to Incoming',
+  );
+  const pasted = listFor('view=incoming&tracking_in=1Z999AA10123456784');
+  assert.ok(
+    pasted.list.sql.includes(`rl.workflow_status = 'EXPECTED'`),
+    'lane membership other than the vendor-receipt guard is untouched',
+  );
+});
+
+// ── view=incoming_removed — "where did it go", derived, never stored ──────────
+
+test('incoming_removed derives every exit and stores none of them', () => {
+  const built = listFor('view=incoming_removed');
+  const sql = built.list.sql;
+
+  assert.ok(!sql.includes('removed_at IS NOT NULL'), 'there is no stored removal flag to read');
+  // One arm per reason in the registry.
+  assert.ok(sql.includes('ru.unboxed_at >'), 'unboxed');
+  assert.ok(sql.includes("rx.exception_code IN ('LOST_IN_TRANSIT'"), 'written off');
+  assert.ok(sql.includes('rt.door_received_at >'), 'dock scanned');
+  assert.ok(sql.includes(`NOT ${NOT_ZOHO_RECEIVED}`), 'vendor received');
+  assert.ok(sql.includes('stn.delivered_at <'), 'aged out of the hunt window');
+
+  // The lane reads the vendor's POLL time because no transition time exists.
+  assert.ok(sql.includes('mirror.last_synced_at'), 'ordered by what we actually know');
+  assert.ok(sql.includes('AS removed_at'), 'the anchor is surfaced for the row face');
+  assert.ok(sql.includes('ORDER BY removed_at DESC NULLS LAST'), 'most recently departed first');
+
+  // Precedence lives in the registry, never in SQL — a CASE here would be the
+  // second ladder `resolveIncomingRemovalReason` exists to prevent.
+  assert.ok(!sql.includes('AS removed_reason'), 'the reason is resolved on the row, not in SQL');
+  assert.ok(sql.includes('AS removed_written_off') && sql.includes('AS removed_aged_out'),
+    'only the two signals the row shape lacks are computed server-side');
+});
+
+test('incoming_removed joins the mirror in BOTH the list and its COUNT', () => {
+  // Every alias the lane predicate names must exist in the count query too, or
+  // the pager reports a total the list can never produce.
+  const built = listFor('view=incoming_removed');
+  for (const sql of [built.list.sql, built.count.sql]) {
+    assert.ok(sql.includes('LEFT JOIN zoho_po_mirror mirror'), 'mirror is joined');
+    assert.ok(sql.includes('LEFT JOIN receiving_triage rt'), 'rt is joined');
+    assert.ok(sql.includes('LEFT JOIN receiving_unbox ru'), 'ru is joined');
+    assert.ok(sql.includes('LEFT JOIN shipping_tracking_numbers stn'), 'stn is joined');
+  }
+  // The dock-scan arm is an EXISTS precisely because scan_first is list-only.
+  assert.ok(!built.count.sql.includes('scan_first'), 'the count query must not need a list-only LATERAL');
+  assert.ok(built.count.sql.includes('receiving_scans rs_removed'), 'so the scan recency is an EXISTS');
+});
+
+test('tracking_in works on the removed lane — it is where a fruitless paste lands', () => {
+  const built = listFor('view=incoming_removed&tracking_in=1Z999AA10123456784');
+  assert.ok(built.list.sql.includes('stn.tracking_number_normalized = ANY($2::text[])'));
+  assert.deepEqual(built.list.params[1], ['1Z999AA10123456784']);
 });

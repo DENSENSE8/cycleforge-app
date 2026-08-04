@@ -25,9 +25,10 @@ import {
   metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
 import { useTableDensity } from '@/hooks/useTableDensity';
-import { DeliveryStateIcon } from '@/components/station/ReceivingDeliveryStateIcon';
+import {
+  IncomingTrackingStatusCluster,
+} from '@/components/station/ReceivingDeliveryStateIcon';
 import { IconWithTooltip } from '@/components/ui/IconWithTooltip';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
@@ -260,22 +261,24 @@ export function ReceivingLineOrderRow({
                   iconClassName={workflowIconTone}
                 />
               ) : null}
-              <DeliveryStateIcon state={row.delivery_state} />
-              {isIncoming && row.tracking_confidence === 'seller_reported' ? (
-                <HoverTooltip label="Seller reported tracking — carrier has not confirmed yet">
-                  <span className="text-role-eyebrow font-semibold text-amber-700">Seller</span>
-                </HoverTooltip>
-              ) : null}
-              {isIncoming && row.tracking_confidence === 'carrier_confirmed' && row.shipment_latest_event_city ? (
-                <HoverTooltip
-                  label={`Last carrier event${row.shipment_latest_event_at ? ` · ${row.shipment_latest_event_at}` : ''}${row.shipment_last_checked_at ? ` · synced ${row.shipment_last_checked_at}` : ''}`}
-                >
-                  <span className="hidden text-role-eyebrow font-semibold text-text-faint sm:inline">
-                    {row.shipment_latest_event_city}
-                    {row.shipment_latest_event_postal ? ` ${row.shipment_latest_event_postal}` : ''}
-                  </span>
-                </HoverTooltip>
-              ) : null}
+              <IncomingTrackingStatusCluster
+                deliveryState={row.delivery_state}
+                sellerReported={isIncoming && row.tracking_confidence === 'seller_reported'}
+                labelClassName="min-w-0 truncate text-role-eyebrow font-semibold text-amber-700"
+                showCarrierCity={
+                  isIncoming && row.tracking_confidence === 'carrier_confirmed'
+                }
+                carrierEvent={
+                  isIncoming && row.tracking_confidence === 'carrier_confirmed'
+                    ? {
+                        city: row.shipment_latest_event_city,
+                        postal: row.shipment_latest_event_postal,
+                        eventAt: row.shipment_latest_event_at,
+                        lastCheckedAt: row.shipment_last_checked_at,
+                      }
+                    : null
+                }
+              />
             </div>
           }
         />

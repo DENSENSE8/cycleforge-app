@@ -7,6 +7,7 @@ import { ReceivingChipValue } from './ReceivingChipValue';
 import {
   receivingCellWantsChip,
   receivingDataCellClass,
+  receivingDataCellHighlightStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -14,7 +15,8 @@ export function ReceivingConditionCell({ col, rule, ctx }: ReceivingGridCellProp
   const { condGrade, conditionLabel } = ctx;
   const chip = receivingCellWantsChip(col, ctx);
   return (
-    <div data-col="condition" className={receivingDataCellClass(col, rule, ctx)}>
+    <div data-col="condition" className={receivingDataCellClass(col, rule, ctx)}
+      style={receivingDataCellHighlightStyle(col, ctx)}>
       <ReceivingChipValue enabled={chip}>
         <span
           className={cn(

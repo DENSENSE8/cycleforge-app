@@ -21,9 +21,34 @@ import {
   ZOHO_RECEIVED_LIKE_STATUSES,
   isZohoReceivedLikeStatus,
 } from '@/lib/receiving/zoho-received-status';
+import {
+  CHECK_ZOHO_RECEIVED_MAX_INPUTS,
+  parseTrackingPaste,
+} from '@/lib/receiving/tracking-paste';
+import {
+  resolveWatchState,
+  type CheckZohoReceivedWatchState,
+} from '@/lib/receiving/watch-state';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 100;
+/**
+ * Warehouse-membership mapping — re-exported from its leaf SoT. It moved out
+ * for the same altitude reason as the paste parser: this module `await import`s
+ * `@/lib/tenancy/db`, and a client surface composing the pure function would
+ * have pulled `server-only` into the browser graph.
+ */
+export { resolveWatchState };
+export type { CheckZohoReceivedWatchState };
+
+/**
+ * Paste vocabulary — re-exported from the leaf SoT so this module's existing
+ * import path keeps working. The parser MOVED to `tracking-paste.ts` (2026-08-02)
+ * because the bulk-filter panel is a client component and this module reaches
+ * the Zoho client + `tenantQuery`; the same altitude split `build-gotchas.md`
+ * prescribes. There is still exactly one splitter.
+ */
+export { CHECK_ZOHO_RECEIVED_MAX_INPUTS, parseTrackingPaste };
+
 const CHECK_ZOHO_RECEIVED_MAX_ZOHO_LOOKUPS = 50;
 const CHECK_ZOHO_RECEIVED_CONCURRENCY = 3;
 
@@ -64,18 +89,6 @@ const UNDETERMINED_REASONS: ReadonlySet<CheckZohoReceivedReason> = new Set([
 export function isUndeterminedReason(reason: CheckZohoReceivedReason): boolean {
   return UNDETERMINED_REASONS.has(reason);
 }
-
-/**
- * Where a tracking sits on the surfaces operators already work from — the ONE
- * membership answer, derived here so the check rail and the Incoming tiles
- * cannot disagree about what "delivered · not unboxed" means.
- */
-export type CheckZohoReceivedWatchState =
-  | 'delivered_unscanned'
-  | 'delivered_not_unboxed'
-  | 'in_flight'
-  | 'done'
-  | 'unknown';
 
 /**
  * The reconciliation verdict — the cross-product of the ERP answer and the
@@ -146,93 +159,12 @@ interface CheckZohoReceivedResult {
   stats: CheckZohoReceivedStats;
 }
 
-type ParseTrackingPasteOk = {
-  ok: true;
-  /** First-seen original string per unique canonical key. */
-  trackings: string[];
-  input_count: number;
-  unique_count: number;
-};
-
-type ParseTrackingPasteErr = {
-  ok: false;
-  error: string;
-};
-
-type ParseTrackingPasteResult = ParseTrackingPasteOk | ParseTrackingPasteErr;
-
 /** Minimal Zoho PO shape needed for classification (avoids importing zoho.ts). */
 interface CheckZohoPoHit {
   purchaseorder_id: string;
   purchaseorder_number?: string | null;
   reference_number?: string | null;
   status?: string | null;
-}
-
-/**
- * Expand one paste token into tracking string(s).
- * Newline / comma / semicolon are hard separators. Within a token, whitespace
- * splits only when every piece looks like its own tracking (canon length ≥ 8);
- * otherwise spaces are treated as formatting inside one tracking
- * (e.g. `1Z999 AA1 01 2345 6789`).
- */
-function expandPasteToken(token: string): string[] {
-  const trimmed = String(token ?? '').trim();
-  if (!trimmed) return [];
-  const parts = trimmed.split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return [trimmed];
-  const canons = parts.map((p) => canonicalizeTrackingKey(p));
-  if (canons.every((c) => c.length >= 8)) return parts;
-  return [trimmed];
-}
-
-/**
- * Split a paste blob (or array) into unique tracking strings.
- * Separators: newline, comma, semicolon; whitespace when each piece is a full tracking.
- * Cap: {@link CHECK_ZOHO_RECEIVED_MAX_INPUTS} unique keys.
- */
-export function parseTrackingPaste(
-  input: string | string[],
-  maxInputs: number = CHECK_ZOHO_RECEIVED_MAX_INPUTS,
-): ParseTrackingPasteResult {
-  const rough: string[] =
-    typeof input === 'string'
-      ? input.split(/[\n\r,;]+/)
-      : input.flatMap((s) => String(s).split(/[\n\r,;]+/));
-
-  const parts = rough.flatMap(expandPasteToken);
-
-  const seen = new Set<string>();
-  const trackings: string[] = [];
-  let input_count = 0;
-
-  for (const raw of parts) {
-    const trimmed = String(raw ?? '').trim();
-    if (!trimmed) continue;
-    input_count += 1;
-    const canon = canonicalizeTrackingKey(trimmed);
-    if (!canon) continue;
-    if (seen.has(canon)) continue;
-    seen.add(canon);
-    trackings.push(trimmed);
-  }
-
-  if (trackings.length === 0) {
-    return { ok: false, error: 'Paste at least one tracking number' };
-  }
-  if (trackings.length > maxInputs) {
-    return {
-      ok: false,
-      error: `Too many tracking numbers (max ${maxInputs}; got ${trackings.length})`,
-    };
-  }
-
-  return {
-    ok: true,
-    trackings,
-    input_count,
-    unique_count: trackings.length,
-  };
 }
 
 function last8Digits(tracking: string): string | null {
@@ -468,26 +400,6 @@ const UNKNOWN_LOCAL: CheckZohoReceivedLocal = {
   unboxed: false,
   watch: 'unknown',
 };
-
-/**
- * Which watch surface owns this tracking today. Pure, so the mapping is testable
- * and there is exactly one of it.
- *
- * Order matters and follows the existing feeds' own precedence: `unboxed` wins
- * outright (both delivered lanes exclude it), then a delivered box that was
- * never dock-scanned is the hunt queue, then delivered-but-not-opened.
- */
-export function resolveWatchState(args: {
-  known: boolean;
-  delivered: boolean;
-  scanned: boolean;
-  unboxed: boolean;
-}): CheckZohoReceivedWatchState {
-  if (!args.known) return 'unknown';
-  if (args.unboxed) return 'done';
-  if (!args.delivered) return 'in_flight';
-  return args.scanned ? 'delivered_not_unboxed' : 'delivered_unscanned';
-}
 
 /**
  * The reconciliation verdict for one row — ERP answer × warehouse answer.

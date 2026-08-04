@@ -42,9 +42,9 @@ Phase 4 (industry actions) is **not** started and must not be until the human ap
    (§ [Gap A3](#a3--two-url-sort-vocabularies)).
 
 5. **Orders remains the deliberate header outlier.** Five families adapt `LedgerGridColumnHeader`;
-   Orders keeps `OrdersQueueColumnHeader` (resize/reorder recipe) and mounts `LedgerGrid` +
-   `useGridSurface` directly instead of `LedgerGridSurface`. This is the documented deferral —
-   confirmed still deferred, **not** half-ported (§ [Gap A2](#a2--orders-header--shell-deferral-confirmed)).
+   Orders keeps `OrdersQueueColumnHeader` (drag-reorder UI). **Shell closed 2026-08-03:** Orders
+   mounts `LedgerGridSurface` `surface="sheet"` with `forceHidden` + controlled `columnOrder`
+   (§ [Gap A2](#a2--orders-header-fork-shell-closed-2026-08-03)).
 
 ---
 
@@ -60,7 +60,7 @@ Phase 4 (industry actions) is **not** started and must not be until the human ap
 
 | Route / host | Composer | Descriptor | Caps `T/M/E/F/D` | Row entity | Grouping | Header | Selection | Mutations | Horizon A | Horizon B candidates |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `/dashboard` (Pending · Tested · Packed · Shipped) | [`OrdersGridView.tsx`](../../src/components/dashboard/orders-queue/OrdersGridView.tsx) | `orders-queue-descriptor.ts` | `T✓ M✓ E✓ F✓ D✗` | `ShippedOrder` | day-band + order fold | **`OrdersQueueColumnHeader` (fork — deferred)** | multi-check + bar | in-cell + bulk + inspector | `keep` | assign staff · ticket · status · bulk ship-by (already partly there) |
+| `/shipping/orders` (Pending · Tested · Packed · Shipped) | [`OrdersGridView.tsx`](../../src/components/dashboard/orders-queue/OrdersGridView.tsx) | `orders-queue-descriptor.ts` | `T✓ M✓ E✓ F✓ D✗` | `ShippedOrder` | day-band + order fold | **`OrdersQueueColumnHeader` (header fork)** | multi-check + bar | in-cell + bulk + inspector | `keep` | assign staff · ticket · status · bulk ship-by (already partly there) |
 | `/unbox`, `/receiving` browse, History, Testing browse | [`ReceivingGridView.tsx`](../../src/components/station/receiving-grid/ReceivingGridView.tsx) | `receiving-grid-descriptor.ts` | `T✗ M✓ E✗ F✓ D✓` | `ReceivingLineRow` | PO fold + day band | `ReceivingGridColumnHeader` (thin) | multi-check + bar | inspector / station | `keep` | link ticket (Unbox claim family already exists) · assign |
 | `/receiving?mode=incoming` (Incoming POs) | [`IncomingGridView.tsx`](../../src/components/station/incoming-grid/IncomingGridView.tsx) | `incoming-grid-descriptor.ts` | `T✗ M✓ E✗ F✓ D✗` | `ReceivingLineRow` | PO fold | `IncomingGridColumnHeader` (thin) | multi-check | inspector | `keep` | priority tier · assign |
 | `/products?view=catalog` | [`CatalogGridView.tsx`](../../src/components/products/catalog/catalog-grid/CatalogGridView.tsx) | `catalog-grid-descriptor.ts` | `T✗ M✓ E✗ F✓ D✗` | `CatalogListRow` | flat | `CatalogGridColumnHeader` (thin) | multi-check | record only | `keep` | **must stay display-safe** — no triage, no dispatch |
@@ -69,8 +69,8 @@ Phase 4 (industry actions) is **not** started and must not be until the human ap
 | `/support?mode=warranty` **(new 2026-08-01)** | [`WarrantyGridView.tsx`](../../src/components/warranty/grid/WarrantyGridView.tsx) | `warranty-grid-descriptor.ts` | `T✗ M✗ E✗ F✓ D✗` | `WarrantyClaimListRow` | flat | `WarrantyGridColumnHeader` (thin) | record plane (`?open=`) | ticket link (row-scoped) | `keep` | assign · status via `transition()` — **not** multi-select without a reason |
 | `/shipping/ready` **(new 2026-08-01)** | [`ReadyGridView.tsx`](../../src/components/outbound/ready/grid/ReadyGridView.tsx) | `ready-grid-descriptor.ts` | `T✗ M✗ E✗ F✓ D✗` | `AllocationHit` | flat | `ReadyGridColumnHeader` (thin) | none (history) | Stage-FBA link (row-scoped) | `keep` | — append-only `testing_results`; there is no record to correct here |
 
-**Shell split:** 7 mount `LedgerGridSurface`; **Orders** mounts `LedgerGrid` + `useGridSurface`
-directly (deferred header/resize recipe).
+**Shell:** every ops queue mounts `LedgerGridSurface`. Orders keeps the permanent
+`OrdersQueueColumnHeader` fork (drag-reorder UI only).
 
 ---
 
@@ -173,7 +173,7 @@ Scored against the golden adopters (Orders/Pending + Receiving browse).
 | 6 | Row fill via `ledgerRowFillClass` | ✅ 6/6 | Capability-gated triage wash confirmed Orders-only. |
 | 7 | Empty honesty (settled vs no-match) | ✅ | `emptyMessage` / `searchEmptyMessage` / `isSearching` on the shell. |
 | 8 | Virtualization (`VirtualGroupedSections`) | ✅ | Incl. `StationListTable` virtualized path. |
-| 9 | Header SoT (thin adapters) | ⚠️ **5/6** | Orders deferred by design. See [A2](#a2--orders-header--shell-deferral-confirmed). |
+| 9 | Header SoT (thin adapters) | ✅ **Orders permanent header fork** | Factory for all `*GridColumnHeader`; `OrdersQueueColumnHeader` is the sole allowlisted fork (drag-reorder). Shell mounts `LedgerGridSurface`. Do not half-port the header. |
 | 10 | Shared value atoms (`grid-cells`, CopyChip) | ✅ | |
 | 11 | Guards green | ✅ **closed 2026-07-31** | Was a blind spot (6 hand-listed consts, blind to descriptor-less mounts). The guard now discovers mounts off disk. See [A1](#a1--two-ledgergrid-consumers-with-no-descriptor--closed-2026-07-31). |
 | 12 | Playwright grid suite | ✅ present | `to-ship-pending-grid`, `pending-grid-tanstack-tested`, `grid-fields-menu`, `ledger-grid-column-display`, `incoming-click-to-open`. **Not re-run in this read-only phase.** |
@@ -218,11 +218,16 @@ template. Authoring a `LedgerGridColumnModel[]` that nothing renders from would 
 stale second declaration `makeGridSurfaceDescriptor`'s own docblock warns about. Descriptors land
 with their Phase 3 migration waves.
 
-### A2 — Orders header + shell deferral (confirmed)
+### A2 — Orders header fork (shell closed 2026-08-03)
 
-Orders keeps `OrdersQueueColumnHeader` (resize/reorder recipe) and mounts `LedgerGrid` +
-`useGridSurface` rather than `LedgerGridSurface`. Documented deferral; **confirmed not half-ported**
-— do not attempt it inside a Phase 3 migration wave.
+**Shell closed:** `OrdersGridView` mounts `LedgerGridSurface` `surface="sheet"` with
+`forceHidden` + controlled `columnOrder` — same plumbing pin as Receiving / Ready.
+Gap A2 shell deferral is done.
+
+**Header fork remains permanent:** `OrdersQueueColumnHeader` (drag-reorder + resize)
+stays allowlisted — do not half-port onto `makeLedgerGridColumnHeader`. Viewport
+force-hide and column-order state live on the surface; the header only owns the
+DnD UI.
 
 ### A3 — Two URL sort vocabularies — **DOCUMENTED 2026-08-01**
 
@@ -324,14 +329,24 @@ feature-free" message. A guard that cannot fail proves nothing.
 5. ~~`TrackingExceptionsTable`~~ — **DONE 2026-08-01**
 6. ~~`/admin/inventory/**` → `DataTable`~~ — **DONE 2026-08-01**
 7. ~~`/settings` + `/reports` → `DataTable`~~ — **DONE 2026-08-01**
-8. `ReviewCatalogLinkTable` — **still ask-human-first** (job classification unresolved; deliberately
-   left out of Waves 3–7)
+8. ~~`ReviewCatalogLinkTable`~~ — **DONE** (LedgerGridSurface via `ReviewCatalogLinkGridView`)
 9. ~~Per-family header/sort boilerplate~~ — **DONE 2026-08-01** (Wave 8: `makeLedgerGridColumnHeader`
    + `GridSortDir`; see [Compound opportunities](#compound-opportunities))
 
-**Phase 3 is complete except item 8.** Every ops queue on the pin now mounts `LedgerGridSurface`
-behind a thin host, and every admin/settings/reports list mounts `DataTable`. The only hand-rolled
+**Phase 3 is complete.** Every ops queue on the pin now mounts `LedgerGridSurface`
+behind a thin host (Orders remains the permanent direct-`LedgerGrid` fork for reorder /
+force-hide), and every admin/settings/reports list mounts `DataTable`. The only hand-rolled
 `<table>` elements left in the product are `keep-sibling-job` by §E or the throughput heatmap (§D).
+
+**Next wave (2026-08-03) — Sheets/Notion parity on the pin (not re-migration):**
+[`ledgergrid-sheets-parity-UPGRADE-PROMPT.md`](./ledgergrid-sheets-parity-UPGRADE-PROMPT.md).
+Unlocks resize on `id`/`location` (Ask-first), 8-digit default tracking widths, optional reorder
+lift for non-Orders families. Do not start that work from this inventory’s Phase 4 gate — use that
+prompt.
+
+**Horizon A engine pin (2026-08-03):** `ledgerGridCell` + `LedgerGridLeafRow` live in
+`@/design-system/components/grid`; Catalog / Ready / Bins / Incoming use cell registries;
+Orders header fork is permanently guarded; column-details gutter uses `z-header`.
 
 **Phase 3.5 (display chrome — one affordance, all families):**
 

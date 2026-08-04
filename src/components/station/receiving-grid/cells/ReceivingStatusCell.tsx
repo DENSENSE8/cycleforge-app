@@ -1,70 +1,59 @@
 'use client';
 
-import { GridCellDash } from '@/components/ui/grid-cells';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { cn } from '@/utils/_cn';
-import { ReceivingChipValue } from './ReceivingChipValue';
+import { GridStatusCellValue } from '@/components/ui/grid-cells';
+import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import {
-  receivingCellWantsChip,
   receivingDataCellClass,
+  receivingDataCellHighlightStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
 /**
- * The row's lifecycle answer in ONE track: **dot · stage name · day · time**.
+ * The row's lifecycle **state**: dot · stage name. Nothing else.
  *
- * It replaces reading the same fact across two columns. `date` and `stage` each
- * carried half of it — `Jul 31` in one, `4:19 PM` in another, under a header
- * whose label (`UNBOXED` / `SCANNED` / `TESTED`) was the only place the *stage*
- * appeared at all. So the stage name lived in the chrome rather than the row,
- * which meant a row could not be read on its own: an operator scanning down the
- * grid had to keep the column header in their head to know what the time was
- * the time OF, and folding two tracks into one recovers ~5rem of width that the
- * product title can use.
+ * ## Why the stamp is NOT in here (ruled 2026-08-02, same day it was folded in)
  *
- * The dot is the same `statusDot` the row's meta track paints (qty-complete wins
- * over status — `getStatusDotBg`), so the two cannot disagree. The stage LABEL
- * resolves from the workflow-stage registry, never a local map.
+ * For one day this track read `dot · stage · day · time`, on the argument that
+ * a row should be readable without keeping the header in your head. The first
+ * half of that argument was right and is kept — the stage NAME belongs in the
+ * row, not in a runtime header label. The second half was not: a state and a
+ * timestamp are two different facts, and a column is how a spreadsheet says
+ * "these are the same kind of thing down this axis".
  *
- * `date` and `stage` survive as `tier: 'optional'` columns for anyone who wants
- * the split back; they are not deleted, because a staffer who curated them on is
- * entitled to keep them.
+ * Merging them cost the properties a column exists to provide: the stamps stop
+ * aligning as a column of times an eye can run down, the track has to be sized
+ * for the longest state word *plus* the longest stamp, and the pair sorts and
+ * resizes as one thing when the operator wants them apart. `Done` beside
+ * `Jul 31 4:19 PM` in one cell is a sentence; two cells are a table.
+ *
+ * So: **state here, stamp in `date`** ({@link ReceivingDateCell}) — which is
+ * `core` again and carries the full day + time, not just the day.
+ *
+ * ## Dot + chip (2026-08-02)
+ *
+ * Rendered through the house {@link GridStatusCellValue}: the 3-layer chip with
+ * the dot leading it, inside. Bare semibold text in a ruled band read as another
+ * data value rather than as a state, and four surfaces had each grown a local
+ * chip for the same job. Both halves resolve from the workflow-stage registry —
+ * `workflowStageBadge` for the fill/ink, `statusDot` for the dot (which is
+ * qty-complete-aware, so it can lead the chip's stage) — never a local map.
+ *
+ * This is also why the column-display `chip` mode no longer wraps this cell: the
+ * value IS a chip, and a chip inside a chip is two rings.
  */
 export function ReceivingStatusCell({ col, rule, ctx }: ReceivingGridCellProps) {
-  const { statusDot, stageLabel, stageDisplay, stageTip, dateCell } = ctx;
-  const chip = receivingCellWantsChip(col, ctx);
-  const day = dateCell?.label;
-  const time = stageDisplay && stageDisplay !== '--:--' ? stageDisplay : null;
-  // A stage with no stamp is still a fact worth showing; a row with neither a
-  // stage nor a stamp has nothing to say and takes the honest em dash.
-  const hasAnything = Boolean(stageLabel || day || time);
-
+  const { statusDot, stageLabel, stageTip, dateCell, row } = ctx;
   return (
-    <div data-col="status" className={receivingDataCellClass(col, rule, ctx)}>
-      {hasAnything ? (
-        <HoverTooltip label={stageTip || dateCell?.tooltip || stageLabel} focusable={false}>
-          <ReceivingChipValue enabled={chip}>
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)}
-                aria-hidden
-              />
-              {stageLabel ? (
-                <span className="shrink-0 text-role-caption font-semibold text-text-default">
-                  {stageLabel}
-                </span>
-              ) : null}
-              {day || time ? (
-                <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
-                  {[day, time].filter(Boolean).join(' ')}
-                </span>
-              ) : null}
-            </span>
-          </ReceivingChipValue>
-        </HoverTooltip>
-      ) : (
-        <GridCellDash />
-      )}
+    <div data-col="status" className={receivingDataCellClass(col, rule, ctx)}
+      style={receivingDataCellHighlightStyle(col, ctx)}>
+      {/* A stage with no stamp is still a fact worth showing; a row with no
+          stage has nothing to say here and takes the honest em dash. */}
+      <GridStatusCellValue
+        label={stageLabel || null}
+        toneClass={workflowStageBadge(row.workflow_status)}
+        dotClass={statusDot}
+        tooltip={stageTip || dateCell?.tooltip || stageLabel}
+      />
     </div>
   );
 }

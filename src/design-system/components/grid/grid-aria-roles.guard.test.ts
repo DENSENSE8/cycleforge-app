@@ -113,9 +113,15 @@ describe('grid ARIA structure', () => {
         `${name} must declare \`ariaLabel: string\` (required, not optional) so ` +
           'every mounted table carries an accessible name.',
       );
+      // Surface forwards via the `ariaLabel` prop; OrdersGridView mounts Surface
+      // (not LedgerGrid) so it forwards `ariaLabel={ariaLabel}` instead.
+      const forward =
+        name === 'OrdersGridView.tsx'
+          ? /ariaLabel=\{ariaLabel\}/
+          : /aria-label=\{ariaLabel\}/;
       assert.match(
         source,
-        /aria-label=\{ariaLabel\}/,
+        forward,
         `${name} declares ariaLabel but must also forward it to LedgerGrid.`,
       );
     }

@@ -30,4 +30,9 @@ export interface DetailsStackProps {
   activeSection?: ShippedActiveSection;
   /** Render the Warranty / Customer quick-link rows (slide-over tab replacement). */
   showQuickLinks?: boolean;
+  /**
+   * One-shot auto-start for the primary tracking replace editor (queue
+   * "Replace tracking"). Forwarded to {@link ShippedDetailsPanelContent}.
+   */
+  replaceTrackingNonce?: number;
 }

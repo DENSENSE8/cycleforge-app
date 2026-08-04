@@ -128,6 +128,18 @@ export const SETTINGS: readonly SettingDef[] = [
     permission: 'admin.manage_features',
   },
   {
+    key: 'receiving.returnsTestBin',
+    page: 'receiving',
+    group: 'Putaway',
+    scope: 'org',
+    label: 'Returns testing bin',
+    description:
+      'Bin barcode that return cartons auto-stage into when scanned at receiving. Printable as a 2×1 special-bin label.',
+    control: 'text',
+    schema: z.string().trim().min(1).max(64).default('RETURNS-TEST'),
+    permission: 'admin.manage_features',
+  },
+  {
     key: 'receiving.autoPrintLabel',
     page: 'receiving',
     group: 'Labels',

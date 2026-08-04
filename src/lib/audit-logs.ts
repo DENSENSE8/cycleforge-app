@@ -175,6 +175,7 @@ export const AUDIT_ACTION = {
   KIOSK_PAIRED:   'kiosk.paired',     // a tablet exchanged its code for a device token
   KIOSK_REVOKED:  'kiosk.revoked',    // a device was revoked (token dies server-side)
   KIOSK_INTAKE:   'kiosk.intake',     // an intake was created from the kiosk device principal
+  KIOSK_PICKUP_COLLECT: 'kiosk.pickup_collect', // customer collected a ready repair via order pickup
   // PO / receiving
   PO_RECEIVE:                'po.receive',
   PO_RECEIVE_REVERSE:        'po.receive.reverse',

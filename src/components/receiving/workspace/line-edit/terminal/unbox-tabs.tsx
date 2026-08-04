@@ -3,12 +3,9 @@
 import type { ReactNode } from 'react';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
-import { POUnboxingSection } from '../POUnboxingSection';
 import { CartonMatchHub } from '../CartonMatchHub';
-import { UnboxProcedureDeck } from '../UnboxProcedureDeck';
-import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
+import { POUnboxingSection } from '../POUnboxingSection';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
-import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
 import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
@@ -50,41 +47,41 @@ export interface BuildUnboxTabsInput {
   hasListingsTab: boolean;
   /** Always true — Classify is the SoT editor (strip for unfound, overflow for matched). */
   hasClassifyTab: boolean;
-  /** Unfound: Classify on primary strip order 1. Matched: under ⋯. */
+  /** Unfound: Classify stays on the strip after Pairing. Matched: under ⋯. */
   classifyOnStrip: boolean;
   /** Package Pairing needs a carton record to pair against. */
   hasPairingTab: boolean;
   poIdForTracking: string;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
-  onItemDescFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
-  onItemDescSaved: (lineId: number, zohoNotes: string | null) => void;
-  /** Carton-open snapshot of `receiving.accordionExpand`. */
-  accordionBootstrap?: 'default' | 'all';
   /** Header classify pill → open this dimension in TriageClassifySection. */
   classifyExpandDimension?: 'urgency' | 'platform' | 'type' | null;
   /** Bump to re-open the same dimension from the header. */
   classifyExpandRequestId?: number;
+  /**
+   * Carton `# ----` handoff — which pairing tab the display opens on.
+   *
+   * A PROP, not the window event this used to be: the display opens via
+   * `router.replace`, so `CartonMatchHub` mounts a navigation after the click
+   * and any dispatch — even one deferred a frame — lands before it subscribes.
+   */
+  pairingFocusTab?: 'zoho_po' | null;
+  /** Bump to re-select the PO tab when pairing is already showing. */
+  pairingFocusRequestId?: number;
+  onItemDescFeedback?: (feedback: InlineActionFeedbackPayload | null) => void;
+  onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
+  /** Carton-open snapshot of `receiving.accordionExpand`. */
+  accordionBootstrap?: 'default' | 'all';
 }
 
 /**
- * The Unbox CENTRE — the horizontal procedure card rail. The carton and its
- * capture work, nothing else.
+ * The Unbox CENTRE — PO lines (condition + serial) → label preview.
  *
  * No tab strip above it: `overview` is the whole workbench body, and every other
  * display lives in the right-edge Displays push column ({@link buildUnboxSideTabs}).
  *
- * ## Cards in the centre, checklist on the right (2026-08-02)
- *
- * The centre answers *what do I do right now* — one expanded card per step,
- * carrying that step's own capture controls, with its neighbours visible as
- * compact faces either side. The right-edge `checklist` display answers *where
- * am I in the whole job*, live.
- *
- * Two VIEWS, one derivation: both read `useUnboxProcedureSteps`. The earlier
- * "exactly ONE procedure surface" rule was aimed at a real hazard and named the
- * wrong thing — the danger was two derivations, not two views — so the checklist
- * came back rather than staying deleted.
+ * The guided ProcedureDeck / step dock continues on the `unbox-work` lane
+ * (`../cycleforge-unbox`); main dogfood ships this PO-line centre instead.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -106,71 +103,24 @@ export function buildUnboxOverview(
     accordionBootstrap = 'default',
   } = input;
 
-  const receivingId = row.receiving_id ?? 0;
-
   return (
-    <UnboxProcedureDeck
-      // Remount on carton change: the focused-step pointer, and every body's
-      // transient view state, belong to ONE carton. A new box starts at its own
-      // first unsettled step, never wherever the last one was parked.
-      key={`unbox-cards-${receivingId}-${row.id}`}
-      row={row}
-      staffId={staffId}
-      // `contents` step body. `serialScan={false}` is the split: the accordion
-      // renders the line LIST and nothing else, while condition · serial · item
-      // photos are their own steps below. That inline three-in-one body is what
-      // made the flow un-steppable.
-      contentsSlot={
-        <POUnboxingSection
-          row={row}
-          staffId={staffId}
-          poItems
-          matching
-          openInUnbox={false}
-          editLines
-          serialScan={false}
-          c={c}
-          suppressItemsHeader
-          onItemDescFeedback={onItemDescFeedback}
-          onItemDescSaved={onItemDescSaved}
-          accordionBootstrap={accordionBootstrap}
-        />
-      }
-      classifySlot={<TriageClassifySection row={row} c={c} />}
-      condition={{
-        value: c.cond,
-        onChange: (next: string) => {
-          c.setCond(next);
-          void c.patch({ condition_grade: next });
-        },
-      }}
-      serialSlot={<UnboxSerialStepSurface row={row} c={c} />}
-      itemPhotoSlot={
-        receivingId > 0 && row.id > 0 ? (
-          <ReceivingPhotoButton
-            receivingId={receivingId}
-            staffId={Number(staffId) || 0}
-            poRef={row.zoho_purchaseorder_number ?? null}
-            // `unbox_item` + `receivingLineId` writes RECEIVING_LINE /
-            // `receiving_item`. `arrival_package` is not reachable from a bench
-            // mount, by construction — a defaulted safety classification is what
-            // let bench photos become arrival evidence once already.
-            photoStage="unbox_item"
-            receivingLineId={row.id}
-            poRouteRef={
-              row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null
-            }
-            galleryPlacement="above"
-          />
-        ) : null
-      }
-      // `label` step body — the ONE label surface. It used to render as a
-      // SIBLING beneath the column, which is how it came to slide under the
-      // composer dock: it sat outside the stack the dock reserves clearance
-      // for. As a step it also answers *when* the operator reads it — right
-      // before the dock prints it. `print` stays a COMMIT step on that dock.
-      labelSlot={<UnboxLabelPreview row={row} c={c} />}
-    />
+    <div className="space-y-4">
+      <POUnboxingSection
+        row={row}
+        staffId={staffId}
+        poItems
+        matching
+        openInUnbox={false}
+        editLines
+        serialScan
+        c={c}
+        suppressItemsHeader
+        onItemDescFeedback={onItemDescFeedback}
+        onItemDescSaved={onItemDescSaved}
+        accordionBootstrap={accordionBootstrap}
+      />
+      <UnboxLabelPreview row={row} c={c} />
+    </div>
   );
 }
 
@@ -206,24 +156,11 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     poNote,
     classifyExpandDimension = null,
     classifyExpandRequestId = 0,
+    pairingFocusTab = null,
+    pairingFocusRequestId = 0,
   } = input;
 
   return buildSectionTabs([
-    {
-      id: 'classify',
-      label: 'Classify',
-      icon: SlidersHorizontal,
-      visible: hasClassifyTab,
-      priority: classifyOnStrip ? 'primary' : 'overflow',
-      content: (
-        <TriageClassifySection
-          row={row}
-          c={c}
-          expandDimension={classifyExpandDimension}
-          expandRequestId={classifyExpandRequestId}
-        />
-      ),
-    },
     {
       id: 'pairing',
       label: 'Pairing',
@@ -235,19 +172,21 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       // step until 2026-08-02, while its only toggle sat on this edge — so a
       // click on the right changed something off-screen in the centre.
       //
-      // Non-embedded on purpose: in a display the COLUMN is the card, so the
-      // hub's own `WorkspaceCard` is the right chrome and `collapsed` /
-      // `showTopRule` (which existed to fold it under the PO line list) have
-      // nothing left to fold under. The tab's selected-ness IS the open state.
+      // Bare chrome on Unbox Displays: the strip cell already says "Pairing",
+      // so the hub drops the duplicate parent title + pencil and uses a
+      // secondary dropdown (Auto-match + Pairing). Selected-ness IS open.
       content: (
         <CartonMatchHub
           row={row}
           staffId={staffId}
           tabSet="unbox"
+          chrome="bare"
           showOpenInUnbox={false}
           // Already in unbox, and the wedge owns focus at a bench — a display
           // opening must not move the caret into a search box.
           autoFocusSearch={false}
+          focusTab={pairingFocusTab}
+          focusRequestId={pairingFocusRequestId}
           autoMatch={
             c.isUnfound
               ? {
@@ -262,6 +201,21 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
                 }
               : null
           }
+        />
+      ),
+    },
+    {
+      id: 'classify',
+      label: 'Classify',
+      icon: SlidersHorizontal,
+      visible: hasClassifyTab,
+      priority: classifyOnStrip ? 'primary' : 'overflow',
+      content: (
+        <TriageClassifySection
+          row={row}
+          c={c}
+          expandDimension={classifyExpandDimension}
+          expandRequestId={classifyExpandRequestId}
         />
       ),
     },
@@ -319,9 +273,8 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       label: 'Checklist',
       icon: ClipboardList,
       stripHidden: true,
-      // Ring-only entry — the pane scan-progress control is the sole Checklist
-      // control. Body still mounts when `?display=checklist` or the ring opens it.
-      // Second VIEW of the centre's work cards; both read `useUnboxProcedureSteps`.
+      // Ring-only optional status — not a twin of a centre ProcedureDeck on main.
+      // Derives from the same procedure vocabulary; centre work is PO lines + label.
       content: (
         <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
           <UnboxProcedureChecklist row={row} />
@@ -407,7 +360,7 @@ export function UnboxSectionTabs({
   onChange: (id: string) => void;
   /** Right cluster: vertical ⋮ peer · flat pencil (pencil rightmost). */
   rightSlot?: ReactNode;
-  /** Strip-row clearance for the pane-anchored progress ring. */
+  /** Optional strip-row class (legacy clearance for a pane-anchored ring — unused on Unbox). */
   headerClassName?: string;
   /** Tighter icon row — Unbox Displays under the pane ring. */
   compact?: boolean;

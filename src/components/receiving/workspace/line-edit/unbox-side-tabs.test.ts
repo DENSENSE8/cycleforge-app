@@ -55,10 +55,10 @@ test('a request gated off falls back to the first strip-visible tab, never an em
   // false under them. Painting an empty push column would read as a bug.
   //
   // Checklist is ring-only — fallback lands on the first strip tab that survives
-  // the gates (classify on the sparse unfound lane).
-  assert.equal(resolveUnboxSideTab('units', SPARSE), 'classify');
-  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'classify');
-  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'classify');
+  // the gates (Pairing leftmost on the unfound lane).
+  assert.equal(resolveUnboxSideTab('units', SPARSE), 'pairing');
+  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'pairing');
+  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'pairing');
 });
 
 test('checklist and support survive every gate — an open carton always has both', () => {
@@ -81,7 +81,7 @@ test('checklist and support survive every gate — an open carton always has bot
 
 test('checklist is ring-only — not on the strip order', () => {
   assert.equal(UNBOX_STRIP_TAB_ORDER.includes('checklist'), false);
-  assert.equal(UNBOX_STRIP_TAB_ORDER[0], 'classify');
+  assert.equal(UNBOX_STRIP_TAB_ORDER[0], 'pairing');
   // Body registry still includes checklist for ?display= deep links.
   assert.equal(UNBOX_SIDE_TAB_ORDER.includes('checklist'), true);
 });
@@ -100,10 +100,9 @@ test('pairing is a strip display, gated on having a carton to pair', () => {
     false,
     'no carton record → the hub can only teach, which is not worth a strip cell',
   );
-  // Sits beside Classify (both answer "what IS this carton"), ahead of
-  // Listings / Units — and after it, so a gated-off tab still falls back to
-  // Classify rather than opening a pairing picker nobody asked for.
-  assert.deepEqual(UNBOX_STRIP_TAB_ORDER.slice(0, 3), ['classify', 'pairing', 'listings']);
+  // Pairing leftmost whenever it is on the strip (Classify may sit beside it
+  // when unfound). Matched strip: Pairing → Listings → …
+  assert.deepEqual(UNBOX_STRIP_TAB_ORDER.slice(0, 3), ['pairing', 'classify', 'listings']);
 });
 
 test('overview is NOT a side tab — the carton owns the centre', () => {

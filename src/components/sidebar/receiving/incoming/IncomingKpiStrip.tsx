@@ -1,16 +1,11 @@
 'use client';
 
 /**
- * Incoming attention strip — the golden KPI band (sibling of `TestingKpiStrip`)
- * that sits between the workbench chrome tabs and the incoming list. Reads the
- * same 30s-polled `useIncomingSummary` aggregate the sidebar tiles use, so the
- * counts never drift from the facet chips.
- *
- * Tiles lead with what needs a human — delivered-but-unopened, awaiting
- * tracking — then the steady-state pipeline counts. The eBay tile appears only
- * when the org has the eBay purchasing account wired in (Universal Incoming).
+ * Inbound desk KPI band — Pipeline vs Docked (Triage / Unbox) attention tiles.
+ * Reads the same 30s-polled `useIncomingSummary` aggregate as the sidebar.
  */
 
+import { useSearchParams } from 'next/navigation';
 import {
   KpiTile,
   metricIntentTextClass,
@@ -18,6 +13,12 @@ import {
   type MetricIntent,
 } from '@/design-system/components/monitor';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { parseInboundLane } from '@/lib/receiving/inbound-lane';
+import {
+  dashboardReceivingTabFromSort,
+  type DashboardReceivingTab,
+} from './inbound-docked-tabs';
+import type { IncomingSummary } from './incoming-summary-types';
 import { useIncomingSummary } from './useIncomingSummary';
 import { cn } from '@/utils/_cn';
 
@@ -29,7 +30,6 @@ interface IncomingMetric {
   label: string;
   value: number;
   intent: MetricIntent;
-  /** Action hint — kept for metrics data; painted via tooltip, not a tile footer. */
   status?: string;
   tooltip?: string;
 }
@@ -56,7 +56,7 @@ function MetricKpiTile({ metric }: { metric: IncomingMetric }) {
 function StripSkeleton() {
   return (
     <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading incoming metrics…</span>
+      <span className="sr-only">Loading inbound metrics…</span>
       {Array.from({ length: 4 }).map((_, index) => (
         <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, TILE_CELL_CLASS, 'h-20')}>
           <div className="flex items-start justify-between gap-3">
@@ -70,18 +70,12 @@ function StripSkeleton() {
   );
 }
 
-export function IncomingKpiStrip() {
-  const summary = useIncomingSummary();
-
-  if (!summary) return <StripSkeleton />;
-
+function pipelineMetrics(summary: IncomingSummary): IncomingMetric[] {
   const metrics: IncomingMetric[] = [];
-
-  // Attention-first: what a human needs to act on now.
   if (summary.delivered_unopened > 0) {
     metrics.push({
       id: 'delivered_unopened',
-      label: 'Delivered · unopened',
+      label: 'Delivered · unscanned',
       value: summary.delivered_unopened,
       intent: 'warn',
       status: 'Scan in',
@@ -108,8 +102,6 @@ export function IncomingKpiStrip() {
       tooltip: 'Incoming POs with no tracking number registered.',
     });
   }
-
-  // Steady-state pipeline.
   metrics.push({
     id: 'issued',
     label: 'Incoming POs',
@@ -131,8 +123,6 @@ export function IncomingKpiStrip() {
     intent: 'neutral',
     tooltip: 'Accepted / label-created / in transit with the carrier.',
   });
-
-  // eBay purchasing source — only once the account is connected.
   if (summary.universal_incoming) {
     metrics.push({
       id: 'ebay_incoming',
@@ -143,9 +133,105 @@ export function IncomingKpiStrip() {
       tooltip: 'Incoming lines from the eBay purchasing account.',
     });
   }
+  return metrics;
+}
+
+function triageMetrics(summary: IncomingSummary): IncomingMetric[] {
+  const metrics: IncomingMetric[] = [];
+  if (summary.delivered_unopened > 0) {
+    metrics.push({
+      id: 'delivered_unopened',
+      label: 'To scan in',
+      value: summary.delivered_unopened,
+      intent: 'warn',
+      status: 'Scan in',
+      tooltip: 'Carrier marked delivered but no dock scan is logged yet.',
+    });
+  }
+  if (summary.delivered_unscanned_claims > 0) {
+    metrics.push({
+      id: 'delivered_unscanned_claims',
+      label: 'Claims clock',
+      value: summary.delivered_unscanned_claims,
+      intent: 'warn',
+      status: '>48h',
+      tooltip: 'Delivered more than 48 hours ago and still unscanned.',
+    });
+  }
+  if (summary.carrier_mismatch > 0) {
+    metrics.push({
+      id: 'carrier_mismatch',
+      label: 'Carrier mismatch',
+      value: summary.carrier_mismatch,
+      intent: 'warn',
+      status: 'Reconcile',
+      tooltip: 'Scanned carrier differs from the tracking number’s carrier.',
+    });
+  }
+  metrics.push({
+    id: 'arriving_today',
+    label: 'Arriving today',
+    value: summary.arriving_today,
+    intent: summary.arriving_today > 0 ? 'good' : 'neutral',
+    tooltip: 'Out for delivery per the carrier.',
+  });
+  return metrics;
+}
+
+function unboxMetrics(summary: IncomingSummary): IncomingMetric[] {
+  const metrics: IncomingMetric[] = [];
+  if (summary.delivered_not_unboxed > 0) {
+    metrics.push({
+      id: 'delivered_not_unboxed',
+      label: 'To unbox',
+      value: summary.delivered_not_unboxed,
+      intent: 'warn',
+      status: 'Unbox',
+      tooltip: 'Scanned in at the dock but not yet unboxed.',
+    });
+  }
+  metrics.push({
+    id: 'issued',
+    label: 'Incoming POs',
+    value: summary.issued,
+    intent: 'neutral',
+    tooltip: 'Distinct purchase orders Zoho reports issued but not yet received.',
+  });
+  metrics.push({
+    id: 'arriving_today',
+    label: 'Arriving today',
+    value: summary.arriving_today,
+    intent: summary.arriving_today > 0 ? 'good' : 'neutral',
+    tooltip: 'Out for delivery per the carrier.',
+  });
+  return metrics;
+}
+
+function metricsFor(
+  summary: IncomingSummary,
+  lane: 'pipeline' | 'docked',
+  dockedTab: DashboardReceivingTab,
+): IncomingMetric[] {
+  if (lane === 'pipeline') return pipelineMetrics(summary);
+  return dockedTab === 'triage' ? triageMetrics(summary) : unboxMetrics(summary);
+}
+
+export function IncomingKpiStrip() {
+  const searchParams = useSearchParams();
+  const lane = parseInboundLane(searchParams.get('lane'));
+  const dockedTab = dashboardReceivingTabFromSort(searchParams.get('sort'));
+  const summary = useIncomingSummary();
+
+  if (!summary) return <StripSkeleton />;
+
+  const metrics = metricsFor(summary, lane, dockedTab);
+  const aria =
+    lane === 'pipeline'
+      ? 'Pipeline attention'
+      : `${dockedTab === 'triage' ? 'Triage' : 'Unbox'} attention`;
 
   return (
-    <section aria-label="Incoming attention" className="shrink-0">
+    <section aria-label={aria} className="shrink-0">
       <div className={TILE_BAND_CLASS}>
         {metrics.map((metric) => (
           <div key={metric.id} className={TILE_CELL_CLASS}>

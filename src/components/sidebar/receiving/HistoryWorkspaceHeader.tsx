@@ -11,7 +11,7 @@
  * Row select lives in the table left gutter.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
 import {
@@ -20,9 +20,8 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { useDebounce } from '@/hooks';
 import {
   HISTORY_SORT_OPTIONS,
   HISTORY_DEFAULT_SORT,
@@ -80,15 +79,13 @@ export function HistoryWorkspaceHeader({
   );
 
   const urlQRaw = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
-  const [draft, setDraft] = useState(urlQRaw);
-  useEffect(() => {
-    setDraft(urlQRaw);
-  }, [urlQRaw]);
-  const debouncedDraft = useDebounce(draft, 250);
-  useEffect(() => {
-    if (debouncedDraft.trim() === urlQRaw.trim()) return;
-    replaceParams(setReceivingHistoryUrlParams(searchParams, { q: debouncedDraft }));
-  }, [debouncedDraft, replaceParams, searchParams, urlQRaw]);
+
+  const setHistorySearch = useCallback(
+    (q: string) => {
+      replaceParams(setReceivingHistoryUrlParams(searchParams, { q }));
+    },
+    [replaceParams, searchParams],
+  );
 
   const setScope = useCallback(
     (id: string) => {
@@ -155,15 +152,12 @@ export function HistoryWorkspaceHeader({
       onTabChange={setScope}
       solidTone="accent"
       search={
-        <ToolbarSearchToggle
-          value={draft}
-          onChange={setDraft}
-          onClear={() => {
-            setDraft('');
-            replaceParams(setReceivingHistoryUrlParams(searchParams, { q: '' }));
-          }}
+        <TechRailSearchBar
+          variant="chrome"
+          value={urlQRaw}
+          onChange={setHistorySearch}
           placeholder={placeholder}
-          tone="blue"
+          className="w-40 shrink-0 lg:w-56"
         />
       }
       right={

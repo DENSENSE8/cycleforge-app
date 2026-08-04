@@ -11,8 +11,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -124,18 +126,9 @@ export function unfoundGridTemplate(
   return gridTemplate(columns);
 }
 
-// Row left-pad — same token every house grid uses so the frozen gutter aligns.
-const UNFOUND_GRID_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
 /** Sticky offset for a frozen cell — row px + the widths of the locked columns before it. */
 export function unfoundGridFrozenLeft(key: UnfoundGridColumnKey): string {
-  const idx = UNFOUND_GRID_LOCKED_KEYS.indexOf(key);
-  const parts = [UNFOUND_GRID_ROW_PX];
-  for (const k of UNFOUND_GRID_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = UNFOUND_GRID_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(UNFOUND_GRID_COLUMNS, key);
 }
 
 
@@ -144,9 +137,9 @@ export function defaultDirForUnfoundGridSort(_key: UnfoundGridColumnKey): GridSo
   return 'asc';
 }
 
-// Shared spreadsheet chrome — the SAME helpers every house grid uses.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as UNFOUND_GRID_FROZEN_CELL,
-  ordersQueueGridCell as unfoundGridCell,
-  ordersQueueRowShellClass as unfoundGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as UNFOUND_GRID_FROZEN_CELL,
+  ledgerGridCell as unfoundGridCell,
+  ledgerGridRowShellClass as unfoundGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

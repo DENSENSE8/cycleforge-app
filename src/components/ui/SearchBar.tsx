@@ -23,6 +23,8 @@ export interface SearchBarProps {
   /** Parent draws one bottom rule; field omits its own underline. */
   hideUnderline?: boolean;
   hideClear?: boolean;
+  /** Hide the leading search glyph when a parent draws its own affordance. */
+  hideLeadingIcon?: boolean;
   /** Passed through to {@link SearchField}; pairs with {@link rightElement} for paste-after-remove rows. */
   customTrailingSlot?: React.ReactNode;
   /** Icons / actions rendered just left of paste inside the field (passed to SearchField). */
@@ -72,6 +74,7 @@ export function SearchBar({
   debounceMs,
   hideUnderline = false,
   hideClear = false,
+  hideLeadingIcon = false,
   customTrailingSlot,
   trailingPrefix,
   trailingSuffix,
@@ -112,6 +115,7 @@ export function SearchBar({
         debounceMs={debounceMs}
         hideUnderline={hideUnderline}
         hideClear={hideClear}
+        hideLeadingIcon={hideLeadingIcon}
         customTrailingSlot={customTrailingSlot}
         trailingPrefix={trailingPrefix}
         trailingSuffix={trailingSuffix}

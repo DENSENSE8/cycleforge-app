@@ -24,12 +24,22 @@
  * present and not UNFOUND — null and 'UNFOUND' were already equivalent to
  * both). The fixture carries the identical edit, so the parity guard stays
  * byte-exact.
+ *
+ * DELIBERATE BEHAVIOR CHANGE (2026-08-03) — line `image_url` prefers Zoho
+ * `items.image_document_id` → `/api/zoho/items/{id}/image` (then
+ * `items.image_url`) over bare `sc.image_url`, matching get-title-by-sku /
+ * sku-catalog search. Catalog thumbs are only used when no Zoho item row
+ * exists (wrong-SKU collision risk). Fragment: ./sql-receiving-image.
  */
 import {
   NOT_ZOHO_RECEIVED_PREDICATE,
   CARRIER_MISMATCH_PREDICATE,
   SHIPMENT_SCANNED_PREDICATE,
 } from '@/lib/receiving/delivered-unscanned';
+import {
+  DELIVERED_UNSCANNED_WINDOW_DAYS,
+  INCOMING_REMOVED_WINDOW_DAYS,
+} from '@/lib/receiving/incoming-removal-reason';
 import { notInboundMirrorTerminalPredicate } from '@/lib/inbound/mirror';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
 import { unboxOpenedPredicateSql } from '@/lib/receiving/unbox-scan-opened';
@@ -41,6 +51,7 @@ import {
   sqlReceivingCartonZendeskTicketColumn,
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
+import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
 import {
   QA_STATUSES,
   DISPOSITIONS,
@@ -138,6 +149,61 @@ const RECEIVING_PRIORITY_RANK_SQL = priorityRankSql({
 // (src/lib/receiving/triage-lane-policy.ts) — keep in sync if that list changes.
 const RECEIVING_LANE_RANK_SQL = laneRankSql('rt.priority_lane');
 
+/**
+ * The exits a row can take off the Incoming list, as SQL — one fragment per
+ * reason in the removal-reason registry, all inside the recency window.
+ *
+ * **Derived, never stored.** There is no `removed_at` column and no lane table:
+ * each arm is the *inverse* of a condition `view=incoming` uses to exclude the
+ * row, so the two can never disagree about who left. A stored flag would need a
+ * writer on every one of these paths and would be wrong the first time one was
+ * missed.
+ *
+ * Every alias here (`ru` · `rt` · `stn` · `mirror` · `rl`) is joined by BOTH the
+ * list query and its sibling COUNT — the LATERALs the list adds (`scan_first`,
+ * `ops_scan`, …) are not, so the dock-scan arm is an EXISTS rather than a join.
+ *
+ * ⚠ `mirror.last_synced_at` is when WE POLLED, not when the vendor flipped the
+ * status. It is used because it is the only timestamp that exists, and the face
+ * says so ("seen received at last sync"). Do not relabel it as a transition
+ * time; closing that gap needs `zoho_po_mirror.status_changed_at`.
+ */
+function incomingRemovedExitsSql(windowDays: number, huntWindowDays: number): string {
+  const within = `NOW() - interval '${windowDays} days'`;
+  return `(
+           -- 1 · unboxed / received here (physical, and it outranks the rest)
+           ru.unboxed_at > ${within}
+           OR (COALESCE(rl.quantity_received, 0) > 0 AND rl.updated_at > ${within})
+           -- 5 · written off — an OPEN loss exception stands against the carton
+           OR EXISTS (
+                SELECT 1 FROM receiving_exceptions rx
+                 WHERE rx.organization_id = rl.organization_id
+                   AND rx.receiving_line_id = rl.id
+                   AND rx.status = 'OPEN'
+                   AND rx.exception_code IN ('LOST_IN_TRANSIT','EMPTY_BOX','MISDELIVERED','STOLEN')
+                   AND rx.created_at > ${within}
+              )
+           -- 3 · dock-scanned (left for the unbox queue)
+           OR rt.door_received_at > ${within}
+           OR EXISTS (
+                SELECT 1 FROM receiving_scans rs_removed
+                 WHERE rs_removed.receiving_id = r.id
+                   AND rs_removed.organization_id = rl.organization_id
+                   AND rs_removed.scanned_at > ${within}
+              )
+           -- 2 · vendor marked it received (the exit with no transition stamp)
+           OR (NOT ${NOT_ZOHO_RECEIVED_PREDICATE} AND mirror.last_synced_at > ${within})
+           -- 4 · aged off the delivered-and-unscanned hunt queue: delivered, never
+           --     scanned, and now past that window — nobody removed it, time did.
+           OR (
+                COALESCE(stn.is_delivered, false) = true
+                AND NOT ${SHIPMENT_SCANNED_PREDICATE}
+                AND stn.delivered_at < NOW() - interval '${huntWindowDays} days'
+                AND stn.delivered_at > NOW() - interval '${huntWindowDays + windowDays} days'
+              )
+         )`;
+}
+
 /** `?id=<n>` — single row, full detail joins. Params: `[id, orgId]`. */
 export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
   return {
@@ -210,7 +276,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 stn.latest_status_category   AS shipment_status_category,
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
-                sc.image_url,
+                ${RECEIVING_LINE_IMAGE_URL_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -373,7 +439,7 @@ export function buildReceivingLinesByReceivingIdSql(
                   stn.latest_status_category   AS shipment_status_category,
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at             AS shipment_delivered_at,
-                  sc.image_url,
+                  ${RECEIVING_LINE_IMAGE_URL_SQL},
                   sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -458,8 +524,22 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     view, deliveryStateFilter, poFrom, poTo,
     incomingSort, historySort, wantsPrioritySort, testerId, returnScope, weekStart, weekEnd, limit, offset,
     inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
-    unboxQueueStage, unboxQueueLane,
+    unboxQueueStage, unboxQueueLane, trackingIn,
   } = input.query;
+  /**
+   * The operator named specific trackings, so this query is about THOSE ROWS —
+   * not about the lane's default population. Relaxes the Incoming lane's
+   * vendor-receipt predicate and its delivery-state facet (below); everything
+   * else about the view is untouched.
+   *
+   * Without the relaxation the naive shape is worse than useless: paste 40,
+   * filter, see 34, and the six the vendor already marked received vanish with
+   * no explanation — the exact invisibility `?tracking_in=` exists to end. The
+   * bypass is scoped to this param and never applied globally; the default lane
+   * keeps its predicate, and `IncomingLaneNote` suppresses its claim here
+   * because the claim is no longer true.
+   */
+  const trackingInActive = trackingIn.length > 0;
   const { orgId, viewerStaffId, universalIncoming, applyScannedZohoExclusion } = input;
   // view=unbox_opened membership predicate — column-only (read-after-write
   // consistent) when the flag is on, else the legacy OR-arm. Defaulting the
@@ -482,6 +562,17 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 
   conditions.push(`rl.organization_id = $${idx++}`);
   values.push(orgId);
+
+  // Bulk tracking paste — INDEXED EQUALITY against the unique btree on
+  // `tracking_number_normalized`. Deliberately no last-8 `OR` arm: what an
+  // operator pastes IS the canonical stored form, and the same `OR` measured on
+  // the sibling lookup planned as a nested-loop seq scan at ~357k cost for a
+  // SINGLE key. Scan-side prefix tolerance belongs in the scan matcher, which
+  // already has it.
+  if (trackingInActive) {
+    conditions.push(`stn.tracking_number_normalized = ANY($${idx++}::text[])`);
+    values.push(trackingIn);
+  }
 
   if (search) {
     const p = `%${search}%`;
@@ -797,13 +888,16 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     // own pill — this view is strictly Zoho-sourced expected work.
     if (!universalIncoming) {
       // Legacy Zoho-only Incoming (unchanged): on a Zoho PO, EXPECTED, untouched.
+      // The vendor-receipt guard is dropped entirely under `?tracking_in=` —
+      // emitted as an empty interpolation rather than a commented-out line, so
+      // the no-param SQL stays byte-identical to `legacy-route-sql.fixture.ts`.
       conditions.push(
         `rl.workflow_status = 'EXPECTED'
            AND COALESCE(rl.quantity_received, 0) = 0
            AND rz.zoho_purchaseorder_id IS NOT NULL
            -- Hide POs Zoho now reports received/closed/cancelled (mirror status),
            -- so a received order drops off Incoming after a Refresh-Zoho sync.
-           AND ${NOT_ZOHO_RECEIVED_PREDICATE}
+           ${trackingInActive ? '' : `AND ${NOT_ZOHO_RECEIVED_PREDICATE}`}
            -- Honor this view's contract: a row drops off "the instant the operator
            -- scans". A door scan writes receiving_scans against the carton's
            -- receiving row but never advances this Zoho-PO line's workflow_status /
@@ -818,15 +912,18 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       // yet received (this INCLUDES eBay→Zoho merged lines, which carry the zoho
       // PO id and are governed by the Zoho mirror), OR an eBay-only buyer line
       // (no zoho PO, governed by the eBay mirror). Same SHIPMENT_SCANNED drop-off.
+      // The vendor-receipt guard sits INSIDE each source arm, so the relaxation
+      // has to be applied per arm — dropping the whole OR would also drop the
+      // "which source is this line from" membership test it is bracketed with.
       conditions.push(
         `rl.workflow_status = 'EXPECTED'
            AND COALESCE(rl.quantity_received, 0) = 0
            AND (
-             (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
+             (rz.zoho_purchaseorder_id IS NOT NULL${trackingInActive ? '' : ` AND ${NOT_ZOHO_RECEIVED_PREDICATE}`})
              OR
              (rz.zoho_purchaseorder_id IS NULL
-              AND rl.inbound_source_type = 'ebay'
-              AND ${notInboundMirrorTerminalPredicate('ebay')})
+              AND rl.inbound_source_type = 'ebay'${trackingInActive ? '' : `
+              AND ${notInboundMirrorTerminalPredicate('ebay')}`})
            )
            AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
       );
@@ -845,7 +942,14 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     // Optional delivery_state facet filter. Each bucket is the exact same
     // predicate the CASE expression in the SELECT below uses so the chip
     // counts in IncomingSidebarPanel stay consistent with the rendered rows.
-    if (deliveryStateFilter === 'DELIVERED_UNOPENED') {
+    //
+    // Suppressed under `?tracking_in=`: an armed facet would silently drop
+    // pasted trackings whose delivery state happens not to match, which is the
+    // same "where did my row go" defect from a second direction. Naming a
+    // tracking outranks a facet the operator armed earlier.
+    if (trackingInActive) {
+      // no facet narrowing — the pasted keys ARE the filter
+    } else if (deliveryStateFilter === 'DELIVERED_UNOPENED') {
       // Carrier delivered the box AND no operator scan happened yet at the
       // receiving station. `receiving_scans` is written by /lookup-po the
       // moment someone scans the tracking#, so its absence is the precise
@@ -927,6 +1031,22 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       );
       values.push(poTo);
     }
+  } else if (view === 'incoming_removed') {
+    // "Where did it go" — the inverse of `incoming`. Same inbound spine
+    // (a purchasing-source PO line, or an eBay buyer line under Universal
+    // Incoming), minus the EXPECTED/untouched membership that a departed row
+    // no longer satisfies, plus at least one recorded exit inside the window.
+    conditions.push(
+      `(rz.zoho_purchaseorder_id IS NOT NULL OR rl.inbound_source_type = 'ebay')
+         AND ${incomingRemovedExitsSql(INCOMING_REMOVED_WINDOW_DAYS, DELIVERED_UNSCANNED_WINDOW_DAYS)}`,
+    );
+    // The purchasing-source tab travels with the operator from the lane they
+    // came from — a removed row is still an inbound row from some source.
+    if (inboundSourceParam === 'ebay') {
+      conditions.push(`rl.inbound_source_type = 'ebay'`);
+    } else if (inboundSourceParam === 'zoho') {
+      conditions.push(`rl.inbound_source_type IS DISTINCT FROM 'ebay'`);
+    }
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -954,6 +1074,13 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   let orderBy =
     view === 'incoming'
       ? incomingOrderBy
+      // Most recently departed first — the lane answers "where did the thing I
+      // was just looking at go", so recency IS the ranking. Rows whose only exit
+      // is the vendor's therefore sort by the poll that noticed it; that is the
+      // honest anchor until `status_changed_at` exists, and the row's own face
+      // says as much rather than claiming a transition time.
+      : view === 'incoming_removed'
+        ? `ORDER BY removed_at DESC NULLS LAST, rl.id DESC`
       : view === 'all' || view === 'activity'
         ? (historySort === 'unboxed_newest'
             // Match Unboxed sidebar first-open axis: opened_at, then unboxed_at.
@@ -1152,8 +1279,52 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // "Received" (green) instead of falling back to its local unbox-pipeline
   // workflow_status — see getReceivingStatusDot.
   const needsZohoMirror =
-    view === 'incoming' || view === 'scanned' || view === 'activity';
-  const zohoStatusSelect = needsZohoMirror ? `, mirror.status AS zoho_status` : '';
+    view === 'incoming'
+    || view === 'incoming_removed'
+    || view === 'scanned'
+    || view === 'activity';
+  const zohoStatusSelect = needsZohoMirror
+    ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at`
+    : '';
+  /**
+   * The two removal signals the row shape does not already carry.
+   *
+   * The other four (`delivered` · `scanned` · `unboxed` · vendor status) are
+   * already normalized fields, so the client resolves them from the row it has;
+   * these two would otherwise need a second round trip. Precedence is NOT
+   * computed here — `resolveIncomingRemovalReason` owns that, and a `CASE` in
+   * this SELECT would be the second ladder the registry exists to prevent.
+   */
+  const removedSignalsSelect =
+    view === 'incoming_removed'
+      ? `,
+                EXISTS (
+                  SELECT 1 FROM receiving_exceptions rx_sel
+                   WHERE rx_sel.organization_id = rl.organization_id
+                     AND rx_sel.receiving_line_id = rl.id
+                     AND rx_sel.status = 'OPEN'
+                     AND rx_sel.exception_code IN ('LOST_IN_TRANSIT','EMPTY_BOX','MISDELIVERED','STOLEN')
+                )                                    AS removed_written_off,
+                (
+                  COALESCE(stn.is_delivered, false) = true
+                  AND NOT ${SHIPMENT_SCANNED_PREDICATE}
+                  AND stn.delivered_at < NOW() - interval '${DELIVERED_UNSCANNED_WINDOW_DAYS} days'
+                )                                    AS removed_aged_out,
+                -- When the row left, as best the evidence allows. GREATEST skips
+                -- NULLs, so each arm contributes only when its exit applies. The
+                -- vendor arm is the poll time, never a transition time.
+                GREATEST(
+                  ru.unboxed_at,
+                  rt.door_received_at,
+                  CASE WHEN COALESCE(rl.quantity_received, 0) > 0 THEN rl.updated_at END,
+                  CASE WHEN NOT ${NOT_ZOHO_RECEIVED_PREDICATE} THEN mirror.last_synced_at END,
+                  CASE
+                    WHEN COALESCE(stn.is_delivered, false) = true
+                     AND NOT ${SHIPMENT_SCANNED_PREDICATE}
+                    THEN stn.delivered_at + interval '${DELIVERED_UNSCANNED_WINDOW_DAYS} days'
+                  END
+                )::text                              AS removed_at`
+      : '';
   // view=viewed only: surface the viewer's own viewed_at so the rail labels
   // each row with "when you opened it" (mapRow folds it into last_activity_at)
   // instead of the unrelated scan/line time.
@@ -1256,7 +1427,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 stn.latest_status_category   AS shipment_status_category,
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
-                sc.image_url,
+                ${RECEIVING_LINE_IMAGE_URL_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -1272,7 +1443,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 ${testedAggSelect}
                 ${needsTestSelect}
                 ${incomingExtrasSelect}
-                ${zohoStatusSelect}
+                ${zohoStatusSelect}${removedSignalsSelect}
                 ${platformAccountSelect}
                 ${viewedAtSelect}
                 ${unboxOpenedSelect}

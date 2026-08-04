@@ -10,8 +10,9 @@ import { test, expect, type Page } from '@playwright/test';
  * live registry; this pins the half that was actually broken — what reaches the
  * screen, and whether it can be operated.
  *
- * Model: **tree at rest, flat while searching.** A query replaces the section
- * map with a ranked list of destinations (pages AND modes), each carrying its
+ * Model (2026-08-02): **flat at rest, RANKED while searching.** The drill is
+ * gone — the resting body is already one flat map of every destination, and a
+ * query swaps it for the same destinations in ranked order, each carrying its
  * parent as metadata. Clearing restores the map.
  */
 
@@ -56,10 +57,46 @@ async function type(page: Page, query: string) {
 test.describe('spine search — the query returns destinations, not categories', () => {
   test.skip(({ isMobile }) => Boolean(isMobile));
 
-  test('at rest the body is the section map', async ({ page }) => {
+  test('at rest the body is the flat map', async ({ page }) => {
     await openSpine(page);
     await expect(page.locator(SECTION_MAP)).toBeVisible();
     await expect(page.locator(RESULTS)).toHaveCount(0);
+  });
+
+  /**
+   * The defect that killed the drill: a section holding exactly one page put
+   * the section's name and the page's name on screen together — `Catalog ›
+   * Catalog`. Six of the eight sections were shaped that way.
+   *
+   * Asserted on the RENDERED text rather than on the absence of a component,
+   * because the duplicate is what an operator sees and it could come back from
+   * any of several directions (a header row, an eyebrow, a restored drill).
+   */
+  test('no destination name appears twice in the resting map', async ({ page }) => {
+    await openSpine(page);
+    // Read the row's own text, not a positional child: the glyph is the first
+    // element in every row, so `span:first-child` matched nothing and the
+    // assertion passed vacuously. A test that cannot fail is worse than none.
+    const labels = await page.locator(`${SECTION_MAP} button`).allInnerTexts();
+    expect(labels.length, 'the resting map rendered no rows at all').toBeGreaterThan(8);
+    const seen = new Map<string, number>();
+    for (const raw of labels) {
+      // Multi-child pages carry a trailing count chip on the same button.
+      const label = raw.split('\n')[0]!.replace(/\s*\d+\s*$/, '').trim();
+      if (!label) continue;
+      seen.set(label, (seen.get(label) ?? 0) + 1);
+    }
+    const dupes = [...seen.entries()].filter(([, n]) => n > 1);
+    expect(dupes, `repeated spine labels: ${JSON.stringify(dupes)}`).toEqual([]);
+  });
+
+  /**
+   * The drill is deleted, not hidden. `Open {section}` was its accessible name.
+   */
+  test('nothing in the spine opens a drill', async ({ page }) => {
+    await openSpine(page);
+    await expect(page.locator(`${NAV_COLUMN} [aria-label^="Open "]`)).toHaveCount(0);
+    await expect(page.locator(`${NAV_COLUMN} [aria-label="Back to pages"]`)).toHaveCount(0);
   });
 
   test('the screenshot case: "incoming" returns Incoming, not the Inbound category', async ({
@@ -129,7 +166,7 @@ test.describe('spine search — the query returns destinations, not categories',
     await expect(page.locator(RESULTS)).toContainText('zzzzqqq');
   });
 
-  test('clearing the query restores the section map', async ({ page }) => {
+  test('clearing the query restores the flat map', async ({ page }) => {
     await openSpine(page);
     await type(page, 'incoming');
     await expect(page.locator(RESULTS)).toBeVisible();
@@ -139,13 +176,17 @@ test.describe('spine search — the query returns destinations, not categories',
     await expect(page.locator(RESULTS)).toHaveCount(0);
   });
 
-  test('every result is an addressable destination, never a drill button', async ({ page }) => {
+  test('every result is an addressable destination', async ({ page }) => {
     await openSpine(page);
     await type(page, 'in');
 
-    // A drill button carries the "Open {section}" accessible name. None may
-    // appear in the result list — that is the whole defect.
-    await expect(page.locator(`${RESULTS} [aria-label^="Open "]`)).toHaveCount(0);
+    // Originally: "never a drill button" (`Open {section}`). The drill is gone,
+    // so that assertion is now vacuous here and lives in "nothing in the spine
+    // opens a drill" above, scoped to the whole column where it can still fail.
     await expect(page.locator(`${RESULTS} [role="option"]`).first()).toBeVisible();
+    const rows = page.locator(`${RESULTS} [role="option"]`);
+    for (let i = 0; i < (await rows.count()); i += 1) {
+      await expect(rows.nth(i)).toHaveAttribute('type', 'button');
+    }
   });
 });

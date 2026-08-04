@@ -61,8 +61,6 @@ const FLOAT_ONLY: readonly string[] = [
   'src/components/receiving/workspace/ReceivingAuditRail.tsx',
   'src/components/receiving/workspace/SendPhotoNoteRail.tsx',
   'src/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail.tsx',
-  // Configures the very grid it would be squeezing.
-  'src/components/ui/table-column-config/GridColumnDetailsPanel.tsx',
   // Ambient chat with its own flush-right dock geometry.
   'src/components/assistant/AssistantProvider.tsx',
 ];

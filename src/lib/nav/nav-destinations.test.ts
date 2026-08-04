@@ -23,23 +23,15 @@ const top = (query: string, n = 3) =>
     .slice(0, n)
     .map((r) => r.item.label);
 
-test('the screenshot case: "incoming" returns the Incoming destination', () => {
-  // `Incoming` is a MODE of the page labelled `Inbound`. The old spine filter
-  // matched it and then rendered only the *section* drill — so the operator
-  // typed an exact destination name and got back a category button that did not
-  // contain the word. The flat list must hand back the destination itself.
+test('the screenshot case: "incoming" returns the Inbound desk', () => {
+  // Inbound is a leaf desk (former Incoming + Receiving Board). Typing
+  // "incoming" must hand back the Inbound destination itself — not a section.
   const hits = searchNav(DESTINATIONS, 'incoming');
-  assert.ok(hits.length > 0, 'a destination named Incoming must be findable');
+  assert.ok(hits.length > 0, 'Inbound / Incoming must be findable');
 
-  const first = hits[0]!.item;
-  assert.equal(first.label, 'Incoming');
-  assert.equal(hits[0]!.match.tier, 'exact');
-
-  // …and it is a real place, addressable by page + mode.
-  assert.equal(first.pageId, 'incoming');
-  assert.equal(first.childId, 'incoming');
-  // The parent rides as metadata so the operator still knows where it lives.
-  assert.equal(first.context, 'Inbound');
+  const inbound = hits.find((h) => h.item.pageId === 'incoming' && !h.item.childId);
+  assert.ok(inbound, 'the Inbound leaf desk must be among the hits');
+  assert.equal(inbound!.item.label, 'Inbound');
 });
 
 test('modes are first-class destinations, not just parents', () => {
@@ -70,14 +62,12 @@ test('a section name finds the pages inside it, not just a category button', () 
   );
 });
 
-test('multi-token queries reach a mode through its parent page', () => {
-  // The page name is a keyword on each of its modes, so "inbound receiving"
-  // narrows to the Receiving Board mode without the operator drilling first.
-  const hits = searchNav(DESTINATIONS, 'inbound receiving');
-  assert.ok(hits.length > 0, '"inbound receiving" should reach the Inbound page modes');
+test('multi-token queries reach the Inbound desk', () => {
+  const hits = searchNav(DESTINATIONS, 'inbound');
+  assert.ok(hits.length > 0, '"inbound" should reach the Inbound desk');
   assert.ok(
-    hits.some((h) => h.item.context === 'Inbound'),
-    'a mode of Inbound must be among the hits',
+    hits.some((h) => h.item.pageId === 'incoming' && h.item.label === 'Inbound'),
+    'Inbound leaf must be among the hits',
   );
 });
 

@@ -19,6 +19,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -27,6 +28,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { GlobalDetailStackHost } from '@/components/detail-stacks/GlobalDetailStackHost';
 import { useRegisterRightPanel } from '@/components/right-rail/useRegisterRightPanel';
 import { RIGHT_RAIL_PRIORITY } from '@/lib/right-rail/store';
+import {
+  ASSISTANT_DOCK_CLOSE_EVENT,
+  dispatchAssistantDockOpen,
+} from '@/utils/events';
 import { DetailStackHistoryTracker } from './DetailStackHistoryTracker';
 import { requestComposerFocus } from '@/lib/assistant/composer-focus-store';
 import { requestComposerSeed } from '@/lib/assistant/composer-seed-store';
@@ -92,16 +97,24 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const { user, has } = useAuth();
   const enabled = !!user && has('assistant.chat');
   const [open, setOpen] = useState(false);
+  const openRef = useRef(false);
 
   useEffect(() => {
     try {
-      setOpen(window.localStorage.getItem(OPEN_KEY) === '1');
+      const stored = window.localStorage.getItem(OPEN_KEY) === '1';
+      openRef.current = stored;
+      setOpen(stored);
     } catch {
       /* storage unavailable — default closed */
     }
   }, []);
 
   const setAndPersist = useCallback((next: boolean) => {
+    // Yield Unbox peers BEFORE mounting the assistant occupant. Opening the
+    // dock and clearing `?claimView=` in the same turn lets the App Router
+    // replay the claim-bearing URL after RightRailHost registers.
+    if (next) dispatchAssistantDockOpen();
+    openRef.current = next;
     setOpen(next);
     try {
       window.localStorage.setItem(OPEN_KEY, next ? '1' : '0');
@@ -109,6 +122,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       /* non-fatal */
     }
   }, []);
+
+  // Unbox (and peers) dispatch ASSISTANT_DOCK_CLOSE_EVENT when a station push
+  // opens so AI and Ticket cannot both show as full right columns.
+  useEffect(() => {
+    const handler = () => setAndPersist(false);
+    window.addEventListener(ASSISTANT_DOCK_CLOSE_EVENT, handler);
+    return () => window.removeEventListener(ASSISTANT_DOCK_CLOSE_EVENT, handler);
+  }, [setAndPersist]);
 
   const focusComposer = useCallback(() => {
     requestComposerFocus();
@@ -191,6 +212,10 @@ function AssistantRailRegistrant({ open, onClose }: { open: boolean; onClose: ()
     // Ambient chat with its own flush-right dock geometry (no inset card, full
     // height under the header), opened by ⌘J rather than by picking a record.
     // The push grammar is for a picked record's inspector; this is not one.
+    // **Kept push:false (2026-08-03 flush follow-up decline):** flipping to true
+    // would route AI through `resolveRightRailFrame` + inset-card push chrome and
+    // fight `assistantDockAsideStyle` (fixed full-height dock). Mutual yield with
+    // Unbox Ticket/Claim/Displays/tool already enforces one right details column.
     push: false,
     enabled: open,
   });

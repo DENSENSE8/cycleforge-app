@@ -25,13 +25,13 @@ import {
   STATION_WORKBENCH_IDENTITY_COLUMN,
 } from '@/components/station/workbench/workbench-layout';
 import {
-  stationBookmarkGapClass,
-  stationBookmarkPadClass,
-  stationBookmarkPanelClass,
+  stationIdentityGapClass,
+  stationIdentityPadClass,
+  stationIdentityPanelClass,
   stationContextBarHostClass,
   stationMoreDetailsHostClass,
-  stationMoreDetailsPanelClass,
-} from '@/components/station/entity-context/station-bookmark';
+  stationUtilityPanelClass,
+} from '@/components/station/entity-context/station-identity-chrome';
 import { cn } from '@/utils/_cn';
 
 type StationWorkspaceSkeletonHeader = 'identity-tabs' | 'toolbar' | 'none';
@@ -56,7 +56,7 @@ function SkeletonSectionCard({ rows }: { rows: number }) {
 }
 
 /**
- * Floating identity bookmark + corner utilities — mirrors StationContextBar
+ * Flush identity strip + corner utilities — mirrors StationContextBar
  * (CartonContextCard bar + StationMoreDetails).
  */
 function IdentityTabsHeader() {
@@ -74,8 +74,8 @@ function IdentityTabsHeader() {
           elevation="none"
           borderless
           className={cn(
-            stationBookmarkPanelClass,
-            stationBookmarkPadClass,
+            stationIdentityPanelClass,
+            stationIdentityPadClass,
             'flex min-h-10 w-full max-w-full items-center overflow-hidden',
           )}
         >
@@ -100,9 +100,9 @@ function IdentityTabsHeader() {
           elevation="none"
           borderless
           className={cn(
-            stationMoreDetailsPanelClass,
-            stationBookmarkPadClass,
-            stationBookmarkGapClass,
+            stationUtilityPanelClass,
+            stationIdentityPadClass,
+            stationIdentityGapClass,
             'flex min-h-10 shrink-0 items-center',
           )}
         >
@@ -159,7 +159,7 @@ function UnboxProductSerialCard() {
   );
 }
 
-/** WorkspaceLabelPreviewCard — nested face + barcode square. */
+/** WorkspaceLabelPreviewCard — print-faithful 2×1 sticker (~480×240 max). */
 function UnboxLabelCard() {
   return (
     <WorkspaceCard variant="glass" bodyDensity="nested">
@@ -167,20 +167,22 @@ function UnboxLabelCard() {
         className={cn(WORKSPACE_NESTED_FIELD, WORKSPACE_NESTED_FIELD_PAD)}
         aria-hidden
       >
-        <div className="flex items-stretch gap-3">
-          <div className="flex min-w-0 flex-1 flex-col justify-between gap-6 py-1">
-            <div className="flex items-start justify-between gap-2">
-              <SkeletonBase width="72px" height="12px" className="rounded-full" />
-              <SkeletonBase width="48px" height="12px" className="rounded-full" />
+        <div className="mx-auto aspect-[2/1] w-full max-w-[480px] overflow-hidden rounded-sm bg-white ring-1 ring-border-soft/60">
+          <div className="flex h-full items-stretch gap-1 p-1.5">
+            <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+              <div className="flex items-start justify-between gap-2">
+                <SkeletonBase width="72px" height="10px" className="rounded-full" />
+                <SkeletonBase width="40px" height="10px" className="rounded-full" />
+              </div>
+              <div className="flex items-end justify-between gap-2">
+                <SkeletonBase width="56px" height="10px" className="rounded-full" />
+                <SkeletonBase width="48px" height="10px" className="rounded-full" />
+              </div>
             </div>
-            <div className="flex items-end justify-between gap-2">
-              <SkeletonBase width="56px" height="12px" className="rounded-full" />
-              <SkeletonBase width="40px" height="12px" className="rounded-full" />
+            <div className="flex shrink-0 flex-col items-center justify-center gap-0.5">
+              <div className="aspect-square h-[86%] w-auto animate-pulse rounded-sm bg-surface-strong" />
+              <SkeletonBase width="40px" height="8px" className="rounded-full" />
             </div>
-          </div>
-          <div className="flex shrink-0 flex-col items-center gap-1.5">
-            <SkeletonBase width="72px" height="72px" className="rounded-md" />
-            <SkeletonBase width="56px" height="10px" className="rounded-full" />
           </div>
         </div>
       </div>

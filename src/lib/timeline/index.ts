@@ -13,6 +13,13 @@ export { opsEventsToTimeline, type OpsEventRow } from './ops-events';
 export { entitySignalsToTimeline, type EntitySignalTimelineRow } from './entity-signals';
 export { threadMessagesToTimeline, type ThreadMessageTimelineRow } from './thread-events';
 export {
+  zendeskCommentsToTimeline,
+  type MergedRecordItem,
+  type TicketAttachment,
+  type TicketCommentRow,
+  type TicketMessageDetail,
+} from './zendesk-comment-events';
+export {
   mergeSupportContextTimeline,
   ticketLinkEventsToTimeline,
   type SupportContextTimelineInput,

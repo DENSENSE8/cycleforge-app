@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
+import { cn } from '@/utils/_cn';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { stagedOrdersQuery } from '@/lib/queries/outbound-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -61,7 +63,7 @@ export function StagedQueueTable({
   }, [queryClient, disableBackfill]);
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+    <div className={cn(WORKBENCH_SHEET_HOST, 'flex h-full min-h-0 min-w-0 flex-1 flex-col')}>
       <OrdersGridView
         ariaLabel="Orders staged for scan-out"
         records={records}

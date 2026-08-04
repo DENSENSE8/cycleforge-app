@@ -47,6 +47,7 @@ import type {
   CounterTransactionInput,
   CounterTransactionResult,
 } from '@/lib/counter/counter-transaction-types';
+import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
 import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
 
 // Lazy-load the intake form so the welcome screen stays light; it only loads
@@ -60,6 +61,11 @@ const RepairIntakeForm = dynamic(
 // repair form, not a replacement: repair-only drop-off keeps its own leaner flow.
 const CounterIntakeForm = dynamic(
   () => import('@/components/counter/CounterIntakeForm').then((m) => m.CounterIntakeForm),
+  { ssr: false },
+);
+
+const KioskPickupPane = dynamic(
+  () => import('@/app/kiosk/v2/KioskPickupPane').then((m) => m.KioskPickupPane),
   { ssr: false },
 );
 
@@ -167,7 +173,7 @@ export default function KioskPage() {
   const submitCounter = useCallback(
     async (
       input: Omit<CounterTransactionInput, 'clientEventId'>,
-      opts: { takePayment: boolean },
+      opts: { takePayment: boolean; staffId?: number; pin?: string },
     ): Promise<CounterTransactionResult> => {
       if (!counterIdemKey.current) counterIdemKey.current = safeRandomUUID();
       const res = await fetch('/api/kiosk/intake', {
@@ -176,15 +182,7 @@ export default function KioskPage() {
           'content-type': 'application/json',
           'Idempotency-Key': counterIdemKey.current,
         },
-        body: JSON.stringify({
-          service: 'sales',
-          customer: input.customer,
-          retailLines: input.retailLines,
-          serviceLine: input.service,
-          priorOrder: input.priorOrder,
-          ticketWork: input.ticketWork,
-          takePayment: opts.takePayment,
-        }),
+        body: JSON.stringify(buildKioskSalesIntakeBodyFromInput(input, opts)),
       });
 
       if (res.status === 401) {
@@ -199,6 +197,9 @@ export default function KioskPage() {
         error?: string;
       };
 
+      if (res.status === 403 && body.error === 'STEPUP_FAILED') {
+        throw new Error('PIN incorrect. Try again.');
+      }
       if (res.status === 403 && body.error?.includes('STEPUP')) {
         // Taking payment needs a manager's PIN; the device cannot authorize it.
         throw new Error('A manager needs to authorize payment on this tablet.');
@@ -265,13 +266,25 @@ export default function KioskPage() {
   if (activeService === 'sales') {
     return (
       <div className="fixed inset-0 z-panelOverlay bg-surface-card">
-        {/* `/api/kiosk/repair` = the device-authed catalog twins (same response
-            shapes as the staff pair). */}
+        {/* `/api/kiosk/sales` = non-`-RS` retail catalog (repair twins stay on repair). */}
         <CounterIntakeForm
-          apiBasePath="/api/kiosk/repair"
+          apiBasePath="/api/kiosk/sales"
           onClose={closeService}
           onSubmit={submitCounter}
         />
+      </div>
+    );
+  }
+
+  if (activeService === 'pickup') {
+    return (
+      <div className="fixed inset-0 z-panelOverlay overflow-y-auto bg-surface-card p-6 sm:p-8">
+        <div className="mb-4 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={closeService}>
+            Close
+          </Button>
+        </div>
+        <KioskPickupPane onReset={closeService} />
       </div>
     );
   }

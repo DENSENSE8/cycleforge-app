@@ -1,30 +1,42 @@
 'use client';
 
 /**
- * Bidirectional photo move between POs — chrome-free panel body.
+ * Bidirectional photo move between cartons / POs — chrome-free panel body.
  *
- * Forward: select photos on this carton → pick a target PO → reassign.
- * Back: pick a source PO → select its photos → reassign onto this carton.
+ * Forward: select photos on this carton → pick a target carton → reassign.
+ * Back: pick a source carton → select its photos → reassign onto this carton.
  * Reuses the reassign SoT (`reassignPhotoToReceiving` → PATCH /api/photos/:id/reassign).
+ *
+ * Target search is GET /api/receiving/photo-move-targets (any receiving carton,
+ * including unmatched / ticket-anchored) — not the Zoho-PO-only po/list feed.
  *
  * Hosted by Unbox {@link ReceivingToolPushStack} or the thin
  * {@link MovePhotosBetweenPoRail} overlay for non-Unbox hosts.
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { ArrowLeftRight, Loader2, Package, Search, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
+import {
+  OrderIdChip,
+  PoChip,
+  TicketChip,
+  TrackingChip,
+  getLast8,
+} from '@/components/ui/CopyChip';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { reassignPhotoToReceiving } from '@/components/shipped/photo-gallery/photo-gallery-api';
+import { notifyReceivingPhotoChanged } from '@/lib/queries/receiving-queries';
 import { useClaimPhotos } from '../claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from '../claim/components/ClaimPhotoPicker';
-import { refreshDomains } from '@/lib/refresh/bus';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
+import { photoMoveTargetLabel } from '@/lib/receiving/photo-move-targets-shared';
 import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
 
 /**
@@ -37,7 +49,7 @@ import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
  * and the operator got an empty list with no explanation.
  *
  * A decoded scan is sent as the canonical `R-{id}` handle because
- * `/api/receiving/po/list` already resolves that to an exact `receiving_id`;
+ * `/api/receiving/photo-move-targets` resolves that to an exact `receiving_id`;
  * `parsePoListSearch` stays the *human-text* helper it was, never a second
  * decoder.
  */
@@ -47,11 +59,15 @@ function poSearchNeedle(raw: string): string {
   return parsePoListSearch(raw).needle;
 }
 
-interface PoListRow {
+interface PhotoMoveTargetRow {
+  receiving_id: number;
   po_id: string;
   po_number: string;
-  receiving_id: number | null;
+  title?: string | null;
   tracking_number?: string | null;
+  ticket_id?: number | null;
+  ticket_external_id?: string | null;
+  source?: string | null;
 }
 
 type Direction = 'to' | 'from';
@@ -75,7 +91,7 @@ export function MovePhotosBetweenPoPanel({
   hideHeaderClose = false,
 }: {
   open: boolean;
-  /** Carton the move is relative to (photos on this carton ↔ another PO). */
+  /** Carton the move is relative to (photos on this carton ↔ another carton). */
   receivingId: number | null;
   onClose: () => void;
   /** Fired after at least one photo moved successfully (parents invalidate caches). */
@@ -83,13 +99,17 @@ export function MovePhotosBetweenPoPanel({
   hideHeaderClose?: boolean;
 }) {
   const thisReceivingId = receivingId;
+  const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion();
   const [direction, setDirection] = useState<Direction>('to');
   const [search, setSearch] = useState('');
-  const [poRows, setPoRows] = useState<PoListRow[]>([]);
+  const [targetRows, setTargetRows] = useState<PhotoMoveTargetRow[]>([]);
   const [poLoading, setPoLoading] = useState(false);
-  /** True when search hit only this carton (filtered out — need a different PO). */
-  const [matchedSelfOnly, setMatchedSelfOnly] = useState(false);
+  /**
+   * True when the needle matched only this carton — server returned recent
+   * browse instead of an empty list (`matchedExcludedSelf` on the API).
+   */
+  const [matchedExcludedSelf, setMatchedExcludedSelf] = useState(false);
   const [otherReceivingId, setOtherReceivingId] = useState<number | null>(null);
   const [otherLabel, setOtherLabel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -117,8 +137,8 @@ export function MovePhotosBetweenPoPanel({
       clearCloseTimer();
       setDirection('to');
       setSearch('');
-      setPoRows([]);
-      setMatchedSelfOnly(false);
+      setTargetRows([]);
+      setMatchedExcludedSelf(false);
       setOtherReceivingId(null);
       setOtherLabel(null);
       setBusy(false);
@@ -133,13 +153,13 @@ export function MovePhotosBetweenPoPanel({
     setOtherReceivingId(null);
     setOtherLabel(null);
     setSearch('');
-    setPoRows([]);
-    setMatchedSelfOnly(false);
+    setTargetRows([]);
+    setMatchedExcludedSelf(false);
   }, [direction, success]);
 
-  // PO search — all PO-bearing cartons (not just open), so operators can move
-  // photos onto already-unboxed / received POs. Accepts PO #, tracking #, and
-  // carton QR handles (`R-<id>` / `#R-<id>`).
+  // Carton search — any receiving carton (PO-bearing, unmatched, ticket-linked).
+  // Accepts PO #, tracking #, ticket #, and carton QR handles (`R-<id>` / `#R-<id>`).
+  // Self-match (needle is this carton) → server returns recent browse + matchedExcludedSelf.
   useEffect(() => {
     if (!open || success) return;
     const controller = new AbortController();
@@ -149,24 +169,21 @@ export function MovePhotosBetweenPoPanel({
         const params = new URLSearchParams({ limit: '25' });
         const needle = poSearchNeedle(search);
         if (needle) params.set('search', needle);
-        const res = await fetch(`/api/receiving/po/list?${params.toString()}`, {
+        if (thisReceivingId != null) params.set('exclude', String(thisReceivingId));
+        const res = await fetch(`/api/receiving/photo-move-targets?${params.toString()}`, {
           signal: controller.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as { purchase_orders?: PoListRow[] };
-        const raw = data.purchase_orders ?? [];
-        const list = raw.filter(
-          (r) => r.receiving_id != null && r.receiving_id !== thisReceivingId,
-        );
-        setPoRows(list);
-        setMatchedSelfOnly(
-          list.length === 0 &&
-            raw.some((r) => r.receiving_id != null && r.receiving_id === thisReceivingId),
-        );
+        const data = (await res.json()) as {
+          targets?: PhotoMoveTargetRow[];
+          matchedExcludedSelf?: boolean;
+        };
+        setTargetRows(data.targets ?? []);
+        setMatchedExcludedSelf(Boolean(data.matchedExcludedSelf));
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
-        setPoRows([]);
-        setMatchedSelfOnly(false);
+        setTargetRows([]);
+        setMatchedExcludedSelf(false);
       } finally {
         setPoLoading(false);
       }
@@ -191,26 +208,39 @@ export function MovePhotosBetweenPoPanel({
 
   const move = async () => {
     if (!targetReceivingId || photos.selectedPhotoIds.size === 0 || busy || success) return;
+    if (sourceReceivingId == null) return;
     setBusy(true);
     const ids = [...photos.selectedPhotoIds];
-    let moved = 0;
+    const movedIds: number[] = [];
     let failed = 0;
     for (const id of ids) {
       try {
         await reassignPhotoToReceiving(id, targetReceivingId);
-        moved++;
+        movedIds.push(id);
       } catch {
         failed++;
       }
     }
     setBusy(false);
-    if (moved > 0) {
-      refreshDomains(['receiving.lines', 'receiving.poLines']);
+    if (movedIds.length > 0) {
+      // Photo-count SoT: optimistic rail camera badge (− source / + destination)
+      // + invalidate feeds. dispatchReceivingPhotoChanged already refreshes
+      // receiving.lines / receiving.poLines — no bare refreshDomains needed.
+      notifyReceivingPhotoChanged(queryClient, {
+        action: 'delete',
+        receivingId: sourceReceivingId,
+        photoIds: movedIds,
+      });
+      notifyReceivingPhotoChanged(queryClient, {
+        action: 'insert',
+        receivingId: targetReceivingId,
+        photoIds: movedIds,
+      });
       onMoved?.();
       if (failed === 0) {
         finishAndClose({
           direction,
-          moved,
+          moved: movedIds.length,
           otherLabel,
         });
       } else {
@@ -239,8 +269,8 @@ export function MovePhotosBetweenPoPanel({
     : '';
   const successDetail = success
     ? success.direction === 'to'
-      ? `to ${success.otherLabel ?? 'another PO'}`
-      : `from ${success.otherLabel ?? 'another PO'} onto this carton`
+      ? `to ${success.otherLabel ?? 'another carton'}`
+      : `from ${success.otherLabel ?? 'another carton'} onto this carton`
     : '';
 
   return (
@@ -289,8 +319,8 @@ export function MovePhotosBetweenPoPanel({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-role-data">
               <PaneHeaderTabs<Direction>
                 tabs={[
-                  { value: 'to', label: 'To another PO' },
-                  { value: 'from', label: 'From another PO' },
+                  { value: 'to', label: 'To another carton' },
+                  { value: 'from', label: 'From another carton' },
                 ]}
                 value={direction}
                 onChange={setDirection}
@@ -300,7 +330,7 @@ export function MovePhotosBetweenPoPanel({
               {(direction === 'from' || (direction === 'to' && photos.photos.length > 0)) && (
                 <div className="space-y-2">
                   <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                    {direction === 'to' ? 'Target purchase order' : 'Source purchase order'}
+                    {direction === 'to' ? 'Target carton / PO' : 'Source carton / PO'}
                     {otherLabel ? ` · ${otherLabel}` : ''}
                   </p>
                   {!otherReceivingId ? (
@@ -311,7 +341,7 @@ export function MovePhotosBetweenPoPanel({
                           type="search"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
-                          placeholder="Different PO #, tracking #, or carton QR…"
+                          placeholder="PO #, tracking #, ticket # / subject, or carton QR…"
                           className={cn(
                             'w-full bg-transparent text-sm text-text-default placeholder:text-text-faint',
                             focusRing('field', 'accent'),
@@ -320,51 +350,85 @@ export function MovePhotosBetweenPoPanel({
                         />
                       </div>
                       <p className="text-xs text-text-soft">
-                        Type or scan a different PO — not this carton.
+                        Type or scan a different carton — not this one.
                       </p>
+                      {(matchedExcludedSelf || !poSearchNeedle(search)) &&
+                      targetRows.length > 0 ? (
+                        <p
+                          className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
+                          data-testid="photo-move-recent-eyebrow"
+                        >
+                          Recent cartons
+                        </p>
+                      ) : null}
                       <div className="max-h-48 overflow-y-auto divide-y divide-border-hairline rounded-lg border border-border-soft">
                         {poLoading ? (
                           <p className="flex items-center justify-center gap-2 py-6 text-xs text-text-soft">
                             <Loader2 className="h-4 w-4 animate-spin" /> Searching…
                           </p>
-                        ) : poRows.length === 0 ? (
+                        ) : targetRows.length === 0 ? (
                           <p className="px-4 py-6 text-center text-xs text-text-soft">
-                            {matchedSelfOnly
-                              ? 'That is this carton — enter a different PO #, tracking #, or carton QR.'
-                              : poSearchNeedle(search)
-                                ? 'No matching POs'
-                                : 'Search for another PO to move photos to.'}
+                            {poSearchNeedle(search)
+                              ? 'No matching cartons'
+                              : 'Search for another carton to move photos to.'}
                           </p>
                         ) : (
-                          poRows.map((r) => {
-                            const poLabel = r.po_number || r.po_id || `PO #${r.receiving_id}`;
+                          targetRows.map((r) => {
+                            const label = photoMoveTargetLabel(r);
+                            const poValue = String(r.po_number || r.po_id || '').trim();
                             const tracking = (r.tracking_number || '').trim();
+                            const ticketDigits =
+                              r.ticket_id != null && r.ticket_id > 0
+                                ? String(r.ticket_id)
+                                : '';
+                            const ticketFace = (
+                              r.ticket_external_id ||
+                              ticketDigits
+                            ).trim();
+                            const title = String(r.title || '').trim() || label;
+                            const isUnfoundPo =
+                              title === 'Unfound PO' || r.source === 'unmatched';
+                            // Carton handle when there's no PO, or always for Unfound
+                            // stubs (ticket alone must not hide R-{id}).
+                            const showCartonHandle = !poValue || isUnfoundPo;
                             return (
                               <button
-                                // ds-raw-button
-                                key={`${r.po_id}-${r.receiving_id}`}
+                                // ds-raw-button: full-row select target; CopyChips stopPropagation on copy
+                                key={r.receiving_id}
                                 type="button"
-                                disabled={r.receiving_id == null}
+                                data-testid="photo-move-target-row"
+                                data-receiving-id={r.receiving_id}
+                                data-title={title}
                                 onClick={() => {
-                                  if (r.receiving_id == null) return;
                                   setOtherReceivingId(r.receiving_id);
-                                  setOtherLabel(poLabel);
+                                  setOtherLabel(label);
                                 }}
                                 className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-surface-hover"
                               >
-                                <div className="min-w-0 space-y-0.5">
-                                  <p className="truncate text-sm font-semibold text-text-default">
-                                    <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                                      PO #{' '}
-                                    </span>
-                                    {poLabel}
-                                  </p>
-                                  <p className="truncate text-xs text-text-soft">
-                                    <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                                      Tracking #{' '}
-                                    </span>
-                                    {tracking || '—'}
-                                  </p>
+                                <div className="flex min-w-0 w-full flex-col items-start gap-1">
+                                  <span className="line-clamp-2 break-words text-role-body font-medium text-text-primary">
+                                    {title}
+                                  </span>
+                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                    {poValue ? <PoChip value={poValue} dense /> : null}
+                                    {showCartonHandle ? (
+                                      <OrderIdChip
+                                        value={`R-${r.receiving_id}`}
+                                        display={getLast8(`R-${r.receiving_id}`)}
+                                        dense
+                                      />
+                                    ) : null}
+                                    {tracking ? (
+                                      <TrackingChip value={tracking} dense />
+                                    ) : null}
+                                  </div>
+                                  {ticketDigits ? (
+                                    <TicketChip
+                                      value={ticketDigits}
+                                      display={ticketFace}
+                                      dense
+                                    />
+                                  ) : null}
                                 </div>
                                 <Package className="h-4 w-4 shrink-0 text-text-faint" />
                               </button>
@@ -382,7 +446,7 @@ export function MovePhotosBetweenPoPanel({
                       }}
                       className="text-role-eyebrow font-semibold uppercase tracking-widest text-blue-600 hover:underline"
                     >
-                      Change PO
+                      Change carton
                     </button>
                   )}
                 </div>
@@ -392,7 +456,7 @@ export function MovePhotosBetweenPoPanel({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                      {direction === 'to' ? 'Photos on this carton' : 'Photos on source PO'}
+                      {direction === 'to' ? 'Photos on this carton' : 'Photos on source carton'}
                     </p>
                     {photos.photos.length > 0 ? (
                       <button
@@ -416,7 +480,7 @@ export function MovePhotosBetweenPoPanel({
                 </div>
               ) : direction === 'from' ? (
                 <p className="rounded-lg border border-dashed border-border-soft px-4 py-6 text-center text-xs text-text-soft">
-                  Pick a source PO to see its photos.
+                  Pick a source carton to see its photos.
                 </p>
               ) : null}
             </div>
@@ -432,7 +496,7 @@ export function MovePhotosBetweenPoPanel({
                 icon={<ArrowLeftRight className="h-4 w-4" />}
               >
                 {direction === 'to'
-                  ? `Move ${photos.selectedPhotoIds.size || ''} to PO`.trim()
+                  ? `Move ${photos.selectedPhotoIds.size || ''} to carton`.trim()
                   : `Pull ${photos.selectedPhotoIds.size || ''} onto this carton`.trim()}
               </Button>
             </div>

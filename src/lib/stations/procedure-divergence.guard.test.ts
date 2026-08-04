@@ -22,7 +22,7 @@
  * shape and asserted they matched. That comparison is now TAUTOLOGICAL:
  * `captureStepVocabulary` resolves from `resolveProcedureSteps(..., 'capture')`,
  * so the bench and the lens read the same declaration and cannot disagree about
- * order, labels, photo stages or variant rules. (The comparison did its job
+ * order, labels, photo stages or flow rules. (The comparison did its job
  * first: it proved the two produced identical sequences BEFORE the swap, which
  * is what made the swap a provably behaviour-preserving refactor rather than a
  * rewrite.)
@@ -47,7 +47,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { captureStepVocabulary } from '@/components/receiving/workspace/derive-capture-step-states';
-import { getProcedure, resolveProcedureSteps, type ProcedureVariant } from './procedure';
+import {
+  getProcedure,
+  resolveContextFromFlags,
+  resolveProcedureSteps,
+  UNBOX_FLOW_IDS,
+  type ProcedureResolveContext,
+} from './procedure';
 import { registerStationBuiltins } from './index';
 
 registerStationBuiltins();
@@ -65,17 +71,24 @@ function benchSource(): string {
 }
 
 /**
- * Every carton shape the bench distinguishes, plus the combinations that really
- * co-occur. An unfound return is a normal Tuesday: a customer sends something
- * back with no RMA on the box.
+ * Every carton shape the bench distinguishes: three named flows × pickup
+ * modifier, plus unfound-return (return + needsClassify).
  */
-const SHAPES: ReadonlyArray<{ name: string; variant: Required<ProcedureVariant> }> = [
-  { name: 'matched', variant: { isUnfound: false, isLocalPickup: false, isReturn: false } },
-  { name: 'unfound', variant: { isUnfound: true, isLocalPickup: false, isReturn: false } },
-  { name: 'local pickup', variant: { isUnfound: false, isLocalPickup: true, isReturn: false } },
-  { name: 'return', variant: { isUnfound: false, isLocalPickup: false, isReturn: true } },
-  { name: 'unfound return', variant: { isUnfound: true, isLocalPickup: false, isReturn: true } },
-  { name: 'pickup return', variant: { isUnfound: false, isLocalPickup: true, isReturn: true } },
+const SHAPES: ReadonlyArray<{ name: string; ctx: ProcedureResolveContext }> = [
+  { name: 'found', ctx: { flow: 'found' } },
+  { name: 'unfound', ctx: { flow: 'unfound' } },
+  { name: 'return', ctx: { flow: 'return' } },
+  { name: 'found pickup', ctx: { flow: 'found', modifiers: { isLocalPickup: true } } },
+  { name: 'unfound pickup', ctx: { flow: 'unfound', modifiers: { isLocalPickup: true } } },
+  { name: 'return pickup', ctx: { flow: 'return', modifiers: { isLocalPickup: true } } },
+  {
+    name: 'unfound return',
+    ctx: { flow: 'return', modifiers: { needsClassify: true } },
+  },
+  {
+    name: 'pickup return',
+    ctx: { flow: 'return', modifiers: { isLocalPickup: true } },
+  },
 ];
 
 test('the bench resolves its vocabulary from the station declaration', () => {
@@ -125,8 +138,8 @@ test('the bench renders the capture phase and nothing else', () => {
   assert.ok(offBench.includes('scan'), 'scan is intake — it precedes the checklist');
   assert.ok(offBench.includes('print'), 'print is commit — the terminal dock owns it');
   assert.ok(offBench.includes('receive'), 'receive is commit — the terminal dock owns it');
-  for (const { name, variant } of SHAPES) {
-    const rendered = new Set(captureStepVocabulary(variant).map((s) => s.key));
+  for (const { name, ctx } of SHAPES) {
+    const rendered = new Set(captureStepVocabulary(ctx).map((s) => s.key));
     for (const key of offBench) {
       assert.equal(
         rendered.has(key),
@@ -138,25 +151,41 @@ test('the bench renders the capture phase and nothing else', () => {
 });
 
 test('every carton shape still resolves a usable sequence', () => {
-  // Not a comparison any more — a smoke test that the variant rules compose.
-  // `pickup return` exercises an omission and a reorder at once, which is where
-  // a naive filter-then-splice implementation breaks.
   const unbox = getProcedure('unbox')!;
-  for (const { name, variant } of SHAPES) {
-    const keys = resolveProcedureSteps(unbox, variant, 'capture').map((s) => s.key);
+  for (const { name, ctx } of SHAPES) {
+    const keys = resolveProcedureSteps(unbox, ctx, 'capture').map((s) => s.key);
     assert.ok(keys.length > 0, `${name}: resolved an empty procedure`);
     assert.equal(new Set(keys).size, keys.length, `${name}: a step is duplicated — ${keys.join(' → ')}`);
+    const pickup = !!ctx.modifiers?.isLocalPickup;
     assert.equal(
       keys.includes('packing_material'),
-      !variant.isLocalPickup,
+      !pickup,
       `${name}: packing_material should be present iff this is not a local pickup`,
     );
-    assert.equal(keys.includes('classify'), variant.isUnfound, `${name}: classify is unfound-only`);
-    if (variant.isReturn) {
+    const expectClassify =
+      ctx.flow === 'unfound' || (ctx.flow === 'return' && !!ctx.modifiers?.needsClassify);
+    assert.equal(keys.includes('classify'), expectClassify, `${name}: classify presence`);
+    if (ctx.flow === 'return') {
       assert.ok(
         keys.indexOf('serial') < keys.indexOf('condition'),
         `${name}: a return captures the serial before the grade — ${keys.join(' → ')}`,
       );
     }
   }
+});
+
+test('Unbox declares exactly the three named flows', () => {
+  const flows = getProcedure('unbox')!.flows;
+  assert.ok(flows);
+  assert.deepEqual(Object.keys(flows!).sort(), [...UNBOX_FLOW_IDS].sort());
+});
+
+test('legacy flags still map through resolveContextFromFlags', () => {
+  const ctx = resolveContextFromFlags({
+    isUnfound: true,
+    isReturn: true,
+    isLocalPickup: false,
+  });
+  assert.equal(ctx.flow, 'return');
+  assert.equal(ctx.modifiers?.needsClassify, true);
 });

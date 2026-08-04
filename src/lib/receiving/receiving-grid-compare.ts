@@ -98,9 +98,6 @@ export function compareReceivingGridRows(
     case 'condition':
       primary = conditionRank(a) - conditionRank(b);
       break;
-    case 'stage':
-      primary = stageMs(a, activityAxis) - stageMs(b, activityAxis);
-      break;
     case 'location':
       primary = locationValue(a).localeCompare(locationValue(b), undefined, {
         numeric: true,

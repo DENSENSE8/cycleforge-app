@@ -16,8 +16,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
@@ -115,11 +114,10 @@ export function CatalogLinkChoresGrid({
   rows: CatalogLinkChoreRow[];
   selectedChoreId: number | null;
   onOpenChore: (id: number) => void;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly CatalogLinkGridColumn[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
 
   const {
     sort: columnSort,
@@ -130,13 +128,6 @@ export function CatalogLinkChoresGrid({
     defaultDir: defaultDirForCatalogLinkGridSort,
   });
 
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  const { columns: visible } = useGridColumnVisibility<CatalogLinkGridColumn>({
-    columns,
-    tableId: CATALOG_LINK_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeCatalogLinkGridDescriptor(visible), [visible]);
   useGridSettleTick(shared.loading, rows.length > 0);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<CatalogLinkChoreRow>[]][]>(() => {
@@ -149,7 +140,7 @@ export function CatalogLinkChoresGrid({
     return [['', ordered.map((chore) => ({ key: `chore:${chore.id}`, rows: [chore] }))]];
   }, [rows, columnSort, sortDir]);
 
-  const renderLeaf = (chore: CatalogLinkChoreRow) => (
+  const renderLeaf = (chore: CatalogLinkChoreRow, visible: readonly CatalogLinkGridColumn[]) => (
     <CatalogLinkGridRow
       key={chore.id}
       chore={chore}
@@ -160,43 +151,38 @@ export function CatalogLinkChoresGrid({
   );
 
   return (
-    <>
-      <LedgerGridSurface<CatalogLinkChoreRow, CatalogLinkGridColumnKey>
-        ariaLabel="Listings needing a catalog link"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.id)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={shared.loading}
-        emptyMessage={shared.emptyMessage}
-        searchEmptyMessage={shared.searchEmptyMessage}
-        isSearching={shared.isSearching}
-        scrollRef={scrollRef}
-        testId="catalog-link-grid-body"
-        tableId={CATALOG_LINK_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <CatalogLinkGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={CATALOG_LINK_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<CatalogLinkChoreRow, CatalogLinkGridColumnKey, CatalogLinkGridColumn>
+      ariaLabel="Listings needing a catalog link"
+      columns={columns}
+      makeDescriptor={makeCatalogLinkGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.id)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={shared.loading}
+      emptyMessage={shared.emptyMessage}
+      searchEmptyMessage={shared.searchEmptyMessage}
+      isSearching={shared.isSearching}
+      scrollRef={scrollRef}
+      testId="catalog-link-grid-body"
+      tableId={CATALOG_LINK_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <CatalogLinkGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((chore) => renderLeaf(chore, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }
 
@@ -252,7 +238,6 @@ export function ImportExceptionsGrid({
   columns?: readonly ImportExceptionGridColumn[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
 
   const {
     sort: columnSort,
@@ -263,12 +248,6 @@ export function ImportExceptionsGrid({
     defaultDir: defaultDirForImportExceptionGridSort,
   });
 
-  const { columns: visible } = useGridColumnVisibility<ImportExceptionGridColumn>({
-    columns,
-    tableId: IMPORT_EXCEPTION_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeImportExceptionGridDescriptor(visible), [visible]);
   useGridSettleTick(shared.loading, rows.length > 0);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<ImportExceptionRow>[]][]>(() => {
@@ -279,7 +258,7 @@ export function ImportExceptionsGrid({
     return [['', ordered.map((row) => ({ key: `exception:${row.id}`, rows: [row] }))]];
   }, [rows, columnSort, sortDir]);
 
-  const renderLeaf = (row: ImportExceptionRow) => (
+  const renderLeaf = (row: ImportExceptionRow, visible: readonly ImportExceptionGridColumn[]) => (
     <ImportExceptionGridRow
       key={row.id}
       row={row}
@@ -290,42 +269,37 @@ export function ImportExceptionsGrid({
   );
 
   return (
-    <>
-      <LedgerGridSurface<ImportExceptionRow, ImportExceptionGridColumnKey>
-        ariaLabel="Sheet rows missing an item number"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.id)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={shared.loading}
-        emptyMessage={shared.emptyMessage}
-        searchEmptyMessage={shared.searchEmptyMessage}
-        isSearching={shared.isSearching}
-        scrollRef={scrollRef}
-        testId="import-exception-grid-body"
-        tableId={IMPORT_EXCEPTION_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <ImportExceptionGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={IMPORT_EXCEPTION_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<ImportExceptionRow, ImportExceptionGridColumnKey, ImportExceptionGridColumn>
+      ariaLabel="Sheet rows missing an item number"
+      columns={columns}
+      makeDescriptor={makeImportExceptionGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.id)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={shared.loading}
+      emptyMessage={shared.emptyMessage}
+      searchEmptyMessage={shared.searchEmptyMessage}
+      isSearching={shared.isSearching}
+      scrollRef={scrollRef}
+      testId="import-exception-grid-body"
+      tableId={IMPORT_EXCEPTION_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <ImportExceptionGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((row) => renderLeaf(row, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

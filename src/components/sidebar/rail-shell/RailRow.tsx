@@ -8,6 +8,7 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
 import {
   SIDEBAR_RAIL_DOT_TRACK,
   SIDEBAR_RAIL_ROW_PAD_RIGHT,
+  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
   SIDEBAR_SCAN_DOCK_LEADING_ROW,
 } from '@/components/layout/header-shell';
 import { Check, ChevronDown } from '@/components/Icons';
@@ -153,7 +154,7 @@ export function RailRow<TRow>({
           // Leading FLOW track (SIDEBAR_SCAN_DOCK_LEADING_ROW) holds the
           // dot/checkbox; the title sits one gap after it — same column as the
           // dense scan bar + UNBOXED eyebrow. No deep title inset (canyon).
-          'ds-raw-button group relative w-full text-left transition-colors pr-1',
+          'ds-raw-button group relative w-full text-left transition-colors',
           SIDEBAR_SCAN_DOCK_LEADING_ROW,
           isDisabled ? 'cursor-wait opacity-80' : '',
           (editActive ? isChecked : isSelected)
@@ -193,10 +194,20 @@ export function RailRow<TRow>({
         <div data-rail-row-title className="min-w-0 flex-1">
           {renderRowMain(row, { isSelected, isFocused, pkgChip })}
         </div>
-        {activityAt != null ? (
-          <span className="shrink-0 self-center tabular-nums text-role-micro font-medium text-text-faint">
-            {railRelativeTime(activityAt)}
-          </span>
+        {getActivityAt ? (
+          activityAt != null ? (
+            <span
+              className={cn(
+                SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
+                'self-center tabular-nums text-role-micro font-medium text-text-faint',
+              )}
+            >
+              {railRelativeTime(activityAt)}
+            </span>
+          ) : (
+            // Keep the age column so titles do not jump when one row lacks activity.
+            <span className={SIDEBAR_RAIL_TRAILING_TRACK_CLASS} aria-hidden />
+          )
         ) : null}
       </button>
       <AnimatePresence>

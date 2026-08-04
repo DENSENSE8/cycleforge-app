@@ -1,10 +1,7 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
-import {
-  conditionGradeTableLabel,
-  getStatusDotBg,
-} from '@/components/station/receiving-constants';
+import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import {
@@ -13,7 +10,7 @@ import {
   TrackingCountChip,
   getLast8,
 } from '@/components/ui/CopyChip';
-import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
+import { GridRowCheckbox, isEmptyGutterChrome, type GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
@@ -67,6 +64,8 @@ export function IncomingGridGroupSummary({
   allSelected = false,
   someSelected = false,
   onToggleGroupSelect,
+  clickSelect = false,
+  selectGutterChrome = 'always',
 }: {
   rows: ReceivingLineRow[];
   isMobile: boolean;
@@ -75,6 +74,8 @@ export function IncomingGridGroupSummary({
   allSelected?: boolean;
   someSelected?: boolean;
   onToggleGroupSelect?: () => void;
+  clickSelect?: boolean;
+  selectGutterChrome?: GridSelectGutterChrome;
 }) {
   const resolvePlatformMeta = usePlatformMeta();
 
@@ -161,44 +162,50 @@ export function IncomingGridGroupSummary({
     const rule = !last;
     switch (col.key) {
       case 'select':
+        if (clickSelect) {
+          return (
+            <div
+              className={cn(
+                incomingGridCell({ inset: 'none', rule: true }),
+                INCOMING_GRID_FROZEN_CELL,
+              )}
+              style={{ left: incomingGridFrozenLeft('select') }}
+              data-frozen-edge
+              aria-hidden
+            />
+          );
+        }
         return (
           <div
             className={cn(
               incomingGridCell({ inset: 'none', rule: true }),
               INCOMING_GRID_FROZEN_CELL,
-              'justify-center',
+              isEmptyGutterChrome(selectGutterChrome) ? 'items-stretch p-0' : 'justify-center',
             )}
             style={{ left: incomingGridFrozenLeft('select') }}
+            data-frozen-edge
             onClick={(e) => {
               e.stopPropagation();
             }}
           >
-            {selectMode ? (
+            {selectMode && onToggleGroupSelect ? (
               <GridRowCheckbox
                 checked={allSelected ? true : someSelected ? 'mixed' : false}
                 onToggle={() => onToggleGroupSelect?.()}
                 label={allSelected ? 'Deselect all products in PO' : 'Select all products in PO'}
+                chrome={selectGutterChrome}
               />
             ) : (
               <span className="h-4 w-4 shrink-0" aria-hidden />
             )}
           </div>
         );
+      // The title column shows the title — see `IncomingGridRow` for why the
+      // workflow dot left this cell (2026-08-02). Scrolls with facts (only
+      // `select` is frozen — Unbox Sheets golden).
       case 'title':
         return (
-          <div
-            data-col="title"
-            className={cn(dataCell(col, rule), INCOMING_GRID_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: incomingGridFrozenLeft('title') }}
-            data-frozen-edge
-          >
-            <span
-              className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
-                getStatusDotBg(first.workflow_status, received, expected),
-              )}
-              aria-hidden
-            />
+          <div data-col="title" className={dataCell(col, rule)}>
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {title}
             </span>
@@ -249,7 +256,7 @@ export function IncomingGridGroupSummary({
         );
       case 'status':
         return (
-          <div data-col="status" className={cn(dataCell(col, rule), 'gap-1')}>
+          <div data-col="status" className={cn(dataCell(col, rule), 'min-w-0 gap-1')}>
             <IncomingGridStatusCell row={first} />
           </div>
         );
@@ -259,6 +266,7 @@ export function IncomingGridGroupSummary({
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
+      // Scrolls with facts (only `select` is frozen — Unbox Sheets golden).
       case 'order':
         return (
           <div data-col="order" className={dataCell(col, rule)}>

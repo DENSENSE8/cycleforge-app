@@ -14,6 +14,17 @@ export const ChevronRight = ({ className = "w-6 h-6" }: { className?: string }) 
     </svg>
 );
 
+/**
+ * Double chevron — "enter / drill in", not disclose-in-place.
+ * Distinct from a rotated `ChevronDown` (looks like a single › when collapsed).
+ */
+export const ChevronsRight = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m6 17 5-5-5-5" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m13 17 5-5-5-5" />
+    </svg>
+);
+
 export const TrendingUp = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />

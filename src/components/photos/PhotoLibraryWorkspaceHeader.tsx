@@ -22,9 +22,10 @@
  *
  * ## Scoped house-law exception: the search field is always open
  *
- * The DS search SoT is `ToolbarSearchToggle` — collapsed at rest, expanding on
- * hover/focus (`.claude/rules/ui-design-system.md` → Workbench scoped search
- * chrome). **This surface deliberately overrides that**, approved 2026-07-28.
+ * The DS search SoT is `TechRailSearchBar` — always-open filter+paste in workbench
+ * chrome (`.claude/rules/ui-design-system.md` → Workbench scoped search
+ * chrome). **This surface deliberately overrides that**, approved 2026-07-28:
+ * Photos keeps the always-open `SearchField` entry-path exception.
  *
  * Rationale: /ops/photos is a photo-EVIDENCE archive whose #1 job is exact
  * identifier retrieval — pulling the unboxing shots for a specific PO, serial,
@@ -181,7 +182,7 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
       className={className}
       search={
         // Always-open by design — see the scoped house-law exception in this
-        // file's header comment. Do NOT "fix" this back to ToolbarSearchToggle.
+        // file's header comment. Do NOT "fix" this back to TechRailSearchBar.
         <SearchField
           value={searchInput}
           onChange={setSearchInput}
@@ -190,7 +191,7 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
           tone="blue"
           // Intrinsically sized, and it must SHRINK: WorkbenchChromeHeader's
           // control row is `shrink-0`, so a `w-72` field pushed the row past the
-          // viewport and clipped itself (the collapsed ToolbarSearchToggle this
+          // viewport and clipped itself (the collapsed icon-first search this
           // replaced was icon-sized, so the row never had to budget for it).
           // `min-w-0` lets it give way before anything overflows.
           className="w-44 min-w-0 xl:w-60"

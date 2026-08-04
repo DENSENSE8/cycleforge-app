@@ -366,6 +366,42 @@ test.describe('Kiosk API — device-principal auth contract', () => {
     }
   });
 
+  test('staff-for-stepup + pickup lookup: device-authed, miss is oracle-safe 404', async ({
+    request,
+    baseURL,
+  }) => {
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Pickup'));
+    const tablet = await newTabletApiContext(baseURL!);
+    try {
+      await tablet.post('/api/kiosk/pair', {
+        data: { code },
+        headers: { 'content-type': 'application/json' },
+      });
+
+      const roster = await tablet.get('/api/kiosk/staff-for-stepup');
+      expect(roster.status(), 'step-up roster should 200').toBe(200);
+      const rosterBody = (await roster.json()) as { staff: Array<{ id: number; name: string }> };
+      expect(Array.isArray(rosterBody.staff)).toBe(true);
+
+      const miss = await tablet.post('/api/kiosk/pickup/lookup', {
+        data: { orderNumber: 'RS-999999999', phone: '5551234567' },
+        headers: { 'content-type': 'application/json' },
+      });
+      expect(miss.status()).toBe(404);
+      expect((await miss.json()).error).toBe('NOT_FOUND');
+
+      const collectMiss = await tablet.post('/api/kiosk/pickup/collect', {
+        data: { repairId: 999_999_999, phone: '5551234567' },
+        headers: { 'content-type': 'application/json' },
+      });
+      expect(collectMiss.status()).toBe(404);
+      expect((await collectMiss.json()).error).toBe('NOT_FOUND');
+    } finally {
+      await tablet.dispose();
+      await revokeDevice(request, deviceId);
+    }
+  });
+
   test('device list reflects lifecycle: an enrolled device appears awaiting-pairing, then revoked', async ({
     request,
   }) => {
@@ -565,8 +601,10 @@ for (const factor of TABLET_FACTORS) {
         await expect(page.getByRole('heading', { name: /buy \/ sell details/i })).toBeVisible();
         await expect(page.getByRole('heading', { name: /products/i })).toBeVisible();
 
-        // Pickup stays WIP — dock control is disabled.
-        await expect(page.getByRole('button', { name: /^pickup$/i })).toBeDisabled();
+        await page.getByRole('button', { name: /^pickup$/i }).click();
+        await expect(page.getByRole('heading', { name: /pickup details/i })).toBeVisible();
+        await expect(page.getByText(/find your order/i)).toBeVisible();
+        await expect(page.getByRole('button', { name: /look up order/i })).toBeVisible();
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);

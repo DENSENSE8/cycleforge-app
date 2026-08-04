@@ -127,7 +127,42 @@ never the thing the user navigates by as a collection map, and never a parallel 
   pattern to copy.
 
 > Rule of thumb: one merged single-line history → `EventTimeline`. A 3-source before/after audit ledger → extend
-> `AuditTimeline`. There is exactly one exception; don't grow a second.
+> `AuditTimeline`. A conversation whose rows carry block markdown → `MergedRecordStream` (below). Three renderers,
+> **one data waist**; do not grow a fourth.
+
+---
+
+## The second sanctioned sibling: `MergedRecordStream` (support ticket, 2026-08-02)
+
+**`MergedRecordStream` (`src/components/support/zendesk/chat/MergedRecordStream.tsx`) is a second renderer over the
+same `TimelineItem` waist**, and — unlike `AuditTimeline`, which forked the data shape too — it shares everything
+except the row body. It is the support ticket's merged ledger: helpdesk messages and warehouse / carrier events
+interleaved chronologically (`.claude/rules/display/workbench-service.md` → Thread anatomy).
+
+**Why it is not `EventTimeline`, stated rather than assumed:**
+
+- **`TimelineItem`'s display model cannot hold a message body.** That model is one line (`title`) plus a muted second
+  line (`subtitle`). A support message is *block markdown* — headings, lists, blockquotes — followed by an attachment
+  grid. Widening `EventTimeline` to accept a body renderer would put a markdown + attachment concern inside the
+  primitive that every unit journey and carrier trail composes.
+- **The anatomy is deliberately the house one-row anatomy, not the fading rail.** 40px leading mark, `divide-y
+  divide-border-hairline`, and day bands through the shared `DateGroupHeader` — the SoT `EventTimeline` does *not*
+  compose (it formats its own day header inline).
+- **Reading direction is ascending.** Every `EventTimeline` consumer reads newest-first; a conversation whose composer
+  is docked at the bottom cannot.
+
+**What is shared, and must stay shared:**
+
+- The row type — `TimelineItem`, extended by an optional `message` payload (`MergedRecordItem`).
+- The adapters — `zendeskCommentsToTimeline` sits in `src/lib/timeline/` beside its siblings, and the event spine
+  arrives from `mergeSupportContextTimeline`. **No domain mapping is re-derived in the component.**
+- The identifier chips — `TimelineRefChip` (`src/components/ui/timeline-ref-chip.tsx`) was extracted out of
+  `EventTimeline` so both renderers dispatch one `kind` map. Two renderers is a decision; two copies of the chip
+  dispatch would just be the fork, and the second copy is exactly where a `kind` would go missing.
+
+**Never `collapseTimeline` a list containing message rows.** It folds adjacent rows with an equal
+`title + ref + actor + tone` signature, and every message from one author shares both — two consecutive replies would
+collapse into one and a customer's words would silently vanish. Collapse the event spines *before* merging.
 
 ---
 
@@ -166,7 +201,10 @@ never the thing the user navigates by as a collection map, and never a parallel 
 - `src/lib/timeline/types.ts` — `TimelineItem` / `TimelineTone` / `TimelineRef` schema (the SoT shape).
 - `src/lib/timeline/` — adapters (`*ToTimeline`) + `collapseTimeline`; exported via `index.ts`.
 - `src/components/shipped/OrderTimelineSection.tsx` — reference merge: three spines → sort → collapse → section, with the serial↔order toggle.
-- `src/components/audit/AuditTimeline.tsx` — the one deliberate exception (3-source bin/SKU diff ledger).
+- `src/components/audit/AuditTimeline.tsx` — the one deliberate data-shape fork (3-source bin/SKU diff ledger).
+- `src/components/support/zendesk/chat/MergedRecordStream.tsx` — the sanctioned second RENDERER over the shared waist
+  (support ticket: messages + warehouse events, block markdown bodies).
+- `src/components/ui/timeline-ref-chip.tsx` — the shared `TimelineRef` → CopyChip dispatch both renderers compose.
 
 ---
 
@@ -182,6 +220,7 @@ never the thing the user navigates by as a collection map, and never a parallel 
 | Use `density` for sidebars; keep the same font scale | Shrink the type to fit a tight panel |
 | Use `EventTimeline` for any merged single-line history | Fork a new timeline component "just for this view" |
 | Extend `AuditTimeline` only for the 3-source diff ledger | Force the before/after audit onto `TimelineItem` |
+| Share the waist when a row body genuinely diverges (`MergedRecordStream`) | Copy the `TimelineRef`→chip dispatch into the new renderer |
 | Let a failed history fetch render empty | Let a sub-resource fetch 500 the whole record |
 
 ---
