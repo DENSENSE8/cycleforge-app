@@ -18,7 +18,11 @@ describe('TrackingNumberMenuChip — no clipboard replace', () => {
       false,
       'TrackingNumberMenuChip must not clipboard-steal on Replace tracking',
     );
-    assert.match(src, /onReplaceTracking\(\)/, 'Replace must call the host callback with no args');
+    assert.match(src, /onReplaceTracking\(\)/, 'Edit must call the host callback with no args');
+    assert.match(src, /label: 'Open'/);
+    assert.match(src, /label: 'Edit'/);
+    assert.match(src, /denseLabel/);
+    assert.match(src, /Pencil/);
   });
 
   it('OrderIdentityChips delegates filled tracking to TrackingNumberMenuChip', () => {

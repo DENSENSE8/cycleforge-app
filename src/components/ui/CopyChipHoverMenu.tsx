@@ -143,12 +143,18 @@ export function CopyChipHoverMenu({
   items,
   menuLabel,
   className,
+  denseLabel = false,
   onOpenChange,
 }: {
   children: ReactNode;
   items: CopyChipHoverMenuItem[];
   menuLabel: string;
   className?: string;
+  /**
+   * Short verbs inherit button `uppercase tracking-widest` (OPEN / EDIT face) —
+   * carton IdentityLinkChip parity. Default keeps sentence-case dashboard labels.
+   */
+  denseLabel?: boolean;
   /** Fires when the dropdown opens (true) / closes (false) — lets a host row keep
    *  its hover-expanded chrome (chevron + shifted chips) while the menu is up. */
   onOpenChange?: (open: boolean) => void;
@@ -251,7 +257,12 @@ export function CopyChipHoverMenu({
             onMouseEnter={clearClose}
             onMouseLeave={scheduleClose}
           >
-            <CopyChipHoverMenuPanel items={items} menuLabel={menuLabel} onItemSelect={() => close()} />
+            <CopyChipHoverMenuPanel
+              items={items}
+              menuLabel={menuLabel}
+              denseLabel={denseLabel}
+              onItemSelect={() => close()}
+            />
           </div>,
           document.body,
         )
