@@ -28,15 +28,36 @@ const TRIAGE = join(
 describe('CartonMatchHub (P1)', () => {
   const hub = readFileSync(HUB, 'utf8');
 
-  it('exposes tabSet and autoFocusSearch', () => {
+  it('exposes tabSet, chrome, and autoFocusSearch', () => {
     assert.match(hub, /tabSet\?: CartonMatchTabSet/);
+    assert.match(hub, /chrome\?: CartonMatchHubChrome/);
     assert.match(hub, /autoFocusSearch\?: boolean/);
-    assert.match(hub, /chrome="bare"/);
+  });
+
+  it('bare Unbox Displays: secondary dropdown, no Package Pairing title, no pencil, no avenue stack', () => {
+    // Unbox Displays mounts chrome="bare" — one flat display body.
+    assert.match(hub, /bareChrome/);
+    assert.match(hub, /variant="secondary"/);
+    assert.match(hub, /DropdownMenu/);
+    assert.match(hub, /selectAutoMode/);
+    assert.doesNotMatch(hub, /AvenueStripButton/);
+    assert.doesNotMatch(hub, /variant="display"/);
+    assert.doesNotMatch(hub, /flex flex-col gap-2/);
+    assert.match(hub, /id: 'zoho_item'/);
+    assert.doesNotMatch(hub, /id: 'other'/);
+    assert.doesNotMatch(hub, /CartonAddInline/);
+    // Pencil only on card hosts (`!bareChrome`); Store is a mode menu item.
+    assert.match(hub, /!embedded && !bareChrome/);
+    // Bare return path is titleless WorkspaceCard.
+    assert.match(hub, /if \(bareChrome\) \{\s*return <WorkspaceCard overflow="visible">/);
+    // Bare does not mount a sibling UnfoundMatchStrip action grid.
+    assert.match(hub, /showQuickMatchStrip = Boolean\(autoMatch\) && !pickerCollapsed && !bareChrome/);
+    assert.match(hub, /forcedLane=/);
   });
 
   it('embeds UnfoundMatchStrip when autoMatch is set (visible even when pairing collapsed)', () => {
     assert.match(hub, /UnfoundMatchStrip/);
-    assert.match(hub, /showQuickMatch/);
+    assert.match(hub, /showQuickMatchStrip|showAutoMatchMenu/);
     // Strip must not be gated on `collapsed` — unfound Auto-match stays open.
     assert.doesNotMatch(hub, /!pickerCollapsed && !collapsed/);
     assert.match(hub, /Boolean\(autoMatch\) && !pickerCollapsed/);
@@ -61,6 +82,7 @@ describe('CartonMatchHub (P1)', () => {
     assert.doesNotMatch(src, /<UnfoundMatchStrip/);
     assert.match(src, /<CartonMatchHub/);
     assert.match(src, /autoMatch=/);
+    assert.match(src, /chrome="bare"/);
     assert.match(src, /id: 'pairing'/);
   });
 

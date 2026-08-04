@@ -28,7 +28,10 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
+import {
+  dispatchAssistantDockClose,
+  dispatchReceivingDetailsOverlayClose,
+} from '@/utils/events';
 import { clearPeerRightEdgeParams } from '../unbox-right-edge';
 import { UNBOX_SIDE_TAB_ORDER, type UnboxSideTab } from '../unbox-side-tabs';
 
@@ -86,6 +89,7 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
         // write (a sibling effect would race and lose) + suspend details.
         clearPeerRightEdgeParams(next, 'display');
         dispatchReceivingDetailsOverlayClose();
+        dispatchAssistantDockClose();
       } else {
         next.delete(DISPLAY_PARAM);
       }
@@ -95,9 +99,13 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
     [router, pathname, searchParams],
   );
 
-  // Deep-link / reload with a display already open — suspend details once.
+  // Deep-link / reload with a display already open — suspend details + AI.
+  // setDisplay(tab) already dispatches both; this covers cold `?display=` while
+  // assistant:dock-open is still '1' in localStorage.
   useEffect(() => {
-    if (requestedDisplay) dispatchReceivingDetailsOverlayClose();
+    if (!requestedDisplay) return;
+    dispatchReceivingDetailsOverlayClose();
+    dispatchAssistantDockClose();
   }, [requestedDisplay]);
 
   const prevLineIdRef = useRef<number | null>(null);

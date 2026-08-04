@@ -36,6 +36,7 @@ Adoption status (2026-08-01):
 |---|---|
 | `swap.scan` · `swap.focus` · `push.rail` · `gesture.press` | **none** — fully swept |
 | `feedback.pulse` | none *(no site has the job yet — see below)* |
+| `procedure.advance` | `ProcedureDeck` layout settle *(2026-08-03)* |
 
 `feedback.pulse` ships with **zero consumers**, deliberately. `InlinePillPicker` borrows
 `chipCopyFeedback`'s *duration* for a staggered option-chip reveal — a mount animation, not
@@ -50,10 +51,14 @@ of this layer, so the role waits for a real flash site.
 | `push.rail` | tween `motionBezier.layout` **0.24s** | `detailStackPush` + `sidebarNavColumnMount` | Workbench · Monitor · Station push columns |
 | `gesture.press` | spring (`cardExpansion`, damping 24 / stiffness 300) | `framerGesture.tapPress` | Station · Workbench |
 | `feedback.pulse` | tween `easeOut` **0.15s** | `chipCopyFeedback` | Station · Workbench |
+| `procedure.advance` | tween `motionBezier.layout` **0.55s** | `procedureStackLayout` | Station · Workbench *(Procedure Focus Deck only)* |
 
-**Five roles, and the count is the point.** A sixth is a claim that a genuinely new *job*
-exists — not that a surface wants a different duration. Wanting a different duration for the
-same job is the drift roles exist to stop.
+**Six roles today; the count is still the point.** A seventh is a claim that a genuinely new
+*job* exists — not that a surface wants a different duration. Wanting a different duration
+for the same job is the drift roles exist to stop. `procedure.advance` (2026-08-03) is the
+sixth: layout geometry settling when a **procedure step pointer** advances inside
+`ProcedureDeck` — a different job from `push.rail` (panel toggle) and from `swap.scan`
+(content crossfade).
 
 **The durations above are the ones the code already ships**, deliberately. The originating
 ruling (D10) proposed 150 / 200 / 250ms; the shipped curves are 120 / 180 / 240ms and were
@@ -87,9 +92,14 @@ corrected to the code.**
 **A hover animation on a dense row must be CSS.** A framer `whileHover` on a
 `LedgerGrid` row or a MasterNav spine row binds a React state update to `mousemove` across
 every row in the render window — a re-render per pointer move to move something two pixels the
-compositor gives away free. The house already ships this as `SPINE_ICON_LIFT_CLASS` (a
-`motion-safe:` CSS transform on the 14px glyph); that instance is now the general law, not a
-one-off exception.
+compositor gives away free.
+
+**The law survived its own reference implementation.** It was written around
+`SPINE_ICON_LIFT_CLASS`, a `motion-safe:` CSS transform on the MasterNav spine's 14px glyph.
+That class was deleted 2026-08-02 — **not because the technique was wrong, but because that
+particular row should not move at all** (`source-of-truth.md` → MasterNav row hover/press
+travel). The engine choice above is unchanged: if a dense row ever earns hover travel again, it
+is CSS with `motion-safe:`, never a framer `whileHover`.
 
 **`motion-safe:` is mandatory on CSS motion.** The app-wide `MotionConfig` floor covers framer
 only — it has no visibility into a Tailwind `transition-transform`. A CSS hover lift without
@@ -127,19 +137,23 @@ they were never what the boundary is about, and funnelling them through the barr
 
 ## The transition law, in one paragraph
 
-**Animate `opacity` + a small `transform` (`x`/`y`/`scale`) only; never animate layout (`width`/`height`/`padding`).**
-GPU-composited properties (opacity, transform) don't trigger reflow, so a crossfade stays at 60 fps under load while a
-height/width tween thrashes layout. For height changes use `grid-template-rows` (or Framer's `height: 'auto'` *only* on
-low-frequency expand/collapse, e.g. `framerPresence.collapseHeight`), never an animated box you also crossfade.
-**Swap one keyed entity for another with `AnimatePresence mode="wait"`, `initial={false}` so the first paint doesn't
-animate, and a stable key** (entity id / `skuId` — *never* an array index). The previous element exits, then the next
-enters; never two on screen at once. Durations are **sub-300ms, ease-out by default** (`motionBezier.easeOut` =
-`[0.22, 1, 0.36, 1]`).
+**Default: animate `opacity` + a small `transform` (`x`/`y`/`scale`) only; do not animate layout
+(`width`/`height`/`padding`/`margin`) on high-frequency or collection surfaces.** GPU-composited
+properties (opacity, transform) don't trigger reflow, so a crossfade stays at 60 fps under load while
+a height/width tween thrashes layout on a list that re-renders every keystroke. For height changes
+elsewhere use `grid-template-rows` (or Framer's `height: 'auto'` *only* on low-frequency
+expand/collapse, e.g. `framerPresence.collapseHeight`), never an animated box you also crossfade.
+**Swap one keyed entity for another with `AnimatePresence mode="wait"`, `initial={false}` so the first
+paint doesn't animate, and a stable key** (entity id / `skuId` — *never* an array index). The
+previous element exits, then the next enters; never two on screen at once. Durations are
+**sub-300ms, ease-out by default** (`motionBezier.easeOut` = `[0.22, 1, 0.36, 1]`) — except the
+two sanctioned layout jobs below, which may run up to **~400ms** on `motionBezier.layout`.
 
-> Rule of thumb: if a transition touches `width`, `height`, `top`, `left`, or `padding`, it is wrong. Re-express it as
-> opacity + transform, or as `grid-template-rows` for height. Layout animation is the #1 source of jank here.
+> Rule of thumb: if a transition touches `width`, `height`, `top`, `left`, or `padding`, it is wrong
+> **unless** it is one of the two named layout exceptions below. Everywhere else, re-express it as
+> opacity + transform, or as `grid-template-rows` for height.
 
-**The one sanctioned layout animation: a deliberate PUSH toggle.** A panel that makes room for itself — the sidebar
+**Sanctioned layout animation #1: a deliberate PUSH toggle.** A panel that makes room for itself — the sidebar
 nav column (`framerTransition.sidebarNavColumnMount`), the left context rail (`ContextPanelLayout`), the right-rail
 inspector (`RightRailHost` in push mode), the photo viewer's details drawer (`photoContextPanelMount`), a
 `collapseHeight` reveal — animates its **own** `width`/`height` as a flex sibling,
@@ -172,6 +186,20 @@ exists to prevent.
 
 Transform-only remains the law for everything that merely *moves* or *swaps*. If a panel can do its job by covering,
 it covers.
+
+**Sanctioned layout animation #2: Procedure Focus Deck step advance — RETIRED
+(flat foundation 2026-08-03).** `ProcedureDeck` is a plain expandable list: every
+step is a full face; only the active body expands. Step advance uses content
+crossfade only (`motionRole.swap.scan` + `framerPresence.procedureFocusBody`) and
+`scrollIntoView({ block: 'nearest' })`. Do **not** wire
+`motionRole.procedure.advance` / `layout="position"` / peek pull-ups on the deck
+without amending SoT. The catalog role remains deferred. Law:
+`source-of-truth.md` → Scan-station procedure focus deck ·
+`display/station-workbench.md` → Procedure Focus Deck.
+
+**What stays banned on the deck:** HIDING and RE-SORTING; peeks / covered tuck /
+negative-margin piles; scroll-linked `animation-timeline` / `useScroll` on the
+step list; `layoutId` morphs between step faces; animating the dock terminal.
 
 ---
 
@@ -221,11 +249,12 @@ The recipe is shared; **what** crossfades is archetype-specific and **singular**
   graph itself pans/zooms directly. **Never crossfade the graph** — it destroys spatial continuity.
 - **Never crossfade a list, map, or graph.** A list re-fading on every keystroke/selection reads as flicker and loses
   scroll. The list is the stable navigator; only the *detail* transitions.
-- **Exception — MasterNav Stock drill.** Replacing the spine *root map* with Stock children (or Back) is a deliberate
-  altitude change, not a per-row flicker. Use named opacity-only SoT (`framerPresence.spineDrill` +
-  `framerTransition.spineDrill`, ≤150ms) via `useMotionPresence` / `useMotionTransition`. **Do not** horizontal-slide
-  a 240px push spine; **do not** drill Stations (floor map stays on root). Auto-drill on `kind === 'stock'` must not
-  steal focus. Law: `workbench.md`; guard: `main-nav-groups.guard.test.ts`.
+- **Exception — the MasterNav body swap.** Replacing the spine's flat map with ranked search results (or back) is a
+  deliberate change of what KIND of list the body is, not a per-row flicker. Use named opacity-only SoT
+  (`framerPresence.spineBodySwap` + `framerTransition.spineBodySwap`, ≤150ms) via `useMotionPresence` /
+  `useMotionTransition`, **keyed on the kind and never on the query** — keying on the query replays the crossfade on
+  every keystroke, in a list the operator is reading. **Do not** horizontal-slide a 240px push spine. Law:
+  `workbench.md`; guard: `main-nav-groups.guard.test.ts`.
 
 > Rule of thumb: there is exactly **one** crossfading region per archetype. If you're fading two regions, or fading the
 > list, you've picked the wrong target — re-read the table. (Stock drill is the sole sanctioned spine-list swap.)
@@ -258,7 +287,7 @@ and tail read as imprecise.
 
 - **Cubic-bezier `easeOut` (discrete swaps):** active-card crossfade, right-pane crossfade, table rows, dropdowns,
   chevrons, scrims, MasterNav Stock drill. Presets: `framerTransition.stationCardMount` / `tableRowMount` /
-  `dropdownOpen` / `overlayScrim` / `spineDrill`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`. Height/layout
+  `dropdownOpen` / `overlayScrim` / `spineBodySwap`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`. Height/layout
   tweens use the softer `motionBezier.layout`.
 - **Spring (physical / gesture):** bottom sheets (`framerTransitionMobile.sheetSlide`), fullscreen photo paging
   (`viewerPaging` — `damping: 38` for *no overshoot*, "bounce reads as tacky on a photo"), the sliding tab/button
@@ -358,17 +387,28 @@ it through `useMotionPresence` / `useMotionTransition`, so the reduced-motion co
 inline literals left to drift. **New right-pane crossfades call `useMotionPresence(framerPresence.workbenchPane)`** —
 never re-inline the values.
 
-## RESOLVED — MasterNav Stock drill (`spineDrill`)
+## RESOLVED — the MasterNav body swap (`spineBodySwap`)
 
-Hybrid spine: Stations/Main stay static nests; Stock is a Vercel-style drill-in. List swap uses
-**`framerPresence.spineDrill`** (opacity-only) + **`framerTransition.spineDrill`** (`0.12s`, `easeOut`) in
-`SidebarNavList`, through the hook bridge. No `x`/`y` on the 240px push spine. Gemini-ratified 2026-07-30
-(`docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`). **Do not** invent a second drill altitude for modes
-or Stations.
+**The spine drill is DELETED (2026-08-02), and with it the ruling this section used to hold.** The
+Vercel-style drill-in was ratified 2026-07-30
+(`docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`) and shipped correctly; what it could
+not survive was its own content. Six of the eight sections held exactly one page, so drilling charged
+a click to reveal a row carrying the section's own name — `Catalog › Catalog`. Hierarchy with no
+content, and the duplicate label was the visible symptom. The spine body is now one flat map.
+
+**The preset survived under a truer name.** `spineDrill` → **`spineBodySwap`**: the body still swaps
+between two KINDS of list — the flat map and the ranked search results — which is the same altitude
+change at the same physics (opacity-only, `0.12s`, `easeOut`, through the hook bridge, no `x`/`y` on
+a 240px push spine). Renamed rather than deleted-and-recreated, because a preset named for a surface
+that no longer exists is a comment that lies, and one deleted while it still has a consumer just
+gets re-invented. `spineDrillFilter` had no consumer at all and is gone outright.
+
+**Key it on the KIND, never on the query.** A key that includes `navFilter` replays the crossfade on
+every keystroke, under the cursor, in a list the operator is actively reading.
 
 ## RESOLVED — ONE MasterNav row cascade (`spineRowStagger`)
 
-**Drill page rows and the mode rows nested under them run on the SAME ladder** —
+**Page rows and the child rows nested under them run on the SAME ladder** —
 `framerVariants.spineRowStaggerContainer` / `spineRowStaggerItem`: `15ms × index`, `120ms` mount,
 `opacity 0→1` + `y 2→0`. An 8-row section resolves at **225ms**. There is no second step for the
 inner altitude: modes used to stagger at `40ms` while pages did not stagger at all, so a 4-mode page
@@ -387,9 +427,10 @@ Three constraints, all load-bearing:
   earns its keep inside a drill, where the list is long and its contents change.
 
 `y: 2` is the entire travel, so the reduced-motion floor (which snaps transforms and keeps opacity)
-leaves the correct reduced form — a crossfade, not a cut. **Row hover/press travel is a separate,
-CSS-only concern** — `SPINE_ICON_LIFT_CLASS`, see `source-of-truth.md` → MasterNav row hover/press
-travel. Never a framer `whileHover` on a spine row.
+leaves the correct reduced form — a crossfade, not a cut. **This mount cascade is the ONLY motion
+the spine has left:** row hover/press travel was deleted 2026-08-02 (`source-of-truth.md` →
+MasterNav row hover/press travel), so a spine row now answers the pointer with colour alone. Never
+a framer `whileHover` on a spine row.
 
 ## RESOLVED — `MotionConfig` is the reduced-motion FLOOR
 
@@ -475,10 +516,10 @@ blanket mandate is not on the roadmap; reopen it only with evidence the floor mi
 - **Bounce/overshoot on a photo or an opacity fade** — `viewerPaging` deliberately uses `damping: 38` for none;
   "bounce reads as tacky on a photo."
 - **Routine transitions over ~300ms** — sluggish; reserve longer only for large physical slides (sheet, pager).
-- **Animating `width`/`height`/`padding`** — layout thrash; use `grid-template-rows` for height, transform for the rest.
+- **Animating `width`/`height`/`padding`/`margin`** outside the two sanctioned layout jobs (PUSH toggle · Procedure Focus Deck advance) — layout thrash; use `grid-template-rows` for height, transform for the rest.
 - **Crossfading the list / map / graph** — only the detail/active-card/overlay transitions; the navigator stays put.
-  (Exception: MasterNav Stock drill via `spineDrill` — see above.)
-- **Horizontal slide on Stock drill** — use opacity-only `framerPresence.spineDrill`; never page-local `x: ±12`.
+  (Exception: the MasterNav body swap via `spineBodySwap` — see above.)
+- **Horizontal slide on the MasterNav body swap** — use opacity-only `framerPresence.spineBodySwap`; never page-local `x: ±12`.
 - **Animating outside framer without a gate** — GSAP / `motion-plus` sit outside the `MotionConfig`
   floor, so they need their own `useReducedMotion()` check. (Consuming `framerPresence.*` raw is
   *fine* — the floor covers it.)
@@ -505,11 +546,11 @@ blanket mandate is not on the roadmap; reopen it only with evidence the floor mi
 **Don't**
 - Name a motion package (`framer-motion` / `motion/react`) anywhere outside the barrel.
 - Add a sixth role because a surface wants a different duration for an existing job.
-- Animate layout (`width`/`height`/`padding`), or crossfade a list/map/graph.
+- Animate layout (`width`/`height`/`padding`/`margin`) outside PUSH toggle + Procedure Focus Deck advance, or crossfade a list/map/graph.
 - Key by array index, or put `AnimatePresence` behind the `&&`.
 - Ship a **non-framer** animation (GSAP, `motion-plus`, CSS) with no reduced-motion path.
 - Invent new right-pane crossfade literals — use `framerPresence.workbenchPane` via `useMotionPresence`.
-- Horizontal-slide the MasterNav Stock drill — use `framerPresence.spineDrill` (opacity-only).
+- Horizontal-slide the MasterNav body swap — use `framerPresence.spineBodySwap` (opacity-only).
 - Use `layoutId` for a list→detail replace.
 
 ---

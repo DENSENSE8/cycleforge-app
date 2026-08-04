@@ -10,6 +10,9 @@
  * Listing / tracking Edit navigate to Unbox SectionTabsSlider tabs (parent
  * passes `onEdit*` + `*EditOpen`). PO# Edit opens Package Pairing → PO when
  * the carton has no real Zoho PO id (`onEditPo`).
+ *
+ * Serves Unbox and Triage — both use the two-row family face (lifecycle · PO$
+ * on row 2). Pair the host with `reserveIdentityClearance="stacked"`.
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
@@ -78,14 +81,6 @@ interface LineCartonContextSectionProps {
    * Classify surface and expands that dimension's names list.
    */
   onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
-  /**
-   * Forwarded to {@link CartonContextCard} — `bar` for the sticky station
-   * chrome, `bar-stacked` for the two-row Unbox identity (row 1 = urgency ·
-   * platform · type → listing; row 2 = order#/PO# · tracking# → ticket/Claim ·
-   * Photos). This adapter serves BOTH Unbox and Triage, so the two-row face is
-   * opted into per call site — Triage stays on the one-row `bar`.
-   */
-  density?: 'card' | 'bar' | 'bar-stacked';
   /** Switch Unbox workspace to the Tracking tab. */
   onEditTracking?: () => void;
   /** Switch Unbox workspace to the Listings tab. */
@@ -118,7 +113,6 @@ export function LineCartonContextSection({
   showClassifyControls = true,
   classifyInteractive = true,
   onClassifyPillOpen,
-  density = 'card',
   onEditTracking,
   onEditListing,
   onEditPo,
@@ -133,7 +127,6 @@ export function LineCartonContextSection({
   // PO money total — carton grain by construction (a sum over the carton's
   // lines), derived via the SoT (`cartonPoTotal`), never summed in the card.
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
-  const isStackedDensity = density === 'bar-stacked';
 
   return (
     <CartonContextCard
@@ -143,35 +136,21 @@ export function LineCartonContextSection({
       showClassifyControls={showClassifyControls}
       classifyInteractive={classifyInteractive}
       onClassifyPillOpen={onClassifyPillOpen}
-      density={density}
       poTotal={poTotal}
-      showPoTotal={isStackedDensity}
-      // ACTIVE LINE, not a carton rollup — this is the same `n/expected` the
-      // operator just read on the rail row they clicked, so the two surfaces
-      // never show different numbers for the same click.
-      //
-      // `quantity_received` is typed `number` but a synthetic unfound row
-      // arrives without it, which rendered a literal `undefined/?`. Coerce to
-      // 0 so an unfound carton reads `0/?` — exactly what its rail row says.
-      qty={
-        isStackedDensity
-          ? {
-              received: Number(row.quantity_received) || 0,
-              expected: row.quantity_expected ?? null,
-            }
-          : null
-      }
+      showPoTotal
+      // Qty left this band on 2026-08-02: Unbox pins it on the Items eyebrow
+      // Qty roll-up lives on the PO line accordion (`POUnboxingSection`) as the
+      // carton's received/expected facts — not a separate items pin on main.
+      // Keeping it here doubled the same fraction in two places with two grains
+      // (active-line vs carton), which is how they drifted.
+      qty={null}
       // Same dot + label the operator just clicked in the sidebar rail — the
       // rail SoT owns the unmatched / Zoho-received special cases, so the band
       // and the rail can never disagree about a carton's stage.
-      lifecycle={
-        isStackedDensity
-          ? {
-              dotClass: getReceivingStatusDot(row),
-              label: getReceivingStatusDotLabel(row),
-            }
-          : null
-      }
+      lifecycle={{
+        dotClass: getReceivingStatusDot(row),
+        label: getReceivingStatusDotLabel(row),
+      }}
       showStaffPhotoRow
       photoStage={photoStage}
       onMakeClaim={onToggleClaimView ?? (() => c.openClaimModal('create'))}

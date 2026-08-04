@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Monitor,
   MoreHorizontal,
+  Power,
   Settings,
   Smartphone,
 } from '@/components/Icons';
@@ -93,24 +94,24 @@ export function StaffAccountFooter({ className }: { className?: string }) {
 
   return (
     <div
-      className={cn('border-t border-border-soft p-1', className)}
+      className={cn('border-t border-border-soft px-1 py-0.5', className)}
       data-staff-account-footer
     >
-      <div ref={rowRef} className="flex min-w-0 items-center gap-1.5 px-1 py-1">
+      <div ref={rowRef} className="flex min-w-0 items-center gap-1 px-1 py-0">
         {/* Click the mark to change colour / photo — not Settings. */}
-        <StaffAvatarEditor />
-        <div className="min-w-0 flex-1">
+        <StaffAvatarEditor markSize="xs" />
+        <div className="min-w-0 flex-1 leading-none">
           <div className="truncate text-role-caption font-semibold leading-tight text-text-default">
             {staffName || `Staff #${user.staffId}`}
           </div>
-          <div className="truncate text-role-micro font-medium uppercase tracking-[0.12em] text-text-soft">
+          <div className="truncate text-role-micro font-medium uppercase leading-tight tracking-[0.12em] text-text-soft">
             {user.role.replace(/_/g, ' ')}
           </div>
         </div>
         <HoverTooltip label="Account details" asChild>
           <IconButton
             type="button"
-            size="sm"
+            size="xs"
             onClick={() => setMenu((m) => (m === 'more' ? 'none' : 'more'))}
             ariaLabel="Account details"
             aria-expanded={moreOpen}
@@ -121,27 +122,13 @@ export function StaffAccountFooter({ className }: { className?: string }) {
         <HoverTooltip label="Sign out" asChild>
           <IconButton
             type="button"
-            size="sm"
+            size="xs"
             onClick={() => {
               void signOut();
             }}
             ariaLabel="Sign out"
             className="shrink-0 rounded-md text-text-faint hover:bg-surface-hover hover:text-text-default"
-            icon={
-              <svg
-                className="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            }
+            icon={<Power className="h-3.5 w-3.5" />}
           />
         </HoverTooltip>
       </div>

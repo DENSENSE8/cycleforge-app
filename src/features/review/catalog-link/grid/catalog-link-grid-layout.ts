@@ -3,7 +3,7 @@
  * {@link WARRANTY_GRID_COLUMNS} / {@link MY_DAY_GRID_COLUMNS}.
  *
  * Composes the SAME shared geometry as every other house grid
- * (`ordersQueueColVar` · `ordersQueueGridCell` · `ORDERS_QUEUE_FROZEN_CELL`), so
+ * (`ledgerGridCell` · `LEDGER_GRID_FROZEN_CELL`), so
  * a chore row lines up track-for-track with Pending, Unbox and Incoming instead
  * of being a second table language inside Review.
  *
@@ -20,8 +20,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -177,23 +179,13 @@ export function catalogLinkGridTemplate(
   return gridTemplate(columns);
 }
 
-// Row left-pad — the same token every house grid uses, so the frozen gutter
-// aligns with Pending / Unbox / Pickup.
-const CATALOG_LINK_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
 /**
  * Sticky offset for a frozen cell — row px plus the summed widths of the locked
  * columns before it. Self-computed over {@link CATALOG_LINK_GRID_COLUMNS} so
  * this surface's own track widths drive the offset.
  */
 export function catalogLinkGridFrozenLeft(key: CatalogLinkGridColumnKey): string {
-  const idx = CATALOG_LINK_LOCKED_KEYS.indexOf(key);
-  const parts = [CATALOG_LINK_ROW_PX];
-  for (const k of CATALOG_LINK_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = CATALOG_LINK_GRID_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(CATALOG_LINK_GRID_COLUMNS, key);
 }
 
 
@@ -212,10 +204,9 @@ export function defaultDirForCatalogLinkGridSort(
   return 'asc';
 }
 
-// Shared spreadsheet chrome — the SAME helpers the receiving / outbound / pickup
-// grids use. Never re-derive cell padding, hairlines or the row shell here.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as CATALOG_LINK_GRID_FROZEN_CELL,
-  ordersQueueGridCell as catalogLinkGridCell,
-  ordersQueueRowShellClass as catalogLinkGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as CATALOG_LINK_GRID_FROZEN_CELL,
+  ledgerGridCell as catalogLinkGridCell,
+  ledgerGridRowShellClass as catalogLinkGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

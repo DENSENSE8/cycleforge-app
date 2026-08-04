@@ -7,6 +7,7 @@ import {
   TABLE_SURFACE_CLIP_CLASS,
 } from '../../tokens/table-surface';
 import { resolveGridColumnAlign } from '../grid/grid-header-align';
+import { TableStickyXScroll } from '../grid/TableStickyXScroll';
 import { EmptyState } from '../../primitives/EmptyState';
 
 // ─── DataTable ───────────────────────────────────────────────────────────────
@@ -21,14 +22,17 @@ import { EmptyState } from '../../primitives/EmptyState';
 // raised elevation); frozen header via {@link TABLE_FROZEN_HEADER_CLASS}.
 // Typography from `tableHeader` / `tableCell`.
 //
-// **No `'use client'`, deliberately.** This component holds no state, no
-// effects, and touches no browser API, and most of its intended call sites
-// (`/admin/inventory/**`, `/settings/audit`, …) are React Server Components
-// that today ship ZERO client JS for their tables. A directive here would put
-// every one of them behind a client boundary to render static rows — the
-// bundle-altitude trap in `build-gotchas.md`. A caller that passes `onRowClick`
-// is inherently interactive and must itself be a client component; React will
-// say so plainly if a server component tries to hand over a function.
+// Horizontal triage scroll uses {@link TableStickyXScroll} (client island) so
+// this file stays free of `'use client'` — RSC admin pages keep zero client JS
+// for static rows aside from that thin scroll chrome.
+//
+// **No `'use client'` on this file, deliberately.** This component holds no
+// state of its own and most call sites (`/admin/inventory/**`, `/settings/audit`,
+// …) are React Server Components. A directive here would put every one of them
+// behind a client boundary — the bundle-altitude trap in `build-gotchas.md`.
+// A caller that passes `onRowClick` is inherently interactive and must itself
+// be a client component; React will say so plainly if a server component tries
+// to hand over a function.
 
 export type ColumnAlign = 'left' | 'center' | 'right';
 
@@ -153,20 +157,22 @@ export function DataTable<Row>({
   if (loading) {
     return (
       <div data-table-surface="" className={cn(TABLE_SURFACE_CLIP_CLASS, className)}>
-        <table className="w-full border-collapse">
-          {header}
-          <tbody aria-busy="true">
-            {Array.from({ length: loadingRows }, (_, i) => (
-              <tr key={i} className="border-b border-border-soft last:border-b-0">
-                {columns.map((col) => (
-                  <td key={col.key} className={cn(tableCell, 'px-3 py-2.5 align-middle')}>
-                    <div className="h-3 w-full max-w-[10rem] animate-pulse rounded bg-surface-sunken" />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <TableStickyXScroll>
+          <table className="w-full min-w-max border-collapse">
+            {header}
+            <tbody aria-busy="true">
+              {Array.from({ length: loadingRows }, (_, i) => (
+                <tr key={i} className="border-b border-border-soft last:border-b-0">
+                  {columns.map((col) => (
+                    <td key={col.key} className={cn(tableCell, 'px-3 py-2.5 align-middle')}>
+                      <div className="h-3 w-full max-w-[10rem] animate-pulse rounded bg-surface-sunken" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableStickyXScroll>
       </div>
     );
   }
@@ -189,49 +195,51 @@ export function DataTable<Row>({
 
   return (
     <div data-table-surface="" className={cn(TABLE_SURFACE_CLIP_CLASS, className)}>
-      <table className="w-full border-collapse">
-        {header}
-        <tbody>
-          {rows.map((row, index) => {
-            const selected = isRowSelected?.(row) ?? false;
-            const clickable = !!onRowClick;
-            return (
-              <tr
-                key={rowKey(row, index)}
-                onClick={clickable ? () => onRowClick(row) : undefined}
-                onKeyDown={
-                  clickable
-                    ? (event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          onRowClick(row);
+      <TableStickyXScroll>
+        <table className="w-full min-w-max border-collapse">
+          {header}
+          <tbody>
+            {rows.map((row, index) => {
+              const selected = isRowSelected?.(row) ?? false;
+              const clickable = !!onRowClick;
+              return (
+                <tr
+                  key={rowKey(row, index)}
+                  onClick={clickable ? () => onRowClick(row) : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            onRowClick(row);
+                          }
                         }
-                      }
-                    : undefined
-                }
-                role={clickable ? 'button' : undefined}
-                tabIndex={clickable ? 0 : undefined}
-                aria-selected={isRowSelected ? selected : undefined}
-                className={cn(
-                  'border-b border-border-soft last:border-b-0 transition-colors',
-                  clickable &&
-                    'cursor-pointer hover:bg-surface-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/40',
-                  selected && 'bg-surface-canvas',
-                )}
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={cn(tableCell, 'px-3 py-2.5 align-middle', alignFor(col))}
-                  >
-                    {col.cell(row)}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                      : undefined
+                  }
+                  role={clickable ? 'button' : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  aria-selected={isRowSelected ? selected : undefined}
+                  className={cn(
+                    'border-b border-border-soft last:border-b-0 transition-colors',
+                    clickable &&
+                      'cursor-pointer hover:bg-surface-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/40',
+                    selected && 'bg-surface-canvas',
+                  )}
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={cn(tableCell, 'px-3 py-2.5 align-middle', alignFor(col))}
+                    >
+                      {col.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </TableStickyXScroll>
     </div>
   );
 }

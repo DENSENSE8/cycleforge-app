@@ -4,10 +4,11 @@
  * Packing adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
  *
- * Maps an active pack order onto the condensed identity row (order# · tracking)
- * plus the manual send-to-phone pill — the packing counterpart of the Unbox
- * carton photo pill, which lives in the same trailing position.
+ * Maps an active pack order onto the two-row station identity face (order# ·
+ * tracking) plus the manual send-to-phone pill — the packing counterpart of
+ * the Unbox carton photo pill, which lives in the same trailing position.
  * Read-only — pack session identity comes from the scan / queue select.
+ * Pair host with `reserveIdentityClearance="stacked"`.
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
@@ -42,7 +43,6 @@ export function PackOrderIdentity({
     <div className="flex w-full min-w-0 items-center gap-2">
       <div className="min-w-0 flex-1">
         <CartonContextCard
-          density="bar"
           receivingId={null}
           staffId=""
           isUnmatched={Boolean(activeOrder.isUnknownOrder)}

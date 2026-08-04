@@ -392,19 +392,10 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     page,
   }) => {
     /**
-     * This test used to assert the OPPOSITE ("KPI scrolls away; column header
-     * docks under chrome"), and it had been failing since the bounded-host
-     * cutover. The app is right and the test was stale:
-     * `WORKBENCH_TABLE_VIEWPORT` (`h-[calc(100dvh-13rem)]`) sizes the grid to
-     * the viewport remainder so the grid owns Y scroll INTERNALLY — which, per
-     * its own docblock, "keeps all four edges visible and keeps the KPI strip
-     * pinned instead of scrolling away under the tabs." A raised card whose
-     * bottom edge lives past the fold never shows the elevation that sells it.
-     *
-     * So the invariant is the bounded host, not page scroll. Measured on both
-     * orgs: 3 QA rows and 29 dogfood rows produce the SAME outer scroll slack
-     * (~33px) while the grid's own port carries the rows (0 vs 439px) — page
-     * growth is independent of row count, which is exactly the contract.
+     * Sheets flush chrome (2026-08-04): tabs + KPI share one pinned
+     * `WORKBENCH_SHEET_CHROME` stack (Unbox recipe). The grid owns Y scroll
+     * via `WORKBENCH_TABLE_VIEWPORT` so row COUNT never grows the page. KPI
+     * is not a body island — it is chrome, so page scroll cannot carry it away.
      */
     await page.goto('/dashboard?unshipped');
 
@@ -425,7 +416,7 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await expect(lifecycleTabs.filter({ hasText: /^Shipped/ }).first()).toBeVisible();
     await expect(row.locator('[data-col="status"]')).toHaveCount(0);
 
-    const kpi = page.locator('[aria-label="Outbound attention"]').first();
+    const kpi = chrome.locator('[aria-label="Outbound attention"]').first();
     await expect(kpi).toBeVisible();
 
     // (1) The grid owns Y scroll — its own scrollport, not the page's.
@@ -442,11 +433,8 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const pageSlack = await pageScroll.evaluate((el) => el.scrollHeight - el.clientHeight);
     expect(pageSlack, 'the bounded host keeps the page from growing').toBeLessThan(120);
 
-    // (3) The KPI never leaves. It is not literally immovable — the body's
-    // bottom gutter is the whole of `pageSlack`, so scrolling the page to its
-    // end shifts the strip up by that much and no more. What matters is that it
-    // is still on screen and still readable afterwards, which is what the old
-    // "scrolls away under the tabs" assertion had backwards.
+    // (3) KPI is pinned chrome (Sheets flush) — inside the chrome stack, and
+    // page scroll cannot move it. Seat: kpi is a descendant of data-dashboard-chrome.
     const kpiTopBefore = (await kpi.boundingBox())?.y ?? 0;
     await pageScroll.evaluate((el) => {
       el.scrollTop = el.scrollHeight;
@@ -459,18 +447,21 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await expect(kpi).toBeVisible();
     if (chromeBox && kpiBox) {
       expect(
-        kpiTopBefore - kpiBox.y,
-        'KPI travels at most the page slack — it is not carried away by row scroll',
-      ).toBeLessThanOrEqual(pageSlack + 2);
+        Math.abs(kpiTopBefore - kpiBox.y),
+        'KPI is pinned chrome — page scroll does not move it',
+      ).toBeLessThanOrEqual(2);
+      expect(
+        kpiBox.y,
+        'KPI sits inside the chrome stack (not a body island below it)',
+      ).toBeGreaterThanOrEqual(chromeBox.y - 1);
       expect(
         kpiBox.y + kpiBox.height,
-        'KPI is still readable below the pinned chrome, not tucked behind it',
-      ).toBeGreaterThan(chromeBox.y + chromeBox.height);
+        'KPI bottom stays within the chrome stack',
+      ).toBeLessThanOrEqual(chromeBox.y + chromeBox.height + 1);
     }
 
-    // (4) The depth contract: all four edges of the framed card are on screen,
-    // so the raised elevation reads. The bottom edge is the one a growing card
-    // loses first.
+    // (4) The depth contract: all four edges of the sheet/card are on screen.
+    // The bottom edge is the one a growing host loses first.
     const cardBox = await table.boundingBox();
     const viewportHeight = page.viewportSize()?.height ?? 0;
     expect(cardBox, 'card measurable').toBeTruthy();

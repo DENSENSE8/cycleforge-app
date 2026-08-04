@@ -140,6 +140,53 @@ export async function getEntitySubscription(
   return row ? toDto(row) : null;
 }
 
+/** One inbound-carton watch for Today Watch → Tracking display. */
+type ReceivingWatchRow = {
+  receivingId: number;
+  /** Carrier tracking when the carton has an STN; null if unlinkable. */
+  tracking: string | null;
+  updatedAtMs: number;
+};
+
+/**
+ * Active entity subscriptions on `receiving` for one staffer — Today Watch list.
+ * Joins STN for the tracking label the operator typed when they started watching.
+ */
+export async function listReceivingWatchesForStaff(
+  args: { orgId: OrgId; staffId: number; limit?: number },
+  deps: SubscriptionDeps = defaultSubscriptionDeps,
+): Promise<ReceivingWatchRow[]> {
+  const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
+  const res = await deps.query<{
+    receiving_id: string | number;
+    tracking: string | null;
+    updated_at_ms: string | number;
+  }>(
+    args.orgId,
+    `SELECT ss.entity_id::bigint AS receiving_id,
+            COALESCE(stn.tracking_number_raw, stn.tracking_number_normalized) AS tracking,
+            (EXTRACT(EPOCH FROM ss.updated_at) * 1000)::bigint AS updated_at_ms
+       FROM staff_subscriptions ss
+       JOIN receiving_carton r
+         ON r.id = ss.entity_id
+        AND r.organization_id = ss.organization_id
+       LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+      WHERE ss.organization_id = $1
+        AND ss.staff_id = $2
+        AND ss.subscription_kind = 'entity'
+        AND ss.entity_type = 'receiving'
+        AND ss.state = 'subscribed'
+      ORDER BY ss.updated_at DESC
+      LIMIT ${limit}`,
+    [args.orgId, args.staffId],
+  );
+  return res.rows.map((row) => ({
+    receivingId: Number(row.receiving_id),
+    tracking: row.tracking != null ? String(row.tracking) : null,
+    updatedAtMs: Number(row.updated_at_ms) || 0,
+  }));
+}
+
 function canViewEntityType(
   entityType: NotifiableEntityType,
   permissions: readonly string[],

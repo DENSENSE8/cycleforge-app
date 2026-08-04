@@ -1,11 +1,16 @@
 'use client';
 
 import { PackOrderWorkspace } from '@/components/packer/PackOrderWorkspace';
-import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
+import type {
+  PackActiveFbaPane,
+  PackActiveOrderPane,
+} from '@/components/packer/usePackerOrderPane';
 
 interface PackerRightPaneProps {
   packerId: string;
   activeOrderPane: PackActiveOrderPane | null;
+  /** FBA scan result — the bench's other active entity (see PackFbaScanCard). */
+  activeFbaPane?: PackActiveFbaPane | null;
   onCloseActiveOrder: () => void;
 }
 
@@ -16,6 +21,7 @@ interface PackerRightPaneProps {
 export function PackerRightPane({
   packerId,
   activeOrderPane,
+  activeFbaPane = null,
   onCloseActiveOrder,
 }: PackerRightPaneProps) {
   const parsed = parseInt(packerId, 10);
@@ -23,6 +29,7 @@ export function PackerRightPane({
     <PackOrderWorkspace
       packerId={Number.isFinite(parsed) ? parsed : 0}
       activeOrder={activeOrderPane}
+      activeFba={activeFbaPane}
       onCloseActiveOrder={onCloseActiveOrder}
     />
   );

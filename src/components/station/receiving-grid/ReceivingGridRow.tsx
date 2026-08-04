@@ -33,6 +33,7 @@ import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import type { GridColumnDisplayPref } from '@/design-system/components/grid';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
   displayReceivingProductTitle,
   receivingStageTooltip,
@@ -40,6 +41,7 @@ import {
   type ReceivingGridCellCtx,
 } from './cells';
 import { receivingActivityDateCell } from './receiving-grid-date';
+import { ReceivingRowTriageContextMenu } from '@/components/receiving/unbox/compare/ReceivingRowTriageContextMenu';
 
 interface ReceivingGridRowProps {
   row: ReceivingLineRow;
@@ -50,6 +52,11 @@ interface ReceivingGridRowProps {
   isOpen: boolean;
   /** This row is checked into the bulk selection (gutter plane). */
   isChecked: boolean;
+  /**
+   * Unbox compare crosshair peer — same carton in another pane. Quieter wash
+   * than selection; ignored when open/checked.
+   */
+  isLinked?: boolean;
   /** Row-body activate — opens the record where the planes are split. */
   onSelect: () => void;
   /**
@@ -60,12 +67,23 @@ interface ReceivingGridRowProps {
    * box and the gutter is a painted span.
    */
   onToggle?: () => void;
+  /** Compare host: report carton hover for linked crosshair. */
+  onCrosshairHover?: (receivingId: number | null) => void;
   /** History / Unbox axis for the stage clock column. */
   activityAxis?: ReceivingActivityAxis;
   /** History reads the status dot as uniform received-green. */
   isHistory?: boolean;
   columns?: readonly ReceivingGridColumn[];
   columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
+  /**
+   * Unbox History click-select: body click toggles bulk; double-click / Enter
+   * opens. When false, legacy split planes (body opens, gutter toggles) or
+   * single-gesture apply.
+   */
+  clickSelect?: boolean;
+  /** Persisted custom row fill hex (Sheets paint). Selection wash outranks. */
+  rowFillHex?: string | null;
+  selectGutterChrome?: GridSelectGutterChrome;
 }
 
 /**
@@ -83,17 +101,22 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   selectMode,
   isOpen,
   isChecked,
+  isLinked = false,
   onSelect,
   onToggle,
+  onCrosshairHover,
   activityAxis = 'unboxed',
   isHistory = false,
   columns = RECEIVING_GRID_COLUMNS,
   columnDisplay,
+  clickSelect = false,
+  rowFillHex = null,
+  selectGutterChrome = 'always',
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
   /** A gutter handler IS the signal that this surface split the two planes. */
-  const splitPlanes = Boolean(onToggle);
+  const splitPlanes = Boolean(onToggle) && !clickSelect;
 
   if (isMobile) {
     return (
@@ -123,7 +146,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     selectMode,
     isSelected: isOpen || isChecked,
     isChecked,
-    onToggle,
+    onToggle: clickSelect ? undefined : onToggle,
     activityAxis,
     isHistory,
     productTitle: displayReceivingProductTitle(row),
@@ -144,44 +167,91 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       ? 'bg-emerald-500'
       : getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected),
     columnDisplay,
+    selectGutterChrome,
+    clickSelect,
   };
 
-  return (
+  const selected = isOpen || isChecked;
+  const rowEl = (
     <div
       data-line-row-id={row.id}
       data-order-row-id={String(row.id)}
-      // Semantics follow the gesture, and the gesture depends on whether this
-      // surface splits the planes (`onToggle` present). Split → the body is the
-      // RECORD plane and the checkbox role lives on the gutter cell where the
-      // affordance actually is. Not split → the click still ticks the box, so
-      // announcing a button would be a lie.
-      role={splitPlanes ? 'button' : selectMode ? 'checkbox' : 'button'}
+      data-receiving-id={row.receiving_id ?? undefined}
+      // Click-select: row IS the checkbox. Split planes: body opens (button).
+      // Legacy single-gesture: checkbox role on the row.
+      role={clickSelect ? 'checkbox' : splitPlanes ? 'button' : selectMode ? 'checkbox' : 'button'}
       tabIndex={0}
-      aria-checked={!splitPlanes && selectMode ? isChecked : undefined}
-      aria-pressed={splitPlanes ? isOpen : selectMode ? undefined : isOpen}
-      aria-label={
-        splitPlanes || !selectMode
-          ? `Open receiving line ${row.id}`
-          : `Select receiving line ${row.id}`
+      aria-checked={
+        clickSelect || (!splitPlanes && selectMode) ? isChecked : undefined
       }
-      onClick={() => {
+      aria-pressed={
+        clickSelect ? undefined : splitPlanes ? isOpen : selectMode ? undefined : isOpen
+      }
+      aria-label={
+        clickSelect
+          ? `Select receiving line ${row.id}`
+          : splitPlanes || !selectMode
+            ? `Open receiving line ${row.id}`
+            : `Select receiving line ${row.id}`
+      }
+      onClick={(event) => {
+        if (clickSelect) {
+          // detail === 2 is the second half of a double-click — skip toggle so
+          // dblclick only opens without deselecting.
+          if (event.detail > 1) return;
+          onToggle?.();
+          return;
+        }
         onSelect();
       }}
+      onDoubleClick={() => {
+        if (clickSelect) onSelect();
+      }}
       onKeyDown={(event) => {
+        if (clickSelect) {
+          if (event.key === ' ') {
+            event.preventDefault();
+            onToggle?.();
+            return;
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onSelect();
+            return;
+          }
+          return;
+        }
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onSelect();
         }
       }}
+      onPointerEnter={
+        onCrosshairHover
+          ? () => onCrosshairHover(row.receiving_id)
+          : undefined
+      }
+      onPointerLeave={
+        onCrosshairHover ? () => onCrosshairHover(null) : undefined
+      }
       className={cn(
         receivingGridRowShellClass(false, { scrollMinContent: true }),
+        // Same band as LedgerGridColumnHeader / Unbox chrome (h-10) so the
+        // frozen select header and the first body cells share one row rhythm.
+        'h-10 min-h-10',
         // Either plane fills the row; the gutter checkbox disambiguates which.
+        // Linked peer wash is quieter than selection (compare crosshair).
+        // Custom paint fill applies when not selected (selection wash wins).
         ledgerRowFillClass({
-          selected: isOpen || isChecked,
+          selected,
+          linked: isLinked,
           capabilities: RECEIVING_GRID_CAPABILITIES,
         }),
       )}
-      style={{ gridTemplateColumns: receivingGridTemplate(columns) }}
+      style={{
+        gridTemplateColumns: receivingGridTemplate(columns),
+        ...(selected || !rowFillHex ? undefined : { backgroundColor: rowFillHex }),
+      }}
     >
       {columns.map((col, i) => (
         <Fragment key={col.key}>
@@ -189,5 +259,11 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         </Fragment>
       ))}
     </div>
+  );
+
+  return (
+    <ReceivingRowTriageContextMenu row={row}>
+      {rowEl}
+    </ReceivingRowTriageContextMenu>
   );
 });

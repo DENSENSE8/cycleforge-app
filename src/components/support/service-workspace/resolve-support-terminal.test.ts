@@ -32,14 +32,29 @@ test('resolveSupportTerminal: connections (and unknown) hide the dock', () => {
   );
 });
 
-test('resolveSupportTerminal: ticket tab Reply when no draft', () => {
-  const vm = resolveSupportTerminal({
+/**
+ * The empty-composer label follows the VISIBILITY MODE (2026-08-02).
+ *
+ * It used to read "Reply" on an empty composer regardless of the toggle — so a
+ * composer whose toggle said `Internal` and whose placeholder said "not
+ * emailed…" sat under a button promising a reply, and only became honest once
+ * the operator had typed. The mode is known before the first keystroke.
+ */
+test('resolveSupportTerminal: ticket tab label follows the mode with no draft', () => {
+  const internal = resolveSupportTerminal({
     tabId: 'ticket',
-    ticketBridge: composerBridge(),
+    ticketBridge: composerBridge({ isPublic: false }),
   });
-  assert.ok(vm);
-  assert.equal(vm.label, 'Reply');
-  assert.equal(vm.disabled, false);
+  assert.ok(internal);
+  assert.equal(internal.label, 'Note');
+  assert.equal(internal.disabled, false);
+
+  const pub = resolveSupportTerminal({
+    tabId: 'ticket',
+    ticketBridge: composerBridge({ isPublic: true }),
+  });
+  assert.equal(pub?.label, 'Reply');
+  assert.equal(pub?.disabled, false);
 });
 
 test('resolveSupportTerminal: ticket tab Add note / Send reply from draft mode', () => {

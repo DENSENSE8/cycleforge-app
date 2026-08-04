@@ -21,8 +21,9 @@ import { EmptyState, Spinner } from '@/design-system/primitives';
 import { Link2, Upload } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import { RequesterDetailBand } from '@/components/support/service-workspace/RequesterDetailBand';
 import { SupportChatHeader } from './SupportChatHeader';
-import { SupportChatThread } from './SupportChatThread';
+import { MergedRecordStream } from './MergedRecordStream';
 import { SupportChatComposer } from './SupportChatComposer';
 import { useTicketComposerStaging } from './TicketComposerStagingContext';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
@@ -96,6 +97,13 @@ export function SupportTicketDetail({
   receivingId,
   /** Hide linked-context strip (when already shown by SupportContextHub). */
   hideLinkedContext = false,
+  /**
+   * Render the {@link RequesterDetailBand} at the head of the conversation's
+   * scroll port. `/support` sets it and, in the same breath, hides this
+   * component's own requester band — the band is that line's replacement, not a
+   * second copy of it. Station embeds keep the denser header line.
+   */
+  showRequesterDetail = false,
   onComposerBridgeChange,
   /**
    * `inline` — sticky composer under the thread (default / console).
@@ -115,6 +123,7 @@ export function SupportTicketDetail({
   hideTitle?: boolean;
   receivingId?: number;
   hideLinkedContext?: boolean;
+  showRequesterDetail?: boolean;
   /** Exposes the embedded composer to a station terminal dock. */
   onComposerBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   composerPlacement?: 'inline' | 'host';
@@ -137,7 +146,11 @@ export function SupportTicketDetail({
     () => ({ ticket: String(ticketId) }),
     [ticketId],
   );
-  const { data: contextBundle } = useSupportContext(contextAnchor, showContext);
+  // Always enabled — the merged stream needs the warehouse/carrier spine even on
+  // hosts that hide the Links control (`/support` reads its linkage from the
+  // rail instead). Same query key `SupportTicketFocus` and the rail's displays
+  // already use, so this is one more READER of one fetch, never a second one.
+  const { data: contextBundle } = useSupportContext(contextAnchor, true);
   const [contextOpen, setContextOpen] = useState(false);
   const contextBadge = contextBadgeFromBundle(contextBundle);
   const linkedOrderPk = contextBundle?.linkage.order?.id ?? null;
@@ -168,7 +181,12 @@ export function SupportTicketDetail({
   const contextStaging = useTicketComposerStaging();
   const localStaging = useTicketPhotoStaging(ticketId);
   const staging = photoStaging ?? contextStaging ?? localStaging;
-  const dz = usePhotoDropzone(staging.addFiles);
+  // Drag + pick only. PASTE belongs to the host that owns the whole surface —
+  // on `/support`, `SupportTicketFocus` listens at document scope so a pasted
+  // image both stages AND asks for a draft. If this body also caught paste, the
+  // same gesture would mean "attach quietly" or "attach and draft" depending on
+  // where the cursor happened to be.
+  const dz = usePhotoDropzone(staging.addFiles, { paste: false });
   const hostOwnsComposer = composerPlacement === 'host';
 
   if (isLoading) {
@@ -230,12 +248,22 @@ export function SupportTicketDetail({
         ordersHref={ordersHref}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <SupportChatThread
+        {/* Context FOR the conversation, so it lives in the conversation's own
+            port and scrolls away with it — not pinned chrome.
+            Deliberately NOT `compact={embedded}`: `/support` passes `embedded`
+            to mean "denser chrome, no AI panel", not "360px column", and
+            deriving density from it silently disabled the counts on the one
+            surface the band exists for. `compact` is for a narrow host. */}
+        {showRequesterDetail ? (
+          <RequesterDetailBand ticketId={ticketId} bundle={contextBundle} />
+        ) : null}
+        <MergedRecordStream
           ticketId={ticketId}
           requesterId={ticket.requester_id}
           requesterName={requesterLabel(ticket)}
           requesterEmail={requester.email}
           onOpenPhoto={onOpenPhoto}
+          events={contextBundle?.timeline}
           compact={embedded}
         />
       </div>

@@ -256,46 +256,52 @@ export interface BinsOverviewCounts {
 const STALE_DAYS = 90;
 
 /**
- * One-shot read for the inventory bins tab. Joins locations with aggregated
- * bin_contents so the client doesn't need to fan out N queries to enrich
- * the list. Safe up to ~5k bins; switch to a materialized view if it grows.
+ * Pure WHERE-clause builder for {@link getBinsOverview} — exported for unit
+ * tests. Special bare-barcode bins (RETURNS-TEST / TECH-PARTS / UNSORTED) have
+ * null row/col labels and must still appear via `specialBarcodes`.
  */
-export async function getBinsOverview(filter?: {
+export function buildBinsOverviewWhere(args: {
+  /** 1-based param indices already reserved ahead of this builder (stale days = 1). */
+  params: unknown[];
   room?: string | null;
   q?: string | null;
   orgId?: OrgId;
-}): Promise<{ rows: BinsOverviewRow[]; counts: BinsOverviewCounts }> {
-  const room = filter?.room?.trim() || null;
-  const q = filter?.q?.trim() || null;
-  const orgId = filter?.orgId;
+  specialBarcodes?: string[] | null;
+}): { where: string[]; orgParamIdx: number; specialParamIdx: number } {
+  const room = args.room?.trim() || null;
+  const q = args.q?.trim() || null;
+  const orgId = args.orgId;
+  const specials = (args.specialBarcodes ?? [])
+    .map((b) => String(b ?? '').trim())
+    .filter(Boolean);
 
-  const params: unknown[] = [STALE_DAYS];
-  const where: string[] = [
-    "l.is_active = true",
-    "l.row_label IS NOT NULL",
-    "l.col_label IS NOT NULL",
-  ];
+  const where: string[] = ['l.is_active = true'];
 
-  // Tenant filter on the locations row — never list another org's bins.
+  let specialParamIdx = 0;
+  if (specials.length > 0) {
+    args.params.push(specials);
+    specialParamIdx = args.params.length;
+    where.push(
+      `((l.row_label IS NOT NULL AND l.col_label IS NOT NULL) OR l.barcode = ANY($${specialParamIdx}))`,
+    );
+  } else {
+    where.push('l.row_label IS NOT NULL', 'l.col_label IS NOT NULL');
+  }
+
   let orgParamIdx = 0;
   if (orgId) {
-    params.push(orgId);
-    orgParamIdx = params.length;
+    args.params.push(orgId);
+    orgParamIdx = args.params.length;
     where.push(`l.organization_id = $${orgParamIdx}`);
   }
 
   if (room) {
-    params.push(room);
-    where.push(`l.room = $${params.length}`);
+    args.params.push(room);
+    where.push(`l.room = $${args.params.length}`);
   }
   if (q) {
-    params.push(`%${q}%`);
-    const idx = params.length;
-    // Match against the bin's own fields AND any product title / SKU stored
-    // in it. "Find me bins holding bose speakers" should just work — even
-    // though product_title lives on sku_stock, not on locations.
-    // The bin_contents → sku_stock string join (on sku) collides across
-    // tenants, so it is org-aligned when orgId is supplied.
+    args.params.push(`%${q}%`);
+    const idx = args.params.length;
     where.push(
       `(
         l.barcode ILIKE $${idx}
@@ -314,9 +320,47 @@ export async function getBinsOverview(filter?: {
     );
   }
 
+  return { where, orgParamIdx, specialParamIdx };
+}
+
+/**
+ * One-shot read for the inventory bins tab. Joins locations with aggregated
+ * bin_contents so the client doesn't need to fan out N queries to enrich
+ * the list. Safe up to ~5k bins; switch to a materialized view if it grows.
+ *
+ * Includes special bare-barcode bins (RETURNS-TEST / TECH-PARTS / UNSORTED)
+ * when `specialBarcodes` is provided — those rows have null row/col labels.
+ */
+export async function getBinsOverview(filter?: {
+  room?: string | null;
+  q?: string | null;
+  orgId?: OrgId;
+  /** Bare-barcode specials that must appear without row/col labels. */
+  specialBarcodes?: string[] | null;
+}): Promise<{ rows: BinsOverviewRow[]; counts: BinsOverviewCounts }> {
+  const room = filter?.room?.trim() || null;
+  const q = filter?.q?.trim() || null;
+  const orgId = filter?.orgId;
+
+  const params: unknown[] = [STALE_DAYS];
+  const { where, orgParamIdx, specialParamIdx } = buildBinsOverviewWhere({
+    params,
+    room,
+    q,
+    orgId,
+    specialBarcodes: filter?.specialBarcodes,
+  });
+
   // The aggregate CTE is scoped to this org's bin_contents too, so totals/
   // counts can't bleed another tenant's stock through the location join.
   const aggWhere = orgId ? `WHERE bc.organization_id = $${orgParamIdx}` : '';
+
+  // Special bins float to the top (sort_order near 997–999); structured bins
+  // keep room → row → col walking order.
+  const specialOrder =
+    specialParamIdx > 0
+      ? `CASE WHEN l.barcode = ANY($${specialParamIdx}) THEN 0 ELSE 1 END,`
+      : '';
 
   const sql = `
     WITH agg AS (
@@ -350,7 +394,7 @@ export async function getBinsOverview(filter?: {
     FROM locations l
     LEFT JOIN agg ON agg.location_id = l.id
     WHERE ${where.join(' AND ')}
-    ORDER BY l.room NULLS LAST, l.row_label, l.col_label, l.id
+    ORDER BY ${specialOrder} l.sort_order ASC, l.room NULLS LAST, l.row_label NULLS LAST, l.col_label NULLS LAST, l.id
   `;
 
   const result = orgId

@@ -27,23 +27,29 @@ describe('parseSupportMode', () => {
 });
 
 describe('support order hrefs', () => {
-  it('builds Support Orders deep links from order pk', () => {
-    assert.equal(supportOrdersHref(42), '/support?mode=orders&openOrderId=42');
-    assert.equal(supportOrdersHref(0), '/support?mode=orders');
-    assert.equal(supportOrdersHref(Number.NaN), '/support?mode=orders');
+  it('builds Support Inquiries deep links onto the shared To-ship desk', () => {
+    assert.equal(
+      supportOrdersHref(42),
+      '/shipping/orders?context=support&openOrderId=42',
+    );
+    assert.equal(supportOrdersHref(0), '/shipping/orders?context=support');
+    assert.equal(supportOrdersHref(Number.NaN), '/shipping/orders?context=support');
   });
 
-  it('builds Dashboard escape-hatch hrefs', () => {
-    assert.equal(dashboardOrderHref(99), '/dashboard?openOrderId=99');
-    assert.equal(dashboardOrderHref(-1), '/dashboard');
+  it('builds To-ship escape-hatch hrefs', () => {
+    assert.equal(dashboardOrderHref(99), '/shipping/orders?openOrderId=99');
+    assert.equal(dashboardOrderHref(-1), '/shipping/orders');
   });
 
   it('builds create-ticket deep links from order pk', () => {
     assert.equal(
       supportCreateTicketHref(42),
-      '/support?mode=orders&openOrderId=42&createTicket=1',
+      '/shipping/orders?context=support&openOrderId=42&createTicket=1',
     );
-    assert.equal(supportCreateTicketHref(0), '/support?mode=orders&createTicket=1');
+    assert.equal(
+      supportCreateTicketHref(0),
+      '/shipping/orders?context=support&createTicket=1',
+    );
   });
 });
 

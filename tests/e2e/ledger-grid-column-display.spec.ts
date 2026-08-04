@@ -8,7 +8,7 @@ import { test, expect, type Page } from '@playwright/test';
  * source half):
  *
  *   D1 zebra      — a ledger grid draws cell rules, so rows share ONE fill
- *   D2 alignment  — numeric tracks right-align; text/id/location left-align,
+ *   D2 alignment  — number/date tracks right-align; text/order/location left-align,
  *                   and the HEADER matches its cells
  *   D3 cell glyph — a typed header carries the type glyph; the cells below it
  *                   must not repeat it
@@ -148,10 +148,10 @@ test.describe('ledger grid column display SoT', () => {
     // And the type→align ruling, checked for whichever of these is present.
     const want: Record<string, string> = {
       title: 'flex-start', // text
-      date: 'flex-start', // date
+      date: 'flex-end', // date — magnitude (civil day / duration)
       qty: 'flex-end', // number
       order: 'flex-start', // id — a label made of digits, not a magnitude
-      tracking: 'flex-start', // location — same
+      tracking: 'flex-start', // location — identifier you read
     };
     const checked = rendered.filter((c) => c in want);
     expect(checked.length, 'none of the known columns rendered').toBeGreaterThan(0);

@@ -48,6 +48,7 @@ const HEADER_ROUTES = new Set([
   '/m/unbox',
   '/m/pick',
   '/m/pack',
+  '/m/checklist',
 ]);
 
 export const RedesignedMobileShell = ({ children }: { children: React.ReactNode }) => {

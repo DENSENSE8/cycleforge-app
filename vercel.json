@@ -84,6 +84,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/zendesk/ticket-watch",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/catalog-projection",
       "schedule": "20 * * * *"
     },

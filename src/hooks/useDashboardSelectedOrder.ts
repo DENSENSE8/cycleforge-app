@@ -92,7 +92,7 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
       params.delete('openOrderId');
     }
     const nextSearch = params.toString();
-    const nextPath = pathname || '/dashboard';
+    const nextPath = pathname || '/shipping/orders';
     router.replace(nextSearch ? `${nextPath}?${nextSearch}` : nextPath);
   }, [pathname, router, searchParams]);
 

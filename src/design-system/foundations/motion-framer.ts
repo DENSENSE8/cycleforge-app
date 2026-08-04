@@ -36,13 +36,16 @@ export const framerDuration = {
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
   /**
-   * Master-nav Stock drill swap (root ⇄ Stock children) — opacity-only,
-   * ≤150ms. Horizontal slide on a 240px push spine is too heavy for
-   * repetitive enterprise jumps. Pair with `framerPresence.spineDrill`.
+   * Master-nav body swap (the map ⇄ ranked search results) — opacity-only,
+   * ≤150ms. Horizontal slide on a 240px push spine is too heavy for repetitive
+   * enterprise jumps. Pair with `framerPresence.spineBodySwap`.
+   *
+   * Was `spineDrill` until 2026-08-02, when the section drill was deleted; the
+   * body still swaps between two KINDS of list, which is the same altitude
+   * change at the same physics. Renamed rather than deleted-and-recreated —
+   * a preset named for a surface that no longer exists is a comment that lies.
    */
-  spineDrill: 0.12,
-  /** Master-nav drill filter field mount — opacity fade on enter. */
-  spineDrillFilter: 0.14,
+  spineBodySwap: 0.12,
   /**
    * Master-nav row cascade step — ONE ladder for drill page rows AND mode rows.
    * 15ms × index: an 8-row section finishes its last row's 120ms mount at
@@ -94,6 +97,13 @@ export const framerDuration = {
   scanBandGlow: 0.2,
   /** Station scan-band glow — submit / click pulse flash */
   scanBandGlowPulse: 0.26,
+  /**
+   * Procedure Focus Deck layout settle — face height, pull-up margin, peek
+   * geometry when the step pointer advances. Soft + slow (Smart Stack notch
+   * commit). Single-channel Motion `layout` FLIP — no competing CSS
+   * margin/height tween. Pair with crown scrub (transform-only) + `swap.scan`.
+   */
+  procedureStackLayout: 0.55,
   /** Auth card shell — first paint mount */
   signInCardMount: 0.26,
   /** Email ↔ password step slide (x) */
@@ -141,15 +151,9 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Master-nav Stock drill list swap — pair with `framerPresence.spineDrill` */
-  spineDrill: {
-    duration: framerDuration.spineDrill,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
-
-  /** Master-nav drill filter mount — pair with `framerPresence.spineDrillFilter` */
-  spineDrillFilter: {
-    duration: framerDuration.spineDrillFilter,
+  /** Master-nav body swap (map ⇄ results) — pair with `framerPresence.spineBodySwap` */
+  spineBodySwap: {
+    duration: framerDuration.spineBodySwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -181,6 +185,17 @@ export const framerTransition = {
     ease: motionBezier.layout,
   } satisfies Transition,
 
+  /**
+   * Procedure Focus Deck layout settle — margin pull-up, face height, peek
+   * geometry on step pointer advance via Motion `layout` FLIP (transform).
+   * Law: `display/motion-crossfade.md` → sanctioned layout #2; role:
+   * `motionRole.procedure.advance`. Tween never spring — soft overlap, not snap.
+   */
+  procedureStackLayout: {
+    duration: framerDuration.procedureStackLayout,
+    ease: motionBezier.layout,
+  } satisfies Transition,
+
   /** Detail-stack overlay card — pair with `framerPresence.detailStackOverlay` */
   detailStackOverlayMount: {
     duration: framerDuration.detailStackOverlayMount,
@@ -206,6 +221,15 @@ export const framerTransition = {
    * `useMotionTransition`. See `display/motion-crossfade.md`.
    */
   stationCartonSwapMount: {
+    duration: framerDuration.stationCartonSwap,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Procedure Focus Deck evidence body — short opacity enter/exit under
+   * `procedure.advance`. Distinct from carton `swap.scan` (exit:0).
+   */
+  procedureFocusBodyMount: {
     duration: framerDuration.stationCartonSwap,
     ease: motionBezier.easeOut,
   } satisfies Transition,
@@ -712,23 +736,16 @@ export const framerPresence = {
     exit: { opacity: 0, y: 8 },
   },
   /**
-   * Master-nav Stock drill (root map ⇄ Stock children) — PURE opacity. No x/y
-   * on a 240px push spine (Gemini: fast crossfade or instant; horizontal
-   * slide feels heavy for repetitive ops jumps). Pair with
-   * `framerTransition.spineDrill`; consume via `useMotionPresence` /
-   * `useMotionTransition`. Auto-drill must not steal focus — see
-   * `SidebarNavList` + `MasterNav`.
+   * Master-nav body swap — the flat destination map ⇄ the ranked search
+   * results. PURE opacity: no x/y on a 240px push spine (fast crossfade or
+   * instant; a horizontal slide feels heavy for repetitive ops jumps). Pair
+   * with `framerTransition.spineBodySwap`; consume via `useMotionPresence` /
+   * `useMotionTransition`.
+   *
+   * Keyed on the KIND of body, never on the query — typing must update the
+   * list in place rather than replay the crossfade on every keystroke.
    */
-  spineDrill: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0 },
-  },
-  /**
-   * Master-nav drill filter field — fade in when entering a section drill.
-   * Pair with `framerTransition.spineDrillFilter` + `useMotionPresence`.
-   */
-  spineDrillFilter: {
+  spineBodySwap: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
@@ -809,6 +826,17 @@ export const framerPresence = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0, transition: { duration: 0 } },
+  },
+  /**
+   * Procedure Focus Deck — active evidence body swap on step advance.
+   * Opacity-only with a short exit (NOT carton `swap.scan` exit:0) so body
+   * height can settle under `procedure.advance` without an instant collapse.
+   * Pair with `framerTransition.procedureFocusBodyMount`.
+   */
+  procedureFocusBody: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
   },
   /**
    * Auth card shell — subtle opacity + y mount (no scale/blur). B2B auth surfaces

@@ -16,6 +16,7 @@ import {
   receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
 import { DASHBOARD_INBOUND_MODE } from '@/lib/dashboard/dashboard-domains';
+import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import {
   GRID_COLUMN_DIR_PARAM,
   GRID_COLUMN_SORT_PARAM,
@@ -81,7 +82,10 @@ export function resolveLiveReceivingMode(
   }
   if (path.startsWith(UNBOX_SURFACE_ROUTE)) return 'receive';
   if (path.startsWith(TRIAGE_SURFACE_ROUTE)) return 'triage';
-  if (path.startsWith(INCOMING_SURFACE_ROUTE)) return 'incoming';
+  // Inbound desk: Pipeline (incoming) | Docked (history / former Receiving Board).
+  if (path.startsWith(INCOMING_SURFACE_ROUTE)) {
+    return parseInboundLane(searchParams.get('lane')) === 'docked' ? 'history' : 'incoming';
+  }
   if (path.startsWith(PICKUP_SURFACE_ROUTE)) return 'pickup';
   if (path.startsWith(HISTORY_SURFACE_ROUTE)) return 'history';
 

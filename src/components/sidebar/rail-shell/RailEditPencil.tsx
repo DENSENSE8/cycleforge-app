@@ -7,6 +7,10 @@ import { IconButton } from '@/design-system/primitives';
  * {@link useRailEditMode}). Eyebrow-scale sibling of actions like the Scanned
  * rail's "Sync Zoho"; active state fills blue and swaps to a ✓ ("done").
  *
+ * Always resident — it anchors the right column that lines up with each row's
+ * relative-time (`5h`). Hover-hiding it leaves that edge empty at rest and
+ * breaks the rail's title↔time hierarchy.
+ *
  * `-my-1.5` bleeds the 20px hit box out of the row's height math (same trick
  * as the Sync Zoho pill) so every rail eyebrow keeps the identical compact
  * text-governed height whether its right slot is a suffix, an action, or this.

@@ -28,6 +28,14 @@
  * clears the claim. Re-classifying is legal and audited; the column is
  * overwritable, so `audit_logs` is the only place the original claim survives.
  *
+ * ## It is a LIST, not a disclosure
+ *
+ * Its only host is the dock's `Link a photo` popover
+ * ({@link CartonPhotoDockControl}), which owns open/closed. A second
+ * open-state here would be a flag to drift, and the list is only ever mounted
+ * while the operator is looking at it — so the fetch is naturally on demand
+ * without an `enabled` guard of its own.
+ *
  * ## It only offers BENCH shots
  *
  * The list is scoped to `unbox_carton`. An `arrival_package` photo is the
@@ -46,7 +54,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Images, Loader2, MoreHorizontal } from '@/components/Icons';
+import { Loader2, MoreHorizontal } from '@/components/Icons';
 import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { Button } from '@/design-system/primitives';
 import {
@@ -97,7 +105,6 @@ export function CartonPhotoPairPanel({
   aspect: PhotoAspect | null;
 }) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
 
   const { data, isPending, isError } = useQuery<{ photos: CartonPhotoRow[] }>({
     queryKey: [...receivingPhotosQueryKey(receivingId), BENCH_LIST_INTENT],
@@ -112,9 +119,9 @@ export function CartonPhotoPairPanel({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     },
-    // Only fetch once the operator asks — the step's own camera is the default
-    // path, and a list nobody opened is a request nobody needed.
-    enabled: open && Number.isFinite(receivingId) && receivingId > 0,
+    // Mount IS the ask: the popover renders this only while it is open, so the
+    // step's own camera stays the zero-request default path.
+    enabled: Number.isFinite(receivingId) && receivingId > 0,
     staleTime: 10_000,
   });
 
@@ -169,30 +176,13 @@ export function CartonPhotoPairPanel({
     [mutateAsync, queryClient, receivingId],
   );
 
-  if (!open) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<Images className="h-3.5 w-3.5" />}
-        iconRight={<ChevronDown className="h-3 w-3" />}
-        onClick={() => setOpen(true)}
-      >
-        Pair an existing photo
-      </Button>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Carton photos
-        </p>
-        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-          Done
-        </Button>
-      </div>
+    <div className="space-y-2" data-carton-photo-pair>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        {stepAspect
+          ? `Which photo is the ${photoAspectLabel(stepAspect).toLowerCase()}?`
+          : 'Carton photos'}
+      </p>
 
       {isPending ? (
         <p className="flex items-center gap-2 text-role-caption text-text-soft">

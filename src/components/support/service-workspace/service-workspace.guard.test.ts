@@ -219,3 +219,76 @@ test('Support declares the workbench archetype and the service-workspace branch'
   assert.equal(SURFACE_REGISTRY.support.archetype, 'workbench');
   assert.equal(SURFACE_REGISTRY.support.scan, null);
 });
+
+/**
+ * ── Phase 4: the vision loop ────────────────────────────────────────────────
+ *
+ * The trap here is security-shaped and invisible in a screenshot: a cloud model
+ * handed `/api/photos/{id}/content` follows a 302 into this app's session gate,
+ * fetches a sign-in page, and describes THAT — confidently, to a customer.
+ */
+
+test('the client sends photo IDs; only the route resolves an image URL', () => {
+  const hook = readCode('hooks/useSupportSuggestion.ts');
+  assert.ok(
+    hook.includes('stagedPhotoIds'),
+    'the drafting request must carry photo IDs',
+  );
+  assert.equal(
+    /photoContentUrl|\/api\/photos\/.*content|imageUrls?\s*:/.test(hook),
+    false,
+    'the client must never hold or send an image URL — the route resolves a signed one',
+  );
+
+  const route = readCode('app/api/support/suggest/route.ts');
+  assert.ok(
+    route.includes('resolvePhotoAccessUrl'),
+    'the route must resolve the signed storage URL itself',
+  );
+  assert.ok(
+    /vision === 'cloud-multimodal'/.test(route),
+    'a signed URL may only be resolved on the lane permitted to send one',
+  );
+});
+
+test('the vision lane is resolved, never assumed', () => {
+  const route = readCode('app/api/support/suggest/route.ts');
+  assert.ok(
+    route.includes('resolveSupportVisionLaneForOrg'),
+    'the lane is a per-org safety classification, resolved server-side',
+  );
+
+  // A default here would be a silent opt-out at every call site nobody visited
+  // (`backend-patterns.md` → a safety classification is a REQUIRED parameter).
+  const core = readCode('lib/support/suggest-reply-core.ts');
+  assert.ok(
+    /vision:\s*SupportVisionLane;/.test(core),
+    'the vision lane must be a required parameter with no default',
+  );
+});
+
+test('the deterministic pass composes the ONE decoder and the ONE search engine', () => {
+  const deps = readCode('lib/support/photo-evidence-deps.ts');
+  assert.ok(deps.includes('routeScan'), 'decode must go through routeScan');
+  assert.ok(deps.includes('hybridSearch'), 'matching must go through hybridSearch');
+  assert.ok(
+    deps.includes('analyzePhoto'),
+    'analysis must use the same writer the upload job uses — never a second one',
+  );
+});
+
+test('paste has ONE owner on this surface', () => {
+  // One gesture, one meaning. If the thread body also caught paste, the same
+  // screenshot would "attach quietly" or "attach and draft" depending on where
+  // the cursor happened to be.
+  const focus = readCode('components/support/service-workspace/SupportTicketFocus.tsx');
+  assert.ok(
+    /usePhotoDropzone\([^)]*documentPaste:\s*true/s.test(focus),
+    'the ticket focus surface owns document-scoped paste',
+  );
+  const detail = readCode('components/support/zendesk/chat/SupportTicketDetail.tsx');
+  assert.ok(
+    /usePhotoDropzone\([^)]*paste:\s*false/s.test(detail),
+    'the thread body must stand down from paste — the host owns it',
+  );
+});

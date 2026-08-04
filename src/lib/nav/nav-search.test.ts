@@ -45,7 +45,7 @@ test('multi-token queries are AND, across label and keywords', () => {
   const items = [
     page('Labels', ['Print Stations', '/print/labels']),
     page('Labels', ['Fulfillment', '/shipping/labels']),
-    page('Ready', ['Fulfillment', '/shipping/ready']),
+    page('Ready', ['Fulfillment', '/shipping/fba']),
   ];
   // Both tokens must land somewhere; "print" only does on the first row.
   assert.equal(searchNav(items, 'print labels').length, 1);

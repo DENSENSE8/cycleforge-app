@@ -50,6 +50,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          o.zoho_reference_number     AS reference_number,
          o.customer_name,
          o.status                    AS order_status,
+         o.receiving_id,
          o.pickup_date::text         AS pickup_date,
          o.zoho_po_id,
          m.status                    AS zoho_status,

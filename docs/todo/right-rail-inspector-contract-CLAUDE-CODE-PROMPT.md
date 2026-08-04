@@ -2,7 +2,11 @@
 
 **For:** Claude Code / Cursor Agent implementing session  
 **From:** Cycle Forge engineering (right-rail + modal audit 2026-08-01)  
-**Status:** ready to execute as **two sessions** — architecture mostly shipped; header contract incomplete; modals still fork  
+**Status:** **superseded for execution order + done/open inventory** — use
+[`right-rail-inspector-FINISH-HANDOFF.md`](./right-rail-inspector-FINISH-HANDOFF.md)
+(verified 2026-08-02). **Keep this file** for §2 industry contract, §2.6–§2.9 amendment
+text, and Category A/B/C tables. Do **not** build `RightRailInspectorHeader` — landed
+SoT is `PaneHeader` blocks + `RecordPaneHeader`.  
 **Amended 2026-08-01** (industry-standards review): added §2.6 dirty state · §2.7 addressability + focus · §2.8 responsive floor · §2.9 collapse ownership (right edge ≠ left rail, key namespaced per family); split execution into Session 1 / Session 2; Collapse downgraded from unqualified Hard Always to a scoped, subordinate house control  
 **Lane:** current checkout — no ad-hoc branch. Attach to `:3050`. User owns commits.  
 **Companion:** Desk three-pane recipe — [`desk-contract-unification-CLAUDE-CODE-PROMPT.md`](./desk-contract-unification-CLAUDE-CODE-PROMPT.md)  

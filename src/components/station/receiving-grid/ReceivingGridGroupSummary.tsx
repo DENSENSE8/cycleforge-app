@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
-import { Check } from '@/components/Icons';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
@@ -19,7 +18,13 @@ import {
   GridCellDash,
   GridDateCellValue,
   GridPlatformMarkValue,
+  GridStatusCellValue,
 } from '@/components/ui/grid-cells';
+import {
+  GridRowCheckbox,
+  isEmptyGutterChrome,
+  type GridSelectGutterChrome,
+} from '@/components/ui/GridRowCheckbox';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
@@ -42,7 +47,7 @@ import {
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
-import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
+import { workflowStageBadge, workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { formatOpsStageTime } from '@/utils/date';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
@@ -69,6 +74,8 @@ export function ReceivingGridGroupSummary({
   allSelected = false,
   someSelected = false,
   onToggleGroupSelect,
+  selectGutterChrome = 'always',
+  clickSelect = false,
 }: {
   rows: ReceivingLineRow[];
   isMobile: boolean;
@@ -79,6 +86,9 @@ export function ReceivingGridGroupSummary({
   allSelected?: boolean;
   someSelected?: boolean;
   onToggleGroupSelect?: () => void;
+  selectGutterChrome?: GridSelectGutterChrome;
+  /** Unbox History: empty select spacer; select-all is header-only. */
+  clickSelect?: boolean;
 }) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
@@ -152,94 +162,81 @@ export function ReceivingGridGroupSummary({
     const rule = !last;
     switch (col.key) {
       case 'select':
+        if (clickSelect) {
+          return (
+            <div
+              className={cn(
+                receivingGridCell({ inset: 'none', rule: true }),
+                RECEIVING_GRID_FROZEN_CELL,
+              )}
+              style={{ left: receivingGridFrozenLeft('select') }}
+              data-frozen-edge
+              aria-hidden
+            />
+          );
+        }
         return (
           <div
             className={cn(
               receivingGridCell({ inset: 'none', rule: true }),
               RECEIVING_GRID_FROZEN_CELL,
-              'justify-center',
+              isEmptyGutterChrome(selectGutterChrome) ? 'items-stretch p-0' : 'justify-center',
             )}
             style={{ left: receivingGridFrozenLeft('select') }}
+            data-frozen-edge
             onClick={(e) => {
               e.stopPropagation();
             }}
           >
-            {selectMode ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleGroupSelect?.();
-                }}
-                aria-label={allSelected ? 'Deselect all products in PO' : 'Select all products in PO'}
-                aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
-                role="checkbox"
-                className={cn(
-                  'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                  allSelected
-                    ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                    : someSelected
-                      ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
-                      : 'border-border-default bg-surface-card hover:border-border-strong',
-                )}
-              >
-                {allSelected ? (
-                  <Check className="h-3 w-3" />
-                ) : someSelected ? (
-                  <span className="h-0.5 w-2 rounded-full bg-current" />
-                ) : null}
-              </button>
+            {selectMode && onToggleGroupSelect ? (
+              <GridRowCheckbox
+                checked={allSelected ? true : someSelected ? 'mixed' : false}
+                onToggle={onToggleGroupSelect}
+                label={allSelected ? 'Deselect all products in PO' : 'Select all products in PO'}
+                chrome={selectGutterChrome}
+              />
             ) : (
               <span className="h-4 w-4 shrink-0" aria-hidden />
             )}
           </div>
         );
+      // The title column shows the title — the status dot moved to the `status`
+      // track below (2026-08-02), matching the leaf rows. Scrolls with facts
+      // (only `select` is frozen on this Sheets-class surface).
       case 'title':
         return (
-          <div
-            data-col="title"
-            className={cn(dataCell(col, rule), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: receivingGridFrozenLeft('title') }}
-            data-frozen-edge
-          >
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
+          <div data-col="title" className={dataCell(col, rule)}>
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {title}
             </span>
           </div>
         );
-      // Same one-track lifecycle answer the leaf rows render — a fold that fell
-      // through to the empty default would leave a blank ruled band exactly
-      // where the summary's most-scanned fact belongs.
-      case 'status': {
-        const stageLabel = workflowStageLabel(first.workflow_status);
-        const time = stageDisplay && stageDisplay !== '--:--' ? stageDisplay : null;
+      // Same state track the leaf rows render — a fold that fell through to the
+      // empty default would leave a blank ruled band exactly where the summary's
+      // most-scanned fact belongs.
+      case 'status':
         return (
           <div data-col="status" className={dataCell(col, rule)}>
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
-              <span className="shrink-0 text-role-caption font-semibold text-text-default">
-                {stageLabel}
-              </span>
-              {dateCell?.label || time ? (
-                <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
-                  {[dateCell?.label, time].filter(Boolean).join(' ')}
-                </span>
-              ) : null}
-            </span>
+            <GridStatusCellValue
+              label={workflowStageLabel(first.workflow_status)}
+              toneClass={workflowStageBadge(first.workflow_status)}
+              dotClass={statusDot}
+            />
           </div>
         );
-      }
-      case 'date':
+      // Day + time, matching the leaf cell — both halves are the same instant.
+      case 'date': {
+        const time = stageDisplay && stageDisplay !== '--:--' ? stageDisplay : null;
         return (
           <div data-col="date" className={dataCell(col, rule)}>
             <GridDateCellValue
-              label={dateCell?.label}
+              label={[dateCell?.label, time].filter(Boolean).join(' ') || undefined}
               tooltip={dateCell?.tooltip}
               className="text-role-caption"
             />
           </div>
         );
+      }
       case 'qty':
         return (
           <div data-col="qty" className={dataCell(col, rule)}>
@@ -267,18 +264,6 @@ export function ReceivingGridGroupSummary({
             </span>
           </div>
         );
-      case 'stage':
-        return (
-          <div data-col="stage" className={dataCell(col, rule)}>
-            {stageDisplay && stageDisplay !== '--:--' ? (
-              <span className="truncate tabular-nums text-role-caption text-text-faint">
-                {stageDisplay}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
       case 'location': {
         const locLabel = (first.staging_location_label || '').trim();
         return (
@@ -299,6 +284,7 @@ export function ReceivingGridGroupSummary({
             <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
           </div>
         );
+      // Scrollable PO track — only `select` is frozen on this Sheets-class surface.
       case 'order':
         return (
           <div data-col="order" className={dataCell(col, rule)}>
@@ -338,6 +324,8 @@ export function ReceivingGridGroupSummary({
             )}
           </div>
         );
+      case '_fill':
+        return <span data-col="_fill" className={dataCell(col, false)} aria-hidden />;
       default:
         return <span className={dataCell(col, rule)} />;
     }
@@ -346,7 +334,11 @@ export function ReceivingGridGroupSummary({
   return (
     <div
       data-grid-summary-row=""
-      className={cn(receivingGridRowShellClass(false, { scrollMinContent: true }), 'px-0')}
+      className={cn(
+        receivingGridRowShellClass(false, { scrollMinContent: true }),
+        // Match leaf rows + column header band (h-10).
+        'h-10 min-h-10 px-0',
+      )}
       style={{ gridTemplateColumns: receivingGridTemplate(columns) }}
     >
       {columns.map((col, i) => (

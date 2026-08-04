@@ -49,6 +49,24 @@ const last8 = (v: string | null | undefined): string => {
   return s.length <= 8 ? s || '—' : s.slice(-8);
 };
 
+/**
+ * One labelled row of the loop — an eyebrow naming the identifier KIND, then its
+ * chips. Absent facts render nothing (honest absence): a "Serial —" row on an
+ * order that has no serial yet would be noise, not information.
+ */
+function LoopRow({ label, children }: { label: string; children: React.ReactNode }) {
+  const items = React.Children.toArray(children).filter(Boolean);
+  if (!items.length) return null;
+  return (
+    <div className="flex min-w-0 items-baseline gap-2">
+      <span className="w-16 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
+        {label}
+      </span>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">{items}</div>
+    </div>
+  );
+}
+
 function statusDotClass(status: string | null): string {
   const s = (status ?? '').toLowerCase();
   if (s.includes('solved') || s.includes('closed')) return 'bg-emerald-500';
@@ -145,11 +163,19 @@ export function LinkedTicketsPanel({
 
       {!isLoading && !isError && hasLoop && (
         <div className="space-y-2">
-          {/* The loop: order ↔ tracking[] ↔ serial[] */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {data?.order?.orderId && (
+          {/* The loop: order ↔ tracking[] ↔ serial[].
+              Each KIND is named. Rendered as one undifferentiated chip run
+              (until 2026-08-02) it read as "4790 · 33987359 · 220573AZ" with
+              nothing saying which was the order, which the tracking and which
+              the serial — three last-8 digit strings an operator had to guess
+              at. The chips were already the typed CopyChip family; what was
+              missing was the label track. */}
+          <LoopRow label="Order">
+            {data?.order?.orderId ? (
               <OrderIdChip value={data.order.orderId} display={data.order.orderId} dense />
-            )}
+            ) : null}
+          </LoopRow>
+          <LoopRow label="Tracking">
             {loopTrackings.map((t, i) =>
               t.tracking ? (
                 <TrackingChip
@@ -160,10 +186,12 @@ export function LinkedTicketsPanel({
                 />
               ) : null,
             )}
+          </LoopRow>
+          <LoopRow label="Serial">
             {loopSerials.map((s, i) => (
               <SerialChip key={`${s.serialUnitId ?? 'tsn'}-${i}`} value={s.serial} dense />
             ))}
-          </div>
+          </LoopRow>
 
           {/* Linked Zendesk tickets */}
           {!hideTickets ? (

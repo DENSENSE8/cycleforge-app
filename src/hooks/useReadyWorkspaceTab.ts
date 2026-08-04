@@ -9,7 +9,7 @@ import {
 } from '@/utils/ready-workspace-state';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
-/** URL SoT for Ready workbench facets nested under `?mode=ready`. */
+/** URL SoT for Ready disposition facets on `/shipping/fba?fbaMode=ready` (`?rtab=`). */
 export function useReadyWorkspaceTab() {
   const pathname = usePathname();
   const router = useRouter();

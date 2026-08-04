@@ -1,16 +1,19 @@
 'use client';
 
 /**
- * URL ⇄ state for the Today workbench — the picked lane and the picked task.
+ * URL ⇄ state for the Today workbench — the picked lane, task, and Watch rail.
  *
  * Workbench law: durable view state lives in the URL, so a reload or a shared
  * link reproduces the exact view (`display/workbench.md`). Selection used to be
  * a local `useState`, which meant a refresh silently dropped the operator's row.
  *
- * Both keys are already declared by the `/` spec (`scope`, `task`), so this adds
- * no route-param surface. URLs are CONSTRUCTED, never copied (isolation rule 1):
- * every write re-states the keys Today keeps — including the carried column-sort
- * pair, which the grid owns and a naive rebuild would silently drop.
+ * Keys are declared by the `/` spec (`scope`, `task`, `q`, `filter`, `watch`).
+ * URLs are CONSTRUCTED, never copied (isolation rule 1): every write re-states
+ * the keys Today keeps — including the carried column-sort pair, which the grid
+ * owns and a naive rebuild would silently drop.
+ *
+ * `?task=` and `?watch=1` share the detail-priority right rail — opening one
+ * clears the other so only one occupant seats.
  */
 
 import { useCallback } from 'react';
@@ -35,12 +38,16 @@ export interface MyDayViewState {
   query: string;
   /** KPI due-horizon refine (`?filter=`), or null when the band is not filtering. */
   horizon: MyDayDueHorizon | null;
+  /** Watch intake rail open (`?watch=1`). */
+  watchOpen: boolean;
   /** Swap the lane. Changing scope drops the selection — the row may not be in it. */
   setLane: (next: MyDayLaneFilter) => void;
   setTaskId: (next: string | null) => void;
   setQuery: (next: string) => void;
   /** Toggle a KPI tile — picking the active horizon clears the refine. */
   toggleHorizon: (next: MyDayDueHorizon) => void;
+  openWatch: () => void;
+  closeWatch: () => void;
 }
 
 export function useMyDayView(): MyDayViewState {
@@ -51,6 +58,8 @@ export function useMyDayView(): MyDayViewState {
   const taskId = searchParams.get('task');
   const query = searchParams.get('q') ?? '';
   const horizon = parseMyDayDueHorizon(searchParams.get('filter'));
+  const watchRaw = searchParams.get('watch');
+  const watchOpen = watchRaw === '1' || watchRaw === 'true';
 
   const push = useCallback(
     (next: {
@@ -58,21 +67,31 @@ export function useMyDayView(): MyDayViewState {
       task?: string | null;
       q?: string | null;
       filter?: MyDayDueHorizon | null;
+      watch?: boolean | null;
     }) => {
       const spec = routeParamsFor('/')!;
       const nextLane = next.scope === undefined ? lane : next.scope;
       const nextQuery = next.q === undefined ? query : next.q;
       const nextHorizon = next.filter === undefined ? horizon : next.filter;
+      // Mutual exclusion: task inspector and Watch rail share one detail slot.
+      let nextTask = next.task === undefined ? taskId : next.task;
+      let nextWatch = next.watch === undefined ? watchOpen : Boolean(next.watch);
+      if (next.watch === true) nextTask = null;
+      if (next.task != null && next.task !== '' && next.watch === undefined) {
+        nextWatch = false;
+      }
+
       router.replace(
         buildRouteUrl(spec, {
           filter: nextHorizon,
           // `today` is the default mode and `all` is the default lane — both
           // drop out of the URL rather than being restated on every write.
           scope: nextLane === 'all' ? null : nextLane,
-          task: next.task === undefined ? taskId : next.task,
+          task: nextTask,
           // Empty search drops out too, so a cleared field leaves a clean URL
           // (and `hasActiveFilters` on a saved view stops counting `q=`).
           q: nextQuery ? nextQuery : null,
+          watch: nextWatch ? '1' : null,
           staff: searchParams.get('staff') ?? searchParams.get('staffId'),
           [GRID_COLUMN_SORT_PARAM]: searchParams.get(GRID_COLUMN_SORT_PARAM),
           [GRID_COLUMN_DIR_PARAM]: searchParams.get(GRID_COLUMN_DIR_PARAM),
@@ -80,7 +99,7 @@ export function useMyDayView(): MyDayViewState {
         { scroll: false },
       );
     },
-    [router, searchParams, lane, taskId, query, horizon],
+    [router, searchParams, lane, taskId, query, horizon, watchOpen],
   );
 
   const setLane = useCallback(
@@ -105,5 +124,20 @@ export function useMyDayView(): MyDayViewState {
     [push, horizon],
   );
 
-  return { lane, taskId, query, horizon, setLane, setTaskId, setQuery, toggleHorizon };
+  const openWatch = useCallback(() => push({ watch: true, task: null }), [push]);
+  const closeWatch = useCallback(() => push({ watch: false }), [push]);
+
+  return {
+    lane,
+    taskId,
+    query,
+    horizon,
+    watchOpen,
+    setLane,
+    setTaskId,
+    setQuery,
+    toggleHorizon,
+    openWatch,
+    closeWatch,
+  };
 }

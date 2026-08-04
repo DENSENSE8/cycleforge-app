@@ -1,13 +1,11 @@
 import {
   Activity,
   AlertCircle,
-  Archive,
   Barcode,
   BarChart3,
   Boxes,
   ChartPie,
   Images,
-  DoorOpen,
   Check,
   Clipboard,
   ClipboardList,
@@ -19,13 +17,11 @@ import {
   Layers,
   LayoutDashboard,
   Link2,
-  MapPin,
   MessageSquare,
   Monitor,
   Package,
   PackageCheck,
   PackageOpen,
-  Printer,
   ScanBarcode,
   Search,
   Settings,
@@ -37,7 +33,6 @@ import {
   Star,
   Tags,
   TrendingUp,
-  Send,
   Workflow,
   Zap,
   Warehouse,
@@ -46,7 +41,6 @@ import {
   Voicemail,
 } from '@/components/Icons';
 import {
-  DASHBOARD_INBOUND_PERMISSION,
   DASHBOARD_SALES_MODE,
   DASHBOARD_SALES_PERMISSION,
 } from '@/lib/dashboard/dashboard-domains';
@@ -59,6 +53,7 @@ import {
 import { parseHomeMode } from '@/features/home/home-modes';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
+import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 
@@ -137,7 +132,7 @@ export type MainGroupId = 'monitor';
  * Parallel to {@link STATION_GROUPS}. Render order is {@link SPINE_SECTIONS}.
  */
 export const MAIN_GROUPS = [
-  { id: 'monitor', label: 'Live Ops', icon: ChartPie },
+  { id: 'monitor', label: 'Operations', icon: ChartPie },
 ] as const satisfies ReadonlyArray<{
   id: MainGroupId;
   label: string;
@@ -187,17 +182,19 @@ export type DomainGroupId =
   | 'inbound'
   | 'catalog'
   | 'inventory'
+  | 'sourcing'
   | 'fulfillment'
   | 'sales'
   | 'support';
 
 export const DOMAIN_GROUPS = [
-  { id: 'inbound', label: 'Inbound', icon: Inbox },
-  { id: 'catalog', label: 'Catalog', icon: Tags },
-  { id: 'inventory', label: 'Inventory', icon: ShelvingUnit },
-  { id: 'fulfillment', label: 'Outbound', icon: Send },
+  { id: 'fulfillment', label: 'Shipping', icon: STATION_PAGE_ICONS.outbound },
   { id: 'sales', label: 'Sales', icon: SalesPrice },
+  { id: 'inbound', label: 'Inbound', icon: Inbox },
   { id: 'support', label: 'Support', icon: AlertCircle },
+  { id: 'sourcing', label: 'Sourcing', icon: ShoppingCart },
+  { id: 'catalog', label: 'Products', icon: Tags },
+  { id: 'inventory', label: 'Inventory', icon: ShelvingUnit },
 ] as const satisfies ReadonlyArray<{
   id: DomainGroupId;
   label: string;
@@ -205,33 +202,26 @@ export const DOMAIN_GROUPS = [
 }>;
 
 /**
- * Spine sections — Live Ops → Scan Stations → the six business domains.
- * Compose from {@link MAIN_GROUPS} + {@link STATION_GROUPS} +
- * {@link DOMAIN_GROUPS}; never twin labels in render.
+ * Spine sections — Scan Stations first, then the operator-locked order:
+ * Shipping → Sales → Inbound → Operations → Support → Sourcing → Products →
+ * Inventory. Compose from the three group registries; never twin labels in
+ * render.
  *
- * **A section draws no row of its own (2026-08-02).** The body is ONE FLAT MAP;
- * a section contributes a `border-t` between blocks plus an accessible name,
- * and nothing visible. Six of the eight held exactly one page, so a header put
- * the section's name directly above the identically-named page
- * (`Catalog › Catalog`). Its label survives only in ⌘K band headings and the
- * flat-search `context` line.
+ * Scan Stations is an INPUT MODEL; the rest are DOMAINS (Operations is the
+ * monitor altitude). **Workflow Studio is not here** — footer pin above Admin.
  *
- * The axis is deliberately mixed: Monitor is an ALTITUDE (observe), Scan
- * Stations is an INPUT MODEL, and the six after it are DOMAINS. A single uniform
- * axis is what produced `desk` — "not a scanner, not a graph" is a leftover, not
- * a place.
- *
- * **Workflow Studio is not here** — it is a footer pin (see {@link MainGroupId}).
- * The other altitude, Live Ops, stays a section because an operator reads it
- * during a shift; nobody re-defines the operation mid-shift.
- *
- * A section with no visible page renders nothing (permission-filtered or empty),
- * so a hollow domain can never appear on the root map.
+ * A section with no visible page renders nothing (permission-filtered or empty).
  */
 export const SPINE_SECTIONS = [
-  MAIN_GROUPS[0], // Analytics Monitor
   ...STATION_GROUPS, // Scan Stations
-  ...DOMAIN_GROUPS, // Inbound → Catalog → Inventory → Fulfillment → Sales → Support
+  DOMAIN_GROUPS[0], // Shipping
+  DOMAIN_GROUPS[1], // Sales
+  DOMAIN_GROUPS[2], // Inbound
+  MAIN_GROUPS[0], // Operations
+  DOMAIN_GROUPS[3], // Support
+  DOMAIN_GROUPS[4], // Sourcing
+  DOMAIN_GROUPS[5], // Products
+  DOMAIN_GROUPS[6], // Inventory
 ] as const;
 
 export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
@@ -271,12 +261,12 @@ type SidebarNavItemFields = {
 };
 
 /**
- * Flat spine row. `kind: 'top'` = Home/Search/Media/Chat header pin; `kind: 'bottom'` =
- * Settings/Admin footer pin; `kind: 'main'` requires `mainGroup` (Monitor /
- * Studio); `kind: 'station'` requires `stationGroup` (Scan Stations) and may set
- * `stationSubgroup` (Receiving page-style header); `kind: 'domain'` requires
- * `domainGroup` (Inbound · Catalog · Inventory · Fulfillment · Sales · Support).
- * Section order: {@link SPINE_SECTIONS}.
+ * Flat spine row. `kind: 'top'` = Home/Search/Media/Plans/Chat header pin;
+ * `kind: 'bottom'` = Settings/Admin footer pin; `kind: 'main'` requires
+ * `mainGroup` (Monitor / Studio); `kind: 'station'` requires `stationGroup`
+ * (Scan Stations) and may set `stationSubgroup` (Receiving page-style header);
+ * `kind: 'domain'` requires `domainGroup` (Inbound · Catalog · Inventory ·
+ * Fulfillment · Sales · Support). Section order: {@link SPINE_SECTIONS}.
  *
  * The retired `stock` / `products` / `labels` / `documents` kinds were membership
  * by *page shape* rather than by domain, which is why they all had to be
@@ -334,22 +324,26 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 /**
  * Dogfood prod surface (stations + shipping + inventory + warehouse + thin support).
  *
- * Parked off master nav (routes + SIDEBAR_PAGE_NAV modes may still resolve for
- * deep-links / topic worktrees — do not delete those until a surface is
- * promoted back or archived):
- *   home (`/`), operations, sourcing, fba, ai-chat
+ * Dogfood parking is retired: Home · Search · Media · Plans · Chat are top pins;
+ * Operations / Sourcing / Studio ship live. `/fba` stays off the spine because it
+ * permanently redirects into Shipping (no second front door). Routes +
+ * SIDEBAR_PAGE_NAV modes may still resolve for deep-links — do not delete those
+ * until a surface is archived.
  *
- * Studio was promoted OUT of that set; it ships as a FOOTER PIN (2026-08-02) and
- * its `/studio/catalog` sub-route rides along as an L2 mode rather than a second
- * flat row. Same pattern as Data Wipe: absent from nav, route can remain live.
+ * Studio ships as a FOOTER PIN (2026-08-02); its `/studio/catalog` sub-route rides
+ * along as an L2 mode rather than a second flat row.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top pin — Home → Search → Media → Chat (always above scroll categories;
-  // modeless). GlobalHeaderSearch stays in GlobalHeader — these are page rows.
+  // Top pin — Home → Search → Media → Plans → Chat (always above scroll
+  // categories; modeless). GlobalHeaderSearch stays in GlobalHeader — these are
+  // page rows. Plans deep-links Home forge (`/?mode=forge&view=live`); active
+  // state is query-aware via {@link isSidebarTopPinActive}.
   { id: 'home',              label: 'Home',        href: '/',                   icon: Home,            kind: 'top' },
   { id: 'search',            label: 'Search',      href: '/search',             icon: Search,          kind: 'top' },
   { id: 'ops-photos',        label: 'Media',       href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
-  // Chat — streaming assistant workspace under Media; `/ai` shares it.
+  // Plans — live master-plan console (Home forge). Same landing as `/forge`.
+  { id: 'plans-live',        label: 'Plans',       href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', requires: 'operations.plans.view' },
+  // Chat — streaming assistant workspace under Plans; `/ai` shares it.
   { id: 'ai-chat',           label: 'Chat',        href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'dashboard.view' },
   // Monitor — TV / observe-only Operations Live (+ Analytics / History / …).
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'monitor', requires: 'operations.view' },
@@ -382,18 +376,14 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // "Reference" so the section and its default mode don't answer to one word.
   // Absorbs the former Print Labels (product) + Print Documents (manuals) rows —
   // both were aliases of `/products` views that this page already owned.
-  { id: 'products',          label: 'Catalog',     href: '/products',           icon: Tags,            kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view' },
+  { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view' },
   // ── Inventory ─────────────────────────────────────────────────────────────
-  // Physical stock: what we hold, what we owe, where it sits. Sourcing (acquire)
-  // and Locations (ex-Warehouse — racks, rooms, bins, map + the bin/rack label
-  // printer) merge in here (D8 / D9); they keep their own L1 rows so their
-  // sub-tabs stay addressable from the spine.
+  // Physical stock + Locations. Sourcing is its own spine section (2026-08-03).
   { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view' },
-  { id: 'sourcing',          label: 'Sourcing',    href: '/sourcing',           icon: ShoppingCart,    kind: 'domain', domainGroup: 'inventory', requires: 'sourcing.view' },
-  { id: 'warehouse',         label: 'Locations',   href: '/warehouse',          icon: Warehouse,       kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view' },
-  // ── Fulfillment ───────────────────────────────────────────────────────────
-  // Orders leaving the building. Carrier postage (Labels / Ready / FBA) lives
-  // here and NOWHERE else — it is not a print task (D7). Scan out stays Floor.
+  { id: 'sourcing',          label: 'Sourcing',    href: '/sourcing',           icon: ShoppingCart,    kind: 'domain', domainGroup: 'sourcing', requires: 'sourcing.view' },
+  // Locations folded under Inventory L2 (`/inventory/locations`) — P4 condensation.
+  // ── Shipping (fulfillment) ────────────────────────────────────────────────
+  // Orders leaving the building. Carrier postage lives here — not a print task.
   { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view' },
   // ── Sales ─────────────────────────────────────────────────────────────────
   // Own root (D4) — front-desk transaction history, not a fulfillment lane.
@@ -563,7 +553,7 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/repair' || pathname.startsWith('/repair/')) return 'receiving';
   if (pathname === '/replenish' || pathname.startsWith('/replenish/')) return 'replenish';
   if (pathname === '/products' || pathname.startsWith('/products/')) return 'products';
-  if (pathname === '/warehouse' || pathname.startsWith('/warehouse/')) return 'warehouse';
+  if (pathname === '/warehouse' || pathname.startsWith('/warehouse/')) return 'inventory';
   if (pathname === '/sourcing' || pathname.startsWith('/sourcing/')) return 'sourcing';
   if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return 'inventory';
   if (pathname === '/support' || pathname.startsWith('/support/')) return 'support';
@@ -636,9 +626,17 @@ export function getSidebarNavPageId(
     return mode === 'pairing' || mode === 'catalog-link' ? 'products' : 'outbound';
   }
   // Shipping: Scan out is its own Scan Stations L1; Labels/Ready/FBA are Fulfillment.
+  // Support › Inquiries aliases `/shipping/orders?context=support` — Support owns the spine pin.
+  if (
+    (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) &&
+    String(searchParams?.get('context') ?? '').trim().toLowerCase() === 'support'
+  ) {
+    return 'support';
+  }
   const outboundMode = outboundModeFromPath(pathname);
   if (outboundMode === 'scan-out') return 'scan-out';
   if (outboundMode) return 'outbound';
+  if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
   return getSidebarRouteKey(pathname);
 }
 
@@ -658,18 +656,48 @@ function getFirstPathSegment(path: string): string {
 export function isSidebarNavActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
 
-  const hrefSegment = getFirstPathSegment(href);
+  // Strip query/hash so `/?mode=forge&view=live` does not poison path matching.
+  const hrefPath = href.split(/[?#]/, 1)[0] ?? href;
+
+  const hrefSegment = getFirstPathSegment(hrefPath);
   const pathnameSegment = getFirstPathSegment(pathname);
 
   if (hrefSegment === 'test' || hrefSegment === 'pack' || hrefSegment === 'shipping') {
     return pathnameSegment === hrefSegment;
   }
 
-  if (href === '/') {
+  if (hrefPath === '/') {
     return pathname === '/';
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+}
+
+/**
+ * Top-pin active state — query-aware so Home and Plans never both light on `/`.
+ *
+ * Pathname-only {@link isSidebarNavActive} treats every Home mode as active for
+ * `href: '/'`. Plans lands on `/?mode=forge&view=live`, so the pin renderer must
+ * split that mode: forge → Plans current / Home idle; every other Home mode →
+ * Home current / Plans idle. Other top pins stay pathname-only.
+ */
+export function isSidebarTopPinActive(
+  pin: Pick<SidebarNavItem, 'id' | 'href'>,
+  loc: {
+    pathname: string | null;
+    searchParams: Pick<URLSearchParams, 'get'>;
+  },
+): boolean {
+  const { pathname, searchParams } = loc;
+  if (!pathname) return false;
+
+  if (pin.id === 'plans-live') {
+    return pathname === '/' && parseHomeMode(searchParams.get('mode')) === 'forge';
+  }
+  if (pin.id === 'home') {
+    return pathname === '/' && parseHomeMode(searchParams.get('mode')) !== 'forge';
+  }
+  return isSidebarNavActive(pathname, pin.href);
 }
 
 /**
@@ -710,6 +738,9 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/packer',             permission: 'packing.view' },
   { prefix: '/packers',            permission: 'packing.view' },
   { prefix: '/review',             permission: 'packing.review' },
+  // To-ship desk is orders-entity gated (shared with Support › Inquiries).
+  // Longer prefix must beat `/shipping` → shipping.view.
+  { prefix: '/shipping/orders',    permission: 'orders.view' },
   { prefix: '/shipping',           permission: 'shipping.view' },
   { prefix: '/outbound',           permission: 'shipping.view' },
   { prefix: '/products',           permission: 'sku_stock.view' },
@@ -810,7 +841,7 @@ export type SidebarPageNav = SidebarNavItem & {
    * `children` (defaulting to the page's leftmost/default child). Only defined
    * for pages that have `children`.
    */
-  resolveChild?: (loc: ChildLocation) => string;
+  resolveChild?: (loc: ChildLocation) => string | null;
 };
 
 // Page hrefs are repeated from APP_SIDEBAR_NAV so each mode's `to()` is a pure,
@@ -828,7 +859,6 @@ const PICKUP = '/pickup';
 const REPAIR = '/repair';
 const INCOMING = '/incoming';
 const INVENTORY = '/inventory';
-const WAREHOUSE = '/warehouse';
 const SOURCING = '/sourcing';
 const PRODUCTS = '/products';
 // Testing graduated to its own first-class surface route (`/test`,
@@ -867,7 +897,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'tasks',  label: 'Tasks',  icon: ClipboardList,   to: () => ({ pathname: '/', params: { mode: 'tasks' } }) },
       { id: 'collab', label: 'Collab', icon: MessageSquare,   to: () => ({ pathname: '/', params: { mode: 'collab' } }) },
       // "Plan" is the operator-facing label for the forge (live product plan).
-      { id: 'forge',  label: 'Plan',   icon: Zap,             to: () => ({ pathname: '/', params: { mode: 'forge' } }) },
+      // Same gate as the Plans spine pin + `/api/forge/master-plan`.
+      { id: 'forge',  label: 'Plan',   icon: Zap,             requires: 'operations.plans.view', to: () => ({ pathname: '/', params: { mode: 'forge' } }) },
       { id: 'brief',  label: 'Brief',  icon: Sparkles,        to: () => ({ pathname: '/', params: { mode: 'brief' } }) },
     ],
     // One parser, not a second copy of the vocabulary — same discipline as
@@ -948,20 +979,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
   },
   // ── Inbound (Manage Inbound) ──────────────────────────────────────────────
-  // Incoming (what is on its way) + the Receiving Board (what landed) — the
-  // former `/dashboard?mode=inbound` L2. The dock BENCHES stay on Scan Stations
-  // (D6); this is their pointer-driven counterpart, not a second door to them.
+  // Single desk at `/incoming`: Pipeline (on the way) + Docked (landed activity,
+  // former Receiving Board via `?lane=docked`). Dock BENCHES stay on Scan Stations.
   {
     id: 'incoming', label: 'Inbound', href: INCOMING, icon: RECEIVING_NAV_ICONS.incoming,
     kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
-    children: [
-      { id: 'incoming', label: 'Incoming', icon: RECEIVING_NAV_ICONS.incoming, to: () => ({ pathname: INCOMING, params: {} }) },
-      // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
-      // header tab + the table's day-band axis in lockstep (both read `?sort`).
-      { id: 'board', label: 'Receiving Board', icon: LayoutDashboard, requires: DASHBOARD_INBOUND_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest' } }) },
-    ],
-    resolveChild: ({ pathname }) =>
-      pathname === DASHBOARD || pathname.startsWith(`${DASHBOARD}/`) ? 'board' : 'incoming',
   },
   // Legacy family entry — not in APP_SIDEBAR_NAV; resolves modes for deep-links
   // and callers that still use page id `receiving`.
@@ -994,7 +1016,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=scout|watchlist`; bare /sourcing = the Queue (demand) surface (default).
   // Legacy keys aliased: `alerts`→queue, `lookup`→scout.
   {
-    id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'domain', domainGroup: 'inventory', requires: 'sourcing.view',
+    id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'domain', domainGroup: 'sourcing', requires: 'sourcing.view',
     children: [
       // Each target used to null `q` and `status` by hand — and forgot `by` and
       // `range`, so Scout's field toggle and the Analytics window leaked into
@@ -1032,20 +1054,17 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Shipping (Manage Shipping — Fulfillment) ──────────────────────────────
-  // Orders · Labels · Ready · FBA. Scan out is its own Scan Stations L1 below.
+  // To ship · Postage · FBA · Packing Review. Ready is a stage tab inside FBA
+  // (`?fbaMode=ready`), not an L2 sibling. Scan out is its own Scan Stations L1.
   // Nav id stays `outbound` for bookmark/test stability (route is `/shipping`).
   //
-  // **Orders is the former `/dashboard` outbound board.** The Shipping modes did
-  // NOT already cover it: Labels/Ready/FBA are carrier-postage lanes, while the
-  // board is the Pending · Tested · Packed · Shipped order queue. Dissolving
-  // Dashboard (D5) therefore had to land it somewhere, and Fulfillment is the
-  // domain that owns orders leaving the building.
+  // **Orders is the former `/dashboard` outbound board** at `/shipping/orders`.
+  // Support › Inquiries aliases the same desk with `?context=support`.
   {
     id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
     children: [
-      { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'dashboard.view', to: () => ({ pathname: DASHBOARD, params: {} }) },
+      { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
       { id: 'labels',   label: 'Postage',   icon: SHIPPING_NAV_ICONS.labels,   to: () => ({ pathname: OUTBOUND_MODE_PATHS.labels }) },
-      { id: 'ready',    label: 'Ready',    icon: SHIPPING_NAV_ICONS.ready,    to: () => ({ pathname: OUTBOUND_MODE_PATHS.ready }) },
       { id: 'fba',      label: 'FBA',      icon: SHIPPING_NAV_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
       // Packing QA — the former Review L1's default (bare `/review`). Its other
       // two modes are Catalog work and hang off the Catalog page instead (D10).
@@ -1056,11 +1075,22 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     ],
     resolveChild: ({ pathname, params }) => {
       if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) return 'review';
-      if (pathname === DASHBOARD || pathname.startsWith(`${DASHBOARD}/`)) return 'orders';
+      if (
+        pathname === SHIPPING_ORDERS_PATH ||
+        pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`) ||
+        pathname === DASHBOARD ||
+        pathname.startsWith(`${DASHBOARD}/`)
+      ) {
+        // Support › Inquiries alias — Support's resolveChild owns the pin.
+        if (params.get('context') === 'support') return null;
+        return 'orders';
+      }
       const fromPath = outboundModeFromPath(pathname);
-      if (fromPath === 'ready' || fromPath === 'fba' || fromPath === 'labels') return fromPath;
+      if (fromPath === 'fba' || fromPath === 'labels') return fromPath;
+      // Legacy `/shipping/ready` redirects to FBA; treat residual path as FBA.
+      if (pathname === '/shipping/ready' || pathname.startsWith('/shipping/ready/')) return 'fba';
       const m = params.get('mode');
-      if (m === 'ready' || m === 'fba') return m;
+      if (m === 'fba' || m === 'ready') return 'fba';
       return 'labels';
     },
   },
@@ -1108,7 +1138,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // constructs from PRODUCTS_ROUTE_PARAMS, so a view emits its own delta and
   // there is nothing left to remember to clear.
   {
-    id: 'products', label: 'Catalog', href: PRODUCTS, icon: Tags, kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view',
+    id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view',
     children: [
       // Mode id stays `catalog` (the `?view=` wire value + every bookmark); only
       // the LABEL changed, so the section and its browse mode stop answering to
@@ -1157,9 +1187,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'pulse',     label: 'Pulse',     icon: TrendingUp, to: () => ({ pathname: `${INVENTORY}/pulse`, params: {} }) },
       { id: 'graph',     label: 'Graph',     icon: Layers,     to: () => ({ pathname: `${INVENTORY}/graph`, params: {} }) },
       { id: 'replenish', label: 'Replenish', icon: History,    to: () => ({ pathname: INVENTORY, params: { section: 'replenish' } }) },
+      // Former Locations L1 (`/warehouse`) — nested Bin Tags · Racks · Rooms · Bins · Map.
+      { id: 'locations', label: 'Locations', icon: Warehouse,  to: () => ({ pathname: `${INVENTORY}/locations`, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
       // Path-based modes (consistent with graph). Legacy `?mode=` still resolves.
+      if (
+        pathname.startsWith(`${INVENTORY}/locations`) ||
+        pathname === '/warehouse' ||
+        pathname.startsWith('/warehouse/')
+      ) {
+        return 'locations';
+      }
       if (pathname.startsWith(`${INVENTORY}/graph`)) return 'graph';
       if (pathname.startsWith(`${INVENTORY}/triage`)) return 'triage';
       if (pathname.startsWith(`${INVENTORY}/pulse`)) return 'pulse';
@@ -1168,26 +1207,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'triage') return 'triage';
       if (m === 'pulse') return 'pulse';
       return 'ledger';
-    },
-  },
-  // ── Warehouse ─────────────────────────────────────────────────────────────
-  // `?tab=labels|racks|rooms|bins|map`; default `labels` (param cleared).
-  {
-    id: 'warehouse', label: 'Locations', href: WAREHOUSE, icon: Warehouse, kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
-    children: [
-      // `{ tab: null }` on the default mode reads as "drop the switch", not as a
-      // clear list — and now that /warehouse declares a spec, every sibling's
-      // state (`room`, `code`, `serial`, `q`, `status`, the form toggles) is
-      // dropped by construction rather than by nobody having listed it.
-      { id: 'labels', label: 'Bin Tags', icon: Printer,  to: () => ({ pathname: WAREHOUSE, params: { tab: null } }) },
-      { id: 'racks',  label: 'Racks',  icon: Layers,   to: () => ({ pathname: WAREHOUSE, params: { tab: 'racks' } }) },
-      { id: 'rooms',  label: 'Rooms',  icon: DoorOpen, to: () => ({ pathname: WAREHOUSE, params: { tab: 'rooms' } }) },
-      { id: 'bins',   label: 'Bins',   icon: Archive,  to: () => ({ pathname: WAREHOUSE, params: { tab: 'bins' } }) },
-      { id: 'map',    label: 'Map',    icon: MapPin,   to: () => ({ pathname: WAREHOUSE, params: { tab: 'map' } }) },
-    ],
-    resolveChild: ({ params }) => {
-      const t = params.get('tab');
-      return t === 'rooms' || t === 'bins' || t === 'racks' || t === 'map' ? t : 'labels';
     },
   },
   // ── Testing ───────────────────────────────────────────────────────────────
@@ -1233,9 +1252,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         label: 'Inquiries',
         icon: Package,
         requires: 'orders.view',
+        // Alias onto the shared To-ship desk (ticket affordances via context=support).
         to: () => ({
-          pathname: SUPPORT,
-          params: { mode: 'orders' },
+          pathname: SHIPPING_ORDERS_PATH,
+          params: { context: 'support' },
         }),
       },
       {
@@ -1277,7 +1297,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         }),
       },
     ],
-    resolveChild: ({ params }) => {
+    resolveChild: ({ pathname, params }) => {
+      // Inquiries aliases `/shipping/orders?context=support` — highlight while there.
+      if (
+        (pathname === SHIPPING_ORDERS_PATH || pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`)) &&
+        params.get('context') === 'support'
+      ) {
+        return 'orders';
+      }
       const m = params.get('mode');
       if (m === 'orders') return 'orders';
       if (m === 'voicemail') return 'voicemail';

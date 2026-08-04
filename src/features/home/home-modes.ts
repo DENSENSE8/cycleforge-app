@@ -32,8 +32,24 @@ export function parseHomeMode(raw: string | null | undefined): HomeMode {
  * for the follow-up wiring phases (plan §3.1):
  *   ?task=   selected `ops_plan_tasks.id`   (tasks / collab)
  *   ?plan=   selected `ops_plans.id`        (tasks)
- *   ?view=   forge sub-view, e.g. `live`    (forge)
+ *   ?view=   forge sub-view: live|agent|doc (forge) — see {@link parseForgeView}
+ *   ?ticket= selected master-plan ticketId  (forge)
  *   ?q=      mode-scoped search             (today / tasks)
  *   ?open=   right-pane focus key           (tasks / collab)
  *   ?filter= inbox triage filter            (inbox)
  */
+
+/**
+ * Forge (Plans Live) primary pane. `live` is the bookmark/alias for agent-primary
+ * (`/?mode=forge&view=live` from `/forge` and the Plans spine pin).
+ */
+export type ForgeView = 'agent' | 'doc';
+
+export function parseForgeView(raw: string | null | undefined): ForgeView {
+  return raw === 'doc' ? 'doc' : 'agent';
+}
+
+/** Canonical URL value for a forge view (`live` preferred over `agent` for bookmarks). */
+export function forgeViewParam(view: ForgeView): 'live' | 'doc' {
+  return view === 'doc' ? 'doc' : 'live';
+}

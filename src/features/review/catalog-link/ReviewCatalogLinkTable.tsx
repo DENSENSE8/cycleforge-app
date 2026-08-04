@@ -7,8 +7,8 @@
  *
  * Composed from the house shells, not hand-rolled:
  *
- *   chrome    → `WorkbenchChromeHeader` `density="band"` (tabs · collapsed
- *               search). Column display is the GRID's own top-right header
+ *   chrome    → `WorkbenchChromeHeader` `density="band"` (tabs · always-open
+ *               TechRailSearchBar). Column display is the GRID's own top-right header
  *               lip, not chrome — chrome Fields was retired 2026-08-02.
  *   collection→ `LedgerGridSurface` + a `GridSurfaceDescriptor`, via
  *               `ReviewCatalogLinkGridView` — two column models, one bag
@@ -37,7 +37,7 @@ import {
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { ToolbarSearchToggle } from '@/design-system/primitives/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 import { CatalogLinkFormRail, ImportExceptionFormRail } from './CatalogLinkFormRail';
 import type { RailQueuePosition } from './CatalogLinkFormRail';
@@ -228,19 +228,17 @@ export function ReviewCatalogLinkTable() {
               tabs={SECTION_TABS}
               activeTab={section}
               onTabChange={setSection}
-              // Collapsed at rest: this refines the list already on screen, so
-              // it is not one of the two always-open entry-path exceptions
-              // (`ui-design-system.md` → Scoped search chrome). It is also the
-              // first time `?search=` has had a control at all — the old pane's
-              // "Clear search" button could only appear for a query no operator
-              // could enter.
+              // Always-open TechRailSearchBar — filter+paste, not icon-first
+              // expand. This is also the first time `?search=` has had a control
+              // at all — the old pane's "Clear search" button could only appear
+              // for a query no operator could enter.
               search={
-                <ToolbarSearchToggle
+                <TechRailSearchBar
+                  variant="chrome"
                   value={searchQuery}
                   onChange={setSearch}
-                  onClear={() => setSearch('')}
                   placeholder={isChoreTab ? 'Filter listings…' : 'Filter orders…'}
-                  tone="blue"
+                  className="w-40 shrink-0 lg:w-56"
                 />
               }
               // No trailing cluster. Display sort IS the grid's column sort

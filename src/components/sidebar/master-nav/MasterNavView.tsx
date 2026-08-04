@@ -1,10 +1,10 @@
 'use client';
 
-import { TOP_CHROME_BAND_FACE } from '@/components/layout/header-shell';
 import type { SidebarPageNav } from '@/lib/sidebar-navigation';
+import { TOP_CHROME_BAND_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
-import { OrgWorkspaceControl } from './OrgWorkspaceControl';
 import { SidebarNavList } from './SidebarNavList';
+import { SpineTopPins } from './SpineTopPins';
 
 /**
  * The **sidebar spine** — a 40px workspace band over one swapping body.
@@ -17,8 +17,11 @@ import { SidebarNavList } from './SidebarNavList';
  *
  * ## Stack (top → bottom)
  *
- * 1. **Org / workspace** — current tenant (+ switch when multi-org).
- * 2. **Body** — Home/Search/Media/Chat top pin → sections → footer
+ * 1. **Top band (40px)** — {@link SpineTopPins}: Home · Search · Media · Plans ·
+ *    Chat as icons when the spine is open. Shares the desktop top-chrome seam
+ *    with the GlobalHeader. When the spine is closed, the same destinations peek
+ *    from the header toggle (`SidebarCollapseControl` → {@link TopDestinationPins}).
+ * 2. **Body** — flat domain map + Scan Stations Vercel drill → footer
  *    {@link TechRailSearchBar} → Settings/Admin pin → staff account footer.
  *
  * Global search + AI stay in GlobalHeader (`GlobalHeaderSearch`). L2 Mode +
@@ -31,6 +34,8 @@ export function MasterNavView({
   otherPages,
   onNavigate,
   onRowHover,
+  stationsDrillOpen,
+  onStationsDrillChange,
   className,
 }: {
   activePage: SidebarPageNav;
@@ -39,16 +44,37 @@ export function MasterNavView({
   onNavigate: (pageId: string, childId?: string) => void;
   /** Hover hook per page row — warms the destination's data. */
   onRowHover?: (page: SidebarPageNav) => void;
+  /** Scan Stations list-replace drill (floor only). */
+  stationsDrillOpen: boolean;
+  onStationsDrillChange: (open: boolean) => void;
   className?: string;
 }) {
   return (
     <div className={cn('isolate flex h-full min-h-0 flex-col', className)}>
-      {/* Same box model as GlobalHeader — height + hairline on one element. */}
-      <div className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-stretch')}>
-        <OrgWorkspaceControl />
+      {/* The band's HEIGHT is geometry, not content. The spine is a flex SIBLING
+          of the header+content column (see ResponsiveLayout), so this 40px face
+          is what puts the spine's bottom hairline on the same Y as the
+          GlobalHeader's — drop it and the header's border runs into the spine
+          mid-row.
+
+          What left is the org/workspace control. This is small-business
+          software: an operator belongs to one org, so a permanent row naming it
+          spent the spine's most valuable space restating something that never
+          changes. Org IDENTITY renders in the StaffAccountFooter ⋯ menu header,
+          and org SWITCHING lives in Settings → Organization
+          (`WorkspaceSwitcher`), the honest home for a rare, deliberate act.
+
+          What ARRIVED is {@link SpineTopPins} — Home · Search · Media · Plans ·
+          Chat. The band was blank for a day after the org control went, and a
+          blank 40px strip at the top of the navigator is worse than a used one.
+          These five are the only content that can sit here for free: the band's
+          height is already reserved by the seam, so as icons they cost the map
+          nothing, where as ROWS they cost it vertical space. */}
+      <div className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-center')}>
+        <SpineTopPins />
       </div>
 
-      {/* One body: top pin + sections + pinned Settings/Admin + staff. */}
+      {/* One body: sections + pinned Settings/Admin + staff. */}
       <div className="min-h-0 flex-1">
         <SidebarNavList
           activePage={activePage}
@@ -56,6 +82,8 @@ export function MasterNavView({
           otherPages={otherPages}
           onNavigate={onNavigate}
           onRowHover={onRowHover}
+          stationsDrillOpen={stationsDrillOpen}
+          onStationsDrillChange={onStationsDrillChange}
         />
       </div>
     </div>

@@ -55,7 +55,13 @@ export type AnchoredPlacement =
   | 'top-start'
   | 'top-end'
   | 'top-center'
-  | 'top-stretch';
+  | 'top-stretch'
+  | 'right-start'
+  | 'right-end'
+  | 'right-center'
+  | 'left-start'
+  | 'left-end'
+  | 'left-center';
 
 export interface AnchoredLayerProps {
   open: boolean;
@@ -95,10 +101,33 @@ function computeStyle(
   level: ZIndexToken,
 ): CSSProperties {
   const stretch = placement.endsWith('-stretch');
+  const isRight = placement.startsWith('right-');
+  const isLeft = placement.startsWith('left-');
   const isTop = placement.startsWith('top-');
   const base: CSSProperties = { position: 'fixed', zIndex: zIndex[level] };
 
-  // Vertical edge.
+  // Horizontal-edge placements (right / left of the trigger).
+  if (isRight || isLeft) {
+    if (isRight) {
+      base.left = rect.right + gap;
+    } else {
+      base.right = Math.max(0, window.innerWidth - rect.left + gap);
+    }
+    // Vertical alignment along the trigger.
+    if (placement.endsWith('-center')) {
+      base.top = rect.top + rect.height / 2;
+      base.transform = 'translateY(-50%)';
+    } else if (placement.endsWith('-end')) {
+      base.bottom = Math.max(0, window.innerHeight - rect.bottom);
+    } else {
+      // *-start — align to the trigger's top.
+      base.top = rect.top;
+    }
+    if (matchWidth) base.width = rect.width;
+    return base;
+  }
+
+  // Vertical edge (top / bottom of the trigger).
   if (isTop) {
     base.bottom = Math.max(0, window.innerHeight - rect.top + gap);
   } else {

@@ -51,8 +51,12 @@ import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels'
 /** Triage status chip shown on each row. Derived from the email subject + pile. */
 export type EmailTriageTag = 'NEW' | 'RETURN' | 'DELIVERED' | 'TRACKING' | 'DONE';
 
-/** Which right-pane view is showing in Incoming mode (URL `?incview=`). */
-export type IncomingView = 'pos' | 'email';
+/**
+ * Which right-pane view is showing in Incoming mode (URL `?incview=`).
+ * Re-exported from its leaf SoT so existing import paths keep working — the
+ * parser lives there too, so no reader re-derives the vocabulary inline.
+ */
+export type { IncomingView } from '@/lib/receiving/incoming-view';
 
 /**
  * One triage row. This is the stable, presentation-ready shape — the live

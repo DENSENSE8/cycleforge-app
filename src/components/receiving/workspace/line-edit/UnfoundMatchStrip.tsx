@@ -5,9 +5,10 @@
  * below PO Items, above Package Pairing. Operator-initiated only; nothing here
  * runs on the scan path (see useUnfoundRefetchActions).
  *
- * Four resolution actions on a compact grid (default lane). Return # opens a
- * local search; Zoho / Amazon fire platform fetches; Find ticket opens the
- * helpdesk picker. Nothing auto-runs on scan.
+ * Four resolution actions as a compact grid (default) or forced vertical rows
+ * (`layout="rows"`). Bare Unbox Displays Pairing absorbs Auto-match into the
+ * hub dropdown and mounts this strip with `forcedLane` (order / ticket only —
+ * no action grid). Zoho / Amazon fire from the hub menu.
  *
  *   • **Return #** (Search) — opens the search row (back chip · return #
  *     input · search icon). Typing surfaces a live list of matching shipped
@@ -97,6 +98,17 @@ interface UnfoundMatchStripProps {
   onTicketChanged?: () => void;
   /** When false, omit top divider (e.g. first block in a pairing-only card). */
   showTopRule?: boolean;
+  /**
+   * `grid` — responsive multi-col (Triage / Testing / embedded). `rows` —
+   * single-column stack (legacy; bare Displays no longer uses the action grid).
+   */
+  layout?: 'grid' | 'rows';
+  /**
+   * Displays dropdown host: skip the action grid and show only this lane.
+   * Back calls `onForcedLaneBack` (hub clears the sticky Auto-match mode).
+   */
+  forcedLane?: 'order' | 'ticket' | null;
+  onForcedLaneBack?: () => void;
 }
 
 export function UnfoundMatchStrip({
@@ -109,6 +121,9 @@ export function UnfoundMatchStrip({
   ticketUrl = null,
   onTicketChanged,
   showTopRule = true,
+  layout = 'grid',
+  forcedLane = null,
+  onForcedLaneBack,
 }: UnfoundMatchStripProps) {
   const { zoho, amazon, busy, checkZoho, checkAmazon } = useUnfoundRefetchActions(
     receivingId,
@@ -117,14 +132,25 @@ export function UnfoundMatchStrip({
   const compare = useShippedOrderCompare();
   // Compact action grid is the default (Return # · Zoho · Amazon · Find ticket).
   // Return # opens the search lane; Find ticket opens the helpdesk picker; both
-  // return here on back / link.
-  const [lane, setLane] = useState<'order' | 'ticket' | 'actions'>('actions');
+  // return here on back / link. `forcedLane` locks the Displays dropdown host
+  // onto one lane without the peer action grid.
+  const [lane, setLane] = useState<'order' | 'ticket' | 'actions'>(
+    forcedLane ?? 'actions',
+  );
+  const activeLane = forcedLane ?? lane;
   const trimmedTracking = (trackingNumber ?? '').trim();
   const hasTracking = Boolean(trimmedTracking);
   const noReceiving = receivingId == null;
   const notice = pickMergedRefetchNotice(zoho, amazon);
+  const actionRows = layout === 'rows';
 
-  const closeTicketLane = () => setLane('actions');
+  const closeTicketLane = () => {
+    if (forcedLane) {
+      onForcedLaneBack?.();
+      return;
+    }
+    setLane('actions');
+  };
   const toggleTicketLane = () => {
     if (lane === 'ticket') {
       closeTicketLane();
@@ -134,6 +160,10 @@ export function UnfoundMatchStrip({
   };
 
   const closeSearch = () => {
+    if (forcedLane) {
+      onForcedLaneBack?.();
+      return;
+    }
     setLane('actions');
     compare.reset();
   };
@@ -150,7 +180,7 @@ export function UnfoundMatchStrip({
       className={showTopRule ? 'space-y-2 border-t border-border-hairline pt-2' : 'space-y-2'}
     >
       <AnimatePresence mode="wait" initial={false}>
-        {lane === 'ticket' ? (
+        {activeLane === 'ticket' ? (
           <motion.div key="ticket-search" {...stepPresence} transition={stepTransition}>
             <TicketMatchLane
               receivingId={receivingId}
@@ -163,7 +193,7 @@ export function UnfoundMatchStrip({
               }}
             />
           </motion.div>
-        ) : lane === 'order' ? (
+        ) : activeLane === 'order' ? (
           <motion.div key="order-search" {...stepPresence} transition={stepTransition}>
             <OrderSearchRow
               state={compare.state}
@@ -186,7 +216,11 @@ export function UnfoundMatchStrip({
             key="actions"
             {...stepPresence}
             transition={stepTransition}
-            className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
+            className={
+              actionRows
+                ? 'flex flex-col gap-2'
+                : 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4'
+            }
           >
             {/* Return # opens a LOCAL search rather than firing a platform fetch;
                 chrome matches the Zoho / Amazon / Find ticket peers. */}
@@ -195,6 +229,7 @@ export function UnfoundMatchStrip({
               label="Return #"
               tooltip="Search our shipped records by return / order number"
               disabled={noReceiving}
+              fullLabel={actionRows}
               onClick={() => setLane('order')}
             />
             <StripButton
@@ -203,6 +238,7 @@ export function UnfoundMatchStrip({
               tooltip="Fetch from platform — re-run the Zoho PO tracking search"
               state={zoho}
               disabled={noReceiving || busy}
+              fullLabel={actionRows}
               onClick={() => void checkZoho()}
             />
             <StripButton
@@ -215,6 +251,7 @@ export function UnfoundMatchStrip({
               }
               state={amazon}
               disabled={noReceiving || !hasTracking || busy}
+              fullLabel={actionRows}
               onClick={() => void checkAmazon()}
             />
             {/* Reverse of "File ticket": find an EXISTING helpdesk ticket for
@@ -228,13 +265,14 @@ export function UnfoundMatchStrip({
                   : 'Add a tracking number to this carton first'
               }
               disabled={noReceiving || !hasTracking}
+              fullLabel={actionRows}
               onClick={toggleTicketLane}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {lane === 'actions' && notice ? <MergedNotice state={notice} /> : null}
+      {activeLane === 'actions' && notice ? <MergedNotice state={notice} /> : null}
     </div>
   );
 }
@@ -248,6 +286,7 @@ function StripButton({
   tooltip,
   state,
   disabled,
+  fullLabel = false,
   onClick,
 }: {
   icon: IconComponent;
@@ -255,6 +294,8 @@ function StripButton({
   tooltip: string;
   state?: RefetchState;
   disabled: boolean;
+  /** When true (Displays rows layout), never ellipsize the label. */
+  fullLabel?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -268,7 +309,15 @@ function StripButton({
         className="min-h-11 w-full justify-start gap-2 rounded-lg px-3"
         icon={<Icon className="h-4 w-4 shrink-0" />}
       >
-        <span className="truncate text-role-caption font-semibold">{label}</span>
+        <span
+          className={
+            fullLabel
+              ? 'text-role-caption font-semibold'
+              : 'truncate text-role-caption font-semibold'
+          }
+        >
+          {label}
+        </span>
       </Button>
     </HoverTooltip>
   );

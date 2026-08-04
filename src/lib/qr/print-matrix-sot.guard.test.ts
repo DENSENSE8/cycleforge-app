@@ -341,7 +341,7 @@ test('location: both symbologies scan back to the same destination', () => {
 
   // position=00 is a RACK — decided by the code, never by the symbology.
   const rack = encodePrintMatrix({ kind: 'location', segments: RACK_AS_LOCATION });
-  assert.equal(routeScan(rack.value)?.redirect, '/warehouse?tab=racks&code=A0101100');
+  assert.equal(routeScan(rack.value)?.redirect, '/inventory/locations?tab=racks&code=A0101100');
 });
 
 test('as-listed + ticket faces read their matrix from the SoT', () => {

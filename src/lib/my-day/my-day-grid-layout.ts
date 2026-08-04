@@ -3,7 +3,7 @@
  * {@link PICKUP_GRID_COLUMNS} / {@link RECEIVING_GRID_COLUMNS}.
  *
  * Composes the SAME shared geometry as every other station/workbench grid
- * (`ordersQueueColVar` · `ordersQueueGridCell` · `ORDERS_QUEUE_FROZEN_CELL`), so
+ * (`ledgerGridCell` · `LEDGER_GRID_FROZEN_CELL`), so
  * a Today row lines up track-for-track with Pending, Unbox and Incoming rather
  * than being a second table language on the operator's first screen.
  *
@@ -13,8 +13,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -153,23 +155,13 @@ export function myDayGridTemplate(
   return gridTemplate(columns);
 }
 
-// Row left-pad — the same token every station grid uses, so the frozen gutter
-// aligns with Pending / Unbox / Pickup.
-const MY_DAY_GRID_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
 /**
  * Sticky offset for a frozen cell — row px plus the summed widths of the locked
  * columns before it. Self-computed over {@link MY_DAY_GRID_COLUMNS} so Today's
  * own track widths drive the offset.
  */
 export function myDayGridFrozenLeft(key: MyDayGridColumnKey): string {
-  const idx = MY_DAY_GRID_LOCKED_KEYS.indexOf(key);
-  const parts = [MY_DAY_GRID_ROW_PX];
-  for (const k of MY_DAY_GRID_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = MY_DAY_GRID_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(MY_DAY_GRID_COLUMNS, key);
 }
 
 
@@ -178,10 +170,9 @@ export function defaultDirForMyDayGridSort(key: MyDayGridColumnKey): GridSortDir
   return key === 'due' ? 'desc' : 'asc';
 }
 
-// Shared spreadsheet chrome — the SAME helpers the receiving / outbound / pickup
-// grids use. Never re-derive cell padding, hairlines or the row shell here.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as MY_DAY_GRID_FROZEN_CELL,
-  ordersQueueGridCell as myDayGridCell,
-  ordersQueueRowShellClass as myDayGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as MY_DAY_GRID_FROZEN_CELL,
+  ledgerGridCell as myDayGridCell,
+  ledgerGridRowShellClass as myDayGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

@@ -1,16 +1,18 @@
 'use client';
 
 /**
- * The four step bodies whose surface is composed by the adapter and handed in as
- * a slot.
+ * The three step bodies whose surface is composed by the adapter and handed in
+ * as a slot.
  *
- * `classify`, `contents`, `condition`/`serial` and `item_photos` each mount an
- * existing surface that carries a dozen handlers (`TriageClassifySection`,
- * `PoLinesAccordion`, `SerialCard`, the item camera). Threading those handlers
+ * `classify` mounts an existing surface that carries a dozen handlers
+ * (`TriageClassifySection`). `contents` and `serial` are intentionally empty
+ * in Unbox — the line list lives in {@link UnboxItemsPanel}, and the serial
+ * scan field lives in the dock ({@link SerialDockControl}). Threading handlers
  * through {@link UnboxStepBodyContext} would turn the bag into the controller
  * under a different name, which is the coupling this whole phase exists to
  * remove. So the adapter — the one module that legitimately knows both the
- * domain and the primitive — renders the node, and the body places it.
+ * domain and the primitive — renders the node, and the body places it (or stays
+ * empty when the action moved to the dock).
  *
  * They are thin on purpose. What each one buys is a registry entry the
  * divergence guard can require, and a place for the step's own chrome that is
@@ -34,23 +36,23 @@ export function ClassifyStepBody({ classifySlot }: UnboxStepBodyContext) {
   return <>{classifySlot ?? <MissingSlot what="Nothing to classify on this carton." />}</>;
 }
 
+/**
+ * Unbox pins the line list in {@link UnboxItemsPanel} (workbench top). The
+ * centre must not re-draw the same accordion — that was the duplicate the
+ * operator cut. A missing slot is therefore intentional absence, not "no
+ * lines yet"; the dock acknowledge is the step's action.
+ */
 export function ContentsStepBody({ contentsSlot }: UnboxStepBodyContext) {
-  return <>{contentsSlot ?? <MissingSlot what="No lines on this carton yet." />}</>;
+  if (!contentsSlot) return null;
+  return <>{contentsSlot}</>;
 }
 
-export function SerialStepBody({ serialSlot }: UnboxStepBodyContext) {
-  return <>{serialSlot ?? <MissingSlot what="No serial capture on this line." />}</>;
+/**
+ * The scan field moved to the dock ({@link SerialDockControl}). Saved chips
+ * already read from the items panel. The step body stays empty on this step —
+ * intentional absence, not "no serial yet".
+ */
+export function SerialStepBody(_ctx: UnboxStepBodyContext) {
+  return null;
 }
 
-export function ItemPhotoStepBody({ itemPhotoSlot }: UnboxStepBodyContext) {
-  // `data-unbox-item-photos` moved here verbatim from `ActiveLineConditionSerial`
-  // — a Playwright spec pins it as the desktop item-evidence anchor, and the
-  // attribute is the contract, not the component that used to carry it.
-  if (!itemPhotoSlot) return <MissingSlot what="No item evidence to capture on this line." />;
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-2" data-unbox-item-photos>
-      <p className="truncate text-role-caption text-text-soft">Photograph the item</p>
-      <div className="-my-0.5 shrink-0">{itemPhotoSlot}</div>
-    </div>
-  );
-}

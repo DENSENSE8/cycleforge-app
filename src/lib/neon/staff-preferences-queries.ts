@@ -132,10 +132,15 @@ export interface StaffPreferences {
       display?: Record<
         string,
         {
-          highlight?: 'none' | 'blue' | 'amber' | 'rose' | 'emerald';
+          /** `#rrggbb`, legacy named wash, or `'none'`. */
+          highlight?: string;
           cell?: 'default' | 'chip';
+          /** Named text emphasis — never free hex. */
+          text?: 'default' | 'muted' | 'emphasis' | 'warning' | 'critical';
         }
       >;
+      /** Per-row fill hex / legacy wash, keyed by stringified row id. */
+      rowFills?: Record<string, string>;
     }
   > | null;
   /**

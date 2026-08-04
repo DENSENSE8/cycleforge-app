@@ -42,6 +42,12 @@ export const getReceivingDefaultPutawayBin = (s: OrgSettings, envFallback?: stri
   return readOrg<string>(s, 'receiving.defaultPutawayBin', env || 'UNSORTED');
 };
 
+/** Returns testing bin barcode. Falls back to env then RETURNS-TEST. */
+export const getReceivingReturnsTestBin = (s: OrgSettings, envFallback?: string): string => {
+  const env = (envFallback ?? '').trim();
+  return readOrg<string>(s, 'receiving.returnsTestBin', env || 'RETURNS-TEST');
+};
+
 export const getReceivingAutoPrintLabel = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.autoPrintLabel', false);
 

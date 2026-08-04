@@ -3,7 +3,11 @@
 import { Fragment, memo, useState, type ReactNode } from 'react';
 import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
-import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
+import {
+  GridCellDash,
+  GridDateCellValue,
+  GridStatusCellValue,
+} from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { PICKUP_GRID_CAPABILITIES } from '@/components/receiving/pickup/grid/pickup-grid-descriptor';
@@ -36,16 +40,26 @@ function pickupDateLabel(dateKey: string | null): string | null {
   return dateKey ? formatDateKeyShort(dateKey) : null;
 }
 
-function PickupStatusChip({ orderStatus }: { orderStatus: string }) {
+/**
+ * The order's state — dot + chip through the house {@link GridStatusCellValue}
+ * (2026-08-02). The dot is the same `pickupOrderStatusDot` that used to lead the
+ * TITLE cell; it belongs here, in the column that owns the fact, where it can be
+ * sorted, hidden and resized with its own kind.
+ */
+function PickupStatusChip({
+  orderStatus,
+  receivingId,
+}: {
+  orderStatus: string;
+  receivingId?: number | null;
+}) {
+  const opts = { receivingId: receivingId ?? null };
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
-        pickupOrderStatusChipClass(orderStatus),
-      )}
-    >
-      {pickupOrderStatusLabel(orderStatus)}
-    </span>
+    <GridStatusCellValue
+      label={pickupOrderStatusLabel(orderStatus, opts)}
+      toneClass={pickupOrderStatusChipClass(orderStatus, opts)}
+      dotClass={pickupOrderStatusDot(orderStatus, opts)}
+    />
   );
 }
 
@@ -66,7 +80,6 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
 }) {
   const condGrade = (line.condition_grade || '').toUpperCase();
   const dateLabel = pickupDateLabel(line.pickup_date);
-  const statusDot = pickupOrderStatusDot(line.order_status);
 
   const renderCell = (col: PickupGridColumn, last: boolean): ReactNode => {
     const rule = !last;
@@ -88,11 +101,10 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
         return (
           <div
             data-col="title"
-            className={cn(dataCell(col, rule), PICKUP_GRID_FROZEN_CELL, 'gap-1.5')}
+            className={cn(dataCell(col, rule), PICKUP_GRID_FROZEN_CELL)}
             style={{ left: pickupGridFrozenLeft('title') }}
             data-frozen-edge
           >
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {line.product_title}
             </span>
@@ -160,7 +172,10 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
       case 'status':
         return (
           <div data-col="status" className={dataCell(col, rule)}>
-            <PickupStatusChip orderStatus={line.order_status} />
+            <PickupStatusChip
+              orderStatus={line.order_status}
+              receivingId={line.receiving_id}
+            />
           </div>
         );
       default:
@@ -220,7 +235,6 @@ function PickupGridGroupSummary({
   const condDisplay = grades.size === 1 ? conditionLabel([...grades][0], 'compact') : grades.size > 1 ? 'MIXED' : '—';
   const dateLabel = pickupDateLabel(first.pickup_date);
   const customer = first.customer_name;
-  const statusDot = pickupOrderStatusDot(first.order_status);
 
   const renderCell = (col: PickupGridColumn, last: boolean): ReactNode => {
     const rule = !last;
@@ -246,7 +260,6 @@ function PickupGridGroupSummary({
             style={{ left: pickupGridFrozenLeft('title') }}
             data-frozen-edge
           >
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', statusDot)} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-role-data font-semibold text-text-default">
               {first.po_number || `Order ${first.order_id}`}
             </span>
@@ -307,7 +320,10 @@ function PickupGridGroupSummary({
       case 'status':
         return (
           <div data-col="status" className={dataCell(col, rule)}>
-            <PickupStatusChip orderStatus={first.order_status} />
+            <PickupStatusChip
+              orderStatus={first.order_status}
+              receivingId={first.receiving_id}
+            />
           </div>
         );
       default:

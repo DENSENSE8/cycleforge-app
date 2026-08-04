@@ -191,7 +191,7 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
             </RepairPaperworkCanvas>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-2xl space-y-12 pb-12">
+          <div className="mx-auto w-full max-w-2xl space-y-12">
             <section className="space-y-4">
               <h3 className={SECTION_LABEL}>1. Issue Details</h3>
               <div className="rounded-xl border border-border-soft bg-surface-card p-5">

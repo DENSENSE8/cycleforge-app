@@ -1,5 +1,10 @@
-import type React from 'react';
-import { Package, Truck, AlertTriangle, Clock, Unlink, PackageOpen } from '@/components/Icons';
+import type { ComponentType } from 'react';
+import {
+  INCOMING_ALL_ISSUED_TILE,
+  INCOMING_DELIVERY_STATE_FACE,
+  INCOMING_HUNT_TILE_ICON,
+  INCOMING_HUNT_TILE_ORDER,
+} from '@/lib/receiving/incoming-delivery-state-face';
 import type { IncomingDeliveryState, IncomingSummary } from './incoming-summary-types';
 
 export interface TileSpec {
@@ -7,7 +12,7 @@ export interface TileSpec {
   label: string;
   key: keyof IncomingSummary;
   tone: 'rose' | 'amber' | 'blue' | 'gray' | 'slate' | 'orange' | 'violet' | 'red';
-  icon: React.FC<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   /** Tooltip / `aria-description` — the *why* this bucket exists. */
   title: string;
 }
@@ -15,54 +20,33 @@ export interface TileSpec {
 /**
  * Incoming dock hunt tiles. Email delivery is a STN writer, not a parallel tile.
  *
+ * Labels / long titles / icons come from {@link INCOMING_DELIVERY_STATE_FACE}
+ * (shared with the grid Status glyph) so the strip and the row cannot drift.
+ *
  * TWO rose delivered-attention tiles, and the pair is the point:
  *   - `DELIVERED_UNOPENED`    — delivered, never scanned. We don't know where it is.
  *   - `DELIVERED_NOT_UNBOXED` — delivered (possibly scanned in), never opened.
- *
- * The second used to be deliberately absent here ("lives on Unbox KPI, not this
- * hunt strip"). That was reversed 2026-07-30: the lane now carries its own dwell
- * SLA, an eBay claim deadline, an escalation cron and a loss write-off
- * (docs/todo/ebay-delivered-not-unboxed-PLAN.md), which makes it a first-class
- * inbound exception rather than a KPI readout — and it was reachable only by
- * hand-typing `?state=DELIVERED_NOT_UNBOXED`, so a pointer-driven operator could
- * not get to it at all.
  */
 export const TILES: TileSpec[] = [
-  { state: null, label: 'All issued', key: 'issued', tone: 'slate', icon: Package, title: 'Every PO issued upstream and not yet received locally.' },
   {
-    state: 'DELIVERED_UNOPENED', label: 'Delivered · not scanned', key: 'delivered_unopened', tone: 'rose', icon: AlertTriangle,
-    title: 'Carrier marked the box delivered AND no operator has scanned the tracking# at the receiving station yet (no receiving_scans row). Physically here, untouched — top priority. Age bands (<24h / 24–48h / >48h) drive burn-down; >48h needs claims attention.',
+    state: INCOMING_ALL_ISSUED_TILE.state,
+    label: INCOMING_ALL_ISSUED_TILE.label,
+    key: INCOMING_ALL_ISSUED_TILE.key,
+    tone: INCOMING_ALL_ISSUED_TILE.tone,
+    icon: INCOMING_ALL_ISSUED_TILE.icon,
+    title: INCOMING_ALL_ISSUED_TILE.title,
   },
-  {
-    state: 'DELIVERED_NOT_UNBOXED', label: 'Delivered · not unboxed', key: 'delivered_not_unboxed', tone: 'rose', icon: PackageOpen,
-    title: 'Carrier marked the box delivered and nothing has been unboxed against it (0 received, no unboxed_at) — this is BROADER than "not scanned": it also catches boxes that were checked in at the dock and then stalled mid-unbox. A 48h+ marker flags dwell past the dock-to-stock target; eBay purchases additionally show a CLAIM countdown, because their item-not-received window closes 30 days after delivery whether or not anyone looks.',
-  },
-  { state: 'ARRIVING_TODAY', label: 'Arriving today', key: 'arriving_today', tone: 'amber', icon: Truck, title: 'Carrier currently reports "out for delivery".' },
-  {
-    state: 'STALLED', label: 'Stalled', key: 'stalled', tone: 'orange', icon: AlertTriangle,
-    title: 'Carrier-reported exception OR no scan in >72h while still mid-route. Catch these before vendors do.',
-  },
-  {
-    state: 'WRONG_DESTINATION', label: 'Wrong destination', key: 'wrong_destination', tone: 'red', icon: Unlink,
-    title: 'Carrier delivered event postal code does not match the warehouse ship-from ZIP — possible mis-ship by the seller.',
-  },
-  { state: 'IN_TRANSIT', label: 'In transit', key: 'in_transit', tone: 'blue', icon: Truck, title: 'Label created, accepted, or in transit (carrier-side).' },
-  {
-    state: 'PENDING_CARRIER', label: 'Pending carrier', key: 'pending_carrier', tone: 'gray', icon: Clock,
-    title: 'Tracking# is registered with a known carrier, but the carrier sync has not returned a status yet (UNKNOWN / NULL). USPS shipments often land here while the sync adapter is rate-limited.',
-  },
-  {
-    state: 'TRACKING_UNAVAILABLE', label: 'Tracking unavailable', key: 'tracking_unavailable', tone: 'violet', icon: AlertTriangle,
-    title: 'The carrier is refusing tracking requests for these (e.g. USPS access-control 403 while the IP Agreement is pending). Delivered status is unobtainable until access clears — not "not delivered".',
-  },
-  {
-    state: 'CARRIER_MISMATCH', label: 'Carrier mismatch', key: 'carrier_mismatch', tone: 'red', icon: Unlink,
-    title: 'The carrier and tracking# don’t match: the number matched no known carrier, or the carrier API has no record of it (not-found / invalid). These never resolve on their own — fix the tracking# or reassign the carrier.',
-  },
-  {
-    state: 'AWAITING_TRACKING', label: 'Awaiting tracking #', key: 'awaiting_tracking', tone: 'gray', icon: Clock,
-    title: 'No tracking# registered at all — vendor has not shipped, or the PO `reference_number` field is empty upstream.',
-  },
+  ...INCOMING_HUNT_TILE_ORDER.map((state): TileSpec => {
+    const face = INCOMING_DELIVERY_STATE_FACE[state];
+    return {
+      state,
+      label: face.tileLabel,
+      key: face.summaryKey,
+      tone: face.tileTone,
+      icon: INCOMING_HUNT_TILE_ICON[state] ?? face.Icon,
+      title: face.tileTitle,
+    };
+  }),
 ];
 
 /** Per-tone tokens for status rows + matching active-filter pills. */

@@ -19,7 +19,7 @@ import {
   resolveRightRailFrame,
 } from './frame';
 
-/** A route rail at its 360px default, plus its `m-2` gutters. */
+/** A route rail at its 360px default (flush — no outer gutter islands). */
 const RAIL_OPEN = contextRailCostPx();
 
 const base = {
@@ -30,18 +30,18 @@ const base = {
 };
 
 describe('right-rail frame constants', () => {
-  it('parked rail costs the strip plus both gutters', () => {
-    assert.equal(CONTEXT_RAIL_PARKED_PX, 48);
-    assert.equal(RAIL_OPEN, 376);
-    assert.equal(RIGHT_RAIL_GUTTER_PX, 8);
+  it('parked rail costs the strip only (flush planes — no margin islands)', () => {
+    assert.equal(CONTEXT_RAIL_PARKED_PX, 32);
+    assert.equal(RAIL_OPEN, 360);
+    assert.equal(RIGHT_RAIL_GUTTER_PX, 0);
     assert.equal(MIN_WORK_SURFACE_PX, 784);
   });
 
   it('the push threshold is derived, not a hand-picked breakpoint', () => {
-    // work floor + panel gutters + the panel's own minimum, with the route rail
-    // fully masked away (a push-park renders no strip — see `parkedLeftPx`).
-    assert.equal(RIGHT_RAIL_PUSH_MIN_FRAME_PX, 784 + 16 + 360);
-    assert.equal(RIGHT_RAIL_PUSH_MIN_FRAME_PX, 1160);
+    // work floor + panel gutters (0) + the panel's own minimum, with the route
+    // rail fully masked away (a push-park renders no strip — see `parkedLeftPx`).
+    assert.equal(RIGHT_RAIL_PUSH_MIN_FRAME_PX, 784 + 0 + 360);
+    assert.equal(RIGHT_RAIL_PUSH_MIN_FRAME_PX, 1144);
   });
 });
 
@@ -53,8 +53,8 @@ describe('the ladder', () => {
   });
 
   it('1440: pushes at rung 1 — the context rail parks', () => {
-    // rung 0 surplus = 1440 - 376 - 784 - 16 = 264, short of the 420 wanted.
-    // rung 1 surplus = 1440 -   0 - 784 - 16 = 640, which seats it in full.
+    // rung 0 surplus = 1440 - 360 - 784 - 0 = 296, short of the 420 wanted.
+    // rung 1 surplus = 1440 -   0 - 784 - 0 = 656, which seats it in full.
     const r = resolveRightRailFrame({ ...base, frameWidthPx: 1440 });
     assert.equal(r.mode, 'push');
     assert.equal(r.parkRail, true);
@@ -81,7 +81,7 @@ describe('the ladder', () => {
   });
 
   it('takes a NARROWER panel over covering the work surface (pass B)', () => {
-    // 1160 is exactly the minimum: rung 1 surplus == the panel's 360px floor.
+    // 1144 is exactly the minimum: rung 1 surplus == the panel's 360px floor.
     const at = resolveRightRailFrame({ ...base, frameWidthPx: RIGHT_RAIL_PUSH_MIN_FRAME_PX });
     assert.equal(at.mode, 'push');
     assert.equal(at.parkRail, true);
@@ -117,9 +117,9 @@ describe('the resize cap', () => {
       railOperatorCollapsed: true,
     });
     const noRail = resolveRightRailFrame({ ...base, frameWidthPx: 1440, railCostOpenPx: 0 });
-    assert.equal(open.capPx, 592);
-    assert.equal(parked.capPx, 592, 'the cap must not depend on the park state it decides');
-    assert.equal(noRail.capPx, 592);
+    assert.equal(open.capPx, 624);
+    assert.equal(parked.capPx, 624, 'the cap must not depend on the park state it decides');
+    assert.equal(noRail.capPx, 624);
   });
 
   it('never caps below the panel’s own minimum, however narrow the frame', () => {

@@ -1,24 +1,15 @@
 /**
  * Resolve the landscape kiosk shell URL for staff desktop preview.
- * Prefer the tenant kiosk origin so production staff-host `/kiosk/*` redirects
- * do not strip the `/kiosk/v2` path. Fall back to same-origin for local E2E.
+ * Always same-origin `/kiosk/v2` so tunnel / LAN / iPad share the staff
+ * session host. Production staff-host `/kiosk/*` redirects preserve the path
+ * (see proxy.ts) so this still lands on the tenant kiosk shell.
  */
-
-import { kioskOriginForSlug } from '@/lib/tenancy/kiosk-host';
 
 export const KIOSK_SHELL_PREVIEW_PATH = '/kiosk/v2';
 
 export function resolveKioskShellPreviewUrl(
-  organizationSlug: string | null | undefined,
+  _organizationSlug?: string | null | undefined,
 ): string {
-  const slug = String(organizationSlug ?? '').trim().toLowerCase();
-  if (slug) {
-    try {
-      return `${kioskOriginForSlug(slug)}${KIOSK_SHELL_PREVIEW_PATH}`;
-    } catch {
-      /* invalid slug — fall through */
-    }
-  }
   if (typeof window !== 'undefined') {
     return `${window.location.origin}${KIOSK_SHELL_PREVIEW_PATH}`;
   }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
-import { Edit, Plus, Trash2, X } from '@/components/Icons';
+import { Edit, Plus, Printer, Trash2, X } from '@/components/Icons';
 import { Button, Checkbox, IconButton } from '@/design-system/primitives';
 import {
   Dialog,
@@ -16,17 +16,20 @@ import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/componen
 import { toast } from '@/lib/toast';
 import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
+import { STATION_COMMAND_FLOW_CONTEXT } from '@/lib/stations/station-command-codes';
+import { printStationCommandLabel } from '@/lib/print/printStationCommandLabel';
 
 /** Mirrors the rows returned by GET /api/reason-codes. */
 interface ReasonCodeRecord {
   id: number;
   code: string;
   label: string;
-  category: string;
+  category: string | null;
   direction: 'in' | 'out' | 'either';
   requires_note: boolean;
   requires_photo: boolean;
   sort_order: number;
+  flow_context?: string | null;
   applies_to?: string[] | null;
 }
 
@@ -43,6 +46,28 @@ const DIRECTION_OPTIONS: Array<{ value: Direction; label: string }> = [
  * set; `initial` is system-only (seed balances) so it's omitted from the picker.
  */
 const CATEGORY_OPTIONS = ['movement', 'adjustment', 'shrinkage', 'sale', 'return'] as const;
+
+/** Vocabulary filter options — mirrors live reason_codes_flow_context_chk values. */
+const FLOW_CONTEXT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'All vocabularies' },
+  { value: 'inventory_event', label: 'Inventory event' },
+  { value: 'inventory_adjust', label: 'Inventory adjust' },
+  { value: 'substitution', label: 'Substitution' },
+  { value: 'short_pick', label: 'Short pick' },
+  { value: 'receiving_exception', label: 'Receiving exception' },
+  { value: 'repair_failure', label: 'Repair failure' },
+  { value: 'verdict_detail', label: 'Verdict detail' },
+  { value: 'warranty_denial', label: 'Warranty denial' },
+  { value: 'lifecycle_unshipped', label: 'Lifecycle · unshipped' },
+  { value: 'lifecycle_outbound', label: 'Lifecycle · outbound' },
+  { value: 'serial_absent_reason', label: 'Serial absent' },
+  { value: STATION_COMMAND_FLOW_CONTEXT, label: 'Station command' },
+];
+
+function flowContextLabel(ctx: string | null | undefined): string {
+  if (!ctx) return '—';
+  return FLOW_CONTEXT_OPTIONS.find((o) => o.value === ctx)?.label ?? ctx;
+}
 
 interface ReasonCodeFormState {
   code: string;
@@ -75,6 +100,7 @@ export function ReasonCodesManagementTab() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ReasonCodeFormState>(DEFAULT_FORM_STATE);
   const [filter, setFilter] = useState('');
+  const [flowFilter, setFlowFilter] = useState('');
 
   const { data, isLoading } = useQuery<{ reason_codes: ReasonCodeRecord[] }>({
     queryKey: qk.reasonCodes.list(),
@@ -102,14 +128,19 @@ export function ReasonCodesManagementTab() {
 
   const filtered = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
+    return rows.filter((r) => {
+      if (flowFilter && (r.flow_context ?? '') !== flowFilter) return false;
+      if (!q) return true;
+      const category = (r.category ?? '').toLowerCase();
+      const flow = (r.flow_context ?? '').toLowerCase();
+      return (
         r.code.toLowerCase().includes(q) ||
         r.label.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q),
-    );
-  }, [rows, filter]);
+        category.includes(q) ||
+        flow.includes(q)
+      );
+    });
+  }, [rows, filter, flowFilter]);
 
   const createMutation = useMutation({
     mutationFn: async (payload: ReasonCodeFormState) => {
@@ -199,7 +230,7 @@ export function ReasonCodesManagementTab() {
     setForm({
       code: row.code,
       label: row.label,
-      category: row.category,
+      category: row.category || 'adjustment',
       direction: row.direction,
       requiresNote: row.requires_note,
       requiresPhoto: row.requires_photo,
@@ -231,17 +262,33 @@ export function ReasonCodesManagementTab() {
     deleteMutation.mutate(row.id);
   };
 
+  const handlePrintCommand = (row: ReasonCodeRecord) => {
+    printStationCommandLabel({ code: row.code, label: row.label });
+  };
+
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const tableGridClass =
-    'grid grid-cols-[160px_minmax(200px,1.5fr)_140px_110px_90px_90px_80px_108px] gap-x-3';
+    'grid grid-cols-[150px_minmax(160px,1.2fr)_140px_120px_90px_70px_70px_64px_140px] gap-x-3';
 
   return (
-    <section className={cn('flex h-full min-h-0 w-full flex-col',)}>
+    <section className={cn('flex h-full min-h-0 w-full flex-col')}>
       <div className={mainStickyHeaderClass}>
         <div className={`${mainStickyHeaderShellRowClass} flex-wrap gap-y-2 px-4`}>
           <p className={`${sectionLabel} truncate text-text-default`}>Reason Codes</p>
           <div className={`${sectionLabel} flex flex-wrap items-center gap-4`}>
             <span>Total {rows.length}</span>
+            <select
+              value={flowFilter}
+              onChange={(e) => setFlowFilter(e.target.value)}
+              className={cn(FILTER_DROPDOWN_SELECT_CLASS, 'h-8 min-w-[11rem]')}
+              aria-label="Filter by vocabulary"
+            >
+              {FLOW_CONTEXT_OPTIONS.map((o) => (
+                <option key={o.value || 'all'} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
             <input
               type="text"
               value={filter}
@@ -259,10 +306,11 @@ export function ReasonCodesManagementTab() {
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col overflow-hidden border-y border-border-soft bg-surface-card">
           <div className="min-h-0 flex-1 overflow-auto">
-            <div className="min-w-[980px]">
+            <div className="min-w-[1100px]">
               <div className={`${tableGridClass} ${tableHeader} border-b border-border-soft px-4 py-3`}>
                 <p>Code</p>
                 <p>Label</p>
+                <p>Vocabulary</p>
                 <p>Category</p>
                 <p>Direction</p>
                 <p>Note</p>
@@ -277,15 +325,25 @@ export function ReasonCodesManagementTab() {
                 <div className="px-6 py-10 text-center">
                   <p className={sectionLabel}>No Reason Codes</p>
                   <p className="mt-2 text-sm font-medium text-text-soft">
-                    {rows.length === 0 ? 'Add the first reason code for inventory adjustments.' : 'No codes match your filter.'}
+                    {rows.length === 0
+                      ? 'Add the first reason code for inventory adjustments.'
+                      : 'No codes match your filter.'}
                   </p>
                 </div>
               ) : (
                 filtered.map((row) => (
-                  <div key={row.id} className={`${tableGridClass} items-center border-b border-border-hairline px-4 py-3 text-sm last:border-b-0`}>
+                  <div
+                    key={row.id}
+                    className={`${tableGridClass} items-center border-b border-border-hairline px-4 py-3 text-sm last:border-b-0`}
+                  >
                     <p className={`${tableCell} truncate font-mono uppercase`}>{row.code}</p>
                     <p className={`${tableCell} truncate`}>{row.label}</p>
-                    <p className={`${tableCell} truncate uppercase tracking-[0.16em] text-text-muted`}>{row.category}</p>
+                    <p className={`${tableCell} truncate text-text-muted`}>
+                      {flowContextLabel(row.flow_context)}
+                    </p>
+                    <p className={`${tableCell} truncate uppercase tracking-[0.16em] text-text-muted`}>
+                      {row.category ?? '—'}
+                    </p>
                     <p className={`${tableHeader} text-text-muted`}>{row.direction}</p>
                     <p className={`${tableHeader} ${row.requires_note ? 'text-emerald-700' : 'text-text-faint'}`}>
                       {row.requires_note ? 'Yes' : '-'}
@@ -295,6 +353,16 @@ export function ReasonCodesManagementTab() {
                     </p>
                     <p className={`${tableCell} text-text-muted`}>{row.sort_order}</p>
                     <div className="flex items-center justify-end gap-2">
+                      {row.flow_context === STATION_COMMAND_FLOW_CONTEXT ? (
+                        <HoverTooltip label="Print 2×1 command barcode" asChild>
+                          <IconButton
+                            onClick={() => handlePrintCommand(row)}
+                            className="inline-flex h-8 w-8 items-center justify-center border border-border-soft hover:bg-surface-hover"
+                            ariaLabel={`Print ${row.code}`}
+                            icon={<Printer className="h-3.5 w-3.5" />}
+                          />
+                        </HoverTooltip>
+                      ) : null}
                       <HoverTooltip label="Edit reason code" asChild>
                         <IconButton
                           onClick={() => openEdit(row)}
@@ -356,7 +424,9 @@ export function ReasonCodesManagementTab() {
                   className={`${inputClass} ${editingId != null ? 'cursor-not-allowed bg-surface-canvas text-text-soft' : ''}`}
                 />
                 {editingId != null && (
-                  <span className={`block ${fieldLabel} text-text-faint`}>Code is the key and can&apos;t be changed.</span>
+                  <span className={`block ${fieldLabel} text-text-faint`}>
+                    Code is the key and can&apos;t be changed.
+                  </span>
                 )}
               </label>
 
@@ -368,7 +438,9 @@ export function ReasonCodesManagementTab() {
                   className={FILTER_DROPDOWN_SELECT_CLASS}
                 >
                   {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -391,82 +463,78 @@ export function ReasonCodesManagementTab() {
                   onChange={(e) => setForm((c) => ({ ...c, direction: e.target.value as Direction }))}
                   className={FILTER_DROPDOWN_SELECT_CLASS}
                 >
-                  {DIRECTION_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                  {DIRECTION_OPTIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
                   ))}
                 </select>
               </label>
 
               <label className="space-y-1">
-                <span className={`block ${sectionLabel}`}>Sort Order</span>
+                <span className={`block ${sectionLabel}`}>Sort order</span>
                 <input
                   type="number"
-                  min={0}
                   value={form.sortOrder}
                   onChange={(e) => setForm((c) => ({ ...c, sortOrder: e.target.value }))}
                   className={inputClass}
                 />
               </label>
 
-              <div className="space-y-1 md:col-span-2">
-                <span className={`block ${sectionLabel}`}>Applies to nodes</span>
-                <span className={`block ${fieldLabel} text-text-faint`}>
-                  Empty = applies to every node (global). Select nodes to scope this reason to them (D3 palette).
-                </span>
-                <div className="mt-1 max-h-40 space-y-1 overflow-y-auto border border-border-soft bg-surface-card p-2">
-                  {workflowNodes.length === 0 ? (
-                    <p className="text-xs font-medium text-text-faint">No workflow nodes available.</p>
-                  ) : (
-                    workflowNodes.map((node) => (
-                      <label key={node.id} className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-surface-hover">
-                        <input
-                          type="checkbox"
-                          checked={form.appliesTo.includes(node.id)}
-                          onChange={(e) =>
-                            setForm((c) => ({
-                              ...c,
-                              appliesTo: e.target.checked
-                                ? [...c.appliesTo, node.id]
-                                : c.appliesTo.filter((nid) => nid !== node.id),
-                            }))
-                          }
-                          className="h-4 w-4 border-border-default text-text-default focus:ring-border-default"
-                        />
-                        <span className="text-xs font-medium text-text-muted">
-                          {node.label}
-                          {node.definitionName ? <span className="ml-1 text-text-faint">({node.definitionName})</span> : null}
-                        </span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <label className="flex items-center gap-3 border border-border-soft px-3 py-3">
+              <label className="flex items-center gap-2 md:col-span-2">
                 <Checkbox
                   checked={form.requiresNote}
                   onCheckedChange={(v) => setForm((c) => ({ ...c, requiresNote: v === true }))}
-                  aria-label="Requires note"
                 />
-                <span className={`${sectionLabel} text-text-muted`}>Requires note</span>
+                <span className="text-sm font-medium text-text-default">Requires note</span>
               </label>
 
-              <label className="flex items-center gap-3 border border-border-soft px-3 py-3">
+              <label className="flex items-center gap-2 md:col-span-2">
                 <Checkbox
                   checked={form.requiresPhoto}
                   onCheckedChange={(v) => setForm((c) => ({ ...c, requiresPhoto: v === true }))}
-                  aria-label="Requires photo"
                 />
-                <span className={`${sectionLabel} text-text-muted`}>Requires photo</span>
+                <span className="text-sm font-medium text-text-default">Requires photo</span>
               </label>
+
+              {editingId != null && workflowNodes.length > 0 ? (
+                <div className="space-y-2 md:col-span-2">
+                  <span className={`block ${sectionLabel}`}>Applies to workflow nodes</span>
+                  <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
+                    {workflowNodes.map((n) => {
+                      const checked = form.appliesTo.includes(n.id);
+                      return (
+                        <label
+                          key={n.id}
+                          className="inline-flex items-center gap-1.5 rounded border border-border-soft px-2 py-1 text-xs font-medium"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              setForm((c) => ({
+                                ...c,
+                                appliesTo:
+                                  v === true
+                                    ? [...c.appliesTo, n.id]
+                                    : c.appliesTo.filter((id) => id !== n.id),
+                              }));
+                            }}
+                          />
+                          {n.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-end gap-2 px-5 py-4">
-              <Button variant="secondary" size="md" onClick={closeForm}>
+              <Button variant="ghost" size="sm" onClick={closeForm} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button variant="brand" size="md" onClick={handleSubmit} disabled={isSaving}>
-                {isSaving ? 'Saving...' : editingId != null ? 'Save Changes' : 'Create Code'}
+              <Button variant="primary" size="sm" onClick={handleSubmit} disabled={isSaving}>
+                {editingId != null ? 'Save' : 'Create'}
               </Button>
             </div>
           </div>

@@ -86,6 +86,19 @@ export const ArrowRightToLine = ({ className = "w-6 h-6" }: { className?: string
     </svg>
 );
 
+/**
+ * Arrow-left-to-line (`|<`) — "park this left dock against the left edge".
+ *
+ * Twin of {@link ArrowRightToLine} for left context rails / LedgerDrill parent
+ * maps. Filter-bar trailing collapse (`RailFilterCollapseButton`) uses this —
+ * not an `X`, and not a raw page-local chevron.
+ */
+export const ArrowLeftToLine = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H8m0 0 4-4M8 12l4 4M4 4v16" />
+    </svg>
+);
+
 export const Search = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -230,6 +243,19 @@ export const MoreHorizontal = ({ className = "w-6 h-6" }: { className?: string }
     </svg>
 );
 
+/** Power — sign-out / power-off. Not LogOut (door arrow); the staff footer uses this. */
+export const Power = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v10" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M18.36 6.64a9 9 0 1 1-12.73 0"
+        />
+    </svg>
+);
+
 /** Vertical ellipsis — overflow / more-actions trigger. */
 export const MoreVertical = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -245,5 +271,15 @@ export const Type = ({ className = "w-6 h-6" }: { className?: string }) => (
         <path d="M4 7V4h16v3" />
         <path d="M9 20h6" />
         <path d="M12 4v16" />
+    </svg>
+);
+
+/** Paint bucket — LedgerGrid header row-fill control (Sheets-like). */
+export const PaintBucket = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z" />
+        <path d="m5 2 5 5" />
+        <path d="M2 13h15" />
+        <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z" />
     </svg>
 );

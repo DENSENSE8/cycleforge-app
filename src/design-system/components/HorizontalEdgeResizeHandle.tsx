@@ -8,11 +8,14 @@
  * - `placement: 'outset'` — grip straddles the panel border (receiving
  *   context rail + non-modal detail inspectors). Parent must not clip
  *   (`overflow-visible`); put `overflow-hidden` on an inner content shell.
+ *   Hit strip stays `w-3` even when `onCollapse` is set — a wider sash was
+ *   eating the LedgerGrid select gutter on Unbox History.
  * - `placement: 'inset'` — grip sits inside the panel edge when the shell
  *   cannot relax clipping.
  * - Optional `onCollapse` — same edge control grows a hover-reveal chevron
  *   parked at the **top** of the full-height edge (receiving context rail).
- *   Click collapses; drag / double-click resize behavior is unchanged.
+ *   Click collapses. When the paired hook also sets `onCollapseBeyondMin`,
+ *   dragging past min collapses on release; double-click still snaps default.
  */
 
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
@@ -78,22 +81,20 @@ export function HorizontalEdgeResizeHandle({
   // pane). Leading edge hides a right-anchored pane → chevron points right.
   const CollapseIcon = edge === 'trailing' ? ChevronLeft : ChevronRight;
   const resizeHint = onCollapse
-    ? `${tooltipLabel} · click chevron to hide`
+    ? `${tooltipLabel} · drag past minimum to hide · click chevron to hide`
     : tooltipLabel;
+  // Collapse glyph sits ON the panel side of the border — never widen the
+  // full-height sash into the workspace (that stole Unbox History's 2rem
+  // select gutter under `w-8` + outset). Trailing → nudge left; leading → right.
+  const collapseNudgeClass =
+    edge === 'trailing' ? 'left-[calc(50%-4px)]' : 'left-[calc(50%+4px)]';
 
   return (
     <HoverTooltip label={resizeHint} asChild focusable={false} openDelayMs={1500}>
-      {/* Wide hit target; pill stays vertically centered. Optional collapse
-          chevron parks at the TOP of this edge (not mid-stack with the pill). */}
+      {/* Thin full-height sash for drag; collapse is its own absolute control. */}
       <div
         {...edgeHandleProps}
-        className={cn(
-          hitTargetClass(edge, placement),
-          // Slightly wider sash when collapse is present so the chevron is not
-          // clipped by the hit strip or covered by the workspace sibling.
-          onCollapse && 'w-8',
-          className,
-        )}
+        className={cn(hitTargetClass(edge, placement), className)}
       >
         {onCollapse ? (
           <IconButton
@@ -106,8 +107,8 @@ export function HorizontalEdgeResizeHandle({
             // no card bubble / shadow / ring. xs hit + 16px glyph — readable
             // next to the scan band without overhanging so far it clips away.
             className={cn(
-              // Nudge right of the card edge + slightly below the top radius.
-              'absolute top-3.5 left-[calc(50%+3px)] z-10 -translate-x-1/2',
+              'absolute top-3.5 z-10 -translate-x-1/2',
+              collapseNudgeClass,
               'text-text-faint hover:text-text-default',
               // hover:opacity-100 keeps the glyph lit when the pointer is on
               // the button itself (outset overhang can leave group-hover).

@@ -2,8 +2,7 @@
 
 import { motion } from '@/design-system/motion';
 import { AlertCircle, Loader2, Package } from '@/components/Icons';
-import { StationScanBar } from '@/components/station/StationScanBar';
-import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { StationScanBar, ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
 import { useFbaStationInput, type StationFbaInputProps } from './station-input/useFbaStationInput';
 import { FbaPendingPlanQueue } from './station-input/FbaPendingPlanQueue';

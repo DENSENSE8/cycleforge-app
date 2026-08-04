@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import {
@@ -38,7 +37,7 @@ interface TrackingExceptionsGridViewProps {
   refreshingIds: ReadonlySet<number>;
   onOpenEdit: (row: TrackingExceptionRow) => void;
   onRefresh: (row: TrackingExceptionRow) => void;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly TrackingExceptionsGridColumn[];
 }
 
@@ -90,7 +89,7 @@ function compareTrackingExceptionRows(
  * {@link LedgerGridSurface}. Flat triage queue: no fold, no day band.
  *
  * Display map only. Filters + mutations live in the thin host; this owns
- * column visibility, URL-durable sort, and row chrome.
+ * URL-durable sort and row chrome (`LedgerGridSurface` resolves visibility).
  */
 export function TrackingExceptionsGridView({
   rows,
@@ -116,15 +115,6 @@ export function TrackingExceptionsGridView({
     defaultDir: defaultDirForTrackingExceptionsGridSort,
   });
 
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  const { columns: visible } = useGridColumnVisibility<TrackingExceptionsGridColumn>({
-    columns,
-    tableId: TRACKING_EXCEPTIONS_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeTrackingExceptionsGridDescriptor(visible), [visible]);
-
   // One-shot settle re-render after first data — see PickupGridView / WarrantyGridView.
   const [, settleTick] = useState(0);
   const hasRows = rows.length > 0;
@@ -143,7 +133,10 @@ export function TrackingExceptionsGridView({
     return [['', ordered.map((row) => ({ key: `exc:${row.id}`, rows: [row] }))]];
   }, [rows, columnSort, sortDir]);
 
-  const renderLeaf = (row: TrackingExceptionRow) => (
+  const renderLeaf = (
+    row: TrackingExceptionRow,
+    visible: readonly TrackingExceptionsGridColumn[],
+  ) => (
     <TrackingExceptionsGridRow
       key={row.id}
       row={row}
@@ -156,42 +149,41 @@ export function TrackingExceptionsGridView({
   );
 
   return (
-    <>
-      <LedgerGridSurface<TrackingExceptionRow, TrackingExceptionsGridColumnKey>
-        ariaLabel="Tracking exceptions"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.id)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        searchEmptyMessage={searchEmptyMessage}
-        isSearching={isSearching}
-        scrollRef={scrollRef}
-        testId="tracking-exceptions-grid-body"
-        tableId={TRACKING_EXCEPTIONS_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <TrackingExceptionsGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={TRACKING_EXCEPTIONS_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<
+      TrackingExceptionRow,
+      TrackingExceptionsGridColumnKey,
+      TrackingExceptionsGridColumn
+    >
+      ariaLabel="Tracking exceptions"
+      columns={columns}
+      makeDescriptor={makeTrackingExceptionsGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.id)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      searchEmptyMessage={searchEmptyMessage}
+      isSearching={isSearching}
+      scrollRef={scrollRef}
+      testId="tracking-exceptions-grid-body"
+      tableId={TRACKING_EXCEPTIONS_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <TrackingExceptionsGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((row) => renderLeaf(row, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

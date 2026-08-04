@@ -1,6 +1,6 @@
 /**
  * Top-level mode for the tech sidebar body switch. L2 Testing / Shipping lives
- * in GlobalHeader (`HeaderModeSwitcher` ← SIDEBAR_PAGE_NAV).
+ * in GlobalHeader (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV).
  *
  *   testing  → {@link TestingSidebarPanel}
  *   shipping → {@link ShippingSidebarPanel}

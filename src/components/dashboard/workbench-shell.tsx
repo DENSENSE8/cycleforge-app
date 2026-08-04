@@ -8,14 +8,18 @@
  *
  * Compose with {@link DashboardScrollShell}:
  *   <DashboardScrollShell
- *     chrome={<div className={WORKBENCH_CHROME_COLUMN}><WorkbenchChromeHeader … /></div>}
+ *     chrome={<div className={WORKBENCH_SHEET_CHROME}><WorkbenchChromeHeader … /></div>}
  *   >
- *     <div className={WORKBENCH_BODY_COLUMN}> KPI (scrolls away) · framed table </div>
+ *     <div className={WORKBENCH_SHEET_HOST}> sheet grid </div>
+ *     // Framed (guttered) workbenches: WORKBENCH_CHROME_COLUMN / WORKBENCH_BODY_COLUMN
+ *     // Sheets flush: WORKBENCH_SHEET_HOST + TABLE_SURFACE_SHEET_CLASS
  *   </DashboardScrollShell>
  *
- * The collection table sits in the gutter column inside the ops table-surface
- * shell (`TABLE_SURFACE_*` — rounded-xl, raised lift, strong frozen header).
- * Do not hand-roll a second card around it; KPI tiles + the chrome strip are
+ * Framed collection tables sit in the gutter column inside the ops table-surface
+ * shell (`TABLE_SURFACE_CLIP_CLASS` — rounded-xl, raised lift). Flush
+ * spreadsheets (Receiving golden) use {@link WORKBENCH_SHEET_HOST} +
+ * `TABLE_SURFACE_SHEET_CLASS` — no side/bottom pad around the grid. Do not
+ * hand-roll a second card around either; KPI tiles + the chrome strip are
  * sibling raised surfaces, not nested wrappers.
  */
 
@@ -25,7 +29,7 @@ import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/mo
 // Dependency-free geometry module on purpose — importing the capsule component
 // itself would pull framer-motion + the icon set into every layout consumer.
 import { SELECTION_BAR_SCROLL_INSET } from '@/design-system/components/selection-bar-geometry';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass, nestedCornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Centered max-width gutter column — the one horizontal-inset SoT (chrome + body share it). */
@@ -48,6 +52,67 @@ export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
 export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-2');
 
 /**
+ * Flush spreadsheet body host — no horizontal gutters, no bottom float pad.
+ *
+ * Chrome on sheet surfaces uses {@link WORKBENCH_SHEET_CHROME} (same flush
+ * left edge); framed workbenches keep {@link WORKBENCH_CHROME_COLUMN} gutters.
+ * Pair with `TABLE_SURFACE_SHEET_CLASS` on the grid shell — never raw `p-0`
+ * at call sites.
+ *
+ * Golden: Unbox (major SoT) · Incoming Pipeline · History browse.
+ */
+export const WORKBENCH_SHEET_HOST = 'relative flex min-h-0 min-w-0 flex-1 flex-col';
+
+/**
+ * Flush spreadsheet chrome — same left edge as {@link WORKBENCH_SHEET_HOST}.
+ * No `WORKBENCH_GUTTERS` side pad: tabs / KPI / triage abut the context rail
+ * hairline instead of floating as inset card islands on the sunken ground.
+ * Vertical rhythm comes from the band borders themselves (no outer `py`).
+ */
+export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
+
+/**
+ * Flush data-table triage band (Unbox Band 3 golden) — search left, refine /
+ * controls right. Sits under KPI, above the sheet. `border-r` only: KPI owns
+ * the seam above; the sheet owns `border-t` below. `pl-0` — flush to the sheet
+ * edge (search icon lives inside the field). No vertical pad — chrome search
+ * is a sunken plane edge-to-edge with this row (not a floated pill).
+ *
+ * Consumers: Unbox (`UnboxTriageBand` local twin), Locations, To-ship.
+ */
+export function WorkbenchTriageBand({
+  search,
+  right,
+  controlsSlotRef,
+  controlsSlotProps,
+  className,
+}: {
+  search: ReactNode;
+  right?: ReactNode;
+  controlsSlotRef?: Ref<HTMLDivElement>;
+  controlsSlotProps?: HTMLAttributes<HTMLDivElement> & Partial<Record<`data-${string}`, string>>;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex h-10 min-w-0 shrink-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card pl-0 pr-0.5 shadow-sm',
+        className,
+      )}
+    >
+      <div className="flex min-w-0 shrink items-stretch">{search}</div>
+      <div className="flex shrink-0 items-center gap-2 self-center">
+        {right}
+        {controlsSlotRef !== undefined || controlsSlotProps ? (
+          <div ref={controlsSlotRef} className="flex shrink-0 items-center gap-2" {...controlsSlotProps} />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+
+/**
  * Bounded host for a framed ops table that sits **under the KPI strip**
  * (Pending · Packed · Shipped · Labels). Sizes the grid to the viewport
  * remainder so the table owns Y scroll internally and the page does not grow.
@@ -58,9 +123,10 @@ export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTT
  * bounded host keeps all four edges visible and keeps the KPI strip pinned
  * instead of scrolling away under the tabs.
  *
- * `13rem` ≈ global header + workbench tab chrome + KPI strip + gutters.
+ * `15.5rem` ≈ global header + tab band + KPI strip + triage band (Sheets flush
+ * chrome stack). Gutters retired on To-ship.
  */
-export const WORKBENCH_TABLE_VIEWPORT = 'h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0';
+export const WORKBENCH_TABLE_VIEWPORT = 'h-[calc(100dvh-15.5rem)] min-h-[24rem] min-w-0';
 
 /** {@link WORKBENCH_TABLE_VIEWPORT} for lanes with **no KPI strip** (Review). */
 export const WORKBENCH_TABLE_VIEWPORT_NO_KPI = 'h-[calc(100dvh-8rem)] min-h-[24rem] min-w-0';
@@ -124,7 +190,7 @@ type TabSwitchSolidTone = React.ComponentProps<typeof TabSwitch>['solidTone'];
  * A workbench tab strip reads as one flat row of peers, but the first tab is
  * usually not a peer — it is the scope the others filter *within*: Unbox's
  * **Recent** (the cartons this operator opened) ahead of Queue · History, My
- * Day's **Everything** ahead of Do next · Assigned · Needs attention. The
+ * Day's **All** ahead of Do next · Assigned · Needs attention. The
  * hairline is what says "these are lanes of that", and putting it here rather
  * than hand-writing `dividerBefore: id === '…'` per surface keeps the two
  * strips from drifting apart — the second one is what makes this a grammar
@@ -163,6 +229,16 @@ export function withScopeDivider<T extends { id: string }>(
  *
  * @see docs/todo/table-action-bar-fields-PLAN.md
  */
+
+/**
+ * Solid workbench-chrome control radius — same as the band {@link TabSwitch}
+ * active pill (History / Queue / …). Soft concentric corners on **all** sides
+ * (`nestedCornerClass('card', 0.5)` → `rounded-xl`). Never square-flat
+ * (`rounded-*-none`) against a trailing hairline — that was the wrong update.
+ * Law: `source-of-truth.md` → Workbench chrome pill.
+ */
+export const WORKBENCH_CHROME_PILL_CLASS = nestedCornerClass('card', 0.5);
+
 interface WorkbenchTrailingClusterProps {
   /** Escapes that precede display prefs (e.g. Incoming pagination). */
   before?: ReactNode;
@@ -178,6 +254,10 @@ interface WorkbenchTrailingClusterProps {
    * (search / filters / week). A lone Sort sits flush with those peer icon
    * controls; a hairline between Calendar and Sort reads as a broken pair of
    * display icons.
+   *
+   * Neighbors of this hairline keep {@link WORKBENCH_CHROME_PILL_CLASS} on
+   * all sides (History band-tab SoT) — never `rounded-*-none`. Law:
+   * `source-of-truth.md` → Workbench chrome pill.
    */
   divide?: boolean;
   className?: string;

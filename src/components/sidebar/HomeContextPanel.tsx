@@ -7,7 +7,7 @@
  * **Why it holds only saved views.** Today's other candidates for a resident
  * column have homes already, and each of them is a rule rather than a taste:
  *
- *  - The **lanes** (Everything · Do next · Assigned · Needs attention) are a
+ *  - The **lanes** (All · Do next · Assigned · Needs attention) are a
  *    four-way facet over the table on screen, so they belong in that table's
  *    chrome — they WERE a 280px column and that column is what the F0 rebuild
  *    deleted (`MyDayWorkspace` docblock). Do not bring them back here.

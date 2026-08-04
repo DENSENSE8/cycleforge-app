@@ -16,7 +16,7 @@ When using the sidebar map, three structural slots, in this order:
 | Slot | Owns | Reference |
 |---|---|---|
 | **Sidebar picker** (the stable map) | searchable master list (filters / sub-tabs as needed) | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
-| **L2 Mode + Recents** | page mode switcher + cross-page MRU | `GlobalHeader` → `HeaderModeSwitcher` / `HeaderRecentsSwitcher` (data = `SIDEBAR_PAGE_NAV` via `useSidebarModeNav`); pins = `HeaderPinsSwitcher` / `useQuickAccess` |
+| **Page switcher + Recents** | child-page switcher + cross-page MRU | `GlobalHeader` → `HeaderPageSwitcher` / `HeaderRecentsSwitcher` (data = `SIDEBAR_PAGE_NAV` via `useSidebarChildNav`); pins = `HeaderPinsSwitcher` / `useQuickAccess` |
 | **Right pane** (the workspace) | the selected record's detail/editor; crossfades on selection change | `QcChecklistWorkspace.tsx`, `KitPartsWorkspace.tsx` |
 
 - **Compose `src/components/layout/SidebarShell.tsx`; never hand-position search.** It owns the outer
@@ -25,12 +25,21 @@ When using the sidebar map, three structural slots, in this order:
   and stacks `headerAbove` → search →
   `headerRows[]` (sub-tabs / facet filters) → `children` (the single `flex-1 overflow-y-auto` body). The panel supplies slots, not
   layout — that's what kept the 40px search band from drifting per page.
-- **L2 Mode lives in GlobalHeader, not the sidebar.** Closed = active-mode icon (32px);
-  open = `AnchoredLayer` listing that page's `SIDEBAR_PAGE_NAV` modes. Recents is the adjacent
-  History icon (collapsed by default) over `useRecentModes`. **Never** remount a full-width
-  `HorizontalButtonSlider` mode rail as a twin of the header control. Nested / secondary sliders
+- **The page switcher lives in GlobalHeader, not the sidebar.** Closed = the active child's icon (32px);
+  open = `AnchoredLayer` listing that page's `SIDEBAR_PAGE_NAV` children. Recents is the adjacent
+  History icon (collapsed by default) over `useRecentPages`. What is banned is a **twin rail**:
+  never remount a full-width `HorizontalButtonSlider` of a page's children as a second copy of
+  the header control.
+  **The old wording — that the spine cannot reach a child without drilling — is retired
+  (2026-08-03).** The flatten made a page's children ordinary spine rows, so `HeaderPageSwitcher`
+  *is* a second door onto the same destinations, and it survives that on purpose:
+  `ResponsiveLayout` holds `navOpen` in an unpersisted `useState(false)`, so the spine is CLOSED
+  on every cold load. Deleting the header control would leave a bench operator with no visible
+  way to switch a page's children until they open a column that does not remember being open.
+  Two doors is the cheaper cost; a twin *rail* is still a fork.
+  Nested / secondary sliders
   (pairing sort, sourcing status, FBA plan/combine, inventory triage filters) may stay in the
-  sidebar — those are not page L2. **Header pins** (`HeaderPinsSwitcher`) sit to the right of
+  sidebar — those are not a page's children. **Header pins** (`HeaderPinsSwitcher`) sit to the right of
   Recents (hairline separator): pin-current + sortable icon stations from `useQuickAccess` /
   `cf.quickAccess` — never a pin list in a staff / Quick Access menu. The desktop
   `GlobalHeaderActions` rail is **search · notifications · AI far-right** (three, one per
@@ -47,7 +56,7 @@ When using the sidebar map, three structural slots, in this order:
   **Workflow Studio · Admin · Settings** in `APP_SIDEBAR_NAV` array order. Studio joined it
   2026-08-02 (it was a root drill): defining the operation is a standing-back act, not one of
   the places browsed through in a shift. **A pinned row never draws children**
-  (`showModes = !pinned && …`), so `/studio/catalog` rides as an L2 mode in
+  (`showChildren = !pinned && …`), so `/studio/catalog` rides as an L2 mode in
   `SIDEBAR_PAGE_NAV` — ⌘K, the spine's flat search and the header Mode switcher still name it,
   but it left the spine surface. Below
   Settings/Admin: `StaffAccountFooter` (avatar · name · role · more · sign-out). When the
@@ -63,16 +72,41 @@ When using the sidebar map, three structural slots, in this order:
   `rounded-full` initials span or a local `initials()`; SoT:
   `source-of-truth.md` → Identity mark · Staff profile photo · MasterNav spine type ladder.
   Guard: `header-mode.guard.test.ts`.
-- **Section drills (spine L1).** Root shows **Analytics Monitor · Scan Stations · Inbound ·
-  Catalog · Inventory · Fulfillment · Sales · Support** as **drill buttons**
-  with leading icons (`SPINE_SECTIONS` in `sidebar-navigation.ts` — compose from
-  `MAIN_GROUPS` + `STATION_GROUPS` + `DOMAIN_GROUPS`; never twin labels). Drill replaces the
-  scroll body with centered back title + that section's pages. A footer-pinned
-  `TechRailSearchBar` (same band as station rails) sits above Settings/Admin (+ staff footer
-  below) and always filters the visible map — root sections (label or any child page/mode)
-  when at the root, pages inside the open drill when drilled. Membership: `mainGroup` /
-  `stationGroup` / `domainGroup` via `spineSectionIdForPage`.
+- **FLAT MAP for domains; Scan Stations alone is a Vercel list-replace drill (2026-08-03).**
+  Root body: Scan Stations enter row (`ChevronRight`, navigates nowhere — opens the drill) +
+  flat domain pages in `SPINE_SECTIONS` order (`sidebar-navigation.ts` — compose from
+  `MAIN_GROUPS` + `STATION_GROUPS` + `DOMAIN_GROUPS`; never twin labels). Entering Scan
+  Stations replaces the map with Back (`ChevronLeft` · "Back to pages") + centered title +
+  Receiving · Testing · Packing · Scan out. Auto-enter when navigating onto a floor page from
+  another section; manual Back leaves the root map without stealing focus. Domains stay flat —
+  an all-sections drill charged a click to reveal `Catalog › Catalog`. State is
+  `stationsDrillOpen` only — never restore `drillId` / `renderRoot` / `renderDrill`.
+  A footer-pinned `TechRailSearchBar` swaps map/drill for ranked destinations.
+  Membership: `mainGroup` / `stationGroup` / `domainGroup` via `spineSectionIdForPage`.
   **Declare membership identically in BOTH `APP_SIDEBAR_NAV` and `SIDEBAR_PAGE_NAV`**.
+
+  **Domain sections draw no row of their own** — pages sit directly on the map. Spacing between
+  blocks is `mt-1`, not a horizontal hairline.
+
+  **The Receiving SUBGROUP header stays inside the Scan Stations drill:** `Receiving` names
+  none of the stations beneath it (Arrival · Unbox · Local Pickup · Repair Service), so it adds
+  a name rather than repeating one. That is the whole test — a header that repeats its child is
+  the defect; a header that names a real grouping is not.
+
+  **A multi-child page draws its children only while it is the ACTIVE page** — reversing
+  "modes stay always expanded", which was affordable only while a drill kept one section on
+  screen. Measured flat against the live registry: expanding every multi-mode page is **64
+  rows / ~1790px against a ~600px scrollport** (43 of them mode rows). The count chip shows
+  regardless of expansion — it means "this page has N children", which is true either way, and
+  tying it to expansion would hide the cardinality on exactly the rows whose children are off
+  screen.
+
+  **Measured after (1440×900, Playwright):** the resting map is **543px against a 558px port —
+  it fits**; it overflows only by the active page's own children (Catalog, 7 children: 713px,
+  155px over). Those rows sit directly under the row you are on, so the overflow is at the
+  bottom of what the operator is already looking at.
+
+  **Lateral navigation is one click** — Inbound → Support no longer costs Back + drill.
 
   **The axis is deliberately mixed, and that is the ruling** (2026-08-01,
   `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`): Monitor is an
@@ -84,28 +118,36 @@ When using the sidebar map, three structural slots, in this order:
   canonical pages already owned. Both are dead labels and must not return under a new name.
 
   Members: Scan Stations (`floor`) = Receiving subgroup + Testing / Packing / Scan out —
-  **never** relocated into Inbound or Fulfillment; Inbound = Incoming + Receiving Board;
-  Catalog = Manage Products (Reference · Manuals · Labels · Pairing · Catalog link · QC ·
+  **never** relocated into Inbound or Outbound; Inbound = Incoming + Receiving Board;
+  Catalog = Manage Products (Reference · Manuals · SKU Barcodes · Pairing · Listing match · QC ·
   Kit Parts); Inventory = Inventory + Sourcing + Locations (ex-Warehouse, incl. the bin/rack
-  label printer); Fulfillment = Manage Shipping (Orders · Labels · Ready · FBA · Packing
+  label printer); Outbound = Manage Shipping (To ship · Postage · Ready · FBA · Packing
   Review) — **carrier postage stays here and never folds into a label workspace**; Sales =
-  Sales Board + Local Pickup History; Support = the 6 support modes; Analytics Monitor =
+  Sales Board + Local Pickup History; Support = the 6 support children; Live Ops =
   Operations only. Section icons come from
-  `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. Accents: `spineAccentFor` /
-  `SPINE_SECTION_ACCENTS` (sky / amber / teal / emerald / cyan / indigo / green / orange;
-  top+footer neutral blue). **A section with no visible page renders nothing**, and a
+  `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. **Accent: one NEUTRAL treatment for
+  every row** — `spineAccentFor` → `SPINE_NEUTRAL_ACCENT`; the eight section hues were
+  deleted 2026-08-02 and must not return (`source-of-truth.md` → MasterNav spine accent).
+  **Every row draws its glyph at the 1.5 page stroke** — child rows included, since a mode row
+  is the same switch the GlobalHeader Mode menu draws with the same icons; what child rows drop
+  is the heavier 2.25 weight, which would out-draw their own parent. Subordination is the indent
+  + caption/medium type + muted ink. **A section with no visible page renders nothing**, and a
   page whose every mode was permission-filtered is dropped by `isSidebarPageReachable` —
-  hollow is forbidden at both altitudes. Auto-enters on cross-section navigation; manual Back
-  returns to the root map.
-  Swap uses `framerPresence.spineDrill` / `framerTransition.spineDrill` (opacity-only)
-  plus the named active-wash preset. **Page rows and mode rows share ONE
-  cascade** — `spineRowStagger*`, 15ms/row, keyed on the SECTION (never the filter);
-  the root map mounts instantly. Hover/press travel is CSS on the 14px glyph
-  (`SPINE_ICON_LIFT_CLASS`) — never `whileHover`, never a row `scale` or weight shift.
+  hollow is forbidden at both altitudes — a section whose every page is filtered contributes
+  no rows AND no divider.
+  Body swap (map ⇄ ranked results) uses `framerPresence.spineBodySwap` /
+  `framerTransition.spineBodySwap` (opacity-only, keyed on the KIND of body and never on the
+  query) plus the named active-wash preset. **Page rows and child rows share ONE
+  cascade** — `spineRowStagger*`, 15ms/row; the map itself mounts instantly, and the one
+  surviving cascade belongs to the active page's children, which genuinely mount on
+  navigation. **Nothing on a row travels** — the 14px glyph's CSS lift
+  was deleted 2026-08-02; hover is `transition-colors` and nothing else, and `whileHover`,
+  a row `scale` and a weight shift stay banned on cost grounds.
   Active rows are a fill **plus** an inset hairline. Detail:
   `motion-crossfade.md` → ONE MasterNav row cascade; `source-of-truth.md` → MasterNav
-  section accents / row hover-press travel. Modes stay always expanded; L2 Mode
-  also lives in GlobalHeader.
+  spine accent / row hover-press travel. The page switcher also lives in GlobalHeader — and with the
+  spine flat it is now a second door onto the same destinations, which is the fork Phase B's
+  open question has to settle.
   Guards: `main-nav-groups.guard.test.ts`, `station-nav-groups.guard.test.ts`.
 - **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a

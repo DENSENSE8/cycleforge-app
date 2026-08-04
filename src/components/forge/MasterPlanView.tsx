@@ -8,12 +8,13 @@
  * the plan hero, per the display rules.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { parseMasterPlanSegments } from '@/lib/master-plan/segments';
 import { TicketStatusChip } from './TicketStatusChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { cn } from '@/utils/_cn';
 
 const MD_COMPONENTS: React.ComponentProps<typeof ReactMarkdown>['components'] = {
   h1: (props) => <h2 className="text-base font-semibold text-text-default" {...props} />,
@@ -45,8 +46,21 @@ function AgentLogChip({ runUid, stage }: { runUid: string; stage?: string }) {
   );
 }
 
-export function MasterPlanView({ mdx }: { mdx: string }) {
+export function MasterPlanView({
+  mdx,
+  highlightTicketId,
+}: {
+  mdx: string;
+  /** Scrolls the matching ticket chip into view and rings it. */
+  highlightTicketId?: string | null;
+}) {
   const segments = useMemo(() => parseMasterPlanSegments(mdx), [mdx]);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!highlightTicketId || !highlightRef.current) return;
+    highlightRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [highlightTicketId, segments]);
 
   if (segments.length === 0) {
     return (
@@ -70,8 +84,17 @@ export function MasterPlanView({ mdx }: { mdx: string }) {
           );
         }
         if (seg.kind === 'ticket') {
+          const highlighted = highlightTicketId === seg.ticketId;
           return (
-            <div key={`ticket-${seg.ticketId}-${i}`}>
+            <div
+              key={`ticket-${seg.ticketId}-${i}`}
+              ref={highlighted ? highlightRef : undefined}
+              data-ticket-id={seg.ticketId}
+              className={cn(
+                'rounded-md transition-shadow',
+                highlighted && 'ring-2 ring-border-focus ring-offset-2 ring-offset-surface-card',
+              )}
+            >
               <TicketStatusChip
                 ticketId={seg.ticketId}
                 status={seg.status}

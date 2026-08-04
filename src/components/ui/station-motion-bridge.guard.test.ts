@@ -18,7 +18,7 @@ const ROOT = process.cwd();
 const REQUIRED_BOTH = [
   'src/design-system/primitives/CardShell.tsx',
   'src/components/station/ActiveOrderScanFeedback.tsx',
-  'src/components/station/StationPacking.tsx',
+  'src/components/station/PackScanColumn.tsx',
   // The mobile-shell placement of the connection banner. It owns its own
   // slide-down, and it can appear mid-scan on a phone at the bench — so the
   // reduced-motion collapse must be inherited, not re-derived (P2 · D4).
@@ -42,7 +42,6 @@ const REQUIRED_BOTH = [
 
 /** Transition-only surfaces (progress bars, width anims). */
 const REQUIRED_TRANSITION = [
-  'src/components/station/StationGoalBar.tsx',
 ] as const;
 
 const HOOKS_IMPORT_RE =

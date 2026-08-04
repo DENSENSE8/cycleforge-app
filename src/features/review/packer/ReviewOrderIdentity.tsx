@@ -4,8 +4,9 @@
  * Review · Packing adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
  *
- * Maps a pack-review queue row onto the condensed identity bookmark
- * (order# · tracking). Sibling of PackOrderIdentity.
+ * Maps a pack-review queue row onto the two-row station identity face
+ * (order# · tracking). Sibling of PackOrderIdentity. Pair host with
+ * `reserveIdentityClearance="stacked"`.
  */
 
 import { useEffect, useState } from 'react';
@@ -28,7 +29,6 @@ export function ReviewOrderIdentity({ row }: { row: PackReviewQueueRow }) {
 
   return (
     <CartonContextCard
-      density="bar"
       receivingId={null}
       staffId=""
       isUnmatched={false}

@@ -24,6 +24,7 @@ import {
   metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import {
   getOrderPlatformColor,
@@ -111,12 +112,21 @@ export interface OrdersQueueTableRowProps {
   opaqueStripe?: boolean;
   /**
    * Airtable grid-view skin. Always-visible row-select checkbox in the gutter
-   * ({@link onToggleSelect}), Sheets-style in-cell editors, corner-indicator
-   * popovers. Zebra still applies (opaque canvas / card — required for the
-   * frozen identity pane). Off → display-only cells; Product-cell note/OOS
-   * corner indicators stay for every consumer.
+   * ({@link onToggleSelect}) unless {@link clickSelect} (Sheets empty spacer).
+   * Sheets-style in-cell editors, corner-indicator popovers. Zebra still applies
+   * (opaque canvas / card — required for the frozen identity pane). Off →
+   * display-only cells; Product-cell note/OOS corner indicators stay for every
+   * consumer.
    */
   gridSkin?: boolean;
+  /** Sheets click-select (Unbox History / To-ship): row click toggles bulk;
+   * double-click opens. Select track is an empty spacer — no checklist face.
+   */
+  clickSelect?: boolean;
+  /** Select-gutter face chrome — `'sheets'` when clickSelect. */
+  selectGutterChrome?: GridSelectGutterChrome;
+  /** Persisted Sheets row paint hex (selection wash wins when checked). */
+  rowFillHex?: string | null;
   /**
    * Absolute `aria-rowindex` when this row sits inside a `role="table"` grid.
    * Supplied by the virtualizer via `renderRow`; only a WINDOW of rows is ever
@@ -127,7 +137,8 @@ export interface OrdersQueueTableRowProps {
   /** Toggle this row's selection from the gutter checkbox (stops propagation, so
    *  it never opens the record). Supplying it makes the gutter INTERACTIVE — the
    *  row click stays "open the record", so without this there is no way to
-   *  select. Grid skin renders the control regardless, for the select-all UI. */
+   *  select. Grid skin renders the control regardless, for the select-all UI.
+   *  Omitted under {@link clickSelect} (row body owns toggle). */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   /** Grid skin only — true when this row is the ONLY checked row. Surfaces the
    *  row info-edit dropdown (Notes · OOS · Details) on the Product cell. */
@@ -155,8 +166,16 @@ export interface OrdersQueueTableRowProps {
   capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
   onRowClick: (
     record: ShippedOrder,
-    event?: { shiftKey: boolean; target?: EventTarget | null },
+    event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
   ) => void;
+  /** Sheets click-select open gesture (double-click / Enter). */
+  onRowOpen?: (record: ShippedOrder) => void;
+  /**
+   * Filled-tracking menu → "Replace tracking". Host arms the inspector intent
+   * and opens `detail:order` (selection plane or openRecord). Omit to hide the
+   * menu row (non–fulfillment/labels modes).
+   */
+  onRequestReplaceTracking?: (record: ShippedOrder) => void;
 }
 
 /** In-cell / popover editors this row can host (one open at a time).
@@ -172,7 +191,7 @@ type RowEditField = 'qty' | 'date' | 'condition' | 'note' | 'link';
  * rows, and group summaries can never disagree (`columns` prop).
  *
  * That list arrives already RESOLVED to the visible tracks
- * (`useGridColumnVisibility` in `OrdersGridView`), so a hidden column loses its
+ * (`LedgerGridSurface` visibility resolution), so a hidden column loses its
  * TRACK — this row never re-tests hidden-ness per cell (the old cell-granular
  * `useIsColumnHidden` path left a dead empty ruled band where the column was).
  *
@@ -204,6 +223,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   disableLayoutAnimation = false,
   opaqueStripe = false,
   gridSkin = false,
+  clickSelect = false,
+  selectGutterChrome: _selectGutterChrome = 'always',
+  rowFillHex = null,
   rowIndex,
   onToggleSelect,
   singleSelected = false,
@@ -211,6 +233,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   columns = ORDERS_QUEUE_COLUMNS,
   capabilities,
   onRowClick,
+  onRowOpen,
+  onRequestReplaceTracking,
 }: OrdersQueueTableRowProps) {
   const orderChannelLabel = useOrderChannelLabel();
   const { has } = useAuth();
@@ -353,23 +377,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     [assignOrder, record.id],
   );
 
-  const onReplaceTracking = useCallback(
-    (value: string) => {
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) return;
-      const next = String(value || '').trim();
-      if (!next) return;
-      assignOrder.mutate(
-        { orderId: id, shippingTrackingNumber: next },
-        {
-          onSuccess: () => toast.success('Tracking replaced'),
-          onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to replace tracking'),
-        },
-      );
-    },
-    [assignOrder, record.id],
-  );
-
   /**
    * Row annotations. ONE writable home, two things to READ, one mark:
    *  • `note_count` — the append-only `order_notes` trail (author + timestamp
@@ -422,7 +429,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     onPasteTracking:
       queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined,
     onReplaceTracking:
-      queueMode === 'fulfillment' || queueMode === 'labels' ? onReplaceTracking : undefined,
+      queueMode === 'fulfillment' || queueMode === 'labels'
+        ? onRequestReplaceTracking
+          ? () => onRequestReplaceTracking(record)
+          : undefined
+        : undefined,
     onEditListingLink: gridEditable ? () => openEditor('link') : undefined,
     serialChip,
     variant: 'plain' as const,
@@ -733,10 +744,19 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       </span>
     ) : null;
 
-  // Select cell — checkbox only. The drag grip lives solely in the sticky header
-  // (select-all context). Grid skin + selectMode both show the checkbox always
-  // (no hover-reveal) so the select bubble is discoverable without hunting.
-  const leadControls = (
+  // Select cell — under clickSelect an empty spacer (header select-all still
+  // aligns on the 2rem track). Otherwise always-on checklist face.
+  const leadControls = clickSelect ? (
+    <div
+      data-select-gutter
+      className={cn(
+        ordersQueueGridCell({ inset: 'none', rule: true }),
+        ORDERS_QUEUE_FROZEN_CELL,
+      )}
+      style={{ left: ordersQueueFrozenLeft('select') }}
+      aria-hidden
+    />
+  ) : (
     <div
       data-select-gutter
       className={cn(
@@ -748,11 +768,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       onClick={(e) => (selectMode || gridSkin) && e.stopPropagation()}
     >
       {gridSkin || selectMode ? (
-        // Interactive whenever the caller can actually handle a toggle. It used
-        // to be `gridSkin` only, which left every non-gridSkin selectMode
-        // consumer with an inert `<span>` that LOOKED like a checkbox: the row
-        // itself carried `role="checkbox"`, but its click handler only ever
-        // calls `onRowClick`, so selection was unreachable (station history).
         gridSkin || onToggleSelect ? (
           <button
             type="button"
@@ -1028,9 +1043,18 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       }
       whileHover={gridSkin ? undefined : { x: 2 }}
       whileTap={gridSkin ? undefined : { scale: 0.998 }}
-      onClick={(event) => onRowClick(record, event)}
+      onClick={(event) =>
+        onRowClick(record, {
+          shiftKey: event.shiftKey,
+          detail: event.detail,
+          target: event.target,
+        })
+      }
+      onDoubleClick={() => {
+        if (clickSelect) onRowOpen?.(record);
+      }}
       onMouseDown={(event) => {
-        if (selectMode && event.shiftKey) event.preventDefault();
+        if ((selectMode || clickSelect) && event.shiftKey) event.preventDefault();
       }}
       onKeyDown={(event) => {
         // Sheets' insert/edit-note key (Shift+F2) on the focused row.
@@ -1039,23 +1063,36 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           openEditor('note');
           return;
         }
+        if (clickSelect) {
+          if (event.key === ' ') {
+            event.preventDefault();
+            onRowClick(record, { shiftKey: event.shiftKey, detail: 1, target: event.target });
+            return;
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onRowOpen?.(record);
+            return;
+          }
+          return;
+        }
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          onRowClick(record, event);
+          onRowClick(record, { shiftKey: event.shiftKey, target: event.target });
         }
       }}
       // Inside a `role="table"` grid this element IS the row — an element has
       // exactly one role, and a table whose rows claim `button`/`checkbox` has
       // no rows at all. Selection moves to `aria-selected` (valid on `row`);
-      // the real checkbox lives in the select cell above, so nothing is lost.
+      // under clickSelect the wash is the face (no gutter checklist).
       // Outside a table the original interactive roles stand.
-      role={inTable ? 'row' : selectMode ? 'checkbox' : 'button'}
+      role={inTable ? 'row' : clickSelect || selectMode ? 'checkbox' : 'button'}
       tabIndex={0}
       aria-selected={inTable ? isChecked : undefined}
-      aria-checked={!inTable && selectMode ? isChecked : undefined}
-      aria-pressed={inTable || selectMode ? undefined : isSelected}
+      aria-checked={!inTable && (clickSelect || selectMode) ? isChecked : undefined}
+      aria-pressed={inTable || clickSelect || selectMode ? undefined : isSelected}
       aria-label={
-        selectMode
+        clickSelect || selectMode
           ? `Select order ${record.order_id || record.id}`
           : `Open order ${record.order_id || record.id}`
       }
@@ -1067,7 +1104,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         // flag → card). List/board keeps zebra + inset-ring selected chrome.
         gridSkin
           ? ledgerRowFillClass({
-              selected: selectMode ? isChecked : isSelected,
+              selected: clickSelect || selectMode || gridSkin ? isChecked : isSelected,
               flagClass: rowFlag?.rowClass,
               capabilities,
             })
@@ -1099,9 +1136,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             ),
       )}
       style={
-        gridTemplate
+        gridTemplate || rowFillHex
           ? {
-              gridTemplateColumns: gridTemplate,
+              ...(gridTemplate ? { gridTemplateColumns: gridTemplate } : undefined),
+              // Selection wash wins; custom paint only when not checked.
+              ...((clickSelect || selectMode || gridSkin ? isChecked : isSelected) || !rowFillHex
+                ? undefined
+                : { backgroundColor: rowFillHex }),
             }
           : undefined
       }
@@ -1235,6 +1276,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
   if (prev.opaqueStripe !== next.opaqueStripe) return false;
   if (prev.gridSkin !== next.gridSkin) return false;
+  if (prev.clickSelect !== next.clickSelect) return false;
+  if (prev.selectGutterChrome !== next.selectGutterChrome) return false;
+  if (prev.rowFillHex !== next.rowFillHex) return false;
   if (prev.singleSelected !== next.singleSelected) return false;
   if (prev.columns !== next.columns) return false;
   if (prev.rowStatus.dot !== next.rowStatus.dot) return false;

@@ -1,13 +1,22 @@
-# 04 — Inbound History → Dashboard mode
+# 04 — Inbound History → Dashboard mode → Inbound desk Docked
 
-**Status:** P1–P3 built 2026-07-16 (`?mode=inbound`); P4–P5 handed to 05 / 01
+**Status:** P1–P3 built 2026-07-16 (`?mode=inbound`); **superseded 2026-08-03** — Docked lane on `/incoming?lane=docked` (Inbound desk merge). Proxy redirects `/dashboard?mode=inbound` and `/receiving/history` there.
 **Parent:** [../foh-boh-surface-split-plan.md](../foh-boh-surface-split-plan.md)
 **Depends on:** [05 — Nav · permission · redirects](./05-nav-permission-redirects.md)
 
-## Goal
+## Goal (original)
 
 Move BOH inbound History (Scanned · Unboxed facets) out of the Receiving mode rail into a
 **new `/dashboard` mode** (beside Orders / Shipping), per owner decision #5.
+
+## Current home (2026-08-03)
+
+Inbound landed activity is the **Docked** lane of the Inbound desk:
+
+- URL: `/incoming?lane=docked` (+ Triage/Unbox via `?sort=scanned_newest|unboxed_newest`)
+- Chrome/KPI: `IncomingWorkspaceHeader` + `IncomingKpiStrip` (lane-aware)
+- Tabs SoT: `src/components/sidebar/receiving/incoming/inbound-docked-tabs.ts`
+- Redirects: `proxy.ts` — `/dashboard?mode=inbound|receiving`, `/receiving/history`, `/receiving?mode=history`
 
 ## Decision (frozen — Parent #5)
 

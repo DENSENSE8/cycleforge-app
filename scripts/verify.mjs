@@ -62,6 +62,18 @@ const GATES = [
           advisory: true, // ci.yml runs this continue-on-error
         },
         { name: 'Schema drift', cmd: 'node', args: ['scripts/schema-drift-guard.mjs', '--check'] },
+        // Model↔DB parity. The static guard above only catches app code still
+        // naming a DROPPED column; it cannot see a column that was never
+        // CREATED. Added 2026-08-02 after notification_outbox.payload — declared
+        // by its migration and by schema.ts, absent from the database — made
+        // every ops_events INSERT throw for four days while verify stayed green.
+        // Skips itself (exit 0) when DATABASE_URL is unset, so DB-less runs and
+        // fork PRs are unaffected.
+        {
+          name: 'Schema model parity (live)',
+          cmd: 'node',
+          args: ['scripts/schema-model-parity-guard.mjs', '--check'],
+        },
         // Doc catalog drift. Fix is one command: `pnpm portfolio:sot`.
         // Added 2026-08-01 — the check existed but was gated by nothing, and
         // DOC-CATALOG.md had drifted 71 files behind before anyone noticed.

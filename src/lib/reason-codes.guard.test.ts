@@ -44,6 +44,7 @@ const ALLOWED = new Set([
   'lib/receiving/serial-absent-reasons.ts',
   'lib/receiving-disposition-classify-llm.ts',
   'lib/sku/sku-stock-reasons.ts',
+  'lib/stations/station-command-codes.ts',
 ]);
 
 // An UPPER_SNAKE identifier assigned an array literal (`NAME … = [`). We capture

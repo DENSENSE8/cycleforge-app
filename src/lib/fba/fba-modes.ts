@@ -1,10 +1,12 @@
 /**
- * FBA board sub-modes (plan / combine / shipped).
+ * FBA inbound workbench stages (ready / plan / combine / shipped).
  *
  * These live as `?fbaMode=` on the canonical path `/shipping/fba`. Legacy
  * `/shipping?mode=fba` redirects there (next.config). Legacy `?mode=` on `/fba`
- * is still accepted by resolvers during the redirect window.
+ * is still accepted by resolvers during the redirect window. Standalone
+ * `/shipping/ready` permanently redirects here with `fbaMode=ready`.
  *
+ *   ready   — post-test channel allocation (FBA vs pre-box vs hold)
  *   plan    — staff add FNSKUs to today's planned board (PLANNED items)
  *   combine — combiner pulls PACKED items and combines under one FBA shipment ID
  *   shipped — shipped / history
@@ -13,15 +15,15 @@
  * (content-chrome `TabSwitch` via `WorkbenchChromeHeader`).
  */
 
-export type FbaMode = 'plan' | 'combine' | 'shipped';
+export type FbaMode = 'ready' | 'plan' | 'combine' | 'shipped';
 
-/** Query param for FBA plan/combine/shipped when nested under Outbound. */
+/** Query param for FBA lifecycle stages when nested under Outbound. */
 export const FBA_MODE_PARAM = 'fbaMode' as const;
 
-/** Canonical host path for the FBA prep station (under Shipping). */
+/** Canonical host path for the FBA inbound workbench (under Shipping). */
 export const FBA_OUTBOUND_PATH = '/shipping/fba';
 
-const FBA_MODES: FbaMode[] = ['plan', 'combine', 'shipped'];
+const FBA_MODES: FbaMode[] = ['ready', 'plan', 'combine', 'shipped'];
 
 /**
  * Params the legacy `/fba` redirect forwards to {@link FBA_OUTBOUND_PATH}.
@@ -64,8 +66,14 @@ export function resolveFbaModeFromSearchParams(
   const nested = params.get(FBA_MODE_PARAM);
   if (nested) return resolveFbaMode(nested);
   const legacy = params.get('mode');
-  // When nested under /shipping, mode is labels|scan-out|ready|fba — not an FBA sub-mode.
-  if (legacy === 'plan' || legacy === 'combine' || legacy === 'shipped') {
+  // When nested under /shipping, mode is labels|scan-out|fba — not an FBA sub-mode.
+  // `ready` as legacy ?mode= is redirected to /shipping/fba?fbaMode=ready.
+  if (
+    legacy === 'ready' ||
+    legacy === 'plan' ||
+    legacy === 'combine' ||
+    legacy === 'shipped'
+  ) {
     return resolveFbaMode(legacy);
   }
   return 'combine';

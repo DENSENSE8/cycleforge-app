@@ -1,15 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 // Direct, not via the barrel this file is itself exported from — a member
 // importing its own barrel is a module cycle.
 import { SupportContextHub } from './SupportContextHub';
-import {
-  PaneHeader,
-  PaneHeaderCloseButton,
-  PaneHeaderLabel,
-} from '@/components/ui/pane-header';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
 
@@ -34,18 +31,34 @@ export interface SupportContextDetailPanelProps {
    * Opt-in DISPLAYS — the right edge as a display column, one showing at a
    * time, switched by a `density="icon"` strip (the Unbox Displays shape;
    * `display/station-workbench.md`). `/support` passes Connections ·
-   * Conversations · Timeline.
+   * Conversations · Timeline · Assist.
    *
    * Omit for the historical body — linkage strip above the hub's own
    * Customer | Team | Activity pills, which is what the Unbox "Links" rail has
    * always shown and what its badge promises.
    *
-   * There is no AI display. `SupportSuggestionPanel` exists but has **zero
-   * consumers** and no bridge into any composer, so it would render a control
-   * that cannot deliver its draft anywhere. An empty display that looks broken
-   * is worse than an absent one.
+   * **Assist landed 2026-08-02**, and the condition this docblock used to state
+   * is what unblocked it: the AI display was absent because
+   * `SupportSuggestionPanel` had no bridge into any composer, so it would have
+   * rendered a control that could not deliver its draft anywhere.
+   * `ThreadComposerBridge.setDraft` is that bridge; the panel it replaced was
+   * deleted rather than left beside its successor. The rule stands unchanged —
+   * a display that cannot do its job is worse absent than mounted empty.
    */
   displays?: SectionTab[];
+  /**
+   * Ask the rail to show a particular display — e.g. Assist, the moment an
+   * image is pasted onto the ticket.
+   *
+   * **The intent travels as DATA, never as a timed event.** Opening the rail is
+   * a state change this panel may only mount *after*, so a dispatched event
+   * would fire into an empty room (the same trap Unbox hit with a
+   * `requestAnimationFrame` dispatch at `CartonMatchHub`). `focusRequestId` is
+   * what makes a repeat ask work: selecting Assist twice in a row is the same
+   * `focusDisplay` and a different request.
+   */
+  focusDisplay?: string;
+  focusRequestId?: number;
 }
 
 /**
@@ -70,11 +83,22 @@ export function SupportContextDetailPanel({
   embedded = false,
   push,
   displays,
+  focusDisplay,
+  focusRequestId = 0,
 }: SupportContextDetailPanelProps) {
   // A display the caller no longer offers must not strand the rail on an empty
   // body — `SectionTabsSlider` resolves an unknown id back to the first tab, so
   // the empty seed is deliberate rather than a missing default.
   const [display, setDisplay] = useState('');
+
+  // Read on mount as well as on change, so a request made while this panel was
+  // still closed is honoured the moment it opens.
+  const lastFocusRequest = useRef(0);
+  useEffect(() => {
+    if (!focusDisplay || focusRequestId === lastFocusRequest.current) return;
+    lastFocusRequest.current = focusRequestId;
+    setDisplay(focusDisplay);
+  }, [focusDisplay, focusRequestId]);
   const variant = embedded ? 'station' : 'workbench';
   const hasDisplays = Boolean(displays && displays.length > 0);
 
@@ -92,21 +116,20 @@ export function SupportContextDetailPanel({
       ariaLabel={`Ticket #${ticketId} support context`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <PaneHeader
-          // Identity is the SHORT DURABLE KEY, with the mode as the eyebrow —
-          // `right-rail-inspector.md`. This header used to invert them (`Ticket
-          // #N` as the eyebrow over a `text-role-body` "Support context" heading),
-          // which put a generic noun where the scannable key belongs and broke the
-          // caption-density cap for rail identity.
-          leftSlot={<PaneHeaderLabel eyebrow="Support context" value={`#${ticketId}`} />}
-          rightSlot={
-            <PaneHeaderCloseButton
-              onClick={onClose}
-              ariaLabel="Close support context"
-              title="Close support context"
-            />
-          }
-        />
+        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
+          <DeskRailChromeRow
+            onClose={onClose}
+            closeTitle="Close support context"
+          />
+          <div className="px-2 pb-2 pt-1">
+            {/* Identity is the SHORT DURABLE KEY, with the mode as the eyebrow —
+                `right-rail-inspector.md`. This header used to invert them (`Ticket
+                #N` as the eyebrow over a `text-role-body` "Support context" heading),
+                which put a generic noun where the scannable key belongs and broke the
+                caption-density cap for rail identity. */}
+            <PaneHeaderLabel eyebrow="Support context" value={`#${ticketId}`} />
+          </div>
+        </div>
 
         {/* THE one scroll port of this column. The displays render into it as
             content and own no viewport of their own — a nested `overflow-y-auto`

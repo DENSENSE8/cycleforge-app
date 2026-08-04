@@ -20,7 +20,6 @@ import {
   Boxes,
   CircleDollarSign,
   Package,
-  PackageCheck,
   PackageOpen,
   ShoppingCart,
   Truck,
@@ -40,8 +39,8 @@ export const StationReceiving: IconComponent = withNavIconPageStroke(PackageOpen
 /** Testing / QC station — `/test`. Bench repair/tooling (Wrench), not warranty shield. */
 export const StationTesting: IconComponent = withNavIconPageStroke(Wrench);
 
-/** Outbound Shipping station — `/shipping`. Not carrier motion (Truck). */
-export const StationShipping: IconComponent = withNavIconPageStroke(PackageCheck);
+/** Outbound Shipping station — `/shipping`. Truck = leave-the-building carrier. */
+export const StationShipping: IconComponent = withNavIconPageStroke(Truck);
 
 /** Packing station — `/pack`. Dedicated Packer glyph (not generic Box). */
 export const StationPacking: IconComponent = withNavIconPageStroke(Packer);

@@ -1,19 +1,19 @@
 /**
- * Hard law: every declared capture step has a FACE — an icon and a hue.
+ * Hard law: every declared capture step has a FACE — an icon.
  *
  * Third sibling of `procedure-divergence.guard.test.ts` (every step has a gate)
  * and `procedure-step-body.guard.test.ts` (every step has a body). Together they
  * cover the whole contract: the declaration owns the sequence, the bench owns
  * what counts as done, the registry owns what the operator does, and this owns
- * what the card looks like.
+ * the glanceable glyph. Hue families are retired — stack geometry + state marks
+ * carry place-keeping; every row shares one neutral surface.
  *
  * ## Why a missing face is worth a CI failure rather than a fallback
  *
  * `stepFace` DOES fall back — a bench that crashes mid-carton is far worse than
- * one showing a generically-coloured card. But the fallback is a safety net, not
- * an answer: the hue is functional (it says what KIND of work the step is), so a
- * step wearing the evidence colour because nobody assigned it one is actively
- * misleading. The net catches it at the bench; this catches it before shipping.
+ * one showing a generic camera glyph. The fallback is a safety net, not an
+ * answer: a step with no icon is a nameless tile in the stack. The net catches
+ * it at the bench; this catches it before shipping.
  *
  * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        --test src/components/receiving/workspace/line-edit/steps/procedure-step-face.guard.test.ts`
@@ -51,8 +51,7 @@ test('every declared capture step has a face, in every carton shape', () => {
       assert.ok(
         faces.has(step.key),
         `${name}: capture step "${step.key}" has no face in step-face.tsx — it would ` +
-          `wear the fallback evidence hue, which says the wrong thing about what kind ` +
-          `of work it is. Assign it an icon and a functional hue.`,
+          `wear the fallback camera glyph. Assign it an icon.`,
       );
     }
   }

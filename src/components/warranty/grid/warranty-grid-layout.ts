@@ -5,7 +5,7 @@
  * A claim row is a support record, not a station line: no unbox/serial/receive
  * lifecycle, no in-cell edit, no fold. So this is a small, read-only column set
  * — Item · Claim · Customer · Status · Warranty · Logged — composing the SAME
- * shared geometry (`ordersQueueColVar` / `receivingGridCell` /
+ * shared geometry (`receivingGridCell` /
  * `ORDERS_QUEUE_FROZEN_CELL`) so the warranty grid lines up pixel-for-pixel with
  * every other house spreadsheet.
  *
@@ -21,8 +21,10 @@
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
-import { ordersQueueColVar } from '@/lib/dashboard-order-row-layout';
+import {
+  gridFrozenLeft,
+  gridTemplate,
+} from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -132,22 +134,13 @@ export function warrantyGridTemplate(
   return gridTemplate(columns);
 }
 
-// Row left-pad — same token every house grid uses so the frozen gutter aligns.
-const WARRANTY_GRID_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
 /**
  * Sticky offset for a frozen cell — row px + the summed widths of the locked
  * columns before it. Self-computed over {@link WARRANTY_GRID_COLUMNS} so this
  * surface's own select/title widths drive the offset.
  */
 export function warrantyGridFrozenLeft(key: WarrantyGridColumnKey): string {
-  const idx = WARRANTY_GRID_LOCKED_KEYS.indexOf(key);
-  const parts = [WARRANTY_GRID_ROW_PX];
-  for (const k of WARRANTY_GRID_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = WARRANTY_GRID_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(WARRANTY_GRID_COLUMNS, key);
 }
 
 
@@ -164,9 +157,9 @@ export function defaultDirForWarrantyGridSort(key: WarrantyGridColumnKey): GridS
   return 'asc';
 }
 
-// Shared spreadsheet chrome — the SAME helpers the receiving/outbound grids use.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as WARRANTY_GRID_FROZEN_CELL,
-  ordersQueueGridCell as warrantyGridCell,
-  ordersQueueRowShellClass as warrantyGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as WARRANTY_GRID_FROZEN_CELL,
+  ledgerGridCell as warrantyGridCell,
+  ledgerGridRowShellClass as warrantyGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

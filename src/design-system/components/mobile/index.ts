@@ -12,6 +12,3 @@ export type { ScanCameraMobileProps } from './ScanCameraMobile';
 
 export { MobileBottomActionBar } from './MobileBottomActionBar';
 export type { MobileBottomActionBarProps } from './MobileBottomActionBar';
-
-export { MobileScanSheet } from './MobileScanSheet';
-export type { MobileScanSheetProps } from './MobileScanSheet';

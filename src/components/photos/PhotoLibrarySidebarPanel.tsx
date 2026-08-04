@@ -9,7 +9,7 @@ import { SidebarFacetGroup } from '@/components/sidebar/SidebarFacetGroup';
 import { Folder, Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 import { toast } from '@/lib/toast';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import { PHOTO_SCOPE_ICONS } from '@/lib/photos/scope-icons';
@@ -255,10 +255,15 @@ export function PhotoLibrarySidebarPanel() {
                                 'ds-raw-button flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition',
                                 // Same selection token the scope rows above use
                                 // — one card must not hold two selection languages.
-                                isActive ? QUEUE_ROW.selectedClass : 'hover:bg-surface-hover',
+                                isActive ? NAV_ROW.selectedClass : 'text-text-muted hover:bg-surface-hover',
                               )}
                             >
-                              <span className="truncate text-role-caption font-semibold text-text-default">
+                              <span
+                                className={cn(
+                                  'truncate text-role-caption font-semibold',
+                                  isActive ? 'text-text-default' : 'text-text-muted',
+                                )}
+                              >
                                 {day.dayLabel}
                               </span>
                               <span className="ml-auto shrink-0 text-role-micro uppercase tracking-widest text-text-soft">

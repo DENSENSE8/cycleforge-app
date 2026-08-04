@@ -304,6 +304,18 @@ export const OrgSettingsSchema = z.object({
       gs1Status: null,
       answeredAt: null,
     }),
+  // Support-assistant preferences. `visionLane` is a SAFETY CLASSIFICATION —
+  // whether a customer's pasted photo may leave the tenant's hardware on the
+  // Assist draft path. Precedence (org → env → local-only) lives ONLY in
+  // `resolveSupportVisionLane` — this bag stores the org's request, never the
+  // resolved lane. `vertical` frames the reply persona ("an audio reseller").
+  // Both optional so "unset → inherit" stays distinguishable from an explicit pick.
+  support: z
+    .object({
+      visionLane: z.enum(['local-only', 'cloud-multimodal']).optional(),
+      vertical: z.string().max(80).optional(),
+    })
+    .default({}),
 }).passthrough();
 
 export type OrgSettings = z.infer<typeof OrgSettingsSchema>;
@@ -378,6 +390,11 @@ export type PhotoAnalysisSettings = OrgSettings['photoAnalysis'];
 
 export function getPhotoAnalysisSettings(settings: OrgSettings): PhotoAnalysisSettings {
   return settings.photoAnalysis ?? { localVisionBaseUrl: '' };
+}
+
+/** Per-org support-assistant settings (see OrgSettingsSchema.support). */
+export function getSupportSettings(settings: OrgSettings): OrgSettings['support'] {
+  return settings.support ?? {};
 }
 
 /** Fulfillment-substitution policy for this org. See OrgSettingsSchema.fulfillment. */

@@ -68,13 +68,12 @@ test.describe('Search eviction from /dashboard', () => {
     await expect(pages.getByRole('button', { name: /^search$/i })).toHaveCount(0);
   });
 
-  test('the inbound domain renders a context panel instead of an empty column', async ({ page }) => {
+  test('the inbound Docked lane renders its context panel', async ({ page }) => {
     test.skip(isMobile(), 'the 360px context column is desktop-only');
-    await page.goto('/dashboard?mode=inbound&sort=scanned_newest');
+    await page.goto('/incoming?lane=docked&sort=scanned_newest');
     await page.waitForLoadState('domcontentloaded');
-    // Recents fill the void the inbound panel's `return null` used to leave.
-    // Shape-based: either the list or its teaching empty proves the panel mounted.
-    const panel = page.getByLabel(/^recents$/i).or(page.getByText(/nothing opened yet/i));
+    // Pipeline/Docked copy rides in IncomingSidebarPanel on the desk.
+    const panel = page.getByText(/docked activity/i).or(page.getByLabel(/^views$/i));
     await expect(panel.first()).toBeVisible({ timeout: 15_000 });
   });
 });

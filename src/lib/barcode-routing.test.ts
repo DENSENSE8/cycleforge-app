@@ -56,6 +56,13 @@ test('every generated handle round-trips to its entity type (not bin/sku fallbac
 
 const SLUG = 'usav';
 const GTIN = '00012345678905';
+/**
+ * An INTERNALLY-MINTED gtin — `'02' + 11-digit sku_catalog.id` + check digit,
+ * the form `generateInternalGtin` stamps onto `sku_catalog.gtin` for any tenant
+ * without GS1 membership. It is a restricted-circulation number, so it is the
+ * gtin most units in this installed base actually carry.
+ */
+const INTERNAL_RCN_GTIN = '02000000000107';
 
 const BIN: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 1 };
 const RACK: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 0 };
@@ -110,6 +117,28 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     redirect: `/01/${GTIN}/21/SN123`,
   },
   {
+    // OPEN RULING, pinned as it behaves TODAY (2026-08-02): the encoder does not
+    // consult `isRestrictedCirculationGtin`, so a unit whose gtin was minted
+    // internally still climbs to rung 1. That is defensible — it is the
+    // tenant's own host and this app's own scanner, and an RCN collides with
+    // nobody — but rung 1 is defined as "a LICENSED GS1 key", and this is not
+    // one. The row exists either way: these stickers are already on units, so
+    // the decode must keep working no matter how the ruling lands. If the
+    // encoder is later dropped to rung 3/4, this becomes `mint: null` with the
+    // reason, exactly like the borrowed-GLN rows below.
+    // See docs/todo/gs1-internal-gtin-rcn-HANDOFF.md → F1.
+    what: 'GS1 Digital Link — unit on an INTERNAL restricted-circulation gtin',
+    rung: 1,
+    mint: () =>
+      encodePrintMatrix({
+        kind: 'unit', orgSlug: SLUG, sku: 'SKU-1',
+        gtin: INTERNAL_RCN_GTIN, serialNumber: 'SN123',
+      }).value,
+    value: `https://usav.app.cycleforge.ai/01/${INTERNAL_RCN_GTIN}/21/SN123`,
+    type: 'serial-unit',
+    redirect: `/01/${INTERNAL_RCN_GTIN}/21/SN123`,
+  },
+  {
     what: 'GS1 Digital Link — location (licensed GLN + tenant host)',
     rung: 1,
     mint: () =>
@@ -125,7 +154,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
       encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: RACK, gln: LICENSED_GLN }).value,
     value: `https://usav.app.cycleforge.ai/414/${LICENSED_GLN}/254/A0101100`,
     type: 'bin',
-    redirect: '/warehouse?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=racks&code=A0101100',
   },
   {
     what: 'legacy location Digital Link — pre-DataMatrix printer, borrowed GLN',
@@ -135,7 +164,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: null,
     value: `/414/${PLACEHOLDER_GLN}/254/A0101100`,
     type: 'bin',
-    redirect: '/warehouse?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=racks&code=A0101100',
   },
 
   // ── Rung 2 · GS1 element string (licensed key, no host to resolve it) ─────
@@ -170,7 +199,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: null, // the SCANNER produces this shape, not us
     value: `414${PLACEHOLDER_GLN}${FNC1}254A0101100`,
     type: 'bin',
-    redirect: '/warehouse?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=racks&code=A0101100',
   },
   {
     what: 'FNC1 form — unit',
@@ -206,7 +235,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: () => encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: RACK }).value,
     value: 'A0101100',
     type: 'bin',
-    redirect: '/warehouse?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=racks&code=A0101100',
   },
   {
     what: 'bare handle — carton (no tenant slug)',
@@ -517,7 +546,7 @@ test('both label forms scan back to the SAME destination — rack (position=00)'
   const gs1 = locationLabelPayload(RACK, { gln: LICENSED_GLN });
   const a = routeScan(bare.value);
   const b = routeScan(gs1.value);
-  strictEqual(a?.redirect, '/warehouse?tab=racks&code=A0101100');
+  strictEqual(a?.redirect, '/inventory/locations?tab=racks&code=A0101100');
   strictEqual(a?.redirect, b?.redirect);
 });
 
@@ -536,11 +565,11 @@ test('labels ALREADY on the racks keep scanning — all three legacy forms', () 
   );
   strictEqual(
     routeScan(`414${PLACEHOLDER_GLN}${FNC1}254A0101100`)?.redirect,
-    '/warehouse?tab=racks&code=A0101100',
+    '/inventory/locations?tab=racks&code=A0101100',
   );
   strictEqual(
     routeScan(`/414/${PLACEHOLDER_GLN}/254/A0101100`)?.redirect,
-    '/warehouse?tab=racks&code=A0101100',
+    '/inventory/locations?tab=racks&code=A0101100',
   );
 });
 

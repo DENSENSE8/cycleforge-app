@@ -61,11 +61,11 @@ test('retiredSearchModeTarget: an open order wins, then the query, then the defa
   assert.equal(retiredSearchModeTarget(sp('mode=search&q=a b/c')), '/search?q=a%20b%2Fc');
   // `dq` was the alternate query key the old view accepted; it must not be lost.
   assert.equal(retiredSearchModeTarget(sp('mode=search&dq=bose')), '/search?q=bose');
-  // Bare → the dashboard's default domain.
-  assert.equal(retiredSearchModeTarget(sp('mode=search')), '/dashboard');
-  assert.equal(retiredSearchModeTarget(sp('mode=search&map=recent')), '/dashboard');
+  // Bare → To-ship desk (outbound left `/dashboard` for `/shipping/orders`).
+  assert.equal(retiredSearchModeTarget(sp('mode=search')), '/shipping/orders');
+  assert.equal(retiredSearchModeTarget(sp('mode=search&map=recent')), '/shipping/orders');
   // Whitespace-only params are not a query.
-  assert.equal(retiredSearchModeTarget(sp('mode=search&q=%20%20')), '/dashboard');
+  assert.equal(retiredSearchModeTarget(sp('mode=search&q=%20%20')), '/shipping/orders');
 });
 
 test('a retired ?fba bookmark redirects to FBA\'s real home, not the Pending tab', () => {

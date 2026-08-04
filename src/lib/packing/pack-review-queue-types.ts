@@ -34,4 +34,9 @@ export interface PackReviewQueueRow {
   orderId: string | null;
   productTitle: string | null;
   tracking: string | null;
+  /** Catalog SKU for pack-profile edit (nullable when unlinked). */
+  skuCatalogId: number | null;
+  itemNumber: string | null;
+  packTier: string | null;
+  estimatedPackMinutes: number | null;
 }

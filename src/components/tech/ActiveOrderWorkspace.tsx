@@ -8,6 +8,7 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { AlertTriangle } from '@/components/Icons';
+import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import { StationContextBar } from '@/components/station/entity-context';
 import { StationPanelRoot, StationWorkbench } from '@/components/station/workbench';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
@@ -52,8 +53,8 @@ interface ActiveOrderWorkspaceProps {
  * is the master-detail "detail" surface for the shipping station.
  *
  * Station Workbench host (`.claude/rules/display/station-workbench.md`): the
- * sticky {@link StationContextBar} identity bookmark hangs under GlobalHeader
- * with the same canvas gutter as the context-panel card (`top-2`), above
+ * sticky {@link StationContextBar} identity bookmark hangs flush under
+ * GlobalHeader (`STATION_IDENTITY_INSET_TOP` = `top-0`), above
  * {@link StationWorkbench}, which owns the scroll body
  * (notices → section tabs → siblings) and the terminal dock band. There is no
  * second `PaneHeader` title row — the identity bookmark IS the header, and its
@@ -144,8 +145,25 @@ export function ActiveOrderWorkspace({
           // Preview mounts the floating Start dock (docked=false → absolute
           // bottom slice), so the scroll column reserves its clearance.
           reserveScrollClearance={isPreview && Boolean(previewOrder)}
+          reserveIdentityClearance="stacked"
           entityContext={
             <>
+              {/* The station active card — pass/fail feedback for the scan that
+                  opened this workspace (`display/station.md` §6). It lived under
+                  the sidebar scan bar until 2026-08-02, which drew the order a
+                  second time beside the identity bookmark above. It carries two
+                  facts nothing else on this surface does: the amber **No order**
+                  exception state (`ShippingEntityContextHeader` hardcodes
+                  `isUnmatched={false}`) and **Undo last serial**. Deleting it
+                  rather than moving it would have taken the silent-success fix
+                  §6 names by name with it.
+
+                  Suppressed in PREVIEW: nothing has been scanned into an Up Next
+                  card, so a `0/1 · Active` meter there would report a session
+                  that has not started. */}
+              {isPreview ? null : (
+                <ActiveOrderScanFeedback activeOrder={activeOrder} />
+              )}
               <ShippingOutOfStockNotice
                 isOutOfStock={Boolean(previewOrder?.is_out_of_stock)}
               />

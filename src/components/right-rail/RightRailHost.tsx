@@ -146,7 +146,11 @@ export function RightRailHost() {
     DETAIL_STACK_COLLAPSE.storageKey,
     false,
   );
-  const isCollapsed = isResizable && collapsed;
+  // Occupants that opt out of edge collapse (Incoming Unbox-parity) never park
+  // via the outset chevron — treat them as expanded even if localStorage still
+  // holds a prior collapse from another rail.
+  const allowEdgeCollapse = renderable?.edgeCollapse !== false;
+  const isCollapsed = isResizable && collapsed && allowEdgeCollapse;
 
   // Publish this occupant's demand so `resolveRightRailFrame` can answer whether
   // it fits and what has to yield. An occupant that opted out publishes
@@ -246,7 +250,9 @@ export function RightRailHost() {
                 isDragging={isDragging}
                 edge="leading"
                 placement="outset"
-                onCollapse={() => setCollapsed(true)}
+                onCollapse={
+                  allowEdgeCollapse ? () => setCollapsed(true) : undefined
+                }
                 collapseLabel="Hide details"
               />
               {/* Inner presence keyed on the OCCUPANT — the record→record
@@ -364,7 +370,9 @@ export function RightRailHost() {
                 isDragging={isDragging}
                 edge="leading"
                 placement="outset"
-                onCollapse={() => setCollapsed(true)}
+                onCollapse={
+                  allowEdgeCollapse ? () => setCollapsed(true) : undefined
+                }
                 collapseLabel="Hide details"
               />
             ) : null}

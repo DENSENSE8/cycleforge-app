@@ -125,6 +125,13 @@ interface OmnichannelComposerDockProps {
    * stays on `onBlur`.
    */
   trailingAction?: ReactNode;
+  /**
+   * Outer chrome. `raised` (default) is the Support / standalone card — border +
+   * elevation. `bare` is the body zone inside a host shell (UnboxDockHost): no
+   * second raised card, host owns elevation. Never nest `raised` under another
+   * raised dock band.
+   */
+  chrome?: 'raised' | 'bare';
   /** Auto-grow between min/max. Default true. */
   autoGrow?: boolean;
   className?: string;
@@ -153,6 +160,7 @@ export const OmnichannelComposerDock = forwardRef<
     footerStart,
     footerEnd,
     trailingAction,
+    chrome = 'raised',
     autoGrow = true,
     className,
     animateMount = true,
@@ -197,17 +205,25 @@ export const OmnichannelComposerDock = forwardRef<
   const canCommit =
     commitDisabled !== undefined ? !commitDisabled : value.trim().length > 0;
 
+  const bare = chrome === 'bare';
+
   const shell = (
     <div
       className={cn(
-        'flex w-full flex-col rounded-2xl border border-border-soft bg-surface-card transition-[border-color,box-shadow] duration-150',
-        elevationClass('raised'),
-        focusRing('wrapper', 'accent'),
-        'focus-within:ring-2 focus-within:ring-blue-500/20',
+        'flex w-full flex-col transition-[border-color,box-shadow] duration-150',
+        bare
+          ? 'bg-transparent'
+          : cn(
+              'rounded-2xl border border-border-soft bg-surface-card',
+              elevationClass('raised'),
+              focusRing('wrapper', 'accent'),
+              'focus-within:ring-2 focus-within:ring-blue-500/20',
+            ),
         disabled && 'opacity-60',
         className,
       )}
       data-testid="omnichannel-composer-dock"
+      data-composer-chrome={chrome}
     >
       <textarea
         ref={setTextareaRef}

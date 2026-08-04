@@ -27,7 +27,6 @@ const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m
 const InventorySidebarPanel = dynamic(() => import('@/components/sidebar/InventorySidebarPanel').then((m) => m.InventorySidebarPanel));
 const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/SourcingSidebarPanel').then((m) => m.SourcingSidebarPanel));
 const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
-const WarehouseSidebarPanel = dynamic(() => import('@/components/sidebar/WarehouseSidebarPanel').then((m) => m.WarehouseSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
 const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
@@ -70,7 +69,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'inventory') return <InventorySidebarPanel />;
   if (routeKey === 'sourcing') return <SourcingSidebarPanel />;
   if (routeKey === 'products') return <ProductsSidebarPanel />;
-  if (routeKey === 'warehouse') return <WarehouseSidebarPanel />;
+  // Locations desk folded under inventory — WarehouseSidebarPanel mounts via InventorySidebarPanel.
   if (routeKey === 'walk-in') return <WalkInSidebarPanel embedded hideSectionHeader />;
   // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the
   // `receiving` key — see getSidebarRouteKey. The branch that used to sit here

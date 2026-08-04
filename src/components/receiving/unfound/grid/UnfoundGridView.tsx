@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { PatchBody, QueueRow } from '../queue-table/unfound-queue-shared';
@@ -33,7 +32,7 @@ interface UnfoundGridViewProps {
   onPush: (row: QueueRow) => Promise<void>;
   pushingKey: string | null;
   savedKeys: Set<string>;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly UnfoundGridColumn[];
 }
 
@@ -91,15 +90,6 @@ export function UnfoundGridView({
     defaultDir: defaultDirForUnfoundGridSort,
   });
 
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  const { columns: visible } = useGridColumnVisibility<UnfoundGridColumn>({
-    columns,
-    tableId: UNFOUND_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeUnfoundGridDescriptor(visible), [visible]);
-
   const [, settleTick] = useState(0);
   const hasRows = rows.length > 0;
   useEffect(() => {
@@ -126,7 +116,7 @@ export function UnfoundGridView({
     ];
   }, [rows, columnSort, sortDir]);
 
-  const renderLeaf = (row: QueueRow) => {
+  const renderLeaf = (row: QueueRow, visible: readonly UnfoundGridColumn[]) => {
     const key = unfoundRowKey(row);
     return (
       <UnfoundGridRow
@@ -144,42 +134,37 @@ export function UnfoundGridView({
   };
 
   return (
-    <>
-      <LedgerGridSurface<QueueRow, UnfoundGridColumnKey>
-        ariaLabel="Unfound queue"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => unfoundRowKey(r)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        searchEmptyMessage={searchEmptyMessage}
-        isSearching={isSearching}
-        scrollRef={scrollRef}
-        testId="unfound-grid-body"
-        tableId={UNFOUND_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <UnfoundGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={UNFOUND_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
+      ariaLabel="Unfound queue"
+      columns={columns}
+      makeDescriptor={makeUnfoundGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => unfoundRowKey(r)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      searchEmptyMessage={searchEmptyMessage}
+      isSearching={isSearching}
+      scrollRef={scrollRef}
+      testId="unfound-grid-body"
+      tableId={UNFOUND_TABLE_ID}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <UnfoundGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((row) => renderLeaf(row, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

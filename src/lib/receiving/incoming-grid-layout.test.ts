@@ -18,17 +18,21 @@ import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
-  it('is select · title · date · age · qty · condition · status · platform · order · tracking', () => {
+  it('is select · order · title · date · age · qty · condition · status · platform · tracking · zoho', () => {
     assert.deepEqual(
       INCOMING_GRID_COLUMNS.map((c) => c.key),
-      ['select', 'title', 'date', 'age', 'qty', 'condition', 'status', 'platform', 'order', 'tracking'],
+      ['select', 'order', 'title', 'date', 'age', 'qty', 'condition', 'status', 'platform', 'tracking', 'zoho'],
     );
   });
 
-  it('labels Product Title on the frozen title track', () => {
+  it('labels Product Title on the title track', () => {
     const title = INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')!;
     assert.equal(title.label, 'Product Title');
-    assert.equal(title.gridLabel, 'Product');
+    assert.equal(title.gridLabel, undefined);
+    // Notion overflow pilot — fixed preferred track, not the fill `1fr` other
+    // families still use. Content-sized columns can exceed the card and scroll.
+    assert.equal(title.width, 'minmax(16rem, 16rem)');
+    assert.equal(title.width.includes('1fr'), false);
   });
 
   it('labels Status on its own track (hideKey rest)', () => {
@@ -38,17 +42,61 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
     assert.equal(status.type, 'tag');
   });
 
-  it('locks select · title as the frozen identity pane', () => {
-    assert.deepEqual([...INCOMING_GRID_LOCKED_KEYS], ['select', 'title']);
+  // Unbox Sheets golden (2026-08-04): only `select` is frozen — order/title
+  // scroll with the sheet (same as Receiving).
+  it('locks select only as the frozen identity pane (Sheets-class)', () => {
+    assert.deepEqual([...INCOMING_GRID_LOCKED_KEYS], ['select']);
     assert.ok(isIncomingGridFrozen('select'));
-    assert.ok(isIncomingGridFrozen('title'));
+    assert.equal(isIncomingGridFrozen('order'), false);
+    assert.equal(isIncomingGridFrozen('title'), false);
     assert.equal(isIncomingGridFrozen('qty'), false);
   });
 
-  it('flexes ONLY title (purposeful-cell doctrine)', () => {
+  it('the order track scrolls — always-on, never a tier, start-aligned', () => {
+    const order = INCOMING_GRID_COLUMNS.find((c) => c.key === 'order')!;
+    assert.equal(order.frozen, undefined);
+    assert.equal(order.hideKey, undefined, 'order stays always-on (no pref key)');
+    assert.equal(order.tier, undefined);
+    // A transaction identity reads left, like a name — not end-aligned like the
+    // reference identifiers (`tracking`).
+    assert.equal(order.align, 'start');
+  });
+
+  it('every data column is headerGlyphOnly (icon-only headers)', () => {
+    for (const col of INCOMING_GRID_COLUMNS) {
+      if (col.key === 'select') continue;
+      assert.equal(
+        col.headerGlyphOnly,
+        true,
+        `${col.key} must declare headerGlyphOnly — Incoming Pipeline icon-only headers`,
+      );
+      assert.ok(col.label, `${col.key} keeps label for sr-only / tip`);
+      assert.equal(incomingGridHeaderShowsLabel(col), false);
+    }
+  });
+
+  it('the qty header is glyph-only — label Qty survives for a11y', () => {
+    // Incoming Pipeline icon-only (2026-08-04): order + qty both Hash type
+    // glyphs; distinguish by column position. Full label is sr-only.
+    const qty = INCOMING_GRID_COLUMNS.find((c) => c.key === 'qty')!;
+    assert.equal(qty.headerGlyphOnly, true);
+    assert.equal(incomingGridHeaderShowsLabel(qty), false);
+    assert.equal(qty.label, 'Qty');
+  });
+
+  it('does NOT flex title — Notion overflow pilot (fixed preferred track)', () => {
     const template = incomingGridTemplate();
-    assert.equal((template.match(/1fr/g) ?? []).length, 1, 'only title flexes');
-    assert.ok(template.includes('minmax(12rem, 1fr)'), 'title is minmax(12rem, 1fr)');
+    assert.equal(
+      (template.match(/1fr/g) ?? []).length,
+      0,
+      'Incoming opts out of the fill track so columns can exceed the card',
+    );
+    // Fixed preferred width; drag-resize still overrides via `--cf-col-title`.
+    assert.match(
+      template,
+      /var\(--cf-col-title, minmax\(16rem, 16rem\)\)/,
+      'title is a fixed 16rem preferred track, not minmax(…, 1fr)',
+    );
   });
 
   it('ships a lean default — condition + platform are opt-in', () => {
@@ -58,8 +106,9 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
     // the PO/tracking identity — both cost horizontal budget for a blank cell.
     assert.equal(tierOf('condition'), 'optional');
     assert.equal(tierOf('platform'), 'optional');
-    // The scan spine stays on by default.
-    for (const key of ['date', 'age', 'qty', 'status', 'order', 'tracking']) {
+    // The scan spine stays on by default. `order` is absent here on purpose —
+    // it is always-on (no hideKey / no tier), like Receiving's order track.
+    for (const key of ['date', 'age', 'qty', 'status', 'tracking']) {
       assert.equal(tierOf(key), 'core', `${key} must ship visible`);
     }
   });
@@ -108,9 +157,10 @@ describe('incomingContentMinWidthRem / header label fit', () => {
     assert.ok(sum > 40, 'content min is wide enough to force h-scroll on narrow panes');
   });
 
-  it('shows Product short label when the title track fits', () => {
+  it('title header is glyph-only (icon-only headers)', () => {
     const title = INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')!;
-    assert.equal(incomingGridHeaderShowsLabel(title), true);
+    assert.equal(incomingGridHeaderShowsLabel(title), false);
+    assert.equal(title.headerGlyphOnly, true);
   });
 });
 

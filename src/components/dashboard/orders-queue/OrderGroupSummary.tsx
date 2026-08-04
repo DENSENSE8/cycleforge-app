@@ -44,7 +44,7 @@ import { cn } from '@/utils/_cn';
  * the desktop Platform column is retired from both column models.
  *
  * `columns` arrives already RESOLVED to the visible tracks
- * (`useGridColumnVisibility` in `OrdersGridView`), so a hidden column loses its
+ * (`LedgerGridSurface` visibility resolution), so a hidden column loses its
  * TRACK; this summary never re-tests hidden-ness per cell.
  */
 export function OrderGroupSummary({

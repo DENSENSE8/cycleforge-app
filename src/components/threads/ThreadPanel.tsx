@@ -22,6 +22,8 @@ import { supportTicketIdFace } from '@/lib/support/ticket-refs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThread, type ThreadConnectionRow, type ThreadAssignmentRow } from '@/hooks/useThread';
 import type { ThreadMessage, ThreadStatus } from '@/lib/threads/types';
+import { seedComposerDraft, type ComposerDraftMode } from '@/lib/threads/composer-draft';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { initials } from '@/components/support/zendesk/chat/support-chat-utils';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { formatDateTimePST } from '@/utils/date';
@@ -37,6 +39,25 @@ export interface ThreadComposerBridge {
   canPost: boolean;
   focus: () => void;
   submit: () => void;
+  /**
+   * Insert a drafted body into the composer. **NEVER sends** — this bridge
+   * member has no access to `submit` and must never gain one.
+   *
+   * `mode` sets the public/internal toggle so a draft addressed to the customer
+   * cannot arrive with `Internal` selected (silently withheld), and a note
+   * meant to stay internal cannot arrive public (silently emailed).
+   *
+   * **Overwrite rule: EXPLICIT CONFIRM.** An empty composer applies straight
+   * through with no dialog; a composer holding the operator's own text prompts
+   * (house `requestConfirm`) before replacing it, and a decline leaves their
+   * words exactly as they were. The rule itself lives in ONE place —
+   * {@link seedComposerDraft} — so the two composers implementing this bridge
+   * cannot drift on the one behaviour whose failure mode is losing typed work.
+   *
+   * Resolves when the draft has landed or been declined; callers that only fire
+   * and forget may ignore it.
+   */
+  setDraft: (text: string, opts?: { mode?: ComposerDraftMode }) => void | Promise<unknown>;
 }
 
 /** Status → dot + text tones (semantic; never ad-hoc hues). */
@@ -519,6 +540,16 @@ export function ThreadPanel({
         composerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       },
       submit,
+      setDraft: (text, opts) =>
+        seedComposerDraft({
+          currentBody: body,
+          text,
+          mode: opts?.mode,
+          applyBody: setBody,
+          applyMode: setIsPublic,
+          confirm: requestConfirm,
+          onApplied: () => composerRef.current?.focus(),
+        }),
     });
     return () => onBridgeChange(null);
     // submit closes over body/isPublic/postMessage — refresh when those change.

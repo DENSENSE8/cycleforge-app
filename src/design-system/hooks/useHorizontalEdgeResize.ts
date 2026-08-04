@@ -50,6 +50,23 @@ export function edgeResizeWidthCap(
   return Math.max(minWidth, Math.min(maxWidth, viewportCap));
 }
 
+/**
+ * Release-time decision for opt-in drag-past-min collapse.
+ * Compares the **raw** (unclamped) drag width to {@link collapseBelowPx}.
+ * Live layout still floors at `minWidth` during the drag.
+ */
+export function shouldCollapseFromEdgeDrag(
+  rawWidth: number,
+  collapseBelowPx: number | undefined,
+): boolean {
+  if (collapseBelowPx == null || !Number.isFinite(collapseBelowPx)) return false;
+  if (!Number.isFinite(rawWidth)) return false;
+  return rawWidth < collapseBelowPx;
+}
+
+/** Default past-min slack when {@link UseHorizontalEdgeResizeOptions.onCollapseBeyondMin} is set. */
+export const EDGE_RESIZE_COLLAPSE_SLACK_PX = 48;
+
 function readPersistedWidth(
   key: string | undefined,
   fallback: number,
@@ -94,6 +111,18 @@ interface UseHorizontalEdgeResizeOptions {
   label?: string;
   /** `data-testid` on the handle. Defaults to the document-pane id. */
   testId?: string;
+  /**
+   * Opt-in: on pointerup, if the raw (unclamped) drag width is below
+   * {@link collapseBelowPx}, call this instead of flooring at minWidth.
+   * Live layout still clamps to minWidth during the drag; a collapse release
+   * restores the pre-drag width so a collapse gesture never persists the floor.
+   */
+  onCollapseBeyondMin?: () => void;
+  /**
+   * Raw-width threshold for {@link onCollapseBeyondMin}. Defaults to
+   * `minWidth - {@link EDGE_RESIZE_COLLAPSE_SLACK_PX}` when the callback is set.
+   */
+  collapseBelowPx?: number;
 }
 
 /** Props spread onto {@link HorizontalEdgeResizeHandle} (or a raw hit target). */
@@ -129,6 +158,8 @@ export function useHorizontalEdgeResize({
   edge = 'leading',
   label = 'Resize document panel',
   testId = 'document-slide-over-resize',
+  onCollapseBeyondMin,
+  collapseBelowPx,
 }: UseHorizontalEdgeResizeOptions = {}) {
   // Start at the design default so SSR HTML and the first client paint agree;
   // localStorage hydrates in the effect below (avoids a width mismatch).
@@ -136,7 +167,16 @@ export function useHorizontalEdgeResize({
   const [isDragging, setIsDragging] = useState(false);
   const widthRef = useRef(width);
   const edgeRef = useRef(edge);
-  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startWidth: number;
+    rawWidth: number;
+  } | null>(null);
+  const onCollapseBeyondMinRef = useRef(onCollapseBeyondMin);
+  const collapseBelowPxRef = useRef(
+    collapseBelowPx ??
+      (onCollapseBeyondMin ? minWidth - EDGE_RESIZE_COLLAPSE_SLACK_PX : undefined),
+  );
 
   useEffect(() => {
     widthRef.current = width;
@@ -145,6 +185,16 @@ export function useHorizontalEdgeResize({
   useEffect(() => {
     edgeRef.current = edge;
   }, [edge]);
+
+  useEffect(() => {
+    onCollapseBeyondMinRef.current = onCollapseBeyondMin;
+  }, [onCollapseBeyondMin]);
+
+  useEffect(() => {
+    collapseBelowPxRef.current =
+      collapseBelowPx ??
+      (onCollapseBeyondMin ? minWidth - EDGE_RESIZE_COLLAPSE_SLACK_PX : undefined);
+  }, [collapseBelowPx, onCollapseBeyondMin, minWidth]);
 
   useEffect(() => {
     if (!storageKey) return;
@@ -163,49 +213,74 @@ export function useHorizontalEdgeResize({
     [minWidth, maxWidthPad, maxWidth],
   );
 
+  const persistWidth = useCallback(
+    (value: number) => {
+      if (!storageKey) return;
+      try {
+        window.localStorage.setItem(storageKey, String(value));
+      } catch {
+        /* private mode / quota */
+      }
+    },
+    [storageKey],
+  );
+
   const setWidth = useCallback(
     (next: number) => {
       const clamped = clamp(next);
       widthRef.current = clamped;
       setWidthState(clamped);
-      if (storageKey) {
-        try {
-          window.localStorage.setItem(storageKey, String(clamped));
-        } catch {
-          /* private mode / quota */
-        }
-      }
+      persistWidth(clamped);
     },
-    [clamp, storageKey],
+    [clamp, persistWidth],
+  );
+
+  /** Live drag width — clamps for layout, does not persist until pointerup. */
+  const applyLiveWidth = useCallback(
+    (next: number) => {
+      const clamped = clamp(next);
+      widthRef.current = clamped;
+      setWidthState(clamped);
+    },
+    [clamp],
   );
 
   const stopDrag = useCallback(() => {
     if (!dragRef.current) return;
+    const { startWidth, rawWidth } = dragRef.current;
     dragRef.current = null;
     setIsDragging(false);
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
-    if (storageKey) {
-      try {
-        window.localStorage.setItem(storageKey, String(widthRef.current));
-      } catch {
-        /* noop */
-      }
+
+    if (
+      onCollapseBeyondMinRef.current &&
+      shouldCollapseFromEdgeDrag(rawWidth, collapseBelowPxRef.current)
+    ) {
+      // Restore pre-drag preference — a collapse gesture must not bake the
+      // min floor into storage.
+      widthRef.current = startWidth;
+      setWidthState(startWidth);
+      persistWidth(startWidth);
+      onCollapseBeyondMinRef.current();
+      return;
     }
-  }, [storageKey]);
+
+    persistWidth(widthRef.current);
+  }, [persistWidth]);
 
   useEffect(() => {
     if (!isDragging) return;
     const onMove = (ev: PointerEvent) => {
       if (!dragRef.current) return;
-      setWidth(
-        widthFromEdgeDrag(
-          dragRef.current.startWidth,
-          dragRef.current.startX,
-          ev.clientX,
-          edgeRef.current,
-        ),
+      const raw = widthFromEdgeDrag(
+        dragRef.current.startWidth,
+        dragRef.current.startX,
+        ev.clientX,
+        edgeRef.current,
       );
+      dragRef.current.rawWidth = raw;
+      applyLiveWidth(raw);
     };
     const onUp = () => stopDrag();
     window.addEventListener('pointermove', onMove);
@@ -216,14 +291,15 @@ export function useHorizontalEdgeResize({
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
     };
-  }, [isDragging, setWidth, stopDrag]);
+  }, [isDragging, applyLiveWidth, stopDrag]);
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (!enabled) return;
       e.preventDefault();
       e.stopPropagation();
-      dragRef.current = { startX: e.clientX, startWidth: widthRef.current };
+      const startWidth = widthRef.current;
+      dragRef.current = { startX: e.clientX, startWidth, rawWidth: startWidth };
       setIsDragging(true);
       document.body.style.userSelect = 'none';
       document.body.style.cursor = 'col-resize';

@@ -110,6 +110,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run schema:drift-guard:check
 
+      # Model↔DB parity — the other direction from the static guard above: a
+      # column schema.ts declares that the database never got. The script skips
+      # itself when DATABASE_URL is absent (fork PRs), so no `if:` guard here.
+      # Added 2026-08-02 after notification_outbox.payload silently killed every
+      # ops_events INSERT for four days with CI fully green.
+      - name: Schema model parity (live)
+        if: ${{ !cancelled() }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run schema:model-parity:check
+
       # Doc catalog drift. Fix: `pnpm portfolio:sot` and commit DOC-CATALOG.md.
       # Compares the doc roster only — the machine-local worktree table and the
       # generation timestamp are normalized out, so this is CI-safe (a runner

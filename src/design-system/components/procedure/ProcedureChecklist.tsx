@@ -18,7 +18,9 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
  * vocabulary order, nothing hidden, so the operator can see the shape of the
  * work and where they are in it *without leaving the step they are on*. Its
  * sibling {@link ProcedureDeck} is the **work surface** — one expanded section
- * at a time, carrying that step's own controls.
+ * at a time, showing that step's evidence. Neither surface carries the step's
+ * action button; on Unbox that lives in the bottom dock, which is pinned while
+ * both of these scroll.
  *
  * They are not a duplication, and the earlier "exactly ONE procedure surface"
  * rule that deleted this component was reading them as one. They answer
@@ -89,8 +91,8 @@ export function ProcedureChecklist({
   onSelectStep?: (key: string) => void;
   className?: string;
   /**
-   * Cap the visible list to N rows (scroll for the rest). Used by the
-   * scan-station hover peek (`SCAN_STATION_CHECKLIST_PREVIEW_ROWS` = 2).
+   * Cap the visible list to N rows (scroll for the rest). Omit for fit-height
+   * surfaces such as the scan-station hover peek.
    */
   maxVisibleRows?: number;
 }) {

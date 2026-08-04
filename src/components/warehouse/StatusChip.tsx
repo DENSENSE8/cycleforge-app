@@ -48,10 +48,10 @@ export function StatusChip({ status, compact }: Props) {
   }
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider ring-1 ${tone.bg} ${tone.text} ${tone.ring}`}
+      className={`inline-flex min-w-0 max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider ring-1 ${tone.bg} ${tone.text} ${tone.ring}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-      {tone.label}
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} />
+      <span className="min-w-0 truncate">{tone.label}</span>
     </span>
   );
 }
@@ -77,7 +77,7 @@ export function StatusChips({
   if (is_stale) chips.push('stale');
   if (chips.length === 0) chips.push('ok');
   return (
-    <span className="inline-flex flex-wrap gap-1">
+    <span className="inline-flex min-w-0 max-w-full flex-nowrap gap-1 overflow-hidden">
       {chips.map((c) => (
         <StatusChip key={c} status={c} compact={compact} />
       ))}

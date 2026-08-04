@@ -24,6 +24,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
+import { gridColumnTrackRem } from '@/design-system/components/grid/grid-column-geometry';
+import { resolveGridColumnMinTrackRem } from '@/design-system/components/grid/grid-column-type-track';
 import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { INCOMING_GRID_COLUMNS } from '@/lib/receiving/incoming-grid-layout';
 import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
@@ -42,7 +44,8 @@ import { IMPORT_EXCEPTION_GRID_COLUMNS } from '@/features/review/catalog-link/gr
 /**
  * Structural columns are the family's FROZEN IDENTITY PANE, read off the model's
  * own `frozen` flag rather than a hardcoded key list — the pane is a per-surface
- * answer (Orders freezes `select · order · title`; everyone else freezes
+ * answer (Orders freezes `select · order · title`; Unbox Sheets golden —
+ * Receiving + Incoming — freezes `select` only; Catalog / Repair / Pickup freeze
  * `select · title`), and a key list here would silently stop guarding the moment
  * a surface declared a different one.
  */
@@ -66,7 +69,7 @@ const FAMILIES: Record<string, readonly LedgerGridColumnModel[]> = {
 };
 
 const coreKeys = (columns: readonly LedgerGridColumnModel[]) =>
-  columns.filter((c) => c.tier !== 'optional').map((c) => c.key);
+  columns.filter((c) => c.tier !== 'optional' && !c.key.startsWith('_')).map((c) => c.key);
 
 describe('grid column tier contract', () => {
   for (const [name, columns] of Object.entries(FAMILIES)) {
@@ -99,30 +102,148 @@ describe('grid column tier contract', () => {
           'sticky-left offset math only holds for a leading prefix',
       );
       assert.equal(columns[0]?.key, 'select', `${name} must lead with the select gutter`);
+      assert.equal(
+        columns[0]?.frozen,
+        true,
+        `${name}.select must be frozen — the select gutter pins the identity pane`,
+      );
     });
 
     it(`${name}: column keys are unique`, () => {
       const keys = columns.map((c) => c.key);
       assert.equal(new Set(keys).size, keys.length, `${name} has duplicate column keys`);
     });
+
+    /**
+     * A header never SPELLS its own type glyph.
+     *
+     * `GridHeaderLabel` draws the type mark and then the label, so a `gridLabel`
+     * that is itself the glyph renders it twice — `qty` shipped
+     * `gridLabel: '#'` on receiving and incoming (2026-08-02) over a `number`
+     * column whose glyph already IS a hash, and the header read `# #` until the
+     * bench caught it. A column whose glyph is the whole header declares
+     * `headerGlyphOnly`, which takes the `sr-only` branch and keeps the column
+     * nameable.
+     *
+     * Punctuation-only is the shape, not a `'#'` blocklist: any single mark
+     * standing in for a glyph is the same mistake, and `ColumnTypeGlyph` can
+     * grow a new type without this guard being updated.
+     */
+    it(`${name}: no header spells its type glyph as a label`, () => {
+      for (const c of columns) {
+        if (c.gridLabel && !/[\p{L}\p{N}]/u.test(c.gridLabel)) {
+          assert.fail(
+            `${name}.${c.key} sets gridLabel: ${JSON.stringify(c.gridLabel)} — that is a glyph spelled as text, ` +
+              'so the header draws the type mark AND this one. Declare headerGlyphOnly: true instead.',
+          );
+        }
+        if (c.headerGlyphOnly && c.gridLabel) {
+          assert.fail(
+            `${name}.${c.key} declares headerGlyphOnly AND a gridLabel — the glyph-only branch never reads it, ` +
+              'so the gridLabel is a dead declaration that reads as the live one.',
+          );
+        }
+        if (c.headerGlyphOnly) {
+          assert.ok(
+            c.label,
+            `${name}.${c.key} is headerGlyphOnly with no label — the sr-only fallback would announce the raw key`,
+          );
+        }
+      }
+    });
   }
 });
 
+describe('typed date track floors', () => {
+  for (const [name, columns] of Object.entries(FAMILIES)) {
+    it(`${name}: every date column clears its face floor`, () => {
+      for (const c of columns) {
+        if (c.type !== 'date') continue;
+        const floor = resolveGridColumnMinTrackRem(c);
+        const rem = gridColumnTrackRem(c);
+        assert.ok(
+          rem >= floor,
+          `${name}.${c.key} track ${rem}rem < face floor ${floor}rem ` +
+            `(dateFace=${c.dateFace ?? 'day'}; widen width or set dateFace)`,
+        );
+      }
+    });
+  }
+
+  it('receiving date is the stamp face at ≥12rem', () => {
+    const date = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'date');
+    assert.ok(date);
+    assert.equal(date.dateFace, 'stamp');
+    assert.equal(date.width, 'minmax(12rem, 12rem)');
+    assert.equal(resolveGridColumnMinTrackRem(date), 12);
+  });
+});
+
+/**
+ * Unbox Sheets golden freezes `select` only. Receiving keeps the Qty word so
+ * `# Order` and bare `#` do not share one scan path. Incoming Pipeline is the
+ * icon-only exception (`headerGlyphOnly` on every data column).
+ */
+describe('Sheets-class freeze + Qty header (receiving family)', () => {
+  it('incoming: qty is glyph-only while order scrolls (icon-only headers)', () => {
+    const qty = INCOMING_GRID_COLUMNS.find((c) => c.key === 'qty');
+    assert.ok(qty, 'incoming has no qty column');
+    assert.equal(qty.headerGlyphOnly, true);
+    assert.equal(qty.label, 'Qty');
+    assert.equal(qty.type, 'number');
+
+    const order = INCOMING_GRID_COLUMNS.find((c) => c.key === 'order');
+    assert.ok(order, 'incoming has no order column');
+    assert.equal(order.frozen, undefined);
+    assert.equal(order.headerGlyphOnly, true);
+  });
+
+  it('incoming: only select is frozen (Sheets-class)', () => {
+    assert.deepEqual(
+      INCOMING_GRID_COLUMNS.filter((c) => c.frozen).map((c) => c.key),
+      ['select'],
+    );
+    assert.equal(INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')?.frozen, undefined);
+  });
+
+  it('receiving: qty keeps the word label while order scrolls', () => {
+    const qty = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'qty');
+    assert.ok(qty);
+    assert.equal(qty.headerGlyphOnly, undefined);
+    assert.equal(qty.label, 'Qty');
+    const order = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'order');
+    assert.ok(order);
+    assert.equal(order.frozen, undefined);
+  });
+
+  it('receiving: only select is frozen (Sheets-class)', () => {
+    assert.deepEqual(
+      RECEIVING_GRID_COLUMNS.filter((c) => c.frozen).map((c) => c.key),
+      ['select'],
+    );
+    assert.equal(RECEIVING_GRID_COLUMNS.find((c) => c.key === 'title')?.frozen, undefined);
+  });
+});
+
 describe('default (core) column sets — change these deliberately', () => {
-  // Receiving is the surface the lean default was designed around: what is it,
-  // WHERE IN THE LIFECYCLE (`status` — dot · stage name · day · time, one track
-  // since 2026-08-02), how many, where in the flow, and the two identifiers an
-  // operator scans. condition / platform / serial are opt-in because they are
-  // usually still empty at the moment the row is scanned; `date` and `stage`
-  // joined them when `status` absorbed both halves of the same fact.
+  // Receiving is the surface the lean default was designed around: which PO
+  // (`order`), what is it, what STATE is it in (`status` — dot · chip), WHEN
+  // did it get there (`date` — day + time), how many, where in the flow, and
+  // the other identifier an operator scans. Only `select` is frozen
+  // (Sheets-class). condition / platform / serial are opt-in because they are
+  // usually still empty at the moment the row is scanned. There is no `stage`
+  // track at all any more (deleted 2026-08-02): its clock moved into `date`
+  // and its runtime header label became `status`, so opting it back on showed
+  // the same clock twice.
   it('receiving ships the lean scan set', () => {
     assert.deepEqual(coreKeys(RECEIVING_GRID_COLUMNS), [
       'select',
+      'order',
       'title',
       'status',
+      'date',
       'qty',
       'location',
-      'order',
       'tracking',
     ]);
   });

@@ -20,12 +20,13 @@
  * "serial" satisfy both requirements for a carton where neither line is
  * complete.
  *
- * ## The variant is composed, never re-derived
+ * ## The flow is composed, never re-derived
  *
- * `isUnfound` / `isLocalPickup` / `isReturn` decide which steps exist at all, so
- * the receipt and the bench must answer them identically. Both call the same
- * pure SoTs (`fulfillment-mode`, `triage-intake-kind`, `kinds/registry`) — this
- * module's job is only to fetch the columns those helpers read.
+ * Named Unbox flow (Found · Unfound · Return) + modifiers decide which steps
+ * exist at all, so the receipt and the bench must answer them identically.
+ * Both call the same pure SoTs (`resolveContextFromFlags`, fulfillment-mode,
+ * kinds/registry) — this module's job is only to fetch the columns those
+ * helpers read.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -34,6 +35,7 @@ import { getOrganization } from '@/lib/tenancy/organizations';
 import { getReceivingRequiredItemPhotoAspects } from '@/lib/settings/accessors';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { effectiveIntakeKind } from '@/lib/receiving/kinds/registry';
+import { resolveContextFromFlags } from '@/lib/stations/procedure';
 import { parsePhotoAspect, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   buildProcedureReceipt,
@@ -363,7 +365,7 @@ export async function resolveUnboxProcedureReceipt(
   };
 
   const gates: DeriveCaptureStepStatesInput = {
-    vocabulary: {
+    vocabulary: resolveContextFromFlags({
       isUnfound,
       isLocalPickup: isLocalPickupFulfillment(intakeSource),
       isReturn:
@@ -371,7 +373,7 @@ export async function resolveUnboxProcedureReceipt(
           firstLine?.line_intake_type || firstLine?.receiving_type,
           carton.carton_intake_type,
         ) === 'RETURN',
-    },
+    }),
     classified: !!(carton.carton_intake_type || firstLine?.line_intake_type),
     arrivalPhotoCount: num(arrival?.n),
     unboxCartonPhotoCount: num(unboxCarton?.n),

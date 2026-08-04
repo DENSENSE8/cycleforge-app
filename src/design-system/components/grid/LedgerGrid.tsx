@@ -11,11 +11,14 @@ import {
 } from 'react';
 import { VirtualGroupedSections } from '@/design-system/components/grid/VirtualGroupedSections';
 import { countGridRows, hasGridRows } from '@/design-system/components/grid/grid-row-index';
-import type { RowGroup } from '@/lib/group-rows';
 import {
-  ORDERS_QUEUE_GRID_WIDTH_VAR,
-  ordersQueueGridWidthVarValue,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_WIDTH_VAR,
+  ledgerGridWidthVarValue,
+} from '@/design-system/components/grid/grid-cell-chrome';
+import { applyGridOverflowXClasses } from '@/design-system/components/grid/grid-overflow-x';
+import { GridStickyXScrollbar } from '@/design-system/components/grid/GridStickyXScrollbar';
+import { useSyncedHorizontalScrollbar } from '@/design-system/components/grid/useSyncedHorizontalScrollbar';
+import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -35,6 +38,9 @@ import { cn } from '@/utils/_cn';
  *  • **One sticky layer, measured** — header docks at `top-0`; ResizeObserver
  *    publishes `--cf-grid-header-h` for day-band sticky offset.
  *  • **Per-surface `scrollX`** — frozen identity pane vs clipped board.
+ *  • **Sticky bottom X gutter** — when `scrollX`, a synced visible scrollbar
+ *    sits at the bottom of the visible sheet (self-scroll flex) or sticks to
+ *    the page port (split-x). Body keeps `no-scrollbar`; edge shadows stay.
  *  • **Ancestor page scroll** — when `scrollParentRef` is set (Pending under
  *    `DashboardScrollShell`), Y scroll lives on the parent so KPI strips can
  *    scroll away; this surface keeps X-only scroll (`overflow-y: clip`) so the
@@ -131,45 +137,13 @@ export function LedgerGrid<T>({
   'aria-label': ariaLabel,
   'data-testid': dataTestId = 'ledger-grid-body',
 }: LedgerGridProps<T>) {
-  const bodyRef = useRef<HTMLDivElement>(null);
+  // Outer shell — edge-shadow classes + CSS vars. Self-scroll with scrollX
+  // keeps Y/X on an INNER port so the sticky X gutter can sit as a flex sibling.
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  // Self-scroll virtualizer / onScroll / caller bodyRef target.
+  const scrollPortRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-
-  // Self-scrolling mode windows against our OWN `bodyRef`, which is still null on
-  // the first render — so the virtualizer would initialize with no scroll element
-  // and hand back zero items. Attaching a ref does not re-render, so nothing ever
-  // re-reads it and the grid stays permanently blank (it only "worked" when an
-  // unrelated re-render happened to land after mount, which made this look
-  // intermittent). One post-mount render lets `getScrollElement()` see the node.
-  // Ancestor-scroll consumers are unaffected: their ref belongs to a parent that
-  // is already mounted when this child first renders.
-  const [, forceScrollElementRead] = useState(0);
-  useLayoutEffect(() => {
-    if (scrollParentRef) return;
-    forceScrollElementRead((n) => n + 1);
-  }, [scrollParentRef]);
-
-  // Mirror the scroll body onto an optional caller ref (receiving keyboard nav).
-  useLayoutEffect(() => {
-    if (!bodyRefProp) return;
-    const mutable = bodyRefProp as MutableRefObject<HTMLDivElement | null>;
-    mutable.current = bodyRef.current;
-    return () => {
-      mutable.current = null;
-    };
-  });
-
-  // Publish the column header's REAL rendered height as `--cf-grid-header-h` on
-  // the scroll surface so day bands (when enabled) dock beneath it.
-  useLayoutEffect(() => {
-    const header = headerRef.current;
-    const surface = bodyRef.current;
-    if (!header || !surface) return;
-    const publish = () => surface.style.setProperty('--cf-grid-header-h', `${header.offsetHeight}px`);
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(header);
-    return () => ro.disconnect();
-  }, []);
+  const xScrollRef = useRef<HTMLDivElement>(null);
 
   // Empty means NO ROWS — not "no bands". Testing the band count made a surface
   // that always emits one band (`[['', groups]]`, the natural shape for a flat
@@ -187,13 +161,66 @@ export function LedgerGrid<T>({
   // (sticky against the page port, clipped) and its row is translated by the
   // synced `--cf-grid-sx` offset (see globals.css `[data-grid-split-x]`).
   const splitX = useAncestorScroll && scrollX;
-  const xScrollRef = useRef<HTMLDivElement>(null);
+  // Self-scroll + scrollX: dual-axis port is nested so the X gutter can pin.
+  const selfScrollX = scrollX && !useAncestorScroll;
+  // Vertical-only self-scroll (shelf board): surface IS the scrollport.
+  const selfScrollYOnly = !useAncestorScroll && !scrollX;
+
+  // Real h-scroll source for the sticky gutter (and edge-shadow metrics).
+  const hScrollSourceRef = splitX ? xScrollRef : scrollPortRef;
+  const stickyXEnabled = scrollX && !empty;
+  const { gutterRef, spacerWidth, overflowX } = useSyncedHorizontalScrollbar(
+    hScrollSourceRef,
+    stickyXEnabled,
+  );
+
+  // Self-scrolling mode windows against our OWN scroll port, which is still null
+  // on the first render — so the virtualizer would initialize with no scroll
+  // element and hand back zero items. Attaching a ref does not re-render, so
+  // nothing ever re-reads it and the grid stays permanently blank. One post-mount
+  // render lets `getScrollElement()` see the node. Ancestor-scroll consumers are
+  // unaffected: their ref belongs to a parent already mounted.
+  const [, forceScrollElementRead] = useState(0);
+  useLayoutEffect(() => {
+    if (scrollParentRef) return;
+    forceScrollElementRead((n) => n + 1);
+  }, [scrollParentRef]);
+
+  // Mirror the scroll body onto an optional caller ref (receiving keyboard nav).
+  // Self-scroll → nested port (or surface when Y-only). Split-x → surface
+  // (page owns Y; callers still want a stable grid root).
+  useLayoutEffect(() => {
+    if (!bodyRefProp) return;
+    const mutable = bodyRefProp as MutableRefObject<HTMLDivElement | null>;
+    mutable.current =
+      selfScrollYOnly
+        ? surfaceRef.current
+        : selfScrollX
+          ? scrollPortRef.current
+          : surfaceRef.current;
+    return () => {
+      mutable.current = null;
+    };
+  });
+
+  // Publish the column header's REAL rendered height as `--cf-grid-header-h` on
+  // the scroll surface so day bands (when enabled) dock beneath it.
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const surface = surfaceRef.current;
+    if (!header || !surface) return;
+    const publish = () => surface.style.setProperty('--cf-grid-header-h', `${header.offsetHeight}px`);
+    publish();
+    const ro = new ResizeObserver(publish);
+    ro.observe(header);
+    return () => ro.disconnect();
+  }, []);
 
   // When Y lives on an ancestor, depth under the sticky header follows that port.
   useLayoutEffect(() => {
     if (!useAncestorScroll || !scrollParentRef) return;
     const parent = scrollParentRef.current;
-    const surface = bodyRef.current;
+    const surface = surfaceRef.current;
     const header = headerRef.current;
     if (!parent || !surface || !header) return;
     const sync = () => {
@@ -206,11 +233,41 @@ export function LedgerGrid<T>({
     return () => parent.removeEventListener('scroll', sync);
   }, [useAncestorScroll, scrollParentRef]);
 
+  // Dual h-scroll edge shadows (`cf-grid-overflow-start` / `-end`) — ResizeObserver
+  // so the RIGHT shadow shows at rest when columns sit off-card (Notion cue).
+  // Classes land on `[data-cf-grid]`; scroll metrics come from the real X port.
+  useLayoutEffect(() => {
+    if (!scrollX) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+
+    const scrollEl = () => (splitX ? xScrollRef.current : scrollPortRef.current);
+    const sync = () => {
+      const el = scrollEl();
+      if (!el) return;
+      applyGridOverflowXClasses(surface, el);
+    };
+
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(surface);
+    const initial = scrollEl();
+    if (initial && initial !== surface) {
+      ro.observe(initial);
+      if (initial.firstElementChild instanceof Element) {
+        ro.observe(initial.firstElementChild);
+      }
+    } else if (surface.firstElementChild instanceof Element) {
+      ro.observe(surface.firstElementChild);
+    }
+    return () => ro.disconnect();
+  }, [scrollX, splitX, empty, contentMinWidthRem, selfScrollX]);
+
   const surfaceStyle: CSSProperties = {
     ...columnVars,
     ...(scrollX
       ? {
-          [ORDERS_QUEUE_GRID_WIDTH_VAR]: ordersQueueGridWidthVarValue(
+          [LEDGER_GRID_WIDTH_VAR]: ledgerGridWidthVarValue(
             contentMinWidthRem ?? 40,
           ),
         }
@@ -218,11 +275,11 @@ export function LedgerGrid<T>({
   };
 
   // Split mode: mirror the inner body's h-scroll onto the surface as the
-  // `--cf-grid-sx` offset (header-row translation) + the frozen-edge shadow.
+  // `--cf-grid-sx` offset (header-row translation) + overflow edge shadows.
   const syncSplitScroll = (el: HTMLElement) => {
-    const surface = bodyRef.current;
+    const surface = surfaceRef.current;
     if (!surface) return;
-    surface.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
+    applyGridOverflowXClasses(surface, el);
     surface.style.setProperty('--cf-grid-sx', `${-el.scrollLeft}px`);
   };
 
@@ -230,7 +287,10 @@ export function LedgerGrid<T>({
     <VirtualGroupedSections
       orderGroupsByDate={orderGroupsByDate}
       daySections={daySections}
-      scrollParentRef={scrollParentRef ?? bodyRef}
+      scrollParentRef={
+        scrollParentRef
+        ?? (selfScrollX ? scrollPortRef : surfaceRef)
+      }
       useAncestorScroll={useAncestorScroll}
       renderRow={renderRow}
       renderGroup={renderGroup}
@@ -243,9 +303,41 @@ export function LedgerGrid<T>({
     />
   );
 
+  const headerBand = (
+    <div
+      ref={headerRef}
+      // The caller's `columnHeader` carries `role="row"` + `role="columnheader"`.
+      // Both have a REQUIRED context role (`row` needs rowgroup/table/grid;
+      // `columnheader` needs a row in a table/grid). Without this rowgroup the
+      // header roles are orphaned and the markup is spec-invalid.
+      role="rowgroup"
+      data-grid-col-header=""
+      className={cn(
+        // `relative` keeps the band a positioning context for anything a
+        // family anchors to the VISIBLE header rather than the translated
+        // wide header row (frozen-edge chrome under split mode).
+        'relative sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
+        splitX && 'overflow-x-clip',
+      )}
+    >
+      {columnHeader}
+    </div>
+  );
+
+  // Always mount when scrollX + rows so the sync hook can attach; collapse
+  // visually when content fits (no triage bar without overflow).
+  const stickyGutter = stickyXEnabled ? (
+    <GridStickyXScrollbar
+      gutterRef={gutterRef}
+      spacerWidth={spacerWidth}
+      mode={splitX ? 'sticky' : 'flex'}
+      className={cn(!overflowX && 'pointer-events-none h-0 opacity-0')}
+    />
+  ) : null;
+
   return (
     <div
-      ref={bodyRef}
+      ref={surfaceRef}
       // `table`, NOT `grid`. ARIA `grid` is a composite widget and asserting it
       // obligates the full APG keyboard contract (roving tabindex, arrow-key cell
       // navigation, Home/End, Ctrl+Home/End) which this shell does not implement.
@@ -261,19 +353,14 @@ export function LedgerGrid<T>({
       data-cf-grid
       data-grid-skin={gridSkin}
       data-grid-split-x={splitX ? '' : undefined}
-      data-testid={splitX ? undefined : dataTestId}
+      data-testid={splitX || selfScrollX ? undefined : dataTestId}
       onScroll={
-        splitX
-          ? undefined
-          : (e) => {
+        selfScrollYOnly
+          ? (e) => {
               const el = e.currentTarget;
-              // Frozen-edge shadow while fact columns scroll under the pinned identity pane.
-              if (scrollX) el.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
-              // Self-scroll only: ancestor mode syncs cf-grid-scrolled-y from the parent.
-              if (!useAncestorScroll) {
-                el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
-              }
+              el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
             }
+          : undefined
       }
       className={cn(
         'relative flex min-w-0 w-full flex-col bg-surface-card',
@@ -282,10 +369,13 @@ export function LedgerGrid<T>({
             // NON-scroll container (clip only) so the sticky header docks to the
             // page port; the inner body box owns overflow-x.
             'overflow-x-clip'
-          : cn(
-              'h-full min-h-0 flex-1 overflow-y-auto no-scrollbar',
-              scrollX ? 'overflow-x-auto' : 'overflow-x-hidden',
-            ),
+          : selfScrollX
+            ? // Constrained sheet: Y/X on the nested port; gutter is a flex sibling.
+              'h-full min-h-0 flex-1 overflow-hidden'
+            : cn(
+                'h-full min-h-0 flex-1 overflow-y-auto overscroll-y-none no-scrollbar',
+                'overflow-x-hidden',
+              ),
         className,
       )}
       style={surfaceStyle}
@@ -294,42 +384,48 @@ export function LedgerGrid<T>({
         <div className="flex flex-1 flex-col items-center justify-center py-40 text-center">
           {isSearching ? searchEmptyState ?? emptyState : emptyState}
         </div>
+      ) : splitX ? (
+        <>
+          {headerBand}
+          <div
+            ref={xScrollRef}
+            data-testid={dataTestId}
+            className="min-w-0 w-full overflow-x-auto overflow-y-clip overscroll-x-none no-scrollbar"
+            onScroll={(e) => syncSplitScroll(e.currentTarget)}
+          >
+            {body}
+          </div>
+          {stickyGutter}
+        </>
+      ) : selfScrollX ? (
+        <>
+          <div
+            ref={scrollPortRef}
+            data-testid={dataTestId}
+            className={cn(
+              'relative flex min-h-0 min-w-0 w-full flex-1 flex-col',
+              // Dual-axis port: trackpad X + Y. Bars hidden — sticky gutter owns X.
+              'overflow-x-auto overflow-y-auto overscroll-x-none overscroll-y-none no-scrollbar',
+            )}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const surface = surfaceRef.current;
+              if (surface) applyGridOverflowXClasses(surface, el);
+              el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
+              // Mirror Y-scrolled cue onto the shell so sticky-header CSS still
+              // matches `[data-cf-grid].cf-grid-scrolled-y`.
+              surface?.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
+            }}
+          >
+            {headerBand}
+            {body}
+          </div>
+          {stickyGutter}
+        </>
       ) : (
         <>
-          {/* Sticky + frozen column header — pins to the active scrollport top
-              (self or page ancestor); opaque so virtualized rows never paint
-              through. Frozen select/title cells keep sticky-left inside this
-              band (self-scroll), or counter-translate under split mode. */}
-          <div
-            ref={headerRef}
-            // The caller's `columnHeader` carries `role="row"` + `role="columnheader"`.
-            // Both have a REQUIRED context role (`row` needs rowgroup/table/grid;
-            // `columnheader` needs a row in a table/grid). Without this rowgroup the
-            // header roles are orphaned and the markup is spec-invalid.
-            role="rowgroup"
-            data-grid-col-header=""
-            className={cn(
-              // `relative` keeps the band a positioning context for anything a
-              // family anchors to the VISIBLE header rather than the translated
-              // wide header row (frozen-edge chrome under split mode).
-              'relative sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
-              splitX && 'overflow-x-clip',
-            )}
-          >
-            {columnHeader}
-          </div>
-          {splitX ? (
-            <div
-              ref={xScrollRef}
-              data-testid={dataTestId}
-              className="min-w-0 w-full overflow-x-auto overflow-y-clip"
-              onScroll={(e) => syncSplitScroll(e.currentTarget)}
-            >
-              {body}
-            </div>
-          ) : (
-            body
-          )}
+          {headerBand}
+          {body}
         </>
       )}
     </div>

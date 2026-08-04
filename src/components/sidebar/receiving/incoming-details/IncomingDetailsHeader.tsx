@@ -1,23 +1,29 @@
 'use client';
 
 /**
- * Incoming details stack header — house PaneHeader chrome (icon badge + label
- * + status pill + action bar with Sync + prev/next + tabs). The panel is a
- * NON-MODAL rail inspector, so there is no scrim to click off: the header
- * carries the explicit close (Escape still works via RightRailHost).
+ * Incoming details stack header — composes {@link DeskRailChromeRow} (SoT):
+ *
+ * ```text
+ * [→|] ……………………………… [↑][↓][↻]
+ * tabs
+ * identity
+ * ```
+ *
+ * NON-MODAL: Escape via RightRailHost; outset edge-collapse suppressed
+ * (`edgeCollapse={false}`).
  */
 
 import { Inbox, RefreshCw } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
-  PaneHeader,
-  PaneHeaderActionBar,
-  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
   PaneHeaderTabs,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { IconButton } from '@/design-system/primitives';
 import type { DetailsResponse, TabId } from './incoming-details-shared';
 
 function statusTone(
@@ -46,6 +52,8 @@ export function IncomingDetailsHeader({
   tab,
   onTabChange,
   onClose,
+  /** Selection-plane actions (Copy / Print / Ticket) when the check-set is published. */
+  selectionActions = [],
 }: {
   headerPo: string;
   headerTracking: string;
@@ -60,6 +68,7 @@ export function IncomingDetailsHeader({
   tab: TabId;
   onTabChange: (next: TabId) => void;
   onClose: () => void;
+  selectionActions?: PaneHeaderActionBarAction[];
 }) {
   const eyebrow = isInboundOnly
     ? 'Marketplace order'
@@ -72,46 +81,81 @@ export function IncomingDetailsHeader({
     headerOrder ||
     (headerTracking ? headerTracking : '—');
 
-  const actions: PaneHeaderActionBarAction[] = isShipmentOnly
-    ? []
-    : [
-        {
-          key: 'sync',
-          label: syncing ? 'Syncing' : isInboundOnly ? 'Resync' : 'Sync',
-          icon: <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />,
-          onClick: onSync,
-          disabled: syncing,
-          toneClassName: 'text-emerald-700',
-          title: isInboundOnly
-            ? 'Re-pull this order from linked marketplace accounts (eBay) + re-poll its shipment'
-            : 'Re-pull this PO from inventory + re-poll its shipment',
-          ariaLabel: isInboundOnly ? 'Resync this marketplace order' : 'Sync this PO',
-        },
-      ];
+  const syncTitle = isInboundOnly
+    ? 'Re-pull this order from linked marketplace accounts (eBay) + re-poll its shipment'
+    : 'Re-pull this PO from inventory + re-poll its shipment';
+  const syncAria = isInboundOnly ? 'Resync this marketplace order' : 'Sync this PO';
 
   const navigate = (direction: 'prev' | 'next') => {
     window.dispatchEvent(new CustomEvent('receiving-navigate-table', { detail: direction }));
   };
 
   return (
-    <PaneHeader
-      className="shrink-0 border-border-hairline bg-surface-card/90 backdrop-blur-xl"
-      rowClassName="px-6"
-      leftSlot={
-        <>
-          <PaneHeaderIconBadge Icon={Inbox} bg="bg-emerald-100" tint="text-emerald-700" />
+    <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
+      <DeskRailChromeRow
+        onClose={onClose}
+        onPrev={() => navigate('prev')}
+        onNext={() => navigate('next')}
+        prevTestId="incoming-details-prev"
+        nextTestId="incoming-details-next"
+        trailing={
+          selectionActions.length > 0 || !isShipmentOnly ? (
+            <>
+              {selectionActions.map((action) => {
+                const label =
+                  action.title ??
+                  (typeof action.label === 'string' ? action.label : action.key);
+                return (
+                  <HoverTooltip key={action.key} label={label} asChild>
+                    <IconButton
+                      size="xs"
+                      tone="neutral"
+                      disabled={action.disabled}
+                      ariaLabel={label}
+                      onClick={action.onClick}
+                      icon={action.icon}
+                    />
+                  </HoverTooltip>
+                );
+              })}
+              {isShipmentOnly ? null : (
+                <HoverTooltip label={syncTitle} asChild>
+                  <IconButton
+                    size="xs"
+                    tone="neutral"
+                    disabled={syncing}
+                    ariaLabel={syncAria}
+                    onClick={onSync}
+                    data-testid="incoming-details-sync"
+                    className="text-emerald-700"
+                    icon={
+                      <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                    }
+                  />
+                </HoverTooltip>
+              )}
+            </>
+          ) : undefined
+        }
+      />
+
+      <PaneHeaderTabs
+        dense
+        tabs={tabs}
+        value={tab}
+        onChange={onTabChange}
+        className="px-2"
+      />
+      <div className="flex items-center gap-2 px-2 pb-2 pt-1">
+        <PaneHeaderIconBadge Icon={Inbox} bg="bg-emerald-100" tint="text-emerald-700" />
+        <div className="flex min-w-0 flex-col gap-1">
           <PaneHeaderLabel
             eyebrow={eyebrow}
             value={value}
             valueTitle={value}
           />
-        </>
-      }
-      rightSlot={<PaneHeaderCloseButton onClick={onClose} title="Close details" />}
-      belowSlot={
-        <>
           {(statusLabel || vendorName) ? (
-            <div className="flex flex-wrap items-center gap-2 px-6 pb-2">
+            <div className="flex flex-wrap items-center gap-2">
               {statusLabel ? (
                 <PaneHeaderStatusPill tone={statusTone(statusLabel)} pulse={false}>
                   {statusLabel}
@@ -124,27 +168,9 @@ export function IncomingDetailsHeader({
               ) : null}
             </div>
           ) : null}
-          <div className="px-6 py-2">
-            <PaneHeaderActionBar
-              iconOnly={actions.length > 0}
-              variant="card"
-              actions={actions}
-              onPrev={() => navigate('prev')}
-              onNext={() => navigate('next')}
-              prevTitle="Previous row"
-              nextTitle="Next row"
-            />
-          </div>
-          <PaneHeaderTabs
-            dense
-            tabs={tabs}
-            value={tab}
-            onChange={onTabChange}
-            className="px-6"
-          />
-        </>
-      }
-    />
+        </div>
+      </div>
+    </div>
   );
 }
 

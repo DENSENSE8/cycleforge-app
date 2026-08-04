@@ -39,16 +39,48 @@ export interface PackActiveOrderPane {
   isUnknownOrder?: boolean;
 }
 
+/**
+ * An FBA scan is the OTHER active entity this bench resolves — a shipment /
+ * FNSKU, not an order — so it gets its own pane rather than being flattened
+ * into `PackActiveOrderPane`. Shape mirrors what `/api/fba/items/scan` and the
+ * ship-on-scan path already return.
+ */
+export interface PackActiveFbaPane {
+  fnsku: string;
+  productTitle: string;
+  shipmentRef: string | null;
+  plannedQty: number;
+  combinedPackScannedQty: number;
+  /** No `fba_shipment_items` row existed — the scan added it on the fly. */
+  isNew: boolean;
+}
+
 export function usePackerOrderPane() {
   const [activeOrderPane, setActiveOrderPane] = useState<PackActiveOrderPane | null>(null);
+  const [activeFbaPane, setActiveFbaPane] = useState<PackActiveFbaPane | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<PackActiveOrderPane | null>).detail;
       setActiveOrderPane(detail || null);
+      // One entity in the operator's hands at a time (`display/station.md` §5).
+      // An order scan retires a standing FBA card and vice versa — otherwise the
+      // bench holds two active entities and the pane has to pick a winner every
+      // render, which is the "two things that can disagree" shape.
+      if (detail) setActiveFbaPane(null);
     };
     window.addEventListener('pack-active-order-changed', handler);
     return () => window.removeEventListener('pack-active-order-changed', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<PackActiveFbaPane | null>).detail;
+      setActiveFbaPane(detail || null);
+      if (detail) setActiveOrderPane(null);
+    };
+    window.addEventListener('pack-active-fba-changed', handler);
+    return () => window.removeEventListener('pack-active-fba-changed', handler);
   }, []);
 
   // Act-and-clear dwell: hold the active order for 2 minutes, then clear it so
@@ -62,9 +94,21 @@ export function usePackerOrderPane() {
     return () => clearTimeout(timer);
   }, [activeOrderPane]);
 
-  return { activeOrderPane, setActiveOrderPane };
+  // Same act-and-clear dwell for the FBA card — a station bench must return to
+  // "ready for the next scan" on its own, not hold the last entity forever.
+  useEffect(() => {
+    if (!activeFbaPane) return;
+    const timer = setTimeout(() => setActiveFbaPane(null), ACTIVE_ORDER_AUTO_HIDE_MS);
+    return () => clearTimeout(timer);
+  }, [activeFbaPane]);
+
+  return { activeOrderPane, setActiveOrderPane, activeFbaPane, setActiveFbaPane };
 }
 
 export function dispatchPackActiveOrder(detail: PackActiveOrderPane | null) {
   window.dispatchEvent(new CustomEvent('pack-active-order-changed', { detail }));
+}
+
+export function dispatchPackActiveFba(detail: PackActiveFbaPane | null) {
+  window.dispatchEvent(new CustomEvent('pack-active-fba-changed', { detail }));
 }

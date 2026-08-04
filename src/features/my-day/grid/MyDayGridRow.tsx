@@ -2,7 +2,11 @@
 
 import { Fragment, memo, type ReactNode } from 'react';
 import { OrderIdChip, TicketChip, getLast8 } from '@/components/ui/CopyChip';
-import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
+import {
+  GridCellDash,
+  GridDateCellValue,
+  GridStatusCellValue,
+} from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { workStatusChipClass, workStatusLabel } from '@/lib/work-orders/work-status-display';
@@ -27,20 +31,6 @@ import { MY_DAY_GRID_CAPABILITIES } from './my-day-grid-descriptor';
 
 const dataCell = (col: MyDayGridColumn, rule = true) =>
   cn(myDayGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
-
-/** Chip trio + the house micro type — one shape for the lane and status tracks. */
-function GridTagChip({ label, toneClass }: { label: string; toneClass: string }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
-        toneClass,
-      )}
-    >
-      {label}
-    </span>
-  );
-}
 
 /**
  * One Today task — CSS-grid columns matching {@link MY_DAY_GRID_COLUMNS}.
@@ -87,10 +77,6 @@ export const MyDayGridRow = memo(function MyDayGridRow({
             style={{ left: myDayGridFrozenLeft('task') }}
             data-frozen-edge
           >
-            <span
-              className={cn('h-2 w-2 shrink-0 rounded-full', myDayLaneDot(task.lane))}
-              aria-hidden
-            />
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {task.title}
             </span>
@@ -102,9 +88,10 @@ export const MyDayGridRow = memo(function MyDayGridRow({
       case 'lane':
         return (
           <div data-col="lane" className={dataCell(col, rule)}>
-            <GridTagChip
+            <GridStatusCellValue
               label={myDayLaneShortLabel(task.lane)}
               toneClass={myDayLaneChipClass(task.lane)}
+              dotClass={myDayLaneDot(task.lane)}
             />
           </div>
         );
@@ -148,7 +135,7 @@ export const MyDayGridRow = memo(function MyDayGridRow({
         return (
           <div data-col="status" className={dataCell(col, rule)}>
             {status ? (
-              <GridTagChip label={status} toneClass={workStatusChipClass(task.status)} />
+              <GridStatusCellValue label={status} toneClass={workStatusChipClass(task.status)} />
             ) : (
               <GridCellDash />
             )}

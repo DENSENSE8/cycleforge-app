@@ -4,7 +4,8 @@
  * The Unbox checklist — the live "where am I" display, on the right edge.
  *
  * Mounted as the `checklist` display in the right-edge Displays push column
- * ({@link ReceivingDisplaysPushStack}). Opened via the pane scan-progress ring
+ * ({@link ReceivingDisplaysPushStack}). Opened via the dock-anchored scan-progress ring
+ * under the terminal ({@link UnboxScanProgressControl}).
  * (ring-only — no strip cell). It is the station's live "where am I": the
  * operator's first question on every carton is what is left on it.
  *
@@ -46,8 +47,8 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 type UnboxProcedureChecklistProps = {
   row: ReceivingLineRow;
   /**
-   * Cap visible rows (scroll for the rest). Used by the scan-progress hover
-   * peek — pass {@link SCAN_STATION_CHECKLIST_PREVIEW_ROWS}.
+   * Cap visible rows (scroll for the rest). Omit for the scan-progress hover
+   * peek — that surface shows the full checklist at natural height.
    */
   maxVisibleRows?: number;
 };
@@ -76,7 +77,7 @@ export function UnboxProcedureChecklist({
   row,
   maxVisibleRows,
 }: UnboxProcedureChecklistProps) {
-  const { steps, settled, stepCount, focusStep } = useUnboxProcedureSteps(row);
+  const { steps, settled, stepCount, focusStep, flowLabel } = useUnboxProcedureSteps(row);
 
   const doneCount = steps.reduce((n, step) => n + (step.state === 'done' ? 1 : 0), 0);
   const allDone = steps.length > 0 && doneCount === steps.length;
@@ -87,7 +88,7 @@ export function UnboxProcedureChecklist({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Unbox procedure
+          {flowLabel}
         </p>
         {settled && steps.length > 0 ? (
           <span

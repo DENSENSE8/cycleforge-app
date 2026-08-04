@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import StationPacking from '@/components/station/StationPacking';
+import PackScanColumn from '@/components/station/PackScanColumn';
 import { PackRecentPacksRail } from '@/components/sidebar/packer/PackRecentPacksRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,8 +29,7 @@ export function PackerSidebarPanel() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-hidden">
-        <StationPacking
-          embedded
+        <PackScanColumn
           userId={packerId}
           userName={packerName}
           staffId={packerId}

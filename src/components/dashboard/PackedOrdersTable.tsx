@@ -11,7 +11,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { workbenchTableViewportClass } from '@/components/dashboard/workbench-shell';
+import {
+  WORKBENCH_SHEET_HOST,
+  workbenchTableViewportClass,
+} from '@/components/dashboard/workbench-shell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
@@ -19,6 +22,7 @@ import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
+import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
@@ -81,7 +85,7 @@ export function PackedOrdersTable({
     const params = new URLSearchParams(searchParams.toString());
     params.delete('search');
     const qs = params.toString();
-    router.replace(qs ? `${pathname || '/dashboard'}?${qs}` : pathname || '/dashboard', {
+    router.replace(qs ? `${pathname || '/shipping/orders'}?${qs}` : pathname || '/shipping/orders', {
       scroll: false,
     });
   }, [pathname, router, searchParams]);
@@ -115,7 +119,7 @@ export function PackedOrdersTable({
           {toolbar}
         </div>
       )}
-      <div className={workbenchTableViewportClass({ bulkBarInset })}>
+      <div className={cn(WORKBENCH_SHEET_HOST, workbenchTableViewportClass({ bulkBarInset }))}>
         <OrdersGridView
           ariaLabel="Packed orders"
           records={records as ShippedOrder[]}

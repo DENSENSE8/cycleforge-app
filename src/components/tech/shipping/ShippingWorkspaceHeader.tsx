@@ -14,7 +14,7 @@ import {
 } from '@/components/dashboard/OutboundFilterStrip';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -62,12 +62,12 @@ export function ShippingWorkspaceHeader({
   > = {
     pending: {
       search: (
-        <ToolbarSearchToggle
+        <TechRailSearchBar
+          variant="chrome"
           value={searchQuery}
           onChange={setSearch}
-          onClear={() => setSearch('')}
           placeholder="Filter orders…"
-          tone="blue"
+          className="w-40 shrink-0 lg:w-56"
         />
       ),
       right: <OutboundExactFilters mode="unshipped" />,

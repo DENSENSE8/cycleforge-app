@@ -19,11 +19,14 @@ describe('compareReceivingGridRows', () => {
     assert.ok(compareReceivingGridRows(a, b, 'date', 'asc', 'unboxed') < 0);
   });
 
-  it('sorts stage desc by unboxed_at (newest first)', () => {
+  // Same-day rows separate by the TIME half of `date` — the assertion the old
+  // `stage` column's own case used to carry, kept after that track was deleted
+  // (2026-08-02) so the intra-day ordering stays pinned.
+  it('sorts date desc within one day (clock, not just the civil key)', () => {
     const a = row({ id: 1, unboxed_at: '2026-07-22T10:00:00Z' });
     const b = row({ id: 2, unboxed_at: '2026-07-22T12:00:00Z' });
-    assert.ok(compareReceivingGridRows(a, b, 'stage', 'desc', 'unboxed') > 0);
-    assert.ok(compareReceivingGridRows(a, b, 'stage', 'asc', 'unboxed') < 0);
+    assert.ok(compareReceivingGridRows(a, b, 'date', 'desc', 'unboxed') > 0);
+    assert.ok(compareReceivingGridRows(a, b, 'date', 'asc', 'unboxed') < 0);
   });
 
   it('sorts title case-insensitively', () => {

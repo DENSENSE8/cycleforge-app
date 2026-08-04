@@ -13,7 +13,7 @@
  * forbids ("L2 Mode lives in GlobalHeader… never remount a full-width mode rail
  * as a twin"), and 60px of permanent vertical cost on the first screen an
  * operator opens. Home's modes are now registered in `SIDEBAR_PAGE_NAV`, so
- * `HeaderModeSwitcher` serves them exactly like Dashboard's and Operations'.
+ * `HeaderPageSwitcher` serves them exactly like Dashboard's and Operations'.
  *
  * Composition (do not rebuild):
  *   today → `MyDayWorkspace` (the Today triage workbench)
@@ -37,7 +37,7 @@ export function HomeWorkspace() {
         {mode === 'today' && <MyDayWorkspace />}
         {mode === 'inbox' && <HomeInboxMode />}
         {mode === 'forge' && (
-          <div className="h-full overflow-hidden px-4 py-4">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 py-4">
             <AgenticLoopLiveConsole />
           </div>
         )}

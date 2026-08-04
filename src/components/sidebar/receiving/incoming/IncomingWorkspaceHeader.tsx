@@ -1,22 +1,21 @@
 'use client';
 
 /**
- * Incoming workbench chrome — the golden `WorkbenchChromeHeader` recipe applied
- * to the Incoming right pane (the sibling of `OutboundWorkspaceHeader`).
+ * Inbound desk chrome — Pipeline (on the way) | Docked (landed activity).
  *
- * Left:   purchasing-source tabs — All / Zoho / eBay.
- * Right:  [⌕ search] · [⫶ filters].
- * Trailing: [page] · [sort] · Check · Import · Add.
- *
- * POS ↔ Email lives in {@link IncomingSidebarPanel}. Delivery attention
- * (`?state=`) + PO date live in the filter popover. Search + refinements write
- * the SAME URL params the list reads (`?rh_q` / `?state` / `?sort` /
- * `?po_from` / `?po_to` / `?inbound`).
+ * Primary tabs write `?lane=` (omit = pipeline). Pipeline keeps All / Zoho / eBay
+ * plus PO filters, pagination, Import/Add. Docked reuses the Triage / Unbox sort
+ * tabs (`inbound-docked-tabs`) and history `rh_*` search.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
+import {
+  applyInboundLane,
+  parseInboundLane,
+  type InboundLane,
+} from '@/lib/receiving/inbound-lane';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
@@ -26,26 +25,56 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { PaneHeaderPagination } from '@/components/ui/pane-header';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { ToolbarButton } from '@/components/ui/ToolbarButton';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { AlertTriangle, ExternalLink, Layout } from '@/components/Icons';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { useDebounce } from '@/hooks';
+import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { useAuth } from '@/contexts/AuthContext';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
 import {
   INCOMING_SORT_OPTIONS,
   type IncomingSort,
 } from '@/components/sidebar/receiving/IncomingPaneHeader';
-import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
+import {
+  RECEIVING_HISTORY_SEARCH_FIELDS,
+  RECEIVING_HISTORY_URL_PARAMS,
+  getReceivingHistoryPlaceholder,
+  normalizeReceivingHistorySearchField,
+  normalizeReceivingHistorySearchScope,
+  setReceivingHistoryUrlParams,
+  type ReceivingHistorySearchScope,
+} from '@/lib/receiving-history-search';
+import {
+  DASHBOARD_RECEIVING_TABS,
+  dashboardReceivingSortDelta,
+  dashboardReceivingTabFromSort,
+  type DashboardReceivingTab,
+} from './inbound-docked-tabs';
 import { IncomingSyncDialog } from '@/components/sidebar/receiving/IncomingSyncDialog';
 import { useIncomingSummary } from './useIncomingSummary';
 import { useIncomingFilters } from './useIncomingFilters';
 import { useIncomingSyncActions } from './useIncomingSyncActions';
 import { IncomingChromeActions } from './IncomingChromeActions';
 import { IncomingImportEbayOverlay } from './IncomingImportEbayOverlay';
-import { IncomingZohoReceivedCheckRail } from './IncomingZohoReceivedCheckRail';
+import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
 import { TILES, TONE } from './incoming-tiles';
-
 type IncomingSourceTab = 'all' | 'zoho' | 'ebay';
+
+const LANE_TABS = [
+  { id: 'pipeline', label: 'Pipeline', color: 'blue' as const },
+  { id: 'docked', label: 'Docked', color: 'blue' as const, dividerBefore: true },
+];
+
+const SCOPE_ITEMS: {
+  id: ReceivingHistorySearchScope;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+}[] = [
+  { id: 'all', label: 'All', icon: Layout },
+  { id: 'unmatched', label: 'Unfound', icon: AlertTriangle },
+];
 
 interface IncomingWorkspaceHeaderProps {
   /** Total matching rows across all pages (from `total` in the list response). */
@@ -69,9 +98,12 @@ export function IncomingWorkspaceHeader({
   const canAddEbay = has('integrations.ebay');
   const universalIncoming = summary?.universal_incoming ?? false;
 
+  const lane: InboundLane = parseInboundLane(searchParams.get('lane'));
+  const isPipeline = lane === 'pipeline';
+
   const [addOpen, setAddOpen] = useState(false);
   const [addOrderId, setAddOrderId] = useState('');
-  const [checkOpen, setCheckOpen] = useState(false);
+  const [pasteAction, setPasteAction] = useState<'filter' | 'check' | null>(null);
 
   useEffect(() => {
     const onStationImport = (event: Event) => {
@@ -84,10 +116,36 @@ export function IncomingWorkspaceHeader({
     return () => window.removeEventListener('station:import-ebay-order', onStationImport);
   }, []);
 
+  const replaceParams = useCallback(
+    (next: URLSearchParams) => {
+      const qs = next.toString();
+      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+    },
+    [router, base],
+  );
+
+  const setLane = useCallback(
+    (id: string) => {
+      const nextLane: InboundLane = id === 'docked' ? 'docked' : 'pipeline';
+      replaceParams(applyInboundLane(searchParams, nextLane));
+    },
+    [replaceParams, searchParams],
+  );
+
   const activeSource: IncomingSourceTab = (() => {
     const raw = (searchParams.get('inbound') || '').trim().toLowerCase();
     return raw === 'ebay' ? 'ebay' : raw === 'zoho' ? 'zoho' : 'all';
   })();
+
+  const dockedTab: DashboardReceivingTab = dashboardReceivingTabFromSort(searchParams.get('sort'));
+  const searchField = useMemo(
+    () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
+    [searchParams],
+  );
+  const searchScope = useMemo(
+    () => normalizeReceivingHistorySearchScope(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.scope)),
+    [searchParams],
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / INCOMING_PAGE_SIZE));
   const safePage = Math.min(Math.max(1, page), totalPages);
@@ -97,9 +155,9 @@ export function IncomingWorkspaceHeader({
       const params = new URLSearchParams(searchParams.toString());
       if (next <= 1) params.delete('page');
       else params.set('page', String(next));
-      router.replace(`${base}?${params.toString()}`);
+      replaceParams(params);
     },
-    [router, searchParams, base],
+    [replaceParams, searchParams],
   );
 
   const setSource = useCallback(
@@ -108,32 +166,48 @@ export function IncomingWorkspaceHeader({
       if (id === 'all') params.delete('inbound');
       else params.set('inbound', id);
       params.delete('page');
-      router.replace(`${base}?${params.toString()}`);
+      replaceParams(params);
     },
-    [router, searchParams, base],
+    [replaceParams, searchParams],
+  );
+
+  const setDockedTab = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      const delta = dashboardReceivingSortDelta(id as DashboardReceivingTab);
+      if (delta === null) next.delete('sort');
+      else next.set('sort', delta);
+      if (id === 'unbox' && searchScope !== 'all') next.delete(RECEIVING_HISTORY_URL_PARAMS.scope);
+      replaceParams(next);
+    },
+    [replaceParams, searchParams, searchScope],
   );
 
   const urlQRaw = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
-  const [draft, setDraft] = useState(urlQRaw);
-  useEffect(() => {
-    setDraft(urlQRaw);
-  }, [urlQRaw]);
-  const debouncedDraft = useDebounce(draft, 250);
-  useEffect(() => {
-    if (debouncedDraft.trim() === urlQRaw.trim()) return;
-    filters.setSearch(debouncedDraft);
-  }, [debouncedDraft, urlQRaw, filters]);
+
+  const setWorkbenchSearch = useCallback(
+    (q: string) => {
+      if (isPipeline) filters.setSearch(q);
+      else replaceParams(setReceivingHistoryUrlParams(searchParams, { q }));
+    },
+    [filters, isPipeline, replaceParams, searchParams],
+  );
 
   const [filterOpen, setFilterOpen] = useState(false);
-  // Attention state and/or PO date — sort is its own trailing control.
-  const filterHot = Boolean(filters.dateRange?.from) || filters.state != null;
+  const filterHot = isPipeline
+    ? Boolean(filters.dateRange?.from) || filters.state != null
+    : (dockedTab === 'triage' && searchScope !== 'all') || searchField !== 'all';
 
   const clearWorkbenchFilters = useCallback(() => {
-    filters.setDateRange(undefined);
-    filters.setState(null);
-  }, [filters]);
+    if (isPipeline) {
+      filters.setDateRange(undefined);
+      filters.setState(null);
+    } else {
+      replaceParams(setReceivingHistoryUrlParams(searchParams, { scope: 'all', field: 'all' }));
+    }
+  }, [filters, isPipeline, replaceParams, searchParams]);
 
-  const tabs = [
+  const sourceTabs = [
     { id: 'all', label: 'All', color: 'blue' as const },
     { id: 'zoho', label: 'Zoho', color: 'teal' as const, dividerBefore: true },
     ...(universalIncoming
@@ -141,28 +215,53 @@ export function IncomingWorkspaceHeader({
       : []),
   ];
 
+  const dockedSubTabs = useMemo(
+    () =>
+      DASHBOARD_RECEIVING_TABS.map((t) => ({
+        id: t.id as string,
+        label: t.label,
+        color: 'blue' as const,
+      })),
+    [],
+  );
+
   return (
     <>
       <WorkbenchChromeHeader
         density="band"
-        tabs={tabs}
-        activeTab={activeSource}
-        onTabChange={setSource}
+        className="rounded-none border-l-0 border-t-0 shadow-sm"
+        tabs={LANE_TABS}
+        activeTab={lane}
+        onTabChange={setLane}
         solidTone="accent"
         search={
-          <ToolbarSearchToggle
-            value={draft}
-            onChange={setDraft}
-            onClear={() => {
-              setDraft('');
-              filters.setSearch('');
-            }}
-            placeholder="Filter PO #, tracking, SKU…"
-            tone="blue"
+          <TechRailSearchBar
+            variant="chrome"
+            value={urlQRaw}
+            onChange={setWorkbenchSearch}
+            placeholder={
+              isPipeline
+                ? 'Filter PO #, tracking, SKU…'
+                : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
+            }
+            trailingAction={
+              isPipeline ? (
+                <HoverTooltip label="Paste a list of tracking numbers" asChild>
+                  <ToolbarButton
+                    iconOnly
+                    aria-label="Paste a list of tracking numbers"
+                    onClick={() => setPasteAction('filter')}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </ToolbarButton>
+                </HoverTooltip>
+              ) : undefined
+            }
+            className="w-40 shrink-0 lg:w-56"
           />
         }
         right={
-          <>
+          isPipeline ? (
             <WorkbenchFilterPopover
               open={filterOpen}
               onOpenChange={setFilterOpen}
@@ -229,74 +328,157 @@ export function IncomingWorkspaceHeader({
                 </>
               ) : null}
             </WorkbenchFilterPopover>
-          </>
+          ) : (
+            <WorkbenchFilterPopover
+              open={filterOpen}
+              onOpenChange={setFilterOpen}
+              hot={filterHot}
+              label={dockedTab === 'triage' ? 'Carton source / search field' : 'Search field'}
+            >
+              {dockedTab === 'triage' ? (
+                <>
+                  <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
+                  {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
+                    <WorkbenchFilterMenuRow
+                      key={id}
+                      label={label}
+                      active={searchScope === id}
+                      leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
+                      onClick={() => {
+                        replaceParams(
+                          setReceivingHistoryUrlParams(searchParams, {
+                            scope: normalizeReceivingHistorySearchScope(id),
+                          }),
+                        );
+                        setFilterOpen(false);
+                      }}
+                    />
+                  ))}
+                  <WorkbenchFilterDivider />
+                </>
+              ) : null}
+
+              <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
+              {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
+                <WorkbenchFilterMenuRow
+                  key={field.id}
+                  label={field.label}
+                  active={searchField === field.id}
+                  onClick={() => {
+                    replaceParams(
+                      setReceivingHistoryUrlParams(searchParams, {
+                        field: normalizeReceivingHistorySearchField(field.id),
+                      }),
+                    );
+                    setFilterOpen(false);
+                  }}
+                />
+              ))}
+
+              {filterHot ? (
+                <>
+                  <WorkbenchFilterDivider />
+                  <WorkbenchFilterMenuRow
+                    label="Clear filters"
+                    active={false}
+                    onClick={() => {
+                      clearWorkbenchFilters();
+                      setFilterOpen(false);
+                    }}
+                  />
+                </>
+              ) : null}
+            </WorkbenchFilterPopover>
+          )
         }
         trailing={
-          <WorkbenchTrailingCluster
-            before={
-              <PaneHeaderPagination
-                page={safePage}
-                pageSize={INCOMING_PAGE_SIZE}
-                total={total}
-                onPrev={() => setPage(safePage - 1)}
-                onNext={() => setPage(safePage + 1)}
-              />
-            }
-            sort={
-              <QueueSortSwitch<IncomingSort>
-                sort={filters.sort}
-                onChange={filters.setSort}
-                options={INCOMING_SORT_OPTIONS}
-                ariaLabel="Sort incoming POs"
-              />
-            }
-            actions={
-              <IncomingChromeActions
-                onCheckZoho={() => setCheckOpen(true)}
-                onImportZoho={() => {
-                  void sync.refreshZoho();
-                }}
-                onImportEbay={() => {
-                  void sync.refreshMarketplace();
-                }}
-                onAdd={() => {
-                  setAddOrderId('');
-                  setAddOpen(true);
-                }}
-                importingZoho={sync.zohoRefreshing}
-                importingEbay={sync.marketplaceRefreshing}
-                canCheckZoho
-                canImportZoho
-                canImportEbay={universalIncoming && canAddEbay}
-                canAdd={canAddEbay}
-              />
-            }
-          />
+          isPipeline ? (
+            <WorkbenchTrailingCluster
+              before={
+                <PaneHeaderPagination
+                  page={safePage}
+                  pageSize={INCOMING_PAGE_SIZE}
+                  total={total}
+                  onPrev={() => setPage(safePage - 1)}
+                  onNext={() => setPage(safePage + 1)}
+                  iconOnly
+                />
+              }
+              sort={
+                <QueueSortSwitch<IncomingSort>
+                  sort={filters.sort}
+                  onChange={filters.setSort}
+                  options={INCOMING_SORT_OPTIONS}
+                  ariaLabel="Sort incoming POs"
+                  variant="icon"
+                />
+              }
+              actions={
+                <IncomingChromeActions
+                  onCheckZoho={() => setPasteAction('check')}
+                  onImportZoho={() => {
+                    void sync.refreshZoho();
+                  }}
+                  onImportEbay={() => {
+                    void sync.refreshMarketplace();
+                  }}
+                  onAdd={() => {
+                    setAddOrderId('');
+                    setAddOpen(true);
+                  }}
+                  importingZoho={sync.zohoRefreshing}
+                  importingEbay={sync.marketplaceRefreshing}
+                  canCheckZoho
+                  canImportZoho
+                  canImportEbay={universalIncoming && canAddEbay}
+                  canAdd={canAddEbay}
+                />
+              }
+            />
+          ) : undefined
         }
       />
 
-      <IncomingZohoReceivedCheckRail
-        open={checkOpen}
-        onClose={() => setCheckOpen(false)}
-      />
+      {/* Secondary facet strip — source (Pipeline) or Triage/Unbox (Docked).
+          Flush sheet chrome: rail-abutting like Unbox (no side gutters). */}
+      <div className="flex h-10 shrink-0 items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5">
+        <TabSwitch
+          tabs={isPipeline ? sourceTabs : dockedSubTabs}
+          activeTab={isPipeline ? activeSource : dockedTab}
+          onTabChange={isPipeline ? setSource : setDockedTab}
+          variant="solid"
+          solidTone="accent"
+          size="sm"
+        />
+      </div>
 
-      <IncomingImportEbayOverlay
-        open={addOpen}
-        onClose={() => {
-          setAddOpen(false);
-          setAddOrderId('');
-        }}
-        initialOrderId={addOrderId}
-      />
+      {isPipeline ? (
+        <>
+          <IncomingBulkTrackingPanel
+            open={pasteAction != null}
+            initialAction={pasteAction ?? 'filter'}
+            onClose={() => setPasteAction(null)}
+          />
 
-      <IncomingSyncDialog
-        open={sync.incSyncOpen}
-        kind={sync.incSyncKind}
-        isRunning={sync.incSyncRunning}
-        elapsedMs={sync.incSyncElapsedMs}
-        result={sync.incSyncResult}
-        onClose={() => sync.setIncSyncOpen(false)}
-      />
+          <IncomingImportEbayOverlay
+            open={addOpen}
+            onClose={() => {
+              setAddOpen(false);
+              setAddOrderId('');
+            }}
+            initialOrderId={addOrderId}
+          />
+
+          <IncomingSyncDialog
+            open={sync.incSyncOpen}
+            kind={sync.incSyncKind}
+            isRunning={sync.incSyncRunning}
+            elapsedMs={sync.incSyncElapsedMs}
+            result={sync.incSyncResult}
+            onClose={() => sync.setIncSyncOpen(false)}
+          />
+        </>
+      ) : null}
     </>
   );
 }

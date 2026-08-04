@@ -25,6 +25,7 @@ import {
 } from './receiving-routes';
 import { PRODUCTS_ROUTE_PARAMS } from './query-mode-routes';
 import { routeParamsFor } from './registry';
+import { UNBOX_SIDE_TAB_ORDER } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
 
 const DEMO = defineRouteParams({
   route: '/demo',
@@ -96,14 +97,51 @@ test('an Incoming filter set cannot survive a landing on /triage', () => {
   assert.equal(next.toString(), '');
 });
 
-test('Incoming and History read `sort` with their own vocabularies', () => {
+test('Incoming desk accepts Pipeline ∪ Docked sorts; History keeps its own vocabulary', () => {
   const incoming = new URLSearchParams('sort=zoho_oldest');
   const history = new URLSearchParams('sort=unboxed_newest');
   assert.equal(parseRouteParams(INCOMING_ROUTE_PARAMS, incoming).get('sort'), 'zoho_oldest');
   assert.equal(parseRouteParams(HISTORY_ROUTE_PARAMS, history).get('sort'), 'unboxed_newest');
-  // Each rejects the other's values — the shared key is not a shared vocabulary.
-  assert.equal(parseRouteParams(INCOMING_ROUTE_PARAMS, history).get('sort'), null);
+  // Incoming desk hygiene keeps Docked ids (lane switch clears via clearCrossLaneParams).
+  assert.equal(parseRouteParams(INCOMING_ROUTE_PARAMS, history).get('sort'), 'unboxed_newest');
+  // Standalone History still rejects Pipeline ORDER BY ids.
   assert.equal(parseRouteParams(HISTORY_ROUTE_PARAMS, incoming).get('sort'), null);
+});
+
+test('EVERY Unbox display survives surface hygiene', () => {
+  // The `?display=` schema was a hand-copied `paramEnum([...])` until
+  // 2026-08-02, and it drifted the moment the vocabulary grew: `pairing` joined
+  // `UNBOX_SIDE_TAB_ORDER` when Package Pairing became a display, but not the
+  // route spec — so hygiene stripped `?display=pairing` on the next pass and the
+  // display was unreachable from the `# ----` chip, its strip cell, AND a shared
+  // link. Nothing failed; the column just never opened.
+  //
+  // Derived over the SoT list, so a tab added tomorrow is covered by this test
+  // the day it is added — which a re-typed list here could never be.
+  for (const tab of UNBOX_SIDE_TAB_ORDER) {
+    const next = parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams(`display=${tab}`));
+    assert.equal(next.get('display'), tab, `?display=${tab} must survive /unbox hygiene`);
+  }
+  // …and the vocabulary is still closed.
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('display=nonsense')).get('display'),
+    null,
+  );
+});
+
+test('Unbox History search triple survives surface hygiene', () => {
+  // Drill parent-map footer + List chrome write `?rh_q=` on `/unbox`. Without
+  // owning the History search keys, useSurfaceParamHygiene strips them and the
+  // TechRailSearchBar draft snaps empty (flash → reset).
+  const dirty = new URLSearchParams(
+    'hlayout=drill&drillPo=po:1&rh_q=acme&rh_field=po&rh_scope=unmatched',
+  );
+  const next = parseRouteParams(UNBOX_ROUTE_PARAMS, dirty);
+  assert.equal(next.get('rh_q'), 'acme');
+  assert.equal(next.get('rh_field'), 'po');
+  assert.equal(next.get('rh_scope'), 'unmatched');
+  assert.equal(next.get('hlayout'), 'drill');
+  assert.equal(next.get('drillPo'), 'po:1');
 });
 
 test('a legacy `?mode=` is dropped by every graduated surface', () => {
@@ -161,16 +199,16 @@ test('a Products selection cannot survive a landing on a receiving surface', () 
   assert.equal(parseRouteParams(UNBOX_ROUTE_PARAMS, leaked).toString(), '');
 });
 
-// ── /dashboard — the lifecycle tabs are BARE presence flags ──────────────────
+// ── /shipping/orders — the lifecycle tabs are BARE presence flags ────────────
 
-test('a bare dashboard lifecycle flag survives the boundary parse', () => {
-  const spec = routeParamsFor('/dashboard')!;
+test('a bare To-ship lifecycle flag survives the boundary parse', () => {
+  const spec = routeParamsFor('/shipping/orders')!;
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
 
   // `?shipped` (no `=`) is what the app writes and what `.has()` reads. Under
   // the old `paramText` declaration every one of these parsed to "" and the
   // lifecycle tab silently reverted to Unshipped.
-  for (const flag of ['unshipped', 'pending', 'packed', 'tested', 'shipped', 'warranty']) {
+  for (const flag of ['unshipped', 'pending', 'packed', 'tested', 'shipped']) {
     assert.equal(parse(flag), `${flag}=`, `?${flag} must survive as a presence flag`);
   }
   // Every accepted spelling normalizes to the bare form `.has()` tests for.
@@ -179,16 +217,17 @@ test('a bare dashboard lifecycle flag survives the boundary parse', () => {
   assert.equal(parse('shipped=garbage'), '');
 });
 
-test('/dashboard declares the params its own components read', () => {
-  const spec = routeParamsFor('/dashboard')!;
+test('/shipping/orders declares the params its own components read', () => {
+  const spec = routeParamsFor('/shipping/orders')!;
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).get(qs.split('=')[0]!);
 
-  // `searchScopeHref('ORDER')` hands off to `/dashboard?search=`, and
+  // `searchScopeHref('ORDER')` hands off to `/shipping/orders?search=`, and
   // PackedOrdersTable reads it — undeclared, it was dropped on arrival.
   assert.equal(parse('search=widget'), 'widget');
   // OutboundFilterStrip's two facets.
   assert.equal(parse('attention=1'), '1');
   assert.equal(parse('ustatus=TESTED'), 'TESTED');
+  assert.equal(parse('context=support'), 'support');
 });
 
 test('routeParamsFor resolves the longest route first', () => {

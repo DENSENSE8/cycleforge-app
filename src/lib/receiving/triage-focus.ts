@@ -84,10 +84,27 @@ function isTriageStaged(row: ReceivingLineRow): boolean {
   return row.staging_location_id != null && !!row.priority_lane;
 }
 
+/**
+ * The `receiving_triage.pairing_state` values that ANSWER the pairing question.
+ *
+ * `MATCHED` found a PO; `WAIVED` looked and established there is none to find
+ * (`settleReturnPairing`). Both are answers. `UNFOUND` — and a triage row that
+ * records nothing at all — are the absence of one.
+ *
+ * Exported because the triage metrics route counts the complement, and a second
+ * hand-typed copy of this vocabulary is how "waived" would end up filed as
+ * "skipped" in a KPI while the bench correctly treats it as done.
+ */
+export const PAIRING_ANSWERED_STATES = ['MATCHED', 'WAIVED'] as const;
+
+export function isPairingAnswered(pairingState: string | null | undefined): boolean {
+  return (PAIRING_ANSWERED_STATES as readonly string[]).includes(pairingState ?? '');
+}
+
 /** PO matched, pairing acknowledged/waived, a claim is linked, or a return with no label hint (C6). */
 function isTriagePaired(row: ReceivingLineRow): boolean {
   if (row.receiving_source !== 'unmatched') return true;
-  if (row.pairing_state === 'WAIVED' || row.pairing_state === 'MATCHED') return true;
+  if (isPairingAnswered(row.pairing_state)) return true;
   if (row.zendesk_ticket) return true;
   return isReturnIntake(row);
 }

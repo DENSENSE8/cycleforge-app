@@ -67,30 +67,10 @@ export const ELEVATION_CLASS = {
 
 /**
  * Directional overlay cast — `overlay` ink thrown to one SIDE instead of
- * straight down.
- *
- * The default ladder models a light directly above the frame, which is right
- * for anything centred. A surface pinned to one edge of a wide frame reads
- * wrong under it: its outer edge is the one the operator sees against the
- * canvas, and a purely downward cast leaves that edge flat. Casting away from
- * the frame's centre puts the app under a single light in the middle of the
- * screen, so an off-centre panel looks lifted rather than pasted on.
- *
- * The zero-offset AMBIENT layer is preserved (same rule as the base ladder —
- * drop it and the top/inner edges go flat); only the key + cast layers gain a
- * negative x. Values live in globals.css (`--ds-elev-overlay-left`) so
- * dark-family themes ramp the alpha with everything else.
- *
- * Never hand-roll a `shadow-* shadow-scrim/*` pair for this — add the side here.
+ * straight down — lives on the CSS vars (`shadow-elev-overlay-left` /
+ * `-right`). Compose those at the call site with `elevationClass('overlay')`.
+ * Never hand-roll a `shadow-* shadow-scrim/*` pair for this.
  */
-export function elevationCastClass(side: 'left' | 'right'): string {
-  // Both sides now exist: `left` for the context panel (pinned left of centre)
-  // and `right` for the right-rail push column (pinned right of it). The vars
-  // are mirrors — same ink, same zero-offset ambient layer, only the sign of the
-  // key + cast x flips — so the whole frame reads as lit from the middle of the
-  // screen rather than one card casting back toward the other.
-  return side === 'left' ? 'shadow-elev-overlay-left' : 'shadow-elev-overlay-right';
-}
 
 export function elevationClass(role: 'flat' | 'overlay'): string;
 export function elevationClass(

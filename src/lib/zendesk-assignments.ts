@@ -99,3 +99,20 @@ export async function clearTicketAssignment(
     [organizationId, ticketId],
   );
 }
+
+/** Open watches for one org — the ticket-watch cron's poll set. */
+export async function listTicketAssignmentsForOrg(
+  organizationId: OrgId,
+  opts: { limit?: number } = {},
+): Promise<TicketAssignment[]> {
+  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 500);
+  const r = await tenantQuery(
+    organizationId,
+    `${SELECT_ROW}
+      WHERE a.organization_id = $1
+      ORDER BY a.updated_at DESC
+      LIMIT ${limit}`,
+    [organizationId],
+  );
+  return r.rows.map(mapRow);
+}

@@ -366,7 +366,7 @@ export function searchScopeHref(dbType: SearchEntityType, query: string): string
   if (!q) return null;
   switch (dbType) {
     case 'ORDER':
-      return `/dashboard?search=${q}`;
+      return `/shipping/orders?search=${q}`;
     case 'SERIAL_UNIT':
       return `/inventory/units?q=${q}`;
     case 'SKU':

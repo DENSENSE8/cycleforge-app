@@ -20,6 +20,12 @@
  *                cleanup — zero consumers.)
  * - `received` — physically in the warehouse (MATCHED → DONE).
  * - `incoming` — Zoho POs issued but not yet touched (EXPECTED, 0 received).
+ * - `incoming_removed` — the inverse of `incoming`: PO lines that HAVE left the
+ *                Incoming list within the recency window, each carrying the
+ *                signals the removal-reason registry resolves ("unboxed",
+ *                "received upstream", …). Derived, not stored — there is no
+ *                `removed_at` column and no lane table; the exits are read
+ *                from the same evidence Incoming reads to exclude them.
  * - `activity` — `all` minus untouched-incoming. The "what was actually
  *                scanned/unpacked" feed backing the History tab + recent rail.
  * - `scanned`  — door-scanned and physically in, but NOT yet unboxed
@@ -45,6 +51,7 @@ export const RECEIVING_VIEWS = [
   'all',
   'received',
   'incoming',
+  'incoming_removed',
   'activity',
   'scanned',
   'unbox_opened',

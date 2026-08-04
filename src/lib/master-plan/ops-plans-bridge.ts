@@ -23,16 +23,17 @@
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { publishOpsPlanUpdated } from '@/lib/realtime/publish';
-import { scanTicketStatuses, type ScannedTicket, type TicketStatus } from './ticket-status';
+import { type TicketStatus } from './ticket-status';
 import {
   MASTER_PLAN_OPS_TITLE,
   MASTER_PLAN_TASK_KEY_PREFIX,
 } from './ops-plans-bridge-constants';
+import { buildMasterPlanOutline } from './outline';
 
 export { MASTER_PLAN_OPS_TITLE, MASTER_PLAN_TASK_KEY_PREFIX } from './ops-plans-bridge-constants';
+export { buildMasterPlanOutline } from './outline';
 
 const BRIDGE_STATION = 'ADMIN';
-const FALLBACK_SECTION = 'Plan';
 
 export type OpsTaskStatus = 'open' | 'in_progress' | 'done' | 'canceled';
 
@@ -47,30 +48,6 @@ export function ticketToTaskStatus(status: TicketStatus | null): OpsTaskStatus {
     default:
       return 'open'; // invalid statuses surface as open + a note, never hidden
   }
-}
-
-export interface OutlineSection {
-  heading: string;
-  tickets: ScannedTicket[];
-}
-
-/** Group tickets under the nearest preceding `##` heading (pure). */
-export function buildMasterPlanOutline(mdx: string): OutlineSection[] {
-  const headings: Array<{ title: string; start: number }> = [];
-  for (const m of mdx.matchAll(/^##\s+(.+)$/gm)) {
-    headings.push({ title: m[1].trim(), start: m.index });
-  }
-  const sections = new Map<string, OutlineSection>();
-  for (const ticket of scanTicketStatuses(mdx)) {
-    let heading = FALLBACK_SECTION;
-    for (const h of headings) {
-      if (h.start < ticket.start) heading = h.title;
-      else break;
-    }
-    if (!sections.has(heading)) sections.set(heading, { heading, tickets: [] });
-    sections.get(heading)!.tickets.push(ticket);
-  }
-  return [...sections.values()];
 }
 
 export interface BridgeSyncResult {

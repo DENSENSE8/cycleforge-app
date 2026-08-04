@@ -63,6 +63,8 @@ export function useFbaWorkspaceUrlState() {
       if (patch.mode !== undefined) {
         if (patch.mode === 'combine') params.delete(FBA_MODE_PARAM);
         else params.set(FBA_MODE_PARAM, patch.mode);
+        // Disposition facet only applies on the Ready stage.
+        if (patch.mode !== 'ready') params.delete('rtab');
       }
       if (patch.r !== undefined) params.set('r', patch.r);
       if (patch.draft !== undefined) {

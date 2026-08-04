@@ -2,10 +2,9 @@
 
 /**
  * Incoming workbench-chrome CTAs — Check (Zoho received) · Import (blue platform
- * picker) · Add (green). Visual twin of {@link OutboundOrderChromeActions};
- * Check opens the paste→Zoho received rail; Import opens a popover to choose
- * the connected purchasing source (Zoho inventory POs / eBay marketplace),
- * then runs that sync. Add opens manual eBay order entry.
+ * picker) · Add (green). Icon-only square pills (Incoming Pipeline 2026-08-04);
+ * labels live in aria + HoverTooltip. Visual twin of {@link OutboundOrderChromeActions}
+ * for tone; density matches Unbox triage refine.
  */
 
 import { useState } from 'react';
@@ -13,11 +12,16 @@ import * as Popover from '@radix-ui/react-popover';
 import { Plus, RefreshCw, Loader2, Package, ClipboardList } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   WorkbenchFilterGroupLabel,
   WorkbenchFilterMenuRow,
 } from '@/components/dashboard/workbench-filter-popover';
+import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
+
+const ICON_PILL =
+  'h-8 w-8 shrink-0 gap-0 px-0 [&_span]:m-0';
 
 export function IncomingChromeActions({
   onCheckZoho,
@@ -59,15 +63,19 @@ export function IncomingChromeActions({
   return (
     <>
       {canCheckZoho ? (
-        <Button
-          size="sm"
-          onClick={onCheckZoho}
-          ariaLabel="Check Zoho received by tracking"
-          icon={<ClipboardList />}
-          className="rounded-full font-semibold uppercase tracking-widest bg-slate-700 shadow-sm shadow-slate-700/25 hover:bg-slate-600 active:bg-slate-800"
-        >
-          Check
-        </Button>
+        <HoverTooltip label="Check Zoho received by tracking" asChild>
+          <Button
+            size="sm"
+            onClick={onCheckZoho}
+            ariaLabel="Check Zoho received by tracking"
+            icon={<ClipboardList />}
+            className={cn(
+              WORKBENCH_CHROME_PILL_CLASS,
+              ICON_PILL,
+              'bg-slate-700 shadow-sm shadow-slate-700/25 hover:bg-slate-600 active:bg-slate-800',
+            )}
+          />
+        </HoverTooltip>
       ) : null}
       {hasAnyImport ? (
         <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
@@ -80,16 +88,17 @@ export function IncomingChromeActions({
               aria-expanded={menuOpen}
               aria-label={importing ? 'Importing incoming orders' : 'Import incoming orders'}
               title={importing ? 'Importing…' : 'Import from purchasing source'}
-              className="ds-raw-button inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95 disabled:opacity-70"
+              className={cn(
+                'ds-raw-button inline-flex items-center justify-center bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95 disabled:opacity-70',
+                WORKBENCH_CHROME_PILL_CLASS,
+                ICON_PILL,
+              )}
             >
               {importing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              <span className="text-role-eyebrow uppercase tracking-widest text-white">
-                {importing ? 'Syncing…' : 'Import'}
-              </span>
             </button>
           </Popover.Trigger>
           <Popover.Portal>
@@ -147,15 +156,19 @@ export function IncomingChromeActions({
         </Popover.Root>
       ) : null}
       {canAdd ? (
-        <Button
-          size="sm"
-          onClick={onAdd}
-          ariaLabel="Add eBay purchase order"
-          icon={<Plus />}
-          className="rounded-full font-semibold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
-        >
-          Add
-        </Button>
+        <HoverTooltip label="Add eBay purchase order" asChild>
+          <Button
+            size="sm"
+            onClick={onAdd}
+            ariaLabel="Add eBay purchase order"
+            icon={<Plus />}
+            className={cn(
+              WORKBENCH_CHROME_PILL_CLASS,
+              ICON_PILL,
+              'bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
+            )}
+          />
+        </HoverTooltip>
       ) : null}
     </>
   );

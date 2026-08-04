@@ -31,14 +31,15 @@ test('every role resolves to the exact catalog object — no copied physics', ()
 
   assert.equal(motionRole.gesture.press.whileTap, framerGesture.tapPress);
   assert.equal(motionRole.feedback.pulse.transition, framerTransition.chipCopyFeedback);
+  assert.equal(motionRole.procedure.advance.transition, framerTransition.procedureStackLayout);
 });
 
-test('there are exactly five roles', () => {
+test('there are exactly six roles', () => {
   const leaves = Object.values(motionRole).flatMap((group) => Object.keys(group));
   assert.equal(
     leaves.length,
-    5,
-    `Roles: ${leaves.join(', ')}. A sixth role is a claim that a new JOB exists — ` +
+    6,
+    `Roles: ${leaves.join(', ')}. A seventh role is a claim that a new JOB exists — ` +
       'wanting a different duration for an existing job is the drift this layer prevents.',
   );
 });

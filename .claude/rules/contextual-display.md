@@ -4,6 +4,8 @@ House identity is **Kinetic Ledger** ([kinetic-ledger.md](kinetic-ledger.md), `u
 This file is the **entry point** for **region contracts** and **data-driven surfaces**.
 
 **Contracts are not layout skins.** Station / Workbench / Monitor / Canvas answer *what may scan, select, edit, or observe* — not “must be sidebar + right pane” or “no grids.”
+**Frame depth and width** (exact flush planes · center floor · single right edge for AI vs detail) live in
+[`source-of-truth.md`](source-of-truth.md) → **Depth elevation** · **Frame column budget** · **Right-rail modality** — not a second layout grammar here.
 
 Pick in this order:
 
@@ -118,7 +120,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
 3. **Fact stack / form** — single durable record focused without a heavy dual pane.
 
-Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **L2 Mode + Recents live in GlobalHeader** (`HeaderModeSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine section drills: Analytics Monitor · Scan Stations · Inbound · Catalog · Inventory · Fulfillment · Sales · Support (`SPINE_SECTIONS` + `spineDrill` motion; Workflow Studio is a footer pin, not a drill) — see `display/workbench-master-detail.md` + `source-of-truth.md`. Hybrid Station+Workbench pages: both exits (Back to list · **return-to-scan CTA** in trailing `actions`, every strip tab, above KPIs) — `display/workbench.md` → Multi-region pages.
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **The page switcher + Recents live in GlobalHeader** (`HeaderPageSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine: domains stay flat; **Scan Stations alone is a Vercel list-replace drill** (enter with `ChevronRight` → Back + benches) because it holds multiple categories — never restore an all-sections drill (`Catalog › Catalog`). Order from `SPINE_SECTIONS`; Workflow Studio is a footer pin — see `display/workbench-master-detail.md` + `source-of-truth.md`. Hybrid Station+Workbench pages: both exits (Back to list · **return-to-scan CTA** in trailing `actions`, every strip tab, above KPIs) — `display/workbench.md` → Multi-region pages.
 
 References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
 
@@ -174,7 +176,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 5. **EDIT → PERSIST:** house CRUD route; optimistic with rollback; deletes confirm-then-commit; `clientEventId`.
 6. **STATE:** mode-scoped params clear on mode change. Prefer URL for filters/sort/search (partial today).
 
-**Master–detail recipe notes:** compose `SidebarShell` / `SidebarRailShell`; L2 Mode in GlobalHeader; `ReceivingRightPane` is a reference for pane crossfade with cache-preserving `display:none`.
+**Master–detail recipe notes:** compose `SidebarShell` / `SidebarRailShell`; the page switcher lives in GlobalHeader; `ReceivingRightPane` is a reference for pane crossfade with cache-preserving `display:none`.
 
 **Monitor / Canvas** lifecycles: [display/monitor-and-canvas.md](display/monitor-and-canvas.md).
 
@@ -231,6 +233,7 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 
 ## Index of child docs
 
+- **[`display/instrument-panel.md`](display/instrument-panel.md)** — Instrument-panel sub-identity: P1–P7, procedure composition map, metaphor translation. Cross-cutting (Station + right rail), not a fifth contract.
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
 - **[`display/station-workbench.md`](display/station-workbench.md)** — **Station column shell** (Unbox-family right-pane anatomy) — not Layer A Workbench.
 - **[`display/workbench.md`](display/workbench.md)** — Workbench contract; recipe index; multi-region (list ↔ bench).

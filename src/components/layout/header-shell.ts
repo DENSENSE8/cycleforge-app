@@ -20,20 +20,23 @@ export const receivingHeaderHairlineClass = appChromeBandHairlineClass;
  * Scan-dock rails inset the list to {@link SIDEBAR_RAIL_INSET_X} (left =
  * {@link SIDEBAR_GUTTER}); the status
  * dot rides a compact FLOW track at the row's left and the title sits one tight
- * {@link SIDEBAR_MASTER_NAV_MODE_GAP} after it (see {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}).
+ * {@link SIDEBAR_RAIL_LEADING_GAP} after it (see {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}).
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
-// ── MasterNav geometry (org band) — pad / gap SoT ─────────────────────────────
-/** Horizontal pad on the org/workspace control. */
-export const SIDEBAR_MASTER_NAV_MODE_PAD_X = 'px-2.5';
-/** Gap between org mark and label (also reused by scan-dock leading rows). */
-export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
+/**
+ * Gap after the rail's leading track. Was `SIDEBAR_MASTER_NAV_MODE_GAP`, an
+ * EXPORTED pair with `…_PAD_X` serving the spine org band. That band was
+ * deleted 2026-08-03, which left the pad dead and this one named for a surface
+ * it no longer touches — so the pad is gone and this is module-private under a
+ * name that says what it actually does: the scan-dock leading gap.
+ */
+const SIDEBAR_RAIL_LEADING_GAP = 'gap-1.5';
 
 /**
  * Recent-rail **leading track** (scan-dock column SoT). The status dot / edit
  * checkbox ride a compact FLOW track at the row's left; the row title sits one
- * tight {@link SIDEBAR_MASTER_NAV_MODE_GAP} (`gap-1.5`) after it. This replaced
+ * tight {@link SIDEBAR_RAIL_LEADING_GAP} (`gap-1.5`) after it. This replaced
  * an absolute dot near the edge + a deep MasterNav-label title inset — a combo
  * that opened a ~50px canyon between the dot and the title. Composed as
  * Tailwind tokens (density-aware) — never a magic rem — so the column tracks
@@ -43,8 +46,6 @@ export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
  * The eyebrow ({@link SidebarRailShell}), rail rows, and dense scan bar
  * (`leadingColumn="rail"`) all compose {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}
  * so icon/dot track + typed text share one clean column — never a magic rem twin.
- * The MasterNav org band keeps its own pad ({@link SIDEBAR_MASTER_NAV_MODE_PAD_X})
- * so workspace identity sits above the dock — not the rail's leading track.
  */
 /** Leading pad before the dot track (`pl-2`) — internal to {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}. */
 const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';
@@ -60,7 +61,7 @@ export const SIDEBAR_RAIL_DOT_TRACK = 'w-4';
 export const SIDEBAR_SCAN_DOCK_LEADING_ROW = cn(
   'flex min-w-0 items-center',
   SIDEBAR_RAIL_LEADING_PAD,
-  SIDEBAR_MASTER_NAV_MODE_GAP,
+  SIDEBAR_RAIL_LEADING_GAP,
 );
 
 /**
@@ -84,6 +85,15 @@ export const SIDEBAR_RAIL_INSET_X = cn(SIDEBAR_RAIL_INSET_LEFT, 'pr-0');
  * with the eyebrow pencil / optical `#` mode glyph.
  */
 export const SIDEBAR_RAIL_ROW_PAD_RIGHT = 'pr-1.5';
+
+/**
+ * Trailing track for rail relative-age (`11h`) **and** filter-bar collapse /
+ * expand — one vertical column flush to the right pad. Width matches
+ * `CONTEXT_PANEL_COLLAPSE.stripWidthPx` / `w-8` so the parked expand strip is
+ * the same column, not a different gutter.
+ */
+export const SIDEBAR_RAIL_TRAILING_TRACK_CLASS =
+  'flex w-8 shrink-0 items-center justify-center';
 
 /** 40px identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
 export const receivingIdentityBandClass = `flex h-[40px] shrink-0 items-center ${appChromeClass} px-3 ${receivingHeaderHairlineClass}`;
@@ -169,9 +179,15 @@ export const TOP_CHROME_BAND_CLASS = `flex items-center ${TOP_CHROME_BAND_FACE}`
 
 /**
  * Horizontal inset for GlobalHeader and any chrome that must column-align with it
- * (station context bookmarks, sticky main headers). One knob — left + right.
+ * (station context bookmarks, sticky main headers).
+ *
+ * **Left is the rail gutter** ({@link SIDEBAR_RAIL_INSET_LEFT} / `pl-1.5`) so the
+ * sidebar-toggle MARK shares a column with the context-rail scan icon under the
+ * hairline (`SIDEBAR_SCAN_DOCK_LEADING_ROW`). Right stays roomy for actions
+ * (`pr-3 sm:pr-4`). Do not re-symmetricize to `px-3 sm:px-4` — that pushes the
+ * toggle right of the scan glyph.
  */
-export const HEADER_INSET_X = 'px-3 sm:px-4';
+export const HEADER_INSET_X = cn(SIDEBAR_RAIL_INSET_LEFT, 'pr-3 sm:pr-4');
 
 /**
  * Exact gap between every GlobalHeader icon hit-box (left cluster + right rail).

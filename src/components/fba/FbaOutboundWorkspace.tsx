@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * FBA prep workspace — composed under `/shipping?mode=fba` on the Axis-5
- * two-zone workbench shell: pinned `FbaWorkspaceHeader` chrome (Plan · Combine ·
- * Shipped facet tabs + search + week/select controls) over one scroll body of
- * `FbaKpiStrip` (scrolls away) + the full-bleed board / shipped table. Sub-mode
- * bodies crossfade (`workbenchPaneSettle`); the combine workspace overlays the
- * whole pane; logic lives in focused hooks under `src/app/fba/*`.
+ * FBA inbound workbench — composed under `/shipping/fba` on the Axis-5
+ * two-zone workbench shell: pinned `FbaWorkspaceHeader` chrome (Ready · Plan ·
+ * Combine · Shipped facet tabs + search + week/select controls) over one
+ * scroll body. Ready hosts channel-allocation history; plan/combine hosts the
+ * FNSKU board; shipped hosts history. Sub-mode bodies crossfade
+ * (`workbenchPaneSettle`); the combine workspace overlays the whole pane;
+ * logic lives in focused hooks under `src/app/fba/*`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,6 +21,7 @@ import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
 import { FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
 import { FbaKpiStrip } from '@/components/fba/FbaKpiStrip';
+import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   WORKBENCH_BODY_COLUMN,
@@ -58,6 +60,7 @@ export function FbaOutboundWorkspace() {
   const { theme: stationTheme } = useStationTheme({ staffId });
   const prefersReducedMotion = useReducedMotion();
 
+  const isReady = activeMode === 'ready';
   const { board, loading, error, fetchBoard } = useFbaBoard();
   const weekFilter = useFbaWeekFilter(board.pending, activeMode);
   const combine = useFbaCombine(activeMode);
@@ -67,16 +70,29 @@ export function FbaOutboundWorkspace() {
 
   // Facet filter + search are mode-scoped view state (cleared on tab change);
   // the KPI strip, chrome search, and table all read the same pair.
+  // Ready uses URL `?q=` so disposition deep-links stay bookmarkable.
   const [statusFilter, setStatusFilter] = useState<FbaBoardStatusFilter>('ALL');
   const [search, setSearch] = useState('');
+  const readySearch = String(searchParams.get('q') || '');
 
   const handleSelectTab = useCallback(
     (tab: FbaMode) => {
       setStatusFilter('ALL');
       setSearch('');
-      updateFbaParams({ mode: tab });
+      updateFbaParams({ mode: tab, q: '' });
     },
     [updateFbaParams],
+  );
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      if (isReady) {
+        updateFbaParams({ q: value });
+        return;
+      }
+      setSearch(value);
+    },
+    [isReady, updateFbaParams],
   );
 
   const handleToggleFilter = useCallback((filter: FbaBoardStatusFilter) => {
@@ -132,8 +148,8 @@ export function FbaOutboundWorkspace() {
             <FbaWorkspaceHeader
               tab={activeMode}
               onSelectTab={handleSelectTab}
-              search={search}
-              onSearchChange={setSearch}
+              search={isReady ? readySearch : search}
+              onSearchChange={handleSearchChange}
               weekRange={isBoard ? weekRange : undefined}
               weekOffset={weekOffset}
               onPrevWeek={isBoard ? () => setWeekOffset((o) => o - 1) : undefined}
@@ -160,7 +176,9 @@ export function FbaOutboundWorkspace() {
               {...paneMotionProps}
               className="relative flex min-w-0 flex-col"
             >
-              {error ? (
+              {isReady ? (
+                <ReadyWorkspaceBody />
+              ) : error ? (
                 <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
               ) : activeMode === 'shipped' ? (
                 <FbaShippedTable
@@ -234,11 +252,15 @@ export function FbaOutboundWorkspace() {
         </motion.div>
       )}
 
-      <FbaQuickAddFnskuModal stationTheme={stationTheme} />
-      <FbaCreatePlanModal stationTheme={stationTheme} />
+      {!isReady ? (
+        <>
+          <FbaQuickAddFnskuModal stationTheme={stationTheme} />
+          <FbaCreatePlanModal stationTheme={stationTheme} />
+        </>
+      ) : null}
 
       <AnimatePresence>
-        {detailItem && (
+        {detailItem && !isReady ? (
           <FbaBoardDetailPanel
             key="fba-detail-panel"
             item={detailItem}
@@ -248,7 +270,7 @@ export function FbaOutboundWorkspace() {
             disableMoveUp={detailIdx <= 0}
             disableMoveDown={detailIdx >= weekFilter.filteredPendingItems.length - 1}
           />
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );

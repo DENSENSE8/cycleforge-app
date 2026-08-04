@@ -77,8 +77,6 @@ const SUPPORT_ROUTE_PARAMS = defineRouteParams({
     /** Tickets board — its own search + status, namespaced away from `q`/`status`. */
     tq: paramText,
     tstatus: paramText,
-    /** Opens the create-ticket form over the orders workspace. */
-    createTicket: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -94,8 +92,9 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
   route: '/dashboard',
   owns: {
     /**
-     * Domain axis: `inbound` / legacy `receiving` · `sales` / `pickup` (front-desk
-     * history) · legacy `search` (redirected) · `outbound` (unused wire; bare URL).
+     * Domain axis: `sales` / `pickup` (front-desk history) · legacy `inbound` /
+     * `receiving` / `search` / `outbound` (redirected). Bare outbound 308s to
+     * `/shipping/orders`; inbound → `/incoming?lane=docked`.
      */
     mode: paramEnum([
       'search',
@@ -120,89 +119,23 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     map: paramText,
     openOrderId: paramPositiveInt,
     /**
-     * Outbound lifecycle tabs — BARE presence flags (`?shipped`), selected by
-     * `.has()` in `utils/dashboard-search-state.ts`, never by value.
-     *
-     * These were `paramText` until 2026-07-29, which rejects the empty value a
-     * valueless key carries, so every one of them was dropped by the boundary
-     * parse: `?shipped` parsed to `""` and the tab fell back to Unshipped.
-     */
-    unshipped: paramPresence,
-    pending: paramPresence,
-    packed: paramPresence,
-    tested: paramPresence,
-    shipped: paramPresence,
-    warranty: paramPresence,
-    /**
      * HAND-OFF keys — read on this route only to be forwarded, never rendered.
-     *
-     * `fba` stopped being a lifecycle tab in IA row L (FBA owns `/shipping/fba`),
-     * and `wstatus`/`wexp` belong to Support's warranty board. But `/dashboard`
-     * still READS all three off the URL to build its retired-front-door
-     * redirects (`isRetiredFbaView`, `buildSupportWarrantyRedirectSearch`), so
-     * they must survive the boundary parse or the redirect silently loses what
-     * the bookmark asked for. Declaring a key you do not render feels wrong and
-     * is exactly right: `/walk-in` shipped this bug first, and the read guard
-     * cannot catch it because another route already owns the keys.
+     * Outbound lifecycle tabs moved to `/shipping/orders`; these remain so
+     * retired front-door redirects (`?warranty=`, `?fba`) still see what the
+     * bookmark asked for before client-redirecting to Support / FBA.
      */
+    warranty: paramPresence,
     fba: paramPresence,
+    /** Support warranty deep-link: open claim id. */
+    open: paramText,
     wstatus: paramText,
     wexp: paramText,
-    /** Grid + inspector state. */
-    open: paramPositiveInt,
-    sort: paramText,
-    /**
-     * Direction for `sort`. MUST be declared wherever `sort` is — see the `dir`
-     * entry in `SHARED_OWNED_KEYS`, and the pairing guard in
-     * `param-ownership.guard.test.ts`.
-     *
-     * Omitting it made every Pending column sort permanently ASCENDING: the
-     * header click wrote `?sort=title&dir=desc`, this boundary parse stripped
-     * the undeclared `dir` on the very next pass, and `parseQueueDisplaySortDir`
-     * then resolved the missing param back to the column default. The URL and
-     * the header agreed — both said ascending — so nothing looked broken except
-     * that Z–A was unreachable.
-     */
-    dir: paramEnum(['asc', 'desc'] as const),
-    rtab: paramText,
-    type: paramText,
-    dq: paramText,
-    /** Packed-tab / shipped-tab search box (`searchScopeHref('ORDER')` lands here). */
+    /** Support warranty deep-link: filter search string. */
     search: paramText,
-    /** Outbound filter strip + unshipped board. */
-    attention: paramFlag,
-    ustatus: paramText,
-    stage: paramText,
-    late: paramFlag,
-    /** New-order intake slide-over (`useDashboardSearchController`). */
-    new: paramEnum(['true'] as const),
+    dq: paramText,
     /**
-     * Shipped-tab filter band (`useShippedTableFilters` + saved views). Found by
-     * the hand-off / CONSTANT sweep before mounting `SurfaceParamHygiene` —
-     * these live under `components/shipped`, outside the dashboard OWNED_TREES
-     * entry, so the ownership guard could not see them.
-     */
-    shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
-    shippedSearchField: paramEnum([
-      'all',
-      'order_id',
-      'tracking',
-      'product_title',
-      'sku',
-      'serial_number',
-    ] as const),
-    shippedWeekOffset: paramPositiveInt,
-    ostatus: paramText,
-    exceptions: paramFlag,
-    carrier: paramText,
-    statusCategory: paramText,
-    packedBy: paramPositiveInt,
-    testedBy: paramPositiveInt,
-    dateFrom: paramDateKey,
-    dateTo: paramDateKey,
-    /**
-     * Inbound (`?mode=inbound`) reuses History's namespaced search triple so a
-     * dashboard receiving bookmark matches `/receiving/history`.
+     * Legacy inbound domain params — kept so `/dashboard?mode=inbound` bookmarks
+     * survive SurfaceParamHygiene until the proxy 308 to `/incoming?lane=docked`.
      */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
     [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
@@ -230,11 +163,16 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
     mode: paramEnum(['inbox', 'tasks', 'collab', 'forge', 'brief'] as const),
     task: paramText,
     plan: paramText,
-    view: paramText,
+    /** Forge Plans Live: `live`|`agent` (agent-primary) · `doc` (MDX-primary). */
+    view: paramEnum(['live', 'agent', 'doc'] as const),
+    /** Selected master-plan `<TicketStatus ticketId>` on forge. */
+    ticket: paramText,
     q: paramText,
     open: paramPositiveInt,
     scope: paramText,
     filter: paramText,
+    /** Today Watch rail — ticket or tracking intake (`?watch=1`). */
+    watch: paramFlag,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -516,6 +454,34 @@ export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
+ * `/inventory/locations` — Bin Tags · Racks · Rooms · Bins · Map (former `/warehouse` desk).
+ *
+ * Longer prefix than `/inventory`, so location facets (`tab`, map `view`, bin
+ * filters) do not collide with Ledger/Graph ownership of `view` / `q` on the
+ * parent inventory spec. Legacy `/warehouse` permanently redirects here.
+ */
+const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/locations',
+  owns: {
+    /** Bin Tags is the default and rides the bare URL. */
+    tab: paramEnum(['racks', 'rooms', 'bins', 'map'] as const),
+    room: paramText,
+    code: paramText,
+    q: paramText,
+    status: paramText,
+    showEmpty: paramFlag,
+    /** Map color mode / floorplan switch — distinct from Inventory Graph `view`. */
+    view: paramText,
+    serial: paramText,
+    new: paramEnum(['true'] as const),
+    edit: paramFlag,
+    /** Special-bin 2×1 print page (`/inventory/locations/print/special-bin`). */
+    barcode: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
  * `/review` — Packing · Pairing · Catalog link (the Packer Review Station).
  *
  * Replaces the widest of the remaining clear lists: all three nav targets nulled
@@ -572,28 +538,23 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/warehouse` — Labels · Racks · Rooms · Bins · Map.
+ * `/warehouse` — orphan children only (`/warehouse/rma`, `/warehouse/replenishment`).
+ * The main desk permanently redirects to `/inventory/locations`.
  *
- * The nav targets carried `{ tab }` and nothing else, so every sibling's state
- * (`room`, `code`, `serial`, `q`, `status`, the `edit`/`new` form toggles) rode
- * a tab switch. Constructing drops them by omission.
+ * Kept so those child routes still boundary-parse; the Locations desk owns the
+ * same facet vocabulary under {@link INVENTORY_LOCATIONS_ROUTE_PARAMS}.
  */
 export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
   route: '/warehouse',
   owns: {
-    /** Labels is the default and rides the bare URL. */
     tab: paramEnum(['racks', 'rooms', 'bins', 'map'] as const),
-    /** Selected room / rack / bin code. */
     room: paramText,
     code: paramText,
-    /** Bin-filter chrome. */
     q: paramText,
     status: paramText,
     showEmpty: paramFlag,
     view: paramText,
-    /** A scanned serial handed to the location lookup. */
     serial: paramText,
-    /** Form toggles — open the create form, or edit the selected record. */
     new: paramEnum(['true'] as const),
     edit: paramFlag,
   },
@@ -646,6 +607,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   TEST_ROUTE_PARAMS,
   WALK_IN_ROUTE_PARAMS,
   INVENTORY_ROUTE_PARAMS,
+  INVENTORY_LOCATIONS_ROUTE_PARAMS,
   REVIEW_ROUTE_PARAMS,
   PACK_ROUTE_PARAMS,
   WAREHOUSE_ROUTE_PARAMS,

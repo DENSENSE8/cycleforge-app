@@ -60,6 +60,19 @@ export const SkuCatalogUpdateBody = z
     category: optNullableText,
     upc: optNullableText,
     ean: optNullableText,
+    /**
+     * The tenant's LICENSED GS1 GTIN for this product.
+     *
+     * Shape only here — the digits are gated by `classifyGtinEntry`
+     * (`@/lib/interop/gs1-keys`) in the route, which is where length, check
+     * digit, GS1 documentation prefixes and internally-minted
+     * restricted-circulation numbers are refused with a reason. A Zod regex
+     * would be a second, weaker copy of that answer.
+     *
+     * `null` CLEARS it, and that is a real operator action: the row falls back
+     * to the internal number `getOrCreateInternalGtin` re-mints on demand.
+     */
+    gtin: trimmed.min(1).nullable().optional(),
     imageUrl: optNullableText,
     isActive: z.boolean().optional(),
     // ─ Sourcing lifecycle (Bose engine opt-in; additive, all optional) ─

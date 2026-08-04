@@ -6,15 +6,13 @@
  *
  * Distinct from Monitor {@link KpiStrip} (2×2 → 4-col CSS grid for rollup
  * zones). This band is a flex-wrap row of {@link KpiTile}s with shared
- * skeleton / empty / error chrome so domain strips stop forking
- * `TILE_BAND_CLASS`.
+ * empty / error chrome so domain strips stop forking `TILE_BAND_CLASS`.
  */
 
 import type { ReactNode } from 'react';
 import { RefreshCw } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { Button } from '@/design-system/primitives';
-import { MONITOR_KPI_TILE_CLASS } from './shell';
 import { cn } from '@/utils/_cn';
 
 /** Flex-wrap attention band — tiles grow to fill the row. */
@@ -54,32 +52,6 @@ export function OpsKpiBandCell({
   return (
     <div className={cn(compact ? OPS_KPI_CELL_COMPACT_CLASS : OPS_KPI_CELL_CLASS, className)}>
       {children}
-    </div>
-  );
-}
-
-export function OpsKpiBandSkeleton({
-  count = 3,
-  loadingLabel = 'Loading metrics…',
-  compact = false,
-}: {
-  count?: number;
-  loadingLabel?: string;
-  compact?: boolean;
-}) {
-  const cell = compact ? OPS_KPI_CELL_COMPACT_CLASS : OPS_KPI_CELL_CLASS;
-  return (
-    <div className={cn(OPS_KPI_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
-      <span className="sr-only">{loadingLabel}</span>
-      {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, cell, 'h-20')}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
-            <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
-          </div>
-          <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-        </div>
-      ))}
     </div>
   );
 }

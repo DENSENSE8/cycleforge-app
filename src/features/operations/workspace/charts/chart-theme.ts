@@ -62,3 +62,16 @@ export const VELOCITY_TIER_TONES: Record<string, string> = {
   C: '#f59e0b',
   D: '#94a3b8',
 };
+
+/** Pack size tiers — teal / amber / violet (matches packing-kpi-corrected.html). */
+export const PACK_TIER_TONES: Record<'SMALL' | 'MEDIUM' | 'LARGE', string> = {
+  SMALL: '#0f766e',
+  MEDIUM: '#b45309',
+  LARGE: '#7c3aed',
+};
+
+/** Capacity used vs remaining. */
+export const PACK_CAPACITY_TONES = {
+  used: '#1d4ed8',
+  remaining: '#94a3b8',
+} as const;

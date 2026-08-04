@@ -107,7 +107,7 @@ test.describe('Warehouse · Bins overview grid', () => {
 
   test('renders the LedgerGrid surface — not a hand-rolled table', async ({ page }) => {
     await mockBins(page);
-    await page.goto('/warehouse?tab=bins', { waitUntil: 'domcontentloaded' });
+    await page.goto('/inventory/locations?tab=bins', { waitUntil: 'domcontentloaded' });
 
     const body = gridBody(page);
     await expect(body).toBeVisible({ timeout: 20_000 });
@@ -118,7 +118,7 @@ test.describe('Warehouse · Bins overview grid', () => {
 
   test('every core column owns a track', async ({ page }) => {
     await mockBins(page);
-    await page.goto('/warehouse?tab=bins', { waitUntil: 'domcontentloaded' });
+    await page.goto('/inventory/locations?tab=bins', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     for (const col of BINS_GRID_COLUMNS) {
@@ -132,7 +132,7 @@ test.describe('Warehouse · Bins overview grid', () => {
     page,
   }) => {
     await mockBins(page);
-    await page.goto('/warehouse?tab=bins', { waitUntil: 'domcontentloaded' });
+    await page.goto('/inventory/locations?tab=bins', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     const alpha = rows(page).filter({ hasText: 'BIN-ALPHA' }).first();
@@ -143,7 +143,7 @@ test.describe('Warehouse · Bins overview grid', () => {
 
   test('column sort is URL-durable on ?colsort= and survives a reload', async ({ page }) => {
     await mockBins(page);
-    await page.goto('/warehouse?tab=bins', { waitUntil: 'domcontentloaded' });
+    await page.goto('/inventory/locations?tab=bins', { waitUntil: 'domcontentloaded' });
     await expect(rows(page).first()).toBeVisible({ timeout: 20_000 });
 
     await headerCell(page, 'barcode').click();
@@ -160,7 +160,7 @@ test.describe('Warehouse · Bins overview grid', () => {
 
   test('settled-empty shows the filters empty message', async ({ page }) => {
     await mockBins(page, []);
-    await page.goto('/warehouse?tab=bins', { waitUntil: 'domcontentloaded' });
+    await page.goto('/inventory/locations?tab=bins', { waitUntil: 'domcontentloaded' });
     await expect(gridBody(page).getByText(/No bins match the current filters/)).toBeVisible({
       timeout: 20_000,
     });

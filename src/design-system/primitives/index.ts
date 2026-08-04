@@ -24,7 +24,6 @@ export * from './Toolbar';
 export * from './ToolbarListbox';
 export * from './SearchField';
 export * from './Switch';
-export * from './ToolbarSearchToggle';
 export * from './StatusText';
 
 export * from './TextField';

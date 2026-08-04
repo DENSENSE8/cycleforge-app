@@ -1,11 +1,14 @@
-export type OutboundMode = 'labels' | 'scan-out' | 'ready' | 'fba';
+export type OutboundMode = 'labels' | 'scan-out' | 'fba';
 
 /** Canonical Shipping station path. Legacy `/outbound` permanently redirects here. */
 export const SHIPPING_PATH = '/shipping';
 
 /**
  * Each mode's own route. The mode is the PATH now, not `?mode=` — being on
- * `/shipping/ready` IS ready mode, the way being on `/unbox` is Unbox.
+ * `/shipping/fba` IS fba mode, the way being on `/unbox` is Unbox.
+ *
+ * Ready is a lifecycle stage *inside* FBA (`?fbaMode=ready`), not a sibling
+ * shipping path. Legacy `/shipping/ready` permanently redirects there.
  *
  * `labels` keeps a segment of its own rather than living at bare `/shipping`:
  * one canonical URL per view beats a default that is reachable two ways. Bare
@@ -13,7 +16,6 @@ export const SHIPPING_PATH = '/shipping';
  */
 export const OUTBOUND_MODE_PATHS: Record<OutboundMode, string> = {
   labels: `${SHIPPING_PATH}/labels`,
-  ready: `${SHIPPING_PATH}/ready`,
   fba: `${SHIPPING_PATH}/fba`,
   'scan-out': `${SHIPPING_PATH}/scan-out`,
 };
@@ -36,8 +38,7 @@ export const OUTBOUND_SORT_OPTIONS: { id: OutboundSort; label: string }[] = [
 
 export function parseOutboundMode(raw: string | null): OutboundMode {
   if (raw === 'scan-out') return 'scan-out';
-  if (raw === 'ready') return 'ready';
-  if (raw === 'fba') return 'fba';
+  if (raw === 'fba' || raw === 'ready') return 'fba';
   return 'labels';
 }
 

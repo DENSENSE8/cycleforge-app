@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
+import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { IncomingGridColumn } from '@/lib/receiving/incoming-grid-layout';
@@ -18,6 +19,8 @@ interface IncomingGridGroupRowProps {
   handleSelectRow: (row: ReceivingLineRow) => void;
   handleToggleRow: (row: ReceivingLineRow) => void;
   handleSelectGroup: (ids: readonly number[]) => void;
+  clickSelect?: boolean;
+  selectGutterChrome?: GridSelectGutterChrome;
   columns?: readonly IncomingGridColumn[];
 }
 
@@ -35,6 +38,8 @@ export function IncomingGridGroupRow({
   handleSelectRow,
   handleToggleRow,
   handleSelectGroup,
+  clickSelect = false,
+  selectGutterChrome = 'always',
   columns,
 }: IncomingGridGroupRowProps) {
   const isMulti = group.rows.length > 1;
@@ -50,14 +55,15 @@ export function IncomingGridGroupRow({
       index={stripeIndex}
       isMobile={isMobile}
       selectMode={selectMode}
-      // Two independent planes now: `isOpen` is the record in the inspector,
-      // `isChecked` is bulk membership. They used to collapse into one flag,
-      // which is why an always-on select mode made the row read as a checkbox
-      // and nothing could be open.
+      // Two independent planes: `isOpen` is the record in the inspector,
+      // `isChecked` is bulk membership. Click-select collapses interaction onto
+      // the row (click = toggle; dblclick = open) while keeping both flags.
       isOpen={selectedId === row.id}
       isChecked={selectMode && selectedIds.has(row.id)}
       onSelect={() => handleSelectRow(row)}
       onToggle={() => handleToggleRow(row)}
+      clickSelect={clickSelect}
+      selectGutterChrome={selectGutterChrome}
       columns={columns}
     />
   );
@@ -92,6 +98,8 @@ export function IncomingGridGroupRow({
           allSelected={allSelected}
           someSelected={someSelected}
           onToggleGroupSelect={onToggleGroupSelect}
+          clickSelect={clickSelect}
+          selectGutterChrome={selectGutterChrome}
         />
       }
     >

@@ -13,9 +13,12 @@
  *   (move photos / photo note / audit), and `detail:receiving`.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { dispatchReceivingDetailsOverlayClose } from '@/utils/events';
+import {
+  dispatchAssistantDockClose,
+  dispatchReceivingDetailsOverlayClose,
+} from '@/utils/events';
 import { clearPeerRightEdgeParams } from '../unbox-right-edge';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 
@@ -53,6 +56,7 @@ export function useReceivingClaimView(currentLineId: number | null): ReceivingCl
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
 
   const claimView = searchParams.get(CLAIM_VIEW_PARAM) === '1';
   const claimModeRaw = searchParams.get(CLAIM_MODE_PARAM);
@@ -60,7 +64,14 @@ export function useReceivingClaimView(currentLineId: number | null): ReceivingCl
 
   const setClaimView = useCallback(
     (on: boolean, mode: ClaimModalMode = 'create') => {
-      const next = new URLSearchParams(searchParams.toString());
+      // Prefer the live location when clearing — React searchParams can lag and
+      // a clear built from a stale snapshot no-ops while the address bar still
+      // shows `?claimView=1` (Sparkles-over-Claim).
+      const seed =
+        !on && typeof window !== 'undefined'
+          ? window.location.search
+          : searchParams.toString();
+      const next = new URLSearchParams(seed);
       if (on) {
         next.set(CLAIM_VIEW_PARAM, '1');
         // One right-edge secondary surface: drop Ticket + Displays in this SAME
@@ -69,19 +80,29 @@ export function useReceivingClaimView(currentLineId: number | null): ReceivingCl
         if (mode === 'link') next.set(CLAIM_MODE_PARAM, 'link');
         else next.delete(CLAIM_MODE_PARAM);
         dispatchReceivingDetailsOverlayClose();
+        dispatchAssistantDockClose();
       } else {
         next.delete(CLAIM_VIEW_PARAM);
         next.delete(CLAIM_MODE_PARAM);
       }
       const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
+      const href = qs ? `${pathname}?${qs}` : (pathname ?? '');
+      startTransition(() => {
+        router.replace(href);
+      });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, startTransition],
   );
 
-  // Deep-link / reload with claim already open — suspend details once.
+  // Deep-link / reopen Claim — suspend details + AI on false→true only.
+  // A remount while Claim stays open must not re-fire CLOSE (fights Sparkles).
+  const prevClaimViewRef = useRef(false);
   useEffect(() => {
-    if (claimView) dispatchReceivingDetailsOverlayClose();
+    const opened = claimView && !prevClaimViewRef.current;
+    prevClaimViewRef.current = claimView;
+    if (!opened) return;
+    dispatchReceivingDetailsOverlayClose();
+    dispatchAssistantDockClose();
   }, [claimView]);
 
   const prevLineIdRef = useRef<number | null>(null);
@@ -102,11 +123,14 @@ export function useReceivingClaimView(currentLineId: number | null): ReceivingCl
       next.delete(CLAIM_VIEW_PARAM);
       next.delete(CLAIM_MODE_PARAM);
       const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
+      const href = qs ? `${pathname}?${qs}` : (pathname ?? '');
+      startTransition(() => {
+        router.replace(href);
+      });
     };
     window.addEventListener('receiving-open-details-overlay', handler);
     return () => window.removeEventListener('receiving-open-details-overlay', handler);
-  }, [claimView, router, pathname, searchParams]);
+  }, [claimView, router, pathname, searchParams, startTransition]);
 
   return { claimView, claimMode, setClaimView };
 }

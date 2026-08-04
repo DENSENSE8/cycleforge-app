@@ -20,6 +20,7 @@ export function DashboardDetailsStack({
   actionBar: _actionBar,
   activeSection,
   showQuickLinks,
+  replaceTrackingNonce = 0,
 }: DetailsStackProps) {
   const [shipByDate, setShipByDate] = useState('');
   const [orderNumber, setOrderNumber] = useState(shipped.order_id || '');
@@ -168,6 +169,7 @@ export function DashboardDetailsStack({
                 showPackingPhotos={false}
                 activeSection={activeSection}
                 showQuickLinks={showQuickLinks}
+                replaceTrackingNonce={replaceTrackingNonce}
               />
             </div>
           </>

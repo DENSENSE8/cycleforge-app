@@ -15,7 +15,6 @@ export { KpiStrip, type KpiStripProps } from './KpiStrip';
 export {
   OpsKpiBand,
   OpsKpiBandCell,
-  OpsKpiBandSkeleton,
   OpsKpiBandEmpty,
   OpsKpiBandError,
 } from './OpsKpiBand';

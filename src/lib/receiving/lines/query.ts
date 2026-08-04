@@ -15,6 +15,7 @@ import {
   normalizeReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
 import { parseReceivingView, RECEIVING_VIEWS } from '@/lib/receiving/receiving-views';
+import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 
 /**
  * Filter vocabularies shared by the GET filters (build-sql) and the POST/PATCH
@@ -97,6 +98,19 @@ export const receivingLinesQuerySchema = z.object({
    * Unbox Queue priority lane (`?ulane=`). Empty = all. Invalid → empty.
    */
   unboxQueueLane: z.enum(['', 'PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD']),
+  /**
+   * `?tracking_in=` — canonical (upper-alnum) tracking keys from a bulk paste.
+   * Empty array = the param is absent and nothing about the query changes.
+   *
+   * This is an EXACT-KEY filter, not a search: `search` is one free-text ILIKE
+   * answering "narrow this list", and a delimited list there would make the
+   * pattern quadratic and collide with `rh_field` / `rh_scope`.
+   *
+   * Non-empty, it also RELAXES the Incoming lane — see `build-sql.ts`.
+   * Capped + deduped by the shared parser; a hand-edited deep link over the cap
+   * is truncated here rather than 400-ing.
+   */
+  trackingIn: z.array(z.string()),
 });
 
 export type ReceivingLinesQuery = z.infer<typeof receivingLinesQuerySchema>;
@@ -237,6 +251,10 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const ustageRaw = String(searchParams.get('ustage') || '').trim().toLowerCase();
   const unboxQueueStage =
     ustageRaw === 'staged' || ustageRaw === 'unstaged' ? ustageRaw : '';
+  // Bulk tracking paste (`?tracking_in=`). One parser for every paste in the
+  // product — the ERP check and this filter split the same blob the same way.
+  const trackingIn = parseTrackingInParam(searchParams.get(TRACKING_IN_PARAM)).keys;
+
   const ulaneRaw = String(searchParams.get('ulane') || '').trim().toUpperCase();
   const unboxQueueLane =
     ulaneRaw === 'PO_STOCKOUT'
@@ -279,5 +297,6 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     staffFilterId,
     unboxQueueStage,
     unboxQueueLane,
+    trackingIn,
   });
 }

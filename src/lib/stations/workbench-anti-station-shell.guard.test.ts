@@ -24,7 +24,7 @@ const SUPPORT_ROOT = join(ROOT, 'src/components/support');
  * Known debt — Station column shell still reachable from Support. Shrink only.
  *
  * **Two different kinds of debt live here, and they are not equally bad.**
- * `SupportOrdersWorkspace` genuinely mounts the column shell. The two remaining
+ * `SupportOrdersFocusHost` genuinely mounts the column shell. The two remaining
  * `service-workspace` / chat entries do not — they only pull *shared utilities
  * and types* out of that barrel (`WorkspaceTimelineTab`,
  * `WorkspaceTimelineAnchor`, `STATION_WORKBENCH_COLUMN`), which the
@@ -43,7 +43,7 @@ const SUPPORT_ROOT = join(ROOT, 'src/components/support');
  * genuine mount back in, which is the wrong trade for a guard.
  */
 const STATION_SHELL_ALLOWLIST = new Set([
-  'src/components/support/orders/SupportOrdersWorkspace.tsx',
+  'src/components/support/orders/SupportOrdersFocusHost.tsx',
   'src/components/support/service-workspace/support-ticket-displays.tsx',
   'src/components/support/zendesk/chat/SupportTicketComposerDock.tsx',
 ]);

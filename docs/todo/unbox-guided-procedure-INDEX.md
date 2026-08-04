@@ -1,7 +1,14 @@
 # Unbox guided procedure — INDEX (shared decisions + sequencing)
 
 **Date:** 2026-08-01 · `main` @ `2b92b29f8` · **Lane:** WS-DOGFOOD (`main`)
-**Status:** Plan — not started
+**Status:** shipped for Unbox (BE-0…BE-5, FE-0…FE-8, plus the 2026-08-02 focus-deck and
+card/dock amendments). **Skip / waiver (D10) is designed here and NOT built** — nothing
+writes `skipped`.
+
+> **Successor:** [`scan-station-procedure/INDEX.md`](./scan-station-procedure/INDEX.md).
+> This file's *Out of scope* — other stations adopting the procedure, and Studio rendering
+> it — is that plan's whole subject. **Decisions D1–D12a below remain binding**; the
+> successor cites them rather than restating them, and only the INDEX may amend one.
 **Treat as ONE change.** Backend and frontend are two execution lanes over one vocabulary. The
 vocabulary lives here; neither plan re-declares it.
 

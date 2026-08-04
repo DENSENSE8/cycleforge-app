@@ -46,6 +46,11 @@ interface ShippedDetailsPanelContentProps {
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
   /**
+   * One-shot auto-start for the primary tracking replace editor (queue
+   * "Replace tracking"). Forwarded to {@link ShippingInformationSection}.
+   */
+  replaceTrackingNonce?: number;
+  /**
    * Section presentation. `flat` (default) is the linear slide-over stack.
    * `card` wraps each section in a lifted rounded bubble for the full-page order
    * view (drops the slide-over's inner horizontal padding — the cards own it).
@@ -68,6 +73,7 @@ export function ShippedDetailsPanelContent({
   onReportIssue,
   editableShippingFields,
   activeSection,
+  replaceTrackingNonce = 0,
   variant = 'flat',
 }: ShippedDetailsPanelContentProps) {
   const isCard = variant === 'card';
@@ -167,6 +173,7 @@ export function ShippedDetailsPanelContent({
               showSerialNumber={showSerialNumber}
               editableShippingFields={editableShippingFields}
               prepackedSku={prepackedSku}
+              replaceTrackingNonce={replaceTrackingNonce}
             />,
           )
         : null}

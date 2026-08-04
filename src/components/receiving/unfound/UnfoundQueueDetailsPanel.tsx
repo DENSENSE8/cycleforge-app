@@ -28,9 +28,8 @@ import { ExternalLink, Trash2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
-  PaneHeader,
-  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderTabs,
@@ -64,42 +63,36 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
       ariaLabel={`Unfound ${c.identityLabel} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <PaneHeader
-          className="border-border-hairline bg-surface-card/90 backdrop-blur-xl"
-          rowClassName="px-6"
-          leftSlot={
-            <>
-              <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
-              <PaneHeaderLabel
-                eyebrow={
-                  <>
-                    {meta.label.toUpperCase()}{' '}
-                    <span className="text-text-soft">
-                      · {formatDateTimePST(row.created_at)}
-                    </span>
-                  </>
-                }
-                value={c.identityLabel}
-                valueTitle={c.identityLabel}
-              />
-            </>
-          }
-          rightSlot={<PaneHeaderCloseButton onClick={onClose} title="Close details" />}
-          belowSlot={
-            isEmailPo ? (
-              <PaneHeaderTabs<DetailsTab>
-                tabs={[
-                  { value: 'overview', label: 'Overview' },
-                  { value: 'extract', label: 'Extract' },
-                  { value: 'email', label: 'Email' },
-                ]}
-                value={c.activeTab}
-                onChange={c.setActiveTab}
-                className="px-6"
-              />
-            ) : undefined
-          }
-        />
+        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
+          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" />
+          {isEmailPo ? (
+            <PaneHeaderTabs<DetailsTab>
+              tabs={[
+                { value: 'overview', label: 'Overview' },
+                { value: 'extract', label: 'Extract' },
+                { value: 'email', label: 'Email' },
+              ]}
+              value={c.activeTab}
+              onChange={c.setActiveTab}
+              className="px-2"
+            />
+          ) : null}
+          <div className="flex items-center gap-2 px-2 pb-2 pt-1">
+            <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
+            <PaneHeaderLabel
+              eyebrow={
+                <>
+                  {meta.label.toUpperCase()}{' '}
+                  <span className="text-text-soft">
+                    · {formatDateTimePST(row.created_at)}
+                  </span>
+                </>
+              }
+              value={c.identityLabel}
+              valueTitle={c.identityLabel}
+            />
+          </div>
+        </div>
 
         {/* Scrollable body */}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">

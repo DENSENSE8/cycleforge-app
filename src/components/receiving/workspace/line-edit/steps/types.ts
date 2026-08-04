@@ -5,6 +5,19 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 /**
  * What a step body is handed — and, just as importantly, what it is NOT.
  *
+ * ## Never an ACTION (ruled 2026-08-02)
+ *
+ * A step body renders the step's CONTENT — the evidence, the face, the line
+ * list, the grade it currently carries. It never renders the button that
+ * advances the step. Those live in the bottom dock, contextual to the active
+ * step: `./dock/index.ts` → `UNBOX_STEP_DOCK_CONTROLS`, rendered by
+ * `../UnboxStepDock`. Law: `.claude/rules/display/station-workbench.md` →
+ * *The dock's LEADING zone is the step's ACTION surface*.
+ *
+ * Which is why this bag has no action handlers on it and must not grow any: a
+ * slot named `onConfirm` here is the ruling being walked back one prop at a
+ * time.
+ *
  * ## Never the controller
  *
  * `useUnboxLineController` is the station's god object; passing it into every
@@ -15,10 +28,11 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  *
  * ## Slots are how the composite steps stay presentational
  *
- * `contents` and `serial` compose surfaces with a dozen handlers each
- * (`PoLinesAccordion`, `SerialCard`). Threading those handlers through this bag
- * would make it the controller in all but name, so the adapter renders those
- * nodes and passes them in. A slot is a boundary, not a shortcut.
+ * `contents` and `classify` compose surfaces with a dozen handlers each
+ * (`PoLinesAccordion`, `TriageClassifySection`). Threading those handlers
+ * through this bag would make it the controller in all but name, so the adapter
+ * renders those nodes and passes them in. A slot is a boundary, not a shortcut.
+ * `serial` has no body slot — its scan field is the dock's `serialSlot`.
  */
 export interface UnboxStepBodyContext {
   row: ReceivingLineRow;
@@ -39,10 +53,11 @@ export interface UnboxStepBodyContext {
   contentsSlot?: ReactNode;
   /** The classify editor — the `classify` step's whole body. */
   classifySlot?: ReactNode;
-  /** The serial field + waiver — the `serial` step's whole body. */
-  serialSlot?: ReactNode;
-  /** Per-aspect item capture — the `item_photos` step's whole body. */
-  itemPhotoSlot?: ReactNode;
+  /**
+   * The line's item photos, read-only — the `item_photos` step's whole body.
+   * The CAMERA is not here; it is the dock's `ItemPhotoDockControl`.
+   */
+  itemPhotoGallerySlot?: ReactNode;
   /**
    * The printed label preview + its editors — the `label` step's whole body.
    * The ONE label surface: there is no standalone preview beneath the column.

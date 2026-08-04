@@ -68,6 +68,10 @@ import {
   type CounterDraft,
   type CounterStep,
 } from './counter-intake-steps';
+import {
+  KioskPaymentStepUpSheet,
+  type KioskPaymentStepUpResult,
+} from '@/components/kiosk/KioskPaymentStepUpSheet';
 
 interface CounterIntakeFormProps {
   onClose: () => void;
@@ -77,9 +81,9 @@ interface CounterIntakeFormProps {
    */
   onSubmit: (
     input: Omit<CounterTransactionInput, 'clientEventId'>,
-    opts: { takePayment: boolean },
+    opts: { takePayment: boolean; staffId?: number; pin?: string },
   ) => Promise<CounterTransactionResult>;
-  /** Route prefix for the catalog pair. The kiosk passes `/api/kiosk/repair`. */
+  /** Route prefix for the catalog pair. Sales kiosk passes `/api/kiosk/sales`. */
   apiBasePath?: string;
 }
 
@@ -98,6 +102,7 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CounterTransactionResult | null>(null);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
   const _liveRegionRef = useRef<HTMLParagraphElement>(null);
 
   const pagerTransition = useMotionTransition(framerTransition.tabPager);
@@ -182,7 +187,7 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
   );
 
   const submit = useCallback(
-    async (takePayment: boolean) => {
+    async (opts: { takePayment: boolean; staffId?: number; pin?: string }) => {
       if (submitting) return;
       setSubmitting(true);
       setError(null);
@@ -207,16 +212,40 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
               : null,
             ticketWork: draft.service ? { mode: 'create' } : { mode: 'none' },
           },
-          { takePayment },
+          opts,
         );
         setResult(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not complete this transaction.');
+        throw err;
       } finally {
         setSubmitting(false);
       }
     },
     [draft, onSubmit, submitting],
+  );
+
+  const onStepUpAuthorized = useCallback(
+    async (creds: KioskPaymentStepUpResult) => {
+      try {
+        await submit({
+          takePayment: true,
+          staffId: creds.staffId,
+          pin: creds.pin,
+        });
+        setStepUpOpen(false);
+        return { ok: true as const };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Could not complete this transaction.';
+        if (message.includes('PIN incorrect')) {
+          return { ok: false as const, error: message };
+        }
+        setStepUpOpen(false);
+        return { ok: false as const, error: message };
+      }
+    },
+    [submit],
   );
 
   // ── Done ──────────────────────────────────────────────────────────────────
@@ -490,24 +519,27 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
                     size="lg"
                     className="w-full"
                     disabled={submitting}
-                    onClick={() => void submit(true)}
+                    onClick={() => {
+                      setError(null);
+                      setStepUpOpen(true);
+                    }}
                   >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Sending…
-                      </>
-                    ) : (
-                      'Take payment at the register'
-                    )}
+                    Take payment at the register
                   </Button>
                   <Button
                     variant="secondary"
                     size="lg"
                     className="w-full"
                     disabled={submitting}
-                    onClick={() => void submit(false)}
+                    onClick={() => void submit({ takePayment: false }).catch(() => {})}
                   >
-                    Save without payment
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                      </>
+                    ) : (
+                      'Save without payment'
+                    )}
                   </Button>
                 </div>
                 <p className="text-role-micro uppercase tracking-widest text-text-soft">
@@ -540,6 +572,12 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
           </div>
         )}
       </footer>
+
+      <KioskPaymentStepUpSheet
+        open={stepUpOpen}
+        onClose={() => setStepUpOpen(false)}
+        onAuthorized={onStepUpAuthorized}
+      />
     </div>
   );
 }

@@ -33,7 +33,7 @@ middle.** Worked verdicts:
 | **Connections** (tracking / order / serial, link, unlink) | rail | Explains the thread; the agent reads it *while* replying |
 | **Timeline** (ticket activity / carrier / unit journeys) | rail | Read-only history of the record in the middle |
 | **Conversations** (internal team thread) | rail *(corrected 2026-08-02)* | See below |
-| **AI *suggestions*** (drafts a reply the agent still sends) | rail | It proposes; the composer in the middle commits |
+| **AI *suggestions*** (drafts a reply the agent still sends) | rail | It proposes; the composer in the middle commits — **shipped 2026-08-02** |
 | **An AI panel that SENDS** | **middle** | Sending is the work |
 
 **Conversations moved to the rail, and the reason it was in the middle did not
@@ -57,9 +57,77 @@ Timeline's Activity spine already shows. Timeline is the superset (Units ·
 Tracking · Activity), so it keeps the job; two homes for one fact is the thing
 being avoided, not the tab count.
 
-**A rail tab must be reachable and useful the moment it ships.** `SupportSuggestionPanel` exists but
-has zero consumers and no bridge into any composer, so the AI tab is **absent** rather than mounted
-empty — an empty tab that looks broken costs more trust than a missing one.
+**A rail tab must be reachable and useful the moment it ships.** That rule kept the AI tab **absent**
+until 2026-08-02: `SupportSuggestionPanel` existed but had zero consumers and no bridge into any
+composer, so mounting it would have rendered a control that could not deliver its draft anywhere.
+
+**Assist has landed, and the bridge is what unblocked it.** The rail is now
+**Connections · Conversations · Timeline · Assist**. The panel that could not deliver was deleted
+rather than left beside its successor — two shapes for one job is the fork the composition rules ban,
+and knip cannot see a fork whose doors are both imported.
+
+### Support reply drafting — the assistant drafts, it never acts
+
+- **Generation lives in the rail; committing lives in the middle.** The branch's ranking rule decides
+  it: *suggesting is an extra; sending is the work*. An AI panel that could SEND would belong in the
+  middle, and is out of scope by ruling rather than by omission.
+- **The one path out of the display is `ThreadComposerBridge.setDraft`.** It seeds the editor and the
+  visibility toggle and has **no access to `submit`** — it must never gain one. There is no
+  confidence threshold, no setting, and no "it was obviously right" that auto-sends.
+- **`mode` is not a convenience.** A draft addressed to the customer arriving with `Internal`
+  selected is silently withheld from them; a note meant to stay internal arriving public is silently
+  emailed. `setDraft` sets the toggle so neither can happen.
+- **Operator text is never clobbered — the rule is EXPLICIT CONFIRM.** An empty composer applies
+  straight through with no dialog; a composer holding typed text prompts (house `requestConfirm`,
+  never a hand-rolled scrim) before replacing it, and a decline leaves the words exactly as they
+  were. Refuse-and-tell was rejected for being a dead end (the agent must clear the box and ask
+  again) and append-below-a-rule for splicing a draft nobody asked for. **The rule lives in ONE
+  place — `seedComposerDraft` (`src/lib/threads/composer-draft.ts`) — because two composers
+  implement this bridge and the failure mode of drift is losing an agent's typed work.**
+  `SupportChatComposer`'s old `seedBody` / `seedToken` props overwrote the body unconditionally on
+  every token bump; they were safe only because nothing had ever called them, and they were deleted
+  rather than left as a second door.
+- **The dock is untouched by the rail.** Selecting Assist must not re-label the bottom button —
+  a control in one region rewriting a control in another is the cross-region action-at-a-distance
+  the station law bans.
+- **The trust surface is not decoration.** A draft about to reach a customer renders its confidence,
+  which lane ran, the model, whether the document RAG grounded it, and its sources — plus a closing
+  line stating that nothing was sent. **What the IMAGE said and what OUR DATA said render apart**,
+  because they are not equally trustworthy: a caption and an OCR'd serial are observations; a matched
+  `SearchHit` is a fact, and it renders as a real link. A photo whose identifiers matched nothing
+  **says so out loud** and caps the draft at `low` confidence — a confident paragraph about an object
+  the system could not place is the failure mode that reaches the customer.
+
+### The vision loop — paste an image, get a grounded draft
+
+Pasting an image anywhere on an open ticket stages it through the existing photo pipeline
+(`useTicketPhotoStaging`), brings the rail forward on **Assist**, and asks for one draft covering the
+whole paste.
+
+- **Paste has ONE owner per surface.** `SupportTicketFocus` listens at document scope (it only mounts
+  while a ticket is open); the thread body's dropzone runs with `paste: false`. One gesture must keep
+  one meaning — otherwise the same screenshot "attaches quietly" or "attaches and drafts" depending on
+  where the cursor happened to be. Drag-drop and the file picker stay plain attach.
+- **A text paste is a text paste.** Nothing is intercepted unless the clipboard actually carries an
+  image file; an operator pasting an order number into the composer must never have it swallowed.
+- **The display selection travels as DATA, never as a timed event** — `focusDisplay` +
+  `focusRequestId` on `SupportContextDetailPanel`. The rail may still be closed at the instant of the
+  paste, so a dispatched event would fire into an empty room (the trap Unbox hit with a
+  `requestAnimationFrame` dispatch at `CartonMatchHub`).
+- **The deterministic pass runs on EVERY lane**, cloud included: analyze → `routeScan` →
+  `hybridSearch`. It is what makes the photo searchable afterwards and what lets the draft say *"this
+  is the unit on order #1234"* rather than describing a picture. Skipping it because a multimodal
+  model can read text itself is the cheap wrong answer.
+- **An image on its own IS a question.** A ticket whose latest message is just a photo still drafts;
+  only a ticket with neither text nor photo has nothing to draft from.
+- **Failure never blocks the record.** Extraction or generation failing leaves the image staged as a
+  normal attachment with one toast — *"AI assist unavailable. Image attached."*
+- **The tenant framing RESOLVES; it is never hardcoded.** The system prompt named one vendor's brand
+  until 2026-08-02, which meant a second tenant got a model claiming to work for a company they have
+  no relationship with — the operator-copy vendor rule, pointed at a customer. It now comes from
+  `buildSupportSystemPrompt(persona)` over the org's own name and optional vertical, with a generic
+  "a reseller" fallback. Guard: `reply-persona.test.ts` (shrink-only — a vendor name must not return
+  to the drafting path).
 
 **The right edge is `RightRailHost`'s, and the branch shell has two slots.** A `service-workspace`
 shell renders **list** and **thread** and nothing else; context is a rail occupant that registers
@@ -124,8 +192,8 @@ plainly that a two-clause test admitted the surface.
 │ LEFT — queue map   │ MIDDLE — thread (focus surface)  │ │ RIGHT — displays        │
 │                    │                                  │ │ ▣ ▣ ▣  icon strip       │
 │ durable ?ticket=   │ split header (PaneHeader blocks) │ │ Connections             │
-│ STAYS MOUNTED      │ conversation body — NO tab strip │ │ Conversations           │
-│ on selection       │ crossfades on ticket id          │ │ Timeline                │
+│ STAYS MOUNTED      │ requester band + conversation    │ │ Conversations           │
+│ on selection       │ crossfades on ticket id          │ │ Timeline · Assist       │
 │                    │ ──────────────────────────────── │ │ push · resize · collapse│
 │                    │ OmnichannelComposerDock (bottom) │ │ SupportContextDetailPanel│
 └────────────────────┴──────────────────────────────────┘ └─────────────────────────┘
@@ -136,9 +204,88 @@ plainly that a two-clause test admitted the surface.
 |---|---|---|
 | **List** | The durable queue map — status tabs, search, pagination | Ephemeral selection; act-and-clear auto-advance; **being replaced by the thread** |
 | **Thread** | The customer conversation, and only that; the singular focus crossfade, keyed on ticket id | **A display switcher in its body** — reaching the linkage must not take the conversation off screen; replacing the whole page with a Station focus card |
+| **Fields** | Status + priority in the pane header's identity row; assignment in the rail's Connections display | A permanent dropdown band docked under the subject on the reading surface |
 | **Header** | The **split header** — an icon action row over dense identity, composed from the `PaneHeader` **blocks** onto a card shell whose radius/border/lift match the queue card. It is the subject's ONE home on this surface | `PaneHeader`'s own `mainStickyHeaderClass` (a full-bleed squared band — it seams against the rounded queue card); a wrapping hero title; `StationContextBar` / `CartonContextCard`; **the chat header restating the subject one row below it** |
 | **Composer** | `OmnichannelComposerDock`, bottom-docked on the thread, **ticket-terminal** | A second sticky Support-only composer beside it; a dock whose label changes with the rail's selected display |
 | **Displays** | `SupportContextDetailPanel` — a `RightRailHost` occupant mounted *beside* the shell, hosting `SectionTabsSlider density="icon"` | A private `<aside>` in the shell; floating over the thread; a Station push-column twin for CX; a nested scroll port inside the rail's own |
+
+### Thread anatomy — a merged record ledger, and bubbles are banned
+
+The conversation is a **`MergedRecordStream`**: helpdesk messages and warehouse /
+carrier events interleaved chronologically as **flat rows on one shared left
+reading edge**, `divide-y divide-border-hairline`, day-banded through the shared
+`DateGroupHeader`. **Direction is the leading mark** — the author's identity mark
+for a message, the station glyph for an event — **never a background fill**.
+Internal notes tint with `surface-sunken` **and say so in words on the row**, so
+colour is never the only carrier.
+
+It replaced a chat (`SupportChatThread`, deleted 2026-08-02): blue and amber
+bubbles, ragged variable widths, a `PUBLIC` chip repeated on every outbound row.
+The job here is not *read a chat* — it is **reconstruct the truth about one
+physical unit fast enough to answer confidently**, and a bubble spends the
+surface's only free signalling channel on saying "this is a chat" while
+destroying the scan speed a dense list exists to buy.
+
+- **Reading direction is ASCENDING**, unlike every other timeline in the app: the
+  composer that answers is docked at the bottom, so the newest message must be
+  adjacent to it.
+- **Messages are never `collapseTimeline`d.** That helper folds adjacent rows with
+  an equal `title + ref + actor + tone` signature, and every message from one
+  author shares both — two consecutive replies would fold into one and a
+  customer's words would silently vanish. Collapse the event spines *before*
+  merging.
+- **Block markdown must render** — headings, lists, blockquotes — through
+  `renderBlockMarkdown`. A reply arrives with structure; showing the customer a
+  literal `###` is the surface admitting it did not read what it was given.
+- **It is content, not a viewport.** The host owns the scroll port.
+
+### Who is asking rides at the HEAD of the thread's own port
+
+`RequesterDetailBand` opens the conversation on `/support`: identity mark ·
+name · email, then the order count and the prior-ticket count, then the linkage
+(order · tracking · serials · carton) as typed `CopyChip`s. It is the answer to
+the question an agent asks before reading a single message.
+
+- **It is context FOR the conversation, so it lives IN the conversation's port
+  and scrolls away with it.** It is not chrome, and pinning it would spend
+  permanent vertical room on a fact that is read once per ticket.
+- **It replaces the chat header's requester line rather than joining it.**
+  `/support` passes `hideRequesterBand` in the same breath as
+  `showRequesterDetail`; with the title already hidden, `SupportChatHeader`
+  renders `null` there. Two lines naming the same person is the duplicate this
+  band exists to remove, not to create.
+- **The linkage half is a READER of the `SupportContextBundle` the thread
+  already fetches** — same query key, no second fetch. Only the two counts and
+  our `customers` row need a call of their own (`GET /api/support/requester`),
+  and that call is deliberately separate: it reaches the helpdesk search API,
+  and the conversation must not wait on a customer's ticket count.
+- **LTV and return rate are ABSENT, on purpose.** Neither exists in this schema.
+  `—` marks a fact we could not resolve; a fact with no source gets no row, and
+  a fabricated `0` gets neither — an agent quotes a number on a customer record.
+  A count that is *unknown* is `null`, never `0`.
+- **Absence is the common case and must not collapse the band.** Most tickets
+  have no linked customer and no linked order; the identity row plus an honest
+  "not linked yet" line is the correct render. A band that vanishes when
+  unlinked teaches the agent that linkage is not a thing this surface has.
+- Compose `IdentityMark` / `staffInitials` — never a hand-rolled `rounded-full`
+  initials span, never a local `initials()`.
+
+### The field band is gone; each fact has ONE editable home per host
+
+`SupportChatHeader` carried status · priority · helpdesk assignee · staff
+assignment as a wrapping dropdown row under the subject — the loudest thing on a
+surface whose job is reading. It also *duplicated* the status, which the pane
+header was already telling quietly with an 8px dot.
+
+| Host | Status / priority | Assignment |
+|---|---|---|
+| `/support` | pane header identity row (the dot's old position, now the control) | rail → **Connections** display |
+| Unbox ticket push · Links rail | `SupportDetailsStack` popover (`fields="edit"`) | same popover |
+
+`SupportChatHeader` renders **`null`** when a host hides both the requester band
+and the title — that is `/support`, where the pane header owns identity outright.
+Do not restore a read-only echo of status or priority elsewhere on a surface that
+already has an editable one.
 
 ### The list must stay mounted — this is the branch's whole point
 
@@ -335,6 +482,8 @@ that happens to sit in the Support domain.
 | Keep the dock ticket-terminal | Re-label the bottom dock from a right-edge click |
 | Render the subject once, in the split header | Restate it in the chat header below |
 | Compose one `OmnichannelComposerDock` | Fork a Support-only composer |
+| Draft through `bridge.setDraft` (confirm before replacing typed text) | Give the assistant any path to `submit` |
+| Resolve the tenant framing from org settings | Name a vendor brand in a shared prompt |
 | Push the context column; give it a close control | Float it over the thread |
 | Let a non-thread mode mount the shell with an honest middle | Force a composer onto a read-only call stream |
 | Grow a Workbench identity header for a ticket | Port `StationContextBar` carton chrome across |

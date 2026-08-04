@@ -190,6 +190,26 @@ export interface ReceivingLineRow {
    * actionable while the financial-state mismatch is visible.
    */
   zoho_status?: string | null;
+  /**
+   * When the PO mirror last synced (`zoho_po_mirror.last_synced_at`) — the age
+   * of {@link zoho_status}, disclosed by the `zoho` chip's tooltip. A mirror
+   * answer is a cached claim; an operator deciding whether to chase a vendor
+   * needs to know it might be a day old.
+   *
+   * ⚠ It is when WE POLLED, never when the vendor flipped the status. Do not
+   * render it as a transition time ("received 2h ago") — closing that gap needs
+   * `zoho_po_mirror.status_changed_at`, which does not exist yet.
+   */
+  zoho_status_synced_at?: string | null;
+  /**
+   * view=incoming_removed only — signals for {@link resolveIncomingRemovalReason}.
+   * `removed_at` is the best-evidence departure time; the other four signals the
+   * ladder needs (delivered · scanned · unboxed · vendor status) are read off
+   * fields this row already carries, so only these two are computed server-side.
+   */
+  removed_written_off?: boolean;
+  removed_aged_out?: boolean;
+  removed_at?: string | null;
   created_at: string | null;
   /** Last write to the line row itself (qty bump, condition, notes, …).
    *  Drives the unbox rail's sort + time label (sort=unbox_activity). */

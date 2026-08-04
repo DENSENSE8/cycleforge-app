@@ -8,6 +8,7 @@
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { PackWorkspaceView } from '@/components/packer/PackWorkspaceView';
 import { PackOrderPanel } from '@/components/packer/PackOrderPanel';
+import { PackFbaScanCard } from '@/components/packer/PackFbaScanCard';
 import {
   framerPresence,
   framerTransition,
@@ -19,22 +20,32 @@ import {
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
-import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
+import type {
+  PackActiveFbaPane,
+  PackActiveOrderPane,
+} from '@/components/packer/usePackerOrderPane';
 
 interface PackOrderWorkspaceProps {
   packerId: number;
   activeOrder: PackActiveOrderPane | null;
+  /**
+   * FBA scan result — the bench's other active entity. Mutually exclusive with
+   * `activeOrder` by construction (`usePackerOrderPane` clears one when the
+   * other arrives), so the overlay never has to pick a winner.
+   */
+  activeFba?: PackActiveFbaPane | null;
   onCloseActiveOrder: () => void;
 }
 
 export function PackOrderWorkspace({
   packerId,
   activeOrder,
+  activeFba = null,
   onCloseActiveOrder,
 }: PackOrderWorkspaceProps) {
   const panePresence = useMotionPresence(framerPresence.workbenchPaneSettle);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneSettle);
-  const showOverlay = !!activeOrder;
+  const showOverlay = !!activeOrder || !!activeFba;
 
   return (
     <div className={cn(appWorkCanvasClass, 'relative h-full')}>
@@ -48,7 +59,19 @@ export function PackOrderWorkspace({
       </div>
 
       <AnimatePresence initial={false} mode="wait">
-        {showOverlay && activeOrder ? (
+        {activeFba ? (
+          <motion.div
+            key={`fba-${activeFba.fnsku || activeFba.shipmentRef || 'scan'}`}
+            initial={panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel }}
+            className="absolute inset-0 flex min-h-0 flex-col overflow-y-auto bg-surface-canvas p-4"
+          >
+            <PackFbaScanCard scan={activeFba} />
+          </motion.div>
+        ) : showOverlay && activeOrder ? (
           <motion.div
             key={
               activeOrder.scanDriven

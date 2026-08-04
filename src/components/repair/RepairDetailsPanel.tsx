@@ -17,11 +17,9 @@ import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import DeleteButton from '@/components/ui/DeleteButton';
-import { IconButton } from '@/design-system/primitives';
 import {
   PaneHeader,
   PaneHeaderActionBar,
-  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
@@ -74,135 +72,130 @@ export function RepairDetailsPanel({
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <PaneHeader
           className="border-border-hairline bg-surface-card/90 backdrop-blur-xl"
-          rowClassName="px-6"
+          rowClassName="px-2"
           leftSlot={
-            <>
-              <PaneHeaderIconBadge Icon={Clock} bg="bg-orange-100" tint="text-orange-600" />
-              <PaneHeaderLabel
-                eyebrow={c.isSavingTicket ? 'Saving ticket...' : 'Repair ticket'}
-                value={
-                  c.isEditingTicket ? (
-                    <input
-                      ref={c.ticketInputRef}
-                      type="text"
-                      value={c.ticketNumber}
-                      onChange={(e) => c.setTicketNumber(e.target.value)}
-                      onBlur={c.handleSaveTicket}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.currentTarget.blur();
-                        }
-                        if (e.key === 'Escape') {
-                          c.setTicketNumber(repair.ticket_number || '');
-                          c.setIsEditingTicket(false);
-                        }
-                      }}
-                      className="w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0"
-                      placeholder="TK Number"
-                      disabled={c.isSavingTicket}
-                    />
-                  ) : c.zendeskTicketUrl ? (
-                    <HoverTooltip label={`Open Zendesk ticket ${c.ticketNumber}`} asChild>
-                      <a
-                        href={c.zendeskTicketUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block truncate transition-colors hover:text-blue-600"
-                      >
-                        {c.ticketNumber}
-                      </a>
-                    </HoverTooltip>
-                  ) : (
-                    <span className="text-text-faint">TK Number</span>
-                  )
-                }
-                valueTitle={c.ticketNumber || 'TK Number'}
-              />
-            </>
-          }
-          rightSlot={
-            <>
-              <IconButton
-                icon={<Pencil className="h-4 w-4" />}
-                onClick={() => c.setIsEditingTicket(true)}
-                ariaLabel="Edit ticket number"
-                disabled={c.isSavingTicket}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-sunken"
-              />
-              {/* Non-modal: no scrim to click off, so the close is explicit. */}
-              <PaneHeaderCloseButton onClick={onClose} title="Close details" />
-            </>
+            <PaneHeaderActionBar
+              iconOnly
+              variant="flat"
+              className="w-full px-0 py-0"
+              actions={[
+                {
+                  key: 'edit-ticket',
+                  label: 'Edit ticket number',
+                  icon: <Pencil className="h-4 w-4" />,
+                  onClick: () => c.setIsEditingTicket(true),
+                  disabled: c.isSavingTicket,
+                },
+                ...c.panelActions.map((action) => ({
+                  key: action.key,
+                  label: action.label,
+                  icon: <span className={action.toneClassName}>{action.icon}</span>,
+                  onClick: action.onAction,
+                })),
+                {
+                  key: 'print',
+                  label: 'Repair document',
+                  icon: (
+                    <span className="text-blue-600">
+                      <PrinterAlt className="h-3.5 w-3.5" />
+                    </span>
+                  ),
+                  onClick: c.printRepairDocument,
+                },
+                ...(c.canCreateSquarePayment
+                  ? [
+                      {
+                        key: 'square-pay',
+                        label: c.isPaying
+                          ? 'Creating payment link…'
+                          : c.hasSourceSku
+                            ? 'Square payment (catalog SKU)'
+                            : 'Square payment (price)',
+                        icon: (
+                          <span className="text-emerald-600">
+                            <DollarSign className="h-3.5 w-3.5" />
+                          </span>
+                        ),
+                        onClick: () => {
+                          if (!c.isPaying) void c.openSquarePayment();
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+              onPrev={onMoveUp}
+              onNext={onMoveDown}
+              prevDisabled={disableMoveUp}
+              nextDisabled={disableMoveDown}
+              prevTitle="Move up a row"
+              nextTitle="Move down a row"
+              onClose={onClose}
+              closeTitle="Close details"
+            />
           }
           belowSlot={
             <>
-              <div className="flex flex-wrap items-center gap-2 px-6 pb-2">
-                <PaneHeaderStatusPill
-                  tone={getRepairStatusTone(repair.status)}
-                  pulse
-                  className={
-                    repair.status === 'Repaired, Contact Customer'
-                      ? 'text-role-micro tracking-[0.14em]'
-                      : undefined
-                  }
-                >
-                  {repair.status || 'No status'}
-                </PaneHeaderStatusPill>
-              </div>
-              <div className="px-6 py-2">
-                <PaneHeaderActionBar
-                  iconOnly
-                  variant="card"
-                  actions={[
-                    ...c.panelActions.map((action) => ({
-                      key: action.key,
-                      label: action.label,
-                      icon: <span className={action.toneClassName}>{action.icon}</span>,
-                      onClick: action.onAction,
-                    })),
-                    {
-                      key: 'print',
-                      label: 'Repair document',
-                      icon: (
-                        <span className="text-blue-600">
-                          <PrinterAlt className="h-3.5 w-3.5" />
-                        </span>
-                      ),
-                      onClick: c.printRepairDocument,
-                    },
-                    ...(c.canCreateSquarePayment
-                      ? [
-                          {
-                            key: 'square-pay',
-                            label: c.isPaying
-                              ? 'Creating payment link…'
-                              : c.hasSourceSku
-                                ? 'Square payment (catalog SKU)'
-                                : 'Square payment (price)',
-                            icon: (
-                              <span className="text-emerald-600">
-                                <DollarSign className="h-3.5 w-3.5" />
-                              </span>
-                            ),
-                            onClick: () => {
-                              if (!c.isPaying) void c.openSquarePayment();
-                            },
-                          },
-                        ]
-                      : []),
-                  ]}
-                  onPrev={onMoveUp}
-                  onNext={onMoveDown}
-                  prevDisabled={disableMoveUp}
-                  nextDisabled={disableMoveDown}
-                  prevTitle="Move up a row"
-                  nextTitle="Move down a row"
-                />
+              <div className="flex items-center gap-2 px-2 pb-2">
+                <PaneHeaderIconBadge Icon={Clock} bg="bg-orange-100" tint="text-orange-600" />
+                <div className="flex min-w-0 flex-col gap-1">
+                  <PaneHeaderLabel
+                    eyebrow={c.isSavingTicket ? 'Saving ticket...' : 'Repair ticket'}
+                    value={
+                      c.isEditingTicket ? (
+                        <input
+                          ref={c.ticketInputRef}
+                          type="text"
+                          value={c.ticketNumber}
+                          onChange={(e) => c.setTicketNumber(e.target.value)}
+                          onBlur={c.handleSaveTicket}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            }
+                            if (e.key === 'Escape') {
+                              c.setTicketNumber(repair.ticket_number || '');
+                              c.setIsEditingTicket(false);
+                            }
+                          }}
+                          className="w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0"
+                          placeholder="TK Number"
+                          disabled={c.isSavingTicket}
+                        />
+                      ) : c.zendeskTicketUrl ? (
+                        <HoverTooltip label={`Open Zendesk ticket ${c.ticketNumber}`} asChild>
+                          <a
+                            href={c.zendeskTicketUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block truncate transition-colors hover:text-blue-600"
+                          >
+                            {c.ticketNumber}
+                          </a>
+                        </HoverTooltip>
+                      ) : (
+                        <span className="text-text-faint">TK Number</span>
+                      )
+                    }
+                    valueTitle={c.ticketNumber || 'TK Number'}
+                  />
+                  <PaneHeaderStatusPill
+                    tone={getRepairStatusTone(repair.status)}
+                    pulse
+                    className={
+                      repair.status === 'Repaired, Contact Customer'
+                        ? 'text-role-micro tracking-[0.14em]'
+                        : undefined
+                    }
+                  >
+                    {repair.status || 'No status'}
+                  </PaneHeaderStatusPill>
+                </div>
               </div>
               <PaneHeaderTabs
                 tabs={REPAIR_TABS}
                 value={c.activeTab}
                 onChange={c.setActiveTab}
-                className="px-6"
+                className="px-2"
               />
             </>
           }

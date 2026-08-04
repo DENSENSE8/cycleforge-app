@@ -32,8 +32,8 @@ import { RoleColorPicker } from '@/components/admin/roles/RoleColorPicker';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AnchoredLayer } from '@/design-system';
-import { Button } from '@/design-system/primitives';
-import { Loader2 } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
+import { Loader2, Pencil } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { qk } from '@/queries/keys';
@@ -50,8 +50,11 @@ const ACCEPTED = 'image/jpeg,image/png,image/webp';
 
 export function StaffAvatarEditor({
   className,
+  markSize = 'sm',
 }: {
   className?: string;
+  /** Trigger mark size — spine footer uses `xs` for a denser account row. */
+  markSize?: 'xs' | 'sm';
 }) {
   const { user, refresh } = useAuth();
   const queryClient = useQueryClient();
@@ -190,7 +193,7 @@ export function StaffAvatarEditor({
           <StaffAvatar
             staffId={staffId}
             name={staffName}
-            size="sm"
+            size={markSize}
             alt={`Profile photo for ${staffName || `Staff #${staffId}`}`}
           />
         </button>
@@ -208,6 +211,9 @@ export function StaffAvatarEditor({
           className="w-[220px] overflow-hidden rounded-lg border border-border-soft bg-surface-card p-2 shadow-md"
         >
           <div className="mb-2 flex items-center gap-2">
+            {/* `md` (36px) — the house default. The mark was bumped to `lg`
+                only to counterbalance a `role-display` name; now that the name
+                is `role-title`, that justification is gone and so is the bump. */}
             <StaffAvatar staffId={staffId} name={staffName} size="md" />
             <div className="min-w-0 flex-1">
               {editingName ? (
@@ -236,33 +242,55 @@ export function StaffAvatarEditor({
                   }}
                   className={cn(
                     'w-full rounded border border-border-default bg-surface-card px-1.5 py-0.5',
-                    'text-role-caption font-semibold text-text-default',
+                    'text-role-title text-text-default',
                     focusRing('field', 'accent'),
                   )}
                 />
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNameDraft(staffName);
-                    setEditingName(true);
-                  }}
-                  aria-label={`Edit your name — ${staffName || `Staff #${staffId}`}`}
-                  className={cn(
-                    'ds-raw-button block w-full truncate rounded px-1.5 py-0.5 text-left',
-                    'text-role-caption font-semibold text-text-default hover:bg-surface-canvas',
-                    focusRing('control', 'accent'),
-                  )}
-                >
-                  {busy === 'name' ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {nameDraft || staffName}
-                    </span>
-                  ) : (
-                    staffName || `Staff #${staffId}`
-                  )}
-                </button>
+                // Row, not a single button: the pencil is a dedicated,
+                // discoverable affordance — a `HoverTooltip`-labelled icon,
+                // not a hover-only cue the name text alone would have been.
+                // Both halves open the same edit; the name reads at
+                // `role-title` — prominent against the COLOR/PHOTO section
+                // eyebrows below it, but not display-scale hero type this
+                // 220px card's actual jobs (color, photo) don't call for.
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNameDraft(staffName);
+                      setEditingName(true);
+                    }}
+                    aria-label={`Edit your name — ${staffName || `Staff #${staffId}`}`}
+                    className={cn(
+                      'ds-raw-button min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-left',
+                      'text-role-title text-text-default hover:bg-surface-canvas',
+                      focusRing('control', 'accent'),
+                    )}
+                  >
+                    {busy === 'name' ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {nameDraft || staffName}
+                      </span>
+                    ) : (
+                      staffName || `Staff #${staffId}`
+                    )}
+                  </button>
+                  <HoverTooltip label="Edit name" asChild>
+                    <IconButton
+                      size="sm"
+                      tone="neutral"
+                      disabled={busy !== null}
+                      onClick={() => {
+                        setNameDraft(staffName);
+                        setEditingName(true);
+                      }}
+                      ariaLabel="Edit name"
+                      icon={<Pencil className="h-3.5 w-3.5" />}
+                    />
+                  </HoverTooltip>
+                </div>
               )}
             </div>
           </div>

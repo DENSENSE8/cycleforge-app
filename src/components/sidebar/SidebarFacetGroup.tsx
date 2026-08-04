@@ -27,8 +27,8 @@ import {
  * **`density="ops"` is baked in on purpose.** The list's default `comfortable`
  * register is the Settings navigator shape (`py-3`, `text-sm`, a hairline under
  * every row); `ops` is the floor-rail shape (`py-1.5`, `text-role-caption`,
- * `divide-y` on the container, `QUEUE_ROW.selectedClass`). Passing the wrong one
- * is the mistake this wrapper exists to make impossible.
+ * `divide-y` on the container, quiet `NAV_ROW.selectedClass`). Passing the wrong
+ * one is the mistake this wrapper exists to make impossible.
  *
  * **Never wrap this in an `h-full` host.** `SidebarSectionList` deliberately drops
  * `h-full` under `ops` because it is a pinned block with siblings beneath it;

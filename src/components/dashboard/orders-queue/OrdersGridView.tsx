@@ -1,36 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { OnChangeFn, SortingState } from '@tanstack/react-table';
+import type { OnChangeFn } from '@tanstack/react-table';
 import { getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrder';
-import { useGridColumnWidths } from '@/components/ui/table-column-config/useGridColumnWidths';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { GridColumnGutter, LedgerGrid, useGridColumnVisibility, useGridSurface } from '@/design-system/components/grid';
+import { LedgerGridSurface } from '@/design-system/components/grid';
+import { useGridRowFills } from '@/design-system/components/grid';
 import type { TableId } from '@/lib/tables/table-columns';
-import {
-  TABLE_SURFACE_CLIP_CLASS,
-} from '@/design-system/tokens/table-surface';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
 import {
   ordersQueueColumnsFor,
-  ordersQueueContentMinWidthRem,
   sanitizeOrdersQueueColumnOrder,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
   type OrdersQueueColumnMode,
 } from '@/lib/dashboard-order-row-layout';
-import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
+import {
+  makeOrdersGridDescriptorDefault,
+  makeOrdersGridDescriptorTested,
+  ORDERS_GRID_CAPABILITIES,
+} from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { toast } from '@/lib/toast';
-import { cn } from '@/utils/_cn';
 import {
   isQueueColumnSort,
   type QueueDisplaySortColumn,
@@ -43,7 +41,6 @@ import {
   type OrdersQueueSort,
   type QueueRowRecord,
 } from './helpers';
-import { ordersQueueColumnDefsFor } from './orders-queue-column-defs';
 import { OrdersQueueTableRow } from './OrdersQueueTableRow';
 import { OrdersQueueColumnHeader } from './OrdersQueueColumnHeader';
 import { QueueGroupRow } from './QueueGroupRow';
@@ -53,6 +50,7 @@ import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopo
 import { useViewportForcedHidden } from './ViewportForcedHidden';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { resolveRailOccupancy } from '@/lib/right-rail/selection-occupancy';
+import { armReplaceTrackingIntent } from '@/lib/order-inspector/replace-tracking-intent';
 import {
   useFoldState,
   useGroupFoldKeys,
@@ -83,6 +81,11 @@ interface OrdersGridViewProps {
    * and the open record is derived from it (1 selected ⇒ the inspector opens on
    * that row). Off by default: this grid has seven mount sites and only the
    * three dashboard outbound lanes opt in.
+   *
+   * When on, also enables Sheets click-select (`clickSelect` +
+   * `selectGutterChrome='sheets'`): row click toggles bulk, double-click opens;
+   * the select track is an empty spacer (no checklist face). Pack / Labels /
+   * Review keep the painted checkbox gutter.
    *
    * `selectionScope` cannot stand in for this. Six of the seven hosts pass
    * `DASHBOARD_ORDERS_SELECTION_SCOPE` — including Labels, Staged, and both
@@ -160,12 +163,13 @@ function scrollQueueRowIntoView(id: number | string) {
 }
 
 /**
- * **Outbound orders spreadsheet** — composed from {@link LedgerGrid}.
+ * **Outbound orders spreadsheet** — thin domain adapter over
+ * {@link LedgerGridSurface} (`surface="sheet"`).
  *
- * Shared by Pending, Packed, Labels, Staged, Review, and Shipped. Frozen
- * identity pane (`select · Product`) is active: `scrollX` lets date…tracking
- * scroll under the pinned pane. Absolute Date is a per-row column — no
- * floating day bands.
+ * Shared by Pending, Packed, Labels, Staged, Review, and Shipped. Shell
+ * plumbing (visibility, Fields gutter, widths, force-hide, column order) lives
+ * on the surface. The allowlisted `OrdersQueueColumnHeader` fork keeps
+ * drag-reorder UI; fat `OrdersQueueTableRow` keeps triage + in-cell edit.
  */
 export function OrdersGridView({
   records,
@@ -208,6 +212,10 @@ export function OrdersGridView({
       ? 'fulfillment.tested'
       : 'fulfillment.default';
   const canonicalColumns = ordersQueueColumnsFor(columnMode);
+  const makeDescriptor =
+    columnMode === 'fulfillment.tested'
+      ? makeOrdersGridDescriptorTested
+      : makeOrdersGridDescriptorDefault;
 
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records,
@@ -224,8 +232,12 @@ export function OrdersGridView({
 
   const getRowId = useCallback((r: ShippedOrder) => Number(r.id), []);
   const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
-  // Always-on left gutter (Airtable-style): checkboxes toggle the set; row-body
-  // click opens the record. `selectMode` only gates visible pencil chrome.
+  // To-ship (`railSelection`): Sheets click-select — row click toggles the set;
+  // double-click opens. Select track stays for header select-all alignment but
+  // paints no checklist face. Other mounts keep Airtable always-on checkboxes;
+  // `selectMode` only gates visible pencil chrome.
+  const clickSelect = railSelection;
+  const { fillsById } = useGridRowFills(tableId);
   const { selectedIds, toggle, selectOnly, clear } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
     selectMode: true,
@@ -388,6 +400,23 @@ export function OrdersGridView({
     [revealFold, railSelection, selectOnly, openRecord],
   );
 
+  /**
+   * Filled-tracking menu → "Replace tracking": arm the one-shot inspector
+   * intent, then open this row on the selection plane (or via openRecord when
+   * the mount is not rail-selection). If the row is already the inspect
+   * occupant, arm alone is enough — the panel subscriber consumes.
+   */
+  const handleRequestReplaceTracking = useCallback(
+    (record: ShippedOrder) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      armReplaceTrackingIntent(id);
+      if (railSelection) selectOnly(id);
+      else openRecord(record);
+    },
+    [railSelection, selectOnly, openRecord],
+  );
+
   const cursor = usePublishRecordCursor<ShippedOrder>({
     surfaceId: dataTestId,
     scope: 'record',
@@ -433,47 +462,16 @@ export function OrdersGridView({
     if (cursor.openRevealFoldKey) revealFold(cursor.openRevealFoldKey);
   }, [selectedRecordId, cursor.position, cursor.openRevealFoldKey, revealFold]);
 
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
   const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
-  const { columnVars, setWidth: setColumnWidth } = useGridColumnWidths(tableId);
   const sanitizedOrder = useMemo(
     () => sanitizeOrdersQueueColumnOrder(persistedOrder, canonicalColumns),
     [persistedOrder, canonicalColumns],
   );
   const shellRef = useRef<HTMLDivElement>(null);
-  // Viewport priority collapse (By → Qty → Cond) — house logic, ephemeral and
-  // never persisted to staff prefs.
+  // Viewport priority collapse (By → Qty · Cond) — house logic, ephemeral and
+  // never persisted to staff prefs. Observed on the surface shell.
   const forceHidden = useViewportForcedHidden(shellRef);
-  // ONE visibility resolution (descriptor tier + this staffer's delta + the
-  // viewport collapse above), mirrored into TanStack so the state engine stays
-  // the record of which tracks render. `displayColumns` below reads back off
-  // TanStack, so header / rows / group summaries / grid template all follow.
-  const { columnVisibility } = useGridColumnVisibility<OrdersQueueColumn>({
-    columns: canonicalColumns,
-    tableId,
-    forceHidden,
-  });
 
-  // URL `?sort=` stays the durable SoT; TanStack mirrors it as controlled state.
-  const sortingState = useMemo<SortingState>(
-    () =>
-      urlDriven && isQueueColumnSort(sort) && dir
-        ? [{ id: sort, desc: dir === 'desc' }]
-        : [],
-    [urlDriven, sort, dir],
-  );
-  const handleSortingChange = useCallback<OnChangeFn<SortingState>>(
-    (updater) => {
-      if (!urlDriven) return;
-      const next = typeof updater === 'function' ? updater(sortingState) : updater;
-      const first = next[0];
-      if (first && isQueueColumnSort(first.id)) {
-        setSort(first.id as QueueDisplaySortColumn, first.desc ? 'desc' : 'asc');
-      }
-    },
-    [urlDriven, setSort, sortingState],
-  );
   const handleColumnOrderChange = useCallback<OnChangeFn<string[]>>(
     (updater) => {
       const next = typeof updater === 'function' ? updater([...sanitizedOrder]) : updater;
@@ -482,77 +480,45 @@ export function OrdersGridView({
     [sanitizedOrder, setOrder, canonicalColumns],
   );
 
-  // Headless state waist (TanStack v8): columns + sorting + visibility + order.
-  // Markup, virtualization, folds, and mutations stay house (`"use no memo"`
-  // lives on the hook — consumers read its returned arrays, never table getters).
-  const { table, visibleLeafColumns } = useGridSurface<ShippedOrder>({
-    data: displayedRecords,
-    columns: ordersQueueColumnDefsFor(columnMode),
-    getRowId: getTableRowId,
-    sorting: sortingState,
-    onSortingChange: handleSortingChange,
-    columnVisibility,
-    columnOrder: sanitizedOrder,
-    onColumnOrderChange: handleColumnOrderChange,
-  });
-
-  // House geometry keeps reading the Kinetic Ledger column models — mapped off
-  // the TanStack visible-leaf order. Content-keyed memo so row `columns` prop
-  // identity is stable across unrelated re-renders (rows are memoized on it).
-  const visibleKeySig = visibleLeafColumns.map((c) => c.id).join('\0');
-  const displayColumns = useMemo(
-    () => {
-      const byKey = new Map(canonicalColumns.map((c) => [c.key, c]));
-      return visibleKeySig
-        .split('\0')
-        .filter(Boolean)
-        .map((key) => byKey.get(key as OrdersQueueColumnKey))
-        .filter((c): c is OrdersQueueColumn => Boolean(c));
-    },
-    [visibleKeySig, canonicalColumns],
-  );
-
-  const handleSortColumn = useCallback(
-    (key: OrdersQueueColumnKey) => {
-      if (!urlDriven || !isQueueColumnSort(key)) return;
-      // Route the click through the TanStack column (asc ↔ desc, desc-first on
-      // Age) — `handleSortingChange` writes the result back to the URL SoT.
-      table.getColumn(key)?.toggleSorting();
-    },
-    [table, urlDriven],
-  );
-
-  const isCustomOrder = useMemo(
-    () => sanitizedOrder.some((key, i) => key !== canonicalColumns[i]?.key),
-    [sanitizedOrder, canonicalColumns],
-  );
-
-  const handleReorderColumns = useCallback(
-    (nextMovable: OrdersQueueColumnKey[]) => {
-      table.setColumnOrder(sanitizeOrdersQueueColumnOrder(nextMovable, canonicalColumns));
-    },
-    [table, canonicalColumns],
-  );
-
   const handleResetColumnOrder = useCallback(() => {
     resetOrder();
     toast.success('Column order reset');
   }, [resetOrder]);
 
+  const handleSortChange = useCallback(
+    (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
+      if (!urlDriven || !isQueueColumnSort(key)) return;
+      setSort(key as QueueDisplaySortColumn, nextDir);
+    },
+    [urlDriven, setSort],
+  );
+
   const handleRowAction = useCallback(
-    (record: ShippedOrder, event?: { shiftKey: boolean; target?: EventTarget | null }) => {
+    (record: ShippedOrder, event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null }) => {
       if (!railSelection) {
         handleRowClick(record);
         return;
       }
-      // Checkbox lives inside the row; if a click somehow reaches here from the
-      // select gutter, bail — toggle already ran, and selectOnly would REPLACE
-      // the set (multi-check collapses to the last row).
+      // Checkbox / spacer lives inside the row; if a click somehow reaches here
+      // from the select gutter, bail — toggle already ran (or spacer is inert).
       const target = event?.target;
       if (target instanceof Element && target.closest('[data-select-gutter]')) {
         return;
       }
       const id = Number(record.id);
+
+      // Sheets click-select: click toggles bulk; skip the second half of a
+      // double-click so dblclick only opens (ReceivingGridRow parity).
+      if (clickSelect) {
+        if ((event?.detail ?? 1) > 1) return;
+        if (event?.shiftKey) {
+          toggle(id, true);
+          return;
+        }
+        toggle(id, false);
+        return;
+      }
+
       // Shift extends the set from the anchor — same gesture as the checkbox.
       if (event?.shiftKey) {
         toggle(id, true);
@@ -568,7 +534,17 @@ export function OrdersGridView({
       }
       selectOnly(id);
     },
-    [railSelection, handleRowClick, toggle, selectedIds, clear, selectOnly],
+    [railSelection, clickSelect, handleRowClick, toggle, selectedIds, clear, selectOnly],
+  );
+
+  const handleRowOpen = useCallback(
+    (record: ShippedOrder) => {
+      if (clickSelect) {
+        handleRowClick(record);
+        return;
+      }
+    },
+    [clickSelect, handleRowClick],
   );
 
   const handleToggleSelect = useCallback(
@@ -582,14 +558,17 @@ export function OrdersGridView({
   const showFirstRun =
     Boolean(firstRunEmpty) && !loading && !isSearching && records.length === 0;
 
-  // Scroll-surface testid pairs with the shell's (`pending-grid-body` →
-  // `pending-grid-scroll`) so specs can target either without new props.
-  const scrollTestId = dataTestId.endsWith('-body')
-    ? dataTestId.replace(/-body$/, '-scroll')
-    : `${dataTestId}-scroll`;
+  const columnSort =
+    urlDriven && isQueueColumnSort(sort) ? (sort as OrdersQueueColumnKey) : null;
+  const columnSortDir = urlDriven && columnSort ? dir : null;
 
-  const renderRow = useCallback(
-    (record: ShippedOrder, stripeIndex: number, rowIndex?: number) => {
+  const renderLeaf = useCallback(
+    (
+      record: ShippedOrder,
+      stripeIndex: number,
+      visible: readonly OrdersQueueColumn[],
+      rowIndex?: number,
+    ) => {
       const r = record as QueueRowRecord;
       const testerName =
         (r.tested_by_name as string | undefined) ||
@@ -603,6 +582,8 @@ export function OrdersGridView({
         getStaffName(r.packer_id as number | null | undefined);
       const hasOutOfStock = Boolean(r.is_out_of_stock);
       const notesValue = String(r.notes || '').trim();
+      const rowFillHex =
+        clickSelect ? (fillsById[String(record.id)] ?? null) : null;
       return (
         <OrdersQueueTableRow
           key={record.id}
@@ -610,8 +591,11 @@ export function OrdersGridView({
           disableLayoutAnimation
           opaqueStripe
           gridSkin
+          clickSelect={clickSelect}
+          selectGutterChrome={clickSelect ? 'sheets' : 'always'}
+          rowFillHex={rowFillHex}
           rowIndex={rowIndex}
-          onToggleSelect={handleToggleSelect}
+          onToggleSelect={clickSelect ? undefined : handleToggleSelect}
           singleSelected={singleSelectedId === Number(record.id)}
           record={r}
           isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
@@ -628,12 +612,18 @@ export function OrdersGridView({
           notesValue={notesValue}
           daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
           queueMode={queueMode}
-          columns={displayColumns}
+          columns={visible}
           capabilities={ORDERS_GRID_CAPABILITIES}
           trackingAction={
             queueMode === 'labels' ? <AddTrackingPopover record={record} /> : undefined
           }
           onRowClick={handleRowAction}
+          onRowOpen={clickSelect ? handleRowOpen : undefined}
+          onRequestReplaceTracking={
+            queueMode === 'fulfillment' || queueMode === 'labels'
+              ? handleRequestReplaceTracking
+              : undefined
+          }
         />
       );
     },
@@ -644,112 +634,98 @@ export function OrdersGridView({
       selectedRecord,
       isMobile,
       handleRowAction,
+      handleRowOpen,
       handleToggleSelect,
-      displayColumns,
+      handleRequestReplaceTracking,
       singleSelectedId,
       queueMode,
+      clickSelect,
+      fillsById,
     ],
   );
 
-  const renderGroup = useCallback(
-    (
-      group: Parameters<typeof QueueGroupRow>[0]['group'],
-      baseStripeIndex: number,
-      rowIndex?: number,
-    ) => {
-      // Band-qualified — a multi-line order whose lines straddle two date bands
-      // is two folds sharing one `group.key`, and they must toggle separately.
-      const key = foldKeys.get(group);
-      return (
-        <QueueGroupRow
-          group={group}
-          baseStripeIndex={baseStripeIndex}
-          rowIndex={rowIndex}
-          isMobile={isMobile}
-          gridSkin
-          columns={displayColumns}
-          expanded={key === undefined ? undefined : fold.isOpen(key)}
-          onToggleExpanded={key === undefined ? undefined : (next) => fold.toggle(key, next)}
-          renderRow={renderRow}
-        />
-      );
-    },
-    [isMobile, renderRow, displayColumns, foldKeys, fold],
-  );
-
   return (
-    <GridColumnGutter
-      onOpen={() => setColumnDetailsOpen(true)}
-      open={columnDetailsOpen}
-    >
-    <div
-      ref={shellRef}
-      data-testid={dataTestId}
-      data-table-surface=""
-      className={cn(
-        // Framed ops table shell (SoT: table-surface) — always overflow-hidden
-        // so airtable cell grid clips cleanly at rounded corners.
-        'flex min-w-0 w-full flex-col',
-        !scrollParentRef && 'h-full min-h-0 flex-1',
-        TABLE_SURFACE_CLIP_CLASS,
-        className,
+    <LedgerGridSurface
+      ariaLabel={ariaLabel}
+      columns={canonicalColumns}
+      makeDescriptor={makeDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={displayedRecords}
+      getRowId={getTableRowId}
+      sort={columnSort}
+      dir={columnSortDir}
+      onSortChange={handleSortChange}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      emptyState={showFirstRun ? firstRunEmpty : undefined}
+      searchEmptyState={
+        <OrderSearchEmptyState
+          query={searchValue}
+          title={searchEmptyTitle}
+          resultLabel={searchResultLabel}
+          clearLabel={clearSearchLabel}
+          onClear={onClearSearch}
+        />
+      }
+      isSearching={isSearching}
+      shellRef={shellRef}
+      scrollParentRef={scrollParentRef}
+      className={className}
+      testId={dataTestId}
+      tableId={tableId}
+      surface="sheet"
+      forceHidden={forceHidden}
+      columnOrder={sanitizedOrder}
+      onColumnOrderChange={handleColumnOrderChange}
+      onResetColumnOrder={handleResetColumnOrder}
+      renderColumnHeader={({
+        toggleColumnSort,
+        onResizeColumn,
+        onResetColumn,
+        columns: visible,
+        onReorderColumns,
+        onResetColumnOrder,
+      }) => (
+        <OrdersQueueColumnHeader
+          isMobile={isMobile}
+          selectMode={selectMode}
+          selectionScope={selectionScope}
+          gridSkin
+          selectGutterChrome={clickSelect ? 'sheets' : 'always'}
+          columns={visible}
+          onReorderColumns={
+            onReorderColumns
+              ? (next) => onReorderColumns(next)
+              : undefined
+          }
+          onResetColumnOrder={onResetColumnOrder}
+          activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
+          sortDir={columnSortDir}
+          onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
+          onResizeColumn={onResizeColumn}
+          onResetColumn={onResetColumn}
+        />
       )}
-    >
-      <LedgerGrid<ShippedOrder>
-        scrollX
-        scrollParentRef={scrollParentRef}
-        contentMinWidthRem={ordersQueueContentMinWidthRem(displayColumns)}
-        columnVars={columnVars}
-        gridSkin="airtable"
-        aria-label={ariaLabel}
-        data-testid={scrollTestId}
-        orderGroupsByDate={orderGroupsByDate}
-        isSearching={isSearching}
-        columnHeader={
-          <OrdersQueueColumnHeader
+      renderGroup={(group, baseStripeIndex, { columns: visible }) => {
+        const key = foldKeys.get(group);
+        return (
+          <QueueGroupRow
+            group={group}
+            baseStripeIndex={baseStripeIndex}
             isMobile={isMobile}
-            selectMode={selectMode}
-            selectionScope={selectionScope}
             gridSkin
-            columns={displayColumns}
-            onReorderColumns={handleReorderColumns}
-            onResetColumnOrder={isCustomOrder ? handleResetColumnOrder : undefined}
-            activeSort={urlDriven && isQueueColumnSort(sort) ? sort : undefined}
-            sortDir={urlDriven ? dir : null}
-            onSortColumn={urlDriven ? handleSortColumn : undefined}
-            onResizeColumn={setColumnWidth}
+            columns={visible}
+            expanded={key === undefined ? undefined : fold.isOpen(key)}
+            onToggleExpanded={key === undefined ? undefined : (next) => fold.toggle(key, next)}
+            renderRow={(record, stripeIndex, rowIndex) =>
+              renderLeaf(record, stripeIndex, visible, rowIndex)
+            }
           />
-        }
-        renderRow={renderRow}
-        renderGroup={renderGroup}
-        emptyState={
-          showFirstRun ? (
-            firstRunEmpty
-          ) : (
-            <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
-              {loading ? 'Loading…' : emptyMessage}
-            </div>
-          )
-        }
-        searchEmptyState={
-          <OrderSearchEmptyState
-            query={searchValue}
-            title={searchEmptyTitle}
-            resultLabel={searchResultLabel}
-            clearLabel={clearSearchLabel}
-            onClear={onClearSearch}
-          />
-        }
-      />
-      {/* `canonicalColumns`, not `displayColumns` — the rail must offer the
-          tracks that are currently OFF, which is the only way to turn one on. */}
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={tableId}
-        columns={canonicalColumns}
-      />
-    </div>
-    </GridColumnGutter>
+        );
+      }}
+      renderRow={(record, stripeIndex, { columns: visible }, rowIndex) =>
+        renderLeaf(record, stripeIndex, visible, rowIndex)
+      }
+    />
   );
 }

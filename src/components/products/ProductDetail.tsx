@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, ExternalLink } from '@/components/Icons';
 import type { ProductDetailPayload } from './types';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
+import { ProductGtinField } from '@/components/products/ProductGtinField';
 
 interface ProductDetailProps {
     sku: string;
@@ -127,7 +128,17 @@ export function ProductDetail({ sku }: ProductDetailProps) {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <DetailCard title="Attributes">
-                    <DetailRow label="GTIN" value={product.gtin} mono />
+                    <ProductGtinField
+                        catalogId={product.id}
+                        gtin={product.gtin}
+                        onSaved={(next) =>
+                            setPayload((prev) =>
+                                prev && prev.success
+                                    ? { ...prev, product: { ...prev.product, gtin: next } }
+                                    : prev,
+                            )
+                        }
+                    />
                     <DetailRow label="UPC" value={product.upc} mono />
                     <DetailRow label="Inventory item ID" value={product.provider_item_id} mono />
                     <DetailRow label="Category" value={product.category} />

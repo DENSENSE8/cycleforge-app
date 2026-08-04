@@ -106,6 +106,163 @@ export function isPlaceholderGtin(gtin: string): boolean {
 }
 
 /**
+ * GS1 prefixes reserved for **Restricted Circulation Numbers** — `02` and
+ * `20`–`29`. GS1 assigns these to nobody: they exist so a company can number
+ * things for its own internal use.
+ */
+const RESTRICTED_CIRCULATION_PREFIXES = [
+  '02', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29',
+] as const;
+
+/**
+ * True when a GTIN is a Restricted Circulation Number — internal-only, and
+ * therefore **not** a key that may leave this tenant.
+ *
+ * ## Why this exists, and why it is not the same as a placeholder
+ *
+ * This app MINTS these. `src/lib/inventory/internal-gtin.ts` lazily stamps
+ * `"02" + 11-digit sku_catalog.id + check digit` onto `sku_catalog.gtin` the
+ * first time a unit label needs one, precisely so a tenant with no GS1
+ * membership still gets a scannable, check-digit-valid product number. That is
+ * correct and stays — inside the warehouse an RCN is exactly the right tool.
+ *
+ * It is wrong the moment it crosses a tenant boundary, and the failure differs
+ * from the placeholder case in a way worth keeping straight:
+ *
+ *  - A **placeholder** prefix (`0614141`) belongs to someone else, so emitting
+ *    it is a false identity claim that can collide with a real licensee.
+ *  - An **RCN** collides with nobody — the range exists so it cannot. What it
+ *    falsely claims is *global resolvability*. `gtinIdentifier` renders a GTIN
+ *    as `https://id.gs1.org/01/{gtin}`, GS1's canonical resolver; an RCN will
+ *    never resolve there. A partner filtering on `scheme: 'gs1'` — the entire
+ *    purpose of that field — would be handed a number it cannot look up.
+ *
+ * Both end at the same verdict (omit the key), for different reasons. Kept as
+ * two predicates rather than one so the reason survives, and because a future
+ * caller may legitimately want to accept an RCN for an internal-only surface.
+ *
+ * ## The prefix is read in GTIN-13 space, and that is load-bearing
+ *
+ * Every length is normalised to 13 digits BEFORE the prefix is examined, rather
+ * than testing the raw string at two alignments the way `isPlaceholderGtin`
+ * does. That shortcut is safe for a 7-digit documentation prefix and **wrong**
+ * here, because these prefixes are two digits:
+ *
+ *  - A GTIN-14's leading digit is the packaging INDICATOR, legally `1`–`8` for
+ *    any trade item. So `20812345000019` — indicator `2` on the perfectly
+ *    licensed prefix `0812345` — starts with `20` and a raw check would refuse
+ *    a real GTIN. Drop the indicator first.
+ *  - A UPC-A (GTIN-12) carries its restricted marker as number system `2`,
+ *    which only lines up with `02` once zero-padded to 13.
+ *
+ * So: 14 → drop the indicator · 12 / 8 → zero-pad · 13 → as-is.
+ */
+function toGtin13(digits: string): string | null {
+  if (digits.length === 14) return digits.slice(1);
+  if (digits.length === 13) return digits;
+  if (digits.length === 12 || digits.length === 8) return digits.padStart(13, '0');
+  return null;
+}
+
+export function isRestrictedCirculationGtin(gtin: string | null | undefined): boolean {
+  const gtin13 = toGtin13((gtin ?? '').replace(/\D/g, ''));
+  if (!gtin13) return false;
+  return RESTRICTED_CIRCULATION_PREFIXES.some((p) => gtin13.startsWith(p));
+}
+
+// ─── Accepting a GTIN a human typed ─────────────────────────────────────────
+
+/** Why a typed GTIN was refused. `null` on the accept path. */
+type GtinEntryRefusal =
+  | 'empty'
+  | 'length'
+  | 'check-digit'
+  | 'placeholder'
+  | 'restricted-circulation';
+
+interface GtinEntryVerdict {
+  ok: boolean;
+  /** Normalised digits — non-null only when `ok`. This is what gets stored. */
+  digits: string | null;
+  refusal: GtinEntryRefusal | null;
+  /** Operator-facing sentence. `null` when `ok`. */
+  message: string | null;
+}
+
+/**
+ * The gate for a GTIN a **person** entered, as opposed to one this app minted.
+ *
+ * The predicates it composes already existed for the interop projections; what
+ * this adds is the entry-point ORDER and one message per refusal, so the field
+ * and the route give the same answer. Two copies of "is this GTIN acceptable"
+ * is how the placeholder GLN got printed in the first place.
+ *
+ * Order is deliberate — each rung answers a different question and a later one
+ * cannot run on digits the earlier rejected:
+ *
+ *  1. **Length** — 8 / 12 / 13 / 14. Anything else is a typo or a different
+ *     identifier entirely (a UPC-E, an ASIN, an MPN pasted into the wrong box).
+ *  2. **Check digit** — catches the single transposed digit, which is the
+ *     failure mode of typing 14 digits off a label. Not pedantry: bwip-js
+ *     THROWS on a bad AI (01) checksum, so a bad GTIN here blanks every unit
+ *     label it reaches instead of degrading.
+ *  3. **Placeholder prefix** — the digits belong to GS1's own documentation
+ *     examples. Someone copied a spec, and the number names another company.
+ *  4. **Restricted circulation** — a `02…` / `20`–`29` internal number. This is
+ *     the one refusal that is not an error on the operator's part: it is very
+ *     likely THIS app's own minted value (`generateInternalGtin`) being typed
+ *     back in. Refused because the field means *a key you licensed*, and the
+ *     honest way to go back to the internal number is to clear the field —
+ *     `getOrCreateInternalGtin` re-mints the same deterministic value.
+ *
+ * Clearing is NOT this function's job: an empty box means "no licensed GTIN",
+ * which is a legal state, and the caller maps it to `null`. `'empty'` exists so
+ * a caller that requires a value can say so.
+ */
+export function classifyGtinEntry(raw: string | null | undefined): GtinEntryVerdict {
+  const digits = (raw ?? '').replace(/\D/g, '');
+
+  const refuse = (refusal: GtinEntryRefusal, message: string): GtinEntryVerdict => ({
+    ok: false,
+    digits: null,
+    refusal,
+    message,
+  });
+
+  if (!digits) return refuse('empty', 'Enter a GTIN, or leave it blank for none.');
+
+  if (![8, 12, 13, 14].includes(digits.length)) {
+    return refuse(
+      'length',
+      `A GTIN is 8, 12, 13 or 14 digits — this is ${digits.length}.`,
+    );
+  }
+
+  if (!hasValidGs1CheckDigit(digits)) {
+    return refuse(
+      'check-digit',
+      'The check digit does not match. Re-read the last digit off the barcode.',
+    );
+  }
+
+  if (isPlaceholderGtin(digits)) {
+    return refuse(
+      'placeholder',
+      'That sits on a GS1 documentation prefix — it is an example from the spec, licensed to nobody.',
+    );
+  }
+
+  if (isRestrictedCirculationGtin(digits)) {
+    return refuse(
+      'restricted-circulation',
+      'That is an internal restricted-circulation number, which Cycle Forge assigns itself. Enter a GTIN you licensed from GS1, or clear the field to go back to the internal one.',
+    );
+  }
+
+  return { ok: true, digits, refusal: null, message: null };
+}
+
+/**
  * A tenant's configured GS1 identity, resolved from `organizations.settings`.
  *
  * All fields optional because the honest answer for most tenants is "none of
@@ -381,6 +538,9 @@ export function sgtinIdentifier(
   if (![8, 12, 13, 14].includes(g.length)) return null;
   // A GTIN on GS1's documentation prefix is a sample, not a trade item.
   if (isPlaceholderGtin(g)) return null;
+  // An internally-minted restricted-circulation number is real inside this
+  // warehouse and meaningless outside it — see isRestrictedCirculationGtin.
+  if (isRestrictedCirculationGtin(g)) return null;
   return {
     scheme: 'gs1',
     keyType: 'SGTIN',
@@ -402,6 +562,10 @@ export function gtinIdentifier(
   const g = (gtin ?? '').replace(/\D/g, '');
   if (![8, 12, 13, 14].includes(g.length)) return null;
   if (isPlaceholderGtin(g)) return null;
+  // The URI below is GS1's CANONICAL RESOLVER. A restricted-circulation number
+  // will never resolve there, so emitting one as scheme:'gs1' hands a partner a
+  // key it cannot look up — the one thing this module exists to refuse.
+  if (isRestrictedCirculationGtin(g)) return null;
   return {
     scheme: 'gs1',
     keyType: 'GTIN',

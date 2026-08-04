@@ -50,6 +50,12 @@ export interface PrintLabelOptions {
    * the scan bar when the symbol won't scan. Omitted → no caption.
    */
   hri?: string;
+  /**
+   * When true, omit the auto-`window.print` / `onafterprint` script so the same
+   * HTML can be shown in an on-screen preview iframe ({@link LabelFacePreview}).
+   * Default false — print callers keep the silent-print pipeline.
+   */
+  preview?: boolean;
 }
 
 /**
@@ -62,6 +68,7 @@ export function buildLabelHtml(opts: PrintLabelOptions): string {
   const qrSize = opts.qrSize ?? '0.86in';
   const infoAlign = opts.infoAlign ?? 'space-between';
   const title = escapeLabelHtml(opts.name ?? 'Label');
+  const preview = opts.preview === true;
 
   const qrSvg = renderDataMatrixSvg({
     value: opts.dataMatrix.value,
@@ -70,12 +77,21 @@ export function buildLabelHtml(opts: PrintLabelOptions): string {
   });
   const hri = (opts.hri ?? '').trim();
 
+  const printScript = preview
+    ? ''
+    : `<script>
+window.onload=function(){
+  setTimeout(function(){window.focus();window.print();},120);
+};
+window.onafterprint=function(){setTimeout(function(){window.close();},80);};
+</script>`;
+
   return `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title>
 <style>
   @page{size:${widthIn}in ${heightIn}in;margin:0}
   *,*::before,*::after{box-sizing:border-box}
-  html,body{width:${widthIn}in;height:${heightIn}in;padding:0;margin:0;font-family:Arial,sans-serif;color:#111}
-  .wrap{width:${widthIn}in;height:${heightIn}in;display:flex;align-items:stretch;gap:4px;padding:4px 5px}
+  html,body{width:${widthIn}in;height:${heightIn}in;padding:0;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff${preview ? ';overflow:hidden' : ''}}
+  .wrap{width:${widthIn}in;height:${heightIn}in;display:flex;align-items:stretch;gap:4px;padding:4px 5px${preview ? ';overflow:hidden' : ''}}
   .info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:${infoAlign};height:100%}
   .qrcol{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
   .qr{width:${qrSize};height:${qrSize};display:flex;align-items:center;justify-content:center}
@@ -90,12 +106,7 @@ export function buildLabelHtml(opts: PrintLabelOptions): string {
     ${hri ? `<div class="hri">${escapeLabelHtml(hri)}</div>` : ''}
   </div>
 </div>
-<script>
-window.onload=function(){
-  setTimeout(function(){window.focus();window.print();},120);
-};
-window.onafterprint=function(){setTimeout(function(){window.close();},80);};
-</script>
+${printScript}
 </body></html>`;
 }
 

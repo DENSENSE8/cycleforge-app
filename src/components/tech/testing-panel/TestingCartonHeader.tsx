@@ -1,14 +1,22 @@
+'use client';
+
 import { CartonContextCard } from '@/components/station/entity-context';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
+import {
+  getReceivingStatusDot,
+  getReceivingStatusDotLabel,
+} from '@/lib/receiving/rail/status';
+import { useCartonPoTotal } from '@/components/receiving/workspace/line-edit/hooks/useCartonPoTotal';
 import type { TestingController } from './testing-panel-types';
 
 /**
  * Testing adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
- * Identity chips are display/open/copy; listing/tracking Edit tabs are Unbox-only
- * for now (omit onEdit* here).
+ * Two-row family face (same as Unbox / Triage). Identity chips are
+ * display/open/copy; listing/tracking Edit tabs are Unbox-only for now
+ * (omit onEdit* here). Pair host with `reserveIdentityClearance="stacked"`.
  */
 export function TestingCartonHeader({
   c,
@@ -19,6 +27,8 @@ export function TestingCartonHeader({
   row: ReceivingLineRow;
   staffId: string;
 }) {
+  const poTotal = useCartonPoTotal(row.receiving_id ?? null);
+
   return (
     <CartonContextCard
       receivingId={row.receiving_id ?? null}
@@ -32,6 +42,12 @@ export function TestingCartonHeader({
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={c.poNumber}
+      poTotal={poTotal}
+      showPoTotal
+      lifecycle={{
+        dotClass: getReceivingStatusDot(row),
+        label: getReceivingStatusDotLabel(row),
+      }}
       lineId={row.id ?? null}
       zendeskTrimmed={c.zendeskTrimmed}
       zendeskHref={c.zendeskHref}
@@ -64,7 +80,6 @@ export function TestingCartonHeader({
       // has necessarily already been opened, so its carton photos are
       // unbox-stage evidence, never arrival.
       photoStage="unbox_carton"
-      density="bar"
     />
   );
 }

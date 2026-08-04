@@ -3,7 +3,7 @@
 import type { Ref } from 'react';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
@@ -49,10 +49,10 @@ export function TestingWorkspaceHeader({
       controlsSlotProps={{ 'data-testing-controls': '' }}
       className={className}
       search={
-        <ToolbarSearchToggle
+        <TechRailSearchBar
+          variant="chrome"
           value={searchQuery}
           onChange={setSearch}
-          onClear={() => setSearch('')}
           placeholder={
             tab === 'history'
               ? 'Search tested lines…'
@@ -60,7 +60,7 @@ export function TestingWorkspaceHeader({
                 ? 'Search return queue…'
                 : 'Search pending tests…'
           }
-          tone="blue"
+          className="w-40 shrink-0 lg:w-56"
         />
       }
       right={

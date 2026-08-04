@@ -337,6 +337,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         ambientWash={false}
         className="relative z-0 flex-1 bg-transparent"
         reserveScrollClearance
+        reserveIdentityClearance="stacked"
         tabs={
           <SectionTabsSlider
             tabs={tabs}

@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { RowGroup } from '@/lib/group-rows';
@@ -37,8 +36,10 @@ interface BinsGridViewProps {
   onSelectChange: (next: Set<number>) => void;
   onRowClick: (row: BinsOverviewRow) => void;
   emptyMessage?: string;
-  /** FULL canonical column list — visibility is resolved here, not by callers. */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly BinsGridColumn[];
+  /** Sheets flush (Locations) vs framed card (legacy). */
+  surface?: 'framed' | 'sheet';
 }
 
 /**
@@ -98,6 +99,7 @@ export function BinsGridView({
   onRowClick,
   emptyMessage = 'No bins match the current filters.',
   columns = BINS_GRID_COLUMNS,
+  surface = 'framed',
 }: BinsGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -110,16 +112,6 @@ export function BinsGridView({
     isColumn: isBinsGridSortable,
     defaultDir: defaultDirForBinsGridSort,
   });
-
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
-
-  // ONE visibility resolution: descriptor default tier + this staffer's delta.
-  const { columns: visible } = useGridColumnVisibility<BinsGridColumn>({
-    columns,
-    tableId: BINS_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeBinsGridDescriptor(visible), [visible]);
 
   // Bridge parent Set → selection bus (header select-all + indeterminate).
   const rowsRef = useRef(rows);
@@ -177,7 +169,7 @@ export function BinsGridView({
     [selected, onSelectChange],
   );
 
-  const renderLeaf = (row: BinsOverviewRow) => (
+  const renderLeaf = (row: BinsOverviewRow, visible: readonly BinsGridColumn[]) => (
     <BinsGridRow
       key={row.id}
       row={row}
@@ -189,41 +181,37 @@ export function BinsGridView({
   );
 
   return (
-    <>
-      <LedgerGridSurface<BinsOverviewRow, BinsGridColumnKey>
-        ariaLabel="Warehouse bins"
-        descriptor={descriptor}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={rows}
-        getRowId={(r) => String(r.id)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={loading}
-        emptyMessage={emptyMessage}
-        scrollRef={scrollRef}
-        testId="bins-grid-body"
-        tableId={BINS_TABLE_ID}
-        columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
-          <BinsGridColumnHeader
-            selectionScope={BINS_SELECTION_SCOPE}
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-          />
-        )}
-        renderGroup={(group) => <>{group.rows.map(renderLeaf)}</>}
-        renderRow={(row) => renderLeaf(row)}
-      />
-      <GridColumnDetailsPanel
-        open={columnDetailsOpen}
-        onClose={() => setColumnDetailsOpen(false)}
-        tableId={BINS_TABLE_ID}
-        columns={columns}
-      />
-    </>
+    <LedgerGridSurface<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
+      ariaLabel="Warehouse bins"
+      columns={columns}
+      makeDescriptor={makeBinsGridDescriptor}
+      orderGroupsByDate={orderGroupsByDate}
+      rows={rows}
+      getRowId={(r) => String(r.id)}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
+      loading={loading}
+      emptyMessage={emptyMessage}
+      scrollRef={scrollRef}
+      testId="bins-grid-body"
+      tableId={BINS_TABLE_ID}
+      surface={surface}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <BinsGridColumnHeader
+          selectionScope={BINS_SELECTION_SCOPE}
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <>{group.rows.map((row) => renderLeaf(row, visible))}</>
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+    />
   );
 }

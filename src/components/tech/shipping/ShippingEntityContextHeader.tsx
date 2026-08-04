@@ -18,11 +18,12 @@ import type { CartonListingLink } from '@/lib/receiving/listing-links';
  * Shipping adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
  *
- * Maps an active outbound order onto the Unbox condensed identity row
- * (listing · order# · tracking). Claim / photos / classify are omitted —
- * the ship session stays scan-driven. Mount inside {@link StationContextBar}
- * with `density="bar"`. Out-of-stock notices stay below the bar via
- * {@link ShippingOutOfStockNotice}.
+ * Maps an active outbound order onto the two-row station identity face
+ * (listing · order# · tracking). Claim / photos / classify / lifecycle / PO$
+ * are omitted — the ship session stays scan-driven. Mount inside
+ * {@link StationContextBar}; pair host with
+ * `reserveIdentityClearance="stacked"`. Out-of-stock notices stay below the
+ * bar via {@link ShippingOutOfStockNotice}.
  */
 export function ShippingEntityContextHeader({
   activeOrder,
@@ -63,7 +64,6 @@ export function ShippingEntityContextHeader({
 
   return (
     <CartonContextCard
-      density="bar"
       receivingId={null}
       staffId=""
       isUnmatched={false}

@@ -23,8 +23,10 @@ import { TRACKING_PATTERNS, type CarrierCode } from '@/utils/carrier-patterns';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-/** @deprecated Use CarrierCode from '@/utils/carrier-patterns' instead. */
-export type ScanCarrier = CarrierCode;
+// `ScanCarrier` — a deprecated alias of `CarrierCode` — was deleted 2026-08-02
+// with its last two consumers (`MobileScanSheet` / `MobileScanConfirmation`,
+// both barrel-only exports with zero callers). Import `CarrierCode` from
+// '@/utils/carrier-patterns' directly; there was never a second carrier type.
 
 export type ClassifiedScanType = 'tracking' | 'serial_full' | 'serial_partial' | 'unknown';
 

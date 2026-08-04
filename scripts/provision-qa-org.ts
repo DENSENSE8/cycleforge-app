@@ -21,6 +21,7 @@ import { hashPin, isObviousPin } from '@/lib/auth/pin';
 import { ensureAdminRoleWired } from '@/lib/auth/ensure-admin-role';
 import { getAccountByEmail, createAccount } from '@/lib/identity/accounts';
 import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
+import { generateInternalGtin } from '@/lib/inventory/internal-gtin';
 import { seedDefaultWorkflowForOrg } from '@/lib/studio/seed-org-workflow';
 import { upsertOrderTracking } from '@/lib/neon/orders-tracking-queries';
 import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';
@@ -36,6 +37,7 @@ import {
   QA_FIXTURE_PO_ID,
   QA_FIXTURE_PO_NUMBER,
   QA_FIXTURE_SKUS,
+  QA_FIXTURE_SUPPORT,
   QA_FIXTURE_TESTED_LINE,
   QA_FIXTURE_TESTING_LINE,
   QA_FIXTURE_TRACKING,
@@ -49,6 +51,8 @@ import {
   QA_STATION_STAFF,
   resolveQaOrgId,
 } from '@/lib/tenancy/qa-org';
+import { upsertIntegrationCredentials } from '@/lib/integrations/credentials';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 const FIXTURES_ONLY = process.argv.includes('--fixtures-only');
@@ -214,6 +218,28 @@ async function seedSkus(client: PoolClient, orgId: string) {
       [orgId, row.sku, row.title],
     );
   }
+  // The earbuds fixture carries an internally-minted GTIN, in exactly the form
+  // getOrCreateInternalGtin would have stamped for its own row id. It exists so
+  // a spec can see the state that is otherwise unreachable through the UI: the
+  // product-record GTIN field REFUSES a typed restricted-circulation number
+  // (that is the point of it), so without a seeded row nothing could assert the
+  // INTERNAL chip renders. Idempotent — the value is derived from the row id.
+  const earbuds = await client.query<{ id: number; gtin: string | null }>(
+    `SELECT id, gtin FROM sku_catalog WHERE organization_id = $1 AND sku = $2`,
+    [orgId, QA_FIXTURE_SKUS.earbuds],
+  );
+  const earbudsRow = earbuds.rows[0];
+  if (earbudsRow) {
+    const minted = generateInternalGtin(earbudsRow.id);
+    if (earbudsRow.gtin !== minted) {
+      await client.query(
+        `UPDATE sku_catalog SET gtin = $1, updated_at = NOW()
+          WHERE id = $2 AND organization_id = $3`,
+        [minted, earbudsRow.id, orgId],
+      );
+    }
+  }
+
   log('SKU catalog', `${skus.length} fixtures`);
 }
 
@@ -666,6 +692,37 @@ async function seedMyDayFixtures(
   );
 }
 
+/**
+ * Mirror ZENDESK_* into the QA org vault when present.
+ *
+ * Non-dogfood orgs do not fall back to env credentials
+ * (`capability-connections` / `credentials.ts`), so `/api/support/suggest`
+ * 503s at the helpdesk gate on a fresh QA tenant even when the deployment
+ * has working Zendesk env. That makes an Assist E2E pass vacuously on the
+ * 503. Upserting the same sandbox/dev token the dogfood bridge uses clears
+ * `isConfigured()` — ticket payloads for the Assist contract spec are still
+ * stubbed; this only opens the gate.
+ *
+ * Skips quietly when any of subdomain / email / token is missing so a local
+ * without Zendesk can still provision.
+ */
+async function seedHelpdeskConnection(orgId: string) {
+  const subdomain = (process.env.ZENDESK_SUBDOMAIN || '').trim();
+  const email = (process.env.ZENDESK_EMAIL || process.env.ZENDESK_API_USER || '').trim();
+  const apiToken = (process.env.ZENDESK_API_TOKEN || '').trim();
+  if (!subdomain || !email || !apiToken) {
+    log('Helpdesk vault', 'skipped — ZENDESK_SUBDOMAIN/EMAIL/API_TOKEN not all set');
+    return;
+  }
+  await upsertIntegrationCredentials({
+    orgId: orgId as OrgId,
+    provider: 'zendesk',
+    payload: { subdomain, email, apiToken },
+    displayLabel: 'Zendesk (QA sandbox mirror)',
+  });
+  log('Helpdesk vault', `zendesk connected for ticket #${QA_FIXTURE_SUPPORT.ticketId}`);
+}
+
 async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   const client = await pool.connect();
   try {
@@ -683,6 +740,9 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   } finally {
     client.release();
   }
+  // Vault write is outside the fixtures txn — upsertIntegrationCredentials
+  // uses the shared pool and its own encryption path.
+  await seedHelpdeskConnection(orgId);
 }
 
 async function verifyIsolation(pool: Pool, orgId: string) {

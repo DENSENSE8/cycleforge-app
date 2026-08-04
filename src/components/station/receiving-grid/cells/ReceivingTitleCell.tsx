@@ -1,27 +1,31 @@
 'use client';
 
 import {
-  RECEIVING_GRID_FROZEN_CELL,
-  receivingGridFrozenLeft,
-} from '@/lib/receiving/receiving-grid-layout';
-import { cn } from '@/utils/_cn';
-import { receivingDataCellClass, type ReceivingGridCellProps } from './receiving-grid-cell-types';
+  receivingDataCellClass,
+  receivingDataCellHighlightStyle,
+  type ReceivingGridCellProps,
+} from './receiving-grid-cell-types';
 
 /**
- * Identity column — collection-map read-only
- * (`isGridColumnInCellEditable` / GRID_IDENTITY_COLUMN_KEYS). Clicks fall
- * through to the row (open record); title correction is rematch / catalog at
- * the record plane, not an in-cell caret.
+ * Product title — scrollable fact track on the Sheets-class Receiving grid
+ * (only `select` is frozen). Still identity for in-cell editability
+ * (`GRID_IDENTITY_COLUMN_KEYS`); correction is rematch / catalog at the
+ * record plane, not an in-cell caret.
+ *
+ * **The title column shows the title.** The status dot that used to lead it was
+ * removed 2026-08-02: a dot in the identity cell is a status fact wearing an
+ * identity cell's address, so it could not be sorted, hidden, resized or
+ * highlighted with the rest of its own column — and it spent the title's
+ * truncation budget on every row to repeat what the `status` track already says
+ * (`ReceivingStatusCell`, which now leads its chip with that same dot).
  */
 export function ReceivingTitleCell({ col, rule, ctx }: ReceivingGridCellProps) {
   return (
     <div
       data-col="title"
-      className={cn(receivingDataCellClass(col, rule, ctx), RECEIVING_GRID_FROZEN_CELL, 'gap-1.5')}
-      style={{ left: receivingGridFrozenLeft('title') }}
-      data-frozen-edge
+      className={receivingDataCellClass(col, rule, ctx)}
+      style={receivingDataCellHighlightStyle(col, ctx)}
     >
-      <span className={cn('h-2 w-2 shrink-0 rounded-full', ctx.statusDot)} aria-hidden />
       <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
         {ctx.productTitle}
       </span>

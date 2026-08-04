@@ -108,12 +108,14 @@ export function ReceivingLineWorkspace({
             staffId={staffId}
             itemTotal={nav?.total}
             accordionBootstrap={accordionBootstrap}
-            // Carton cursor + dismiss. These props existed on this component
-            // from the start but were only ever wired to Triage, so Unbox
-            // rendered neither — they now reach the pane utility row.
+            // Carton cursor only. `onClose` is deliberately NOT threaded here:
+            // Unbox's carton dismiss is the identity bar's leading `◁`, which
+            // dispatches `receiving-workspace-close` — the same close this
+            // prop's handler runs. Passing it as well is what put a second,
+            // panel-shaped carton-close in the pane's top-right corner
+            // (2026-08-02). Triage still takes `onClose` below.
             onPrevCarton={onPrev}
             onNextCarton={onNext}
-            onCloseCarton={onClose}
           />
         )}
       </div>

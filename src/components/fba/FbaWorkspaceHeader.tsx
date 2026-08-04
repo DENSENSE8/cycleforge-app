@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * FBA workspace chrome — sub-mode tabs left (Plan · Combine · Shipped), search +
- * week pill + select controls right. Composes `WorkbenchChromeHeader` like
- * `ShippingWorkspaceHeader`; the plan/combine/shipped facets moved here from the
- * (dead) sidebar pill row — the sidebar keeps scan I/O + rails only.
+ * FBA workspace chrome — lifecycle stage tabs left (Ready · Plan · Combine ·
+ * Shipped), search + week pill + select controls right. Composes
+ * `WorkbenchChromeHeader` like `ShippingWorkspaceHeader`; the stage facets
+ * moved here from the (dead) sidebar pill row — the sidebar keeps scan I/O +
+ * rails only.
  *
  * Selection stays owned by `FbaBoardTable`: this header listens to the
  * `FBA_BOARD_SELECTION_COUNT` window event for the live count and dispatches
@@ -14,7 +15,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { Button } from '@/design-system/primitives';
 import { qk } from '@/queries/keys';
@@ -22,7 +23,12 @@ import { FBA_BOARD_SELECTION_COUNT, FBA_BOARD_TOGGLE_ALL } from '@/lib/fba/event
 import type { FbaMode } from '@/lib/fba/fba-modes';
 import { formatWeekRangeCompact } from '@/utils/date';
 
-const TABS: { id: FbaMode; label: string; color: 'orange' | 'purple' | 'emerald' }[] = [
+const TABS: {
+  id: FbaMode;
+  label: string;
+  color: 'blue' | 'orange' | 'purple' | 'emerald';
+}[] = [
+  { id: 'ready', label: 'Ready', color: 'blue' },
   { id: 'plan', label: 'Plan', color: 'orange' },
   { id: 'combine', label: 'Combine', color: 'purple' },
   { id: 'shipped', label: 'Shipped', color: 'emerald' },
@@ -61,7 +67,7 @@ function useBoardSelectionCount(): { selected: number; total: number } {
 interface FbaWorkspaceHeaderProps {
   tab: FbaMode;
   onSelectTab: (tab: FbaMode) => void;
-  /** Board filter (plan/combine) or shipped search — cleared on tab change by the host. */
+  /** Board filter (plan/combine), Ready search, or shipped search — cleared on tab change by the host. */
   search: string;
   onSearchChange: (value: string) => void;
   /** Week pill (plan/combine only). */
@@ -89,6 +95,7 @@ export function FbaWorkspaceHeader({
   const stageCounts = useFbaStageTabCounts();
   const selection = useBoardSelectionCount();
   const isBoard = tab === 'plan' || tab === 'combine';
+  const isReady = tab === 'ready';
   const allVisibleSelected = selection.total > 0 && selection.selected === selection.total;
 
   const tabs = useMemo(
@@ -97,7 +104,12 @@ export function FbaWorkspaceHeader({
         id: t.id,
         label: t.label,
         color: t.color,
-        count: t.id === 'plan' ? stageCounts.planned : t.id === 'combine' ? stageCounts.packed : undefined,
+        count:
+          t.id === 'plan'
+            ? stageCounts.planned
+            : t.id === 'combine'
+              ? stageCounts.packed
+              : undefined,
         dividerBefore: t.id === 'shipped',
       })),
     [stageCounts.planned, stageCounts.packed],
@@ -134,6 +146,12 @@ export function FbaWorkspaceHeader({
     </>
   ) : null;
 
+  const searchPlaceholder = isReady
+    ? 'Search tested units…'
+    : isBoard
+      ? 'Filter title, FNSKU, ASIN, SKU, plan…'
+      : 'FNSKU, ASIN, SKU, product…';
+
   return (
     <WorkbenchChromeHeader
       density="band"
@@ -143,12 +161,12 @@ export function FbaWorkspaceHeader({
       solidTone="accent"
       className={className}
       search={
-        <ToolbarSearchToggle
+        <TechRailSearchBar
+          variant="chrome"
           value={search}
           onChange={onSearchChange}
-          onClear={() => onSearchChange('')}
-          placeholder={isBoard ? 'Filter title, FNSKU, ASIN, SKU, plan…' : 'FNSKU, ASIN, SKU, product…'}
-          tone="blue"
+          placeholder={searchPlaceholder}
+          className="w-40 shrink-0 lg:w-56"
         />
       }
       right={right}

@@ -3,11 +3,12 @@
  * chrome-altitude column Fields.
  *
  * Fields left the page chrome on 2026-08-02. The operator entry for column
- * visibility / display is the grid's own top-right column-display control
- * (`LedgerGridColumnHeader` `onOpenColumnDetails` → `GridColumnDetailsPanel`).
- * Rationale: Fields mutates the column set of the card it sits on, so a
- * page-chrome control acting on that card is an altitude mismatch — and seven
- * surfaces shipped BOTH doors onto the same rail id at once.
+ * visibility / display is `GridColumnGutter` — the trigger hover-revealed over
+ * the grid card's own top-right corner, which also owns the open state and
+ * mounts `GridColumnDetailsPanel`. Rationale: Fields mutates the column set of
+ * the card it sits on, so a page-chrome control acting on that card is an
+ * altitude mismatch — and seven surfaces shipped BOTH doors onto the same rail
+ * id at once.
  *
  * That control is **hover-revealed over the card's own top-right corner**, and
  * reserves no space in either budget (amended the same day, twice). A permanent
@@ -51,13 +52,25 @@ const TRAILING_CLUSTER_ADOPTERS = [
   'src/components/outbound/labels/LabelsWorkspaceHeader.tsx',
   'src/components/support/zendesk/SupportTicketsBoard.tsx',
   'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
+  'src/components/receiving/pickup/PickupWorkspace.tsx',
+  'src/components/repair/RepairWorkspaceHeader.tsx',
 ] as const;
 
 /**
- * Every grid that declares `fieldsMenu: true` must expose the lip, or its staff
- * lose column display entirely. Header adapter → the view that owns the rail.
+ * Every grid that declares `fieldsMenu: true` must expose the column-display
+ * control, or its staff lose column display entirely. Header adapter → the view
+ * that reaches it.
+ *
+ * The view no longer *owns* the rail. Since the Phase A plumbing collapse
+ * (2026-08-02) a view reaches column display by mounting `LedgerGridSurface`,
+ * which mounts `GridColumnGutter` by construction; the gutter owns the open
+ * state and the rail. So the reachability half of this pairing is unchanged and
+ * the ownership half INVERTED — a view that still mounts its own
+ * `<GridColumnDetailsPanel>` is re-opening the second door this file exists to
+ * keep shut. Who owns what is asserted once against the DS modules in
+ * `grid-view-plumbing.guard.test.ts`, rather than thirteen times here.
  */
-const LIP_SURFACES: readonly (readonly [header: string, view: string])[] = [
+const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string])[] = [
   [
     'src/components/station/receiving-grid/ReceivingGridColumnHeader.tsx',
     'src/components/station/receiving-grid/ReceivingGridView.tsx',
@@ -142,6 +155,13 @@ describe('WorkbenchTrailingCluster SoT', () => {
     assert.ok(afterIdx > actionsIdx);
   });
 
+  it('exports workbench chrome pill class (History band-tab radius)', () => {
+    assert.match(shell, /export const WORKBENCH_CHROME_PILL_CLASS/);
+    assert.match(shell, /nestedCornerClass\('card',\s*0\.5\)/);
+    assert.doesNotMatch(shell, /WORKBENCH_TRAILING_HAIRLINE_JOIN_/);
+    assert.doesNotMatch(shell, /rounded-l-none rounded-r-full/);
+  });
+
   it('has NO fields slot — chrome Fields cannot grow back', () => {
     const props = shell.slice(
       shell.indexOf('interface WorkbenchTrailingClusterProps'),
@@ -165,7 +185,7 @@ describe('WorkbenchTrailingCluster SoT', () => {
     });
   }
 
-  for (const [header, view] of LIP_SURFACES) {
+  for (const [header, view] of COLUMN_DISPLAY_SURFACES) {
     it(`${view} reaches column display through the card's gutter`, () => {
       const headerSrc = readFileSync(join(ROOT, header), 'utf8');
       const viewSrc = readFileSync(join(ROOT, view), 'utf8');
@@ -176,21 +196,28 @@ describe('WorkbenchTrailingCluster SoT', () => {
         /makeLedgerGridColumnHeader/.test(headerSrc) || /onResizeColumn/.test(headerSrc),
         `${header} must compose makeLedgerGridColumnHeader or plumb onResizeColumn itself`,
       );
-      // The door is the gutter beside the card, not a control in the header.
+      // The door is the control over the card's own corner, never one in the
+      // header band. A view reaches it by mounting the surface (which mounts the
+      // gutter by construction) or, if it is bespoke, by composing the gutter.
       assert.match(
         viewSrc,
-        /(columnDetails=\{\{|<GridColumnGutter)/,
-        `${view} must mount the column-display gutter beside its card`,
+        /<LedgerGridSurface[<\s]|<GridColumnGutter[\s>]/,
+        `${view} must reach column display — via LedgerGridSurface, which mounts ` +
+          `GridColumnGutter, or by composing GridColumnGutter itself if bespoke`,
       );
       assert.doesNotMatch(
         viewSrc,
         /onOpenColumnDetails=\{/,
         `${view} must not pass onOpenColumnDetails to its header — the gutter owns it`,
       );
-      assert.match(
+      // INVERTED 2026-08-02 (was: "must mount the column-display rail"). The rail
+      // is mounted once, by the gutter. A view mounting its own is the second
+      // door — the same shape as chrome Fields, which had to be retired because
+      // seven surfaces opened `detail:grid-column-details` twice over.
+      assert.doesNotMatch(
         viewSrc,
         /<GridColumnDetailsPanel/,
-        `${view} must mount the column-display rail`,
+        `${view} must not mount the rail itself — GridColumnGutter owns it`,
       );
     });
   }
@@ -199,8 +226,8 @@ describe('WorkbenchTrailingCluster SoT', () => {
     const src = readFileSync(join(ROOT, TRIGGER), 'utf8');
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     assert.match(code, /export function GridColumnGutter/);
-    // Floats over the card — reserving neither a column track nor a page lane.
-    assert.match(code, /absolute right-1\.5 top-1\.5/, 'must float over the card corner');
+    // Default: floats over the card — reserving neither a column track nor a page lane.
+    assert.match(code, /absolute right-1\.5 top-1\.5/, 'must float over the card corner by default');
     assert.doesNotMatch(code, /\bgap-2\b/, 'a reserved gutter is the shape this replaced');
     // Hidden at rest, revealed by pointer OR keyboard, pinned while open. All
     // three matter: hover alone is keyboard-unreachable, and a trigger that left
@@ -214,13 +241,17 @@ describe('WorkbenchTrailingCluster SoT', () => {
     // CSS opacity only — a framer whileHover here binds a re-render to mousemove
     // across the whole card.
     assert.doesNotMatch(code, /whileHover/, 'never a framer hover on a grid card');
+    // Unbox may portal the same trigger into the triage band — open state +
+    // rail stay on GridColumnGutter (one door). Not a second Fields mount.
+    assert.match(code, /triggerPortalTarget/, 'optional Unbox triage-band portal');
+    assert.match(code, /createPortal/, 'portal rehosts paint, not ownership');
 
     // The surface mounts the card INSIDE the wrapper.
     const surface = readFileSync(
       join(ROOT, 'src/design-system/components/grid/LedgerGridSurface.tsx'),
       'utf8',
     );
-    assert.match(surface, /<GridColumnGutter[\s\S]{0,220}data-table-surface/);
+    assert.match(surface, /<GridColumnGutter[\s\S]{0,280}data-table-surface/);
   });
 
   it('neither grid header reserves space for, or mounts, the column-display control', () => {
@@ -233,11 +264,6 @@ describe('WorkbenchTrailingCluster SoT', () => {
         code,
         /data-grid-column-details-lip|GridColumnDetailsTrigger/,
         `${file} must not mount the column-display control — it belongs in the gutter`,
-      );
-      assert.doesNotMatch(
-        code,
-        /onOpenColumnDetails/,
-        `${file} must not take onOpenColumnDetails — the surface owns the gutter`,
       );
     }
   });
@@ -260,7 +286,7 @@ describe('WorkbenchTrailingCluster SoT', () => {
       join(ROOT, 'src/design-system/components/grid/grid-column-editability.ts'),
       'utf8',
     );
-    assert.match(rule, /FIXED_WIDTH_COLUMN_TYPES = new Set\(\['number', 'id', 'location'\]\)/);
+    assert.match(rule, /FIXED_WIDTH_COLUMN_TYPES = new Set\(\['number'\]\)/);
 
     // Widths persist per staff, and the write must not drop its siblings: the
     // whole tableColumns map is sent, so a widths-only write that forgot
@@ -298,7 +324,7 @@ describe('WorkbenchTrailingCluster SoT', () => {
       'utf8',
     );
     assert.match(incomingGrid, /tableId = 'incoming'/);
-    assert.match(linesTable, /tableId="incoming"/);
+    // Incoming vs History share ReceivingLinesTable — prefs bucket is mode-gated.
     assert.match(linesTable, /tableId=\{isIncomingMode \? 'incoming' : 'receiving'\}/);
   });
 

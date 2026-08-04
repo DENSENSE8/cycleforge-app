@@ -4,10 +4,12 @@
  *
  * ## Hard rule (also in `AGENTS.md` + `source-of-truth.md`)
  *
- * - **Digit tracks end-align** — `number` · `id` (order ID, SKU, serial, ticket) ·
- *   `location` (tracking) · `date` (ship-by, age, civil day).
- * - **Word tracks start-align** — `text` · `longtext` · `tag` (condition, status) ·
- *   `external` (platform).
+ * - **Magnitudes end-align** — `number` (qty, price), `id` (SKU, serial, ticket),
+ *   and `date` (civil days, stamps, durations): things you compare down a column
+ *   by their ones place / soonest edge.
+ * - **Labels start-align** — `text` · `longtext` · `tag` (condition, status) ·
+ *   `external` (platform) · `location` (bin codes) · `tracking` (carrier #). A label is read
+ *   from its left edge; only a magnitude is scanned from its right.
  *
  * Alignment used to be decided twice per column, in two files, in two
  * vocabularies: a `column.key === 'qty' ? 'end' : 'start'` ternary in each
@@ -39,39 +41,56 @@ export type GridColumnAlign = 'start' | 'end';
 
 
 /**
- * Data type → justification. The full ruling, so no surface has to guess:
+ * Data type → justification. The full ruling, so no surface has to guess.
+ *
+ * **The question a type answers is "is this a MAGNITUDE or a LABEL".** A
+ * magnitude is compared down the column — the eye reads the ones place, so the
+ * right edge has to stack. A label is *read*, one row at a time, and reading
+ * starts at the left edge. Nothing else decides this; digit-ness in particular
+ * does not.
  *
  * | Type | Align | Why |
  * |---|---|---|
- * | `number` | `end` | Magnitudes compare down a column by their ones place; right-aligning is what makes a column of figures scannable (and `role-data` already binds `tabular-nums`, so the digits form a true grid). |
- * | `id` | `end` | Order / ticket / SKU / serial tracks are fixed-width digit (or digit-led) labels — end-align keeps the ones place stacked the same way as qty and price, so a column of last-8s scans as one vertical edge. |
- * | `location` | `end` | Tracking last-8s are the same class of digit label as `id`; they share the right edge with Order beside them. |
- * | `date` | `end` | Civil days, SLA (`Jul 21 · 42d`), and age tracks are compact numeral runs — end-align stacks the day / duration edge for scan, matching the numeric fact cluster. |
+ * | `number` | `end` | Magnitude. Qty / price compare down the column by their ones place, and `role-data` binds `tabular-nums`, so the digits form a true grid. |
+ * | `id` | `end` | A SKU / serial / ticket is a fixed-width reference attribute *of* the row — it sits in the same numeric fact cluster as qty, and a column of last-8s scans as one right edge. (`order` overrides — see below.) |
+ * | `date` | `end` | Magnitude (ruled 2026-08-03). A civil day, stamp, or duration — `Aug 3` / `12d` — is compared down the column (“which line is sooner / overdue?”), so the right edge stacks with qty. |
+ * | `location` | `start` | **Label** (ruled 2026-08-02). A bin / staging code is an identifier you read and retype. |
+ * | `tracking` | `start` | **Label** — carrier tracking last-8; same start rule as `location`, distinct glyph (MapPin). |
  * | `text` · `longtext` | `start` | Prose reads from the left edge; a ragged left edge destroys the scan line. |
  * | `tag` · `external` | `start` | A chip or brand mark is a categorical label, not a quantity. |
+ *
+ * **`location` / `tracking` stayed start on 2026-08-02; `date` flipped back to end on
+ * 2026-08-03.** Tracking last-8s in an 8rem track left ~3rem of empty track on
+ * the LEFT of every row when end-aligned, so the eye could not run a straight
+ * line down the identifiers — that bench finding still holds for both. Civil
+ * days and durations are the opposite: operators compare them down the column
+ * the same way they compare qty, so `date` rejoins the magnitude cluster.
+ * (An earlier 2026-08-02 pass had moved `date` to start with `location`; the
+ * operator re-adjudicated dates alone. 2026-08-04 split `tracking` off
+ * `location` for header glyph only — MapPin vs folded map — same align.)
  *
  * Deliberately NOT a `center` case. Centering breaks the vertical alignment
  * axis every other column establishes, and the house one-row anatomy has no
  * centered content.
  *
- * A column whose *type* is numeric-looking but whose *content* is prose (e.g.
- * receiving `stage`, typed `date` only for the clock glyph) sets
- * `align: 'start'` on the model — once, where the column is declared.
+ * A column whose *type* disagrees with its *content* sets `align` on the model —
+ * once, where the column is declared. One live case:
  *
- * **The one ROLE-based exception (ruled + shipped 2026-08-02):** an identifier
- * that is the row's own **transaction identity** — a PO number, a sales-order
- * number, `order` — aligns **start**. It is a name you read, and on an
- * order-anchored surface it is the first thing scanned; a catalog SKU / serial /
- * ticket is the opposite, an attribute *of* a row whose identity is its title,
- * so it stays `end`. Same `type: 'id'`, different role — which is exactly why
- * this is an `align` override on those two column models and **never** a change
- * to `ALIGN_BY_TYPE.id`, which would drag SKU and serial left with it.
+ * - **`order` → `start`** (ruled + shipped 2026-08-02). An identifier that is
+ *   the row's own **transaction identity** — a PO number, a sales-order number —
+ *   is a name you read, and on an order-anchored surface it is the first thing
+ *   scanned. A catalog SKU / serial / ticket is the opposite, an attribute *of*
+ *   a row whose identity is its title, so it stays `end`. Same `type: 'id'`,
+ *   different role — which is exactly why this is an `align` override on those
+ *   column models and **never** a change to `ALIGN_BY_TYPE.id`, which would
+ *   drag SKU and serial left with it.
  */
 const ALIGN_BY_TYPE: Record<ColumnType, GridColumnAlign> = {
   number: 'end',
   id: 'end',
-  location: 'end',
   date: 'end',
+  location: 'start',
+  tracking: 'start',
   text: 'start',
   longtext: 'start',
   tag: 'start',

@@ -1,21 +1,28 @@
-# FBA surface split — product contracts
+# FBA surface — product contracts
 
-**Status:** in progress (Phase 0–3 scaffolding)  
+**Status:** Ready folded into FBA workbench (2026-08-03)  
 **Related:** Kinetic Ledger region contracts, reseller-flow FBA prep lane, packing KPI FBA fill.
 
 ## Goal
 
-Stop treating FBA prep as a top-level primary page. Distribute by **job**:
+One FBA inbound workbench under Shipping (industry pattern: Amazon Send to Amazon /
+Sellercloud wizard / Dynamics outbound workbench) with lifecycle stage tabs:
 
-| Job | Home | Contract | Density |
-|---|---|---|---|
-| Post-test channel allocation (FBA vs pre-box/stock) | `/outbound?mode=ready` | Workbench list | `ops` |
-| FBA prep floor (plan / pack / combine / FC labels) | `/outbound?mode=fba` | Station | `floor` |
-| Shipment / plan status | `/dashboard` FBA view | Workbench | `ops` |
-| KPIs, capacity, backlog health | `/operations` | Monitor | `rollup` |
-| Amazon connect | Settings → Integrations | Admin | — |
+| Tab | Job | Density |
+|---|---|---|
+| **Ready** | Post-test channel allocation (FBA vs pre-box/stock vs hold) | `ops` |
+| **Plan** | Add FNSKUs to today's planned board | `floor` |
+| **Combine** | Consolidate packed units under one FBA shipment ID | `floor` |
+| **Shipped** | Shipment / plan history | `ops` |
 
-Top-level `/fba` nav stays parked; `/fba` redirects to `/outbound?mode=fba`.
+| Job | Home | Notes |
+|---|---|---|
+| Inbound FBA workbench | `/shipping/fba` (`?fbaMode=`) | Ready · Plan · Combine · Shipped |
+| KPIs, capacity, backlog health | `/operations` | Monitor |
+| Amazon connect | Settings → Integrations | Admin |
+
+Legacy `/shipping/ready` and `/shipping?mode=ready` permanently redirect to
+`/shipping/fba?fbaMode=ready`. Top-level `/fba` redirects to `/shipping/fba`.
 
 ## Channel allocation waist
 
@@ -31,30 +38,22 @@ Pure `recommendDisposition(facts)` → `{ disposition, reasons, score }`.
 | 4 | FBA filled **or** low velocity | `PREBOX_STOCK` |
 | 5 | Tenant default | policy |
 
-Views render chips only; they do not re-derive rules.
+Views render chips only; they do not re-derive rules. Ready disposition facets
+use `?rtab=` (KPI strip filters), not a second solid tab band.
 
-## Outbound modes
+## Shipping L2 children
 
-| Mode | URL | Notes |
+| Child | URL | Notes |
 |---|---|---|
-| `labels` | default | MF order documents (unchanged) |
-| `scan-out` | `?mode=scan-out` | Dock scan (unchanged) |
-| `ready` | `?mode=ready` | TESTED/GRADED ready queue + disposition |
-| `fba` | `?mode=fba` | Rehomed FBA board/combine/plan |
+| To ship | `/dashboard` | Order queue |
+| Postage | `/shipping/labels` | MF order documents |
+| FBA | `/shipping/fba` | Inbound workbench (includes Ready stage) |
+| Packing Review | `/review` | Packing QA |
 
-## Non-goals (this initiative)
+Scan out remains its own floor station L1 (`/shipping/scan-out`).
+
+## Non-goals
 
 - FBA schema spine fold onto `inventory_events`
 - Full SP-API inbound create if not already present
-- Restoring top-level FBA nav item
-
-## Phases
-
-0. Contracts + inventory — this doc  
-1. Domain allocator + ready-queue API  
-2. Outbound Ready mode UI  
-3. Outbound FBA mode rehome + `/fba` redirect  
-4. Dashboard status deep-links  
-5. Operations rollup enrichment  
-6. Amazon inventory depth (when available)  
-7. Cleanup (parked meta, search, e2e)
+- Restoring a standalone Ready L2 nav item

@@ -55,6 +55,7 @@ export function LineNotesCard({
   onSaveOverallNote,
   showSyncToPo = true,
   animateMount = true,
+  chrome = 'raised',
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled = false,
@@ -84,6 +85,11 @@ export function LineNotesCard({
   showSyncToPo?: boolean;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
+  /**
+   * Pass-through to OmnichannelComposerDock. `bare` when nested inside
+   * {@link UnboxDockHost} so the host owns the only raised shell.
+   */
+  chrome?: 'raised' | 'bare';
   /**
    * Terminal CTA rendered at the composer's trailing edge (Unbox overview
    * mounts the Receive/Print split here). Replaces the blue Send — Enter
@@ -345,9 +351,9 @@ export function LineNotesCard({
       // Receive CTA: Enter must fire even with an empty note (chat-send).
       // Default composer still requires non-empty text before Save.
       commitDisabled={onPrimaryAction ? primaryActionDisabled : undefined}
-      // Grain, stated plainly: this is the item note and it does NOT print.
-      // The printed face is edited from the label preview's Edit control.
-      placeholder="Note for this item — saved to the record, not printed"
+      // Unbox overview: this draft live-drives the carton sticker center;
+      // durable save is still the item note (`notes`), not label_note.
+      placeholder="Note for this item — shows on the sticker center"
       ariaLabel="Item note"
       commitAriaLabel="Save item note"
       commitTooltip={
@@ -356,6 +362,7 @@ export function LineNotesCard({
       footerStart={footerStart}
       footerEnd={footerEnd}
       trailingAction={trailingAction}
+      chrome={chrome}
       animateMount={animateMount}
       textareaRef={textareaRef}
     />

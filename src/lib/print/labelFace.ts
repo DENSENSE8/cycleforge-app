@@ -11,11 +11,12 @@ import { escapeLabelHtml } from '@/lib/print/labelHtml';
  *   bottomLeft ───────── bottomRight  │  Matrix  │
  *                                     └──────────┘
  *
- * Both the on-screen preview ({@link LabelFacePreview}) and the printed HTML
- * ({@link buildFaceInfoHtml} → the shared {@link buildLabelHtml}/`printLabel`
- * shell) consume this model, so what techs see is exactly what prints — there's
- * no second hand-built layout to drift. Domain adapters
- * (`receivingPayloadToFace`, `unitLabelToFace`) map their payloads into it.
+ * Both the on-screen preview ({@link LabelFacePreview} — a scaled iframe of
+ * {@link buildLabelHtml}) and the printed HTML ({@link buildFaceInfoHtml} →
+ * the shared {@link buildLabelHtml}/`printLabel` shell) consume this model, so
+ * what techs see is exactly what prints — there's no second hand-built layout
+ * to drift. Domain adapters (`receivingPayloadToFace`, `unitLabelToFace`) map
+ * their payloads into it.
  */
 export interface LabelFaceModel {
   /**
@@ -47,9 +48,8 @@ export interface LabelFaceModel {
  * weights/sizes the receiving label has used since it was the only label face.
  */
 // All slots share one font size (9px) and pure black so the face reads uniformly
-// on the tiny 2×1" label without clipping; center notes stay 9px too. These are
-// the PRINTED sizes — deliberately a touch smaller than the on-screen
-// LabelFacePreview, which renders in a larger box where a bigger size reads fine.
+// on the tiny 2×1" label without clipping; center notes stay 9px too. On-screen
+// preview scales this same CSS via a print-HTML iframe — no second type scale.
 export const LABEL_FACE_CSS =
   '.row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;line-height:1}' +
   '.tl{font-size:9px;font-weight:700;color:#000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
@@ -85,4 +85,57 @@ export function buildFaceInfoHtml(model: LabelFaceModel): {
     `<div class="row"><span class="bl">${escapeLabelHtml(model.bottomLeft)}</span>` +
     `<span class="br">${escapeLabelHtml(model.bottomRight)}</span></div>`;
   return { infoHtml, infoCss: LABEL_FACE_CSS, infoAlign: 'space-between' };
+}
+
+/**
+ * Mutate an already-mounted label document's text slots in place.
+ *
+ * Used by {@link LabelFacePreview} so typing the center (or any face string)
+ * does not rewrite iframe `srcDoc` — that would tear down the document and
+ * flash the sticker. Matrix / kind identity still requires a full rebuild.
+ *
+ * Sets `textContent` (not `innerHTML`) so caller strings need no escaping.
+ */
+export function patchLabelFaceDocument(
+  doc: {
+    querySelector(selectors: string): {
+      textContent: string | null;
+      remove(): void;
+      appendChild(node: { className: string; textContent: string }): unknown;
+    } | null;
+    createElement(tagName: string): { className: string; textContent: string };
+  },
+  model: LabelFaceModel,
+): void {
+  const setText = (sel: string, text: string) => {
+    const el = doc.querySelector(sel);
+    if (el) el.textContent = text;
+  };
+
+  if (model.kind === 'product') {
+    setText('.ptitle', model.topLeft);
+    setText('.bl', model.bottomLeft);
+    setText('.br', model.bottomRight);
+  } else {
+    setText('.tl', model.topLeft);
+    setText('.tr', model.topRight);
+    setText('.center', model.center);
+    setText('.bl', model.bottomLeft);
+    setText('.br', model.bottomRight);
+  }
+
+  const hri = (model.hri ?? '').trim();
+  const hriEl = doc.querySelector('.hri');
+  if (hriEl) {
+    if (hri) hriEl.textContent = hri;
+    else hriEl.remove();
+    return;
+  }
+  if (!hri) return;
+  const qrcol = doc.querySelector('.qrcol');
+  if (!qrcol) return;
+  const next = doc.createElement('div');
+  next.className = 'hri';
+  next.textContent = hri;
+  qrcol.appendChild(next);
 }

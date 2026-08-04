@@ -2450,7 +2450,16 @@ export const skuCatalog = pgTable('sku_catalog', {
   category: text('category'),
   upc: text('upc'),
   ean: text('ean'),
-  /** GS1 Global Trade Item Number — encodes Digital Link QRs (/01/{gtin}). Added 2026-05-14. */
+  /**
+   * GS1 Global Trade Item Number — encodes Digital Link QRs (/01/{gtin}).
+   * Added 2026-05-14.
+   *
+   * Unique PER ORG (`idx_sku_catalog_org_gtin`, 2026-08-02c), not globally: a
+   * GTIN names the PRODUCT, so two tenants selling the same item hold the same
+   * digits. May also hold an internally-minted restricted-circulation number
+   * (`02…`) from `getOrCreateInternalGtin`; `isRestrictedCirculationGtin()` is
+   * what tells that apart from a licensed key.
+   */
   gtin: text('gtin'),
   imageUrl: text('image_url'),
   isActive: boolean('is_active').notNull().default(true),
@@ -2475,6 +2484,8 @@ export const skuCatalog = pgTable('sku_catalog', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   orgSkuUnique: uniqueIndex('sku_catalog_org_sku_key').on(table.organizationId, table.sku),
+  /** Partial (`gtin IS NOT NULL AND gtin <> ''`) — see the column docblock. */
+  orgGtinUnique: uniqueIndex('idx_sku_catalog_org_gtin').on(table.organizationId, table.gtin),
 }));
 
 // ─── Packing profiles (polymorphic) ─────────────────────────────────────────
@@ -3312,7 +3323,8 @@ export const reasonCodes = pgTable('reason_codes', {
    * `code` vocabulary belongs to — inventory_event | substitution | short_pick |
    * receiving_exception | repair_failure | verdict_detail | warranty_denial |
    * inventory_adjust | lifecycle_unshipped | lifecycle_outbound |
-   * serial_absent_reason. See reason_codes_flow_context_chk for the live list.
+   * serial_absent_reason | station_command. See reason_codes_flow_context_chk
+   * for the live list.
    */
   flowContext: text('flow_context').notNull().default('inventory_event'),
   /** Which UI surfaces may offer this code; label-vocabulary-layer (2026-06-28d). */

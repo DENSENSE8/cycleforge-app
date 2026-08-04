@@ -15,13 +15,23 @@ import type {
   GridColumnCellMode,
   GridColumnDisplayPref,
   GridColumnHighlight,
+  GridColumnTextEmphasis,
+} from './grid-column-display';
+import {
+  isPersistedGridColumnHighlight,
+  normalizeGridColumnHighlight,
+  normalizeGridColumnTextEmphasis,
 } from './grid-column-display';
 
 interface GridColumnDisplayApi {
   /** Prefs keyed by `hideKey`. Absent keys → descriptor default (no wash, default cell). */
   displayByKey: Readonly<Record<string, GridColumnDisplayPref>>;
-  setHighlight: (hideKey: string, highlight: GridColumnHighlight) => void;
+  setHighlight: (hideKey: string, highlight: GridColumnHighlight | 'none' | null) => void;
   setCellMode: (hideKey: string, cell: GridColumnCellMode) => void;
+  setTextEmphasis: (
+    hideKey: string,
+    text: GridColumnTextEmphasis | 'default' | null,
+  ) => void;
   /** Drop display prefs for one key (back to defaults). */
   clearDisplay: (hideKey: string) => void;
 }
@@ -35,7 +45,10 @@ export function useGridColumnDisplay(tableId: TableId): GridColumnDisplayApi {
     if (!stored) return '';
     return Object.keys(stored)
       .sort()
-      .map((k) => `${k}:${stored[k]?.highlight ?? ''}:${stored[k]?.cell ?? ''}`)
+      .map(
+        (k) =>
+          `${k}:${stored[k]?.highlight ?? ''}:${stored[k]?.cell ?? ''}:${stored[k]?.text ?? ''}`,
+      )
       .join('\0');
   }, [stored]);
 
@@ -43,7 +56,13 @@ export function useGridColumnDisplay(tableId: TableId): GridColumnDisplayApi {
     if (!displayKey || !stored) return {};
     const out: Record<string, GridColumnDisplayPref> = {};
     for (const [k, v] of Object.entries(stored)) {
-      out[k] = { highlight: v.highlight, cell: v.cell };
+      const highlight = normalizeGridColumnHighlight(v.highlight) ?? undefined;
+      const text = normalizeGridColumnTextEmphasis(v.text) ?? undefined;
+      out[k] = {
+        ...(highlight ? { highlight } : {}),
+        ...(v.cell ? { cell: v.cell } : {}),
+        ...(text ? { text } : {}),
+      };
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on content
@@ -55,12 +74,16 @@ export function useGridColumnDisplay(tableId: TableId): GridColumnDisplayApi {
       // Drop empty entries so the bag stays lean.
       const cleaned: Record<string, GridColumnDisplayPref> = {};
       for (const [k, v] of Object.entries(next)) {
-        const highlight = v.highlight && v.highlight !== 'none' ? v.highlight : undefined;
+        const highlight = isPersistedGridColumnHighlight(v.highlight)
+          ? (normalizeGridColumnHighlight(v.highlight) ?? undefined)
+          : undefined;
         const cell = v.cell && v.cell !== 'default' ? v.cell : undefined;
-        if (highlight || cell) {
+        const text = normalizeGridColumnTextEmphasis(v.text) ?? undefined;
+        if (highlight || cell || text) {
           cleaned[k] = {
             ...(highlight ? { highlight } : {}),
             ...(cell ? { cell } : {}),
+            ...(text ? { text } : {}),
           };
         }
       }
@@ -100,8 +123,9 @@ export function useGridColumnDisplay(tableId: TableId): GridColumnDisplayApi {
   );
 
   const setHighlight = useCallback(
-    (hideKey: string, highlight: GridColumnHighlight) => {
-      patchKey(hideKey, { highlight });
+    (hideKey: string, highlight: GridColumnHighlight | 'none' | null) => {
+      const normalized = normalizeGridColumnHighlight(highlight);
+      patchKey(hideKey, { highlight: normalized ?? 'none' });
     },
     [patchKey],
   );
@@ -109,6 +133,17 @@ export function useGridColumnDisplay(tableId: TableId): GridColumnDisplayApi {
   const setCellMode = useCallback(
     (hideKey: string, cell: GridColumnCellMode) => {
       patchKey(hideKey, { cell });
+    },
+    [patchKey],
+  );
+
+  const setTextEmphasis = useCallback(
+    (hideKey: string, text: GridColumnTextEmphasis | 'default' | null) => {
+      const normalized = normalizeGridColumnTextEmphasis(text);
+      // Persist 'default' as an explicit clear; writeDisplay strips it.
+      patchKey(hideKey, {
+        text: (normalized ?? 'default') as GridColumnTextEmphasis,
+      });
     },
     [patchKey],
   );
@@ -123,5 +158,5 @@ export function useGridColumnDisplay(tableId: TableId): GridColumnDisplayApi {
     [queryClient, tableId, writeDisplay],
   );
 
-  return { displayByKey, setHighlight, setCellMode, clearDisplay };
+  return { displayByKey, setHighlight, setCellMode, setTextEmphasis, clearDisplay };
 }

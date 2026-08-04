@@ -1,25 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * `/carton/[id]` column weight — the two tracks are NOT peers.
+ * `/carton/[id]` column weight — contents : timeline = 2fr : 1fr.
  *
- * Col 1 answers a BOUNDED question ("what is in this box" — one line and a
- * sparse fact set for the median carton); col 2 answers an UNBOUNDED one
- * ("what happened to it" — pipeline, activity, unit journeys, findings).
- * Equal `xl:grid-cols-2` tracks guaranteed the imbalance the 2026-08-02 pass
- * shipped with: measured at 1440×900 the left column's content ended roughly a
- * third of the way down while the right ran past the fold.
+ * Col 1 (CONTENTS · RECORD) needs the wider track so long line titles wrap
+ * honestly; col 2 (PROGRESS · ACTIVITY · HISTORY) stays readable at one-third
+ * of the row. Ruled 2026-08-03; supersedes the 22rem | 1fr rail.
  *
- * A screenshot cannot see this — CSS grid stretches both CELLS to equal height,
- * so the cells always match and only the last child's bottom tells the truth.
- * Hence the extent probe below (the shape `carton-read-display-polish` §4
- * prescribes).
- *
- * Two assertions, and they are different kinds of claim:
- *   1. the TRACKS are asymmetric — a structural invariant of the ruling, true
- *      regardless of which carton loads;
- *   2. the left column carries real weight — data-dependent, so the floor is
- *      deliberately loose and the numbers are logged rather than pinned tight.
+ * A screenshot can see track width directly. Content extents are still logged
+ * for debugging (CSS grid stretches both CELLS to equal height, so only the
+ * last child's bottom tells how tall the content actually is).
  *
  * Run against the QA org (`.claude/rules/verify.md`):
  *   pnpm provision:qa-org && npx playwright test tests/e2e/carton-column-balance.spec.ts --project=qa-desktop
@@ -50,7 +40,7 @@ async function openACarton(page: import('@playwright/test').Page) {
 test.describe('carton read — column weight at 1440', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'the two-column read is a desktop layout');
 
-  test('the timeline track is wider than the contents rail', async ({ page }) => {
+  test('the contents track is ~2× the timeline track', async ({ page }) => {
     await openACarton(page);
 
     const contents = page.getByTestId('carton-contents-column');
@@ -68,11 +58,12 @@ test.describe('carton read — column weight at 1440', () => {
     console.log(
       `[carton columns] track ${Math.round(left.width)} / ${Math.round(right.width)} px · ` +
         `extent ${Math.round(leftExtent)} / ${Math.round(rightExtent)} px · ` +
-        `ratio ${(leftExtent / rightExtent).toFixed(2)}`,
+        `width ratio ${(left.width / right.width).toFixed(2)}`,
     );
 
-    // The ruling: the bounded column is a RAIL, the unbounded one takes the room.
-    expect(right.width).toBeGreaterThan(left.width * 1.4);
+    // 2fr | 1fr → contents ≈ 2× timeline (loose floor absorbs gap/padding).
+    expect(left.width).toBeGreaterThan(right.width * 1.5);
+    expect(left.width).toBeLessThan(right.width * 2.5);
   });
 
   for (const width of [1024, 768]) {
@@ -84,7 +75,7 @@ test.describe('carton read — column weight at 1440', () => {
       const right = (await page.getByTestId('carton-timeline-column').boundingBox())!;
 
       expect(right.y).toBeGreaterThan(left.y);
-      // One full-width column, not two cramped ones — the rail track must not
+      // One full-width column, not two cramped ones — the 2fr track must not
       // survive the breakpoint.
       expect(Math.abs(left.width - right.width)).toBeLessThan(4);
     });

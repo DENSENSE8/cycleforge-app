@@ -533,9 +533,9 @@ html[data-color-scheme='dark'] [class*="to-blue-100/"] { --tw-gradient-to: rgba(
 html[data-color-scheme='dark'] .hover\:from-blue-100:hover { --tw-gradient-from: rgba(59, 130, 246, 0.20) var(--tw-gradient-from-position); --tw-gradient-to: rgba(59, 130, 246, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
 html[data-color-scheme='dark'] .hover\:to-blue-100:hover { --tw-gradient-to: rgba(59, 130, 246, 0.20) var(--tw-gradient-to-position); }
 
-/* Printed-label PREVIEW barcode (DataMatrix / CODE128) is drawn black; in a dark
-   scheme invert it to white modules so it reads on the dark card. The PRINT path
-   is separate and always renders black-on-white paper. See LabelFacePreview. */
+/* Standalone barcode canvases (e.g. ReceivingProductLabelPreview CODE128) drawn
+   black; in a dark scheme invert to white modules so they read on dark cards.
+   Shared LabelFacePreview is now a print-HTML iframe (always black-on-white). */
 html[data-color-scheme='dark'] .label-preview-matrix { filter: invert(1); }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -630,9 +630,39 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   box-shadow: 8px 0 8px -8px rgba(15, 23, 42, 0.22);
 }
 
+/* LedgerGrid h-scroll edge cues (Notion) — inset shadows on the scrollport so
+   operators see more columns off-card at rest (end) and after scrolling (start).
+   Toggled by `applyGridOverflowXClasses` from scroll + ResizeObserver. Keep the
+   frozen-edge rule above for the identity-pane cue. */
+[data-cf-grid].cf-grid-overflow-start {
+  box-shadow: inset 10px 0 10px -10px rgba(15, 23, 42, 0.2);
+}
+[data-cf-grid].cf-grid-overflow-end {
+  box-shadow: inset -10px 0 10px -10px rgba(15, 23, 42, 0.2);
+}
+[data-cf-grid].cf-grid-overflow-start.cf-grid-overflow-end {
+  box-shadow:
+    inset 10px 0 10px -10px rgba(15, 23, 42, 0.2),
+    inset -10px 0 10px -10px rgba(15, 23, 42, 0.2);
+}
+
 /* Sticky column header — soft depth once rows scroll under the frozen band. */
 [data-cf-grid].cf-grid-scrolled-y [data-grid-col-header] {
   box-shadow: 0 4px 10px -6px rgba(15, 23, 42, 0.16);
+}
+
+/* Chip faces are FLUSH inside a grid cell — the CELL owns the horizontal inset.
+   A CopyChip wrapper carries its own `px-1.5` breathing room, which is right in
+   a rail or a fact row and wrong in a ruled column: it stacks on the cell's
+   `px-2` (`ORDERS_QUEUE_CELL_INSET`), so every chip value sat 6px inside its
+   column's content edge and no chip lined up with the plain-text cells above or
+   below it. Answering it here, on the container, is what makes it true for all
+   14 grid families and the next one — `outerPad="flush"` would be a prop ~12
+   chip call sites each have to remember. `[data-chip-face]` marks every face in
+   `CopyChip.tsx` (see CHIP_FACE_ATTR); this rule is unlayered, so it beats the
+   Tailwind utility regardless of specificity order. */
+[data-cf-grid] [data-chip-face] {
+  padding-inline: 0;
 }
 
 /* Sticky header band — card-white (table-surface SoT); borders carry hierarchy.

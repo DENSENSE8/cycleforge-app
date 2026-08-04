@@ -1,16 +1,18 @@
 /**
  * Hard law: the operator's ITEM NOTE and the PRINTED LABEL FACE are two
- * separate buffers, and neither surface may write the other's column.
+ * durable columns, and the notes composer may not PATCH the other's column.
  *
- *   receiving_line.notes       — the operator's durable item note. NEVER printed.
- *   receiving_line.label_note  — the printed face center text (carton face
- *                                center + As Listed disclosure).
+ *   receiving_line.notes       — the operator's durable item note (Zoho /
+ *                                receive). On Unbox overview the live draft
+ *                                also drives the carton sticker center.
+ *   receiving_line.label_note  — durable printed face center (Testing reprint,
+ *                                LabelEditPopover / As Listed). Stamped from
+ *                                the dock draft on Unbox carton print.
  *
- * Until 2026-07-31 these were ONE column (`notes`), which meant an operator
- * could not record anything about an item without it appearing on the sticker,
- * and could not re-word a label without rewriting the record's note. Migration
+ * Until 2026-07-31 these were ONE column (`notes`). Migration
  * `2026-07-31b_receiving_lines_label_note.sql` splits them and backfills
- * `label_note := notes` so every pre-split carton reprints an identical face.
+ * `label_note := notes`. Unbox overview (2026-08-04) live-wires the dock draft
+ * into the carton face center without re-merging the persist writers.
  *
  * Why a SOURCE guard rather than a behavioral test: the split lives in React
  * controller wiring — which state buffer is handed to which editor, and which
@@ -40,6 +42,7 @@ const SCHEMA = code(sourceOf('../../../../lib/drizzle/schema.ts'));
 const UNBOX_CONTROLLER = code(sourceOf('./hooks/useUnboxLineController.ts'));
 const TESTING_CONTROLLER = code(sourceOf('../../../tech/hooks/useTestingLineController.ts'));
 const NOTES_CARD = code(sourceOf('./WorkspaceNotesCard.tsx'));
+const PREVIEW = code(sourceOf('../../../labels/LabelFacePreview.tsx'));
 const LINES_ROUTE = code(sourceOf('../../../../app/api/receiving-lines/route.ts'));
 
 /**
@@ -132,6 +135,36 @@ test('the carton label editor is fed the PRINTED buffer, never the item note', (
   );
 });
 
+test('Unbox overview carton face center is live-driven by the dock draft', () => {
+  // Overview preview + Print · Receive must read itemNote for the center so
+  // typing in the dock updates the sticker without waiting for label_note.
+  assert.match(
+    UNBOX_CONTROLLER,
+    /liveCartonPayload/,
+    'expected a liveCartonPayload that overrides carton notes with the dock draft',
+  );
+  assert.match(
+    UNBOX_CONTROLLER,
+    /notes:\s*itemNote\b/,
+    'liveCartonPayload.notes must be the dock draft (itemNote)',
+  );
+  assert.match(
+    UNBOX_CONTROLLER,
+    /cartonPayload:\s*liveCartonPayload\b/,
+    'labelCtx must use liveCartonPayload so activeLabelFace.center tracks the dock',
+  );
+});
+
+test('carton print stamps label_note from the dock draft', () => {
+  // After overview carton print, Testing / reprint / LabelEditPopover must see
+  // the text that just printed — without the notes composer PATCHing label_note.
+  assert.match(
+    UNBOX_CONTROLLER,
+    /persistLabelNote\(itemNote\)/,
+    'carton print must stamp label_note from itemNote',
+  );
+});
+
 test('Testing prints the same face as Unbox', () => {
   // Both surfaces reprint the same carton through one face SoT. If Testing read
   // `notes` while Unbox read `label_note`, the two would print different faces
@@ -169,6 +202,20 @@ test('the notes composer never writes the printed face', () => {
     NOTES_CARD,
     /c\.labelNote\b/,
     'the item-note composer must read itemNote, not the label buffer',
+  );
+});
+
+test('LabelFacePreview patches text slots instead of rebuilding srcDoc on center change', () => {
+  assert.match(
+    PREVIEW,
+    /patchLabelFaceDocument/,
+    'preview must mutate face slots in place for flash-free dock typing',
+  );
+  // Rebuild effect deps must be matrix/kind identity — not model.center.
+  assert.match(
+    PREVIEW,
+    /matrixValue,\s*model\.matrix\.symbology,\s*model\.matrix\.scale,\s*model\.kind/,
+    'full iframe rebuild must key only on matrix/kind identity',
   );
 });
 

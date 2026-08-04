@@ -62,7 +62,7 @@ export const AMBIENT_WASH_BASELINE = 1;
 
 // ── Guard C — panel-root hand-roll ────────────────────────────────────────────
 /** Exact panel-root className the SoT `StationPanelRoot` owns. */
-export const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-canvas"';
+export const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-sunken';
 /**
  * Remaining station-family hand-rolls: `outbound/labels/LabelsOrderWorkspace.tsx`
  * (Tier B port follow-up). Shrink-only — migrate onto `StationPanelRoot`.
@@ -82,17 +82,64 @@ export const STATION_WORKBENCH_REQUIRED = [
   'components/outbound/labels/LabelsOrderWorkspace.tsx',
   'features/review/packer/PackerReviewMode.tsx',
   'components/packer/PackOrderPanel.tsx',
-  'components/support/orders/SupportOrdersWorkspace.tsx',
+  'components/support/orders/SupportOrdersFocusHost.tsx',
 ] as const;
 /**
  * Documented adoption gaps (port follow-ups) — station chrome but not yet on
  * `StationWorkbench`. Not asserted; listed so the exemption is explicit.
- *   - components/repair/RepairIntakeForm.tsx             (until remount)
+ *   - components/repair/RepairIntakeForm.tsx             (see below)
  *
  * `ShippingScanWorkspace` left this list in the 2026-07-28 host fold: it is no
  * longer a panel root at all, just the `tabs` slot composer its host mounts.
+ *
+ * **`RepairIntakeForm`'s exemption now has an exit** (2026-08-02). It read
+ * "until remount", which is a condition with no owner and no date — the
+ * flag-lifecycle smell in another costume (`backend-patterns.md`: every flag
+ * declares an owner and an ending). Restated as a fact instead: the form is an
+ * INTAKE surface, so it is not a `StationWorkbench` gap at all — see
+ * {@link NON_STATION_COLUMN_SURFACES}. It stays listed here only so the guard's
+ * exemption keeps a home; the reason it is exempt is now written down.
  */
 export const STATION_WORKBENCH_ADOPTION_EXEMPT = [
+  'components/repair/RepairIntakeForm.tsx',
+] as const;
+
+/**
+ * Surfaces that sit in the **Scan Stations** spine section but are deliberately
+ * NOT Station column-shell members — declared, not drifting (2026-08-02).
+ *
+ * The handoff that produced this list asked for one thing: decide explicitly,
+ * because "Pickup and Repair compose nothing" reads identically whether it is a
+ * gap or a choice. Measured, both compose **zero** station chrome — no
+ * `StationWorkbench`, no `StationContextBar`, no `CartonContextCard`. They never
+ * joined the family, so they are not drifting from it.
+ *
+ *   - ~~`receiving/pickup/PickupWorkspace.tsx`~~ — **removed 2026-08-03.** Local
+ *     Pickup grew a focus-locked Station scan loop (`PickupScanBand` + New
+ *     Pickup CTA). Right pane remains Workbench ops-queue (`LedgerGrid`);
+ *     Station column shell (`StationWorkbench` + context bar) lands when a
+ *     focus pane / carton procedure opens — not required for scan+CTA alone.
+ *   - `repair/RepairIntakeForm.tsx` — an intake FORM. Its job is creating a
+ *     ticket that does not exist yet, so there is no active entity for an
+ *     identity bookmark to name, and `SidebarIntakeFormShell`-family chrome is
+ *     the correct grammar (`display/right-rail-inspector.md` → two chrome
+ *     families).
+ *
+ * **The exit is a scan bar, not a refactor.** If a listed surface grows a
+ * focus-locked scan loop over one transient entity, Q1 of `pickArchetype` fires
+ * and it becomes a Station — at which point it composes `StationWorkbench` +
+ * `StationContextBar` through a thin adapter like every sibling, and its entry
+ * here is deleted. Until then, porting station chrome onto them would be the
+ * "lobotomized work chrome" anti-pattern (`pattern-evolution.md` Always #5):
+ * station panels with the station stripped out.
+ *
+ * **Asserted** (Guard H) — a declaration that nothing checks is the prose
+ * retirement `pattern-evolution.md` Always #6 exists to ban, and this one is
+ * checkable in both directions: the files must exist, and they must compose no
+ * station chrome. Porting a bookmark onto a listed surface therefore fails CI
+ * until the entry is deleted, which is the point — the deletion IS the decision.
+ */
+export const NON_STATION_COLUMN_SURFACES = [
   'components/repair/RepairIntakeForm.tsx',
 ] as const;
 

@@ -127,8 +127,8 @@ export function SectionTabsSlider({
   ariaLabel?: string;
   className?: string;
   /**
-   * Extra class on the strip ROW only — e.g. Unbox Displays `pr-7` so the
-   * pane-anchored scan-progress ring does not cover ⋮ / pencil.
+   * Extra class on the strip ROW only — e.g. Unbox Displays flush-edge
+   * adjustments (`-mr-4`) so the trailing ⋮ sits on the column edge.
    */
   headerClassName?: string;
   /** Context control pinned to the right of the bar row (e.g. an Edit-PO pencil). */
@@ -326,7 +326,14 @@ export function SectionTabsSlider({
                           )}
                         />
                         {selected ? (
-                          <span className="max-w-[7rem] truncate text-role-micro leading-none">
+                          // No `leading-none` here. `truncate` carries
+                          // `overflow:hidden`, so a line-height of 1 makes the
+                          // line box exactly the 10px font size and SHEARS every
+                          // descender — "Pairin(g)", "Trackin(g)", "Classif(y)"
+                          // all render with their tails cut off. The role's own
+                          // 1.2 leading costs nothing: the cell is a fixed `h-6`
+                          // / `h-8`, so a taller line box cannot grow the row.
+                          <span className="max-w-[7rem] truncate text-role-micro">
                             {tab.label}
                           </span>
                         ) : null}

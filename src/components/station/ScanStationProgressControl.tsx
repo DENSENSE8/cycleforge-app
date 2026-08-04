@@ -5,26 +5,33 @@
  * bench that has a derived procedure.
  *
  * Face: bare {@link ScanStationProgressRing} (no card shell, not GoalRing).
- * Hover: checklist peek (exactly {@link SCAN_STATION_CHECKLIST_PREVIEW_ROWS}
- * rows visible at once — scroll for the rest). Click: toggle the station's
- * procedure Displays surface.
+ * Placement: **dock-anchored under the terminal** (Unbox: `UnboxDockHost`
+ * progress row) — same place whether Displays/push is open or closed.
  *
- * Hover is **off** while any right-edge push rail is open (`railOpen`) — the
- * full checklist (or peer column) is already on screen.
+ * Hover peek: Cursor-style overlap just above the ring (`top-end`,
+ * viewport-clamped) with an optional footer to commit the real Displays rail.
+ * Hover is **off** while any push rail is open (`railOpen`) — the full
+ * checklist is already on screen. Click: toggle the station's procedure
+ * Displays surface.
  *
  * Domain benches pass percent + preview node + open/close. Unbox adapter:
  * `UnboxScanProgressControl`.
  */
 
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { IconButton } from '@/design-system/primitives';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import { ChevronRight } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
 import { Popover } from '@/design-system/primitives/Popover';
+import type { AnchoredPlacement } from '@/design-system/primitives/AnchoredLayer';
 import { useRailHoverPreview } from '@/components/sidebar/rail-shell/useRailHoverPreview';
 import { cn } from '@/utils/_cn';
 import { ScanStationProgressRing } from './ScanStationProgressRing';
-
-/** How many checklist rows the hover peek shows before scrolling. */
-export const SCAN_STATION_CHECKLIST_PREVIEW_ROWS = 2;
 
 export function ScanStationProgressControl({
   percent,
@@ -40,26 +47,34 @@ export function ScanStationProgressControl({
   ariaLabelClose = 'Hide displays',
   testId = 'scan-station-progress-button',
   previewAriaLabel = 'Procedure checklist preview',
+  /** Anchored popover placement — SoT for station progress is `top-end`. */
+  previewPlacement = 'top-end',
+  /** Popover surface classes. */
+  previewClassName = 'w-80 p-3',
+  previewStyle,
+  /**
+   * Footer CTA label — opens the procedure Displays in the right rail and
+   * dismisses the peek.
+   */
+  previewRailActionLabel,
 }: {
-  /** 0–100 procedure completion for the ring. */
   percent: number;
   done: number;
   total: number;
-  /** Any right-edge push open — disables hover peek. */
   railOpen: boolean;
-  /** Procedure Displays (or peer) specifically open — drives click toggle + aria. */
   expanded: boolean;
-  /** Checklist (or peer procedure display) is the active body — selected face. */
   selected?: boolean;
   onOpen: () => void;
   onClose: () => void;
-  /** Checklist (or peer procedure list) rendered inside the hover peek. */
   preview: ReactNode;
-  /** Aria when the procedure surface is closed (include step counts). */
   ariaLabelOpen?: string;
   ariaLabelClose?: string;
   testId?: string;
   previewAriaLabel?: string;
+  previewPlacement?: AnchoredPlacement;
+  previewClassName?: string;
+  previewStyle?: CSSProperties;
+  previewRailActionLabel?: string;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const previewEnabled = !railOpen;
@@ -75,7 +90,6 @@ export function ScanStationProgressControl({
     closeDelay: 160,
   });
 
-  // Rail opened under an active peek — tear the peek down immediately.
   useEffect(() => {
     if (railOpen) dismiss();
   }, [railOpen, dismiss]);
@@ -90,6 +104,33 @@ export function ScanStationProgressControl({
     if (expanded) onClose();
     else onOpen();
   }, [dismiss, expanded, onClose, onOpen]);
+
+  const onOpenInRail = useCallback(() => {
+    dismiss();
+    onOpen();
+  }, [dismiss, onOpen]);
+
+  const hasRailAction = Boolean(previewRailActionLabel);
+
+  const peekBody = hasRailAction ? (
+    <div className="flex min-h-0 flex-1 flex-col" data-scan-progress-peek>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">{preview}</div>
+      <div className="shrink-0 border-t border-border-hairline px-1 py-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-between gap-2 font-semibold"
+          onClick={onOpenInRail}
+          data-testid="scan-station-progress-open-rail"
+        >
+          <span className="truncate">{previewRailActionLabel}</span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-soft" />
+        </Button>
+      </div>
+    </div>
+  ) : (
+    preview
+  );
 
   return (
     <div
@@ -121,16 +162,17 @@ export function ScanStationProgressControl({
         open={previewOpen}
         onClose={dismiss}
         anchorRef={wrapRef}
-        placement="bottom-end"
+        placement={previewPlacement}
         gap={8}
-        padded
+        padded={!hasRailAction}
         role="dialog"
         aria-label={previewAriaLabel}
-        className="w-80 overflow-hidden p-3"
+        className={cn(previewClassName)}
+        style={previewStyle}
         onMouseEnter={scheduleOpen}
         onMouseLeave={scheduleClose}
       >
-        {preview}
+        {peekBody}
       </Popover>
     </div>
   );

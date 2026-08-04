@@ -26,10 +26,9 @@ test.describe('Outbound → link a support ticket to an STN', () => {
   test('per-STN Link ticket opens the modal and loads candidates in reference mode', async ({
     page,
   }) => {
-    // `ready`, not `labels`: the labels queue is "orders awaiting a label", which
-    // is empty whenever the floor is caught up — and an order without a label has
-    // no STN, so the affordance could never render there anyway.
-    await page.goto('/shipping/ready');
+    // Postage queue hosts shipments with STNs; Ready is now an FBA stage tab
+    // (allocation history) and does not own the link-ticket affordance.
+    await page.goto('/shipping/labels');
 
     // Pick the first order row that opens the details panel. The panel hosts the
     // shipping section that owns the affordance.

@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  applyInboundLane,
+  clearCrossLaneParams,
+  isDockedSort,
+  isPipelineSort,
+  parseInboundDeskSort,
+  parseInboundLane,
+} from '@/lib/receiving/inbound-lane';
+
+test('parseInboundLane: omit and unknown → pipeline; docked → docked', () => {
+  assert.equal(parseInboundLane(null), 'pipeline');
+  assert.equal(parseInboundLane(''), 'pipeline');
+  assert.equal(parseInboundLane('pipeline'), 'pipeline');
+  assert.equal(parseInboundLane('DOCKED'), 'docked');
+  assert.equal(parseInboundLane('docked'), 'docked');
+});
+
+test('parseInboundDeskSort accepts pipeline ∪ history ids', () => {
+  assert.equal(parseInboundDeskSort('zoho_newest'), 'zoho_newest');
+  assert.equal(parseInboundDeskSort('scanned_newest'), 'scanned_newest');
+  assert.equal(parseInboundDeskSort('unboxed_newest'), 'unboxed_newest');
+  assert.equal(parseInboundDeskSort('nope'), null);
+});
+
+test('isPipelineSort / isDockedSort partition the union', () => {
+  assert.equal(isPipelineSort('expected_soonest'), true);
+  assert.equal(isDockedSort('expected_soonest'), false);
+  assert.equal(isDockedSort('scanned_newest'), true);
+  assert.equal(isPipelineSort('scanned_newest'), false);
+});
+
+test('clearCrossLaneParams drops the other lane’s keys', () => {
+  const pipeline = new URLSearchParams(
+    'inbound=ebay&state=IN_TRANSIT&sort=zoho_oldest&page=2&rh_q=abc',
+  );
+  const toDocked = clearCrossLaneParams(pipeline, 'docked');
+  assert.equal(toDocked.get('inbound'), null);
+  assert.equal(toDocked.get('state'), null);
+  assert.equal(toDocked.get('sort'), null);
+  assert.equal(toDocked.get('page'), null);
+  assert.equal(toDocked.get('rh_q'), 'abc');
+
+  const docked = new URLSearchParams(
+    'lane=docked&sort=scanned_newest&rh_field=po&rh_scope=unmatched&page=3',
+  );
+  const toPipeline = clearCrossLaneParams(docked, 'pipeline');
+  assert.equal(toPipeline.get('rh_field'), null);
+  assert.equal(toPipeline.get('rh_scope'), null);
+  assert.equal(toPipeline.get('sort'), null);
+  assert.equal(toPipeline.get('page'), null);
+});
+
+test('applyInboundLane writes or clears lane=', () => {
+  const base = new URLSearchParams('inbound=zoho&sort=zoho_newest');
+  const docked = applyInboundLane(base, 'docked');
+  assert.equal(docked.get('lane'), 'docked');
+  assert.equal(docked.get('inbound'), null);
+
+  const back = applyInboundLane(docked, 'pipeline');
+  assert.equal(back.get('lane'), null);
+});

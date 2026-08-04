@@ -8,13 +8,14 @@
  * pickup reuses Unbox's shell (no parallel Pickup* UI). Repair mounts
  * `RepairTable` with `RepairWorkspaceHeader` (Active/Done · search · Add) —
  * LedgerGrid day-banded queue, not ReceivingLines.
+ *
+ * Bulk selection no longer mounts a bottom capsule — History / Incoming open
+ * `ReceivingLineRailShell` on `RightRailHost` instead.
  */
 
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
-import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
-import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
 import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWorkspace';
@@ -23,10 +24,9 @@ import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
 import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
 import { RepairTable } from '@/components/repair';
 import { PickupWorkspace } from '@/components/receiving/pickup/PickupWorkspace';
+import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
-import type { SelectionAction } from '@/lib/selection/selection-actions';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type {
   NavState,
   WorkspaceState,
@@ -44,8 +44,6 @@ interface ReceivingRightPaneProps {
    *  here we only read it to pick which sub-view to render. */
   incomingView: IncomingView;
   selectMode: boolean;
-  selectedRows: ReceivingLineRow[];
-  bulkActions: SelectionAction<ReceivingLineRow>[];
   workspace: WorkspaceState | null;
   nav: NavState | null;
   scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
@@ -67,8 +65,6 @@ export function ReceivingRightPane({
   isIncomingMode,
   incomingView,
   selectMode,
-  selectedRows,
-  bulkActions,
   workspace,
   nav,
   scanInFlight,
@@ -82,22 +78,12 @@ export function ReceivingRightPane({
 }: ReceivingRightPaneProps) {
   const searchParams = useSearchParams();
   const isUnboxMode = mode === 'receive';
-  // Incoming Email-Triage sub-view swap keeps the snappy canonical crossfade —
-  // it fades in over the (display:none) table, so there is no second pane to
-  // ghost against and no need for the slower settle.
-  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
-  // one pair so the presence can never drift onto another job's timing.
   const { presence: emailPane, transition: emailTransition } = useMotionRole(motionRole.swap.focus);
 
-  // Incoming hosts two right-pane sub-views toggled by the band (`?incview=`):
-  // the POS table (default) and the Email Triage worklist. The table stays
-  // mounted (cache + scroll); Email Triage crossfades in over it, both sitting
-  // below the 45px toggle band.
-  // Repair is table-only but mounts RepairTable (not ReceivingLinesTable).
   const showEmailTriage = isIncomingMode && incomingView === 'email';
   const showTable = isTableOnlyMode && !showEmailTriage && mode !== 'repair';
+  const showSelectionRail = showTable;
 
-  // Repair queue — LedgerGrid day-banded Workbench (Active/Done via `?tab=`).
   if (mode === 'repair') {
     return (
       <RightPaneOverlayHost className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -106,11 +92,6 @@ export function ReceivingRightPane({
     );
   }
 
-  // Local Pickup — its own LCPU product table (like Repair's dedicated pane).
-  // LCPU data lives in local_pickup_orders/items, not the receiving-lines
-  // pipeline, so pickup can't share the Unbox feed; it shares the Unbox *look*
-  // (workbench chrome + framed table) via PickupWorkspace. `?lcpu=` (set by the
-  // sidebar rail) highlights one order's rows.
   if (mode === 'pickup') {
     return (
       <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -119,7 +100,6 @@ export function ReceivingRightPane({
     );
   }
 
-  // Unbox browse/crossfade SoT (ReceivingLineWorkspace overlay).
   if (isUnboxMode) {
     return (
       <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -152,10 +132,6 @@ export function ReceivingRightPane({
 
   return (
     <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
-      {/* History/Incoming-POS table — always mounted to keep its react-query
-          cache, in-progress search results, and scroll position alive across tab
-          flips. Hidden (not unmounted) so auto-select / first-mount effects
-          don't re-fire on every close. */}
       <div
         className="absolute inset-0 overflow-hidden"
         style={{ display: showTable ? 'block' : 'none' }}
@@ -166,8 +142,6 @@ export function ReceivingRightPane({
         />
       </div>
 
-      {/* Email Triage worklist — crossfades in over the (hidden) table on
-          `?incview=email`, via the canonical workbench right-pane preset. */}
       <AnimatePresence initial={false}>
         {showEmailTriage ? (
           <motion.div
@@ -183,9 +157,7 @@ export function ReceivingRightPane({
         ) : null}
       </AnimatePresence>
 
-      {/* Incoming details panel — registers into RightRailHost (returns null
-          locally). Motion / backdrop live on the host; no local AnimatePresence. */}
-      {isIncomingMode && incomingView === 'pos' && incomingDetails ? (
+      {isIncomingMode && incomingView !== 'email' && incomingDetails ? (
         <IncomingDetailsPanel
           zohoPurchaseOrderId={incomingDetails.poId}
           poNumberHint={incomingDetails.poNumber}
@@ -196,13 +168,10 @@ export function ReceivingRightPane({
         />
       ) : null}
 
-      {/* Bulk-selection action bar — pins to the bottom of the list region when
-          rows are selected in History / Incoming-POS (never over Email Triage). */}
-      {showTable ? (
-        <ContextualSelectionBar
-          scope={RECEIVING_SELECTION_SCOPE}
-          rows={selectedRows}
-          actions={bulkActions}
+      {showSelectionRail ? (
+        <ReceivingLineRailShell
+          surface={isIncomingMode ? 'incoming' : 'lines'}
+          inspectOpen={Boolean(incomingDetails)}
         />
       ) : null}
     </RightPaneOverlayHost>

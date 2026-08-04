@@ -17,7 +17,7 @@ export interface KioskServiceTile {
 export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
   { id: 'repair', label: 'Repair Drop-off', blurb: 'Check in a device for service', status: 'live' },
   { id: 'sales', label: 'Buy / Sell', blurb: 'Start a counter sale or trade-in', status: 'live' },
-  { id: 'pickup', label: 'Order Pickup', blurb: 'Collect a ready order', status: 'wip' },
+  { id: 'pickup', label: 'Order Pickup', blurb: 'Collect a ready order', status: 'live' },
 ];
 
 export function liveKioskServices(): KioskServiceTile[] {

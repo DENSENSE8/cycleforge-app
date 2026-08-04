@@ -1,7 +1,7 @@
 'use client';
 
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 import { cn } from '@/utils/_cn';
 import type { ReactNode } from 'react';
 
@@ -45,9 +45,10 @@ interface SidebarSectionListProps<TId extends string = string> {
    *
    * `ops` is the floor-rail shape: house one-row anatomy (`text-role-caption`,
    * constant `py-1.5`), `divide-y` on the container rather than a border per
-   * row, and the canonical `QUEUE_ROW.selectedClass` ring. Use it when the list
-   * is a NAVIGATOR beside a working surface (the Media library's facet rail),
-   * where vertical budget and scan speed decide, not reading comfort.
+   * row, and quiet `NAV_ROW.selectedClass` (sunken wash — not queue blue). Use
+   * it when the list is a NAVIGATOR beside a working surface (the Media
+   * library's facet rail), where vertical budget and scan speed decide, not
+   * reading comfort.
    *
    * This exists because the two registers were one, and the ops consumer was
    * paying settings-panel density for a rail it hits dozens of times a shift.
@@ -122,12 +123,7 @@ export function SidebarSectionList<TId extends string = string>({
         const trailing =
           s.trailing ??
           (typeof s.count === 'number' ? (
-            <span
-              className={cn(
-                'ml-auto shrink-0 tabular-nums text-role-micro uppercase tracking-widest',
-                isActive ? 'text-blue-700' : 'text-text-soft',
-              )}
-            >
+            <span className="ml-auto shrink-0 tabular-nums text-role-micro uppercase tracking-widest text-text-soft">
               {s.count}
             </span>
           ) : null);
@@ -147,9 +143,11 @@ export function SidebarSectionList<TId extends string = string>({
                 : 'items-start gap-3 border-b border-border-hairline py-3',
               isActive
                 ? ops
-                  ? QUEUE_ROW.selectedClass
+                  ? NAV_ROW.selectedClass
                   : 'bg-blue-50 text-blue-700'
-                : 'text-text-default hover:bg-surface-hover',
+                : ops
+                  ? 'text-text-muted hover:bg-surface-hover'
+                  : 'text-text-default hover:bg-surface-hover',
             )}
           >
             {s.icon && (
@@ -158,7 +156,12 @@ export function SidebarSectionList<TId extends string = string>({
                 className={cn(
                   'flex w-5 shrink-0 justify-center',
                   !ops && 'mt-0.5',
-                  s.iconClassName ?? (isActive ? 'text-blue-600' : 'text-text-faint'),
+                  s.iconClassName ??
+                    (isActive
+                      ? ops
+                        ? 'text-text-default'
+                        : 'text-blue-600'
+                      : 'text-text-faint'),
                 )}
               >
                 {s.icon}

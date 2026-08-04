@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface, useGridColumnVisibility } from '@/design-system/components/grid';
-import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
+import { LedgerGridSurface } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
@@ -29,6 +28,7 @@ interface MyDayGridViewProps {
   isFiltered?: boolean;
   selectedTaskId: string | null;
   onSelectTask: (task: MyDayTask) => void;
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly MyDayGridColumn[];
 }
 
@@ -66,9 +66,9 @@ function compareMyDayTasks(
 /**
  * Today's task spreadsheet — the Workbench collection map, composed from
  * {@link LedgerGridSurface} exactly like the Pickup / Incoming / Receiving
- * adapters. This surface owns only what is genuinely Today-specific: the row
- * comparator and the empty copy. The shell, framed card, skeleton, sticky
- * header, airtable rules and virtualization all come from the SoT.
+ * adapters (`surface="sheet"` — Unbox flush plane). This surface owns only what
+ * is genuinely Today-specific: the row comparator and the empty copy. The shell,
+ * skeleton, sticky header, airtable rules and virtualization all come from the SoT.
  *
  * Row order defaults to the feed's own ranking (do next → assigned →
  * attention); a column sort replaces it and is URL-durable via
@@ -94,23 +94,6 @@ export function MyDayGridView({
     isColumn: isMyDayGridSortable,
     defaultDir: defaultDirForMyDayGridSort,
   });
-
-  // ONE visibility resolution — header, rows and the grid template all consume
-  // the same resolved list, so a dropped column loses its TRACK rather than
-  // leaving an empty ruled band.
-  //
-  // `tableId: 'my-day'` is the Fields-menu vocabulary (`TABLE_COLUMNS`) and the
-  // per-staff prefs bucket. It is deliberately its own bucket, not shared with
-  // another grid: a Fields toggle on Today must not silently hide a track on a
-  // surface that happens to use the same column key.
-  const { columns: visible } = useGridColumnVisibility<MyDayGridColumn>({
-    columns,
-    tableId: MY_DAY_TABLE_ID,
-  });
-
-  const descriptor = useMemo(() => makeMyDayGridDescriptor(visible), [visible]);
-
-  const [columnDetailsOpen, setColumnDetailsOpen] = useState(false);
 
   // One-shot settle tick after the first data arrives — the virtualized grid
   // mounts its scrollport in the same commit as the rows, and nothing else
@@ -139,10 +122,10 @@ export function MyDayGridView({
   }, [tasks, columnSort, sortDir]);
 
   return (
-    <>
-    <LedgerGridSurface<MyDayTask, MyDayGridColumnKey>
+    <LedgerGridSurface<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
       ariaLabel="My Day tasks"
-      descriptor={descriptor}
+      columns={columns}
+      makeDescriptor={makeMyDayGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={tasks}
       getRowId={(t) => t.id}
@@ -155,18 +138,23 @@ export function MyDayGridView({
       isSearching={isFiltered}
       scrollRef={scrollRef}
       testId="my-day-grid-body"
+      // `my-day` is the Fields-menu vocabulary (`TABLE_COLUMNS`) and the
+      // per-staff prefs bucket. It is deliberately its own bucket, not shared
+      // with another grid: a Fields toggle on Today must not silently hide a
+      // track on a surface that happens to use the same column key.
       tableId={MY_DAY_TABLE_ID}
-      columnDetails={{ open: columnDetailsOpen, onOpen: () => setColumnDetailsOpen(true) }}
-      renderColumnHeader={({ toggleColumnSort, onResizeColumn }) => (
+      surface="sheet"
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <MyDayGridColumnHeader
           columns={visible}
           activeSort={columnSort}
           sortDir={sortDir}
           onSortColumn={toggleColumnSort}
           onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
         />
       )}
-      renderGroup={(group) => (
+      renderGroup={(group, _stripe, { columns: visible }) => (
         <MyDayGridRow
           key={group.rows[0].id}
           task={group.rows[0]}
@@ -175,7 +163,7 @@ export function MyDayGridView({
           columns={visible}
         />
       )}
-      renderRow={(task) => (
+      renderRow={(task, _stripe, { columns: visible }) => (
         <MyDayGridRow
           task={task}
           isSelected={task.id === selectedTaskId}
@@ -184,14 +172,5 @@ export function MyDayGridView({
         />
       )}
     />
-    {/* Full `columns` (not `visible`) — the rail must offer the tracks the
-        staffer turned OFF, which is the only way to turn one back on. */}
-    <GridColumnDetailsPanel
-      open={columnDetailsOpen}
-      onClose={() => setColumnDetailsOpen(false)}
-      tableId={MY_DAY_TABLE_ID}
-      columns={columns}
-    />
-    </>
   );
 }

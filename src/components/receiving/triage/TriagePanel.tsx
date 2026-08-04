@@ -5,7 +5,7 @@
  * mode: the fast "identify the carton before unbox" pass.
  *
  * Station Workbench anatomy (same as Unbox / Testing):
- *   StationContextBar (density=bar identity + corner toolbar) →
+ *   StationContextBar (two-row identity + corner toolbar) →
  *   mid-canvas StationRightEdgeAction (Open in Unbox) →
  *   SectionTabsSlider (Overview / Staging / …) → Save-for-unbox dock.
  *
@@ -292,7 +292,6 @@ export function TriagePanel({
               // Triage is the ARRIVAL pass — the one surface that owns this
               // stage. Explicit so its correctness doesn't ride on a default.
               photoStage="arrival_package"
-              density="bar"
             />
           }
         />
@@ -301,6 +300,7 @@ export function TriagePanel({
           ambientWash={false}
           className="relative z-0 h-full flex-1 bg-transparent"
           reserveScrollClearance
+          reserveIdentityClearance="stacked"
           entityContext={<WorkflowRecommendationsStrip row={row} surface="triage" />}
           tabs={
             <TriageSectionTabs

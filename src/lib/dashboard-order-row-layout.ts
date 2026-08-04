@@ -27,10 +27,18 @@ import {
   gridColVar,
   gridColumnTrackRem,
   gridContentMinWidthRem,
+  gridFrozenLeft,
   gridHeaderShowsLabel,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
+import {
+  LEDGER_GRID_CELL_INSET,
+  LEDGER_GRID_FROZEN_CELL,
+  ledgerGridCell,
+  ledgerGridRowShellClass,
+  ledgerGridWidthVarValue,
+} from '@/design-system/components/grid/grid-cell-chrome';
 
 /** Sticky column header docks at the scrollport top. */
 export const ORDERS_QUEUE_COL_HEADER_STICKY = 'top-0';
@@ -119,7 +127,7 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'sla', width: 'minmax(7rem, 7rem)', label: 'Ship by', type: 'date', labelFitRem: 5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
-  { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'tracking', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 /**
@@ -147,7 +155,7 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'testedAt', width: 'minmax(10rem, 10rem)', label: 'Tested at', type: 'date', labelFitRem: 4.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', labelFitRem: 4 },
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
-  { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'location', hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(5rem, 5rem)', label: 'Tracking', gridLabel: 'Track', type: 'tracking', hideKey: 'tracking', labelFitRem: 4.5 },
 ] as const;
 
 /** Mode ids for the orders-queue column model (per-lane layouts, plan Phase A). */
@@ -305,10 +313,8 @@ export function ordersQueueColumnVars(
 
 /**
  * Column keys that carry a drag-resize handle — resolved from the house rule
- * ({@link isGridColumnResizable}) rather than "everything but `select`", so this
- * queue offers the same grips as every other LedgerGrid family: variable-content
- * tracks yes, the `select` gutter and the fixed-format identifier / magnitude
- * types (`order` · `qty` · `tracking`) no.
+ * ({@link isGridColumnResizable}). `number` stays fixed; identifier/`location`
+ * tracks (`order` · `tracking`) are Sheets-parity resizable (2026-08).
  */
 export const ORDERS_QUEUE_RESIZABLE_KEYS: readonly string[] = ORDERS_QUEUE_COLUMNS.filter(
   isGridColumnResizable,
@@ -347,121 +353,25 @@ export function isOrdersQueueFrozen(key: string): boolean {
 }
 
 /**
- * The row's own left inset (`QUEUE_ROW.px` = `px-3`, density-aware) — the frozen
- * pane must include it or every pinned cell drifts left by that amount when the
- * body scrolls (the grid content starts *inside* the row padding).
- *
- * Pending Grid skin sets `--cf-queue-row-px: 0px` on `[data-grid-skin]` so frozen
- * cells flush to the shell edge (row chrome padding is zeroed under the skin).
- */
-const ORDERS_QUEUE_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
-
-/**
- * Sticky-left offset (CSS) for a frozen cell — the row's left inset plus the sum
- * of the width vars of the frozen columns *before* it (select → px; title → px
- * + select), so the pane stays pinned exactly on
- * its column origin even as those columns resize or density changes.
+ * Sticky-left offset (CSS) for a frozen cell, bound to THIS surface's pane —
+ * see {@link gridFrozenLeft}, which owns the row inset, the width vars, and the
+ * length-valued fallback that ten hand-rolled copies of this got wrong.
  */
 export function ordersQueueFrozenLeft(key: string): string {
-  const idx = ORDERS_QUEUE_LOCKED_KEYS.indexOf(key);
-  const parts = [ORDERS_QUEUE_ROW_PX];
-  for (const k of ORDERS_QUEUE_LOCKED_KEYS.slice(0, Math.max(0, idx))) {
-    const col = ORDERS_QUEUE_COLUMNS.find((c) => c.key === k);
-    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
-  }
-  return `calc(${parts.join(' + ')})`;
+  return gridFrozenLeft(ORDERS_QUEUE_COLUMNS, key);
 }
 
 /**
- * Chrome that pins a frozen cell during horizontal scroll — sticky position, a z
- * above the scrolling cells, and the row's own background (via `inherit`) so
- * selection / zebra paint through the pinned pane. The sticky column-header
- * band itself is opaque (`[data-grid-col-header]`) so virtualized rows never
- * bleed under it. Compose with {@link ordersQueueGridCell}; set the `left`
- * offset from {@link ordersQueueFrozenLeft} in `style`. The `title` frozen edge
- * also carries `data-frozen-edge` so a scroll shadow can hang off it
- * (see `.cf-grid-scrolled`).
+ * Thin aliases onto the LedgerGrid chrome SoT
+ * (`@/design-system/components/grid` `ledgerGridCell` / `LEDGER_GRID_FROZEN_CELL`
+ * / `ledgerGridRowShellClass`). Kept so Orders call sites and family layout
+ * re-exports stay stable; new code should import the DS names directly.
  */
-export const ORDERS_QUEUE_FROZEN_CELL = 'sticky z-raised bg-inherit';
-
-/**
- * Horizontal (+ optional vertical) cell inset for the orders-queue grid.
- *
- * A Tier-1 density-aware scale step, deliberately NOT an `inset-*` intent: every
- * intent also sets `paddingBlock`, which would fight the density-owned row height
- * on the board. Horizontal inset is the whole cell padding story on the board
- * (`'cell'`). Under Pending Grid skin, use `'grid'` so **cells** own both axes of
- * padding while the row shell stays `p-0` — vertical borders then span full row
- * height and meet at corners (Employees-style connected ledger).
- */
-export const ORDERS_QUEUE_CELL_INSET = 'px-2';
-/** Grid-skin cell pad — horizontal + vertical so row shell can be `p-0`. */
-const ORDERS_QUEUE_GRID_CELL_INSET = 'px-2 py-1.5';
-
-/**
- * Per-column cell chrome shared by the sticky header, every row, and the
- * multi-product group summary — the one helper that makes the queue read as a
- * continuous spreadsheet grid (Airtable/Sheets), not a hairline list.
- *
- * Composes three things so header ↔ body ↔ group rules can never drift:
- *   • `flex items-center` — the cell fills the stretched track height (the shell
- *     is `items-stretch`) and vertically centers its content, so every column
- *     rule spans the full row height uniformly.
- *   • horizontal inset ({@link ORDERS_QUEUE_CELL_INSET}) — content never kisses
- *     the rule. Suppressed on the narrow select control gutter.
- *   • a right hairline (`border-r border-border-hairline`) — the vertical column
- *     rule. Dropped on the last column and the lead select gutter.
- *
- * @param rule  draw the right column rule (default true).
- * @param inset `'cell'` board default · `'grid'` skin (px+py) · `'none'` gutters.
- */
-export function ordersQueueGridCell(
-  { rule = true, inset = 'cell' }: { rule?: boolean; inset?: 'cell' | 'grid' | 'none' } = {},
-): string {
-  return [
-    'flex min-w-0 items-center self-stretch',
-    inset === 'cell' ? ORDERS_QUEUE_CELL_INSET : inset === 'grid' ? ORDERS_QUEUE_GRID_CELL_INSET : '',
-    rule ? 'border-r border-border-hairline' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
-
-/**
- * Desktop columnar shell (orders queue + station rows that share it).
- *
- * `items-stretch` (was `items-center`) so every grid cell fills the row height
- * and its {@link ordersQueueGridCell} right hairline runs the full height — a
- * continuous vertical rule, not a ragged content-height stub. The old `gap-x-2`
- * is gone: cells butt together and the per-cell inset + rule (from the helper)
- * own the inter-column spacing, the way a spreadsheet does.
- *
- * `scrollMinContent` (Pending / LedgerGrid `scrollX`): every virtualized row
- * shares ONE width via `--cf-orders-grid-w` (published on the scrollport as
- * `max(100%, <content-min>rem)`). Never `w-max` per row — that let long Product
- * titles widen some rows and shove fact columns out of vertical lock.
- */
-export function ordersQueueRowShellClass(
-  isMobile: boolean,
-  opts?: { scrollMinContent?: boolean },
-): string {
-  return isMobile
-    ? 'flex flex-col gap-1.5'
-    : [
-        'grid items-stretch',
-        opts?.scrollMinContent
-          ? 'w-[var(--cf-orders-grid-w)] min-w-[var(--cf-orders-grid-w)]'
-          : 'w-full min-w-0',
-      ].join(' ');
-}
-
-/** CSS custom property: shared row/header width under LedgerGrid `scrollX`. */
-export const ORDERS_QUEUE_GRID_WIDTH_VAR = '--cf-orders-grid-w';
-
-/** Value for {@link ORDERS_QUEUE_GRID_WIDTH_VAR}: fill the scrollport, or content-min if wider. */
-export function ordersQueueGridWidthVarValue(contentMinWidthRem: number): string {
-  return `max(100%, ${contentMinWidthRem}rem)`;
-}
+export const ORDERS_QUEUE_FROZEN_CELL = LEDGER_GRID_FROZEN_CELL;
+export const ORDERS_QUEUE_CELL_INSET = LEDGER_GRID_CELL_INSET;
+export const ordersQueueGridCell = ledgerGridCell;
+export const ordersQueueRowShellClass = ledgerGridRowShellClass;
+export const ordersQueueGridWidthVarValue = ledgerGridWidthVarValue;
 
 /** Legacy two-zone shell — Shipped / Receiving / walk-in. */
 export function dashboardOrderRowShellClass(isMobile: boolean): string {

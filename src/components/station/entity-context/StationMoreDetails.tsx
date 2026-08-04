@@ -1,25 +1,25 @@
 'use client';
 
 /**
- * Station utilities — top-right floating shell.
+ * Station utilities — top-right flush shell.
  *
  * Unbox + Arrival no longer mount Refresh here (PO link is the carton `#`
  * chip → Package Pairing). Testing still hosts Refresh + Pair via
  * {@link StationHeaderToolbar}. Share / Audit / Copy / Info live on
  * `/carton/[id]`; Move photos on the photo gallery. Rendered at the
  * work-canvas top + right edges in {@link StationContextBar} so the centered
- * identity shell stays true-center. Full radius + full hairline
- * ({@link stationMoreDetailsPanelClass}). Pad + gap match GlobalHeader icon rail.
+ * identity strip stays true-center. Flush-top recipe
+ * ({@link stationUtilityPanelClass}). Pad + gap match GlobalHeader icon rail.
  */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
 import {
-  stationBookmarkGapClass,
-  stationBookmarkPadClass,
-  stationMoreDetailsPanelClass,
-} from './station-bookmark';
+  stationIdentityGapClass,
+  stationIdentityPadClass,
+  stationUtilityPanelClass,
+} from './station-identity-chrome';
 
 export function StationMoreDetails({
   children,
@@ -35,9 +35,9 @@ export function StationMoreDetails({
       elevation="none"
       borderless
       className={cn(
-        stationMoreDetailsPanelClass,
-        stationBookmarkPadClass,
-        stationBookmarkGapClass,
+        stationUtilityPanelClass,
+        stationIdentityPadClass,
+        stationIdentityGapClass,
         'flex min-h-10 shrink-0 items-center overflow-visible',
         className,
       )}

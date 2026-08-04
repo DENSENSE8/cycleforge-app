@@ -7,6 +7,7 @@ import { ReceivingChipValue } from './ReceivingChipValue';
 import {
   receivingCellWantsChip,
   receivingDataCellClass,
+  receivingDataCellHighlightStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -20,7 +21,8 @@ export function ReceivingLocationCell({ col, rule, ctx }: ReceivingGridCellProps
     : null;
   const chip = receivingCellWantsChip(col, ctx);
   return (
-    <div data-col="location" className={receivingDataCellClass(col, rule, ctx)}>
+    <div data-col="location" className={receivingDataCellClass(col, rule, ctx)}
+      style={receivingDataCellHighlightStyle(col, ctx)}>
       {locLabel ? (
         <HoverTooltip label={tip ?? locLabel} focusable={false}>
           <ReceivingChipValue enabled={chip}>

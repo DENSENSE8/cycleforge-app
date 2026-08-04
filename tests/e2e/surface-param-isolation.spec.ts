@@ -190,7 +190,7 @@ test.describe('surface param isolation — the boundary parse', () => {
     // never serial/showEmpty/view — so those rode every tab switch.
     await assertParamsAfterParse(
       page,
-      '/warehouse?tab=bins&serial=SN1&showEmpty=1&room=R1&status=full',
+      '/inventory/locations?tab=bins&serial=SN1&showEmpty=1&room=R1&status=full',
       (params) => {
         expect(params.tab).toBe('bins');
         expect(params.serial).toBe('SN1');

@@ -177,6 +177,22 @@ export const QA_FIXTURE_MY_DAY = {
   priority: 10,
 } as const;
 
+/**
+ * Support · Assist vision-loop fixture.
+ *
+ * The ticket id is the same My Day interrupt — one Zendesk id, two consumers
+ * (Today lane + `/support?ticket=`). Provisioning mirrors ZENDESK_* into the
+ * QA org vault when those env vars are set, so `/api/support/suggest` clears
+ * the helpdesk-connected gate instead of 503-ing vacuously.
+ *
+ * E2E still stubs the ticket bundle + photo upload: the assertion worth having
+ * is the **request contract** (`stagedPhotoIds`, never a URL), not a live draft.
+ */
+export const QA_FIXTURE_SUPPORT = {
+  ticketId: QA_FIXTURE_MY_DAY.interruptTicketId,
+  subject: 'QA Assist — carton label paste contract',
+} as const;
+
 export const QA_FIXTURE_TRACKING_PENDING = '9400100000000000000199';
 export const QA_FIXTURE_TRACKING_PENDING_SECOND = '9400100000000000000205';
 export const QA_FIXTURE_TRACKING_PENDING_THIRD = '9400100000000000000229';

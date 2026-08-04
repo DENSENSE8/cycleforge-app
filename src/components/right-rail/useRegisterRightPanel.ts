@@ -37,6 +37,9 @@ export function useRegisterRightPanel(opts: {
   /** Defaults to `true` — pass `false` to keep this occupant floating.
    *  See `RightRailPanel.push` for the three sanctioned reasons. */
   push?: boolean;
+  /** Defaults to `true` — pass `false` to omit the outset edge-collapse
+   *  chevron (header `→|` is the only dismiss). See `RightRailPanel.edgeCollapse`. */
+  edgeCollapse?: boolean;
   /** Accessible name for the aside — pass one when `modal` is false. */
   ariaLabel?: string;
   /** When false the component makes no claim (e.g. an unopened dock). */
@@ -51,6 +54,7 @@ export function useRegisterRightPanel(opts: {
     modal,
     closeOnOutsideClick,
     push,
+    edgeCollapse,
     ariaLabel,
     enabled = true,
   } = opts;
@@ -71,9 +75,10 @@ export function useRegisterRightPanel(opts: {
       modal,
       closeOnOutsideClick,
       push,
+      edgeCollapse,
       ariaLabel,
     });
-  }, [id, priority, enabled, elevated, modal, closeOnOutsideClick, push, ariaLabel]);
+  }, [id, priority, enabled, elevated, modal, closeOnOutsideClick, push, edgeCollapse, ariaLabel]);
 
   // Keep the live occupant's node fresh (no-ops if the claim isn't active).
   useEffect(() => {
@@ -86,7 +91,8 @@ export function useRegisterRightPanel(opts: {
       modal,
       closeOnOutsideClick,
       push,
+      edgeCollapse,
       ariaLabel,
     });
-  }, [id, node, onClose, elevated, modal, closeOnOutsideClick, push, ariaLabel, enabled]);
+  }, [id, node, onClose, elevated, modal, closeOnOutsideClick, push, edgeCollapse, ariaLabel, enabled]);
 }

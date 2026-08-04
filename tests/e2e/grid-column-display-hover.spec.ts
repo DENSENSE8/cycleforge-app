@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 /**
  * Per-staff grid column fields → `staff_preferences.tableColumns` delta, driven
- * from the **column-display control in the gutter beside the table card**.
+ * from the **hover-revealed column-display control on the card's top-right
+ * corner**.
  *
  * It is the SOLE entry as of 2026-08-02: the chrome `GridFieldsMenu` that used
  * to open a second door onto this same rail was deleted, because Fields mutates
@@ -10,10 +11,11 @@ import { test, expect, type Page } from '@playwright/test';
  * actually carries every job the retired popover did — otherwise the migration
  * would be a silent capability loss.
  *
- * It left the header band the same day. Parked at the band's right edge it
- * either reserved a permanent `w-9` track plus `pr-9`, or (with that padding
- * dropped) covered the last column's label. (0) below is what the gutter buys:
- * the control is OUTSIDE the card, so it overlaps no column.
+ * Its PLACEMENT was ruled twice the same day, and (0) below is what both
+ * rulings were about: the control must reserve nothing. A permanent `w-9` header
+ * track plus `pr-9` charged every row; a permanent gutter beside the card
+ * charged every page. Hover-revealed, it charges neither — so every interaction
+ * here hovers the card first, and (0) asserts it is invisible and inert at rest.
  *
  * The behaviour this locks is the whole point of the unified visibility waist:
  * a column a staffer turns off loses its TRACK everywhere (header, body rows,
@@ -21,7 +23,7 @@ import { test, expect, type Page } from '@playwright/test';
  * follows the staffer across reloads because it is persisted, not local state.
  *
  * Asserts:
- *   (0) the control sits outside the card and overlaps no column;
+ *   (0) the control is invisible + inert at rest and reveals on hover;
  *   (1) the grid opens LEAN — `tier: 'optional'` columns (condition / platform /
  *       serial on receiving) are absent until opted into;
  *   (2) opting one IN adds its track to header AND body;
@@ -42,12 +44,24 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
   /** Header + body cells share `data-col`, so one selector proves the whole track. */
   const track = (page: Page, key: string) => grid(page).locator(`[data-col="${key}"]`);
 
-  const triggerHost = (page: Page) => page.locator('[data-grid-column-details-trigger]');
+  /** The reveal wrapper — `toBeVisible()` cannot see `opacity: 0`, so assert CSS. */
+  const triggerHost = (page: Page) =>
+    page.locator('[data-grid-column-details-trigger]').locator('xpath=ancestor::div[1]');
   const trigger = (page: Page) =>
-    triggerHost(page).getByRole('button', { name: 'Column display' });
+    page.locator('[data-grid-column-details-trigger]').getByRole('button', {
+      name: 'Column display',
+    });
   const rail = (page: Page) => page.getByRole('region', { name: 'Column display' });
 
+  /**
+   * Hover the CARD, then click. The control is `opacity-0` +
+   * `pointer-events-none` at rest, so a bare `.click()` would land on the header
+   * cell underneath — the honest consequence of a control that reserves nothing,
+   * and exactly what this spec must model.
+   */
   const openRail = async (page: Page) => {
+    await grid(page).hover();
+    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
     await trigger(page).click();
     await expect(rail(page)).toBeVisible();
   };
@@ -124,33 +138,40 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
   });
 
   test('it is the only column control — no chrome Fields survives', async ({ page }) => {
-    await expect(trigger(page)).toBeVisible();
+    await grid(page).hover();
+    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
     // The retired popover's own marker and its listbox must both be gone.
     await expect(page.locator('[data-grid-fields-menu]')).toHaveCount(0);
     await expect(page.getByRole('listbox', { name: 'Grid fields' })).toHaveCount(0);
   });
 
   /**
-   * THE point of the placement change, and the one assertion the retired
-   * header-anchored versions could not pass. Proof is GEOMETRIC — a screenshot
-   * cannot tell "beside the card" from "over the last column".
+   * THE point of the placement rulings, and the one assertion neither resident
+   * version could pass — a `w-9` track and a page gutter are both visible at
+   * rest, and both would sail through every other test in this file.
    */
-  test('the control sits in a gutter outside the card, overlapping no column', async ({
-    page,
-  }) => {
-    const cardBox = await grid(page).boundingBox();
-    const triggerBox = await triggerHost(page).boundingBox();
-    expect(cardBox).not.toBeNull();
-    expect(triggerBox).not.toBeNull();
-    // Strictly right of the card's right edge, with a real gap — not merely
-    // inside it, and not flush against the border.
-    expect(triggerBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width);
+  test('nothing is painted at rest; hover reveals, leaving hides again', async ({ page }) => {
+    // Park the pointer off the card — `restoreDefaults` leaves it on the rail's
+    // Done button.
+    await page.mouse.move(0, 0);
+    await expect(triggerHost(page)).toHaveCSS('opacity', '0');
+    // Hidden means inert: the header cell underneath keeps its own clicks.
+    await expect(triggerHost(page)).toHaveCSS('pointer-events', 'none');
 
-    // The last header cell is therefore uncovered.
-    const lastHeaderCell = grid(page).locator('[role="columnheader"]').last();
-    const cellBox = await lastHeaderCell.boundingBox();
-    expect(cellBox).not.toBeNull();
-    expect(cellBox!.x + cellBox!.width).toBeLessThanOrEqual(triggerBox!.x);
+    await grid(page).hover();
+    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
+
+    await page.mouse.move(0, 0);
+    await expect(triggerHost(page)).toHaveCSS('opacity', '0');
+  });
+
+  test('the control stays painted while its own rail is open', async ({ page }) => {
+    await openRail(page);
+    // Pointer leaves the card entirely — hover alone would drop the trigger out
+    // from under the rail it just opened, leaving the panel with no owner.
+    await page.mouse.move(0, 0);
+    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
+    await closeRail(page);
   });
 
   /**
@@ -260,17 +281,21 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
   test('the column-display rail applies a highlight wash to the track', async ({ page }) => {
     await openRail(page);
 
-    // Qty is a core column — set a blue track wash.
+    // Qty is a core column — set a blue track wash (Sheets-style hex swatch).
     await rail(page).locator('[role="option"][data-column-details-key="qty"]').click();
-    await rail(page).locator('[data-highlight="blue"]').click();
+    await rail(page).locator('[data-highlight="#eff6ff"]').click();
     await closeRail(page);
 
     // The wash is a DATA-cell affordance: leaf rows carry it, while the column
     // HEADER keeps its own chrome. `track(...).first()` is the header cell, so
     // asserting on it is what the pre-lip version of this spec got wrong — it
     // could only ever have passed if the wash had leaked into the header.
-    await expect(grid(page).locator('[data-col="qty"].bg-blue-50').first()).toBeVisible();
-    await expect(track(page, 'qty').first()).not.toHaveClass(/bg-blue-50/);
+    const qtyData = grid(page).locator('[data-col="qty"]').nth(1);
+    await expect(qtyData).toHaveCSS('background-color', 'rgb(239, 246, 255)');
+    await expect(track(page, 'qty').first()).not.toHaveCSS(
+      'background-color',
+      'rgb(239, 246, 255)',
+    );
 
     // Put it back so the wash does not leak into later specs.
     await openRail(page);

@@ -4,9 +4,9 @@
  * Support · Orders adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
  *
- * Mirrors PackOrderIdentity — maps a ShippedOrder onto the condensed identity
- * row (order# · tracking). Read-only in this mode; edits live in the Order tab
- * / editor dock.
+ * Mirrors PackOrderIdentity — maps a ShippedOrder onto the two-row station
+ * identity face (order# · tracking). Read-only in this mode; edits live in the
+ * Order tab / editor dock. Pair host with `reserveIdentityClearance="stacked"`.
  */
 
 import { useEffect, useState } from 'react';
@@ -28,7 +28,6 @@ export function SupportOrderIdentity({ order }: { order: ShippedOrder }) {
 
   return (
     <CartonContextCard
-      density="bar"
       receivingId={null}
       staffId=""
       isUnmatched={false}

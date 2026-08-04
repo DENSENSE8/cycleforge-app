@@ -101,16 +101,6 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
   },
 };
 
-export function getStationGoalBarThemeClasses(theme: StationTheme): {
-  textClass: string;
-  fillClass: string;
-} {
-  const colors = stationThemeColors[theme];
-  return {
-    textClass: colors.text,
-    fillClass: colors.bg,
-  };
-}
 
 export const stationThemeClasses: Record<
   StationTheme,
@@ -603,7 +593,6 @@ export function getPrintQueueStationTheme(
 
 /**
  * FBA workspace sidebar ({@link FbaWorkspaceScanField}): tracking card + FNSKU list chrome.
- * Goal bar uses {@link stationThemeColors}[theme].`text` via `StationGoalBar` `colorClass`.
  */
 export const fbaWorkspaceScanChrome: Record<
   StationTheme,

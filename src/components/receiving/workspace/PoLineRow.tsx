@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from '@/design-system/motion';
-import { ChevronDown, Check } from '@/components/Icons';
+import { ChevronDown, Check, Package } from '@/components/Icons';
 import {
   framerPresence,
   framerTransition,
@@ -187,6 +187,33 @@ export function PoLineRow({
           !readOnly && !isActive ? 'cursor-pointer' : ''
         }`}
       >
+        {/* Zoho product thumb top-left (`line.image_url` → document-id proxy).
+            Sits beside the title+meta stack so META_COL indent still aligns
+            under the title text past the chevron track. */}
+        <div className="flex min-w-0 items-start gap-2">
+          <span
+            className={cn(
+              'relative mt-0.5 size-12 shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-border-soft',
+              line.image_url
+                ? 'bg-surface-strong'
+                : 'flex items-center justify-center bg-surface-strong text-text-faint',
+            )}
+            aria-hidden={!line.image_url}
+          >
+            {line.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Zoho proxy / catalog host, not a Next-optimised asset
+              <img
+                src={line.image_url}
+                alt=""
+                className="absolute inset-0 size-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <Package className="h-5 w-5" aria-hidden />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
         {/* RowTitle contract: disclosure chevron in a fixed track on the
             title row; meta chips indent under the title text (META_COL),
             not under the chevron — same layout as ReceivingLineOrderRow. */}
@@ -360,6 +387,8 @@ export function PoLineRow({
             ) : undefined
           }
         />
+          </div>
+        </div>
       </div>
       {/* Active row only — the 2nd row. By default it holds the
           condition pills + serial adder (activeRowSlot). The notes icon

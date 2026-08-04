@@ -1,33 +1,52 @@
 'use client';
 
 /**
- * Bottom-anchored client-side filter band. Station rails (Testing / Shipping /
- * Unbox) pin it below the scrollable carton list; MasterNav spine pins the
- * same component above Settings/Admin to filter root sections or the open
- * drill's pages. Compact station-style filter — not the global header search
- * (which is the only "search the app" surface).
+ * Always-open compact filter — Search glyph + field + hover-reveal paste.
  *
- * Two hosts, two vertical rhythms, ONE component: `density` is the whole story
- * (see the prop). The spine's band has to read as one more row in a list of
- * rows; a station rail's band is a dock under a scrollable carton list and keeps
- * the taller `inset-field` inset.
+ * **SoT for scoped list search** (rail footers AND workbench chrome). Replaces
+ * the retired icon-first `ToolbarSearchToggle`.
+ *
+ * - `variant="rail"` (default) — bottom-anchored band for MasterNav / station
+ *   rails (Testing / Shipping / Unbox / Packer / Triage) and LedgerDrill
+ *   parent-map footers. Owns `border-t` + card surface + density padding.
+ *   Pins `--cf-density: 1` so spreadsheet zoom on a wrapping grid host cannot
+ *   shrink the band below the sibling context-rail footer height.
+ * - `variant="chrome"` — workbench header / triage band. Same in-field Search
+ *   glyph as rail (`SearchBar` → `SearchField`); flush sunken plane (no rounded
+ *   bubble) hosts the field + optional `trailingAction`, edge-to-edge with the
+ *   triage row. No rail band.
+ *
+ * Not the global header search (the app's only "search the app" surface).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Search } from '@/components/Icons';
+import {
+  SIDEBAR_RAIL_ROW_PAD_RIGHT,
+  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
+} from '@/components/layout/header-shell';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { cn } from '@/utils/_cn';
 
 export function TechRailSearchBar({
   value,
   onChange,
+  onClear,
   onKeyDown,
   placeholder = 'Filter lines…',
-  density = 'default',
+  density = 'row',
+  variant = 'rail',
+  isSearching = false,
+  trailingAction,
   className,
 }: {
   value: string;
   onChange: (next: string) => void;
+  /**
+   * Extra clear side-effects (URL wipe, etc.). Draft clear + `onChange('')`
+   * always run; this fires after.
+   */
+  onClear?: () => void;
   /**
    * Keydown from the field, caught on the wrapper (the event bubbles). Lets a
    * host drive a result list from the box — ↓/↑/Enter in the MasterNav spine.
@@ -41,17 +60,33 @@ export function TechRailSearchBar({
    * so a host never stacks a raw `p-*` on the `inset-field` intent (both survive
    * `cn()` and the intent wins in CSS order, so the override silently no-ops).
    *
-   * - `default` — the station rails' dock: `inset-field` + the 32px field = 49px.
-   * - `row` — drops the vertical padding so the band measures one nav row (~33px)
-   *   instead of reading as a separate dock. The MasterNav spine passes this: its
-   *   box sits in a list of 30px rows, not below a carton list.
+   * - `row` (default) — horizontal `px-3` only so the band measures one nav row
+   *   (~33px). Shared by MasterNav spine and station recent rails.
+   * - `default` — escape hatch: `inset-field` + the 32px field = 49px dock.
    *
-   * The 12px horizontal inset is identical in both, so the search glyph keeps
-   * the same column as the nav rows' leading glyph. The `SearchField
-   * size="compact"` control stays 32px either way — that is the floor's touch
-   * target on a station rail, and it is not a spine's 2px to spend.
+   * Ignored when `variant="chrome"`.
    */
   density?: 'default' | 'row';
+  /**
+   * - `rail` (default) — bordered band for MasterNav / station footers.
+   * - `chrome` — workbench / triage: flush sunken field with in-field Search
+   *   (no rounded bubble — sits edge-to-edge in the triage band).
+   */
+  variant?: 'rail' | 'chrome';
+  /**
+   * Spins the SearchField trailing loader while a query fetch is in flight.
+   * Empty field never shows a spinner — SearchField gates on non-empty value.
+   * Ignored when `variant="chrome"` — triage / header search keeps clear /
+   * paste on the trailing edge (no fetch spinner).
+   */
+  isSearching?: boolean;
+  /**
+   * Sibling control in the rail **age column** (`SIDEBAR_RAIL_TRAILING_TRACK_CLASS`)
+   * — same vertical track as row relative-time (`11h`) and the parked expand
+   * strip. Incoming paste also seats here. Keep to ONE icon-only control with
+   * a `HoverTooltip`.
+   */
+  trailingAction?: ReactNode;
   className?: string;
 }) {
   const [draft, setDraft] = useState(value);
@@ -65,27 +100,70 @@ export function TechRailSearchBar({
     return () => clearTimeout(id);
   }, [draft, value, onChange]);
 
+  const clear = () => {
+    setDraft('');
+    onChange('');
+    onClear?.();
+  };
+
+  const chrome = variant === 'chrome';
+
+  const field = (
+    <SearchBar
+      value={draft}
+      onChange={setDraft}
+      onClear={clear}
+      placeholder={placeholder}
+      size="compact"
+      isSearching={chrome ? false : isSearching}
+      leadingIcon={<Search className="h-3.5 w-3.5" />}
+      hideUnderline
+    />
+  );
+
   return (
     <div
       onKeyDown={onKeyDown}
+      // `group/search-bar` — empty-field paste reveals only while THIS host is
+      // hovered/focused, not while the pointer is on a list above.
+      //
+      // Rail bands sit beside context-rail footers (Unboxed / Triage / …) that
+      // never inherit spreadsheet `--cf-density` zoom. When this bar is
+      // composed inside a zoomed LedgerGrid host (History drill parent map),
+      // pin density to 1 so both bottom bars share one nav-row height.
+      style={chrome ? undefined : ({ '--cf-density': '1' } as CSSProperties)}
       className={cn(
-        'shrink-0 border-t border-border-hairline bg-surface-card',
-        density === 'row' ? 'px-3' : 'inset-field',
+        'group/search-bar shrink-0',
+        chrome
+          ? // Stretch to the triage / chrome-band cross-axis so the sunken
+            // plane is edge-to-edge with the row (not a floated pill).
+            'flex h-full min-w-0 self-stretch items-stretch'
+          : [
+              'border-t border-border-hairline bg-surface-card',
+              // With a trailing collapse, match rail row right pad so the age
+              // column lines up; otherwise keep the denser bilateral `px-3`.
+              trailingAction
+                ? cn('py-0 pl-3', SIDEBAR_RAIL_ROW_PAD_RIGHT)
+                : density === 'row'
+                  ? 'px-3'
+                  : 'inset-field',
+            ],
         className,
       )}
     >
-      <SearchBar
-        value={draft}
-        onChange={setDraft}
-        onClear={() => {
-          setDraft('');
-          onChange('');
-        }}
-        placeholder={placeholder}
-        size="compact"
-        leadingIcon={<Search className="h-3.5 w-3.5" />}
-        hideUnderline
-      />
+      {chrome ? (
+        <div className="flex h-full min-w-0 flex-1 items-center gap-1 bg-surface-sunken px-2">
+          <div className="min-w-0 flex-1">{field}</div>
+          {trailingAction}
+        </div>
+      ) : (
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 flex-1">{field}</div>
+          {trailingAction ? (
+            <div className={SIDEBAR_RAIL_TRAILING_TRACK_CLASS}>{trailingAction}</div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

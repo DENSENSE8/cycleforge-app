@@ -162,16 +162,14 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   //
   // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
   // covers nothing, and a navigator that collapsed on the first row you clicked
-  // would reflow the frame twice per jump for no gain. Closing is the toggle,
-  // and nothing else. (The spine pre-expands the active page's modes on every
-  // route change, so staying open stays coherent with where you are.)
+  // would reflow the frame twice per jump for no gain. Closing is the toggle
+  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. Collapsed
+  // hover peeks Home/Search/Media/Chat on the toggle (`SidebarCollapseControl`)
+  // — the old 2s left-edge dwell was removed so that corner has one hover answer.
+  // (The spine pre-expands the active page's modes on every route change, so
+  // staying open stays coherent with where you are.)
   const [navOpen, setNavOpen] = useState(false);
   const toggleNav = useCallback(() => setNavOpen((prev) => !prev), []);
-  // Desktop-only: while the spine is collapsed, resting the pointer at the far-left
-  // edge for ~2s slides it in. `edgeArming` drives the progress sliver that fills
-  // over the dwell as an "about to open" cue.
-  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [edgeArming, setEdgeArming] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   // The CONTENT ROW, measured for the right rail's push/overlay decision. This
   // element and not a descendant: its width is invariant under everything the
@@ -197,23 +195,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   const chromeless = isClientPublicPath(pathname) || kioskHost;
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
-
-  // Arm / cancel the 2-second left-edge dwell that re-opens the collapsed sidebar.
-  const armSidebarPeek = useCallback(() => {
-    if (peekTimer.current) clearTimeout(peekTimer.current);
-    setEdgeArming(true);
-    peekTimer.current = setTimeout(() => {
-      setNavOpen(true);
-      setEdgeArming(false);
-    }, 2000);
-  }, []);
-  const cancelSidebarPeek = useCallback(() => {
-    if (peekTimer.current) {
-      clearTimeout(peekTimer.current);
-      peekTimer.current = null;
-    }
-    setEdgeArming(false);
-  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -245,14 +226,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
     if (!isMobile) return;
     setDrawerOpen(false);
   }, [pathname, isMobile]);
-
-  // Clear any pending left-edge dwell timer on unmount.
-  useEffect(
-    () => () => {
-      if (peekTimer.current) clearTimeout(peekTimer.current);
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!mobileRouteRestricted) return;
@@ -388,43 +361,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
               resolve to the float. */}
           {chromeless ? <RightRailHost /> : null}
         </div>
-
-        {/* Left-edge reveal — rest the pointer against the far-left edge for
-            ~2s and the page list slides in. Only while it is collapsed: the
-            open column occupies that edge, and this strip is `fixed` above the
-            in-flow frame, so leaving it mounted would swallow clicks on the
-            spine's own left 24px. */}
-        {!chromeless && !navOpen && (
-          <div
-            className="fixed bottom-0 left-0 top-10 z-40 w-6"
-            onMouseEnter={armSidebarPeek}
-            onMouseLeave={cancelSidebarPeek}
-            aria-hidden
-          >
-            <AnimatePresence>
-              {edgeArming && (
-                <motion.div
-                  key="edge-arming"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute inset-y-0 left-0 w-1 overflow-hidden rounded-r-full bg-surface-strong/60"
-                >
-                  {/* Fills top→bottom over the 2s dwell — a progress cue that the
-                      sidebar is about to open. */}
-                  <motion.div
-                    initial={{ scaleY: 0 }}
-                    animate={{ scaleY: 1 }}
-                    transition={{ duration: 2, ease: 'linear' }}
-                    style={{ transformOrigin: 'top' }}
-                    className="h-full w-full bg-blue-500"
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
 
         <CommandBar />
         <ClipboardHistoryHost />

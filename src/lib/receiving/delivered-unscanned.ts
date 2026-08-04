@@ -15,6 +15,7 @@
  * hide an unscanned delivered box — ERP state is enrichment/badge only.
  */
 
+import { ZOHO_TERMINAL_STATUSES } from '@/lib/receiving/zoho-received-status';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Hunt-queue window — older boxes belong in Loss/Claims (admin), not the dock. */
@@ -206,13 +207,20 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
 }
 
 /**
- * Zoho PO statuses that mean "no longer incoming" — the PO has been received,
- * closed out, or cancelled in Zoho, so it must not show on the Incoming surface
- * even if a local EXPECTED row lingers. The Refresh-Zoho action refreshes
- * `zoho_po_mirror.status` so this guard takes effect on the next read.
- * A NULL/missing mirror status (no mirror row yet) is treated as still-incoming.
+ * Zoho PO statuses that mean "no longer incoming" — re-exported from the leaf
+ * SoT so this module's existing import path keeps working.
+ *
+ * The constant MOVED to `zoho-received-status.ts` on 2026-08-02: this module
+ * `await import`s `@/lib/tenancy/db`, and a dynamic import is still an edge in
+ * the client graph, so a client surface reaching the pure list through here
+ * pulled `server-only` into the browser bundle and failed the build. Unit tests
+ * could not see it — a Node probe only executes top-level imports, while
+ * Turbopack follows the dynamic one.
+ *
+ * The Refresh-Zoho action refreshes `zoho_po_mirror.status` so this guard takes
+ * effect on the next read. A NULL/missing mirror status is still-incoming.
  */
-export const ZOHO_TERMINAL_STATUSES = ['billed', 'closed', 'cancelled', 'received', 'rejected'] as const;
+export { ZOHO_TERMINAL_STATUSES };
 
 const ZOHO_TERMINAL_STATUSES_SQL = ZOHO_TERMINAL_STATUSES.map((s) => `'${s}'`).join(',');
 

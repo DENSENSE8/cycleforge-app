@@ -13,21 +13,25 @@
  *   for weeks after the bug was "fixed". A waist that has six bodies has no
  *   waist; the next fix would have paid the same tax.
  *
- * The chrome half of this contract was already shared — `dashboard-order-row-
- * layout.ts` re-exports `ordersQueueGridCell` / `ordersQueueFrozenLeft` /
- * `ordersQueueRowShellClass` under per-surface aliases. This module finishes
- * that job for the geometry half; the surface layouts keep their named exports
- * as thin aliases so call sites are untouched.
+ * The chrome half lives in {@link ./grid-cell-chrome} (`ledgerGridCell` /
+ * `LEDGER_GRID_FROZEN_CELL` / `ledgerGridRowShellClass`). This module owns the
+ * geometry half; surface layouts keep named exports as thin aliases so call
+ * sites are untouched.
  *
  * Every column model structurally satisfies {@link LedgerGridColumnModel}, so
  * these take the base type — no generics needed.
  */
+
+import { gridFrozenKeys } from './grid-column-editability';
 
 /**
  * Structural, dependency-free by design. Typing these against the concrete
  * `LedgerGridColumnModel` would import the descriptor module, which now imports
  * THIS one to derive `contentMinWidthRem` — a cycle. Every column model
  * satisfies these shapes anyway, so structural params keep this a leaf.
+ *
+ * (`grid-column-editability` is itself import-free, so composing `gridFrozenKeys`
+ * below adds a one-way edge, not a cycle.)
  */
 interface TrackLike {
   width: string;
@@ -37,6 +41,11 @@ interface HeaderLike extends TrackLike {
   label?: string;
   gridLabel?: string;
   labelFitRem?: number;
+  headerGlyphOnly?: boolean;
+}
+interface FrozenTrackLike extends TrackLike {
+  key: string;
+  frozen?: boolean;
 }
 
 /**
@@ -63,9 +72,17 @@ export function gridColumnTrackRem(column: TrackLike): number {
 /**
  * Should this header render its text label, or fall back to the type glyph?
  *
- * TWO gates, and both matter:
+ * THREE gates, in order:
+ *  - the column must not have DECLARED itself glyph-only (`headerGlyphOnly`),
  *  - the track must clear the column's declared `labelFitRem` floor, and
  *  - the RESOLVED label must actually fit that track.
+ *
+ * The first gate is a statement of intent, not a measurement: `qty`'s header is
+ * `#` because a quantity needs no word, at every track width. Expressing that
+ * by starving `labelFitRem` instead makes the intent depend on geometry, so it
+ * silently reverts to the word on the next drag-resize or density change; and
+ * expressing it as `gridLabel: '#'` renders the glyph AND the label, which for
+ * a `number` column is two hashes (shipped 2026-08-02, caught at the bench).
  *
  * The second gate is the one the per-surface copies lacked. A width threshold
  * only holds while the rendered label is the one the column SoT declares —
@@ -79,6 +96,7 @@ export function gridColumnTrackRem(column: TrackLike): number {
  * own `gridLabel ?? label ?? key` is used.
  */
 export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolean {
+  if (column.headerGlyphOnly) return false;
   const trackRem = gridColumnTrackRem(column);
   if (trackRem < (column.labelFitRem ?? 4.5)) return false;
   return gridHeaderLabelFits(trackRem, label ?? column.gridLabel ?? column.label ?? column.key);
@@ -123,8 +141,63 @@ export function gridTemplate(columns: readonly (TrackLike & { key: string })[]):
 }
 
 /** A track that absorbs the surface's leftover width (declared `…, 1fr)`). */
-export function isFlexTrack(column: TrackLike): boolean {
+function isFlexTrack(column: TrackLike): boolean {
   return column.width.includes('1fr');
+}
+
+/**
+ * The row's own left inset (`QUEUE_ROW.px` = `px-3`, density-aware). The frozen
+ * pane must include it or every pinned cell drifts left by that amount when the
+ * body scrolls, because the grid content starts *inside* the row padding.
+ *
+ * The Pending Grid skin sets `--cf-queue-row-px: 0px` on `[data-grid-skin]` so
+ * frozen cells flush to the shell edge.
+ *
+ * Module-private on purpose — the only caller is {@link gridFrozenLeft} in this
+ * file, and exporting it would re-open the door to a surface hand-rolling its
+ * own offset out of the pieces. That is what ten local copies of this constant
+ * were doing.
+ */
+const GRID_ROW_PX = 'var(--cf-queue-row-px, calc(0.75rem * var(--cf-density, 1)))';
+
+/**
+ * Sticky-`left` offset for a frozen cell — the row inset plus the width vars of
+ * the frozen columns *before* it, so the pane pins on its own column origin and
+ * follows a drag-resize with no extra machinery.
+ *
+ * **The fallback must be a LENGTH, and that is the whole reason this function
+ * exists here.** Ten surfaces each carried a byte-identical copy that pushed
+ * `var(--cf-col-KEY, ${col.width})` — and `col.width` is the grid-track string
+ * `minmax(2rem, 2rem)`. `minmax()` is a grid-track function, illegal inside
+ * `calc()`, so the moment any frozen column preceded another the whole `calc()`
+ * was invalid and `left` computed to **`auto`**: the pane silently did not pin
+ * at all, on every family, unless a staffer happened to have drag-resized every
+ * preceding frozen column (which sets the var to a real px value and hides it).
+ * Measured in Chrome at 16px root: the emitted value resolved to `auto`, the
+ * same expression with rem fallbacks to `116px`. So the fallback is the track's
+ * rem FLOOR ({@link gridColumnTrackRem}), never its declaration.
+ *
+ * **It also has to read the SURFACE's own pane.** Four layouts aliased the
+ * orders-queue copy, whose closure sums `ORDERS_QUEUE_COLUMNS` — a
+ * `select · order · title` pane — onto grids that freeze `select · title`.
+ * Taking `columns` as a parameter is what makes one implementation correct for
+ * every surface; the pane itself still comes from the model's own `frozen` flag
+ * via {@link gridFrozenKeys}, so freeze, immovability and this offset stay one
+ * declaration.
+ *
+ * A flex track contributes only its floor, which is exact while `title` is the
+ * LAST frozen column in every family (nothing is offset past it). Freezing a
+ * column *after* a flex track would need its resolved width, not its floor.
+ */
+export function gridFrozenLeft(columns: readonly FrozenTrackLike[], key: string): string {
+  const frozen = gridFrozenKeys(columns);
+  const idx = frozen.indexOf(key);
+  const parts = [GRID_ROW_PX];
+  for (const k of frozen.slice(0, Math.max(0, idx))) {
+    const col = columns.find((c) => c.key === k);
+    parts.push(`var(${gridColVar(k)}, ${col ? `${gridColumnTrackRem(col)}rem` : '0px'})`);
+  }
+  return `calc(${parts.join(' + ')})`;
 }
 
 /**

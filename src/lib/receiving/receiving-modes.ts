@@ -26,6 +26,7 @@ import {
   type ReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
 import type { ReceivingView } from '@/lib/receiving/receiving-views';
+import { serializeTrackingIn, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 
 /** Server-side page size for the Incoming list (other modes use a long scroll). */
@@ -47,6 +48,7 @@ export type ReceivingTableMode =
   | 'receive'
   | 'history'
   | 'incoming'
+  | 'incoming_removed'
   | 'unbox_queue'
   | 'unbox_viewed';
 
@@ -174,6 +176,14 @@ export interface ReceivingModeContext {
    * Unbox Queue priority lane (`?ulane=`). Null = all lanes.
    */
   queueLane: 'PO_STOCKOUT' | 'PO_STANDARD' | 'RETURN' | 'HOLD' | null;
+  /**
+   * `?tracking_in=` — canonical tracking keys from a bulk paste. Empty = absent.
+   *
+   * Forwarded verbatim; the SERVER decides what it relaxes. Deciding here would
+   * mean the client and the SQL each held half the rule, and the half nobody
+   * updated would be the one that silently dropped rows.
+   */
+  trackingIn: string[];
 }
 
 export interface ReceivingModeDescriptor {
@@ -220,6 +230,11 @@ const QUERY_ROOT = 'receiving-lines-table';
 
 function applyStaffParam(p: URLSearchParams, ctx: ReceivingModeContext): void {
   if (ctx.staffFilterId != null) p.set('staff', String(ctx.staffFilterId));
+}
+
+/** Bulk tracking paste — forwarded on every lane that can be interrogated by one. */
+function applyTrackingInParam(p: URLSearchParams, ctx: ReceivingModeContext): void {
+  if (ctx.trackingIn.length > 0) p.set(TRACKING_IN_PARAM, serializeTrackingIn(ctx.trackingIn));
 }
 
 const receiveMode: ReceivingModeDescriptor = {
@@ -412,6 +427,7 @@ const incomingMode: ReceivingModeDescriptor = {
     // Purchasing-source tab → server `?inbound=` facet. `all` is the default
     // (no param); `zoho`/`ebay` narrow to that account.
     if (ctx.incomingSource !== 'all') p.set('inbound', ctx.incomingSource);
+    applyTrackingInParam(p, ctx);
     return p;
   },
   queryKey(ctx) {
@@ -426,6 +442,9 @@ const incomingMode: ReceivingModeDescriptor = {
       ctx.incomingPoTo,
       ctx.incomingSource,
       ctx.incomingPage,
+      // The paste changes the SERVER answer (it relaxes the lane), so it must
+      // key the cache or a filtered fetch would serve the unfiltered rows.
+      ctx.trackingIn.join(','),
     ] as const;
   },
   skipWeekFilter() {
@@ -434,6 +453,21 @@ const incomingMode: ReceivingModeDescriptor = {
     return true;
   },
   emptyMessage(ctx) {
+    // A paste DROPS the vendor-receipt guard server-side (`build-sql.ts` →
+    // "The vendor-receipt guard is dropped entirely under `?tracking_in=`"), so
+    // the default line below — which explains exactly that guard — is a claim
+    // about a predicate this query did not run. An operator who filtered to one
+    // tracking and got "Zoho says everything issued is already received" reads
+    // it as the filter failing, which is how this surfaced.
+    //
+    // The honest answer is that these keys are not ON this lane, and the panel
+    // beside the table already knows why each one is not (off the list, or not
+    // found at all) — so point at it rather than re-deriving the reason here.
+    // The `incoming_removed` sibling has always branched this way; this lane
+    // was the one that never did.
+    if (ctx.trackingIn.length > 0) {
+      return 'None of these tracking numbers are on Incoming — the tracking list says where each one went.';
+    }
     if (ctx.isDeliveredUnscannedFacet) {
       return 'Nothing delivered-and-unscanned right now.';
     }
@@ -447,10 +481,68 @@ const incomingMode: ReceivingModeDescriptor = {
   },
 };
 
+/**
+ * Incoming · Recently removed (`?incview=removed`) — "where did it go".
+ *
+ * Same shell, same page size, same purchasing-source tab as `incoming`; the
+ * only difference is the server view, which inverts the lane's exit conditions
+ * inside a recency window. Deliberately NOT a sort or a filter on `incoming`:
+ * the rows it shows are precisely the ones that lane's WHERE excludes, so there
+ * is no narrowing of that lane that could produce them.
+ */
+const incomingRemovedMode: ReceivingModeDescriptor = {
+  id: 'incoming_removed',
+  apiView: 'incoming_removed',
+  groupAxis: 'po_date',
+  serverSorted: true,
+  isIncoming: true,
+  pageSize: INCOMING_PAGE_SIZE,
+  buildParams(ctx) {
+    const p = new URLSearchParams({
+      limit: String(INCOMING_PAGE_SIZE),
+      offset: String((ctx.incomingPage - 1) * INCOMING_PAGE_SIZE),
+    });
+    p.set('view', 'incoming_removed');
+    if (ctx.incomingSearch) {
+      p.set('search', ctx.incomingSearch);
+      p.set('search_field', 'po');
+    }
+    if (ctx.incomingSource !== 'all') p.set('inbound', ctx.incomingSource);
+    // The lane is where a fruitless paste lands, so it must accept one.
+    applyTrackingInParam(p, ctx);
+    // No `sort` / `delivery_state` / PO-date range: this lane is ordered by WHEN
+    // each row left, and a delivery-state facet describes rows still in flight.
+    return p;
+  },
+  queryKey(ctx) {
+    return [
+      QUERY_ROOT,
+      'incoming',
+      'incoming_removed',
+      ctx.incomingSearch,
+      ctx.incomingSource,
+      ctx.incomingPage,
+      ctx.trackingIn.join(','),
+    ] as const;
+  },
+  skipWeekFilter() {
+    // The server already bounds this lane to its own recency window; a client
+    // week slice would hide departures from earlier in that window.
+    return true;
+  },
+  emptyMessage(ctx) {
+    if (ctx.trackingIn.length > 0) {
+      return 'None of those tracking numbers left Incoming in the last 7 days.';
+    }
+    return 'Nothing has left Incoming in the last 7 days.';
+  },
+};
+
 export const RECEIVING_MODES: Record<ReceivingTableMode, ReceivingModeDescriptor> = {
   receive: receiveMode,
   history: historyMode,
   incoming: incomingMode,
+  incoming_removed: incomingRemovedMode,
   unbox_queue: unboxQueueMode,
   unbox_viewed: unboxViewedMode,
 };

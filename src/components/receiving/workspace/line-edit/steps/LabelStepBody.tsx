@@ -15,7 +15,7 @@
  * `print` stays a COMMIT step on the terminal dock. This step is the reading;
  * that one is the act.
  *
- * ## The acknowledgement is the fact
+ * ## The acknowledgement is the fact — and its button is in the DOCK
  *
  * Every other capture step derives from evidence the carton carries — a photo at
  * a stage and aspect, a serial, a grade. Reading a label leaves nothing behind,
@@ -28,95 +28,20 @@
  * carton can answer for itself, and therefore must. Nothing here claims evidence
  * exists.
  *
- * ## It hands focus back
- *
- * The confirm button is a real `<button>`: clicking it leaves focus there, and
- * the next wedge scan would type into it. Every pointer control on this surface
- * dispatches `receiving-focus-scan` after it acts.
+ * Ruled 2026-08-02: a step card carries no action button, so *Face is right* /
+ * *Reopen* render in the bottom dock ({@link LabelDockControl}). This body is the
+ * face itself — the thing being read. Which is the honest split: the card is what
+ * you look at, the dock is what you press once you have.
  */
 
-import { useCallback, useState } from 'react';
-import { Check, Loader2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { emitReceiving } from '@/components/receiving/receiving-events';
-import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
-import { toast } from '@/lib/toast';
 import type { UnboxStepBodyContext } from './types';
 
-export function LabelStepBody({ row, labelSlot }: UnboxStepBodyContext) {
-  const [saving, setSaving] = useState(false);
-  const previewedAt = row.label_previewed_at ?? null;
-  const lineId = row.id;
-
-  const setConfirmed = useCallback(
-    async (confirmed: boolean) => {
-      if (!lineId || lineId <= 0) return;
-      setSaving(true);
-      try {
-        const res = await fetch(`/api/receiving/lines/${lineId}/label-previewed`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirmed }),
-        });
-        if (!res.ok) throw new Error(String(res.status));
-        const json = (await res.json()) as {
-          line?: { label_previewed_at?: string | null };
-        };
-        // Optimistic-shaped local patch so the column's gate flips in the same
-        // frame the operator clicked, rather than after the list refetch.
-        dispatchLineUpdated({
-          id: lineId,
-          label_previewed_at: json.line?.label_previewed_at ?? null,
-        });
-      } catch {
-        // Teach, don't 500 the step: the face is still readable and the operator
-        // can retry. A silent failure here would leave the step pending with no
-        // reason given.
-        toast.error('Could not record the label check.');
-      } finally {
-        setSaving(false);
-        // The wedge owns focus — hand it back after the click settles, same
-        // 60ms defer as the other station hand-backs.
-        setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-      }
-    },
-    [lineId],
-  );
-
+export function LabelStepBody({ labelSlot }: UnboxStepBodyContext) {
   return (
-    <div className="space-y-3">
+    <>
       {labelSlot ?? (
         <p className="text-role-caption text-text-soft">No label face for this line yet.</p>
       )}
-      <div className="flex items-center justify-end">
-        {previewedAt ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={saving}
-            onClick={() => void setConfirmed(false)}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Reopen
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={saving || !labelSlot}
-            icon={
-              saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )
-            }
-            onClick={() => void setConfirmed(true)}
-          >
-            Face is right
-          </Button>
-        )}
-      </div>
-    </div>
+    </>
   );
 }

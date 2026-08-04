@@ -40,6 +40,7 @@ import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
 import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
+import { PackPapersStatusCard } from '@/components/packer/PackPapersStatusCard';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import {
   StationContextBar,
@@ -276,9 +277,14 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
         }
       />
 
+      {/* Pack papers / manuals status + Reprint — middle only. Lives here so
+          the pointer control never sits in the focus-locked scan column. */}
+      <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
+
       <StationWorkbench
         className="min-h-0 flex-1"
         reserveScrollClearance={false}
+        reserveIdentityClearance="stacked"
         scrollClassName="pb-8"
         tabs={
           <motion.div initial="hidden" animate="show" variants={revealContainer}>

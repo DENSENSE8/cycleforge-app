@@ -7,6 +7,7 @@ import { Button } from '@/design-system/primitives';
 import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
 import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskCounterPane } from './v2/KioskCounterPane';
+import { KioskPickupPane } from './v2/KioskPickupPane';
 
 /** Catalog API prefix per mode — repair = `-RS` services; sales = non-`-RS` retail. */
 function catalogBasePath(mode: KioskServiceId): string {
@@ -45,9 +46,9 @@ export function KioskShell() {
   const showCatalog = activeMode === 'repair' || activeMode === 'sales';
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-surface-canvas text-text-default">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-surface-canvas text-text-default">
       {/* Landscape: rail | detail. Portrait: stacked catalog band above detail. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-24 md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         {showCatalog && (
           <div
             className={cn(
@@ -100,22 +101,17 @@ export function KioskShell() {
                 <KioskCounterPane
                   selectedItems={selectedItems}
                   selectedProduct={selectedProduct}
+                  servicePrice={servicePrice}
                   onReset={resetState}
                 />
               )}
-              {activeMode === 'pickup' && (
-                <div className="mx-auto w-full max-w-2xl text-center">
-                  <div className="rounded-2xl border border-dashed border-border-strong bg-surface-card p-12 text-sm text-text-soft">
-                    Order Pickup is not available yet.
-                  </div>
-                </div>
-              )}
+              {activeMode === 'pickup' && <KioskPickupPane onReset={resetState} />}
             </div>
           )}
         </div>
       </div>
 
-      <div className="fixed bottom-8 left-1/2 z-panel -translate-x-1/2">
+      <div className="fixed bottom-0 left-1/2 z-panel -translate-x-1/2">
         <div className="flex items-center gap-1 rounded-full border border-border-soft bg-surface-card/90 p-1.5 shadow-xl backdrop-blur-md">
           {KIOSK_SERVICES.map((tab) => {
             const live = tab.status === 'live';

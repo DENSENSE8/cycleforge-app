@@ -12,6 +12,11 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { supportTicketIdFace } from '@/lib/support/ticket-refs';
 import { TagInput } from '../TagInput';
 import { priorityBadge, statusBadge } from '../badges';
+import {
+  TicketAssignmentFields,
+  TicketPrioritySelect,
+  TicketStatusSelect,
+} from './SupportTicketFields';
 import { requesterFrom } from './support-chat-utils';
 
 type Tab = 'details' | 'tags';
@@ -28,17 +33,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 /**
  * The support "details stack" — a small tabbed popover anchored to a header
  * button. Holds secondary ticket detail: Details (requester, id, status/priority,
- * timestamps) and Tags (the ONLY place ticket tags are shown/edited).
+ * assignment, timestamps) and Tags (the ONLY place ticket tags are shown/edited).
  *
  * `density="station"` matches {@link StationMoreDetails} peers (`IconButton` sm).
  * `density="header"` keeps the denser chat-header ring control.
+ *
+ * `fields` decides whether status / priority / assignment are **editable here**,
+ * and it must be answered per host, because the rule is one editable home per
+ * fact per surface ({@link SupportTicketFields}):
+ *
+ *  - `'read'` (default, and what `/support` passes) — badges only. That surface's
+ *    pane header owns status + priority, and its rail's Connections display owns
+ *    assignment.
+ *  - `'edit'` — this popover IS the field surface. Hosts with no pane header
+ *    (the Unbox ticket push, the Links rail's Customer segment) pass it, because
+ *    the field band under the subject is gone and they have nowhere else.
  */
 export function SupportDetailsStack({
   ticket,
   density = 'header',
+  fields = 'read',
 }: {
   ticket: ZendeskTicket;
   density?: 'header' | 'station';
+  fields?: 'read' | 'edit';
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('details');
@@ -133,22 +151,38 @@ export function SupportDetailsStack({
                     </span>
                   </HoverTooltip>
                 </Field>
-                <div className="flex gap-6">
-                  <Field label="Status">
-                    <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
-                      {sb.label}
-                    </span>
-                  </Field>
-                  <Field label="Priority">
-                    {pb ? (
-                      <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', pb.className)}>
-                        {pb.label}
+                {fields === 'edit' ? (
+                  <>
+                    <div className="flex gap-6">
+                      <Field label="Status">
+                        <TicketStatusSelect ticket={ticket} />
+                      </Field>
+                      <Field label="Priority">
+                        <TicketPrioritySelect ticket={ticket} />
+                      </Field>
+                    </div>
+                    <Field label="Assigned">
+                      <TicketAssignmentFields ticket={ticket} />
+                    </Field>
+                  </>
+                ) : (
+                  <div className="flex gap-6">
+                    <Field label="Status">
+                      <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
+                        {sb.label}
                       </span>
-                    ) : (
-                      <span className="text-text-faint">—</span>
-                    )}
-                  </Field>
-                </div>
+                    </Field>
+                    <Field label="Priority">
+                      {pb ? (
+                        <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', pb.className)}>
+                          {pb.label}
+                        </span>
+                      ) : (
+                        <span className="text-text-faint">—</span>
+                      )}
+                    </Field>
+                  </div>
+                )}
                 <Field label="Created">{formatDateTimePST(ticket.created_at)}</Field>
                 <Field label="Updated">{formatDateTimePST(ticket.updated_at)}</Field>
               </div>

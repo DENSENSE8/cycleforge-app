@@ -9,8 +9,9 @@
  * (`?ticketView=1`) and receiving More details (`detail:receiving`) via URL +
  * close-details events.
  *
- * Trailing gutter is {@link TICKET_PUSH_HOST_PAD_CLASS} on the LineEditPanel
- * host; top/bottom is {@link UnboxPushColumn}'s `my-2`.
+ * Flush planes (2026-08-03): host pad is empty
+ * ({@link TICKET_PUSH_HOST_PAD_CLASS}); column is coplanar with the sunken
+ * center via {@link UnboxPushColumn} / {@link DETAIL_STACK_PUSH_COLUMN_CLASS}.
  *
  * Opened via Make claim / Link ticket / `?claimView=1`.
  */
@@ -40,7 +41,6 @@ export function ReceivingClaimStack({ onClose, ...panelProps }: ReceivingClaimSt
       resizeLabel="Resize claim panel"
       resizeTestId="unbox-claim-push-resize"
       resizeTooltip="Drag to resize claim · double-click for default"
-      collapseLabel="Hide claim"
       onClose={onClose}
     >
       <ReceivingClaimPanel {...panelProps} open onClose={onClose} />

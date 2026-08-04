@@ -19,6 +19,7 @@ import {
 } from '@/lib/receiving/streets/carton-street-write';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
+import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
 import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
 
 // Built-in allowlist = SoT registry values + internal `zoho`. Must stay in sync
@@ -222,6 +223,11 @@ export async function GET(
          rl.listing_reference,
          stn_line.tracking_number_raw AS tracking_number,
          rl.notes,
+         ${RECEIVING_LINE_IMAGE_URL_SQL},
+         sc.product_title AS catalog_product_title,
+         (SELECT name FROM items
+           WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
+           LIMIT 1) AS zoho_item_title,
          to_char(rl.created_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
          to_char(rl.updated_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS updated_at
        FROM receiving_line rl
@@ -231,6 +237,8 @@ export async function GET(
        LEFT JOIN receiving_line_zoho rz
          ON rz.receiving_line_id = rl.id
         AND rz.organization_id = rl.organization_id
+       LEFT JOIN sku_catalog sc
+         ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
        LEFT JOIN receiving_carton r_cart ON r_cart.id = rl.receiving_id
        LEFT JOIN shipping_tracking_numbers stn_line ON stn_line.id = r_cart.shipment_id
        WHERE rl.receiving_id = $1 AND rl.organization_id = $2

@@ -45,6 +45,8 @@ const SHAPES: ReadonlyArray<{ name: string; variant: Required<ProcedureVariant> 
   { name: 'unfound return', variant: { isUnfound: true, isLocalPickup: false, isReturn: true } },
   { name: 'pickup return', variant: { isUnfound: false, isLocalPickup: true, isReturn: true } },
 ];
+// Legacy boolean shapes still resolve via variantToResolveContext — same keys as
+// named Found / Unfound / Return flows + pickup / needsClassify modifiers.
 
 test('every declared capture step has a registered body, in every carton shape', () => {
   const unbox = getProcedure('unbox');

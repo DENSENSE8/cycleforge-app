@@ -1,17 +1,14 @@
 'use client';
 
 /**
- * POUnboxingSection — the PO **line list** card, and nothing else.
+ * POUnboxingSection — the PO **line list** card with optional condition + serial.
  *
- * This is the `contents` step body of the Unbox procedure deck: *what is in
- * this box*. Package Pairing left it on 2026-08-02 and is now the `pairing`
- * Displays tab on the right edge ({@link buildUnboxSideTabs}) — its toggle
- * always lived on that edge, so the surface it opens belongs there too.
- * Auto-match (Quick match) travelled with it, still embedded inside
- * {@link CartonMatchHub} rather than as a sibling strip.
+ * Unbox centre mounts this with `editLines` + `serialScan` so the operator can
+ * grade and scan on the accordion. Triage ({@link TriagePoUnboxingSection}) and
+ * Testing compose it too.
  *
- * Units-on-carton and Notes/Label are likewise not here — they are their own
- * displays / steps.
+ * Package Pairing left it on 2026-08-02 and is the `pairing` Displays tab on
+ * the right edge ({@link buildUnboxSideTabs}).
  */
 
 import { LinePoItemsSection } from './LinePoItemsSection';

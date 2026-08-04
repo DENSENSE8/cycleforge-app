@@ -78,7 +78,12 @@ function mapRow(row: {
   };
 }
 
-/** Upsert a provider ticket into the org registry; returns the internal id. */
+/** Upsert a provider ticket into the org registry; returns the internal id.
+ *
+ * When the row already exists and `subjectCache` / `statusCache` are supplied,
+ * refreshes those caches (INSERT-only used to leave them stale forever — the
+ * ticket-watch poller and Today subject line both need a write path).
+ */
 export async function upsertSupportTicket(args: {
   orgId: string;
   provider: SupportTicketProvider;
@@ -103,7 +108,33 @@ export async function upsertSupportTicket(args: {
         LIMIT 1`,
       [args.orgId, args.provider, external],
     );
-    if (existing.rows[0]) return mapRow(existing.rows[0]);
+    if (existing.rows[0]) {
+      const row = existing.rows[0];
+      const nextSubject =
+        args.subjectCache !== undefined ? args.subjectCache ?? null : row.subject_cache;
+      const nextStatus =
+        args.statusCache !== undefined ? args.statusCache ?? null : row.status_cache;
+      if (nextSubject !== row.subject_cache || nextStatus !== row.status_cache) {
+        const updated = await tenantQuery<{
+          id: string;
+          provider: string;
+          external_ticket_id: string | null;
+          subject_cache: string | null;
+          status_cache: string | null;
+        }>(
+          args.orgId,
+          `UPDATE support_tickets
+              SET subject_cache = $4,
+                  status_cache = $5,
+                  updated_at = NOW()
+            WHERE organization_id = $1 AND provider = $2 AND external_ticket_id = $3
+            RETURNING id, provider, external_ticket_id, subject_cache, status_cache`,
+          [args.orgId, args.provider, external, nextSubject, nextStatus],
+        );
+        if (updated.rows[0]) return mapRow(updated.rows[0]);
+      }
+      return mapRow(row);
+    }
   }
 
   const inserted = await tenantQuery<{
@@ -128,6 +159,59 @@ export async function upsertSupportTicket(args: {
     ],
   );
   return mapRow(inserted.rows[0]);
+}
+
+/**
+ * Pull live Zendesk fields into `support_tickets` for one watched ticket.
+ * Returns whether subject/status changed vs the previous cache (for notify).
+ */
+export async function syncZendeskTicketRegistryCaches(args: {
+  orgId: string;
+  zendeskTicketId: number;
+  subject: string | null;
+  status: string | null;
+  staffId?: number | null;
+}): Promise<{
+  row: SupportTicketRow;
+  changed: boolean;
+  previous: { subject: string | null; status: string | null };
+}> {
+  const external = String(args.zendeskTicketId);
+  const existing = await tenantQuery<{
+    id: string;
+    provider: string;
+    external_ticket_id: string | null;
+    subject_cache: string | null;
+    status_cache: string | null;
+  }>(
+    args.orgId,
+    `SELECT id, provider, external_ticket_id, subject_cache, status_cache
+       FROM support_tickets
+      WHERE organization_id = $1 AND provider = 'zendesk' AND external_ticket_id = $2
+      LIMIT 1`,
+    [args.orgId, external],
+  );
+  const previous = {
+    subject: existing.rows[0]?.subject_cache ?? null,
+    status: existing.rows[0]?.status_cache ?? null,
+  };
+  const nextSubject = args.subject?.trim() || null;
+  const nextStatus = args.status?.trim() || null;
+  const changed =
+    !existing.rows[0] ||
+    previous.subject !== nextSubject ||
+    previous.status !== nextStatus;
+
+  const row = await upsertSupportTicket({
+    orgId: args.orgId,
+    provider: 'zendesk',
+    externalTicketId: external,
+    subjectCache: nextSubject,
+    statusCache: nextStatus,
+    staffId: args.staffId ?? null,
+  });
+
+  return { row, changed, previous };
 }
 
 type SupportTicketDbRow = {

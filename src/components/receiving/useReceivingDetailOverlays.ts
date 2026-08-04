@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { IncomingView } from '@/lib/receiving/incoming-view';
 import { toast } from '@/lib/toast';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -41,8 +42,12 @@ export interface ReceivingDetailOverlays {
 
 export function useReceivingDetailOverlays(
   isIncomingMode: boolean,
-  /** Incoming POS vs Email Triage (`?incview=`). Email must not keep a stale PO panel. */
-  incomingView: 'pos' | 'email' = 'pos',
+  /**
+   * Incoming right-pane sub-view (`?incview=`). Any lane other than the default
+   * POS table must not keep a stale PO panel open behind it — Email Triage has
+   * no PO context, and the removed lane's rows are departures, not work.
+   */
+  incomingView: IncomingView = 'pos',
 ): ReceivingDetailOverlays {
   const [overlayLog, setOverlayLog] = useState<ReceivingDetailsLog | null>(null);
   // Incoming-mode details panel — populated when a row is selected in
@@ -146,6 +151,11 @@ export function useReceivingDetailOverlays(
 
   // Mode flip or Email Triage sub-view → close any open incoming panel so it
   // doesn't leak into Receiving / Email Triage.
+  //
+  // The `removed` lane is deliberately NOT cleared: its rows are the same PO
+  // lines with the same inspector, and "why did it leave" is usually followed
+  // by "so what is on it" — closing the panel on the way in would answer the
+  // first question and swallow the second.
   useEffect(() => {
     if (!isIncomingMode) {
       setIncomingDetails(null);

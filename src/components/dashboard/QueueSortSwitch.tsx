@@ -34,6 +34,7 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
   options,
   ariaLabel = 'Sort queue',
   className,
+  variant = 'label',
 }: {
   sort: T;
   onChange: (next: T) => void;
@@ -43,6 +44,11 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
   /** Accessible name for the dropdown listbox. */
   ariaLabel?: string;
   className?: string;
+  /**
+   * `label` — icon + shortLabel + caret (Incoming / Testing trailing).
+   * `icon` — ArrowUpDown only (To-ship triage; Unbox-parity quiet chrome).
+   */
+  variant?: 'label' | 'icon';
 }) {
   const opts =
     (options ?? QUEUE_DISPLAY_SORT_OPTIONS) as readonly { id: T; label: string; shortLabel: string }[];
@@ -62,8 +68,10 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
     dismiss();
   };
 
+  const iconOnly = variant === 'icon';
+
   return (
-    <div className={cn('shrink-0', className)} data-queue-sort-switch="">
+    <div className={cn('shrink-0', className)} data-queue-sort-switch="" data-variant={variant}>
       <ToolbarButton
         ref={buttonRef}
         type="button"
@@ -72,11 +80,15 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
         aria-label={`Sort by: ${activeOption.label}`}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(event) => toolbarListboxTriggerKeyDown(event, () => setOpen(true))}
-        className="normal-case tracking-wide"
+        className={iconOnly ? undefined : 'normal-case tracking-wide'}
       >
         <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-        <span className="whitespace-nowrap">{activeOption.shortLabel}</span>
-        <ChevronDown className={cn('h-3 w-3 shrink-0 opacity-70 transition-transform', open && 'rotate-180')} />
+        {iconOnly ? null : (
+          <>
+            <span className="whitespace-nowrap">{activeOption.shortLabel}</span>
+            <ChevronDown className={cn('h-3 w-3 shrink-0 opacity-70 transition-transform', open && 'rotate-180')} />
+          </>
+        )}
       </ToolbarButton>
 
       <Popover
@@ -102,7 +114,7 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
                   toolbarListboxOptionKeyDown(event, index, opts.length, listRef, dismiss)
                 }
               >
-                {o.shortLabel}
+                {o.label}
               </ToolbarListboxOption>
             </li>
           ))}

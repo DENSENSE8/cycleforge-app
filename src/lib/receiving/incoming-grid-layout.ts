@@ -14,6 +14,7 @@ import {
   gridColumnTrackRem,
   gridContentMinWidthRem,
   gridHeaderShowsLabel,
+  gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
@@ -29,7 +30,9 @@ export type IncomingGridColumnKey =
   | 'status'
   | 'platform'
   | 'order'
-  | 'tracking';
+  | 'tracking'
+  | 'zoho'
+  | 'removed';
 
 /** Extends the house model — see {@link LedgerGridColumnModel}; only `key` narrows. */
 export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
@@ -39,9 +42,11 @@ export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
 }
 
 /**
- * Canonical Incoming columns — same keys / widths / types as
- * {@link ORDERS_QUEUE_COLUMNS}. Fact tracks are content-hard `minmax(X,X)`;
- * only `title` flexes. `order` hides under legacy `orderid`.
+ * Canonical Incoming columns — same keys / types as
+ * {@link ORDERS_QUEUE_COLUMNS}, with a receiving-specific Status track.
+ * Fact tracks are content-hard `minmax(X,X)`; Product is also a fixed preferred
+ * track (Notion overflow pilot — not the fill `1fr` other families still use).
+ * `order` hides under legacy `orderid`.
  *
  * ## Default (`core`) set — deliberately lean
  *
@@ -62,42 +67,104 @@ export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
  */
 export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
+  // Scrolls with facts — Unbox Sheets golden freezes `select` only (2026-08-04).
+  // Icon-only headers (2026-08-04): `headerGlyphOnly` — full `label` is sr-only /
+  // tip. `order` + `qty` both map to Hash; distinguish by column position.
+  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', align: 'start', headerGlyphOnly: true },
+  // Fixed preferred track — NOT `1fr`. Incoming is the Notion-overflow pilot:
+  // columns are content-sized so the row can exceed the card and scroll
+  // horizontally; when the sum is narrower than the card, slack is empty canvas
+  // right of the last column (not a stretched Product). Other LedgerGrid
+  // families keep the fill track until they opt in the same way. Drag-resize
+  // still owns the live width via `--cf-col-title`.
   {
     key: 'title',
-    frozen: true,
-    width: 'minmax(12rem, 1fr)',
+    width: 'minmax(16rem, 16rem)',
     label: 'Product Title',
-    gridLabel: 'Product',
     type: 'text',
-    labelFitRem: 8,
+    headerGlyphOnly: true,
   },
   // Expected / PO civil date — Pending's "Ship by" / By track.
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', gridLabel: 'By', type: 'date', labelFitRem: 4.5 },
-  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', labelFitRem: 4.5 },
-  // 3.5rem / fit 3.5 matches the Pending grid exactly, so the header reads
-  // `Qty` instead of a bare `#`. The glyph fallback was ambiguous here: the
-  // type registry maps BOTH `number` and `id` to the hash mark, so a label-less
-  // qty column was indistinguishable from the Order column two tracks over.
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', labelFitRem: 3.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
+  // `type: 'date'` end-aligns via `ALIGN_BY_TYPE` (comparable civil day).
+  // Day face (default): typed floor 4.5rem — not the stamp floor.
+  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', type: 'date', dateFace: 'day', headerGlyphOnly: true },
+  // Duration face (`12d` / `4h`) — typed `date` for the clock glyph; end-align
+  // comes from the type map (same as By / qty). Floor 3rem via `dateFace`.
+  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', dateFace: 'duration', headerGlyphOnly: true },
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', headerGlyphOnly: true },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', headerGlyphOnly: true },
   // Receiving-specific delivery status (hide with meta `rest` in TableColumnConfig).
-  // Icon + short Seller claim only (city stays in tooltip).
-  // 4.75rem, not 4.5: at 6 characters the label needs 2.52rem of glyph-metric
-  // width plus the 2rem header chrome (inset + one mark slot). 4.5 missed it by a
-  // hair and silently degraded to a glyph-only header.
-  { key: 'status', width: 'minmax(4.75rem, 4.75rem)', label: 'Status', type: 'tag', hideKey: 'rest', labelFitRem: 4.5 },
-  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', gridLabel: 'Ch.', type: 'external', hideKey: 'platform', tier: 'optional', labelFitRem: 4.5 },
-  // Wide enough for plain last-8 mono (no truncate ellipsis).
-  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', hideKey: 'orderid', labelFitRem: 4.5 },
+  // Icon + short Unv. chip when it adds signal (full phrase in tooltip).
+  // 4.75rem fits icon + 4-char eyebrow; cells clip via ledgerGridCell grid inset.
+  { key: 'status', width: 'minmax(4.75rem, 4.75rem)', label: 'Status', type: 'tag', hideKey: 'rest', headerGlyphOnly: true },
+  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', type: 'external', hideKey: 'platform', tier: 'optional', headerGlyphOnly: true },
   // Fits icon + last-8 tracking face (or + TRK# attach face).
-  { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'location', omitCellIcon: true, hideKey: 'tracking', labelFitRem: 4.5 },
+  { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'tracking', omitCellIcon: true, hideKey: 'tracking', headerGlyphOnly: true },
+  // Vendor receipt state (`zoho_po_mirror.status`).
+  //
+  // `optional` on the DEFAULT lane and that is not a hedge — it is the whole
+  // ruling. Every row on default Incoming is not-vendor-received BY
+  // CONSTRUCTION (`NOT_ZOHO_RECEIVED_PREDICATE` is in the WHERE), so a chip here
+  // would paint one identical value on 100% of rows, which is ink that teaches
+  // operators to stop reading chips. The lane note states that constant once, at
+  // lane altitude, where it belongs.
+  //
+  // It becomes `core` on exactly the lanes where the value VARIES — a
+  // `?tracking_in=` paste (which relaxes the predicate on purpose) and the
+  // recently-removed lane (where "the vendor received it" IS one of the exits).
+  // See `incomingGridColumnsFor`.
+  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', label: 'Vendor', type: 'tag', hideKey: 'zoho', tier: 'optional', headerGlyphOnly: true },
 ] as const;
 
 /**
- * Frozen identity pane — `select · title`. Derived from the column model's
- * `frozen` flag (one declaration for freeze + immovability + offset math), not
- * from the house key list: the pane is a per-surface answer, and Orders already
- * freezes a third track. See `grid-column-editability.ts`.
+ * Why the row left the lane — the recently-removed lane's whole point.
+ *
+ * Declared OUTSIDE {@link INCOMING_GRID_COLUMNS} rather than as another
+ * `optional` member, because on every other lane it could only ever render the
+ * dash: a row still ON Incoming has not been removed. An opt-in that can only
+ * be empty is not a column an operator should be offered, so this one is
+ * ABSENT from the default model and appended for the one lane it means
+ * something on. No `hideKey`: the lane exists to show it.
+ */
+const INCOMING_REMOVED_REASON_COLUMN: IncomingGridColumn = {
+  key: 'removed',
+  width: 'minmax(7rem, 7rem)',
+  label: 'Left because',
+  type: 'tag',
+  headerGlyphOnly: true,
+};
+
+/**
+ * The Incoming column model for a given lane.
+ *
+ * Column tier is a PER-DESCRIPTOR answer, so a lane that mixes vendor-received
+ * rows in promotes the `zoho` chip for itself rather than flipping the shared
+ * model — which would turn it on for every receiving grid and re-create the
+ * constant-value problem on the lane that does not mix.
+ */
+export function incomingGridColumnsFor(opts: {
+  /** `?tracking_in=` is active — the lane predicate is relaxed, so rows mix. */
+  trackingFiltered?: boolean;
+  /** The recently-removed lane — "received upstream" is one of its exits. */
+  removedLane?: boolean;
+}): readonly IncomingGridColumn[] {
+  if (!opts.trackingFiltered && !opts.removedLane) return INCOMING_GRID_COLUMNS;
+  const promoted = INCOMING_GRID_COLUMNS.map((col) =>
+    col.key === 'zoho' ? { ...col, tier: 'core' as const } : col,
+  );
+  if (!opts.removedLane) return promoted;
+  // The reason leads the fact columns: it is what the operator came for.
+  const at = promoted.findIndex((c) => c.key === 'date');
+  const index = at >= 0 ? at : promoted.length;
+  return [...promoted.slice(0, index), INCOMING_REMOVED_REASON_COLUMN, ...promoted.slice(index)];
+}
+
+/**
+ * Frozen identity pane — `select · order · title`. Derived from the column
+ * model's `frozen` flag (one declaration for freeze + immovability + offset
+ * math), not from the house key list: the pane is a per-surface answer, and
+ * `GRID_IDENTITY_COLUMN_KEYS` remains the two-key house default for surfaces
+ * with no order context. See `grid-column-editability.ts`.
  */
 export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = gridFrozenKeys(INCOMING_GRID_COLUMNS);
 
@@ -131,6 +198,17 @@ export function isIncomingGridFrozen(key: string): boolean {
   return INCOMING_GRID_LOCKED_KEYS.includes(key as IncomingGridColumnKey);
 }
 
+/**
+ * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
+ *
+ * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Incoming
+ * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
+ * widths. See {@link gridFrozenLeft}.
+ */
+export function incomingGridFrozenLeft(key: string): string {
+  return gridFrozenLeft(INCOMING_GRID_COLUMNS, key);
+}
+
 
 /** Default direction when first activating a column sort. */
 export function defaultDirForIncomingGridSort(key: IncomingGridColumnKey): GridSortDir {
@@ -157,10 +235,9 @@ export function incomingRowDateSource(row: {
   );
 }
 
-// Shared spreadsheet chrome — same helpers as outbound OrdersGridView.
+// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {
-  ORDERS_QUEUE_FROZEN_CELL as INCOMING_GRID_FROZEN_CELL,
-  ordersQueueFrozenLeft as incomingGridFrozenLeft,
-  ordersQueueGridCell as incomingGridCell,
-  ordersQueueRowShellClass as incomingGridRowShellClass,
-} from '@/lib/dashboard-order-row-layout';
+  LEDGER_GRID_FROZEN_CELL as INCOMING_GRID_FROZEN_CELL,
+  ledgerGridCell as incomingGridCell,
+  ledgerGridRowShellClass as incomingGridRowShellClass,
+} from '@/design-system/components/grid/grid-cell-chrome';

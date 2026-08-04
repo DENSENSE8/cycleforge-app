@@ -1,14 +1,15 @@
 import type { ChannelDisposition } from '@/lib/channel-allocation';
 
-/** Ready-workbench facets nested under the outbound Ready sidebar mode. */
+/** Ready-stage disposition facets on `/shipping/fba?fbaMode=ready` (`?rtab=`). */
 export type ReadyWorkspaceTab = 'all' | 'fba' | 'prebox' | 'hold';
 
-export const READY_WORKSPACE_TAB_LABEL: Record<ReadyWorkspaceTab, string> = {
-  all: 'All tested',
-  fba: 'FBA',
-  prebox: 'Pre-box',
-  hold: 'Hold',
-};
+export interface ReadyWorkspaceCounts {
+  all: number;
+  fba: number;
+  prebox: number;
+  hold: number;
+  staged: number;
+}
 
 const READY_WORKSPACE_TAB_PARAM = 'rtab';
 const VALID: ReadonlySet<string> = new Set(['all', 'fba', 'prebox', 'hold']);

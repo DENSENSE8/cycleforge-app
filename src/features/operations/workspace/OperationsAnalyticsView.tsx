@@ -39,6 +39,7 @@ import { useOperationsAnalytics } from './useOperationsAnalytics';
 import { useOperationsRoi } from './useOperationsRoi';
 import { BenchmarksSection } from './BenchmarksSection';
 import { usePackingKpi } from './usePackingKpi';
+import { PackingKpiSection } from './PackingKpiSection';
 import { MultiSeriesLineChart, type LineSeries } from './charts/MultiSeriesLineChart';
 import { GaugeDonut } from './charts/GaugeDonut';
 import { DistributionTable, type DistributionRow } from './charts/DistributionTable';
@@ -260,77 +261,11 @@ export function OperationsAnalyticsView() {
 
       <KpiStrip items={kpiItems} stagger />
 
-      <SectionCard
-        stagger
-        htmlId="ops-analytics-packing-kpi"
-        icon={Boxes}
-        eyebrow="Packing"
-        title="Packer productivity (weighted)"
-        headline={packing ? `${packing.totals.weighted_minutes.toLocaleString()} min` : loading ? '—' : '—'}
-        meta={
-          packing
-            ? `${packing.totals.remaining_minutes.toLocaleString()} min remaining · FBA fill ≈ ${packing.fba.fillable_units.toLocaleString()} units`
-            : 'Requires operations permission'
-        }
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Today</span>
-            {packing ? (
-              <span className="text-xs font-semibold text-text-muted">
-                Capacity {packing.capacity.daily_capacity_minutes.toLocaleString()} min ·{' '}
-                {packing.capacity.packer_headcount} packers
-              </span>
-            ) : null}
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<Download className="h-4 w-4" />}
-                onClick={() => exportPackingReport()}
-                disabled={!packing}
-              >
-                Export all
-              </Button>
-            </div>
-          </div>
-
-          {packing ? (
-            <div className="rounded-2xl border border-border-soft bg-surface-canvas divide-y divide-border-soft">
-              <div className="grid grid-cols-6 gap-2 px-4 py-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
-                <div className="col-span-2">Packer</div>
-                <div className="text-right">Small</div>
-                <div className="text-right">Medium</div>
-                <div className="text-right">Large</div>
-                <div className="text-right">Minutes</div>
-              </div>
-              {packing.by_packer.map((r) => (
-                <div key={r.staff_id} className="grid grid-cols-6 gap-2 px-4 py-2 items-center">
-                  <div className="col-span-2">
-                    <div className="text-sm font-semibold text-text-default">{r.staff_name || `#${r.staff_id}`}</div>
-                    <button
-                      type="button"
-                      className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-text-accent hover:opacity-80"
-                      onClick={() => exportPackingReport(r.staff_id)}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Download
-                    </button>
-                  </div>
-                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.small_count}</div>
-                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.medium_count}</div>
-                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.large_count}</div>
-                  <div className="text-right tabular-nums text-sm font-semibold text-text-default">{r.weighted_minutes}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas p-4 text-sm text-text-muted">
-              Packing KPI is unavailable (missing permission or no data).
-            </div>
-          )}
-        </div>
-      </SectionCard>
+      <PackingKpiSection
+        packing={packing}
+        loading={loading}
+        exportPackingReport={exportPackingReport}
+      />
 
       <RoiSection />
 

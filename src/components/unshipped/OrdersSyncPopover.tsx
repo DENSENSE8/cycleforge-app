@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
+import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { cn } from '@/utils/_cn';
 
 type SyncTab = 'sync' | 'backfill';
 
@@ -58,7 +60,10 @@ export function OrdersSyncPopover({
               className={
                 iconOnly
                   ? 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-transparent text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default active:scale-95'
-                  : 'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95'
+                  : cn(
+                      'inline-flex h-8 shrink-0 items-center gap-1.5 bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95',
+                      WORKBENCH_CHROME_PILL_CLASS,
+                    )
               }
             >
               {sync.isTransferring ? (

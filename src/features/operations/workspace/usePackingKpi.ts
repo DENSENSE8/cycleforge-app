@@ -49,6 +49,7 @@ export function usePackingKpi(day?: string) {
   return useQuery<PackingKpiResponse | null>({
     queryKey: ['packing-kpi', day ?? 'today'],
     staleTime: 30_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const sp = new URLSearchParams();
       if (day) sp.set('day', day);

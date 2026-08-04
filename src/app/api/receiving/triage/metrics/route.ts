@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
+import { PAIRING_ANSWERED_STATES } from '@/lib/receiving/triage-focus';
+
+/**
+ * "Triage finished without answering the pairing question", in SQL.
+ *
+ * Derived from {@link PAIRING_ANSWERED_STATES} rather than hand-typed, so the
+ * KPI and the bench (`isTriagePaired`) can never disagree about whether WAIVED
+ * counts as done. Values are compile-time literals from that tuple — nothing
+ * user-supplied reaches this string.
+ *
+ * The COALESCE is deliberate and is NOT the invented-default shape banned on
+ * display paths: this is a filter, and it only ever sees cartons that already
+ * have a `receiving_triage` row (`triage_complete = true` requires one). So the
+ * null it fills is "the operator completed triage and recorded no pairing
+ * answer" — which is exactly what this metric means to count.
+ */
+const PAIRING_UNANSWERED_SQL = `COALESCE(rt.pairing_state, 'UNFOUND') NOT IN (${PAIRING_ANSWERED_STATES.map(
+  (s) => `'${s}'`,
+).join(', ')})`;
 
 /**
  * GET /api/receiving/triage/metrics — the two Phase 4 triage health numbers
@@ -12,8 +31,23 @@ import { withAuth } from '@/lib/auth/withAuth';
  *     compute a true resolution duration from, so this reports what's
  *     honestly computable today: how stale the queue is right now.
  *   - save_without_pair_rate — of cartons saved for unbox (triage_complete),
- *     the share that were still unpaired (pairing_state != 'MATCHED') at save
- *     time — how often B5 (save-while-unfound) actually gets used.
+ *     the share that finished with the pairing question still UNANSWERED — how
+ *     often B5 (save-while-unfound) actually gets used.
+ *
+ *     "Unanswered" is the complement of `PAIRING_ANSWERED_STATES`, not
+ *     `!= 'MATCHED'` (corrected 2026-08-02). `settleReturnPairing` records
+ *     `WAIVED` for a return serial that matches no order — the pairing hub
+ *     looked and established there is no PO to find — and `isTriagePaired` has
+ *     counted that as done since C6. Filing it as "skipped" would have made
+ *     every triage-completed return inflate a metric whose name says the
+ *     operator walked past the step.
+ *
+ *     KNOWN DEAD, and not fixed here: `receiving_triage.triage_complete` is
+ *     true on **0 of 2474 dogfood rows**, so the denominator is zero, the rate
+ *     is null, and `TriageKpiStrip` (which returns null on a null rate) has
+ *     never rendered. The predicate is correct for when that changes; why it
+ *     has not is a separate investigation —
+ *     docs/todo/triage-complete-never-true-HANDOFF.md.
  *
  * Both are org-scoped, cheap aggregates — no new tables, no background job.
  */
@@ -48,7 +82,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
           FROM receiving_carton r
           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          WHERE r.organization_id = $1 AND COALESCE(rt.triage_complete, false) = true
-           AND COALESCE(rt.pairing_state, 'UNFOUND') <> 'MATCHED'
+           AND ${PAIRING_UNANSWERED_SQL}
        ) AS save_without_pair_count`,
     [ctx.organizationId],
   );

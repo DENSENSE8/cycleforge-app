@@ -1,5 +1,6 @@
 'use client';
 
+import { ReadyModeBody } from '@/components/outbound/ready/ReadyModeBody';
 import { FbaFnskuScanToast } from '@/components/fba/sidebar/FbaFnskuScanToast';
 import {
   receivingScanBandClass,
@@ -129,6 +130,8 @@ export function FbaWorkspaceSidebar() {
             search in the top bar.
           </div>
         ) : null}
+
+        {activeMode === 'ready' ? <ReadyModeBody /> : null}
 
         {/* Station FNSKU scan toast — hidden when editor is active */}
         {isBoard && !editorActive && (

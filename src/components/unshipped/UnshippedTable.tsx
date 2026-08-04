@@ -277,7 +277,7 @@ export function UnshippedTable({
     const params = new URLSearchParams(searchParams.toString());
     params.delete('search');
     const nextSearch = params.toString();
-    const nextPath = pathname || '/dashboard';
+    const nextPath = pathname || '/shipping/orders';
     router.replace(nextSearch ? `${nextPath}?${nextSearch}` : nextPath);
   };
 

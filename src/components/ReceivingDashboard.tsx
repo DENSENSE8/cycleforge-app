@@ -7,16 +7,16 @@
  *   workspace open          → ReceivingLineWorkspace (focused line editor)
  *   no selection, receive   → ReceivingLinesTable (history)
  *
- * Logic lives in focused hooks; the bulk-selection layer is the SHARED
- * `useReceivingLineBulkSelection` (also used by the Tech dashboard) so the two
- * receiving-line history feeds don't hand-roll parallel copies:
+ * Logic lives in focused hooks; the rail-selection layer publishes bulk actions
+ * into `rail-actions-store` so History / Incoming open the right rail instead of
+ * the bottom capsule (Tech Testing keeps the plain bulk hook + capsule):
  *   - useReceivingDashboardMode .... `?mode=` → surface flags
  *   - useReceivingWorkspacePane .... workspace + nav + scan loader + recovery
  *   - useReceivingDetailOverlays ... carton details stack + incoming PO panel
- *   - useReceivingLineBulkSelection  shared History/Incoming bulk actions + claim
+ *   - useReceivingLineRailSelection  publish + claim for History/Incoming
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +24,7 @@ import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
-import { useReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
+import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import { useReceivingDashboardMode } from '@/components/receiving/useReceivingDashboardMode';
 import { useReceivingWorkspacePane } from '@/components/receiving/useReceivingWorkspacePane';
 import { useReceivingDetailOverlays } from '@/components/receiving/useReceivingDetailOverlays';
@@ -75,28 +75,34 @@ export default function ReceivingDashboard() {
     claimRow,
     setClaimRow,
     exitSelectMode,
-    bulkActions,
-  } = useReceivingLineBulkSelection({
+  } = useReceivingLineRailSelection({
     scope: RECEIVING_SELECTION_SCOPE,
     // History / Incoming only — Repair mounts its own queue (no line bulk select).
     active: isTableOnlyMode && !isRepairMode,
     formatCopyRow: formatReceivingCopyRow,
   });
 
+  // Incoming 2+ yields the inspect panel to the batch shell (R3 / R5).
+  useEffect(() => {
+    if (isIncomingMode && selectedRows.length >= 2 && incomingDetails) {
+      setIncomingDetails(null);
+    }
+  }, [isIncomingMode, selectedRows.length, incomingDetails, setIncomingDetails]);
+
   const closeWorkspace = useCallback(() => {
     setWorkspace(null);
     setNav(null);
     dispatchReceivingWorkspaceClose();
     emitReceiving('receiving-clear-line');
-    // Triage stays in triage (its rail auto-selects the next top). Unbox
-    // browse-first — clear selection and return to the workbench feed (no
-    // jump to History).
   }, [setWorkspace, setNav]);
 
-  // Triage (label "Arrival") deliberately shares the SAME right pane as Unbox:
-  // the selected carton opens in the full ReceivingLineWorkspace, so identifying
-  // a carton before unboxing uses the exact same editor. It is NOT table-only,
-  // so it falls through to the workspace-overlay path.
+  const closeIncoming = useCallback(() => {
+    setIncomingDetails(null);
+    emitReceiving('receiving-clear-line');
+    // R6 / D4 — close clears the check-set so rows do not stay selected with
+    // no visible dismiss affordance after the capsule is gone.
+    exitSelectMode();
+  }, [setIncomingDetails, exitSelectMode]);
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -107,8 +113,6 @@ export default function ReceivingDashboard() {
         isIncomingMode={isIncomingMode}
         incomingView={incomingView}
         selectMode={selectMode}
-        selectedRows={selectedRows}
-        bulkActions={bulkActions}
         workspace={workspace}
         nav={nav}
         scanInFlight={scanInFlight}
@@ -117,10 +121,7 @@ export default function ReceivingDashboard() {
         onClearLookupReceipt={clearLookupReceipt}
         staffId={staffId}
         incomingDetails={incomingDetails}
-        onCloseIncoming={() => {
-          setIncomingDetails(null);
-          emitReceiving('receiving-clear-line');
-        }}
+        onCloseIncoming={closeIncoming}
         onCloseWorkspace={closeWorkspace}
       />
 

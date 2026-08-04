@@ -1,21 +1,12 @@
 /**
- * Unit tests for carton-read Share / Copy helpers.
+ * Unit tests for carton-read Copy helpers.
  *
  * Run: `node --test --import tsx src/lib/receiving/carton-read-utilities.test.ts`
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  buildCartonReadCopyText,
-  cartonShareUrl,
-} from './carton-read-utilities';
-
-test('cartonShareUrl is an Unbox deep link with recvId', () => {
-  const href = cartonShareUrl(49929);
-  assert.match(href, /\/unbox/);
-  assert.match(href, /recvId=49929/);
-});
+import { buildCartonReadCopyText } from './carton-read-utilities';
 
 test('buildCartonReadCopyText includes PO + receiving id + tracking', () => {
   const text = buildCartonReadCopyText({

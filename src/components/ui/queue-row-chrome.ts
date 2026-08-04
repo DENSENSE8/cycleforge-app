@@ -8,6 +8,11 @@
  *
  * Paired with META_COL in RowMetaColumns — keep both the single source for
  * queue-row left alignment.
+ *
+ * **Navigator selection is a different job** — facet / saved-view / day-tree /
+ * Desk segment rows orient a filter, they do not pick a record. Use
+ * {@link NAV_ROW.selectedClass} there; never reuse {@link QUEUE_ROW.selectedClass}
+ * for a quiet rail (the blue wash overloads "working this row").
  */
 
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
@@ -46,6 +51,12 @@ export const QUEUE_ROW = {
    */
   selectedLedgerClass: 'bg-blue-50',
   /**
+   * Linked-peer chrome for **airtable LedgerGrid** rows — quieter than
+   * selection. Used by Unbox compare crosshair (same carton in another pane).
+   * Never blue — linked ≠ "working this row."
+   */
+  linkedLedgerClass: 'bg-surface-sunken',
+  /**
    * Expanded-group child nest when a disclosure chevron is shown — pad past the
    * glyph so nesting reads clearly.
    */
@@ -55,6 +66,18 @@ export const QUEUE_ROW = {
    * nested lines share the singleton title edge.
    */
   nestNoChevron: 'pl-0',
+} as const;
+
+/**
+ * Selected chrome for **navigator** rows in a context rail — facet scopes,
+ * saved views, capture-day leaves, Desk smart segments.
+ *
+ * Quiet on purpose: sunken wash + weight, no hue fill / blue ring. These rows
+ * orient "which set am I browsing," not "which record am I editing." Never use
+ * for queue / ticket / order data rows — that stays {@link QUEUE_ROW}.
+ */
+export const NAV_ROW = {
+  selectedClass: 'bg-surface-sunken font-semibold text-text-default',
 } as const;
 
 /**
@@ -86,16 +109,29 @@ export const QUEUE_ROW = {
  * Prefer {@link ledgerRowFillClass} at call sites — it gates the flag wash on
  * the surface's `GridSurfaceCapabilities.rowTriageFlags` so Catalog / Receiving
  * cannot paint staff triage colours even if a flag class is passed by mistake.
+ *
+ * Precedence: **selected → linked → flag → card**. Linked is the Unbox compare
+ * crosshair peer wash — quieter than selection, never blue.
  */
-export function ledgerRowStateClass(selected: boolean, flagClass?: string | null): string {
+export function ledgerRowStateClass(
+  selected: boolean,
+  flagClass?: string | null,
+  linked = false,
+): string {
+  const fill = selected
+    ? QUEUE_ROW.selectedLedgerClass
+    : linked
+      ? QUEUE_ROW.linkedLedgerClass
+      : (flagClass || 'bg-surface-card');
   return [
     'cursor-pointer border-b border-border-hairline px-0 py-0 transition-colors',
     // A flagged row keeps its wash under the pointer. The generic hover fill
     // would erase the tint at exactly the moment the operator is pointing at
     // the row, which reads as "did I imagine that colour?" — the flag is a
-    // fact, hover is only feedback, so the fact wins.
-    flagClass && !selected ? '' : 'hover:bg-surface-hover',
-    selected ? QUEUE_ROW.selectedLedgerClass : (flagClass || 'bg-surface-card'),
+    // fact, hover is only feedback, so the fact wins. Linked peers keep hover
+    // so the pointer still reads as interactive.
+    flagClass && !selected && !linked ? '' : 'hover:bg-surface-hover',
+    fill,
   ]
     .filter(Boolean)
     .join(' ');
@@ -104,20 +140,25 @@ export function ledgerRowStateClass(selected: boolean, flagClass?: string | null
 /**
  * Capability-gated leaf-row fill for airtable LedgerGrid skins.
  *
- * Precedence: selection → (optional triage flag) → card ground. The flag wash
- * is ignored unless `capabilities.rowTriageFlags` is true — Catalog /
- * Receiving / Incoming / Repair / Pickup declare `false`, so they stay display
- * / pick surfaces even if a caller hands a flag class.
+ * Precedence: selection → linked peer → (optional triage flag) → card ground.
+ * The flag wash is ignored unless `capabilities.rowTriageFlags` is true —
+ * Catalog / Receiving / Incoming / Repair / Pickup declare `false`, so they
+ * stay display / pick surfaces even if a caller hands a flag class.
  */
 export function ledgerRowFillClass(opts: {
   selected: boolean;
+  /**
+   * Same-carton peer highlight (Unbox compare crosshair). Ignored when
+   * `selected` is true — working-row blue outranks linked wash.
+   */
+  linked?: boolean;
   /** Pre-resolved wash from the domain flag SoT (e.g. `order-row-flags`). */
   flagClass?: string | null;
   capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
 }): string {
   const flag =
     opts.capabilities.rowTriageFlags && opts.flagClass ? opts.flagClass : null;
-  return ledgerRowStateClass(opts.selected, flag);
+  return ledgerRowStateClass(opts.selected, flag, Boolean(opts.linked));
 }
 
 type MetaIndentTrack = 'default' | 'wide';

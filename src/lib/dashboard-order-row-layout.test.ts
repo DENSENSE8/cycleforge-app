@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import {
+  LEDGER_GRID_CELL_INSET,
+  ledgerGridCell,
+} from '@/design-system/components/grid/grid-cell-chrome';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import {
   ORDERS_QUEUE_CELL_INSET,
@@ -21,35 +25,21 @@ import {
 } from '@/lib/dashboard-order-row-layout';
 
 /**
- * The orders-queue grid is one shared cell-chrome SoT (`ordersQueueGridCell`)
- * composed identically by the sticky header, every row, and the multi-product
- * group summary. These lock the helper's contract so the three renderers can
- * never drift into ragged/inconsistent gridlines.
+ * Cell-chrome contract lives in
+ * `src/design-system/components/grid/grid-cell-chrome.test.ts`. These assert the
+ * Orders layout still re-exports the DS SoT under the legacy names.
  */
-describe('ordersQueueGridCell — shared spreadsheet cell chrome', () => {
-  it('default cell: horizontal inset + a right column rule, vertically centered', () => {
-    const cls = ordersQueueGridCell();
-    assert.ok(cls.includes(ORDERS_QUEUE_CELL_INSET), 'carries the horizontal inset');
-    assert.ok(cls.includes('border-r border-border-hairline'), 'draws the vertical column rule');
-    assert.ok(cls.includes('items-center'), 'centers content in the stretched track');
+describe('ordersQueueGridCell — thin alias onto ledgerGridCell', () => {
+  it('re-exports the DS chrome helper', () => {
+    assert.equal(ordersQueueGridCell, ledgerGridCell);
+    assert.equal(ORDERS_QUEUE_CELL_INSET, LEDGER_GRID_CELL_INSET);
+    assert.ok(ordersQueueGridCell().includes(ORDERS_QUEUE_CELL_INSET));
+    assert.ok(ordersQueueGridCell().includes('border-r border-border-hairline'));
   });
 
-  it('last column drops the trailing rule (rule: false)', () => {
-    assert.ok(!ordersQueueGridCell({ rule: false }).includes('border-r'), 'no rule when rule=false');
-  });
-
-  it('control gutter drops the horizontal inset (inset: none)', () => {
-    assert.ok(
-      !ordersQueueGridCell({ inset: 'none' }).includes(ORDERS_QUEUE_CELL_INSET),
-      'inset:none omits the px inset for narrow select/status gutters',
-    );
-    // still gets a rule unless explicitly suppressed
-    assert.ok(ordersQueueGridCell({ inset: 'none' }).includes('border-r'), 'inset:none keeps the rule by default');
-  });
-
-  it('uses a Tier-1 density-aware step, not an inset-* intent', () => {
-    // An inset-* intent also sets paddingBlock, which would fight the
-    // density-owned row height — the helper must stay horizontal-only.
+  it('preserves inset / rule options through the alias', () => {
+    assert.ok(!ordersQueueGridCell({ rule: false }).includes('border-r'));
+    assert.ok(ordersQueueGridCell({ inset: 'grid' }).includes('overflow-hidden'));
     assert.doesNotMatch(ordersQueueGridCell(), /\binset-(chip|field|cozy|card|empty)\b/);
   });
 });
@@ -96,8 +86,8 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('resize helpers: only data columns resize; widths → CSS vars', () => {
     assert.deepEqual(
       [...ORDERS_QUEUE_RESIZABLE_KEYS],
-      ['title', 'sla', 'condition'],
-      'select gutter and fixed-format id/number tracks are not resizable',
+      ['order', 'title', 'sla', 'condition', 'tracking'],
+      'select gutter and number tracks stay fixed; id/location are Sheets-resizable',
     );
     assert.equal(ordersQueueColVar('title'), '--cf-col-title');
     assert.deepEqual(ordersQueueColumnVars({ title: 320, qty: 60 }), {

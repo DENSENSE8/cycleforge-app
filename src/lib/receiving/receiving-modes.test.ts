@@ -40,6 +40,7 @@ function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContex
     listSearch: '',
     queueStage: null,
     queueLane: null,
+    trackingIn: [],
     ...overrides,
   };
 }
@@ -251,6 +252,22 @@ test('emptyMessage reflects mode + facet context', () => {
     RECEIVING_MODES.incoming.emptyMessage(ctx({ isDeliveredUnscannedFacet: true })),
     /delivered-and-unscanned/,
   );
+});
+
+test('an empty lane under a PASTE never explains the guard the paste removed', () => {
+  // `?tracking_in=` drops NOT_ZOHO_RECEIVED server-side, so the default line
+  // ("Zoho says everything issued is already received") describes a predicate
+  // that did not run — and an operator who filtered to one tracking read that
+  // as the filter being broken. Both incoming lanes must answer for the paste.
+  for (const mode of ['incoming', 'incoming_removed'] as const) {
+    const msg = RECEIVING_MODES[mode].emptyMessage(ctx({ trackingIn: ['ABC123'] }));
+    assert.doesNotMatch(
+      msg,
+      /already received/i,
+      `${mode}: must not explain the vendor-receipt guard under a paste`,
+    );
+    assert.match(msg, /tracking number/i, `${mode}: must name the paste as the reason`);
+  }
 });
 
 // ── queryKey isolation ───────────────────────────────────────────────────────

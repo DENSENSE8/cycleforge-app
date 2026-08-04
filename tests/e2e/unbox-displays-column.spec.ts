@@ -110,7 +110,7 @@ async function selectDisplay(page: Page, label: string) {
 }
 
 test.describe('Unbox Displays column', () => {
-  test('the centre has no tab strip, and the column opens from the parked strip', async ({
+  test('the centre has no tab strip, and Displays opens from the progress ring', async ({
     page,
     request,
   }) => {
@@ -121,8 +121,9 @@ test.describe('Unbox Displays column', () => {
     // The workbench body must not host the slider — it lives in the column now.
     await expect(page.getByRole('group', { name: 'Unbox displays' })).toHaveCount(0);
 
-    const strip = page.getByTestId('unbox-push-expand-strip');
-    await expect(strip).toBeVisible({ timeout: 15_000 });
+    // No parked ticket/Displays expand strip on the right edge.
+    await expect(page.getByTestId('unbox-push-expand-strip')).toHaveCount(0);
+
     await page.getByTestId('unbox-displays-expand-button').click();
 
     const displays = page.getByTestId('receiving-displays-push');
@@ -137,8 +138,6 @@ test.describe('Unbox Displays column', () => {
       'data-selected',
       'true',
     );
-    // The strip yields the edge while a column owns it.
-    await expect(strip).toHaveCount(0);
   });
 
   test('selecting a display never re-labels the bottom CTA', async ({ page, request }) => {
@@ -175,6 +174,277 @@ test.describe('Unbox Displays column', () => {
       'a reload must land on the same display — that is what ?display= is for',
     ).toBeVisible({ timeout: 15_000 });
     expect(new URL(page.url()).searchParams.get('display')).toBe('tracking');
+  });
+
+  /**
+   * Ruling B (2026-08-02, amended the next day) — the pane cluster is
+   * CARTON-scoped; the panel closes itself from its own top-left.
+   *
+   * The first version of this ruling gated `close · up · down` on `railOpen` as
+   * one unit. That was right about `close` and wrong about the pair, because the
+   * three were never one thing: `→|` closed the whole CARTON while wearing the
+   * panel's glyph, sitting in the open panel's corner, and mounting only when
+   * that panel was up. Every signal said "collapse this panel" except the
+   * behavior, and an operator who reached for it lost their carton.
+   *
+   * So the dismiss moved into the column's own header band and closes the
+   * column; `↑ ↓` step the carton and are always mounted; the ring is unchanged.
+   *
+   * The assertion that matters most is the LAST one: clicking the panel's
+   * dismiss must leave the carton open. Everything above it is geometry, and
+   * geometry is what a screenshot already covers.
+   */
+  test('the panel closes from its own top-left; the carton survives it', async ({
+    page,
+    request,
+  }) => {
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+    await openUnbox(page, receivingId, lineId);
+
+    const ring = page.getByTestId('unbox-displays-expand-button');
+    const prev = page.getByTestId('unbox-carton-prev');
+    const next = page.getByTestId('unbox-carton-next');
+    const panelClose = page.getByTestId('unbox-push-close');
+
+    // At rest: ring + carton cursor. The cursor is no longer rail-scoped — it
+    // steps the carton, which is on screen either way.
+    await expect(ring).toBeVisible({ timeout: 15_000 });
+    await expect(prev, 'the cursor steps the CARTON, not the column').toBeVisible();
+    await expect(next).toBeVisible();
+    await expect(
+      panelClose,
+      'no column is open, so there is no column to dismiss',
+    ).toHaveCount(0);
+    const ringAtRest = await ring.boundingBox();
+
+    await ring.click();
+    const column = page.getByTestId('receiving-displays-push');
+    await expect(column).toBeVisible({ timeout: 15_000 });
+
+    // Open: the dismiss appears at the COLUMN's top-left — left of the column's
+    // own midpoint, and left of the pane-anchored ring, which has not moved.
+    await expect(panelClose).toBeVisible();
+    // It names the REGION, not the occupant: one control closes all four push
+    // surfaces, so "Hide displays" would be false on three of them. Tooltip and
+    // accessible name read from the same constant.
+    await expect(panelClose).toHaveAttribute('aria-label', 'Hide right panel');
+    const closeBox = (await panelClose.boundingBox())!;
+    const columnBox = (await column.boundingBox())!;
+    const ringOpen = (await ring.boundingBox())!;
+    expect(
+      closeBox.x,
+      'the dismiss belongs to the column’s LEFT edge, not the pane’s right corner',
+    ).toBeLessThan(columnBox.x + columnBox.width / 2);
+    expect(closeBox.x, 'it sits inside the column it closes').toBeGreaterThanOrEqual(
+      columnBox.x - 1,
+    );
+    expect(closeBox.x, 'same row as the ring, opposite end').toBeLessThan(ringOpen.x);
+    expect(
+      Math.round(ringOpen.x),
+      'the ring is pane-anchored: same corner open or closed',
+    ).toBe(Math.round(ringAtRest!.x));
+
+    // THE RULING. Click the dismiss: the column goes, the carton stays. Before
+    // this change the same click dropped the operator back to the browse table.
+    await panelClose.click();
+    await expect(column).toHaveCount(0);
+    await expect(
+      page.getByTestId('receiving-workspace'),
+      'closing the panel must not close the carton — this is the whole ruling',
+    ).toBeVisible();
+    await expect(ring, 'the ring must still be able to re-open the column').toBeVisible();
+    await expect(prev, 'the carton cursor outlives the column').toBeVisible();
+    await ring.click();
+    await expect(column).toBeVisible({ timeout: 15_000 });
+  });
+
+  /**
+   * The push column's two header rows share BOTH gutter columns (2026-08-02).
+   *
+   * The column stacks a shell-owned band (`→|`) over its occupant's own strip
+   * (tabs … `⋮`), and the pane-anchored ring floats at the top-right of the
+   * first row. Measured before this was fixed, the four marks sat at four
+   * different x's — `→|` +17 / first tab +23, ring −6 / `⋮` −19 — so two rows on
+   * one card read as two unrelated toolbars.
+   *
+   * Asserted on the `<svg>` boxes, not the buttons: the button boxes are
+   * deliberately different sizes (28px shell control, 26px icon cell, 28px
+   * ring). 1px is sub-pixel rounding only — the shell's `-ml-px` pays off the
+   * 28-vs-26 difference.
+   *
+   * **This test alone is not enough, and believing it was is what let an 8px
+   * misalignment ship.** An `<svg>` box is not the drawn mark: a glyph sits ~2px
+   * inside its own viewBox, and its box sits inside its control's padding, so
+   * two rows can share an svg column while the marks in them share nothing with
+   * the text and borders beneath. It is also only ONE of the four occupants of
+   * a band that lives in the shared shell. The gutter test below measures ink,
+   * on a different occupant, and that is the pair.
+   *
+   * This lives in the real runner because it is a layout claim, and a layout
+   * claim read off the source is a guess (`verify.md` → Measure in the real
+   * runner). A static guard cannot see a negative margin cancel a parent's
+   * padding.
+   */
+  test('both header rows share the same left and right gutter columns', async ({
+    page,
+    request,
+  }) => {
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+    await openUnbox(page, receivingId, lineId);
+    await page.getByTestId('unbox-displays-expand-button').click();
+    await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+
+    const marks = await page.evaluate(() => {
+      const glyph = (el: Element | null | undefined) => {
+        const r = el?.querySelector('svg')?.getBoundingClientRect();
+        return r ? { l: r.left, r: r.right } : null;
+      };
+      const col = document.querySelector('[data-testid="receiving-displays-push"]');
+      const buttons = Array.from(col?.querySelectorAll('button') ?? []);
+      return {
+        close: glyph(document.querySelector('[data-testid="unbox-push-close"]')),
+        ring: glyph(document.querySelector('[data-testid="unbox-displays-expand-button"]')),
+        firstTab: glyph(col?.querySelector('[role="group"] button')),
+        more: glyph(
+          buttons.find((b) => /more displays/i.test(b.getAttribute('aria-label') ?? '')),
+        ),
+      };
+    });
+
+    expect(marks.close, 'the shell band must render its dismiss').not.toBeNull();
+    expect(marks.ring, 'the ring is pane-anchored and always present').not.toBeNull();
+    expect(marks.firstTab, 'the strip must have at least one tab cell').not.toBeNull();
+    expect(marks.more, 'this fixture must have enough tabs to overflow').not.toBeNull();
+
+    expect(
+      Math.abs(marks.close!.l - marks.firstTab!.l),
+      'row 1 `→|` and row 2 first tab must start on ONE left column',
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(marks.more!.r - marks.ring!.r),
+      'row 2 `⋮` must end on the ring’s right column — the ring cannot move, so the strip comes to it',
+    ).toBeLessThanOrEqual(1);
+  });
+
+  /**
+   * The band's `→|` lands on the occupant's CONTENT gutter — measured as INK.
+   *
+   * This is the assertion the test above could not make, and the reason the
+   * `→|` kept being reported as misaligned against a suite that passed. Two
+   * blind spots, both closed here:
+   *
+   *  1. **It measured the wrong occupant.** Displays is the only one of the four
+   *     push surfaces whose first row is *also* a glyph in a box, so it was
+   *     indented by the same ~8px and the two agreed with each other while both
+   *     missed the card border below them. Claim / the tool bodies open with a
+   *     text heading, whose ink IS the gutter — there the `→|` sat a visible 8px
+   *     to its right. The band lives in the shared shell, so tuning it to the
+   *     one surface where the defect cancels is how it shipped wrong.
+   *  2. **It measured boxes.** `getBoundingClientRect()` on an `<svg>` returns
+   *     the 14px element box, not the drawn extent, so it reports "aligned" for
+   *     a mark the operator can see is not. `getBBox()` is the ink, in viewBox
+   *     units — scale it and subtract half the stroke.
+   *
+   * Tolerance is 2px, not 1: the gutter is shared by a stroked glyph, a text
+   * baseline box and a 1px border, and sub-pixel disagreement between those is
+   * not a defect. 8px is.
+   */
+  test('the shell band’s dismiss sits on the occupant’s own content gutter', async ({
+    page,
+    request,
+  }) => {
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+    // Claim, NOT Displays — an occupant whose first row is text.
+    await openUnbox(page, receivingId, lineId, '&claimView=1');
+    await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
+
+    const measured = await page.evaluate(() => {
+      const col = document.querySelector('[data-testid="receiving-claim-push"]')!;
+      const colLeft = col.getBoundingClientRect().left;
+
+      const svg = document
+        .querySelector('[data-testid="unbox-push-close"]')
+        ?.querySelector('svg') as SVGGraphicsElement | null;
+      if (!svg) return null;
+      const svgRect = svg.getBoundingClientRect();
+      const units = (svg as unknown as SVGSVGElement).viewBox?.baseVal?.width || 24;
+      const scale = svgRect.width / units;
+      const stroke = parseFloat(getComputedStyle(svg).strokeWidth || '2') || 2;
+      // Ink, not box: geometry bbox less half the stroke, scaled to the render.
+      const glyphInk = svgRect.left + (svg.getBBox().x - stroke / 2) * scale - colLeft;
+
+      // The occupant's first line of real text, below the band.
+      const band = document.querySelector('[data-testid="unbox-push-close"]')!.closest('div')!;
+      const body = band.nextElementSibling!;
+      const firstText = Array.from(body.querySelectorAll('*'))
+        .filter((el) => {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) return false;
+          return Array.from(el.childNodes).some(
+            (n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 0,
+          );
+        })
+        .map((el) => ({
+          text: (el.textContent ?? '').trim().slice(0, 24),
+          left: el.getBoundingClientRect().left - colLeft,
+          top: el.getBoundingClientRect().top,
+        }))
+        .sort((a, b) => a.top - b.top)[0];
+
+      return { glyphInk, firstText };
+    });
+
+    expect(measured, 'the band must render its dismiss over the Claim occupant').not.toBeNull();
+    expect(measured!.firstText, 'the Claim occupant must open with a heading').toBeTruthy();
+    expect(
+      Math.abs(measured!.glyphInk - measured!.firstText.left),
+      `the →| ink (${measured!.glyphInk.toFixed(1)}) must sit on the gutter of "${
+        measured!.firstText.text
+      }" (${measured!.firstText.left.toFixed(1)}) — a box that lands on the gutter draws its mark ~8px inside it`,
+    ).toBeLessThanOrEqual(2);
+  });
+
+  /**
+   * Ruling A (2026-08-02) — Package Pairing is a DISPLAY, and the carton's empty
+   * `# ----` chip is its deep link. The PO tab must already be selected on
+   * arrival: `CartonMatchHub` subscribes to the open-PO event on MOUNT, so the
+   * dispatch is deferred one frame. Remove the `requestAnimationFrame` and the
+   * display still opens — on whichever tab it defaults to — which is exactly the
+   * kind of regression a screenshot passes.
+   */
+  test('the carton # ---- chip opens the pairing display on its PO tab', async ({
+    page,
+    request,
+  }) => {
+    const receivingId = await createCarton(request);
+    const lineId = await addLine(request, receivingId);
+    // An unmatched carton has no Zoho PO, so the chip renders `--------` and
+    // activates edit on click (`IdentityLinkChip` → `emptyEditActivate`).
+    await openUnbox(page, receivingId, lineId);
+
+    await expect(page.getByTestId('receiving-displays-push')).toHaveCount(0);
+    await page.getByRole('button', { name: /^link po$/i }).first().click();
+
+    const displays = page.getByTestId('receiving-displays-push');
+    await expect(displays, 'the chip opens the DISPLAY — pairing left the centre').toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page).toHaveURL(/display=pairing/);
+    await expect(
+      displays.getByRole('tab', { name: /^PO$/ }),
+      'the deferred dispatch must land on a mounted hub, or the PO tab stays unselected',
+    ).toHaveAttribute('aria-selected', 'true');
+
+    // Exactly ONE pairing hub on the page. The column is a descendant of the
+    // workspace, so "not in the centre" is asserted as cardinality: a second PO
+    // tab means pairing is mounted twice — the centre copy is back.
+    await expect(
+      page.getByRole('tab', { name: /^PO$/ }),
+      'a control on the right edge must not also open a surface in the centre',
+    ).toHaveCount(1);
   });
 
   test('Claim takes the right edge — one secondary surface at a time', async ({

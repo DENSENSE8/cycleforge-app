@@ -76,6 +76,11 @@ export interface CartonInspectorLine {
   id: number;
   sku: string | null;
   item_name: string | null;
+  /** Zoho ITEM title — preferred over item_name for contents display. */
+  zoho_item_title?: string | null;
+  catalog_product_title?: string | null;
+  /** Zoho proxy / catalog thumb — from RECEIVING_LINE_IMAGE_URL_SQL. */
+  image_url?: string | null;
   quantity_expected: number | null;
   quantity_received: number | null;
   qa_status: string | null;

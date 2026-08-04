@@ -4,16 +4,16 @@
  * page-L2 mode rail twin. Nested facet sliders are OK. Avatar Quick Access must not
  * remount a pin list (pins = HeaderPinsSwitcher / useQuickAccess).
  *
- * Spine top = org/workspace ({@link OrgWorkspaceControl}); staff footer =
- * {@link StaffAccountFooter}. Desktop GlobalHeader has no staff avatar. Both
- * ends wear the SAME circular mark (`IdentityMark` / `StaffAvatar`), and the
- * org control is always a dropdown trigger — single-org accounts included.
- * Identity menus (org + staff ⋯) are a **child of the trigger** via
+ * The spine has NO org band (deleted 2026-08-03 — single-org is the norm for
+ * small business; identity lives in the StaffAccountFooter ⋯ menu header and
+ * switching in Settings → Organization). Staff footer = {@link StaffAccountFooter};
+ * desktop GlobalHeader has no staff avatar. The staff mark is `IdentityMark` /
+ * `StaffAvatar`. The staff ⋯ menu is a **child of the trigger** via
  * `SIDEBAR_SPINE_MENU_PANEL_CLASS` + `*-stretch` — never a wider magic width /
  * bare `text-sm`. Menu type = caption/micro (trigger org name stays body).
  *
  * SoT: SIDEBAR_PAGE_NAV + useSidebarChildNav · HeaderPageSwitcher · HeaderRecentsSwitcher
- *      · HeaderPinsSwitcher / useQuickAccess · OrgWorkspaceControl · StaffAccountFooter
+ *      · HeaderPinsSwitcher / useQuickAccess · StaffAccountFooter · SidebarCollapseControl
  *      · IdentityMark / StaffAvatar · sidebar-spine.ts
  * Display law: .claude/rules/display/workbench.md (L2 in GlobalHeader)
  *
@@ -42,12 +42,12 @@ const RECENTS = code(sourceOf('./HeaderRecentsSwitcher.tsx'));
 const PINS = code(sourceOf('./HeaderPinsSwitcher.tsx'));
 const HEADER_SHELL = code(sourceOf('./header-shell.ts'));
 const QUICK_ACCESS_POPOVER = code(sourceOf('../quick-access/QuickAccessPopover.tsx'));
-const ORG_CONTROL = code(sourceOf('../sidebar/master-nav/OrgWorkspaceControl.tsx'));
 const STAFF_FOOTER = code(sourceOf('../sidebar/master-nav/StaffAccountFooter.tsx'));
 const IDENTITY_MARK = code(sourceOf('../identity/IdentityMark.tsx'));
 const NAV_LIST = code(sourceOf('../sidebar/master-nav/SidebarNavList.tsx'));
 const MASTER_NAV = code(sourceOf('../sidebar/master-nav/MasterNav.tsx'));
 const MASTER_VIEW = code(sourceOf('../sidebar/master-nav/MasterNavView.tsx'));
+const WORKSPACE_SWITCHER = code(sourceOf('../settings/sections/WorkspaceSwitcher.tsx'));
 
 const PANEL_SOURCES = [
   '../sidebar/ReceivingSidebarPanel.tsx',
@@ -116,6 +116,7 @@ test('desktop GlobalHeaderActions has no staff avatar (spine owns identity)', ()
   // Desktop path returns the icon cluster without an account avatar trigger
   // outside the isMobile branch — StaffAccountFooter is the desktop home.
   assert.match(STAFF_FOOTER, /data-staff-account-footer/);
+  assert.match(STAFF_FOOTER, /Power/);
   assert.match(NAV_LIST, /StaffAccountFooter/);
 });
 
@@ -133,53 +134,44 @@ test('assistant Sparkles sits far-right in GlobalHeaderActions (opens right rail
   assert.ok(inboxIdx >= 0 && assistantIdx > inboxIdx, 'AI must render after the inbox utility cluster');
 });
 
-test('OrgWorkspaceControl is the spine top band (not name-of-now page label)', () => {
-  assert.match(MASTER_VIEW, /OrgWorkspaceControl/);
+test('GlobalHeaderSearch is always mounted (never gated off /search or carton detail)', () => {
+  // Find is a permanent chrome kind — rail entry on `/search` is additive.
+  assert.match(HEADER_ACTIONS, /<GlobalHeaderSearch\s*\/>/);
+  assert.doesNotMatch(HEADER_ACTIONS, /onSearchPage/);
+  assert.doesNotMatch(
+    HEADER_ACTIONS,
+    /!onSearchPage\s*\?\s*<GlobalHeaderSearch/,
+  );
+});
+
+test('the spine has NO org/workspace band — identity and switching moved', () => {
+  // Deleted 2026-08-03. This is small-business software: an operator belongs to
+  // one org, so a permanent 40px row naming it spent the spine's most valuable
+  // space restating something that never changes.
+  //
+  // Nothing was LOST, and that is the precondition for deleting it rather than
+  // hiding it: org IDENTITY still renders in the StaffAccountFooter ⋯ menu
+  // header, and org SWITCHING still lives in Settings → Organization
+  // (`WorkspaceSwitcher`) — the honest home for a rare, deliberate act.
+  assert.doesNotMatch(MASTER_VIEW, /OrgWorkspaceControl/);
   assert.doesNotMatch(MASTER_VIEW, /MasterNavHeader/);
   assert.doesNotMatch(MASTER_VIEW, /headerLabel|leadingIcon=\{headerIcon\}/);
   assert.doesNotMatch(MASTER_NAV, /useRecentPages/);
-  assert.doesNotMatch(MASTER_NAV, /recentModes/);
-  assert.match(ORG_CONTROL, /data-master-nav-org/);
-  assert.match(ORG_CONTROL, /text-role-body font-semibold leading-tight/);
-  assert.match(ORG_CONTROL, /organizationName/);
-  assert.match(ORG_CONTROL, /useSwitchOrg/);
+  // Both survivors are load-bearing: lose either and org identity, or the
+  // ability to reach a second tenant at all, leaves the product.
+  assert.match(STAFF_FOOTER, /organizationName/);
+  assert.match(WORKSPACE_SWITCHER, /requestSwitchOrg|useSwitchOrg/);
 });
 
-test('spine identity marks are ONE circular primitive (org + staff)', () => {
+test('the spine staff mark is the ONE circular identity primitive', () => {
   // The org mark shipped as a `rounded-md` square beside the footer's
   // `rounded-full` staff mark, with nothing in code tying them together.
   // Both ends of the spine now compose the same primitive at the same density.
-  assert.match(ORG_CONTROL, /IdentityMark/);
   assert.match(STAFF_FOOTER, /StaffAvatarEditor/);
   assert.match(IDENTITY_MARK, /rounded-full/);
   // Neither end may hand-roll a mark box or its own initials again.
-  assert.doesNotMatch(ORG_CONTROL, /rounded-md bg-surface-inverse|h-6 w-6 shrink-0 items-center/);
   assert.doesNotMatch(STAFF_FOOTER, /function initials/);
   assert.doesNotMatch(STAFF_FOOTER, /rounded-full text-role-micro/);
-});
-
-test('OrgWorkspaceControl is ALWAYS a dropdown trigger, single-org included', () => {
-  // A control that is a button for some accounts and inert text for others
-  // teaches two affordances for one slot. The single-org menu still names the
-  // workspace and routes to Settings → Organization.
-  assert.match(ORG_CONTROL, /aria-haspopup="listbox"/);
-  assert.match(ORG_CONTROL, /aria-expanded=\{open\}/);
-  // No `canSwitch ?` gate around the trigger or the layer — only around the
-  // list of OTHER workspaces inside the open menu.
-  assert.doesNotMatch(ORG_CONTROL, /\{canSwitch \? \(\s*<button/);
-  assert.doesNotMatch(ORG_CONTROL, /\{canSwitch \? \(\s*<AnchoredLayer/);
-  // Chevron is unconditional (it advertises the menu on every account).
-  assert.doesNotMatch(ORG_CONTROL, /canSwitch \? \(\s*<ChevronDown/);
-});
-
-test('OrgWorkspaceControl left-justifies org label; multi-org may expand a menu', () => {
-  assert.doesNotMatch(ORG_CONTROL, /absolute inset-0.*justify-center|justify-center.*absolute inset-0/);
-  assert.match(ORG_CONTROL, /flex min-w-0 flex-1 items-center/);
-  // Column open lives on SidebarNavColumn, not the org band.
-  assert.doesNotMatch(ORG_CONTROL, /showNavToggle/);
-  assert.doesNotMatch(MASTER_VIEW, /showNavToggle/);
-  assert.doesNotMatch(MASTER_VIEW, /onOpen/);
-  assert.doesNotMatch(MASTER_NAV, /onOpenNav/);
 });
 
 test('spine identity menus are a child of the trigger (SoT — never a wider magic w-[Npx])', () => {
@@ -194,11 +186,7 @@ test('spine identity menus are a child of the trigger (SoT — never a wider mag
   assert.match(SPINE, /SIDEBAR_SPINE_MENU_ORG_CLASS/);
   assert.match(SPINE, /SIDEBAR_SPINE_WIDTH_PX = 240/);
 
-  assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
-  assert.match(ORG_CONTROL, /placement="bottom-stretch"/);
-  assert.match(ORG_CONTROL, /anchorRef=\{triggerRef\}/);
   // Chevron is enough — no "Current" eyebrow label in the org menu.
-  assert.doesNotMatch(ORG_CONTROL, /\bCurrent\b/);
   assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
   assert.match(STAFF_FOOTER, /placement="top-stretch"/);
   assert.match(STAFF_FOOTER, /anchorRef=\{rowRef\}/);
@@ -207,7 +195,6 @@ test('spine identity menus are a child of the trigger (SoT — never a wider mag
   assert.match(STAFF_FOOTER, /organizationName/);
 
   // No second geometry — magic widths on these two files are a regression.
-  assert.doesNotMatch(ORG_CONTROL, /w-\[\d+px\]/);
   assert.doesNotMatch(STAFF_FOOTER, /w-\[\d+px\]/);
 });
 
@@ -226,9 +213,6 @@ test('spine identity menus use dense caption type (no bare text-sm; org trigger 
   // Trigger org name = text-role-body; menu names/actions = text-role-caption
   // (+ micro meta). Staff footer + ⋯ menu stay caption. A raw text-sm twin is
   // how menus drifted chunkier than the spine.
-  assert.match(ORG_CONTROL, /data-master-nav-org[\s\S]*?text-role-body font-semibold/);
-  assert.match(ORG_CONTROL, /SIDEBAR_SPINE_MENU_TITLE_CLASS/);
-  assert.doesNotMatch(ORG_CONTROL, /\btext-sm\b/);
   assert.match(STAFF_FOOTER, /text-role-caption font-semibold leading-tight/);
   assert.doesNotMatch(STAFF_FOOTER, /\btext-sm\b/);
 });
@@ -240,7 +224,23 @@ test('GlobalHeader and MasterNav spine share TOP_CHROME_BAND face (one hairline 
   assert.match(MASTER_VIEW, /TOP_CHROME_BAND_FACE/);
   // Regression: outer border-b wrapping a separate 40px child → 41px step.
   assert.doesNotMatch(MASTER_VIEW, /border-b border-border-hairline/);
-  assert.doesNotMatch(ORG_CONTROL, /h-\[40px\]/);
+});
+
+/**
+ * Sidebar toggle MARK ↔ context-rail scan icon share one left column.
+ * Left pad is the rail gutter; do not re-symmetricize HEADER_INSET_X.
+ */
+test('GlobalHeader left inset matches rail gutter; sidebar toggle is not over-pulled', () => {
+  assert.match(HEADER_SHELL, /HEADER_INSET_X\s*=\s*cn\(SIDEBAR_RAIL_INSET_LEFT/);
+  assert.match(HEADER_SHELL, /pr-3 sm:pr-4/);
+  assert.doesNotMatch(HEADER_SHELL, /HEADER_INSET_X\s*=\s*['"]px-3 sm:px-4['"]/);
+  assert.match(HEADER, /HEADER_INSET_X/);
+
+  const COLLAPSE = code(sourceOf('./SidebarCollapseControl.tsx'));
+  // Hit box may bleed (`-ml-px`); the old `-ml-1.5` was compensating for a
+  // too-deep header pad and must not come back as the alignment lever.
+  assert.doesNotMatch(COLLAPSE, /-ml-1\.5/);
+  assert.match(COLLAPSE, /HEADER_ICON_WRAP/);
 });
 
 test('modeful sidebar panels do not mount an L2 mode rail twin', () => {
