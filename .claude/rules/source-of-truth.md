@@ -1447,9 +1447,10 @@ Two families, one shell. **Pick by whether the surface is an ops queue**, not by
 - `resolveSerialDisplay` / `resolveChipDisplay` are the label SoT for serials/chips.
 - Display preview is **last-8** (`CHIP_DISPLAY_LEN` / `getLast8` / `getLast8Serial`); empty face is `--------`.
 - Filled carrier tracking in order identity (`OrderIdentityChips`) is
-  `TrackingNumberMenuChip` — primary copy; hover Open tracking page · Replace
-  tracking (Replace opens `detail:order` on Shipping with the replace editor
-  armed — never clipboard-steals). Receiving TRACK cells stay plain `TrackingChip`.
+  `TrackingNumberMenuChip` — primary copy; hover **Open** · **Edit** (dense
+  carton IdentityLinkChip verbs). Edit opens `detail:order` on Shipping with
+  the replace editor armed — never clipboard-steals. Receiving TRACK cells stay
+  plain `TrackingChip`.
 
 ## Note vs label grain (per line item)
 

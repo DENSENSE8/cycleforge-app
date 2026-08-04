@@ -28,8 +28,8 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  *   • Platform — primary **open listing** (new tab); hover: Copy listing link
  *     (+ Edit listing link when the host row supplies an editor)
  *   • Order id — primary **copy**; hover: Open on platform
- *   • Tracking filled — {@link TrackingNumberMenuChip} (copy · Open page · Replace
- *     → host opens the order inspector replace flow)
+ *   • Tracking filled — {@link TrackingNumberMenuChip} (copy · Open · Edit →
+ *     host opens the order inspector replace flow; carton IdentityLinkChip parity)
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
  *
  * Grid surfaces (`layout="cells"` / {@link useOrderIdentityCellNodes}) render
