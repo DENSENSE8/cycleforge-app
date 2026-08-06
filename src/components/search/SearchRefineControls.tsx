@@ -2,7 +2,8 @@
 
 /**
  * `/search` refine chrome — field-density filter icon for SearchBar
- * `trailingPrefix`. Type + Status + Sort over the retrieved top-50; URL-durable.
+ * `trailingSuffix` (after hover-reveal paste). Type + Status + Sort over the
+ * retrieved top-50; URL-durable.
  */
 
 import { useCallback, useMemo, useState } from 'react';

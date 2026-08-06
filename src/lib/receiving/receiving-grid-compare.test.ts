@@ -40,4 +40,13 @@ describe('compareReceivingGridRows', () => {
     const b = row({ id: 2, item_name: 'Same' });
     assert.equal(compareReceivingGridRows(a, b, 'title', 'asc'), -1);
   });
+
+  it('sorts price numerically (missing as 0)', () => {
+    const a = row({ id: 1, unit_price: '10.00' });
+    const b = row({ id: 2, unit_price: '25.50' });
+    const bare = row({ id: 3, unit_price: null });
+    assert.ok(compareReceivingGridRows(a, b, 'price', 'asc') < 0);
+    assert.ok(compareReceivingGridRows(a, b, 'price', 'desc') > 0);
+    assert.ok(compareReceivingGridRows(bare, a, 'price', 'asc') < 0);
+  });
 });

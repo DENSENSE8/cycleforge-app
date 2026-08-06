@@ -10,9 +10,7 @@ import {
   yieldUnboxStationPushesOnAssistantOpen,
 } from './unbox-right-edge';
 
-test('clearUnboxPeerRightEdgeSurfaces closes open Claim and Ticket', () => {
-  let claim = true;
-  let ticket = true;
+test('clearUnboxPeerRightEdgeSurfaces suspends details', () => {
   let detailsClosed = 0;
   const prev = globalThis.window;
   // @ts-expect-error test stub
@@ -23,141 +21,64 @@ test('clearUnboxPeerRightEdgeSurfaces closes open Claim and Ticket', () => {
     },
   };
   try {
-    clearUnboxPeerRightEdgeSurfaces({
-      claimView: claim,
-      ticketView: ticket,
-      setClaimView: (on) => {
-        claim = on;
-      },
-      setTicketView: (on) => {
-        ticket = on;
-      },
-    });
-    assert.equal(claim, false);
-    assert.equal(ticket, false);
+    clearUnboxPeerRightEdgeSurfaces();
     assert.equal(detailsClosed, 1);
   } finally {
     globalThis.window = prev;
   }
 });
 
-test('clearUnboxPeerRightEdgeSurfaces still suspends details when peers already closed', () => {
-  let detailsClosed = 0;
-  const prev = globalThis.window;
-  // @ts-expect-error test stub
-  globalThis.window = {
-    dispatchEvent: (e: Event) => {
-      if (e.type === 'receiving-close-details-overlay') detailsClosed += 1;
-      return true;
-    },
-  };
-  try {
-    clearUnboxPeerRightEdgeSurfaces({
-      claimView: false,
-      ticketView: false,
-      setClaimView: () => {
-        assert.fail('should not clear closed Claim');
-      },
-      setTicketView: () => {
-        assert.fail('should not clear closed Ticket');
-      },
-    });
-    assert.equal(detailsClosed, 1);
-  } finally {
-    globalThis.window = prev;
-  }
-});
-
-test('clearPeerRightEdgeParams drops every peer surface but keeps the one opening', () => {
-  // The regression this exists for: opening Claim left `?display=` behind, so a
-  // reload reopened two right-edge surfaces at once.
+test('clearPeerRightEdgeParams keeps display surface params when keep=display', () => {
   const params = new URLSearchParams(
-    'openReceivingId=7&display=classify&ticketView=1&claimView=1&claimMode=link',
+    'openReceivingId=7&display=claim&claimMode=link&photoAction=move&ticketView=1&claimView=1',
   );
-  clearPeerRightEdgeParams(params, 'claim');
-  assert.equal(params.get('display'), null);
-  assert.equal(params.get('ticketView'), null);
-  // Its own params are untouched — the caller sets them around this call.
-  assert.equal(params.get('claimView'), '1');
+  clearPeerRightEdgeParams(params, 'display');
+  // Only one surface — display — so keep leaves display params alone.
+  assert.equal(params.get('display'), 'claim');
   assert.equal(params.get('claimMode'), 'link');
-  // Unrelated params survive: this is an exclusion, not a URL reset.
   assert.equal(params.get('openReceivingId'), '7');
 });
 
-test('clearPeerRightEdgeParams is symmetric across all three surfaces', () => {
-  for (const keep of ['ticket', 'claim', 'display'] as const) {
-    const params = new URLSearchParams('display=units&ticketView=1&claimView=1&claimMode=link');
-    clearPeerRightEdgeParams(params, keep);
-    const open = [
-      params.has('display') ? 'display' : null,
-      params.has('ticketView') ? 'ticket' : null,
-      params.has('claimView') ? 'claim' : null,
-    ].filter(Boolean);
-    assert.deepEqual(open, [keep], `${keep}: exactly one right-edge surface may stay in the URL`);
-  }
-});
-
-test('clearAllUnboxRightEdgeParams drops ticket · claim · display', () => {
+test('clearAllUnboxRightEdgeParams drops display · nested · legacy peers', () => {
   const params = new URLSearchParams(
-    'openReceivingId=7&display=classify&ticketView=1&claimView=1&claimMode=link',
+    'openReceivingId=7&display=classify&ticketView=1&claimView=1&claimMode=link&photoAction=send&linkageAction=note&unitsAction=prebox',
   );
   clearAllUnboxRightEdgeParams(params);
   assert.equal(params.get('display'), null);
   assert.equal(params.get('ticketView'), null);
   assert.equal(params.get('claimView'), null);
   assert.equal(params.get('claimMode'), null);
+  assert.equal(params.get('photoAction'), null);
+  assert.equal(params.get('linkageAction'), null);
+  assert.equal(params.get('unitsAction'), null);
   assert.equal(params.get('openReceivingId'), '7');
 });
 
-test('every right-edge surface is registered — a fourth cannot be added silently', () => {
-  // A new push column that forgets to register here would not be cleared by its
-  // peers, which is precisely how two columns end up open at once.
-  assert.deepEqual(Object.keys(UNBOX_RIGHT_EDGE_PARAMS).sort(), ['claim', 'display', 'ticket']);
+test('Displays is the sole registered right-edge URL surface', () => {
+  assert.deepEqual(Object.keys(UNBOX_RIGHT_EDGE_PARAMS), ['display']);
+  assert.ok(UNBOX_RIGHT_EDGE_PARAMS.display.includes('display'));
+  assert.ok(UNBOX_RIGHT_EDGE_PARAMS.display.includes('ticketAction'));
+  assert.ok(UNBOX_RIGHT_EDGE_PARAMS.display.includes('unitsAction'));
+  assert.ok(UNBOX_RIGHT_EDGE_PARAMS.display.includes('ticketView'));
+  assert.ok(UNBOX_RIGHT_EDGE_PARAMS.display.includes('claimView'));
 });
 
-test('yieldUnboxStationPushesOnAssistantOpen closes Ticket · Claim · display · tool', () => {
+test('yieldUnboxStationPushesOnAssistantOpen clears URL once', () => {
   let urlClears = 0;
   let displayClears = 0;
-  let toolCloses = 0;
   yieldUnboxStationPushesOnAssistantOpen({
     clearAllUrl: () => {
       urlClears += 1;
     },
     clearDisplay: () => {
       displayClears += 1;
-    },
-    closeToolPush: () => {
-      toolCloses += 1;
     },
   });
   assert.equal(urlClears, 1);
   assert.equal(displayClears, 1);
-  assert.equal(toolCloses, 1);
-});
-
-test('yieldUnboxStationPushesOnAssistantOpen still clears display + tool when URL peers closed', () => {
-  let urlClears = 0;
-  let displayClears = 0;
-  let toolCloses = 0;
-  yieldUnboxStationPushesOnAssistantOpen({
-    clearAllUrl: () => {
-      urlClears += 1;
-    },
-    clearDisplay: () => {
-      displayClears += 1;
-    },
-    closeToolPush: () => {
-      toolCloses += 1;
-    },
-  });
-  assert.equal(urlClears, 1, 'always one URL write (clearAllUnboxRightEdgeParams)');
-  assert.equal(displayClears, 1);
-  assert.equal(toolCloses, 1);
 });
 
 test('LineEditPanel wires assistant open through yieldUnboxStationPushesOnAssistantOpen', () => {
-  // A local re-implementation of the yield (or dropping the helper) is how dual
-  // right columns come back. Pin the call site, not just the pure helper.
   const src = readFileSync(
     resolve(import.meta.dirname, '../LineEditPanel.tsx'),
     'utf8',
@@ -171,11 +92,11 @@ test('LineEditPanel wires assistant open through yieldUnboxStationPushesOnAssist
     'LineEditPanel must listen for ASSISTANT_DOCK_OPEN_EVENT (Sparkles / ⌘J)',
   );
   assert.ok(
-    src.includes('setClaimView(false)'),
-    'AI yield must clear Claim via setClaimView(false) (same path as →|)',
-  );
-  assert.ok(
     src.includes('useAssistantDockOpen'),
     'LineEditPanel must also reconcile cold localStorage hydrate via dock open',
+  );
+  assert.ok(
+    src.includes('clearAllUnboxRightEdgeParams') || src.includes('setDisplay(null)'),
+    'AI yield must clear Displays URL params',
   );
 });

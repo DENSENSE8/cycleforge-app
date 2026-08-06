@@ -46,7 +46,7 @@ export function ClaimNasBackupCard({
               disabled={c.archiveSubmitting || !c.row.receiving_id}
               onClick={c.archiveToNas}
             >
-              {c.archiveSubmitting ? 'Saving…' : 'Upload & sync to NAS'}
+              {c.archiveSubmitting ? 'Saving…' : 'Sync to NAS'}
             </Button>
           ) : (
             <p className="flex items-center gap-1.5 text-role-caption font-medium text-text-muted">
@@ -79,7 +79,7 @@ export function ClaimNasBackupCard({
         <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} aria-hidden />
       </div>
       <p className="text-role-caption font-medium text-text-default">
-        {a.copied}/{a.total} {a.total === 1 ? 'photo' : 'photos'}
+        {a.copied}/{a.total}
         {folder ? (
           <>
             {' '}
@@ -101,7 +101,7 @@ export function ClaimNasBackupCard({
 
       {canArchive ? (
         backupOk ? (
-          <HoverTooltip label="Upload & sync the carton photos to NAS again" asChild>
+          <HoverTooltip label="Sync again" asChild>
             <Button
               variant="ghost"
               size="sm"
@@ -110,7 +110,7 @@ export function ClaimNasBackupCard({
               disabled={c.archiveSubmitting || !c.row.receiving_id}
               onClick={c.archiveToNas}
             >
-              {c.archiveSubmitting ? 'Saving…' : 'Sync to NAS again'}
+              {c.archiveSubmitting ? 'Saving…' : 'Sync again'}
             </Button>
           </HoverTooltip>
         ) : (

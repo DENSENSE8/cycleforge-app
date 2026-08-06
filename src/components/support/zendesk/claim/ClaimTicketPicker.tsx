@@ -34,7 +34,7 @@ export function ClaimTicketPicker({
   if (ticket) {
     const sb = statusBadge(ticket.status);
     return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-3">
+      <div className="flex items-center justify-between gap-3 rounded-none border-l-2 border-blue-400 bg-blue-50/60 px-3.5 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-role-caption font-semibold text-blue-700">#{ticket.id}</span>
@@ -72,7 +72,7 @@ export function ClaimTicketPicker({
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-text-faint" />
         ) : null}
       </div>
-      <div className="max-h-56 divide-y divide-border-hairline overflow-y-auto rounded-xl border border-border-soft">
+      <div className="max-h-56 divide-y divide-border-hairline overflow-y-auto rounded-none border border-border-soft">
         {tickets.length === 0 && !isLoading ? (
           <p className="px-3.5 py-6 text-center text-role-caption text-text-faint">
             {debounced ? 'No matching tickets' : 'No open tickets'}

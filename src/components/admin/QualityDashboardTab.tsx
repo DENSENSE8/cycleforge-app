@@ -81,7 +81,7 @@ export function QualityDashboardTab() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Top failures */}
-        <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+        <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
           <header className="flex items-center gap-2 px-5 py-4">
             <AlertTriangle className="h-4 w-4 text-rose-500" />
             <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Top open failures</h3>
@@ -104,7 +104,7 @@ export function QualityDashboardTab() {
         </section>
 
         {/* Repair rollup */}
-        <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+        <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
           <header className="flex items-center gap-2 px-5 py-4">
             <Wrench className="h-4 w-4 text-blue-500" />
             <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Repairs</h3>
@@ -130,7 +130,7 @@ export function QualityDashboardTab() {
       </div>
 
       {/* High-risk worklist */}
-      <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+      <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
         <header className="px-5 py-4">
           <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Highest-risk units</h3>
         </header>
@@ -166,7 +166,7 @@ export function QualityDashboardTab() {
 
 function Tile({ label, value, accent, icon }: { label: string; value: number | string; accent: string; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
+    <div className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
       <div className="flex items-center justify-between">
         <span className="text-role-micro uppercase tracking-wider text-text-faint">{label}</span>
         {icon}

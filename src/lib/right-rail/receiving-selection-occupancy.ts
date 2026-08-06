@@ -3,7 +3,8 @@
  *
  * Same cardinality idea as `selection-occupancy.ts` (orders), but receiving has
  * no compare pane in this wave and splits Incoming (1 → existing
- * `detail:incoming` inspector) from Unbox/History (1+ → batch shell).
+ * `detail:incoming` inspector) from Unbox History (1-row left-click →
+ * `detail:history` triage) from batch (2+ → `detail:receiving-line-batch`).
  *
  * Reuses `normalizeRailSelection` so id hygiene stays one place.
  */
@@ -13,7 +14,9 @@ import { normalizeRailSelection } from '@/lib/right-rail/selection-occupancy';
 export const RECEIVING_RAIL_OCCUPANT_ID = {
   /** One Incoming row — existing `IncomingDetailsPanel`. */
   inspect: 'detail:incoming',
-  /** Unbox/History any non-empty set, or Incoming 2+. */
+  /** One Unbox History row — `HistoryCartonTriagePanel`. */
+  historyInspect: 'detail:history',
+  /** Unbox/History 2+ checks, or Incoming 2+. */
   attention: 'detail:receiving-line-batch',
 } as const;
 
@@ -23,7 +26,9 @@ type ReceivingRailOccupancy =
   | { kind: 'none' }
   | {
       kind: 'inspect';
-      occupantId: typeof RECEIVING_RAIL_OCCUPANT_ID.inspect;
+      occupantId:
+        | typeof RECEIVING_RAIL_OCCUPANT_ID.inspect
+        | typeof RECEIVING_RAIL_OCCUPANT_ID.historyInspect;
       lineIds: readonly [number];
     }
   | {
@@ -38,7 +43,10 @@ type ReceivingRailOccupancy =
  * | either    | 0        | none |
  * | incoming  | 1        | inspect (`detail:incoming`) |
  * | incoming  | 2+       | attention (batch shell) |
- * | lines     | 1+       | attention (batch shell) |
+ * | lines     | 1        | none for checkbox alone — History left-click opens
+ * |           |          | `detail:history` outside this helper; 1 check can
+ * |           |          | still claim the batch shell when inspect is closed |
+ * | lines     | 2+       | attention (batch shell) |
  */
 export function resolveReceivingRailOccupancy(
   ids: readonly (number | string | null | undefined)[],

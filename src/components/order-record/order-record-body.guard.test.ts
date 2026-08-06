@@ -1,7 +1,8 @@
 /**
- * Order-record surfaces must compose compact order-record sections — never
- * re-import the slide-over details-panel chrome that caused field duplication
- * (Order ID ×3, urgent ×3, nested "Order Details", full Warranty hero, etc.).
+ * Durable `/o` order-record body must compose compact order-record sections —
+ * never re-import the slide-over details-panel chrome that caused field
+ * duplication. This guard scopes `/o` only; search feedback is a sibling shell
+ * (`SearchOrderFeedback`) and the desk inspector stays on `ShippedDetailsBody`.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

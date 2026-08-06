@@ -1,9 +1,9 @@
 /**
  * `/search` durable selection — `?sel=order:123` / `receiving:50200` / …
  *
- * The hit list lives in the context rail; the main pane reads this param and
- * embeds the matching entity detail shell. Sole/exact identifier hits write
- * `sel` in-page instead of navigating to `searchHitHref`.
+ * The centered find stage writes this param; the page swaps to full-bleed
+ * entity detail. Sole/exact identifier hits write `sel` in-page instead of
+ * navigating to `searchHitHref`.
  */
 
 import {

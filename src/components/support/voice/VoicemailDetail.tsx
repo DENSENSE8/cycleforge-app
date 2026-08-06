@@ -146,7 +146,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
         <section className="space-y-2">
           <p className={sectionLabel}>Customer</p>
           {data.matchedCustomerName ? (
-            <div className="flex items-center gap-2.5 rounded-xl border border-border-soft bg-surface-card px-3 py-2.5">
+            <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-soft">
                 <User className="h-4 w-4" />
               </span>
@@ -168,7 +168,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
           {data.linkedTicketId ? (
             <a
               href={`/support?ticket=${data.linkedTicketId}`}
-              className="flex items-center justify-between gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 transition-colors hover:bg-violet-100"
+              className="flex items-center justify-between gap-2 rounded-none border-l-2 border-violet-300 bg-violet-50 px-3 py-2.5 transition-colors hover:bg-violet-100"
             >
               <span className="inline-flex items-center gap-1.5 text-role-caption font-semibold text-violet-800">
                 <Link2 className="h-3.5 w-3.5" /> {capabilityTitle('helpdesk')} ticket #{data.linkedTicketId}

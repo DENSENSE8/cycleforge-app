@@ -25,6 +25,8 @@ import {
 } from './PairingLinkButton';
 import { toast } from '@/lib/toast';
 import { requestConfirm } from '@/design-system/components/confirm';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { apiErrorMessage } from '@/lib/api-error-message';
@@ -175,6 +177,7 @@ export function PoLinkTab({
         receiving_id?: number;
         paired_onto?: number;
         photos_moved?: number;
+        lines_imported?: number;
       };
       if (!res.ok || !body.success) {
         toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
@@ -189,6 +192,10 @@ export function PoLinkTab({
         typeof body.photos_moved === 'number' && body.photos_moved > 0
           ? body.photos_moved
           : 0;
+      const linesImported =
+        typeof body.lines_imported === 'number' && body.lines_imported > 0
+          ? body.lines_imported
+          : 0;
 
       toast.success(
         pairedOntoBusyShell
@@ -196,8 +203,12 @@ export function PoLinkTab({
             ? `Paired onto carton #${winnerId} · PO ${poLabel} · ${photosMoved} photo${photosMoved === 1 ? '' : 's'} kept`
             : `Paired onto carton #${winnerId} · PO ${poLabel}`
           : existingLabel
-            ? `Replaced with PO ${poLabel}`
-            : `Linked PO ${poLabel}`,
+            ? linesImported > 0
+              ? `Replaced with PO ${poLabel} · ${linesImported} line${linesImported === 1 ? '' : 's'}`
+              : `Replaced with PO ${poLabel}`
+            : linesImported > 0
+              ? `Linked PO ${poLabel} · ${linesImported} line${linesImported === 1 ? '' : 's'}`
+              : `Linked PO ${poLabel}`,
       );
 
       if (pairedOntoBusyShell && winnerId != null) {
@@ -230,7 +241,12 @@ export function PoLinkTab({
           here. This tab is purely the search-and-(re)link surface. */}
 
       {isInboundMerge ? (
-        <p className="rounded-lg border border-blue-200 bg-blue-50 inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700">
+        <p
+          className={cn(
+            cornerClass('flush'),
+            'border border-blue-200 bg-blue-50 inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700',
+          )}
+        >
           {`${(row.inbound_source_type || 'eBay')} order · pick its Zoho PO to merge`}
         </p>
       ) : null}
@@ -251,7 +267,12 @@ export function PoLinkTab({
       {/* Results — the most recent locally-stored incoming POs by default; the
           search box filters them. */}
       {isError ? (
-        <p className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600">
+        <p
+          className={cn(
+            cornerClass('flush'),
+            'border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600',
+          )}
+        >
           Couldn’t load purchase orders. Try again.
         </p>
       ) : isFetching && candidates.length === 0 ? (
@@ -259,7 +280,12 @@ export function PoLinkTab({
           <Loader2 className="h-4 w-4 animate-spin" /> Loading purchase orders…
         </p>
       ) : candidates.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft">
+        <p
+          className={cn(
+            cornerClass('flush'),
+            'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
+          )}
+        >
           {trimmed ? `No purchase orders match “${trimmed}”.` : 'No incoming purchase orders stored yet.'}
         </p>
       ) : (

@@ -2,10 +2,9 @@
  * Unbox workbench tabs on `/unbox` — URL SoT via `?unboxview=`.
  *
  * **UI vocabulary vs wire vocabulary.** The tab ids here are what the operator
- * reads — `recent` | `queue` | `history`, matching the house convention every
- * other workbench uses (`labels-workspace-state.ts`: `queue` / `Recent`;
- * `labels-view.ts`: `Products` / `Recent` / `History`, where Recent and History
- * are distinct tabs and Recent comes first).
+ * reads — `urgent` | `recent` | `queue` | `all` | `history`, matching the house
+ * convention every other workbench uses (`labels-workspace-state.ts`: `queue` /
+ * `Recent`; Testing: Urgent · … · All · History).
  *
  * They deliberately do NOT all match the wire. `?unboxview=viewed` still carries
  * the Recent tab because `viewed` is the SERVER-side name for that feed — the
@@ -18,33 +17,43 @@
  * Before 2026-08-01 this file called the tabs `recent` | `queue` | `viewed`
  * with `recent` LABELLED "History" — so `recent` meant History and `viewed`
  * meant recent, exactly backwards from the rest of the codebase.
+ *
+ * 2026-08-04: Urgent · All mirror Testing / Shipping Band-1. Urgent owns
+ * `?priority_only=1` on the scanned queue (same SoT as Testing Urgent).
  */
 
-export type UnboxWorkspaceTab = 'recent' | 'queue' | 'history';
+export type UnboxWorkspaceTab = 'urgent' | 'recent' | 'queue' | 'all' | 'history';
 
 const UNBOX_VIEW_PARAM = 'unboxview';
+const PRIORITY_ONLY_PARAM = 'priority_only';
 
 export const UNBOX_WORKSPACE_TAB_LABEL: Record<UnboxWorkspaceTab, string> = {
+  urgent: 'Urgent',
   recent: 'Recent',
   queue: 'Queue',
+  all: 'All',
   history: 'History',
 };
 
 /**
- * Strip order. **Recent leads** — it is the operator's own working set, the
- * shortest list, and the one they return to; Labels puts its recents tab first
- * for the same reason. History (the full archive) stays last.
+ * Strip order. Urgent leads (priority work); Recent is the operator's own set;
+ * Queue is the station backlog; All is typed cross-inbound triage; History
+ * (archive) stays last with a divider.
  */
 export const UNBOX_WORKSPACE_TABS: readonly UnboxWorkspaceTab[] = [
+  'urgent',
   'recent',
   'queue',
+  'all',
   'history',
 ];
 
 /** UI tab → URL value. `history` is the default and omits the param. */
 const TAB_TO_PARAM: Record<UnboxWorkspaceTab, string | null> = {
+  urgent: 'urgent',
   recent: 'viewed',
   queue: 'queue',
+  all: 'all',
   history: null,
 };
 
@@ -55,9 +64,23 @@ const TAB_TO_PARAM: Record<UnboxWorkspaceTab, string | null> = {
  * because `normalize` omits the param for the default tab.
  */
 const PARAM_TO_TAB: Record<string, UnboxWorkspaceTab> = {
+  urgent: 'urgent',
   viewed: 'recent',
   queue: 'queue',
+  all: 'all',
 };
+
+/**
+ * KPI canvas still answers Recent · Queue · History feeds. Urgent / All reuse
+ * Queue metrics (scanned inbound) rather than inventing a fourth feed.
+ */
+export function unboxKpiFeedTab(
+  tab: UnboxWorkspaceTab,
+): 'recent' | 'queue' | 'history' {
+  if (tab === 'recent') return 'recent';
+  if (tab === 'history') return 'history';
+  return 'queue';
+}
 
 export function getUnboxWorkspaceTabFromSearch(
   searchParams: Pick<URLSearchParams, 'get'>,
@@ -70,7 +93,9 @@ export function getUnboxWorkspaceTabFromSearch(
 
 /**
  * Normalize URL state for an Unbox workbench tab switch.
- * `history` omits the param (clean URL); recent/queue set `unboxview`.
+ * `history` omits the param (clean URL); other tabs set `unboxview`.
+ * Urgent owns `priority_only=1` (cleared on leave) — mirrors Shipping `attention`.
+ * Clears `ukpi` on every tab flip so a Queue priority tile does not bleed into Urgent.
  */
 export function normalizeUnboxWorkspaceTabParams(
   params: URLSearchParams,
@@ -80,5 +105,14 @@ export function normalizeUnboxWorkspaceTabParams(
   const wire = TAB_TO_PARAM[nextTab];
   if (wire == null) params.delete(UNBOX_VIEW_PARAM);
   else params.set(UNBOX_VIEW_PARAM, wire);
+
+  if (nextTab === 'urgent') {
+    params.set(PRIORITY_ONLY_PARAM, '1');
+  } else {
+    params.delete(PRIORITY_ONLY_PARAM);
+  }
+  // KPI tile filter is tab-scoped; never carry across strips.
+  params.delete('ukpi');
+
   return nextTab;
 }

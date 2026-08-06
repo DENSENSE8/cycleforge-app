@@ -181,7 +181,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       {c.scanError ? (
         <div
           role="status"
-          className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-semibold text-red-800"
+          className="flex items-start gap-2 rounded-none border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-semibold text-red-800"
         >
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span className="min-w-0 leading-snug">{c.scanError}</span>

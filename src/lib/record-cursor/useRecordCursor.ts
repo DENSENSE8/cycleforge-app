@@ -36,9 +36,8 @@
  * Plan: `docs/todo/record-cursor-unification-PLAN.md` §3.3, §3.5.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { foldKey, isFoldOpen } from '@/lib/group-rows';
-import type { FoldState, GroupedRenderOrder, RowGroup } from '@/lib/group-rows';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import type { FoldState, GroupedRenderOrder } from '@/lib/group-rows';
 import { recordIdKey, resolveRecordCursor } from './cursor-model';
 import type { CursorIntent, CursorScope, RecordCursor, RecordId } from './cursor-model';
 import {
@@ -50,109 +49,6 @@ import {
   updateRecordCursor,
 } from './store';
 import type { RecordCursorOpen } from './store';
-
-// ─── Fold state ──────────────────────────────────────────────────────────────
-
-const EMPTY_FOLD_KEYS: ReadonlySet<string> = new Set<string>();
-
-interface FoldStateHandle {
-  /** Pass straight to `resolveRecordCursor` / `flattenVisibleRenderOrder`. */
-  folds: FoldState;
-  isOpen: (key: string) => boolean;
-  /** `next` omitted → flip. Idempotent: setting the state it already has is a
-   *  no-op, so a re-render cannot churn the set identity. */
-  toggle: (key: string, next?: boolean) => void;
-  /** Open this fold. What a step into a collapsed fold calls before opening. */
-  reveal: (key: string) => void;
-}
-
-/**
- * Fold state, lifted out of `CollapsibleGroupRow`.
- *
- * **Ephemeral by design — never persisted to staff prefs.** Which orders a
- * staffer happened to expand five minutes ago is the same class of state as
- * `useViewportForcedHidden`, not the same class as their column layout. It also
- * must not survive a lane switch: the set is dropped when `surfaceKey` changes,
- * because a fold key from Pending names nothing in Packed and would otherwise
- * accumulate as dead entries.
- *
- * `mode` is **required**, and that is the whole point of {@link FoldState}. A
- * bare `Set<string>` has no polarity: `QueueGroupRow` is default-COLLAPSED so
- * its set names what is expanded, while `useSidebarRail` tracks
- * `collapsedGroups` and is default-EXPANDED. Both initialize to `new Set()`, so
- * an untagged set silently means "everything collapsed" on whichever surface
- * guessed wrong — and on the rail that would make every group's members vanish
- * from scroll and focus targets.
- *
- * Keys are always `foldKey(bandKey, group.key)` output — see
- * {@link useGroupFoldKeys}.
- */
-export function useFoldState(surfaceKey: string, mode: FoldState['mode']): FoldStateHandle {
-  const [keys, setKeys] = useState<ReadonlySet<string>>(EMPTY_FOLD_KEYS);
-  const [owner, setOwner] = useState(surfaceKey);
-  // Adjust-state-during-render (the documented React pattern) rather than an
-  // effect: an effect would leave one commit where the new lane renders against
-  // the previous lane's folds, which is a visible flash of the wrong open rows.
-  if (owner !== surfaceKey) {
-    setOwner(surfaceKey);
-    setKeys(EMPTY_FOLD_KEYS);
-  }
-
-  const folds = useMemo<FoldState>(
-    () => (mode === 'default-collapsed' ? { mode, expanded: keys } : { mode, collapsed: keys }),
-    [mode, keys],
-  );
-
-  const isOpen = useCallback((key: string) => isFoldOpen(folds, key), [folds]);
-
-  const toggle = useCallback(
-    (key: string, next?: boolean) => {
-      setKeys((prev) => {
-        // Membership means "expanded" under default-collapsed and "collapsed"
-        // under default-expanded — resolve the polarity once, here, so no caller
-        // has to know which way the set reads.
-        const openNow = mode === 'default-collapsed' ? prev.has(key) : !prev.has(key);
-        const wantOpen = next ?? !openNow;
-        if (wantOpen === openNow) return prev;
-        const out = new Set(prev);
-        if ((mode === 'default-collapsed') === wantOpen) out.add(key);
-        else out.delete(key);
-        return out;
-      });
-    },
-    [mode],
-  );
-
-  const reveal = useCallback((key: string) => toggle(key, true), [toggle]);
-
-  return useMemo(() => ({ folds, isOpen, toggle, reveal }), [folds, isOpen, toggle, reveal]);
-}
-
-/**
- * Map every fold in a render order to its band-qualified {@link foldKey}, keyed
- * by the **group object**.
- *
- * Keyed by identity, not by `group.key`, because `group.key` is band-local: a
- * multi-line order whose lines straddle two date bands produces two groups with
- * the same key, so a `Map<string, string>` would collide on exactly the case
- * band-qualification exists to disambiguate.
- *
- * This exists because `renderGroup(group, baseStripeIndex, rowIndex)` is handed
- * **no band key** — and widening that signature is a public API change to
- * `LedgerGrid` / `VirtualGroupedSections`, which is *Ask first*
- * (`pattern-evolution.md`). The group object a renderer receives is the same one
- * that sits in the order (`VirtualGroupedSections` passes `item.group` straight
- * through), so identity is a free, non-invasive join.
- */
-export function useGroupFoldKeys<T>(order: GroupedRenderOrder<T>): ReadonlyMap<RowGroup<T>, string> {
-  return useMemo(() => {
-    const map = new Map<RowGroup<T>, string>();
-    for (const [bandKey, groups] of order) {
-      for (const group of groups) map.set(group, foldKey(bandKey, group.key));
-    }
-    return map;
-  }, [order]);
-}
 
 // ─── Publish ─────────────────────────────────────────────────────────────────
 

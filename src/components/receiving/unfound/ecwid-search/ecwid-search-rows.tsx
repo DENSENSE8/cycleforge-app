@@ -50,7 +50,7 @@ export function ResultRow({
   const displaySku = item.sku ?? item.zoho_sku ?? '—';
 
   const media = (
-    <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-border-hairline bg-surface-canvas">
+    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-none border border-border-hairline bg-surface-canvas">
       {item.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

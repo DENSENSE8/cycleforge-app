@@ -47,6 +47,7 @@ export function StationWorkbench({
   reserveScrollClearance = false,
   reserveIdentityClearance = true,
   bodyAlign = 'start',
+  bodyGap = 'default',
   className,
   scrollClassName,
   ambientWash = false,
@@ -80,11 +81,12 @@ export function StationWorkbench({
    */
   reserveScrollClearance?: boolean | 'pager';
   /**
-   * Absolute-float {@link StationContextBar} needs top clearance so scroll
-   * content is not hidden under the identity shell. Default true — Unbox-family
-   * hosts mount the floating context bar. Pass false when this workbench has
-   * no floating identity overlay. Pass `'stacked'` when the identity is
-   * Two-row `CartonContextCard` (32px taller shell) — use `"stacked"`.
+   * Top clearance for scroll content under identity chrome.
+   *
+   * - `true` — one-row absolute overlay (`pt-10`)
+   * - `'stacked'` — two-row absolute overlay (`pt-16`)
+   * - `false` — in-flow identity (`StationContextBar placement="flow"`) or no
+   *   identity — `pt-0` so the hairline can abut PO lines with zero air
    */
   reserveIdentityClearance?: boolean | 'stacked';
   /**
@@ -108,17 +110,25 @@ export function StationWorkbench({
    * body exactly as it was.
    */
   bodyAlign?: 'start' | 'end';
+  /**
+   * Sibling spacing inside the scroll column.
+   * `'none'` — flat scan-station floor (Unbox overview): zero vertical gap
+   * between centre surfaces. `'default'` keeps `space-y-4` / `gap-4`.
+   */
+  bodyGap?: 'default' | 'none';
   className?: string;
   scrollClassName?: string;
   /** Soft tonal blobs behind glass cards (Unbox ambient wash). */
   ambientWash?: boolean;
 }) {
+  // `false` = identity is in-flow (or absent) — no guessed top clearance so
+  // the carton context hairline can abut PO lines with zero air.
   const topPad =
     reserveIdentityClearance === 'stacked'
       ? STATION_IDENTITY_STACKED_SCROLL_CLEARANCE
       : reserveIdentityClearance
         ? STATION_IDENTITY_SCROLL_CLEARANCE
-        : 'pt-5';
+        : 'pt-0';
   const bottomPad =
     reserveScrollClearance === 'pager'
       ? STATION_TERMINAL_PAGER_SCROLL_CLEARANCE
@@ -159,8 +169,13 @@ export function StationWorkbench({
             // margin-bottom and collapses the Items↔procedure gap to zero
             // whenever free space runs out. `gap-4` survives `mb-auto`.
             bodyAlign === 'end'
-              ? 'flex min-h-full flex-col justify-end gap-4'
-              : 'space-y-4',
+              ? cn(
+                  'flex min-h-full flex-col justify-end',
+                  bodyGap === 'none' ? 'gap-0' : 'gap-4',
+                )
+              : bodyGap === 'none'
+                ? 'space-y-0'
+                : 'space-y-4',
             scrollClassName,
           )}
         >

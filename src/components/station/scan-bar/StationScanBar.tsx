@@ -12,6 +12,7 @@ import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motio
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Barcode, Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
+import { usePublishCollapseScan } from '@/components/sidebar/context-panel-collapse-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
@@ -23,6 +24,8 @@ import {
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 import {
+  STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS,
+  STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS,
   STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
   STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
   STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
@@ -156,6 +159,29 @@ export function StationScanBar({
     onSubmit(e);
   }, [onSubmit]);
 
+  const bottomRule = inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
+  const collapseHover =
+    theme != null
+      ? STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS[theme]
+      : STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS;
+  const collapseTheme = theme ?? 'green';
+
+  // Primary hotkey bars publish into the parked strip so operators can arm a
+  // new scan without expanding. Secondary fields (`hotkey={false}`) stay quiet.
+  usePublishCollapseScan(
+    showHotkeyGear
+      ? {
+          value,
+          onChange,
+          onSubmit: () => handleInternalSubmit(),
+          placeholder,
+          bottomRuleClass: bottomRule,
+          hoverClass: collapseHover,
+          theme: collapseTheme,
+        }
+      : null,
+  );
+
   const handlePasteClick = useCallback(async () => {
     if (!onPaste) return;
     try {
@@ -188,7 +214,6 @@ export function StationScanBar({
         ? 'pr-36'
         : 'pr-24';
   const modeBtnShell = modeButtonCount >= 2 ? STATION_SCAN_BAR_MODE_BTN_COMPACT : STATION_SCAN_BAR_MODE_BTN;
-  const bottomRule = inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
 
   const traceClass =
     submitTraceClassName

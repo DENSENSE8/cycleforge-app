@@ -49,7 +49,7 @@ export function LabelTypeSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`ds-raw-button -my-1 -ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 ${labelType} text-text-default transition-colors hover:bg-surface-hover`}
+        className={`ds-raw-button -my-1 -ml-1 inline-flex items-center gap-1 rounded-none px-1 py-1 ${labelType} text-text-default transition-colors hover:bg-surface-hover`}
       >
         <span className="truncate">{selected?.name}</span>
         <ChevronDown

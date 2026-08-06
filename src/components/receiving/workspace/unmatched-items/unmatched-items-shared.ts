@@ -1,4 +1,5 @@
 import type { SerialMatchedOrder } from '@/components/receiving/workspace/SerialMatchResult';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export interface UnfoundLine {
   id: number;
@@ -87,6 +88,7 @@ export interface UnmatchedItemsSectionProps {
   headerRight?: React.ReactNode;
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
+  onViewAllUnits?: (line: ReceivingLineRow) => void;
   /**
    * Fired after an Ecwid/repair pairing flips the carton off the Unfound queue.
    * The host (which owns the selected `row`) uses it to update the open

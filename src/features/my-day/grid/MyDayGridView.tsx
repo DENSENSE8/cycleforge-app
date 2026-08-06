@@ -30,6 +30,12 @@ interface MyDayGridViewProps {
   onSelectTask: (task: MyDayTask) => void;
   /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly MyDayGridColumn[];
+  /**
+   * Portal target for the column-display (▦) trigger — when set, the gutter
+   * trigger renders into this element (the triage-band controls slot) instead
+   * of floating over the card corner. Matches `OrdersGridView`.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 function compareMyDayTasks(
@@ -83,6 +89,7 @@ export function MyDayGridView({
   selectedTaskId,
   onSelectTask,
   columns = MY_DAY_GRID_COLUMNS,
+  columnTriggerPortalTarget = null,
 }: MyDayGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +151,7 @@ export function MyDayGridView({
       // track on a surface that happens to use the same column key.
       tableId={MY_DAY_TABLE_ID}
       surface="sheet"
+      columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <MyDayGridColumnHeader
           columns={visible}

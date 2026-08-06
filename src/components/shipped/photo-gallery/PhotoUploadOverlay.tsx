@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Desktop photo-upload popover — {@link RightPaneOverlay} chrome matching
- * {@link ReceivingClaimModal} (center-aligned, resizable pane card).
+ * Desktop photo-upload popover — {@link RightPaneOverlay} chrome
+ * (center-aligned, resizable pane card; same overlay family as
+ * {@link ReceivingClaimModal}'s right slide-over).
  *
  * Drop zone + explicit "Upload from device" button. Callers own the upload
  * (`onFiles`); this shell only collects files via {@link usePhotoDropzone}.

@@ -16,6 +16,13 @@ type IconButtonTone = 'neutral' | 'accent';
  * `tokens/touch.ts` job, folded in here). The scale is density-aware for
  * free (h-* and w-* resolve through spacing.mjs).
  *
+ * **Micro row actions** (single-row: reprint one label, add one serial): use
+ * `size="md"` (`h-8 w-8`) + `rounded-none` (already default) on the far-right
+ * of a full-bleed hairline row. Prefer `tone="neutral"` with
+ * `hover:bg-surface-sunken` at the call site when a ghost wash is needed.
+ * Never put a primary blue text `Button` inside a repeating list row — that
+ * is Macro work for {@link FlushTerminalFooter}.
+ *
  * Never re-invent the box via className `h-*`/`w-*` — the control-size guard
  * ratchets those call sites (escape: `ds-allow-control-size` for genuinely
  * bespoke geometry).
@@ -76,7 +83,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       aria-label={ariaLabel}
       title={title}
       className={cn(
-        'transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+        // Square hit wash — never a circular hover plate.
+        'rounded-none transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
         // Keyboard focus ring from the SoT — IconButton had none (a11y gain);
         // :focus-visible so a mouse click never flashes it.
         focusRing('control', 'accent'),

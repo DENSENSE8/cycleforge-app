@@ -8,14 +8,17 @@
  * extracted from LineEditPanel so the panel stays a short composition surface.
  *
  * Listing / tracking Edit navigate to Unbox SectionTabsSlider tabs (parent
- * passes `onEdit*` + `*EditOpen`). PO# Edit opens Package Pairing → PO when
- * the carton has no real Zoho PO id (`onEditPo`).
+ * passes `onEdit*` + `*EditOpen`). PO# Edit always opens Package Pairing → PO
+ * (`onEditPo`); Details opens the Incoming connection panel (`onOrderDetails`).
  *
  * Serves Unbox and Triage — both use the two-row family face (lifecycle · PO$
  * on row 2). Pair the host with `reserveIdentityClearance="stacked"`.
+ *
+ * Displays `←|` + carton `↑↓` live on ScanStationUtilityRail, not here.
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
@@ -23,6 +26,7 @@ import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
+  getReceivingStatusDotTip,
 } from '@/lib/receiving/rail/status';
 import { useCartonPoTotal } from './hooks/useCartonPoTotal';
 import type { UnboxLineController } from './unbox-line-controller';
@@ -85,16 +89,23 @@ interface LineCartonContextSectionProps {
   onEditTracking?: () => void;
   /** Switch Unbox workspace to the Listings tab. */
   onEditListing?: () => void;
-  /** Open Package Pairing → PO tab (link / import a Zoho PO). */
+  /** Open Package Pairing → PO tab (link / change / import a Zoho PO). */
   onEditPo?: () => void;
+  /**
+   * Open the Incoming connection details panel (PO mirror / sync / link CRUD)
+   * on RightRailHost.
+   */
+  onOrderDetails?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
   trackingEditOpen?: boolean;
   /** Pulse listing chip while Listings tab is active. */
   listingEditOpen?: boolean;
   /** Pulse PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
-  /** Unbox: open Move photos in the station tool push. */
+  /** Unbox: open Photos → Move in Displays. */
   onOpenMovePhotosExternal?: () => void;
+  /** Unbox: open Photos → Send in Displays. */
+  onSendToTicketExternal?: () => void;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -116,17 +127,20 @@ export function LineCartonContextSection({
   onEditTracking,
   onEditListing,
   onEditPo,
+  onOrderDetails,
   trackingEditOpen = false,
   listingEditOpen = false,
   poEditOpen = false,
   photoStage,
   onOpenMovePhotosExternal,
+  onSendToTicketExternal,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
 
   // PO money total — carton grain by construction (a sum over the carton's
   // lines), derived via the SoT (`cartonPoTotal`), never summed in the card.
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
 
   return (
     <CartonContextCard
@@ -146,10 +160,12 @@ export function LineCartonContextSection({
       qty={null}
       // Same dot + label the operator just clicked in the sidebar rail — the
       // rail SoT owns the unmatched / Zoho-received special cases, so the band
-      // and the rail can never disagree about a carton's stage.
+      // and the rail can never disagree about a carton's stage. Tip adds the
+      // inventory-sync sentence when coarse status is Unboxed.
       lifecycle={{
         dotClass: getReceivingStatusDot(row),
         label: getReceivingStatusDotLabel(row),
+        tip: getReceivingStatusDotTip(row, inventoryProviderLabel),
       }}
       showStaffPhotoRow
       photoStage={photoStage}
@@ -165,6 +181,7 @@ export function LineCartonContextSection({
       poDisplay={c.poNumber}
       onEditPo={onEditPo}
       poEditOpen={poEditOpen}
+      onOrderDetails={onOrderDetails}
       linkedOrderNumber={linkedOrderNumber}
       lineId={row.id ?? null}
       zendeskTrimmed={c.zendeskTrimmed}
@@ -178,6 +195,7 @@ export function LineCartonContextSection({
       }}
       primaryTrackingTrimmed={c.primaryTrackingTrimmed}
       filledExtraTrackingsCount={c.filledExtraTrackingsCount}
+      carrierHint={row.carrier}
       isLocalPickup={isLocalPickupFulfillment(row)}
       onEditTracking={onEditTracking}
       trackingEditOpen={trackingEditOpen}
@@ -202,7 +220,9 @@ export function LineCartonContextSection({
       // Close the focused line → the right pane crossfades back to the browse
       // feed. Unbox + triage share the same window-event close mechanism.
       onExitToList={() => dispatchReceivingWorkspaceClose()}
-      onSendToTicket={() => c.setPhotoNoteOpen(true)}
+      onSendToTicket={
+        onSendToTicketExternal ?? (() => c.setPhotoNoteOpen(true))
+      }
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
     />
   );

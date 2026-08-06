@@ -61,6 +61,7 @@ export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
 /**
  * Region 1 — the selection band. Carries the three affordances the capsule
  * owned and the rail would otherwise lose: the count, select-all, and clear.
+ * Close (`→|`) is top-left — Unbox / DeskRailChromeRow twin.
  */
 export function RailSelectionBand({
   className,
@@ -78,11 +79,15 @@ export function RailSelectionBand({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-2 border-b border-border-soft px-4 py-2',
+        'flex items-center gap-2 border-b border-border-soft py-2 pr-4',
+        onClose ? 'pl-2' : 'pl-4',
         className,
       )}
     >
-      <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+      {onClose ? (
+        <PaneHeaderCloseButton onClick={onClose} title="Hide right panel" className="-ml-px -my-1 h-7 w-7" />
+      ) : null}
+      <p className="min-w-0 flex-1 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
         {total > 0 ? `${count} of ${total} selected` : `${count} selected`}
       </p>
       <div className="flex shrink-0 items-center gap-1">
@@ -106,7 +111,6 @@ export function RailSelectionBand({
         >
           Clear
         </Button>
-        {onClose ? <PaneHeaderCloseButton onClick={onClose} className="-my-1" /> : null}
       </div>
     </div>
   );

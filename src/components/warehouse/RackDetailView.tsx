@@ -98,7 +98,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
 
   if (!segments) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
+      <div className="rounded-none border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
         <p className="font-semibold">Unrecognized rack code.</p>
         <p className="mt-1 text-amber-700">
           The link <span className="font-mono">{code}</span> doesn't match the rack
@@ -173,7 +173,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
 
       {/* ─── Neighbor levels expander ──────────────────────────────── */}
       {otherLevels.length > 0 && mode === 'face' && (
-        <div className="rounded-2xl border border-border-soft bg-surface-card">
+        <div className="rounded-none border border-border-soft bg-surface-card">
           {/* ds-raw-button: full-width disclosure/accordion trigger (justify-between two-column body), not a styled action button */}
           <button
             type="button"
@@ -216,7 +216,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
 
       {/* ─── Empty hint when nothing on this level ─────────────────── */}
       {!loading && focusedPositions.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas/50 p-5 text-center">
+        <div className="rounded-none border border-dashed border-border-soft bg-surface-canvas/50 p-5 text-center">
           <Printer className="mx-auto h-5 w-5 text-text-faint" />
           <p className="mt-2 text-sm font-semibold text-text-muted">
             No positions registered on this level yet.
@@ -275,7 +275,7 @@ interface RackFaceProps {
 function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
   if (loading) {
     return (
-      <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border-soft bg-surface-card p-3">
+      <div className="flex gap-2 overflow-x-auto rounded-none border border-border-soft bg-surface-card p-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="h-24 w-24 shrink-0 animate-pulse rounded-2xl bg-surface-sunken" />
         ))}
@@ -284,7 +284,7 @@ function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-border-soft bg-surface-card p-3 shadow-sm">
+    <div className="rounded-none border border-border-soft bg-surface-card p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between px-1">
         <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
           Level {noPad(level)} · {positions.length} position{positions.length === 1 ? '' : 's'}
@@ -421,7 +421,7 @@ function RackList({
 }) {
   if (loading) {
     return (
-      <div className="rounded-2xl border border-border-soft bg-surface-card">
+      <div className="rounded-none border border-border-soft bg-surface-card">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-14 animate-pulse border-b border-border-hairline last:border-b-0" />
         ))}
@@ -430,7 +430,7 @@ function RackList({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card">
+    <div className="overflow-hidden rounded-none border border-border-soft bg-surface-card">
       {positions.map((row, i) => {
         const pos = (row.col_label || '').split('-')[1] ?? '';
         const hasIssue = row.is_stale || row.has_low_stock || row.is_over_capacity;

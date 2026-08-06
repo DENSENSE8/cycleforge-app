@@ -68,11 +68,11 @@ export function FolderButton({
         <p className="mt-0.5 text-role-micro font-semibold text-text-soft">
           {subFolderCount > 0 && (
             <>
-              {subFolderCount} {subFolderCount === 1 ? 'folder' : 'folders'}
+              {subFolderCount} folders
               {' · '}
             </>
           )}
-          {subFileCount} {subFileCount === 1 ? 'manual' : 'manuals'}
+          {subFileCount} manuals
         </p>
       </div>
       <HoverTooltip label="Rename or move folder" asChild>

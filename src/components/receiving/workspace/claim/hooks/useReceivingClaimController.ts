@@ -9,7 +9,6 @@ import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
-  claimWizardOrderForMode,
   claimWizardStartStep,
   claimWizardStepStates,
   type ArchiveState,
@@ -176,9 +175,8 @@ export function useReceivingClaimController({
   const photos = useClaimPhotos(open, receivingId);
   const template = useClaimTemplate({
     open,
-    // Keep the preview warm across every pre-file/pre-update step so Review
-    // can render it — Photos/Ticket/Review share this exact gate in both modes.
-    active: step === 'photos' || step === 'compose' || step === 'review',
+    // Keep the preview warm across Photos · Ticket so subject/body stay fresh.
+    active: step === 'photos' || step === 'compose',
     receivingId,
     lineId,
     claimType,
@@ -272,8 +270,8 @@ export function useReceivingClaimController({
   // (and its dot on the stepper) is skipped entirely for either wizard.
   const sellerStepApplicable = claimType !== 'return';
 
-  // ── Linear wizard navigation ─────────────────────────────────────────────
-  // Create: filed/seller require a filed ticket; review needs compose (or filed).
+  // ── Section navigation (scroll-spy) ──────────────────────────────────────
+  // Create: filed/seller require a filed ticket.
   // Link: photos+ only after commit; filed/seller after update posted; seller
   // skipped for 'return'.
   const isStepDisabled = (key: string): boolean => {
@@ -281,12 +279,10 @@ export function useReceivingClaimController({
     if (mode === 'create') {
       if (target === 'seller') return !filedTicket || !sellerStepApplicable;
       if (target === 'filed') return !filedTicket;
-      if (target === 'review') return !composeComplete && !filedTicket;
       return false;
     }
     if (target === 'find') return false;
     if (linkCommitStatus !== 'committed') return true;
-    if (target === 'review') return !composeComplete;
     if (target === 'filed') return linkUpdateStatus !== 'posted';
     if (target === 'seller') return linkUpdateStatus !== 'posted' || !sellerStepApplicable;
     return false;
@@ -295,22 +291,6 @@ export function useReceivingClaimController({
   const goToStep = (next: ClaimWizardStep) => {
     if (isStepDisabled(next)) return;
     setStep(next);
-  };
-
-  /** Footer "Back" — one step left in the mode order (no-op on the first). */
-  const goBack = () => {
-    const order = claimWizardOrderForMode(mode);
-    const idx = order.indexOf(step);
-    if (idx > 0) setStep(order[idx - 1]);
-  };
-
-  /** Footer "Next" — photos → compose → review (Submit lives on review). */
-  const goNext = () => {
-    if (step === 'photos') {
-      setStep('compose');
-    } else if (step === 'compose') {
-      if (composeComplete) setStep('review');
-    }
   };
 
   // ── Wizard navigation ────────────────────────────────────────────────────
@@ -652,8 +632,6 @@ export function useReceivingClaimController({
     handleStepClick,
     isStepDisabled,
     goToStep,
-    goBack,
-    goNext,
     continueToSeller,
     selectLinkTicket,
     handleBannerUnlink,

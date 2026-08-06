@@ -26,31 +26,44 @@ export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged' | 'shipped';
  *  - Column sorts (`title`…`tracking`): flat global order (see queue-row-compare). */
 export type OrdersQueueSort = QueueDisplaySort;
 
-/**
- * Instant used for day banding / within-day sort keys — matches
- * {@link useOrdersQueueRows}. `newest` prefers created; otherwise ship-by
- * (deadline) with created fallback.
- */
-export function queueRowBandDateSource(
-  record: Pick<ShippedOrder, 'deadline_at' | 'created_at'>,
-  sort: OrdersQueueSort,
-): string | null {
-  // Column sorts are flat (no day banding); if called, use ship-by like priority.
-  const raw =
-    sort === 'newest'
-      ? record.created_at || record.deadline_at
-      : record.deadline_at || record.created_at;
+/** Treat empty / whitespace / legacy `'1'` sentinel as missing. */
+function nonEmptyDateSource(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
   if (!raw || raw === '1') return null;
-  return String(raw);
+  return raw;
 }
 
 /**
- * Absolute date for the Date column cell — always ship-by first (deadline →
- * created). Independent of sort so the column stays a stable “when” fact;
- * Age owns relative urgency beside it.
+ * Instant used for day banding / within-day sort keys — matches
+ * {@link useOrdersQueueRows}. `newest` prefers created; otherwise ship-by
+ * (deadline → ship_by_date → created).
+ */
+export function queueRowBandDateSource(
+  record: Pick<ShippedOrder, 'deadline_at' | 'created_at' | 'ship_by_date'>,
+  sort: OrdersQueueSort,
+): string | null {
+  // Column sorts are flat (no day banding); if called, use ship-by like priority.
+  if (sort === 'newest') {
+    return (
+      nonEmptyDateSource(record.created_at) ||
+      nonEmptyDateSource(record.deadline_at) ||
+      nonEmptyDateSource(record.ship_by_date)
+    );
+  }
+  return (
+    nonEmptyDateSource(record.deadline_at) ||
+    nonEmptyDateSource(record.ship_by_date) ||
+    nonEmptyDateSource(record.created_at)
+  );
+}
+
+/**
+ * Absolute ship-by instant — deadline → ship_by_date → created. Used for
+ * Late-column tooltips / mobile date meta / sort band keys. Independent of
+ * display sort so the derived days-late face stays a stable urgency fact.
  */
 export function queueRowShipBySource(
-  record: Pick<ShippedOrder, 'deadline_at' | 'created_at'>,
+  record: Pick<ShippedOrder, 'deadline_at' | 'created_at' | 'ship_by_date'>,
 ): string | null {
   return queueRowBandDateSource(record, 'priority');
 }

@@ -130,3 +130,36 @@ test('procedure definition exposes the three flows', () => {
   assert.ok(flows);
   assert.deepEqual(Object.keys(flows!).sort(), [...UNBOX_FLOW_IDS].sort());
 });
+
+test('captureOrderOverride reorders allowed keys and drops unknowns', () => {
+  const keys = captureKeys({
+    flow: 'found',
+    modifiers: {
+      captureOrderOverride: ['serial', 'condition', 'bogus', 'arrival_check'],
+    },
+  });
+  assert.equal(keys[0], 'serial');
+  assert.equal(keys[1], 'condition');
+  assert.equal(keys[2], 'arrival_check');
+  assert.ok(!keys.includes('bogus'));
+  assert.deepEqual(
+    [...keys].sort(),
+    [...FOUND_CAPTURE].sort(),
+    'override cannot drop or invent steps — only reorder',
+  );
+});
+
+test('captureOrderOverride composes with local-pickup omit', () => {
+  const keys = captureKeys({
+    flow: 'found',
+    modifiers: {
+      isLocalPickup: true,
+      captureOrderOverride: ['serial', 'contents', 'shipping_label_photo', 'arrival_check'],
+    },
+  });
+  assert.deepEqual(
+    keys.slice(0, 3),
+    ['serial', 'contents', 'arrival_check'],
+  );
+  assert.ok(!keys.includes('shipping_label_photo'));
+});

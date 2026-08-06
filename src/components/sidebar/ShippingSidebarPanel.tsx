@@ -7,6 +7,11 @@ import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
 import { ShippingStaffScanHistoryRail } from '@/components/sidebar/shipping/ShippingStaffScanHistoryRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
+import {
+  EMPTY_STATION_HISTORY_RAIL_FACETS,
+  StationHistoryRailFilters,
+  type StationHistoryRailFacets,
+} from '@/components/sidebar/rail-shell/StationHistoryRailFilters';
 import { useIsMobile } from '@/hooks';
 
 interface Props {
@@ -31,6 +36,9 @@ export function ShippingSidebarPanel({
 }: Props) {
   const isMobile = useIsMobile();
   const [railFilter, setRailFilter] = useState('');
+  const [railFacets, setRailFacets] = useState<StationHistoryRailFacets>(
+    EMPTY_STATION_HISTORY_RAIL_FACETS,
+  );
 
   const scanBandProps = {
     userId: techId,
@@ -44,13 +52,20 @@ export function ShippingSidebarPanel({
       {!isMobile ? <ShippingScanBand {...scanBandProps} /> : null}
 
       <SidebarRailScrollport>
-        <ShippingStaffScanHistoryRail techId={techId} filterText={railFilter} />
+        <ShippingStaffScanHistoryRail
+          techId={techId}
+          filterText={railFilter}
+          facets={railFacets}
+        />
       </SidebarRailScrollport>
 
       <TechRailSearchBar
         value={railFilter}
         onChange={setRailFilter}
         placeholder="Filter history…"
+        trailingSuffix={
+          <StationHistoryRailFilters facets={railFacets} onChange={setRailFacets} />
+        }
       />
 
       {isMobile ? (

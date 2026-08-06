@@ -49,13 +49,22 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Random card soup** — decorative grids of nested cards for ordinary collections.
 - **Nested cards-as-rows** — e.g. `SectionCard` inside a list of `SectionCard`s.
 - **Second visual language** beside Kinetic Ledger tokens.
+- **Soft radius / horizontal pill bands on ops chrome** — a new `HorizontalButtonSlider`, a soft
+  `TabSwitch` pill band, or any `rounded-lg`/`xl`/`2xl`/`full` CTA / tab / select on a workbench or
+  station surface. Ops chrome is flush-square (`cornerClass('flush')`): compose `TabDisplay` for tab
+  bands and `DenseComposeFields` / `SearchableSelectField appearance="flush"` for compose fields.
+  `TabSwitch` / `HorizontalButtonSlider` are legacy — migrate, never add a new one.
 - **Hand-rolled `<table>` / tab band / row markup** for a tabular ops surface. **Do:** compose the
   Workbench spreadsheet SoT — `LedgerGrid` (+ `VirtualGroupedSections`, optional `gridSkin="airtable"`)
   from `@/design-system/components/grid`, with a **domain thin composer** for cells/columns (golden:
-  Pending via `OrdersGridView`). Page chrome still uses `DashboardScrollShell` +
+  Pending via `OrdersGridView`). **Airtable structural noise (1B):** BOTTOM row hairlines only —
+  no vertical column rules; data contrast outranks structure. Page chrome still uses `DashboardScrollShell` +
   `WORKBENCH_CHROME_COLUMN`/`WORKBENCH_BODY_COLUMN` + `WorkbenchChromeHeader` + `KpiTile` where needed;
-  day bands via `LedgerGrid` `showDayHeaders` / `DateGroupHeader`, multi-line folds via
-  `CollapsibleGroupRow` + `groupRowsBy` (not Maximize2 — that opens the detail pane). HTML
+  day bands via `LedgerGrid` `showDayHeaders` / `DateGroupHeader`. **Sheet list
+  bodies are flat leaves** — `groupRowsBy` may still order multi-line groups, but
+  in-grid PO·order summary headers are **not** the list display; parent rollups
+  belong on `LedgerDrillHost` / `LedgerDrillParentMap` (List|Drill). Maximize2
+  opens the detail pane, not a fold. HTML
   `DataTable`, boards, pickers, and rails stay sibling surfaces. *Extending a hand-rolled queue
   shell is growing a fork — migrate onto `LedgerGrid` instead.*
   **Grid state math** (column defs / sort / visibility / order) goes through the headless waist —
@@ -90,10 +99,10 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 
 - **Station (`floor`):** scan bar + single active-entity card; fact stacks and `divide-y` rows *inside* the card. No browse grids competing with scan focus.
 - **Workbench (`ops`):** primary = list **or** table **or** board **or** master–detail (data shape decides). Fact stacks for record bodies. Scroll region `flex-1 overflow-y-auto`; sticky chrome with `border-t`/`border-b` as needed.
-  - **Scoped search chrome:** always-open `TechRailSearchBar` `variant="chrome"` (`@/components/sidebar/tech/TechRailSearchBar`) — same primitive as MasterNav / station-rail footers (`variant="rail"`). Leading Search glyph **inside** the field + hover-reveal paste (chrome seats the field in a flush sunken plane — no rounded bubble; edge-to-edge with the triage row). The retired icon-first `ToolbarSearchToggle` is deleted.
+  - **Scoped search chrome:** always-open `TechRailSearchBar` `variant="chrome"` (`@/components/sidebar/tech/TechRailSearchBar`) — same primitive as MasterNav / station-rail footers (`variant="rail"`). Leading Search glyph **inside** the field + **hover-reveal paste** (leftmost trailing control). Field-density filters seat in `trailingSuffix` (after paste); context-panel rail footers auto-seat `RailFilterCollapseButton` in the age column. The retired icon-first `ToolbarSearchToggle` is deleted.
     - **Entry-path surfaces** may still mount a bare always-open `SearchField` / `SearchBar` when search **is** the job (not a list refinement):
       1. **`/ops/photos` (Media Library)** — always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket).
-      2. **`/search`** — the cross-entity results surface; the context-rail `SearchBar` in `SearchSidebarPanel` is the always-open entry field (synced to `?q=`). Typing here *is* the job. The global header search launcher stays mounted on this route (and carton detail) so find remains reachable from chrome — rail entry is additive, not a replacement.
+      2. **`/search`** — the cross-entity find surface; the centered `GlobalFindCombobox` stage in `SearchFindStage` is the always-open entry field (synced to `?q=`). Typing here *is* the job. Multi-hit results sit in a temporary list under the bar (no context rail). The global header search launcher stays mounted and defers focus to the stage when no `?sel=` is active.
   - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.
@@ -198,8 +207,6 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
     row's own left edge is the only address a state mark can have.
   - Meta indent via `metaIndentFor(track, selectChildPage)` — never hand-rolled `calc` or page-local `px-4`.
   - Wide track (`indentWide` / `dotTrackWide`) only for received/expected qty surfaces (Receiving).
-  - `CollapsibleGroupRow` nest children: no extra horizontal padding when `showChevron={false}`
-    (`queueGroupNestClass`); nest cue is border + wash only.
 - **On a `LedgerGrid` surface a fact belongs to its own COLUMN — never to a neighbour's cell**
   (ruled 2026-08-02). Concretely: **no status dot in the identity cell.** The dot belongs to the
   `status` track, leading its chip (`GridStatusCellValue`).
@@ -253,21 +260,37 @@ exactly why a chat template filled it (the support ticket thread shipped bubbles
   right action slot. Use `leading-none` on suffixes so they don't inflate row height. **Don't add a weight class** —
   `role-eyebrow` bakes 600 and the condensed cut.
 - Action buttons in a header bleed their hit-box with negative margin (`-my-0.5` / `-my-1.5`), they don't grow the row.
-- Chip/badge = 3 layers: `rounded {bg-x-50} {text-x-700} ring-1 ring-inset {ring-x-200} inset-chip
-  text-role-micro uppercase tracking-widest`. Pills (`rounded-full`) drop vertical padding to keep row height.
+- Chip/badge = 3 layers: `rounded-none {bg-x-50} {text-x-700} ring-1 ring-inset {ring-x-200} inset-chip
+  text-role-micro uppercase tracking-widest`. Flush-square is the ops default (`cornerClass('flush')`);
+  `rounded-full` stays only for status dots · avatars · removable pills (which drop vertical padding to
+  keep row height). Legacy soft-`rounded` chips flatten when the `chip` role flushes (Wave 0c).
+- **LedgerGrid / DataTable column headers are not eyebrows.** They use `tableHeader`
+  (`text-role-micro font-normal text-text-soft`) — **Sentence case** as authored
+  (`label` / `gridLabel`); never CSS `uppercase`. Eyebrows · chips · `sectionLabel` /
+  `fieldLabel` keep uppercase-tracked micro chrome. Golden consumer: Unbox History.
+  Guard: `table-header-casing.guard.test.ts`.
 - **A grid STATUS cell is that chip with a dot leading it, inside** — `GridStatusCellValue`
   (`@/components/ui/grid-cells`), never a page-local chip. Tone comes from the surface's lifecycle
   registry (`workflowStage().badge`, `pickupOrderStatusChipClass`, …); the third layer derives from
   the resolved ink (`ring-current/20`), so no registry needs a new field.
+  - **Lifecycle badges are pastel only** — `bg-*-50 text-*-700` (or `bg-surface-*` neutrals). Never
+    solid white-ink fills (`bg-*-600 text-white`) in a status column, and never encode status as a
+    full-cell Sheets wash (that channel is staff highlight prefs only). Guard:
+    `workflow-stages.badge.guard.test.ts`. Golden consumer: Unbox History status track.
   - **Why a chip and not bare text:** a state is a categorical label, and bare text in a ruled band
     reads as one more data value. Four surfaces had each grown their own local chip for this exact
     job before the primitive existed.
   - **Why the dot is inside:** a dot beside a chip is two objects in one cell — the shape a column
     exists to prevent. Inside, they read as one token and travel together under a drag-resize.
   - **The dot is not redundant with the tone.** It carries the finer vocabulary — receiving's
-    `getStatusDotBg` goes emerald the moment a line is quantity-complete, whichever stage the chip
-    names. Two facts, one token, and the dot is the one that moves first.
+    `getStatusDotBg` goes emerald when a non-terminal line is quantity-complete; terminal
+    dispositions (FAILED / RTV / SCRAP) keep their failure tones. Two facts, one token, and the
+    non-terminal dot is the one that moves first.
 - **Typed identifiers** use the semantic `CopyChip` family — never interchange chip variants (see `DESIGN_SYSTEM.md`).
+  Platform-aware order / PO chips pass the catalog-resolved `platformLabel` so
+  the hover value reads `Platform full-id`; the visible face remains last-8 and
+  clipboard payload remains the bare id. Formatter + paint live only in
+  `src/lib/source-platform.ts`; unknown stays neutral.
 
 ## Type: three cuts, one face each, capped at 600
 
@@ -301,21 +324,24 @@ load-bearing (condensed keeps 10–11px chrome inside a grid column; mono keeps 
 - **Numerals align by default** — `role-display`/`-title`/`-data` bind `tabular-nums` intrinsically; a
   surface that genuinely wants proportional figures opts out with `proportional-nums`. Mono never
   ligates (`fi`/`fl` in a serial would render a string the operator can't retype).
-- **LedgerGrid column justification is a hard SoT, and the test is MAGNITUDE vs LABEL** — not
-  digit-ness. A magnitude is compared *down* the column (qty · price · SKU · serial · ticket ·
-  **date**) and **end**-aligns so the ones place stacks; a label is *read* one row at a time
-  (title · condition · status · platform · **tracking** · **order #**) and **start**-aligns,
-  because reading starts at the left edge. Resolve via `resolveGridColumnAlign`
-  (`grid-header-align.ts`); never hand-type `justify-end` on a cell.
-  **Rulings:** an identifier that is the row's own **transaction identity** (PO # · sales order #
-  · `order`) aligns **start** while a **catalog item number / SKU** stays end as a reference
-  attribute — same `type: 'id'`, different role, so it is an explicit `align: 'start'` on that
-  surface's column model and never a change to `ALIGN_BY_TYPE.id`. **`location` (bin) and
-  `tracking` (carrier #) are `start` in the type map** (2026-08-02 bench: end-aligned last-8s
-  floated right and broke the scan line; 2026-08-04 split glyphs — folded map vs MapPin).
-  **`date` is `end` in the type map** (2026-08-03 — civil days / durations compare
-  down the column with qty; reverses the date half of the 2026-08-02 pass).
+  **Sheets body caveat:** caption-dense `ledgerCell` (`text-role-caption`) does **not** bind
+  tabular intrinsically — magnitude scan columns (qty · price · date · id) must add `tabular-nums`
+  (or use `text-role-data`) on the value face. Dense CopyChip faces bind `tabular-nums` for the
+  same reason.
+- **LedgerGrid column justification is a hard SoT, and the test is MAGNITUDE vs LABEL/ID** — not
+  digit-ness. A magnitude is compared *down* the column (qty · price · **date**) and **end**-aligns
+  so the ones place stacks; a label or ID is *read* one row at a time (title · condition · status ·
+  platform · **tracking** · **order #** · SKU · serial) and **start**-aligns. Resolve via
+  `resolveGridColumnAlign` (`grid-header-align.ts`); never hand-type `justify-end` on a cell.
+  **Headers always match** the data they name. Helpers emit `justify-*` **and** `text-left` /
+  `text-right` so full-width faces cannot zig-zag. Empty faces are `GridCellDash` flex children
+  of that same aligned cell.
+  **`ALIGN_BY_TYPE.id` is `start` (2026-08-04)** — all ids left with tracking/order. Magnitudes
+  only: `number` · `price` · `date`. **`location` / `tracking` stay start**; **`date` stays end**.
   Full table: [source-of-truth.md](source-of-truth.md) → Grid column justification.
+  **Unbox History / Receiving:** deterministic fact tracks are fixed (`resizable: false` +
+  content-hard `minmax`); **Product** alone is `minmax(16rem, 1fr)` + resizable — Fields
+  still toggles visibility.
 - Guard: `typography-tokens.guard.test.ts` (raw px, retired tokens, the weight cap, the family
   bindings). Genuine one-off: same-line `ds-allow-weight`. Codemod: `scripts/codemods/cap-font-weight.mjs`.
 
@@ -422,7 +448,9 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   actions:** native SVG stroke only (`TOP_CHROME_ICON_GLYPH` in
   `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
-  Quick Access **pins** are `HeaderPinsSwitcher` (hairline after Recents) — never a pin list in the avatar menu.
+  Quick Access **pins** are `HeaderPinsSwitcher`, directly beside the selected page
+  with only the parent header cluster gap — no hairline or padded wrapper, and
+  never a pin list in the avatar menu.
   **The spine body is a flat map for domains; Scan Stations alone is a Vercel list-replace
   drill (2026-08-03).** Root shows a Scan Stations enter row (`ChevronRight`) plus flat domain
   pages; entering replaces the map with Back + Receiving · Testing · Packing · Scan out.

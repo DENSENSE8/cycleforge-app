@@ -77,6 +77,10 @@ header height = triage height (40px); select/Order bottoms aligned.
 
 ## Related (next)
 
+Pin Unbox History’s five-row Sheets stack across the remaining Workbench cohort
+(Shipping · Triage · Labels · Review · Support · …):
+[`sheets-flush-workbench-cohort-SWEEP-PROMPT.md`](./sheets-flush-workbench-cohort-SWEEP-PROMPT.md).
+
 Trailing `+` column track + Column display in Unbox triage (replaces corner
 gutter trigger):
 [`ledgergrid-add-column-track-HANDOFF.md`](./ledgergrid-add-column-track-HANDOFF.md).

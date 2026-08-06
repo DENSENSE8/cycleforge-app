@@ -90,7 +90,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
       aria-label="Getting started checklist"
     >
       <div
-        className={`rounded-xl border border-border-hairline bg-surface-card ${
+        className={`rounded-none border border-border-hairline bg-surface-card ${
           variant === 'pane' ? 'px-4 py-3' : isCompact ? 'px-3 py-3' : 'px-5 py-4'
         }`}
       >

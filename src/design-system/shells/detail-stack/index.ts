@@ -5,6 +5,8 @@ export {
   DETAIL_STACK_ASIDE_SURFACE,
   DETAIL_STACK_PUSH_COLUMN_CLASS,
   DETAIL_STACK_PUSH_STRIP_CLASS,
+  DISPLAYS_FLUSH_HOST,
+  DISPLAYS_BODY_INSET,
   assistantDockAsideClassName,
   assistantDockAsideStyle,
   detailStackAsideClassName,
@@ -17,3 +19,10 @@ export {
   detailStackDismissLayerClassName,
   detailStackDismissLayerElevatedClassName,
 } from './layout';
+export {
+  DETAIL_INSPECTOR_COLLAPSE_EVENT,
+  getDetailInspectorCollapsed,
+  setDetailInspectorCollapsed,
+  toggleDetailInspectorCollapsed,
+  type DetailInspectorCollapseDetail,
+} from './collapse-control';

@@ -12,9 +12,12 @@
  * `FBA_BOARD_TOGGLE_ALL`, exactly like the toolbar it replaces.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchChromeHeader,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { Button } from '@/design-system/primitives';
@@ -80,23 +83,13 @@ interface FbaWorkspaceHeaderProps {
   className?: string;
 }
 
+/** Band 1 — lifecycle stage tabs only. Find / week / select live on {@link FbaTriageBand}. */
 export function FbaWorkspaceHeader({
   tab,
   onSelectTab,
-  search,
-  onSearchChange,
-  weekRange,
-  weekOffset = 0,
-  onPrevWeek,
-  onNextWeek,
-  visibleCount,
   className,
-}: FbaWorkspaceHeaderProps) {
+}: Pick<FbaWorkspaceHeaderProps, 'tab' | 'onSelectTab' | 'className'>) {
   const stageCounts = useFbaStageTabCounts();
-  const selection = useBoardSelectionCount();
-  const isBoard = tab === 'plan' || tab === 'combine';
-  const isReady = tab === 'ready';
-  const allVisibleSelected = selection.total > 0 && selection.selected === selection.total;
 
   const tabs = useMemo(
     () =>
@@ -114,6 +107,38 @@ export function FbaWorkspaceHeader({
       })),
     [stageCounts.planned, stageCounts.packed],
   );
+
+  return (
+    <WorkbenchChromeHeader
+      density="band"
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={(id) => onSelectTab(id as FbaMode)}
+      solidTone="accent"
+      className={className}
+    />
+  );
+}
+
+/** Band 3 — find flush left; week pill + select-all right (board modes). */
+export function FbaTriageBand({
+  tab,
+  search,
+  onSearchChange,
+  weekRange,
+  weekOffset = 0,
+  onPrevWeek,
+  onNextWeek,
+  visibleCount,
+  controlsSlotRef,
+  className,
+}: Omit<FbaWorkspaceHeaderProps, 'onSelectTab'> & {
+  controlsSlotRef?: Ref<HTMLDivElement>;
+}) {
+  const selection = useBoardSelectionCount();
+  const isBoard = tab === 'plan' || tab === 'combine';
+  const isReady = tab === 'ready';
+  const allVisibleSelected = selection.total > 0 && selection.selected === selection.total;
 
   const right: ReactNode = isBoard ? (
     <>
@@ -153,13 +178,9 @@ export function FbaWorkspaceHeader({
       : 'FNSKU, ASIN, SKU, product…';
 
   return (
-    <WorkbenchChromeHeader
-      density="band"
-      tabs={tabs}
-      activeTab={tab}
-      onTabChange={(id) => onSelectTab(id as FbaMode)}
-      solidTone="accent"
+    <WorkbenchTriageBand
       className={className}
+      controlsSlotRef={controlsSlotRef}
       search={
         <TechRailSearchBar
           variant="chrome"

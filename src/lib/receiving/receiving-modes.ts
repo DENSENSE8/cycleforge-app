@@ -70,11 +70,15 @@ export function resolveReceivingTableMode(raw: string | null | undefined): Recei
  * resolves to the `unbox_viewed` mode, whose `apiView` is `viewed` and whose
  * feed is `receiving_line_views`. `viewed` stays the server-side name; `Recent`
  * is what the operator reads (`utils/unbox-workspace-state.ts`).
+ *
+ * `urgent` reuses the Queue descriptor + `?priority_only=1` (owned by
+ * `normalizeUnboxWorkspaceTabParams`). `all` mounts `TechAllTriageTable` and
+ * does not use this table — fall through to queue so accidental callers stay typed.
  */
 export function resolveUnboxReceivingTableMode(
   tab: UnboxWorkspaceTab,
 ): ReceivingTableMode {
-  if (tab === 'queue') return 'unbox_queue';
+  if (tab === 'queue' || tab === 'urgent' || tab === 'all') return 'unbox_queue';
   if (tab === 'recent') return 'unbox_viewed';
   return 'history';
 }
@@ -89,24 +93,35 @@ export interface ReceivingSortOption {
 }
 
 /**
- * History sort axes — each maps to a lifecycle timestamp for day-banding,
- * within-day order, and the server ORDER BY:
- *   • unboxed_newest — first Unbox-open (`unbox_opened_at`), then unbox-complete
- *     (`unboxed_at`). Matches the Unboxed sidebar age/sort axis.
- *   • scanned_newest — first tracking scan / door scan.
+ * History / Docked accepted `?sort=` wire ids. Includes `scanned_newest` for
+ * Incoming Docked · Triage (door-scan order) — not shown in Unbox History's
+ * Sort-by menu (triage / arrival language).
+ */
+export const HISTORY_SORT_WIRE_IDS = [
+  'unboxed_newest',
+  'scanned_newest',
+] as const;
+
+export type HistorySortWireId = (typeof HISTORY_SORT_WIRE_IDS)[number];
+
+/**
+ * Unbox History filter "Sort by" options — Unbox-touched axis only.
+ * Door-scan / triage ordering stays on Incoming Docked · Triage
+ * (`scanned_newest` in {@link HISTORY_SORT_WIRE_IDS}), not this menu.
  */
 export const HISTORY_SORT_OPTIONS = [
   { id: 'unboxed_newest', label: 'Unboxed' },
-  { id: 'scanned_newest', label: 'Scanned' },
 ] as const satisfies readonly ReceivingSortOption[];
 
 /** Implicit default — omitted from the URL when active. */
-export const HISTORY_DEFAULT_SORT = 'unboxed_newest';
+export const HISTORY_DEFAULT_SORT: HistorySortWireId = 'unboxed_newest';
 
-/** Coerce an arbitrary `?sort=` to a valid History sort (default on miss). */
-export function normalizeHistorySort(raw: string | null | undefined): string {
+/** Coerce an arbitrary `?sort=` to a valid History/Docked sort (default on miss). */
+export function normalizeHistorySort(raw: string | null | undefined): HistorySortWireId {
   const v = String(raw || '').trim().toLowerCase();
-  return HISTORY_SORT_OPTIONS.some((o) => o.id === v) ? v : HISTORY_DEFAULT_SORT;
+  return (HISTORY_SORT_WIRE_IDS as readonly string[]).includes(v)
+    ? (v as HistorySortWireId)
+    : HISTORY_DEFAULT_SORT;
 }
 
 /**
@@ -132,7 +147,7 @@ export interface ReceivingModeContext {
   historySearch: string;
   historySearchField: ReceivingHistorySearchField;
   historySearchScope: ReceivingHistorySearchScope;
-  /** History sort axis (`?sort=`); see HISTORY_SORT_OPTIONS. */
+  /** History sort axis (`?sort=`); see HISTORY_SORT_WIRE_IDS / HISTORY_SORT_OPTIONS. */
   historySort: string;
   // Incoming facets
   incomingSearch: string;
@@ -176,6 +191,11 @@ export interface ReceivingModeContext {
    * Unbox Queue priority lane (`?ulane=`). Null = all lanes.
    */
   queueLane: 'PO_STOCKOUT' | 'PO_STANDARD' | 'RETURN' | 'HOLD' | null;
+  /**
+   * Unbox Urgent (`?priority_only=1`) — explicit priority flag / tier on the
+   * scanned queue. Owned by `normalizeUnboxWorkspaceTabParams` when tab=urgent.
+   */
+  priorityOnly: boolean;
   /**
    * `?tracking_in=` — canonical tracking keys from a bulk paste. Empty = absent.
    *
@@ -284,20 +304,22 @@ const unboxQueueMode: ReceivingModeDescriptor = {
     p.set('view', 'scanned');
     p.set('sort', 'priority');
     if (ctx.listSearch) p.set('search', ctx.listSearch);
+    applyStaffParam(p, ctx);
     if (ctx.queueStage) p.set('ustage', ctx.queueStage);
     if (ctx.queueLane) p.set('ulane', ctx.queueLane);
-    applyStaffParam(p, ctx);
+    if (ctx.priorityOnly) p.set('priority_only', '1');
+    applyTrackingInParam(p, ctx);
     return p;
   },
   queryKey(ctx) {
     return [
       QUERY_ROOT,
-      'scanned',
       'unbox_queue',
       ctx.listSearch,
       ctx.staffFilterId ?? 'all',
       ctx.queueStage ?? 'all',
       ctx.queueLane ?? 'all',
+      ctx.priorityOnly ? 'priority' : 'all',
     ] as const;
   },
   skipWeekFilter() {
@@ -306,7 +328,9 @@ const unboxQueueMode: ReceivingModeDescriptor = {
   emptyMessage(ctx) {
     return ctx.listSearch
       ? 'No queue cartons match — try different text.'
-      : 'No cartons in the door queue. Triage matched POs land here.';
+      : ctx.priorityOnly
+        ? 'No urgent cartons in the door queue.'
+        : 'No cartons in the door queue. Triage matched POs land here.';
   },
 };
 
@@ -350,8 +374,8 @@ const unboxViewedMode: ReceivingModeDescriptor = {
 
 const historyMode: ReceivingModeDescriptor = {
   id: 'history',
-  // 'activity' = 'all' minus untouched-incoming (EXPECTED, 0 received). History
-  // is the log of what was actually scanned/unpacked; under 'all' the incoming
+  // 'activity' = Unbox-touched / unboxed work (not door-scan-only). History is
+  // the log of what was opened or received on Unbox; under 'all' the incoming
   // POs leak in. See receiving-views.ts.
   apiView: 'activity',
   groupAxis: 'activity',

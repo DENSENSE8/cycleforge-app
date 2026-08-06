@@ -5,18 +5,20 @@
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
-  WORKBENCH_TABLE_VIEWPORT_NO_KPI,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { cn } from '@/utils/_cn';
 import { packedOrdersQuery, dashboardShippedQuery } from '@/lib/queries/dashboard-queries';
 import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
 import { packReviewRowToShippedOrder, type ReviewTableOrder } from '@/lib/packing/review-table-mappers';
@@ -51,6 +53,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
   const week = useMemo(() => getWeekRangeForOffset(0), []);
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const packedQuery = useQuery({
     ...packedOrdersQuery({ searchQuery, staffId }),
@@ -147,12 +150,18 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     [pathname, router, searchParams],
   );
 
-  const clearSearch = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('search');
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [pathname, router, searchParams]);
+  const setSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const trimmed = next.trim();
+      if (trimmed) params.set('search', trimmed);
+      else params.delete('search');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   const emptyCopy =
     tab === 'packed'
@@ -166,18 +175,31 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
       <DashboardScrollShell
         className="h-full"
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <WorkbenchChromeHeader
               density="band"
               tabs={PACKING_TABS}
               activeTab={tab}
               onTabChange={setTab}
-              right={<StaffFilterButton iconOnly />}
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
+            />
+            <WorkbenchTriageBand
+              search={
+                <TechRailSearchBar
+                  variant="chrome"
+                  value={searchQuery}
+                  onChange={setSearch}
+                  placeholder="Filter order #, SKU, tracking…"
+                  className="w-40 shrink-0 lg:w-56"
+                />
+              }
+              right={<StaffFilterButton iconOnly align="end" />}
+              controlsSlotRef={setControlsEl}
             />
           </div>
         }
       >
-        <div className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} pb-3`}>
+        <div className={WORKBENCH_SHEET_HOST}>
           <OrdersGridView
             ariaLabel="Orders awaiting packing review"
             records={records as ShippedOrder[]}
@@ -191,6 +213,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
             queueMode={tab === 'packed' ? 'staged' : 'fulfillment'}
             sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+            columnTriggerPortalTarget={controlsEl}
             data-testid="review-packing-grid-body"
             onOpenRecord={(record) => onOpenRow(record as ReviewTableOrder)}
             onCloseRecord={() => onCloseRow()}

@@ -9,7 +9,7 @@
  * replaces the remembering with a declaration.
  *
  * Vocabularies compose their existing SoT (`resolveTriageView`, `parseRepairTab`,
- * `isRepairColumnSort`, `HISTORY_SORT_OPTIONS`) via {@link paramRoundTrip} —
+ * `isRepairColumnSort`, `HISTORY_SORT_WIRE_IDS`) via {@link paramRoundTrip} —
  * never a second copy of the value list.
  *
  * Contract + rationale: `@/lib/routing/route-params`.
@@ -24,14 +24,14 @@ import {
   UNBOX_SURFACE_ROUTE,
 } from '@/lib/receiving/surface-path';
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
-import { HISTORY_SORT_OPTIONS } from '@/lib/receiving/receiving-modes';
+import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
 import { parseInboundDeskSort } from '@/lib/receiving/inbound-lane';
 import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 // Dependency-free vocabulary module (no React, no imports) — safe at this altitude.
-import { UNBOX_SIDE_TAB_ORDER } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
+import { canonicalizeUnboxSideTab } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
 import {
   defineRouteParams,
   paramDateKey,
@@ -70,29 +70,20 @@ const BROWSE_SURFACE_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane',
 /**
  * Server ORDER BY for the two feeds that share the History vocabulary — the
  * `/receiving/history` table and the Unbox workbench's History tab, which mount
- * the same header chrome (`normalizeHistorySort`). Round-tripped against
- * `HISTORY_SORT_OPTIONS` so the list stays in one place.
+ * the same header chrome (`normalizeHistorySort`). Also accepts Incoming
+ * Docked · Triage (`scanned_newest`). Round-tripped against
+ * `HISTORY_SORT_WIRE_IDS` so wire acceptance stays in one place.
  */
 const historySortParam = () =>
   paramRoundTrip((raw) =>
-    HISTORY_SORT_OPTIONS.some((option) => option.id === raw) ? raw : null,
+    (HISTORY_SORT_WIRE_IDS as readonly string[]).includes(raw) ? raw : null,
   );
 
 /**
- * `?display=` — round-tripped against `UNBOX_SIDE_TAB_ORDER`, never re-typed.
- *
- * This was a hand-copied `paramEnum([...])` until 2026-08-02, and it drifted the
- * first time the vocabulary grew: `pairing` was added to the side-tab SoT when
- * Package Pairing became a display, but not here — so surface hygiene stripped
- * `?display=pairing` on the very next pass. Every layer above was correct (the
- * chip fired, `setDisplay` built the right URL), and the column simply never
- * opened, from the `# ----` chip, the strip cell, or a shared link alike.
- *
- * That is the exact failure `paramRoundTrip` exists to prevent — a duplicated
- * list is a second SoT.
+ * `?display=` — round-tripped via {@link canonicalizeUnboxSideTab} (includes
+ * legacy `pairing` / `po-note` → `linkage`). Never a hand-copied enum.
  */
-const unboxDisplayParam = () =>
-  paramRoundTrip((raw) => UNBOX_SIDE_TAB_ORDER.find((tab) => tab === raw) ?? null);
+const unboxDisplayParam = () => paramRoundTrip((raw) => canonicalizeUnboxSideTab(raw));
 
 /** `/unbox` — the Unbox workspace. */
 export const UNBOX_ROUTE_PARAMS = defineRouteParams({
@@ -106,18 +97,29 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * tolerated rather than stripped; the parser maps it back to History.
      */
     unboxview: paramEnum(['recent', 'queue', 'viewed'] as const),
-    /** Inline support-ticket editor toggle — line-scoped, never rides a mode switch. */
+    /**
+     * Compat — rewritten to `display=ticket` by useUnboxDisplayView. Kept so
+     * surface hygiene does not strip mid-redirect.
+     */
     ticketView: paramFlag,
-    /** Unbox Claim push column — mutually exclusive with ticketView. */
+    /** Compat — rewritten to `display=ticket&ticketAction=claim`. */
     claimView: paramFlag,
-    /** Claim wizard tab when claimView is on — omit / create = New ticket; link = Link existing. */
+    /** Claim wizard mode when Ticket → Claim — omit / create = New; link = Link. */
     claimMode: paramEnum(['create', 'link'] as const),
     /**
      * Unbox Displays push column — which side display is open. Absence IS
-     * closed (no separate flag). Mutually exclusive with ticketView / claimView.
-     * NOT `unboxview`, which is the queue/viewed BROWSE tab on this same route.
+     * closed (no separate flag). Ticket nests Chat · Claim; Photos tools nest
+     * under Photos. NOT `unboxview` (queue/viewed BROWSE tab on this route).
      */
     display: unboxDisplayParam(),
+    /** Nested Photos topic action when `display=photos`. */
+    photoAction: paramEnum(['browse', 'move', 'send'] as const),
+    /** Nested Linkage topic action when `display=linkage`. */
+    linkageAction: paramEnum(['link', 'note'] as const),
+    /** Nested Ticket topic action when `display=ticket`. */
+    ticketAction: paramEnum(['chat', 'claim'] as const),
+    /** Nested Units topic action when `display=units`. */
+    unitsAction: paramEnum(['units', 'prebox'] as const),
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */
@@ -131,6 +133,12 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     /** Queue priority-lane facet — triage lane values. Omitted = all lanes. */
     ulane: paramEnumUpper(['PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD'] as const),
     /**
+     * Unbox Urgent tab (`?unboxview=urgent`) — narrows the door queue to
+     * explicit priority cartons. Written by `normalizeUnboxViewParams`;
+     * cleared when leaving Urgent. Same key Testing Urgent uses on its feeds.
+     */
+    priority_only: paramFlag,
+    /**
      * KPI-tile row filter (`UnboxChromeKpiCluster` ↔ `ReceivingLinesTable`).
      * Values match filterable metric ids in `unbox-metrics.ts` — informational
      * tiles (`queue-depth`, `oldest-wait`) never write this param.
@@ -143,6 +151,10 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
       'viewed-today',
       'unfinished',
     ] as const),
+    /** Band 2 KPI canvas time window (`UnboxKpiCanvas`). Default 7d when omitted. */
+    urange: paramEnum(['24h', '7d', '30d', '90d'] as const),
+    /** Band 2 KPI canvas viz mode — tiles · bars · pie · line. Default pie. */
+    uviz: paramEnum(['tiles', 'bars', 'pie', 'line'] as const),
     /**
      * TradingView-like compare layout — `single` (default, omitted) · `split`
      * · `quad`. Pane recipes ride `c0`…`c3`.

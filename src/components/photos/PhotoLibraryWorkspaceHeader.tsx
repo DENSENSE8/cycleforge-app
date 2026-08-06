@@ -35,9 +35,8 @@
  * a click-to-expand puts a gesture in front of the surface's main job.
  *
  * The rule is principle-based ("is search the entry path or a refinement?").
- * The other known entry-path case is `/search` (context-rail `SearchBar` in
- * `SearchSidebarPanel`; global header launcher hidden). This file's override
- * stays scoped to Media Library chrome.
+ * The other known entry-path case is `/search` (centered `GlobalFindCombobox`
+ * stage). This file's override stays scoped to Media Library chrome.
  */
 
 import { useEffect, useMemo, useState } from 'react';

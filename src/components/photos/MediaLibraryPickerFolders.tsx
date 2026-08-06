@@ -175,7 +175,7 @@ export function MediaLibraryPickerFolders({
 }
 
 function PickerFolderTile({ tile, onOpen }: { tile: LibraryFolderTile; onOpen: () => void }) {
-  const ariaLabel = `${tile.label} · ${tile.count} photo${tile.count === 1 ? '' : 's'}`;
+  const ariaLabel = `${tile.label} · Photos ${tile.count}`;
   const previewAsPhoto: LibraryPhoto | undefined =
     tile.previewPhotoId != null
       ? {

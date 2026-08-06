@@ -1,41 +1,44 @@
 'use client';
 
 /**
- * TriagePanel — the standalone right-pane editor for the **Receiving (triage)**
- * mode: the fast "identify the carton before unbox" pass.
+ * TriagePanel — the standalone right-pane editor for the **Receiving (Arrival /
+ * triage)** mode: the fast "identify the carton before unbox" pass.
  *
- * Station Workbench anatomy (same as Unbox / Testing):
- *   StationContextBar (two-row identity + corner toolbar) →
- *   mid-canvas StationRightEdgeAction (Open in Unbox) →
- *   SectionTabsSlider (Overview / Staging / …) → Save-for-unbox dock.
+ * Station column anatomy, same grammar as Unbox ({@link LineEditPanel}):
+ *   - CENTRE is the carton's WORK — identity ({@link StationContextBar}
+ *     `placement="flow"`) → the PO / unfound **lines** (`POUnboxingSection` →
+ *     `LinePoItemsSection`, which routes matched vs unmatched). Identity abuts
+ *     lines with zero air (`reserveIdentityClearance={false}`, `bodyGap="none"`).
+ *   - The bottom **dock** floats the internal item-note composer
+ *     (`WorkspaceNotesCard` → `receiving_line.notes`) + the Save-for-unbox CTA.
+ *     The note is not printed on Arrival; it carries to Unbox and displays there
+ *     as the item's internal note.
+ *   - The reference tools — Classify · Staging · Pairing/Linkage — are the
+ *     right-edge **Displays** push ({@link ReceivingDisplaysPushStack} +
+ *     {@link buildTriageDisplayTabs}), never a centre `SectionTabsSlider` strip.
+ *   - {@link ScanStationUtilityRail} (slim white trailing chrome) carries the
+ *     **carton cursor** (`↑` next / `↓` prev) and, when Displays is closed, the
+ *     **`←|` expand** toggle. Not carton identity — a separate scan-station rail.
  *
- * Classify pills in the bookmark open the matching Classify accordion row
- * (via `onClassifyPillOpen`) — they do not expand a horizontal strip in the header.
- * All state lives in the shared `useUnboxLineController` so triage and unbox
- * stay in lock-step on carton data without sharing a JSX shell.
+ * The identity classify pills open the Classify display; the `# ----` PO chip
+ * opens the Linkage display and hands the PO avenue over as DATA (`setPairingFocus`
+ * → the hub's `focusTab`), read on mount — never a timed event (mirrors Unbox).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { PackageOpen } from '@/components/Icons';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
-import { PairingTogglePill, StationPanelRoot, StationWorkbench } from '@/components/station/workbench';
 import {
-  StationContextBar,
-  StationRightEdgeAction,
-  stationRightEdgeActionHostClass,
-} from '@/components/station/entity-context';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
-import {
-  HEADER_ICON_BTN_CLASS,
-  TOP_CHROME_ICON_GLYPH,
-} from '@/components/layout/header-shell';
-import { openInUnboxHref } from '@/lib/receiving/surface-path';
-import { cn } from '@/utils/_cn';
+  StationPanelRoot,
+  StationWorkbench,
+  StationScanPaneHost,
+  ScanStationCartonCursor,
+  STATION_WORKBENCH_COLUMN,
+} from '@/components/station/workbench';
+import { StationContextBar } from '@/components/station/entity-context';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -43,33 +46,35 @@ import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedb
 import { ReceivingPhotoPeek } from '../workspace/line-edit/ReceivingPhotoPeek';
 import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
+import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
+import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
+import { ReceivingDisplaysPushStack } from '../workspace/ReceivingDisplaysPushStack';
+import { UnboxDisplaysEdgeToggle } from '../workspace/UnboxDisplaysEdgeToggle';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { markTriageCompleted, hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
+import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { useTriageStaging } from './useTriageStaging';
 import { WorkflowRecommendationsStrip } from '../WorkflowRecommendationsStrip';
-import {
-  deriveTriageFocusFacts,
-  resolveTriageFocus,
-  triageFocusToTab,
-} from '@/lib/receiving/triage-focus';
-import {
-  buildTriageTabs,
-  TriageSectionTabs,
-  type TriageView,
-} from './build-triage-tabs';
-import { hasRealZohoPoId } from '@/lib/receiving/intake-items-routing';
-import { dispatchReceivingOpenPairingPo } from '@/utils/events';
+import { UnfoundTodoStrip } from './UnfoundTodoStrip';
+import { deriveTriageFocusFacts, resolveTriageFocus } from '@/lib/receiving/triage-focus';
+import { buildTriageDisplayTabs, type TriageDisplayTab } from './build-triage-displays';
+import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
 
 export function TriagePanel({
   row,
   staffId,
   onClose,
+  onPrevCarton,
+  onNextCarton,
 }: {
   row: ReceivingLineRow;
   staffId: string;
   onClose: () => void;
+  /** Carton cursor — the queue reads newest-at-top, so `↑` NEXT / `↓` PREV. */
+  onPrevCarton?: () => void;
+  onNextCarton?: () => void;
 }) {
   const c = useUnboxLineController(row, staffId, {});
   const staging = useTriageStaging(row);
@@ -77,54 +82,111 @@ export function TriagePanel({
   const queryClient = useQueryClient();
   const [savingTriage, setSavingTriage] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState<TriageView>('overview');
-  const [pairingOpen, setPairingOpen] = useState(false);
-  const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
-  const openPoPairing = useCallback(() => {
-    if (pairingOpen) {
-      setPairingOpen(false);
-      return;
-    }
-    setActiveTab('overview');
-    setPairingOpen(true);
-    requestAnimationFrame(() => dispatchReceivingOpenPairingPo());
-  }, [pairingOpen]);
+
+  // The right-edge Displays push. `null` IS closed — the selected tab's
+  // selected-ness is the open state, so there is no second `pairingOpen` flag.
+  const [activeSideTab, setActiveSideTab] = useState<TriageDisplayTab | null>(null);
+  const [pairingFocus, setPairingFocus] = useState<{
+    tab: 'zoho_po' | null;
+    requestId: number;
+  } | null>(null);
   const [classifyExpand, setClassifyExpand] = useState<{
     dimension: 'urgency' | 'platform' | 'type';
     requestId: number;
   } | null>(null);
 
-  const openClassifyFromHeader = useCallback((picker: 'urgency' | 'platform' | 'type') => {
-    setActiveTab('overview');
-    setClassifyExpand((prev) => ({
-      dimension: picker,
-      requestId: (prev?.requestId ?? 0) + 1,
-    }));
-  }, []);
+  const openDisplays = useCallback((tab: TriageDisplayTab) => setActiveSideTab(tab), []);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
 
-  useEffect(() => {
-    setActionFeedback(null);
-    setTriageSaved(false);
-    setPairingOpen(false);
-  }, [row.id]);
+  // The `# ----` PO chip → open Pairing on the PO avenue. The intent travels as
+  // DATA (`pairingFocus` → the hub's `focusTab`, read on mount); a dispatched
+  // event fires before the display's hub is listening (Unbox learned this).
+  const openPoPairing = useCallback(() => {
+    openDisplays('linkage');
+    setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
+  }, [openDisplays]);
 
-  // TriageFocusResolver — on open, switch to the first unmet SectionTabsSlider tab.
-  // Pair focus also expands Package Pairing (overview defaults it collapsed).
-  useEffect(() => {
+  const openClassifyFromHeader = useCallback(
+    (picker: 'urgency' | 'platform' | 'type') => {
+      openDisplays('classify');
+      setClassifyExpand((prev) => ({
+        dimension: picker,
+        requestId: (prev?.requestId ?? 0) + 1,
+      }));
+    },
+    [openDisplays],
+  );
+
+  // The pane "expand" toggle opens the Displays on the carton's first UNMET
+  // triage step — unfound → Pairing, unclassified → Classify, unstaged →
+  // Staging — so one click lands on what needs doing (not always the leftmost
+  // tab). The identity chips still open a specific tool directly.
+  const openDisplaysForExpand = useCallback(() => {
     const facts = deriveTriageFocusFacts(
       row,
       row.triage_complete === true || hasTriageBeenCompleted(row.receiving_id),
     );
     const target = resolveTriageFocus(facts);
-    if (target === 'already-staged') {
+    openDisplays(
+      target === 'pair' ? 'linkage' : target === 'stage' ? 'staging' : 'classify',
+    );
+  }, [row, openDisplays]);
+
+  const openOrderConnectionDetails = useCallback(() => {
+    const poId = (row.zoho_purchaseorder_id || '').trim();
+    const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
+    const inboundOrderId = (row.source_order_id || '').trim();
+    const isInbound =
+      !poId && inboundSource !== '' && inboundSource !== 'zoho' && inboundOrderId !== '';
+    const shipmentId =
+      typeof row.shipment_ref === 'number' && Number.isFinite(row.shipment_ref) && row.shipment_ref > 0
+        ? row.shipment_ref
+        : null;
+    if (!poId && !isInbound && shipmentId == null) {
+      openPoPairing();
+      return;
+    }
+    dispatchReceivingOpenIncomingDetails({
+      poId: poId || null,
+      poNumber: row.zoho_purchaseorder_number ?? null,
+      shipmentId: poId ? null : shipmentId,
+      inboundSourceType: isInbound ? inboundSource : null,
+      inboundSourceOrderId: isInbound ? inboundOrderId : null,
+      receivingId: row.receiving_id ?? null,
+      receivingLineId: row.id ?? null,
+    });
+  }, [
+    row.zoho_purchaseorder_id,
+    row.zoho_purchaseorder_number,
+    row.inbound_source_type,
+    row.source_order_id,
+    row.shipment_ref,
+    row.receiving_id,
+    row.id,
+    openPoPairing,
+  ]);
+
+  useEffect(() => {
+    setActionFeedback(null);
+    setTriageSaved(false);
+    setActiveSideTab(null);
+  }, [row.id]);
+
+  // On open, tell the operator when there is nothing left to do — the carton is
+  // already staged. Reference tools open on demand (identity chips / the pane
+  // expand toggle); the centre lines are the work, so the Displays push is not
+  // auto-opened on focus (matches Unbox).
+  useEffect(() => {
+    const facts = deriveTriageFocusFacts(
+      row,
+      row.triage_complete === true || hasTriageBeenCompleted(row.receiving_id),
+    );
+    if (resolveTriageFocus(facts) === 'already-staged') {
       toast.success('Already staged for unbox', {
         description: 'Nothing left to do here — open it in Unbox when ready.',
       });
-      return;
     }
-    const tab = triageFocusToTab(target);
-    if (tab) setActiveTab(tab);
-    if (target === 'pair') setPairingOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run per carton
   }, [row.id]);
 
   const handleSaveForUnbox = useCallback(async () => {
@@ -185,77 +247,18 @@ export function TriagePanel({
     [row.id],
   );
 
-  const triageTabs = useMemo(
+  const triageDisplayTabs = useMemo(
     () =>
-      buildTriageTabs({
+      buildTriageDisplayTabs({
         row,
         staffId,
         c,
         staging,
-        pairingOpen,
-        onPairingToggle: togglePairing,
-        onItemDescFeedback: handleItemDescFeedback,
-        onItemDescSaved: handleItemDescSaved,
-        onNotesFeedback: setActionFeedback,
-        classifyExpandDimension: classifyExpand?.dimension ?? null,
-        classifyExpandRequestId: classifyExpand?.requestId ?? 0,
+        classifyExpand,
+        pairingFocus,
       }),
-    [
-      row,
-      staffId,
-      c,
-      staging,
-      pairingOpen,
-      togglePairing,
-      handleItemDescFeedback,
-      handleItemDescSaved,
-      classifyExpand,
-    ],
+    [row, staffId, c, staging, classifyExpand, pairingFocus],
   );
-
-  // PairingTogglePill always available — Arrival defaults pairing collapsed
-  // (matched + unfound); accordion header + this pill both toggle.
-  const editPoControl = (
-    <PairingTogglePill
-      open={pairingOpen}
-      onToggle={togglePairing}
-      closedLabel="Show package pairing"
-      openLabel="Hide package pairing"
-    />
-  );
-
-  const router = useRouter();
-  // PairingTogglePill only in the tabs rail — Open in Unbox is the
-  // mid-canvas right-edge sliced bookmark (not moreDetails / not SlicedActionDock).
-  const sectionTabsRightSlot = editPoControl;
-
-  const openInUnboxEdge =
-    row.receiving_id != null ? (
-      <StationRightEdgeAction
-        className={cn(
-          stationRightEdgeActionHostClass,
-          'border-blue-200 bg-blue-50/90',
-        )}
-        data-testid="triage-open-in-unbox-edge"
-      >
-        <HoverTooltip
-          label="Open this carton in unbox (serials, photos, receive)"
-          asChild
-          focusable={false}
-        >
-          <IconButton
-            icon={<PackageOpen className={TOP_CHROME_ICON_GLYPH} />}
-            ariaLabel="Open in unbox"
-            size="md"
-            onClick={() => router.push(openInUnboxHref(row.receiving_id!, row.id))}
-            className={cn(
-              HEADER_ICON_BTN_CLASS,
-              'text-blue-700 hover:bg-blue-100 hover:text-blue-800',
-            )}
-          />
-        </HoverTooltip>
-      </StationRightEdgeAction>
-    ) : null;
 
   const buildTerminal = useCallback(
     (kind: string) =>
@@ -267,69 +270,183 @@ export function TriagePanel({
     [triageSaved, savingTriage, handleSaveForUnbox],
   );
 
+  // Terminal is carton-scoped (Save for unbox), never tab-scoped — a stable id
+  // so opening a Displays tab never re-labels the dock (triage resolves every
+  // kind to `mode-default`).
   const terminalVm = useStationTerminalAction({
     surface: 'triage',
     mode: 'triage',
-    tabId: activeTab,
+    tabId: 'arrival',
     build: buildTerminal,
   });
 
+  const isReturn = isReturnIntake(row);
+  const unfoundMessage = isReturn
+    ? "No claim hint on the label — that's fine (C6). Save for unbox any time; it stays on Unfound until paired."
+    : 'Still unfound — pairing will retry. Save for unbox is allowed while it works.';
+
+  // Scan-station chrome: utility rail when Displays closed; ↑↓ on details
+  // panel top-right when open.
+  const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
+  const utilityRailBody = !activeSideTab ? (
+    <div className="flex flex-col items-center gap-0 pt-0">
+      <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysForExpand} />
+      {showCartonCursor ? (
+        <ScanStationCartonCursor
+          onNext={onNextCarton}
+          onPrev={onPrevCarton}
+          orientation="vertical"
+          nextTestId="arrival-carton-next"
+          prevTestId="arrival-carton-prev"
+          groupTestId="arrival-carton-cursor"
+        />
+      ) : null}
+    </div>
+  ) : null;
+
+  const displaysCartonCursor = showCartonCursor ? (
+    <ScanStationCartonCursor
+      onNext={onNextCarton}
+      onPrev={onPrevCarton}
+      orientation="horizontal"
+      nextTestId="arrival-carton-next"
+      prevTestId="arrival-carton-prev"
+      groupTestId="arrival-carton-cursor"
+    />
+  ) : null;
+
   return (
     <>
-      <StationPanelRoot>
-        <StationContextBar
-          identity={
-            <LineCartonContextSection
-              row={row}
-              staffId={staffId}
-              c={c}
-              expandClassifyWhenPending={false}
-              showClassifyControls
-              classifyInteractive
-              onClassifyPillOpen={openClassifyFromHeader}
-              onEditPo={!hasRealZohoPoId(row) ? openPoPairing : undefined}
-              poEditOpen={pairingOpen && !hasRealZohoPoId(row)}
-              // Triage is the ARRIVAL pass — the one surface that owns this
-              // stage. Explicit so its correctness doesn't ride on a default.
-              photoStage="arrival_package"
-            />
-          }
-        />
-        {openInUnboxEdge}
-        <StationWorkbench
-          ambientWash={false}
-          className="relative z-0 h-full flex-1 bg-transparent"
-          reserveScrollClearance
-          reserveIdentityClearance="stacked"
-          entityContext={<WorkflowRecommendationsStrip row={row} surface="triage" />}
-          tabs={
-            <TriageSectionTabs
-              tabs={triageTabs}
-              value={activeTab}
-              onChange={(id) => setActiveTab(id as TriageView)}
-              rightSlot={sectionTabsRightSlot}
-            />
-          }
-          feedback={
-            <WorkspaceActionFeedbackSlot
-              feedback={actionFeedback}
-              onDismiss={() => setActionFeedback(null)}
-            />
-          }
-          dock={<StationTerminalDock vm={terminalVm} />}
-        />
+      <StationScanPaneHost
+        displaysOpen={Boolean(activeSideTab)}
+        hostDataAttrs={{ 'data-arrival-pane-host': true }}
+        centerTestId="arrival-station-center"
+        utilityRail={utilityRailBody}
+        center={
+          <StationPanelRoot>
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
+              <StationContextBar
+                placement="flow"
+                identity={
+                  <LineCartonContextSection
+                    row={row}
+                    staffId={staffId}
+                    c={c}
+                    expandClassifyWhenPending={false}
+                    showClassifyControls
+                    classifyInteractive
+                    onClassifyPillOpen={openClassifyFromHeader}
+                    onEditPo={openPoPairing}
+                    onOrderDetails={openOrderConnectionDetails}
+                    poEditOpen={activeSideTab === 'linkage'}
+                    // Triage is the ARRIVAL pass — the one surface that owns this
+                    // stage. Explicit so its correctness doesn't ride on a default.
+                    photoStage="arrival_package"
+                  />
+                }
+              />
+              <StationWorkbench
+                ambientWash={false}
+                className="relative z-0 flex-1 bg-transparent"
+                reserveScrollClearance
+                // Identity is in-flow (`StationContextBar placement="flow"`)
+                // above this workbench — no guessed stacked pt clearance.
+                reserveIdentityClearance={false}
+                // Flat data floor — no vertical air between centre surfaces.
+                bodyGap="none"
+                entityContext={<WorkflowRecommendationsStrip row={row} surface="triage" />}
+                // `tabs` is deliberately EMPTY: the reference tools (Classify ·
+                // Staging · Pairing) moved to the right-edge Displays column, so
+                // the carton's lines own the centre.
+                feedback={
+                  <WorkspaceActionFeedbackSlot
+                    feedback={actionFeedback}
+                    onDismiss={() => setActionFeedback(null)}
+                  />
+                }
+                dock={
+                  // ONE elevated shell floating over the canvas — the internal
+                  // item-note composer + Save for unbox. The note (`receiving_line.
+                  // notes`) is not printed here; it carries to Unbox and displays
+                  // there as the item's internal note. Placement SoT =
+                  // slicedActionDockWrapperClass({ docked: false }).
+                  <div className={slicedActionDockWrapperClass({ docked: false })}>
+                    <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
+                      {terminalVm?.disabled && terminalVm.disabledReason ? (
+                        <p
+                          role="status"
+                          className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
+                        >
+                          {terminalVm.disabledReason}
+                        </p>
+                      ) : null}
+                      <WorkspaceNotesCard
+                        row={row}
+                        c={c}
+                        onActionFeedback={setActionFeedback}
+                        // Enter in the notes field commits Save for unbox.
+                        onPrimaryAction={
+                          terminalVm ? () => void terminalVm.onClick() : undefined
+                        }
+                        primaryActionDisabled={Boolean(terminalVm?.disabled)}
+                        trailingAction={<StationTerminalDock embedded vm={terminalVm} />}
+                      />
+                    </div>
+                  </div>
+                }
+              >
+                <div className="space-y-0">
+                  <POUnboxingSection
+                    row={row}
+                    staffId={staffId}
+                    // Triage READS the lines (no serial capture, no accordion
+                    // edit); `LinePoItemsSection` routes matched (PO items) vs
+                    // unfound (unmatched surface) internally. No "Open in unbox"
+                    // here — the operator saves for unbox from the dock.
+                    poItems
+                    matching={false}
+                    openInUnbox={false}
+                    editLines={false}
+                    serialScan={false}
+                    c={c}
+                    onItemDescFeedback={handleItemDescFeedback}
+                    onItemDescSaved={handleItemDescSaved}
+                  />
+                  {row.receiving_source === 'unmatched' ? (
+                    <UnfoundTodoStrip message={unfoundMessage} />
+                  ) : null}
+                </div>
+              </StationWorkbench>
+            </div>
 
-        {row.receiving_id != null ? (
-          /* Triage is the ARRIVAL pass — the peek shows package (door) evidence
-             only; unbox carton/item shots belong to the unbox surfaces. */
-          <ReceivingPhotoPeek
-            receivingId={row.receiving_id}
-            staffId={Number(staffId) || 0}
-            poRef={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || null}
-            photoIntent="package"
-          />
-        ) : null}
-      </StationPanelRoot>
+            {row.receiving_id != null ? (
+              /* Triage is the ARRIVAL pass — the peek shows package (door) evidence
+                 only; unbox carton/item shots belong to the unbox surfaces. */
+              <ReceivingPhotoPeek
+                receivingId={row.receiving_id}
+                staffId={Number(staffId) || 0}
+                poRef={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || null}
+                photoIntent="package"
+              />
+            ) : null}
+          </StationPanelRoot>
+        }
+        displays={
+          activeSideTab ? (
+            <ReceivingDisplaysPushStack
+              ariaLabel="Arrival displays"
+              storageKey="arrival-displays-push-width"
+              testId="arrival-displays-push"
+              resizeTestId="arrival-displays-push-resize"
+              tabs={triageDisplayTabs}
+              activeTab={activeSideTab}
+              onTabChange={(id) => setActiveSideTab(id as TriageDisplayTab)}
+              onClose={closeDisplays}
+              headerTrailing={displaysCartonCursor}
+            />
+          ) : null
+        }
+      />
 
       <LineEditModals row={row} c={c} />
     </>

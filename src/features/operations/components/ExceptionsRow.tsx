@@ -76,7 +76,7 @@ export function ExceptionsRow() {
       sub: 'Open across receiving + orders',
       Icon: AlertCircle,
       tone: { ring: 'bg-rose-50', text: 'text-rose-700', accent: 'bg-rose-500' },
-      href: '/audit-log',
+      href: '/operations?mode=reconciliation',
       disabled: tracking.data === null && trackingOrders.data === null,
     },
     {

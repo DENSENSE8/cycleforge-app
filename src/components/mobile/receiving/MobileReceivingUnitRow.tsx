@@ -8,7 +8,9 @@ import { ConditionGradeChip, UnitPriceChip } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { buildUnitFields, unitTitle } from '@/components/mobile/receiving/receiving-feed-entries';
 
 /**
@@ -78,8 +80,14 @@ export function MobileReceivingUnitRow({
         ? 'text-emerald-600'
         : 'text-text-muted';
 
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
   const dot = getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected);
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
+  const statusDotTip =
+    receivingUnboxedSyncTooltip({
+      workflowStatus: row.workflow_status,
+      inventoryProviderLabel,
+    }) ?? workflowLabel;
 
   const photoCount = Math.max(0, row.photo_count ?? 0);
   const hasPhotos = photoCount > 0;
@@ -111,7 +119,7 @@ export function MobileReceivingUnitRow({
           aria-expanded={open}
           className="ds-raw-button flex shrink-0 items-center gap-2 text-left"
         >
-          <HoverTooltip label={workflowLabel} asChild focusable={false}>
+          <HoverTooltip label={statusDotTip} asChild focusable={false}>
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden />
           </HoverTooltip>
           <span className={`shrink-0 text-base font-semibold tabular-nums ${qtyColor}`}>{qtyText}</span>

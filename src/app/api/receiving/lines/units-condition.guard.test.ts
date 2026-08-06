@@ -41,3 +41,9 @@ test('per-unit condition route parses both line id and unit id from the pathname
   assert.match(ROUTE, /invalid line id/);
   assert.match(ROUTE, /invalid unit id/);
 });
+
+test('per-unit condition route accepts null to clear the grade', () => {
+  assert.match(ROUTE, /clearing/);
+  assert.match(ROUTE, /null to clear/);
+  assert.match(ROUTE, /nextGrade/);
+});

@@ -19,8 +19,16 @@ import {
 } from '@/lib/receiving/receiving-details-overlay';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import type { ReceivingDetailsOverlayDetail } from '@/utils/events';
+import {
+  RECEIVING_OPEN_INCOMING_DETAILS_EVENT,
+  type ReceivingOpenIncomingDetailsDetail,
+} from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
+import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
+import { emitReceiving } from '@/components/receiving/receiving-events';
+import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 
 export interface IncomingDetailsTarget {
   poId: string | null;
@@ -29,6 +37,10 @@ export interface IncomingDetailsTarget {
   /** Universal Incoming (§7.3): a non-Zoho row keys on its link identity. */
   inboundSourceType?: string | null;
   inboundSourceOrderId?: string | null;
+  /** Unbox/Triage carton focus — preferred receiving row for notes/shipment. */
+  receivingId?: number | null;
+  /** Active line focus — PoTab highlights matching line_items row. */
+  receivingLineId?: number | null;
 }
 
 export interface ReceivingDetailOverlays {
@@ -36,6 +48,8 @@ export interface ReceivingDetailOverlays {
   setOverlayLog: React.Dispatch<React.SetStateAction<ReceivingDetailsLog | null>>;
   incomingDetails: IncomingDetailsTarget | null;
   setIncomingDetails: React.Dispatch<React.SetStateAction<IncomingDetailsTarget | null>>;
+  historyTriage: HistoryTriageTarget | null;
+  setHistoryTriage: React.Dispatch<React.SetStateAction<HistoryTriageTarget | null>>;
   /** Re-fetch + merge the open overlay log. */
   enrichOverlayLog: (receivingId: number) => Promise<void>;
 }
@@ -54,6 +68,8 @@ export function useReceivingDetailOverlays(
   // mode=incoming. {po_id, po_number} so the panel renders its header label
   // immediately, then re-keys its details query on po_id change.
   const [incomingDetails, setIncomingDetails] = useState<IncomingDetailsTarget | null>(null);
+  // Unbox History left-click triage slide-over (`detail:history`).
+  const [historyTriage, setHistoryTriage] = useState<HistoryTriageTarget | null>(null);
 
   const overlayLogIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -143,29 +159,88 @@ export function useReceivingDetailOverlays(
         shipmentId: poId ? null : shipmentId,
         inboundSourceType: isInbound ? inboundSource : null,
         inboundSourceOrderId: isInbound ? inboundOrderId : null,
+        receivingId: row.receiving_id ?? null,
+        receivingLineId: typeof row.id === 'number' && row.id > 0 ? row.id : null,
       });
     };
     window.addEventListener('receiving-select-line', handler);
     return () => window.removeEventListener('receiving-select-line', handler);
   }, [isIncomingMode]);
 
-  // Mode flip or Email Triage sub-view → close any open incoming panel so it
-  // doesn't leak into Receiving / Email Triage.
-  //
-  // The `removed` lane is deliberately NOT cleared: its rows are the same PO
-  // lines with the same inspector, and "why did it leave" is usually followed
-  // by "so what is on it" — closing the panel on the way in would answer the
-  // first question and swallow the second.
+  // Mode flip cleanup: Email Triage has no PO context — close any open panel.
+  // Do NOT clear solely because mode ≠ Incoming: Unbox/Triage order-chip
+  // Details opens the same panel via RECEIVING_OPEN_INCOMING_DETAILS_EVENT.
   useEffect(() => {
-    if (!isIncomingMode) {
+    if (isIncomingMode && incomingView === 'email') {
       setIncomingDetails(null);
-      return;
-    }
-    if (incomingView === 'email') {
-      setIncomingDetails(null);
-      window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+      emitReceiving('receiving-clear-line');
     }
   }, [isIncomingMode, incomingView]);
+
+  // Unbox / Triage order-chip "Details" → same Incoming connection inspector.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<ReceivingOpenIncomingDetailsDetail>).detail;
+      if (!detail || typeof detail !== 'object') return;
+      const poId = (detail.poId || '').trim() || null;
+      const shipmentId =
+        detail.shipmentId != null && Number.isFinite(Number(detail.shipmentId))
+          ? Number(detail.shipmentId)
+          : null;
+      const inboundSource = (detail.inboundSourceType || '').trim().toLowerCase() || null;
+      const inboundOrderId = (detail.inboundSourceOrderId || '').trim() || null;
+      const receivingId =
+        detail.receivingId != null && Number.isFinite(Number(detail.receivingId)) && Number(detail.receivingId) > 0
+          ? Number(detail.receivingId)
+          : null;
+      const receivingLineId =
+        detail.receivingLineId != null &&
+        Number.isFinite(Number(detail.receivingLineId)) &&
+        Number(detail.receivingLineId) > 0
+          ? Number(detail.receivingLineId)
+          : null;
+      if (!poId && shipmentId == null && !(inboundSource && inboundOrderId)) return;
+      setIncomingDetails({
+        poId,
+        poNumber: detail.poNumber ?? null,
+        shipmentId: poId ? null : shipmentId,
+        inboundSourceType: inboundSource,
+        inboundSourceOrderId: inboundOrderId,
+        receivingId,
+        receivingLineId,
+      });
+    };
+    window.addEventListener(RECEIVING_OPEN_INCOMING_DETAILS_EVENT, handler);
+    return () => window.removeEventListener(RECEIVING_OPEN_INCOMING_DETAILS_EVENT, handler);
+  }, []);
+
+  // Unbox History left-click → HistoryCartonTriagePanel; close on workspace open.
+  useReceivingEvents({
+    'receiving-open-history-triage': (detail) => {
+      if (!detail || typeof detail !== 'object') return;
+      const receivingId = Number(detail.receivingId);
+      if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+      const receivingLineId =
+        detail.receivingLineId != null &&
+        Number.isFinite(Number(detail.receivingLineId)) &&
+        Number(detail.receivingLineId) > 0
+          ? Number(detail.receivingLineId)
+          : null;
+      // Row open always expands — Band 3 toggle parks without clearing target.
+      setDetailInspectorCollapsed(false);
+      setHistoryTriage({
+        receivingId,
+        receivingLineId,
+        poNumber: (detail.poNumber || '').trim() || null,
+        title: (detail.title || '').trim() || null,
+        tracking: (detail.tracking || '').trim() || null,
+        status: (detail.status || '').trim() || null,
+      });
+    },
+    'receiving-close-history-triage': () => setHistoryTriage(null),
+    'receiving-workspace-open': () => setHistoryTriage(null),
+    'receiving-select-line': () => setHistoryTriage(null),
+  });
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -192,6 +267,8 @@ export function useReceivingDetailOverlays(
     setOverlayLog,
     incomingDetails,
     setIncomingDetails,
+    historyTriage,
+    setHistoryTriage,
     enrichOverlayLog,
   };
 }

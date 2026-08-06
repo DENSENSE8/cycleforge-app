@@ -10,10 +10,11 @@
 
 import { useMemo } from 'react';
 import {
-  WorkspaceCard,
   WORKSPACE_NESTED_FIELD,
   WORKSPACE_NESTED_FIELD_PAD,
 } from '@/design-system/components';
+import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
+import { cn } from '@/utils/_cn';
 import { Loader2, MapPin, Flag, Barcode } from '@/components/Icons';
 import { SELECT_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TRIAGE_LANE_OPTS, triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
@@ -153,13 +154,22 @@ export function StagingSection({
   ) : null;
 
   return (
-    <WorkspaceCard
-      variant="glass"
-      overflow="visible"
-      bodyDensity="nested"
-      label={eyebrow}
-      actions={savingIndicator ?? undefined}
-    >
+    // Flush Displays body — no glass card island. The dedicated Staging tab
+    // already names this surface (no eyebrow); an Arrival-overview mount passes
+    // `eyebrow` and gets a plain label row instead of a card header.
+    <div className={cn('space-y-4 pt-3', DISPLAYS_BODY_INSET)}>
+      {eyebrow || savingIndicator ? (
+        <div className="flex items-center justify-between gap-2">
+          {eyebrow ? (
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              {eyebrow}
+            </p>
+          ) : (
+            <span />
+          )}
+          {savingIndicator}
+        </div>
+      ) : null}
       <div className="space-y-4">
         <TriageStagingStatusChips
           complete={isStaged}
@@ -232,6 +242,6 @@ export function StagingSection({
           </p>
         </div>
       </div>
-    </WorkspaceCard>
+    </div>
   );
 }

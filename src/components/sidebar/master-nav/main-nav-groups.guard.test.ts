@@ -1001,6 +1001,37 @@ test('SidebarNavList: no transform travel at all — no whileHover, no row scale
 });
 
 /**
+ * MasterNav map chrome is flush (2026-08-05) — peer of GlobalHeader /
+ * HeaderChromeMenu / scan-dock rails. Column = the card: zero outer gutter on
+ * the scrollport and footer pins, square destination washes. Soft `rounded-lg`
+ * / `rounded-md` chips + host `p-1` gutters must not come back.
+ */
+test('SidebarNavList: flush boxed chrome — p-0 hosts, rounded-none rows', () => {
+  assert.match(LIST_SRC, /data-spine-scrollport[^>]*overflow-y-auto p-0/);
+  assert.match(LIST_SRC, /border-t border-border-soft p-0/);
+  assert.doesNotMatch(LIST_SRC, /overflow-y-auto p-1/);
+  assert.doesNotMatch(LIST_SRC, /border-t border-border-soft p-1/);
+
+  const pageHeader = LIST_SRC.match(
+    /const renderPageHeader[\s\S]*?\n {2}\};\n/,
+  )?.[0];
+  assert.ok(pageHeader, 'renderPageHeader block missing');
+  assert.match(pageHeader, /rounded-none/);
+  assert.doesNotMatch(pageHeader, /rounded-lg|rounded-md/);
+
+  const childRow = LIST_SRC.match(
+    /const renderChildLikeRow[\s\S]*?\n {2}\};\n/,
+  )?.[0];
+  assert.ok(childRow, 'renderChildLikeRow block missing');
+  assert.match(childRow, /rounded-none/);
+  assert.doesNotMatch(childRow, /rounded-lg|rounded-md/);
+
+  // Search-result + drill-back rows also stay square.
+  assert.doesNotMatch(LIST_SRC, /rounded-lg/);
+  assert.doesNotMatch(LIST_SRC, /rounded-md/);
+});
+
+/**
  * The neutral ladder has TWO soft rungs on a white spine (2026-08-03): hover
  * wash (`surface-hover`) vs one shared sunken selected wash — no inverse fill,
  * no `surface-strong` chip, no inset hairline. Cloudflare's Account-home row is

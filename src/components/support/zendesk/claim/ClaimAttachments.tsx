@@ -30,7 +30,7 @@ export function ClaimAttachments({ c }: { c: ZendeskClaimController }) {
             return (
               <HoverTooltip
                 key={p.id}
-                label={on ? 'Attached — click to skip' : 'Skipped — click to attach'}
+                label={on ? 'Attached' : 'Skipped'}
                 asChild
               >
                 <button

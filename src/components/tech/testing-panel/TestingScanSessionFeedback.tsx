@@ -38,7 +38,7 @@ export function TestingScanSessionFeedback({
   return (
     <div
       data-testing-scan-session
-      className={`mt-2 rounded-xl border px-2.5 py-2 ${
+      className={`mt-2 rounded-none border px-2.5 py-2 ${
         confirmed
           ? 'border-emerald-200 bg-emerald-50/80'
           : 'border-blue-200 bg-blue-50/70'

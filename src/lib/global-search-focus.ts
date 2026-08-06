@@ -1,6 +1,6 @@
 /** Dispatched to hand focus to the active search field (re-click Search, or a
- *  surface that wants to delegate to it). Header launcher listens everywhere
- *  except `/search`, where SearchSidebarPanel owns focus.
+ *  surface that wants to delegate to it). On `/search` without `?sel=`,
+ *  `SearchFindStage` owns focus; elsewhere `GlobalHeaderSearch` owns it.
  *
  *  NOT a ⌘K path — that chord opens the CommandBar palette and has exactly one
  *  owner (`src/components/layout/cmdk-owner.guard.test.ts`). */

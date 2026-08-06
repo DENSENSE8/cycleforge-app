@@ -33,6 +33,149 @@ import type {
 } from '@/components/receiving/useReceivingWorkspacePane';
 import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingDetailOverlays';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
+import { HistoryCartonTriagePanel } from '@/components/receiving/history/HistoryCartonTriagePanel';
+import {
+  HistoryViewChromeProvider,
+  useHistoryViewChrome,
+} from '@/components/receiving/history/history-view-chrome-context';
+import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
+
+/**
+ * Shared mount for {@link IncomingDetailsPanel} — Unbox, Triage, and
+ * History/Incoming all render this so order-chip Details is not a no-op on
+ * early-return mode branches.
+ */
+function IncomingDetailsMount({
+  target,
+  onClose,
+}: {
+  target: IncomingDetailsTarget | null;
+  onClose: () => void;
+}) {
+  if (!target) return null;
+  return (
+    <IncomingDetailsPanel
+      zohoPurchaseOrderId={target.poId}
+      poNumberHint={target.poNumber}
+      shipmentId={target.shipmentId}
+      inboundSourceType={target.inboundSourceType}
+      inboundSourceOrderId={target.inboundSourceOrderId}
+      focusReceivingId={target.receivingId}
+      focusReceivingLineId={target.receivingLineId}
+      onClose={onClose}
+    />
+  );
+}
+
+function HistoryTriageMount({
+  target,
+  onClose,
+}: {
+  target: HistoryTriageTarget | null;
+  onClose: () => void;
+}) {
+  const { viewShellOpen, setViewShellOpen } = useHistoryViewChrome();
+  if (!target && !viewShellOpen) return null;
+  return (
+    <HistoryCartonTriagePanel
+      target={target}
+      onClose={() => {
+        setViewShellOpen(false);
+        onClose();
+      }}
+    />
+  );
+}
+
+/** Unbox host — View chrome context bridges workspace grid ↔ History rail. */
+function UnboxHistoryHost({
+  staffId,
+  workspace,
+  nav,
+  restorePending,
+  lookupReceipt,
+  onClearLookupReceipt,
+  onCloseWorkspace,
+  incomingDetails,
+  onCloseIncoming,
+  historyTriage,
+  onCloseHistoryTriage,
+}: {
+  staffId: string;
+  workspace: WorkspaceState | null;
+  nav: NavState | null;
+  restorePending: boolean;
+  lookupReceipt: UnboxLookupScanDetail | null;
+  onClearLookupReceipt: () => void;
+  onCloseWorkspace: () => void;
+  incomingDetails: IncomingDetailsTarget | null;
+  onCloseIncoming: () => void;
+  historyTriage: HistoryTriageTarget | null;
+  onCloseHistoryTriage: () => void;
+}) {
+  return (
+    <HistoryViewChromeProvider>
+      <UnboxHistoryHostInner
+        staffId={staffId}
+        workspace={workspace}
+        nav={nav}
+        restorePending={restorePending}
+        lookupReceipt={lookupReceipt}
+        onClearLookupReceipt={onClearLookupReceipt}
+        onCloseWorkspace={onCloseWorkspace}
+        incomingDetails={incomingDetails}
+        onCloseIncoming={onCloseIncoming}
+        historyTriage={historyTriage}
+        onCloseHistoryTriage={onCloseHistoryTriage}
+      />
+    </HistoryViewChromeProvider>
+  );
+}
+
+function UnboxHistoryHostInner({
+  staffId,
+  workspace,
+  nav,
+  restorePending,
+  lookupReceipt,
+  onClearLookupReceipt,
+  onCloseWorkspace,
+  incomingDetails,
+  onCloseIncoming,
+  historyTriage,
+  onCloseHistoryTriage,
+}: {
+  staffId: string;
+  workspace: WorkspaceState | null;
+  nav: NavState | null;
+  restorePending: boolean;
+  lookupReceipt: UnboxLookupScanDetail | null;
+  onClearLookupReceipt: () => void;
+  onCloseWorkspace: () => void;
+  incomingDetails: IncomingDetailsTarget | null;
+  onCloseIncoming: () => void;
+  historyTriage: HistoryTriageTarget | null;
+  onCloseHistoryTriage: () => void;
+}) {
+  const { viewShellOpen } = useHistoryViewChrome();
+  const historyOpen = Boolean(historyTriage) || viewShellOpen;
+  return (
+    <>
+      <UnboxLineWorkspace
+        staffId={staffId}
+        workspace={workspace}
+        nav={nav}
+        restorePending={restorePending}
+        lookupReceipt={lookupReceipt}
+        onClearLookupReceipt={onClearLookupReceipt}
+        onCloseWorkspace={onCloseWorkspace}
+        historyTriageOpen={historyOpen}
+      />
+      <IncomingDetailsMount target={incomingDetails} onClose={onCloseIncoming} />
+      <HistoryTriageMount target={historyTriage} onClose={onCloseHistoryTriage} />
+    </>
+  );
+}
 
 interface ReceivingRightPaneProps {
   mode: string;
@@ -55,6 +198,8 @@ interface ReceivingRightPaneProps {
   staffId: string;
   incomingDetails: IncomingDetailsTarget | null;
   onCloseIncoming: () => void;
+  historyTriage: HistoryTriageTarget | null;
+  onCloseHistoryTriage: () => void;
   onCloseWorkspace: () => void;
 }
 
@@ -74,6 +219,8 @@ export function ReceivingRightPane({
   staffId,
   incomingDetails,
   onCloseIncoming,
+  historyTriage,
+  onCloseHistoryTriage,
   onCloseWorkspace,
 }: ReceivingRightPaneProps) {
   const searchParams = useSearchParams();
@@ -103,7 +250,7 @@ export function ReceivingRightPane({
   if (isUnboxMode) {
     return (
       <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <UnboxLineWorkspace
+        <UnboxHistoryHost
           staffId={staffId}
           workspace={workspace}
           nav={nav}
@@ -111,6 +258,10 @@ export function ReceivingRightPane({
           lookupReceipt={lookupReceipt}
           onClearLookupReceipt={onClearLookupReceipt}
           onCloseWorkspace={onCloseWorkspace}
+          incomingDetails={incomingDetails}
+          onCloseIncoming={onCloseIncoming}
+          historyTriage={historyTriage}
+          onCloseHistoryTriage={onCloseHistoryTriage}
         />
       </RightPaneOverlayHost>
     );
@@ -126,6 +277,7 @@ export function ReceivingRightPane({
           scanInFlight={scanInFlight}
           onCloseWorkspace={onCloseWorkspace}
         />
+        <IncomingDetailsMount target={incomingDetails} onClose={onCloseIncoming} />
       </RightPaneOverlayHost>
     );
   }
@@ -157,16 +309,7 @@ export function ReceivingRightPane({
         ) : null}
       </AnimatePresence>
 
-      {isIncomingMode && incomingView !== 'email' && incomingDetails ? (
-        <IncomingDetailsPanel
-          zohoPurchaseOrderId={incomingDetails.poId}
-          poNumberHint={incomingDetails.poNumber}
-          shipmentId={incomingDetails.shipmentId}
-          inboundSourceType={incomingDetails.inboundSourceType}
-          inboundSourceOrderId={incomingDetails.inboundSourceOrderId}
-          onClose={onCloseIncoming}
-        />
-      ) : null}
+      <IncomingDetailsMount target={incomingDetails} onClose={onCloseIncoming} />
 
       {showSelectionRail ? (
         <ReceivingLineRailShell

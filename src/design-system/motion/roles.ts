@@ -119,6 +119,9 @@ export const motionRole = {
    * mounted element, so it has no initial/animate/exit shape. The host drives
    * the opacity (or colour) target and hands this transition to it.
    *
+   * Physics = `fadeInstant` via `framerTransition.chipCopyFeedback`. Prefer
+   * `ActionFlashRow` when the flash is a full-bleed dense ledger row wash.
+   *
    * Per `motion-crossfade.md` D12: a live grid cell update flashes — it never
    * slides or layout-shifts.
    */

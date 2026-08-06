@@ -6,6 +6,8 @@
  * - Idle: whisper opacity (`scanBandGlowOpacity.idle`)
  * - Focus / click into the band: animate to full (`focused`)
  * - Submit (form submit capture): pulse flash then settle focused
+ * - Outcome flash (`cf:scan-band-flash`): emerald success / rose reject overlay
+ *   for ~800ms — primary visual channel once scan lines are a flat data floor
  *
  * Catalog: `framerTransition.scanBandGlow` / `scanBandGlowPulse` +
  * `scanBandGlowOpacity`. Reduced motion via `useMotionTransition`.
@@ -19,7 +21,12 @@ import {
   type FocusEvent,
   type ReactNode,
 } from 'react';
-import { motion, useAnimationControls, useReducedMotion } from '@/design-system/motion';
+import {
+  AnimatePresence,
+  motion,
+  useAnimationControls,
+  useReducedMotion,
+} from '@/design-system/motion';
 import {
   framerTransition,
   scanBandGlowOpacity,
@@ -28,7 +35,20 @@ import { useMotionTransition } from '@/design-system/foundations/motion-framer-h
 import { scanBandGlowGradientClass } from '@/components/sidebar/receiving/useScanBandHalo';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import type { StationTheme } from '@/hooks/useStationTheme';
+import {
+  SCAN_BAND_FLASH_EVENT,
+  type ScanBandFlashDetail,
+  type ScanVisualKind,
+} from '@/lib/scan-feedback/visual';
 import { cn } from '@/utils/_cn';
+
+/** Match ScanInputDesktop feedback auto-reset (~800ms). */
+const OUTCOME_FLASH_MS = 800;
+
+const OUTCOME_FLASH_CLASS: Record<ScanVisualKind, string> = {
+  success: 'bg-emerald-400/35',
+  reject: 'bg-rose-400/35',
+};
 
 interface ScanBandGlowHostProps {
   themeColor: StationTheme;
@@ -42,6 +62,7 @@ export function ScanBandGlowHost({
   className,
 }: ScanBandGlowHostProps) {
   const [focused, setFocused] = useState(false);
+  const [outcomeFlash, setOutcomeFlash] = useState<ScanVisualKind | null>(null);
   const focusedRef = useRef(false);
   const pulsingRef = useRef(false);
   const controls = useAnimationControls();
@@ -64,6 +85,23 @@ export function ScanBandGlowHost({
       transition: glowTransition,
     });
   }, [focused, controls, glowTransition, settleOpacity]);
+
+  // Outcome flash from {@link playScanFeedback} / {@link flashScanBand}.
+  useEffect(() => {
+    const onFlash = (event: Event) => {
+      const detail = (event as CustomEvent<ScanBandFlashDetail>).detail;
+      if (detail?.kind !== 'success' && detail?.kind !== 'reject') return;
+      setOutcomeFlash(detail.kind);
+    };
+    window.addEventListener(SCAN_BAND_FLASH_EVENT, onFlash);
+    return () => window.removeEventListener(SCAN_BAND_FLASH_EVENT, onFlash);
+  }, []);
+
+  useEffect(() => {
+    if (!outcomeFlash) return;
+    const timer = window.setTimeout(() => setOutcomeFlash(null), OUTCOME_FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [outcomeFlash]);
 
   const handleFocusCapture = useCallback(() => {
     setFocused(true);
@@ -131,6 +169,26 @@ export function ScanBandGlowHost({
         )}
         style={{ opacity: scanBandGlowOpacity.idle }}
       />
+      <AnimatePresence>
+        {outcomeFlash ? (
+          <motion.div
+            key={outcomeFlash}
+            aria-hidden
+            initial={{ opacity: shouldReduce ? 0.55 : 0 }}
+            animate={{ opacity: shouldReduce ? 0.55 : [0, 0.9, 0] }}
+            exit={{ opacity: 0 }}
+            transition={
+              shouldReduce
+                ? { duration: 0 }
+                : { duration: OUTCOME_FLASH_MS / 1000, times: [0, 0.2, 1], ease: 'easeOut' }
+            }
+            className={cn(
+              'pointer-events-none absolute inset-0 z-0',
+              OUTCOME_FLASH_CLASS[outcomeFlash],
+            )}
+          />
+        ) : null}
+      </AnimatePresence>
       {children}
     </div>
   );

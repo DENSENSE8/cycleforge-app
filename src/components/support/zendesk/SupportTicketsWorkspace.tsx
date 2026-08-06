@@ -5,7 +5,7 @@
  *
  *   list     = SupportTicketsBoard (the queue map, ALWAYS mounted)
  *   thread   = SupportTicketFocus  (`?ticket=`, crossfades on ticket id)
- *   displays = SupportContextDetailPanel, a `RightRailHost` occupant that PUSHES
+ *   inspector = SupportContextDetailPanel, a `RightRailHost` occupant that PUSHES
  *
  * Law: `.claude/rules/display/workbench-service.md`.
  *

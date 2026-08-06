@@ -67,7 +67,7 @@ export function PackOrderWorkspace({
             exit={panePresence.exit}
             transition={paneTransition}
             style={{ zIndex: zIndex.panel }}
-            className="absolute inset-0 flex min-h-0 flex-col overflow-y-auto bg-surface-canvas p-4"
+            className="absolute inset-0 flex min-h-0 flex-col overflow-y-auto bg-surface-sunken"
           >
             <PackFbaScanCard scan={activeFba} />
           </motion.div>
@@ -83,7 +83,7 @@ export function PackOrderWorkspace({
             exit={panePresence.exit}
             transition={paneTransition}
             style={{ zIndex: zIndex.panel }}
-            className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
+            className="absolute inset-0 flex min-h-0 flex-col"
           >
             <PackOrderPanel activeOrder={activeOrder} onClose={onCloseActiveOrder} />
           </motion.div>

@@ -34,6 +34,13 @@ export interface InlinePillOption {
   activeClass?: string;
   /** Inactive tone classes (default: gray). */
   inactiveClass?: string;
+  /**
+   * Inline styles for hex-driven platform faces (soft fill + ink from
+   * {@link platformPaintFromHex}). Applied with {@link activeClass}.
+   */
+  activeStyle?: import('react').CSSProperties;
+  /** Inline styles for idle hex-driven faces. */
+  inactiveStyle?: import('react').CSSProperties;
   title?: string;
   /**
    * Identity face (platform mark / type glyph / urgency flag). Used when
@@ -52,24 +59,25 @@ export const INLINE_PILL_LEADING = {
   type: <Tag className={TOP_CHROME_ICON_GLYPH} />,
 } as const;
 
+/** Carton-context flush face — square corners; inset pad keeps label off the border. */
 const PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-role-micro uppercase tracking-wide transition-colors';
+  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-1.5 text-role-micro uppercase tracking-wide transition-colors';
 /**
  * Locked equal width for icon-only faces — same hit box as
  * {@link HEADER_ICON_WRAP} (`h-8 w-8`).
  */
 export const INLINE_PILL_ICON_FACE =
-  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors';
+  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-none border transition-colors';
 /** Icon + full name — expanded option pads / default collapsed. */
 const INLINE_PILL_ICON_LABEL =
-  'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase tracking-wide transition-colors';
+  'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase tracking-wide transition-colors';
 /**
  * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
  * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
  * (`High` / `Med` / `Trade` truncated).
  */
 const INLINE_PILL_ICON_LABEL_BOOKMARK =
-  'inline-flex h-8 w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-full border px-1 text-role-micro font-medium uppercase tracking-wide transition-colors shadow-none box-border';
+  'inline-flex h-8 w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 text-role-micro font-medium uppercase tracking-wide transition-colors shadow-none box-border';
 
 const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm';
 const DEFAULT_INACTIVE =
@@ -167,6 +175,7 @@ export function InlinePillPicker({
     : (collapsedLabel ?? active?.label ?? placeholder);
   const faceTone =
     collapsedClass ?? (active ? active.activeClass ?? DEFAULT_ACTIVE : DEFAULT_INACTIVE);
+  const faceStyle = collapsedClass ? undefined : (active?.activeStyle ?? active?.inactiveStyle);
   const identityFace = active?.face ?? EMPTY_FACE;
   const tooltipLabel = `${ariaLabel}: ${active?.title ?? fullLabel}${
     readOnly ? '' : ' — click to change'
@@ -233,6 +242,7 @@ export function InlinePillPicker({
       title={isBookmark ? undefined : tooltipLabel}
       onClick={readOnly ? undefined : () => onOpenChange(true)}
       className={collapsedClassName}
+      style={faceStyle}
     >
       {collapsedFaceNode}
     </button>
@@ -276,6 +286,7 @@ export function InlinePillPicker({
                 const tone = isActive
                   ? opt.activeClass ?? DEFAULT_ACTIVE
                   : opt.inactiveClass ?? DEFAULT_INACTIVE;
+                const toneStyle = isActive ? opt.activeStyle : opt.inactiveStyle;
                 const faceClass =
                   expandedFace === 'icon'
                     ? INLINE_PILL_ICON_FACE
@@ -298,6 +309,7 @@ export function InlinePillPicker({
                       onOpenChange(false);
                     }}
                     className={cn(faceClass, tone, focusRing('control', 'accent'))}
+                    style={toneStyle}
                   >
                     {expandedFace === 'icon' ? (
                       <span className="grid place-items-center" aria-hidden>

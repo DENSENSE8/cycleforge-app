@@ -2,7 +2,7 @@
 // Import from here instead of defining inline in each component.
 
 import type { ComponentType } from 'react';
-import { WORKFLOW_STAGES } from '@/lib/receiving/workflow-stages';
+import { WORKFLOW_STAGES, workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { PackageCheck, Clock, Truck, Package } from '@/components/Icons';
 import {
   CONDITION_GRADES,
@@ -115,7 +115,8 @@ export function workflowStatusTableLabel(status: string | null | undefined): str
   // carried by the row title + PO column, not this chip. ARRIVED's lifecycle
   // label is "Scanned" (see workflow-stages.ts), so this keeps the two in sync.
   if (raw === 'ARRIVED' || raw === 'MATCHED') return 'SCANNED';
-  if (raw === 'DONE') return 'RECEIVED';
+  // Terminal DONE reads as Received — same SoT as workflowStageLabel / History chips.
+  if (raw === 'DONE') return workflowStageLabel('DONE');
   return raw.replace(/_/g, ' ');
 }
 
@@ -162,16 +163,22 @@ export function unitStatusBadgeTone(status: string | null | undefined): string {
 }
 
 /**
- * Inline status-dot color for a receiving line. Quantity-complete wins over
- * status (a fully-received line is always emerald). Lifted out of
- * ReceivingLinesTable so the table rows and the scanned-line header render the
- * exact same dot. Unlike the registry `workflowStageDot`, this folds in qty.
+ * Inline status-dot color for a receiving line. Quantity-complete emerald wins
+ * for **non-terminal** stages (the finer “dot moves first” vocabulary). Terminal
+ * dispositions (FAILED / SCRAP / RTV) keep their failure tones even when qty is
+ * complete — a failed line must never read as success. Unlike the registry
+ * `workflowStageDot`, this folds in qty for in-flight stages.
  */
 export function getStatusDotBg(
   status: string | null | undefined,
   qtyReceived?: number,
   qtyExpected?: number | null,
 ): string {
+  const value = String(status || '').trim().toUpperCase();
+  // Terminal first — qty-complete must not paint rose/purple/slate dispositions emerald.
+  if (value.startsWith('FAILED')) return 'bg-rose-500';
+  if (value === 'SCRAP') return 'bg-slate-600';
+  if (value === 'RTV') return 'bg-purple-500';
   if (
     qtyExpected != null &&
     qtyExpected > 0 &&
@@ -180,13 +187,11 @@ export function getStatusDotBg(
   ) {
     return 'bg-emerald-500';
   }
-  const value = String(status || '').trim().toUpperCase();
   if (value === 'EXPECTED') return 'bg-amber-400';
   if (value === 'ARRIVED' || value === 'MATCHED') return 'bg-blue-500';
   if (value === 'UNBOXED') return 'bg-indigo-500';
   if (value === 'AWAITING_TEST' || value === 'IN_TEST') return 'bg-violet-500';
   if (value === 'PASSED' || value === 'DONE') return 'bg-emerald-500';
-  if (value.startsWith('FAILED') || value === 'SCRAP' || value === 'RTV') return 'bg-rose-500';
   return 'bg-border-emphasis';
 }
 
@@ -213,9 +218,10 @@ export function getWorkflowIconMeta(label: string): {
   Icon: ComponentType<{ className?: string }>;
   tone: string;
 } {
-  if (label === 'RECEIVED') return { Icon: PackageCheck, tone: 'text-emerald-600' };
-  if (label === 'EXPECTED') return { Icon: Clock, tone: 'text-amber-500' };
-  if (label === 'SCANNED') return { Icon: Truck, tone: 'text-blue-600' };
+  const key = String(label ?? '').trim().toUpperCase();
+  if (key === 'RECEIVED') return { Icon: PackageCheck, tone: 'text-emerald-600' };
+  if (key === 'EXPECTED') return { Icon: Clock, tone: 'text-amber-500' };
+  if (key === 'SCANNED') return { Icon: Truck, tone: 'text-blue-600' };
   return { Icon: Package, tone: 'text-text-faint' };
 }
 

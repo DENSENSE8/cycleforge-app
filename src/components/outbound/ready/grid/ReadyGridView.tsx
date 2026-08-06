@@ -35,6 +35,11 @@ interface ReadyGridViewProps {
   isSearching?: boolean;
   /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly ReadyGridColumn[];
+  /**
+   * Portal target for the column-display (▦) trigger — lets the host seat it
+   * in the triage band's controls slot instead of the card corner.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /**
@@ -92,6 +97,7 @@ export function ReadyGridView({
   searchEmptyMessage,
   isSearching,
   columns = READY_GRID_COLUMNS,
+  columnTriggerPortalTarget = null,
 }: ReadyGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -133,6 +139,7 @@ export function ReadyGridView({
   return (
     <LedgerGridSurface<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
       ariaLabel="Recently tested units"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeReadyGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -148,6 +155,7 @@ export function ReadyGridView({
       scrollRef={scrollRef}
       testId="ready-grid-body"
       tableId={READY_TABLE_ID}
+      columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <ReadyGridColumnHeader
           columns={visible}

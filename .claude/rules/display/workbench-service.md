@@ -44,9 +44,12 @@ different stores — the collision the rule guards against cannot occur. What th
 old placement did cost was real and daily: writing an internal note about the
 conversation required taking the conversation off screen.
 
-**The rail's displays are exclusive, and the middle never swaps.** One display
-shows at a time, switched by a `density="icon"` strip — the Unbox Displays shape
-(`display/station-workbench.md`). Each display owns its own controls; the bottom
+**The rail's sections are exclusive, and the middle never swaps.** One section
+shows at a time, switched by a `density="icon"` strip — the same icon-strip
+MECHANISM Unbox Displays uses (`display/station-workbench.md`). The shared thing
+is the strip, not the region noun: the operator-facing region here is the
+**Inspector** (`RightRailHost` peek), never Station "Displays"
+(source-of-truth.md → Displays vs inspector). Each section owns its own controls; the bottom
 dock stays **ticket-terminal** and is never re-labelled by a click on the right
 edge, because a control in one region rewriting a control in another is the
 cross-region action-at-a-distance the station law bans.
@@ -189,7 +192,7 @@ plainly that a two-clause test admitted the surface.
 
 ```text
 ┌────────────────────┬──────────────────────────────────┐ ┌─────────────────────────┐
-│ LEFT — queue map   │ MIDDLE — thread (focus surface)  │ │ RIGHT — displays        │
+│ LEFT — queue map   │ MIDDLE — thread (focus surface)  │ │ RIGHT — inspector       │
 │                    │                                  │ │ ▣ ▣ ▣  icon strip       │
 │ durable ?ticket=   │ split header (PaneHeader blocks) │ │ Connections             │
 │ STAYS MOUNTED      │ requester band + conversation    │ │ Conversations           │
@@ -207,7 +210,7 @@ plainly that a two-clause test admitted the surface.
 | **Fields** | Status + priority in the pane header's identity row; assignment in the rail's Connections display | A permanent dropdown band docked under the subject on the reading surface |
 | **Header** | The **split header** — an icon action row over dense identity, composed from the `PaneHeader` **blocks** onto a card shell whose radius/border/lift match the queue card. It is the subject's ONE home on this surface | `PaneHeader`'s own `mainStickyHeaderClass` (a full-bleed squared band — it seams against the rounded queue card); a wrapping hero title; `StationContextBar` / `CartonContextCard`; **the chat header restating the subject one row below it** |
 | **Composer** | `OmnichannelComposerDock`, bottom-docked on the thread, **ticket-terminal** | A second sticky Support-only composer beside it; a dock whose label changes with the rail's selected display |
-| **Displays** | `SupportContextDetailPanel` — a `RightRailHost` occupant mounted *beside* the shell, hosting `SectionTabsSlider density="icon"` | A private `<aside>` in the shell; floating over the thread; a Station push-column twin for CX; a nested scroll port inside the rail's own |
+| **Inspector** | `SupportContextDetailPanel` — a `RightRailHost` occupant mounted *beside* the shell, hosting `SectionTabsSlider density="icon"`. Operator noun is **Inspector** (`Show / Hide inspector`), **not** "Displays": a `RightRailHost` peek is an inspector; "Displays" is the Station scan push column (source-of-truth.md → Displays vs inspector) | Calling the region "Displays"; a private `<aside>` in the shell; floating over the thread; a Station push-column twin for CX; a nested scroll port inside the rail's own |
 
 ### Thread anatomy — a merged record ledger, and bubbles are banned
 

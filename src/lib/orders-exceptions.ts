@@ -1,5 +1,5 @@
 import pool from '@/lib/db';
-import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
+import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -53,9 +53,11 @@ export async function updateOrderExceptionTracking(
   shippingTrackingNumber: string,
   orgId: OrgId,
 ): Promise<UpdateOrderExceptionTrackingResult> {
-  const tracking = String(shippingTrackingNumber || '').trim();
-  const trackingKey18 = normalizeTrackingKey18(tracking);
-  const trackingLast8 = normalizeTrackingLast8(tracking);
+  const {
+    exact: tracking,
+    key18: trackingKey18,
+    last8: trackingLast8,
+  } = orderTrackingMatchKeys(String(shippingTrackingNumber || '').trim());
   const normalizedLast8 = /^\d{8}$/.test(trackingLast8) ? trackingLast8 : null;
   if (!tracking || !trackingKey18) {
     return { ok: false, code: 'invalid_tracking', message: 'Tracking number is invalid' };
@@ -127,9 +129,13 @@ export async function findOrderByTrackingKey(
   // Table creation is handled by migrations, not request-time DDL.
   _tableEnsured = true;
 
-  const rawTracking = String(shippingTrackingNumber || '').trim();
-  const trackingKey18 = normalizeTrackingKey18(rawTracking);
-  const trackingLast8 = normalizeTrackingLast8(rawTracking);
+  // FedEx GS1 SoT — GS1 gun reads and sheet short STNs share one key before match.
+  const {
+    exact: canonical,
+    key18: trackingKey18,
+    last8: trackingLast8,
+  } = orderTrackingMatchKeys(String(shippingTrackingNumber || '').trim());
+  if (!canonical) return null;
   const normalizedLast8 = /^\d{8}$/.test(trackingLast8) ? trackingLast8 : null;
   if (!trackingKey18) return null;
 
@@ -139,6 +145,24 @@ export async function findOrderByTrackingKey(
   // table has no organization_id column (NEEDS-COL), so it is only reachable
   // via the org-scoped `orders` row, which is the tenant guard here.
   if (orgId) {
+    // Prefer exact STN normalized join (same as packing / receiving).
+    const exact = await tenantQuery(
+      orgId,
+      `SELECT
+          o.id,
+          stn.tracking_number_raw AS shipping_tracking_number
+       FROM orders o
+       JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+       WHERE stn.tracking_number_normalized = $1
+         AND o.organization_id = $2
+       ORDER BY o.id DESC
+       LIMIT 1`,
+      [canonical, orgId],
+    );
+    if (exact.rows[0]) {
+      return exact.rows[0] as { id: number; shipping_tracking_number: string };
+    }
+
     const tenantResult = await tenantQuery(
       orgId,
       `SELECT
@@ -179,6 +203,21 @@ export async function findOrderByTrackingKey(
     );
 
     return (tenantResult.rows[0] as { id: number; shipping_tracking_number: string } | undefined) || null;
+  }
+
+  const exact = await dbClient.query(
+    `SELECT
+        o.id,
+        stn.tracking_number_raw AS shipping_tracking_number
+     FROM orders o
+     JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     WHERE stn.tracking_number_normalized = $1
+     ORDER BY o.id DESC
+     LIMIT 1`,
+    [canonical],
+  );
+  if (exact.rows[0]) {
+    return exact.rows[0] as { id: number; shipping_tracking_number: string };
   }
 
   const result = await dbClient.query(
@@ -231,12 +270,16 @@ export async function upsertOpenOrderException(params: {
 }, dbClient: DbClient = pool, orgId?: OrgId): Promise<{ exception: OrdersExceptionRecord | null; matchedOrderId: number | null }> {
   _tableEnsured = true;
 
-  const tracking = String(params.shippingTrackingNumber || '').trim();
-  if (tracking.includes(':')) {
+  const rawTracking = String(params.shippingTrackingNumber || '').trim();
+  if (rawTracking.includes(':')) {
     return { exception: null, matchedOrderId: null };
   }
-  const trackingKey18 = normalizeTrackingKey18(tracking);
-  const trackingLast8 = normalizeTrackingLast8(tracking);
+  // Persist the canonical short key so exception sync matches sheet STNs without last8 timing.
+  const {
+    exact: tracking,
+    key18: trackingKey18,
+    last8: trackingLast8,
+  } = orderTrackingMatchKeys(rawTracking);
   const normalizedLast8 = /^\d{8}$/.test(trackingLast8) ? trackingLast8 : null;
   if (!tracking || !trackingKey18) {
     return { exception: null, matchedOrderId: null };
@@ -449,7 +492,7 @@ export async function syncOrderExceptionsToOrders(
 
   for (const row of openExceptions.rows) {
     const rawTracking = String(row.shipping_tracking_number || '');
-    const trackingKey18 = normalizeTrackingKey18(rawTracking);
+    const { exact: canonical, key18: trackingKey18 } = orderTrackingMatchKeys(rawTracking);
     if (!trackingKey18) {
       const detail = {
         exceptionId: row.id as number,
@@ -461,11 +504,11 @@ export async function syncOrderExceptionsToOrders(
       continue;
     }
 
-    // Use the shared matcher so we pick up the last-8-digit fallback and the
+    // Use the shared matcher so we pick up exact-canonical + last-8 fallback and the
     // independent shipment_id lookup. Catches cases where the exception's
     // tracking was stored slightly differently than the inbound sheet/Ecwid
-    // row (e.g. extra prefix chars trimmed by the tracking normalizer).
-    const order = await findOrderByTrackingKey(rawTracking, pool, orgId);
+    // row (e.g. FedEx GS1 gun read vs short human STN).
+    const order = await findOrderByTrackingKey(canonical, pool, orgId);
     if (!order) {
       const detail = {
         exceptionId: row.id as number,

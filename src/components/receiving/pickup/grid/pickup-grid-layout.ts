@@ -78,7 +78,7 @@ export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
   // hash mark, so a label-less numeric column is indistinguishable from an id one.
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', tier: 'optional', labelFitRem: 3.5 },
   { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'price', width: 'minmax(5rem, 5rem)', label: 'Price', type: 'number', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'price', width: 'minmax(5rem, 5rem)', label: 'Price', type: 'price', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
   { key: 'status', width: 'minmax(5rem, 5rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
 ] as const;
 

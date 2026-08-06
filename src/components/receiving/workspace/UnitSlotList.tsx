@@ -1,27 +1,41 @@
-'use client';
+"use client";
 
 import {
   useEffect,
   useRef,
   useState,
+  cloneElement,
+  isValidElement,
   type MutableRefObject,
   type ReactNode,
   type Ref,
   type RefObject,
-} from 'react';
-import { X } from '@/components/Icons';
-import { TextField, IconButton } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ConditionBadge } from './ConditionBadge';
-import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
-import { NoSerialControl, type SerialAbsentState } from './line-edit/NoSerialControl';
-import { unitRowVisibleWindow } from './line-receive-mode';
+} from "react";
+import { X, Pencil, ScanBarcode } from "@/components/Icons";
+import { TextField, IconButton } from "@/design-system/primitives";
+import { cornerClass } from "@/design-system/tokens/radius";
+import { HoverTooltip } from "@/components/ui/HoverTooltip";
+import { cn } from "@/utils/_cn";
+import { ConditionBadge } from "./ConditionBadge";
+import { NoSerialOfferCheck } from "./line-edit/NoSerialOfferCheck";
+import {
+  NoSerialControl,
+  type SerialAbsentState,
+} from "./line-edit/NoSerialControl";
+import { unitRowVisibleWindow } from "./line-receive-mode";
+import { bindSerialsToUnitSlots } from "@/lib/receiving/optimistic-serials";
 
 export interface UnitLike {
   id: number;
   serial_number: string;
   condition_grade?: string | null;
   current_status?: string;
+}
+
+/** Controlled condition expand for flush Units rows (collapses photo + serial). */
+interface ConditionExpandPairing {
+  expanded: boolean;
+  onExpandedChange: (next: boolean) => void;
 }
 
 /** Materialised `receiving_line_unit` row as the slot list needs it. */
@@ -57,8 +71,16 @@ interface Props {
   onMarkUnitNoSerial?: (unitId: number) => void;
   /** Fire when the operator changes / clears a committed per-unit waiver. */
   onUnitSerialAbsentChange?: (unitId: number, next: SerialAbsentState) => void;
-  /** Rendered inside the expanded row, above the serial input (e.g. condition pills). */
-  renderExpandedMeta?: (serial: UnitLike | null, index: number) => ReactNode;
+  /**
+   * Rendered inside the expanded row's condition cell (e.g. ConditionPills).
+   * Flush Units rows pass a controlled expand pairing so expanding the grade
+   * strip collapses photo + serial in the same joined bar (SerialCard pairing).
+   */
+  renderExpandedMeta?: (
+    serial: UnitLike | null,
+    index: number,
+    pairing?: { expanded: boolean; onExpandedChange: (next: boolean) => void },
+  ) => ReactNode;
   /**
    * When true, the selected row's expanded meta (condition/verdict pills) is
    * shown immediately instead of collapsing to a text badge until hover / serial
@@ -75,9 +97,26 @@ interface Props {
   singleRowExpanded?: boolean;
   /** Compact node on the right of a collapsed row (e.g. condition badge / verdict glyph). */
   renderCollapsedMeta?: (serial: UnitLike | null, index: number) => ReactNode;
+  /** Station body shows completion only; editing is handed to the Units display. */
+  stationCompact?: boolean;
+  /**
+   * Units Displays flush chrome: hairline full-bleed rows, square IconButtons,
+   * TextField `appearance="flush"`. Station compact paths leave this false.
+   */
+  flush?: boolean;
+  /**
+   * Leading control on every flush unit row (e.g. line-scoped item camera).
+   * Always leftmost — before Tags / condition — when `flush` is set.
+   */
+  activeRowLeading?: ReactNode;
   onAddSerial: (index: number, serial: string) => void | Promise<void>;
   onDeleteSerial: (serial: UnitLike) => void;
   onReplaceSerial: (original: UnitLike, next: string) => void;
+  /**
+   * Filled unit → pencil. Opens Units display / edit handoff. When omitted,
+   * pencil falls back to in-row replace (scan field).
+   */
+  onEditFilledSerial?: (serial: UnitLike) => void;
   /** Edit from PO header {@link SerialChipWithMenu} → expanded unit scan input. */
   serialEditTarget?: UnitLike | null;
   /** Mirrors the first empty slot (or row 0) for dock → scan handoff. */
@@ -93,26 +132,17 @@ interface Props {
 }
 
 function last8(sn: string): string {
-  const v = (sn || '').trim();
+  const v = (sn || "").trim();
   return v.length > 8 ? v.slice(-8) : v;
 }
 
-function resolveSerialForUnit(
-  unit: UnitSlotView,
-  saved: ReadonlyArray<UnitLike>,
-): UnitLike | null {
-  if (unit.serial_unit_id != null) {
-    const hit = saved.find((s) => s.id === unit.serial_unit_id);
-    if (hit) return hit;
-    if (unit.serial) {
-      return {
-        id: unit.serial_unit_id,
-        serial_number: unit.serial,
-        condition_grade: unit.condition_grade,
-      };
-    }
-  }
-  return null;
+function synthesizeLinkedSerial(unit: UnitSlotView): UnitLike | null {
+  if (unit.serial_unit_id == null || !unit.serial) return null;
+  return {
+    id: unit.serial_unit_id,
+    serial_number: unit.serial,
+    condition_grade: unit.condition_grade,
+  };
 }
 
 /**
@@ -138,9 +168,13 @@ export function UnitSlotList({
   alwaysShowExpandedMeta = false,
   singleRowExpanded = false,
   renderCollapsedMeta,
+  stationCompact = false,
+  flush = false,
+  activeRowLeading,
   onAddSerial,
   onDeleteSerial,
   onReplaceSerial,
+  onEditFilledSerial,
   serialEditTarget = null,
   primaryInputRef,
   maxVisible,
@@ -148,11 +182,14 @@ export function UnitSlotList({
 }: Props) {
   const useUnits = Array.isArray(units) && units.length > 0;
   const count = useUnits ? units!.length : Math.max(total, saved.length, 1);
+  const boundToUnits = useUnits ? bindSerialsToUnitSlots(units!, saved) : null;
   const allRows = useUnits
     ? units!.map((unit, index) => ({
         index,
         unit,
-        serial: resolveSerialForUnit(unit, saved),
+        // Linked id wins; unbound saved (incl. optimistic) fill empty slots by
+        // ordinal so firstEmpty / primaryInputRef advance before units refresh.
+        serial: boundToUnits![index] ?? synthesizeLinkedSerial(unit),
       }))
     : Array.from({ length: count }, (_, i) => ({
         index: i,
@@ -162,14 +199,16 @@ export function UnitSlotList({
 
   // Cap DOM rows: keep a window that includes the selected unit so scan-advance
   // never mounts hundreds of ExpandedRow nodes for bulk commodities.
-  const cap = maxVisible != null && maxVisible > 0 ? maxVisible : allRows.length;
+  const cap =
+    maxVisible != null && maxVisible > 0 ? maxVisible : allRows.length;
   const { start: windowStart, end: windowEnd } = unitRowVisibleWindow(
     allRows.length,
     selectedIndex,
     cap,
   );
   const rows = allRows.slice(windowStart, windowEnd);
-  const isCapped = maxVisible != null && maxVisible > 0 && allRows.length > maxVisible;
+  const isCapped =
+    maxVisible != null && maxVisible > 0 && allRows.length > maxVisible;
 
   // All-expanded (single-row) mode: every unit shows its own open serial input.
   // A committed scan hands focus straight to the next row's input *immediately*
@@ -189,14 +228,15 @@ export function UnitSlotList({
   };
   // First not-yet-scanned / not-waived slot — autofocused on mount in all-expanded mode.
   const firstEmptyIndex = allRows.findIndex(
-    ({ serial, unit }) => !serial && !(unit?.serial_absent),
+    ({ serial, unit }) => !serial && !unit?.serial_absent,
   );
   const primaryIndex = firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
 
   const syncPrimaryInputRef = (index: number, el: HTMLInputElement | null) => {
     inputRefs.current[index] = el;
     if (primaryInputRef && singleRowExpanded && index === primaryIndex) {
-      (primaryInputRef as MutableRefObject<HTMLInputElement | null>).current = el;
+      (primaryInputRef as MutableRefObject<HTMLInputElement | null>).current =
+        el;
     }
   };
 
@@ -209,10 +249,15 @@ export function UnitSlotList({
   return (
     <div className="flex min-w-0 flex-col">
       <div
-        className="flex min-w-0 flex-col divide-y divide-border-soft"
+        className={
+          flush
+            ? 'flex min-w-0 flex-col divide-y divide-border-hairline'
+            : 'flex min-w-0 flex-col divide-y divide-border-soft'
+        }
         data-unit-slot-list
         data-unit-slot-count={rows.length}
         data-unit-slot-total={count}
+        data-unit-slot-flush={flush ? 'true' : undefined}
       >
         {rows.map(({ index, serial, unit }) => {
           const expanded = singleRowExpanded || index === selectedIndex;
@@ -228,11 +273,23 @@ export function UnitSlotList({
               requireSerialConfirmation={requireSerialConfirmation}
               onMarkUnitNoSerial={onMarkUnitNoSerial}
               onUnitSerialAbsentChange={onUnitSerialAbsentChange}
-              meta={renderExpandedMeta?.(serial, index)}
+              renderMeta={renderExpandedMeta}
               alwaysShowMeta={alwaysShowExpandedMeta || singleRowExpanded}
               singleRow={singleRowExpanded}
+              stationCompact={stationCompact}
+              flush={flush}
+              leading={
+                flush && activeRowLeading
+                  ? isValidElement(activeRowLeading)
+                    ? cloneElement(activeRowLeading, {
+                        key: `row-leading-${unit?.id ?? serial?.id ?? index}`,
+                      })
+                    : activeRowLeading
+                  : null
+              }
               serialEditTarget={
-                serialEditTarget?.id != null && serial?.id === serialEditTarget.id
+                serialEditTarget?.id != null &&
+                serial?.id === serialEditTarget.id
                   ? serialEditTarget
                   : null
               }
@@ -250,10 +307,13 @@ export function UnitSlotList({
                 index < windowEnd
               }
               onFocusRow={singleRowExpanded ? () => onSelect(index) : undefined}
-              onAdvance={singleRowExpanded ? () => focusRow(index + 1) : undefined}
+              onAdvance={
+                singleRowExpanded ? () => focusRow(index + 1) : undefined
+              }
               onAddSerial={(sn) => onAddSerial(index, sn)}
               onDeleteSerial={onDeleteSerial}
               onReplaceSerial={onReplaceSerial}
+              onEditFilledSerial={onEditFilledSerial}
             />
           ) : (
             <CollapsedRow
@@ -264,13 +324,22 @@ export function UnitSlotList({
               waived={!!unit?.serial_absent}
               waivedReason={unit?.serial_absent_reason ?? null}
               meta={renderCollapsedMeta?.(serial, index)}
+              flush={flush}
               onSelect={() => onSelect(index)}
             />
           );
         })}
       </div>
       {isCapped && overflowSlot ? (
-        <div className="border-t border-border-soft px-1 pt-2">{overflowSlot}</div>
+        <div
+          className={
+            flush
+              ? 'border-t border-border-hairline px-3 pt-2'
+              : 'border-t border-border-soft px-1 pt-2'
+          }
+        >
+          {overflowSlot}
+        </div>
       ) : null}
     </div>
   );
@@ -305,6 +374,7 @@ function CollapsedRow({
   waived,
   waivedReason,
   meta,
+  flush = false,
   onSelect,
 }: {
   index: number;
@@ -313,6 +383,7 @@ function CollapsedRow({
   waived: boolean;
   waivedReason: string | null;
   meta: ReactNode;
+  flush?: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -321,12 +392,16 @@ function CollapsedRow({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onSelect();
         }
       }}
-      className="w-full cursor-pointer px-1 py-2.5 text-left transition-colors hover:bg-surface-hover"
+      className={
+        flush
+          ? "w-full cursor-pointer px-0 py-0 text-left transition-colors hover:bg-surface-hover"
+          : "w-full cursor-pointer px-1 py-2.5 text-left transition-colors hover:bg-surface-hover"
+      }
     >
       <UnitRowTitle
         index={index}
@@ -339,7 +414,10 @@ function CollapsedRow({
             </span>
           ) : waived ? (
             <span className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
-              No serial{waivedReason ? ` · ${waivedReason.replace(/_/g, ' ').toLowerCase()}` : ''}
+              No serial
+              {waivedReason
+                ? ` · ${waivedReason.replace(/_/g, " ").toLowerCase()}`
+                : ""}
             </span>
           ) : (
             <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
@@ -362,9 +440,12 @@ function ExpandedRow({
   requireSerialConfirmation,
   onMarkUnitNoSerial,
   onUnitSerialAbsentChange,
-  meta,
+  renderMeta,
   alwaysShowMeta = false,
   singleRow = false,
+  stationCompact = false,
+  flush = false,
+  leading = null,
   serialEditTarget,
   inputRef,
   autoFocusInput = false,
@@ -372,6 +453,7 @@ function ExpandedRow({
   onAdvance,
   onAddSerial,
   onReplaceSerial,
+  onEditFilledSerial,
 }: {
   index: number;
   total: number;
@@ -382,10 +464,20 @@ function ExpandedRow({
   requireSerialConfirmation: boolean;
   onMarkUnitNoSerial?: (unitId: number) => void;
   onUnitSerialAbsentChange?: (unitId: number, next: SerialAbsentState) => void;
-  meta: ReactNode;
+  renderMeta?: (
+    serial: UnitLike | null,
+    index: number,
+    pairing?: ConditionExpandPairing,
+  ) => ReactNode;
   alwaysShowMeta?: boolean;
   /** Hide the `n/N` counter so the row mirrors the single-qty SerialCard. */
   singleRow?: boolean;
+  /** Collapse completed serials to a scan-status icon in the Station body. */
+  stationCompact?: boolean;
+  /** Units Displays flush chrome. */
+  flush?: boolean;
+  /** Optional leading cell (item camera) — leftmost on every flush row. */
+  leading?: ReactNode;
   serialEditTarget: UnitLike | null;
   /** Forwarded to the serial input so the parent can advance focus between rows. */
   inputRef?: Ref<HTMLInputElement>;
@@ -398,13 +490,16 @@ function ExpandedRow({
   onAddSerial: (serial: string) => void | Promise<void>;
   onDeleteSerial: (serial: UnitLike) => void;
   onReplaceSerial: (original: UnitLike, next: string) => void;
+  /** Filled unit → pencil (Units display / in-row replace). */
+  onEditFilledSerial?: (serial: UnitLike) => void;
 }) {
-  const [scan, setScan] = useState('');
+  const [scan, setScan] = useState("");
   const [editing, setEditing] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   // When the row's whole purpose is grading (Unbox), keep the pills visible
   // instead of hiding them behind hover/serial-focus.
-  const showMeta = alwaysShowMeta || isFocused || isSubmitting || scan.length > 0;
+  const showMeta =
+    alwaysShowMeta || isFocused || isSubmitting || scan.length > 0;
   const waived = !!unit?.serial_absent;
   const unitId = unit?.id ?? null;
   const canOfferNoSerial =
@@ -413,13 +508,62 @@ function ExpandedRow({
     !editing &&
     !scan.trim() &&
     unitId != null &&
-    typeof onMarkUnitNoSerial === 'function';
+    typeof onMarkUnitNoSerial === "function";
+  // Committed serial — show readout + pencil (not an empty field with + / check).
+  const showFilledReadout = !!serial && !editing && !waived;
+  // Joined industrial bar: Unbox accordion single-row OR Units Displays flush.
+  const joined = singleRow || flush;
+
+  const slotGrade = String(
+    serial?.condition_grade ?? unit?.condition_grade ?? "",
+  ).trim();
+  const hasGrade = Boolean(slotGrade);
+  // Flush Units: expand grade strip when ungraded (SerialCard pairing). Graded
+  // rows start collapsed so photo + serial keep the bar.
+  const [condExpanded, setCondExpanded] = useState(() => flush && !hasGrade);
+
+  useEffect(() => {
+    if (!hasGrade) setCondExpanded(true);
+  }, [hasGrade]);
 
   useEffect(() => {
     if (!serialEditTarget || serial?.id !== serialEditTarget.id) return;
     setEditing(true);
     setScan(serialEditTarget.serial_number);
-  }, [serial?.id, serialEditTarget]);
+    // Collapse condition so serial edit owns the bar (SerialCard pairing).
+    if (flush) setCondExpanded(false);
+  }, [serial?.id, serialEditTarget, flush]);
+
+  useEffect(() => {
+    if (editing && flush) setCondExpanded(false);
+  }, [editing, flush]);
+
+  const flushConditionExpanded = Boolean(
+    flush && renderMeta && (condExpanded || !hasGrade),
+  );
+  const pairing: ConditionExpandPairing | undefined = flush
+    ? {
+        expanded: condExpanded || !hasGrade,
+        onExpandedChange: setCondExpanded,
+      }
+    : undefined;
+  const meta = renderMeta?.(serial, index, pairing) ?? null;
+
+  const beginLocalEdit = () => {
+    if (!serial) return;
+    setEditing(true);
+    setScan(serial.serial_number);
+    onFocusRow?.();
+  };
+
+  const handleEditFilled = () => {
+    if (!serial) return;
+    if (onEditFilledSerial) {
+      onEditFilledSerial(serial);
+      return;
+    }
+    beginLocalEdit();
+  };
 
   const submit = () => {
     const v = scan.trim();
@@ -427,119 +571,222 @@ function ExpandedRow({
     if (editing && serial) {
       if (v !== serial.serial_number) onReplaceSerial(serial, v);
       setEditing(false);
-      setScan('');
+      setScan("");
       return;
     }
     // Fire-and-forget: the parent queues the write, so clear + advance focus to
     // the next row immediately instead of waiting on the network round-trip.
     void onAddSerial(v);
-    setScan('');
+    setScan("");
     onAdvance?.();
   };
 
   return (
-    <div className="min-w-0 px-1 py-2.5 group">
-      <div className="flex min-w-0 w-full items-center gap-2">
+    <div
+      className={cn(
+        "min-w-0 group",
+        flush ? "px-0 py-0" : joined ? "py-0" : "px-1 py-2.5",
+      )}
+      data-unit-slot-cond-expanded={flushConditionExpanded ? "true" : undefined}
+    >
+      <div
+        className={cn(
+          "flex min-w-0 w-full items-stretch",
+          joined
+            ? cn(
+                "h-11 w-full overflow-hidden bg-surface-card divide-x divide-border-soft",
+                cornerClass("flush"),
+                // Flush + station compact: borderless — parent divide-y / accordion
+                // seams own horizontal rules; divide-x owns cell joins.
+                flush || stationCompact
+                  ? "border-0"
+                  : "border border-border-default",
+              )
+            : "items-center gap-2",
+        )}
+      >
+        {leading && !flushConditionExpanded ? (
+          <div className="flex size-11 shrink-0 items-stretch [&>*]:size-full [&>*]:min-w-0">
+            {leading}
+          </div>
+        ) : null}
         {/* Active unit's n/N — same column as the collapsed rows so the qty +
             condition read down one vertical line instead of jumping left.
-            Hidden in single-row mode so the active unit mirrors a single-qty line. */}
-        {singleRow ? null : (
+            Hidden in joined mode so the active unit mirrors a single-qty line. */}
+        {joined ? null : (
           <span className="shrink-0 font-mono text-role-micro tabular-nums text-text-soft">
             {index + 1}/{total}
           </span>
         )}
         {meta ? (
-          singleRow ? (
-            // PO accordion multi-qty: mirror embedded SerialCard — pills and
-            // serial share one row; no overflow clip so every grade stays reachable.
-            <div className="flex min-w-0 items-center gap-2">
+          joined ? (
+            // PO accordion / Units flush: joined bar. Collapsed Tags face is
+            // min-w-11; expanded ConditionPills must grow past that lock —
+            // a fixed w-11 clipped the grade row so clicks never opened it.
+            // Flush expand pairing: pills own the full bar (photo + serial hide).
+            <div
+              className={cn(
+                "flex h-11 items-stretch [&>*]:h-full",
+                flushConditionExpanded
+                  ? "min-w-0 flex-1"
+                  : "min-w-11 shrink-0",
+              )}
+            >
               {meta}
-              <div className="h-8 w-px shrink-0 bg-surface-sunken" />
             </div>
           ) : (
             <div
               className={`flex min-w-0 items-center gap-2 transition-all duration-700 ease-in-out overflow-hidden ${
                 showMeta
-                  ? 'min-w-0 max-w-full flex-1 opacity-100 mr-1'
-                  : 'max-w-[3rem] opacity-100 group-hover:max-w-full group-hover:flex-1 group-hover:mr-1'
+                  ? "min-w-0 max-w-full flex-1 opacity-100 mr-1"
+                  : "max-w-[3rem] opacity-100 group-hover:max-w-full group-hover:flex-1 group-hover:mr-1"
               }`}
             >
-              <div className={`${showMeta ? 'hidden' : 'block group-hover:hidden'}`}>
-                <ConditionBadge grade={serial?.condition_grade ?? unit?.condition_grade} />
+              <div
+                className={`${showMeta ? "hidden" : "block group-hover:hidden"}`}
+              >
+                <ConditionBadge
+                  grade={serial?.condition_grade ?? unit?.condition_grade}
+                />
               </div>
-              <div className={`${showMeta ? 'block' : 'hidden group-hover:block'}`}>
-                <div className="inline-flex items-center">
-                  {meta}
-                </div>
+              <div
+                className={`${showMeta ? "block" : "hidden group-hover:block"}`}
+              >
+                <div className="inline-flex items-center">{meta}</div>
               </div>
-              <div className={`h-8 w-px bg-surface-sunken shrink-0 ${showMeta ? 'block' : 'hidden group-hover:block'}`} />
+              <div
+                className={`h-8 w-px bg-surface-sunken shrink-0 ${showMeta ? "block" : "hidden group-hover:block"}`}
+              />
             </div>
           )
         ) : null}
 
-        <div className="flex-1 min-w-0">
-          {waived && unitId != null && onUnitSerialAbsentChange ? (
-            // Committed per-unit waiver — replaces the input, matching single-qty
-            // SerialCard's noSerialSlot (full-width reason bar).
-            <NoSerialControl
-              absent
-              fullWidth
-              hideClear
-              reason={unit?.serial_absent_reason ?? null}
-              required={requireSerialConfirmation}
-              disabled={disabled}
-              onChange={(next) => onUnitSerialAbsentChange(unitId, next)}
-            />
-          ) : (
-          <TextField
-            ref={inputRef}
-            label="Serial"
-            data-unbox-serial-input
-            value={scan}
-            onChange={setScan}
-            tone="blue"
-            mono
-            // Single-row (fast-scan) mode keeps the input live during submit so
-            // the auto-advanced field accepts the next scan without waiting for
-            // the queued write to settle. Other modes block during submit.
-            disabled={disabled || (!singleRow && isSubmitting)}
-            autoComplete="off"
-            spellCheck={false}
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- scan-focused workflow
-            autoFocus={autoFocusInput}
-            onFocus={() => {
-              setIsFocused(true);
-              onFocusRow?.();
-            }}
-            onBlur={() => setIsFocused(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                submit();
-              } else if (e.key === 'Escape' && editing) {
-                e.preventDefault();
-                setEditing(false);
-                setScan('');
-              }
-            }}
-            trailing={
-              scan ? (
-                <IconButton
-                  onClick={() => {
-                    setScan('');
+        {flushConditionExpanded ? null : stationCompact && showFilledReadout ? (
+          <div className="min-w-0 flex-1" />
+        ) : (
+          <div className="flex min-w-0 flex-1 items-stretch">
+            {waived && unitId != null && onUnitSerialAbsentChange ? (
+              // Committed per-unit waiver — replaces the input, matching single-qty
+              // SerialCard's noSerialSlot (full-width reason bar).
+              <NoSerialControl
+                absent
+                fullWidth
+                hideClear
+                reason={unit?.serial_absent_reason ?? null}
+                required={requireSerialConfirmation}
+                disabled={disabled}
+                onChange={(next) => onUnitSerialAbsentChange(unitId, next)}
+              />
+            ) : showFilledReadout ? (
+              // ds-raw-button: serial readout handoff — IconButton pencil is the primary control
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={handleEditFilled}
+                data-unit-serial-readout
+                className={cn(
+                  "flex h-11 w-full min-w-0 items-center truncate px-3 text-left font-mono text-role-caption text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-strong/20 disabled:cursor-not-allowed disabled:opacity-60",
+                  joined
+                    ? cn(cornerClass("flush"), "bg-surface-canvas")
+                    : "rounded-xl border border-border-soft bg-surface-canvas hover:border-border-strong",
+                )}
+                // ds-allow-focus — readout is a handoff control; IconButton sibling owns the primary pencil affordance.
+              >
+                {serial.serial_number}
+              </button>
+            ) : (
+              <TextField
+                ref={inputRef}
+                label="Serial"
+                data-unbox-serial-input
+                appearance={joined ? "flush" : "default"}
+                value={scan}
+                onChange={setScan}
+                tone="neutral"
+                mono
+                // Single-row (fast-scan) mode keeps the input live during submit so
+                // the auto-advanced field accepts the next scan without waiting for
+                // the queued write to settle. Other modes block during submit.
+                disabled={disabled || (!singleRow && isSubmitting)}
+                autoComplete="off"
+                spellCheck={false}
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- scan-focused workflow
+                autoFocus={autoFocusInput}
+                onFocus={() => {
+                  setIsFocused(true);
+                  onFocusRow?.();
+                }}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submit();
+                  } else if (e.key === "Escape" && editing) {
+                    e.preventDefault();
                     setEditing(false);
-                  }}
-                  ariaLabel={editing ? 'Cancel edit' : 'Clear'}
-                  icon={<X className="h-3.5 w-3.5" />}
-                  className="rounded-md p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-                />
-              ) : undefined
-            }
-          />
-          )}
-        </div>
+                    setScan("");
+                  }
+                }}
+                trailing={
+                  scan ? (
+                    <IconButton
+                      onClick={() => {
+                        setScan("");
+                        setEditing(false);
+                      }}
+                      ariaLabel={editing ? "Cancel edit" : "Clear"}
+                      icon={<X className="h-3.5 w-3.5" />}
+                      className="rounded-md p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                    />
+                  ) : undefined
+                }
+              />
+            )}
+          </div>
+        )}
 
-        {waived ? null : canOfferNoSerial ? (
+        {flushConditionExpanded ? null : waived ? null : showFilledReadout &&
+          stationCompact ? (
+          <div className="flex h-11 w-11 shrink-0 self-stretch">
+            <HoverTooltip label="Scanned · edit in Units display" asChild>
+              <IconButton
+                onClick={handleEditFilled}
+                disabled={disabled}
+                ariaLabel="Serial scanned. Open Units display to edit"
+                data-unit-scanned-icon
+                icon={<ScanBarcode className="h-4 w-4" />}
+                className={cn(
+                  "flex h-full w-full items-center justify-center bg-emerald-50 p-0 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60",
+                  cornerClass("flush"),
+                )}
+                // ds-allow-control-size — joined trailing cell fills h-11×w-11
+              />
+            </HoverTooltip>
+          </div>
+        ) : showFilledReadout ? (
+          <div className={cn(joined && "flex h-11 w-11 shrink-0 self-stretch")}>
+            <HoverTooltip label="Edit unit in Units display" asChild>
+              <IconButton
+                onClick={handleEditFilled}
+                disabled={disabled}
+                ariaLabel="Edit unit"
+                data-unit-edit-pencil
+                size={joined ? undefined : "touch"}
+                icon={<Pencil className="h-4 w-4" />}
+                className={cn(
+                  "text-text-muted hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60",
+                  joined
+                    ? cn(
+                        cornerClass("flush"),
+                        "flex h-full w-full items-center justify-center bg-surface-card p-0",
+                      )
+                    : "border border-border-soft bg-surface-card shadow-sm",
+                )}
+                // ds-allow-control-size — joined trailing cell fills h-11×w-11
+              />
+            </HoverTooltip>
+          </div>
+        ) : canOfferNoSerial ? (
           // Replaces the greyed-out empty-field `+` entirely — one green check,
           // shared with the single-qty SerialCard (NoSerialOfferCheck).
           <NoSerialOfferCheck
@@ -548,21 +795,42 @@ function ExpandedRow({
             disabled={disabled}
             required={requireSerialConfirmation}
             width="w-11"
+            appearance={joined ? "flush" : "default"}
           />
         ) : (
-        <HoverTooltip label={editing ? 'Save serial' : 'Add serial'} asChild>
-          <IconButton
-            onClick={submit}
-            disabled={!scan.trim() || (!singleRow && isSubmitting) || disabled}
-            ariaLabel={editing ? 'Save serial' : 'Add serial'}
-            icon={
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5">
-                <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-              </svg>
-            }
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
-          />
-        </HoverTooltip>
+          <div className={cn(joined && "flex h-11 w-11 shrink-0 self-stretch")}>
+            <HoverTooltip label={editing ? "Save serial" : "Add serial"} asChild>
+              <IconButton
+                onClick={submit}
+                disabled={
+                  !scan.trim() || (!singleRow && isSubmitting) || disabled
+                }
+                ariaLabel={editing ? "Save serial" : "Add serial"}
+                size={joined ? undefined : "touch"}
+                icon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    className="h-5 w-5"
+                  >
+                    <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                  </svg>
+                }
+                className={cn(
+                  "text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong disabled:text-text-faint",
+                  joined
+                    ? cn(
+                        cornerClass("flush"),
+                        "flex h-full w-full items-center justify-center bg-emerald-600 p-0",
+                      )
+                    : "bg-emerald-600 shadow-sm",
+                )}
+                // ds-allow-control-size — joined trailing cell fills h-11×w-11
+              />
+            </HoverTooltip>
+          </div>
         )}
       </div>
     </div>

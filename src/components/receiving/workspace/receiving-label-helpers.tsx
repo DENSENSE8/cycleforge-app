@@ -216,8 +216,9 @@ export function markReceivingUnitCondition(
   currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
 ): void {
   if (typeof window === 'undefined' || !(lineId > 0) || !(unitId > 0)) return;
-  const grade = String(conditionGrade || '').trim().toUpperCase();
-  if (!grade) return;
+  const raw = String(conditionGrade || '').trim().toUpperCase();
+  // Empty string clears the per-unit grade (nullable column).
+  const grade: string | null = raw || null;
   if (currentUnits) {
     dispatchLineUpdated({
       id: lineId,
@@ -244,8 +245,10 @@ export function markAllReceivingUnitsCondition(
   currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
 ): void {
   if (typeof window === 'undefined' || !(lineId > 0)) return;
-  const grade = String(conditionGrade || '').trim().toUpperCase();
-  if (!grade || !currentUnits || currentUnits.length === 0) return;
+  const raw = String(conditionGrade || '').trim().toUpperCase();
+  // Empty string clears every unit grade (nullable).
+  const grade: string | null = raw || null;
+  if (!currentUnits || currentUnits.length === 0) return;
   dispatchLineUpdated({
     id: lineId,
     units: currentUnits.map((u) => ({ ...u, condition_grade: grade })),

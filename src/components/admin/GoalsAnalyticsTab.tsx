@@ -189,7 +189,7 @@ export function GoalsAnalyticsTab() {
             <DetailCard label="Last snapshot" value={formatShortDate(staffSummary.latest.logged_date)} />
           </div>
 
-          <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+          <div className="rounded-none border border-border-soft bg-surface-card p-4">
             <p className="text-role-micro uppercase tracking-widest text-text-soft">Trend</p>
             <div className="mt-3 flex items-end gap-2">
               {[...staffSummary.recent].reverse().map((entry) => {
@@ -215,7 +215,7 @@ export function GoalsAnalyticsTab() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border-soft bg-surface-card">
+          <div className="rounded-none border border-border-soft bg-surface-card">
             <div className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-soft px-4 py-2.5 text-role-micro uppercase tracking-widest text-text-soft">
               <p>Date</p>
               <p className="text-right">Actual</p>
@@ -256,7 +256,7 @@ function DetailCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-3">
+    <div className="rounded-none border border-border-soft bg-surface-card p-3">
       <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
       <div className="mt-1 text-base font-semibold text-text-default">{value}</div>
       {hint ? <p className="mt-0.5 text-role-micro text-text-soft">{hint}</p> : null}

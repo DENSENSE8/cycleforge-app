@@ -3,6 +3,7 @@ import type { PaintSurface } from '@/lib/observability/paint-timing';
 
 import { formatLaneAgeCompact } from '@/utils/date';
 import type { RefreshDomain } from '@/lib/refresh/domains';
+import type { RailPeekFact } from './RailPeekCard';
 
 export function railRelativeTime(iso: string | null | undefined): string {
   return formatLaneAgeCompact(iso) ?? '—';
@@ -110,6 +111,12 @@ export interface SidebarRailShellProps<TRow> {
    */
   excludedIds?: ReadonlySet<number>;
   /**
+   * Client-side keep filter — rows that return false are hidden as a pure
+   * DISPLAY filter (same contract as {@link excludedIds}: not in the queryKey,
+   * so toggling facets re-filters in place). Unset = keep every row.
+   */
+  includeRow?: (row: TRow) => boolean;
+  /**
    * Opt-in cold-reload continuity. Returns the viewer's last-known rows for this
    * rail (or null) — on mount the rail seeds from it so a reload paints quickly
    * instead of waiting the full (heavy) authoritative query, then reconciles
@@ -194,16 +201,42 @@ export interface SidebarRailShellProps<TRow> {
   /**
    * Horizontal inset for the list host.
    *   - `gutter` (shell default) — symmetric SIDEBAR_GUTTER.
-   *   - `scanDock` — left = SIDEBAR_RAIL_INSET_LEFT (sidebar gutter), right flush
-   *     (SIDEBAR_RAIL_INSET_X); the status
-   *     dot rides a compact FLOW leading track (SIDEBAR_SCAN_DOCK_LEADING_ROW) at the
-   *     row's left and the title/eyebrow sit one tight gap after it — the dense
-   *     scan-dock column. Recent rails default this via SidebarRecentRailBase.
+   *   - `scanDock` — flush list (`SIDEBAR_RAIL_INSET_X` = px-0) so selection
+   *     washes edge-to-edge; content column pad nests inside each RailRow
+   *     (SIDEBAR_RAIL_INSET_LEFT + SIDEBAR_SCAN_DOCK_LEADING_ROW). Recent rails
+   *     default this via SidebarRecentRailBase.
    */
   railInset?: 'scanDock' | 'gutter';
 
   /** Dev/observability: stamp a paint mark once the rail leaves skeleton state. */
   contentPaintSurface?: PaintSurface;
+
+  /**
+   * Same top-N visible rows the rail renders (after filters / order / pin).
+   * Optional observer — collapsed-strip MRU publish lives in the shell itself.
+   */
+  onVisibleRowsChange?: (rows: TRow[]) => void;
+
+  /**
+   * Publish top-N (`CONTEXT_PANEL_COLLAPSE.mruPinCount`) rows as mid-strip
+   * status-dot pins while the context rail is parked. {@link SidebarRecentRailBase}
+   * defaults this on so every recent-activity rail inherits the peek.
+   */
+  publishCollapseMru?: boolean;
+  /** Title-quality tooltip for a collapse pin (falls back to status label / id). */
+  getCollapsePinLabel?: (row: TRow) => string;
+  /**
+   * Secondary identity line for the collapse-pin peek (tracking · PO · SKU)
+   * when the row has no typed {@link getCollapsePinFacts} chips. Optional.
+   */
+  getCollapsePinMeta?: (row: TRow) => string | null | undefined;
+  /**
+   * Copyable identity chips for the parked-pin peek card. Feeds WITHOUT a
+   * `renderPopover` (Pack · Shipping · Labels · Pickup …) publish these so the
+   * strip peek is the same copy-and-paste card the Receiving rail shows —
+   * never a text-only tooltip.
+   */
+  getCollapsePinFacts?: (row: TRow) => RailPeekFact[] | null | undefined;
 
   getId: (row: TRow) => number;
   /**

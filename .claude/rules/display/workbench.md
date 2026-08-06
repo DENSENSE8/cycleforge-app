@@ -87,24 +87,22 @@ different row. Detail: [`workbench-ops-queue.md`](workbench-ops-queue.md) → St
 ┌─ KPI strip (scrolls with body; Unbox pins this inline in chrome instead — see above) ─┐
 │  UNFINISHED · VIEWED TODAY · …                                  │
 └───────────────────────────────────────────────────────────────┘
-┌─ Data table / collection map ───────────────────────[▤]──┐ ← column display,
-│  column header band                                      │   revealed on hover
-├──────────────────────────────────────────────────────────┤   over the card
+┌─ Band 3 triage ─ find · filter · week ────────────[▦]──┐ ← column display
+┌─ Data table / collection map ────────────────────────────┐   portals into Band-3
+│  column header band                                      │   (card-corner hover
+├──────────────────────────────────────────────────────────┤   only if no Band-3)
 ```
 
-**Column display belongs to the GRID, and reserves nothing** (2026-08-02).
+**Column display belongs to the GRID** (2026-08-02; Band-3 portal norm 2026-08-06).
 Chrome Fields is retired: a control that mutates the column set of a card does
-not belong on page chrome floating above that card. It does not get resident
-space on the card either — that was tried twice in one day and billed twice. A
-permanent `w-9` header track plus `pr-9` charges every ROW of every grid; a
-permanent gutter beside the card charges every PAGE. Both pay a standing rent
-for an action used a few times a shift.
+not belong on page chrome floating above that card. It does not get a permanent
+`w-9` header track / `pr-9` on the card either — that covered `TRACKING`.
 
-So it is **hover-revealed over the card's top-right corner** (`GridColumnGutter`),
-with `focus-within` keeping it keyboard-reachable and `open` pinning it while its
-own rail shows. It overlaps the trailing label only while the operator's cursor
-is already there — transient occlusion, not the resident kind that covered
-`TRACKING`. Being absolutely positioned, it adds no sticky layer.
+**Norm:** every table with a `WorkbenchTriageBand` portals ▦ into the band's
+`controlsSlotRef` (`columnTriggerPortalTarget` → `GridColumnGutter`
+`triggerPortalTarget`) so it sits resident beside filter / staff / week / sort.
+**Fallback** (no Band-3): hover-revealed over the card's top-right corner, with
+`focus-within` for keyboard and `open` pinning while its rail shows.
 
 ### Return-to-scan contract (every scan station)
 
@@ -189,7 +187,7 @@ Every operator action on a collection surface belongs to exactly **one primary p
 |---|---|---|
 | **In-cell** | cell-anchored editor / popover | single-value typed fields |
 | **Row-scoped** | hover controls + single-selected row menu | one-click record affordances |
-| **Multi-select** | gutter hit-plane (`GridRowCheckbox`) + `ContextualSelectionBar` + `SelectionAction[]` — **except Unbox click-select golden:** plain row click toggles bulk (no select column); double-click / Enter opens the record (History → carton; Incoming Pipeline → inspector) | N records at once |
+| **Multi-select** | gutter hit-plane (`GridRowCheckbox`) + right-rail selection plane (`RailSelectionBand` / `RailActionRegion` via `useOrderRailSelection` / `useReceivingLineRailSelection` / `useRepairRailSelection`) + `SelectionAction[]` — **Incoming click-select:** plain row click toggles bulk; select track shows decorative full-cell `GridClickSelectFace` when selected; double-click / Enter opens the inspector. **Unbox History:** left-click opens `detail:history` **push** triage rail (`HistoryCartonTriagePanel`, `modal={false}` — never float); gutter checkbox owns bulk; double-click / Enter / “Open in Unbox” opens `LineEditPanel` | N records at once |
 | **Record** | detail inspector / full record page | relational, multi-step, side-effectful |
 
 Identity columns are collection-map read-only (`GRID_IDENTITY_COLUMN_KEYS`). Plane redundancy is required where the
@@ -203,6 +201,10 @@ see historical depth in git / grow here when a second consumer needs it — Esca
 Unbox hosts **two** tables. Agents must not load both for a single cell edit. When editing workbench spreadsheet
 display, open only: `RECEIVING_GRID_COLUMNS`, the specific cell under `receiving-grid/cells/`, align helpers,
 `grid-cells.tsx`, `LedgerGridColumnHeader`. Skill: `.claude/skills/receiving-grid-cell/SKILL.md`.
+
+**Status column:** Unbox History (and Unbox / Testing) renders lifecycle state through
+`ReceivingStatusCell` → `GridStatusCellValue` + `workflowStageBadge` from `workflow-stages.ts` —
+never a page-local pill or full-cell status fill.
 
 ---
 

@@ -31,6 +31,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const updated = await updatePlatform(gate.ctx.organizationId, id, {
       label: parsed.label,
       tone: parsed.tone,
+      colorHex:
+        parsed.colorHex === undefined
+          ? undefined
+          : parsed.colorHex == null
+            ? null
+            : parsed.colorHex.toLowerCase(),
       provider: parsed.provider,
       sortOrder: parsed.sortOrder,
       isActive: parsed.isActive,

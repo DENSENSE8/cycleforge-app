@@ -46,6 +46,7 @@
 import { ASPECTS_BY_STAGE, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { TableRef } from './contract';
 import type { SurfaceKey } from './surface-keys';
+import { applyCaptureOrderOverride } from './unbox-flow-capture-order';
 
 /**
  * Which part of the station's work a step belongs to. The split exists because
@@ -88,6 +89,11 @@ export const UNBOX_FLOW_LABEL: Record<UnboxFlowId, string> = {
 export interface ProcedureModifiers {
   isLocalPickup?: boolean;
   needsClassify?: boolean;
+  /**
+   * Org (or caller) preferred capture key order for this flow. Applied after
+   * needsClassify / isLocalPickup — cannot invent keys outside the allowed set.
+   */
+  captureOrderOverride?: readonly string[];
 }
 
 /** What `resolveProcedureSteps` needs to pick an ordered step list. */
@@ -308,6 +314,7 @@ export function resolveProcedureSteps(
     if (mods.isLocalPickup) {
       captureKeys = captureKeys.filter((k) => !LOCAL_PICKUP_OMIT.has(k));
     }
+    captureKeys = applyCaptureOrderOverride(captureKeys, mods.captureOrderOverride);
 
     const keys =
       phase === 'intake'

@@ -17,7 +17,7 @@ export function ClaimSuccessView({ result, onClose }: { result: ClaimResult; onC
         <p className="max-w-xs text-sm leading-relaxed text-text-soft">
           Ticket <span className="font-semibold text-text-muted">{result.number}</span> was {verb}
           {result.attached > 0
-            ? ` with ${result.attached} photo${result.attached === 1 ? '' : 's'} attached`
+            ? ` · ${result.attached} photos`
             : ''}
           .
         </p>

@@ -18,7 +18,7 @@ interface UseReceivingAutoWeekArgs {
   isHistoryMode: boolean;
   skipWeekFilter: boolean;
   weekOffset: number;
-  setWeekOffset: React.Dispatch<React.SetStateAction<number>>;
+  setWeekOffset: (offset: number) => void;
   filteredGroupedRecords: Record<string, ReceivingPoGroup[]>;
   groupedRecords: Record<string, ReceivingPoGroup[]>;
   weekRange: WeekRange;

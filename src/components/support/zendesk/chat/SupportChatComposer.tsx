@@ -234,7 +234,7 @@ export function SupportChatComposer({
   );
 
   const ccStrip = isPublic ? (
-    <div className="mb-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5">
+    <div className="mb-2 flex flex-wrap items-center gap-1.5 border-t border-border-hairline bg-surface-sunken px-2 py-1.5">
       <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
         <Mail className="h-3 w-3" /> Cc
       </span>
@@ -325,13 +325,13 @@ export function SupportChatComposer({
         commitDisabled={busy ? true : undefined}
         placeholder={
           isPublic
-            ? 'Reply to the customer… (Enter to send)'
-            : 'Internal note — not emailed… (Enter to send)'
+            ? 'Reply… (Enter to send)'
+            : 'Internal note… (Enter to send)'
         }
         ariaLabel={isPublic ? 'Public reply' : 'Internal note'}
-        commitAriaLabel={isPublic ? 'Send reply' : 'Add note'}
+        commitAriaLabel={isPublic ? 'Send' : 'Add note'}
         commitTooltip={
-          isPublic ? 'Send reply (Enter)' : 'Add note (Enter) · Shift+Enter for newline'
+          isPublic ? 'Send (Enter)' : 'Add note (Enter) · Shift+Enter for newline'
         }
         footerStart={
           <VisibilityToggle

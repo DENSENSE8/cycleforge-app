@@ -31,6 +31,8 @@ export interface PlatformRow {
   slug: string;
   label: string;
   tone: string | null;
+  /** Optional `#RRGGBB` accent; ink/softFill derived via color-contrast SoT. */
+  color_hex: string | null;
   provider: string | null;
   sort_order: number;
   is_active: boolean;
@@ -285,14 +287,29 @@ export async function getPlatformById(organizationId: OrgId, id: number): Promis
 
 export async function createPlatform(
   organizationId: OrgId,
-  data: { slug: string; label: string; tone?: string | null; provider?: string | null; sortOrder?: number },
+  data: {
+    slug: string;
+    label: string;
+    tone?: string | null;
+    colorHex?: string | null;
+    provider?: string | null;
+    sortOrder?: number;
+  },
 ): Promise<PlatformRow> {
   const res = await tenantQuery<PlatformRow>(
     organizationId,
-    `INSERT INTO platforms (organization_id, slug, label, tone, provider, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO platforms (organization_id, slug, label, tone, color_hex, provider, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [organizationId, data.slug, data.label, data.tone ?? null, data.provider ?? null, data.sortOrder ?? 100],
+    [
+      organizationId,
+      data.slug,
+      data.label,
+      data.tone ?? null,
+      data.colorHex ?? null,
+      data.provider ?? null,
+      data.sortOrder ?? 100,
+    ],
   );
   return res.rows[0];
 }
@@ -300,27 +317,53 @@ export async function createPlatform(
 export async function updatePlatform(
   organizationId: OrgId,
   id: number,
-  data: { label?: string; tone?: string | null; provider?: string | null; sortOrder?: number; isActive?: boolean },
+  data: {
+    label?: string;
+    tone?: string | null;
+    colorHex?: string | null;
+    provider?: string | null;
+    sortOrder?: number;
+    isActive?: boolean;
+  },
 ): Promise<PlatformRow | null> {
+  // Dynamic SET so nullable fields (tone / color_hex) can be cleared with null;
+  // COALESCE would leave the previous value and make "reset to builtin" impossible.
+  const sets: string[] = [];
+  const params: unknown[] = [organizationId, id];
+  let i = 3;
+  if (data.label !== undefined) {
+    sets.push(`label = $${i++}`);
+    params.push(data.label);
+  }
+  if (data.tone !== undefined) {
+    sets.push(`tone = $${i++}`);
+    params.push(data.tone);
+  }
+  if (data.colorHex !== undefined) {
+    sets.push(`color_hex = $${i++}`);
+    params.push(data.colorHex);
+  }
+  if (data.provider !== undefined) {
+    sets.push(`provider = $${i++}`);
+    params.push(data.provider);
+  }
+  if (data.sortOrder !== undefined) {
+    sets.push(`sort_order = $${i++}`);
+    params.push(data.sortOrder);
+  }
+  if (data.isActive !== undefined) {
+    sets.push(`is_active = $${i++}`);
+    params.push(data.isActive);
+  }
+  if (sets.length === 0) {
+    return getPlatformById(organizationId, id);
+  }
   const res = await tenantQuery<PlatformRow>(
     organizationId,
-    `UPDATE platforms SET
-       label      = COALESCE($3, label),
-       tone       = COALESCE($4, tone),
-       provider   = COALESCE($5, provider),
-       sort_order = COALESCE($6, sort_order),
-       is_active  = COALESCE($7, is_active)
+    `UPDATE platforms SET ${sets.join(', ')}
      WHERE organization_id = $1 AND id = $2
      RETURNING *`,
-    [
-      organizationId,
-      id,
-      data.label ?? null,
-      data.tone ?? null,
-      data.provider ?? null,
-      data.sortOrder ?? null,
-      data.isActive ?? null,
-    ],
+    params,
   );
   return res.rows[0] ?? null;
 }

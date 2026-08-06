@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Inbox, Link2 } from '@/components/Icons';
-import { EmptyState } from '@/design-system/primitives';
+import { Button, EmptyState } from '@/design-system/primitives';
 
 /**
  * First-run (zero-orders) teaching state for the order boards. Distinct from the
@@ -18,19 +18,22 @@ export function OrdersFirstRunEmptyState({
   title?: string;
   description?: string;
 }) {
+  const router = useRouter();
   return (
     <EmptyState
       icon={<Inbox className="h-6 w-6 text-text-faint" />}
       title={title}
       description={description}
       action={
-        <Link
-          href="/settings/integrations"
-          className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          icon={<Link2 className="h-4 w-4" />}
+          onClick={() => router.push('/settings/integrations')}
         >
-          <Link2 className="h-4 w-4" />
           Connect a sales channel
-        </Link>
+        </Button>
       }
     />
   );

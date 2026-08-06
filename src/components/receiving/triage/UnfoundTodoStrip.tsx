@@ -5,7 +5,7 @@
  * an unmatched carton, cross-referencing the Unfound tab (§3.3/§3.8: unfound is
  * a cross-mode persistent todo, this strip just points at it from the workspace
  * so the operator doesn't have to remember it exists). Copy varies by intake
- * kind — see triage Overview tab in {@link buildTriageTabs}.
+ * kind — rendered under the carton lines in the Arrival centre (`TriagePanel`).
  */
 
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,7 @@ import { AlertTriangle, ChevronRight } from '@/components/Icons';
 export function UnfoundTodoStrip({ message }: { message: string }) {
   const router = useRouter();
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-none border-y border-amber-200 bg-amber-50 px-4 py-2.5">
       <div className="flex min-w-0 items-center gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
         <p className="truncate text-role-caption font-semibold text-amber-800">{message}</p>

@@ -1350,6 +1350,7 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
       normalizeReceivingHistorySearchField(searchParams.get('search_field'));
     const searchScope: ReceivingHistorySearchScope =
       normalizeReceivingHistorySearchScope(searchParams.get('search_scope'));
+    const view = String(searchParams.get('view') || '').trim();
       const unmatchedSearchVals: unknown[] = [orgId];
       let unmatchedSearchSql = '';
       if (search) {
@@ -1372,6 +1373,29 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
           )`;
         }
       }
+  // Keep in lockstep with buildUnmatchedPlaceholdersSql: History (activity)
+  // drops door-scan-only Unfound; view=all stays inclusive.
+  const activityUnboxTouchSql =
+    view === 'activity'
+      ? ` AND (
+              ru.unboxed_at IS NOT NULL
+              OR ru.opened_at IS NOT NULL
+              OR unbox_open.unbox_opened_at IS NOT NULL
+            )`
+      : '';
+  const countUnboxJoinsSql =
+    view === 'activity'
+      ? `
+             LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+             LEFT JOIN LATERAL (
+               SELECT MAX(oe_uo.occurred_at) AS unbox_opened_at
+               FROM ops_events oe_uo
+               WHERE oe_uo.organization_id = r.organization_id
+                 AND oe_uo.entity_type = 'receiving'
+                 AND oe_uo.entity_id = r.id
+                 AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
+             ) unbox_open ON TRUE`
+      : '';
   const listSql =
           `SELECT r.id,
                   stn.tracking_number_raw AS receiving_tracking_number,
@@ -1440,14 +1464,14 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
                 WHERE rl.receiving_id = r.id
                   AND rl.organization_id = r.organization_id
              )
-             ${unmatchedSearchSql}
+             ${unmatchedSearchSql}${activityUnboxTouchSql}
            ORDER BY COALESCE(rs_agg.last_scan::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`;
   const countSql =
           `SELECT COUNT(*)::bigint AS n
              FROM receiving_carton r
-             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id${countUnboxJoinsSql}
             WHERE r.organization_id = $1
               AND r.source IN ('unmatched', 'local_pickup')
               AND NOT EXISTS (
@@ -1455,7 +1479,7 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
                  WHERE rl.receiving_id = r.id
                    AND rl.organization_id = r.organization_id
               )
-              ${unmatchedSearchSql}`;
+              ${unmatchedSearchSql}${activityUnboxTouchSql}`;
   return {
     list: { sql: listSql, params: unmatchedSearchVals },
     count: { sql: countSql, params: unmatchedSearchVals },

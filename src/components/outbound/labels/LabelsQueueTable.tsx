@@ -4,17 +4,13 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import {
-  WORKBENCH_SHEET_HOST,
-  WORKBENCH_TABLE_VIEWPORT,
-} from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { OutboundSort } from '@/components/outbound/outbound-sidebar-shared';
-import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
 interface LabelsQueueTableProps {
@@ -24,6 +20,8 @@ interface LabelsQueueTableProps {
   onCloseOrder: () => void;
   /** @deprecated Banner chrome removed — grid is headerless like Pending. */
   hideHeader?: boolean;
+  /** Portal the grid's column-display ▦ trigger into this element (e.g. the triage-band controls slot). */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 export function LabelsQueueTable({
@@ -31,6 +29,7 @@ export function LabelsQueueTable({
   sort,
   onOpenOrder,
   onCloseOrder,
+  columnTriggerPortalTarget,
 }: LabelsQueueTableProps) {
   const searchParams = useSearchParams();
   const query = useQuery(awaitingLabelsQuery({ searchQuery, sort }));
@@ -79,13 +78,14 @@ export function LabelsQueueTable({
 
   return (
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
-      <div className={cn(WORKBENCH_SHEET_HOST, WORKBENCH_TABLE_VIEWPORT)}>
+      <div className={WORKBENCH_SHEET_HOST}>
         <OrdersGridView
           ariaLabel="Labels queue"
           records={records}
           queueMode="labels"
           loading={query.isLoading}
           searchValue={searchQuery}
+          columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
           onClearSearch={() => undefined}
           emptyMessage="No orders awaiting labels"
           firstRunEmpty={

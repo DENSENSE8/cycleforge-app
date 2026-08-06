@@ -4,9 +4,9 @@
  * RightRailHost — THE right details-panel wrapper / ONE owner of the right-edge
  * slot. It renders exactly the top occupant of `lib/right-rail/store.ts`.
  *
- * ## Two geometries, one host
+ * ## Two contracts, one host
  *
- * **PUSH (the default).** A non-modal occupant is an **in-flow column**: a flex
+ * **PUSH (desktop record inspectors).** A non-modal occupant is an **in-flow column**: a flex
  * sibling of `ContextPanelLayout`'s host inside `<main>` that tweens its own
  * width from 0, so the work surface reflows BESIDE it instead of under it. This
  * is the house ruling — "every resident edge PUSHES; nothing floats over the
@@ -15,18 +15,16 @@
  * animates its card's own width at `overflow-visible` with an inner clip shell,
  * through `framerTransition.sidebarNavColumnMount`.
  *
- * The card (not a clipping host) is the animating element ON PURPOSE. The
- * leading resize grip renders *outside* the card border
- * (`HorizontalEdgeResizeHandle` `placement="outset"`), so `SidebarNavColumn`'s
- * shape — an `overflow-hidden` host wrapping an absolutely-anchored fixed-width
- * child — would shear it.
+ * The card is the animating element ON PURPOSE. The leading resize grip is
+ * `placement="inset"` — hit sash inside the panel, 1px paint on the panel's
+ * own `border-l` seam (the display hairline). Nothing hangs into the work
+ * surface; Unbox Displays is the golden twin. Left context rail still uses
+ * `outset` (different edge).
  *
- * **OVERLAY (the fallback).** Below the derived threshold
- * (`RIGHT_RAIL_PUSH_MIN_FRAME_PX`), or for an occupant that opted out with
- * `push={false}`, or for a modal one, the panel keeps the historical fixed inset
- * card. The SoT sanctions exactly this: "only a viewport that cannot seat the
- * grid's own minimum content width after both are parked may fall back to
- * overlaying."
+ * **OVERLAY (explicit contracts only).** Modal / intake occupants, ambient
+ * assistant, station-edge opt-outs, chromeless routes, and mobile keep the
+ * fixed overlay shell. Width pressure alone NEVER turns a desktop resident
+ * inspector into a floating rounded card.
  *
  * ## Two AnimatePresence, and why
  *
@@ -37,7 +35,7 @@
  * the exact "exit → empty → enter" the stable-occupant-id rule exists to prevent.
  */
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { ChevronLeft } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -59,6 +57,7 @@ import { IconButton } from '@/design-system/primitives';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { useLocalStorage } from '@/hooks';
 import {
+  DETAIL_INSPECTOR_COLLAPSE_EVENT,
   DETAIL_STACK_COLLAPSE,
   DETAIL_STACK_PUSH_COLUMN_CLASS,
   DETAIL_STACK_PUSH_STRIP_CLASS,
@@ -68,6 +67,7 @@ import {
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,
+  type DetailInspectorCollapseDetail,
   detailStackBackdropClassName,
   detailStackBackdropElevatedClassName,
   detailStackCollapseStripClassName,
@@ -96,7 +96,7 @@ const BACKDROP_FADE = {
 /** Stable key for the push column's own arrive/leave — NEVER the occupant id. */
 const PUSH_COLUMN_KEY = 'right-rail-push-column';
 
-export function RightRailHost() {
+export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const top = useSyncExternalStore(subscribeRightRail, getRightRailTop, getServerRightRailTop);
   const frame = useSyncExternalStore(
     subscribeRightRailFrame,
@@ -124,7 +124,7 @@ export function RightRailHost() {
   const overlayOpen = useAnyOverlayOpen();
 
   // Push mode has nothing to lock: it covers nothing.
-  const isPush = frame.mode === 'push';
+  const isPush = inline && frame.mode === 'push';
   useBodyScrollLock(!!renderable && isModal && !isPush);
   useEscapeClose(!!renderable?.onClose && !overlayOpen, renderable?.onClose ?? (() => {}));
 
@@ -146,21 +146,60 @@ export function RightRailHost() {
     DETAIL_STACK_COLLAPSE.storageKey,
     false,
   );
-  // Occupants that opt out of edge collapse (Incoming Unbox-parity) never park
-  // via the outset chevron — treat them as expanded even if localStorage still
-  // holds a prior collapse from another rail.
+  // Band 3 inspector toggle / Cmd+\ write via collapse-control (same storage key)
+  // — sync in-memory state on the same tab (useLocalStorage alone does not).
+  useEffect(() => {
+    const onCollapseChange = (event: Event) => {
+      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
+      if (!detail || typeof detail.collapsed !== 'boolean') return;
+      setCollapsed(detail.collapsed);
+    };
+    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapseChange);
+    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapseChange);
+  }, [setCollapsed]);
+  // Occupants that opt out of host park (Incoming Unbox-parity) ignore
+  // DETAIL_STACK_COLLAPSE / Band 3 parking — treat them as expanded even if
+  // localStorage still holds a prior collapse from another rail. Hairline
+  // never mounts a sash chevron; close stays header `→|`.
   const allowEdgeCollapse = renderable?.edgeCollapse !== false;
   const isCollapsed = isResizable && collapsed && allowEdgeCollapse;
+  const showCollapsedStrip = renderable?.collapsedStrip !== false;
 
-  // Publish this occupant's demand so `resolveRightRailFrame` can answer whether
-  // it fits and what has to yield. An occupant that opted out publishes
-  // `wantsPush: false`, which resolves to overlay with nothing parked.
-  const wantsPush = !!renderable && !isModal && !isAssistantDock && renderable.push !== false;
+  // Width tween ONLY on open / close. Drag + double-click snap must write
+  // width instantly — otherwise the hairline / panel lag the pointer
+  // (`motionRole.push.rail` is for presence, not live resize).
+  const pushColumnOpen = isPush && !!renderable && !isCollapsed;
+  const [pushWidthSettled, setPushWidthSettled] = useState(false);
   useEffect(() => {
-    setRightRailDemand({ wantsPush, desiredWidthPx: width });
-  }, [wantsPush, width]);
-  // Release the claim on unmount so a route without a host cannot leave the
-  // context rail masked open-forever.
+    if (!pushColumnOpen) setPushWidthSettled(false);
+  }, [pushColumnOpen]);
+  const pushWidthTransition =
+    isDragging || pushWidthSettled ? { duration: 0 } : pushTransition;
+
+  // Publish this occupant's demand so `resolveRightRailFrame` can answer push vs
+  // overlay and the resize cap beside an open context rail. An occupant that
+  // opted out publishes `wantsPush: false` → overlay.
+  const wantsPush =
+    inline &&
+    !!renderable &&
+    !isModal &&
+    !isAssistantDock &&
+    renderable.push !== false &&
+    // A chrome-owned reopen affordance leaves no parked host strip — release
+    // frame demand the same way a closed occupant does.
+    !(isCollapsed && !showCollapsedStrip);
+  // Freeze `desiredWidthPx` while dragging so hosts that still publish desire
+  // do not thrash on every pointer move; publish the final width on pointerup.
+  const publishedDesireRef = useRef(width);
+  if (!isDragging) publishedDesireRef.current = width;
+  useEffect(() => {
+    setRightRailDemand({
+      wantsPush,
+      desiredWidthPx: publishedDesireRef.current,
+    });
+  }, [wantsPush, width, isDragging]);
+  // Release the claim on unmount so a route without a host cannot leave a stale
+  // push demand in the frame store.
   useEffect(() => () => setRightRailDemand({ wantsPush: false, desiredWidthPx: width }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Invisible dismiss layer: non-modal + opt-in + not parked + OVERLAY only.
@@ -203,7 +242,7 @@ export function RightRailHost() {
     <>
       {/* ── PUSH: an in-flow column beside the work surface ─────────────── */}
       <>
-        {showPush && isCollapsed ? (
+        {showPush && isCollapsed && showCollapsedStrip ? (
           <div className={DETAIL_STACK_PUSH_STRIP_CLASS} data-detail-inspector-collapsed>
             <HoverTooltip label="Show details" asChild>
               <IconButton
@@ -230,30 +269,37 @@ export function RightRailHost() {
               aria-label={renderable?.ariaLabel ?? 'Details'}
               data-right-rail-column
               data-right-rail-mode="push"
-              className={cn(
-                DETAIL_STACK_PUSH_COLUMN_CLASS,
-                // The outset grip lives outside the card; clip on the inner
-                // shell instead so it is not sheared (same as the context rail).
-                'overflow-visible',
-              )}
+              className={DETAIL_STACK_PUSH_COLUMN_CLASS}
               // The header+content column is `relative` and seven workspaces
               // mount `zIndex.panel` overlays inside it, so an in-flow column
               // with `z-index: auto` would paint under them.
               style={{ zIndex: isElevated ? zIndex.detailStack : zIndex.panel }}
               initial={{ width: 0, opacity: pushPresence.initial?.opacity as number }}
-              animate={{ width, opacity: 1 }}
-              exit={{ width: 0, opacity: pushPresence.exit?.opacity as number }}
-              transition={pushTransition}
+              animate={{
+                width,
+                opacity: 1,
+                transition: pushWidthTransition,
+              }}
+              exit={{
+                width: 0,
+                opacity: pushPresence.exit?.opacity as number,
+                // Close must still tween even when width settled to instant.
+                transition: pushTransition,
+              }}
+              onAnimationComplete={() => {
+                if (pushColumnOpen) setPushWidthSettled(true);
+              }}
+              // Default transition matches the gated width rule — do not leave
+              // a lingering push.rail tween that re-targets mid-drag.
+              transition={pushWidthTransition}
             >
+              {/* Drag ONLY — inset on the panel's own border-l seam. No
+                  `onCollapse` sash chevron (twins header `→|` / Band 3). */}
               <HorizontalEdgeResizeHandle
                 edgeHandleProps={edgeHandleProps}
                 isDragging={isDragging}
                 edge="leading"
-                placement="outset"
-                onCollapse={
-                  allowEdgeCollapse ? () => setCollapsed(true) : undefined
-                }
-                collapseLabel="Hide details"
+                placement="inset"
               />
               {/* Inner presence keyed on the OCCUPANT — the record→record
                   crossfade, unchanged from the float. */}
@@ -297,7 +343,7 @@ export function RightRailHost() {
           />
         ) : null}
       </AnimatePresence>
-      {showOverlay && isCollapsed ? (
+      {showOverlay && isCollapsed && showCollapsedStrip ? (
         <div
           className={detailStackCollapseStripClassName(isElevated)}
           style={detailStackCollapseStripStyle()}
@@ -353,10 +399,8 @@ export function RightRailHost() {
                     isElevated
                       ? detailStackAsideElevatedClassName
                       : detailStackAsideClassName,
-                    // Outset grip sits outside the card; clip content on an
-                    // inner shell so the pill is not sheared by overflow-hidden
-                    // (same pattern as the context rail).
-                    isResizable && 'overflow-visible',
+                    // Inset grip paints on the panel seam; column may keep
+                    // overflow-hidden (DETAIL_STACK_ASIDE_SURFACE).
                     isCollapsed && 'pointer-events-none opacity-0',
                   )
             }
@@ -369,11 +413,7 @@ export function RightRailHost() {
                 edgeHandleProps={edgeHandleProps}
                 isDragging={isDragging}
                 edge="leading"
-                placement="outset"
-                onCollapse={
-                  allowEdgeCollapse ? () => setCollapsed(true) : undefined
-                }
-                collapseLabel="Hide details"
+                placement="inset"
               />
             ) : null}
             {body}

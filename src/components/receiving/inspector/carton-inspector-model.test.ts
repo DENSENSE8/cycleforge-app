@@ -21,6 +21,10 @@ import {
   cartonHeaderIdentity,
   cartonLifecycle,
   cartonRecordMeta,
+  qaStatusLabel,
+  qaStatusMeta,
+  qaStatusToneClass,
+  receivingSourceLabel,
   type CartonInspectorReceiving,
 } from './carton-inspector-model';
 import { formatDateTimePST } from '@/utils/date';
@@ -120,11 +124,11 @@ test('milestone stamps render as WAREHOUSE wall-clock, not re-shifted instants',
 test('cartonContentsSummary reads as progress, not raw counts', () => {
   assert.equal(
     cartonContentsSummary({ expected: 3, received: 3, lines: 2, lines_complete: 2 }),
-    '3/3 units · 2/2 lines complete',
+    '3/3 units · 2/2 complete',
   );
   assert.equal(
     cartonContentsSummary({ expected: 0, received: 2, lines: 1, lines_complete: 0 }),
-    '2 units · 0/1 line complete',
+    '2 units · 0/1 complete',
   );
   assert.equal(cartonContentsSummary({ expected: 0, received: 0, lines: 0, lines_complete: 0 }), 'No lines');
   assert.equal(cartonContentsSummary(null), 'No lines');
@@ -186,13 +190,42 @@ test('cartonFacts tags each fact with the SoT that must resolve it', () => {
   assert.equal(byKey.get('platform'), 'platform');
   assert.equal(byKey.get('intakeType'), 'receivingType');
   assert.equal(byKey.get('condition'), 'condition');
-  assert.equal(byKey.get('carrier'), 'text');
+  assert.equal(byKey.get('carrier'), 'carrier');
 
-  // qa_status is NOT a receiving workflow stage. Tagging it as one routed a
-  // valid "PENDING" through `workflowStageLabel` and printed "Unknown" on the
-  // live surface. Misresolving a value through the WRONG SoT is the same class
-  // of bug as inventing a map, and it fails silently.
-  assert.equal(byKey.get('qaStatus'), 'text');
+  // qa_status is its own vocabulary (not a workflow stage). The Record strip
+  // resolves via `qaStatusMeta` — never `workflowStage*`.
+  assert.equal(byKey.get('qaStatus'), 'qaStatus');
+});
+
+test('cartonFacts leads with platform then QA status (telemetry first)', () => {
+  const keys = cartonFacts({
+    ...RECEIVING,
+    source_platform: 'ebay',
+    qa_status: 'PENDING',
+    carrier: 'FedEx',
+  }).map((f) => f.key);
+  assert.equal(keys[0], 'platform');
+  assert.equal(keys[1], 'qaStatus');
+  assert.equal(keys[2], 'carrier');
+});
+
+test('qaStatusMeta paints PENDING / PASSED / FAILED without inventing stages', () => {
+  assert.equal(qaStatusLabel('PENDING'), 'Pending');
+  assert.equal(qaStatusLabel('passed'), 'Passed');
+  assert.equal(qaStatusMeta('FAILED').dot, 'bg-rose-500');
+  assert.match(qaStatusToneClass('PENDING'), /amber/);
+  // Unknown token stays legible — quiet chip, raw face.
+  assert.equal(qaStatusLabel('WEIRD'), 'WEIRD');
+  assert.match(qaStatusToneClass('WEIRD'), /surface-sunken/);
+});
+
+test('receivingSourceLabel humanizes intake source tokens', () => {
+  assert.equal(receivingSourceLabel('zoho_po'), 'PO match');
+  assert.equal(receivingSourceLabel('unmatched'), 'Unmatched');
+  assert.equal(receivingSourceLabel('local_pickup'), 'Local pickup');
+  assert.equal(receivingSourceLabel('sourcing_import'), 'Sourcing import');
+  assert.equal(receivingSourceLabel('ebay'), 'eBay');
+  assert.equal(receivingSourceLabel('custom_token'), 'custom_token');
 });
 
 test('cartonFlags suppresses UNFOUND when a PO is already linked', () => {
@@ -269,6 +302,17 @@ test('cartonRecordMeta identifies the row and omits unset ids', () => {
   assert.equal(byKey.get('poId'), '5623409000003125066');
   // Null on the fixture.
   assert.equal(byKey.has('receiveId'), false, 'an unset zoho receive id must be omitted');
+});
+
+test('cartonRecordMeta tags system facts for typed presenters', () => {
+  const byKey = new Map(cartonRecordMeta(RECEIVING).map((m) => [m.key, m]));
+  assert.equal(byKey.get('id')?.kind, 'id');
+  assert.equal(byKey.get('shipment')?.kind, 'id');
+  assert.equal(byKey.get('source')?.kind, 'source');
+  assert.equal(byKey.get('poId')?.kind, 'externalId');
+  assert.equal(byKey.get('poId')?.label, 'PO id');
+  assert.equal(byKey.get('created')?.kind, 'instant');
+  assert.equal(byKey.get('updated')?.kind, 'instant');
 });
 
 test('cartonHeaderIdentity: PO + tracking from the carton header', () => {

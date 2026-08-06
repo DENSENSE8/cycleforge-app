@@ -62,7 +62,7 @@ export function PlanEntryCard({
   }, [entry.shipment_id, entry.item_id, onDeleted]);
 
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card">
+    <div className="rounded-none border border-border-soft bg-surface-card">
       {/* ds-raw-button: full-width multi-line card-header expand toggle (left-aligned, composite content) */}
       <button
         type="button"
@@ -177,7 +177,7 @@ export function PlanEntryCard({
               Remove entry
             </Button>
           ) : (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+            <div className="rounded-none border border-red-200 bg-red-50 p-3">
               <p className="text-role-caption font-semibold text-red-800">
                 Remove this entry from {entry.shipment_ref || 'plan'}?
               </p>

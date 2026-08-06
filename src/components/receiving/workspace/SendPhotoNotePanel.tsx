@@ -6,20 +6,22 @@
  * Forwards photos already captured on THIS purchase order to a Zendesk ticket —
  * either as a private internal note or as a public reply.
  *
- * Hosted by Unbox {@link ReceivingToolPushStack} or {@link SendPhotoNoteRail}.
+ * Hosted by Unbox Displays Photos→Send or {@link SendPhotoNoteRail}.
  */
 
 import { useEffect, useState } from 'react';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
 import { X, Send } from '@/components/Icons';
 import { toast } from '@/lib/toast';
-import { cn } from '@/utils/_cn';
-import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
+import {
+  DenseComposeBodyBand,
+  DenseComposeBodyTextarea,
+} from '@/design-system/components';
 import { useClaimTicketSearch } from './claim/hooks/useClaimTicketSearch';
 import { ClaimTicketPicker } from './claim/components/ClaimTicketPicker';
 import { useClaimPhotos } from './claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from './claim/components/ClaimPhotoPicker';
-import { CcEmailField } from './claim/components/CcEmailField';
+import { ClaimRecipientsField } from './claim/components/ClaimRecipientsField';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { LinkCandidate } from './claim/claim-types';
 
@@ -29,14 +31,19 @@ export function SendPhotoNotePanel({
   onClose,
   defaultTicket,
   lockTicket = false,
-  hideHeaderClose = false,
+  /**
+   * `display` — Unbox Displays Photos→Send: strip + tabs name the verb; omit
+   * gray title / PO restatement / X.
+   * `modal` — rail / overlay hosts keep the title + close.
+   */
+  chrome = 'modal',
 }: {
   open: boolean;
   row: ReceivingLineRow;
   onClose: () => void;
   defaultTicket?: { id: number; subject?: string | null };
   lockTicket?: boolean;
-  hideHeaderClose?: boolean;
+  chrome?: 'modal' | 'display';
 }) {
   const receivingId = row.receiving_id ?? null;
   const search = useClaimTicketSearch({
@@ -113,11 +120,11 @@ export function SendPhotoNotePanel({
         toast.error(data?.error || `Could not send (HTTP ${res.status})`);
         return;
       }
-      const photoSuffix = photoCount ? ` + ${photoCount} photo${photoCount === 1 ? '' : 's'}` : '';
+      const photoSuffix = photoCount ? ` · ${photoCount} photos` : '';
       toast.success(
         isPublic
-          ? `Public reply${photoSuffix} sent to #${selectedTicket.id}${emailCcs ? ` · ${emailCcs.length} cc'd` : ''}`
-          : `Internal note${photoSuffix} sent to #${selectedTicket.id}`,
+          ? `Reply${photoSuffix} · #${selectedTicket.id}${emailCcs ? ` · ${emailCcs.length} cc` : ''}`
+          : `Note${photoSuffix} · #${selectedTicket.id}`,
       );
       onClose();
     } catch {
@@ -128,102 +135,94 @@ export function SendPhotoNotePanel({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
-        <div className="min-w-0">
-          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
-            {lockTicket ? 'Add photos to ticket' : 'Send photos to ticket'}
-          </p>
-          <p className="truncate text-xs font-semibold text-text-default">
-            {lockTicket && defaultTicket
-              ? `#${defaultTicket.id}${defaultTicket.subject ? ` · ${defaultTicket.subject}` : ''}`
-              : poLabel}
-          </p>
-        </div>
-        {!hideHeaderClose ? (
+    <div className="flex h-full min-h-0 flex-col" data-send-photos-chrome={chrome}>
+      {chrome === 'modal' ? (
+        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+              {lockTicket ? 'Add photos' : 'Send photos'}
+            </p>
+            <p className="truncate text-xs font-semibold text-text-default">
+              {lockTicket && defaultTicket
+                ? `#${defaultTicket.id}${defaultTicket.subject ? ` · ${defaultTicket.subject}` : ''}`
+                : poLabel}
+            </p>
+          </div>
           <IconButton
             onClick={onClose}
             ariaLabel="Close"
             icon={<X className="h-4 w-4" />}
             className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-role-data">
+      <div className="min-h-0 flex-1 overflow-y-auto px-0 py-0 text-role-data">
         {lockTicket && defaultTicket ? (
-          <div className="rounded-lg border border-border-soft bg-surface-canvas/60 px-3 py-2">
+          <div className="border-b border-border-hairline bg-surface-sunken px-3 py-2.5">
             <p className="text-role-micro uppercase tracking-widest text-text-faint">Ticket</p>
             <p className="text-role-caption font-semibold text-text-default">#{defaultTicket.id}</p>
           </div>
         ) : (
-          <ClaimTicketPicker search={search} onSelect={search.setSelectedTicket} />
+          <div className="border-b border-border-hairline">
+            <ClaimTicketPicker search={search} onSelect={search.setSelectedTicket} />
+          </div>
         )}
 
+        {/* Photos → Recipients: ClaimRecipientsField owns the next hairline (border-t). */}
         <ClaimPhotoPicker photos={photos} receivingId={receivingId} />
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <label
-              htmlFor="photo-note-body"
-              className="text-role-micro uppercase tracking-[0.14em] text-text-soft"
-            >
-              {isPublic ? 'Public reply' : 'Internal note'}
-            </label>
-            <VisibilityToggle
-              value={isPublic}
-              onChange={setIsPublic}
-              internalLabel="Internal"
-              publicLabel="Public + CC"
-            />
-          </div>
-
-          {isPublic ? (
-            <CcEmailField
-              emails={ccs}
-              onChange={setCcs}
-              placeholder="Add vendor / teammate email to CC…"
-            />
-          ) : null}
-
-          <textarea
-            id="photo-note-body"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={4}
-            placeholder={
-              isPublic
-                ? 'Reply the customer will receive by email…'
-                : 'Add an internal note for the team (private — not emailed to the customer)…'
-            }
-            className={cn(
-              'block w-full resize-y rounded-lg border bg-surface-card inset-field text-role-caption font-medium text-text-default outline-none focus:ring-2',
-              isPublic
-                ? 'border-blue-200 focus:border-blue-500 focus:ring-blue-500/20'
-                : 'border-border-soft focus:border-border-emphasis focus:ring-text-soft/20',
-            )}
+        <div>
+          {/* Same flush Recipients instrument as claim compose — do not fork. */}
+          <ClaimRecipientsField
+            notePublic={isPublic}
+            onNotePublicChange={setIsPublic}
+            ccEmails={ccs}
+            onCcEmailsChange={setCcs}
+            publicHint="Public reply — emails customer. Photos attach."
+            internalHint="Internal · not emailed"
           />
+
+          <DenseComposeBodyBand>
+            <DenseComposeBodyTextarea
+              id="photo-note-body"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={4}
+              placeholder={
+                isPublic
+                  ? 'Reply the customer will receive by email…'
+                  : 'Internal note…'
+              }
+            />
+          </DenseComposeBodyBand>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border-soft px-4 py-3">
-        <p className="min-w-0 text-role-micro font-medium text-text-faint">
-          {isPublic ? 'Emails the customer' : 'Posts as an internal note (private)'}.
-          {selectedTicket ? ` → #${selectedTicket.id}` : ' Pick a ticket.'}
+      {/*
+        Macro floor — consequence line sits above the FlushTerminalFooter so
+        padding belongs to the text, never to the container holding the CTA.
+      */}
+      <div className="shrink-0">
+        <p className="min-w-0 border-t border-border-hairline px-3 py-2 text-role-micro font-medium text-text-faint">
+          {isPublic ? 'Emails customer' : 'Internal · not emailed'}
+          {selectedTicket ? ` · #${selectedTicket.id}` : ' · pick a ticket'}
           {isPublic && ccs.length ? ` · ${ccs.length} cc` : ''}
-          {photoCount ? ` · ${photoCount} photo${photoCount === 1 ? '' : 's'}` : ''}
+          {photoCount ? ` · ${photoCount} photos` : ''}
         </p>
-        <Button
-          variant="primary"
-          size="md"
-          icon={<Send />}
-          loading={sending}
-          onClick={handleSend}
-          disabled={!canSend}
-          className="shrink-0"
-        >
-          {isPublic ? 'Send reply' : 'Send internal note'}
-        </Button>
+        <FlushTerminalFooter layout="bleed">
+          <Button
+            variant="primary"
+            size="md"
+            icon={<Send />}
+            loading={sending}
+            onClick={handleSend}
+            disabled={!canSend}
+            className="w-full justify-center"
+          >
+            {isPublic ? 'Send' : 'Add note'}
+          </Button>
+        </FlushTerminalFooter>
       </div>
     </div>
   );

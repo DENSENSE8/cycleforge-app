@@ -2,8 +2,10 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
-import { MONITOR_KPI_TILE_CLASS } from './shell';
+import { MONITOR_KPI_BAND_CLASS, MONITOR_KPI_TILE_CLASS } from './shell';
 import { DeltaChip } from './DeltaChip';
+
+export type KpiTileDensity = 'monitor' | 'band';
 
 export type KpiTileProps = {
   label: string;
@@ -28,6 +30,12 @@ export type KpiTileProps = {
    * only, so every existing Monitor tile is byte-identical.
    */
   size?: 'default' | 'wall';
+  /**
+   * Shell altitude. `monitor` (default) = Monitor `rounded-2xl p-4` island.
+   * `band` = workbench Band 2 flush instrument (`MONITOR_KPI_BAND_CLASS`).
+   * (Named `monitor`, not `card` — `density="card"` is banned by carton-context guards.)
+   */
+  density?: KpiTileDensity;
   /** Optional click → filter / open details (Monitor filters only — no durable selection). */
   onOpen?: () => void;
   /** Lit when this tile's Monitor filter is the active one (`?ostatus` on) — the
@@ -37,7 +45,7 @@ export type KpiTileProps = {
 
 /**
  * KPI tile anatomy: eyebrow + compact delta (top-right) → hero number.
- * Compose inside {@link KpiStrip}; do not nest cards inside the tile.
+ * Compose inside {@link KpiStrip} / {@link OpsKpiBand}; do not nest cards inside the tile.
  */
 export function KpiTile({
   label,
@@ -49,22 +57,25 @@ export function KpiTile({
   deltaVsLabel: _deltaVsLabel,
   className,
   size = 'default',
+  density = 'monitor',
   onOpen,
   active = false,
 }: KpiTileProps) {
   const clickable = Boolean(onOpen);
   const wall = size === 'wall';
+  const band = density === 'band';
 
   return (
     <div
       className={cn(
-        MONITOR_KPI_TILE_CLASS,
-        wall && 'p-5',
+        band ? MONITOR_KPI_BAND_CLASS : MONITOR_KPI_TILE_CLASS,
+        wall && !band && 'p-5',
         clickable &&
           'cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-blue-400',
         active && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
         className,
       )}
+      data-kpi-density={density}
       onClick={onOpen}
       onKeyDown={
         clickable
@@ -79,11 +90,11 @@ export function KpiTile({
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className={cn('flex items-start justify-between', band ? 'gap-1' : 'gap-3')}>
         <p
           className={cn(
             'min-w-0 font-semibold uppercase tracking-widest text-text-soft',
-            wall ? 'text-role-caption' : 'text-role-eyebrow',
+            wall && !band ? 'text-role-caption' : band ? 'text-role-micro tracking-wide' : 'text-role-eyebrow',
           )}
         >
           {label}
@@ -94,8 +105,9 @@ export function KpiTile({
       </div>
       <p
         className={cn(
-          'mt-1.5 font-semibold tabular-nums leading-none text-text-default',
-          wall ? 'text-5xl lg:text-6xl' : 'text-3xl',
+          'font-semibold tabular-nums leading-none text-text-default',
+          band ? 'mt-0.5 text-xl' : 'mt-1.5',
+          !band && (wall ? 'text-5xl lg:text-6xl' : 'text-3xl'),
           valueClassName,
         )}
       >

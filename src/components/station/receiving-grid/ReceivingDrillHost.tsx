@@ -9,8 +9,9 @@
  * child {@link ReceivingGridView}. Layout / resize / narrow list-OR-detail live
  * in the design-system host — never re-fork them here.
  *
- * - **Fold** = in-grid PO expand — List mode (default / `?hlayout=list`)
- * - **Drill** = this adapter → {@link LedgerDrillHost} (`?hlayout=drill`)
+ * - **List** = flat leaf sheet (default / `?hlayout=list`) — no in-grid PO summary
+ * - **Drill** = this adapter → {@link LedgerDrillHost} (`?hlayout=drill`);
+ *   parent rollups live only on {@link LedgerDrillParentMap}
  * - **Compare** = independent multi-pane (`UnboxCompareHost`) — orthogonal
  */
 
@@ -24,6 +25,7 @@ import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
+import { usePlatformMeta } from '@/hooks/useCatalog';
 import {
   LedgerDrillHost,
   LedgerDrillParentMap,
@@ -96,13 +98,19 @@ function metaSep() {
  * Parent-map second row — qty (digit only) · order # · tracking.
  * Title is the product name (not platform · PO).
  */
-function parentMeta(rows: ReceivingLineRow[]): ReactNode {
+function parentMeta(
+  rows: ReceivingLineRow[],
+  resolvePlatformLabel: (raw: string) => string,
+): ReactNode {
   const first = rows[0];
   if (!first) return null;
 
   const received = rows.reduce((sum, r) => sum + (r.quantity_received || 0), 0);
   const qty = received > 0 ? received : rows.length;
-  const { poValue } = getReceivingPoIdentityParts(first, () => '');
+  const { poValue, platformLabel } = getReceivingPoIdentityParts(
+    first,
+    resolvePlatformLabel,
+  );
   const tracking =
     rows
       .map((r) => (r.tracking_number || '').trim())
@@ -120,6 +128,7 @@ function parentMeta(rows: ReceivingLineRow[]): ReactNode {
         key="order"
         value={poValue}
         display={getLast8(poValue)}
+        platformLabel={platformLabel || null}
         dense
       />,
     );
@@ -141,11 +150,12 @@ export function ReceivingDrillHost({
   selectedIds,
   handleSelectRow,
   handleToggleRow,
-  handleSelectGroup,
   activityAxis,
   isHistory,
   selectGutterChrome,
   clickSelect = false,
+  onOpenWorkspace,
+  historyTriageMenu = false,
   columns,
   scrollRef,
   className,
@@ -160,11 +170,12 @@ export function ReceivingDrillHost({
   selectedIds: Set<number>;
   handleSelectRow: (row: ReceivingLineRow) => void;
   handleToggleRow?: (row: ReceivingLineRow) => void;
-  handleSelectGroup: (ids: readonly number[]) => void;
   activityAxis?: ReceivingActivityAxis;
   isHistory?: boolean;
   selectGutterChrome?: GridSelectGutterChrome;
   clickSelect?: boolean;
+  onOpenWorkspace?: (row: ReceivingLineRow) => void;
+  historyTriageMenu?: boolean;
   columns?: readonly ReceivingGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
@@ -173,6 +184,7 @@ export function ReceivingDrillHost({
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
+  const resolvePlatformMeta = usePlatformMeta();
   const drillPo = parseHistoryDrillPo(searchParams.get(HISTORY_DRILL_PO_PARAM));
 
   const historyQ = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
@@ -222,11 +234,11 @@ export function ReceivingDrillHost({
       section.rows.push({
         key: group.key,
         title: displayReceivingProductTitle(first),
-        meta: parentMeta(group.rows),
+        meta: parentMeta(group.rows, (raw) => resolvePlatformMeta(raw).label),
       });
     }
     return [...map.values()];
-  }, [parents]);
+  }, [parents, resolvePlatformMeta]);
 
   const setDrillPo = useCallback(
     (key: string | null) => {
@@ -297,11 +309,12 @@ export function ReceivingDrillHost({
         selectedIds={selectedIds}
         handleSelectRow={handleSelectRow}
         handleToggleRow={handleToggleRow}
-        handleSelectGroup={handleSelectGroup}
         activityAxis={activityAxis}
         isHistory={isHistory}
         selectGutterChrome={selectGutterChrome}
         clickSelect={clickSelect}
+        onOpenWorkspace={onOpenWorkspace}
+        historyTriageMenu={historyTriageMenu}
         columns={columns}
         scrollRef={scrollRef}
         showDayHeaders={false}

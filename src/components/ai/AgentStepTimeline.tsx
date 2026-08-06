@@ -87,7 +87,7 @@ export default function AgentStepTimeline({ steps, streaming, startedAt, doneAt,
           className="-ml-1.5 gap-1.5 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
           icon={<ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded ? 'rotate-180' : '')} />}
         >
-          {`Worked ${formatSeconds(elapsedSec)} · ${visibleSteps.length} ${visibleSteps.length === 1 ? 'step' : 'steps'}`}
+          {`Worked ${formatSeconds(elapsedSec)} · ${visibleSteps.length} steps`}
         </Button>
         <AnimatePresence initial={false}>
           {expanded ? (

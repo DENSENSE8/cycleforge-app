@@ -4,7 +4,9 @@
  * Sibling to {@link ./grid-header-align} (type → justify) and
  * `ColumnTypeGlyph` (type → header mark). Fact columns carry a floor so
  * end-aligned + `overflow-hidden` + nowrap stamps cannot clip on the left
- * (Receiving DATE: `g 3 4:54 PM`).
+ * (Receiving DATE: `g 3 4:54 PM`), and so fixed-footprint channel marks cannot
+ * press through the shared hairline into the next start-aligned track
+ * (Unbox History PLATFORM → TRACKING).
  *
  * `type: 'date'` covers three faces — one blunt `date → 12rem` would widen
  * Incoming By / Age. Face is declared on the column model (`dateFace`);
@@ -32,12 +34,24 @@ export const MIN_TRACK_REM_BY_DATE_FACE: Record<DateColumnFace, number> = {
   duration: 3,
 };
 
+/**
+ * Channel / marketplace mark track (`type: 'external'`).
+ *
+ * Measured: cell inset (`px-2` × 2 = 1rem) + `PlatformMark` box (`h-5 w-5` =
+ * 1.25rem) + hairline breathing so a start-aligned brand mark does not sit on
+ * the shared rule into TRACKING. Matches the house drag-resize floor
+ * (`COLUMN_WIDTH_MIN` = 64px ≈ 4rem at 16px root) so SoT default and clamp
+ * agree — a 3rem default was below that floor and jammed Unbox History.
+ */
+export const MIN_TRACK_REM_EXTERNAL = 4;
+
 type MinTrackColumn = Pick<LedgerGridColumnModel, 'type' | 'dateFace' | 'minTrackRem'>;
 
 /**
  * Resolved content-floor rem for a column. Explicit `minTrackRem` wins;
  * `type: 'date'` uses {@link MIN_TRACK_REM_BY_DATE_FACE} (`dateFace ?? 'day'`);
- * other types return `0` until a broader type map lands.
+ * `type: 'external'` uses {@link MIN_TRACK_REM_EXTERNAL}; other types return
+ * `0` until a broader type map lands.
  */
 export function resolveGridColumnMinTrackRem(column: MinTrackColumn): number {
   if (column.minTrackRem != null) return column.minTrackRem;
@@ -45,6 +59,7 @@ export function resolveGridColumnMinTrackRem(column: MinTrackColumn): number {
     const face = column.dateFace ?? 'day';
     return MIN_TRACK_REM_BY_DATE_FACE[face];
   }
+  if (column.type === 'external') return MIN_TRACK_REM_EXTERNAL;
   return 0;
 }
 

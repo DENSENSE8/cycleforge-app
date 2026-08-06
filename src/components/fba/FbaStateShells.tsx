@@ -16,7 +16,7 @@ export function FbaErrorState({
   const colors = stationThemeColors[theme];
   return (
     <div className="flex h-full min-w-0 flex-1 items-center justify-center bg-surface-canvas">
-      <div className="max-w-sm rounded-xl border border-red-200 bg-surface-card px-6 py-5 text-center shadow-sm shadow-red-100/70">
+      <div className="max-w-sm rounded-none border border-red-200 bg-surface-card px-6 py-5 text-center shadow-sm shadow-red-100/70">
         <p className="text-sm font-semibold text-red-600">{message}</p>
         {onRetry ? (
           <Button

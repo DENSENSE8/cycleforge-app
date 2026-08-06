@@ -27,8 +27,12 @@ interface ReceivingRailBodyProps {
   triageLeadingRow?: ReceivingLineRow | null;
   /** Live filter text for the triage Found/Unfound lists. */
   triageFilterText: string;
+  /** Facet keep-filter for the Triage combined dock. */
+  triageIncludeRow?: (row: ReceivingLineRow) => boolean;
   /** Live filter text for the Unboxed recent dock (`feed=unboxRecent`). */
   unboxFilterText?: string;
+  /** Facet keep-filter for the Unboxed recent dock. */
+  unboxIncludeRow?: (row: ReceivingLineRow) => boolean;
 }
 
 export function ReceivingRailBody({
@@ -36,7 +40,9 @@ export function ReceivingRailBody({
   selectedLine,
   triageLeadingRow = null,
   triageFilterText,
+  triageIncludeRow,
   unboxFilterText = '',
+  unboxIncludeRow,
 }: ReceivingRailBodyProps) {
   const selectedLineId = selectedLine?.id ?? null;
   // Unfound cartons are lineless stubs (negative id) but still open a workspace
@@ -61,6 +67,7 @@ export function ReceivingRailBody({
         selectedRow={selectedRow}
         leadingRow={triageLeadingRow}
         filterText={triageFilterText}
+        includeRow={triageIncludeRow}
       />
     );
   }
@@ -76,6 +83,7 @@ export function ReceivingRailBody({
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
       filterText={unboxFilterText}
+      includeRow={unboxIncludeRow}
     />
   );
 }

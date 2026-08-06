@@ -61,7 +61,7 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
   {
     id: 'ready',
     label: 'Ready to pack',
-    modes: ['pending'],
+    modes: ['pending', 'urgent', 'all'],
     compute: ({ unshipped }) => {
       if (unshipped.tested <= 0) return null;
       return tile(
@@ -82,7 +82,7 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
   {
     id: 'awaiting',
     label: 'Awaiting test',
-    modes: ['pending'],
+    modes: ['pending', 'urgent', 'all'],
     compute: ({ unshipped }) => {
       if (unshipped.pending <= 0) return null;
       return tile(
@@ -103,7 +103,7 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
   {
     id: 'blocked',
     label: 'Blocked',
-    modes: ['pending'],
+    modes: ['pending', 'urgent', 'all'],
     compute: ({ unshipped }) => {
       if (unshipped.blocked <= 0) return null;
       return tile(
@@ -125,13 +125,13 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
   {
     id: 'stuck',
     label: 'Units stuck',
-    modes: ['pending'],
+    modes: ['pending', 'urgent', 'all'],
     compute: ({ roi }) => computeRoiStuckMetric(roi ?? null),
   },
   {
     id: 'packed',
     label: 'Packed this week',
-    modes: ['pending'],
+    modes: ['pending', 'urgent', 'all'],
     compute: ({ roi }) => computeRoiPackedMetric(roi ?? null),
   },
 

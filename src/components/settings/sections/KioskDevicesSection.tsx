@@ -202,7 +202,7 @@ export function KioskDevicesSection() {
       {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
       {/* Enroll */}
-      <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+      <div className="rounded-none border border-border-soft bg-surface-card p-4">
         <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">Enroll a tablet</p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input

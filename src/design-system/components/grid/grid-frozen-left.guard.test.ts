@@ -68,12 +68,20 @@ describe('grid frozen-pane sticky offset', () => {
             'minmax() is illegal inside calc(); the whole declaration is dropped and ' +
             'the cell computes left:auto, so the pane does not pin.',
         );
-        // Every var() fallback must be a bare length.
-        for (const [, fallback] of left.matchAll(/var\(--cf-col-[\w-]+,\s*([^)]*)\)/g)) {
+        // Every --cf-col-* fallback is a density-scaled rem length (or bare px).
+        for (const m of left.matchAll(
+          /var\(--cf-col-[\w-]+,\s*(calc\([\d.]+rem \* var\(--cf-density, 1\)\)|[\d.]+(?:rem|px))\)/g,
+        )) {
+          assert.ok(m[1], `${name}.${col.key} missing length fallback in ${left}`);
+        }
+        const colVars = [...left.matchAll(/var\((--cf-col-[\w-]+)/g)].map((m) => m[1]);
+        for (const v of colVars) {
           assert.match(
-            fallback.trim(),
-            /^[\d.]+(rem|px)$/,
-            `${name}.${col.key} fallback "${fallback}" is not a length`,
+            left,
+            new RegExp(
+              `${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\\s*(calc\\([\\d.]+rem \\* var\\(--cf-density, 1\\)\\)|[\\d.]+(?:rem|px))\\)`,
+            ),
+            `${name}.${col.key}: ${v} fallback must be density-scaled rem or px`,
           );
         }
       }
@@ -103,13 +111,16 @@ describe('grid frozen-pane sticky offset', () => {
   }
 
   it('a surface never inherits another surface\'s pane', () => {
-    // Orders freezes a third track (`order`); receiving's title must not be
-    // offset by it. This is the exact defect the four aliases shipped.
+    // Orders freezes `select · order · title`; receiving freezes `select · order`.
+    // Receiving's order offset must include select and must NOT include Orders'
+    // `title` track — the exact defect the four aliases shipped.
     const ordersTitle = gridFrozenLeft(ORDERS_QUEUE_COLUMNS, 'title');
-    const receivingTitle = gridFrozenLeft(RECEIVING_GRID_COLUMNS, 'title');
+    const receivingOrder = gridFrozenLeft(RECEIVING_GRID_COLUMNS, 'order');
     assert.ok(ordersTitle.includes('--cf-col-order'), 'orders pins order before title');
+    assert.ok(receivingOrder.includes('--cf-col-select'), 'receiving pins select before order');
+    assert.ok(!receivingOrder.includes('--cf-col-title'), 'receiving order is not offset by title');
     assert.notEqual(
-      receivingTitle,
+      receivingOrder,
       ordersTitle,
       'receiving must not reuse the orders-queue offset expression',
     );

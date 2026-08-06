@@ -32,10 +32,14 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getOrganization } from '@/lib/tenancy/organizations';
-import { getReceivingRequiredItemPhotoAspects } from '@/lib/settings/accessors';
+import {
+  getReceivingRequiredItemPhotoAspects,
+  getReceivingUnboxFlowCaptureOrderRaw,
+} from '@/lib/settings/accessors';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { effectiveIntakeKind } from '@/lib/receiving/kinds/registry';
 import { resolveContextFromFlags } from '@/lib/stations/procedure';
+import { parseUnboxFlowCaptureOrder } from '@/lib/stations/unbox-flow-capture-order';
 import { parsePhotoAspect, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   buildProcedureReceipt,
@@ -100,6 +104,8 @@ interface StageRow {
 interface ProcedureReceiptDeps {
   query: <T>(orgId: OrgId, sql: string, params: unknown[]) => Promise<{ rows: T[] }>;
   requiredItemAspects: (orgId: OrgId) => Promise<readonly PhotoAspect[]>;
+  /** Org SOP JSON string for Unbox capture-step order (dogfood DnD). */
+  unboxFlowCaptureOrderRaw: (orgId: OrgId) => Promise<string>;
 }
 
 const defaultDeps: ProcedureReceiptDeps = {
@@ -108,6 +114,10 @@ const defaultDeps: ProcedureReceiptDeps = {
   requiredItemAspects: async (orgId) => {
     const org = await getOrganization(orgId);
     return org ? getReceivingRequiredItemPhotoAspects(org.settings) : [];
+  },
+  unboxFlowCaptureOrderRaw: async (orgId) => {
+    const org = await getOrganization(orgId);
+    return org ? getReceivingUnboxFlowCaptureOrderRaw(org.settings) : '{}';
   },
 };
 
@@ -308,6 +318,9 @@ export async function resolveUnboxProcedureReceipt(
   const unboxCarton = stage.get('unbox_carton');
 
   const requiredItemAspects = await deps.requiredItemAspects(orgId);
+  const captureOrderMap = parseUnboxFlowCaptureOrder(
+    await deps.unboxFlowCaptureOrderRaw(orgId),
+  );
 
   // ── Fold the per-line facts into the carton's answer ──────────────────────
   //
@@ -364,16 +377,28 @@ export async function resolveUnboxProcedureReceipt(
     zoho_purchaseorder_id: firstLine?.zoho_purchaseorder_id ?? null,
   };
 
+  const vocabularyBase = resolveContextFromFlags({
+    isUnfound,
+    isLocalPickup: isLocalPickupFulfillment(intakeSource),
+    isReturn:
+      effectiveIntakeKind(
+        firstLine?.line_intake_type || firstLine?.receiving_type,
+        carton.carton_intake_type,
+      ) === 'RETURN',
+  });
+  const captureOrderOverride = captureOrderMap[vocabularyBase.flow];
+  const vocabulary = captureOrderOverride?.length
+    ? {
+        ...vocabularyBase,
+        modifiers: {
+          ...vocabularyBase.modifiers,
+          captureOrderOverride,
+        },
+      }
+    : vocabularyBase;
+
   const gates: DeriveCaptureStepStatesInput = {
-    vocabulary: resolveContextFromFlags({
-      isUnfound,
-      isLocalPickup: isLocalPickupFulfillment(intakeSource),
-      isReturn:
-        effectiveIntakeKind(
-          firstLine?.line_intake_type || firstLine?.receiving_type,
-          carton.carton_intake_type,
-        ) === 'RETURN',
-    }),
+    vocabulary,
     classified: !!(carton.carton_intake_type || firstLine?.line_intake_type),
     arrivalPhotoCount: num(arrival?.n),
     unboxCartonPhotoCount: num(unboxCarton?.n),

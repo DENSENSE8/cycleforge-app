@@ -3,6 +3,7 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 // ─── Panel ───────────────────────────────────────────────────────────────────
 //
@@ -16,11 +17,15 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 // (light/dark) without per-component `dark:` classes. Radius + shadow map onto
 // the design-system scale (`radius`, `shadows`).
 //
-// Do NOT hand-roll `rounded-2xl border border-border-soft bg-surface-card shadow-sm`
-// again — reach for <Panel> (and <PanelHeader> / <PanelFooter>) instead.
+// Do NOT hand-roll `border border-border-soft bg-surface-card shadow-sm` again —
+// reach for <Panel> (and <PanelHeader> / <PanelFooter>) instead.
+//
+// Zero-radius law: the default corner is `none` (flush-square, `cornerClass('flush')`).
+// Ops chrome is flush; `lg`/`xl`/`2xl` remain as opt-ins for a genuine soft
+// surface (a mobile sheet, a marketing card) — never the ops default.
 
 export type PanelPadding = 'none' | 'sm' | 'md' | 'lg';
-export type PanelRadius = 'lg' | 'xl' | '2xl';
+export type PanelRadius = 'none' | 'lg' | 'xl' | '2xl';
 /**
  * `none` / `sm` / `md` are the original raw-shadow steps, kept byte-identical so
  * no existing Panel moves.
@@ -43,6 +48,7 @@ const PADDING: Record<PanelPadding, string> = {
 };
 
 const RADIUS: Record<PanelRadius, string> = {
+  none: cornerClass('flush'),
   lg: 'rounded-lg',
   xl: 'rounded-xl',
   '2xl': 'rounded-2xl',
@@ -60,7 +66,7 @@ export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   /** Inner padding from the spacing scale. Default `md`. */
   padding?: PanelPadding;
-  /** Corner radius from the radius scale. Default `2xl`. */
+  /** Corner radius from the radius scale. Default `none` (flush-square). */
   radius?: PanelRadius;
   /** Drop shadow from the elevation scale. Default `sm`. */
   elevation?: PanelElevation;
@@ -69,7 +75,7 @@ export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Panel = forwardRef<HTMLDivElement, PanelProps>(function Panel(
-  { children, padding = 'md', radius = '2xl', elevation = 'sm', borderless = false, className, ...rest },
+  { children, padding = 'md', radius = 'none', elevation = 'sm', borderless = false, className, ...rest },
   ref,
 ) {
   return (

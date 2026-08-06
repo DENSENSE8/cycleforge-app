@@ -5,25 +5,23 @@ export interface PlatformStyle {
   label: string;
   chip: string;       // border + bg + text classes
   ring: string;       // accent ring for the channel row left edge
-  underline: string;  // CopyChip underline
 }
 
 const STYLE: Record<string, PlatformStyle> = {
-  zoho:    { label: 'Zoho',    chip: 'border-red-200    bg-red-50    text-red-700',    ring: 'border-l-red-400',    underline: 'border-red-500' },
-  amazon:  { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400', underline: 'border-orange-500' },
-  fba:     { label: 'FBA',     chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400', underline: 'border-orange-500' },
-  ecwid:   { label: 'Ecwid',   chip: 'border-blue-200   bg-blue-50   text-blue-700',   ring: 'border-l-blue-400',   underline: 'border-blue-500' },
-  ebay:    { label: 'eBay',    chip: 'border-yellow-200 bg-yellow-50 text-yellow-800', ring: 'border-l-yellow-400', underline: 'border-yellow-500' },
-  walmart: { label: 'Walmart', chip: 'border-amber-200  bg-amber-50  text-amber-800',  ring: 'border-l-amber-400',  underline: 'border-amber-500' },
-  mercari: { label: 'Mercari', chip: 'border-purple-200 bg-purple-50 text-purple-700', ring: 'border-l-purple-400', underline: 'border-purple-500' },
-  shopify: { label: 'Shopify', chip: 'border-border-default  bg-surface-canvas  text-text-default',  ring: 'border-l-border-emphasis',  underline: 'border-border-emphasis' },
+  zoho:    { label: 'Zoho',    chip: 'border-red-200    bg-red-50    text-red-700',    ring: 'border-l-red-400' },
+  amazon:  { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400' },
+  fba:     { label: 'FBA',     chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400' },
+  ecwid:   { label: 'Ecwid',   chip: 'border-blue-200   bg-blue-50   text-blue-700',   ring: 'border-l-blue-400' },
+  ebay:    { label: 'eBay',    chip: 'border-yellow-200 bg-yellow-50 text-yellow-800', ring: 'border-l-yellow-400' },
+  walmart: { label: 'Walmart', chip: 'border-amber-200  bg-amber-50  text-amber-800',  ring: 'border-l-amber-400' },
+  mercari: { label: 'Mercari', chip: 'border-purple-200 bg-purple-50 text-purple-700', ring: 'border-l-purple-400' },
+  shopify: { label: 'Shopify', chip: 'border-border-default  bg-surface-canvas  text-text-default',  ring: 'border-l-border-emphasis' },
 };
 
 const DEFAULT: PlatformStyle = {
   label: 'Other',
   chip: 'border-border-soft bg-surface-canvas text-text-muted',
   ring: 'border-l-border-emphasis',
-  underline: 'border-border-emphasis',
 };
 
 export function platformStyle(platform: string): PlatformStyle {

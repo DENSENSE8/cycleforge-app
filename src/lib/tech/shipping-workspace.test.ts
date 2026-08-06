@@ -14,10 +14,18 @@ describe('shipping-workspace-state', () => {
     assert.equal(getShippingWorkspaceTabFromSearch(new URLSearchParams()), 'pending');
   });
 
-  it('reads ship=history; legacy ship=fba falls to pending', () => {
+  it('reads urgent / all / history; legacy ship=fba falls to pending', () => {
     assert.equal(
       getShippingWorkspaceTabFromSearch(new URLSearchParams('ship=fba')),
       'pending',
+    );
+    assert.equal(
+      getShippingWorkspaceTabFromSearch(new URLSearchParams('ship=urgent')),
+      'urgent',
+    );
+    assert.equal(
+      getShippingWorkspaceTabFromSearch(new URLSearchParams('ship=all')),
+      'all',
     );
     assert.equal(
       getShippingWorkspaceTabFromSearch(new URLSearchParams('ship=history')),
@@ -33,6 +41,20 @@ describe('shipping-workspace-state', () => {
     assert.equal(params.has('ustatus'), false);
     assert.equal(params.has('attention'), false);
     assert.equal(params.has('surface'), false);
+  });
+
+  it('Urgent tab owns attention=1', () => {
+    const params = new URLSearchParams();
+    normalizeShippingWorkspaceTabParams(params, 'urgent');
+    assert.equal(params.get('ship'), 'urgent');
+    assert.equal(params.get('attention'), '1');
+  });
+
+  it('clears attention when returning to Pending', () => {
+    const params = new URLSearchParams('ship=urgent&attention=1');
+    normalizeShippingWorkspaceTabParams(params, 'pending');
+    assert.equal(params.has('ship'), false);
+    assert.equal(params.has('attention'), false);
   });
 });
 

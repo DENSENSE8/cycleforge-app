@@ -22,7 +22,7 @@ const MODE_ITEMS: HorizontalSliderItem[] = [
  */
 export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
   const c = useZendeskClaimController(props);
-  const submitLabel = c.mode === 'create' ? 'Create ticket' : c.replyPublic ? 'Send reply' : 'Add note';
+  const submitLabel = c.mode === 'create' ? 'Create ticket' : c.replyPublic ? 'Send' : 'Add note';
   const lockedToTicket = Boolean(props.defaultTicketId);
   const onPickStep = c.wizardStep === 'pick';
 
@@ -51,7 +51,7 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
               {c.result
                 ? 'Done'
                 : onPickStep
-                  ? 'Select photos to attach'
+                  ? 'Select photos'
                   : c.mode === 'create'
                     ? 'New support ticket'
                     : 'Update ticket'}
@@ -118,7 +118,7 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
           <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-hairline px-5 py-3.5">
             <div className="flex items-center gap-1.5 text-role-caption font-semibold text-text-faint">
               <Paperclip className="h-3.5 w-3.5" />
-              {c.totalAttach} attachment{c.totalAttach === 1 ? '' : 's'}
+              {c.totalAttach} photos
             </div>
             <div className="flex items-center gap-2">
               {c.error ? (

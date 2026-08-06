@@ -22,6 +22,7 @@ import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
+import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { SupportOrdersFocusHost } from '@/components/support/orders/SupportOrdersFocusHost';
 import {
   ORDERS_DESK_CONTEXT_KEY,
@@ -70,27 +71,29 @@ function OutboundOrdersDeskContent() {
   }
 
   return (
-    <div className="flex min-h-0 w-full flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <DashboardOrdersView
-          orderView={orderView}
-          onSelectView={setOrderView}
-          selectMode={selectMode}
-          selectionEnabled={selectionEnabled}
-          selectionOverlays={selectionOverlays}
-        />
-      </div>
+    <OrdersViewChromeProvider>
+      <div className="flex min-h-0 w-full flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <DashboardOrdersView
+            orderView={orderView}
+            onSelectView={setOrderView}
+            selectMode={selectMode}
+            selectionEnabled={selectionEnabled}
+            selectionOverlays={selectionOverlays}
+          />
+        </div>
 
-      {!isSupportContext ? (
-        <DashboardOrderDetails
-          detailsEnabled={detailsEnabled}
-          selectedShipped={selectedShipped}
-          selectedContext={selectedContext}
-          onClose={requestCloseSelectedOrder}
-          onUpdate={refreshDashboard}
-        />
-      ) : null}
-    </div>
+        {!isSupportContext ? (
+          <DashboardOrderDetails
+            detailsEnabled={detailsEnabled}
+            selectedShipped={selectedShipped}
+            selectedContext={selectedContext}
+            onClose={requestCloseSelectedOrder}
+            onUpdate={refreshDashboard}
+          />
+        ) : null}
+      </div>
+    </OrdersViewChromeProvider>
   );
 }
 

@@ -79,7 +79,7 @@ export function FbaTrackingBucket({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border transition-colors ${
+      className={`rounded-none border transition-colors ${
         isOver
           ? 'border-dashed border-blue-400 bg-blue-50/40'
           : bucket.allocations.length > 0

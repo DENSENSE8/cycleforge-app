@@ -1,14 +1,13 @@
 'use client';
 
 /**
- * Auto-match row for an UNFOUND carton — lives inside {@link POUnboxingSection}
- * below PO Items, above Package Pairing. Operator-initiated only; nothing here
+ * Auto-match row for an UNFOUND carton — lives inside {@link CartonMatchHub}
+ * above Package Pairing avenues. Operator-initiated only; nothing here
  * runs on the scan path (see useUnfoundRefetchActions).
  *
  * Four resolution actions as a compact grid (default) or forced vertical rows
- * (`layout="rows"`). Bare Unbox Displays Pairing absorbs Auto-match into the
- * hub dropdown and mounts this strip with `forcedLane` (order / ticket only —
- * no action grid). Zoho / Amazon fire from the hub menu.
+ * (`layout="rows"`). Same strip presentation on bare Unbox Displays and card
+ * chrome — never absorbed into the Pairing avenue dropdown.
  *
  *   • **Return #** (Search) — opens the search row (back chip · return #
  *     input · search icon). Typing surfaces a live list of matching shipped
@@ -49,6 +48,7 @@ import {
   Database,
 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { Popover } from '@/design-system/primitives/Popover';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -99,13 +99,13 @@ interface UnfoundMatchStripProps {
   /** When false, omit top divider (e.g. first block in a pairing-only card). */
   showTopRule?: boolean;
   /**
-   * `grid` — responsive multi-col (Triage / Testing / embedded). `rows` —
-   * single-column stack (legacy; bare Displays no longer uses the action grid).
+   * `grid` — responsive multi-col (default for hub strip on bare + card).
+   * `rows` — single-column stack (legacy callers).
    */
   layout?: 'grid' | 'rows';
   /**
-   * Displays dropdown host: skip the action grid and show only this lane.
-   * Back calls `onForcedLaneBack` (hub clears the sticky Auto-match mode).
+   * Skip the action grid and show only this lane. Optional host override;
+   * default strip UX uses the action grid and opens lanes in-strip.
    */
   forcedLane?: 'order' | 'ticket' | null;
   onForcedLaneBack?: () => void;
@@ -132,8 +132,8 @@ export function UnfoundMatchStrip({
   const compare = useShippedOrderCompare();
   // Compact action grid is the default (Return # · Zoho · Amazon · Find ticket).
   // Return # opens the search lane; Find ticket opens the helpdesk picker; both
-  // return here on back / link. `forcedLane` locks the Displays dropdown host
-  // onto one lane without the peer action grid.
+  // return here on back / link. `forcedLane` is an optional host override that
+  // locks onto one lane without the peer action grid.
   const [lane, setLane] = useState<'order' | 'ticket' | 'actions'>(
     forcedLane ?? 'actions',
   );
@@ -306,7 +306,7 @@ function StripButton({
         loading={state?.status === 'loading'}
         disabled={disabled}
         onClick={onClick}
-        className="min-h-11 w-full justify-start gap-2 rounded-lg px-3"
+        className={`min-h-11 w-full justify-start gap-2 px-3 ${cornerClass('flush')}`}
         icon={<Icon className="h-4 w-4 shrink-0" />}
       >
         <span
@@ -355,7 +355,7 @@ function TicketMatchLane({
         ariaLabel="Back to auto-match options"
         tone="neutral"
         onClick={onBack}
-        className="grid h-11 w-9 shrink-0 place-items-center rounded-lg ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
+        className="grid h-11 w-9 shrink-0 place-items-center rounded-none ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
       />
       <div className="min-w-0 flex-1">
         <TicketLinkPopover
@@ -516,7 +516,7 @@ function OrderSearchRow({
           ariaLabel="Back to auto-match options"
           tone="neutral"
           onClick={onBack}
-          className="grid h-11 w-9 shrink-0 place-items-center rounded-lg ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
+          className="grid h-11 w-9 shrink-0 place-items-center rounded-none ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
         />
         {/* Return # — find what we shipped and link (exact) or compare (search). */}
         <div className="min-w-0 flex-1">
@@ -530,7 +530,7 @@ function OrderSearchRow({
             }}
             placeholder="Return #…"
             disabled={disabled}
-            className="min-h-11 w-full min-w-0 rounded-lg border-0 bg-surface-card px-3 text-role-caption font-semibold text-text-default ring-1 ring-inset ring-border-soft placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className="min-h-11 w-full min-w-0 rounded-none border-0 bg-surface-card px-3 text-role-caption font-semibold text-text-default ring-1 ring-inset ring-border-soft placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-border-soft"
           />
         </div>
         {/* Rightmost search icon — runs the read-only serial compare. */}
@@ -542,7 +542,7 @@ function OrderSearchRow({
             loading={state.status === 'loading' || linkingId != null}
             disabled={disabled || !trimmedOrder}
             ariaLabel="Search by return number"
-            className="min-h-11 w-11 shrink-0 justify-center rounded-lg px-0"
+            className="min-h-11 w-11 shrink-0 justify-center rounded-none px-0"
             icon={<Search className="h-4 w-4 shrink-0" />}
           />
         </HoverTooltip>
@@ -593,7 +593,7 @@ function OrderSuggestList({
   onPick: (candidate: ShippedOrderSuggestion) => void;
 }) {
   return (
-    <ul className="divide-y divide-border-hairline overflow-hidden rounded-lg bg-surface-card ring-1 ring-inset ring-border-soft">
+    <ul className="divide-y divide-border-hairline overflow-hidden rounded-none bg-surface-card ring-1 ring-inset ring-border-soft">
       {candidates.map((c) => (
         <li key={c.order_pk}>
           <button
@@ -699,7 +699,7 @@ function CompareResult({
       : meta.label;
 
   return (
-    <div className="space-y-2.5 rounded-lg bg-surface-card px-3 py-2.5 ring-1 ring-inset ring-border-soft">
+    <div className="space-y-2.5 rounded-none bg-surface-card px-3 py-2.5 ring-1 ring-inset ring-border-soft">
       {/* Identity — title leads, order id chip + clear on the right. */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -770,7 +770,7 @@ function CompareResult({
 /** Compare received vs shipped serials as last-8 {@link SerialChip}s. */
 function SerialContrast({ received, shipped }: { received: string | null; shipped: string | null }) {
   return (
-    <div className="space-y-1.5 rounded-lg bg-surface-canvas px-2.5 py-2 ring-1 ring-inset ring-border-soft">
+    <div className="space-y-1.5 rounded-none bg-surface-canvas px-2.5 py-2 ring-1 ring-inset ring-border-soft">
       <SerialContrastRow label="Received" serial={received} />
       <SerialContrastRow label="Shipped" serial={shipped} />
     </div>
@@ -878,7 +878,7 @@ function LogSerialButton({
         loading={status === 'logging'}
         disabled={!trimmed || status !== 'idle'}
         onClick={() => void log()}
-        className="shrink-0 gap-1.5 rounded-lg px-3"
+        className="shrink-0 gap-1.5 rounded-none px-3"
         icon={status === 'logged' ? <Check className="h-4 w-4" /> : <Database className="h-4 w-4" />}
       >
         <span className="text-role-caption font-semibold">{status === 'logged' ? 'Logged' : 'Log serial'}</span>
@@ -931,7 +931,7 @@ function SupportTicketPopover({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="shrink-0 gap-1.5 rounded-lg px-3"
+        className="shrink-0 gap-1.5 rounded-none px-3"
         icon={<TicketHelp className="h-4 w-4 shrink-0" />}
       >
         <span className="text-role-caption font-semibold">{hasTicket ? 'Ticket' : 'File ticket'}</span>
@@ -956,7 +956,7 @@ function SupportTicketPopover({
                   target="_blank"
                   rel="noreferrer"
                   aria-label="Open in Zendesk"
-                  className="rounded-md p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
+                  className="rounded-none p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -972,7 +972,7 @@ function SupportTicketPopover({
               ]}
               value={mode}
               onChange={setMode}
-              className="rounded-lg border border-border-soft px-1 py-0.5"
+              className="rounded-none border border-border-soft px-1 py-0.5"
             />
           ) : null}
 
@@ -1079,18 +1079,18 @@ function TicketCreateInline({
         ]}
         value={isPublic ? 'public' : 'internal'}
         onChange={(next) => setIsPublic(next === 'public')}
-        className="rounded-lg border border-border-soft px-1 py-0.5"
+        className="rounded-none border border-border-soft px-1 py-0.5"
       />
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={5}
         placeholder="Ticket details…"
-        className="block w-full resize-y rounded-lg border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
+        className="block w-full resize-y rounded-none border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
       />
       <div className="flex items-center justify-between gap-2">
         <p className="text-role-micro font-semibold text-text-faint">
-          {isPublic ? 'Emails the customer.' : 'Private note — no email sent.'}
+          {isPublic ? 'Emails customer' : 'Internal · not emailed'}
         </p>
         <Button
           variant="primary"
@@ -1127,7 +1127,7 @@ function CompareLine({
 }) {
   return (
     <div
-      className={`flex items-start gap-2 rounded-lg inset-cozy text-role-caption ring-1 ring-inset ${LINE_TONE[tone]}`}
+      className={`flex items-start gap-2 rounded-none inset-cozy text-role-caption ring-1 ring-inset ${LINE_TONE[tone]}`}
     >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 font-semibold">{text}</span>
@@ -1153,7 +1153,7 @@ function MergedNotice({ state }: { state: RefetchState }) {
 
   return (
     <div
-      className={`flex items-start gap-2 rounded-lg inset-field text-role-caption ring-1 ring-inset ${tone}`}
+      className={`flex items-start gap-2 rounded-none inset-field text-role-caption ring-1 ring-inset ${tone}`}
     >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0">{state.message}</span>

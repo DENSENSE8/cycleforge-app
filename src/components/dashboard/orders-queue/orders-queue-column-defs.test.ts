@@ -6,7 +6,6 @@ import {
   ORDERS_QUEUE_TESTED_COLUMNS,
   ordersQueueColumnsFor,
   ordersQueueGridTemplateFor,
-  sanitizeOrdersQueueColumnOrder,
 } from '@/lib/dashboard-order-row-layout';
 import { ordersQueueColumnDefsFor, queueColumnOf } from './orders-queue-column-defs';
 import {
@@ -25,11 +24,11 @@ import {
  */
 
 describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
-  it('fulfillment.default matches the canonical 7-column scan order', () => {
+  it('fulfillment.default matches the canonical triage scan order', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.default');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'order', 'title', 'sla', 'condition', 'qty', 'tracking'],
+      ['select', 'order', 'age', 'title', 'condition', 'qty', 'tracking', '_fill'],
     );
     assert.deepEqual(
       defs.map((d) => d.id),
@@ -38,11 +37,11 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     );
   });
 
-  it('fulfillment.tested surfaces Tester + Tested at after Ship by (no Status / Platform)', () => {
+  it('fulfillment.tested surfaces Tester + Tested at after Product, then Cond (no Status / Platform)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'order', 'title', 'sla', 'tester', 'testedAt', 'condition', 'qty', 'tracking'],
+      ['select', 'order', 'age', 'title', 'tester', 'testedAt', 'condition', 'qty', 'tracking', '_fill'],
     );
     assert.ok(!defs.some((d) => d.id === 'status'), 'Status pill is not on the TESTED tab');
     assert.ok(!defs.some((d) => d.id === 'platform'), 'Platform column is retired');
@@ -71,9 +70,9 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     assert.equal(byId.tester.enableSorting, false, 'tester is outside the ?sort vocabulary');
     assert.equal(byId.testedAt.enableSorting, false, 'testedAt is outside the ?sort vocabulary');
     assert.equal(byId.title.enableSorting, true);
-    assert.equal(byId.sla.enableSorting, true);
-    // Ascending ship-by IS most-late-first, so no column activates DESC first.
-    assert.notEqual(byId.sla.sortDescFirst, true, 'Ship by activates ascending');
+    assert.equal(byId.age.enableSorting, true);
+    // Days-late activates most-overdue-first (DESC).
+    assert.equal(byId.age.sortDescFirst, true, 'Late activates descending');
   });
 
   it('locked identity pane (select · title) can never hide; the rest can', () => {
@@ -102,26 +101,7 @@ describe('ORDERS_QUEUE_TESTED_COLUMNS — house geometry for the TESTED lane', (
     assert.ok(template.includes('--cf-col-tester'), 'tester track present');
     assert.ok(template.includes('--cf-col-testedAt'), 'testedAt track present');
     assert.ok(!template.includes('--cf-col-status'), 'status track demoted');
-    assert.equal((template.match(/1fr/g) ?? []).length, 1, 'only title flexes');
-  });
-
-  it('sanitize against the TESTED canonical keeps tester/testedAt and inserts them for stale orders', () => {
-    // A persisted order saved before the TESTED columns existed:
-    const out = sanitizeOrdersQueueColumnOrder(
-      ['date', 'age', 'status', 'qty', 'condition', 'platform', 'order', 'tracking'] as never[],
-      ORDERS_QUEUE_TESTED_COLUMNS,
-    );
-    assert.ok((out as string[]).includes('tester'), 'tester inserted at canonical slot');
-    assert.ok((out as string[]).includes('testedAt'), 'testedAt inserted at canonical slot');
-    assert.ok(!(out as string[]).includes('status'), 'status is not a TESTED-mode column');
-    assert.ok(!(out as string[]).includes('platform'), 'platform is retired');
-    // The frozen identity pane is re-prepended in canonical order regardless
-    // of where a stale persisted order put those keys.
-    assert.deepEqual(out.slice(0, 3), ['select', 'order', 'title']);
-    // And the default canonical still drops the TESTED-only keys:
-    const roundTrip = sanitizeOrdersQueueColumnOrder(out);
-    assert.ok(!(roundTrip as string[]).includes('tester'));
-    assert.ok(!(roundTrip as string[]).includes('testedAt'));
+    assert.equal((template.match(/1fr/g) ?? []).length, 1, 'only _fill flexes');
   });
 });
 

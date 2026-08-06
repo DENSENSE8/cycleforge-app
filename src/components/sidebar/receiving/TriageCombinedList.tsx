@@ -29,6 +29,7 @@ export function TriageCombinedList({
   leadingRow = null,
   isRowDisabled,
   filterText = '',
+  includeRow,
   hideEyebrow = false,
 }: {
   selectedLineId: number | null;
@@ -38,6 +39,7 @@ export function TriageCombinedList({
   /** Suppress clicks on in-flight importing rows so the right pane stays usable. */
   isRowDisabled?: (row: ReceivingLineRow) => boolean;
   filterText?: string;
+  includeRow?: (row: ReceivingLineRow) => boolean;
   hideEyebrow?: boolean;
 }) {
   // E10 — a carton that finished triage stays in this combined list (re-sorted,
@@ -53,6 +55,7 @@ export function TriageCombinedList({
       leadingRow={leadingRow}
       getRowDisabled={isRowDisabled}
       filterText={filterText}
+      includeRow={includeRow}
       hideEyebrow={hideEyebrow}
       renderPopoverContext={(row) => (
         <TriageStagingChips

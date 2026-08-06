@@ -1,18 +1,27 @@
 'use client';
 
 /**
- * Shipping workspace chrome — tabs left (Pending | History), filters +
- * controls portal right. Mirrors OutboundWorkspaceHeader for `/test` Shipping.
+ * Shipping workspace chrome — Sheets flush stack (Unbox / Pack recipe):
+ *
+ *   Band 1 — tabs (Urgent · Pending · All · History) + New Order
+ *   Band 2 — KPI (`WorkbenchKpiBand` in ShippingWorkspaceView)
+ *   Band 3 — triage: search · filters / staff · portal
+ *
  * Row select lives in the table left gutter (always on), not chrome.
  */
 
-import { useMemo, type ReactNode, type Ref } from 'react';
+import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
-import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
+import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
@@ -20,70 +29,48 @@ import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import {
   SHIPPING_WORKSPACE_TAB_LABEL,
+  SHIPPING_WORKSPACE_TABS,
   type ShippingWorkspaceTab,
 } from '@/utils/shipping-workspace-state';
 
-const TABS: ShippingWorkspaceTab[] = ['pending', 'history'];
+const TAB_COLOR: Record<ShippingWorkspaceTab, 'red' | 'blue' | 'gray' | 'emerald'> = {
+  urgent: 'red',
+  pending: 'blue',
+  all: 'gray',
+  history: 'emerald',
+};
 
-export interface ShippingWorkspaceHeaderProps {
-  tab: ShippingWorkspaceTab;
-  onSelectTab: (tab: ShippingWorkspaceTab) => void;
-  controlsSlotRef?: Ref<HTMLDivElement>;
-  /** Open new-order entry (slide-over). */
-  onNewOrder?: () => void;
-  className?: string;
-}
-
+/** Band 1 — tabs + New Order. Search / filters live on {@link ShippingTriageBand}. */
 export function ShippingWorkspaceHeader({
   tab,
   onSelectTab,
-  controlsSlotRef,
   onNewOrder,
   className,
-}: ShippingWorkspaceHeaderProps) {
+}: {
+  tab: ShippingWorkspaceTab;
+  onSelectTab: (tab: ShippingWorkspaceTab) => void;
+  /** Open new-order entry (slide-over). */
+  onNewOrder?: () => void;
+  className?: string;
+}) {
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
-  const { searchQuery, setSearch } = useWorkbenchSearchParam();
-  useToShipFilterHotkeys(tab === 'pending');
 
   const tabs = useMemo(
     () =>
-      TABS.map((id) => ({
+      SHIPPING_WORKSPACE_TABS.map((id) => ({
         id,
         label: SHIPPING_WORKSPACE_TAB_LABEL[id],
-        count: id === 'pending' ? queueCounts?.total : undefined,
-        color: (id === 'pending' ? 'blue' : 'emerald') as 'blue' | 'emerald',
+        count:
+          id === 'pending'
+            ? queueCounts?.total
+            : id === 'urgent'
+              ? queueCounts?.urgent
+              : undefined,
+        color: TAB_COLOR[id],
         dividerBefore: id === 'history',
       })),
-    [queueCounts?.total],
+    [queueCounts?.total, queueCounts?.urgent],
   );
-  const chromeByTab: Record<
-    ShippingWorkspaceTab,
-    { search?: ReactNode; right?: ReactNode }
-  > = {
-    pending: {
-      search: (
-        <TechRailSearchBar
-          variant="chrome"
-          value={searchQuery}
-          onChange={setSearch}
-          placeholder="Filter orders…"
-          className="w-40 shrink-0 lg:w-56"
-        />
-      ),
-      right: <OutboundExactFilters mode="unshipped" />,
-    },
-    history: {
-      right: (
-        <StaffFilterButton
-          iconOnly
-          allLabel="All technicians"
-          allToken="all"
-          meLabel="You"
-        />
-      ),
-    },
-  };
-  const chrome = chromeByTab[tab];
 
   return (
     <WorkbenchChromeHeader
@@ -92,13 +79,7 @@ export function ShippingWorkspaceHeader({
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as ShippingWorkspaceTab)}
       solidTone="accent"
-      controlsSlotRef={controlsSlotRef}
-      controlsSlotProps={{ 'data-shipping-controls': '' }}
       className={className}
-      // Scoped list filter over ?search= (pending list reads it directly);
-      // only shown where the tab's list actually filters on it.
-      search={chrome.search}
-      right={chrome.right}
       trailing={
         onNewOrder ? (
           <WorkbenchTrailingCluster
@@ -106,6 +87,68 @@ export function ShippingWorkspaceHeader({
           />
         ) : undefined
       }
+    />
+  );
+}
+
+/** Band 3 — find left; filters / staff · portal right. Leading = Unbox KPI collapse. */
+export function ShippingTriageBand({
+  tab,
+  controlsSlotRef,
+  kpiOpen,
+  onToggleKpi,
+  className,
+}: {
+  tab: ShippingWorkspaceTab;
+  controlsSlotRef?: Ref<HTMLDivElement>;
+  /** Band 2 open — drives {@link WorkbenchKpiCollapseToggle}. */
+  kpiOpen: boolean;
+  onToggleKpi: () => void;
+  className?: string;
+}) {
+  const { searchQuery, setSearch } = useWorkbenchSearchParam();
+  const queueTab = tab === 'pending' || tab === 'urgent';
+  useToShipFilterHotkeys(queueTab);
+
+  const search =
+    queueTab || tab === 'all' ? (
+      <TechRailSearchBar
+        variant="chrome"
+        value={searchQuery}
+        onChange={setSearch}
+        placeholder={
+          tab === 'urgent'
+            ? 'Filter urgent orders…'
+            : tab === 'all'
+              ? 'Search all triage…'
+              : 'Filter orders…'
+        }
+        className="w-40 shrink-0 lg:w-56"
+      />
+    ) : null;
+
+  const right =
+    queueTab ? (
+      <OutboundExactFilters mode="unshipped" />
+    ) : tab === 'history' ? (
+      <StaffFilterButton
+        iconOnly
+        allLabel="All technicians"
+        allToken="all"
+        meLabel="You"
+      />
+    ) : null;
+
+  return (
+    <WorkbenchTriageBand
+      className={className}
+      kpiToggle={
+        <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
+      }
+      search={search}
+      right={right}
+      controlsSlotRef={controlsSlotRef}
+      controlsSlotProps={{ 'data-shipping-controls': '' }}
     />
   );
 }

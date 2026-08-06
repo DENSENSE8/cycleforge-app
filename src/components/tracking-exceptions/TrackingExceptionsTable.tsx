@@ -174,7 +174,7 @@ function FilterBar({
         {loading ? 'Loading…' : 'Reload'}
       </Button>
       <span className="text-role-micro uppercase tracking-widest text-text-soft">
-        {total} {total === 1 ? 'row' : 'rows'}
+        {total} rows
       </span>
     </div>
   );

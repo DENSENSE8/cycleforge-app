@@ -5,6 +5,6 @@
  * branches on the active view, not the scope.
  *
  * Shared by the table side (useTableSelectMode) and the page side
- * (useTableSelection + ContextualSelectionBar) so the string can't drift.
+ * (useTableSelection + rail selection plane) so the string can't drift.
  */
 export const DASHBOARD_ORDERS_SELECTION_SCOPE = 'dashboard-orders' as const;

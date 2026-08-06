@@ -12,9 +12,9 @@ import {
   type OrdersQueueColumn,
   type OrdersQueueColumnMode,
 } from '@/lib/dashboard-order-row-layout';
+import { getDaysLateNullable } from '@/utils/date';
 import { isQueueColumnSort } from '@/utils/queue-display-sort';
 import {
-  queueRowShipBySource,
   queueRowTestedAtRaw,
   queueRowTesterNameRaw,
   type QueueRowRecord,
@@ -34,26 +34,17 @@ function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unkn
   switch (key) {
     case 'title':
       return (row) => String(row.product_title ?? '');
-    case 'sla':
-      return (row) => queueRowShipBySource(row);
-    case 'status':
-      return (row) => {
-        const r = row as QueueRowRecord;
-        return {
-          hasTechScan: Boolean(r.has_tech_scan),
-          isOutOfStock: Boolean(r.is_out_of_stock ?? r.isOutOfStock),
-        };
-      };
-    case 'qty':
-      return (row) => Number(row.quantity) || 0;
+    case 'age':
+      // Same derived days-late number the Late cell shows.
+      return (row) => getDaysLateNullable(row.deadline_at || row.ship_by_date);
     case 'condition':
       return (row) => String(row.condition ?? '');
+    case 'qty':
+      return (row) => Number(row.quantity) || 0;
     case 'tester':
       return (row) => queueRowTesterNameRaw(row as QueueRowRecord);
     case 'testedAt':
       return (row) => queueRowTestedAtRaw(row as QueueRowRecord);
-    case 'platform':
-      return (row) => String(row.account_source ?? '');
     case 'order':
       return (row) => String(row.order_id ?? '');
     case 'tracking':
@@ -79,7 +70,8 @@ export function makeOrdersGridDescriptor(
     columns,
     {
       isSortable: isQueueColumnSort,
-      sortDescFirst: () => false,
+      // Late column activates most-overdue-first (desc); other facts stay asc.
+      sortDescFirst: (key) => key === 'age',
       isLocked: isOrdersQueueFrozen,
       accessorFor,
     },

@@ -31,14 +31,8 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   testedBy?: number;
   /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
   selectMode?: boolean;
-  /** Reserve bottom room for the pinned bulk-selection capsule. Forwarded to
-   *  the bounded host in {@link UnshippedShelfBoard}; pass `bulkBarVisible`
-   *  from `useDashboardBulkSelection`. */
-  bulkBarInset?: boolean;
   /** Rail-selection model: the check-set is the single selection SoT and drives
-   *  the right-rail inspector. Dashboard outbound lanes only — Pack, Support
-   *  orders, and Shipping still run the bottom capsule. See
-   *  `docs/todo/order-rail-selection-plane-PLAN.md`. */
+   *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
   /** Portal board toolbar controls into the dashboard outbound floating row. */
   toolbarPortalTarget?: HTMLElement | null;
@@ -105,7 +99,6 @@ export function UnshippedTable({
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
-  bulkBarInset = false,
   railSelection = false,
   toolbarPortalTarget,
   onOpenRecord,
@@ -368,7 +361,6 @@ export function UnshippedTable({
       loading={query.isLoading}
       searchValue={searchQuery}
       selectMode={selectMode}
-      bulkBarInset={bulkBarInset}
       railSelection={railSelection}
       onOpenRecord={(record) => {
         if (onOpenRecord) {

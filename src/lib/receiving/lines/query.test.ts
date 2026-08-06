@@ -162,6 +162,13 @@ test('return_scope partitions the testing queue and invalid values show all', ()
   assert.equal(parse('return_scope=other').returnScope, 'all');
 });
 
+test('priority_only flags Testing Urgent queue filter', () => {
+  assert.equal(parse('priority_only=1').priorityOnly, true);
+  assert.equal(parse('priority_only=true').priorityOnly, true);
+  assert.equal(parse('priority_only=0').priorityOnly, false);
+  assert.equal(parse('').priorityOnly, false);
+});
+
 test('delivery_state: trimmed + uppercased raw string, no validity gate here', () => {
   assert.equal(parse('delivery_state=delivered_unopened').deliveryStateFilter, 'DELIVERED_UNOPENED');
   assert.equal(parse('delivery_state=NOT_A_BUCKET').deliveryStateFilter, 'NOT_A_BUCKET');

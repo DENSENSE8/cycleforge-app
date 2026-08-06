@@ -1,17 +1,22 @@
 'use client';
 
 /**
- * Triage (Arrival) browse workbench — tabs (Triage · Prioritize · Unfound · Done)
- * + KPI strip + feed list. Mirrors UnboxWorkspaceView; feeds reuse TriageFeedBody.
+ * Triage (Arrival) browse workbench — Sheets flush chrome (Unbox recipe): tabs ·
+ * KPI · triage in one pinned sheet-chrome stack; feed body is WORKBENCH_SHEET_HOST.
+ * Band 2 uses Unbox SoT {@link WorkbenchKpiBand} (snap-collapse).
  */
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchKpiBand,
+  WORKBENCH_KPI_SURFACE,
+} from '@/components/dashboard/workbench-kpi-collapse';
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
@@ -20,8 +25,13 @@ import {
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { TriageKpiStrip } from '@/components/receiving/triage/TriageKpiStrip';
-import { TriageWorkspaceHeader } from '@/components/receiving/triage/TriageWorkspaceHeader';
+import {
+  TriageTriageBand,
+  TriageWorkspaceHeader,
+} from '@/components/receiving/triage/TriageWorkspaceHeader';
 import { TriageFeedBody } from '@/components/receiving/triage/TriageFeedBody';
+import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
+import { cn } from '@/utils/_cn';
 import { useTriageWorkspaceTab } from '@/hooks/useTriageWorkspaceTab';
 
 export function TriageWorkspaceView({
@@ -35,6 +45,9 @@ export function TriageWorkspaceView({
   const { triageView, setTriageView } = useTriageWorkspaceTab();
   const searchParams = useSearchParams();
   const filterText = searchParams.get('triq') ?? '';
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
+    WORKBENCH_KPI_SURFACE.triage,
+  );
 
   const selectedLineId = selectedLine?.id ?? null;
   const selectedRow =
@@ -73,34 +86,38 @@ export function TriageWorkspaceView({
         <DashboardScrollShell
           className="h-full bg-transparent"
           chrome={
-            <div className={WORKBENCH_CHROME_COLUMN}>
+            <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
               <TriageWorkspaceHeader
                 tab={triageView}
                 onSelectTab={setTriageView}
+                className="rounded-none border-l-0 border-t-0 shadow-sm"
+              />
+              <WorkbenchKpiBand
+                open={!kpiCollapsed}
+                onSnapCollapse={() => setKpiCollapsed(true)}
+                onSnapExpand={() => setKpiCollapsed(false)}
+              >
+                <TriageKpiStrip />
+              </WorkbenchKpiBand>
+              <TriageTriageBand
+                kpiOpen={!kpiCollapsed}
+                onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
               />
             </div>
           }
         >
-          <div className={WORKBENCH_BODY_COLUMN}>
-            <div className="mb-4">
-              <TriageKpiStrip />
-            </div>
-
-            {/* Feed sits inside TriageLineWorkspace’s elevated host — no second
-                full-pane rounded well (depth-1 is the shell, not nested cards). */}
-            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-                <TriageFeedBody
-                  key={triageView}
-                  view={triageView}
-                  selectedLineId={selectedLineId}
-                  selectedRow={selectedRow}
-                  leadingRow={triageView === 'triage' ? leadingRow : null}
-                  filterText={filterText}
-                  hideEyebrow
-                />
-              </Suspense>
-            </div>
+          <div className={WORKBENCH_SHEET_HOST}>
+            <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
+              <TriageFeedBody
+                key={triageView}
+                view={triageView}
+                selectedLineId={selectedLineId}
+                selectedRow={selectedRow}
+                leadingRow={triageView === 'triage' ? leadingRow : null}
+                filterText={filterText}
+                hideEyebrow
+              />
+            </Suspense>
           </div>
         </DashboardScrollShell>
 

@@ -157,7 +157,7 @@ export function BoxTab({
           onClick={() => void mintNew()}
           className="w-full bg-teal-600 hover:bg-teal-700"
         >
-          New box &amp; print label · {unitIds.length} {unitIds.length === 1 ? 'unit' : 'units'}
+          New box &amp; print label · {unitIds.length} units
         </Button>
         {noUnits ? (
           <p className="mt-1.5 text-center text-role-micro text-text-faint">
@@ -188,7 +188,7 @@ export function BoxTab({
                   <Package className="h-4 w-4 shrink-0 text-teal-600" />
                   <span className="flex-1 truncate text-role-caption font-semibold text-text-default">{b.code}</span>
                   <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
-                    {b.unit_count} {b.unit_count === 1 ? 'unit' : 'units'}
+                    {b.unit_count} units
                     {b.location_name ? ` · ${b.location_name}` : ''}
                   </span>
                   {busyId === b.id ? <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" /> : null}

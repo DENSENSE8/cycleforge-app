@@ -10,7 +10,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
     <>
       {/* Catalog Info */}
       {data.catalog && (
-        <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+        <div className="rounded-none bg-surface-card border border-border-soft p-4">
           <h2 className={`${sectionLabel} mb-3`}>Catalog Details</h2>
           <div className="grid grid-cols-2 gap-3">
             {data.catalog.category && (
@@ -46,7 +46,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
 
       {/* Ecwid Product Info */}
       {data.ecwid && (
-        <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+        <div className="rounded-none bg-surface-card border border-border-soft p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className={sectionLabel}>Storefront product</h2>
             <a
@@ -64,7 +64,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
       )}
 
       {/* Packing Photos */}
-      <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+      <div className="rounded-none bg-surface-card border border-border-soft p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className={sectionLabel}>
             <Camera className="inline h-3 w-3 mr-1" />
@@ -92,7 +92,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
       </div>
 
       {/* Serial / Tracking History */}
-      <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+      <div className="rounded-none bg-surface-card border border-border-soft p-4">
         <h2 className={`${sectionLabel} mb-3`}>
           <Package className="inline h-3 w-3 mr-1" />
           Inventory History ({data.history.length})
@@ -100,7 +100,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
         {data.history.length > 0 ? (
           <div className="space-y-2">
             {data.history.map((row) => (
-              <div key={row.id} className="rounded-lg bg-surface-canvas border border-border-hairline p-3">
+              <div key={row.id} className="rounded-none bg-surface-canvas border border-border-hairline p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     {row.serial_number && (
@@ -134,14 +134,14 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
 
       {/* Audit Ledger */}
       {data.ledger.length > 0 && (
-        <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+        <div className="rounded-none bg-surface-card border border-border-soft p-4">
           <h2 className={`${sectionLabel} mb-3`}>
             <History className="inline h-3 w-3 mr-1" />
             Stock Audit Log
           </h2>
           <div className="space-y-1">
             {data.ledger.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between rounded-lg bg-surface-canvas px-3 py-2">
+              <div key={entry.id} className="flex items-center justify-between rounded-none bg-surface-canvas px-3 py-2">
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-semibold ${entry.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
@@ -157,14 +157,14 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
 
       {/* Location Transfer History */}
       {data.transfers && data.transfers.length > 0 && (
-        <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+        <div className="rounded-none bg-surface-card border border-border-soft p-4">
           <h2 className={`${sectionLabel} mb-3`}>
             <MapPin className="inline h-3 w-3 mr-1" />
             Location Transfers
           </h2>
           <div className="space-y-1">
             {data.transfers.map((t) => (
-              <div key={t.id} className="flex items-center justify-between rounded-lg bg-surface-canvas px-3 py-2">
+              <div key={t.id} className="flex items-center justify-between rounded-none bg-surface-canvas px-3 py-2">
                 <div className="flex items-center gap-2 text-xs font-semibold">
                   <span className="text-text-faint">{t.from_location || '—'}</span>
                   <span className="text-text-faint">&rarr;</span>
@@ -178,7 +178,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
       )}
 
       {/* Audit history */}
-      <div className="bg-surface-card rounded-2xl p-4">
+      <div className="bg-surface-card rounded-none p-4">
         <h2 className={`${sectionLabel} mb-3`}>
           <History className="inline h-3 w-3 mr-1" />
           History

@@ -30,7 +30,9 @@ phone↔desktop bridges, scan logs, and AI session streaming. **Live.**
   `walkin:changes`, `ai:assist`.
 - **DB row feeds:** `db:{schema}:{table}:{rowId}` (+ `db:*` wildcard, org-scoped).
 - **Per-staff bridges (sub + pub, no cross-staff wildcard):** `inbox:{staffId}`
-  (priority alerts + staff messages), `phone:{staffId}` (photo bridge),
+  (priority alerts + staff messages), `phone:{staffId}` (photo bridge —
+  `receiving_photo_taken` absolute in-flight count for desk peek placeholders;
+  `receiving_photo_uploaded` when a shot commits),
   `packer:{staffId}`, `staffstation:{staffId}`, `scanlog:{staffId}` (read-only).
 - **AI sessions:** `ai:assist:{sessionId}`.
 

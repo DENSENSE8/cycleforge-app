@@ -157,7 +157,7 @@ export function SupportChatHeader({
                   aria-pressed={contextOpen}
                   size="md"
                   className={cn(
-                    'rounded-lg ring-1 ring-inset',
+                    'rounded-none ring-1 ring-inset',
                     contextOpen
                       ? 'bg-blue-50 text-blue-700 ring-blue-200'
                       : 'bg-surface-card ring-border-soft hover:text-text-default',
@@ -170,7 +170,7 @@ export function SupportChatHeader({
                 <a
                   href={ordersHref}
                   aria-label="Open linked order"
-                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-none bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
                 >
                   <Package className="h-4 w-4" />
                 </a>
@@ -186,7 +186,7 @@ export function SupportChatHeader({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={openLabel}
-                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-none bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </a>

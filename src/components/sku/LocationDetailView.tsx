@@ -265,7 +265,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
           <button
             type="button"
             onClick={() => setCycleSheetOpen(true)}
-            className="ds-raw-button mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-left active:bg-blue-100"
+            className="ds-raw-button mb-3 flex w-full items-center justify-between gap-3 rounded-none border border-blue-200 bg-blue-50 px-4 py-3 text-left active:bg-blue-100"
           >
             <div className="min-w-0">
               <p className="text-role-micro uppercase tracking-[0.16em] text-blue-700">
@@ -301,7 +301,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
           </Button>
         </div>
         {contents.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border-default bg-surface-canvas p-6 text-center text-sm font-semibold text-text-soft">
+          <div className="rounded-none border border-dashed border-border-default bg-surface-canvas p-6 text-center text-sm font-semibold text-text-soft">
             Empty bin
           </div>
         ) : (
@@ -313,7 +313,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                   <button
                     type="button"
                     onClick={() => setNumpadRow(row)}
-                    className="ds-raw-button flex w-full items-start gap-3 rounded-lg border border-border-soft bg-surface-card px-4 py-3 text-left shadow-sm active:bg-surface-hover"
+                    className="ds-raw-button flex w-full items-start gap-3 rounded-none border border-border-soft bg-surface-card px-4 py-3 text-left shadow-sm active:bg-surface-hover"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-sm font-semibold text-text-default">

@@ -28,8 +28,9 @@ describe('grid column editability SoT', () => {
     }
   });
 
-  it('keeps number fixed and unlocks id + location resize (Sheets parity)', () => {
+  it('keeps number + price fixed and unlocks id + location resize (Sheets parity)', () => {
     assert.equal(isGridColumnResizable({ key: 'qty', type: 'number' }), false);
+    assert.equal(isGridColumnResizable({ key: 'price', type: 'price' }), false);
     assert.equal(isGridColumnResizable({ key: 'order', type: 'id' }), true);
     assert.equal(isGridColumnResizable({ key: 'location', type: 'location' }), true);
     assert.equal(isGridColumnResizable({ key: 'select' }), false);

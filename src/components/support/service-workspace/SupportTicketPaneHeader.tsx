@@ -5,7 +5,7 @@
  * `service-workspace`).
  *
  *   ┌─ Panel (rounded-2xl, same shell as the queue card) ──────────────┐
- *   │ Row 1 — icon action row      Displays · Open      │ ⧉ · ×        │
+ *   │ Row 1 — icon action row      Inspector · Open     │ ⧉ · ×        │
  *   ├──────────────────────────────────────────────────────────────────┤
  *   │ Row 2 — dense identity       ● subject …                    #175 │
  *   └──────────────────────────────────────────────────────────────────┘
@@ -65,21 +65,23 @@ export function SupportTicketPaneHeader({
 }) {
   const actions: PaneHeaderActionBarAction[] = [
     {
-      key: 'displays',
+      key: 'inspector',
       // The rail is a non-modal push column with no scrim, so its close button
       // needs a way back. This is it — `active` mirrors the rail's own state so
       // the toggle never lies about what is on screen.
       //
-      // It says "Displays", not "Connections": since 2026-08-02 the rail hosts
-      // the whole display column (Connections · Conversations · Timeline), and
-      // naming it after one of them would put two differently-scoped controls
-      // called "Connections" on the same screen — this one opening the column,
-      // the rail's own cell selecting inside it.
-      label: 'Displays',
+      // It says "Inspector", not "Displays" and not "Connections". The rail is a
+      // `RightRailHost` occupant (`SupportContextDetailPanel`), and the SoT law
+      // reserves "Displays" for the Station scan push column — a RightRailHost
+      // peek is an inspector (source-of-truth.md → Displays vs inspector).
+      // "Connections" is one of the cells the inspector holds
+      // (Connections · Conversations · Timeline · Assist), so naming the whole
+      // column after it would put two differently-scoped controls on one screen.
+      label: 'Inspector',
       icon: <Layers className="h-3.5 w-3.5" />,
       onClick: onToggleContext,
       active: contextOpen,
-      title: contextOpen ? 'Hide displays' : 'Show displays',
+      title: contextOpen ? 'Hide inspector' : 'Show inspector',
     },
     ...(openUrl
       ? [

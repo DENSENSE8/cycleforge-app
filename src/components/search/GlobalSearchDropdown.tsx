@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * GlobalSearchDropdown — the header search dropdown body (WAI-ARIA combobox).
- * Extracted out of GlobalHeaderSearch so the state machine + keyboard model is
- * testable in isolation.
+ * GlobalSearchDropdown — find dropdown body (WAI-ARIA combobox) for
+ * {@link GlobalFindCombobox} (header chrome + `/search` stage).
  *
- * Five states, driven by the host (GlobalHeaderSearch owns the query + the
+ * Five states, driven by the host (the combobox owns the query + the
  * flattened option list + activeIndex; this component only renders + reports
  * hover):
  *   recents · first-use · preview · loading · empty
@@ -15,8 +14,9 @@
  *   • preview  → option 0 = "See all results"; options 1..N = the preview hits
  *                in grouped display order (flattenPreviewGroups)
  *
- * Glass container + reduced-motion open/close via the canonical
- * dropdownPanel preset (Popover recipe).
+ * Flush column chrome: `rounded-none`, zero gap under the find cell, width
+ * matched to the anchor (`bottom-stretch`). The column is the card — never a
+ * floating glass bubble. Motion via the canonical dropdownPanel preset.
  */
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
@@ -31,6 +31,7 @@ import {
 } from '@/design-system/foundations/motion-framer-hooks';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { SearchRecentEntry } from '@/lib/search/search-recents';
+import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 import { SearchResultRow } from './SearchResultRow';
 import { SearchRecentsDropdown } from './SearchRecentsDropdown';
@@ -67,15 +68,18 @@ export interface GlobalSearchDropdownProps {
   onHoverEnd?: () => void;
 }
 
-const GLASS =
-  'w-[28rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-border-soft bg-surface-card/80 backdrop-blur-md shadow-xl';
+/** Flush header extension — square shell, matched width, soft cast (not glass). */
+const FLUSH_PANEL = cn(
+  'w-full overflow-hidden rounded-none border border-border-default border-t-0 bg-surface-card',
+  elevationClass('raised', 'soft'),
+);
 const SCROLL = 'max-h-[min(420px,55vh)] overflow-y-auto';
 const GROUP_HEADER =
   'px-3 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint';
 const FOOTER_LINK =
-  'flex items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken';
+  'flex items-center gap-1.5 border-t border-border-hairline px-3 py-2.5 text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken';
 const RECENTS_COMPACT =
-  '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-1.5';
+  '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-2.5';
 
 export function GlobalSearchDropdown({
   open,
@@ -112,8 +116,9 @@ export function GlobalSearchDropdown({
       open={open}
       onClose={onClose}
       anchorRef={anchorRef}
-      placement="bottom-center"
-      gap={6}
+      placement="bottom-stretch"
+      gap={0}
+      matchWidth
       level="dropdown"
     >
       <AnimatePresence>
@@ -123,7 +128,7 @@ export function GlobalSearchDropdown({
             animate={presence.animate}
             exit={presence.exit}
             transition={transition}
-            className={GLASS}
+            className={FLUSH_PANEL}
             onMouseEnter={onHoverStart}
             onMouseLeave={onHoverEnd}
             // Keep the input focused when a row is clicked (prevents a blur
@@ -164,7 +169,7 @@ export function GlobalSearchDropdown({
                     aria-selected={activeIndex === 0 || undefined}
                     onClick={onSeeAll}
                     className={cn(
-                      'flex w-full items-center gap-2 border-b border-border-hairline px-3 py-2 text-left text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken',
+                      'flex w-full items-center gap-2 border-b border-border-hairline px-3 py-2.5 text-left text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken',
                       activeIndex === 0 && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
                     )}
                   >
@@ -200,11 +205,11 @@ export function GlobalSearchDropdown({
               {state === 'loading' && (
                 <ul className="divide-y divide-border-hairline" aria-hidden>
                   {[0, 1, 2].map((i) => (
-                    <li key={i} className="flex items-center gap-3 px-3 py-2">
-                      <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-surface-strong" />
+                    <li key={i} className="flex items-center gap-3 px-3 py-2.5">
+                      <span className="h-2 w-2 shrink-0 animate-pulse bg-surface-strong" />
                       <span className="flex-1 space-y-1.5">
-                        <span className="block h-2.5 w-1/2 animate-pulse rounded bg-surface-strong" />
-                        <span className="block h-2 w-1/3 animate-pulse rounded bg-surface-sunken" />
+                        <span className="block h-2.5 w-1/2 animate-pulse bg-surface-strong" />
+                        <span className="block h-2 w-1/3 animate-pulse bg-surface-sunken" />
                       </span>
                     </li>
                   ))}

@@ -12,6 +12,12 @@
  * `SIDEBAR_SPINE_MENU_PANEL_CLASS` + `*-stretch` — never a wider magic width /
  * bare `text-sm`. Menu type = caption/micro (trigger org name stays body).
  *
+ * The left cluster ORDER is pinned (toggle · Recents · page identity · Pins ·
+ * work order · goal), the page face is one `PAGE_FACE_CLASS` shared by the static
+ * chip and the menu trigger, and every header dropdown composes
+ * `HeaderChromeMenu` / `HeaderChromeMenuItem` — see
+ * `.claude/rules/source-of-truth.md` → **GlobalHeader left cluster**.
+ *
  * SoT: SIDEBAR_PAGE_NAV + useSidebarChildNav · HeaderPageSwitcher · HeaderRecentsSwitcher
  *      · HeaderPinsSwitcher / useQuickAccess · StaffAccountFooter · SidebarCollapseControl
  *      · IdentityMark / StaffAvatar · sidebar-spine.ts
@@ -39,7 +45,9 @@ const HEADER = code(sourceOf('./GlobalHeader.tsx'));
 const HEADER_ACTIONS = code(sourceOf('./GlobalHeaderActions.tsx'));
 const MODE = code(sourceOf('./HeaderPageSwitcher.tsx'));
 const RECENTS = code(sourceOf('./HeaderRecentsSwitcher.tsx'));
+const RECENT_PAGES = code(sourceOf('../sidebar/master-nav/useRecentPages.ts'));
 const PINS = code(sourceOf('./HeaderPinsSwitcher.tsx'));
+const CHROME_MENU = code(sourceOf('./header-chrome-menu.tsx'));
 const HEADER_SHELL = code(sourceOf('./header-shell.ts'));
 const QUICK_ACCESS_POPOVER = code(sourceOf('../quick-access/QuickAccessPopover.tsx'));
 const STAFF_FOOTER = code(sourceOf('../sidebar/master-nav/StaffAccountFooter.tsx'));
@@ -78,11 +86,71 @@ test('SIDEBAR_PAGE_NAV has multiple modeful pages for the header Mode control', 
   assert.equal(getSidebarPageNav('scan-out')?.children, undefined);
 });
 
-test('GlobalHeader always mounts Mode + Recents + Pins (Mode nulls itself when modeless)', () => {
+test('GlobalHeader always mounts Page + Recents + Pins', () => {
   assert.match(HEADER, /HeaderPageSwitcher/);
   assert.match(HEADER, /HeaderRecentsSwitcher/);
   assert.match(HEADER, /HeaderPinsSwitcher/);
   assert.doesNotMatch(HEADER, /isReceivingHeaderModeRoute/);
+});
+
+// SoT: source-of-truth.md → "GlobalHeader left cluster". The order reads outward
+// from the operator's frame (came from → AM → keep going → next → pacing), and
+// the two conditional slots sit last so a hidden chip cannot gap the row.
+test('GlobalHeader left cluster keeps the pinned slot ORDER', () => {
+  const CLUSTER_ORDER = [
+    'SidebarCollapseControl',
+    'HeaderRecentsSwitcher',
+    'HeaderPageSwitcher',
+    'HeaderPinsSwitcher',
+    'HeaderTopWorkOrderChip',
+    'HeaderGoalChip',
+  ] as const;
+  assert.match(HEADER, /HEADER_ICON_CLUSTER/, 'left cluster uses the shared class');
+  const positions = CLUSTER_ORDER.map((name) => {
+    const at = HEADER.indexOf(`<${name}`);
+    assert.ok(at > 0, `${name} must be mounted in the left cluster`);
+    return { name, at };
+  });
+  for (let i = 1; i < positions.length; i += 1) {
+    assert.ok(
+      positions[i]!.at > positions[i - 1]!.at,
+      `${positions[i]!.name} must render after ${positions[i - 1]!.name} `
+        + '(see source-of-truth.md → GlobalHeader left cluster)',
+    );
+  }
+});
+
+test('the page face is ONE shared chrome (static chip === menu trigger)', () => {
+  assert.match(MODE, /PAGE_FACE_CLASS/);
+  // Both branches wear it — a static span and a Button, pixel-matched.
+  assert.ok(
+    (MODE.match(/PAGE_FACE_CLASS/g) ?? []).length >= 3,
+    'PAGE_FACE_CLASS must be declared once and applied to both faces',
+  );
+  assert.match(MODE, /HEADER_ICON_BTN_CLASS/);
+  assert.match(MODE, /text-role-caption/);
+  // Mute tone is HEADER_ICON_BTN_CLASS (`text-text-muted`) — same DS token as
+  // Recents / Pins / WO. A local text-text-default on PAGE_FACE_CLASS forks
+  // the page face black while every other left-cluster icon stays gray.
+  assert.doesNotMatch(
+    MODE,
+    /PAGE_FACE_CLASS[\s\S]{0,280}text-text-default/,
+    'page face mute comes from HEADER_ICON_BTN_CLASS, never a local text-text-default',
+  );
+  assert.doesNotMatch(
+    MODE,
+    /text-\[\d+px\]/,
+    'page face type comes from text-role-*, never a raw px size',
+  );
+});
+
+test('pin chord hints come from pin-hotkeys (never a hand-typed ⌘ label)', () => {
+  assert.match(PINS, /pinHotkeyLabel/);
+  assert.doesNotMatch(
+    PINS,
+    /['"`][^'"`]*(?:⌘|Ctrl\+)\s*\d/,
+    'advertise the chord via pinHotkeyLabel so hint and listener cannot drift',
+  );
 });
 
 test('HeaderPageSwitcher navigates via SIDEBAR_PAGE_NAV + useSidebarChildNav', () => {
@@ -92,18 +160,108 @@ test('HeaderPageSwitcher navigates via SIDEBAR_PAGE_NAV + useSidebarChildNav', (
   assert.match(MODE, /AnchoredLayer/);
 });
 
+test('HeaderPageSwitcher always shows page identity (station subgroup menu; other modeless static)', () => {
+  // Must resolve APP_SIDEBAR_NAV-only rows (Search, Chat) and modeless stations
+  // (Unbox / Arrival / …) — never early-return solely on missing children.
+  assert.match(MODE, /APP_SIDEBAR_NAV/);
+  assert.match(MODE, /switchable/);
+  assert.doesNotMatch(
+    MODE,
+    /if\s*\(\s*!hasChildPages/,
+    'modeless pages must keep the icon + display name face',
+  );
+  assert.match(
+    MODE,
+    /activeRow\?\.label\s*\?\?\s*page\.label/,
+    'face label falls back to the page label when there is no active menu row',
+  );
+  // Receiving peers come from stationSubgroupMembers — never legacy family children.
+  assert.match(MODE, /stationSubgroupMembers/);
+  assert.match(MODE, /stationSubgroupOfPage/);
+  assert.match(MODE, /getStationSubgroupDef/);
+  assert.doesNotMatch(MODE, /RECEIVING_HEADER_FAMILY_IDS/);
+  assert.doesNotMatch(
+    MODE,
+    /getSidebarPageNav\(\s*['"]receiving['"]\s*\)/,
+    'header must not read legacy receiving.children for display',
+  );
+  assert.match(
+    MODE,
+    /menuNav:\s*['"]page['"]/,
+    'Receiving peers navigate as first-class page ids',
+  );
+});
+
 test('HeaderRecentsSwitcher reuses useRecentPages + useSidebarChildNav', () => {
   assert.match(RECENTS, /useRecentPages/);
+  assert.match(RECENTS, /MAX_RECENT_PAGES/);
+  assert.match(RECENTS, /More recent/);
   assert.match(RECENTS, /useSidebarChildNav/);
   assert.match(RECENTS, /AnchoredLayer/);
+  assert.match(
+    RECENT_PAGES,
+    /export const MAX_RECENT_PAGES = 5/,
+    'More recent menu shows up to 5 prior displays (excludes active)',
+  );
+});
+
+test('Page · Recents · Pins share HeaderChromeMenu SoT (no local panel twin)', () => {
+  assert.match(CHROME_MENU, /export function HeaderChromeMenu/);
+  assert.match(CHROME_MENU, /export const HeaderChromeMenuItem/);
+  assert.match(CHROME_MENU, /min-w-\[11rem\]/);
+  // Industrial flush column — zero radius, zero outer pad, square row hover.
+  assert.match(CHROME_MENU, /rounded-none/);
+  assert.match(CHROME_MENU, /\bp-0\b/);
+  assert.doesNotMatch(CHROME_MENU, /rounded-xl|rounded-lg|rounded-full/);
+  for (const [name, src] of [
+    ['HeaderPageSwitcher', MODE],
+    ['HeaderRecentsSwitcher', RECENTS],
+    ['HeaderPinsSwitcher', PINS],
+  ] as const) {
+    assert.match(src, /HeaderChromeMenu/, `${name} must import HeaderChromeMenu`);
+    assert.match(src, /HeaderChromeMenuItem/, `${name} must import HeaderChromeMenuItem`);
+    assert.doesNotMatch(
+      src,
+      /min-w-\[11rem\] overflow-hidden rounded-xl border border-border-soft bg-surface-card p-1/,
+      `${name} must not fork the chrome menu panel classes`,
+    );
+  }
+});
+
+test('HEADER_ICON_BTN_CLASS is a square hover wash (never a circle)', () => {
+  assert.match(HEADER_SHELL, /HEADER_ICON_BTN_CLASS/);
+  assert.match(
+    HEADER_SHELL,
+    /h-full min-h-8 w-full rounded-none text-text-muted hover:bg-surface-sunken/,
+  );
+  assert.doesNotMatch(
+    HEADER_SHELL,
+    /HEADER_ICON_BTN_CLASS[\s\S]{0,120}rounded-full/,
+    'header icon hover plates must be square',
+  );
+});
+
+test('HEADER icon cells fill the chrome beam (no floated h-8 island)', () => {
+  assert.match(HEADER_SHELL, /HEADER_ICON_WRAP = 'relative flex h-full min-h-8 w-8/);
+  assert.match(HEADER_SHELL, /HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch/);
+  assert.match(HEADER_SHELL, /TOP_CHROME_BAND_CLASS = `flex items-stretch/);
+  assert.match(HEADER_SHELL, /HEADER_ICON_GAP = 'gap-0'/);
 });
 
 test('HeaderPinsSwitcher owns Quick Access pins (not the avatar popover)', () => {
   assert.match(PINS, /useQuickAccess/);
-  assert.match(PINS, /HEADER_CLUSTER_HAIRLINE/);
-  assert.match(PINS, /MAX_HEADER_PIN_ICONS/);
+  assert.match(PINS, /MAX_PIN_HOTKEY_SLOTS/);
+  assert.match(PINS, /verticalListSortingStrategy/);
   assert.match(PINS, /reorder/);
-  assert.match(HEADER_SHELL, /HEADER_CLUSTER_HAIRLINE/);
+  assert.match(PINS, /pinSlotFromKeyboardEvent/);
+  assert.doesNotMatch(PINS, /HEADER_CLUSTER_HAIRLINE/);
+  assert.doesNotMatch(HEADER_SHELL, /HEADER_CLUSTER_HAIRLINE/);
+  assert.match(
+    PINS,
+    /return\s*\(\s*<div ref=\{wrapRef\} className=\{HEADER_ICON_WRAP\}>/,
+    'pin face sits directly in the parent cluster without a padded wrapper',
+  );
+  assert.doesNotMatch(PINS, /MAX_HEADER_PIN_ICONS/);
   assert.doesNotMatch(QUICK_ACCESS_POPOVER, /PinnedSection/);
   assert.doesNotMatch(QUICK_ACCESS_POPOVER, /PinThisPageButton/);
   assert.doesNotMatch(QUICK_ACCESS_POPOVER, /RecentSection/);
@@ -135,7 +293,8 @@ test('assistant Sparkles sits far-right in GlobalHeaderActions (opens right rail
 });
 
 test('GlobalHeaderSearch is always mounted (never gated off /search or carton detail)', () => {
-  // Find is a permanent chrome kind — rail entry on `/search` is additive.
+  // Find is a permanent chrome kind — on `/search` without sel the centered
+  // stage owns focus; header stays mounted and defers expand.
   assert.match(HEADER_ACTIONS, /<GlobalHeaderSearch\s*\/>/);
   assert.doesNotMatch(HEADER_ACTIONS, /onSearchPage/);
   assert.doesNotMatch(
@@ -185,6 +344,17 @@ test('spine identity menus are a child of the trigger (SoT — never a wider mag
   assert.match(SPINE, /SIDEBAR_SPINE_MENU_ACTION_CLASS/);
   assert.match(SPINE, /SIDEBAR_SPINE_MENU_ORG_CLASS/);
   assert.match(SPINE, /SIDEBAR_SPINE_WIDTH_PX = 240/);
+  // Flush peer of HeaderChromeMenu — soft radius must not return on panel/actions.
+  assert.match(SPINE, /SIDEBAR_SPINE_MENU_PANEL_CLASS[\s\S]*?rounded-none/);
+  assert.match(SPINE, /SIDEBAR_SPINE_MENU_ACTION_CLASS[\s\S]*?rounded-none/);
+  assert.doesNotMatch(
+    SPINE.match(/SIDEBAR_SPINE_MENU_PANEL_CLASS[\s\S]*?;/)?.[0] ?? '',
+    /rounded-lg|rounded-md|rounded-xl/,
+  );
+  assert.doesNotMatch(
+    SPINE.match(/SIDEBAR_SPINE_MENU_ACTION_CLASS[\s\S]*?;/)?.[0] ?? '',
+    /rounded-lg|rounded-md|rounded-xl/,
+  );
 
   // Chevron is enough — no "Current" eyebrow label in the org menu.
   assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_PANEL_CLASS/);
@@ -193,6 +363,10 @@ test('spine identity menus are a child of the trigger (SoT — never a wider mag
   // Org name stays load-bearing in the staff menu header.
   assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_ORG_CLASS/);
   assert.match(STAFF_FOOTER, /organizationName/);
+  // Staff footer host is flush; icon washes are square.
+  assert.match(STAFF_FOOTER, /border-t border-border-soft px-0/);
+  assert.match(STAFF_FOOTER, /space-y-0 p-0/);
+  assert.doesNotMatch(STAFF_FOOTER, /rounded-md|rounded-lg/);
 
   // No second geometry — magic widths on these two files are a regression.
   assert.doesNotMatch(STAFF_FOOTER, /w-\[\d+px\]/);
@@ -227,13 +401,10 @@ test('GlobalHeader and MasterNav spine share TOP_CHROME_BAND face (one hairline 
 });
 
 /**
- * Sidebar toggle MARK ↔ context-rail scan icon share one left column.
- * Left pad is the rail gutter; do not re-symmetricize HEADER_INSET_X.
+ * GlobalHeader is edge-flush — no left/right inset. Icon cells own their geometry.
  */
-test('GlobalHeader left inset matches rail gutter; sidebar toggle is not over-pulled', () => {
-  assert.match(HEADER_SHELL, /HEADER_INSET_X\s*=\s*cn\(SIDEBAR_RAIL_INSET_LEFT/);
-  assert.match(HEADER_SHELL, /pr-3 sm:pr-4/);
-  assert.doesNotMatch(HEADER_SHELL, /HEADER_INSET_X\s*=\s*['"]px-3 sm:px-4['"]/);
+test('GlobalHeader is edge-flush (no left/right inset)', () => {
+  assert.match(HEADER_SHELL, /HEADER_INSET_X = 'px-0'/);
   assert.match(HEADER, /HEADER_INSET_X/);
 
   const COLLAPSE = code(sourceOf('./SidebarCollapseControl.tsx'));
@@ -241,6 +412,11 @@ test('GlobalHeader left inset matches rail gutter; sidebar toggle is not over-pu
   // too-deep header pad and must not come back as the alignment lever.
   assert.doesNotMatch(COLLAPSE, /-ml-1\.5/);
   assert.match(COLLAPSE, /HEADER_ICON_WRAP/);
+  // Collapsed-spine peek is a flush header extension — not a padded floating bubble.
+  assert.match(COLLAPSE, /gap=\{0\}/);
+  assert.match(COLLAPSE, /padded=\{false\}/);
+  assert.match(COLLAPSE, /border-t-0 p-0/);
+  assert.doesNotMatch(COLLAPSE, /\bp-1\b/);
 });
 
 test('modeful sidebar panels do not mount an L2 mode rail twin', () => {

@@ -1,12 +1,18 @@
 'use client';
 
 /**
- * Products Labels workbench chrome — Products · Recent · History tabs +
- * catalog / history search. Mirrors UnboxWorkspaceHeader / LabelsWorkspaceHeader.
+ * Products Labels workbench chrome — five-row Sheets flush stack:
+ *   Band 1 — Products · Recent · History tabs (no search).
+ *   Band 3 — {@link WorkbenchTriageBand}: catalog / history find (only on the
+ *            tabs that have one — Recent is honest absence).
+ * Mirrors UnboxWorkspaceHeader / OutboundWorkspaceHeader (find on Band 3).
  */
 
 import { useMemo, type Ref } from 'react';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchChromeHeader,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import {
@@ -53,43 +59,54 @@ export function LabelsProductsWorkspaceHeader({
   const isHistory = tab === 'history';
   const isProducts = tab === 'print';
 
-  return (
-    <WorkbenchChromeHeader
-      density="band"
-      tabs={tabs}
-      activeTab={tab}
-      onTabChange={(id) => onSelectTab(id as LabelsSubView)}
-      solidTone="accent"
-      controlsSlotRef={controlsSlotRef}
-      controlsSlotProps={{ 'data-labels-products-controls': '' }}
-      className={className}
-      search={
-        isHistory ? (
-          <SearchField
-            value={search}
-            onChange={onSearch}
-            onClear={() => onSearch('')}
-            onSearch={(raw) => {
-              const value = raw.trim();
-              if (!value) return;
-              onHistorySubmit?.(value);
-              onSearch('');
-            }}
-            placeholder="Scan or paste a DataMatrix…"
-            tone="blue"
-            size="compact"
-            className="w-48 shrink-0 lg:w-64"
-          />
-        ) : isProducts ? (
-          <TechRailSearchBar
-            variant="chrome"
-            value={search}
-            onChange={onSearch}
-            placeholder="Filter SKU, title…"
-            className="w-40 shrink-0 lg:w-56"
-          />
-        ) : undefined
-      }
+  const searchField = isHistory ? (
+    <SearchField
+      value={search}
+      onChange={onSearch}
+      onClear={() => onSearch('')}
+      onSearch={(raw) => {
+        const value = raw.trim();
+        if (!value) return;
+        onHistorySubmit?.(value);
+        onSearch('');
+      }}
+      placeholder="Scan or paste a DataMatrix…"
+      tone="blue"
+      size="compact"
+      className="w-48 shrink-0 lg:w-64"
     />
+  ) : isProducts ? (
+    <TechRailSearchBar
+      variant="chrome"
+      value={search}
+      onChange={onSearch}
+      placeholder="Filter SKU, title…"
+      className="w-40 shrink-0 lg:w-56"
+    />
+  ) : null;
+
+  return (
+    <>
+      <WorkbenchChromeHeader
+        density="band"
+        tabs={tabs}
+        activeTab={tab}
+        onTabChange={(id) => onSelectTab(id as LabelsSubView)}
+        solidTone="accent"
+        className={className}
+      />
+      {/*
+        Band 3 — find lives here, not on Band 1. Only the tabs that have a find
+        render it (Products filter · History DataMatrix scan); Recent is honest
+        absence — no empty triage row.
+      */}
+      {searchField ? (
+        <WorkbenchTriageBand
+          search={searchField}
+          controlsSlotRef={controlsSlotRef}
+          controlsSlotProps={{ 'data-labels-products-controls': '' }}
+        />
+      ) : null}
+    </>
   );
 }

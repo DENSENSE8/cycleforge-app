@@ -30,7 +30,36 @@ interface LinkedTicketsPanelProps {
   hideWhenEmpty?: boolean;
   /** Host already owns ticket identity (e.g. Support Context header/actions). */
   hideTickets?: boolean;
+  /**
+   * Order-body strip: omit Order/Tracking/Serial rows (host already shows them)
+   * and only render linked tickets. Silent when there are none.
+   */
+  ticketsOnly?: boolean;
+  /**
+   * Where ticket chips navigate.
+   *   - `zendesk` (default) — provider open URL when present
+   *   - `support` — in-app `/support?ticket=…` Timeline / Connections
+   */
+  ticketNav?: 'zendesk' | 'support';
+  /**
+   * `card` — rounded dashed empty/error islands (packing / receiving embeds).
+   * `flush` — plain full-width caption rows for right-rail bands; still shows the
+   * Linkage eyebrow when nothing is linked yet (Connections empty state).
+   */
+  surface?: 'card' | 'flush';
   className?: string;
+}
+
+function supportTicketHref(tk: {
+  zendeskTicketId: number | null;
+  label: string;
+}): string | null {
+  const fromId = tk.zendeskTicketId;
+  if (fromId != null && Number.isFinite(fromId) && fromId > 0) {
+    return `/support?ticket=${fromId}`;
+  }
+  const digits = tk.label.replace(/\D/g, '');
+  return digits ? `/support?ticket=${digits}` : null;
 }
 
 /** Debounce a value so live-typed identifiers (e.g. a serial being scanned) do
@@ -82,8 +111,12 @@ export function LinkedTicketsPanel({
   dense = false,
   hideWhenEmpty = false,
   hideTickets = false,
+  ticketsOnly = false,
+  ticketNav = 'zendesk',
+  surface = 'card',
   className = '',
 }: LinkedTicketsPanelProps) {
+  const flush = surface === 'flush';
   const dOrder = useDebounced((order ?? '').trim());
   const dTracking = useDebounced((tracking ?? '').trim());
   const dSerial = useDebounced((serial ?? '').trim());
@@ -105,9 +138,27 @@ export function LinkedTicketsPanel({
     },
   });
 
-  if (!enabled) return null;
+  // Flush Connections: keep the Linkage eyebrow + plain empty caption when
+  // nothing is linked yet. Card embeds stay silent until an identifier lands.
+  if (!enabled) {
+    if (!flush || hideWhenEmpty || ticketsOnly) return null;
+    return (
+      <section className={className || undefined} aria-label="Linkage">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Linkage</p>
+        <p className="mt-1.5 text-role-caption text-text-faint">
+          No linked order or tracking yet.
+        </p>
+      </section>
+    );
+  }
   // Silent on surfaces where most rows have no outbound loop (receiving).
   if (hideWhenEmpty && (!data || !data.order)) return null;
+
+  const tickets = data?.tickets ?? [];
+  if (ticketsOnly) {
+    if (isLoading) return null;
+    if (isError || tickets.length === 0) return null;
+  }
 
   const headerCls = dense
     ? 'text-role-eyebrow uppercase tracking-widest text-text-soft'
@@ -141,6 +192,68 @@ export function LinkedTicketsPanel({
   );
   const hasLoop = Boolean(data?.order || loopTrackings.length > 0 || loopSerials.length > 0);
 
+  const ticketList = (
+    <ul className="divide-y divide-border-hairline">
+      {tickets.map((tk) => {
+        const href =
+          ticketNav === 'support'
+            ? supportTicketHref(tk)
+            : tk.openUrl ?? supportTicketHref(tk);
+        const external = ticketNav !== 'support' && Boolean(tk.openUrl);
+        return (
+          <li
+            key={tk.zendeskTicketId ?? tk.supportTicketId ?? tk.label}
+            className="flex items-center gap-2 py-1.5"
+          >
+            <HoverTooltip label={tk.status ?? 'unknown status'} asChild focusable={false}>
+              <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(tk.status)}`} />
+            </HoverTooltip>
+            {href ? (
+              <a
+                href={href}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noreferrer' : undefined}
+                className="shrink-0"
+              >
+                <TicketChip value={tk.label} display={tk.label} />
+              </a>
+            ) : (
+              <TicketChip value={tk.label} display={tk.label} />
+            )}
+            {tk.subject && (
+              <span className="truncate text-role-caption text-text-muted">{tk.subject}</span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (ticketsOnly) {
+    return (
+      <section className={`space-y-2 ${className}`} aria-label="Linked support tickets">
+        <p className={headerCls}>Linked tickets</p>
+        {ticketList}
+      </section>
+    );
+  }
+
+  const emptyError = flush ? (
+    <p className="text-role-caption text-rose-600">Could not resolve linkage.</p>
+  ) : (
+    <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-role-caption text-rose-600">
+      Could not resolve linkage.
+    </div>
+  );
+
+  const emptyLoop = flush ? (
+    <p className="text-role-caption text-text-faint">No linked order found.</p>
+  ) : (
+    <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-role-caption text-text-faint">
+      No linked order found.
+    </div>
+  );
+
   return (
     <section className={`space-y-2 ${className}`}>
       <p className={headerCls}>Linkage</p>
@@ -149,17 +262,9 @@ export function LinkedTicketsPanel({
         <div className="text-role-caption text-text-faint">Resolving links…</div>
       )}
 
-      {isError && (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-role-caption text-rose-600">
-          Could not resolve linkage.
-        </div>
-      )}
+      {isError && emptyError}
 
-      {!isLoading && !isError && !hasLoop && (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-role-caption text-text-faint">
-          No linked order found.
-        </div>
-      )}
+      {!isLoading && !isError && !hasLoop && emptyLoop}
 
       {!isLoading && !isError && hasLoop && (
         <div className="space-y-2">
@@ -195,33 +300,10 @@ export function LinkedTicketsPanel({
 
           {/* Linked Zendesk tickets */}
           {!hideTickets ? (
-            (data?.tickets ?? []).length === 0 ? (
+            tickets.length === 0 ? (
               <div className="text-role-caption text-text-faint">No linked tickets.</div>
             ) : (
-              <ul className="divide-y divide-border-hairline">
-                {(data?.tickets ?? []).map((tk) => (
-                  <li key={tk.zendeskTicketId ?? tk.supportTicketId ?? tk.label} className="flex items-center gap-2 py-1.5">
-                    <HoverTooltip label={tk.status ?? 'unknown status'} asChild focusable={false}>
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(tk.status)}`} />
-                    </HoverTooltip>
-                    {tk.openUrl ? (
-                      <a
-                        href={tk.openUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="shrink-0"
-                      >
-                        <TicketChip value={tk.label} display={tk.label} />
-                      </a>
-                    ) : (
-                      <TicketChip value={tk.label} display={tk.label} />
-                    )}
-                    {tk.subject && (
-                      <span className="truncate text-role-caption text-text-muted">{tk.subject}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              ticketList
             )
           ) : null}
         </div>

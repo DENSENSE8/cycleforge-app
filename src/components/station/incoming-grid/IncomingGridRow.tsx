@@ -112,9 +112,10 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         : '';
 
   const platformRaw = (row.source_platform || row.inbound_source_type || '').trim();
-  const platformResolved = platformRaw ? resolvePlatformMeta(platformRaw) : null;
-  const platformMeta = sourcePlatformMetaFromLabel(platformResolved?.label || platformRaw);
-  const markLabel = platformResolved?.label || platformRaw || 'No platform';
+  const platformMeta = platformRaw
+    ? resolvePlatformMeta(platformRaw)
+    : sourcePlatformMetaFromLabel(platformRaw);
+  const markLabel = platformMeta.label || platformRaw || 'No platform';
 
   const poValue = (
     row.zoho_purchaseorder_number ||
@@ -159,6 +160,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     pickupLabel,
     trackingValue,
     trackingAction,
+    onEditTracking: onSelect,
     removalFace,
     selectMode,
     isChecked,

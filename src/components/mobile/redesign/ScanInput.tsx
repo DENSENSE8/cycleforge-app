@@ -3,17 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { Camera } from '@/components/Icons';
-import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import {
+  ThemedStationScanBar,
+  STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
+  STATION_SCAN_BAR_RIGHT_CELL,
+} from '@/components/station/scan-bar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/utils/_cn';
 
 /**
  * Mobile scan surface. The input bar IS the canonical desktop
  * {@link ThemedStationScanBar} — we do NOT hand-roll a separate mobile input.
- * The only mobile-specific addition is a small camera toggle tucked into the
- * bar's `rightContent`, which drives the ZXing viewfinder below via
- * {@link useBarcodeScanner}.
+ * Default mode tucks a compact camera toggle into the bar's `rightContent`.
+ * `prominentCamera` (Arrival dock) paints that right-slot glyph blue and sizes
+ * it to match the leading barcode — same optical middle of the `h-10` rail.
  *
  * Self-manages its own camera + manual-input state and emits decoded values via
  * `onDecode`. Each mounted instance owns its own camera stream, so only mount /
@@ -26,6 +31,11 @@ interface ScanInputProps {
   autoFocus?: boolean;
   /** Smaller viewfinder for embedding inside a bottom sheet. */
   compact?: boolean;
+  /**
+   * Arrival / door dock: blue camera in the right slot, optically matched to
+   * the leading barcode. Default off so other stations stay compact/muted.
+   */
+  prominentCamera?: boolean;
   /** Unused now the camera is a compact in-bar toggle; kept for call-site compat. */
   cameraButtonLabel?: string;
   /** Force-stop the camera even if the user toggled it on (e.g. a sheet is open). */
@@ -37,6 +47,7 @@ export function ScanInput({
   placeholder = 'Scan or type',
   autoFocus = false,
   compact = false,
+  prominentCamera = false,
   cameraSuspended = false,
 }: ScanInputProps) {
   const [cameraActive, setCameraActive] = useState(false);
@@ -76,11 +87,15 @@ export function ScanInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanner.lastScannedValue]);
 
-  const viewfinderHeight = compact ? '20vh' : '26vh';
+  const viewfinderHeight = compact ? '20vh' : prominentCamera ? '32vh' : '26vh';
   const boxSize = compact ? 'h-28 w-28' : 'h-40 w-40';
+  const toggleCamera = useCallback(() => setCameraActive((v) => !v), []);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      className="flex flex-col gap-2"
+      data-scan-camera={prominentCamera ? 'prominent' : undefined}
+    >
       <ThemedStationScanBar
         value={input}
         onChange={setInput}
@@ -95,16 +110,30 @@ export function ScanInput({
           <HoverTooltip label={cameraActive ? 'Close camera' : 'Scan with camera'} asChild>
             <button
               type="button"
-              onClick={() => setCameraActive((v) => !v)}
+              onClick={toggleCamera}
               aria-pressed={cameraActive}
               aria-label={cameraActive ? 'Close camera scanner' : 'Open camera scanner'}
-              className={`ds-raw-button flex h-6 w-6 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60 ${
+              className={cn(
+                'ds-raw-button transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400/60',
+                prominentCamera
+                  ? STATION_SCAN_BAR_RIGHT_CELL
+                  : 'flex h-6 w-6 items-center justify-center rounded-md',
                 cameraActive
-                  ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                  : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted'
-              }`}
+                  ? prominentCamera
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  : prominentCamera
+                    ? 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'
+                    : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted',
+              )}
             >
-              <Camera className="h-3.5 w-3.5" />
+              <Camera
+                className={
+                  prominentCamera
+                    ? STATION_SCAN_BAR_DEFAULT_ICON_CLASS
+                    : 'h-3.5 w-3.5'
+                }
+              />
             </button>
           </HoverTooltip>
         }
@@ -116,7 +145,7 @@ export function ScanInput({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: viewfinderHeight, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="relative w-full overflow-hidden rounded-2xl bg-blue-950"
+            className="relative w-full overflow-hidden bg-blue-950"
           >
             <video
               ref={scanner.videoRef as React.RefObject<HTMLVideoElement>}

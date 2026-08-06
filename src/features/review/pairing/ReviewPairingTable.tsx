@@ -5,18 +5,20 @@
  * allocate-serial detail overlay. Uses existing allocate API + OrdersGridView.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
-  WORKBENCH_TABLE_VIEWPORT_NO_KPI,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { cn } from '@/utils/_cn';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -34,6 +36,8 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
   const searchParams = useSearchParams();
   const searchQuery = String(searchParams.get('search') || '').trim();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
+
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const stagedQuery = useQuery({
     ...packedOrdersQuery({ searchQuery, staffId }),
@@ -55,30 +59,49 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
 
   const loading = stagedQuery.isLoading || awaitingQuery.isLoading;
 
-  const clearSearch = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('search');
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [pathname, router, searchParams]);
+  const setSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const trimmed = next.trim();
+      if (trimmed) params.set('search', trimmed);
+      else params.delete('search');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
       <DashboardScrollShell
         className="h-full"
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <WorkbenchChromeHeader
               density="band"
               tabs={[{ id: 'pairing', label: 'Needs allocation' }]}
               activeTab="pairing"
               onTabChange={() => undefined}
-              right={<StaffFilterButton iconOnly />}
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
+            />
+            <WorkbenchTriageBand
+              search={
+                <TechRailSearchBar
+                  variant="chrome"
+                  value={searchQuery}
+                  onChange={setSearch}
+                  placeholder="Filter order #, SKU, title…"
+                  className="w-40 shrink-0 lg:w-56"
+                />
+              }
+              right={<StaffFilterButton iconOnly align="end" />}
+              controlsSlotRef={setControlsEl}
             />
           </div>
         }
       >
-        <div className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} pb-3`}>
+        <div className={WORKBENCH_SHEET_HOST}>
           <OrdersGridView
             ariaLabel="Orders awaiting pairing review"
             records={records}
@@ -92,6 +115,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
             queueMode="staged"
             sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+            columnTriggerPortalTarget={controlsEl}
             data-testid="review-pairing-grid-body"
             onOpenRecord={onOpenOrder}
             onCloseRecord={() => onCloseOrder()}

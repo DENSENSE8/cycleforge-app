@@ -1,7 +1,6 @@
 import type { Variants } from '@/design-system/motion';
 import { motion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
-import { SIDEBAR_RAIL_ROW_PAD_RIGHT } from '@/components/layout/header-shell';
 import { ChevronDown } from '@/components/Icons';
 
 export function PkgGroupHeader({
@@ -25,9 +24,8 @@ export function PkgGroupHeader({
     <motion.li
       role="presentation"
       {...motionProps}
-      // Match the grouped rows' right inset (see RailRow) so the header's bordered
-      // box lines up with the row rings and clears the rounded canvas cutout.
-      className={`relative ${SIDEBAR_RAIL_ROW_PAD_RIGHT}`}
+      // Full-bleed like RailRow — selection / group chrome is edge-to-edge.
+      className="relative"
     >
       <button
         type="button"

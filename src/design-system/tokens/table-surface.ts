@@ -12,8 +12,8 @@
  * Golden: Receiving / Unbox browse via `LedgerGridSurface` `surface="sheet"`.
  *
  * Frozen header is card-white ({@link TABLE_FROZEN_HEADER_CLASS}); airtable skin
- * draws continuous column rules through header + body — borders carry hierarchy,
- * not fill contrast.
+ * draws BOTTOM-only row rules through header + body (no vertical column cage) —
+ * borders carry hierarchy, not fill contrast.
  *
  * Never hand-roll `rounded-* border … shadow-*` / header fills for this job.
  */

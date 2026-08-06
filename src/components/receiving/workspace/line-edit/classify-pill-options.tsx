@@ -10,6 +10,7 @@ import { Flag } from '@/components/Icons';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { ReceivingTypeMark } from '@/components/ui/ReceivingTypeMark';
 import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
+import { platformPaintFromHex } from '@/lib/color-contrast';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
@@ -33,6 +34,11 @@ const PLATFORM_FACE_ACTIVE: Record<string, string> = {
 
 const PLATFORM_FACE_IDLE =
   'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
+
+/** Structural classes when hex paint supplies fill/ink via inline style. */
+const PLATFORM_FACE_HEX_ACTIVE = 'border shadow-sm';
+const PLATFORM_FACE_HEX_IDLE =
+  'border bg-surface-card/70 hover:border-border-default hover:bg-surface-hover';
 
 /**
  * Simple Icons wordmarks read as extra text beside the short lettermark
@@ -84,7 +90,7 @@ export function urgencyClassifyOptions(args: {
 }
 
 export function platformClassifyOptions(args: {
-  catalogOptions: Array<{ value: string; label: string }>;
+  catalogOptions: Array<{ value: string; label: string; colorHex?: string | null }>;
   isUnmatched: boolean;
 }): InlinePillOption[] {
   const { catalogOptions, isUnmatched } = args;
@@ -107,24 +113,36 @@ export function platformClassifyOptions(args: {
     ...unfound,
     ...catalogOptions.map((o) => {
       const meta = sourcePlatformMeta(o.value);
+      const paint = o.colorHex ? platformPaintFromHex(o.colorHex) : null;
       const active =
         PLATFORM_FACE_ACTIVE[meta.value] ??
         'border-slate-200 bg-slate-50 text-slate-600 shadow-sm'; // ds-allow-raw-neutral: unknown platform face
+      const markMeta = paint
+        ? { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label, accentHex: paint.accent }
+        : { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label };
       return {
         value: o.value,
         label: o.label,
-        shortLabel: meta.mark,
+        shortLabel: meta.mark || o.label.slice(0, 2),
         title: o.label,
         face: PLATFORM_WORDMARK.has(meta.value) ? (
           PLATFORM_TONE_PIP
         ) : (
           <PlatformMark
             platformValue={o.value}
+            meta={markMeta}
             textClassName="text-current"
           />
         ),
-        activeClass: active,
-        inactiveClass: PLATFORM_FACE_IDLE,
+        activeClass: paint ? PLATFORM_FACE_HEX_ACTIVE : active,
+        inactiveClass: paint ? PLATFORM_FACE_HEX_IDLE : PLATFORM_FACE_IDLE,
+        // ds-allow-hex: soft fill + ink from platforms.color_hex via color-contrast SoT.
+        activeStyle: paint
+          ? { backgroundColor: paint.softFill, color: paint.softInk, borderColor: paint.border }
+          : undefined,
+        inactiveStyle: paint
+          ? { color: paint.accent, borderColor: paint.border }
+          : undefined,
       } satisfies InlinePillOption;
     }),
   ];

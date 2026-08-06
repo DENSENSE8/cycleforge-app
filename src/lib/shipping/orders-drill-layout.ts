@@ -2,8 +2,9 @@
  * To-ship Orders drill URL contract — thin domain binding over the WMS-wide
  * LedgerGrid drill SoT (`ledger-drill-layout`).
  *
- * - `olayout=list` (default when omitted) — classic single folded OrdersGrid
- * - `olayout=drill` — linked dual panes (parent map · order lines)
+ * - `olayout=list` (default when omitted) — flat leaf OrdersGrid (no in-grid fold)
+ * - `olayout=drill` — linked dual panes (parent map · order lines); parent
+ *   rollups live only here
  * - `drillOrder` — durable selected order-group key
  *
  * Orthogonal to compare (`clayout` / `c0`…`c3`) and inspector (`openOrderId`).

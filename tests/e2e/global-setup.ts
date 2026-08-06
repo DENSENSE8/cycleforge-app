@@ -163,18 +163,40 @@ export default async function globalSetup(config: FullConfig) {
 
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
-  // USAV dogfood session (default Playwright projects)
+  // USAV dogfood session (default Playwright projects) — best-effort, same as
+  // the QA block below: an expired dogfood credential must not block a
+  // qa-desktop run. On failure leave USAV_STORAGE as-is (do not clobber a valid
+  // dogfood session with an empty one); only the default/desktop projects go
+  // unauthenticated.
   if (!(await probeSession(baseURL, USAV_STORAGE))) {
-    await signInStaff(baseURL, usavStaff, usavSlug, USAV_STORAGE);
+    try {
+      await signInStaff(baseURL, usavStaff, usavSlug, USAV_STORAGE);
+    } catch (err) {
+      console.warn(
+        `[global-setup] USAV session not minted for "${usavStaff}" — default/desktop projects will be unauthenticated (qa-desktop is unaffected).`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   // QA sandbox session (qa-desktop project) — best-effort; skip when org not provisioned
   if (!(await probeSession(baseURL, QA_STORAGE))) {
     try {
-      // Pinless, NOT signInStaff: PW_OWNER_EMAIL/PASSWORD are the dogfood
-      // tenant's shared owner account, which has no membership in the QA org —
-      // routing QA through it 401s no matter how the org is provisioned.
-      await signInPinless(baseURL, qaSlug, qaStaff, QA_STORAGE, process.env.PW_QA_STAFF_PIN?.trim());
+      const qaEmail =
+        process.env.PW_QA_OWNER_EMAIL?.trim() || process.env.QA_ADMIN_EMAIL?.trim() || 'qa-admin@cycleforge.test';
+      const qaPassword =
+        process.env.PW_QA_OWNER_PASSWORD || process.env.QA_ADMIN_PASSWORD || 'CycleForge-QA-local!';
+      // Prefer email+password into org …0002. Do NOT use PW_OWNER_EMAIL (dogfood) —
+      // that account has no QA membership.
+      try {
+        await signInOwnerActAs(baseURL, qaEmail, qaPassword, qaStaff, QA_STORAGE);
+      } catch (emailErr) {
+        console.warn(
+          `[global-setup] QA email sign-in failed — falling back to station PIN for "${qaStaff}".`,
+          emailErr instanceof Error ? emailErr.message : emailErr,
+        );
+        await signInPinless(baseURL, qaSlug, qaStaff, QA_STORAGE, process.env.PW_QA_STAFF_PIN?.trim());
+      }
     } catch (err) {
       console.warn(
         `[global-setup] QA session not minted for "${qaStaff}" — run pnpm provision:qa-org first.`,

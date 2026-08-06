@@ -51,6 +51,11 @@ interface ReceivingFeedRailProps {
   scope?: string;
   /** Desktop search text (filters the feed's rows). */
   filterText?: string;
+  /**
+   * Client-side keep filter (priority / type / platform facets). Same display
+   * contract as rail dismiss — not part of the queryKey.
+   */
+  includeRow?: (row: ReceivingLineRow) => boolean;
   /** Hide the TITLE · N eyebrow when workbench chrome owns tabs + select. */
   hideEyebrow?: boolean;
   emptyText?: string;
@@ -68,6 +73,7 @@ export function ReceivingFeedRail({
   getRowDisabled,
   scope,
   filterText = '',
+  includeRow,
   hideEyebrow = false,
   emptyText,
   renderPopoverContext,
@@ -176,6 +182,7 @@ export function ReceivingFeedRail({
       queryKey={queryKey}
       fetchFn={fetchFn}
       excludedIds={excluded}
+      includeRow={includeRow}
       loadSnapshot={loadSnapshot}
       persistSnapshot={persistSnapshot}
       updateEvent={

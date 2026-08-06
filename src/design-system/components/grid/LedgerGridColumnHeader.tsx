@@ -35,6 +35,8 @@ import {
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from './grid-header-align';
 import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
+import { resolveColumnWidthClamp } from '@/components/ui/table-column-config/useColumnWidths';
+import { useGridColumnWidthBoundsContext } from './grid-column-width-bounds-context';
 import {
   gridTrackRemToPx,
   resolveGridColumnMinTrackRem,
@@ -64,15 +66,16 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   selectMode?: boolean;
   selectionScope?: string;
   /**
-   * Select-all chrome. Defaults to `'always'`. Unbox History passes `'sheets'`
-   * (empty hit-plane; row wash is the select signal).
+   * Select-all chrome. Defaults to `'always'`. Unbox History / Incoming /
+   * Orders sheets pass `'sheets'` — full-cell hit plane; paints
+   * {@link GridClickSelectFace} when all/mixed so top-left matches body checks.
    */
   selectGutterChrome?: GridSelectGutterChrome;
   className?: string;
   activeSort?: string | null;
   sortDir?: GridSortDir | null;
   onSortColumn?: (key: string) => void;
-  /** Surface glyph (e.g. stage Clock, date Calendar). Default: type glyph via GridHeaderLabel. */
+  /** Surface glyph override. Default: none on text headers; type glyph only when glyph-only / narrow. */
   glyphFor?: (column: C) => ReactNode;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
@@ -117,6 +120,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   columnMenu,
   leadingChrome,
 }: LedgerGridColumnHeaderProps<C>) {
+  const widthBoundsByKey = useGridColumnWidthBoundsContext();
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
   const total = useTableSelectionTotal(scope);
@@ -157,7 +161,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
           className={cn(
             layout.cellClass({ inset: 'none', rule: true }),
             'h-10 min-h-10',
-            emptyGutter ? 'items-stretch p-0' : 'justify-center',
+            emptyGutter ? 'items-stretch overflow-hidden p-0' : 'justify-center',
             layout.frozenCellClass,
           )}
           style={{ left: layout.frozenLeft('select') }}
@@ -241,6 +245,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
                 : undefined
             }
             columnMenu={columnMenu}
+            widthBound={widthBoundsByKey[column.key]}
           />
         );
       })}
@@ -262,6 +267,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   onReset,
   resizeEdges,
   columnMenu,
+  widthBound,
 }: {
   column: C;
   last: boolean;
@@ -276,6 +282,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   onReset?: () => void;
   resizeEdges?: readonly GridColumnResizeEdge[];
   columnMenu?: LedgerGridColumnMenuApi<C>;
+  widthBound?: { min?: number; max?: number };
 }) {
   const frozen = layout.isFrozen(column.key);
   const label = column.label ?? column.key;
@@ -287,7 +294,12 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         ? `${label} · click to sort · right-click for more`
         : `${label} · right-click for column options`;
   const minTrackRem = resolveGridColumnMinTrackRem(column);
-  const minWidthPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+  const typedFloorPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+  const { minPx: minWidthPx, maxPx: maxWidthPx } = resolveColumnWidthClamp({
+    typedFloorPx,
+    staffMin: widthBound?.min,
+    staffMax: widthBound?.max,
+  });
 
   const cell = (
     <div
@@ -319,6 +331,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
               edge={edge}
               flush={edge === 'end' && column.key === frozenEdgeKey}
               minWidthPx={minWidthPx}
+              maxWidthPx={maxWidthPx}
             />
           ))
         : null}

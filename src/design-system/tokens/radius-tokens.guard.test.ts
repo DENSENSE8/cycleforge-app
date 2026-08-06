@@ -138,14 +138,16 @@ test('keystone: the radius scale stays 100% Tailwind stock', () => {
 });
 
 test('keystone: the cornerClass ladder maps roles to stock classes', () => {
+  // Zero-radius industrial: every non-pill role is flush (0b/0c/0d/0e).
+  // pill is the one surviving radius (status dots · avatars · Switch).
   const expected: Array<[CornerRole, string]> = [
     ['flush', 'rounded-none'],
-    ['chip', 'rounded'],
-    ['row', 'rounded-md'],
-    ['control', 'rounded-lg'],
-    ['field', 'rounded-xl'],
-    ['card', 'rounded-2xl'],
-    ['canvas', 'rounded-3xl'],
+    ['chip', 'rounded-none'],
+    ['row', 'rounded-none'],
+    ['control', 'rounded-none'],
+    ['field', 'rounded-none'],
+    ['card', 'rounded-none'],
+    ['canvas', 'rounded-none'],
     ['pill', 'rounded-full'],
   ];
   for (const [role, cls] of expected) {

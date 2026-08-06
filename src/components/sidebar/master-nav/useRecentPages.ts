@@ -6,12 +6,15 @@ import { useCallback, useEffect, useState } from 'react';
 // it is a persistence contract, and renaming it would silently empty every
 // operator's recents. Same rule as `?mode=` on the wire.
 const STORAGE_KEY = 'sidebar.recentModes';
-/** Max jump chips shown in the closed header (excludes the active page). */
-export const MAX_RECENT_PAGES = 3;
-/** Persist one extra slot so the active page can sit in storage without starving the chips. */
+/**
+ * Max cross-page MRU rows in {@link HeaderRecentsSwitcher} (excludes the
+ * active page). One knob — menu face and storage share this cap.
+ */
+export const MAX_RECENT_PAGES = 5;
+/** Persist one extra slot so the active page can sit in storage without starving the menu. */
 const STORAGE_MAX = MAX_RECENT_PAGES + 1;
 
-/** A visited page + child-page pair for the master-nav header jump chips. */
+/** A visited page + child-page pair for the GlobalHeader more-recent menu. */
 interface RecentPageRef {
   pageId: string;
   /** Null = a page with no children (or “land on page default”). */
@@ -31,10 +34,9 @@ function isRecentPageRef(value: unknown): value is RecentPageRef {
 }
 
 /**
- * localStorage-backed recent pages for the master-nav closed trigger.
- * Pins the last {@link MAX_RECENT_PAGES} distinct page + child pairs (most-recent
- * first) so the header can offer quiet jump chips without opening the menu.
- * SSR-safe: starts empty, hydrates on mount.
+ * localStorage-backed recent pages for the GlobalHeader more-recent menu.
+ * Pins the last {@link MAX_RECENT_PAGES} distinct page + child pairs
+ * (most-recent first). SSR-safe: starts empty, hydrates on mount.
  */
 export function useRecentPages() {
   const [recents, setRecents] = useState<RecentPageRef[]>([]);

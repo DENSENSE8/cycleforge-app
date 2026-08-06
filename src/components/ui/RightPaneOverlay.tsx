@@ -318,7 +318,7 @@ export function RightPaneOverlay({
           >
             {children}
             {resizable && align === 'right' ? (
-              <HoverTooltip label="Drag to resize" asChild focusable={false}>
+              <HoverTooltip label="Resize" asChild focusable={false}>
                 <div
                   {...rightEdgeResize.edgeHandleProps}
                   className={cn(
@@ -330,7 +330,7 @@ export function RightPaneOverlay({
               </HoverTooltip>
             ) : null}
             {resizable && align === 'center' ? (
-              <HoverTooltip label="Drag to resize" asChild focusable={false}>
+              <HoverTooltip label="Resize" asChild focusable={false}>
                 <div
                   role="presentation"
                   aria-hidden

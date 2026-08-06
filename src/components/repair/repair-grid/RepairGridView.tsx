@@ -23,7 +23,7 @@ interface RepairGridViewProps {
   records: RSRecord[];
   loading: boolean;
   emptyMessage: string;
-  /** Shared with the host's `useTableSelection` + `ContextualSelectionBar`. */
+  /** Shared with the host's `useTableSelection` + rail selection plane. */
   selectionScope: string;
   /** The open (detail-panel) record id. */
   selectedId: number | null;
@@ -36,6 +36,8 @@ interface RepairGridViewProps {
   columns?: readonly RepairGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
+  /** Portal target for the column-display (▦) trigger — e.g. the triage band controls slot. */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /**
@@ -59,10 +61,11 @@ export function RepairGridView({
   columns = REPAIR_GRID_COLUMNS,
   scrollRef,
   className,
+  columnTriggerPortalTarget,
 }: RepairGridViewProps) {
   // Always-on left gutter (airtable): checkboxes toggle the set; the row body
-  // opens the record. Broadcasts on `selectionScope` for the host's action bar.
-  const { selectedIds, toggle } = useTableSelectMode<RSRecord>({
+  // selectOnly + opens the record (one selection channel — History / order D3).
+  const { selectedIds, toggle, selectOnly } = useTableSelectMode<RSRecord>({
     scope: selectionScope,
     selectMode: true,
     rows: records,
@@ -76,7 +79,13 @@ export function RepairGridView({
     [records],
   );
 
-  const onOpen = useCallback((r: RSRecord) => onOpenRecord(r), [onOpenRecord]);
+  const onOpen = useCallback(
+    (r: RSRecord) => {
+      selectOnly(r.id);
+      onOpenRecord(r);
+    },
+    [selectOnly, onOpenRecord],
+  );
   const onToggleSelect = useCallback(
     (r: RSRecord, event: { shiftKey: boolean }) => toggle(r.id, event.shiftKey),
     [toggle],
@@ -100,6 +109,7 @@ export function RepairGridView({
   return (
     <LedgerGridSurface<RSRecord, RepairGridColumnKey, RepairGridColumn>
       ariaLabel="Repair queue"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeRepairGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -114,6 +124,7 @@ export function RepairGridView({
       className={className}
       testId="repair-grid-body"
       tableId={REPAIR_TABLE_ID}
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <RepairGridColumnHeader
           selectionScope={selectionScope}

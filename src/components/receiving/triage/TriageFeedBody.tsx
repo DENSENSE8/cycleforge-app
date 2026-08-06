@@ -19,6 +19,7 @@ export function TriageFeedBody({
   selectedRow,
   leadingRow = null,
   filterText = '',
+  includeRow,
   hideEyebrow = false,
 }: {
   view: TriageWorkspaceTab;
@@ -27,6 +28,7 @@ export function TriageFeedBody({
   /** Pre-resolve scan stub pinned at the top of the combined Triage tab. */
   leadingRow?: ReceivingLineRow | null;
   filterText?: string;
+  includeRow?: (row: ReceivingLineRow) => boolean;
   hideEyebrow?: boolean;
 }) {
   if (view === 'unfound') {
@@ -35,6 +37,7 @@ export function TriageFeedBody({
         key="rail-triage-unfound"
         selectedLineId={selectedLineId}
         filterText={filterText}
+        includeRow={includeRow}
         hideEyebrow={hideEyebrow}
       />
     );
@@ -45,6 +48,7 @@ export function TriageFeedBody({
         key="rail-triage-done"
         selectedLineId={selectedLineId}
         filterText={filterText}
+        includeRow={includeRow}
         hideEyebrow={hideEyebrow}
       />
     );
@@ -56,6 +60,7 @@ export function TriageFeedBody({
         selectedLineId={selectedLineId}
         selectedRow={selectedRow}
         filterText={filterText}
+        includeRow={includeRow}
         hideEyebrow={hideEyebrow}
       />
     );
@@ -68,6 +73,7 @@ export function TriageFeedBody({
       leadingRow={leadingRow}
       isRowDisabled={isPendingTriageScanRow}
       filterText={filterText}
+      includeRow={includeRow}
       hideEyebrow={hideEyebrow}
     />
   );

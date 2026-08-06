@@ -9,13 +9,18 @@
 import { useCallback } from 'react';
 import { toast } from '@/lib/toast';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
-import { Printer } from '@/components/Icons';
+import { Copy, Printer } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import {
   isSpecialBinBarcode,
   printSpecialBinLabelFromRow,
 } from '@/lib/print/printSpecialBinLabel';
+import {
+  BINS_COPY_HEADER,
+  formatBinsCopyRow,
+  toTsvBlock,
+} from '@/lib/station/format-station-copy-row';
 
 interface Props {
   selected: Set<number>;
@@ -26,6 +31,15 @@ interface Props {
 export function BinsBulkActionBar({ selected, rows, onClearSelection }: Props) {
   const count = selected.size;
   const selectedRows = rows.filter((r) => selected.has(r.id));
+
+  const copyTsv = useCallback(() => {
+    if (selectedRows.length === 0) return;
+    const block = toTsvBlock(BINS_COPY_HEADER, selectedRows.map(formatBinsCopyRow));
+    void navigator.clipboard.writeText(block).then(
+      () => toast.success(`Copied ${selectedRows.length} bin${selectedRows.length === 1 ? '' : 's'}`),
+      () => toast.error('Copy failed'),
+    );
+  }, [selectedRows]);
 
   const exportCsv = useCallback(() => {
     if (selectedRows.length === 0) return;
@@ -124,6 +138,14 @@ export function BinsBulkActionBar({ selected, rows, onClearSelection }: Props) {
             onClick={printLabels}
           >
             Print {count} label{count === 1 ? '' : 's'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            icon={<Copy />}
+            onClick={copyTsv}
+          >
+            Copy
           </Button>
           <Button variant="secondary" size="md" onClick={exportCsv}>
             Export CSV

@@ -126,7 +126,7 @@ export function PhotoAnalysisProviderPanel() {
   }
 
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm">
+    <div className="rounded-none border border-border-soft bg-surface-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-text-default">AI analysis engine</p>

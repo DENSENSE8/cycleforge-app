@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import {
   Plus,
@@ -22,6 +23,7 @@ import {
   type IntakeClassification,
   type IntakeTone,
 } from '@/lib/receiving/intake-classification';
+import { mobileArrivalGuidedPhotosHref } from '@/lib/receiving/photo-scope';
 
 type UnboxVerdict = 'expedited' | 'normal' | 'unfound';
 
@@ -77,6 +79,7 @@ export default function RedesignedMobileReceive({
   surface?: 'triage' | 'unbox';
   title?: string;
 }) {
+  const router = useRouter();
   const [cameraActive, setCameraActive] = useState(false);
   const [input, setInput] = useState('');
   const [scans, setScans] = useState<ScanResult[]>([]);
@@ -260,6 +263,16 @@ export default function RedesignedMobileReceive({
           s.status === 'matched' && s.lineCount > 0
             ? `${s.lineCount} line${s.lineCount === 1 ? '' : 's'}`
             : null;
+        // Triage door job: open the arrival guided camera (label → box). Unbox
+        // scan surface still lands on the carton detail page.
+        const href = s.receivingId
+          ? surface === 'triage'
+            ? mobileArrivalGuidedPhotosHref(s.receivingId, {
+                back: '/m/triage',
+                title: s.tracking,
+              })
+            : `/m/r/${s.receivingId}`
+          : null;
         return {
           id: s.id,
           primary: s.tracking,
@@ -267,15 +280,30 @@ export default function RedesignedMobileReceive({
           state,
           statusLabel,
           meta: [intakeShort, lineMeta].filter(Boolean).join(' · ') || null,
-          href: s.receivingId ? `/m/r/${s.receivingId}` : null,
+          href,
         };
       }),
-    [visibleScans],
+    [visibleScans, surface],
   );
   const { rows: feedRows, scrollRef } = useCaptureStackWindow(feedItems, { limit: 50, anchor: 'top', freshPulse: false });
 
+  // Newest resolved carton — sticky "Take arrival photos" on triage only.
+  const latestArrivalHref = useMemo(() => {
+    if (surface !== 'triage') return null;
+    const latest = scans.find(
+      (s) =>
+        s.receivingId != null &&
+        (s.status === 'matched' || s.status === 'unmatched'),
+    );
+    if (!latest?.receivingId) return null;
+    return mobileArrivalGuidedPhotosHref(latest.receivingId, {
+      back: '/m/triage',
+      title: latest.tracking,
+    });
+  }, [scans, surface]);
+
   return (
-    <div className={`h-full ${TOKENS.colors.background} flex flex-col`}>
+    <div className={`relative h-full ${TOKENS.colors.background} flex flex-col`}>
       {/* Input Section */}
       <div className="px-6 pt-4 pb-4">
         <h1 className="mb-4 text-xl font-semibold tracking-tight text-blue-950">{title}</h1>
@@ -416,6 +444,20 @@ export default function RedesignedMobileReceive({
           renderRow={(item) => <ScanResultRow item={item} />}
         />
       </div>
+
+      {latestArrivalHref ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 bg-gradient-to-t from-surface-canvas via-surface-canvas/95 to-transparent">
+          <div className="pointer-events-auto">
+            <GlassButton
+              className="w-full justify-center gap-2 py-3.5 text-sm font-semibold"
+              icon={Camera}
+              onClick={() => router.push(latestArrivalHref)}
+            >
+              Take arrival photos
+            </GlassButton>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

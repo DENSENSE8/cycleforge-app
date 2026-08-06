@@ -78,7 +78,7 @@ export const REPAIR_GRID_COLUMNS: readonly RepairGridColumn[] = [
   { key: 'date', width: 'minmax(6rem, 6rem)', label: 'Created', type: 'date', hideKey: 'date', labelFitRem: 4.5 },
   { key: 'customer', width: 'minmax(7rem, 7rem)', label: 'Customer', type: 'text', hideKey: 'customer', labelFitRem: 4.5 },
   { key: 'phone', width: 'minmax(6.5rem, 6.5rem)', label: 'Phone', type: 'text', hideKey: 'phone', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'price', width: 'minmax(4.5rem, 4.5rem)', label: 'Price', type: 'number', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
+  { key: 'price', width: 'minmax(4.5rem, 4.5rem)', label: 'Price', type: 'price', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
   // Walk-in vs linked source order — WALK-IN label needs the wider track.
   { key: 'order', width: 'minmax(5.5rem, 5.5rem)', label: 'Walk-in / Order', gridLabel: 'Order', type: 'id', hideKey: 'order', tier: 'optional', labelFitRem: 4.5 },
   { key: 'ticket', width: 'minmax(5rem, 5rem)', label: 'Ticket', type: 'id', hideKey: 'ticket', labelFitRem: 4.5 },

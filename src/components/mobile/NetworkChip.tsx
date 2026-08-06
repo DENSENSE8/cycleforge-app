@@ -3,10 +3,10 @@
 /**
  * NetworkChip — compact online/offline status pill for mobile shells.
  *
- * Reads the shared `useNetworkOnline()` store (the same one the connection
- * banners use) rather than a private window listener — this chip and the banner
- * sitting above it must never disagree. Optionally accepts a `pendingCount` for
- * an offline action queue (used once the IndexedDB-backed queue lands in B4).
+ * Reads the shared `useNetworkOnline()` store rather than a private window
+ * listener — same answer as the Operations TV pill (`useRealtimeLink`). Optionally
+ * accepts a `pendingCount` for an offline action queue (used once the
+ * IndexedDB-backed queue lands in B4).
  *
  * Lives in `MobileShellToolbarConfig.trailing`. Designed to be glanceable —
  * green dot = online, amber dot = pending replay, red = offline.

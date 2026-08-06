@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * Boxed feed pane — the shared body for the Sales-hub modes that render a
- * day-banded transaction feed (Local Pickup · Sales). It composes the house
- * primitives end to end: a fixed `SalesKpiStrip` band over a `WorkbenchTablePane`
- * (the sanctioned "was full-bleed → padded/boxed" monitor card, same shell
- * `RepairTable` uses) whose inner scroll region holds `SalesTransactionsFeed`.
+ * Flush feed pane — the shared body for the Sales-hub modes that render a
+ * day-banded transaction feed (Local Pickup · Sales). Sheets flush stack (Unbox
+ * recipe): a `SalesKpiStrip` Band 2 over the feed flush in `WORKBENCH_SHEET_HOST`
+ * (no framed padded-card island). The hub owns Band 1 tabs.
  *
  * KPI is derived from the SAME rows the feed renders (`summarizeTransactions`),
  * so the hero can never disagree with the table under it.
@@ -15,11 +14,10 @@
  */
 
 import { useMemo } from 'react';
-import { WORKBENCH_GUTTERS, WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { SalesKpiStrip } from '@/components/walk-in/SalesKpiStrip';
 import { SalesTransactionsFeed } from '@/components/walk-in/SalesTransactionsFeed';
 import { summarizeTransactions, type WalkInTransaction } from '@/lib/walk-in/transactions';
-import { cn } from '@/utils/_cn';
 
 interface WalkInFeedPaneProps {
   rows: WalkInTransaction[];
@@ -43,12 +41,13 @@ export function WalkInFeedPane({
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-surface-canvas">
-      <div className={cn(WORKBENCH_GUTTERS, 'shrink-0 pt-4')}>
+      {/* Band 2 — KPI, seated in the flush chrome seam (border-b border-r). */}
+      <div className="shrink-0 border-b border-r border-border-soft bg-surface-card px-3 py-2">
         <SalesKpiStrip rollup={rollup} isLoading={isLoading} label={label} />
       </div>
-      <WorkbenchTablePane>
-        {/* The pane's inner shell is overflow-hidden; the scroll lives here so the
-            day-band headers dock at top-0 of this region (RepairTable pattern). */}
+      {/* Feed flush in the sheet host; the scroll lives here so the day-band
+          headers dock at top-0 of this region (RepairTable pattern). */}
+      <div className={WORKBENCH_SHEET_HOST}>
         <div className="min-h-0 w-full flex-1 overflow-y-auto">
           <SalesTransactionsFeed
             rows={rows}
@@ -58,7 +57,7 @@ export function WalkInFeedPane({
             emptyMessage={emptyMessage}
           />
         </div>
-      </WorkbenchTablePane>
+      </div>
     </div>
   );
 }

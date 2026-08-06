@@ -37,8 +37,8 @@ interface PhotoLibraryToolbarProps<T> {
 
 /**
  * Inline bulk-action toolbar for the photo library, docked directly under the
- * page header instead of floating at the bottom of the viewport. Replaces
- * {@link ContextualSelectionBar} *on this page only* so bulk actions sit "up"
+ * page header instead of floating at the bottom of the viewport. Other collection
+ * surfaces use the right-rail selection plane; this page keeps bulk actions "up"
  * near the folder path, Finder-style. Primary actions show a static label;
  * everything else is icon-only with a tooltip. Delete uses a two-click arm
  * (same pattern as the shipped photo viewer). Count-gated via
@@ -137,7 +137,7 @@ export function PhotoLibraryToolbar<T>({
         )}
         {onDeleteSelected && count > 0 ? (
           <HoverTooltip
-            label={deleteArmed ? 'Click again to confirm' : `Delete ${shownCount} selected photo${shownCount === 1 ? '' : 's'}`}
+            label={deleteArmed ? 'Click again to confirm' : `Delete ${shownCount}`}
             asChild
           >
             {/* ds-raw-button: morphs icon-only ↔ icon+label on arm — same as PhotoViewerModal */}

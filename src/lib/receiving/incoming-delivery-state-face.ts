@@ -1,7 +1,7 @@
 /**
  * Incoming delivery-state presentation SoT — short grid labels + long tile titles.
  *
- * Grid icons ({@link DeliveryStateIcon}) and sidebar hunt tiles
+ * Grid icons (`ReceivingDeliveryStateIcon` cluster) and sidebar hunt tiles
  * ({@link TILES}) must not drift into parallel vocabularies. Icons, short
  * hover tips, tile labels, and long filter-education titles live here once.
  *

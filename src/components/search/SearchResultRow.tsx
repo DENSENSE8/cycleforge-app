@@ -91,7 +91,7 @@ export interface SearchResultRowProps {
 const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'gap-3 px-3 py-1.5',
   comfortable: SEARCH_RESULT_ROW_PAD,
-  dropdown: 'gap-2 px-3 py-1',
+  dropdown: 'gap-2 px-3 py-2.5',
 };
 // Narrow rails keep caption-size titles so IDs stay scannable; comfortable
 // uses body. (Dropdown used to be micro — that lost to the chip wall.)
@@ -369,7 +369,7 @@ function OrderRow({
       {/* Packout proof (rail only) — density-gated, not viewport md:. */}
       {packout && packout.photoCount > 0 && (
         <HoverTooltip
-          label={`${packout.photoCount} packing photo${packout.photoCount === 1 ? '' : 's'}`}
+          label={`Photos ${packout.photoCount}`}
           focusable={false}
         >
           <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">

@@ -21,11 +21,14 @@ import { StationTerminalDock, useStationTerminalAction } from '@/components/stat
 import {
   StationWorkbench,
   StationPanelRoot,
-  PairingTogglePill,
+  StationScanPaneHost,
   ExternalLinkPill,
   buildSectionTabs,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
+import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
+import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';
+import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { SupportContextHub } from '@/components/support/context';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportTicketComposerDock } from '@/components/support/zendesk/chat/SupportTicketComposerDock';
@@ -151,9 +154,22 @@ export function TestingPanel({
     row.receiving_id != null ||
     timelineSerials.length > 0;
 
-  const [pairingOpen, setPairingOpen] = useState(false);
-  const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
-  const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
+  // Package Pairing is the Linkage body of the right-edge Displays push, opened
+  // from the identity `# ----` PO chip — a control on the right edge no longer
+  // opens a surface in the centre. `null` IS closed (no separate open flag).
+  const [activeSideTab, setActiveSideTab] = useState<'linkage' | null>(null);
+  const [pairingFocus, setPairingFocus] = useState<{
+    tab: 'zoho_po' | null;
+    requestId: number;
+  } | null>(null);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  const openPoPairing = useCallback(() => {
+    setActiveSideTab('linkage');
+    setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
+  }, []);
+  useEffect(() => {
+    setActiveSideTab(null);
+  }, [row.id]);
 
   const testingTabs = useMemo(
     () =>
@@ -169,8 +185,6 @@ export function TestingPanel({
                 row={row}
                 staffId={staffId}
                 suppressItemsHeader
-                pairingOpen={pairingOpen}
-                onPairingToggle={togglePairing}
               />
               <TestingWorkspaceNotesCard row={row} c={c} />
               {hasLabel ? (
@@ -236,7 +250,7 @@ export function TestingPanel({
                   onRequestLinkTicket={() => c.openClaimModal('link')}
                   onBridgeChange={setTicketBridge}
                   hostComposer={claimTicketId != null}
-                  className="h-full min-h-0 rounded-2xl"
+                  className="h-full min-h-0 rounded-none"
                 />
               </div>
             ) : null,
@@ -305,7 +319,6 @@ export function TestingPanel({
       hasTimelineTab,
       labelColor,
       labelOptions,
-      pairingOpen,
       poIdForTimeline,
       productTitle,
       row,
@@ -314,9 +327,45 @@ export function TestingPanel({
       staffId,
       testingView,
       timelineSerials,
-      togglePairing,
       trackingForTimeline,
     ],
+  );
+
+  // Testing's right-edge Displays push holds the carton Package Pairing
+  // (Linkage) — the one reference tool that left the centre. Same shell as
+  // Unbox/Arrival; the hub mounts here (not the centre) and reads the PO-avenue
+  // intent from `pairingFocus` on mount.
+  const pairingDisplayTabs = useMemo(
+    () =>
+      buildSectionTabs([
+        {
+          id: 'linkage',
+          label: 'Pairing',
+          icon: Link2,
+          content: (
+            <CartonMatchHub
+              row={row}
+              staffId={staffId}
+              tabSet="unbox"
+              chrome="bare"
+              autoFocusSearch={false}
+              showOpenInUnbox={false}
+              focusTab={pairingFocus?.tab ?? null}
+              focusRequestId={pairingFocus?.requestId ?? 0}
+              autoMatch={
+                shouldUseUnmatchedItemsSurface(row)
+                  ? {
+                      receivingId: row.receiving_id ?? null,
+                      lineId: row.id ?? null,
+                      trackingNumber: row.tracking_number ?? null,
+                    }
+                  : null
+              }
+            />
+          ),
+        },
+      ]),
+    [row, staffId, pairingFocus],
   );
 
   const activeTestingView = testingTabs.some((t) => t.id === testingView)
@@ -392,67 +441,94 @@ export function TestingPanel({
 
   return (
     <TicketComposerStagingProvider value={ticketPhotoStaging}>
-      <StationPanelRoot className="isolate">
-        <StationContextBar
-          identity={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
-          moreDetails={
-            <StationMoreDetails>
-              <StationHeaderToolbar
-                mode="testing"
-                embedded
-                receivingId={row.receiving_id ?? null}
-                busy={c.saving || c.isMutating}
-                copyingAll={c.copyingAll}
-                onBackToBrowse={onBackToBrowse}
-                handlers={{
-                  refresh: () => void c.syncWithZoho(),
-                  pair:
-                    row.sku_catalog_id != null
-                      ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
-                      : undefined,
-                }}
-              />
-            </StationMoreDetails>
-          }
-        />
-        <StationWorkbench
-          ambientWash={false}
-          className="relative z-0 flex-1 bg-transparent"
-          reserveScrollClearance
-          reserveIdentityClearance="stacked"
-          entityContext={
-            // STN↔unit confirm state for the scan that opened this line — the
-            // Testing bench's pass/fail card. Absent (not stale) whenever the
-            // session belongs to a different carton than the one on screen.
-            scanSessionForThisLine ? (
-              <TestingScanSessionFeedback session={scanSession} />
-            ) : null
-          }
-          tabs={
-            <SectionTabsSlider
-              tabs={testingTabs}
-              value={activeTestingView}
-              onChange={(id) => setTestingView(id as TestingView)}
-              ariaLabel="Testing displays"
-              rightSlot={
-                activeTestingView === 'testing'
-                  ? editPoControl
-                  : (ticketLink ?? undefined)
+      <StationScanPaneHost
+        displaysOpen={Boolean(activeSideTab)}
+        hostDataAttrs={{ 'data-testing-pane-host': true }}
+        centerTestId="testing-station-center"
+        center={
+          <StationPanelRoot className="isolate">
+            <StationContextBar
+              identity={
+                <TestingCartonHeader
+                  c={c}
+                  row={row}
+                  staffId={staffId}
+                  onEditPo={openPoPairing}
+                  poEditOpen={activeSideTab === 'linkage'}
+                />
+              }
+              moreDetails={
+                <StationMoreDetails>
+                  <StationHeaderToolbar
+                    mode="testing"
+                    embedded
+                    receivingId={row.receiving_id ?? null}
+                    busy={c.saving || c.isMutating}
+                    copyingAll={c.copyingAll}
+                    onBackToBrowse={onBackToBrowse}
+                    handlers={{
+                      refresh: () => void c.syncWithZoho(),
+                      pair:
+                        row.sku_catalog_id != null
+                          ? () =>
+                              window.dispatchEvent(
+                                new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT),
+                              )
+                          : undefined,
+                    }}
+                  />
+                </StationMoreDetails>
               }
             />
-          }
-          dock={dock}
-        />
+            <StationWorkbench
+              ambientWash={false}
+              className="relative z-0 flex-1 bg-transparent"
+              reserveScrollClearance
+              reserveIdentityClearance="stacked"
+              entityContext={
+                // STN↔unit confirm state for the scan that opened this line — the
+                // Testing bench's pass/fail card. Absent (not stale) whenever the
+                // session belongs to a different carton than the one on screen.
+                scanSessionForThisLine ? (
+                  <TestingScanSessionFeedback session={scanSession} />
+                ) : null
+              }
+              tabs={
+                <SectionTabsSlider
+                  tabs={testingTabs}
+                  value={activeTestingView}
+                  onChange={(id) => setTestingView(id as TestingView)}
+                  ariaLabel="Testing displays"
+                  rightSlot={ticketLink ?? undefined}
+                />
+              }
+              dock={dock}
+            />
 
-        {c.activeSerial?.id != null && Number(c.activeSerial.id) > 0 ? (
-          <UnitPackPhotoPeek
-            serialUnitId={Number(c.activeSerial.id)}
-            preferSource="all"
-            showEmptyState={false}
-          />
-        ) : null}
-      </StationPanelRoot>
-
+            {c.activeSerial?.id != null && Number(c.activeSerial.id) > 0 ? (
+              <UnitPackPhotoPeek
+                serialUnitId={Number(c.activeSerial.id)}
+                preferSource="all"
+                showEmptyState={false}
+              />
+            ) : null}
+          </StationPanelRoot>
+        }
+        displays={
+          activeSideTab ? (
+            <ReceivingDisplaysPushStack
+              ariaLabel="Testing displays"
+              storageKey="testing-displays-push-width"
+              testId="testing-displays-push"
+              resizeTestId="testing-displays-push-resize"
+              tabs={pairingDisplayTabs}
+              activeTab={activeSideTab}
+              onTabChange={(id) => setActiveSideTab(id as 'linkage')}
+              onClose={closeDisplays}
+            />
+          ) : null
+        }
+      />
       <TestingPanelModals c={c} row={row} />
     </TicketComposerStagingProvider>
   );

@@ -72,7 +72,7 @@ export function FbaTrackingBundleCard({
   return (
     <div
       ref={setNodeRef}
-      className={`overflow-hidden rounded-lg border transition-colors ${
+      className={`overflow-hidden rounded-none border transition-colors ${
         isOver
           ? 'border-dashed border-blue-400 bg-blue-50/40'
           : bundle.allocations.length > 0

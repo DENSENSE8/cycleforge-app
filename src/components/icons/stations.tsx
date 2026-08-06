@@ -18,9 +18,9 @@ import {
   Barcode,
   Box,
   Boxes,
-  CircleDollarSign,
   Package,
   PackageOpen,
+  Receipt,
   ShoppingCart,
   Truck,
 } from './commerce';
@@ -47,8 +47,8 @@ export const StationPacking: IconComponent = withNavIconPageStroke(Packer);
 
 // ── Sales mode mark ──────────────────────────────────────────────────────────
 
-/** Sales mode / sale-line price mark. */
-export const SalesPrice: IconComponent = withNavIconModeStroke(CircleDollarSign);
+/** Sales mode / sale-line price mark — same Receipt as CHIP_TONES.price. */
+export const SalesPrice: IconComponent = withNavIconModeStroke(Receipt);
 
 // ── Receiving L2 modes (chrome — modes own icons) ────────────────────────────
 

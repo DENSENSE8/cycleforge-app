@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { Clock, ExternalLink, FileText, Hash, Map, MapPin, Tags, Type } from '@/components/Icons';
+import { Clock, ExternalLink, FileText, Hash, Map, MapPin, Receipt, Tags, Type } from '@/components/Icons';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { cn } from '@/utils/_cn';
 
@@ -13,6 +13,7 @@ import { cn } from '@/utils/_cn';
  *   id       → hash             date/age   → clock
  *   external → external-link    location   → folded map (bin / staging)
  *   tracking → MapPin           (carrier # — distinct from bin location)
+ *   price    → Receipt          (unit cost / money — distinct from qty Hash)
  */
 const COLUMN_TYPE_GLYPH: Record<ColumnType, ComponentType<{ className?: string }>> = {
   text: Type,
@@ -24,6 +25,7 @@ const COLUMN_TYPE_GLYPH: Record<ColumnType, ComponentType<{ className?: string }
   external: ExternalLink,
   location: Map,
   tracking: MapPin,
+  price: Receipt,
 };
 
 /**

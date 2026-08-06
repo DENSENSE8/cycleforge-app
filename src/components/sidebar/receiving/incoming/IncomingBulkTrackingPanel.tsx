@@ -312,7 +312,7 @@ function CheckResultRow({
   ].filter(Boolean);
 
   return (
-    <li className="rounded-md bg-surface-card px-2 py-1.5 ring-1 ring-inset ring-border-soft">
+    <li className="rounded-none bg-surface-card px-2 py-1.5 ring-1 ring-inset ring-border-soft">
       <div className="flex items-start justify-between gap-1.5">
         <RowIdentity poNumber={row.po_number} tracking={row.tracking} />
         <HoverTooltip label="Show only this tracking" focusable={false}>
@@ -373,7 +373,7 @@ function HiddenRow({
 }) {
   const face = row.reason ? INCOMING_REMOVAL_REASON_FACE[row.reason as IncomingRemovalReason] : null;
   return (
-    <li className="rounded-md bg-surface-card px-2 py-1.5 ring-1 ring-inset ring-border-soft">
+    <li className="rounded-none bg-surface-card px-2 py-1.5 ring-1 ring-inset ring-border-soft">
       <div className="flex items-start justify-between gap-1.5">
         <RowIdentity poNumber={row.po_number} tracking={row.tracking} />
         <HoverTooltip label="Show only this tracking" focusable={false}>
@@ -628,7 +628,7 @@ export function IncomingBulkTrackingPanel({
               empty="Every tracking resolved to an inbound shipment."
               isEmpty={filterResult.not_found.length === 0}
             >
-              <ul className="space-y-1 rounded-lg border border-border-soft bg-surface-canvas/60 p-2">
+              <ul className="space-y-1 rounded-none border border-border-soft bg-surface-canvas/60 p-2">
                 {filterResult.not_found.map((key) => (
                   <li key={key} className="break-all font-mono text-role-caption text-text-default">
                     {key}
@@ -746,13 +746,13 @@ export function IncomingBulkTrackingPanel({
           ) : null}
 
           {selection.truncated > 0 ? (
-            <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
+            <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
               {selection.requested} pasted — only the first {selection.keys.length} will be used.
             </p>
           ) : null}
 
           {activeFilter ? (
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-blue-50 px-2 py-1.5 ring-1 ring-inset ring-blue-200">
+            <div className="flex items-center justify-between gap-2 rounded-none bg-blue-50 px-2 py-1.5 ring-1 ring-inset ring-blue-200">
               <p className="text-role-caption text-blue-800">
                 {(() => {
                   const n = activeFilter.split(',').filter(Boolean).length;
@@ -787,13 +787,13 @@ export function IncomingBulkTrackingPanel({
                 {checkResult.stats.errors > 0 ? ` · ${checkResult.stats.errors} failed` : ''}
               </p>
               {checkResult.stats.erp_ahead > 0 ? (
-                <p className="rounded-lg bg-rose-50 px-2 py-1.5 text-role-caption text-rose-700 ring-1 ring-inset ring-rose-200">
+                <p className="rounded-none bg-rose-50 px-2 py-1.5 text-role-caption text-rose-700 ring-1 ring-inset ring-rose-200">
                   {checkResult.stats.erp_ahead} received upstream with no warehouse record — these
                   appear on no watch list today.
                 </p>
               ) : null}
               {checkResult.stats.warehouse_ahead > 0 ? (
-                <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
+                <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
                   {checkResult.stats.warehouse_ahead} received here but not upstream.
                 </p>
               ) : null}

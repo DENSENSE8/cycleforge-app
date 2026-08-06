@@ -130,10 +130,10 @@ export function SidebarCollapseControl({
           onClose={dismiss}
           anchorRef={wrapRef}
           placement="bottom-start"
-          gap={8}
-          padded
+          gap={0}
+          padded={false}
           aria-label="Quick destinations"
-          className="w-auto min-w-0 p-1"
+          className="w-auto min-w-0 border-t-0 p-0"
           onMouseEnter={scheduleOpen}
           onMouseLeave={scheduleClose}
           data-testid="sidebar-top-pins-peek"

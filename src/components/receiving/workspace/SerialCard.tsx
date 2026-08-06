@@ -14,13 +14,15 @@ import { createPortal } from 'react-dom';
 import { X, Pencil } from '@/components/Icons';
 import { SerialChip } from '@/components/ui/CopyChip';
 import { TextField, IconButton } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { classifyInput } from '@/lib/scan-resolver';
 import { getLast8Serial } from '@/lib/copy-chip-format';
+import { cn } from '@/utils/_cn';
 import { ConditionPills } from './ConditionPills';
 import { ConditionBadge } from './ReceivingUnitRows';
 import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
 
-interface SavedSerial {
+export interface SavedSerial {
   id?: number;
   serial_number: string;
   condition_grade?: string | null;
@@ -351,17 +353,36 @@ export function SerialCard({
 
   const Shell = embedded ? 'div' : 'section';
   const shellClass = embedded
-    ? 'h-11 w-full min-w-0 overflow-x-auto overflow-y-hidden group'
+    ? 'w-full min-w-0 group'
     : 'rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60 group';
+
+  // Embedded (Unbox PO accordion): one joined flush bar — condition · SERIAL ·
+  // trailing, gap-0, square cells, shared outer hairline. Standalone keeps soft gaps.
+  const rowClass = embedded
+    ? cn(
+        'flex h-11 w-full min-w-0 items-stretch overflow-hidden border-0 bg-surface-card divide-x divide-border-default',
+        cornerClass('flush'),
+      )
+    : 'flex h-11 items-center gap-2';
 
   return (
     <Shell className={shellClass}>
-      <div className="flex h-11 items-center gap-2">
+      <div className={rowClass}>
         {onConditionChange ? (
           // Condition picker: full pill row when the line opens (for selection),
-          // collapsing to a filled circle (grade hue) + white Tags.
+          // collapsing to a filled square (grade hue) + white Tags.
           // Picking a grade auto-focuses the serial input below.
-          <div className="flex min-w-0 items-center gap-2">
+          // Flush bar: no spacer — divide-x is the join seam.
+          <div
+            className={cn(
+              'flex min-w-0',
+              // Embedded flush bar: stretch so expanded grade segments fill
+              // h-11 like the Tags / image squares — never items-center float.
+              embedded
+                ? 'h-11 shrink-0 items-stretch [&>*]:h-full'
+                : 'items-center gap-2',
+            )}
+          >
             <ConditionPills
               value={condition}
               onChange={handleConditionPick}
@@ -370,7 +391,9 @@ export function SerialCard({
               expanded={condExpanded}
               onExpandedChange={setCondExpanded}
             />
-            <div className="h-8 w-px shrink-0 bg-surface-sunken" />
+            {embedded ? null : (
+              <div className="h-8 w-px shrink-0 bg-surface-sunken" />
+            )}
           </div>
         ) : condition ? (
           <div className="shrink-0">
@@ -378,7 +401,7 @@ export function SerialCard({
           </div>
         ) : null}
 
-        <div className="flex-1 min-w-0">
+        <div className="flex min-w-0 flex-1 items-stretch">
           {noSerialActive && noSerialSlot ? (
             noSerialSlot
           ) : (
@@ -386,6 +409,7 @@ export function SerialCard({
             ref={setInputRef}
             label="Serial"
             data-unbox-serial-input
+            appearance={embedded ? 'flush' : 'default'}
             value={scan}
             onChange={(next) => {
               setScan(next);
@@ -393,7 +417,7 @@ export function SerialCard({
               if (inlineNotice) setInlineNotice(null);
               if (trackingOverride) setTrackingOverride(null);
             }}
-            tone="blue"
+            tone={embedded ? 'neutral' : 'blue'}
             mono
             disabled={disabled || isSubmitting}
             autoComplete="off"
@@ -438,20 +462,22 @@ export function SerialCard({
             onClick={onMarkNoSerial}
             label="Mark this item as having no serial number"
             width="w-14"
+            appearance={embedded ? 'flush' : 'default'}
           />
         ) : (
           /* ds-raw-button: solid-emerald scan-submit CTA with add-glyph / Saving… text-swap.
-             Embedded (dock) uses h-9 so the TextField h-11 row fits the fixed
-             dock entry band; standalone keeps h-11. */
+             Embedded joins the flush bar at h-11; standalone keeps soft radius. */
           <button
             type="button"
             onClick={() => void submit()}
             disabled={!scan.trim() || isSubmitting || disabled}
-            className={`inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-role-caption font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong ${
-              embedded ? 'h-9' : 'h-11'
-            } ${
-              editing || (showSavingLabel && isSubmitting) ? 'px-4' : 'w-14'
-            }`}
+            className={cn(
+              'inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+              embedded
+                ? cn(cornerClass('flush'), 'bg-emerald-600')
+                : 'rounded-xl bg-emerald-600 shadow-sm',
+              editing || (showSavingLabel && isSubmitting) ? 'px-4' : 'w-14',
+            )}
           >
             {showSavingLabel && isSubmitting ? (
               'Saving…'

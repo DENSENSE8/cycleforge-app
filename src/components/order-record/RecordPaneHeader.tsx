@@ -1,17 +1,12 @@
 'use client';
 
 /**
- * RecordPaneHeader — the ONE header for every order-record surface: the
- * non-modal right-rail inspector, the legacy tabbed slide-over, and the
- * full-page order view (`/o/[id]`).
+ * RecordPaneHeader — the ONE header grammar for order surfaces: desk inspector,
+ * search feedback, and the full-page durable record (`/o/[id]`).
  *
  * It replaces `ShippedDetailsHeader` (`shipped/details-panel/`) and
- * `OrderIdentityHeader` (this folder), which rendered the same identity band
- * and the same action bar and diverged only in whether a tab strip followed.
- * `ShippedDetailsPanel` picked between them on `isOrderRecord`, so every change
- * to the header grammar had to be made twice — and twice is how one of them
- * came to *swallow* `onClose` behind a stale comment while the other never had
- * one at all. Tabs are now a `tabs` slot, not a second component.
+ * `OrderIdentityHeader` (this folder). Legacy section tabs are a `tabs` slot
+ * after identity — the desk panel and search feedback pass a strip; `/o` does not.
  *
  * ## Layout — the SoT panel-header grammar
  *
@@ -20,28 +15,25 @@
  *
  * ```text
  * ┌─────────────────────────────────────────────────────────────┐
- * │ Row 1 — icon action row                                     │
- * │ [ ⧉ ⚑ 🖨 … ]                        [ 3 / 47 ] [↑] [↓] [✕]  │
+ * │ Row 1 — chrome ONLY (omit when no close and no ↑↓)          │
+ * │ [→|] ……………………………… [ 3 / 47 ] [ ↑ ] [ ↓ ]                 │
+ * │ DeskRailChromeRow — close top-left; cursor + ↑↓ trailing    │
  * ├─────────────────────────────────────────────────────────────┤
- * │ Row 2 — dense identity                                      │
+ * │ Row 2 — contextual icons / topic tabs ONLY                  │
+ * │ [ contextual icons … ]                                      │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │ Row 3 — dense identity                                      │
  * │ [▣]  ORDER #                                                │
  * │      1071-4471   [Shipped] [eBay]                           │
- * ├─────────────────────────────────────────────────────────────┤
- * │ Row 3 — optional tabs (legacy tabbed contexts only)         │
+ * │ optional legacy section tabs                                │
  * └─────────────────────────────────────────────────────────────┘
  * ```
  *
- * Two things this fixes that the split rows could not:
- *
- * - **`up · down · close` is ONE right-aligned cluster**, owned by
- *   `PaneHeaderActionBar` (which now takes `onClose`). Before, prev/next sat in
- *   the action row and close sat in the `rightSlot` of the row *above* it —
- *   two halves of one cluster, on two rows, maintained separately.
- * - **Open-full-page is an ACTION, not a second control.** It used to be a lone
- *   `IconButton` beside close, which is the "labelled/loose button block that
- *   duplicates the icon row" the grammar bans. It is now just another entry in
- *   the contextual action set, appended by this component so no call site has
- *   to remember the icon.
+ * - **Close is always top-left** via {@link DeskRailChromeRow} (Unbox twin).
+ *   Counter + ↑↓ stay on the trailing edge. Never mix chrome props onto the
+ *   contextual ActionBar.
+ * - **Open-full-page is an ACTION on Row 2**, not a second control beside close.
+ *   It is appended here so no call site has to remember the icon.
  *
  * Identity stays DENSE — `PaneHeaderLabel` with a short durable key (the order
  * id). Product titles and listing sentences belong in the scroll body; a
@@ -61,11 +53,13 @@ import {
   CursorPositionReadout,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import type { StatusTone as HeaderStatusTone } from '@/components/shipped/details-panel/shipped-details-logic';
 import {
   getOrderPlatformBorderColor,
   getOrderPlatformColor,
 } from '@/utils/order-platform';
+import { formatPlatformTooltipLabel } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 
 type PillTone = 'neutral' | 'blue' | 'emerald' | 'amber' | 'yellow' | 'rose' | 'red' | 'purple';
@@ -105,10 +99,15 @@ interface RecordPaneHeaderProps {
   total?: number;
   /** Appends the open-full-page action. Omitted → no such action (already on `/o/[id]`). */
   onOpenFullPage?: () => void;
-  /** Dismiss — renders as the last item of the `up · down · close` cluster. */
+  /** Dismiss — chrome Row 1, top-left `→|` via DeskRailChromeRow. */
   onClose?: () => void;
-  /** Optional third row (the legacy section tab strip). Omitted → two rows. */
+  /** Optional legacy section tab strip after identity. */
   tabs?: ReactNode;
+  /**
+   * Row-2 trailing View topics (sheet layout / refine) — sits after contextual
+   * action icons, matching Unbox History’s View cluster on the topics row.
+   */
+  viewTopics?: ReactNode;
   /** Tighter horizontal gutter for the compact slide-over. */
   compact?: boolean;
 }
@@ -131,10 +130,13 @@ export function RecordPaneHeader({
   onOpenFullPage,
   onClose,
   tabs,
+  viewTopics,
   compact = false,
 }: RecordPaneHeaderProps) {
   const gutter = compact ? 'px-4' : 'px-5';
   const platform = String(platformLabel || '').trim();
+  const identityTooltip = formatPlatformTooltipLabel(orderIdDisplay, platform);
+  const showChrome = Boolean(onClose || onMoveUp || onMoveDown);
 
   const rowActions: PaneHeaderActionBarAction[] = onOpenFullPage
     ? [
@@ -148,40 +150,75 @@ export function RecordPaneHeader({
       ]
     : actions;
 
+  const contextBar =
+    rowActions.length > 0 ? (
+      <PaneHeaderActionBar
+        iconOnly
+        variant="flat"
+        className="w-full px-0 py-0"
+        actions={rowActions}
+      />
+    ) : null;
+
+  const topicsRow =
+    showChrome && (contextBar || viewTopics) ? (
+      viewTopics ? (
+        <div
+          className={cn(
+            gutter,
+            'flex h-9 min-w-0 items-center gap-2 border-t border-border-hairline',
+          )}
+          role="toolbar"
+          aria-label="Order topics"
+        >
+          {contextBar ? (
+            <div className="min-w-0 flex-1 overflow-x-auto">{contextBar}</div>
+          ) : (
+            <div className="min-w-0 flex-1" />
+          )}
+          {viewTopics}
+        </div>
+      ) : (
+        <div className={cn(gutter, 'pb-1')}>{contextBar}</div>
+      )
+    ) : null;
+
   return (
     <PaneHeader
       className="shrink-0 border-b-0 bg-surface-card/90 backdrop-blur-xl"
-      rowClassName={gutter}
-      // Row 1 spans the full width so the bar's own spacer can push the
-      // trailing cluster to the far edge. `PaneHeader`'s `rightSlot` is
-      // deliberately unused — putting half the cluster there is the split this
-      // component exists to close.
+      rowClassName="px-0"
+      // Chrome Row 1 is DeskRailChromeRow (full bleed optical pl-2). Identity /
+      // topics keep the compact/desk gutter below.
       leftSlot={
-        <PaneHeaderActionBar
-          iconOnly
-          variant="flat"
-          className="w-full px-0 py-0"
-          actions={rowActions}
-          onPrev={onMoveUp}
-          onNext={onMoveDown}
-          prevDisabled={prevDisabled}
-          nextDisabled={nextDisabled}
-          rightSlot={<CursorPositionReadout position={position} total={total} />}
-          prevTitle="Move up a row"
-          nextTitle="Move down a row"
-          onClose={onClose}
-          closeTitle="Close order details"
-        />
+        showChrome ? (
+          <DeskRailChromeRow
+            onClose={onClose}
+            closeTitle="Hide right panel"
+            onPrev={onMoveUp}
+            onNext={onMoveDown}
+            prevDisabled={prevDisabled}
+            nextDisabled={nextDisabled}
+            prevTitle="Move up a row"
+            nextTitle="Move down a row"
+            cursor={<CursorPositionReadout position={position} total={total} />}
+          />
+        ) : (
+          contextBar
+        )
       }
       belowSlot={
         <>
+          {topicsRow}
           <div className={cn(gutter, 'flex items-center gap-2 pb-2')}>
             <PaneHeaderIconBadge Icon={Package} bg="bg-blue-600" tint="text-white" />
             <div className="flex min-w-0 flex-col gap-1">
               <PaneHeaderLabel
                 eyebrow={showExceptionsFallback ? 'Exceptions' : 'Order #'}
                 value={
-                  <HoverTooltip label={copiedOrderId ? 'Copied' : 'Click to copy'} asChild>
+                  <HoverTooltip
+                    label={copiedOrderId ? `Copied ${identityTooltip}` : identityTooltip}
+                    asChild
+                  >
                     {/* ds-raw-button: text-left inline value (click-to-copy order id), not a styled CTA */}
                     <button
                       type="button"
@@ -194,7 +231,7 @@ export function RecordPaneHeader({
                     </button>
                   </HoverTooltip>
                 }
-                valueTitle={orderIdDisplay}
+                valueTitle={identityTooltip}
               />
               {statusLabel || platform ? (
                 <div className="flex flex-wrap items-center gap-1.5">

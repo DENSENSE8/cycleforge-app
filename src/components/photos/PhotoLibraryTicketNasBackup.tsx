@@ -34,15 +34,14 @@ export function PhotoLibraryTicketNasBackup({
             Ticket {claimsTicketLabel(trimmed)} · NAS backup
           </p>
           <p className="text-role-micro text-text-muted">
-            Upload &amp; sync carton photos into the NAS claims folder named{' '}
-            {claimsTicketLabel(trimmed)} (same as File a claim)
+            Sync carton photos to NAS folder {claimsTicketLabel(trimmed)}
           </p>
         </div>
       </div>
       <TicketNasBackupButton
         ticketNumber={trimmed}
-        label="Backup to NAS"
-        tooltip={`Upload & sync photos for ${claimsTicketLabel(trimmed)} to NAS`}
+        label="Sync to NAS"
+        tooltip={`Sync photos · ${claimsTicketLabel(trimmed)}`}
       />
     </Panel>
   );

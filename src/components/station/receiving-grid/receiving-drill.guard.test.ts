@@ -51,8 +51,14 @@ describe('Receiving History drill (adapter)', () => {
 
   it('Unbox History chrome exposes Drill|List orthogonal to compare', () => {
     const view = src('src/components/receiving/unbox/UnboxWorkspaceView.tsx');
-    assert.match(view, /HistoryDrillChrome/);
+    // Drill|List + paint live on the History inspector View cluster (not Band 3).
+    assert.match(view, /HistoryViewTopicsCluster|history-view-chrome/);
     assert.match(view, /UnboxCompareChrome/);
+    const topics = src(
+      'src/components/receiving/history/HistoryViewTopicsCluster.tsx',
+    );
+    assert.match(topics, /HistoryDrillChrome/);
+    assert.match(topics, /UnboxCompareChrome/);
     const chrome = src('src/components/receiving/unbox/HistoryDrillChrome.tsx');
     assert.match(chrome, /hlayout|HISTORY_DRILL_LAYOUT_PARAM/);
   });

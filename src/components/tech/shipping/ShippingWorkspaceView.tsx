@@ -1,9 +1,12 @@
 'use client';
 
 /**
- * Shipping mode Workbench on `/test` — sticky KPI strip + unified header
- * (Pending | History) + tab body. Mirrors DashboardOrdersView chrome
- * while the sidebar keeps Station scan / Up Next I/O.
+ * Shipping mode Workbench on `/test` — Sheets flush chrome (Unbox recipe):
+ * tabs · KPI · triage in one pinned sheet-chrome stack; body is
+ * WORKBENCH_SHEET_HOST. Sidebar keeps Station scan / Up Next I/O.
+ *
+ * Multi-select opens the order right-rail plane (History / dashboard SoT) —
+ * no bottom ContextualSelectionBar capsule.
  */
 
 import { Suspense, useState } from 'react';
@@ -12,18 +15,27 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { ShippingKpiStrip } from '@/components/tech/shipping/ShippingKpiStrip';
-import { ShippingWorkspaceHeader } from '@/components/tech/shipping/ShippingWorkspaceHeader';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
-  WORKBENCH_TABLE_VIEWPORT,
+  ShippingTriageBand,
+  ShippingWorkspaceHeader,
+} from '@/components/tech/shipping/ShippingWorkspaceHeader';
+import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
+import {
+  WorkbenchKpiBand,
+  WORKBENCH_KPI_SURFACE,
+} from '@/components/dashboard/workbench-kpi-collapse';
+import {
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
-import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
-import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
-import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
+import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
+import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
+import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
+import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { cn } from '@/utils/_cn';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
@@ -43,69 +55,72 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
+    WORKBENCH_KPI_SURFACE.shipping,
+  );
   const parsedTechId = parseInt(techId, 10);
-  // Pending reuses the dashboard To Ship selection scope + actions (always-on
-  // left-gutter select). Keep the hook on `unshipped` for every tab so selectMode
-  // stays live when Pending remounts (History doesn't mount a selectable table).
-  const { selectMode, selectedRows, selectionActions, bulkBarVisible } =
-    useDashboardBulkSelection('unshipped');
+  const queueTab = shipTab === 'pending' || shipTab === 'urgent';
+  // Pending / Urgent reuse the dashboard To Ship selection scope + rail actions.
+  const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
+    'unshipped',
+    { publish: queueTab },
+  );
 
-  // Tab bodies crossfade as the singular focus surface (chrome + KPI strip stay
-  // put) — same workbenchPane preset family as the receiving right pane.
-  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
-  // one pair, then spread into the single props object this call site passes.
   const { presence, transition } = useMotionRole(motionRole.swap.focus);
   const paneMotionProps = { ...presence, transition };
 
   return (
-    // Flex column (not a bare block): `DashboardScrollShell` is `flex-1`, which
-    // is inert outside a flex parent — the shell then collapses to content
-    // height and the work canvas shows through below it. Mirrors Unbox/Triage.
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
-    <DashboardScrollShell
-      className="h-full"
-      // Pinned chrome (outside the scroll port) is the one top bar; the KPI
-      // strip in the body scrolls away and day headers dock at top-0 beneath
-      // the chrome. Mirrors DashboardOrdersView's two-zone shell.
-      chrome={
-        <div className={WORKBENCH_CHROME_COLUMN}>
-          <ShippingWorkspaceHeader
-            tab={shipTab}
-            onSelectTab={setShipTab}
-            controlsSlotRef={setControlsEl}
-            onNewOrder={openNew}
-          />
-        </div>
-      }
-    >
-      <div className={WORKBENCH_BODY_COLUMN}>
-        <div className="mb-4">
-          <ShippingKpiStrip
-            mode={shipTab}
-            techId={Number.isFinite(parsedTechId) ? parsedTechId : undefined}
-          />
-        </div>
-
-        <div className="relative flex min-w-0 flex-col">
+      <DashboardScrollShell
+        className="h-full bg-transparent"
+        chrome={
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+            <ShippingWorkspaceHeader
+              tab={shipTab}
+              onSelectTab={setShipTab}
+              onNewOrder={openNew}
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
+            />
+            <WorkbenchKpiBand
+              open={!kpiCollapsed}
+              onSnapCollapse={() => setKpiCollapsed(true)}
+              onSnapExpand={() => setKpiCollapsed(false)}
+            >
+              <ShippingKpiStrip
+                mode={shipTab}
+                techId={Number.isFinite(parsedTechId) ? parsedTechId : undefined}
+              />
+            </WorkbenchKpiBand>
+            <ShippingTriageBand
+              tab={shipTab}
+              controlsSlotRef={setControlsEl}
+              kpiOpen={!kpiCollapsed}
+              onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
+            />
+          </div>
+        }
+      >
+        <div className={WORKBENCH_SHEET_HOST}>
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={shipTab} {...paneMotionProps} className="flex min-w-0 flex-col">
+            <motion.div
+              key={shipTab}
+              {...paneMotionProps}
+              className="flex min-h-0 min-w-0 flex-1 flex-col"
+            >
               <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
                 {shipTab === 'history' ? (
-                  // Bounded host so the framed card's bottom edge (and its
-                  // raised elevation) stay on screen and the table self-scrolls
-                  // instead of growing the page — same as the Pending grid.
-                  <div className={`${WORKBENCH_TABLE_VIEWPORT} pb-3`}>
-                    <TechTable
-                      testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
-                      staffScope="url-or-self"
-                      toolbarPortalTarget={controlsEl}
-                    />
-                  </div>
+                  <TechTable
+                    testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
+                    staffScope="url-or-self"
+                    toolbarPortalTarget={controlsEl}
+                  />
+                ) : shipTab === 'all' ? (
+                  <TechAllTriageTable scope="shipping" columnTriggerPortalTarget={controlsEl} />
                 ) : (
                   <UnshippedTable
                     strictSearchScope
                     selectMode={selectMode}
-                    bulkBarInset={bulkBarVisible}
+                    railSelection
                     toolbarPortalTarget={controlsEl}
                   />
                 )}
@@ -113,18 +128,16 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
             </motion.div>
           </AnimatePresence>
         </div>
-      </div>
 
-      {shipTab === 'pending' ? (
-        <ContextualSelectionBar
-          scope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-          rows={selectedRows}
-          actions={selectionActions}
-          pinToViewport
-        />
-      ) : null}
-    </DashboardScrollShell>
-    <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+        {queueTab && selectionEnabled ? (
+          <>
+            <OrderRailCompare />
+            <OrderRailShell />
+            {selectionOverlays}
+          </>
+        ) : null}
+      </DashboardScrollShell>
+      <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
     </div>
   );
 }

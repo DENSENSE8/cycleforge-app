@@ -32,9 +32,15 @@ import { cn } from '@/utils/_cn';
 export function OrdersCompareHost({
   selectMode = false,
   className,
+  columnTriggerPortalTarget = null,
 }: {
   selectMode?: boolean;
   className?: string;
+  /**
+   * Band-3 controls slot — only the active pane portals ▦ here so multiple
+   * compare grids do not fight over one host.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }) {
   const searchParams = useSearchParams();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -104,6 +110,9 @@ export function OrdersCompareHost({
         onActivate={() => setActivePane(id)}
         selectMode={selectMode}
         className={layout === 'quad' ? 'min-h-[12rem]' : undefined}
+        columnTriggerPortalTarget={
+          activePane === id ? columnTriggerPortalTarget : null
+        }
       />
     );
   });
@@ -140,7 +149,7 @@ export function OrdersCompareHost({
               edgeHandleProps={edgeHandleProps}
               isDragging={isDragging}
               placement="inset"
-              tooltipLabel="Drag to resize panes"
+              tooltipLabel="Resize"
             />
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">

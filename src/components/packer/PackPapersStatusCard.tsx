@@ -79,7 +79,7 @@ export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null
   };
 
   return (
-    <div className={`shrink-0 ${STATION_WORKBENCH_IDENTITY_COLUMN} pb-2 pt-1`}>
+    <div className={`shrink-0 ${STATION_WORKBENCH_IDENTITY_COLUMN}`}>
       <AnimatePresence mode="wait">
         <motion.div
           key={`print-${printBundleUi.status}-${printBundleUi.orderRowId}`}
@@ -87,10 +87,10 @@ export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null
           transition={cardTransition}
           className={
             printBundleUi.status === 'failed' || printBundleUi.status === 'missing'
-              ? 'rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5'
+              ? 'rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5'
               : printBundleUi.status === 'printing'
-                ? 'rounded-2xl border border-border-soft bg-surface-card px-3 py-2.5'
-                : 'rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5'
+                ? 'rounded-none border border-border-soft bg-surface-card px-3 py-2.5'
+                : 'rounded-none border border-emerald-200 bg-emerald-50 px-3 py-2.5'
           }
         >
           <div className="flex items-start justify-between gap-2">

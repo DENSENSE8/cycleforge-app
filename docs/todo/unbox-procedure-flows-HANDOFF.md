@@ -31,8 +31,14 @@ Unfound return → `return` + `needsClassify`.
 - Context from row: `resolveUnboxProcedureContext` / `resolveContextFromFlags`
 - Resolver: `resolveProcedureSteps(proc, ctx, phase?)`
 - Bench: `useUnboxProcedureSteps` → one derivation, two views
+- **Capture order (dogfood):** org setting `receiving.unboxFlowCaptureOrder`
+  (JSON `{ found?: string[]; unfound?: string[]; return?: string[] }`), edited via
+  right-rail checklist drag-handle reorder. Override is applied inside
+  `resolveProcedureSteps` (`captureOrderOverride`) so ProcedureDeck + checklist
+  stay aligned. Sanitize: drop unknown keys; append missing allowed keys.
 
 ## Out of scope (still)
 
 - Named pickup flow, per-platform procedure trees, Studio authoring, waiver store
+- Per-staff personal capture orders; historical versioning of SOP at carton close
 - Paused scan-station platform lanes (`docs/todo/scan-station-procedure/`)

@@ -297,7 +297,7 @@ function StaffSidebarRow({ row, selected, onPick }: StaffSidebarRowProps) {
         type="button"
         onClick={onPick}
         aria-current={selected ? 'true' : undefined}
-        className={`group flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-all ${
+        className={`group flex w-full items-center gap-2.5 rounded-none border px-2.5 py-2 text-left transition-all ${
           selected
             ? 'border-blue-200 bg-blue-50 ring-1 ring-blue-500/30 shadow-sm shadow-blue-200/40'
             : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-hover'
@@ -351,7 +351,7 @@ function SortableStaffSidebarRow({ row, selected, onPick }: StaffSidebarRowProps
 
   return (
     <li ref={setNodeRef} style={style}>
-      <div className={`group flex w-full items-center gap-2 rounded-xl border px-2 py-2 transition-all ${
+      <div className={`group flex w-full items-center gap-2 rounded-none border px-2 py-2 transition-all ${
         selected
           ? 'border-blue-200 bg-blue-50 ring-1 ring-blue-500/30 shadow-sm shadow-blue-200/40'
           : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-hover'

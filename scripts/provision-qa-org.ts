@@ -6,7 +6,7 @@
  *   - Fixed org UUID (QA_ORG_ID) with enterprise plan + settings
  *   - Admin account, membership, staff + role wiring
  *   - Catalog seed, default workflow, feature-flag overrides
- *   - Representative fixtures (SKUs, receiving PO, outbound orders)
+ *   - Representative fixtures (SKUs, receiving PO, E2E + demo outbound orders)
  *
  * Run:  pnpm provision:qa-org
  *       pnpm provision:qa-org -- --fixtures-only   (skip org/staff, re-seed data)
@@ -19,7 +19,12 @@ import type { PoolClient } from 'pg';
 import { Pool } from 'pg';
 import { hashPin, isObviousPin } from '@/lib/auth/pin';
 import { ensureAdminRoleWired } from '@/lib/auth/ensure-admin-role';
-import { getAccountByEmail, createAccount } from '@/lib/identity/accounts';
+import {
+  getAccountByEmail,
+  createAccount,
+  setAccountPassword,
+  addVerifiedEmail,
+} from '@/lib/identity/accounts';
 import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
 import { generateInternalGtin } from '@/lib/inventory/internal-gtin';
 import { seedDefaultWorkflowForOrg } from '@/lib/studio/seed-org-workflow';
@@ -28,7 +33,11 @@ import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize
 import {
   QA_ADMIN_EMAIL,
   QA_ADMIN_NAME,
+  QA_ADMIN_PASSWORD,
   QA_ADMIN_PIN,
+  QA_DEMO_ORDER_VOLUME,
+  QA_DEMO_SKU_CATALOG,
+  QA_DEMO_SKUS,
   QA_FEATURE_FLAGS,
   QA_FIXTURE_INCOMING_POS,
   QA_FIXTURE_MY_DAY,
@@ -49,6 +58,8 @@ import {
   QA_ORG_NAME,
   QA_ORG_SLUG,
   QA_STATION_STAFF,
+  qaDemoOrderId,
+  qaDemoTrackingNumber,
   resolveQaOrgId,
 } from '@/lib/tenancy/qa-org';
 import { upsertIntegrationCredentials } from '@/lib/integrations/credentials';
@@ -67,10 +78,13 @@ async function setOrgGuc(client: PoolClient, orgId: string) {
 }
 
 async function ensureOrganization(pool: Pool, orgId: string) {
+  // `individual` = email+password signs straight in as QA Admin (no umbrella
+  // staff picker). Station PIN remains available as a secondary path.
   const settings = {
     timezone: 'America/Los_Angeles',
     currency: 'USD',
     brand: { name: 'CycleForge QA' },
+    staffLoginModel: 'individual',
   };
   await pool.query(
     `INSERT INTO organizations (id, slug, name, plan, status, trial_ends_at, settings, billing_email)
@@ -93,6 +107,11 @@ async function ensureAdminStaff(pool: Pool, orgId: string): Promise<number> {
   if (isObviousPin(QA_ADMIN_PIN)) {
     throw new Error('QA_ADMIN_PIN is too obvious — set a non-sequential PIN in .env');
   }
+  if (!QA_ADMIN_PASSWORD || QA_ADMIN_PASSWORD.length < 10) {
+    throw new Error(
+      'QA_ADMIN_PASSWORD must be at least 10 characters — set it in .env (sandbox email+password for org …0002)',
+    );
+  }
   const pinHash = await hashPin(QA_ADMIN_PIN);
 
   const client = await pool.connect();
@@ -100,8 +119,8 @@ async function ensureAdminStaff(pool: Pool, orgId: string): Promise<number> {
   try {
     await client.query('BEGIN');
 
-    const existingStaff = await client.query<{ id: number }>(
-      `SELECT id FROM staff
+    const existingStaff = await client.query<{ id: number; account_id: string | null }>(
+      `SELECT id, account_id::text AS account_id FROM staff
         WHERE organization_id = $1 AND lower(email) = lower($2)
         LIMIT 1`,
       [orgId, QA_ADMIN_EMAIL],
@@ -110,18 +129,69 @@ async function ensureAdminStaff(pool: Pool, orgId: string): Promise<number> {
       staffId = existingStaff.rows[0].id;
       await client.query(
         `UPDATE staff SET name = $1, role = 'admin', active = true, status = 'active',
-                pin_hash = $2, pin_set_at = COALESCE(pin_set_at, now()), default_home_path = '/dashboard'
-          WHERE id = $3`,
-        [QA_ADMIN_NAME, pinHash, staffId],
+                pin_hash = $2, pin_set_at = COALESCE(pin_set_at, now()), default_home_path = '/dashboard',
+                email = $3
+          WHERE id = $4`,
+        [QA_ADMIN_NAME, pinHash, QA_ADMIN_EMAIL, staffId],
       );
+
+      let accountId = existingStaff.rows[0].account_id;
+      if (!accountId) {
+        const existingAccount = await getAccountByEmail(QA_ADMIN_EMAIL, client);
+        accountId = existingAccount
+          ? existingAccount.id
+          : await createAccount(
+              {
+                displayName: QA_ADMIN_NAME,
+                email: QA_ADMIN_EMAIL,
+                password: QA_ADMIN_PASSWORD,
+              },
+              client,
+            );
+        const memRes = await client.query<{ id: string }>(
+          `INSERT INTO memberships (account_id, org_id, status, joined_at)
+           VALUES ($1, $2, 'active', now())
+           ON CONFLICT (account_id, org_id)
+           DO UPDATE SET status = 'active', joined_at = COALESCE(memberships.joined_at, now())
+           RETURNING id`,
+          [accountId, orgId],
+        );
+        await client.query(
+          `UPDATE staff SET account_id = $1, membership_id = $2 WHERE id = $3`,
+          [accountId, memRes.rows[0]!.id, staffId],
+        );
+      } else {
+        await addVerifiedEmail(accountId, QA_ADMIN_EMAIL, client);
+        await setAccountPassword(accountId, QA_ADMIN_PASSWORD, client);
+        await client.query(
+          `UPDATE accounts SET display_name = $1, primary_email = $2, status = 'active', updated_at = now()
+            WHERE id = $3`,
+          [QA_ADMIN_NAME, QA_ADMIN_EMAIL, accountId],
+        );
+        await client.query(
+          `INSERT INTO memberships (account_id, org_id, status, joined_at)
+           VALUES ($1, $2, 'active', now())
+           ON CONFLICT (account_id, org_id)
+           DO UPDATE SET status = 'active', joined_at = COALESCE(memberships.joined_at, now())`,
+          [accountId, orgId],
+        );
+      }
     } else {
       const existingAccount = await getAccountByEmail(QA_ADMIN_EMAIL, client);
       const accountId = existingAccount
         ? existingAccount.id
         : await createAccount(
-            { displayName: QA_ADMIN_NAME, email: QA_ADMIN_EMAIL, password: null },
+            {
+              displayName: QA_ADMIN_NAME,
+              email: QA_ADMIN_EMAIL,
+              password: QA_ADMIN_PASSWORD,
+            },
             client,
           );
+      if (existingAccount) {
+        await setAccountPassword(accountId, QA_ADMIN_PASSWORD, client);
+        await addVerifiedEmail(accountId, QA_ADMIN_EMAIL, client);
+      }
 
       const memRes = await client.query<{ id: string }>(
         `INSERT INTO memberships (account_id, org_id, status, joined_at)
@@ -153,7 +223,7 @@ async function ensureAdminStaff(pool: Pool, orgId: string): Promise<number> {
     client.release();
   }
 
-  log('Admin staff', `${QA_ADMIN_NAME} id=${staffId} (${QA_ADMIN_EMAIL})`);
+  log('Admin staff', `${QA_ADMIN_NAME} id=${staffId} (${QA_ADMIN_EMAIL}) — email+password ready`);
   return staffId;
 }
 
@@ -206,6 +276,13 @@ async function seedSkus(client: PoolClient, orgId: string) {
     { sku: QA_FIXTURE_SKUS.speaker, title: 'QA Bose SoundLink Mini II' },
     { sku: QA_FIXTURE_SKUS.earbuds, title: 'QA Apple AirPods Pro (2nd Gen)' },
     { sku: QA_FIXTURE_SKUS.overlapProbe, title: 'QA overlap probe (shared SKU string)' },
+    // Demo-volume catalog — titles rotate onto outbound mock orders.
+    { sku: QA_DEMO_SKUS.keyboard, title: 'QA Logitech MX Keys' },
+    { sku: QA_DEMO_SKUS.headset, title: 'QA Sony WH-1000XM5' },
+    { sku: QA_DEMO_SKUS.tablet, title: 'QA Samsung Galaxy Tab A8' },
+    { sku: QA_DEMO_SKUS.charger, title: 'QA Anker 737 Power Bank' },
+    { sku: QA_DEMO_SKUS.mouse, title: 'QA Logitech MX Master 3' },
+    { sku: QA_DEMO_SKUS.webcam, title: 'QA Logitech C920 HD Webcam' },
   ];
   for (const row of skus) {
     await client.query(
@@ -499,14 +576,15 @@ async function createFixtureOrder(
   orderId: string,
   title: string,
   sku: string,
+  accountSource = 'QA-TEST',
 ): Promise<number> {
   const r = await client.query<{ id: number }>(
     `INSERT INTO orders
        (organization_id, order_id, product_title, sku, status, quantity, account_source, order_date, created_at, condition)
-     VALUES ($1, $2, $3, $4, 'unassigned', '1', 'QA-TEST', NOW(), NOW(), 'New')
+     VALUES ($1, $2, $3, $4, 'unassigned', '1', $5, NOW(), NOW(), 'New')
      ON CONFLICT DO NOTHING
      RETURNING id`,
-    [orgId, orderId, title, sku],
+    [orgId, orderId, title, sku, accountSource],
   );
   if (r.rows[0]) return Number(r.rows[0].id);
 
@@ -515,6 +593,59 @@ async function createFixtureOrder(
     [orgId, orderId],
   );
   return Number(existing.rows[0]!.id);
+}
+
+/** Attach a tracking number to one fixture order (idempotent). */
+async function assignFixtureTracking(
+  client: PoolClient,
+  orgId: string,
+  orderRowId: number,
+  tracking: string,
+) {
+  const norm = normalizeTrackingNumber(tracking);
+  if (!detectCarrier(norm)) {
+    console.warn(`  ⚠ carrier detection failed for ${tracking} — skipping tracking assign`);
+    return;
+  }
+  const existingStn = await client.query<{ id: number }>(
+    `SELECT id FROM shipping_tracking_numbers WHERE tracking_number_normalized = $1 LIMIT 1`,
+    [norm],
+  );
+  if (existingStn.rows[0]) {
+    await client.query(`UPDATE orders SET shipment_id = $1 WHERE id = $2`, [
+      Number(existingStn.rows[0].id),
+      orderRowId,
+    ]);
+  }
+  await upsertOrderTracking([orderRowId], tracking, client, orgId);
+}
+
+async function stampPackCompleted(
+  client: PoolClient,
+  orgId: string,
+  orderRowId: number,
+  tracking: string,
+) {
+  const packedShipment = await client.query<{ shipment_id: string | null }>(
+    `SELECT shipment_id FROM orders WHERE id = $1`,
+    [orderRowId],
+  );
+  const packedShipmentId = packedShipment.rows[0]?.shipment_id;
+  if (!packedShipmentId) {
+    console.warn(`  ⚠ order ${orderRowId} has no shipment_id — skipping PACK_COMPLETED`);
+    return null;
+  }
+  await client.query(
+    `INSERT INTO station_activity_logs
+       (organization_id, station, activity_type, shipment_id, scan_ref, notes)
+     SELECT $1, 'packing', 'PACK_COMPLETED', $2, $3, 'QA fixture'
+     WHERE NOT EXISTS (
+       SELECT 1 FROM station_activity_logs
+       WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'PACK_COMPLETED'
+     )`,
+    [orgId, Number(packedShipmentId), tracking],
+  );
+  return Number(packedShipmentId);
 }
 
 async function seedOrderFixtures(client: PoolClient, orgId: string) {
@@ -543,26 +674,6 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     QA_FIXTURE_SKUS.speaker,
   );
 
-  /** Attach a tracking number to one fixture order (idempotent). */
-  const assignTracking = async (orderRowId: number, tracking: string) => {
-    const norm = normalizeTrackingNumber(tracking);
-    if (!detectCarrier(norm)) {
-      console.warn(`  ⚠ carrier detection failed for ${tracking} — skipping tracking assign`);
-      return;
-    }
-    const existingStn = await client.query<{ id: number }>(
-      `SELECT id FROM shipping_tracking_numbers WHERE tracking_number_normalized = $1 LIMIT 1`,
-      [norm],
-    );
-    if (existingStn.rows[0]) {
-      await client.query(`UPDATE orders SET shipment_id = $1 WHERE id = $2`, [
-        Number(existingStn.rows[0].id),
-        orderRowId,
-      ]);
-    }
-    await upsertOrderTracking([orderRowId], tracking, client, orgId);
-  };
-
   const pendingThirdId = await createFixtureOrder(
     client,
     orgId,
@@ -578,37 +689,28 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
     QA_FIXTURE_SKUS.earbuds,
   );
 
-  await assignTracking(pendingId, QA_FIXTURE_TRACKING_PENDING);
-  await assignTracking(pendingSecondId, QA_FIXTURE_TRACKING_PENDING_SECOND);
-  await assignTracking(pendingThirdId, QA_FIXTURE_TRACKING_PENDING_THIRD);
-  await assignTracking(packedId, QA_FIXTURE_TRACKING_PACKED);
+  await assignFixtureTracking(client, orgId, pendingId, QA_FIXTURE_TRACKING_PENDING);
+  await assignFixtureTracking(client, orgId, pendingSecondId, QA_FIXTURE_TRACKING_PENDING_SECOND);
+  await assignFixtureTracking(client, orgId, pendingThirdId, QA_FIXTURE_TRACKING_PENDING_THIRD);
+  await assignFixtureTracking(client, orgId, packedId, QA_FIXTURE_TRACKING_PACKED);
 
   // The Packed lane is `?stagedOnly=true`: a PACK activity on the order's
   // shipment and NO SHIP_CONFIRM. Stamp the pack fact so the lane is non-empty.
-  const packedShipment = await client.query<{ shipment_id: string | null }>(
-    `SELECT shipment_id FROM orders WHERE id = $1`,
-    [packedId],
+  const packedShipmentId = await stampPackCompleted(
+    client,
+    orgId,
+    packedId,
+    QA_FIXTURE_TRACKING_PACKED,
   );
-  const packedShipmentId = packedShipment.rows[0]?.shipment_id;
   if (!packedShipmentId) {
     console.warn('  ⚠ packed fixture has no shipment_id — Packed lane will stay empty');
   } else {
-    await client.query(
-      `INSERT INTO station_activity_logs
-         (organization_id, station, activity_type, shipment_id, scan_ref, notes)
-       SELECT $1, 'packing', 'PACK_COMPLETED', $2, $3, 'QA fixture'
-       WHERE NOT EXISTS (
-         SELECT 1 FROM station_activity_logs
-         WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'PACK_COMPLETED'
-       )`,
-      [orgId, Number(packedShipmentId), QA_FIXTURE_TRACKING_PACKED],
-    );
     // Idempotent re-provision must not leave the order scanned out, or it moves
     // to the Shipped lane and the Packed lane is empty again.
     await client.query(
       `DELETE FROM station_activity_logs
        WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'SHIP_CONFIRM'`,
-      [orgId, Number(packedShipmentId)],
+      [orgId, packedShipmentId],
     );
   }
 
@@ -618,6 +720,99 @@ async function seedOrderFixtures(client: PoolClient, orgId: string) {
   );
 
   return { pendingId, pendingSecondId, pendingThirdId };
+}
+
+/**
+ * Demo outbound volume — ~60 mock orders across Awaiting / Pending / Packed /
+ * Shipped so desks look like a running business. IDs use `QA-DEMO-ORD-*` so
+ * Playwright's `QA-TEST-*` fixtures stay stable. Idempotent on re-provision.
+ */
+async function seedDemoOrderVolume(client: PoolClient, orgId: string) {
+  const catalog = QA_DEMO_SKU_CATALOG;
+  let trackingSeq = 0;
+
+  const pickProduct = (i: number) => catalog[i % catalog.length]!;
+
+  for (let i = 0; i < QA_DEMO_ORDER_VOLUME.awaiting; i++) {
+    const product = pickProduct(i);
+    await createFixtureOrder(
+      client,
+      orgId,
+      qaDemoOrderId('awaiting', i),
+      `QA demo awaiting — ${product.title}`,
+      product.sku,
+      'QA-DEMO',
+    );
+  }
+
+  for (let i = 0; i < QA_DEMO_ORDER_VOLUME.pending; i++) {
+    const product = pickProduct(i + QA_DEMO_ORDER_VOLUME.awaiting);
+    const orderRowId = await createFixtureOrder(
+      client,
+      orgId,
+      qaDemoOrderId('pending', i),
+      `QA demo pending — ${product.title}`,
+      product.sku,
+      'QA-DEMO',
+    );
+    const tracking = qaDemoTrackingNumber(trackingSeq++);
+    await assignFixtureTracking(client, orgId, orderRowId, tracking);
+  }
+
+  for (let i = 0; i < QA_DEMO_ORDER_VOLUME.packed; i++) {
+    const product = pickProduct(i + 40);
+    const tracking = qaDemoTrackingNumber(trackingSeq++);
+    const orderRowId = await createFixtureOrder(
+      client,
+      orgId,
+      qaDemoOrderId('packed', i),
+      `QA demo packed — ${product.title}`,
+      product.sku,
+      'QA-DEMO',
+    );
+    await assignFixtureTracking(client, orgId, orderRowId, tracking);
+    const shipmentId = await stampPackCompleted(client, orgId, orderRowId, tracking);
+    if (shipmentId != null) {
+      // Packed demo rows must stay off the Shipped lane on re-provision.
+      await client.query(
+        `DELETE FROM station_activity_logs
+         WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'SHIP_CONFIRM'`,
+        [orgId, shipmentId],
+      );
+    }
+  }
+
+  for (let i = 0; i < QA_DEMO_ORDER_VOLUME.shipped; i++) {
+    const product = pickProduct(i + 50);
+    const tracking = qaDemoTrackingNumber(trackingSeq++);
+    const orderRowId = await createFixtureOrder(
+      client,
+      orgId,
+      qaDemoOrderId('shipped', i),
+      `QA demo shipped — ${product.title}`,
+      product.sku,
+      'QA-DEMO',
+    );
+    await assignFixtureTracking(client, orgId, orderRowId, tracking);
+    const shipmentId = await stampPackCompleted(client, orgId, orderRowId, tracking);
+    if (shipmentId == null) continue;
+    await client.query(
+      `INSERT INTO station_activity_logs
+         (organization_id, station, activity_type, shipment_id, scan_ref, notes)
+       SELECT $1, 'OUTBOUND', 'SHIP_CONFIRM', $2, $3, 'QA demo dock scan-out'
+       WHERE NOT EXISTS (
+         SELECT 1 FROM station_activity_logs
+         WHERE organization_id = $1 AND shipment_id = $2 AND activity_type = 'SHIP_CONFIRM'
+       )`,
+      [orgId, shipmentId, tracking],
+    );
+  }
+
+  log(
+    'Demo volume',
+    `awaiting=${QA_DEMO_ORDER_VOLUME.awaiting} pending=${QA_DEMO_ORDER_VOLUME.pending} ` +
+      `packed=${QA_DEMO_ORDER_VOLUME.packed} shipped=${QA_DEMO_ORDER_VOLUME.shipped}`,
+  );
 }
 
 /**
@@ -732,6 +927,7 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
     await seedReceivingFixture(client, orgId, adminStaffId);
     await seedIncomingFixture(client, orgId);
     const orderRowIds = await seedOrderFixtures(client, orgId);
+    await seedDemoOrderVolume(client, orgId);
     await seedMyDayFixtures(client, orgId, adminStaffId, orderRowIds);
     await client.query('COMMIT');
   } catch (err) {
@@ -798,21 +994,14 @@ async function main() {
     }
 
     let staffId = 0;
+    // Always ensure org + admin (email+password) — fixtures-only still refreshes
+    // the QA Admin password so `/signin` stays usable after env changes.
+    await ensureOrganization(pool, orgId);
+    staffId = await ensureAdminStaff(pool, orgId);
     if (!FIXTURES_ONLY) {
-      await ensureOrganization(pool, orgId);
-      staffId = await ensureAdminStaff(pool, orgId);
       await ensureStationStaff(pool, orgId);
       await enableFeatureFlags(pool, orgId);
       await seedCatalogAndWorkflow(orgId, staffId);
-    } else {
-      const r = await pool.query<{ id: number }>(
-        `SELECT id FROM staff WHERE organization_id = $1 AND role = 'admin' ORDER BY id LIMIT 1`,
-        [orgId],
-      );
-      if (!r.rows[0]) {
-        throw new Error('No QA admin staff found — run without --fixtures-only first');
-      }
-      staffId = r.rows[0].id;
     }
 
     await seedFixtures(pool, orgId, staffId);
@@ -822,8 +1011,10 @@ async function main() {
     }
 
     console.log('\n── QA org ready ──');
-    console.log(`  Sign in: /signin  →  "${QA_ADMIN_NAME}"`);
-    console.log(`  PIN:     ${QA_ADMIN_PIN}  (set QA_ADMIN_PIN in .env to override)`);
+    console.log(`  Email:   ${QA_ADMIN_EMAIL}`);
+    console.log(`  Pass:    (QA_ADMIN_PASSWORD / default CycleForge-QA-local!)`);
+    console.log(`  PIN:     ${QA_ADMIN_PIN}  (station fallback; set QA_ADMIN_PIN to override)`);
+    console.log(`  Org:     ${QA_ORG_NAME} (${orgId})`);
     console.log(`  Scan:    ${QA_FIXTURE_TRACKING} in receiving`);
     console.log(`  Env:     QA_ORG_ID=${orgId}`);
     console.log(`           PW_QA_STAFF_NAME="${QA_ADMIN_NAME}"\n`);

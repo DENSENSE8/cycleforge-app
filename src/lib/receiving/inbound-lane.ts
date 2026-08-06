@@ -7,7 +7,7 @@
  */
 
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
-import { HISTORY_SORT_OPTIONS } from '@/lib/receiving/receiving-modes';
+import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
 
 export type InboundLane = 'pipeline' | 'docked';
 
@@ -23,7 +23,7 @@ const PIPELINE_SORT_IDS = [
   'recently_added',
 ] as const;
 
-const HISTORY_SORT_IDS = HISTORY_SORT_OPTIONS.map((o) => o.id);
+const HISTORY_SORT_IDS = HISTORY_SORT_WIRE_IDS;
 
 /** Params that belong only to the Pipeline lane. */
 const PIPELINE_ONLY_PARAMS = [

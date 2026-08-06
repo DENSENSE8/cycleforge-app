@@ -64,7 +64,7 @@ export function PhotoListView({
                   <TicketNasBackupButton
                     ticketNumber={ticketNumber}
                     size="sm"
-                    label="Backup to NAS"
+                    label="Sync to NAS"
                     className="ml-auto"
                   />
                 ) : null}

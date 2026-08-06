@@ -683,18 +683,30 @@ export function useUnmatchedItems({
 
   const handleConditionChange = useCallback(
     async (lineId: number, conditionGrade: string) => {
+      const cleared = !String(conditionGrade || '').trim();
       setLines((prev) =>
         prev.map((l) =>
-          l.id === lineId ? { ...l, condition_grade: conditionGrade } : l,
+          l.id === lineId
+            ? {
+                ...l,
+                // UI clear: drop the active pill. DB testing.condition_grade is
+                // NOT NULL — reopen only retracts condition_graded_at.
+                ...(cleared
+                  ? { condition_grade: '' }
+                  : { condition_grade: conditionGrade }),
+              }
+            : l,
         ),
       );
       // Surface the grade so the panel's label preview/print tracks it — the
       // matched-carton flow does this through ActiveLineConditionSerial.
-      onActiveConditionChange?.(conditionGrade);
+      onActiveConditionChange?.(cleared ? '' : conditionGrade);
       const res = await fetch(`/api/receiving/lines/${lineId}/condition`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ condition_grade: conditionGrade }),
+        body: JSON.stringify(
+          cleared ? { reopen: true } : { condition_grade: conditionGrade },
+        ),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.success) {
@@ -702,7 +714,7 @@ export function useUnmatchedItems({
         await refreshLines();
       }
     },
-    [refreshLines],
+    [refreshLines, onActiveConditionChange],
   );
 
   // Lineless carton ("PO ITEMS · 0"): grading the carton's scan condition is a

@@ -6,7 +6,7 @@ import { ReceivingConditionCell } from './ReceivingConditionCell';
 import { ReceivingDateCell } from './ReceivingDateCell';
 import { ReceivingLocationCell } from './ReceivingLocationCell';
 import { ReceivingOrderCell } from './ReceivingOrderCell';
-import { ReceivingPlatformCell } from './ReceivingPlatformCell';
+import { ReceivingPriceCell } from './ReceivingPriceCell';
 import { ReceivingQtyCell } from './ReceivingQtyCell';
 import { ReceivingSelectCell } from './ReceivingSelectCell';
 import { ReceivingSerialCell } from './ReceivingSerialCell';
@@ -46,14 +46,14 @@ export function renderReceivingGridCell(
       return <ReceivingDateCell {...props} />;
     case 'qty':
       return <ReceivingQtyCell {...props} />;
+    case 'price':
+      return <ReceivingPriceCell {...props} />;
     case 'condition':
       return <ReceivingConditionCell {...props} />;
     case 'status':
       return <ReceivingStatusCell {...props} />;
     case 'location':
       return <ReceivingLocationCell {...props} />;
-    case 'platform':
-      return <ReceivingPlatformCell {...props} />;
     case 'order':
       return <ReceivingOrderCell {...props} />;
     case 'tracking':
@@ -62,14 +62,6 @@ export function renderReceivingGridCell(
       return <ReceivingSerialCell {...props} />;
     case 'zoho':
       return <ReceivingZohoCell {...props} />;
-    case '_fill':
-      // Seamless blank plane — no vertical rule into the filler.
-      return (
-        <span
-          className={receivingDataCellClass(col, false, ctx)}
-          aria-hidden
-        />
-      );
     default:
       return (
         <span

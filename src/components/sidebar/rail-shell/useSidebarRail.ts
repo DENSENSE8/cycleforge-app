@@ -42,7 +42,7 @@ const RAIL_REFRESH_DEBOUNCE_MS = 350;
 export function useSidebarRail<TRow>({
   queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, refreshDomains,
   navigateEvent,
-  excludedIds = EMPTY_EXCLUDED, loadSnapshot, persistSnapshot,
+  excludedIds = EMPTY_EXCLUDED, includeRow, loadSnapshot, persistSnapshot,
   selectedId, selectedRow = null, leadingRow = null, limit = 25,
   autoSelectFirstWhenEmpty = false,
   canAutoSelectFirst,
@@ -307,12 +307,15 @@ export function useSidebarRail<TRow>({
     },
     [deletedIds, deletedGroupIds, getId, getGroupId],
   );
-  // Drop deleted rows AND this viewer's dismissed rows (excludedIds). The
-  // dismiss set is filtered HERE, not in the queryKey/fetch, so loading it or
-  // changing it (a dismiss) re-filters in place instead of forcing a queryKey
-  // change that would blank the whole list to a skeleton.
+  // Drop deleted rows AND this viewer's dismissed rows (excludedIds), then any
+  // facet keep-filter (`includeRow`). Both are filtered HERE, not in the
+  // queryKey/fetch, so loading/changing them re-filters in place instead of
+  // forcing a queryKey change that would blank the whole list to a skeleton.
   const baseRows = (Array.isArray(localRows) ? localRows : []).filter(
-    (r) => !isRowDeleted(r) && !excludedIds.has(getId(r)),
+    (r) =>
+      !isRowDeleted(r)
+      && !excludedIds.has(getId(r))
+      && (includeRow ? includeRow(r) : true),
   );
   // An optimistic leading row (e.g. the triage "importing" stub) renders at the
   // very top through the SAME row component. It is KEPT (not dropped) once the

@@ -1,20 +1,23 @@
-'use client';
+"use client";
 
-import { type ComponentProps, type ReactNode, type RefObject } from 'react';
-import { ConditionPills } from '../ConditionPills';
-import { SerialCard } from '../SerialCard';
-import { SerialMatchResult, type SerialMatchedOrder } from '../SerialMatchResult';
-import { ReceivingUnitRows, type UnitSerial } from '../ReceivingUnitRows';
-import type { ActiveRowSerial } from '../PoLinesAccordion';
-import { NoSerialControl, type SerialAbsentState } from './NoSerialControl';
-import type { UnitSlotView } from '../UnitSlotList';
-import { markAllEmptyReceivingUnitsSerialAbsent } from '../receiving-label-helpers';
-import { useSetting } from '@/hooks/useSettings';
-import { requestConfirm } from '@/design-system/components/confirm';
+import { type ComponentProps, type ReactNode, type RefObject } from "react";
+import { ConditionPills } from "../ConditionPills";
+import { SerialCard } from "../SerialCard";
+import {
+  SerialMatchResult,
+  type SerialMatchedOrder,
+} from "../SerialMatchResult";
+import { ReceivingUnitRows, type UnitSerial } from "../ReceivingUnitRows";
+import type { ActiveRowSerial } from "../PoLinesAccordion";
+import { NoSerialControl, type SerialAbsentState } from "./NoSerialControl";
+import type { UnitSlotView } from "../UnitSlotList";
+import { markAllEmptyReceivingUnitsSerialAbsent } from "../receiving-label-helpers";
+import { useSetting } from "@/hooks/useSettings";
+import { requestConfirm } from "@/design-system/components/confirm";
 
 type SerialLookupView = Pick<
   ComponentProps<typeof SerialMatchResult>,
-  'state' | 'unit' | 'serial' | 'matchedOrder'
+  "state" | "unit" | "serial" | "matchedOrder"
 >;
 
 /**
@@ -29,15 +32,9 @@ type SerialLookupView = Pick<
  * handlers. The `requestConfirm` guards on delete are gated by the
  * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
  *
- * ## Why item photos hang here
- *
- * `itemPhotoSlot` is the desktop's only item-evidence affordance. Item photos →
- * condition → serial are three consecutive steps of the unbox procedure
- * (`derive-capture-step-states.ts`), and the last two already live on this card;
- * the first had no desktop surface at all until 2026-08-01 — the phone could
- * shoot `unbox_item`, the bench could not even upload one. It is a SLOT, not a
- * mounted pill, so this component stays presentational and each lane decides
- * for itself whether it has item evidence to capture.
+ * Main Unbox paints condition · serial only on this card. Optional
+ * `itemPhotoSlot` remains for lanes that still want a labeled item-evidence
+ * row (procedure dock / future per-unit photos); omit it and the row is absent.
  */
 export function ActiveLineConditionSerial({
   serials,
@@ -63,6 +60,11 @@ export function ActiveLineConditionSerial({
   serialInputRef,
   units = null,
   itemPhotoSlot,
+  onEditFilledSerial,
+  stationCompact = false,
+  hideCondition = false,
+  flush = false,
+  activeRowLeading,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -80,20 +82,52 @@ export function ActiveLineConditionSerial({
   requireSerialConfirmation: boolean;
   /** Materialised per-unit rows for the multi-qty green-check (Phase 3). */
   units?: UnitSlotView[] | null;
+  /**
+   * Filled unit pencil — open Units display. Optional; in-row replace when absent.
+   */
+  onEditFilledSerial?: (serial: UnitSerial) => void;
+  /**
+   * Multi-unit Station body: keep empty scan inputs, but collapse condition
+   * controls and completed serials to readouts. Durable editing stays in the
+   * Units right-edge display.
+   */
+  stationCompact?: boolean;
+  /**
+   * Units Displays feed (legacy): serials only — no ConditionPills / grade circle.
+   * Prefer {@link flush} for the Units explosion (in-row collapsible pills).
+   */
+  hideCondition?: boolean;
+  /**
+   * Units Displays flush chrome: square serial rows, hairline dividers,
+   * underline/joined fields. Per-unit ConditionPills expand collapses photo + serial.
+   */
+  flush?: boolean;
+  /**
+   * Leading control on every flush unit row (e.g. line-scoped item camera).
+   * Always leftmost. Units explosion mounts {@link ReceivingPhotoButton} here —
+   * not a standalone ITEM PHOTOS section.
+   */
+  activeRowLeading?: ReactNode;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   /** Programmatic focus target for the dock Add serial handoff. */
   serialInputRef?: RefObject<HTMLInputElement | null>;
   /**
-   * Item-evidence control for THIS line — the desktop `unbox_item` pill. Omit
-   * on a lane with no item evidence to capture; the labeled step row is not
-   * rendered at all when absent (honest absence beats a dead affordance).
+   * Optional item-evidence control. Main Unbox omits this (condition · serial
+   * only). When provided, renders the labeled Item photos row above the body.
    */
   itemPhotoSlot?: ReactNode;
-  onSubmitSerial: (raw?: string, conditionGrade?: string | null) => void | Promise<void>;
+  onSubmitSerial: (
+    raw?: string,
+    conditionGrade?: string | null,
+  ) => void | Promise<void>;
   onDeleteSerialUnit: (serialUnitId: number, lineId?: number) => void;
   onReplaceSerialUnit: (
-    original: { id: number; serial_number: string; condition_grade?: string | null },
+    original: {
+      id: number;
+      serial_number: string;
+      condition_grade?: string | null;
+    },
     nextSerial: string,
   ) => void;
   onSetUnitGrade: (serialUnitId: number, grade: string) => void;
@@ -104,8 +138,8 @@ export function ActiveLineConditionSerial({
   // Settings Registry: org policy for the destructive serial-remove confirm
   // (default on — falls back to the prior always-confirm UX while loading).
   const { value: confirmSerialRemoval } = useSetting<boolean>(
-    'receiving',
-    'receiving.confirmSerialRemoval',
+    "receiving",
+    "receiving.confirmSerialRemoval",
   );
   const shouldConfirmRemoval = confirmSerialRemoval ?? true;
   const isMultiQty = (quantityExpected ?? 0) > 1;
@@ -114,7 +148,7 @@ export function ActiveLineConditionSerial({
   // reserve the resultSlot's mt-3 — that ghost margin was the extra bottom
   // padding on RETURN / return-serial accordion rows vs the PO-line SoT.
   const matchResult =
-    serialLookup.state !== 'idle' ? (
+    serialLookup.state !== "idle" ? (
       <SerialMatchResult
         state={serialLookup.state}
         unit={serialLookup.unit}
@@ -125,9 +159,10 @@ export function ActiveLineConditionSerial({
     ) : undefined;
 
   return (
-    <div className="min-w-0 space-y-2">
+    <div className={flush ? 'min-w-0' : 'min-w-0 space-y-2'}>
       {/* Item photos — house eyebrow header + right action slot. Labeled, so the
-          step the checklist points at is legible on the work surface itself. */}
+          step the checklist points at is legible on the work surface itself.
+          Units explosion uses activeRowLeading instead (leftmost on every unit row). */}
       {itemPhotoSlot ? (
         <div
           className="flex min-w-0 items-center justify-between gap-2"
@@ -158,22 +193,26 @@ export function ActiveLineConditionSerial({
             isSubmitting={serialSubmitting}
             requireSerialConfirmation={requireSerialConfirmation}
             serialInputRef={serialInputRef}
-            serialEditTarget={editingSerial?.id != null ? (editingSerial as UnitSerial) : null}
+            serialEditTarget={
+              editingSerial?.id != null ? (editingSerial as UnitSerial) : null
+            }
             onAddSerial={(sn, grade) => onSubmitSerial(sn, grade)}
             onDeleteSerial={async (id) => {
               if (
                 shouldConfirmRemoval &&
                 !(await requestConfirm({
-                  description: 'Remove this serial?',
-                  tone: 'danger',
-                  confirmLabel: 'Remove',
+                  description: "Remove this serial?",
+                  tone: "danger",
+                  confirmLabel: "Remove",
                 }))
               ) {
                 return;
               }
               onDeleteSerialUnit(id);
             }}
-            onReplaceSerial={(original, next) => onReplaceSerialUnit(original, next)}
+            onReplaceSerial={(original, next) =>
+              onReplaceSerialUnit(original, next)
+            }
             onSetUnitGrade={(id, grade) => onSetUnitGrade(id, grade)}
             onConditionChange={onConditionChange}
             onActiveConditionChange={onActiveConditionChange}
@@ -182,6 +221,7 @@ export function ActiveLineConditionSerial({
             noSerialControl={
               <NoSerialControl
                 variant="check"
+                appearance="flush"
                 absent={serialAbsent}
                 reason={serialAbsentReason}
                 required={requireSerialConfirmation}
@@ -198,6 +238,11 @@ export function ActiveLineConditionSerial({
                 }}
               />
             }
+            onEditFilledSerial={onEditFilledSerial}
+            stationCompact={stationCompact}
+            hideCondition={hideCondition}
+            flush={flush}
+            activeRowLeading={activeRowLeading}
           />
           {/* RETURN-only: serial-match result under the unit rows. */}
           {matchResult ?? null}
@@ -207,70 +252,88 @@ export function ActiveLineConditionSerial({
         // under one unit): integrated condition picker + serial card. The
         // no-serial waiver sits directly under the input when no serial exists.
         <>
-        <SerialCard
-          saved={serials}
-          expected={quantityExpected ?? null}
-          isSubmitting={serialSubmitting}
-          disabled={!receivingId}
-          embedded
-          autoFocusInput
-          focusKey={lineId}
-          externalInputRef={serialInputRef}
-          showSavedChips={false}
-          editingSerial={editingSerial}
-          onEditingSerialChange={onEditingSerialChange}
-          resultSlot={matchResult}
-          condition={cond}
-          onConditionChange={onConditionChange}
-          // Collapsed picker: filled circle (grade hue) + white Tags icon.
-          // Meta-row ConditionGradeChip stays the labeled readout.
-          collapsedConditionLabel={true}
-          onAdd={(sn) => onSubmitSerial(sn, cond)}
-          noSerialActive={serialAbsent}
-          onMarkNoSerial={() =>
-            onSerialAbsentChange(
-              serialAbsent
-                ? { absent: false, reason: null }
-                : { absent: true, reason: serialAbsentReason ?? 'NOT_SERIALIZED' },
-            )
-          }
-          noSerialSlot={
-            <NoSerialControl
-              absent
-              fullWidth
-              hideClear
-              reason={serialAbsentReason}
-              required={requireSerialConfirmation}
-              disabled={!receivingId}
-              onChange={onSerialAbsentChange}
-            />
-          }
-          onReplaceSerial={(original, nextSerial) => {
-            if (original.id == null) return;
-            onReplaceSerialUnit(
-              {
-                id: original.id,
-                serial_number: original.serial_number,
-                condition_grade: original.condition_grade,
-              },
-              nextSerial,
-            );
-          }}
-          onDeleteSerial={async (s) => {
-            if (s.id == null) return;
-            if (
-              shouldConfirmRemoval &&
-              !(await requestConfirm({
-                description: `Remove serial ${s.serial_number}?`,
-                tone: 'danger',
-                confirmLabel: 'Remove',
-              }))
-            ) {
-              return;
+          <div
+            className={
+              flush && activeRowLeading
+                ? 'flex min-w-0 items-stretch gap-0 border-b border-border-hairline'
+                : undefined
             }
-            onDeleteSerialUnit(s.id);
-          }}
-        />
+          >
+            {flush && activeRowLeading ? (
+              <div className="flex h-11 w-11 shrink-0 items-stretch [&>*]:h-full [&>*]:w-full">
+                {activeRowLeading}
+              </div>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <SerialCard
+                saved={serials}
+                expected={quantityExpected ?? null}
+                isSubmitting={serialSubmitting}
+                disabled={!receivingId}
+                embedded
+                autoFocusInput
+                focusKey={lineId}
+                externalInputRef={serialInputRef}
+                showSavedChips={false}
+                editingSerial={editingSerial}
+                onEditingSerialChange={onEditingSerialChange}
+                resultSlot={matchResult}
+                condition={hideCondition ? undefined : cond}
+                onConditionChange={hideCondition ? undefined : onConditionChange}
+                // Collapsed picker: filled circle (grade hue) + white Tags icon.
+                // Meta-row ConditionGradeChip stays the labeled readout.
+                collapsedConditionLabel={true}
+                onAdd={(sn) => onSubmitSerial(sn, cond)}
+                noSerialActive={serialAbsent}
+                onMarkNoSerial={() =>
+                  onSerialAbsentChange(
+                    serialAbsent
+                      ? { absent: false, reason: null }
+                      : {
+                          absent: true,
+                          reason: serialAbsentReason ?? "NOT_SERIALIZED",
+                        },
+                  )
+                }
+                noSerialSlot={
+                  <NoSerialControl
+                    absent
+                    fullWidth
+                    hideClear
+                    reason={serialAbsentReason}
+                    required={requireSerialConfirmation}
+                    disabled={!receivingId}
+                    onChange={onSerialAbsentChange}
+                  />
+                }
+                onReplaceSerial={(original, nextSerial) => {
+                  if (original.id == null) return;
+                  onReplaceSerialUnit(
+                    {
+                      id: original.id,
+                      serial_number: original.serial_number,
+                      condition_grade: original.condition_grade,
+                    },
+                    nextSerial,
+                  );
+                }}
+                onDeleteSerial={async (s) => {
+                  if (s.id == null) return;
+                  if (
+                    shouldConfirmRemoval &&
+                    !(await requestConfirm({
+                      description: `Remove serial ${s.serial_number}?`,
+                      tone: "danger",
+                      confirmLabel: "Remove",
+                    }))
+                  ) {
+                    return;
+                  }
+                  onDeleteSerialUnit(s.id);
+                }}
+              />
+            </div>
+          </div>
         </>
       )}
     </div>

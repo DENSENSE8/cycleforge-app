@@ -49,6 +49,11 @@ import {
   RailSelectionBand,
   useRailActionSnapshot,
 } from './OrderRailActions';
+import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
+import {
+  OrdersViewChromeBridge,
+  useOrdersViewChromeOptional,
+} from '@/components/outbound/orders/orders-view-chrome-context';
 
 /**
  * Resolve a raw fact to its display string through the presentation SoT for its
@@ -132,6 +137,7 @@ function CompareFactRow({ fact }: { fact: OrderCompareFact }) {
 export function OrderRailCompare() {
   const { scope, rows } = useRailActionSnapshot();
   const [differencesOnly, setDifferencesOnly] = useState(false);
+  const viewChrome = useOrdersViewChromeOptional();
 
   const occupancy = useMemo(
     () => resolveRailOccupancy((rows as OrderCompareRow[]).map((r) => Number(r.id))),
@@ -169,10 +175,22 @@ export function OrderRailCompare() {
       enabled={active && compare !== null}
       onClose={handleClose}
       modal={false}
+      edgeCollapse
+      collapsedStrip={false}
       ariaLabel="Comparing 2 orders"
     >
+      <OrdersViewChromeBridge value={viewChrome}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
         <RailSelectionBand onClose={handleClose} />
+        {active && viewChrome ? (
+          <div
+            className="flex h-9 min-w-0 items-center justify-end gap-2 border-b border-border-hairline px-2"
+            role="toolbar"
+            aria-label="Orders view topics"
+          >
+            <OrdersViewTopicsCluster />
+          </div>
+        ) : null}
 
         {compare ? (
           <>
@@ -216,6 +234,7 @@ export function OrderRailCompare() {
 
         <RailActionRegion />
       </div>
+      </OrdersViewChromeBridge>
     </DetailStackRailRegistrar>
   );
 }

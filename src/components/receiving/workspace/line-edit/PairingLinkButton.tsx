@@ -15,11 +15,14 @@
 import type { ReactNode } from 'react';
 import { Check, Link2, Star } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/** Outer chrome for a link-style pairing candidate. */
-const PAIRING_CANDIDATE_ROW_CLASS =
-  'min-w-0 rounded-lg border border-border-soft bg-surface-card inset-field transition-colors hover:border-border-default hover:bg-surface-hover';
+/** Outer chrome for a link-style pairing candidate — flush on Displays plane. */
+const PAIRING_CANDIDATE_ROW_CLASS = cn(
+  'min-w-0 border border-border-soft bg-surface-card inset-field transition-colors hover:border-border-default hover:bg-surface-hover',
+  cornerClass('flush'),
+);
 
 type PairingCandidateRowProps = {
   className?: string;

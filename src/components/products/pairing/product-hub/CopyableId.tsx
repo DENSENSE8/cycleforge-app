@@ -1,58 +1,7 @@
-import { useCallback, useId, useRef, type MouseEvent } from 'react';
-import { useSiteTooltipOptional } from '@/components/providers/SiteTooltipProvider';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+'use client';
 
 /**
- * A hover-to-copy identifier. Shows the full SKU/item value in mono style,
- * surfaces the site copy tooltip on hover/focus, and writes the raw value to the
- * clipboard on click. Reuses the shared SiteTooltipProvider so the "click to copy
- * → Copied" bubble matches the rest of the app.
+ * Product-hub plain identifier — re-exports {@link CopyableCellValue} so the
+ * hub stays on the shared click-to-copy SoT (`useCopyChip`), not a twin clipboard path.
  */
-export function CopyableId({ value, className = '' }: { value: string; className?: string }) {
-  const anchorId = useId();
-  const ref = useRef<HTMLButtonElement | null>(null);
-  const tooltip = useSiteTooltipOptional();
-  const getRect = useCallback(() => ref.current?.getBoundingClientRect() ?? null, []);
-  const trimmed = value.trim();
-
-  const open = useCallback(() => {
-    if (tooltip && trimmed) tooltip.activate({ anchorId, value: trimmed, getRect });
-  }, [tooltip, trimmed, anchorId, getRect]);
-  const close = useCallback(() => tooltip?.scheduleClose(anchorId), [tooltip, anchorId]);
-
-  const copy = useCallback(
-    (e: MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      if (!trimmed) return;
-      void navigator.clipboard?.writeText(trimmed);
-      if (tooltip?.isActiveAnchor(anchorId)) tooltip.notifyCopied(anchorId);
-    },
-    [trimmed, tooltip, anchorId],
-  );
-
-  const button = (
-    <button
-      ref={ref}
-      type="button"
-      onClick={copy}
-      onMouseEnter={open}
-      onMouseLeave={close}
-      onFocus={open}
-      onBlur={close}
-      disabled={!trimmed}
-      className={`ds-raw-button min-w-0 truncate text-left transition-colors hover:text-blue-600 hover:underline disabled:no-underline disabled:hover:text-current ${className}`}
-    >
-      {value}
-    </button>
-  );
-
-  // When the SiteTooltipProvider isn't present, fall back to a HoverTooltip
-  // showing the full value (the provider otherwise owns the hover affordance).
-  return !tooltip && trimmed ? (
-    <HoverTooltip label={trimmed} asChild>
-      {button}
-    </HoverTooltip>
-  ) : (
-    button
-  );
-}
+export { CopyableCellValue as CopyableId } from '@/components/ui/CopyChip';

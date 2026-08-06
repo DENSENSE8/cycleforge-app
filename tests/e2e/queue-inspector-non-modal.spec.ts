@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
  *
  * Covers the Wave A flips:
  *   (1) Incoming PO / shipment details (`detail:incoming`)
- *   (2) Repair claim details (`detail:claim`)
+ *   (2) Repair details (`detail:repair`)
  *
  * Run against the QA org (`.claude/rules/verify.md`):
  *   pnpm provision:qa-org && npx playwright test tests/e2e/queue-inspector-non-modal.spec.ts --project=qa-desktop

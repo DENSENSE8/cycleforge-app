@@ -11,6 +11,8 @@ import { ScanBandShell } from '@/components/station/scan-bar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
+import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
+import { useReceivingRailFacets } from '@/components/sidebar/rail-shell/useReceivingRailFacets';
 import { useIsMobile } from '@/hooks';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import {
@@ -103,6 +105,7 @@ export function TestingSidebarPanel({
   const isMobile = useIsMobile();
   const { theme: themeColor } = useStationTheme({ staffId: staffId ? Number(staffId) : 0 });
   const [railFilter, setRailFilter] = useState('');
+  const receivingRailFacets = useReceivingRailFacets();
   const [scanValue, setScanValue] = useState('');
   const [isResolving, setIsResolving] = useState(false);
   const [armedMode, setArmedMode] = useState<ForcedTestingType | null>(null);
@@ -426,6 +429,7 @@ export function TestingSidebarPanel({
           selectedRow={internalSelectedRow}
           testerId={staffId ? Number(staffId) : null}
           filterText={railFilter}
+          includeRow={receivingRailFacets.includeRow}
         />
       </SidebarRailScrollport>
 
@@ -433,6 +437,12 @@ export function TestingSidebarPanel({
         value={railFilter}
         onChange={setRailFilter}
         placeholder="Filter recent…"
+        trailingSuffix={
+          <ReceivingRecentRailFilters
+            facets={receivingRailFacets.facets}
+            onChange={receivingRailFacets.setFacets}
+          />
+        }
       />
 
       {isMobile ? (

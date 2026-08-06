@@ -60,7 +60,7 @@ export function ClaimTicketReply({
               'Public reply'
             )
           ) : (
-            'Internal note — not emailed'
+            'Internal note'
           )}
         </p>
         <div className="flex shrink-0 items-center gap-2">
@@ -96,7 +96,7 @@ export function ClaimTicketReply({
             ]}
             value={mode}
             onChange={(next) => setIsPublic(next === 'public')}
-            className="rounded-lg border border-border-soft px-1 py-0.5"
+            className="rounded-none border border-border-soft px-1 py-0.5"
           />
         </div>
       </div>
@@ -119,18 +119,16 @@ export function ClaimTicketReply({
         placeholder={
           isPublic
             ? 'Message the customer will receive by email…'
-            : 'Internal note — not emailed to anyone…'
+            : 'Internal note…'
         }
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && showInlineSend) void send();
         }}
         className={cn(
-          'rounded-lg border bg-surface-card inset-field focus-within:ring-2',
-          isPublic
-            ? 'border-emerald-200 focus-within:border-emerald-400 focus-within:ring-emerald-500/20'
-            : 'border-border-default focus-within:border-border-emphasis focus-within:ring-text-soft/20',
+          'rounded-none border-0 border-b border-border-hairline bg-surface-sunken focus-within:ring-0',
+          isPublic ? 'ring-inset' : '',
         )}
-        textareaClassName="px-3 py-2 text-role-caption font-medium leading-snug"
+        textareaClassName="inset-field text-role-caption font-medium leading-snug"
         expandFooter={
           showInlineSend ? (
             <>
@@ -141,8 +139,8 @@ export function ClaimTicketReply({
                 )}
               >
                 {isPublic
-                  ? `Emails the customer${ccs.length ? ` · ${ccs.length} cc` : ''}.`
-                  : 'Private note — no email sent.'}
+                  ? `Emails customer${ccs.length ? ` · ${ccs.length} cc` : ''}`
+                  : 'Internal · not emailed'}
               </p>
               <Button
                 variant="primary"
@@ -152,7 +150,7 @@ export function ClaimTicketReply({
                 onClick={() => void send()}
                 disabled={!body.trim()}
               >
-                {isPublic ? 'Send to customer' : 'Add note'}
+                {isPublic ? 'Send' : 'Add note'}
               </Button>
             </>
           ) : undefined
@@ -169,8 +167,8 @@ export function ClaimTicketReply({
               )}
             >
               {isPublic
-                ? `Emails the customer${ccs.length ? ` · ${ccs.length} cc` : ''}.`
-                : 'Private note — no email sent.'}
+                ? `Emails customer${ccs.length ? ` · ${ccs.length} cc` : ''}`
+                : 'Internal · not emailed'}
             </p>
           ) : (
             <span />
@@ -190,7 +188,7 @@ export function ClaimTicketReply({
                 onClick={() => void send()}
                 disabled={!body.trim()}
               >
-                {isPublic ? 'Send to customer' : 'Add note'}
+                {isPublic ? 'Send' : 'Add note'}
               </Button>
             ) : null}
           </div>

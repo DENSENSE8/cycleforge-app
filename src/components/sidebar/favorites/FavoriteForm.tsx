@@ -13,7 +13,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
   return (
     <div className="space-y-2 border-y border-border-soft py-3">
       {/* Ecwid product search */}
-      <div className="rounded-xl border border-border-soft bg-surface-card">
+      <div className="rounded-none border border-border-soft bg-surface-card">
         <input
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
@@ -67,7 +67,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
 
       {/* Selected product — two rows */}
       {selectedProduct && (
-        <div className="rounded-xl border border-blue-200 bg-surface-card inset-field">
+        <div className="rounded-none border border-blue-200 bg-surface-card inset-field">
           <p className="text-role-caption font-semibold leading-snug text-blue-900">{selectedProduct.name}</p>
           <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
             <span className="shrink-0 text-role-micro tabular-nums text-emerald-600">

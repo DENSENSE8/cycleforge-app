@@ -94,7 +94,7 @@ function FlagPill({ flag }: { flag: TraceFlag }) {
 function UnitRow({ unit }: { unit: TraceUnit }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-lg border border-border-hairline bg-surface-canvas/60">
+    <div className="rounded-none border border-border-hairline bg-surface-canvas/60">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -222,7 +222,7 @@ export function FbaShipmentTracePanel({ shipmentId, className }: FbaShipmentTrac
 
   if (error) {
     return (
-      <div className={`rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700 ${className ?? ''}`}>
+      <div className={`rounded-none border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700 ${className ?? ''}`}>
         {error}
       </div>
     );

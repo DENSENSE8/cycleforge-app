@@ -17,6 +17,42 @@
  */
 
 /**
+ * Displays-push tier status (scan-station Displays SoT —
+ * `docs/todo/scan-station-displays-sot-PROMPT.md`). A Tier-A station's centre is
+ * its LINES display (PO items / unfound); its reference tools — Pairing/Linkage ·
+ * Classify · Staging · Ticket · Photos — live on the right-edge Displays push,
+ * never a centre `SectionTabsSlider` strip.
+ *
+ *   - Unbox   (`LineEditPanel`)  — DONE (golden). `ReceivingDisplaysPushStack`.
+ *   - Arrival (`TriagePanel`)    — DONE (Phase C): centre = lines
+ *                                  (`POUnboxingSection`); Pairing · Classify ·
+ *                                  Staging on `arrival-displays-push`. Guard:
+ *                                  `receiving/triage/arrival-displays-push.guard.test.ts`.
+ *   - Testing (`TestingPanel`)   — DONE (Phase E, targeted): carton Package
+ *                                  Pairing is the Linkage Displays body
+ *                                  (`testing-displays-push`), opened from the
+ *                                  identity `# ----` chip; centre work tabs
+ *                                  (Testing · Ticket · SKU-Pairing · Checklist ·
+ *                                  Manuals · Timeline) retained by design.
+ *   - Pack    (`PackOrderPanel`) — DONE (2026-08-06): centre = checklist /
+ *                                  UNIT peek; Ticket · Photos · Support ·
+ *                                  Timeline on `pack-displays-push`. Guard:
+ *                                  `packer/pack-displays-push.guard.test.ts`.
+ *                                  Still terminal-exempt (no sticky dock).
+ *   - Labels  (`LabelsOrderWorkspace`) — DONE (Phase F): centre = Print;
+ *                                  Documents · Timeline on `labels-displays-push`.
+ *   - Shipping (`ActiveOrderWorkspace`) — DONE (Phase F): centre = Ship · Units;
+ *                                  Timeline on `shipping-displays-push`.
+ *   - Packer review (`PackerReviewMode`) — DONE (Phase F): centre = Note;
+ *                                  Photos · Tracking · Timeline on
+ *                                  `pack-review-displays-push`.
+ *
+ * These are the census members whose panels compose the shared Displays host; the
+ * width / ambient-wash / panel-root / terminal ratchets below are orthogonal and
+ * stay green through the port.
+ */
+
+/**
  * Station right-pane adopter directories (relative to `src/`). The column-width
  * (A) / panel-root (C) / terminal-path (E) census walks these. The SoT
  * primitives under `components/station/**` are deliberately excluded — they
@@ -64,10 +100,10 @@ export const AMBIENT_WASH_BASELINE = 1;
 /** Exact panel-root className the SoT `StationPanelRoot` owns. */
 export const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-sunken';
 /**
- * Remaining station-family hand-rolls: `outbound/labels/LabelsOrderWorkspace.tsx`
- * (Tier B port follow-up). Shrink-only — migrate onto `StationPanelRoot`.
+ * Remaining station-family hand-rolls: none (Labels · Pack · Review compose
+ * `StationPanelRoot`). Shrink-only — never raise.
  */
-export const PANEL_ROOT_BASELINE = 1;
+export const PANEL_ROOT_BASELINE = 0;
 
 // ── Guard D — StationWorkbench adoption (positive assertion) ───────────────────
 /**

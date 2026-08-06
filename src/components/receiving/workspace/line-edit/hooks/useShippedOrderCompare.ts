@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ShippedOrderCompare } from '@/lib/receiving/returned-serial-link';
+import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 
 /**
  * Data layer behind the "Order #" search lane in {@link UnfoundMatchStrip}.
@@ -29,6 +30,7 @@ const IDLE: CompareState = { status: 'idle', message: null, result: null };
 export function useShippedOrderCompare() {
   const [state, setState] = useState<CompareState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
+  const { playScanFeedback } = useScanFeedback();
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -63,13 +65,21 @@ export function useShippedOrderCompare() {
         if (controller.signal.aborted) return;
         if (!res.ok || !data?.success) {
           setState({ status: 'error', message: data?.error || 'Lookup failed', result: null });
+          playScanFeedback('reject');
           return;
         }
         if (!data.found) {
           setState({ status: 'not-found', message: `No shipped order “${trimmed}”.`, result: data });
+          playScanFeedback('reject');
           return;
         }
         setState({ status: 'found', message: null, result: data });
+        // Serial compare outcome drives success vs reject — mismatch must not chirp.
+        if (data.serial_match === 'match') {
+          playScanFeedback('success');
+        } else if (data.serial_match === 'mismatch') {
+          playScanFeedback('reject');
+        }
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return;
         setState({
@@ -77,11 +87,12 @@ export function useShippedOrderCompare() {
           message: err instanceof Error ? err.message : 'Lookup failed',
           result: null,
         });
+        playScanFeedback('reject');
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
       }
     },
-    [],
+    [playScanFeedback],
   );
 
   // Abort any in-flight request on unmount.

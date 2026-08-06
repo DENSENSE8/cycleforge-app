@@ -23,11 +23,8 @@ function MissingSlot({ what }: { what: string }) {
 }
 
 export function ItemPhotoDockControl({ itemPhotoSlot }: UnboxStepDockContext) {
-  // `data-unbox-item-photos` travelled here with the control it names. The
-  // attribute is the CONTRACT (`unbox-item-photo-capture.spec.ts` asserts the
-  // capture pill is inside it), not the component that happens to carry it — so
-  // it follows the pill to the dock rather than staying on the card that no
-  // longer has one.
+  // Anchor for the procedure-dock item camera (parked `unbox-work` lane). Main
+  // Unbox PO-line body no longer mounts this — condition · serial only.
   if (!itemPhotoSlot) return <MissingSlot what="No item evidence to capture on this line." />;
   return (
     // Prompt dropped with the move into the composer footer — the cue line above

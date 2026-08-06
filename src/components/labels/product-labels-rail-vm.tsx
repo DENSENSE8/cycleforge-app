@@ -5,7 +5,6 @@
 
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
-import { unitStatusBadgeClass } from '@/lib/unit-status';
 
 /** Coarse unit lifecycle → Unbox-style rail status dot. */
 const STATUS_DOT: Record<string, string> = {
@@ -62,15 +61,4 @@ export function getLabelPrintStatusDotLabel(row: LabelPrintFeedItem): string {
   const status = row.current_status?.trim();
   if (status) return status;
   return 'Label printed';
-}
-
-/** Compact status chip for the rail hover popover. */
-export function LabelPrintStatusChip({ status }: { status: string }) {
-  return (
-    <span
-      className={`rounded px-1.5 py-0.5 text-role-micro uppercase tracking-wider ${unitStatusBadgeClass(status)}`}
-    >
-      {status}
-    </span>
-  );
 }

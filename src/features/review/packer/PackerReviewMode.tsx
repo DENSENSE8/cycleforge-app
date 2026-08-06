@@ -1,18 +1,16 @@
 'use client';
 
 /**
- * Review · Packing detail — Unbox-family Station Workbench (PackOrderPanel /
- * LineEditPanel anatomy):
- *   StationContextBar + CartonContextCard (two-row) + StationMoreDetails
- *   → StationWorkbench → SectionTabsSlider
- *   → StationTerminalDock → SlicedActionDock (Approve · Flag menu)
+ * Review · Packing detail — Unbox-family Station Workbench:
+ *   StationScanPaneHost + StationPanelRoot
+ *   Centre = Note (flag requires a note — always on the work floor)
+ *   Displays = Photos · Tracking · Timeline
+ *   StationTerminalDock → Approve · Flag menu
  *
- * Receiving-only LineEditModals (claim / audit / photo-note) stay on Unbox —
- * Review has no ReceivingLineRow. Overlays still compose *around* the
- * workbench the same way LineEditModals does for Unbox.
+ * Mid-canvas SectionTabsSlider deleted (scan-station Displays SoT Phase F).
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
@@ -30,15 +28,15 @@ import {
   AlertTriangle,
   Camera,
   Check,
-  FileText,
   History,
   Loader2,
   Truck,
 } from '@/components/Icons';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
-import { SectionTabsSlider, WorkspaceCard, WORKSPACE_NESTED_FIELD, WORKSPACE_NESTED_FIELD_PAD } from '@/design-system/components';
 import {
   buildSectionTabs,
+  StationPanelRoot,
+  StationScanPaneHost,
   StationWorkbench,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
@@ -47,6 +45,8 @@ import {
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import { StationTerminalDock } from '@/components/station/terminal';
+import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
+import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -63,7 +63,7 @@ import { Pencil } from '@/components/Icons';
 import type { PackTier } from '@/lib/packing/pack-tier-classifier';
 import { DEFAULT_TIER_MINUTES } from '@/lib/packing/pack-tier-classifier';
 
-type ReviewView = 'photos' | 'tracking' | 'note' | 'timeline';
+type ReviewDisplayTab = 'photos' | 'tracking' | 'timeline';
 
 async function submitDecision(args: {
   packerLogId: number;
@@ -91,7 +91,7 @@ export function PackerReviewMode({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [note, setNote] = useState('');
-  const [reviewView, setReviewView] = useState<ReviewView>('photos');
+  const [activeSideTab, setActiveSideTab] = useState<ReviewDisplayTab | null>(null);
   const [packEditorOpen, setPackEditorOpen] = useState(false);
 
   const packTierLabel = useMemo(() => {
@@ -170,7 +170,10 @@ export function PackerReviewMode({
   const busy = decide.isPending;
   const flagDisabled = busy || note.trim().length === 0;
 
-  const tabs = useMemo(
+  const openDisplays = useCallback((tab: ReviewDisplayTab) => setActiveSideTab(tab), []);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+
+  const displayTabs = useMemo(
     () =>
       buildSectionTabs([
         {
@@ -179,7 +182,7 @@ export function PackerReviewMode({
           icon: Camera,
           count: photos.length > 0 ? photos.length : undefined,
           content: (
-            <WorkspaceCard variant="glass" bodyDensity="nested">
+            <div className="space-y-3">
               {photosQuery.isLoading ? (
                 <div className="flex items-center gap-2 text-role-caption text-text-muted">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -202,11 +205,11 @@ export function PackerReviewMode({
                         <img
                           src={p.photoUrl}
                           alt={kind ? `Pack ${kind.toLowerCase()}` : 'Pack photo'}
-                          className="h-28 w-28 rounded-xl border border-border-hairline object-cover"
+                          className="h-28 w-28 rounded-none border border-border-hairline object-cover"
                           loading="lazy"
                         />
                         {kind ? (
-                          <span className="absolute bottom-1 left-1 rounded bg-scrim/70 px-1 py-0.5 text-role-micro uppercase tracking-widest text-white">
+                          <span className="absolute bottom-1 left-1 rounded-none bg-scrim/70 px-1 py-0.5 text-role-micro uppercase tracking-widest text-white">
                             {kind}
                           </span>
                         ) : null}
@@ -215,7 +218,7 @@ export function PackerReviewMode({
                   })}
                 </div>
               )}
-            </WorkspaceCard>
+            </div>
           ),
         },
         {
@@ -223,9 +226,9 @@ export function PackerReviewMode({
           label: 'Tracking',
           icon: Truck,
           content: (
-            <WorkspaceCard variant="glass" bodyDensity="nested">
+            <div className="space-y-2 border border-border-soft bg-surface-card px-3 py-2.5">
               {row.productTitle ? (
-                <p className="mb-2 truncate text-role-caption text-text-muted">{row.productTitle}</p>
+                <p className="truncate text-role-caption text-text-muted">{row.productTitle}</p>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="truncate font-mono text-role-caption font-semibold text-text-default">
@@ -237,31 +240,10 @@ export function PackerReviewMode({
                   hasTracking={tracking.length > 0}
                 />
               </div>
-              <p className="mt-3 text-role-micro text-text-faint">
+              <p className="text-role-micro text-text-faint">
                 Captured {formatDateTimePST(row.createdAt)}
               </p>
-            </WorkspaceCard>
-          ),
-        },
-        {
-          id: 'note',
-          label: 'Note',
-          icon: FileText,
-          content: (
-            <WorkspaceCard variant="glass" bodyDensity="nested">
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={4}
-                placeholder="What's wrong / what to fix (required when flagging)…"
-                className={cn(
-                  WORKSPACE_NESTED_FIELD,
-                  WORKSPACE_NESTED_FIELD_PAD,
-                  'w-full resize-none text-role-caption text-text-default placeholder:text-text-faint',
-                  focusRing('field', 'accent'),
-                )}
-              />
-            </WorkspaceCard>
+            </div>
           ),
         },
         {
@@ -284,7 +266,6 @@ export function PackerReviewMode({
       tracking,
       row.productTitle,
       row.createdAt,
-      note,
       hasTimelineTab,
       orderId,
       verifyQuery.isFetching,
@@ -292,9 +273,11 @@ export function PackerReviewMode({
     ],
   );
 
-  const activeView: ReviewView = tabs.some((t) => t.id === reviewView)
-    ? reviewView
-    : ((tabs[0]?.id as ReviewView) || 'photos');
+  const resolvedSideTab: ReviewDisplayTab | null = useMemo(() => {
+    if (!activeSideTab) return null;
+    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
+    return (displayTabs[0]?.id as ReviewDisplayTab | undefined) ?? null;
+  }, [activeSideTab, displayTabs]);
 
   const terminalVm: TerminalActionVm = {
     label: 'Approve',
@@ -313,10 +296,9 @@ export function PackerReviewMode({
         label: 'Flag for follow-up',
         icon: <AlertTriangle className="h-4 w-4" />,
         disabled: flagDisabled,
-        title: note.trim().length === 0 ? 'Add a note on the Note tab first' : undefined,
+        title: note.trim().length === 0 ? 'Add a note in the centre first' : undefined,
         onClick: () => {
           if (flagDisabled) {
-            setReviewView('note');
             toast.message('Add a note before flagging.');
             return;
           }
@@ -326,6 +308,17 @@ export function PackerReviewMode({
     ],
   };
 
+  const utilityRailBody = (
+    <div className="flex flex-col items-center gap-0 pt-0">
+      {!activeSideTab ? (
+        <UnboxDisplaysEdgeToggle
+          variant="pane-open"
+          onClick={() => openDisplays('photos')}
+        />
+      ) : null}
+    </div>
+  );
+
   return (
     <motion.div
       key={row.packerLogId}
@@ -333,67 +326,105 @@ export function PackerReviewMode({
       animate={cardPresence.animate}
       exit={cardPresence.exit}
       transition={cardTransition}
-      className="relative flex h-full w-full flex-col bg-surface-canvas"
+      className="relative flex h-full w-full min-h-0 flex-col"
     >
-      <StationContextBar
-        identity={
-          <motion.div initial="hidden" animate="show" variants={revealContainer}>
-            <motion.div variants={revealItem}>
-              <ReviewOrderIdentity row={row} />
-            </motion.div>
-          </motion.div>
-        }
-        moreDetails={
-          <StationMoreDetails>
-            {packTierLabel ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
-                Pack {packTierLabel}
-                {row.estimatedPackMinutes != null
-                  ? ` · ${row.estimatedPackMinutes}m`
-                  : packTierForEditor
-                    ? ` · ${DEFAULT_TIER_MINUTES[packTierForEditor]}m`
-                    : ''}
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
-                Pack size unknown
-              </span>
-            )}
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Pencil className="h-3.5 w-3.5" />}
-              onClick={() => setPackEditorOpen(true)}
-            >
-              {row.skuCatalogId != null ? 'Edit pack size' : 'Link catalog'}
-            </Button>
-            <OutcomeChip outcome={row.outcome} />
-            <PaneHeaderCloseButton
-              onClick={clearSelection}
-              ariaLabel="Return to review table"
-              title="Return to review table"
+      <StationScanPaneHost
+        displaysOpen={Boolean(resolvedSideTab)}
+        hostDataAttrs={{ 'data-pack-review-pane-host': true }}
+        centerTestId="pack-review-station-center"
+        utilityRail={!activeSideTab ? utilityRailBody : null}
+        center={
+          <StationPanelRoot>
+            <StationContextBar
+              placement="flow"
+              identity={
+                <motion.div initial="hidden" animate="show" variants={revealContainer}>
+                  <motion.div variants={revealItem}>
+                    <ReviewOrderIdentity row={row} />
+                  </motion.div>
+                </motion.div>
+              }
+              moreDetails={
+                <StationMoreDetails>
+                  {packTierLabel ? (
+                    <span className="inline-flex items-center gap-1 rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                      Pack {packTierLabel}
+                      {row.estimatedPackMinutes != null
+                        ? ` · ${row.estimatedPackMinutes}m`
+                        : packTierForEditor
+                          ? ` · ${DEFAULT_TIER_MINUTES[packTierForEditor]}m`
+                          : ''}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
+                      Pack size unknown
+                    </span>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Pencil className="h-3.5 w-3.5" />}
+                    onClick={() => setPackEditorOpen(true)}
+                  >
+                    {row.skuCatalogId != null ? 'Edit pack size' : 'Link catalog'}
+                  </Button>
+                  <OutcomeChip outcome={row.outcome} />
+                  <PaneHeaderCloseButton
+                    onClick={clearSelection}
+                    ariaLabel="Return to review table"
+                    title="Return to review table"
+                  />
+                </StationMoreDetails>
+              }
             />
-          </StationMoreDetails>
-        }
-      />
 
-      <StationWorkbench
-        className="min-h-0 flex-1"
-        reserveScrollClearance={false}
-        reserveIdentityClearance="stacked"
-        tabs={
-          <motion.div initial="hidden" animate="show" variants={revealContainer}>
-            <motion.div variants={revealItem}>
-              <SectionTabsSlider
-                tabs={tabs}
-                value={activeView}
-                onChange={(id) => setReviewView(id as ReviewView)}
-                ariaLabel="Review displays"
-              />
-            </motion.div>
-          </motion.div>
+            <StationWorkbench
+              ambientWash={false}
+              className="relative z-0 flex-1 bg-transparent"
+              reserveScrollClearance={false}
+              reserveIdentityClearance={false}
+              bodyGap="none"
+              dock={<StationTerminalDock vm={terminalVm} />}
+            >
+              <motion.div initial="hidden" animate="show" variants={revealContainer}>
+                <motion.div variants={revealItem}>
+                  <div className="border-b border-border-hairline bg-surface-card px-3 py-2">
+                    <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+                      Review note
+                    </p>
+                    <p className="mt-0.5 text-role-caption text-text-muted">
+                      Required when flagging — always on the centre floor.
+                    </p>
+                  </div>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={6}
+                    placeholder="What's wrong / what to fix (required when flagging)…"
+                    className={cn(
+                      'w-full resize-none rounded-none border-0 bg-surface-card px-3 py-3 text-role-caption text-text-default placeholder:text-text-faint',
+                      focusRing('field', 'accent'),
+                    )}
+                  />
+                </motion.div>
+              </motion.div>
+            </StationWorkbench>
+          </StationPanelRoot>
         }
-        dock={<StationTerminalDock vm={terminalVm} />}
+        displays={
+          resolvedSideTab ? (
+            <ReceivingDisplaysPushStack
+              ariaLabel="Pack review displays"
+              storageKey="pack-review-displays-push-width"
+              testId="pack-review-displays-push"
+              resizeTestId="pack-review-displays-push-resize"
+              tabs={displayTabs}
+              activeTab={resolvedSideTab}
+              onTabChange={(id) => setActiveSideTab(id as ReviewDisplayTab)}
+              onClose={closeDisplays}
+            />
+          ) : null
+        }
       />
 
       <PackProfileEditor
@@ -420,18 +451,24 @@ function VerifyBadge({
   if (!hasTracking) return null;
   if (loading) {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
-        <Loader2 className="h-3 w-3 animate-spin" /> Checking
+      <span className="inline-flex items-center gap-1 text-role-micro text-text-faint">
+        <Loader2 className="h-3 w-3 animate-spin" /> Checking…
       </span>
     );
   }
-  return found ? (
-    <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
-      <Check className="h-3 w-3" /> Order matched
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
-      <AlertTriangle className="h-3 w-3" /> Not matched
-    </span>
-  );
+  if (found === true) {
+    return (
+      <span className="rounded-none bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+        Matched
+      </span>
+    );
+  }
+  if (found === false) {
+    return (
+      <span className="rounded-none bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+        No order
+      </span>
+    );
+  }
+  return null;
 }

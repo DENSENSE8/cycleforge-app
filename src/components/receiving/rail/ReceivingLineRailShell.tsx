@@ -50,10 +50,10 @@ export function ReceivingLineRailShell({
   /** When false the shell stays mounted but does not claim the slot (Unbox line workspace open). */
   enabled = true,
   /**
-   * Incoming only — when the 1-row `IncomingDetailsPanel` is already open, the
-   * batch shell stays off so the two registrars never fight over the slot. When
-   * the operator checked a row without opening the panel, the batch shell covers
-   * Copy / Print / Ticket for that single selection.
+   * When the 1-row inspect panel is already open (`detail:incoming` or
+   * `detail:history`), the batch shell stays off so the two registrars never
+   * fight over the slot. When the operator checked row(s) without opening the
+   * panel, the batch shell covers Copy / Print / Ticket.
    */
   inspectOpen = false,
 }: {
@@ -73,10 +73,14 @@ export function ReceivingLineRailShell({
     if (scope) emitToggleAll(scope, 'none');
   }, [scope]);
 
+  // Incoming: 1-check can claim the batch shell when inspect is closed.
+  // Lines (Unbox History): suppress the batch shell whenever History triage
+  // inspect is open — even for a single check that would otherwise light it.
   const active =
     enabled &&
+    !inspectOpen &&
     (isReceivingRailBatchActive(occupancy) ||
-      (surface === 'incoming' && occupancy.kind === 'inspect' && !inspectOpen));
+      (surface === 'incoming' && occupancy.kind === 'inspect'));
 
   return (
     <DetailStackRailRegistrar

@@ -28,7 +28,7 @@ export function WarrantyClaimsTable() {
   if (error) {
     return (
       <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8">
-        <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
+        <div className="rounded-none border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
           <p className="text-sm font-semibold text-text-danger">
             {error instanceof Error ? error.message : 'Could not load warranty claims.'}
           </p>
@@ -42,7 +42,7 @@ export function WarrantyClaimsTable() {
   const isSearching = Boolean(search) || status != null || expiringSoon;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas p-4">
+    <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
       <WarrantyGridView
         rows={claims}
         loading={isLoading}

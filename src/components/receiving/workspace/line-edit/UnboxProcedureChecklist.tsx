@@ -77,7 +77,8 @@ export function UnboxProcedureChecklist({
   row,
   maxVisibleRows,
 }: UnboxProcedureChecklistProps) {
-  const { steps, settled, stepCount, focusStep, flowLabel } = useUnboxProcedureSteps(row);
+  const { steps, settled, stepCount, focusStep, flowLabel, reorderCaptureSteps } =
+    useUnboxProcedureSteps(row);
 
   const doneCount = steps.reduce((n, step) => n + (step.state === 'done' ? 1 : 0), 0);
   const allDone = steps.length > 0 && doneCount === steps.length;
@@ -106,9 +107,12 @@ export function UnboxProcedureChecklist({
       {settled ? (
         // Clicking a row moves the CENTRE's pointer to that step — the checklist
         // is the map, the cards are the work, and the map is how you navigate.
+        // Drag-handle reorder writes org SOP for this named flow so deck + rail
+        // stay on one resolver override.
         <ProcedureChecklist
           steps={steps}
           onSelectStep={focusStep}
+          onReorderSteps={reorderCaptureSteps}
           maxVisibleRows={maxVisibleRows}
         />
       ) : (

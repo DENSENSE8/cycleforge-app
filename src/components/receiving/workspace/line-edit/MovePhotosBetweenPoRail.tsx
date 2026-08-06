@@ -8,7 +8,7 @@
  * choosing the destination PO is done while looking at the photos, and a scrim
  * covered them.
  *
- * Unbox mounts the same body in {@link ReceivingToolPushStack}.
+ * Unbox mounts the same body in Displays Photos→Move.
  */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';

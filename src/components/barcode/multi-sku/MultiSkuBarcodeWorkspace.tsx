@@ -44,7 +44,7 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
     : mode === 'print'
       ? 'Save & Print Label'
       : mode === 'auto-unit'
-        ? `Issue & Print ${b.quantity} ${b.quantity === 1 ? 'Unit' : 'Units'}`
+        ? `Issue & Print ${b.quantity} units`
       : mode === 'reprint'
         ? 'Reprint Label'
         : 'Log to Database';

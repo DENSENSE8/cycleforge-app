@@ -2,8 +2,8 @@
  * Unbox History drill URL contract — thin domain binding over the WMS-wide
  * LedgerGrid drill SoT (`@/design-system/components/grid` ledger-drill-layout).
  *
- * - `hlayout=list` (default when omitted) — classic single folded LedgerGrid
- * - `hlayout=drill` — linked dual panes
+ * - `hlayout=list` (default when omitted) — flat leaf LedgerGrid (no in-grid fold)
+ * - `hlayout=drill` — linked dual panes; parent rollups live only here
  * - `drillPo` — durable selected {@link ReceivingPoGroup} key
  *
  * Orthogonal to TradingView compare (`clayout` / `c0`…`c3`).
@@ -31,8 +31,8 @@ const HISTORY_DRILL_URL: LedgerDrillUrlContract = {
 };
 
 /**
- * History default is list (folded single grid). Explicit `drill` opts into
- * linked dual panes.
+ * History default is list (flat single grid). Explicit `drill` opts into
+ * linked dual panes with a parent map.
  */
 export function parseHistoryDrillLayout(
   raw: string | null | undefined,

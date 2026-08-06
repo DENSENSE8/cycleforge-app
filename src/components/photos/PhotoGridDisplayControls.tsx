@@ -24,6 +24,12 @@ export interface PhotoGridDisplayControlsProps {
   isRefreshing?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Override density-group chrome (e.g. claim flush `rounded-none p-0`). */
+  groupClassName?: string;
+  /** Override density button chrome (claim flush `!rounded-none`). */
+  buttonClassName?: string;
+  /** Override refresh button chrome (claim flush square). */
+  refreshClassName?: string;
 }
 
 /**
@@ -37,11 +43,14 @@ export function PhotoGridDisplayControls({
   isRefreshing = false,
   disabled = false,
   className,
+  groupClassName,
+  buttonClassName,
+  refreshClassName,
 }: PhotoGridDisplayControlsProps) {
   return (
     <div className={cn('flex shrink-0 items-center gap-1', className)}>
       <div
-        className={cn(photoLibraryControlGroupClass, disabled && 'opacity-50')}
+        className={cn(photoLibraryControlGroupClass, disabled && 'opacity-50', groupClassName)}
         role="group"
         aria-label="Grid size"
       >
@@ -57,7 +66,10 @@ export function PhotoGridDisplayControls({
                 aria-pressed={active}
                 disabled={disabled}
                 onClick={() => onDensityChange(id)}
-                className={cn('ds-raw-button', photoLibraryControlButtonClass(active, 'w-7'))}
+                className={cn(
+                  'ds-raw-button',
+                  photoLibraryControlButtonClass(active, cn('w-7', buttonClassName)),
+                )}
               >
                 <Icon className="h-3.5 w-3.5" />
               </button>
@@ -76,6 +88,7 @@ export function PhotoGridDisplayControls({
             className={cn(
               'ds-raw-button flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft bg-surface-card text-text-soft transition-colors',
               'hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60',
+              refreshClassName,
             )}
           >
             {isRefreshing ? (

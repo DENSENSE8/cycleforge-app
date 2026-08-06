@@ -167,7 +167,7 @@ test.describe('unbox scan-dock dense column geometry', () => {
     }
   });
 
-  test('right edge locks — selection ring clears the canvas cutout, pencil shares the edge', async ({ page }) => {
+  test('selection wash is edge-to-edge; pencil shares the trailing age column', async ({ page }) => {
     await page.goto('/unbox');
     await waitForRailSettled(page);
 
@@ -175,19 +175,17 @@ test.describe('unbox scan-dock dense column geometry', () => {
     expect(g.selectedButton, 'a selected/first row button present').not.toBeNull();
     const sel = g.selectedButton as Box;
 
-    // The button box carries the ring-inset selection ring; it must sit a few px
-    // inside the sidebar edge so it clears the work-canvas rounded-tl-2xl cutout
-    // (right) and respects SIDEBAR_RAIL_INSET_LEFT / sidebar gutter (left).
+    // Warehouse list selection: full-bleed wash / ring — flush to the rail
+    // section (content column pad nests inside the button, not around the ring).
     const ringGapRight = g.sectionRight - sel.right;
-    expect(ringGapRight, 'selection ring clears the rounded canvas edge (~6px)').toBeGreaterThanOrEqual(4);
-    expect(ringGapRight, 'ring inset is not excessive').toBeLessThanOrEqual(10);
+    expect(ringGapRight, 'selection ring flush right').toBeGreaterThanOrEqual(0);
+    expect(ringGapRight, 'selection ring not inset from the pane').toBeLessThanOrEqual(2);
 
     const ringGapLeft = sel.left - g.sectionLeft;
-    expect(ringGapLeft, 'selection ring respects sidebar gutter (~6px)').toBeGreaterThanOrEqual(4);
-    expect(ringGapLeft, 'left gutter is not excessive').toBeLessThanOrEqual(10);
+    expect(ringGapLeft, 'selection ring flush left').toBeGreaterThanOrEqual(0);
+    expect(ringGapLeft, 'selection ring not inset from the pane').toBeLessThanOrEqual(2);
 
-    // Eyebrow pencil shares the row ring's right edge (both narrowed by
-    // SIDEBAR_RAIL_ROW_PAD_RIGHT).
+    // Eyebrow pencil sits in the same trailing w-8 track as row age.
     if (g.pencil) {
       expect(
         Math.abs(g.pencil.right - sel.right),

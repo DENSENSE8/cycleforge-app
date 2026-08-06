@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft } from '@/components/Icons';
-import { getLast8, PoTotalChip } from '@/components/ui/CopyChip';
+import { getLast8, PoTotalChip, resolveChipDisplay } from '@/components/ui/CopyChip';
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
@@ -30,12 +31,13 @@ import {
   formatListingLinkMenuOptions,
   type CartonListingLink,
 } from '@/lib/receiving/listing-links';
+import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
+import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import {
-  HEADER_ICON_BTN_CLASS,
-  TOP_CHROME_ICON_GLYPH,
-} from '@/components/layout/header-shell';
-import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill';
+  STATION_CONTEXT_CLAIM_PILL_CLASS,
+  STATION_CONTEXT_EXIT_PILL_CLASS,
+} from './station-context-action-pill';
 import {
   STATION_IDENTITY_GROUP_CLASS,
   STATION_IDENTITY_LEAD_COL_CLASS,
@@ -60,10 +62,10 @@ import {
  * chrome of its own). Pair hosts with
  * `StationWorkbench reserveIdentityClearance="stacked"`.
  *
- *   Row 1 — *"what kind of work is this, and act on it"* — urgency · platform ·
- *           type, trailing listing · ticket/Claim · Photos.
- *   Row 2 — *"which record is this, how far along, and what is it worth"* —
- *           lifecycle dot · order#/PO# · tracking#, trailing the PO money total.
+ *   Row 1 — *"what kind of work is this"* — urgency · platform · type; Photos
+ *           pinned in a right column.
+ *   Row 2 — *"which record"* — lifecycle · order#/PO# · tracking (left);
+ *           price · listing · Claim/ticket right-justified under Photos.
  *
  * The exit chevron opens row 1 so it and the order chip share the band's left
  * edge. Never mix an identifier into row 1 or a classification into row 2.
@@ -77,10 +79,10 @@ import {
  * `SupportOrderIdentity`) wire domain controllers only.
  *
  * Layout decisions preserved from the original inline implementation:
- *  - The listing chip face is the platform title (eBay / Amazon / …); gray
- *    `----` until a URL / derived storefront href exists. Platform tone stays
- *    on the icon/underline — unmatched cartons have no listing until a PO#
- *    binds them.
+ *  - The listing chip uses a full-color brand tile ({@link PlatformMark}
+ *    `preferBrandTile`) only when `tileSrc` exists (Amazon); other platforms
+ *    show ExternalLink + label with no carton/FBA glyph. ExternalLink goes
+ *    faint when there is no listing URL. Placeholder text when unbound.
  *  - Identity editing: listing/tracking editors accessible via chip edit actions,
  *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
  *    Package Pairing → PO when there is no real Zoho PO id.
@@ -113,6 +115,7 @@ export function CartonContextCard({
   showOrderIdentity = true,
   onEditPo,
   poEditOpen = false,
+  onOrderDetails,
   linkedOrderNumber = null,
   lineId,
   zendeskTrimmed,
@@ -122,6 +125,7 @@ export function CartonContextCard({
   onTicketUnlinked,
   primaryTrackingTrimmed,
   filledExtraTrackingsCount,
+  carrierHint = null,
   isLocalPickup = false,
   trackingEditOpen = false,
   onEditTracking,
@@ -149,7 +153,7 @@ export function CartonContextCard({
    * Purchase-order money total, resolved by the adapter via `cartonPoTotal`
    * (`src/lib/receiving/po-total.ts`) — never summed in a view. `null` renders
    * the honest `—` (no line on this carton carries a mirrored price).
-   * Displayed as row 2's trailing focal fact when {@link showPoTotal}.
+   * Displayed under Photos (before listing · Claim) when {@link showPoTotal}.
    */
   poTotal?: number | null;
   /**
@@ -165,7 +169,7 @@ export function CartonContextCard({
    * `src/lib/receiving/rail/status.ts`); this card never maps a status itself.
    * Omit to hide.
    */
-  lifecycle?: { dotClass: string; label: string } | null;
+  lifecycle?: { dotClass: string; label: string; tip?: string | null } | null;
   /**
    * Carton-wide received / expected counts, resolved via `cartonQtyRollup`
    * (`src/lib/receiving/po-total.ts`) so this shares the PO total's carton
@@ -228,13 +232,18 @@ export function CartonContextCard({
   /** Hide the PO/order identifier slot when the station has no identity yet. */
   showOrderIdentity?: boolean;
   /**
-   * Open Package Pairing → PO tab (link / import a Zoho PO). Pass when the
-   * carton has no real Zoho PO id — empty `# ----` clicks this directly;
-   * sales-order-linked chips keep copy + Edit in the hover menu.
+   * Open Package Pairing → PO tab (link / change / import a Zoho PO). Always
+   * offered when set — empty `# ----` clicks this directly; linked chips keep
+   * Edit in the hover menu alongside Open + Details.
    */
   onEditPo?: () => void;
   /** Pulse the PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
+  /**
+   * Open the in-app Incoming connection panel (PO mirror / sync / link CRUD)
+   * on RightRailHost. Hover menu "Details".
+   */
+  onOrderDetails?: () => void;
   /**
    * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-8,
    * copy-only) ONLY when the carton has no PO# of its own — never clobbers a
@@ -251,6 +260,11 @@ export function CartonContextCard({
   onTicketUnlinked?: () => void;
   primaryTrackingTrimmed: string;
   filledExtraTrackingsCount: number;
+  /**
+   * Stored carrier label/code from the line / shipment. Prefer over regex
+   * detect for brand tile paint (same ladder as Open URL).
+   */
+  carrierHint?: string | null;
   /** Local-pickup fulfillment — suppress tracking chip/editor; show Pickup pill. */
   isLocalPickup?: boolean;
   /** When true, pulses the tracking chip to show edit is active. */
@@ -333,19 +347,21 @@ export function CartonContextCard({
   const orderCopyOnly = isReturn || (!poDisplay && !!linkedReturnOrder);
   const listingHasTarget = !!(listingLink || listingOpenHref);
   const listingLinkOptions = formatListingLinkMenuOptions(listingLinks);
-  // Platform title on the listing face (eBay / Amazon / …). Identity last-8
-  // stays on PO# / TRK / ticket; platform tone still drives icon/underline.
-  const listingChipDisplay = isReturn
-    ? platformValue
-      ? platformMeta.label
-      : 'Return'
-    : listingHasTarget
-      ? platformValue
-        ? platformMeta.label
-        : isUnmatched
+  // Listing face: brand tile (Amazon) as iconOnly; platforms without tileSrc
+  // use ExternalLink + label (no carton/FBA glyph fallback). Identity last-8
+  // stays on PO# / TRK / ticket. Placeholder text when unbound / no platform.
+  const listingUsesBrandTile = !!platformMeta.tileSrc;
+  // Same paint ladder as PlatformMark — order `#` + listing ExternalLink.
+  const platformIconTone = platformValue ? platformMetaIconTone(platformMeta) : null;
+  const listingChipDisplay = platformValue
+    ? platformMeta.label
+    : isReturn
+      ? 'Return'
+      : listingHasTarget
+        ? isUnmatched
           ? 'Unfound'
           : 'Listing'
-      : '--------';
+        : resolveChipDisplay('');
   const listingOpenTitle = platformValue
     ? `Open ${platformMeta.label} listing in new tab`
     : 'Open listing in new tab';
@@ -386,19 +402,18 @@ export function CartonContextCard({
   });
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
-  // Exit chevron — leading column spanning both rows so row 1 and row 2 share
-  // a left edge (one-row anatomy per row). `xs` matches
-  // {@link STATION_IDENTITY_LEAD_COL_CLASS} (`w-6`) so the chevron and
-  // lifecycle dot centre on one x — no `HEADER_ICON_WRAP` (that box is h-8).
+  // Exit chevron — boxed h-8 flush face matching Claim · Photos · classify.
+  // Lead column is {@link STATION_IDENTITY_LEAD_COL_CLASS} (`h-8 w-8`) so the
+  // chevron and lifecycle dot centre on one x.
   const exitControl = onExitToList ? (
     <HoverTooltip label={exitLabel} asChild>
       <IconButton
         type="button"
-        size="xs"
+        size="md"
         onClick={onExitToList}
         ariaLabel={exitLabel}
         icon={<ChevronLeft className={TOP_CHROME_ICON_GLYPH} />}
-        className={cn(HEADER_ICON_BTN_CLASS, 'text-text-faint hover:text-text-muted')}
+        className={STATION_CONTEXT_EXIT_PILL_CLASS}
       />
     </HoverTooltip>
   ) : null;
@@ -461,9 +476,9 @@ export function CartonContextCard({
     </div>
   ) : null;
 
-  /* Listing / external open — ExternalLink + platform title (same CopyChip
-     anatomy as PO# / tracking). Hover: Copy, then Edit. Stacked pins this to
-     row 1's trailing slot. */
+  /* Listing / external open — Amazon brand tile + ExternalLink when tileSrc
+     exists; otherwise ExternalLink + platform label (no carton glyph). Hover:
+     Copy, then Edit. Stacked pins this to row 2's leading commerce cluster. */
   const listingChip = showListing ? (
       <IdentityLinkChip
         openHref={listingOpenHref}
@@ -471,9 +486,15 @@ export function CartonContextCard({
         linkOptions={listingLinkOptions}
         value={listingLink || listingOpenHref || ''}
         display={listingChipDisplay}
-        // Platform tone ONLY when there's an actual listing to open.
-        underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
-        iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
+        // ExternalLink tone ONLY — brand tiles stay full color.
+        iconClass={
+          listingHasTarget && platformIconTone
+            ? platformIconTone.className
+            : 'text-text-faint'
+        }
+        iconStyle={
+          listingHasTarget && platformIconTone ? platformIconTone.style : undefined
+        }
         disableCopy={!(listingLink.trim() || listingOpenHref)}
         onEdit={onEditListing}
         editOpen={listingEditOpen}
@@ -482,48 +503,147 @@ export function CartonContextCard({
         chipAction="open"
         menuFirstAction="copy"
         showExternalIcon
+        iconOnly={listingUsesBrandTile}
+        iconOnlyMark={
+          listingUsesBrandTile ? (
+            <PlatformMark
+              platformValue={platformValue}
+              preferBrandTile
+              empty={!platformValue}
+            />
+          ) : undefined
+        }
       />
   ) : null;
+
+  /* Filed ticket# OR empty Claim CTA — stacks directly under Photos in the
+     right column (never beside Photos, never in the row-2 identity strip). */
+  const filedTicketChip =
+    showStaffPhotoRow && zendeskTrimmed ? (
+      <ReceivingTicketChip
+        value={zendeskTrimmed}
+        display={zendeskChipDisplay}
+        openHref={zendeskHref}
+        providerTicketId={providerTicketId}
+        receivingId={receivingId}
+        lineId={lineId}
+        onUnlinked={() => {
+          onTicketUnlinked?.();
+        }}
+        onOpenTicketView={
+          onToggleTicketView && providerTicketId != null
+            ? () => onToggleTicketView()
+            : undefined
+        }
+        ticketViewActive={ticketViewActive}
+      />
+    ) : null;
+
+  const claimCta =
+    showStaffPhotoRow && !zendeskTrimmed && onMakeClaim ? (
+      <HoverTooltip
+        label={claimViewActive ? 'Hide claim' : 'File claim'}
+        placement="above"
+        asChild
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onMakeClaim}
+          ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
+          aria-expanded={claimViewActive}
+          className={STATION_CONTEXT_CLAIM_PILL_CLASS}
+        >
+          Claim
+        </Button>
+      </HoverTooltip>
+    ) : null;
+
+  const claimUnderPhotos = filedTicketChip ?? claimCta;
+
+  /* Right column — Photos on top; under it, right-justified
+     price · listing · Claim/ticket (that order). */
+  const commerceUnderPhotos =
+    showPoTotal || listingChip || claimUnderPhotos ? (
+      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'justify-end gap-1.5')}>
+        {showPoTotal ? <PoTotalChip amount={poTotal} /> : null}
+        {listingChip}
+        {claimUnderPhotos}
+      </div>
+    ) : null;
+
+  const photosClaimColumn =
+    (showStaffPhotoRow && receivingId != null) || commerceUnderPhotos ? (
+      <div className="flex shrink-0 flex-col items-end gap-0">
+        {showStaffPhotoRow && receivingId != null ? (
+          <ReceivingPhotoButton
+            receivingId={receivingId}
+            staffId={Number(staffId) || 0}
+            poRef={effectiveOrder || null}
+            photoStage={photoStage}
+            // Open beside the pill — not under it — so Claim / ticket under
+            // Photos stays clear for a straight downward click.
+            galleryPlacement="right"
+            onSendToTicket={onSendToTicket}
+            onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+          />
+        ) : null}
+        {commerceUnderPhotos}
+      </div>
+    ) : null;
 
   /* PO# — or the originating ORDER# for a return: an imported RETURN shows its
      Zoho order#, and a serial-resolved return (scanned unit that was previously
      shipped) shows the closed-loop outbound order# lifted into this slot. Either
      way it's a copy chip SEPARATE from the listing link. Bound POs keep open +
-     copy. Unfound / no real Zoho PO id may pass onEditPo → Package Pairing (PO
-     tab); empty `# ----` clicks that directly. */
+     copy + Edit (Package Pairing) + Details (Incoming connection panel). Empty
+     `# ----` clicks Edit directly when onEditPo is set. */
   const orderChip = showOrderIdentity ? (
     <IdentityLinkChip
       openHref={orderCopyOnly ? undefined : poOpenHref}
       openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
       value={effectiveOrder}
-      display={effectiveOrder ? getLast8(effectiveOrder) : '--------'}
+      display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
       tone="id"
-      underlineClass="border-border-emphasis"
+      lockLast8Width
+      iconClass={platformIconTone?.className}
+      iconStyle={platformIconTone?.style}
+      platformLabel={platformValue ? platformMeta.label : null}
       disableCopy={!effectiveOrder}
       onEdit={onEditPo}
       editOpen={poEditOpen}
-      editLabel={poEditOpen ? 'Hide package pairing' : 'Link PO'}
+      editLabel={
+        poEditOpen
+          ? 'Hide package pairing'
+          : effectiveOrder
+            ? 'Edit order'
+            : 'Link PO'
+      }
+      onDetails={onOrderDetails}
+      detailsLabel="Details"
       actionsInMenu
     />
   ) : null;
 
-  /* Tracking# — tone `tracking` → MapPin. Chip click copies; hover menu opens
-     carrier tracking or edits. Extra-box `+` sits on the chip (opens editor +
-     adds a row). Suppressed for pickup. */
+  /* Tracking# — MapPin tinted by carrier brand when known (UPS brown / FedEx
+     purple / USPS light postal blue); house blue when unknown. Extra-box `+`
+     sits on the chip. Suppressed for pickup. */
   const trackingSlot = isLocalPickup ? (
     <FulfillmentPickupPill
       variant="rail"
       tooltip="Fulfilled in person — no tracking number"
     />
   ) : (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex shrink-0 items-center gap-0">
       <IdentityLinkChip
         openHref={trackingOpenHref}
         openTitle="Open carrier tracking"
         value={primaryTrackingTrimmed}
-        display={primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : '--------'}
+        display={primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : resolveChipDisplay('')}
         tone="tracking"
-        underlineClass="border-blue-500"
+        carrierHint={carrierHint}
+        showCarrierBrand
         disableCopy={!primaryTrackingTrimmed}
         onEdit={onEditTracking}
         editOpen={trackingEditOpen}
@@ -535,7 +655,7 @@ export function CartonContextCard({
           label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
           asChild
         >
-          <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-role-eyebrow tabular-nums text-text-muted">
+          <span className="shrink-0 rounded-none bg-surface-strong/90 px-0 py-0 text-role-eyebrow tabular-nums text-text-muted">
             +{filledExtraTrackingsCount}
           </span>
         </HoverTooltip>
@@ -543,138 +663,63 @@ export function CartonContextCard({
     </div>
   );
 
-  /* Claim · Photos. Always shown with identity (classify does not collapse this
-     side). Stacked pins it to row 2's trailing slot. */
-  const actionsCluster = showStaffPhotoRow ? (
-    <div className={cn(STATION_IDENTITY_ROW_CLASS, 'shrink-0')}>
-      {zendeskTrimmed ? (
-        <ReceivingTicketChip
-          value={zendeskTrimmed}
-          display={zendeskChipDisplay}
-          openHref={zendeskHref}
-          providerTicketId={providerTicketId}
-          receivingId={receivingId}
-          lineId={lineId}
-          onUnlinked={() => {
-            onTicketUnlinked?.();
-          }}
-          onOpenTicketView={
-            onToggleTicketView && providerTicketId != null
-              ? () => onToggleTicketView()
-              : undefined
-          }
-          ticketViewActive={ticketViewActive}
-        />
-      ) : onMakeClaim ? (
-        <HoverTooltip
-          label={claimViewActive ? 'Hide claim' : 'File claim'}
-          placement="above"
-          asChild
-        >
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onMakeClaim}
-            ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
-            aria-expanded={claimViewActive}
-            className={STATION_CONTEXT_CLAIM_PILL_CLASS}
-          >
-            Claim
-          </Button>
-        </HoverTooltip>
-      ) : null}
-
-      {/* Photos — camera + count (or + when empty); hover opens gallery when photos exist. */}
-      {receivingId != null ? (
-        <ReceivingPhotoButton
-          receivingId={receivingId}
-          staffId={Number(staffId) || 0}
-          poRef={effectiveOrder || null}
-          photoStage={photoStage}
-          onSendToTicket={onSendToTicket}
-          onOpenMovePhotosExternal={onOpenMovePhotosExternal}
-        />
-      ) : null}
-    </div>
-  ) : null;
-
   // ── Two-row assembly (the only face) ───────────────────────────────────────
-  // Both rows start at the SAME left edge — the exit chevron opens row 1 and
-  // the order#/PO# chip sits directly beneath it, so the operator's eye lands
-  // on "go back" and "which record" in one vertical sweep.
+  // Left stack + right Photos/commerce column.
   //
-  //   Row 1 — CONTEXT + the carton's work actions: classification pills, then
-  //           listing link · ticket/Claim · Photos pinned right. Claim and
-  //           Photos ride the top row because they are what the operator
-  //           REACHES FOR, and the top row is the shorter travel from the
-  //           section tabs below.
-  //   Row 2 — IDENTIFIERS: order#/PO# · tracking#, closing on the PO money
-  //           total at the right. The total is the row's focal fact — it
-  //           answers "what is this box worth" right beside the ids that say
-  //           which box it is.
+  //   Row 1 — classify (left) · Photos (right column top)
+  //   Row 2 — lifecycle · order# · tracking (left) ·
+  //           price · listing · Claim/ticket right-justified under Photos
   //
   // Never mix the two: no identifier on row 1, no classification on row 2.
-  // Both rows open with the SAME leading gutter, so the exit chevron and the
-  // lifecycle dot share a column and every following chip starts at one x.
-  // Reserved whenever either row can fill it; dropped entirely when neither
-  // can, so a station without both never pays 24px for an empty track.
   const hasLeadCol = !!exitControl || !!lifecycle;
 
   const stackedLayout = (
-    <div className={cn(STATION_IDENTITY_ROW_STACK_CLASS, 'min-w-0 flex-1')}>
-      {/* Row 1 — what kind of work is this, and act on it. */}
-      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
-        {hasLeadCol ? (
-          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
-        ) : null}
-        {classifyCluster}
-        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'ml-auto min-w-0 shrink')}>
-          {listingChip}
-          {actionsCluster}
+    <div className="flex min-w-0 w-full flex-1 items-stretch gap-0">
+      <div className={cn(STATION_IDENTITY_ROW_STACK_CLASS, 'min-w-0 flex-1')}>
+        {/* Row 1 — what kind of work is this. */}
+        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0 w-full')}>
+          {hasLeadCol ? (
+            <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
+          ) : null}
+          {classifyCluster}
         </div>
-      </div>
-      {/* Row 2 — which record is this, how far along, and what is it worth. */}
-      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
-        {hasLeadCol ? (
-          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>
-            {/* House status-indicator anatomy (2-unit dot + HoverTooltip label,
-                never a standalone text badge). `asChild` + `inline-block` per
-                the `StatusChip` reference: the default HoverTooltip wrapper is
-                an inline <span>, and an inline box drops `h-2 w-2` on the floor
-                — the dot renders 0×0. */}
-            {lifecycle ? (
-              <HoverTooltip label={lifecycle.label} asChild>
-                <span
-                  className={cn('inline-block h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
-                  data-testid="carton-context-lifecycle-dot"
-                />
-              </HoverTooltip>
-            ) : null}
-          </div>
-        ) : null}
-        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0 shrink')}>
+        {/* Row 2 — order status · order# · tracking (identifiers only). */}
+        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0 w-full')}>
+          {hasLeadCol ? (
+            <div className={STATION_IDENTITY_LEAD_COL_CLASS}>
+              {/* House status-indicator anatomy (2-unit dot + HoverTooltip label,
+                  never a standalone text badge). `asChild` + `inline-block` per
+                  the `StatusChip` reference: the default HoverTooltip wrapper is
+                  an inline <span>, and an inline box drops `h-2 w-2` on the floor
+                  — the dot renders 0×0. */}
+              {lifecycle ? (
+                <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
+                  <span
+                    className={cn('inline-block h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
+                    data-testid="carton-context-lifecycle-dot"
+                    aria-label={lifecycle.label}
+                  />
+                </HoverTooltip>
+              ) : null}
+            </div>
+          ) : null}
           {orderChip}
           {trackingSlot}
           {qty ? (
             <GridQtyFractionValue received={qty.received} expected={qty.expected} />
           ) : null}
         </div>
-        {showPoTotal ? (
-          <div className={cn(STATION_IDENTITY_ROW_CLASS, 'ml-auto shrink-0')}>
-            <PoTotalChip amount={poTotal} />
-          </div>
-        ) : null}
       </div>
+      {/* Right column — Photos on top; price · listing · Claim under, end-aligned. */}
+      {photosClaimColumn}
     </div>
   );
 
   const body = (
-      <div className="space-y-1 px-0.5 py-0">
-        <div className="flex min-w-0 flex-col gap-y-1">
-          {/* Two-row identity — row 1 classify · listing · Claim/Photos; row 2
-              lifecycle · PO# · tracking · PO$. Classify pills hand off to the
-              host Classify surface when `onClassifyPillOpen` is wired. */}
+      <div className="px-0 py-0">
+        <div className="flex min-w-0 flex-col gap-0">
+          {/* Two-row identity — row 1 classify · Photos; row 2 status · order# ·
+              tracking; under Photos: price · listing · Claim (end-aligned). */}
           <div className="flex w-full min-w-0 max-w-full items-center">
             <AnimatePresence initial={false}>
               {openPicker === null ? (
@@ -684,7 +729,7 @@ export function CartonContextCard({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex w-full max-w-full min-w-0 flex-nowrap items-center gap-2"
+                  className="flex w-full max-w-full min-w-0 flex-nowrap items-center gap-0"
                 >
                   {stackedLayout}
                 </motion.div>
@@ -753,7 +798,7 @@ export function CartonContextCard({
       </div>
   );
 
-  // Width comes from StationContextBar's identity Panel
-  // ({@link STATION_WORKBENCH_IDENTITY_COLUMN}).
+  // Width comes from StationContextBar's identity measure
+  // ({@link STATION_WORKBENCH_COLUMN} — white face + chips share the 720 lock).
   return <div className="w-full min-w-0 overflow-visible">{body}</div>;
 }

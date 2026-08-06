@@ -29,10 +29,12 @@ import {
 } from './details-panel/shipped-details-hooks';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { ShippedDetailsBody } from './details-panel/ShippedDetailsBody';
-import { ShippedPanelEditorDock } from './details-panel/ShippedPanelEditorDock';
 import { RecordPaneHeader } from '@/components/order-record/RecordPaneHeader';
-import { OrderRecordBody } from '@/components/order-record/OrderRecordBody';
-import { getAccountSourceLabel } from '@/utils/order-links';
+import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
+import {
+  OrdersViewChromeBridge,
+  useOrdersViewChromeOptional,
+} from '@/components/outbound/orders/orders-view-chrome-context';
 import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 import {
   consumeReplaceTrackingIntent,
@@ -45,6 +47,7 @@ interface ShippedDetailsPanelProps {
   shipped: ShippedOrder;
   onClose: () => void;
   onUpdate: () => void;
+  /** Inspector capability lane (tabs / docs / dispatch) — not a body layout switch. */
   context?: 'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer';
 }
 
@@ -52,26 +55,20 @@ export function ShippedDetailsPanel({
   shipped: initialShipped,
   onClose,
   onUpdate,
-  context = 'dashboard',
+  context = 'shipped',
 }: ShippedDetailsPanelProps) {
   const router = useRouter();
-  /**
-   * D2/D2a — the order-record surfaces render the shared single-scroll
-   * `OrderRecordBody`; every other context keeps the legacy tabbed
-   * `ShippedDetailsBody`. Station / packer / labels / staged / fulfillment are
-   * a different job (several are Station-contract at `floor` density) and get a
-   * variant designed on their own terms, not this retrofitted.
-   */
-  const isOrderRecord = context === 'dashboard';
   /**
    * Contextual SoT: which tab opens, whether Documents is a tab at all, whether
    * that tray manages or only previews, which record-plane hand-offs exist, and
    * whether this lane may dispatch / delete / mount the editor dock.
-   * Outbound documents (label + slip) get their own tab wherever the tray used
-   * to render inline (docs/outbound-documents-plan.md §9.1/9.2) — full tray on
-   * labels, read-only on dashboard/fulfillment/staged.
+   * Body layout is always the tabbed {@link ShippedDetailsBody}. The durable
+   * single-scroll record lives only on `/o/[orderId]` (`OrderRecordBody`);
+   * search feedback is its own shell (`SearchOrderFeedback`).
    */
   const inspectorContext = resolveOrderInspectorContext({ panelContext: context });
+  // Capture under the desk provider — RightRailHost re-parents this node.
+  const viewChrome = useOrdersViewChromeOptional();
   const showDocumentsTab = inspectorContext.showDocumentsTab;
   // Dashboard-style contexts get the panel-action bar + the shipping-label
   // drop-zone (labels only) — the same lanes the descriptor calls "dispatch".
@@ -100,7 +97,6 @@ export function ShippedDetailsPanel({
   } = useShippedDetailState(initialShipped, onUpdate);
 
   const meta = deriveShippedHeaderMeta(shipped);
-  const platformLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
 
   const {
     activeSection,
@@ -283,15 +279,12 @@ export function ShippedDetailsPanel({
       id="detail:order"
       onClose={onClose}
       modal={false}
+      edgeCollapse
+      collapsedStrip={false}
       ariaLabel={`Order ${meta.orderIdDisplay} details`}
     >
+      <OrdersViewChromeBridge value={viewChrome}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        {/* ONE header for both branches (was `OrderIdentityHeader` vs
-            `ShippedDetailsHeader`, picked on `isOrderRecord`). The branch now
-            decides only whether a tab strip follows — which is a slot, not a
-            second component. Note the context trap: the dashboard's Pending /
-            Tested lanes arrive with context `'fulfillment'`, so `isOrderRecord`
-            is FALSE there and this is the branch they render. */}
         <RecordPaneHeader
           orderIdDisplay={meta.orderIdDisplay}
           showExceptionsFallback={meta.showExceptionsFallback}
@@ -306,91 +299,26 @@ export function ShippedDetailsPanel({
           total={cursorTotal}
           onOpenFullPage={() => router.push(`/o/${shipped.id}`)}
           onClose={onClose}
-          compact={isOrderRecord}
-          {...(isOrderRecord
-            ? {
-                statusLabel: meta.statusLabel,
-                statusTone: meta.statusTone,
-                platformLabel,
-              }
-            : null)}
-          {...(isOrderRecord
-            ? null
-            : {
-                tabs: (
-                  <PaneHeaderTabs<ShippedActiveSection>
-                    dense
-                    tabs={[
-                      { value: 'shipping' as const, label: 'Shipping' },
-                      { value: 'product' as const, label: 'Product' },
-                      ...(showDocumentsTab
-                        ? [{ value: 'documents' as const, label: 'Documents' }]
-                        : []),
-                      { value: 'timeline' as const, label: 'Timeline' },
-                      { value: 'conversation' as const, label: 'Conversation' },
-                    ]}
-                    value={activeSection}
-                    onChange={setActiveSection}
-                    className="px-5"
-                  />
-                ),
-              })}
+          viewTopics={viewChrome ? <OrdersViewTopicsCluster /> : null}
+          tabs={
+            <PaneHeaderTabs<ShippedActiveSection>
+              dense
+              tabs={[
+                { value: 'shipping' as const, label: 'Shipping' },
+                { value: 'product' as const, label: 'Product' },
+                ...(showDocumentsTab
+                  ? [{ value: 'documents' as const, label: 'Documents' }]
+                  : []),
+                { value: 'timeline' as const, label: 'Timeline' },
+                { value: 'conversation' as const, label: 'Conversation' },
+              ]}
+              value={activeSection}
+              onChange={setActiveSection}
+              className="px-5"
+            />
+          }
         />
 
-        {isOrderRecord ? (
-          <>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="px-4 py-4">
-                <OrderRecordBody
-                  order={shipped}
-                  density="compact"
-                  documentsReadOnly
-                  copiedAll={copiedAll}
-                  onCopyAll={handleCopyAll}
-                  onUpdate={onUpdate}
-                  onAssign={meta.canEditAssignment ? openAssignmentCard : undefined}
-                  editableShippingFields={{
-                    orderNumber,
-                    itemNumber,
-                    trackingNumber: shippingTrackingNumber,
-                    shipByDate,
-                    isSaving: isSavingInlineFields,
-                    isSavingShipByDate,
-                    onOrderNumberChange: setOrderNumber,
-                    onItemNumberChange: setItemNumber,
-                    onTrackingNumberChange: setShippingTrackingNumber,
-                    onShipByDateChange: setShipByDate,
-                    onBlur: () => { void saveInlineFields(); },
-                    onShipByDateBlur: () => { void saveShipByDate(shipByDate); },
-                  }}
-                />
-              </div>
-            </div>
-
-            <ShippedPanelEditorDock
-              shipped={shipped}
-              activeInput={activeInput}
-              setActiveInput={setActiveInput}
-              showMarkAsShipped
-              showOutOfStock
-              // No note composer in this panel (handoff §3.2) — note-writing
-              // lives on `/o/[orderId]`, via the header's open-full-page
-              // action. The other branch is off in `ShippedDetailsBody`.
-              showNotes={false}
-              isOutOfStock={isOutOfStock}
-              isSavingOutOfStock={isSavingOutOfStock}
-              onSaveOutOfStock={(checked) => {
-                void handleSaveOutOfStock(checked, () => setActiveInput('none'));
-              }}
-              shippingTrackingNumber={shippingTrackingNumber}
-              onMarkShippedSuccess={() => {
-                setActiveInput('none');
-                onUpdate();
-              }}
-            />
-
-          </>
-        ) : (
         <ShippedDetailsBody
           context={context}
           inspectorContext={inspectorContext}
@@ -432,18 +360,11 @@ export function ShippedDetailsPanel({
           onDeleteOrder={handleDelete}
           replaceTrackingNonce={replaceTrackingNonce}
         />
-        )}
 
         {/* No action region at the foot of this panel. The 1-row selection's
             actions render as ICONS in the pane header's action bar
-            (`useRailHeaderActions` → `headerBarActions`), because a second
-            full-width block of labelled buttons down here duplicated the header
-            bar — and duplicated real controls, not just chrome: this panel
-            already owns a Delete, so the footer's Delete put two red buttons on
-            one record. One action surface per panel.
-            The header actions self-gate on the rail-actions store, so every
-            panel context is safe: only a publishing surface
-            (`useOrderRailSelection` on `/dashboard`) lights them up. */}
+            (`useRailHeaderActions` → `headerBarActions`). One action surface
+            per panel. Header actions self-gate on the rail-actions store. */}
 
         <AnimatePresence>
           {showAssignmentCard && meta.canEditAssignment ? (
@@ -458,6 +379,7 @@ export function ShippedDetailsPanel({
           ) : null}
         </AnimatePresence>
       </div>
+      </OrdersViewChromeBridge>
     </DetailStackRailRegistrar>
   );
 }

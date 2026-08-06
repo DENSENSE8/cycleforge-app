@@ -9,6 +9,7 @@ import {
   facetChips,
   globalSearchHandoffHref,
   orderRecordHref,
+  searchOrderFeedbackHref,
   isUiEntityType,
   journeyHandoffHref,
   narrowSearchTitleDisplay,
@@ -33,10 +34,7 @@ test('DB↔UI vocabulary round-trips for every discriminator value', () => {
 });
 
 test('searchHitHref: every entity type deep-links to its record surface', () => {
-  assert.equal(
-    searchHitHref('ORDER', 42),
-    '/o/42',
-  );
+  assert.equal(searchHitHref('ORDER', 42), '/search?sel=order:42');
   assert.equal(searchHitHref('SERIAL_UNIT', 9), '/inventory/units?unit=9');
   assert.equal(searchHitHref('RECEIVING', 3), '/carton/3');
   assert.equal(searchHitHref('SKU', 11), '/products?view=qc&skuId=11');
@@ -44,10 +42,9 @@ test('searchHitHref: every entity type deep-links to its record surface', () => 
   assert.equal(searchHitHref('FBA_SHIPMENT', 2), '/fba?openShipmentId=2');
 });
 
-// One order shell: an ORDER hit resolves to the same href every other opener
-// uses. The retired `orderSearchHref` built a second one on a dashboard mode.
-test('searchHitHref: an ORDER hit is the order record page', () => {
-  assert.equal(searchHitHref('ORDER', 42), '/o/42');
+test('searchHitHref: an ORDER hit opens search feedback (not the durable /o record)', () => {
+  assert.equal(searchHitHref('ORDER', 42), '/search?sel=order:42');
+  assert.equal(searchOrderFeedbackHref(42), '/search?sel=order:42');
   assert.equal(orderRecordHref(42), '/o/42');
   assert.equal(orderRecordHref(' 111-6350504-7603458 '), '/o/111-6350504-7603458');
 });
@@ -184,23 +181,21 @@ test('globalSearchHandoffHref: identifier + one order hit jumps to the record (D
     globalSearchHandoffHref('05-14897-15602', [{ id: 14897, entityType: 'order' }]),
     '/o/14897',
   );
-  // Identifier with SEVERAL order candidates → the top one. There is no longer
-  // a "search shell + hit-map rail" to keep them in; the results ARE the list,
-  // and Enter commits to the best candidate rather than parking on a page the
-  // operator has to click again.
+  // Several ORDER candidates → Search results list (operator picks).
   assert.equal(
     globalSearchHandoffHref('05-14897-15602', [
       { id: 14897, entityType: 'order' },
       { id: 14898, entityType: 'order' },
     ]),
-    '/o/14897',
+    '/search?q=05-14897-15602',
   );
+  // Natural-language → Search results (ORDER hits open feedback via searchHitHref).
   assert.equal(
     globalSearchHandoffHref('bose remote', [
       { id: 1, entityType: 'order' },
       { id: 2, entityType: 'order' },
     ]),
-    '/o/1',
+    '/search?q=bose%20remote',
   );
   assert.equal(globalSearchHandoffHref('bose remote', []), '/search?q=bose%20remote');
   assert.equal(

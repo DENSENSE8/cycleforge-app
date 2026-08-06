@@ -37,7 +37,7 @@ export function LabelPrintWorkspace() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className={`flex min-h-0 flex-1 flex-col ${LABEL_BUILDER.stackGap} ${LABEL_BUILDER.pagePad}`}>
         {queuedBins.length > 0 && (
-          <div className={`${LABEL_BUILDER.contentShell} flex items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/50 p-3`}>
+          <div className={`${LABEL_BUILDER.contentShell} flex items-start justify-between gap-3 rounded-none border border-blue-200 bg-blue-50/50 p-3`}>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-blue-900">
                 {queuedBins.length} bin{queuedBins.length === 1 ? '' : 's'} queued from Bins

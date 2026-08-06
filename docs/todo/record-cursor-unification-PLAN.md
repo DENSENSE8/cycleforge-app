@@ -12,6 +12,8 @@ the same grouping and ordering rules the grid on screen is already using.
 
 ---
 
+> **Note 2026-08-05:** `isOrderRecord` / `context==="dashboard"` body fork is **demolished**. Desk inspector is always tabbed `ShippedDetailsBody`. See `order-details-page-EXECUTION-PLAN.md` §1.
+
 ## 0. One-sentence goal
 
 Replace **seven** ad-hoc record-navigation channels and **five** copies of

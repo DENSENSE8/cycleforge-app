@@ -1,22 +1,23 @@
 'use client';
 
 /**
- * PreboxWizard — the "Create prebox label" flow (serial↔label pairing plan
- * §6.4.C). Confirm a serial checklist → choose *one master label for the kit*
- * (creates + seals a label_manifest, prints the master QR) or *one label per
- * unit* (prints each unit's product label). Opened from the receiving carton
- * rollup overflow.
+ * PreboxWizard — serial checklist → one master kit label or one label per unit
+ * (serial↔label pairing plan §6.4.C).
  *
- * Anchored over the receiving right pane via {@link RightPaneOverlay} — same
- * shell as {@link ReceivingClaimModal}.
+ * Hosts:
+ *  - `embedded` — flush body inside Unbox Units Displays (no overlay, no
+ *    duplicate "Create prebox label" title — the Units · Prebox TabDisplay
+ *    already names the surface). Mode choice is {@link TabDisplay} segment.
+ *  - default — {@link RightPaneOverlay} (legacy / non-Displays callers).
  */
 
 import { useState } from 'react';
 import { toast } from '@/lib/toast';
-import { X, Package, Loader2, Check } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { X, Package, Check } from '@/components/Icons';
+import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
+import { TabDisplay } from '@/design-system/components';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
-import { SerialChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/components/ui/CopyChip';
 import { printProductLabels } from '@/lib/print/printProductLabel';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 
@@ -27,21 +28,28 @@ export interface PreboxWizardSerial {
   sku?: string | null;
 }
 
-export function PreboxWizard({
+type PreboxMode = 'master' | 'per-unit';
+
+const PREBOX_MODE_TABS = [
+  { id: 'master' as const, label: 'One master label' },
+  { id: 'per-unit' as const, label: 'One label per unit' },
+];
+
+function PreboxWizardBody({
   serials,
   sku,
+  embedded,
   onClose,
   onCreated,
 }: {
   serials: PreboxWizardSerial[];
-  /** Kit SKU when the units are homogeneous; null for a mixed kit. */
   sku?: string | null;
-  onClose: () => void;
-  /** Called with the sealed manifest_uid so the caller can open its panel. */
+  embedded?: boolean;
+  onClose?: () => void;
   onCreated?: (manifestUid: string) => void;
 }) {
   const [checked, setChecked] = useState<Set<number>>(() => new Set(serials.map((s) => s.id)));
-  const [mode, setMode] = useState<'master' | 'per-unit'>('master');
+  const [mode, setMode] = useState<PreboxMode>('master');
   const [busy, setBusy] = useState(false);
 
   const chosen = serials.filter((s) => checked.has(s.id));
@@ -90,7 +98,7 @@ export function PreboxWizard({
           description: conflicts.length ? `${conflicts.length} unit(s) skipped (already in a kit)` : undefined,
         });
         onCreated?.(sealJson.manifest_uid);
-        onClose();
+        onClose?.();
       } else {
         // Group by the unit's own SKU so a MIXED carton prints correct per-SKU
         // labels (each unit keeps its own unit_uid as the QR payload).
@@ -126,7 +134,7 @@ export function PreboxWizard({
           }).catch(() => {});
         }
         toast.success(`Printing ${chosen.length} unit label${chosen.length === 1 ? '' : 's'}`);
-        onClose();
+        onClose?.();
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Print failed');
@@ -136,9 +144,154 @@ export function PreboxWizard({
   };
 
   return (
+    <div
+      className="flex h-full min-h-0 min-w-0 flex-col"
+      data-prebox-wizard={embedded ? 'embedded' : 'overlay'}
+    >
+      {/* Overlay only — embedded lives under Units · Prebox TabDisplay. */}
+      {!embedded ? (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-hairline bg-surface-canvas py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Package className="h-4 w-4 shrink-0 text-violet-600" />
+            <p className="truncate text-role-caption font-semibold tracking-tight text-text-default">
+              Create prebox label
+            </p>
+          </div>
+          {onClose ? (
+            <IconButton
+              onClick={onClose}
+              disabled={busy}
+              ariaLabel="Close"
+              icon={<X className="h-4 w-4" />}
+              className="p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
+            />
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Mode — underline flush (no sunken segment capsule). */}
+      <div className="shrink-0">
+        <TabDisplay
+          tabs={PREBOX_MODE_TABS}
+          activeTab={mode}
+          onTabChange={(id) => setMode(id as PreboxMode)}
+          density="nested"
+          fit="fill"
+          appearance="underline"
+          aria-label="Prebox label mode"
+        />
+      </div>
+
+      {/* Serial checklist — full-bleed hairline rows; column owns scroll. */}
+      <div className="min-h-0 flex-1 overflow-y-auto text-role-data">
+        {serials.length === 0 ? (
+          <div className="border-y border-dashed border-border-hairline py-5 text-center text-role-caption text-text-muted">
+            No serialized units to prebox.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border-hairline border-b border-border-hairline">
+            {serials.map((s) => {
+              const on = checked.has(s.id);
+              const unitUid = String(s.unit_uid ?? '').trim();
+              return (
+                <li key={s.id}>
+                  {/* ds-raw-button: full-bleed select row — Micro never mounts a primary Button here */}
+                  <button
+                    type="button"
+                    onClick={() => toggle(s.id)}
+                    aria-pressed={on}
+                    className={`ds-raw-button flex h-11 w-full min-w-0 items-stretch divide-x divide-border-hairline text-left transition-colors ${
+                      on ? 'bg-blue-50/60' : 'hover:bg-surface-hover'
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-none ${
+                        on ? 'bg-blue-500 text-white' : 'bg-transparent text-text-faint'
+                      }`}
+                    >
+                      {on ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <span className="h-4 w-4 ring-1 ring-inset ring-border-soft" />
+                      )}
+                    </span>
+                    <span className="flex min-w-0 flex-1 items-center truncate px-2.5 font-mono text-role-caption font-semibold text-text-default">
+                      {s.serial_number}
+                    </span>
+                    <span className="ml-auto flex shrink-0 items-center pr-2.5 font-mono text-role-micro tabular-nums text-text-soft">
+                      {unitUid ? `# ${getLast8(unitUid)}` : 'not labeled'}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/*
+        Macro floor — always mounted (disabled when nothing selected).
+        Claim-grammar FlushTerminalFooter: in-flow sibling, p-0 hairline.
+      */}
+      <FlushTerminalFooter
+        layout="cluster"
+        leading={
+          <span className="flex min-h-9 min-w-0 flex-1 items-center bg-surface-sunken px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+            {chosen.length} selected
+          </span>
+        }
+      >
+        <Button
+          size="md"
+          variant="primary"
+          disabled={busy || chosen.length === 0}
+          loading={busy}
+          onClick={() => void run()}
+          icon={busy ? undefined : <Check className="h-3.5 w-3.5" />}
+        >
+          {mode === 'master' ? 'Seal + print master' : 'Print unit labels'}
+        </Button>
+      </FlushTerminalFooter>
+    </div>
+  );
+}
+
+export function PreboxWizard({
+  serials,
+  sku,
+  onClose,
+  onCreated,
+  embedded = false,
+}: {
+  serials: PreboxWizardSerial[];
+  /** Kit SKU when the units are homogeneous; null for a mixed kit. */
+  sku?: string | null;
+  onClose?: () => void;
+  /** Called with the sealed manifest_uid so the caller can open its panel. */
+  onCreated?: (manifestUid: string) => void;
+  /**
+   * Flush body for Unbox Units Displays — no {@link RightPaneOverlay}.
+   * Default keeps the legacy floating overlay for other hosts.
+   */
+  embedded?: boolean;
+}) {
+  const body = (
+    <PreboxWizardBody
+      serials={serials}
+      sku={sku}
+      embedded={embedded}
+      onClose={onClose}
+      onCreated={onCreated}
+    />
+  );
+
+  if (embedded) return body;
+
+  return (
     <RightPaneOverlay
       open
-      onClose={onClose}
+      onClose={onClose ?? (() => {})}
       align="center"
       resizable
       storageKey="receiving-prebox-wizard-size"
@@ -147,112 +300,7 @@ export function PreboxWizard({
       className="h-[min(80vh,28rem)] w-[min(94vw,28rem)]"
       aria-label="Create prebox label"
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Package className="h-4 w-4 shrink-0 text-violet-600" />
-          <p className="truncate text-sm font-semibold tracking-tight text-text-default">
-            Create prebox label
-          </p>
-        </div>
-        <IconButton
-          onClick={onClose}
-          disabled={busy}
-          ariaLabel="Close"
-          icon={<X className="h-4 w-4" />}
-          className="rounded-lg p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
-        />
-      </div>
-
-      {/* Template choice */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-border-soft px-4 py-2.5">
-        <button
-          type="button"
-          onClick={() => setMode('master')}
-          className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
-            mode === 'master'
-              ? 'bg-violet-50 text-violet-700 ring-violet-300'
-              : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
-          }`}
-        >
-          One master label
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('per-unit')}
-          className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
-            mode === 'per-unit'
-              ? 'bg-emerald-50 text-emerald-700 ring-emerald-300'
-              : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
-          }`}
-        >
-          One label per unit
-        </button>
-      </div>
-
-      {/* Serial checklist */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 text-role-data">
-        {serials.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
-            No serialized units to prebox.
-          </div>
-        ) : (
-          <ul className="divide-y divide-border-soft">
-            {serials.map((s) => {
-              const on = checked.has(s.id);
-              const unitUid = String(s.unit_uid ?? '').trim();
-              return (
-                <li key={s.id}>
-                  <div
-                    className={`flex w-full items-center gap-2.5 py-2.5 transition-colors ${
-                      on ? 'bg-blue-50/60' : ''
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggle(s.id)}
-                      aria-label={on ? 'Deselect serial' : 'Select serial'}
-                      aria-pressed={on}
-                      className={`ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded ring-1 ring-inset ${
-                        on ? 'bg-blue-500 text-white ring-blue-500' : 'bg-surface-card ring-border-soft'
-                      }`}
-                    >
-                      {on ? <Check className="h-3 w-3" /> : null}
-                    </button>
-                    <div className="shrink-0">
-                      <SerialChip value={s.serial_number} width="w-fit" />
-                    </div>
-                    <div className="min-w-0 flex-1" aria-hidden />
-                    <div className="ml-auto flex shrink-0 justify-end">
-                      {unitUid ? (
-                        <OrderIdChip value={unitUid} display={getLast8(unitUid)} />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => toggle(s.id)}
-                          className="ds-raw-button text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted"
-                        >
-                          not labeled
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas px-4 py-2.5">
-        <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
-          {chosen.length} selected
-        </span>
-        <Button size="sm" variant="primary" disabled={busy || chosen.length === 0} onClick={() => void run()}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-          {mode === 'master' ? 'Seal + print master' : 'Print unit labels'}
-        </Button>
-      </div>
+      {body}
     </RightPaneOverlay>
   );
 }

@@ -1,19 +1,18 @@
 'use client';
 
 /**
- * Receiving-line rail-selection path (Unbox / History / Incoming).
+ * Receiving-line rail-selection path (Unbox / History / Incoming / Tech Testing).
  *
  * Owns the publish bridge to `rail-actions-store` so the right rail can render
- * the selection band + action region after the bottom `ContextualSelectionBar`
- * capsule is removed from those surfaces. Tech Testing keeps
- * {@link useReceivingLineBulkSelection} and the capsule — it must NOT call this
- * hook, or it would publish into the rail while the capsule kept a second copy.
+ * the selection band + action region. Surfaces opt in by calling this wrapper
+ * instead of mounting a bottom ContextualSelectionBar — do not dual-publish
+ * from {@link useReceivingLineBulkSelection} alone.
  *
  * Plan: receiving-line selection → right rail (mirrors useOrderRailSelection /
- * docs/todo/order-rail-selection-plane-PLAN.md Phase 2).
+ * docs/todo/order-rail-selection-plane-PLAN.md Phase 2); hoard History rail SoT.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   useReceivingLineBulkSelection,
   type ReceivingLineBulkSelection,
@@ -24,6 +23,7 @@ import {
   publishRailActions,
 } from '@/lib/right-rail/rail-actions-store';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { SelectionAction } from '@/lib/selection/selection-actions';
 
 interface UseReceivingLineRailSelectionArgs {
   scope: string;
@@ -35,6 +35,13 @@ interface UseReceivingLineRailSelectionArgs {
    * line workspace is open — Ticket/Claim/tool push stacks own the right edge).
    */
   publish?: boolean;
+  /**
+   * Replace or extend the default Copy/Print/Ticket/… set before publish.
+   * Testing uses this to swap the stub "Send to staff" for a real Assign path.
+   */
+  mapActions?: (
+    actions: SelectionAction<ReceivingLineRow>[],
+  ) => SelectionAction<ReceivingLineRow>[];
 }
 
 export function useReceivingLineRailSelection({
@@ -42,10 +49,16 @@ export function useReceivingLineRailSelection({
   active,
   formatCopyRow,
   publish = true,
+  mapActions,
 }: UseReceivingLineRailSelectionArgs): ReceivingLineBulkSelection {
   const bulk = useReceivingLineBulkSelection({ scope, active, formatCopyRow });
   const selectableTotal = useTableSelectionTotal(scope);
   const shouldPublish = active && publish;
+
+  const publishedActions = useMemo(
+    () => (mapActions ? mapActions(bulk.bulkActions) : bulk.bulkActions),
+    [bulk.bulkActions, mapActions],
+  );
 
   useEffect(() => {
     if (!shouldPublish) {
@@ -55,14 +68,14 @@ export function useReceivingLineRailSelection({
     publishRailActions({
       scope,
       rows: bulk.selectedRows,
-      actions: bulk.bulkActions,
+      actions: publishedActions,
       total: selectableTotal,
     });
   }, [
     shouldPublish,
     scope,
     bulk.selectedRows,
-    bulk.bulkActions,
+    publishedActions,
     selectableTotal,
   ]);
 
@@ -70,5 +83,8 @@ export function useReceivingLineRailSelection({
     return () => clearRailActions(scope);
   }, [scope]);
 
-  return bulk;
+  return {
+    ...bulk,
+    bulkActions: publishedActions,
+  };
 }

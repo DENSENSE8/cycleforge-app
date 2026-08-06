@@ -1,13 +1,12 @@
 'use client';
 
 /**
- * /m/receive — Mobile receiving-door scan entry point.
- * Redesigned for 2026 Mobile Design System.
+ * /m/receive — deprecated Arrival alias. Prefer `/m/triage`.
  */
 
-import RedesignedMobileReceive from '@/components/mobile/redesign/Receive';
+import MobileArrivalStation from '@/components/mobile/receiving/MobileArrivalStation';
 
 /** @deprecated Prefer `/m/triage` — kept for deep links. */
 export default function MobileReceivePage() {
-  return <RedesignedMobileReceive surface="triage" title="Arrival" />;
+  return <MobileArrivalStation />;
 }

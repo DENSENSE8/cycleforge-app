@@ -55,6 +55,10 @@ function receivingLabelPlatformCompact(platform: string, type: string): string {
 /**
  * Top-left label face — "Platform - Type" (e.g. "eBay - Return"), or just
  * the platform when no receiving type is set.
+ *
+ * When the type label already carries the platform (org catalog slugs like
+ * `ECWID-RS`), print the type alone — `ECWID - ECWID-RS` truncates to ellipsis
+ * ("…") on the 2×1" face.
  */
 export function receivingLabelPlatformDisplay(
   payload: Pick<ReceivingLabelPayload, 'platform' | 'receivingType' | 'receivingTypeLabel'>,
@@ -63,7 +67,17 @@ export function receivingLabelPlatformDisplay(
   // Prefer the org-catalog label (custom / renamed types); else the built-in map.
   const type = (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType);
   const compact = receivingLabelPlatformCompact(platform, type);
-  return type ? `${compact} - ${type}` : compact;
+  if (!type) return compact;
+  const typeU = type.toUpperCase();
+  const compactU = compact.toUpperCase();
+  if (
+    typeU === compactU ||
+    typeU.startsWith(`${compactU}-`) ||
+    typeU.startsWith(`${compactU} `)
+  ) {
+    return type;
+  }
+  return `${compact} - ${type}`;
 }
 
 /**

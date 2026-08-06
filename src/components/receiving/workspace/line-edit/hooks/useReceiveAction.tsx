@@ -9,6 +9,7 @@ import { deferInvalidateReceivingFeeds, patchUnboxRailQtyByCarton } from '@/lib/
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyReceiveResponse } from '../../ReceiveResponsePanel';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
+import { pulseScanLine } from '@/lib/scan-feedback/visual';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
 import {
   photoPolicyOverrideField,
@@ -375,6 +376,7 @@ export function useReceiveAction(
                 });
               }
               playScanFeedback('success');
+              pulseScanLine(row.id);
             } else {
               setReceiveResult({ kind: 'diagnostic', intent: receiveIntent, response: respRecord });
               setResponseExpanded(true);

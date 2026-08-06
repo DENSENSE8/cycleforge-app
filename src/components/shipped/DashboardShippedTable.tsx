@@ -23,7 +23,7 @@ import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import { workbenchTableViewportClass } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import {
   derivedPackerRecordToQueueRow,
 } from '@/components/shipped/shipped-record-mappers';
@@ -37,12 +37,8 @@ export interface DashboardShippedTableProps {
   embedded?: boolean;
   /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
   selectMode?: boolean;
-  /** Reserve bottom room for the pinned bulk-selection capsule (see
-   *  `workbenchTableViewportClass`). Ignored when `embedded` — that shell is a
-   *  flex child with no bounded host of its own. */
-  bulkBarInset?: boolean;
   /** Rail-selection model: the check-set is the single selection SoT and drives
-   *  the right-rail inspector. See `docs/todo/order-rail-selection-plane-PLAN.md`. */
+   *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
   bannerTitle?: DashboardSearchSectionProps['bannerTitle'];
   bannerSubtitle?: DashboardSearchSectionProps['bannerSubtitle'];
@@ -64,7 +60,6 @@ export function DashboardShippedTable({
   testedBy,
   embedded = false,
   selectMode = false,
-  bulkBarInset = false,
   railSelection = false,
   searchEmptyTitle = 'No shipped orders found',
   searchResultLabel = 'shipped orders',
@@ -169,21 +164,10 @@ export function DashboardShippedTable({
       : null;
 
   return (
-    <div className="flex min-w-0 flex-col bg-surface-canvas">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
       {portaledToolbar}
-      {!embedded && !toolbarPortalTarget ? (
-        <div className="flex h-[40px] shrink-0 items-center justify-end gap-3 border-b border-border-default px-3">
-          {shippedToolbarControls}
-        </div>
-      ) : null}
-      <div
-        className={
-          embedded
-            ? 'flex min-h-0 flex-1 flex-col'
-            : workbenchTableViewportClass({ bulkBarInset })
-        }
-        data-testid="column-table-body"
-      >
+      {/* Staff / period chrome portals into View topics — no inline strip twin. */}
+      <div className={WORKBENCH_SHEET_HOST} data-testid="column-table-body">
         <OrdersGridView
           ariaLabel="Shipped orders"
           records={gridRecords}
@@ -201,6 +185,7 @@ export function DashboardShippedTable({
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
           railSelection={railSelection}
           data-testid="shipped-grid-body"
+          columnTriggerPortalTarget={toolbarPortalTarget ?? null}
           onOpenRecord={onOpenRecord}
           onCloseRecord={() => undefined}
         />

@@ -26,6 +26,7 @@ import type {
   NavState,
   WorkspaceState,
 } from '@/components/receiving/useReceivingWorkspacePane';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 
 interface TriageLineWorkspaceProps {
   staffId: string;
@@ -90,14 +91,10 @@ export function TriageLineWorkspace({
               // those is a deliberate open of one carton, so it records.
               recordView={workspace.recordView !== false}
               onPrev={() => {
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-table', { detail: 'prev' }),
-                );
+                emitReceiving('receiving-navigate-table', 'prev');
               }}
               onNext={() => {
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-table', { detail: 'next' }),
-                );
+                emitReceiving('receiving-navigate-table', 'next');
               }}
               onClose={onCloseWorkspace}
             />

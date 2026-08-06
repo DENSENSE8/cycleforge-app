@@ -70,7 +70,7 @@ export function SerialProvenanceHeader({
       ) : null}
 
       <span className="ml-1 shrink-0 text-role-micro font-medium text-text-faint">
-        {count} {count === 1 ? 'event' : 'events'}
+        {count} events
       </span>
     </div>
   );

@@ -286,7 +286,7 @@ export function SupportTicketDetail({
           onClose={() => setContextOpen(false)}
           embedded={embedded}
           // FLOAT, not push. One of this component's hosts is
-          // `ReceivingTicketStack` — itself an `UnboxPushColumn` — so pushing
+          // Unbox Displays Ticket (`UnboxPushColumn`) — so pushing
           // would put two columns on one edge. The reason belongs to the HOST,
           // which is why `push` is a required prop rather than a default baked
           // into the panel.
@@ -309,7 +309,7 @@ export function SupportTicketDetail({
           >
             <div className="flex flex-col items-center gap-2 text-blue-700">
               <Upload className="h-7 w-7" />
-              <p className="text-role-caption font-semibold">Drop photo to add to ticket #{ticketId}</p>
+              <p className="text-role-caption font-semibold">Drop to attach · #{ticketId}</p>
               <p className="text-role-caption font-semibold text-blue-500">Uploads to the library, attaches on your next reply</p>
             </div>
           </motion.div>

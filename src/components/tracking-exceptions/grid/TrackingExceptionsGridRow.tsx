@@ -4,7 +4,7 @@ import { Fragment, memo, type ReactNode } from 'react';
 import { Pencil, RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
-import { GridCellDash, GridDateTimeCellValue } from '@/components/ui/grid-cells';
+import { GridCellDash, GridDateTimeCellValue, GridStatusCellValue } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { cn } from '@/utils/_cn';
@@ -27,10 +27,11 @@ import {
 const dataCell = (col: TrackingExceptionsGridColumn, rule = true) =>
   cn(trackingExceptionsGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
-const STATUS_PILL: Record<TrackingExceptionRow['status'], string> = {
-  open: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  resolved: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  discarded: 'bg-surface-sunken text-text-muted ring-1 ring-border-soft',
+/** Tone map for house {@link GridStatusCellValue} — bg + text only; ring from the cell. */
+const STATUS_TONE: Record<TrackingExceptionRow['status'], string> = {
+  open: 'bg-amber-50 text-amber-700',
+  resolved: 'bg-emerald-50 text-emerald-700',
+  discarded: 'bg-surface-sunken text-text-muted',
 };
 
 /**
@@ -132,14 +133,10 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
       case 'status':
         return (
           <div data-col="status" className={dataCell(col, rule)}>
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest',
-                STATUS_PILL[row.status],
-              )}
-            >
-              {row.status}
-            </span>
+            <GridStatusCellValue
+              label={row.status}
+              toneClass={STATUS_TONE[row.status]}
+            />
           </div>
         );
       case 'retries':

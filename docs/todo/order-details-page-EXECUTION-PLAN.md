@@ -23,15 +23,22 @@ is the one to revisit; nothing else in the plan depends on it.
 
 ## 1. Locked decisions
 
+> **Superseded 2026-08-05 (search feedback unlock).** D2 / D2a / “one body for
+> search + desk + `/o`” are **demolished**. Order surfaces are three jobs:
+> durable record (`OrderRecordBody` @ `/o`), search feedback (`SearchOrderFeedback`
+> @ `/search?sel=order:…`), desk table click (tabbed `ShippedDetailsPanel`).
+> Non-desk right-rail opens use `CompactOrderPeek`. See `AGENTS.md` +
+> `source-of-truth.md` → Order surface by job.
+
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **One canonical route: `/o/[orderId]`.** All search hits, board clicks, and deep links resolve there. | Kills the three-way divergence where coverage depends on arrival path. |
-| D2 | **One `OrderRecordBody` component**, mounted by the full page, the dashboard-search shell, and `DashboardOrderDetails` only. Panel passes `density="compact"` (right rail collapses under the main column; jump rail hidden). | Superset by construction — a capability can no longer exist on one *order* surface and not another. |
-| D2a | **Hard scope boundary at `context="dashboard"`.** The other seven `ShippedDetailsBody` contexts (`station`, `packer`, `fulfillment`, `labels`, `staged`, `shipped`, `queue`) stay on the legacy tabbed body. | `ShippedDetailsPanel` has ten consumers, several of them Station-contract at `floor` density. Forcing a Workbench master-detail layout into a scan bench violates the region contract. They need a Station-density variant designed on their own terms, not a retrofit. |
-| D2b | **`PackoutChecklistCard` stays on `/o/[orderId]` for now — demotion deferred.** | ⚠️ Corrected 2026-07-27 against the code: the card is mounted in **exactly one place**, `OrderFullPageView.tsx:268`. It has *no* existing home in the `station` / `packer` panels, so "keep it where it already is" has nothing to keep. Removing it now would delete a live feature into dead code (and trip knip). Demotion needs a real Station host built first — and that build is exactly what D2a defers. Revisit when the Station-density variant is designed. |
-| D4a | **The search hijack is exact-identifier-only.** `looksLikeIdentifier` + a resolved single order on Enter → `/o/[id]`. Fuzzy / natural-language / multi-result queries keep `/dashboard?mode=search` **and its L2 hit-map rail**. | Protects 25 `orderSearchHref` call sites and 20+ `openOrderId` readers; the rail is the right surface when there is genuinely more than one candidate. |
-| D3 | **Kill the 8-tab strip.** Single vertical scroll (main column) + right rail (dimensional metadata). | `ops` density + operator scan behavior; tabs hide exception state behind a click. |
-| D4 | **Instant-navigate on one confident hit.** `looksLikeIdentifier` + exactly one exact-matcher result → straight to `/o/[id]`. `/dashboard?mode=search` survives only for fuzzy/multi-result queries. | Typing a full order number is unambiguous intent. |
+| D1 | **Durable canonical route: `/o/[orderId]`** for the full Workbench record. Confident identifier Enter still lands here. | Durable editing + deep links need one full record. |
+| D2 | ~~One `OrderRecordBody` for search + desk + `/o`~~ **SUPERSEDED.** `OrderRecordBody` mounts only on `/o/[orderId]`. | Search feedback is a different job (read-dominant result). |
+| D2a | ~~Hard scope at `context="dashboard"` → OrderRecordBody~~ **SUPERSEDED.** Desk inspector is always tabbed `ShippedDetailsBody`; `context` is inspector capability only. | Body fork on `context==="dashboard"` blocked redesign. |
+| D2b | **`PackoutChecklistCard` stays on `/o/[orderId]` for now — demotion deferred.** | Still only mounted from `OrderFullPageView`. |
+| D4a | **Confident identifier Enter → `/o/[id]`.** ORDER search hits / preview → `/search?sel=order:…` (`SearchOrderFeedback`). | Separates durable open from search feedback. |
+| D3 | **Durable `/o` record: no 8-tab strip** — single scroll + right rail. Search feedback **may** use tabs (its own shell). | Tabs hide exceptions on the durable record; feedback is exploratory. |
+| D4 | **Instant-navigate on one confident hit → `/o/[id]`.** Fuzzy / multi-result → `/search`. | Unambiguous intent vs explore. |
 | D5 | **Bridge the keyspace — do not add money columns to `orders`.** Nullable `sales_order_id UUID` on `orders`. | Flat money columns would fork a second source of truth for facts the mirror already holds, and require per-channel finance ingest. |
 | D6 | **`order_line_items` is a prerequisite, and it is scheduled** (Week 4–5), not declared and deferred. | Combined shipping and split fulfillment are real in reseller ops; one-order-one-line cannot represent them. |
 | D7 | **Demote `PackoutChecklistCard`** off the durable record page to a Station surface. | Packout is act-and-clear, scanner-driven — a Station contract, not a Workbench one. |
@@ -236,7 +243,7 @@ denormalized cache until every reader is off them.
 | The 8-tab strip | Single scroll + rail |
 | `PackoutChecklistCard` on the record | Station surface (D7) |
 | `/dashboard?mode=search` as an order destination | Fuzzy/multi-result queries only |
-| The dashboard-search fork (`SearchOrderDetailShell` + its fact-row primitives) | Deleted once `OrderRecordBody` lands |
+| The dashboard-search fork (`SearchOrderDetailShell`) | Deleted; successor is `SearchOrderFeedback` on `/search` (not `OrderRecordBody`) |
 | Pipeline stepper as hero | Status chip + timeline; the Tested→Packed→Scanned Out detail stays as a compact strip in Fulfillment |
 
 ---

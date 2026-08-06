@@ -19,10 +19,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { Button } from '@/design-system/primitives';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
@@ -78,6 +79,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const [customerName, setCustomerName] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [pickupControlsEl, setPickupControlsEl] = useState<HTMLDivElement | null>(null);
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -188,14 +190,24 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     <>
       <DashboardScrollShell
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <WorkbenchChromeHeader
               density="band"
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
               tabs={tabs}
               activeTab={statusTab}
               onTabChange={(id) =>
                 setParam('status', (id as PickupStatusTab) === 'all' ? null : id)
               }
+              trailing={
+                <WorkbenchTrailingCluster
+                  actions={<PickupChromeActions onNew={openCreate} busy={creating} />}
+                />
+              }
+            />
+            {/* Band 3 — find + ▦ column display. No KPI band (honest absence). */}
+            <WorkbenchTriageBand
+              controlsSlotRef={setPickupControlsEl}
               search={
                 <TechRailSearchBar
                   variant="chrome"
@@ -205,16 +217,11 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
                   className="w-40 shrink-0 lg:w-56"
                 />
               }
-              trailing={
-                <WorkbenchTrailingCluster
-                  actions={<PickupChromeActions onNew={openCreate} busy={creating} />}
-                />
-              }
             />
           </div>
         }
       >
-        <div className={cn(WORKBENCH_BODY_COLUMN, 'flex min-h-0 flex-1 flex-col')}>
+        <div className={WORKBENCH_SHEET_HOST}>
           <PickupGridView
             rows={visibleRows}
             loading={isLoading}
@@ -223,6 +230,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             isSearching={Boolean(normalizedQuery) && !isError}
             selectedOrderId={selectedOrderId}
             onSelectOrder={onSelectOrder}
+            columnTriggerPortalTarget={pickupControlsEl}
           />
         </div>
       </DashboardScrollShell>

@@ -101,7 +101,7 @@ export function PhotoLibraryNasBackup() {
         disabled={backup.isPending || pending === 0}
         onClick={() => backup.mutate()}
       >
-        {backup.isPending ? 'Backing up…' : pending === 0 ? 'Backed up' : 'Backup to NAS'}
+        {backup.isPending ? 'Backing up…' : pending === 0 ? 'Backed up' : 'Sync to NAS'}
       </Button>
     </div>
   );

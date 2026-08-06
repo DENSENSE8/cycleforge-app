@@ -14,10 +14,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, RefreshCw } from '@/components/Icons';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
@@ -30,6 +31,8 @@ import { Button } from '@/design-system/primitives';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { productDetailHref } from '@/components/products/products-view';
 import { CatalogGridView } from '@/components/products/catalog/catalog-grid/CatalogGridView';
+import { CatalogBulkActionBar } from '@/components/products/catalog/CatalogBulkActionBar';
+import { useTableSelection } from '@/hooks/useTableSelection';
 import {
   applyCatalogRefine,
   applyCatalogRefineParams,
@@ -73,6 +76,7 @@ export function ProductsCatalogWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<InventoryProviderMeta | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [catalogControlsEl, setCatalogControlsEl] = useState<HTMLDivElement | null>(null);
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared catalog link reproduces the same ordering. NOT
@@ -145,6 +149,11 @@ export function ProductsCatalogWorkspace() {
     return [...refined].sort((a, b) => compareCatalogGridRows(a, b, sort, dir));
   }, [items, refine, sort, dir]);
 
+  const selectedCatalogRows = useTableSelection<CatalogListRow>(
+    CATALOG_SELECTION_SCOPE,
+    (r) => r.id,
+  );
+
   const refreshInventory = useCallback(async () => {
     setSyncing(true);
     try {
@@ -210,9 +219,10 @@ export function ProductsCatalogWorkspace() {
       <DashboardScrollShell
         className="h-full"
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <WorkbenchChromeHeader
               density="band"
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
               tabs={PLATFORM_TABS.map((t) => ({
                 id: t.id,
                 label: t.label,
@@ -224,6 +234,27 @@ export function ProductsCatalogWorkspace() {
                 })
               }
               solidTone="accent"
+              trailing={
+                <WorkbenchTrailingCluster
+                  after={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={syncing}
+                      onClick={() => void refreshInventory()}
+                      className="gap-1.5"
+                    >
+                      <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
+                      Refresh inventory
+                    </Button>
+                  }
+                />
+              }
+            />
+            {/* Band 3 — find left; catalog refine right. No KPI band (no metrics). */}
+            <WorkbenchTriageBand
+              controlsSlotRef={setCatalogControlsEl}
               search={
                 <TechRailSearchBar
                   variant="chrome"
@@ -293,28 +324,11 @@ export function ProductsCatalogWorkspace() {
                   ) : null}
                 </WorkbenchFilterPopover>
               }
-              trailing={
-                <WorkbenchTrailingCluster
-                  after={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={syncing}
-                      onClick={() => void refreshInventory()}
-                      className="gap-1.5"
-                    >
-                      <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-                      Refresh inventory
-                    </Button>
-                  }
-                />
-              }
             />
           </div>
         }
       >
-        <div className={cn(WORKBENCH_BODY_COLUMN, 'flex min-h-0 flex-1 flex-col gap-2')}>
+        <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
           <div className="flex shrink-0 items-center justify-between px-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
             <span>{countLabel}</span>
             {provider ? (
@@ -346,11 +360,13 @@ export function ProductsCatalogWorkspace() {
               sort={sort}
               dir={dir}
               onSortChange={setSort}
+              columnTriggerPortalTarget={catalogControlsEl}
               className="min-h-0 flex-1"
             />
           )}
         </div>
       </DashboardScrollShell>
+      <CatalogBulkActionBar scope={CATALOG_SELECTION_SCOPE} selected={selectedCatalogRows} />
     </div>
   );
 }

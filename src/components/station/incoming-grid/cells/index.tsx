@@ -8,7 +8,8 @@
 import type { ReactNode } from 'react';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import {
   GridAgeCellValue,
   GridCellDash,
@@ -16,13 +17,18 @@ import {
   GridPlatformMarkValue,
   GridQtyFractionValue,
 } from '@/components/ui/grid-cells';
-import { GridRowCheckbox, isEmptyGutterChrome, type GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
+import {
+  GridClickSelectFace,
+  GridRowCheckbox,
+  isEmptyGutterChrome,
+  type GridSelectGutterChrome,
+} from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ZohoReceiptChip } from '@/components/station/receiving-grid/cells/ReceivingZohoCell';
 import { IncomingGridStatusCell } from '@/components/station/incoming-grid/IncomingGridStatusCell';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
-import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { isEmptyMetaDash } from '@/lib/conditions';
 import {
   INCOMING_GRID_FROZEN_CELL,
   incomingGridCell,
@@ -82,6 +88,8 @@ export interface IncomingGridCellCtx {
   pickupLabel: string | null;
   trackingValue: string;
   trackingAction: ReactNode;
+  /** Opens the Incoming inspector for Edit on a filled tracking chip. */
+  onEditTracking?: () => void;
   removalFace: (typeof INCOMING_REMOVAL_REASON_FACE)[IncomingRemovalReason] | null;
   selectMode: boolean;
   isChecked: boolean;
@@ -117,6 +125,7 @@ export function renderIncomingGridCell(
     pickupLabel,
     trackingValue,
     trackingAction,
+    onEditTracking,
     removalFace,
     selectMode,
     isChecked,
@@ -127,19 +136,25 @@ export function renderIncomingGridCell(
 
   switch (col.key) {
     case 'select': {
-      // Click-select: the row body owns bulk toggle; gutter is a spacer so the
-      // header select-all still aligns on the select track.
+      // Click-select: the row body owns bulk toggle; gutter paints membership
+      // so header select-all still aligns on the select track.
       if (clickSelect) {
         return (
           <div
             className={cn(
               incomingGridCell({ inset: 'none', rule: true }),
               INCOMING_GRID_FROZEN_CELL,
+              'relative overflow-hidden p-0',
             )}
             style={{ left: incomingGridFrozenLeft('select') }}
             data-frozen-edge
             aria-hidden
-          />
+          >
+            <GridClickSelectFace
+              checked={isChecked}
+              className="absolute inset-0"
+            />
+          </div>
         );
       }
       const emptyGutter = isEmptyGutterChrome(selectGutterChrome);
@@ -222,15 +237,18 @@ export function renderIncomingGridCell(
     case 'condition':
       return (
         <div data-col="condition" className={dataCell(col, rule)}>
-          <span
-            className={cn(
-              'min-w-0 truncate text-role-eyebrow uppercase',
-              conditionGradeTextClass(condGrade),
-              conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
-            )}
-          >
-            {conditionLabel}
-          </span>
+          {isEmptyMetaDash(conditionLabel) ? (
+            <GridCellDash />
+          ) : (
+            <span
+              className={cn(
+                'min-w-0 truncate text-role-eyebrow uppercase',
+                conditionGradeTextClass(condGrade),
+              )}
+            >
+              {conditionLabel}
+            </span>
+          )}
         </div>
       );
     case 'status':
@@ -242,7 +260,11 @@ export function renderIncomingGridCell(
     case 'platform':
       return (
         <div data-col="platform" className={dataCell(col, rule)}>
-          <GridPlatformMarkValue platformValue={platformMeta.value} label={markLabel} />
+          <GridPlatformMarkValue
+            platformValue={platformMeta.value}
+            label={markLabel}
+            meta={platformMeta}
+          />
         </div>
       );
     // Scrolls with facts (only `select` is frozen — Unbox Sheets golden).
@@ -252,6 +274,7 @@ export function renderIncomingGridCell(
           <OrderIdChip
             value={poValue}
             display={getLast8(poValue)}
+            platformLabel={platformMeta.value ? platformMeta.label : null}
             plain
             truncateDisplay={false}
             fitDisplayWidth
@@ -265,12 +288,14 @@ export function renderIncomingGridCell(
             <FulfillmentPickupPill dense />
           ) : !trackingValue && trackingAction ? (
             trackingAction
-          ) : (
-            <TrackingChip
+          ) : trackingValue ? (
+            <TrackingNumberMenuChip
               value={trackingValue}
+              carrierHint={row.carrier}
               showIcon={!col.omitCellIcon}
+              onEdit={onEditTracking}
             />
-          )}
+          ) : null}
         </div>
       );
     // Why this row left Incoming. Resolved through the shared registry, which

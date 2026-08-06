@@ -4,8 +4,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { classifyScan } from '@/utils/packer';
 import { normalizeSku } from '@/utils/sku';
 import { upsertOpenOrderException } from '@/lib/orders-exceptions';
-import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
-import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
+import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson } from '@/lib/cache/upstash-cache';
 import { normalizePSTTimestamp, getCurrentPSTDateKey } from '@/utils/date';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
@@ -218,11 +217,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const staffName = staffNameResult.rows[0]?.name || fallbackPackerName;
 
         if (classification.trackingType === 'ORDERS') {
-            const trackingLast8 = normalizeTrackingLast8(scanInput);
+            // FedEx GS1 SoT: unwrap gun-scanned 96… envelopes to the short human
+            // STN so exact join matches sheet/transfer rows (same as receiving).
+            const {
+              exact: normalizedInput,
+              key18: trackingKey18,
+              last8: trackingLast8,
+            } = orderTrackingMatchKeys(scanInput);
             if (!trackingLast8 || trackingLast8.length < 8) {
                 return NextResponse.json({ error: 'Invalid tracking number' }, { status: 400 });
             }
-            const normalizedInput = normalizeTrackingNumber(scanInput);
             // Primary: exact normalized match via shipment_id FK (fast)
             let orderLookup = await client.query(
                 `SELECT o.id, o.order_id, stn.tracking_number_raw AS tracking_number, o.shipment_id,
@@ -247,7 +251,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                        AND  o.organization_id = $2
                      ORDER BY o.id DESC
                      LIMIT 1`,
-                    [normalizeTrackingKey18(scanInput), ctx.organizationId]
+                    [trackingKey18, ctx.organizationId]
                 );
             }
 
@@ -410,7 +414,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             if (orderLookup.rows.length === 0) {
                 const upsertResult = await upsertOpenOrderException({
                     organizationId: ctx.organizationId,
-                    shippingTrackingNumber: scanInput,
+                    shippingTrackingNumber: normalizedInput,
                     sourceStation: 'packer',
                     staffId,
                     staffName,

@@ -101,6 +101,11 @@ interface Props {
    * (Testing UNLINK / wrong physical item → split onto its own row).
    */
   serialSplit?: Omit<PoLineSerialSplitContext, 'receivingId'>;
+  /**
+   * Serials cell "View All" → open Units Displays for that line.
+   * Omit on surfaces without a Displays host (Shipping, read-only triage).
+   */
+  onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
 /**
@@ -133,6 +138,7 @@ export function PoLinesAccordion({
   headerRight,
   suppressHeader = false,
   accordionBootstrap = 'default',
+  onViewAllUnits,
 }: Props) {
   const { queryKey, allRows, rows, cartonUnitIds, serialsLoading } = usePoLinesData({
     receivingId,
@@ -185,19 +191,14 @@ export function PoLinesAccordion({
   // workspace expects above the body.
   if (rows.length === 0) return null;
 
-  // Embedded → bare wrapper (the POUnboxingSection card supplies the chrome +
-  // the single shared pencil, so the per-card "+" add action is dropped here).
+  // Embedded → bare wrapper (parent supplies layout). Standalone (testing /
+  // other callers) stays a flush plane too — flat hairline list, not a raised
+  // card island. The elevated action dock is the only lifted surface.
   const Wrapper = embedded ? 'div' : 'section';
   return (
-    <Wrapper
-      className={
-        embedded
-          ? 'min-w-0'
-          : 'min-w-0 overflow-hidden rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60'
-      }
-    >
+    <Wrapper className="min-w-0">
       {suppressHeader ? null : (
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-0 flex items-center justify-between">
           <h3 className={WORKSPACE_SECTION_TITLE_CLASS}>
             PO items · {rows.length}
           </h3>
@@ -239,6 +240,7 @@ export function PoLinesAccordion({
                   ? { ...serialSplit, receivingId }
                   : undefined
               }
+              onViewAllUnits={onViewAllUnits}
               desc={{
                 shownId: desc.shownId,
                 draft: desc.draft,

@@ -3,9 +3,10 @@
 /**
  * Store order-scope filter — All orders vs Repair (-RS).
  *
- * Lives in the SearchField trailing cluster (`trailingPrefix`, left of paste)
- * via {@link WorkbenchFilterPopover} `density="field"`. Replaces the old
- * HorizontalButtonSlider tab row under the search field.
+ * Lives in the SearchField trailing cluster (`trailingSuffix`, after paste)
+ * via {@link WorkbenchFilterPopover} `density="field"`. Paste leads the icon
+ * cluster (hover-reveal). Replaces the old HorizontalButtonSlider tab row
+ * under the search field.
  *
  * When scope ≠ `all`, callers also render {@link WorkbenchFilterHotChip}
  * beside the SearchField (floor glanceability — D1/D10).

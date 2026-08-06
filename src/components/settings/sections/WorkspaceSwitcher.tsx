@@ -29,7 +29,7 @@ export function WorkspaceSwitcher() {
   if (!user || memberships.length <= 1 || others.length === 0) return null;
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+    <div className="space-y-3 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
       <div className="space-y-1">
         <h3 className="text-sm font-semibold text-text-default">Switch workspace</h3>
         <p className="text-xs text-text-soft">
@@ -44,7 +44,7 @@ export function WorkspaceSwitcher() {
         </div>
       )}
 
-      <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft">
+      <div className="divide-y divide-border-hairline overflow-hidden rounded-none border border-border-soft">
         {others.map((m) => (
           <div
             key={m.organizationId}

@@ -57,6 +57,8 @@ export interface UnboxReceiveTerminalInput {
   selectedLabelKind?: string;
   setSelectedLabelKind?: (key: string) => void;
   activeLabelKind?: string;
+  /** Open the label editor for the active kind (Unbox overview popovers). */
+  requestLabelEditor?: () => void;
   handleReceive: (
     mode: 'scan_only' | 'zoho_receive' | 'local_receive' | 'unreceive',
   ) => void | Promise<void>;

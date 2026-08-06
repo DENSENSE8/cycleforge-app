@@ -1,4 +1,4 @@
-import type { ChannelDisposition } from '@/lib/channel-allocation';
+import type { AllocationHit, ChannelDisposition } from '@/lib/channel-allocation';
 
 /** Ready-stage disposition facets on `/shipping/fba?fbaMode=ready` (`?rtab=`). */
 export type ReadyWorkspaceTab = 'all' | 'fba' | 'prebox' | 'hold';
@@ -38,4 +38,16 @@ export function readyTabDisposition(tab: ReadyWorkspaceTab): ChannelDisposition 
   if (tab === 'prebox') return 'PREBOX_STOCK';
   if (tab === 'hold') return 'HOLD';
   return null;
+}
+
+/** Disposition tallies for the Ready KPI band — pure over the fetched hits. */
+export function readyHistoryCounts(hits: readonly AllocationHit[]): ReadyWorkspaceCounts {
+  const next: ReadyWorkspaceCounts = { all: hits.length, fba: 0, prebox: 0, hold: 0, staged: 0 };
+  for (const hit of hits) {
+    if (hit.disposition === 'FBA') next.fba += 1;
+    if (hit.disposition === 'PREBOX_STOCK') next.prebox += 1;
+    if (hit.disposition === 'HOLD') next.hold += 1;
+    if (hit.allocationState === 'FBA_STAGED') next.staged += 1;
+  }
+  return next;
 }

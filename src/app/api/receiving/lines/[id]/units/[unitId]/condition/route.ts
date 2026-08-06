@@ -11,8 +11,9 @@
  * path — the client dual-calls when both exist so the two SoTs stay aligned
  * without this route reaching into serial_units.
  *
- * Body: `{ condition_grade: 'USED_A' | … }`. withAuth (no extra permission)
- * matches the line-level condition + per-unit serial-absent siblings.
+ * Body: `{ condition_grade: 'USED_A' | … | null }`. `null` / `''` clears.
+ * withAuth (no extra permission) matches the line-level condition + per-unit
+ * serial-absent siblings.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -52,15 +53,21 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
   }
 
   const grade = normalizeGrade(body.condition_grade);
-  if (!grade) {
+  // null / '' clears the per-unit grade (column is nullable).
+  const clearing =
+    body.condition_grade === null ||
+    body.condition_grade === '' ||
+    (typeof body.condition_grade === 'string' && !body.condition_grade.trim());
+  if (!clearing && !grade) {
     return NextResponse.json(
       {
         success: false,
-        error: `condition_grade must be one of: ${CONDITION_GRADES.join(', ')}`,
+        error: `condition_grade must be one of: ${CONDITION_GRADES.join(', ')} (or null to clear)`,
       },
       { status: 400 },
     );
   }
+  const nextGrade = clearing ? null : grade;
 
   const updated = await withTenantTransaction(ctx.organizationId, async (client) => {
     const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
@@ -90,7 +97,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       RETURNING id, receiving_line_id, ordinal, serial_unit_id,
                 serial_absent, serial_absent_reason,
                 condition_grade::text AS condition_grade`,
-      [ctx.organizationId, lineId, grade, unitId],
+      [ctx.organizationId, lineId, nextGrade, unitId],
     );
     const unit = unitRes.rows[0];
     if (!unit) return { notFound: 'unit' as const, line: null, unit: null };

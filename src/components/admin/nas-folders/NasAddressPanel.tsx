@@ -7,7 +7,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
   const { servers, setServers, serversDirty, saveServers, isLoading } = c;
   return (
     <>
-      <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-4">
+      <div className="space-y-3 rounded-none border border-border-soft bg-surface-card p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-role-caption font-semibold text-text-default">NAS address</p>
@@ -67,7 +67,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       {!nasConfigured() ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-role-caption font-semibold text-amber-800">
+        <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-role-caption font-semibold text-amber-800">
           No active NAS address is set, so phones can’t save photos and Browse is unavailable. Enter
           the {servers.active === 'test' ? 'Testing' : 'Production'} URL above and Save.
         </div>

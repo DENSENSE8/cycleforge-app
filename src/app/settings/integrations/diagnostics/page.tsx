@@ -79,7 +79,7 @@ const INTEGRATION_JOB_RE = String.raw`^(ebay|zoho|google_sheets|amazon|square|sh
 
 function EmptyBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-faint">
+    <div className="rounded-none border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-faint">
       {children}
     </div>
   );
@@ -201,7 +201,7 @@ export default async function IntegrationsDiagnosticsPage() {
             {connections.length === 0 ? (
               <EmptyBox>No integration connections yet. Connect a provider under Settings → Integrations.</EmptyBox>
             ) : (
-              <div className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-card">
+              <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
                 {connections.map((c) => (
                   <Link
                     key={`${c.provider}-${c.scope ?? ''}`}
@@ -248,7 +248,7 @@ export default async function IntegrationsDiagnosticsPage() {
             ) : credentialUsage.length === 0 ? (
               <EmptyBox>No credential activity recorded in the last 24 hours.</EmptyBox>
             ) : (
-              <div className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-card">
+              <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
                 {credentialUsage.map((r, i) => (
                   <div key={`${r.provider}-${r.operation}-${r.outcome}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">
@@ -282,7 +282,7 @@ export default async function IntegrationsDiagnosticsPage() {
             ) : cronRuns.length === 0 ? (
               <EmptyBox>No integration sync runs recorded yet.</EmptyBox>
             ) : (
-              <div className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-card">
+              <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
                 {cronRuns.map((r, i) => (
                   <div key={`${r.job}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">

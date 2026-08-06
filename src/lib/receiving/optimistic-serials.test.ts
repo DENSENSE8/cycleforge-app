@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   appendOptimisticSerial,
+  bindSerialsToUnitSlots,
   confirmOptimisticSerial,
   markSerialRemoving,
   removeSerialById,
@@ -44,5 +45,56 @@ describe('optimistic-serials', () => {
     ]);
     // No-op when the id is absent.
     assert.deepEqual(setSerialGrade(base, 99, 'USED_C'), base);
+  });
+
+  it('clears a per-unit grade with empty or null', () => {
+    const base = [{ id: 8, serial_number: 'SN8', condition_grade: 'USED_A' }];
+    assert.deepEqual(setSerialGrade(base, 8, ''), [
+      { id: 8, serial_number: 'SN8', condition_grade: null },
+    ]);
+    assert.deepEqual(setSerialGrade(base, 8, null), [
+      { id: 8, serial_number: 'SN8', condition_grade: null },
+    ]);
+  });
+
+  it('bindSerialsToUnitSlots fills empty units from unbound saved by ordinal', () => {
+    const units = [
+      { serial_unit_id: null },
+      { serial_unit_id: null },
+      { serial_unit_id: null, serial_absent: true },
+    ];
+    const saved = [
+      { id: -1, serial_number: 'AAA', _optimistic: 'adding' as const },
+      { id: -2, serial_number: 'BBB', _optimistic: 'adding' as const },
+    ];
+    const bound = bindSerialsToUnitSlots(units, saved);
+    assert.equal(bound[0]?.serial_number, 'AAA');
+    assert.equal(bound[1]?.serial_number, 'BBB');
+    assert.equal(bound[2], null, 'waived unit does not take an unbound serial');
+  });
+
+  it('bindSerialsToUnitSlots prefers linked serial_unit_id over ordinal fill', () => {
+    const units = [
+      { serial_unit_id: 8 },
+      { serial_unit_id: null },
+    ];
+    const saved = [
+      { id: 8, serial_number: 'LINKED' },
+      { id: -1, serial_number: 'OPT', _optimistic: 'adding' as const },
+    ];
+    const bound = bindSerialsToUnitSlots(units, saved);
+    assert.equal(bound[0]?.serial_number, 'LINKED');
+    assert.equal(bound[1]?.serial_number, 'OPT');
+  });
+
+  it('bindSerialsToUnitSlots skips serials marked removing', () => {
+    const units = [{ serial_unit_id: null }, { serial_unit_id: null }];
+    const saved = [
+      { id: 7, serial_number: 'GONE', _optimistic: 'removing' as const },
+      { id: 8, serial_number: 'KEEP' },
+    ];
+    const bound = bindSerialsToUnitSlots(units, saved);
+    assert.equal(bound[0]?.serial_number, 'KEEP');
+    assert.equal(bound[1], null);
   });
 });

@@ -128,7 +128,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
       <div className="space-y-2 border-t border-border-soft pt-3">
         <p className="text-role-micro uppercase tracking-widest text-text-soft">Purchase order</p>
         {zohoLinked ? (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 inset-field">
+          <div className="flex items-center gap-2 rounded-none border border-emerald-200 bg-emerald-50 inset-field">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
             {inbound.zoho_purchaseorder_id ? (
               <PoChip value={inbound.zoho_purchaseorder_id} display={getLast8(inbound.zoho_purchaseorder_id)} />
@@ -144,18 +144,18 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search PO # / reference / vendor…"
-                className="w-full rounded-lg border border-border-soft py-2 pl-8 pr-8 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-none border border-border-soft py-2 pl-8 pr-8 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {isFetching ? (
                 <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />
               ) : null}
             </div>
             {isError ? (
-              <p className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-4 text-center text-xs text-rose-600">
+              <p className="rounded-none border border-dashed border-rose-200 bg-rose-50 px-4 py-4 text-center text-xs text-rose-600">
                 Couldn’t load purchase orders.
               </p>
             ) : candidates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
+              <p className="rounded-none border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
                 {trimmed ? `No purchase orders match “${trimmed}”.` : 'Search to link this order to its purchase order.'}
               </p>
             ) : (
@@ -163,7 +163,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 {candidates.map((po) => (
                   <div
                     key={po.zoho_purchaseorder_id}
-                    className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-field hover:bg-surface-hover"
+                    className="flex items-center gap-2 rounded-none border border-border-soft bg-surface-card inset-field hover:bg-surface-hover"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-role-caption font-semibold text-text-default">

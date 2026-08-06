@@ -238,7 +238,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
               </div>
             </header>
 
-            <div className="rounded-xl border border-border-soft bg-surface-card p-4 space-y-3">
+            <div className="rounded-none border border-border-soft bg-surface-card p-4 space-y-3">
               <FieldRow label="Product Title">
                 <input
                   type="text"

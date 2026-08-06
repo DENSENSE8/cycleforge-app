@@ -209,7 +209,7 @@ export function AppearanceSection() {
           unlike the device-scoped density/text/wash controls below it. */}
       <StaffPhotoCard />
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">UI density</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {DENSITY_OPTIONS.map((d) => {
@@ -219,7 +219,7 @@ export function AppearanceSection() {
                 key={d}
                 type="button"
                 onClick={() => updateDensity(d)}
-                className={`ds-raw-button rounded-xl border px-4 py-3 text-left transition ${
+                className={`ds-raw-button rounded-none border px-4 py-3 text-left transition ${
                   isActive
                     ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
@@ -234,7 +234,7 @@ export function AppearanceSection() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Text size</h3>
         <div className="flex flex-wrap items-center gap-2">
           {FONT_SCALE_OPTIONS.map((scale) => {
@@ -244,7 +244,7 @@ export function AppearanceSection() {
                 key={scale}
                 type="button"
                 onClick={() => updateFontScale(scale)}
-                className={`ds-raw-button min-w-16 rounded-xl border px-4 py-2 font-medium transition ${
+                className={`ds-raw-button min-w-16 rounded-none border px-4 py-2 font-medium transition ${
                   isActive
                     ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
@@ -262,7 +262,7 @@ export function AppearanceSection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Time format</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {TIME_FORMAT_VALUES.map((tf) => {
@@ -275,7 +275,7 @@ export function AppearanceSection() {
                 key={tf}
                 type="button"
                 onClick={() => updateTimeFormat(tf)}
-                className={`ds-raw-button rounded-xl border px-4 py-3 text-left transition ${
+                className={`ds-raw-button rounded-none border px-4 py-3 text-left transition ${
                   isActive
                     ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
@@ -296,7 +296,7 @@ export function AppearanceSection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Accent color</h3>
         <p className="mb-4 text-role-caption text-text-soft">
           Highlights action buttons, section tabs, and other operator chrome — the same tint as
@@ -311,7 +311,7 @@ export function AppearanceSection() {
         />
 
         {useStaffAccent ? (
-          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3">
+          <div className="mt-4 flex items-center gap-3 rounded-none border border-border-soft bg-surface-canvas px-4 py-3">
             <span
               aria-hidden
               className="h-8 w-8 shrink-0 rounded-full ring-2 ring-white ring-offset-2 ring-offset-surface-canvas"
@@ -323,7 +323,7 @@ export function AppearanceSection() {
             </div>
           </div>
         ) : (
-          <div className="mt-4 space-y-3 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3">
+          <div className="mt-4 space-y-3 rounded-none border border-border-soft bg-surface-canvas px-4 py-3">
             <p className="text-sm font-semibold text-text-default">Custom accent</p>
             <RoleColorPicker value={customAccentHex} onChange={updateAccentHex} />
           </div>
@@ -334,7 +334,7 @@ export function AppearanceSection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Page background</h3>
         <p className="mb-3 text-role-caption text-text-soft">
           Soft wash behind Unbox, receiving, and admin workbenches. Chrome (sidebar + header)
@@ -349,7 +349,7 @@ export function AppearanceSection() {
                 key={name}
                 type="button"
                 onClick={() => updatePageWash(name)}
-                className={`ds-raw-button rounded-xl border p-2 text-left transition ${
+                className={`ds-raw-button rounded-none border p-2 text-left transition ${
                   isActive
                     ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
                     : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
@@ -375,7 +375,7 @@ export function AppearanceSection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Theme</h3>
         {/* Options come straight from the theme registry — registering a new
             palette (src/design-system/themes/registry.ts) lists it here with
@@ -399,7 +399,7 @@ export function AppearanceSection() {
                         key={name}
                         type="button"
                         onClick={() => updateTheme(name)}
-                        className={`ds-raw-button rounded-xl border p-2 text-left transition ${
+                        className={`ds-raw-button rounded-none border p-2 text-left transition ${
                           isActive
                             ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
                             : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'

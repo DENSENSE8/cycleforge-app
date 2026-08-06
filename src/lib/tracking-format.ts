@@ -8,7 +8,17 @@
 
 // ─── Carrier type ────────────────────────────────────────────────────────────
 
-export type Carrier = 'UPS' | 'USPS' | 'FedEx' | 'FEDEX' | 'DHL' | 'AMAZON' | 'Unknown';
+export type Carrier =
+  | 'UPS'
+  | 'USPS'
+  | 'FedEx'
+  | 'FEDEX'
+  | 'DHL'
+  | 'AMAZON'
+  | 'OnTrac'
+  | 'LaserShip'
+  | 'GSO'
+  | 'Unknown';
 
 // ─── Normalization ───────────────────────────────────────────────────────────
 
@@ -177,6 +187,27 @@ export function normalizeTrackingLast8(input: string): string {
   return trimmed;
 }
 
+/**
+ * Packing / outbound order-match ladder keys for a raw gun scan or paste.
+ *
+ * Always unwrap via {@link extractCanonicalTracking} first so a FedEx GS1/"96"
+ * barcode and the short human STN share the same exact · key18 · last8 keys.
+ * Do NOT derive key18/last8 from the raw GS1 — key18 of the long label ≠ key18
+ * of the short human number.
+ */
+export function orderTrackingMatchKeys(rawScan: string): {
+  exact: string;
+  key18: string;
+  last8: string;
+} {
+  const exact = extractCanonicalTracking(rawScan);
+  return {
+    exact,
+    key18: normalizeTrackingKey18(exact),
+    last8: normalizeTrackingLast8(exact),
+  };
+}
+
 export function last8FromStoredTracking(input: string): string {
   const digitsOnly = String(input || '').replace(/\D/g, '');
   return digitsOnly.slice(-8);
@@ -212,7 +243,8 @@ import { detectCarrierFromTracking, toDisplayCarrier } from '@/utils/carrier-pat
 
 /**
  * Detect carrier from a tracking number string.
- * Returns a display-friendly carrier name (UPS, FedEx, USPS, DHL, Amazon, Unknown).
+ * Returns a display-friendly carrier name (UPS, FedEx, USPS, DHL, Amazon,
+ * OnTrac, LaserShip, GSO, Unknown).
  */
 export function detectCarrier(tracking: string): Carrier {
   const code = detectCarrierFromTracking(tracking);
@@ -225,7 +257,10 @@ export function detectCarrier(tracking: string): Carrier {
     case 'USPS':      return 'USPS';
     case 'DHL':       return 'DHL';
     case 'Amazon':    return 'AMAZON';
-    default:          return display as Carrier;
+    case 'OnTrac':    return 'OnTrac';
+    case 'LaserShip': return 'LaserShip';
+    case 'GSO':       return 'GSO';
+    default:          return 'Unknown';
   }
 }
 
@@ -234,33 +269,84 @@ export const getCarrier = detectCarrier;
 
 // ─── Tracking URL builders ──────────────────────────────────────────────────
 
+function isBlankTracking(tracking: string): boolean {
+  const t = String(tracking || '').trim();
+  return !t || t === 'Not available' || t === 'N/A';
+}
+
 /**
  * Build a carrier tracking URL when the carrier is already known.
- * Falls back to Google search for unrecognized carriers.
+ * Returns null for empty tracking or unrecognized carriers (never Google —
+ * callers that want a search URL must opt in explicitly).
  */
-export function getTrackingUrlByCarrier(tracking: string, carrier: string): string {
+export function getTrackingUrlByCarrier(tracking: string, carrier: string): string | null {
+  if (isBlankTracking(tracking)) return null;
+  const t = String(tracking).trim();
   const c = String(carrier || '').toUpperCase().trim();
-  if (c.includes('UPS'))    return `https://www.ups.com/track?tracknum=${tracking}`;
-  if (c.includes('FEDEX'))  return `https://www.fedex.com/apps/fedextrack/?tracknumbers=${tracking}`;
-  if (c.includes('USPS'))   return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${tracking}`;
-  if (c.includes('DHL'))    return `https://www.dhl.com/en/express/tracking.html?AWB=${tracking}`;
-  if (c.includes('AMAZON')) return `https://www.amazon.com/progress-tracker/package/ref=pt_redirect_from_gp?trackingId=${tracking}`;
-  return `https://www.google.com/search?q=${encodeURIComponent(tracking)}`;
+  if (!c) return null;
+  if (c.includes('UPS'))    return `https://www.ups.com/track?tracknum=${t}`;
+  if (c.includes('FEDEX'))  return `https://www.fedex.com/apps/fedextrack/?tracknumbers=${t}`;
+  if (c.includes('USPS'))   return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${t}`;
+  if (c.includes('DHL'))    return `https://www.dhl.com/en/express/tracking.html?AWB=${t}`;
+  if (c.includes('AMAZON')) return `https://www.amazon.com/progress-tracker/package/ref=pt_redirect_from_gp?trackingId=${t}`;
+  if (c.includes('ONTRAC')) return `https://www.ontrac.com/trackingresults.asp?tracking_number=${t}`;
+  if (c.includes('LASERSHIP') || c.includes('LASER SHIP')) {
+    return `https://www.lasership.com/track/${t}`;
+  }
+  // GSO was acquired by GLS US — official track host is gls-us.
+  if (c.includes('GSO') || (c.includes('GLS') && c.includes('US'))) {
+    return `https://www.gls-us.com/trackshipment?TrackingNumber=${t}`;
+  }
+  return null;
 }
 
 /**
  * Build a carrier tracking URL by auto-detecting the carrier.
- * Returns null for empty/invalid tracking numbers.
+ * Returns null for empty/invalid tracking numbers or unrecognized patterns.
  */
 export function getTrackingUrl(tracking: string): string | null {
-  if (!tracking || tracking === 'Not available' || tracking === 'N/A') return null;
-  const carrier = detectCarrier(tracking);
+  if (isBlankTracking(tracking)) return null;
+  const t = String(tracking).trim();
+  const carrier = detectCarrier(t);
   switch (carrier) {
-    case 'UPS':    return `https://www.ups.com/track?track=yes&trackNums=${tracking}&loc=en_US&requester=ST/trackdetails`;
-    case 'USPS':   return `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}`;
-    case 'FedEx':  return `https://www.fedex.com/fedextrack/?trknbr=${tracking}`;
-    case 'DHL':    return `https://www.dhl.com/en/express/tracking.html?AWB=${tracking}`;
-    case 'AMAZON': return `https://www.amazon.com/progress-tracker/package/ref=pt_redirect_from_gp?trackingId=${tracking}`;
-    default:       return null;
+    case 'UPS':
+      return `https://www.ups.com/track?track=yes&trackNums=${t}&loc=en_US&requester=ST/trackdetails`;
+    case 'USPS':
+      return `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${t}`;
+    case 'FedEx':
+    case 'FEDEX':
+      return `https://www.fedex.com/fedextrack/?trknbr=${t}`;
+    case 'DHL':
+      return `https://www.dhl.com/en/express/tracking.html?AWB=${t}`;
+    case 'AMAZON':
+      return `https://www.amazon.com/progress-tracker/package/ref=pt_redirect_from_gp?trackingId=${t}`;
+    case 'OnTrac':
+      return `https://www.ontrac.com/trackingresults.asp?tracking_number=${t}`;
+    case 'LaserShip':
+      return `https://www.lasership.com/track/${t}`;
+    case 'GSO':
+      return `https://www.gls-us.com/trackshipment?TrackingNumber=${t}`;
+    default:
+      return null;
   }
+}
+
+/**
+ * Open-href SoT for filled tracking chips / rows.
+ *
+ * Ladder: stored/label `knownCarrier` → local pattern detect → official carrier
+ * deep link. Never returns a Google search URL; unknown → null (Open disabled).
+ */
+export function resolveTrackingOpenUrl(
+  tracking: string,
+  knownCarrier?: string | null,
+): string | null {
+  if (isBlankTracking(tracking)) return null;
+  const t = String(tracking).trim();
+  const hint = String(knownCarrier || '').trim();
+  if (hint) {
+    const byCarrier = getTrackingUrlByCarrier(t, hint);
+    if (byCarrier) return byCarrier;
+  }
+  return getTrackingUrl(t);
 }

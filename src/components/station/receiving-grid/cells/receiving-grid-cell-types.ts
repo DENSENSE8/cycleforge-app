@@ -14,7 +14,10 @@ import {
 } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
+  RECEIVING_GRID_FROZEN_CELL,
+  RECEIVING_GRID_FROZEN_EDGE_KEY,
   receivingGridCell,
+  receivingGridFrozenLeft,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { SourcePlatformMeta } from '@/lib/source-platform';
@@ -48,21 +51,35 @@ export type ReceivingGridCellCtx = {
   stageLabel: string;
   stageTip: string;
   dateCell: ReceivingActivityDateCell;
-  platformMeta: SourcePlatformMeta;
-  markLabel: string;
   poValue: string;
+  /** Catalog-resolved source-platform label for the order-id hover value. */
+  platformLabel: string;
+  /**
+   * Catalog-resolved platform meta for dense Sheets brand-identity dots
+   * (`platformMetaBrandDot`). Same resolve as {@link platformLabel}.
+   */
+  platformMeta: SourcePlatformMeta;
   isPickup: boolean;
   pickupLabel: string | null;
   trackingValue: string;
+  /** Opens the receiving inspector for Edit on a filled tracking chip. */
+  onEditTracking?: () => void;
+  /** Opens the receiving inspector for Edit on a filled order / PO chip. */
+  onEditOrder?: () => void;
   serialsCsv: string;
   statusDot: string;
+  /**
+   * Connected inventory provider display name (e.g. "Zoho Inventory"), or the
+   * generic capability title. Used for History UNBOXED sync tooltips.
+   */
+  inventoryProviderLabel: string;
   /** Per-hideKey display prefs from staff column-display panel. */
   columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /** Select-gutter face visibility. Defaults to `'always'` at call sites. */
   selectGutterChrome?: GridSelectGutterChrome;
   /**
-   * Unbox History click-select: body click toggles bulk; gutter is an empty
-   * spacer (select-all lives in the header only).
+   * Unbox History click-select: body click toggles bulk; gutter paints
+   * decorative GridClickSelectFace when selected (select-all in header).
    */
   clickSelect?: boolean;
 };
@@ -80,16 +97,40 @@ export function receivingDataCellClass(col: ReceivingGridColumn, rule = true, ct
     receivingGridCell({ rule, inset: 'grid' }),
     gridCellAlignClass(col),
     gridColumnTextEmphasisClass(pref?.text),
+    col.frozen && RECEIVING_GRID_FROZEN_CELL,
   );
 }
 
-/** Staff column-display highlight wash — inline style, not a Tailwind class. */
-export function receivingDataCellHighlightStyle(
+/**
+ * Inline cell style — staff highlight wash + sticky-left for frozen identity
+ * tracks. One helper so leaf cells never hand-roll `left` past the SoT offset.
+ */
+export function receivingDataCellStyle(
   col: ReceivingGridColumn,
   ctx?: ReceivingGridCellCtx,
 ): CSSProperties | undefined {
   const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
-  return gridColumnHighlightStyle(pref?.highlight);
+  const highlight = gridColumnHighlightStyle(pref?.highlight);
+  if (!col.frozen && !highlight) return undefined;
+  return {
+    ...highlight,
+    ...(col.frozen ? { left: receivingGridFrozenLeft(col.key) } : null),
+  };
+}
+
+/** @deprecated Prefer {@link receivingDataCellStyle} (folds frozen `left`). */
+export function receivingDataCellHighlightStyle(
+  col: ReceivingGridColumn,
+  ctx?: ReceivingGridCellCtx,
+): CSSProperties | undefined {
+  return receivingDataCellStyle(col, ctx);
+}
+
+/** `data-frozen-edge` only on the trailing frozen identity cell. */
+export function receivingFrozenEdgeProps(
+  col: ReceivingGridColumn,
+): { 'data-frozen-edge'?: true } {
+  return col.key === RECEIVING_GRID_FROZEN_EDGE_KEY ? { 'data-frozen-edge': true } : {};
 }
 
 /** True when this column should wrap its primary value in chip chrome. */

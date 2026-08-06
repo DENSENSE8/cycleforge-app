@@ -4,17 +4,22 @@
  * CartonMatchHub — unified Package Pairing + Auto-match surface for Unbox,
  * Testing, and Arrival.
  *
+ * One host, two presentations:
+ *   • Auto-match — `UnfoundMatchStrip` action grid when `autoMatch` is set
+ *     (unfound only). Resolution toolkit: Return # / Zoho / Amazon / Find ticket.
+ *   • Pairing — avenue switcher + SearchBar attach bodies (Inventory · PO ·
+ *     Store · Tickets). Never merges Auto-match into the avenue control.
+ *
  * One hub adapts via:
  *   • `tabSet` — `unbox` includes Inventory Item; `arrival` does not
- *   • `chrome` — `bare` (Unbox Displays): no duplicate title / pencil; one
- *     secondary-token dropdown for Auto-match + Pairing modes. `card`
- *     (Arrival / Triage): WorkspaceCard + dense slider (+ Auto-match strip).
+ *   • `chrome` — `bare` (Station Displays push — Arrival · Unbox · Testing): no
+ *     duplicate title / pencil; Pairing secondary-token dropdown; flush plane
+ *     (no WorkspaceCard island). `card`: WorkspaceCard + dense slider. Both
+ *     mount the Auto-match strip above Pairing when unfound.
  *   • `autoFocusSearch` — Unbox desk may focus; Arrival Station never
- *   • `autoMatch` — when set + carton unfound: bare absorbs lanes into the
- *     dropdown; card/embedded still mounts UnfoundMatchStrip as a strip
  *
  * Multi-link: order/PO collapses the picker; tickets stay on ReceivingTicketChip.
- * Store search always uses `chrome="bare"` inside the glass card (D5).
+ * Store search always uses `chrome="bare"` on the flush Displays plane (D5).
  */
 
 import { useEffect, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
@@ -29,14 +34,11 @@ import {
   Link2,
   Loader2,
   Mail,
-  PackageCheck,
   PackageOpen,
   Pencil,
-  RefreshCw,
   Search,
   ShoppingCart,
   Ticket,
-  TicketHelp,
   Unlink,
 } from '@/components/Icons';
 import {
@@ -46,7 +48,11 @@ import {
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceCard } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+
+/** Flush Displays body — sits in the push column `px-4`; no card radius / inset. */
+const PAIRING_FLUSH_HOST_CLASS = cn('min-h-0', cornerClass('flush'));
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
@@ -59,7 +65,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
@@ -71,7 +76,6 @@ import { EcwidProductSearchInline } from '@/components/receiving/unfound/EcwidPr
 import { ZohoItemPairTab } from '@/components/receiving/workspace/line-edit/ZohoItemPairTab';
 import { PoLinkTab } from '@/components/receiving/workspace/line-edit/PoLinkTab';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
-import { useUnfoundRefetchActions } from '@/components/receiving/workspace/line-edit/hooks/useUnfoundRefetchActions';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { MatchCard } from '@/components/receiving/triage/MatchCard';
 import { relativeTime, toTriagePackage } from '@/components/receiving/triage/triage-types';
@@ -85,16 +89,16 @@ import { RECEIVING_OPEN_PAIRING_PO_EVENT } from '@/utils/events';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
-export type CartonMatchTabSet = 'unbox' | 'arrival';
+// These were exported for `TriageLineMatchingSection`'s `Omit<CartonMatchHubProps, …>`;
+// that centre wrapper is deleted (Arrival Package Pairing is now the Linkage
+// Displays body), so they are internal to this component again.
+type CartonMatchTabSet = 'unbox' | 'arrival';
 /** Pairing avenues — Inventory Item is Unbox-only. */
 type MatchTab = 'zoho_item' | 'zoho_po' | 'ecwid' | 'zendesk';
-/** Sticky Auto-match lanes absorbed into the bare Displays dropdown. */
-type AutoMatchMode = 'return_order' | 'find_ticket';
-type PairingMode = MatchTab | AutoMatchMode;
 
-export type CartonMatchHubChrome = 'card' | 'bare';
+type CartonMatchHubChrome = 'card' | 'bare';
 
-export type CartonMatchAutoMatch = {
+type CartonMatchAutoMatch = {
   receivingId: number | null;
   lineId?: number | null;
   trackingNumber: string | null;
@@ -105,15 +109,15 @@ export type CartonMatchAutoMatch = {
   onTicketChanged?: () => void;
 };
 
-export type CartonMatchHubProps = {
+type CartonMatchHubProps = {
   row: ReceivingLineRow;
   staffId: string;
   /** `unbox` = Inventory Item + PO + Store + Tickets; `arrival` omits Inventory. */
   tabSet?: CartonMatchTabSet;
   /**
    * `bare` — Unbox Displays host: no duplicate "Package Pairing" title, no
-   * pencil, top secondary-token dropdown (Auto-match + Pairing). `card` —
-   * Arrival / Triage chrome.
+   * pencil, Pairing-only secondary-token dropdown (+ Auto-match strip when
+   * unfound). `card` — Arrival / Triage chrome.
    */
   chrome?: CartonMatchHubChrome;
   /** Arrival Station: false. Unbox desk: typically true. */
@@ -209,7 +213,12 @@ export function CartonMatchHub({
 
   if (!pkg.receivingId) {
     const teaching = (
-      <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft">
+      <p
+        className={cn(
+          cornerClass('flush'),
+          'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
+        )}
+      >
         This package has no carton record yet — scan its tracking to enable pairing.
       </p>
     );
@@ -222,7 +231,7 @@ export function CartonMatchHub({
       );
     }
     if (bareChrome) {
-      return <WorkspaceCard overflow="visible">{teaching}</WorkspaceCard>;
+      return <div className={PAIRING_FLUSH_HOST_CLASS}>{teaching}</div>;
     }
     return (
       <WorkspaceCard label="Package Pairing" overflow="visible">
@@ -292,15 +301,13 @@ function MatchHubCard({
     if (tabSet === 'arrival') return 'ecwid';
     return pkg.isUnmatched ? 'zoho_item' : 'ecwid';
   });
-  /** Bare Displays: sticky Auto-match lane (null = show pairing avenue body). */
-  const [autoMode, setAutoMode] = useState<AutoMatchMode | null>(null);
 
   const orderLinked = !pkg.isUnmatched && Boolean(pkg.poNumber || pkg.zohoPoId);
   const [forcePicker, setForcePicker] = useState(false);
   const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
   const pickerCollapsed = orderLinked && !forcePicker;
   const zendeskQueriesActive =
-    !collapsed && !pickerCollapsed && autoMode == null && tab === 'zendesk';
+    !collapsed && !pickerCollapsed && tab === 'zendesk';
   const t = useTriagePanel({
     row,
     loadCandidates: zendeskQueriesActive,
@@ -309,21 +316,8 @@ function MatchHubCard({
   const pairingCollapse = useMotionPresence(framerPresence.collapseHeight);
   const pairingCollapseTransition = useMotionTransition(framerTransition.sidebarExpand);
 
-  // Card / embedded: Auto-match strip stays visible when unfound.
-  // Bare Displays: Auto-match is absorbed into the mode dropdown (no sibling strip).
-  const showQuickMatchStrip = Boolean(autoMatch) && !pickerCollapsed && !bareChrome;
-  const showAutoMatchMenu = Boolean(autoMatch) && !pickerCollapsed && bareChrome;
-
-  const {
-    zoho: zohoRefetch,
-    amazon: amazonRefetch,
-    busy: refetchBusy,
-    checkZoho,
-    checkAmazon,
-  } = useUnfoundRefetchActions(
-    showAutoMatchMenu ? (autoMatch?.receivingId ?? null) : null,
-    showAutoMatchMenu ? (autoMatch?.trackingNumber ?? null) : null,
-  );
+  // Auto-match strip when unfound — same presentation on bare and card.
+  const showQuickMatchStrip = Boolean(autoMatch) && !pickerCollapsed;
 
   const unlink = async () => {
     const ok = await unlinkCarton({
@@ -349,7 +343,6 @@ function MatchHubCard({
   const cardTopRef = useRef<HTMLDivElement>(null);
   const [poFocusRequestId, setPoFocusRequestId] = useState(0);
   const openPairingTab = (next: MatchTab) => {
-    setAutoMode(null);
     setTab(next);
     setForcePicker(true);
     if (next === 'zoho_po') setPoFocusRequestId((n) => n + 1);
@@ -458,28 +451,12 @@ function MatchHubCard({
   );
 
   const selectAvenue = (id: MatchTab) => {
-    setAutoMode(null);
     setTab(id);
     if (id === 'ecwid') setForcePicker(true);
   };
 
-  const selectAutoMode = (id: AutoMatchMode) => {
-    setAutoMode(id);
-    setForcePicker(true);
-  };
-
-  const clearAutoMode = () => setAutoMode(null);
-
-  const activeMode: PairingMode = autoMode ?? tab;
   const activeModeMeta =
-    activeMode === 'return_order'
-      ? { label: 'Return #', icon: Search }
-      : activeMode === 'find_ticket'
-        ? { label: 'Find ticket', icon: TicketHelp }
-        : pairingModes.find((m) => m.id === activeMode) ?? pairingModes[0];
-
-  const hasTracking = Boolean((autoMatch?.trackingNumber ?? '').trim());
-  const noReceiving = autoMatch?.receivingId == null;
+    pairingModes.find((m) => m.id === tab) ?? pairingModes[0];
 
   const headerActions = (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -541,7 +518,7 @@ function MatchHubCard({
             size="md"
             icon={<ActiveIcon className="h-4 w-4 shrink-0" />}
             iconRight={<ChevronDown className="h-4 w-4 shrink-0 text-text-faint" />}
-            className="h-11 w-full justify-start gap-2 rounded-lg px-3"
+            className={cn('h-11 w-full justify-start gap-2 px-3', cornerClass('flush'))}
             aria-label="Pairing mode"
           >
             <span className="min-w-0 flex-1 text-left text-role-caption font-semibold">
@@ -554,76 +531,9 @@ function MatchHubCard({
           side="bottom"
           className="w-[var(--radix-dropdown-menu-trigger-width)] p-1"
         >
-          {showAutoMatchMenu ? (
-            <>
-              <p className="px-2 py-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                Auto-match
-              </p>
-              <DropdownMenuItem
-                onSelect={() => selectAutoMode('return_order')}
-                className="gap-2"
-                disabled={noReceiving}
-              >
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  {autoMode === 'return_order' ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Search className="h-3.5 w-3.5 text-text-soft" />
-                  )}
-                </span>
-                Return #
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => void checkZoho()}
-                className="gap-2"
-                disabled={noReceiving || refetchBusy}
-              >
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  {zohoRefetch.status === 'loading' ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5 text-text-soft" />
-                  )}
-                </span>
-                Zoho
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => void checkAmazon()}
-                className="gap-2"
-                disabled={noReceiving || !hasTracking || refetchBusy}
-              >
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  {amazonRefetch.status === 'loading' ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <PackageCheck className="h-3.5 w-3.5 text-text-soft" />
-                  )}
-                </span>
-                Amazon return
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => selectAutoMode('find_ticket')}
-                className="gap-2"
-                disabled={noReceiving || !hasTracking}
-              >
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  {autoMode === 'find_ticket' ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <TicketHelp className="h-3.5 w-3.5 text-text-soft" />
-                  )}
-                </span>
-                Find ticket
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <p className="px-2 py-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                Pairing
-              </p>
-            </>
-          ) : null}
           {pairingModes.map((item) => {
             const Icon = item.icon;
-            const selected = autoMode == null && tab === item.id;
+            const selected = tab === item.id;
             return (
               <DropdownMenuItem
                 key={item.id}
@@ -643,7 +553,7 @@ function MatchHubCard({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-      {autoMode == null && tab === 'zendesk' && t.hiddenLinked > 0 ? (
+      {tab === 'zendesk' && t.hiddenLinked > 0 ? (
         <HoverTooltip label={`${t.hiddenLinked} ticket(s) already linked elsewhere are hidden`}>
           <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
             {t.hiddenLinked} hidden
@@ -674,22 +584,7 @@ function MatchHubCard({
   );
 
   const tabBody =
-    bareChrome && autoMode && autoMatch ? (
-      <UnfoundMatchStrip
-        key={autoMode}
-        receivingId={autoMatch.receivingId}
-        lineId={autoMatch.lineId}
-        trackingNumber={autoMatch.trackingNumber}
-        receivedSerial={autoMatch.receivedSerial}
-        providerTicketId={autoMatch.providerTicketId}
-        ticketNumber={autoMatch.ticketNumber}
-        ticketUrl={autoMatch.ticketUrl}
-        onTicketChanged={autoMatch.onTicketChanged}
-        showTopRule={false}
-        forcedLane={autoMode === 'return_order' ? 'order' : 'ticket'}
-        onForcedLaneBack={clearAutoMode}
-      />
-    ) : tab === 'ecwid' ? (
+    tab === 'ecwid' ? (
       <EcwidProductSearchInline
         receivingId={receivingId}
         popoverMode="repair_service"
@@ -718,7 +613,7 @@ function MatchHubCard({
 
   const body = (
     <div className="min-w-0 max-w-full">
-      {/* Card / embedded only — bare Displays absorbs Auto-match into the dropdown. */}
+      {/* Auto-match toolkit above Pairing — bare and card share this presentation. */}
       {!embedded && quickMatchStrip ? <div className="mb-3">{quickMatchStrip}</div> : null}
 
       {avenueSwitcher}
@@ -838,7 +733,7 @@ function MatchHubCard({
   }
 
   if (bareChrome) {
-    return <WorkspaceCard overflow="visible">{content}</WorkspaceCard>;
+    return <div className={PAIRING_FLUSH_HOST_CLASS}>{content}</div>;
   }
 
   return (
@@ -869,11 +764,21 @@ function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading matches…
         </p>
       ) : t.candidatesError ? (
-        <p className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600">
+        <p
+          className={cn(
+            cornerClass('flush'),
+            'border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600',
+          )}
+        >
           Couldn’t load helpdesk matches. The helpdesk may not be connected.
         </p>
       ) : t.candidates.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft">
+        <p
+          className={cn(
+            cornerClass('flush'),
+            'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
+          )}
+        >
           {t.matchQuery.trim()
             ? `No tickets match “${t.matchQuery.trim()}”.`
             : 'No recent claim tickets. Search by order #, email, or customer name.'}
@@ -901,7 +806,10 @@ function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
             {t.deliveredEmails.map((sig, i) => (
               <div
                 key={`${sig.orderNumber}-${i}`}
-                className="flex items-center gap-2 rounded-lg bg-violet-50/60 inset-cozy"
+                className={cn(
+                  'flex items-center gap-2 bg-violet-50/60 inset-cozy',
+                  cornerClass('flush'),
+                )}
               >
                 <Mail className="h-3.5 w-3.5 shrink-0 text-violet-500" />
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-text-muted">

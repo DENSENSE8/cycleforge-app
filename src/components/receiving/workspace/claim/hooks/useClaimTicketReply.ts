@@ -71,7 +71,7 @@ export function useClaimTicketReply({ open, ticketId }: Params): UseClaimTicketR
       toast.success(
         isPublic
           ? `Public reply sent — customer emailed${emailCcs ? ` · ${emailCcs.length} cc'd` : ''}`
-          : 'Internal note added to ticket',
+          : 'Internal note added',
       );
       setBody('');
       setCcs([]);

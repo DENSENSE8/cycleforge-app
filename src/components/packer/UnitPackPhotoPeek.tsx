@@ -51,7 +51,7 @@ export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   if (cards.length === 0) {
     if (!showEmptyState) return null;
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-role-caption text-text-faint">
+      <div className="flex items-center gap-2 rounded-none border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-role-caption text-text-faint">
         <Camera className="h-4 w-4 shrink-0" />
         <span>No packed photos yet — scan the unit QR to open the phone camera.</span>
       </div>

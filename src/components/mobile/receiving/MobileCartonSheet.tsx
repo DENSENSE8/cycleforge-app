@@ -11,6 +11,7 @@ import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOver
 import { photoPolicyOverrideLabel } from '@/lib/receiving/photo-policy-override-wire';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
@@ -22,6 +23,7 @@ import {
 } from '@/components/station/receiving-constants';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
@@ -65,6 +67,7 @@ function CompleteCartonAction({
   // mid-task on this carton, so the acknowledgement belongs on top of it, not
   // on a screen they had to navigate to.
   const [overrideOpen, setOverrideOpen] = useState(false);
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
 
   if (complete.phase === 'done') {
     const lineSuffix =
@@ -80,7 +83,7 @@ function CompleteCartonAction({
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-4 text-emerald-700 ring-1 ring-inset ring-emerald-200">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           <span className="text-sm font-semibold">
-            Carton received{lineSuffix} · saving to inventory…
+            Carton received{lineSuffix} · saving to {inventoryProviderLabel}…
           </span>
         </div>
       );
@@ -93,11 +96,11 @@ function CompleteCartonAction({
         <div className="flex flex-col gap-2">
           <div className="rounded-2xl bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
             <p className="text-role-caption font-semibold uppercase tracking-widest text-amber-700">
-              Received · inventory not updated
+              Received · {inventoryProviderLabel} not updated
             </p>
             <p className="mt-1 text-role-caption font-semibold text-amber-800">
-              The carton is received here, but saving it to inventory failed. Retry, or finish it
-              on the desktop bench.
+              The carton is received here, but saving it to {inventoryProviderLabel} failed. Retry,
+              or finish it on the desktop bench.
             </p>
           </div>
           <Button
@@ -106,7 +109,7 @@ function CompleteCartonAction({
             onClick={() => void complete.run()}
             className={cn('h-14 w-full rounded-2xl', ACCENT_CTA)}
           >
-            Retry inventory save
+            Retry {inventoryProviderLabel} save
           </Button>
         </div>
       );
@@ -220,6 +223,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
   // React would otherwise see a changing hook count.
   const queryClient = useQueryClient();
   const complete = useCompleteCarton(row);
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
   const { reset: resetComplete, phase: completePhase } = complete;
   const rowId = row?.id ?? null;
 
@@ -248,6 +252,11 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
   const photoCount = row.photo_count ?? 0;
   const quantityText = `${qtyReceived}/${row.quantity_expected ?? '?'}`;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
+  const statusDotTip =
+    receivingUnboxedSyncTooltip({
+      workflowStatus: row.workflow_status,
+      inventoryProviderLabel,
+    }) ?? workflowLabel;
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
   const condGrade = (row.condition_grade || '').toUpperCase();
 
@@ -267,7 +276,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
         {/* Header — mirrors MobileReceivingRow: title + meta on the left, chips on the right. */}
         <div className="flex flex-col gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <HoverTooltip label={workflowLabel} asChild>
+            <HoverTooltip label={statusDotTip} asChild>
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(row.workflow_status, qtyReceived, row.quantity_expected)}`}
               />

@@ -23,7 +23,7 @@ const SRC = path.join(ROOT, 'src');
  * The DS modules themselves — they DEFINE the recipe rather than composing it.
  * `OrdersQueueColumnHeader` is deliberately outside the walk (it is not named
  * `*GridColumnHeader.tsx`): Orders is the **permanent** allowlisted header fork
- * (drag-reorder + viewport force-hide). Do not half-port onto the factory —
+ * (resize + viewport force-hide). Do not half-port onto the factory —
  * see `source-of-truth.md` → Sticky LedgerGrid column-header row.
  */
 const DS_OWN = new Set([

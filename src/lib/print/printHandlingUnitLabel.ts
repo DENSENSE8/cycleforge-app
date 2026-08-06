@@ -35,7 +35,7 @@ export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void 
   const handle = handlingUnitHandle(payload.handlingUnitId);
   const code = (payload.code && payload.code.trim()) || handle;
   const count = payload.unitCount != null && Number.isFinite(payload.unitCount)
-    ? `${Math.max(0, Math.floor(payload.unitCount))} ${payload.unitCount === 1 ? 'unit' : 'units'}`
+    ? `${Math.max(0, Math.floor(payload.unitCount))} units`
     : '';
   const loc = (payload.locationName || '').trim();
   const date = (payload.date || '').trim();

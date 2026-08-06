@@ -29,7 +29,10 @@ export function CopyableValueFieldBlock({
   noTruncate = false,
   headerAccessory,
   trailingActions,
-  variant = 'card',
+  // Flush hairline row is the house default for inspector field rows (flush
+  // right-panel grammar). The boxed `card` variant stays opt-in; every live
+  // consumer already passes `variant="flat"`, so this flip changes no render.
+  variant = 'flat',
   valueClassName,
   keepBottomDivider = false,
 }: CopyableValueFieldBlockProps) {

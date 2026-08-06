@@ -123,13 +123,15 @@ export function useSupportTicketDisplays(
         label: 'Connections',
         icon: Link2,
         content: (
-          <div className="stack-row">
+          <div className="flex flex-col gap-0">
             {liveTicket ? (
-              <section className="stack-tight">
+              <section className="border-b border-border-hairline px-3 py-2.5">
                 <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
                   Assigned
                 </p>
-                <TicketAssignmentFields ticket={liveTicket} />
+                <div className="mt-1.5">
+                  <TicketAssignmentFields ticket={liveTicket} />
+                </div>
               </section>
             ) : null}
             <SupportContextHub
@@ -137,6 +139,7 @@ export function useSupportTicketDisplays(
               linkageOnly
               hideTicketEmbed
               surface="flush"
+              className="min-w-0"
             />
           </div>
         ),

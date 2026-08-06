@@ -9,12 +9,14 @@
  * shared `editing` prop — the identity row never drops digits or reflows.
  */
 
-import { useState, type ReactNode } from 'react';
-import { Copy, ChevronDown, ExternalLink, Pencil } from '@/components/Icons';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { Copy, ChevronDown, ExternalLink, Pencil, Info } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { hasCarrierBrandPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
@@ -25,14 +27,20 @@ export function IdentityLinkChip({
   value,
   display,
   tone,
-  underlineClass,
   iconClass,
+  iconStyle,
+  carrierHint = null,
+  platformLabel = null,
+  showCarrierBrand = false,
   disableCopy,
   onEdit,
   editOpen,
   editLabel,
   editInMenu = true,
+  onDetails,
+  detailsLabel = 'Details',
   grow = false,
+  lockLast8Width = false,
   actionsInMenu = false,
   chipAction = 'copy',
   showExternalIcon = false,
@@ -51,12 +59,28 @@ export function IdentityLinkChip({
   display: string;
   /**
    * Copy-chip tone — supplies the leading identity icon (id `#`, tracking pin,
-   * etc.) so PO#/tracking read consistently with the ticket chip. The explicit
-   * `underlineClass`/`iconClass` below still win for color.
+   * etc.) so PO#/tracking read consistently with the ticket chip. Explicit
+   * `iconClass` / `iconStyle` still win for color.
    */
   tone?: ChipTone;
-  underlineClass: string;
   iconClass?: string;
+  /** Inline icon paint (e.g. org platform `accentHex`). */
+  iconStyle?: CSSProperties;
+  /**
+   * Authoritative carrier from the shipment / line (same ladder as Open URL).
+   * With {@link showCarrierBrand}, known carriers tint the leading MapPin via
+   * {@link CarrierMark} instead of the house-blue tracking tone.
+   */
+  carrierHint?: string | null;
+  /**
+   * Catalog-resolved platform display name — prefixes the id chip tooltip
+   * (`eBay 08-…`), mirroring carrier-prefixed tracking tooltips.
+   */
+  platformLabel?: string | null;
+  /**
+   * Opt into carrier-colored MapPin (carton identity). Grids omit this.
+   */
+  showCarrierBrand?: boolean;
   disableCopy?: boolean;
   /** Toggles the below-row editor for this field. Omit to hide the pencil. */
   onEdit?: () => void;
@@ -67,8 +91,16 @@ export function IdentityLinkChip({
    * History owns the push-column toggle; `onEdit` still drives pulse / chip click.
    */
   editInMenu?: boolean;
+  /**
+   * In-app connection / details inspector (e.g. IncomingDetailsPanel). Renders
+   * after Edit when `actionsInMenu` (Open → Edit → Details).
+   */
+  onDetails?: () => void;
+  detailsLabel?: string;
   /** Wide chip that fills the remaining row width (listing). Others hug last-8. */
   grow?: boolean;
+  /** Lock the mono value face to an eight-character column. */
+  lockLast8Width?: boolean;
   /** Move external-link/edit controls into a serial-chip-style hover menu. */
   actionsInMenu?: boolean;
   /** Primary action for the complete chip surface. */
@@ -95,7 +127,9 @@ export function IdentityLinkChip({
   linkOptions?: Array<{ href: string; label: string; title?: string }>;
   /**
    * Listing chrome: fixed-width platform mark instead of the variable-width
-   * platform name. `display` stays the accessible / tooltip label.
+   * platform name. `display` stays the accessible / tooltip label. Pair with
+   * `showExternalIcon` so missing-link state grays the ExternalLink glyph —
+   * never opacity-wash the brand mark.
    */
   iconOnly?: boolean;
   /** Mark node (e.g. {@link PlatformMark}) when `iconOnly`. */
@@ -104,6 +138,11 @@ export function IdentityLinkChip({
   const [menuHover, setMenuHover] = useState(false);
   const normalizedValue = normalizeCopyText(value);
   const canCopy = !disableCopy && !!normalizedValue && normalizedValue !== '---';
+  const carrierBrand =
+    tone === 'tracking' && showCarrierBrand
+      ? resolveCarrierBrand(value, carrierHint)
+      : null;
+  const carrierBrandPaint = carrierBrand != null && hasCarrierBrandPaint(carrierBrand);
   const openExternal = () => {
     if (openHref) window.open(openHref, '_blank', 'noopener,noreferrer');
   };
@@ -122,6 +161,7 @@ export function IdentityLinkChip({
   const hasMenuActions =
     actionsInMenu &&
     (!!onEdit ||
+      !!onDetails ||
       menuFirstAction === 'copy' ||
       !!openHref ||
       multiLinks != null ||
@@ -178,35 +218,50 @@ export function IdentityLinkChip({
       ) : null}
       <div className={`flex min-w-0 items-center gap-0.5 ${grow && !iconOnly ? 'flex-1' : ''}`}>
         {iconOnly && iconOnlyMark ? (
-          <HoverTooltip label={iconOnlyTooltip} asChild>
-            {/* ds-raw-button: fixed-width platform mark face — not a DS Button */}
-            <button
-              type="button"
-              onClick={chipActivate ?? copyValue}
-              disabled={
-                isEditing
-                  ? !onEdit
-                  : chipAction === 'open'
-                    ? !openHref && !onEdit
-                    : !canCopy && !onEdit
-              }
-              aria-label={
-                isEditing
-                  ? chipActivateLabel
-                  : chipAction === 'open'
-                    ? `${display}: ${openTitle}`
-                    : emptyEditActivate
-                      ? (chipActivateLabel ?? 'Edit')
-                      : `Copy ${display}`
-              }
-              aria-busy={isEditing || undefined}
-              className={`inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:opacity-40${
-                isEditing ? ' animate-pulse' : ''
-              }`}
-            >
-              {iconOnlyMark}
-            </button>
-          </HoverTooltip>
+          <>
+            {showExternalIcon ? (
+              <span
+                className={`inline-flex shrink-0 items-center justify-center ${
+                  iconClass ?? (openHref ? 'text-text-muted' : 'text-text-faint')
+                }`}
+                style={iconStyle}
+                aria-hidden
+              >
+                <ExternalLink className="h-4 w-4 shrink-0" />
+              </span>
+            ) : null}
+            <HoverTooltip label={iconOnlyTooltip} asChild>
+              {/* ds-raw-button: fixed-width platform mark face — not a DS Button.
+                  Brand tiles stay full-color; missing-link state rides the
+                  ExternalLink glyph (showExternalIcon), never opacity on the mark. */}
+              <button
+                type="button"
+                onClick={chipActivate ?? copyValue}
+                disabled={
+                  isEditing
+                    ? !onEdit
+                    : chipAction === 'open'
+                      ? !openHref && !onEdit
+                      : !canCopy && !onEdit
+                }
+                aria-label={
+                  isEditing
+                    ? chipActivateLabel
+                    : chipAction === 'open'
+                      ? `${display}: ${openTitle}`
+                      : emptyEditActivate
+                        ? (chipActivateLabel ?? 'Edit')
+                        : `Copy ${display}`
+                }
+                aria-busy={isEditing || undefined}
+                className={`inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:pointer-events-none${
+                  isEditing ? ' animate-pulse' : ''
+                }`}
+              >
+                {iconOnlyMark}
+              </button>
+            </HoverTooltip>
+          </>
         ) : (
           <CopyChip
             value={value}
@@ -214,20 +269,30 @@ export function IdentityLinkChip({
             tone={tone}
             editing={isEditing}
             // Tone SoT (# / MapPin / …) wins; ExternalLink is listing-only.
+            // Carton tracking may tint the MapPin via CarrierMark (showCarrierBrand).
             icon={
-              tone
-                ? undefined
-                : showExternalIcon
-                  ? <ExternalLink className="h-4 w-4 shrink-0" />
-                  : undefined
+              carrierBrandPaint && carrierBrand ? (
+                <CarrierMark meta={carrierBrand} />
+              ) : tone ? (
+                undefined
+              ) : showExternalIcon ? (
+                <ExternalLink className="h-4 w-4 shrink-0" />
+              ) : undefined
             }
-            underlineClass={underlineClass}
-            iconClass={iconClass}
+            iconClass={
+              carrierBrandPaint
+                ? 'inline-flex items-center justify-center'
+                : iconClass
+            }
+            iconStyle={carrierBrandPaint ? undefined : iconStyle}
             width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
             outerPad="flush"
             disableCopy={disableCopy || isEditing}
             fitDisplayWidth={!grow}
+            displayWidth={lockLast8Width ? 'last8' : 'content'}
             truncateDisplay={grow}
+            carrierHint={tone === 'tracking' ? carrierHint : null}
+            platformLabel={tone === 'id' ? platformLabel : null}
             // Hover shows the full value (listing URL / tracking / PO# / ticket#)
             // via the site tooltip above; the Open/Edit action menu still opens
             // below the chip on the same hover.
@@ -361,6 +426,19 @@ export function IdentityLinkChip({
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                 Edit
+              </button>
+            ) : null}
+            {onDetails ? (
+              // ds-raw-button: text-left dropdown menuitem row (icon + label)
+              <button
+                type="button"
+                role="menuitem"
+                onClick={onDetails}
+                aria-label={detailsLabel}
+                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+              >
+                <Info className="h-3.5 w-3.5 shrink-0 text-text-soft" />
+                {detailsLabel}
               </button>
             ) : null}
           </div>

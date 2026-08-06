@@ -49,8 +49,8 @@ of this layer, so the role waits for a real flash site.
 | `swap.scan` | tween `easeOut` **0.12s**, exit `duration: 0` | `stationCartonSwap` + `stationCartonSwapMount` | Station |
 | `swap.focus` | tween `easeOut` **0.18s** | `workbenchPane` + `workbenchPaneMount` | Workbench · Monitor drill · Canvas inspector |
 | `push.rail` | tween `motionBezier.layout` **0.24s** | `detailStackPush` + `sidebarNavColumnMount` | Workbench · Monitor · Station push columns |
-| `gesture.press` | spring (`cardExpansion`, damping 24 / stiffness 300) | `framerGesture.tapPress` | Station · Workbench |
-| `feedback.pulse` | tween `easeOut` **0.15s** | `chipCopyFeedback` | Station · Workbench |
+| `gesture.press` | engine default press spring (suppressed under reduced motion) | `framerGesture.tapPress` | Station · Workbench |
+| `feedback.pulse` | `fadeInstant` (opacity 0.15s) | `chipCopyFeedback` | Station · Workbench |
 | `procedure.advance` | tween `motionBezier.layout` **0.55s** | `procedureStackLayout` | Station · Workbench *(Procedure Focus Deck only)* |
 
 **Six roles today; the count is still the point.** A seventh is a claim that a genuinely new
@@ -114,8 +114,9 @@ spinners where the motion *is* the status indicator. Do not sweep them.
 
 **No file outside `src/design-system/motion/**` may name a motion package.** The barrel
 carries the **engine** (`motion`, `AnimatePresence`, `useReducedMotion`, `useMotionValue`,
-types …), the **role layer** (`motionRole`), and the **role hook** (`useMotionRole` /
-`useMotionPressRole`).
+types …), the **role layer** (`motionRole`), the **role hook** (`useMotionRole` /
+`useMotionPressRole`), the **physics tokens** (`springSnappy`, `fadeInstant`), and the
+**dense primitives** (`DenseRowReveal`, `DenseList`/`DenseListItem`, `ActionFlashRow`).
 
 The 60-literal preset catalog and the reduced-motion bridge hooks keep their existing
 `@/design-system/foundations/motion-framer*` paths — they are house modules, not packages, so
@@ -281,20 +282,37 @@ fetches, and re-fires first-mount effects.
 
 ## Spring vs cubic-bezier — pick by surface physics
 
-**Springs for physical / gesture surfaces; cubic-bezier tweens for discrete view swaps.** A spring models momentum and
-settle — right when a finger or a value is "thrown"; wrong for an abstract A→B view change, where its variable duration
-and tail read as imprecise.
+**Springs for physical / gesture / dense-layout surfaces; cubic-bezier tweens for discrete view swaps.**
+A spring models momentum and settle — right when a finger, a value, or a dense row is "thrown"; wrong for an
+abstract A→B view change, where its variable duration and tail read as imprecise.
+
+House physics tokens live in `src/design-system/motion/tokens.ts` and are what every spring / opacity-flash
+preset resolves to:
+
+- **`springSnappy`** — utilitarian spring (stiffness 500 / damping 40 / mass 0.8 / restDelta 0.001). Critically
+  damped: organic settle, **no bounce**. Use for layout shifts, height reveals, list reflow, modal shells,
+  indicators, quantity bumps. Dense primitives (`DenseRowReveal`, `DenseListItem`) compose it directly;
+  named `framerTransition.*` springs reference the same object.
+- **`fadeInstant`** — opacity-only tween (150ms easeOut). Tooltips, state icons, copy/save flashes
+  (`chipCopyFeedback`, `overlayScrim`, `ActionFlashRow`).
 
 - **Cubic-bezier `easeOut` (discrete swaps):** active-card crossfade, right-pane crossfade, table rows, dropdowns,
-  chevrons, scrims, MasterNav Stock drill. Presets: `framerTransition.stationCardMount` / `tableRowMount` /
-  `dropdownOpen` / `overlayScrim` / `spineBodySwap`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`. Height/layout
-  tweens use the softer `motionBezier.layout`.
-- **Spring (physical / gesture):** bottom sheets (`framerTransitionMobile.sheetSlide`), fullscreen photo paging
-  (`viewerPaging` — `damping: 38` for *no overshoot*, "bounce reads as tacky on a photo"), the sliding tab/button
-  indicator (`framerTransition.sliderIndicator`), numeric bumps (`quantityBump`), modal shells (`workOrderModalSpring`).
-- **Durations sub-300ms, ease-out default.** Longest routine tween here is the tab-pager x-slide at `0.32s`; card mounts
-  are `0.26s`, right-pane `0.18s`, scrims `0.15s`. Anything past ~300ms for a *routine* transition feels sluggish
-  (Nielsen Norman: 100–300ms is the sweet spot for UI feedback).
+  chevrons, MasterNav Stock drill. Presets: `framerTransition.stationCardMount` / `tableRowMount` /
+  `dropdownOpen` / `spineBodySwap`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`.
+- **Push WIDTH remains tween, never spring** (`sidebarNavColumnMount`, `photoContextPanelMount`,
+  `motionRole.push.rail`) — even a critically damped spring on a width every sibling lays out against reads as
+  rubber-band under load. Height reveals on dense rows are the exception that uses `springSnappy`.
+- **Duration-locked springs stay special-cased** (`viewerPaging`, `photoHeroMorph`) — visualDuration + bounce:0
+  so flick distance does not change perceived settle time. Do not collapse them onto `springSnappy`.
+- **`scanFailure` keeps its intentional bounce** (shake feedback) — not utilitarian settle.
+- **Durations sub-300ms for routine tweens.** Longest routine tween here is the tab-pager x-slide at `0.32s`;
+  card mounts are `0.26s`, right-pane `0.18s`, scrims/`fadeInstant` `0.15s`.
+
+| Role / job | Physics | Catalog | Regions |
+|---|---|---|---|
+| Dense height reveal / list reflow | `springSnappy` | `DenseRowReveal` · `DenseListItem` · `stationCollapse` · `cardExpansion` · `captureStackRowMount` | Station · Workbench |
+| Save / copy flash | `fadeInstant` | `ActionFlashRow` · `chipCopyFeedback` · `motionRole.feedback.pulse` | Station · Workbench |
+| `gesture.press` | engine default press spring | `framerGesture.tapPress` | Station · Workbench |
 
 ---
 

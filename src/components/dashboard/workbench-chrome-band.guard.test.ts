@@ -54,16 +54,48 @@ describe('WorkbenchChromeHeader density="band"', () => {
     assert.match(shell, /band\s*\?\s*'h-10 items-stretch p-0\.5'/);
   });
 
-  it('band rail is flat — no nested border / shadow-sm card', () => {
+  it('band rail is flat flush — no nested border / shadow-sm / stadium pill', () => {
     // Isolate the band branch of railClassName.
     const bandRail = shell.match(
-      /band\s*\?\s*`([^`]+)`\s*:\s*'rounded-full border border-border-default/,
+      /band\s*\?\s*`([^`]+)`\s*:\s*[`'"]/,
     )?.[1];
     assert.ok(bandRail, 'expected band railClassName template literal');
     assert.match(bandRail, /\bborder-0\b/);
     assert.match(bandRail, /\bshadow-none\b/);
+    assert.match(bandRail, /cornerClass\('flush'\)/);
     assert.doesNotMatch(bandRail, /\bborder-border-/);
     assert.doesNotMatch(bandRail, /\bshadow-sm\b/);
+    assert.doesNotMatch(bandRail, /rounded-full/);
+  });
+
+  it('outer face uses cornerClass(flush), not card', () => {
+    const headerFn = shell.slice(shell.indexOf('export function WorkbenchChromeHeader'));
+    const end =
+      headerFn.indexOf('export function WorkbenchTriageBand') > 0
+        ? headerFn.indexOf('export function WorkbenchTriageBand')
+        : headerFn.length;
+    const body = headerFn.slice(0, end);
+    assert.match(body, /cornerClass\('flush'\)/);
+    assert.doesNotMatch(
+      body,
+      /cornerClass\('card'\)/,
+      'WorkbenchChromeHeader must be flush at source — callers must not fight soft card radius',
+    );
+  });
+
+  it('default density rail is flush (not rounded-full stadium)', () => {
+    const headerFn = shell.slice(shell.indexOf('export function WorkbenchChromeHeader'));
+    const railBlock = headerFn.match(/railClassName=\{([\s\S]*?)\}\s*\/>/)?.[1] ?? '';
+    assert.doesNotMatch(
+      railBlock,
+      /rounded-full/,
+      'Default TabSwitch rail must not use rounded-full',
+    );
+    assert.match(
+      railBlock,
+      /cornerClass\('flush'\)/,
+      'Default rail must compose cornerClass(flush)',
+    );
   });
 });
 

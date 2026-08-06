@@ -18,13 +18,13 @@ import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, EmptyState, IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -180,15 +180,29 @@ export function SupportTicketsBoard() {
   };
 
   return (
+    <>
     <DashboardScrollShell
       chrome={
-        <div className={WORKBENCH_CHROME_COLUMN}>
+        <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
           <WorkbenchChromeHeader
             density="band"
+            className="rounded-none border-l-0 border-t-0 shadow-sm"
             tabs={tabs}
             activeTab={status}
             onTabChange={(id) => setStatus(parseTicketStatus(id))}
             solidTone="accent"
+            trailing={
+              <WorkbenchTrailingCluster
+                actions={
+                  canCreateTicket ? (
+                    <SupportTicketChromeActions onAdd={() => claim.openCreate()} />
+                  ) : null
+                }
+              />
+            }
+          />
+          {/* Band 3 — find left; refresh · sort right. No KPI band (no metrics). */}
+          <WorkbenchTriageBand
             search={
               <TechRailSearchBar
                 variant="chrome"
@@ -199,43 +213,28 @@ export function SupportTicketsBoard() {
               />
             }
             right={
-              <HoverTooltip label="Refresh tickets" asChild>
-                <IconButton
-                  icon={<RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />}
-                  onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
-                  ariaLabel="Refresh tickets"
-                  className="rounded-md p-1.5 hover:bg-surface-sunken"
-                />
-              </HoverTooltip>
-            }
-            trailing={
-              <WorkbenchTrailingCluster
-                sort={
-                  <ZendeskSelect
-                    value={sort}
-                    options={SORT_OPTIONS}
-                    onChange={(v) => setSort(v as SortKey)}
+              <>
+                <HoverTooltip label="Refresh tickets" asChild>
+                  <IconButton
+                    icon={<RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />}
+                    onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
+                    ariaLabel="Refresh tickets"
+                    className="rounded-md p-1.5 hover:bg-surface-sunken"
                   />
-                }
-                actions={
-                  canCreateTicket ? (
-                    <SupportTicketChromeActions onAdd={() => claim.openCreate()} />
-                  ) : null
-                }
-              />
+                </HoverTooltip>
+                <ZendeskSelect
+                  value={sort}
+                  options={SORT_OPTIONS}
+                  onChange={(v) => setSort(v as SortKey)}
+                />
+              </>
             }
           />
         </div>
       }
     >
-      <div className={cn(WORKBENCH_BODY_COLUMN, 'flex min-h-0 flex-1 flex-col')}>
-        <div
-          className={cn(
-            MONITOR_SECTION_CARD_SCROLL_CLASS,
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-          )}
-        >
-          <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className={cn(WORKBENCH_SHEET_HOST, 'border-t border-border-soft bg-surface-card')}>
+        <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-3">
                 <SkeletonList count={8} type="row" />
@@ -332,8 +331,8 @@ export function SupportTicketsBoard() {
               Next
             </Button>
           </div>
-        </div>
       </div>
+    </DashboardScrollShell>
 
       <SupportCreateTicketModal
         open={claim.createOpen}
@@ -349,6 +348,6 @@ export function SupportTicketsBoard() {
           )
         }
       />
-    </DashboardScrollShell>
+    </>
   );
 }

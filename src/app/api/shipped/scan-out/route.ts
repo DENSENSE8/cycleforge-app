@@ -7,7 +7,7 @@ import { createStationActivityLog } from '@/lib/station-activity';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { normalizePSTTimestamp } from '@/utils/date';
-import { normalizeTrackingNumber } from '@/lib/tracking-format';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -19,9 +19,9 @@ interface TrackingRow {
 }
 
 /**
- * Org-scoped last-8 prefilter on a tracking column, then exact normalized-match
- * in JS (normalizeTrackingNumber strips USPS routing prefixes / collapses
- * repeats, which is awkward to replicate in SQL). Returns the matching row.
+ * Org-scoped last-8 prefilter on a tracking column, then exact canonical-match
+ * in JS (`extractCanonicalTracking` unwraps FedEx GS1 + strips USPS routing /
+ * collapses repeats — awkward to replicate in SQL). Returns the matching row.
  */
 async function findByTracking(
   table: 'orders' | 'orders_exceptions',
@@ -42,7 +42,11 @@ async function findByTracking(
   )
     .then((r) => r.rows)
     .catch(() => [] as TrackingRow[]);
-  return rows.find((row) => normalizeTrackingNumber(String(row.shipping_tracking_number ?? '')) === norm) ?? null;
+  return (
+    rows.find(
+      (row) => extractCanonicalTracking(String(row.shipping_tracking_number ?? '')) === norm,
+    ) ?? null
+  );
 }
 
 /**
@@ -66,7 +70,8 @@ async function resolveShipmentViaOrderOrException(
   raw: string,
   organizationId: number | string,
 ): Promise<number | null> {
-  const norm = normalizeTrackingNumber(raw);
+  // FedEx GS1 SoT — unwrap 96… gun reads before last-8 / exact compare.
+  const norm = extractCanonicalTracking(raw);
   if (!norm) return null;
 
   // 1. Real orders take precedence over the exception hold-bucket.

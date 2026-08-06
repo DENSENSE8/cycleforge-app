@@ -5,12 +5,14 @@ import {
   blobToBase64DataUrl,
   downscaleImageTo720,
 } from '@/lib/image/downscale';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
   receivingPhotoTypeForStage,
   receivingUploadStage,
   type ReceivingPhotoStage,
 } from '@/lib/receiving/photo-intent';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { countInFlightEntries } from './photo-upload-in-flight';
 
 /**
  * Module-singleton store for in-flight receiving photo uploads.
@@ -59,6 +61,13 @@ export interface PhotoScope {
    * the box AS IT ARRIVED must set `'arrival_package'` explicitly.
    */
   stage?: ReceivingPhotoStage;
+  /**
+   * What this shot SHOWS within the stage (`@/lib/photos/photo-aspects`).
+   * Guided arrival capture threads `shipping_label` / `box_exterior`; legacy
+   * spam capture leaves this unset (unclassified evidence — legal). Rides in
+   * `scope` so localStorage rehydration keeps the claim across a tab kill.
+   */
+  aspect?: PhotoAspect | null;
   /**
    * Device-reported capture instant (epoch ms) — the shutter clock from
    * `CapturedShot.capturedAtMs`, or `captureTimeFromFile()` for a picked File.
@@ -137,6 +146,19 @@ export interface UploadNotice {
 }
 let uploadNotifier: ((notice: UploadNotice) => void) | null = null;
 
+/**
+ * Fired whenever the absolute in-flight (queued|uploading) count for a carton
+ * changes — shutter enqueue, upload done/fail, retry, clearAll. Desk peeks
+ * subscribe via Ably `receiving_photo_taken`. Failed is excluded so a stuck
+ * retry does not leave eternal placeholders (phone CaptureUploadStatus owns failure).
+ */
+interface TakenNotice {
+  receivingId: number;
+  receivingLineId: number | null;
+  inFlight: number;
+}
+let takenNotifier: ((notice: TakenNotice) => void) | null = null;
+
 const state: QueueState = { entries: [] };
 const listeners = new Set<() => void>();
 // Original (post-downscale) blob ref so Retry doesn't re-prompt the user.
@@ -147,6 +169,19 @@ let rehydrated = false;
 
 function emit() {
   listeners.forEach((fn) => fn());
+}
+
+function notifyTaken(receivingId: number, receivingLineId: number | null) {
+  if (!takenNotifier) return;
+  try {
+    takenNotifier({
+      receivingId,
+      receivingLineId,
+      inFlight: countInFlightEntries(state.entries, receivingId),
+    });
+  } catch {
+    /* taken notifier must never break the upload queue */
+  }
 }
 
 function patch(id: string, partial: Partial<UploadEntry>) {
@@ -264,6 +299,7 @@ async function postPhotoViaAdapter(
     photoType: receivingPhotoTypeForStage(stage),
     poRef: entry.scope.poRef ?? undefined,
     clientCapturedAtMs: entry.scope.capturedAtMs ?? null,
+    photoAspect: entry.scope.aspect ?? null,
   });
   return { id: result.id, url: result.url };
 }
@@ -276,7 +312,12 @@ async function postPhoto(
 }
 
 async function processEntry(id: string, blob: Blob): Promise<void> {
+  const before = state.entries.find((e) => e.id === id);
   patch(id, { state: 'uploading', error: null });
+  if (before) {
+    // Retry from failed re-enters in-flight; queued→uploading keeps the same count.
+    notifyTaken(before.scope.receivingId, before.scope.receivingLineId ?? null);
+  }
   try {
     const entry = state.entries.find((e) => e.id === id);
     if (!entry) return;
@@ -295,6 +336,7 @@ async function processEntry(id: string, blob: Blob): Promise<void> {
     } catch {
       /* notifier must never break the upload */
     }
+    notifyTaken(entry.scope.receivingId, entry.scope.receivingLineId ?? null);
     // done — clear localStorage row + drop blob cache (preview still rendered
     // from the existing object URL until the parent revokes it).
     persistedDataUrls.delete(id);
@@ -302,6 +344,10 @@ async function processEntry(id: string, blob: Blob): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'upload failed';
     patch(id, { state: 'failed', error: message });
+    const failed = state.entries.find((e) => e.id === id);
+    if (failed) {
+      notifyTaken(failed.scope.receivingId, failed.scope.receivingLineId ?? null);
+    }
   }
 }
 
@@ -341,6 +387,17 @@ export const photoUploadQueue = {
   configureNotifier(fn: ((notice: UploadNotice) => void) | null) {
     uploadNotifier = fn;
   },
+  /**
+   * Register the shutter / in-flight count notifier (Ably `receiving_photo_taken`).
+   * Same longevity rules as {@link configureNotifier}.
+   */
+  configureTakenNotifier(fn: ((notice: TakenNotice) => void) | null) {
+    takenNotifier = fn;
+  },
+  /** Absolute queued+uploading count for a carton (failed/done excluded). */
+  inFlightCount(receivingId: number): number {
+    return countInFlightEntries(state.entries, receivingId);
+  },
   enqueue(scope: PhotoScope, blob: Blob, previewUrl: string): string {
     rehydrate();
     const id = randomId();
@@ -359,6 +416,8 @@ export const photoUploadQueue = {
     state.entries = [...state.entries, entry];
     blobCache.set(id, blob);
     emit();
+    // Shutter → desk bump before downscale/upload starts.
+    notifyTaken(scope.receivingId, scope.receivingLineId ?? null);
     void prepareAndUpload(id, blob);
     return id;
   },
@@ -381,6 +440,12 @@ export const photoUploadQueue = {
     persist();
   },
   clearAll() {
+    const affected = new Map<number, number | null>();
+    for (const e of state.entries) {
+      if (e.state === 'queued' || e.state === 'uploading') {
+        affected.set(e.scope.receivingId, e.scope.receivingLineId ?? null);
+      }
+    }
     state.entries.forEach((e) => {
       try { URL.revokeObjectURL(e.previewUrl); } catch { /* ignore */ }
     });
@@ -390,6 +455,9 @@ export const photoUploadQueue = {
     emit();
     if (typeof window !== 'undefined') {
       try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    }
+    for (const [receivingId, receivingLineId] of affected) {
+      notifyTaken(receivingId, receivingLineId);
     }
   },
   subscribe(fn: () => void) {

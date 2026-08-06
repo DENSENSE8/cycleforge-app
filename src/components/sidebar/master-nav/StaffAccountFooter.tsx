@@ -94,10 +94,10 @@ export function StaffAccountFooter({ className }: { className?: string }) {
 
   return (
     <div
-      className={cn('border-t border-border-soft px-1 py-0.5', className)}
+      className={cn('border-t border-border-soft px-0 py-0', className)}
       data-staff-account-footer
     >
-      <div ref={rowRef} className="flex min-w-0 items-center gap-1 px-1 py-0">
+      <div ref={rowRef} className="flex min-w-0 items-center gap-1 px-2 py-0.5">
         {/* Click the mark to change colour / photo — not Settings. */}
         <StaffAvatarEditor markSize="xs" />
         <div className="min-w-0 flex-1 leading-none">
@@ -115,7 +115,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
             onClick={() => setMenu((m) => (m === 'more' ? 'none' : 'more'))}
             ariaLabel="Account details"
             aria-expanded={moreOpen}
-            className="shrink-0 rounded-md text-text-faint hover:bg-surface-hover hover:text-text-default"
+            className="shrink-0 rounded-none text-text-faint hover:bg-surface-hover hover:text-text-default"
             icon={<MoreHorizontal className="h-3.5 w-3.5" />}
           />
         </HoverTooltip>
@@ -127,7 +127,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               void signOut();
             }}
             ariaLabel="Sign out"
-            className="shrink-0 rounded-md text-text-faint hover:bg-surface-hover hover:text-text-default"
+            className="shrink-0 rounded-none text-text-faint hover:bg-surface-hover hover:text-text-default"
             icon={<Power className="h-3.5 w-3.5" />}
           />
         </HoverTooltip>
@@ -157,7 +157,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               {user.role.replace(/_/g, ' ')}
             </div>
           </div>
-          <div className="space-y-0.5 p-1">
+          <div className="space-y-0 p-0">
             {showPhoneHistory ? (
               <button
                 type="button"

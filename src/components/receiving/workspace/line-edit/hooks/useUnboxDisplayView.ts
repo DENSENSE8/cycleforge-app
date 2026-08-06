@@ -3,27 +3,17 @@
 /**
  * URL ⇄ state for the Unbox Displays push column (`ReceivingDisplaysPushStack`).
  *
- * `?display=<tab>` opens the station-scoped right-edge column on that display;
- * **the param's absence IS closed** — there is no separate open flag, matching
- * `resolveUnboxSideTab`'s `null`-is-closed contract.
+ * `?display=<tab>` opens the column; **absence IS closed**. Nested modes:
+ *   - Photos: `?photoAction=browse|move|send`
+ *   - Linkage: `?linkageAction=link|note`
+ *   - Ticket: `?ticketAction=chat|claim` + `?claimMode=create|link` for claim
+ *   - Units: `?unitsAction=units|prebox`
  *
- * WHY THIS EXISTS: the column shipped (lane E) holding its tab in local
- * `useState` while its two siblings — Ticket (`?ticketView=1`) and Claim
- * (`?claimView=1`) — were URL-durable from birth. So a reload, a deep link, or
- * a shared "look at this carton's Zoho note" URL all landed with the column
- * closed, which `display/workbench.md` § URL-as-state says a durable selection
- * must not do.
+ * Compat (one release): `?ticketView=1` → `display=ticket`; `?claimView=1` /
+ * `?display=claim` → `display=ticket&ticketAction=claim`. Retired ids
+ * `pairing` / `po-note` map to `linkage`.
  *
- * Scoped so a stale display can't bleed across selections:
- * - sibling-line switch clears the param;
- * - mode switch strips it via route owns (`UNBOX_ROUTE_PARAMS`);
- * - mutually exclusive with Ticket, Claim and `detail:receiving` — opening the
- *   column drops both peers and suspends details.
- *
- * **Not `?unboxview=`** — that param is the queue / viewed / recent BROWSE tab
- * on the same route. Colliding on it would make the rail and the column
- * disagree about what "the tab" means, the same way `?sort=` collides with
- * server ordering on station routes.
+ * Mutually exclusive with `detail:receiving` and AI.
  */
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -32,27 +22,39 @@ import {
   dispatchAssistantDockClose,
   dispatchReceivingDetailsOverlayClose,
 } from '@/utils/events';
-import { clearPeerRightEdgeParams } from '../unbox-right-edge';
-import { UNBOX_SIDE_TAB_ORDER, type UnboxSideTab } from '../unbox-side-tabs';
+import { clearAllUnboxRightEdgeParams } from '../unbox-right-edge';
+import {
+  canonicalizeUnboxSideTab,
+  parseUnboxLinkageAction,
+  parseUnboxPhotoAction,
+  parseUnboxUnitsAction,
+  resolveUnboxTicketAction,
+  type UnboxLinkageAction,
+  type UnboxPhotoAction,
+  type UnboxSideTab,
+  type UnboxSideTabGates,
+  type UnboxTicketAction,
+  type UnboxUnitsAction,
+} from '../unbox-side-tabs';
+import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 
 const DISPLAY_PARAM = 'display';
+const PHOTO_ACTION_PARAM = 'photoAction';
+const LINKAGE_ACTION_PARAM = 'linkageAction';
+const TICKET_ACTION_PARAM = 'ticketAction';
+const UNITS_ACTION_PARAM = 'unitsAction';
+const CLAIM_MODE_PARAM = 'claimMode';
+const LEGACY_TICKET_VIEW = 'ticketView';
+const LEGACY_CLAIM_VIEW = 'claimView';
 
 /**
- * Parse `?display=` into a side tab. Anything that is not a known tab id is
- * closed — a bogus value must never paint an empty column, and the
- * param-isolation hygiene hook drops it on arrival.
+ * Parse `?display=` into a side tab. Legacy aliases canonicalize; bogus → closed.
  */
 export function parseUnboxDisplayParam(raw: string | null): UnboxSideTab | null {
   if (!raw) return null;
-  return UNBOX_SIDE_TAB_ORDER.find((tab) => tab === raw) ?? null;
+  return canonicalizeUnboxSideTab(raw);
 }
 
-/**
- * Pure decision for the clear-on-line-change effect. Clear only on a genuine
- * sibling-line switch — both ids known and different. A `null` previous id
- * (mount / deep-link resolve) must NOT self-clear, or the deep link the param
- * exists to serve would close itself on arrival.
- */
 export function shouldClearDisplayOnLineChange(
   prevLineId: number | null,
   currentLineId: number | null,
@@ -66,11 +68,28 @@ export function shouldClearDisplayOnLineChange(
   );
 }
 
+type SetUnboxDisplayOpts = {
+  photoAction?: UnboxPhotoAction;
+  linkageAction?: UnboxLinkageAction;
+  ticketAction?: UnboxTicketAction;
+  unitsAction?: UnboxUnitsAction;
+  claimMode?: ClaimModalMode;
+};
+
 interface UnboxDisplayViewState {
-  /** Requested display from `?display=`, or `null` when the column is closed. */
   requestedDisplay: UnboxSideTab | null;
-  /** Open a display (clears Ticket / Claim, suspends details) or close with `null`. */
-  setDisplay: (tab: UnboxSideTab | null) => void;
+  photoAction: UnboxPhotoAction;
+  linkageActionRaw: string | null;
+  ticketActionRaw: string | null;
+  unitsActionRaw: string | null;
+  claimMode: ClaimModalMode;
+  setDisplay: (tab: UnboxSideTab | null, opts?: SetUnboxDisplayOpts) => void;
+  /** Resolve linkage nested action against current gates. */
+  resolveLinkageAction: (gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>) => UnboxLinkageAction;
+  /** Resolve ticket nested action given whether a linked ticket id exists. */
+  resolveTicketAction: (hasTicketId: boolean) => UnboxTicketAction;
+  /** Resolve units nested action (Prebox gated on serials). */
+  resolveUnitsAction: (gates: { hasPrebox: boolean }) => UnboxUnitsAction;
 }
 
 export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayViewState {
@@ -78,30 +97,112 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const requestedDisplay = parseUnboxDisplayParam(searchParams.get(DISPLAY_PARAM));
+  const rawDisplay = searchParams.get(DISPLAY_PARAM);
+  const requestedDisplay = parseUnboxDisplayParam(rawDisplay);
+  const photoAction = parseUnboxPhotoAction(searchParams.get(PHOTO_ACTION_PARAM));
+  const linkageActionRaw = searchParams.get(LINKAGE_ACTION_PARAM);
+  const ticketActionRaw = searchParams.get(TICKET_ACTION_PARAM);
+  const unitsActionRaw = searchParams.get(UNITS_ACTION_PARAM);
+  const claimModeRaw = searchParams.get(CLAIM_MODE_PARAM);
+  const claimMode: ClaimModalMode = claimModeRaw === 'link' ? 'link' : 'create';
+
+  const replaceParams = useCallback(
+    (next: URLSearchParams) => {
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
+    },
+    [router, pathname],
+  );
 
   const setDisplay = useCallback(
-    (tab: UnboxSideTab | null) => {
+    (tab: UnboxSideTab | null, opts?: SetUnboxDisplayOpts) => {
       const next = new URLSearchParams(searchParams.toString());
+      // Drop nested + legacy peer flags whenever the display changes.
+      next.delete(PHOTO_ACTION_PARAM);
+      next.delete(LINKAGE_ACTION_PARAM);
+      next.delete(TICKET_ACTION_PARAM);
+      next.delete(UNITS_ACTION_PARAM);
+      next.delete(CLAIM_MODE_PARAM);
+      next.delete(LEGACY_TICKET_VIEW);
+      next.delete(LEGACY_CLAIM_VIEW);
+
       if (tab) {
         next.set(DISPLAY_PARAM, tab);
-        // One right-edge secondary surface: drop Ticket + Claim in this SAME
-        // write (a sibling effect would race and lose) + suspend details.
-        clearPeerRightEdgeParams(next, 'display');
+        if (tab === 'photos' && opts?.photoAction && opts.photoAction !== 'browse') {
+          next.set(PHOTO_ACTION_PARAM, opts.photoAction);
+        }
+        if (tab === 'linkage' && opts?.linkageAction === 'note') {
+          next.set(LINKAGE_ACTION_PARAM, 'note');
+        }
+        if (tab === 'units' && opts?.unitsAction === 'prebox') {
+          next.set(UNITS_ACTION_PARAM, 'prebox');
+        }
+        if (tab === 'ticket') {
+          if (opts?.ticketAction === 'claim') {
+            next.set(TICKET_ACTION_PARAM, 'claim');
+            if (opts.claimMode === 'link') next.set(CLAIM_MODE_PARAM, 'link');
+          } else if (opts?.ticketAction === 'chat') {
+            next.set(TICKET_ACTION_PARAM, 'chat');
+          }
+        }
+        // Legacy po-note deep-link intent when opening linkage for note.
+        if (rawDisplay === 'po-note' && tab === 'linkage' && !opts?.linkageAction) {
+          next.set(LINKAGE_ACTION_PARAM, 'note');
+        }
         dispatchReceivingDetailsOverlayClose();
         dispatchAssistantDockClose();
       } else {
         next.delete(DISPLAY_PARAM);
       }
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
+      replaceParams(next);
     },
-    [router, pathname, searchParams],
+    [searchParams, replaceParams, rawDisplay],
   );
 
+  // Compat: rewrite legacy ticketView / claimView / pairing / po-note / claim once.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    let dirty = false;
+
+    const legacyTicket = next.get(LEGACY_TICKET_VIEW) === '1';
+    const legacyClaim = next.get(LEGACY_CLAIM_VIEW) === '1';
+    const displayRaw = next.get(DISPLAY_PARAM);
+
+    if (legacyTicket && !next.get(DISPLAY_PARAM)) {
+      next.set(DISPLAY_PARAM, 'ticket');
+      dirty = true;
+    }
+    if (legacyClaim && !next.get(DISPLAY_PARAM)) {
+      next.set(DISPLAY_PARAM, 'ticket');
+      next.set(TICKET_ACTION_PARAM, 'claim');
+      dirty = true;
+    }
+    if (legacyTicket) {
+      next.delete(LEGACY_TICKET_VIEW);
+      dirty = true;
+    }
+    if (legacyClaim) {
+      next.delete(LEGACY_CLAIM_VIEW);
+      dirty = true;
+    }
+
+    if (displayRaw === 'pairing') {
+      next.set(DISPLAY_PARAM, 'linkage');
+      dirty = true;
+    } else if (displayRaw === 'po-note') {
+      next.set(DISPLAY_PARAM, 'linkage');
+      next.set(LINKAGE_ACTION_PARAM, 'note');
+      dirty = true;
+    } else if (displayRaw === 'claim') {
+      next.set(DISPLAY_PARAM, 'ticket');
+      next.set(TICKET_ACTION_PARAM, 'claim');
+      dirty = true;
+    }
+
+    if (dirty) replaceParams(next);
+  }, [searchParams, replaceParams]);
+
   // Deep-link / reload with a display already open — suspend details + AI.
-  // setDisplay(tab) already dispatches both; this covers cold `?display=` while
-  // assistant:dock-open is still '1' in localStorage.
   useEffect(() => {
     if (!requestedDisplay) return;
     dispatchReceivingDetailsOverlayClose();
@@ -117,19 +218,46 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
     }
   }, [currentLineId, requestedDisplay, setDisplay]);
 
-  // More details opened → clear the display so detail:receiving owns the slot.
+  // More details opened → clear Displays so detail:receiving owns the slot.
   useEffect(() => {
     const handler = () => {
-      if (!requestedDisplay) return;
-      const next = new URLSearchParams(searchParams.toString());
-      if (!next.has(DISPLAY_PARAM)) return;
-      next.delete(DISPLAY_PARAM);
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
+      if (!requestedDisplay && !searchParams.has(DISPLAY_PARAM)) return;
+      const seed =
+        typeof window !== 'undefined' ? window.location.search : searchParams.toString();
+      const next = new URLSearchParams(seed);
+      clearAllUnboxRightEdgeParams(next);
+      replaceParams(next);
     };
     window.addEventListener('receiving-open-details-overlay', handler);
     return () => window.removeEventListener('receiving-open-details-overlay', handler);
-  }, [requestedDisplay, router, pathname, searchParams]);
+  }, [requestedDisplay, searchParams, replaceParams]);
 
-  return { requestedDisplay, setDisplay };
+  const resolveLinkageAction = useCallback(
+    (gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>) =>
+      parseUnboxLinkageAction(linkageActionRaw, gates),
+    [linkageActionRaw],
+  );
+
+  const resolveTicketAction = useCallback(
+    (hasTicketId: boolean) => resolveUnboxTicketAction(hasTicketId),
+    [],
+  );
+
+  const resolveUnitsAction = useCallback(
+    (gates: { hasPrebox: boolean }) => parseUnboxUnitsAction(unitsActionRaw, gates),
+    [unitsActionRaw],
+  );
+
+  return {
+    requestedDisplay,
+    photoAction,
+    linkageActionRaw,
+    ticketActionRaw,
+    unitsActionRaw,
+    claimMode,
+    setDisplay,
+    resolveLinkageAction,
+    resolveTicketAction,
+    resolveUnitsAction,
+  };
 }

@@ -170,7 +170,7 @@ export function WarehouseFloorPlan({ rows, loading, error = null, mode, showEmpt
 
   if (loading && !hasBins) {
     return (
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-8 text-center text-sm text-text-faint">
+      <div className="rounded-none border border-border-soft bg-surface-card p-8 text-center text-sm text-text-faint">
         Loading floor plan…
       </div>
     );
@@ -178,7 +178,7 @@ export function WarehouseFloorPlan({ rows, loading, error = null, mode, showEmpt
 
   if (error && !hasBins) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
+      <div className="rounded-none border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
         <p className="text-sm font-semibold text-rose-700">Could not load the floor plan</p>
         <p className="mt-1 text-xs text-rose-600">The bins overview did not respond. It will retry automatically.</p>
       </div>
@@ -187,7 +187,7 @@ export function WarehouseFloorPlan({ rows, loading, error = null, mode, showEmpt
 
   if (!hasBins) {
     return (
-      <div className="rounded-2xl border border-dashed border-border-soft bg-surface-card p-8 text-center">
+      <div className="rounded-none border border-dashed border-border-soft bg-surface-card p-8 text-center">
         <p className="text-sm font-semibold text-text-muted">No bins to plot</p>
         <p className="mt-1 text-xs text-text-soft">
           Bins need a room, row and column to appear on the floor plan — add them via the label printer.
@@ -197,7 +197,7 @@ export function WarehouseFloorPlan({ rows, loading, error = null, mode, showEmpt
   }
 
   return (
-    <div className="h-[70vh] min-h-[420px] w-full overflow-hidden rounded-2xl border border-border-soft bg-surface-card">
+    <div className="h-[70vh] min-h-[420px] w-full overflow-hidden rounded-none border border-border-soft bg-surface-card">
       <ReactFlowProvider>
         <ReactFlow<FloorNode>
           nodes={nodes}

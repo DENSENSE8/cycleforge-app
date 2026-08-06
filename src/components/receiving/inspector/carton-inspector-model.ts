@@ -185,12 +185,24 @@ export interface CartonInspectorPayload {
  *
  * The model decides WHICH facts exist and what kind each is; the view resolves
  * `kind` against the matching SoT (`conditionLabel`, `sourcePlatformMeta`,
- * `receivingTypeMeta`, `workflowStage*`). Keeping the label/tone maps out of
- * here is what lets this module stay import-free and testable, and it is the
- * house rule either way — views assemble RESOLVED facts, they never invent maps,
- * and the model never hardcodes a label a SoT already owns.
+ * `receivingTypeMeta`, `qaStatusMeta`, `receivingSourceLabel`, carrier-brand).
+ * Keeping presentation paint out of the fact rows themselves is what lets this
+ * module stay import-free and testable, and it is the house rule either way —
+ * views assemble RESOLVED facts, they never invent maps, and the model never
+ * hardcodes a label a SoT already owns (except the small QA / source maps
+ * owned here as the first consumers).
  */
-export type CartonFactKind = 'text' | 'condition' | 'platform' | 'receivingType';
+export type CartonFactKind =
+  | 'text'
+  | 'condition'
+  | 'platform'
+  | 'receivingType'
+  | 'carrier'
+  | 'qaStatus'
+  | 'id'
+  | 'externalId'
+  | 'instant'
+  | 'source';
 
 export interface CartonFact {
   key: string;
@@ -198,6 +210,88 @@ export interface CartonFact {
   /** The RAW stored value — the view resolves it per `kind`. */
   value: string;
   kind: CartonFactKind;
+}
+
+/**
+ * Carton QA status presentation — NOT a receiving workflow stage.
+ *
+ * `qa_status` is its own small vocabulary (PENDING / PASSED / FAILED…). Routing
+ * it through `workflowStage*` used to print "Unknown" for a valid PENDING.
+ * Badge classes follow the same pastel chip language as `workflow-stages.ts`.
+ */
+interface QaStatusMeta {
+  /** Canonical uppercased token, or the raw trimmed value when unknown. */
+  status: string;
+  label: string;
+  /** Tailwind badge classes (bg + text) for the status chip face. */
+  badge: string;
+  /** Tailwind `bg-*` class for the leading status dot. */
+  dot: string;
+}
+
+const QA_STATUS_META: Record<string, QaStatusMeta> = {
+  PENDING: {
+    status: 'PENDING',
+    label: 'Pending',
+    badge: 'bg-amber-50 text-amber-700',
+    dot: 'bg-amber-400',
+  },
+  PASSED: {
+    status: 'PASSED',
+    label: 'Passed',
+    badge: 'bg-teal-50 text-teal-700',
+    dot: 'bg-teal-500',
+  },
+  FAILED: {
+    status: 'FAILED',
+    label: 'Failed',
+    badge: 'bg-rose-50 text-rose-700',
+    dot: 'bg-rose-500',
+  },
+};
+
+const UNKNOWN_QA_STATUS: QaStatusMeta = {
+  status: 'UNKNOWN',
+  label: 'Unknown',
+  badge: 'bg-surface-sunken text-text-muted',
+  dot: 'bg-border-emphasis',
+};
+
+/** Resolve carton `qa_status` for status-chip paint. */
+export function qaStatusMeta(raw: string | null | undefined): QaStatusMeta {
+  const key = String(raw ?? '').trim().toUpperCase();
+  if (!key) return UNKNOWN_QA_STATUS;
+  const hit = QA_STATUS_META[key];
+  if (hit) return hit;
+  // Unknown but present token — show the raw face, quiet chip (never invent a stage).
+  return { ...UNKNOWN_QA_STATUS, status: key, label: key };
+}
+
+export function qaStatusLabel(raw: string | null | undefined): string {
+  return qaStatusMeta(raw).label;
+}
+
+export function qaStatusToneClass(raw: string | null | undefined): string {
+  return qaStatusMeta(raw).badge;
+}
+
+/**
+ * Carton intake `source` token → operator label.
+ * DB check: zoho_po | unmatched | local_pickup | sourcing_import | ebay.
+ * Capability nouns — "PO match", not a vendor product sentence.
+ */
+const RECEIVING_SOURCE_LABELS: Record<string, string> = {
+  zoho_po: 'PO match',
+  unmatched: 'Unmatched',
+  local_pickup: 'Local pickup',
+  sourcing_import: 'Sourcing import',
+  ebay: 'eBay',
+};
+
+export function receivingSourceLabel(raw: string | null | undefined): string {
+  const key = String(raw ?? '').trim().toLowerCase();
+  if (!key) return '';
+  return RECEIVING_SOURCE_LABELS[key] ?? String(raw ?? '').trim();
 }
 
 /** Non-empty string, or null. Blank and whitespace count as absent. */
@@ -222,17 +316,11 @@ export function cartonFacts(receiving: CartonInspectorReceiving): CartonFact[] {
     if (value) out.push({ key, label, value, kind });
   };
 
+  // Platform + QA lead — state telemetry first, then logistics / disposition.
   add('platform', 'Platform', present(receiving.source_platform), 'platform');
+  add('qaStatus', 'QA status', present(receiving.qa_status), 'qaStatus');
+  add('carrier', 'Carrier', present(receiving.carrier), 'carrier');
   add('intakeType', 'Intake type', present(receiving.intake_type), 'receivingType');
-  add('carrier', 'Carrier', present(receiving.carrier));
-  // Deliberately 'text'. `qa_status` (PENDING/PASSED/FAILED) is its own small
-  // vocabulary — NOT a receiving workflow stage. Routing it through
-  // `workflowStage*` rendered a valid "PENDING" as "Unknown", because that
-  // registry only knows line stages. Misresolving a value through the wrong SoT
-  // is the same class of bug as inventing a map; the raw token is legible and
-  // honest, and a QA label SoT should be added only once a second consumer
-  // needs one.
-  add('qaStatus', 'QA status', present(receiving.qa_status));
   add('disposition', 'Disposition', present(receiving.disposition_code));
   add('condition', 'Condition', present(receiving.condition_grade), 'condition');
   add('staging', 'Staging location', present(receiving.staging_location_label));
@@ -412,20 +500,26 @@ export function cartonHeaderIdentity(
 /** System-record footer facts — the "which row is this, really" set. */
 export function cartonRecordMeta(receiving: CartonInspectorReceiving): CartonFact[] {
   const out: CartonFact[] = [];
-  const add = (key: string, label: string, value: string | null) => {
-    if (value) out.push({ key, label, value, kind: 'text' });
+  const add = (
+    key: string,
+    label: string,
+    value: string | null,
+    kind: CartonFactKind = 'text',
+  ) => {
+    if (value) out.push({ key, label, value, kind });
   };
-  add('id', 'Carton', String(receiving.id));
-  add('shipment', 'Shipment', present(receiving.shipment_id));
-  add('source', 'Source', present(receiving.source));
+  add('id', 'Carton', String(receiving.id), 'id');
+  add('shipment', 'Shipment', present(receiving.shipment_id), 'id');
+  add('source', 'Source', present(receiving.source), 'source');
   // Omitted entirely when nobody recorded a pairing answer — `add` skips a null.
   // That honest absence is the point: this row used to print "UNFOUND" for every
   // carton with no receiving_triage row, which is a fact the footer invented.
   add('pairing', 'Pairing state', present(receiving.pairing_state));
-  add('poId', 'Zoho PO id', present(receiving.zoho_purchaseorder_id));
-  add('receiveId', 'Zoho receive id', present(receiving.zoho_purchase_receive_id));
-  add('created', 'Created', present(receiving.created_at));
-  add('updated', 'Updated', present(receiving.updated_at));
+  // Capability nouns for the row labels; values stay the provider ids (copy instruments).
+  add('poId', 'PO id', present(receiving.zoho_purchaseorder_id), 'externalId');
+  add('receiveId', 'Receive id', present(receiving.zoho_purchase_receive_id), 'externalId');
+  add('created', 'Created', present(receiving.created_at), 'instant');
+  add('updated', 'Updated', present(receiving.updated_at), 'instant');
   return out;
 }
 
@@ -524,7 +618,7 @@ export function cartonContentsSummary(totals: CartonInspectorTotals | undefined 
   if (!totals || totals.lines === 0) return 'No lines';
   const { expected, received, lines, lines_complete: complete } = totals;
   const unitPart = expected > 0 ? `${received}/${expected} units` : `${received} units`;
-  return `${unitPart} · ${complete}/${lines} ${lines === 1 ? 'line' : 'lines'} complete`;
+  return `${unitPart} · ${complete}/${lines} complete`;
 }
 
 /**

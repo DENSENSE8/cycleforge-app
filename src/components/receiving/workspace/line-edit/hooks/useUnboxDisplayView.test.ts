@@ -44,8 +44,19 @@ describe('shouldClearDisplayOnLineChange', () => {
   });
 
   it('keeps a deep link open when prev line is null (mount / resolve)', () => {
-    // The whole point of the param: `?display=po-note` must survive arrival.
+    // The whole point of the param: `?display=linkage` must survive arrival.
     assert.equal(shouldClearDisplayOnLineChange(null, 22, true), false);
+  });
+
+  it('accepts legacy pairing / po-note as linkage', () => {
+    assert.equal(parseUnboxDisplayParam('pairing'), 'linkage');
+    assert.equal(parseUnboxDisplayParam('po-note'), 'linkage');
+  });
+
+  it('accepts ticket · photos; claim canonicalizes to ticket', () => {
+    assert.equal(parseUnboxDisplayParam('ticket'), 'ticket');
+    assert.equal(parseUnboxDisplayParam('photos'), 'photos');
+    assert.equal(parseUnboxDisplayParam('claim'), 'ticket');
   });
 
   it('keeps open when the line id is unchanged', () => {

@@ -26,25 +26,23 @@ import { toast } from '@/lib/toast';
 import { normalizeCondition, type ConditionGrade } from '@/components/tech/StationConditionEditor';
 import { refreshDomain } from '@/lib/refresh/bus';
 
-// Per-platform CopyChip styling. Underline color matches the chip palette used
-// by SkuIdentity / order-platform.ts so the panel stays consistent with the
-// rest of the app.
+// Per-platform CopyChip styling. Chip palette matches SkuIdentity /
+// order-platform.ts so the panel stays consistent with the rest of the app.
 const PLATFORM_STYLE: Record<
   string,
-  { label: string; underline: string; chip: string }
+  { label: string; chip: string }
 > = {
-  zoho:    { label: 'Zoho',    underline: 'border-red-500',     chip: 'border-red-200    bg-red-50    text-red-700' },
-  amazon:  { label: 'Amazon',  underline: 'border-orange-500',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
-  fba:     { label: 'FBA',     underline: 'border-orange-500',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
-  ecwid:   { label: 'Ecwid',   underline: 'border-blue-500',    chip: 'border-blue-200   bg-blue-50   text-blue-700' },
-  ebay:    { label: 'eBay',    underline: 'border-yellow-500',  chip: 'border-yellow-200 bg-yellow-50 text-yellow-800' },
-  walmart: { label: 'Walmart', underline: 'border-amber-500',   chip: 'border-amber-200  bg-amber-50  text-amber-800' },
-  mercari: { label: 'Mercari', underline: 'border-purple-500',  chip: 'border-purple-200 bg-purple-50 text-purple-700' },
-  shopify: { label: 'Shopify', underline: 'border-border-emphasis',   chip: 'border-border-default  bg-surface-canvas  text-text-default' },
+  zoho:    { label: 'Zoho',    chip: 'border-red-200    bg-red-50    text-red-700' },
+  amazon:  { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
+  fba:     { label: 'FBA',     chip: 'border-orange-200 bg-orange-50 text-orange-700' },
+  ecwid:   { label: 'Ecwid',   chip: 'border-blue-200   bg-blue-50   text-blue-700' },
+  ebay:    { label: 'eBay',    chip: 'border-yellow-200 bg-yellow-50 text-yellow-800' },
+  walmart: { label: 'Walmart', chip: 'border-amber-200  bg-amber-50  text-amber-800' },
+  mercari: { label: 'Mercari', chip: 'border-purple-200 bg-purple-50 text-purple-700' },
+  shopify: { label: 'Shopify', chip: 'border-border-default  bg-surface-canvas  text-text-default' },
 };
 const DEFAULT_STYLE = {
   label: 'Other',
-  underline: 'border-border-emphasis',
   chip: 'border-border-soft bg-surface-canvas text-text-muted',
 };
 
@@ -82,7 +80,6 @@ function PlatformSkuRow({ entry }: { entry: PlatformSkuEntry }) {
         <CopyChip
           value={entry.value}
           display={entry.value}
-          underlineClass={style.underline}
           width="w-fit max-w-full"
           truncateDisplay={false}
         />

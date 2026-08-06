@@ -22,15 +22,21 @@ export function useGlobalWedgeScanner(): void {
     (value: string) => {
       const route = routeScan(value);
 
-      // Either dispatch the global event for page handlers OR navigate when
-      // the scanned value is a printed-label URL.
+      // Cancelable so a page handler (e.g. Unbox History Band 3 find) can claim
+      // the buffer and skip URL navigation without a second wedge listener.
+      let claimed = false;
       try {
-        window.dispatchEvent(
-          new CustomEvent('wedge-scan', { detail: { value, route } }),
-        );
+        const event = new CustomEvent('wedge-scan', {
+          detail: { value, route },
+          cancelable: true,
+        });
+        window.dispatchEvent(event);
+        claimed = event.defaultPrevented;
       } catch {
         /* CustomEvent is universally available; just being defensive */
       }
+
+      if (claimed) return;
 
       if (route?.redirect) {
         router.push(route.redirect);

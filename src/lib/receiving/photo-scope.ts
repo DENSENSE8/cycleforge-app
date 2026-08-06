@@ -21,6 +21,20 @@ import {
   type ReceivingPhotoStage,
 } from '@/lib/receiving/photo-intent';
 
+/** Arrival guided camera steps — legal aspects of `arrival_package` only. */
+export type ArrivalGuidedStep = 'shipping_label' | 'box_exterior';
+
+/**
+ * Parse `?step=` for the arrival guided studio. Unknown → `shipping_label`
+ * (start of the door shot list). No fallback into bench aspects.
+ */
+export function parseArrivalGuidedStep(
+  raw: string | null | undefined,
+): ArrivalGuidedStep {
+  const t = String(raw ?? '').trim().toLowerCase();
+  return t === 'box_exterior' ? 'box_exterior' : 'shipping_label';
+}
+
 /** Carton-level (RECEIVING-entity) stages — everything but the line stage. */
 type ReceivingCartonPhotoStage = Exclude<ReceivingPhotoStage, 'unbox_item'>;
 
@@ -169,6 +183,19 @@ export interface ReceivingPhotoRequestMessage {
   requested_by_staff_id?: number;
 }
 
+/**
+ * Wire shape of a `receiving_photo_taken` Ably message (snake_case).
+ * Phone → desk on `phone:{staffId}`: absolute in-flight shutter count so the
+ * desk PhotoPeek can show placeholders before uploads commit. Not server truth.
+ */
+export interface ReceivingPhotoTakenMessage {
+  receiving_id: number;
+  receiving_line_id?: number | null;
+  /** Absolute queued+uploading count for `receiving_id` (failed excluded). */
+  in_flight: number;
+  request_id?: string | null;
+}
+
 interface NormalizedReceivingPhotoRequest {
   receivingId: number;
   receivingLineId: number | null;
@@ -209,6 +236,7 @@ export function normalizeReceivingPhotoRequest(
  * Mobile capture route for a normalized request.
  *
  *   arrival_package / unbox_carton → /m/r/{id}/photos?stage=…
+ *     (arrival also gets `guided=1` — door capture is label → box)
  *   unbox_item (line + PO known)   → /m/receiving/po/{po}/item/{line}/photos?stage=unbox_item
  *   unbox_item (PO unknown)        → carton page at unbox_carton — there is no
  *                                    id-based line route, and landing item shots
@@ -219,6 +247,18 @@ export function mobileCaptureHrefForRequest(req: NormalizedReceivingPhotoRequest
   const qs = (stage: ReceivingPhotoStage) => {
     const params = new URLSearchParams({ stage });
     if (req.requestId) params.set('requestId', req.requestId);
+    // Door/Triage requests open the arrival guided studio (shipping label →
+    // box), then hand off to Platform classify.
+    if (stage === 'arrival_package') {
+      params.set('guided', '1');
+      // After label→box, land on Arrival Platform classify (same path as
+      // `mobileArrivalClassifyHref` — inlined to avoid a photo-scope ↔
+      // arrival-mobile-flow import cycle).
+      params.set(
+        'back',
+        `/m/triage?rid=${req.receivingId}&step=platform`,
+      );
+    }
     return `?${params.toString()}`;
   };
   if (req.stage === 'unbox_item' && req.receivingLineId != null && req.poRef) {
@@ -227,4 +267,22 @@ export function mobileCaptureHrefForRequest(req: NormalizedReceivingPhotoRequest
   const cartonStage: ReceivingCartonPhotoStage =
     req.stage === 'unbox_item' ? 'unbox_carton' : req.stage;
   return `/m/r/${req.receivingId}/photos${qs(cartonStage)}`;
+}
+
+/**
+ * Mobile deep-link for the arrival guided camera (label → box). Used by the
+ * triage scan feed CTA — always explicit `arrival_package` (never a default).
+ */
+export function mobileArrivalGuidedPhotosHref(
+  receivingId: number,
+  opts: { back?: string; title?: string | null } = {},
+): string {
+  const params = new URLSearchParams({
+    stage: 'arrival_package',
+    guided: '1',
+  });
+  if (opts.back) params.set('back', opts.back);
+  const title = String(opts.title ?? '').trim();
+  if (title) params.set('title', title);
+  return `/m/r/${receivingId}/photos?${params.toString()}`;
 }

@@ -421,8 +421,8 @@ test.describe('Unbox Displays column', () => {
   }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
-    // An unmatched carton has no Zoho PO, so the chip renders `--------` and
-    // activates edit on click (`IdentityLinkChip` → `emptyEditActivate`).
+    // An unmatched carton has no Zoho PO, so the chip renders the quiet em dash
+    // and activates edit on click (`IdentityLinkChip` → `emptyEditActivate`).
     await openUnbox(page, receivingId, lineId);
 
     await expect(page.getByTestId('receiving-displays-push')).toHaveCount(0);

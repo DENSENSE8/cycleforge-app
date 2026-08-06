@@ -7,7 +7,6 @@
  * ```ts
  * import {
  *   StationWorkbench,
- *   PairingTogglePill,
  *   ExternalLinkPill,
  *   buildSectionTabs,
  *   STATION_WORKBENCH_COLUMN,
@@ -23,7 +22,6 @@ export { StationPanelRoot } from './StationPanelRoot';
 export {
   SectionTabsRightTrack,
   SectionTabsRightPill,
-  PairingTogglePill,
   ExternalLinkPill,
 } from './SectionTabsRightSlot';
 export { buildSectionTabs, type SectionTabDef } from './build-section-tabs';
@@ -38,17 +36,20 @@ export {
 } from './merge-station-unit-journeys';
 export {
   STATION_WORKBENCH_COLUMN,
-  // The shared horizontal inset. Exported because a surface that REPLACES the
-  // workbench body (the lookup receipt) needs the column and the inset on
-  // different elements, and hand-writing `px-4 sm:px-6` is the drift the
-  // station-workbench rule bans.
+  // Body pad is intentionally empty (flush to rails). Export kept so surfaces
+  // that compose the token (StationWorkbench · UnboxLookupReceipt) stay on one
+  // SoT instead of reintroducing `px-4 sm:px-6` literals.
   STATION_WORKBENCH_BODY_PAD_X,
   STATION_WORKBENCH_IDENTITY_COLUMN,
   STATION_WORKBENCH_HEADER_COLUMN,
   STATION_WORKBENCH_BODY_COLUMN,
   STATION_WORKBENCH_BODY_DOCKED,
 } from './workbench-layout';
-
+export { StationScanPaneHost } from './StationScanPaneHost';
+export { ScanStationCartonCursor } from './ScanStationCartonCursor';
+// ScanStationUtilityRail + STATION_UTILITY_RAIL_CLASS are internal to
+// StationScanPaneHost — import the host, not the rail. Guards read the
+// defining modules directly.
 export {
   StationWorkspaceSkeleton,
 } from './StationWorkspaceSkeleton';

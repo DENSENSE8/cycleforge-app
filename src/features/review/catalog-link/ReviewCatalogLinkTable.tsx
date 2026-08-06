@@ -7,9 +7,10 @@
  *
  * Composed from the house shells, not hand-rolled:
  *
- *   chrome    → `WorkbenchChromeHeader` `density="band"` (tabs · always-open
- *               TechRailSearchBar). Column display is the GRID's own top-right header
- *               lip, not chrome — chrome Fields was retired 2026-08-02.
+ *   chrome    → Sheets flush stack (Unbox recipe): Band 1 `WorkbenchChromeHeader`
+ *               `density="band"` tabs; Band 3 `WorkbenchTriageBand` (always-open
+ *               TechRailSearchBar). No KPI band (no metrics — honest absence).
+ *               Column display is the GRID's own top-right header lip, not chrome.
  *   collection→ `LedgerGridSurface` + a `GridSurfaceDescriptor`, via
  *               `ReviewCatalogLinkGridView` — two column models, one bag
  *   record    → `RightRailHost` (non-modal) via `CatalogLinkFormRail` /
@@ -27,17 +28,18 @@
  * grid owns its own Y scroll (`display/workbench.md` → Sticky docking).
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
-  WORKBENCH_TABLE_VIEWPORT_NO_KPI,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { cn } from '@/utils/_cn';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 import { CatalogLinkFormRail, ImportExceptionFormRail } from './CatalogLinkFormRail';
 import type { RailQueuePosition } from './CatalogLinkFormRail';
@@ -87,6 +89,7 @@ export function ReviewCatalogLinkTable() {
   const section = parseSection(searchParams.get('section'));
   const selectedChoreId = Number(searchParams.get('choreId')) || null;
   const selectedExceptionId = Number(searchParams.get('exceptionId')) || null;
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const choresQuery = useQuery({
     queryKey: ['review-catalog-link', searchQuery],
@@ -222,16 +225,25 @@ export function ReviewCatalogLinkTable() {
       <DashboardScrollShell
         className="h-full"
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <WorkbenchChromeHeader
               density="band"
               tabs={SECTION_TABS}
               activeTab={section}
               onTabChange={setSection}
-              // Always-open TechRailSearchBar — filter+paste, not icon-first
-              // expand. This is also the first time `?search=` has had a control
-              // at all — the old pane's "Clear search" button could only appear
-              // for a query no operator could enter.
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
+              // No trailing cluster. Display sort IS the grid's column sort
+              // (`?colsort=`) — a second vocabulary here would break the
+              // one-sort-param-per-surface rule — nothing is created by hand
+              // (both queues are written by the sheet import), and column
+              // display moved to the grid's own top-right lip (2026-08-02).
+            />
+            {/* Band 3 — find. Always-open TechRailSearchBar (filter+paste, not
+                icon-first expand); this is also the first time `?search=` has had
+                a control at all — the old pane's "Clear search" button could only
+                appear for a query no operator could enter. */}
+            <WorkbenchTriageBand
+              controlsSlotRef={setControlsEl}
               search={
                 <TechRailSearchBar
                   variant="chrome"
@@ -241,22 +253,16 @@ export function ReviewCatalogLinkTable() {
                   className="w-40 shrink-0 lg:w-56"
                 />
               }
-              // No trailing cluster. Display sort IS the grid's column sort
-              // (`?colsort=`) — a second vocabulary here would break the
-              // one-sort-param-per-surface rule — nothing is created by hand
-              // (both queues are written by the sheet import), and column
-              // display moved to the grid's own top-right lip (2026-08-02).
             />
           </div>
         }
       >
-        <div
-          className={`${WORKBENCH_BODY_COLUMN} ${WORKBENCH_TABLE_VIEWPORT_NO_KPI} min-h-0 pb-3`}
-        >
+        <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
           {isChoreTab ? (
             <CatalogLinkChoresGrid
               rows={choreItems}
               loading={choresQuery.isLoading}
+              columnTriggerPortalTarget={controlsEl}
               // Settled-with-nothing is an ALL-CLEAR on this queue, not an
               // absence — say what it means rather than "no rows".
               emptyMessage="Nothing needs a catalog link right now."
@@ -269,6 +275,7 @@ export function ReviewCatalogLinkTable() {
             <ImportExceptionsGrid
               rows={exceptionItems}
               loading={exceptionsQuery.isLoading}
+              columnTriggerPortalTarget={controlsEl}
               emptyMessage="Every synced sheet row has an Item Number."
               searchEmptyMessage={`No row matches “${searchQuery}”. Clear the filter to see the rest.`}
               isSearching={isSearching}

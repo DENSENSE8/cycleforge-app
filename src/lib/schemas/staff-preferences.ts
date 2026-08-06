@@ -169,6 +169,22 @@ export const StaffPreferencesPutBody = z
             shown: z.array(z.string().max(64)).max(64).optional(),
             /** Per-column drag-resized width in px, keyed by column key. */
             widths: z.record(z.string(), z.number().int().positive().max(2000)).optional(),
+            /**
+             * Per-column staff min/max resize clamps (px), keyed by column key.
+             * Absolute rails stay 64…2000; unset max defaults to house 720 at
+             * clamp time. Sibling of `widths` — writers preserve both.
+             */
+            widthBounds: z
+              .record(
+                z.string().max(64),
+                z
+                  .object({
+                    min: z.number().int().positive().max(2000).optional(),
+                    max: z.number().int().positive().max(2000).optional(),
+                  })
+                  .strict(),
+              )
+              .optional(),
             /** Drag-reordered column-key order (sanitized on read; locked keys
              *  re-front themselves — a stale/hostile list is harmless). */
             order: z.array(z.string().max(64)).max(64).optional(),
@@ -234,6 +250,12 @@ export const StaffPreferencesPutBody = z
      * clears pins; absent leaves them unchanged. Device visit-MRU stays local.
      */
     quickAccess: QUICK_ACCESS_PREFS.nullable().optional(),
+    /**
+     * Workbench sheet-chrome KPI Band 2 snap-collapse, keyed by surface id
+     * (`unbox`, … — see `WORKBENCH_KPI_SURFACE`). `true` = collapsed (hidden).
+     * Absent / false = open. Shallow JSONB merge: writers send the whole map.
+     */
+    kpiCollapsed: z.record(z.string().max(64), z.boolean()).nullable().optional(),
   })
   .strict();
 

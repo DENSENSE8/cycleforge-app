@@ -116,7 +116,7 @@ export function KitPartsWorkspace() {
           </Button>
         </HoverTooltip>
         <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-role-micro uppercase tracking-wider text-blue-600">
-          {parts.length} {parts.length === 1 ? 'item' : 'items'}
+          {parts.length} items
         </span>
       </div>
 

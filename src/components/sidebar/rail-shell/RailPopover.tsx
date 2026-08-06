@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from '@/design-system/motion';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
+import { cn } from '@/utils/_cn';
 
 /**
  * Generic hover-preview popover positioning wrapper. Handles portal, viewport
  * flipping, resize/scroll reflow, and Escape-to-dismiss. Content is supplied
  * by the caller via children.
+ *
+ * Flush against the rail row (GAP 0) + squared chrome — no floating gutter or
+ * soft card radius between the recent rail and the hover display.
  */
 export function RailPopover({
   anchorEl, onMouseEnter, onMouseLeave, onDismiss, children,
@@ -22,7 +27,8 @@ export function RailPopover({
   const POPOVER_WIDTH = 320;
   const POPOVER_FALLBACK_HEIGHT = 440;
   const VIEWPORT_PADDING = 8;
-  const GAP = 10;
+  /** Flush to the rail edge — no air between row highlight and display. */
+  const GAP = 0;
   const [coords, setCoords] = useState<{ left: number; top: number; flipped: boolean } | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,7 +87,10 @@ export function RailPopover({
       exit={{ opacity: 0, x: coords.flipped ? 8 : -8, scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 380, damping: 32, mass: 0.6 }}
       style={{ position: 'fixed', top: coords.top, left: coords.left, width: POPOVER_WIDTH, zIndex: zLayer.panelPopover }}
-      className="rounded-xl border border-border-soft bg-surface-card shadow-2xl ring-1 ring-black/5"
+      className={cn(
+        cornerClass('flush'),
+        'border border-border-soft bg-surface-card shadow-2xl ring-1 ring-black/5',
+      )}
     >
       {children}
     </motion.div>,

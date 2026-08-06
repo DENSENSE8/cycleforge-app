@@ -32,14 +32,25 @@ import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-galle
 import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import type { PhotoGalleryInput, PhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import SocialCards, { type CardItem } from '@/components/ui/card-fan-carousel';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
+import { type PeekCard } from './photo-peek-pending';
 
-export type PeekCard = { id: string; imgUrl: string; alt: string; meta?: PhotoMeta };
+export type { PeekCard };
 
 const PEEK_COUNT = 4; // cards in the corner/fan
+
+/** Tiny sunken tile for expanded SocialCards (avoids empty img + carousel SoT edits). */
+const PENDING_FAN_IMG =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560">' +
+      '<rect width="100%" height="100%" fill="#e8e8e8"/>' +
+      '<circle cx="200" cy="280" r="28" fill="#c8c8c8"/>' +
+      '</svg>',
+  );
 
 const FAN_SPRING = { type: 'spring', stiffness: 320, damping: 26 } as const;
 
@@ -93,26 +104,34 @@ export function PhotoPeekFan({
   onOpenMovePhotosExternal?: () => void;
 }) {
   const count = cards.length;
+  const pendingCount = useMemo(() => cards.filter((c) => c.pending).length, [cards]);
   const peekCards = cards.slice(0, PEEK_COUNT);
   // The expanded fan + the viewer both show ALL photos chronologically: first
   // (oldest) on the left, newest on the right — the reverse of the newest-first
-  // peek/fan ordering. The fan card index lines up 1:1 with the gallery index.
+  // peek/fan ordering. The fan card index lines up 1:1 with the gallery index
+  // for committed cards; pending tiles are not openable.
   const chronoCards = useMemo(() => [...cards].reverse(), [cards]);
   const fanItems = useMemo<CardItem[]>(
-    () => chronoCards.map((c) => ({ imgUrl: c.imgUrl, alt: c.alt })),
+    () =>
+      chronoCards.map((c) =>
+        c.pending
+          ? { imgUrl: PENDING_FAN_IMG, alt: c.alt || 'Uploading photo' }
+          : { imgUrl: c.imgUrl, alt: c.alt },
+      ),
     [chronoCards],
   );
+  const viewableCards = useMemo(() => chronoCards.filter((c) => !c.pending && !!c.imgUrl), [chronoCards]);
   // Build gallery inputs with numeric ids when available so the viewer's delete
   // affordance shows here too (parity with the top-bar ReceivingPhotoButton).
-  // Demo cards use non-numeric ids → those stay read-only.
+  // Demo cards use non-numeric ids → those stay read-only. Pending excluded.
   const chronoPhotos = useMemo<PhotoGalleryInput[]>(
     () =>
-      chronoCards.map((c) => {
+      viewableCards.map((c) => {
         const idNum = Number(c.id);
         const base = Number.isFinite(idNum) ? { id: idNum, url: c.imgUrl } : { url: c.imgUrl };
         return c.meta ? { ...base, meta: c.meta } : base;
       }),
-    [chronoCards],
+    [viewableCards],
   );
 
   const cartonLibraryHref = receivingId
@@ -143,18 +162,29 @@ export function PhotoPeekFan({
     setPeekState('rest');
   });
 
-  // Space opens the newest photo in the viewer while the fan is up.
+  const openFanCard = useCallback(
+    (chronoIndex: number) => {
+      const card = chronoCards[chronoIndex];
+      if (!card || card.pending) return;
+      const viewIndex = viewableCards.findIndex((c) => c.id === card.id);
+      if (viewIndex >= 0) openViewer(viewIndex);
+    },
+    [chronoCards, viewableCards, openViewer],
+  );
+
+  // Space opens the newest committed photo in the viewer while the fan is up.
   useEffect(() => {
     if (!expanded || viewerOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault();
-        openViewer(chronoCards.length - 1); // newest is right-most
+        if (viewableCards.length === 0) return;
+        openViewer(viewableCards.length - 1); // newest committed is right-most among viewable
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [expanded, viewerOpen, openViewer, chronoCards.length]);
+  }, [expanded, viewerOpen, openViewer, viewableCards.length]);
 
   // Dismissing the viewer (Esc / X / backdrop) collapses the whole peek too —
   // one dismiss closes BOTH the photo viewer and the expanded fan behind it.
@@ -233,7 +263,11 @@ export function PhotoPeekFan({
             onClick={openNow}
             role="button"
             tabIndex={0}
-            aria-label={`View ${count} carton photo${count === 1 ? '' : 's'} — hover to fan, hold to expand`}
+            aria-label={
+              pendingCount > 0
+                ? `Photos ${count} · ${pendingCount} uploading`
+                : `Photos ${count}`
+            }
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -241,6 +275,9 @@ export function PhotoPeekFan({
               }
             }}
           >
+            <span className="sr-only" aria-live="polite">
+              {pendingCount > 0 ? `Uploading ${pendingCount}…` : null}
+            </span>
             {peekCards.map((card, i) => (
               <motion.div
                 key={card.id}
@@ -248,9 +285,20 @@ export function PhotoPeekFan({
                 variants={peekCardVariants}
                 style={{ zIndex: PEEK_COUNT - i }}
                 className="absolute inset-0 origin-top-left overflow-hidden rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/10 will-change-transform"
+                data-pending={card.pending ? 'true' : undefined}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={card.imgUrl} alt={card.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                {card.pending ? (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-surface-sunken"
+                    data-testid="photo-peek-pending"
+                    aria-hidden
+                  >
+                    <span className="h-6 w-6 animate-pulse rounded-full bg-border-soft" />
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={card.imgUrl} alt={card.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                )}
                 {/* Count badge rides the FRONT card's visible corner. */}
                 {i === 0 && count > 1 ? (
                   <span className="absolute left-1.5 top-1.5 rounded-full bg-scrim/60 inset-chip text-role-micro leading-none text-white tabular-nums backdrop-blur-sm">
@@ -303,7 +351,7 @@ export function PhotoPeekFan({
                     className={`isolate w-full ${viewerOpen ? 'pointer-events-none' : ''}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <SocialCards cards={fanItems} onCardClick={openViewer} cardTestId="fan-card" />
+                    <SocialCards cards={fanItems} onCardClick={openFanCard} cardTestId="fan-card" />
                   </div>
                 </motion.div>
               ) : null}

@@ -33,13 +33,18 @@ import {
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
+import {
+  buildTestingWorkspaceSearchParams,
+  resolveTestingWorkspaceTesterId,
+  testingWorkspaceEmptyCopy,
+  testingWorkspaceQueryKey,
+} from '@/lib/tech/testing-workspace-query';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { QueueTableToolbar } from '@/components/dashboard/queue-table';
-import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
 
 const TESTING_LANE_ICON: Record<TestingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   check: Check,
@@ -99,18 +104,19 @@ export function TestingHistoryList({
   const { sort: displaySort } = useQueueDisplaySort();
   const parsed = staffId ? Number(staffId) : NaN;
   const ownTesterId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  // History uses allToken Me-default; queue Option A reads the same URL without
+  // treating absent as Me (resolveTestingWorkspaceTesterId owns that fork).
   const { staffId: filteredStaffId } = useStaffFilter({ allToken: 'all' });
   const explicitlyAll =
     String(searchParams.get(STAFF_FILTER_PARAM) || '').trim().toLowerCase() === 'all';
-  const testerId =
-    mode === 'history'
-      ? explicitlyAll
-        ? null
-        : (filteredStaffId ?? ownTesterId)
-      : null;
+  const testerId = resolveTestingWorkspaceTesterId({
+    mode,
+    filteredStaffId,
+    ownTesterId,
+    explicitlyAll,
+  });
   const search = String(searchParams.get('search') || '').trim();
-  const view = mode === 'history' ? 'testing' : 'needs-test';
-  const returnScope = mode === 'returns' ? 'returns' : mode === 'pending' ? 'standard' : 'all';
+  const priorityOnly = mode === 'urgent';
   const weekOffset =
     mode === 'history'
       ? Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)))
@@ -128,25 +134,25 @@ export function TestingHistoryList({
   );
 
   const { data, isLoading } = useQuery<ApiResponse>({
-    queryKey: ['testing-workspace', mode, testerId ?? 'all', search, weekOffset],
+    queryKey: testingWorkspaceQueryKey({
+      mode,
+      testerId,
+      search,
+      weekOffset,
+      priorityOnly,
+    }),
     enabled: mode !== 'history' || ownTesterId != null || explicitlyAll,
     queryFn: async () => {
       if (mode === 'history' && testerId == null && !explicitlyAll) {
         return { success: true, receiving_lines: [], total: 0 };
       }
-      const params = new URLSearchParams({
-        limit: '500',
-        offset: '0',
-        include: 'serials',
-        view,
+      const params = buildTestingWorkspaceSearchParams({
+        mode,
+        testerId,
+        search,
+        weekStart: weekRange.startStr,
+        weekEnd: weekRange.endStr,
       });
-      if (testerId != null) params.set('tester', String(testerId));
-      if (view === 'needs-test') params.set('return_scope', returnScope);
-      if (view === 'testing') {
-        params.set('weekStart', weekRange.startStr);
-        params.set('weekEnd', weekRange.endStr);
-      }
-      if (search) params.set('search', search);
       const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
       if (!res.ok) throw new Error('fetch failed');
       return res.json();
@@ -160,14 +166,12 @@ export function TestingHistoryList({
     [data],
   );
 
-  const emptyMessage =
-    mode === 'pending'
-      ? 'No standard intake is waiting for testing.'
-      : mode === 'returns'
-        ? 'No returns are waiting for quality control.'
-        : ownTesterId == null && !explicitlyAll
-          ? 'Sign in to see tested lines.'
-          : 'No tested lines in this staff scope yet.';
+  const emptyMessage = testingWorkspaceEmptyCopy({
+    mode,
+    testerId,
+    ownTesterId,
+    explicitlyAll,
+  });
 
   /**
    * Testing's record plane: open the line in the `TestingPanel` that covers
@@ -189,7 +193,6 @@ export function TestingHistoryList({
     selectedIds,
     handleSelectRow,
     handleToggleRow,
-    handleSelectGroup,
   } = useReceivingRowSelection({
     selectMode,
     // The two planes, split across ALL THREE tabs as a set. `browseActive`
@@ -320,11 +323,11 @@ export function TestingHistoryList({
         // The row body belongs to the record plane now, so the gutter is the
         // only way left to build a bulk set — it must be a real control.
         handleToggleRow={handleToggleRow}
-        handleSelectGroup={handleSelectGroup}
         activityAxis={activityAxis}
         isHistory={mode === 'history'}
         selectionScope={TESTING_SELECTION_SCOPE}
         testId="testing-grid-body"
+        columnTriggerPortalTarget={toolbarPortalTarget}
       />
     </div>
   );
@@ -362,8 +365,8 @@ export function TestingHistoryList({
     );
   } else {
     content = (
-      <div className="flex h-full min-w-0 flex-col overflow-hidden bg-surface-canvas">
-        <WorkbenchTablePane>{gridBody}</WorkbenchTablePane>
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {gridBody}
       </div>
     );
   }

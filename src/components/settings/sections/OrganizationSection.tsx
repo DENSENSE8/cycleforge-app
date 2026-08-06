@@ -34,7 +34,7 @@ function ActiveWorkspaceCard() {
   const others = memberships.filter((m) => !m.isCurrent);
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+    <div className="space-y-3 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
       <h3 className="text-sm font-semibold text-text-default">Active workspace</h3>
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-inverse text-sm font-semibold text-white">
@@ -59,7 +59,7 @@ function ActiveWorkspaceCard() {
       {others.length > 0 && (
         <div className="space-y-1 border-t border-border-hairline pt-3">
           <p className="text-xs font-medium text-text-soft">Switch workspace</p>
-          <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft">
+          <div className="divide-y divide-border-hairline overflow-hidden rounded-none border border-border-soft">
             {others.map((m) => (
               <button
                 key={m.organizationId}
@@ -242,7 +242,7 @@ function InvitationsSection() {
   if (!canManage) return null;
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+    <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
       <header>
         <h3 className="text-sm font-semibold text-text-default">Invite teammates</h3>
         <p className="mt-1 text-xs text-text-soft">
@@ -298,7 +298,7 @@ function InvitationsSection() {
         ) : list.length === 0 ? (
           <p className="text-sm text-text-faint">No pending invitations.</p>
         ) : (
-          <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft">
+          <div className="divide-y divide-border-hairline overflow-hidden rounded-none border border-border-soft">
             {list.map((inv) => (
               <div key={inv.id} className="flex items-center gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
@@ -416,7 +416,7 @@ export function OrganizationSection() {
       */}
       <SupportVisionLaneCard />
 
-      <div className="space-y-5 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="space-y-5 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Regional</h3>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">
@@ -455,7 +455,7 @@ export function OrganizationSection() {
         </div>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Sign-in policy</h3>
         <label className="flex items-start gap-3">
           <input
@@ -494,7 +494,7 @@ export function OrganizationSection() {
         </label>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Warranty</h3>
         <label className="block max-w-xs">
           <span className="mb-1 block text-xs font-medium text-text-muted">Warranty term (days)</span>
@@ -509,7 +509,7 @@ export function OrganizationSection() {
         </label>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Packing</h3>
         <label className="block max-w-sm">
           <span className="mb-1 block text-xs font-medium text-text-muted">Kit-checklist enforcement</span>
@@ -536,7 +536,7 @@ export function OrganizationSection() {
         </label>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-text-default">Branding</h3>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-text-muted">Display name</span>
@@ -608,7 +608,7 @@ export function OrganizationSection() {
         </label>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <div>
           <h3 className="text-sm font-semibold text-text-default">Letterhead</h3>
           <p className="mt-1 text-xs text-text-soft">

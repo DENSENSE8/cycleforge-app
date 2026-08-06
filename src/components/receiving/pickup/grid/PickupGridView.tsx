@@ -33,6 +33,11 @@ interface PickupGridViewProps {
   onSelectOrder: (orderId: number) => void;
   /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly PickupGridColumn[];
+  /**
+   * Band-3 triage controls slot — when set, the column-display (▦) trigger
+   * portals there beside find instead of floating on the card corner.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /** Group flat pickup lines under their LCPU order (the one-to-many fold key). */
@@ -85,6 +90,7 @@ export function PickupGridView({
   selectedOrderId,
   onSelectOrder,
   columns = PICKUP_GRID_COLUMNS,
+  columnTriggerPortalTarget = null,
 }: PickupGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -129,6 +135,7 @@ export function PickupGridView({
   return (
     <LedgerGridSurface<PickupLine, PickupGridColumnKey, PickupGridColumn>
       ariaLabel="Local pickup order lines"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makePickupGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -144,6 +151,7 @@ export function PickupGridView({
       scrollRef={scrollRef}
       testId="pickup-grid-body"
       tableId={PICKUP_TABLE_ID}
+      columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <PickupGridColumnHeader
           columns={visible}

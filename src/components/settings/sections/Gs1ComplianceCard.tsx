@@ -208,7 +208,7 @@ export function Gs1ComplianceCard() {
   }
 
   return (
-    <Panel id="gs1" className="space-y-5 scroll-mt-6">
+    <Panel id="gs1" className="rounded-none space-y-5 scroll-mt-6">
       <div>
         <h3 className="text-sm font-semibold text-text-default">Product identity (GS1)</h3>
         <p className="mt-1 text-xs text-text-soft">

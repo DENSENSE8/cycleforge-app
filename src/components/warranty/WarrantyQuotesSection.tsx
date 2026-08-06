@@ -21,7 +21,7 @@ export function WarrantyQuotesSection({ claimId, quotes }: { claimId: number; qu
   return (
     <ul className="space-y-2">
       {quotes.map((q) => (
-        <li key={q.id} className="rounded-lg border border-border-hairline p-3">
+        <li key={q.id} className="rounded-none border border-border-hairline p-3">
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-role-caption text-text-muted">{q.quoteNumber}</span>
             <span className={cn('rounded-full px-2 py-0.5 text-role-caption font-medium', warrantyQuoteToneClass(q.status))}>

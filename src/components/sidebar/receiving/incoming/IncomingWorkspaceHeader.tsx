@@ -3,12 +3,17 @@
 /**
  * Inbound desk chrome — Pipeline (on the way) | Docked (landed activity).
  *
- * Primary tabs write `?lane=` (omit = pipeline). Pipeline keeps All / Zoho / eBay
- * plus PO filters, pagination, Import/Add. Docked reuses the Triage / Unbox sort
- * tabs (`inbound-docked-tabs`) and history `rh_*` search.
+ * Unbox Sheets three-band recipe (Incoming consumer):
+ *   Band 1 — Pipeline | Docked tabs · labeled Check / Import / Add
+ *   Facet  — All / Zoho / eBay (Pipeline) or Triage / Unbox (Docked)
+ *   Band 2 — KPI (+ Pipeline lane note)
+ *   Band 3 — triage (`WorkbenchTriageBand`: search left · refine icons right)
+ *
+ * Primary tabs write `?lane=` (omit = pipeline). Docked reuses Triage / Unbox
+ * sort tabs (`inbound-docked-tabs`) and history `rh_*` search.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import {
@@ -16,7 +21,13 @@ import {
   parseInboundLane,
   type InboundLane,
 } from '@/lib/receiving/inbound-lane';
-import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster, WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchKpiBand,
+  WorkbenchKpiCollapseToggle,
+  WORKBENCH_KPI_SURFACE,
+} from '@/components/dashboard/workbench-kpi-collapse';
+import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -59,6 +70,8 @@ import { useIncomingSyncActions } from './useIncomingSyncActions';
 import { IncomingChromeActions } from './IncomingChromeActions';
 import { IncomingImportEbayOverlay } from './IncomingImportEbayOverlay';
 import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
+import { IncomingKpiStrip } from './IncomingKpiStrip';
+import { IncomingLaneNote } from './IncomingLaneNote';
 import { TILES, TONE } from './incoming-tiles';
 type IncomingSourceTab = 'all' | 'zoho' | 'ebay';
 
@@ -81,11 +94,25 @@ interface IncomingWorkspaceHeaderProps {
   total: number;
   /** Current 1-based page index (`?page=`). */
   page: number;
+  /**
+   * Pipeline lane note under the KPI strip. Omit / null on Docked — the note
+   * is Incoming-predicate copy only.
+   */
+  laneNote?: {
+    view: string;
+    trackingFiltered: boolean;
+    rowCount: number;
+    providerLabel?: string | null;
+  } | null;
+  /** Band-3 controls slot — hosts the portaled column-display (▦) trigger. */
+  controlsSlotRef?: Ref<HTMLDivElement>;
 }
 
 export function IncomingWorkspaceHeader({
   total,
   page,
+  laneNote = null,
+  controlsSlotRef,
 }: IncomingWorkspaceHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -100,6 +127,9 @@ export function IncomingWorkspaceHeader({
 
   const lane: InboundLane = parseInboundLane(searchParams.get('lane'));
   const isPipeline = lane === 'pipeline';
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
+    WORKBENCH_KPI_SURFACE.incoming,
+  );
 
   const [addOpen, setAddOpen] = useState(false);
   const [addOrderId, setAddOrderId] = useState('');
@@ -227,6 +257,13 @@ export function IncomingWorkspaceHeader({
 
   return (
     <>
+      {/*
+        Unbox Sheets three-band chrome (Incoming consumer):
+          Band 1 — tabs · labeled CTAs
+          Facet  — All / Zoho / eBay (Pipeline) or Triage / Unbox (Docked)
+          Band 2 — KPI
+          Band 3 — triage (search left · refine icons right)
+      */}
       <WorkbenchChromeHeader
         density="band"
         className="rounded-none border-l-0 border-t-0 shadow-sm"
@@ -234,185 +271,9 @@ export function IncomingWorkspaceHeader({
         activeTab={lane}
         onTabChange={setLane}
         solidTone="accent"
-        search={
-          <TechRailSearchBar
-            variant="chrome"
-            value={urlQRaw}
-            onChange={setWorkbenchSearch}
-            placeholder={
-              isPipeline
-                ? 'Filter PO #, tracking, SKU…'
-                : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
-            }
-            trailingAction={
-              isPipeline ? (
-                <HoverTooltip label="Paste a list of tracking numbers" asChild>
-                  <ToolbarButton
-                    iconOnly
-                    aria-label="Paste a list of tracking numbers"
-                    onClick={() => setPasteAction('filter')}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </ToolbarButton>
-                </HoverTooltip>
-              ) : undefined
-            }
-            className="w-40 shrink-0 lg:w-56"
-          />
-        }
-        right={
-          isPipeline ? (
-            <WorkbenchFilterPopover
-              open={filterOpen}
-              onOpenChange={setFilterOpen}
-              hot={filterHot}
-              label="Filters"
-              contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
-            >
-              <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
-              <div className="px-2 pb-2">
-                <DateRangePickerField
-                  value={filters.dateRange}
-                  onChange={filters.setDateRange}
-                  placeholder="Any date"
-                />
-                <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
-                  Date in header is when the PO was created
-                </p>
-              </div>
-
-              <WorkbenchFilterDivider />
-
-              <WorkbenchFilterGroupLabel>Attention</WorkbenchFilterGroupLabel>
-              {TILES.map((tile) => {
-                const id = tile.state ?? 'all_issued';
-                const count = summary ? (summary[tile.key] as number | undefined) : undefined;
-                const active =
-                  tile.state == null ? filters.state === null : filters.state === tile.state;
-                return (
-                  <WorkbenchFilterMenuRow
-                    key={id}
-                    label={tile.label}
-                    count={typeof count === 'number' ? count : undefined}
-                    active={active}
-                    leading={
-                      <tile.icon
-                        className={`h-3.5 w-3.5 shrink-0 ${
-                          active ? 'text-blue-600' : TONE[tile.tone].iconInactive
-                        }`}
-                      />
-                    }
-                    onClick={() => {
-                      if (tile.state == null) {
-                        filters.setState(null);
-                      } else {
-                        filters.setState(filters.state === tile.state ? null : tile.state);
-                      }
-                      setFilterOpen(false);
-                    }}
-                  />
-                );
-              })}
-
-              {filterHot ? (
-                <>
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterMenuRow
-                    label="Clear filters"
-                    active={false}
-                    onClick={() => {
-                      clearWorkbenchFilters();
-                      setFilterOpen(false);
-                    }}
-                  />
-                </>
-              ) : null}
-            </WorkbenchFilterPopover>
-          ) : (
-            <WorkbenchFilterPopover
-              open={filterOpen}
-              onOpenChange={setFilterOpen}
-              hot={filterHot}
-              label={dockedTab === 'triage' ? 'Carton source / search field' : 'Search field'}
-            >
-              {dockedTab === 'triage' ? (
-                <>
-                  <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
-                  {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
-                    <WorkbenchFilterMenuRow
-                      key={id}
-                      label={label}
-                      active={searchScope === id}
-                      leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
-                      onClick={() => {
-                        replaceParams(
-                          setReceivingHistoryUrlParams(searchParams, {
-                            scope: normalizeReceivingHistorySearchScope(id),
-                          }),
-                        );
-                        setFilterOpen(false);
-                      }}
-                    />
-                  ))}
-                  <WorkbenchFilterDivider />
-                </>
-              ) : null}
-
-              <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
-              {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
-                <WorkbenchFilterMenuRow
-                  key={field.id}
-                  label={field.label}
-                  active={searchField === field.id}
-                  onClick={() => {
-                    replaceParams(
-                      setReceivingHistoryUrlParams(searchParams, {
-                        field: normalizeReceivingHistorySearchField(field.id),
-                      }),
-                    );
-                    setFilterOpen(false);
-                  }}
-                />
-              ))}
-
-              {filterHot ? (
-                <>
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterMenuRow
-                    label="Clear filters"
-                    active={false}
-                    onClick={() => {
-                      clearWorkbenchFilters();
-                      setFilterOpen(false);
-                    }}
-                  />
-                </>
-              ) : null}
-            </WorkbenchFilterPopover>
-          )
-        }
         trailing={
           isPipeline ? (
             <WorkbenchTrailingCluster
-              before={
-                <PaneHeaderPagination
-                  page={safePage}
-                  pageSize={INCOMING_PAGE_SIZE}
-                  total={total}
-                  onPrev={() => setPage(safePage - 1)}
-                  onNext={() => setPage(safePage + 1)}
-                  iconOnly
-                />
-              }
-              sort={
-                <QueueSortSwitch<IncomingSort>
-                  sort={filters.sort}
-                  onChange={filters.setSort}
-                  options={INCOMING_SORT_OPTIONS}
-                  ariaLabel="Sort incoming POs"
-                  variant="icon"
-                />
-              }
               actions={
                 <IncomingChromeActions
                   onCheckZoho={() => setPasteAction('check')}
@@ -439,8 +300,7 @@ export function IncomingWorkspaceHeader({
         }
       />
 
-      {/* Secondary facet strip — source (Pipeline) or Triage/Unbox (Docked).
-          Flush sheet chrome: rail-abutting like Unbox (no side gutters). */}
+      {/* Source / Docked sub-tabs — Incoming-specific facet between Band 1 and KPI. */}
       <div className="flex h-10 shrink-0 items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5">
         <TabSwitch
           tabs={isPipeline ? sourceTabs : dockedSubTabs}
@@ -451,6 +311,209 @@ export function IncomingWorkspaceHeader({
           size="sm"
         />
       </div>
+
+      {/* Band 2 — snap-collapsible KPI; owns the bottom hairline. */}
+      <WorkbenchKpiBand
+        open={!kpiCollapsed}
+        onSnapCollapse={() => setKpiCollapsed(true)}
+        onSnapExpand={() => setKpiCollapsed(false)}
+      >
+        <IncomingKpiStrip />
+        {laneNote ? (
+          <IncomingLaneNote
+            view={laneNote.view}
+            trackingFiltered={laneNote.trackingFiltered}
+            rowCount={laneNote.rowCount}
+            providerLabel={laneNote.providerLabel}
+          />
+        ) : null}
+      </WorkbenchKpiBand>
+
+      {/* Band 3 — data-table triage (Unbox History SoT). Search flush left;
+          KPI collapse in the right view-toggle zone. */}
+      <WorkbenchTriageBand
+        controlsSlotRef={controlsSlotRef}
+        kpiToggle={
+          <WorkbenchKpiCollapseToggle
+            open={!kpiCollapsed}
+            onToggle={() => setKpiCollapsed(!kpiCollapsed)}
+          />
+        }
+        search={
+          <TechRailSearchBar
+            variant="chrome"
+            value={urlQRaw}
+            onChange={setWorkbenchSearch}
+            placeholder={
+              isPipeline
+                ? 'Filter PO #, tracking, SKU…'
+                : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
+            }
+            trailingAction={
+              isPipeline ? (
+                <HoverTooltip label="Paste a list of tracking numbers" asChild>
+                  <ToolbarButton
+                    iconOnly
+                    aria-label="Paste a list of tracking numbers"
+                    onClick={() => setPasteAction('filter')}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </ToolbarButton>
+                </HoverTooltip>
+              ) : undefined
+            }
+            className="w-52 shrink-0 lg:w-64"
+          />
+        }
+        right={
+          <>
+            {isPipeline ? (
+              <WorkbenchFilterPopover
+                open={filterOpen}
+                onOpenChange={setFilterOpen}
+                hot={filterHot}
+                label="Filters"
+                contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
+              >
+                <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
+                <div className="px-2 pb-2">
+                  <DateRangePickerField
+                    value={filters.dateRange}
+                    onChange={filters.setDateRange}
+                    placeholder="Any date"
+                  />
+                  <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
+                    Date in header is when the PO was created
+                  </p>
+                </div>
+
+                <WorkbenchFilterDivider />
+
+                <WorkbenchFilterGroupLabel>Attention</WorkbenchFilterGroupLabel>
+                {TILES.map((tile) => {
+                  const id = tile.state ?? 'all_issued';
+                  const count = summary ? (summary[tile.key] as number | undefined) : undefined;
+                  const active =
+                    tile.state == null ? filters.state === null : filters.state === tile.state;
+                  return (
+                    <WorkbenchFilterMenuRow
+                      key={id}
+                      label={tile.label}
+                      count={typeof count === 'number' ? count : undefined}
+                      active={active}
+                      leading={
+                        <tile.icon
+                          className={`h-3.5 w-3.5 shrink-0 ${
+                            active ? 'text-blue-600' : TONE[tile.tone].iconInactive
+                          }`}
+                        />
+                      }
+                      onClick={() => {
+                        if (tile.state == null) {
+                          filters.setState(null);
+                        } else {
+                          filters.setState(filters.state === tile.state ? null : tile.state);
+                        }
+                        setFilterOpen(false);
+                      }}
+                    />
+                  );
+                })}
+
+                {filterHot ? (
+                  <>
+                    <WorkbenchFilterDivider />
+                    <WorkbenchFilterMenuRow
+                      label="Clear filters"
+                      active={false}
+                      onClick={() => {
+                        clearWorkbenchFilters();
+                        setFilterOpen(false);
+                      }}
+                    />
+                  </>
+                ) : null}
+              </WorkbenchFilterPopover>
+            ) : (
+              <WorkbenchFilterPopover
+                open={filterOpen}
+                onOpenChange={setFilterOpen}
+                hot={filterHot}
+                label={dockedTab === 'triage' ? 'Carton source / search field' : 'Search field'}
+              >
+                {dockedTab === 'triage' ? (
+                  <>
+                    <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
+                    {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
+                      <WorkbenchFilterMenuRow
+                        key={id}
+                        label={label}
+                        active={searchScope === id}
+                        leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
+                        onClick={() => {
+                          replaceParams(
+                            setReceivingHistoryUrlParams(searchParams, {
+                              scope: id,
+                            }),
+                          );
+                          setFilterOpen(false);
+                        }}
+                      />
+                    ))}
+                    <WorkbenchFilterDivider />
+                  </>
+                ) : null}
+                <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
+                {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
+                  <WorkbenchFilterMenuRow
+                    key={field.id}
+                    label={field.label}
+                    active={searchField === field.id}
+                    onClick={() => {
+                      replaceParams(
+                        setReceivingHistoryUrlParams(searchParams, { field: field.id }),
+                      );
+                      setFilterOpen(false);
+                    }}
+                  />
+                ))}
+                {filterHot ? (
+                  <>
+                    <WorkbenchFilterDivider />
+                    <WorkbenchFilterMenuRow
+                      label="Clear filters"
+                      active={false}
+                      onClick={() => {
+                        clearWorkbenchFilters();
+                        setFilterOpen(false);
+                      }}
+                    />
+                  </>
+                ) : null}
+              </WorkbenchFilterPopover>
+            )}
+            {isPipeline ? (
+              <>
+                <PaneHeaderPagination
+                  page={safePage}
+                  pageSize={INCOMING_PAGE_SIZE}
+                  total={total}
+                  onPrev={() => setPage(safePage - 1)}
+                  onNext={() => setPage(safePage + 1)}
+                  iconOnly
+                />
+                <QueueSortSwitch<IncomingSort>
+                  sort={filters.sort}
+                  onChange={filters.setSort}
+                  options={INCOMING_SORT_OPTIONS}
+                  ariaLabel="Sort incoming POs"
+                  variant="icon"
+                />
+              </>
+            ) : null}
+          </>
+        }
+      />
 
       {isPipeline ? (
         <>

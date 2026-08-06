@@ -65,7 +65,7 @@ interface FailureMode {
   category: string;
 }
 
-const CARD = 'rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60';
+const CARD = 'rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60';
 const HEAD = 'text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
 
 function prettyReason(r: string): string {

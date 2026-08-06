@@ -7,7 +7,8 @@ import { test, expect } from '@playwright/test';
  *   • `/incoming` + standalone `/receiving/history` — two planes:
  *       row body → RECORD; select gutter → MULTI-SELECT
  *   • `/unbox` History (embedded) — click-select golden:
- *       plain click → MULTI-SELECT; double-click → RECORD (no select column)
+ *       plain click → MULTI-SELECT; double-click → RECORD
+ *       (decorative select-track check face; row owns toggle)
  *
  * They used to collapse into one gesture. `useReceivingLineBulkSelection` pins
  * `selectMode` ON for every `isTableOnlyMode` surface, and `handleSelectRow`

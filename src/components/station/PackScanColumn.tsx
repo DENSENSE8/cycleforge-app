@@ -13,7 +13,6 @@ import { useLast8TrackingSearch } from '@/hooks/useLast8TrackingSearch';
 import { formatPSTTimestamp } from '@/utils/date';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandShell } from '@/components/station/scan-bar';
-import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { scannedUnitKey } from '@/lib/barcode-routing';
@@ -429,8 +428,8 @@ export default function PackScanColumn({
             2026-08-02, which meant never: the sole caller always embeds, so the
             one visible effect of picking Fragile / Multi-Item was dead code. */}
         {packMode !== 'standard' ? (
-          <div className={`${SIDEBAR_GUTTER} pt-2`}>
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption font-semibold text-amber-800">
+          <div className="border-b border-border-hairline bg-amber-50 px-3 py-2">
+            <p className="rounded-none text-role-caption font-semibold text-amber-800">
               {PACK_MODE_LABELS[packMode]}
             </p>
           </div>
@@ -444,17 +443,15 @@ export default function PackScanColumn({
         {/* Transient scan feedback. With a rail below it this band is
             content-height (`shrink-0`) and the rail owns the scroll port —
             one scrolling region per column, same as the Unbox sidebar. */}
-        <div
-          className={`shrink-0 ${SIDEBAR_GUTTER} space-y-3`}
-        >
+        <div className="shrink-0">
           <AnimatePresence mode="wait">
             {errorMessage && (
               <motion.div
                 {...cardPresence}
                 transition={cardTransition}
-                className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 flex items-center gap-3"
+                className="flex items-center gap-3 border-b border-red-200 bg-red-50 px-3 py-2.5 text-red-700"
               >
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <AlertCircle className="h-5 w-5 shrink-0" />
                 <p className="text-xs font-semibold">{errorMessage}</p>
               </motion.div>
             )}

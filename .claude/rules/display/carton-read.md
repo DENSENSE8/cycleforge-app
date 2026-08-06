@@ -19,7 +19,7 @@ Recipe for the durable **read** record of a carton — observe-first with a work
 │ WHAT IS IN THE BOX               │ PROGRESS  — ReceivingCartonPipeline │
 │ CONTENTS · RECORD                │ FINDINGS  — exceptions (when present) │
 │ lines · sparse facts / notes     │ ACTIVITY  — latest · expand · maximize │
-│ (white cards)                    │ HISTORY   — unit journeys + thumbs  │
+│ (hairline sections, one plane)   │ HISTORY   — unit journeys + thumbs  │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
 
@@ -97,13 +97,13 @@ Recipe for the durable **read** record of a carton — observe-first with a work
 - **Contents rows compose `ReceivingLineContentsRow`** (Zoho product thumb ·
   title pinned top · details pinned bottom · left-aligned). Title precedence via
   `receivingLineContentsTitle`. Thumbs open the shared `PhotoViewerPortal`.
-  Titles **wrap** on carton-read (`titleMode="wrap"`); Unbox truncates.
-  Qty uses `ProgressBadge` in the meta slot on carton-read; Unbox keeps the
-  panel-header rollup. Shared chips via the SoT row
-  (`ProgressBadge` · `SkuScanRefChip` · `ConditionGradeChip` · `SerialChip`).
+  Titles **wrap** on carton-read (`titleMode="wrap"`); Unbox work rows also wrap
+  (nested-grid `PoLineRow` title band). Qty uses `ProgressBadge` in the meta slot
+  on carton-read; Unbox keeps the panel-header rollup. Shared chips via the SoT
+  row (`ProgressBadge` · `SkuScanRefChip` · `ConditionGradeChip` · `SerialChip`).
   **Never `PoLineRow` / `PoLineMetaGrid`** — that is the Unbox accordion's
-  fixed-track work grid (and its `META_COL.indentWide` dot-track indent has no
-  column to align with here). Guard: `receiving-line-contents-row.guard.test.ts`.
+  boxed nested-grid work surface (thumb · wrap title · qty|SKU|cond|serials|price).
+  Guard: `receiving-line-contents-row.guard.test.ts`.
 - **FINDINGS sits under Progress and ABOVE Activity / History** (hoisted above
   History 2026-08-02; moved above the Activity disclosure 2026-08-03). Disposition
   truth already says exceptions outrank `lifecycle.done`; the same logic says an
@@ -131,8 +131,14 @@ Recipe for the durable **read** record of a carton — observe-first with a work
   as a glyph** (`resolveStationGlyph` → `TIMELINE_GLYPH_ICONS`, with an
   `sr-only` word — `RECEIVING` in caps out-shouted the note it belonged to),
   then kind / status trail / `SerialChip`. An unmapped bench keeps its text.
-- **Progress:** shared `ReceivingCartonPipeline` (Scanned → Unboxed → Received + `PipelineStageRow` details) on a white `Panel` surface — never a hand-rolled HANDLING provenance strip.  
-- **Section cards:** contents lists, activity, facts/meta, photos, progress, and history sit on `bg-surface-card` / `Panel` — not bare canvas.  
+- **Progress:** shared `ReceivingCartonPipeline` (Scanned → Unboxed → Received + `PipelineStageRow` details) — never a hand-rolled HANDLING provenance strip.  
+- **One plane, sectioned by hairlines** (ruled 2026-08-05, superseding *"section cards … sit on `bg-surface-card` / `Panel` — not bare canvas"*). The read body is a single `bg-surface-card` sheet under the sunken identity band; contents · record · POs · note · progress · findings · activity · history are `<section>` children separated by `divide-y divide-border-hairline`, each on `inset-card`. The two tracks are **flush** — `gap-0` with the seam carried by `border-t` (stacked) / `xl:border-l` (side by side).
+  - **The old rule was right about its enemy and wrong about its fix.** It was written to stop sections falling onto bare canvas with nothing holding them; it bought that with six `Panel radius="xl"` islands on a `surface-canvas` ground, which is canvas → card → sunken, three surfaces deep, to show one carton's facts. That is the nested-box read the house flush-planes ruling bans ([`../source-of-truth.md`](../source-of-truth.md) → Depth elevation): **depth is the surface STEP, not a gutter.** Here the step is sunken identity band → card body, and it is the only one.
+  - **A hairline is not "bare canvas."** Structure comes from the rule plus the `text-role-eyebrow` section label; every section keeps its label precisely because the card shell is no longer there to imply one. Sections that had none (Record, Purchase orders, Note) gained one in the same change.
+  - **`divide-y`, never a per-section `border-b`.** The tracks are unequal in length, so a trailing bottom rule on the last section of the short column draws an unfinished hairline into open plane.
+  - **Rows inside a section are rows** (`divide-y divide-border-hairline`), never a stack of bordered cards — that is nested-cards-as-rows ([`../ui-design-system.md`](../ui-design-system.md)). The contents cards also carried `overflow-hidden` to clip their own radius, which sheared the focus ring off the thumb button inside them; flattening removed the need for both.
+  - **Findings keep their tone**, because a tone is state. They wear it as a flush tinted band with a `border-l-2` accent — an edge accent is a border on the element itself, never `rounded-*-[inherit]` on a child.
+  - Guard: `carton-inspector.guard.test.ts` → *"the read body is one continuous plane, not a stack of cards"* (which replaced a `Panel` substring check that could never fail — `stationIdentityPanelClass` contains the word).  
 - **Work escape:** one labeled **Unbox** ghost `Button` using `openInUnboxHref`. Zero visible `"Open in Unbox"` strings on findings or header.  
 - **Empty ≠ fetch error** for photos — `readOnly` section throws on fetch failure (distinct “Photos unavailable”).  
 - **Disposition truth:** exceptions outrank lifecycle.done — never claim settled / “Work complete” while exceptions hold. Linked PO suppresses Unmatched / “No matched PO” even if `pairing_state` is still `UNFOUND`.  

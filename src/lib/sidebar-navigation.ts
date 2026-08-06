@@ -158,6 +158,22 @@ export const STATION_SUBGROUPS = [
   icon: SidebarIconComponent;
 }>;
 
+/** Look up a station subgroup header (label + icon) by id. */
+export function getStationSubgroupDef(
+  id: StationSubgroupId | undefined,
+): (typeof STATION_SUBGROUPS)[number] | null {
+  if (!id) return null;
+  return STATION_SUBGROUPS.find((g) => g.id === id) ?? null;
+}
+
+/** `stationSubgroup` on a station page, else undefined (domains / modeless). */
+export function stationSubgroupOfPage(
+  page: { kind?: string; stationSubgroup?: StationSubgroupId } | null | undefined,
+): StationSubgroupId | undefined {
+  if (page?.kind !== 'station') return undefined;
+  return page.stationSubgroup;
+}
+
 /**
  * Business-domain sections — the spine's middle band (2026-08-01).
  *
@@ -514,9 +530,8 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // made it the one desktop route reserving no column — so the transient spine
   // painted over the photo grid instead of landing on a reserved column.
   'ops-photos',
-  // `/search` is Workbench master–detail: hit list in the context rail, selected
-  // entity detail in the main pane (`?q=` + `?sel=`).
-  'search',
+  // `/search` is a centered find stage (no context rail) → full-bleed detail
+  // when `?sel=` is set. See `SearchFindStage` / `SearchDetailWorkspace`.
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */
@@ -578,9 +593,7 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
-  // `/search` — Workbench master–detail. Context rail holds the hit list
-  // (`SearchSidebarPanel`); main pane holds the selected entity detail
-  // (`SearchDetailWorkspace`). Selection is `?sel=type:id`.
+  // `/search` — centered GlobalFind stage; `?sel=type:id` opens full-bleed detail.
   if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';
   return 'unknown';
 }
@@ -985,8 +998,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'incoming', label: 'Inbound', href: INCOMING, icon: RECEIVING_NAV_ICONS.incoming,
     kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
   },
-  // Legacy family entry — not in APP_SIDEBAR_NAV; resolves modes for deep-links
-  // and callers that still use page id `receiving`.
+  // Legacy family entry — deep-link / mode-resolution COMPATIBILITY ONLY.
+  // Not in APP_SIDEBAR_NAV. Do NOT use as a display or header-family source:
+  // MasterNav + HeaderPageSwitcher derive Receiving peers from
+  // `stationSubgroup: 'receiving'` via {@link stationSubgroupMembers}. The
+  // `incoming` child below is retained for old `?mode=incoming` bookmarks;
+  // Inbound is a separate domain row (`id: 'incoming'` above).
   {
     // href is the Unbox surface (the receiving station's default); keep it in
     // sync so `getSidebarHref('receiving')` resolves there.
@@ -1343,6 +1360,33 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
 /** Lookup a page's nav entry (children + resolver) by its route/page id. */
 export function getSidebarPageNav(pageId: string): SidebarPageNav | undefined {
   return SIDEBAR_PAGE_NAV.find((page) => page.id === pageId);
+}
+
+/**
+ * Ordered first-class station pages that belong to a subgroup.
+ *
+ * Pass a pre-filtered page list (e.g. permission-scoped floor pages from the
+ * spine). When omitted, members are taken from {@link SIDEBAR_PAGE_NAV} ∩
+ * {@link APP_SIDEBAR_NAV} so the legacy deep-link `receiving` family entry is
+ * never treated as a display member.
+ *
+ * Membership is `kind: 'station'` + `stationSubgroup` — so Inbound (`incoming`,
+ * `kind: 'domain'`) is naturally excluded from Receiving.
+ *
+ * Consumers: MasterNav Receiving nest ({@link SidebarNavList}), GlobalHeader
+ * page switcher. Never read legacy `getSidebarPageNav('receiving').children`
+ * for display.
+ */
+export function stationSubgroupMembers(
+  subgroup: StationSubgroupId,
+  pages?: readonly SidebarPageNav[],
+): SidebarPageNav[] {
+  const source =
+    pages ??
+    SIDEBAR_PAGE_NAV.filter((p) => APP_SIDEBAR_NAV.some((item) => item.id === p.id));
+  return source.filter(
+    (p) => p.kind === 'station' && p.stationSubgroup === subgroup,
+  );
 }
 
 /**

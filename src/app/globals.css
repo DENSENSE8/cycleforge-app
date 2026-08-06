@@ -51,10 +51,14 @@ body {
   overflow: hidden;
 }
 
-/* 2026 Modern Scrollbar */
+/* 2026 Modern Scrollbar — a hairline, not a pill.
+   The old rounded 4px thumb painted a grey capsule on the sidebar seam, which
+   operators read as a collapse handle rather than scroll position. Rails scroll
+   by wheel/trackpad (most rail scrollports opt out entirely via
+   `.scrollbar-hide`), so position feedback is all this has to carry. */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 1px;
+  height: 1px;
 }
 
 ::-webkit-scrollbar-track {
@@ -63,7 +67,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {

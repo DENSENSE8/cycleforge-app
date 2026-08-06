@@ -114,13 +114,14 @@ export interface StaffPreferences {
    * (qty/condition/rest) — i.e. `LedgerGridColumnModel.hideKey`.
    *
    * `widths` maps a column key → its drag-resized width in px (absent → the
-   * column's default track width); `order` is the drag-reordered column-key
-   * order (mirrors BoardPrefs.order — unknown/missing keys fall back to the
-   * table's canonical order via its sanitizer; locked keys can never move).
+   * column's default track width); `widthBounds` maps a column key → optional
+   * staff min/max resize clamps (px); `order` is a legacy unused field (column
+   * order is pinned to each table's layout SoT — writers may still round-trip
+   * a stale value so sibling prefs are preserved).
    *
    * The JSONB merge is shallow at this key, so writers send the whole map AND
    * preserve the sibling fields (a widths write keeps `hidden` + `order`, and so
-   * on). See TableColumnConfigProvider, useGridColumnVisibility, useColumnOrder.
+   * on). See TableColumnConfigProvider, useGridColumnVisibility, useGridColumnWidths.
    */
   tableColumns?: Record<
     string,
@@ -128,6 +129,8 @@ export interface StaffPreferences {
       hidden?: string[];
       shown?: string[];
       widths?: Record<string, number>;
+      /** Per-column staff min/max resize clamps (px). */
+      widthBounds?: Record<string, { min?: number; max?: number }>;
       order?: string[];
       display?: Record<
         string,
@@ -157,6 +160,11 @@ export interface StaffPreferences {
       addedAt: number;
     }>;
   } | null;
+  /**
+   * Workbench KPI Band 2 snap-collapse per surface (`WORKBENCH_KPI_SURFACE`).
+   * `true` = collapsed. Shallow JSONB merge — writers send the whole map.
+   */
+  kpiCollapsed?: Record<string, boolean> | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

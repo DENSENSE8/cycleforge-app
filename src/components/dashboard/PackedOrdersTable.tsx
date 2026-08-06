@@ -6,40 +6,31 @@
  * the shared outbound spreadsheet ({@link OrdersGridView} / LedgerGrid).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createPortal } from 'react-dom';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import {
-  WORKBENCH_SHEET_HOST,
-  workbenchTableViewportClass,
-} from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
-import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 import { useRefreshSignal } from '@/lib/refresh/bus';
+import { Button } from '@/design-system/primitives';
 
 export interface PackedOrdersTableProps {
   selectMode?: boolean;
-  /** Reserve bottom room for the pinned bulk-selection capsule (see
-   *  `workbenchTableViewportClass`). Pass the host's `bulkBarVisible`. */
-  bulkBarInset?: boolean;
   /** Rail-selection model: the check-set is the single selection SoT and drives
-   *  the right-rail inspector. See `docs/todo/order-rail-selection-plane-PLAN.md`. */
+   *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
   toolbarPortalTarget?: HTMLElement | null;
 }
 
 export function PackedOrdersTable({
   selectMode = false,
-  bulkBarInset = false,
   railSelection = false,
   toolbarPortalTarget,
 }: PackedOrdersTableProps) {
@@ -74,7 +65,6 @@ export function PackedOrdersTable({
   });
 
   const records = query.data ?? [];
-  const ordered = useMemo(() => records, [records]);
 
   // The cursor is published by the OrdersGridView below — it owns the grouping,
   // the fold state and the on-screen order. This lane only turns the keyboard on;
@@ -90,12 +80,6 @@ export function PackedOrdersTable({
     });
   }, [pathname, router, searchParams]);
 
-  const toolbar = (
-    <div className="flex items-center gap-2">
-      <StaffFilterButton iconOnly />
-    </div>
-  );
-
   const idleEmpty =
     !query.isLoading && records.length === 0 && !searchQuery ? (
       <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
@@ -103,23 +87,20 @@ export function PackedOrdersTable({
         <p className="max-w-sm text-role-caption text-text-soft">
           Packed orders waiting for dock scan-out land here. Open Scan-out to stage the next package.
         </p>
-        <a
-          href="/shipping?mode=scan-out"
-          className="ds-raw-button rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white hover:bg-blue-700"
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          onClick={() => router.push('/shipping?mode=scan-out')}
         >
           Open Scan-out
-        </a>
+        </Button>
       </div>
     ) : undefined;
 
   return (
-    <div className="flex min-w-0 flex-col bg-surface-canvas">
-      {toolbarPortalTarget ? createPortal(toolbar, toolbarPortalTarget) : (
-        <div className="flex h-[40px] shrink-0 items-center justify-end gap-2 border-b border-border-default px-3">
-          {toolbar}
-        </div>
-      )}
-      <div className={cn(WORKBENCH_SHEET_HOST, workbenchTableViewportClass({ bulkBarInset }))}>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+      <div className={WORKBENCH_SHEET_HOST}>
         <OrdersGridView
           ariaLabel="Packed orders"
           records={records as ShippedOrder[]}
@@ -137,6 +118,7 @@ export function PackedOrdersTable({
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
           railSelection={railSelection}
           data-testid="packed-grid-body"
+          columnTriggerPortalTarget={toolbarPortalTarget ?? null}
           onOpenRecord={(record) => {
             setSelectedId(Number(record.id));
             dispatchOpenShippedDetails(record, 'queue');

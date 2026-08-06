@@ -6,7 +6,9 @@ holds the identity statement and the five laws.
 Cycle Forge UI is **Kinetic Ledger**: data-first reseller ops — dense, state-colored, scan-aware,
 multi-tenant. **Legible throughput** over document calm; calm chrome (Linear discipline), not document
 whitespace as the product shape. Ops density is **exact flush + plane depth** (surface steps ·
-`elevationClass` · nest on one shared canvas) — not Notion-style floating column islands.
+`elevationClass` · nest on one shared canvas) — not Notion-style floating column islands. Ops chrome is
+**zero-radius industrial** — flush-square CTAs, tabs, selects, chips and toggle bands (`cornerClass('flush')`);
+soft radius and horizontal pill bands are debt. `rounded-full` survives only for status dots · avatars · Switch tracks.
 
 **Better** means stronger *within* this family and house tokens — never a foreign kit or a second
 design language. Industry blend: ops density (Carbon / Stripe Dashboard) + Linear chrome + POS/scan

@@ -12,6 +12,8 @@
  * stay stable; new code should import from `@/design-system/components/grid`.
  */
 
+import { densityScaledRem } from './grid-column-geometry';
+
 /** Horizontal (+ optional vertical) cell inset for LedgerGrid tracks. */
 export const LEDGER_GRID_CELL_INSET = 'px-2';
 /** Grid-skin cell pad — horizontal + vertical so the row shell can be `p-0`. */
@@ -32,19 +34,22 @@ export type LedgerGridCellInset = 'cell' | 'grid' | 'none';
 /**
  * Per-column cell chrome shared by the sticky header, every row, and group
  * summaries — the helper that makes a queue read as a continuous spreadsheet
- * (Airtable/Sheets), not a hairline list.
+ * (Sheets), not a hairline list.
  *
- * @param rule  draw the right column rule (default true).
+ * **1B (2026-08-04):** BOTTOM row rules live on the airtable CSS skin / row
+ * shell — this helper no longer paints `border-r`. The `rule` arg stays for
+ * call-site compatibility but is a no-op for vertical paint.
+ *
+ * @param rule  retained for API compatibility; does not paint a vertical rule.
  * @param inset `'cell'` board default · `'grid'` skin (px+py) · `'none'` gutters.
  */
 export function ledgerGridCell(
-  { rule = true, inset = 'cell' }: { rule?: boolean; inset?: LedgerGridCellInset } = {},
+  { rule: _rule = true, inset = 'cell' }: { rule?: boolean; inset?: LedgerGridCellInset } = {},
 ): string {
   return [
     'flex min-w-0 items-center self-stretch',
     inset === 'cell' ? LEDGER_GRID_CELL_INSET : inset === 'grid' ? LEDGER_GRID_GRID_CELL_INSET : '',
     inset === 'grid' ? 'overflow-hidden' : '',
-    rule ? 'border-r border-border-hairline' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -59,7 +64,7 @@ export function ledgerGridCell(
  *
  * `scrollMinContent`: every virtualized row shares ONE width via
  * {@link LEDGER_GRID_WIDTH_VAR} (published on the scrollport as
- * `max(100%, <content-min>rem)`). Never `w-max` per row.
+ * `max(100%, <content-min>rem[, <live-px>px])`). Never `w-max` per row.
  */
 export function ledgerGridRowShellClass(
   isMobile: boolean,
@@ -78,7 +83,24 @@ export function ledgerGridRowShellClass(
 /** CSS custom property: shared row/header width under LedgerGrid `scrollX`. */
 export const LEDGER_GRID_WIDTH_VAR = '--cf-orders-grid-w';
 
-/** Value for {@link LEDGER_GRID_WIDTH_VAR}: fill the scrollport, or content-min if wider. */
-export function ledgerGridWidthVarValue(contentMinWidthRem: number): string {
-  return `max(100%, ${contentMinWidthRem}rem)`;
+/**
+ * Value for {@link LEDGER_GRID_WIDTH_VAR}: fill the scrollport, or content-min
+ * if wider. When `contentMinWidthPx` is set (live resized tracks), it lifts the
+ * floor alongside the SoT rem sum so row `min-width` grows after drag-resize.
+ */
+export function ledgerGridWidthVarValue(
+  contentMinWidthRem: number,
+  contentMinWidthPx?: number,
+): string {
+  // Rem floor follows spreadsheet zoom / compact density (`--cf-density`).
+  // Absolute px (live drag-resize) does not — it is already measured.
+  const remFloor = densityScaledRem(contentMinWidthRem);
+  if (
+    contentMinWidthPx != null &&
+    Number.isFinite(contentMinWidthPx) &&
+    contentMinWidthPx > 0
+  ) {
+    return `max(100%, ${remFloor}, ${Math.ceil(contentMinWidthPx)}px)`;
+  }
+  return `max(100%, ${remFloor})`;
 }

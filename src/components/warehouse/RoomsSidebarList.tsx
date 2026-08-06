@@ -310,7 +310,7 @@ export function RoomsSidebarList() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-2 overflow-hidden rounded-lg bg-blue-50/70 px-2.5 py-1.5 text-role-micro leading-snug text-blue-700 ring-1 ring-blue-100"
+              className="mt-2 overflow-hidden rounded-none bg-blue-50/70 px-2.5 py-1.5 text-role-micro leading-snug text-blue-700 ring-1 ring-blue-100"
             >
               Drag rooms to reorder · trash deletes (bins preserved). Tap any
               room to open it in the form on the right.
@@ -383,7 +383,7 @@ function RoomRow({ summary, selected, editMode, mutating, onSelect, onDelete }: 
     <motion.div
       layout={!reduceMotion}
       transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-      className={`relative overflow-hidden rounded-2xl bg-surface-card shadow-sm transition-all ${
+      className={`relative overflow-hidden rounded-none bg-surface-card shadow-sm transition-all ${
         selected
           ? 'ring-2 ring-blue-500 shadow-blue-600/10'
           : 'ring-1 ring-border-soft/70 hover:ring-blue-200'

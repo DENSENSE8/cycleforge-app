@@ -7,7 +7,7 @@ import type { StationNasFoldersController } from './useStationNasFolders';
 export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
   const { targets, setTarget, targetsDirty, saveTargets, isLoading, setPicking } = c;
   return (
-    <div className="space-y-3 rounded-2xl border border-border-soft bg-surface-card p-4">
+    <div className="space-y-3 rounded-none border border-border-soft bg-surface-card p-4">
       <div>
         <p className="text-role-caption font-semibold text-text-default">Workflow folders</p>
         <p className="mt-0.5 text-role-micro text-text-faint">

@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * SearchDetailWorkspace — main pane of the `/search` Workbench master–detail.
+ * SearchDetailWorkspace — full-bleed entity shell for `/search?sel=type:id`.
  *
- * Reads `?sel=type:id` and embeds the matching SoT entity shell where that
- * shell can mount in-page (order, receiving, unit, sku). Repair / FBA panels
- * register with RightRailHost via DetailStackRailRegistrar, so those show an
- * in-pane preview + deep-link CTA instead.
+ * Mounted only when a selection is active (the no-sel state is
+ * {@link SearchFindStage}). ORDER → `SearchOrderFeedback` (not `/o` /
+ * OrderRecordBody). Receiving / unit / sku embed their inspectors. Repair /
+ * FBA show an in-pane preview + deep-link CTA.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -19,7 +19,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { OrderFullPageView } from '@/components/shipped/OrderFullPageView';
+import { SearchOrderFeedback } from '@/components/search/order-feedback/SearchOrderFeedback';
 import { CartonInspector } from '@/components/receiving/inspector/CartonInspector';
 import { UnitDetailsPanel } from '@/components/inventory/panels/UnitDetailsPanel';
 import { loadDetailStack } from '@/lib/detail-stacks/load-detail-stack';
@@ -259,15 +259,16 @@ export function SearchDetailWorkspace({
 
   let body: ReactNode;
   if (!sel) {
+    // Prefer SearchFindStage at the page level; this is a defensive fallback.
     body = hasQuery ? (
       <TeachEmpty
         title="Select a result"
-        body="Pick a hit in the left rail to open its record here. An exact sole match opens automatically."
+        body="Pick a hit under the search bar to open its record. An exact sole match opens automatically."
       />
     ) : (
       <TeachEmpty
         title="Search everything"
-        body="Type an order #, PO, tracking, serial, SKU, or customer in the header or rail search."
+        body="Type an order #, PO, tracking, serial, SKU, or customer in the search bar."
       />
     );
   } else {
@@ -275,7 +276,7 @@ export function SearchDetailWorkspace({
       case 'order':
         body = (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <OrderFullPageView orderId={String(sel.id)} layout="workbench" />
+            <SearchOrderFeedback orderId={sel.id} />
           </div>
         );
         break;

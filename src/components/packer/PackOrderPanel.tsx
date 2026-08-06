@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * Live pack workspace overlay — SoT chrome (StationMoreDetails +
- * StationContextBar + CartonContextCard) + StationWorkbench tabs.
- * Sibling to LineEditPanel / TriagePanel; binds PackActiveOrderPane, not
- * ReceivingLineRow.
+ * Live pack workspace overlay — Unbox-family Tier A:
+ * StationScanPaneHost + StationPanelRoot; checklist (or UNIT peek) owns the
+ * locked 720 centre; Ticket · Photos · Support · Timeline live on
+ * ReceivingDisplaysPushStack. Sibling to LineEditPanel / TriagePanel; binds
+ * PackActiveOrderPane, not ReceivingLineRow. No sticky terminal dock (Tier C).
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
@@ -21,16 +22,15 @@ import {
 } from '@/design-system/primitives/StaggerReveal';
 import {
   Camera,
-  ClipboardList,
   History,
-  Layers,
   MessageSquare,
   Ticket,
 } from '@/components/Icons';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
-import { SectionTabsSlider } from '@/design-system/components';
 import {
   buildSectionTabs,
+  StationPanelRoot,
+  StationScanPaneHost,
   StationWorkbench,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
@@ -46,8 +46,13 @@ import {
   StationContextBar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
+import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
+import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
+import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
-type PackView = 'checklist' | 'photos' | 'timeline' | 'ticket' | 'support' | 'rollup';
+type PackDisplayTab = 'ticket' | 'photos' | 'support' | 'timeline';
 
 interface PackOrderPanelProps {
   activeOrder: PackActiveOrderPane;
@@ -72,10 +77,13 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     enabled: activeOrder.scanType !== 'UNIT',
   });
 
+  const isUnitScan = activeOrder.scanType === 'UNIT';
   const hasUnitPhotos = Number(activeOrder.serialUnitId) > 0;
-  const [packView, setPackView] = useState<PackView>(
-    activeOrder.scanType === 'UNIT' ? 'photos' : 'checklist',
-  );
+  /** Photos own the centre on UNIT scans — only offer a Displays tab otherwise. */
+  const photosInDisplays = hasUnitPhotos && !isUnitScan;
+
+  const [activeSideTab, setActiveSideTab] = useState<PackDisplayTab | null>(null);
+
   const resetKey = activeOrder.serialUnitId
     ? `unit-${activeOrder.serialUnitId}`
     : activeOrder.orderRowId
@@ -100,26 +108,20 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
   const hasTimelineTab =
     tracking.length > 0 || orderId.length > 0 || timelineSerials.length > 0;
 
-  const tabs = useMemo(
+  const openDisplays = useCallback((tab: PackDisplayTab) => setActiveSideTab(tab), []);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+
+  const openDisplaysForExpand = useCallback(() => {
+    if (photosInDisplays) {
+      openDisplays('photos');
+      return;
+    }
+    openDisplays('ticket');
+  }, [openDisplays, photosInDisplays]);
+
+  const displayTabs = useMemo(
     () =>
       buildSectionTabs([
-        {
-          id: 'checklist',
-          label: 'Checklist',
-          icon: ClipboardList,
-          visible: activeOrder.scanType !== 'UNIT',
-          content: (
-            <OrderPackChecklist
-              lines={checklist?.lines ?? []}
-              enforcement={packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'}
-              resetKey={resetKey}
-              isLoading={isLoading}
-              variant="panel"
-              isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
-              unknownCondition={activeOrder.condition}
-            />
-          ),
-        },
         {
           id: 'ticket',
           label: 'Ticket',
@@ -142,7 +144,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
           id: 'photos',
           label: 'Photos',
           icon: Camera,
-          visible: hasUnitPhotos,
+          visible: photosInDisplays,
           content: (
             <div className="space-y-3">
               <p className="text-role-caption font-semibold text-text-muted">
@@ -153,33 +155,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 serialUnitId={Number(activeOrder.serialUnitId)}
                 preferSource="packing"
               />
-            </div>
-          ),
-        },
-        {
-          id: 'rollup',
-          label: 'Rollup',
-          icon: Layers,
-          visible: hasRollup,
-          content: (
-            <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-                  Order rollup
-                </p>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset tabular-nums ${
-                    (checklist?.progress.packedLines ?? 0) >= (checklist?.progress.total ?? 0)
-                      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                      : 'bg-amber-50 text-amber-700 ring-amber-200'
-                  }`}
-                >
-                  {checklist?.progress.packedLines ?? 0}/{checklist?.progress.total ?? 0} lines packed
-                </span>
-              </div>
-              <p className="mt-2 text-sm font-semibold text-text-muted">
-                Multi-line order — verify each line is packed before sealing.
-              </p>
             </div>
           ),
         },
@@ -220,26 +195,32 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     [
       activeOrder.orderId,
       activeOrder.tracking,
-      activeOrder.scanType,
       activeOrder.serialUnitId,
-      activeOrder.isUnknownOrder,
-      activeOrder.condition,
-      checklist,
-      hasRollup,
       hasTimelineTab,
-      hasUnitPhotos,
-      isLoading,
       orderId,
-      packingPolicy?.enforcement,
-      resetKey,
+      photosInDisplays,
       timelineSerials,
       tracking,
     ],
   );
 
-  const activePackView: PackView = tabs.some((t) => t.id === packView)
-    ? packView
-    : (tabs[0]?.id as PackView) || 'checklist';
+  const resolvedSideTab: PackDisplayTab | null = useMemo(() => {
+    if (!activeSideTab) return null;
+    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
+    return (displayTabs[0]?.id as PackDisplayTab | undefined) ?? null;
+  }, [activeSideTab, displayTabs]);
+
+  const packedCount = checklist?.progress.packedLines ?? 0;
+  const totalCount = checklist?.progress.total ?? 0;
+  const rollupComplete = packedCount >= totalCount && totalCount > 0;
+
+  const paneUtilityRow = (
+    <div className="flex flex-col items-center gap-0 pt-0">
+      {!activeSideTab ? (
+        <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysForExpand} />
+      ) : null}
+    </div>
+  );
 
   return (
     <motion.div
@@ -248,55 +229,129 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
       animate={cardPresence.animate}
       exit={cardPresence.exit}
       transition={cardTransition}
-      className="relative flex h-full w-full flex-col bg-surface-canvas"
+      className="relative flex h-full w-full min-h-0 flex-col"
     >
-      <StationContextBar
-        identity={
-          // w-full on both reveal wrappers — the identity Panel is a flex row, so
-          // a shrink-wrapped wrapper would collapse CartonContextCard's `w-full`
-          // and strand the chips at the left edge instead of right-aligned.
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={revealContainer}
-            className="w-full min-w-0"
-          >
-            <motion.div variants={revealItem} className="w-full min-w-0">
-              <PackOrderIdentity activeOrder={activeOrder} />
-            </motion.div>
-          </motion.div>
-        }
-        moreDetails={
-          <StationMoreDetails>
-            <PaneHeaderCloseButton
-              onClick={onClose}
-              ariaLabel="Return to pack queue"
-              title="Return to pack queue"
-            />
-          </StationMoreDetails>
-        }
-      />
-
-      {/* Pack papers / manuals status + Reprint — middle only. Lives here so
-          the pointer control never sits in the focus-locked scan column. */}
-      <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
-
-      <StationWorkbench
-        className="min-h-0 flex-1"
-        reserveScrollClearance={false}
-        reserveIdentityClearance="stacked"
-        scrollClassName="pb-8"
-        tabs={
-          <motion.div initial="hidden" animate="show" variants={revealContainer}>
-            <motion.div variants={revealItem}>
-              <SectionTabsSlider
-                tabs={tabs}
-                value={activePackView}
-                onChange={(id) => setPackView(id as PackView)}
-                ariaLabel="Packing displays"
+      <StationScanPaneHost
+        displaysOpen={Boolean(resolvedSideTab)}
+        hostDataAttrs={{ 'data-pack-pane-host': true }}
+        centerTestId="pack-station-center"
+        utilityRail={!activeSideTab ? paneUtilityRow : null}
+        center={
+          <StationPanelRoot>
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
+              <StationContextBar
+                placement="flow"
+                identity={
+                  <motion.div
+                    initial="hidden"
+                    animate="show"
+                    variants={revealContainer}
+                    className="w-full min-w-0"
+                  >
+                    <motion.div variants={revealItem} className="w-full min-w-0">
+                      <PackOrderIdentity activeOrder={activeOrder} />
+                    </motion.div>
+                  </motion.div>
+                }
+                moreDetails={
+                  <StationMoreDetails>
+                    <PaneHeaderCloseButton
+                      onClick={onClose}
+                      ariaLabel="Return to pack queue"
+                      title="Return to pack queue"
+                    />
+                  </StationMoreDetails>
+                }
               />
-            </motion.div>
-          </motion.div>
+
+              {/* Pack papers / manuals status + Reprint — middle only. */}
+              <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
+
+              {hasRollup ? (
+                <div
+                  className={cn(
+                    'shrink-0 border-b border-border-hairline bg-surface-card',
+                    STATION_WORKBENCH_IDENTITY_COLUMN,
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+                        Order rollup
+                      </p>
+                      <p className="text-role-caption font-semibold text-text-muted">
+                        Multi-line order — verify each line is packed before sealing.
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        cornerClass('flush'),
+                        'shrink-0 px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset tabular-nums',
+                        rollupComplete
+                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                          : 'bg-amber-50 text-amber-700 ring-amber-200',
+                      )}
+                    >
+                      {packedCount}/{totalCount} packed
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
+              <StationWorkbench
+                ambientWash={false}
+                className="relative z-0 flex-1 bg-transparent"
+                reserveScrollClearance={false}
+                reserveIdentityClearance={false}
+                bodyGap="none"
+              >
+                <motion.div initial="hidden" animate="show" variants={revealContainer}>
+                  <motion.div variants={revealItem}>
+                    {isUnitScan ? (
+                      <div className="space-y-3">
+                        <p className="text-role-caption font-semibold text-text-muted">
+                          Packing photos for this prepacked unit — linked to the unit
+                          label and visible on the timeline.
+                        </p>
+                        {hasUnitPhotos ? (
+                          <UnitPackPhotoPeek
+                            serialUnitId={Number(activeOrder.serialUnitId)}
+                            preferSource="packing"
+                          />
+                        ) : null}
+                      </div>
+                    ) : (
+                      <OrderPackChecklist
+                        lines={checklist?.lines ?? []}
+                        enforcement={
+                          packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'
+                        }
+                        resetKey={resetKey}
+                        isLoading={isLoading}
+                        variant="panel"
+                        isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
+                        unknownCondition={activeOrder.condition}
+                      />
+                    )}
+                  </motion.div>
+                </motion.div>
+              </StationWorkbench>
+            </div>
+          </StationPanelRoot>
+        }
+        displays={
+          resolvedSideTab ? (
+            <ReceivingDisplaysPushStack
+              ariaLabel="Pack displays"
+              storageKey="pack-displays-push-width"
+              testId="pack-displays-push"
+              resizeTestId="pack-displays-push-resize"
+              tabs={displayTabs}
+              activeTab={resolvedSideTab}
+              onTabChange={(id) => setActiveSideTab(id as PackDisplayTab)}
+              onClose={closeDisplays}
+            />
+          ) : null
         }
       />
     </motion.div>

@@ -8,7 +8,7 @@ type ClaimFiledMode = 'created' | 'linked';
 
 /**
  * Shared success step after a ticket is filed (create) or updated (link).
- * Renders mode-appropriate ticket copy + the shared local-backup card.
+ * Continue / Done live in the sticky footer.
  */
 export function ClaimFiledStep({
   c,
@@ -19,7 +19,7 @@ export function ClaimFiledStep({
 }) {
   if (mode === 'linked') {
     return (
-      <div className="divide-y divide-border-hairline [&>section]:py-3 [&>section:first-child]:pt-0">
+      <div className="divide-y divide-border-hairline px-3 [&>section]:py-3 [&>section:first-child]:pt-0">
         {c.filedTicket ? (
           <ClaimFiledBanner
             filedTicket={c.filedTicket}
@@ -35,11 +35,15 @@ export function ClaimFiledStep({
     );
   }
 
+  return <CreatedFiledBody c={c} />;
+}
+
+function CreatedFiledBody({ c }: { c: ReceivingClaimController }) {
   const { filedTicket, template } = c;
   const subject = template.subject.trim();
 
   return (
-    <div className="divide-y divide-border-hairline space-y-0 [&>section]:py-3 [&>div]:py-3">
+    <div className="divide-y divide-border-hairline space-y-0 px-3 [&>section]:py-3 [&>div]:py-3">
       <section className="space-y-1">
         <div className="flex items-center gap-1.5">
           <AnimatedCheck size={14} />

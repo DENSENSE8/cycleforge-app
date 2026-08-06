@@ -59,7 +59,7 @@ import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
-  HEADER_ICON_CLUSTER,
+  HEADER_ICON_GAP,
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_GLYPH,
 } from '@/components/layout/header-shell';
@@ -93,8 +93,8 @@ export function TopDestinationPins({
     <nav
       aria-label="Quick destinations"
       className={cn(
-        layout === 'band' && 'flex w-full min-w-0 items-center justify-between px-1',
-        layout === 'cluster' && HEADER_ICON_CLUSTER,
+        layout === 'band' && 'flex w-full min-w-0 items-stretch justify-between px-0',
+        layout === 'cluster' && cn('flex shrink-0 items-stretch', HEADER_ICON_GAP),
       )}
     >
       {pins.map((pin) => {

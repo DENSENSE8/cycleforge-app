@@ -145,7 +145,9 @@ export function OrderPackChecklist({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center justify-center gap-2 rounded-2xl border border-border-soft bg-surface-card py-8 ${className ?? ''}`}>
+      <div
+        className={`flex items-center justify-center gap-2 rounded-none border border-border-soft bg-surface-card py-8 ${className ?? ''}`}
+      >
         <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
         <span className="text-role-caption font-semibold text-text-faint">Loading checklist…</span>
       </div>
@@ -169,10 +171,10 @@ export function OrderPackChecklist({
 
   return (
     <>
-      {/* The card clips its children (rounded-2xl + overflow-hidden), so the
-          slide-over is its SIBLING — nested, it would be cropped to the card. */}
+      {/* Flush sheet host — clip for accordion expand; slide-over is a sibling
+          so nested overflow does not crop the document preview. */}
       <div
-        className={`rounded-2xl border border-border-soft bg-surface-card overflow-hidden ${className ?? ''}`}
+        className={`rounded-none border border-border-soft bg-surface-card overflow-hidden ${className ?? ''}`}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-canvas px-3 py-2">
           <p className="text-role-micro uppercase tracking-widest text-text-soft">Pack checklist</p>
@@ -181,7 +183,7 @@ export function OrderPackChecklist({
               doneCount === totalCount ? 'text-emerald-600' : 'text-text-soft'
             }`}
           >
-            {doneCount}/{totalCount} lines verified
+            {doneCount}/{totalCount} verified
           </span>
         </div>
 
@@ -281,14 +283,12 @@ export function OrderPackChecklist({
             ) : readiness.blocked ? (
               <>
                 <Info className="h-3.5 w-3.5 shrink-0" />
-                {readiness.missingRequiredIds.length} required{' '}
-                {readiness.missingRequiredIds.length === 1 ? 'item' : 'items'} to include
+                {readiness.missingRequiredIds.length} required to include
               </>
             ) : (
               <>
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {readiness.missingRequiredIds.length} required{' '}
-                {readiness.missingRequiredIds.length === 1 ? 'item' : 'items'} not yet confirmed
+                {readiness.missingRequiredIds.length} required not confirmed
               </>
             )}
           </div>

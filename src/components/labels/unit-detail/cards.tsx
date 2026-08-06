@@ -90,7 +90,7 @@ function ChipRow({ label, children }: { label: string; children: React.ReactNode
  */
 export function IdentityCard({ unit }: { unit: UnitDetail }) {
   return (
-    <section className="rounded-2xl bg-surface-card p-5 shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card p-5 shadow-sm ring-1 ring-border-soft/60">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           {/* PRIMARY — product title */}
@@ -152,7 +152,7 @@ export function LocationCard({
       : 'Scan into a bin from /m/u to stock it';
 
   return (
-    <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
       <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Location</p>
       <div className="mt-2 flex items-center gap-3">
         <span
@@ -175,7 +175,7 @@ export function LocationCard({
 
 export function OrderCard({ allocation }: { allocation: Allocation | null }) {
   return (
-    <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
       <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Order</p>
       <div className="mt-2 flex items-center gap-3">
         <span
@@ -231,13 +231,13 @@ export function TimelineCard({
   }, [photos]);
 
   return (
-    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="flex items-center justify-between px-5 py-4">
         <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Timeline
         </h3>
         <span className="text-role-micro font-semibold text-text-faint">
-          {sorted.length} {sorted.length === 1 ? 'event' : 'events'}
+          {sorted.length} events
         </span>
       </header>
       {sorted.length === 0 ? (
@@ -322,7 +322,7 @@ function TimelineRow({
 
 export function AllocationsCard({ rows }: { rows: Allocation[] }) {
   return (
-    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
         <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Order allocations
@@ -357,7 +357,7 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
 
 export function ConditionsCard({ rows }: { rows: ConditionRow[] }) {
   return (
-    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
         <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Condition history
@@ -388,7 +388,7 @@ export function ConditionsCard({ rows }: { rows: ConditionRow[] }) {
 
 export function TsnLinksCard({ rows }: { rows: TsnLink[] }) {
   return (
-    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
         <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Tech / station scans

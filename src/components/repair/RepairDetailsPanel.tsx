@@ -12,9 +12,10 @@
  */
 
 import { createPortal } from 'react-dom';
-import { Clock, DollarSign, Pencil, PrinterAlt } from '../Icons';
+import { Clock, Pencil, PrinterAlt, Receipt } from '../Icons';
 import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import DeleteButton from '@/components/ui/DeleteButton';
 import {
@@ -56,15 +57,18 @@ export function RepairDetailsPanel({
   // Identity for the aria name — the SAVED ticket number, never the editable
   // draft (`c.ticketNumber`), which would re-register the occupant per keystroke.
   const repairIdentity = String(repair.ticket_number || '').trim() || `RS-${repair.id}`;
+  // Selection actions self-gate on the rail-actions store — only light when
+  // RepairTable is publishing via useRepairRailSelection.
+  const railHeaderActions = useRailHeaderActions();
 
   return (
-    // STABLE occupant id (`detail:claim`, not `detail:claim:<id>`): the header
+    // STABLE occupant id (`detail:repair`, not `detail:repair:<id>`): the header
     // action bar has prev/next, so row→row is the loop here, and the host keys
     // its crossfade on the occupant id — a per-record id played exit→empty→enter
     // on every step. Safe because `useRepairDetailsPanel` re-seeds notes, ticket,
     // linkage editors and the open tab on `repair.id` change.
     <DetailStackRailRegistrar
-      id="detail:claim"
+      id="detail:repair"
       onClose={onClose}
       modal={false}
       ariaLabel={`Repair ${repairIdentity} details`}
@@ -113,7 +117,7 @@ export function RepairDetailsPanel({
                             : 'Square payment (price)',
                         icon: (
                           <span className="text-emerald-600">
-                            <DollarSign className="h-3.5 w-3.5" />
+                            <Receipt className="h-3.5 w-3.5" />
                           </span>
                         ),
                         onClick: () => {
@@ -122,6 +126,8 @@ export function RepairDetailsPanel({
                       },
                     ]
                   : []),
+                // Drop redundant "Open" when the inspect panel is already up.
+                ...railHeaderActions.filter((a) => a.key !== 'rail-open'),
               ]}
               onPrev={onMoveUp}
               onNext={onMoveDown}

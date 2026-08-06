@@ -144,8 +144,8 @@ export function SupportVisionLaneCard() {
         </p>
       </div>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-      {ok && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</div>}
+      {err && <div className="rounded-none bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {ok && <div className="rounded-none bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</div>}
 
       <ul className="space-y-2">
         {OPTIONS.map((opt) => {
@@ -158,7 +158,7 @@ export function SupportVisionLaneCard() {
                     onClick={() => setDraft(opt.key)}
                     aria-pressed={selected}
                 className={
-                  'flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors ' +
+                  'flex w-full items-start gap-3 rounded-none border px-3 py-2.5 text-left transition-colors ' +
                   (selected
                     ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500/20'
                     : 'border-border-soft bg-surface-card hover:border-border-default')

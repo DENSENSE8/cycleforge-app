@@ -147,13 +147,11 @@ test.describe('google sheets order import', () => {
     await page.waitForTimeout(800);
     await page.screenshot({ path: 'playwright-report/import-skip-panel.png' });
 
-    // The sheet tab claims Ecwid rows "come in through the Ecwid connector".
-    // That claim must be checkable: the Ecwid tab has to actually list them,
-    // rather than rendering a bare "already up to date" beside the assertion.
+    // The sheet section claims Ecwid rows "come in through the Ecwid connector".
+    // That claim must be checkable: switch to the child Ecwid Direct tab and
+    // confirm the hand-off list (same stacked TabDisplay pattern as Claim).
     const ecwidSkipped = (payload.details?.skippedRows ?? []).filter((r) => r.reason === 'ecwid');
     if (ecwidSkipped.length > 0) {
-      // TabSwitch renders plain <button>s, not role="tab" — a role='tab'
-      // locator matches nothing and blocks until the whole test times out.
       await page.getByRole('button', { name: /Ecwid Direct/i }).click({ timeout: 15_000 });
       await expect(
         // "belongs here" (1 row) / "belong here" (n) — match both.
@@ -161,7 +159,7 @@ test.describe('google sheets order import', () => {
         'Ecwid tab must list the rows the sheet handed to it',
       ).toBeVisible({ timeout: 10_000 });
       await page.waitForTimeout(500);
-      await page.screenshot({ path: 'playwright-report/ecwid-tab-crossref.png' });
+      await page.screenshot({ path: 'playwright-report/ecwid-section-crossref.png' });
     }
   });
 });

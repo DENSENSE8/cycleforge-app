@@ -38,7 +38,7 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
   const chromeIcon = inlineRows ? 'h-3 w-3' : 'h-3.5 w-3.5';
 
   return (
-    <section className={inlineRows ? 'space-y-1.5' : 'space-y-3 rounded-2xl border border-border-soft bg-surface-card p-3'}>
+    <section className={inlineRows ? 'space-y-1.5' : 'space-y-3 rounded-none border border-border-soft bg-surface-card p-3'}>
       <div className="flex items-center justify-between gap-2">
         {hideHeading ? (
           <div />
@@ -123,7 +123,7 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
               {!readOnly && f.showForm && f.editingFavoriteId === null ? <FavoriteForm f={f} /> : null}
 
               {f.error ? (
-                <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 inset-field text-red-700">
+                <div className="flex items-start gap-2 rounded-none border border-red-100 bg-red-50 inset-field text-red-700">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <p className={fieldLabel}>{f.error}</p>
                 </div>
@@ -134,7 +134,7 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               ) : f.favorites.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border-soft px-3 py-6 text-center">
+                <div className="rounded-none border border-dashed border-border-soft px-3 py-6 text-center">
                   <p className={`${sectionLabel} text-text-faint`}>{emptyLabel}</p>
                 </div>
               ) : (
@@ -185,7 +185,7 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
                         <div
                           className={cn(
                             'flex items-start gap-2',
-                            inlineRows ? 'py-2' : 'rounded-xl px-2.5 py-2 hover:bg-surface-hover/60',
+                            inlineRows ? 'py-2' : 'rounded-none px-2.5 py-2 hover:bg-surface-hover/60',
                           )}
                         >
                           {f.isManageMode && !readOnly ? (

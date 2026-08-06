@@ -2,29 +2,40 @@
 
 **Region:** Workbench / Desk record plane (and intake create overlays that share `RightRailHost`).  
 **Shell SoT:** `RightRailHost` + `src/lib/right-rail/store.ts` + detail-stack tokens.  
-**Header SoT:** `PaneHeader` + blocks (`PaneHeaderLabel`, `PaneHeaderActionBar`, `PaneHeaderCloseButton`, …) **or** Unbox-aligned `DeskRailChromeRow` (`src/components/right-rail/DeskRailChromeRow.tsx`) when the card wants `→|` top-left · ↑↓ · trailing ring-twin.  
+**Desktop geometry:** every non-modal resident inspector is a flush **in-flow
+push column at every width**. Width pressure caps the right panel so the center
+hugs its floor beside an **open** context rail; it must never auto-park the left
+rail and never switch the inspector to the floating rounded overlay shell.
+Overlay remains explicit for modal/intake, mobile, ambient assistant, and
+station-edge opt-outs.  
+**Header SoT:** `PaneHeader` + blocks (`PaneHeaderLabel`, `PaneHeaderActionBar`, `PaneHeaderCloseButton`, …) **or** Unbox-aligned `DeskRailChromeRow` (`src/components/right-rail/DeskRailChromeRow.tsx`) when the card wants `→|` top-left · ↑↓ · trailing ring-twin. Orders `RecordPaneHeader` composes `DeskRailChromeRow` for chrome Row 1 (same top-left close).  
+**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the 1px paint is the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron (`onCollapse`). Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Unbox Displays (`UnboxPushColumn`) is the golden twin. Left context rail may still use sash `onCollapse` + `outset` — different edge.  
 **Modality / push / occupancy:** [source-of-truth.md](../source-of-truth.md) → **Right-rail modality**
 (AI and record/ticket details share **one** right-edge slot — detail outranks assistant) ·
 **Frame column budget** (center floor · yield ladder).  
-**Guard:** `src/components/right-rail/right-rail-inspector-header.guard.test.ts`.
+**Guard:** `src/components/right-rail/right-rail-inspector-header.guard.test.ts` ·
+`src/components/right-rail/detail-stack-collapse.guard.test.ts`.
 
 ---
 
 ## Anatomy (every record inspector)
 
-### Orders family — `RecordPaneHeader` / `PaneHeaderActionBar onClose`
+### Orders family — `RecordPaneHeader` (chrome → context → identity)
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ Row 1 — icon action row (ONLY secondary action surface)     │
-│ [ contextual icons … ]              [ >| · ↑ · ↓ ]          │
-│ PaneHeaderActionBar iconOnly        close prev next         │
+│ Row 1 — chrome ONLY (omit when no close and no ↑↓)          │
+│ [→|] ……………………………… [ N / M ] [ ↑ ] [ ↓ ]                 │
+│ DeskRailChromeRow — close top-left; cursor + ↑↓ trailing    │
 ├─────────────────────────────────────────────────────────────┤
-│ Row 2 — dense identity (PaneHeaderLabel)                    │
+│ Row 2 — contextual icons / topic tabs ONLY                  │
+│ [ contextual icons … ]                                      │
+│ PaneHeaderActionBar iconOnly — actions only (no chrome)     │
+├─────────────────────────────────────────────────────────────┤
+│ Row 3 — dense identity (PaneHeaderLabel)                    │
 │ [badge?]  eyebrow (mode / entity kind)                      │
 │           value = SHORT durable key (truncate)              │
-├─────────────────────────────────────────────────────────────┤
-│ optional belowSlot — tabs / status pills                    │
+│ optional legacy section tabs after identity                 │
 ├─────────────────────────────────────────────────────────────┤
 │ Body — scrollable facts · forms · long titles · prose       │
 ├─────────────────────────────────────────────────────────────┤
@@ -32,21 +43,42 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Incoming family — `DeskRailChromeRow` (Unbox-aligned, one in-flow row)
+### Incoming family — `DeskRailChromeRow` (Unbox-aligned)
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │ Row 1 — DeskRailChromeRow (ONE flex row, never absolute)    │
-│ [ >| ] ……………………………… [ ↑ · ↓ · trailing? ]                │
-│ close left · spacer · cursor · ring-twin (Sync) most right  │
+│ [ >| ] …………………… [ ↑ · ↓ · trailing? ]                     │
+│ close · spacer · cursor · ring — chrome ONLY by default     │
+│ (optional `.actions` only when topics share the chrome row) │
 ├─────────────────────────────────────────────────────────────┤
-│ optional — tabs (may precede identity on Incoming)          │
+│ Row 2 — contextual icons / topic tabs (when present)        │
+│ PaneHeaderActionBar iconOnly — no onClose / onPrev / onNext │
 ├─────────────────────────────────────────────────────────────┤
 │ dense identity (PaneHeaderLabel) + status pills             │
 ├─────────────────────────────────────────────────────────────┤
 │ Body …                                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**History peek golden (`detail:history`).** Its header is chrome → Display tabs
+→ identity (+ optional View strip):
+1) `DeskRailChromeRow` with **close + ↑↓ only** (no `.actions`), 2) labelled
+**Display** `PaneHeaderTabs` dense (`Details | Logistics | Evidence | History`)
+with a **View** toggle that expands `HistoryViewTopicsCluster` (paint ·
+Drill|List · compare · zoom · staff · week · ▦ · KPI — sheet layout / refine
+moved off Band 3; forced open in View-only shell), then 3) short status + PO /
+Receiving identity plus **one** readiness-picked labelled primary CTA
+(`historyInspectorPrimaryAction`) and a More menu for secondary edits —
+**not** an Edit icon ActionBar and **not** a multi-button labelled strip.
+Topic map SoT: `history-inspector-topics.ts`. The topic row lives **only** on
+this push inspector — never on Unbox History Band 3 (Band 3 = find · in-field
+filter · park/reopen via **Show / Hide inspector** — not Station **Open
+displays**). Body shows the **active** Display section only (`data-history-topic`).
+**Display topic** (singular — which body section is open) ≠ Station **Displays**
+column (`UnboxPushColumn` / Ticket · Photos · Linkage · …). Law:
+source-of-truth.md → Displays vs inspector. Orders mirror the same chrome →
+context → identity ladder via `RecordPaneHeader`.
 
 **Desk single-card vs Unbox two-host (ruled 2026-08-03).** Unbox reads
 `[→|] ……… [↑ ↓]` across two regions: column `UNBOX_PUSH_TOP_BAND` + pane-absolute
@@ -57,9 +89,11 @@ trailing cluster and splits the baseline. When every control lives in one card, 
 **`DeskRailChromeRow`** (or `PaneHeaderActionBar onClose` for the orders
 cluster). Never a page-local twin of the row class.
 
-Compose with `PaneHeader`: icon cluster in the main row; identity in `belowSlot`
-**or** identity under `DeskRailChromeRow` — but **never** a wrapping hero title,
-and **never** close in `rightSlot` while prev/next live on another row.
+Compose with `PaneHeader`: chrome (close · ↑↓ · counter) on Row 1; contextual
+icons on Row 2; identity in `belowSlot` **or** under `DeskRailChromeRow` — but
+**never** a wrapping hero title, **never** close in `rightSlot` while prev/next
+live on another row, and **never** chrome props on the same ActionBar instance
+as contextual `actions`.
 
 ---
 
@@ -74,7 +108,7 @@ and **never** close in `rightSlot` while prev/next live on another row.
 - Contextual icon actions are a **per-occupant** `PaneHeaderActionBarAction[]` (Link / Sync / Print / Ignore / …). The shell does not hardcode them.
 - Close is **`PaneHeaderActionBar onClose`** (orders) **or** **`DeskRailChromeRow`** (Incoming-family) — mandatory for `modal={false}`. Queue walk uses the same row's prev/next. **Never** close in a `rightSlot` on the row above prev/next (split-cluster drift). Reach for `PaneHeaderCloseButton` directly only outside an action/chrome row.
 - **Close glyph is `ArrowRightToLine` (`>|`), not an `X`** (2026-08-02). The arrow says the panel is parked back against the right edge; `intent="dismiss"` restores the `X` for a pane that genuinely goes away.
-- **Order surfaces mount `RecordPaneHeader`** (`src/components/order-record/`). Tabs are a `tabs` slot on it. Open-full-page is an **action in the icon row**, not a lone `IconButton` beside close.
+- **Order surfaces mount `RecordPaneHeader`** (`src/components/order-record/`). Contextual icons are Row 2; legacy section tabs stay a `tabs` slot after identity. Open-full-page is an **action in the contextual icon row**, not a lone `IconButton` beside close.
 - **Incoming / Unfound / Bin / Support-context compose `DeskRailChromeRow`.** Trailing Sync (Incoming) is the Unbox ring twin — always most right after ↑↓.
 
 **Never**
@@ -128,8 +162,14 @@ plus padding per group for no navigational gain.
 - **A multi-field FORM breaks out of the fact list.** Facts are read; a form is operated. Once a
   group takes more than one editable control, it becomes its own `OrderRecordCard` section with its
   own submit — it is no longer telemetry.
+- **Create forms in flush push columns** (Station Displays claim compose golden) use **sheet-band
+  fields** from `DenseComposeFields` — underline Subject + full-bleed sunken Body (`inset-field`
+  only on the textarea). Never nested `rounded-lg border` boxes, `TextField`, or
+  `WORKSPACE_NESTED_FIELD` for that job.
 - **One primary CTA band in the footer, at most.** A second primary is the competing-primaries
-  failure (P5).
+  failure (P5). Macro commit / bulk CTAs compose `FlushTerminalFooter` (Claim File golden —
+  in-flow `p-0` hairline floor, flush `Button`); Micro per-row actions stay on
+  `IconButton size="md"`.
 
 ### Anti-patterns
 
@@ -141,10 +181,12 @@ plus padding per group for no navigational gain.
 | A serial or tracking number set in the sans cut | `mono` (or the typed `CopyChip`) |
 | A second primary CTA beside the footer band | One commit per beat |
 
-**Adoption note (2026-08-02):** `OrderFactRow` / `OrderFactList` currently have **no consumers
-outside `src/components/order-record/`**, reaching the rail only transitively through
-`OrderRecordBody` → `ShippedDetailsPanel`. Every other occupant still ships a bespoke body. Migrate
-a rail's body when you are already editing it; do not open a sweep.
+**Adoption note (2026-08-05):** Desk table click mounts tabbed `ShippedDetailsPanel` →
+`ShippedDetailsBody` (no `OrderRecordBody` branch). Non-desk stack opens use
+`CompactOrderPeek`. Search feedback is `SearchOrderFeedback` on `/search` — a different
+job; it may compose fact atoms without going through `OrderRecordBody`. Durable
+`/o/[id]` keeps `OrderRecordBody`. Migrate a rail's body when you are already editing
+it; do not open a sweep.
 
 ## Two chrome families (do not cross)
 
@@ -165,6 +207,7 @@ Different rails own different action contracts. Pass them in; do not fork a seco
 | Occupant (examples) | Typical icon actions |
 |---|---|
 | `detail:order` | Print · note · open full · delete · … |
+| `detail:history` | **Receiving golden** — labelled Display `PaneHeaderTabs` + one identity primary CTA (`historyInspectorPrimaryAction`); Edit icon strip / multi-button labelled strips banned |
 | `detail:incoming` | Sync |
 | `detail:catalog-link` | Link listing · Ignore |
 | `detail:import-exception` | Resolve · Ignore |
@@ -178,7 +221,7 @@ Trailing cluster is always **`>| · ↑ · ↓`** when the rail walks a queue; c
 
 1. `DetailStackRailRegistrar` / `useRegisterRightPanel` — no private geometry.  
 2. `modal={false}` for record peeks; stable id when row→row is the loop.  
-3. Header = **one** chrome row: `DeskRailChromeRow` (Incoming-family) **or** `PaneHeaderActionBar iconOnly` with `onPrev`/`onNext`/`onClose` (orders). Dense `PaneHeaderLabel` short key below. Order surfaces: compose `RecordPaneHeader`, don't fork a third.  
+3. Header is **chrome → context → identity**: Row 1 chrome/navigation only (`DeskRailChromeRow` Incoming-family **or** `PaneHeaderActionBar iconOnly` with `onPrev`/`onNext`/`onClose` for orders — no contextual `actions` on that bar); Row 2 contextual tabs / icons (`PaneHeaderTabs` for History Display, or `PaneHeaderActionBar iconOnly` elsewhere); Row 3 dense `PaneHeaderLabel` short key (+ History: one primary CTA + More). History is the Incoming golden; Orders compose `RecordPaneHeader` — don't fork a third.  
 4. No `SidebarIntakeFormShell` on a record inspector.  
 5. No `stationMoreDetailsPaneHostClass`, no `rightSlot` close, no `variant="card"` ActionBar pill.  
 6. Long titles / prose only in the scroll body.  

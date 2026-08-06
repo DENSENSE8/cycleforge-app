@@ -1,29 +1,30 @@
 'use client';
 
 /**
- * Focused Labels order workspace — the Unbox-pattern full-pane overlay that
- * crossfades over the Queue/Recent browse workbench when an order is opened
- * (`?open=`). Owns the whole label + packing-slip flow with station tabs:
- *
- *   Print     — open the document slide-over (all outbound types) + Print dock
- *   Documents — attach / marketplace-fetch / delete tray + Buy label
- *   Timeline  — order event history
+ * Focused Labels order workspace — Unbox-family Station column:
+ *   StationScanPaneHost + StationPanelRoot
+ *   Centre = Print (label / slip status + open slide-over)
+ *   Displays = Documents · Timeline (ReceivingDisplaysPushStack)
  *
  * Replaces the old dual mount (OutboundDocumentsPrintView pane + the 420px
- * ShippedDetailsPanel slide-over) that flickered both surfaces at once.
- * Composes the station SoTs: `StationContextBar` + `StationWorkbench` +
- * `StationTerminalDock` (Print CTA), `SectionTabsSlider`, and the
- * `CartonContextCard` waist via `ShippingEntityContextHeader` — never a
- * forked identity header or hand-rolled Queue/title/Print toolbar.
+ * ShippedDetailsPanel slide-over) and the mid-canvas SectionTabsSlider strip.
+ * Composes `StationContextBar` + `StationWorkbench` + `StationTerminalDock`
+ * (Print CTA) + `ShippingEntityContextHeader` — never a forked identity header.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { outboundOrderByIdQuery } from '@/lib/queries/outbound-queries';
-import { StationWorkbench, buildSectionTabs } from '@/components/station/workbench';
+import {
+  StationPanelRoot,
+  StationScanPaneHost,
+  StationWorkbench,
+  buildSectionTabs,
+} from '@/components/station/workbench';
 import { StationContextBar } from '@/components/station/entity-context';
 import { StationTerminalDock } from '@/components/station/terminal';
-import { SectionTabsSlider } from '@/design-system/components/SectionTabsSlider';
+import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
+import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
 import {
   DocumentSlideOver,
   type DocumentSlideItem,
@@ -45,6 +46,8 @@ import type { OutboundDocument, OutboundDocumentsResponse } from '@/lib/document
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { ActiveStationOrder } from '@/hooks/station/types';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+
+type LabelsDisplayTab = 'documents' | 'timeline';
 
 function isEcwidOrder(order: ShippedOrder): boolean {
   return (order.account_source ?? '').toLowerCase().includes('ecwid');
@@ -92,7 +95,7 @@ function DocTypeStatusRow({
   loading?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border-soft/70 bg-surface-card px-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 rounded-none border-b border-border-soft/70 bg-surface-card px-3 py-2.5 last:border-b-0">
       <span className="text-role-caption font-semibold text-text-default">{label}</span>
       {loading ? (
         <span className="text-role-micro uppercase tracking-wider text-text-faint">
@@ -131,7 +134,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
     staleTime: 30_000,
   });
 
-  const [activeTab, setActiveTab] = useState('print');
+  const [activeSideTab, setActiveSideTab] = useState<LabelsDisplayTab | null>(null);
   const [docsPanelOpen, setDocsPanelOpen] = useState(false);
   const [docsPanelActiveId, setDocsPanelActiveId] = useState('shipping_label');
   const [slipAutoFetching, setSlipAutoFetching] = useState(false);
@@ -154,7 +157,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         src: docContentSrc(label),
         mimeHint: label ? (isPdfOutboundDocument(label) ? 'pdf' : 'image') : 'pdf',
         count: label ? 1 : undefined,
-        emptyHint: 'Attach or fetch one from the Documents tab',
+        emptyHint: 'Attach or fetch one from the Documents display',
         meta: label?.data.platform ? (
           <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             {sourcePlatformLabel(label.data.platform)}
@@ -168,7 +171,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         mimeHint: slip ? (isPdfOutboundDocument(slip) ? 'pdf' : 'image') : 'pdf',
         count: slip ? 1 : undefined,
         loading: slipAutoFetching && !slip,
-        emptyHint: 'Attach or fetch one from the Documents tab',
+        emptyHint: 'Attach or fetch one from the Documents display',
         meta: slip?.data.platform ? (
           <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             {sourcePlatformLabel(slip.data.platform)}
@@ -179,6 +182,9 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
   }, [label, slip, slipAutoFetching]);
 
   const entityOrder = useMemo(() => (order ? toActiveStationOrder(order) : null), [order]);
+
+  const openDisplays = useCallback((tab: LabelsDisplayTab) => setActiveSideTab(tab), []);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
 
   // Ecwid dogfood: auto-fetch packing slip when missing (not shipping labels).
   useEffect(() => {
@@ -201,7 +207,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           await queryClient.invalidateQueries({ queryKey: ['order-documents', orderId] });
         }
       } catch {
-        // Quiet fail — Documents tab still has manual Fetch; generated fallback
+        // Quiet fail — Documents display still has manual Fetch; generated fallback
         // may have stored via the orchestrator on a partial response.
       } finally {
         if (!cancelled) setSlipAutoFetching(false);
@@ -228,78 +234,30 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
     };
   }, [printableDocs]);
 
-  const tabs = useMemo(
+  const displayTabs = useMemo(
     () =>
       buildSectionTabs([
-        {
-          id: 'print',
-          label: 'Print',
-          icon: Printer,
-          content: (
-            <div className="flex min-h-[50vh] flex-col gap-4 pt-3">
-              <Panel padding="md" elevation="none" className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-                      Outbound documents
-                    </h3>
-                    <p className="mt-1 text-role-caption text-text-faint">
-                      Preview shipping label and packing slip in the right panel. Print from the
-                      dock below when ready.
-                    </p>
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    icon={<FileText className="h-4 w-4" />}
-                    onClick={() => {
-                      setDocsPanelActiveId(label ? 'shipping_label' : 'packing_slip');
-                      setDocsPanelOpen(true);
-                    }}
-                    data-testid="open-document-slide-over"
-                  >
-                    View documents
-                  </Button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <DocTypeStatusRow label="Shipping Label" attached={Boolean(label)} />
-                  <DocTypeStatusRow
-                    label="Packing Slip"
-                    attached={Boolean(slip)}
-                    loading={slipAutoFetching && !slip}
-                  />
-                </div>
-              </Panel>
-            </div>
-          ),
-        },
         {
           id: 'documents',
           label: 'Documents',
           icon: FileText,
           count: documents.length || undefined,
           content: order ? (
-            <div className="pt-3">
-              <OrderDocumentsSection
-                orderId={orderId}
-                orderRef={order.order_id}
-                readOnly={false}
-              />
-            </div>
+            <OrderDocumentsSection
+              orderId={orderId}
+              orderRef={order.order_id}
+              readOnly={false}
+            />
           ) : null,
         },
         {
           id: 'timeline',
           label: 'Timeline',
           icon: History,
-          content: (
-            <div className="pt-3">
-              <OrderTimelineSection orderId={orderId} />
-            </div>
-          ),
+          content: <OrderTimelineSection orderId={orderId} />,
         },
       ]),
-    [label, slip, documents.length, order, orderId, slipAutoFetching],
+    [documents.length, order, orderId],
   );
 
   if (isLoading) {
@@ -321,43 +279,106 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
     );
   }
 
-  return (
-    <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
-      {entityOrder ? (
-        <StationContextBar
-          identity={
-            <ShippingEntityContextHeader
-              activeOrder={entityOrder}
-              onExitToList={onClose}
-            />
-          }
+  const utilityRailBody = (
+    <div className="flex flex-col items-center gap-0 pt-0">
+      {!activeSideTab ? (
+        <UnboxDisplaysEdgeToggle
+          variant="pane-open"
+          onClick={() => openDisplays('documents')}
         />
       ) : null}
-      <StationWorkbench
-        ambientWash={false}
-        className="relative z-0 flex-1 bg-transparent"
-        reserveScrollClearance
-        reserveIdentityClearance="stacked"
-        tabs={
-          <SectionTabsSlider
-            tabs={tabs}
-            value={activeTab}
-            onChange={setActiveTab}
-            ariaLabel="Label order sections"
-          />
-        }
-        dock={<StationTerminalDock vm={printDockVm} />}
-      />
-      <DocumentSlideOver
-        open={docsPanelOpen}
-        onClose={() => setDocsPanelOpen(false)}
-        title="Documents"
-        items={slideItems}
-        activeId={docsPanelActiveId}
-        onActiveIdChange={setDocsPanelActiveId}
-        storageKey="labels-document-slide-over-width"
-        aria-label="Outbound document preview"
-      />
     </div>
+  );
+
+  return (
+    <StationScanPaneHost
+      displaysOpen={Boolean(activeSideTab)}
+      hostDataAttrs={{ 'data-labels-pane-host': true }}
+      centerTestId="labels-station-center"
+      utilityRail={!activeSideTab ? utilityRailBody : null}
+      center={
+        <StationPanelRoot>
+          {entityOrder ? (
+            <StationContextBar
+              placement="flow"
+              identity={
+                <ShippingEntityContextHeader
+                  activeOrder={entityOrder}
+                  onExitToList={onClose}
+                />
+              }
+            />
+          ) : null}
+          <StationWorkbench
+            ambientWash={false}
+            className="relative z-0 flex-1 bg-transparent"
+            reserveScrollClearance
+            reserveIdentityClearance={false}
+            bodyGap="none"
+            dock={<StationTerminalDock vm={printDockVm} />}
+          >
+            <div className="flex min-h-0 flex-col gap-0">
+              <Panel padding="md" elevation="none" className="flex flex-col gap-3 rounded-none">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                      Outbound documents
+                    </h3>
+                    <p className="mt-1 text-role-caption text-text-faint">
+                      Preview shipping label and packing slip. Print from the dock when ready.
+                      Manage attachments from Open displays → Documents.
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<FileText className="h-4 w-4" />}
+                    onClick={() => {
+                      setDocsPanelActiveId(label ? 'shipping_label' : 'packing_slip');
+                      setDocsPanelOpen(true);
+                    }}
+                    data-testid="open-document-slide-over"
+                  >
+                    View documents
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-0 border border-border-soft">
+                  <DocTypeStatusRow label="Shipping Label" attached={Boolean(label)} />
+                  <DocTypeStatusRow
+                    label="Packing Slip"
+                    attached={Boolean(slip)}
+                    loading={slipAutoFetching && !slip}
+                  />
+                </div>
+              </Panel>
+            </div>
+          </StationWorkbench>
+          <DocumentSlideOver
+            open={docsPanelOpen}
+            onClose={() => setDocsPanelOpen(false)}
+            title="Documents"
+            items={slideItems}
+            activeId={docsPanelActiveId}
+            onActiveIdChange={setDocsPanelActiveId}
+            storageKey="labels-document-slide-over-width"
+            aria-label="Outbound document preview"
+          />
+        </StationPanelRoot>
+      }
+      displays={
+        activeSideTab ? (
+          <ReceivingDisplaysPushStack
+            ariaLabel="Labels displays"
+            storageKey="labels-displays-push-width"
+            testId="labels-displays-push"
+            resizeTestId="labels-displays-push-resize"
+            tabs={displayTabs}
+            activeTab={activeSideTab}
+            onTabChange={(id) => setActiveSideTab(id as LabelsDisplayTab)}
+            onClose={closeDisplays}
+          />
+        ) : null
+      }
+    />
   );
 }

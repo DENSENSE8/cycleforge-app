@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { packerCountsQuery } from '@/lib/queries/station-table-queries';
-import { KpiTile, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
+import { KpiTile, metricIntentTextClass, OpsKpiBand, OpsKpiBandCell, OpsKpiBandEmpty, OpsKpiBandError, OpsKpiBandSkeletonTile } from '@/design-system/components/monitor';
 import {
   resolveShippingMetrics,
   splitShippingAttention,
@@ -20,16 +20,9 @@ import type { PackWorkspaceTab } from '@/utils/pack-workspace-state';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { RefreshCw } from '@/components/Icons';
-import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { computeWeekRange, getCurrentPSTDateKey } from '@/utils/date';
 import { useStaffFilter } from '@/hooks/useStaffFilter';
 import type { FulfillmentState } from '@/lib/unshipped-state';
-import { cn } from '@/utils/_cn';
-import { Button } from '@/design-system/primitives';
-
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
 type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
 
@@ -41,6 +34,7 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
 
   const tile = (
     <KpiTile
+      density="band"
       label={metric.label}
       value={metric.value}
       valueClassName={toneHero ? tone : undefined}
@@ -64,20 +58,14 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
 
 function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
   return (
-    <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
+    <OpsKpiBand density="band" className="animate-pulse" aria-label="Loading packing attention metrics">
       <span className="sr-only">Loading packing attention metrics…</span>
       {Array.from({ length: reservedSlots }).map((_, i) => (
-        <div key={i} className={TILE_CELL_CLASS}>
-          <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
-              <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
-            </div>
-            <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-          </div>
-        </div>
+        <OpsKpiBandCell key={i} density="band">
+          <OpsKpiBandSkeletonTile density="band" />
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }
 
@@ -87,32 +75,18 @@ function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
  * surface never prints "no packs" twice.
  */
 function StripAllClear() {
-  const copy = {
-    title: 'Nothing ready to pack.',
-    hint: 'Orders land here after the tech scan (TESTED).',
-  };
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      <AnimatedCheck size={20} />
-      <div className="min-w-0">
-        <p className="text-role-caption font-semibold text-text-default">{copy.title}</p>
-        <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-          {copy.hint}
-        </p>
-      </div>
-    </div>
+    <OpsKpiBandEmpty
+      density="band"
+      title="Nothing ready to pack."
+      description="Orders land here after the tech scan (TESTED)."
+    />
   );
 }
 
 function StripError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4">
-      <p className="text-role-caption font-semibold text-rose-700">Could not load packing metrics.</p>
-      <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
-        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-        Retry
-      </Button>
-    </div>
+    <OpsKpiBandError density="band" message="Could not load packing metrics." onRetry={onRetry} />
   );
 }
 
@@ -145,13 +119,13 @@ function QueueStrip() {
   if (tiles.length === 0) return <StripAllClear />;
 
   return (
-    <div className={TILE_BAND_CLASS}>
+    <OpsKpiBand density="band" aria-label="Packing attention metrics">
       {tiles.map((metric) => (
-        <div key={metric.id} className={TILE_CELL_CLASS}>
+        <OpsKpiBandCell key={metric.id} density="band">
           <MetricKpiTile metric={metric} toShipFilter={toShipFilter} />
-        </div>
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }
 
@@ -188,14 +162,14 @@ function HistoryStrip({ packerId }: { packerId: number }) {
   // this week" statement. Two components saying it was the duplicate empty.
 
   return (
-    <div className={TILE_BAND_CLASS}>
-      <div className={TILE_CELL_CLASS}>
-        <KpiTile label="Packed today" value={packedToday.toLocaleString()} className="h-full" />
-      </div>
-      <div className={TILE_CELL_CLASS}>
-        <KpiTile label="This week" value={weekTotal.toLocaleString()} className="h-full" />
-      </div>
-    </div>
+    <OpsKpiBand density="band" aria-label="Packing history metrics">
+      <OpsKpiBandCell density="band">
+        <KpiTile density="band" label="Packed today" value={packedToday.toLocaleString()} className="h-full" />
+      </OpsKpiBandCell>
+      <OpsKpiBandCell density="band">
+        <KpiTile density="band" label="This week" value={weekTotal.toLocaleString()} className="h-full" />
+      </OpsKpiBandCell>
+    </OpsKpiBand>
   );
 }
 

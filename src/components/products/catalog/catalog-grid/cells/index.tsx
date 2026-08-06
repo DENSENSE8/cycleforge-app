@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { Check } from '@/components/Icons';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import type { CatalogListRow } from '@/components/products/catalog/types';
+import { CopyableCellValue } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import {
   CATALOG_GRID_FROZEN_CELL,
@@ -106,9 +107,12 @@ export function renderCatalogGridCell(
     case 'sku':
       return (
         <div data-col="sku" className={dataCell(col, rule)}>
-          <span className="min-w-0 truncate font-mono text-role-caption text-text-muted">
-            {row.sku}
-          </span>
+          <CopyableCellValue
+            value={row.sku}
+            historyKind="sku"
+            className="min-w-0 flex-1 text-role-caption text-text-muted"
+            dense
+          />
         </div>
       );
     case 'inventory':

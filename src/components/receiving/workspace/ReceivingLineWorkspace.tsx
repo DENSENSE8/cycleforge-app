@@ -100,7 +100,14 @@ export function ReceivingLineWorkspace({
           sit in a z-10 sibling above the workbench so they paint over it. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {variant === 'triage' ? (
-          <TriagePanel key="triage" row={row} staffId={staffId} onClose={onClose} />
+          <TriagePanel
+            key="triage"
+            row={row}
+            staffId={staffId}
+            onClose={onClose}
+            onPrevCarton={onPrev}
+            onNextCarton={onNext}
+          />
         ) : (
           <LineEditPanel
             key="unbox"

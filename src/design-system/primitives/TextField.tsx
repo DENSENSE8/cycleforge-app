@@ -7,8 +7,17 @@ import {
   type ReactNode,
   type TextareaHTMLAttributes,
 } from 'react';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 export type TextFieldTone = 'blue' | 'amber' | 'emerald' | 'neutral';
+
+/**
+ * `default` — soft card field (`rounded-xl` + border).
+ * `flush` — joined industrial bar cell (`rounded-none`, no outer border); host
+ * owns the shared hairline. Floating label stays inside the field cell width.
+ */
+type TextFieldAppearance = 'default' | 'flush';
 
 const toneClass: Record<
   TextFieldTone,
@@ -36,6 +45,30 @@ const toneClass: Record<
   },
 };
 
+/** Flush cell — no own border; inset ring on focus so the join seam stays. */
+const flushToneClass: Record<TextFieldTone, { input: string; floatLabel: string; focusLabel: string }> = {
+  blue: {
+    input: 'border-0 focus:ring-inset focus:ring-blue-500/30',
+    floatLabel: 'text-blue-600',
+    focusLabel: 'peer-focus:text-blue-600',
+  },
+  amber: {
+    input: 'border-0 focus:ring-inset focus:ring-amber-500/30',
+    floatLabel: 'text-amber-600',
+    focusLabel: 'peer-focus:text-amber-600',
+  },
+  emerald: {
+    input: 'border-0 focus:ring-inset focus:ring-emerald-500/30',
+    floatLabel: 'text-emerald-600',
+    focusLabel: 'peer-focus:text-emerald-600',
+  },
+  neutral: {
+    input: 'border-0 focus:ring-inset focus:ring-border-strong/15',
+    floatLabel: 'text-text-soft',
+    focusLabel: 'peer-focus:text-text-default',
+  },
+};
+
 export interface TextFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'size'> {
   /**
@@ -51,6 +84,11 @@ export interface TextFieldProps
   onChange: (value: string) => void;
   /** Accent for the focused border + floated label. */
   tone?: TextFieldTone;
+  /**
+   * `flush` = joined scan-bar cell (square, borderless); host owns the outer
+   * hairline. Label + fill stay inside the field width — no L/R bleed.
+   */
+  appearance?: TextFieldAppearance;
   /** Render the input value in a monospace font (serial / tracking scans). */
   mono?: boolean;
   /** Control pinned to the right edge inside the field (e.g. a clear button). */
@@ -81,6 +119,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       value,
       onChange,
       tone = 'blue',
+      appearance = 'default',
       mono = false,
       trailing,
       className = '',
@@ -96,15 +135,20 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     const autoId = useId();
     const fieldId = id ?? autoId;
     const float = value.length > 0;
-    const t = toneClass[tone];
+    const flush = appearance === 'flush';
+    const t = flush ? flushToneClass[tone] : toneClass[tone];
 
-    // Shared chrome for both variants — only the element + a little padding differ.
-    const sharedClass = `peer block w-full rounded-xl border bg-surface-card px-3.5 text-sm text-text-default outline-none transition-[box-shadow,border-color] duration-150 placeholder:text-transparent focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint ${
-      mono ? 'font-mono' : ''
-    } ${t.input} ${inputClassName}`;
+    // Shared chrome — flush joins a host bar (no own radius/border); default keeps soft card.
+    const sharedClass = cn(
+      'peer block w-full bg-surface-card px-3.5 text-sm text-text-default outline-none transition-[box-shadow,border-color] duration-150 placeholder:text-transparent focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint',
+      flush ? cornerClass('flush') : 'rounded-xl border',
+      mono && 'font-mono',
+      t.input,
+      inputClassName,
+    );
 
     return (
-      <div className={`relative w-full ${className}`.trim()}>
+      <div className={cn('relative w-full min-w-0', flush && 'h-11', className)}>
         {multiline ? (
           <textarea
             id={fieldId}
@@ -115,7 +159,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             // floating <label> owns the empty-state text.
             placeholder=" "
             rows={rows}
-            className={`${sharedClass} resize-none pb-2 pt-5 leading-snug`.trim()}
+            className={cn(sharedClass, 'resize-none pb-2 pt-5 leading-snug')}
             {...(inputProps as unknown as TextareaHTMLAttributes<HTMLTextAreaElement>)}
           />
         ) : (
@@ -126,17 +170,20 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
             placeholder=" "
-            className={`${sharedClass} h-11 pb-1 pt-5 ${trailing ? 'pr-9' : ''}`.trim()}
+            className={cn(sharedClass, 'h-11 pb-1 pt-5', trailing && 'pr-9')}
             {...inputProps}
           />
         )}
         <label
           htmlFor={fieldId}
-          className={`pointer-events-none absolute left-3.5 origin-left transition-all duration-150 ${
+          className={cn(
+            'pointer-events-none absolute left-3.5 origin-left transition-all duration-150',
             float
-              ? `top-1.5 text-role-micro font-semibold uppercase tracking-wide ${t.floatLabel}`
-              : `${multiline ? 'top-5' : 'top-3'} text-sm text-text-faint`
-          } peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:uppercase peer-focus:tracking-wide ${t.focusLabel}`}
+              ? cn('top-1.5 text-role-micro font-semibold uppercase tracking-wide', t.floatLabel)
+              : cn(multiline ? 'top-5' : 'top-3', 'text-sm text-text-faint'),
+            'peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:uppercase peer-focus:tracking-wide',
+            t.focusLabel,
+          )}
         >
           {label}
         </label>

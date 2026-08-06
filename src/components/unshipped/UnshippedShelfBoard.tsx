@@ -9,23 +9,18 @@
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
  *
  * Scroll: KPI strip is pinned in `DashboardOrdersView` sheet chrome; the
- * table host uses `WORKBENCH_SHEET_HOST` + a bounded viewport so the grid
- * self-scrolls. Column header sticks inside the grid; no page-level sticky.
+ * table host is a flex-fill `WORKBENCH_SHEET_HOST` inside a definite flex chain
+ * (Unbox golden) so the grid self-scrolls — one Y port, no absolute viewport
+ * calc. Column header sticks inside the grid; no page-level sticky.
  */
 
-import { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
-import {
-  WORKBENCH_SHEET_HOST,
-  workbenchTableViewportClass,
-} from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { useEventBridge } from '@/hooks';
-import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
 
 export interface UnshippedShelfBoardProps {
@@ -38,12 +33,8 @@ export interface UnshippedShelfBoardProps {
   searchResultLabel?: string;
   clearSearchLabel?: string;
   selectMode?: boolean;
-  /** Reserve bottom room for the pinned bulk-selection capsule (see
-   *  `workbenchTableViewportClass`). Pass the host's `bulkBarVisible`. */
-  bulkBarInset?: boolean;
   /** Rail-selection model: the check-set is the single selection SoT and drives
-   *  the right-rail inspector. Dashboard outbound lanes only — see
-   *  `docs/todo/order-rail-selection-plane-PLAN.md`. */
+   *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
   footer?: React.ReactNode;
   toolbarPortalTarget?: HTMLElement | null;
@@ -59,7 +50,6 @@ export function UnshippedShelfBoard({
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
-  bulkBarInset = false,
   railSelection = false,
   footer,
   toolbarPortalTarget,
@@ -79,20 +69,10 @@ export function UnshippedShelfBoard({
   // this lane only turns the keyboard on.
   useRecordCursorKeyboard({ enabled: true, scope: 'record' });
 
-  // Staff filter only — no table-options / column-config / density chrome.
-  const searchToolbar = useMemo(() => <StaffFilterButton iconOnly />, []);
-
   return (
-    <div className="flex min-w-0 flex-col">
-      {toolbarPortalTarget
-        ? createPortal(searchToolbar, toolbarPortalTarget)
-        : (
-          <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-soft px-3 py-1.5">
-            {searchToolbar}
-          </div>
-        )}
-      {/* Flush sheet host — bounded viewport so the grid self-scrolls. */}
-      <div className={cn(WORKBENCH_SHEET_HOST, workbenchTableViewportClass({ bulkBarInset }))}>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Flush sheet host — flex-fill self-scroll (Unbox golden), definite chain. */}
+      <div className={WORKBENCH_SHEET_HOST}>
         <OrdersGridView
           ariaLabel="Shelved unshipped orders"
           records={records}
@@ -115,6 +95,7 @@ export function UnshippedShelfBoard({
           searchResultLabel={searchResultLabel}
           clearSearchLabel={clearSearchLabel}
           data-testid="pending-grid-body"
+          columnTriggerPortalTarget={toolbarPortalTarget ?? null}
         />
       </div>
       {footer}

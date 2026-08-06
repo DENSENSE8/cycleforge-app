@@ -52,6 +52,11 @@ export const platforms = pgTable('platforms', {
   label: text('label').notNull(),
   /** Pill color token (was hardcoded in source-platform.ts). */
   tone: text('tone'),
+  /**
+   * Optional org accent `#RRGGBB`. When set, UI paint derives ink/softFill via
+   * `src/lib/color-contrast.ts` (luminance). Null → fall back to `tone` / builtin.
+   */
+  colorHex: varchar('color_hex', { length: 7 }),
   /** Soft-link → organization_integrations.provider (null = display-only). */
   provider: text('provider'),
   sortOrder: integer('sort_order').notNull().default(100),

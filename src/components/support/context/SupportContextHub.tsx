@@ -105,6 +105,11 @@ export function SupportContextHub({
   const embedded = embeddedCustomer ?? variant === 'station';
   const isRollup = variant === 'rollup';
   const showSegmentPills = onlySegment == null;
+  // Flush right-rail bands own their own pad inside LinkageStrip; card embeds
+  // keep the classic strip inset so the strip doesn't collide with the shell.
+  const stripPadClass = flush
+    ? undefined
+    : cn(dense ? 'px-3 pt-3 pb-3' : 'px-4 pt-4 pb-4', linkageOnly && 'pb-3');
 
   // Prefer Team when no ticket yet (operator often lands on team notes first at unbox).
   useEffect(() => {
@@ -145,17 +150,12 @@ export function SupportContextHub({
 
   const strip =
     hideLinkage || (onlySegment != null && !linkageOnly) ? null : (
-      <div
-        className={cn(
-          'shrink-0',
-          dense ? 'px-3 pt-3 pb-3' : 'px-4 pt-4 pb-4',
-          linkageOnly && 'pb-3',
-        )}
-      >
+      <div className={cn('shrink-0', stripPadClass)}>
         <LinkageStrip
           bundle={data}
           dense={dense || linkageOnly}
           hideTicketEmbed={hideTicketEmbed}
+          surface={surface}
         />
       </div>
     );

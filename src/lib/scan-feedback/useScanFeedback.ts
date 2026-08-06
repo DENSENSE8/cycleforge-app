@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { usePageSettings } from '@/hooks/useSettings';
 import { playScanTone, vibrateScan, type ScanFeedbackKind } from './play';
+import { flashScanBand } from './visual';
 
 /**
  * Resolved scan-feedback firing for the receiving station. Reads the org master
@@ -10,6 +11,10 @@ import { playScanTone, vibrateScan, type ScanFeedbackKind } from './play';
  * (`receiving.scanSound`, `receiving.scanHaptics`) from the Settings Registry —
  * sound plays only when the org allows AND the operator hasn't opted out; haptics
  * follow the operator's own toggle.
+ *
+ * Visual locus flash ({@link flashScanBand}) always fires — flat scan stations
+ * rely on it for success vs reject once card borders are gone. Audio/haptic stay
+ * preference-gated.
  *
  * Async-cached reads are fine here: the page settings load once and are warm by
  * the time an operator completes a receive, so the cue never lags the action.
@@ -28,6 +33,7 @@ export function useScanFeedback() {
     (kind: ScanFeedbackKind) => {
       if (soundOn) playScanTone(kind);
       if (hapticOn) vibrateScan(kind);
+      flashScanBand(kind);
     },
     [soundOn, hapticOn],
   );

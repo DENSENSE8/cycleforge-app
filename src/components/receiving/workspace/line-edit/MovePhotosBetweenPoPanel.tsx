@@ -10,17 +10,20 @@
  * Target search is GET /api/receiving/photo-move-targets (any receiving carton,
  * including unmatched / ticket-anchored) — not the Zoho-PO-only po/list feed.
  *
- * Hosted by Unbox {@link ReceivingToolPushStack} or the thin
+ * Hosted by Unbox Displays Photos→Move or the thin
  * {@link MovePhotosBetweenPoRail} overlay for non-Unbox hosts.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
-import { ArrowLeftRight, Loader2, Package, Search, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { PaneHeaderTabs } from '@/components/ui/pane-header';
+import { ArrowLeftRight, Loader2, Package, X } from '@/components/Icons';
+import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
+import { TabDisplay } from '@/design-system/components';
+import {
+  DenseComposeLabel,
+  DenseComposeSearchInput,
+} from '@/design-system/components/DenseComposeFields';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import {
   OrderIdChip,
@@ -30,7 +33,6 @@ import {
   getLast8,
 } from '@/components/ui/CopyChip';
 import { toast } from '@/lib/toast';
-import { cn } from '@/utils/_cn';
 import { reassignPhotoToReceiving } from '@/components/shipped/photo-gallery/photo-gallery-api';
 import { notifyReceivingPhotoChanged } from '@/lib/queries/receiving-queries';
 import { useClaimPhotos } from '../claim/hooks/useClaimPhotos';
@@ -87,8 +89,12 @@ export function MovePhotosBetweenPoPanel({
   receivingId,
   onClose,
   onMoved,
-  /** Hide the in-panel X when the push stack already has a collapse grip. */
-  hideHeaderClose = false,
+  /**
+   * `display` — Unbox Displays Photos→Move: strip + Browse·Move·Send tabs already
+   * name the verb; omit icon+title band and X (column `→|` owns dismiss).
+   * `modal` — right-rail / overlay hosts keep the title + close.
+   */
+  chrome = 'modal',
 }: {
   open: boolean;
   /** Carton the move is relative to (photos on this carton ↔ another carton). */
@@ -96,7 +102,7 @@ export function MovePhotosBetweenPoPanel({
   onClose: () => void;
   /** Fired after at least one photo moved successfully (parents invalidate caches). */
   onMoved?: () => void;
-  hideHeaderClose?: boolean;
+  chrome?: 'modal' | 'display';
 }) {
   const thisReceivingId = receivingId;
   const queryClient = useQueryClient();
@@ -264,31 +270,31 @@ export function MovePhotosBetweenPoPanel({
 
   const successHeadline = success
     ? success.direction === 'to'
-      ? `Moved ${success.moved} photo${success.moved === 1 ? '' : 's'}`
-      : `Pulled ${success.moved} photo${success.moved === 1 ? '' : 's'}`
+      ? `Moved ${success.moved}`
+      : `Pulled ${success.moved}`
     : '';
   const successDetail = success
     ? success.direction === 'to'
-      ? `to ${success.otherLabel ?? 'another carton'}`
-      : `from ${success.otherLabel ?? 'another carton'} onto this carton`
+      ? `→ ${success.otherLabel ?? 'carton'}`
+      : `← ${success.otherLabel ?? 'carton'}`
     : '';
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
-        <div className="flex items-center gap-2">
-          <ArrowLeftRight className="h-4 w-4 text-blue-600" />
-          <span className="text-sm font-semibold text-text-default">Move photos</span>
-        </div>
-        {!hideHeaderClose ? (
+    <div className="flex h-full min-h-0 flex-col" data-move-photos-chrome={chrome}>
+      {chrome === 'modal' ? (
+        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-semibold text-text-default">Move photos</span>
+          </div>
           <IconButton
             onClick={onClose}
             ariaLabel="Close"
             icon={<X className="h-4 w-4" />}
             className="rounded-full p-1.5 text-text-soft hover:bg-surface-hover"
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <AnimatePresence mode="wait" initial={false}>
         {success ? (
@@ -316,58 +322,58 @@ export function MovePhotosBetweenPoPanel({
             transition={{ duration: 0.12 }}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-role-data">
-              <PaneHeaderTabs<Direction>
-                tabs={[
-                  { value: 'to', label: 'To another carton' },
-                  { value: 'from', label: 'From another carton' },
-                ]}
-                value={direction}
-                onChange={setDirection}
-                className="rounded-lg border border-border-soft px-1 py-0.5"
-              />
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-3 text-role-data">
+              <div className="px-3">
+                <TabDisplay
+                  tabs={[
+                    { id: 'to', label: 'To another carton' },
+                    { id: 'from', label: 'From another carton' },
+                  ]}
+                  activeTab={direction}
+                  onTabChange={(id) => setDirection(id as Direction)}
+                  appearance="segment"
+                  fit="fill"
+                  aria-label="Move direction"
+                />
+              </div>
 
               {(direction === 'from' || (direction === 'to' && photos.photos.length > 0)) && (
                 <div className="space-y-2">
-                  <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <DenseComposeLabel className="px-3" htmlFor="photo-move-search">
                     {direction === 'to' ? 'Target carton / PO' : 'Source carton / PO'}
                     {otherLabel ? ` · ${otherLabel}` : ''}
-                  </p>
+                  </DenseComposeLabel>
                   {!otherReceivingId ? (
                     <>
-                      <div className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-3 py-2">
-                        <Search className="h-4 w-4 shrink-0 text-text-faint" />
-                        <input
+                      <div className="px-3">
+                        <DenseComposeSearchInput
+                          id="photo-move-search"
                           type="search"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
                           placeholder="PO #, tracking #, ticket # / subject, or carton QR…"
-                          className={cn(
-                            'w-full bg-transparent text-sm text-text-default placeholder:text-text-faint',
-                            focusRing('field', 'accent'),
-                          )}
                           autoFocus
                         />
+                        <p className="mt-1 text-role-micro text-text-faint">
+                          Type or scan a different carton — not this one.
+                        </p>
                       </div>
-                      <p className="text-xs text-text-soft">
-                        Type or scan a different carton — not this one.
-                      </p>
                       {(matchedExcludedSelf || !poSearchNeedle(search)) &&
                       targetRows.length > 0 ? (
                         <p
-                          className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
+                          className="px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
                           data-testid="photo-move-recent-eyebrow"
                         >
                           Recent cartons
                         </p>
                       ) : null}
-                      <div className="max-h-48 overflow-y-auto divide-y divide-border-hairline rounded-lg border border-border-soft">
+                      <div className="max-h-48 overflow-y-auto">
                         {poLoading ? (
                           <p className="flex items-center justify-center gap-2 py-6 text-xs text-text-soft">
                             <Loader2 className="h-4 w-4 animate-spin" /> Searching…
                           </p>
                         ) : targetRows.length === 0 ? (
-                          <p className="px-4 py-6 text-center text-xs text-text-soft">
+                          <p className="px-3 py-8 text-center text-role-micro text-text-soft">
                             {poSearchNeedle(search)
                               ? 'No matching cartons'
                               : 'Search for another carton to move photos to.'}
@@ -403,7 +409,7 @@ export function MovePhotosBetweenPoPanel({
                                   setOtherReceivingId(r.receiving_id);
                                   setOtherLabel(label);
                                 }}
-                                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-surface-hover"
+                                className="flex w-full items-center justify-between gap-3 border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-hover"
                               >
                                 <div className="flex min-w-0 w-full flex-col items-start gap-1">
                                   <span className="line-clamp-2 break-words text-role-body font-medium text-text-primary">
@@ -444,7 +450,7 @@ export function MovePhotosBetweenPoPanel({
                         setOtherReceivingId(null);
                         setOtherLabel(null);
                       }}
-                      className="text-role-eyebrow font-semibold uppercase tracking-widest text-blue-600 hover:underline"
+                      className="px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-blue-600 hover:underline"
                     >
                       Change carton
                     </button>
@@ -453,7 +459,7 @@ export function MovePhotosBetweenPoPanel({
               )}
 
               {sourceReceivingId != null ? (
-                <div className="space-y-2">
+                <div className="space-y-2 px-3">
                   <div className="flex items-center justify-between">
                     <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                       {direction === 'to' ? 'Photos on this carton' : 'Photos on source carton'}
@@ -471,7 +477,7 @@ export function MovePhotosBetweenPoPanel({
                     ) : null}
                   </div>
                   {photos.photos.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-border-soft px-4 py-6 text-center text-xs text-text-soft">
+                    <p className="border-y border-dashed border-border-soft px-3 py-8 text-center text-role-micro text-text-soft">
                       No photos on this carton yet.
                     </p>
                   ) : (
@@ -479,16 +485,20 @@ export function MovePhotosBetweenPoPanel({
                   )}
                 </div>
               ) : direction === 'from' ? (
-                <p className="rounded-lg border border-dashed border-border-soft px-4 py-6 text-center text-xs text-text-soft">
+                <p className="mx-3 border-y border-dashed border-border-soft px-3 py-8 text-center text-role-micro text-text-soft">
                   Pick a source carton to see its photos.
                 </p>
               ) : null}
             </div>
 
-            <div className="border-t border-border-soft px-4 py-3">
+            {/*
+              Macro floor — full-bleed primary pinned to the panel bottom.
+              Compose FlushTerminalFooter (Claim golden); never inset px/py.
+            */}
+            <FlushTerminalFooter layout="bleed">
               <Button
                 variant="primary"
-                size="sm"
+                size="md"
                 className="w-full justify-center"
                 loading={busy}
                 disabled={!canMove}
@@ -496,10 +506,10 @@ export function MovePhotosBetweenPoPanel({
                 icon={<ArrowLeftRight className="h-4 w-4" />}
               >
                 {direction === 'to'
-                  ? `Move ${photos.selectedPhotoIds.size || ''} to carton`.trim()
-                  : `Pull ${photos.selectedPhotoIds.size || ''} onto this carton`.trim()}
+                  ? `Move ${photos.selectedPhotoIds.size || ''}`.trim()
+                  : `Pull ${photos.selectedPhotoIds.size || ''}`.trim()}
               </Button>
-            </div>
+            </FlushTerminalFooter>
           </motion.div>
         )}
       </AnimatePresence>

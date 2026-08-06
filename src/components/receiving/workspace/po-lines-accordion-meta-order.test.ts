@@ -11,8 +11,9 @@ import { test } from 'node:test';
  * condition · serial columns align vertically across rows when operators
  * down-scan a multi-item PO.
  *
- * The chip render sites live in PoLineRow.tsx (extracted from PoLinesAccordion
- * in the god-component cleanup); this guard reads that file.
+ * Serial preview is plain last-8 text (plus optional View All) — not a
+ * {@link SerialChip} on the collapsed meta row. The chip render sites live in
+ * PoLineRow.tsx; this guard reads that file.
  */
 const SRC = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), 'PoLineRow.tsx'),
@@ -30,13 +31,27 @@ function firstRenderIndex(tag: string): number {
   return from + match.index;
 }
 
+/** First index of a serial-column marker in the meta grid props. */
+function serialColumnIndex(): number {
+  // Collapsed meta uses SerialChipSkeleton while loading, else last-8 text /
+  // NoSerialControl / View All — never a bare <SerialChip>.
+  const markers = ['SerialChipSkeleton', 'NoSerialControl', 'getLast8(sn)', 'View all units'];
+  let best = -1;
+  for (const m of markers) {
+    const i = SRC.indexOf(m);
+    if (i >= 0 && (best < 0 || i < best)) best = i;
+  }
+  assert.ok(best >= 0, 'serial column render site missing');
+  return best;
+}
+
 test('PO line meta chips: condition and serial precede price', () => {
   const conditionIdx = firstRenderIndex('ConditionGradeChip');
-  const serialIdx = firstRenderIndex('SerialChip');
+  const serialIdx = serialColumnIndex();
   const priceIdx = firstRenderIndex('UnitPriceChip');
 
   assert.ok(conditionIdx < priceIdx, 'UnitPriceChip must follow ConditionGradeChip');
-  assert.ok(serialIdx < priceIdx, 'UnitPriceChip must follow SerialChip');
+  assert.ok(serialIdx < priceIdx, 'serial column must precede UnitPriceChip');
 });
 
 test('PO line meta chips: SKU precedes condition (price no longer mid-row)', () => {

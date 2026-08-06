@@ -63,7 +63,7 @@ export function FbaUnallocatedBucket({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border transition-colors ${
+      className={`rounded-none border transition-colors ${
         isOver
           ? 'border-dashed border-emerald-400 bg-emerald-50/40'
           : 'border-border-soft bg-surface-canvas/30'

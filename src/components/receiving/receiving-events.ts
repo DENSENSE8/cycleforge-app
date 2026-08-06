@@ -75,6 +75,22 @@ export interface ReceivingEventDetail {
   'receiving-focus-scan': undefined;
   /** Table row pulse after MRU / deep-link navigation. */
   'receiving-highlight-line': number;
+  /** Workspace / triage / History chrome: step prev/next line in the open table. */
+  'receiving-navigate-table': 'prev' | 'next';
+  /**
+   * Unbox History left-click — open the carton triage slide-over
+   * (`detail:history` / HistoryCartonTriagePanel).
+   */
+  'receiving-open-history-triage': {
+    receivingId: number;
+    receivingLineId?: number | null;
+    poNumber?: string | null;
+    title?: string | null;
+    tracking?: string | null;
+    status?: string | null;
+  };
+  /** Close the History triage slide-over. */
+  'receiving-close-history-triage': undefined;
 }
 
 /** Payload of `receiving-lookup-scan`. */

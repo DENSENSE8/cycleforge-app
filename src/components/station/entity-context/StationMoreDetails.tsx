@@ -31,10 +31,11 @@ export function StationMoreDetails({
   return (
     <Panel
       padding="none"
-      radius="2xl"
+      radius="lg"
       elevation="none"
       borderless
       className={cn(
+        // Same coplanar flush override as StationContextBar identity.
         stationUtilityPanelClass,
         stationIdentityPadClass,
         stationIdentityGapClass,

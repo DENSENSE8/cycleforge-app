@@ -87,7 +87,7 @@ export function UnitDetailWorkspace() {
 function ConversationCard({ serialUnitId }: { serialUnitId: number }) {
   const [open, setOpen] = useState(false);
   return (
-    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       {/* ds-raw-button: full-width card-header disclosure toggle, not a Button action */}
       <button
         type="button"

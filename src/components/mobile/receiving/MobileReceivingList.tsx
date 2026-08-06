@@ -21,10 +21,12 @@ import {
   groupReceivingEntries,
   type ReceivingFeedEntry,
 } from '@/components/mobile/receiving/receiving-feed-entries';
+import { MobileArrivalDetailsSheet } from '@/components/mobile/receiving/MobileArrivalDetailsSheet';
 import { MobileCartonSheet } from '@/components/mobile/receiving/MobileCartonSheet';
 import { MobileReceivingFeedGallery } from '@/components/mobile/receiving/MobileReceivingFeedGallery';
 import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
+import { mobileArrivalPhotosThenClassifyHref } from '@/lib/receiving/arrival-mobile-flow';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface ApiResponse {
@@ -50,8 +52,8 @@ const queryKeyForSurface = (surface: 'triage' | 'unbox') =>
 /**
  * Mobile receiving surface — single scrollable list of receiving lines, newest
  * pinned at the bottom in an expanded card, older rows as compact pills. Tap a
- * row to open MobileCartonSheet; the expanded card's camera CTA jumps to the
- * capture route.
+ * row to open a sheet: Arrival triage opens editable Platform · Type · Priority;
+ * Unbox opens MobileCartonSheet. The expanded card's camera CTA jumps to capture.
  *
  * `surface` selects which desktop rail this feed mirrors:
  *   • triage — door-scanned cartons awaiting unbox (package photos)
@@ -162,16 +164,25 @@ export function MobileReceivingList({
   const closeFeedGallery = useCallback(() => setFeedGalleryReceivingId(null), []);
   const buildPhotoHrefs = useCallback((row: ReceivingLineRow) => {
     const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').toString().trim();
-    return receivingLinePhotoHrefs({
+    const hrefs = receivingLinePhotoHrefs({
       receivingId: row.receiving_id,
       lineId: row.id,
       itemName: row.item_name,
       sku: row.sku,
       zohoItemId: row.zoho_item_id,
       poRef: poValue || undefined,
-      back: '/m/receiving',
+      back: surface === 'triage' ? '/m/triage' : '/m/receiving',
     });
-  }, []);
+    if (surface !== 'triage' || row.receiving_id == null) return hrefs;
+    return {
+      ...hrefs,
+      // Arrival recent rows resume the same label → box → classify flow as a
+      // fresh scan; never fall through to the generic unbox-carton camera.
+      captureHref: mobileArrivalPhotosThenClassifyHref(row.receiving_id, {
+        title: row.tracking_number,
+      }),
+    };
+  }, [surface]);
 
   // Bottom-anchored feed: rows are oldest→newest, so the last one is the
   // bottom-most (newest) line — the only row that renders the big photo display.
@@ -199,7 +210,9 @@ export function MobileReceivingList({
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">No packages yet</p>
             <p className="max-w-[260px] text-role-caption font-semibold text-text-soft">
-              Scan a tracking number on the desktop to drop one in here.
+              {surface === 'triage'
+                ? 'Scan a tracking number below to start an arrival.'
+                : 'Scan a tracking number on the desktop to drop one in here.'}
             </p>
           </div>
         }
@@ -212,12 +225,20 @@ export function MobileReceivingList({
         }
       />
 
-      <MobileCartonSheet
-        row={liveSheetRow}
-        staffId={staffId}
-        open={sheetRow != null}
-        onClose={closeSheet}
-      />
+      {surface === 'triage' ? (
+        <MobileArrivalDetailsSheet
+          row={liveSheetRow}
+          open={sheetRow != null}
+          onClose={closeSheet}
+        />
+      ) : (
+        <MobileCartonSheet
+          row={liveSheetRow}
+          staffId={staffId}
+          open={sheetRow != null}
+          onClose={closeSheet}
+        />
+      )}
 
       <MobileReceivingFeedGallery
         receivingId={feedGalleryReceivingId}

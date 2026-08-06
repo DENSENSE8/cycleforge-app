@@ -133,22 +133,31 @@ test('item scope and the line id travel together, both ways', () => {
   }
 });
 
-test('both unbox lanes give the desktop an item-evidence surface', () => {
-  // The regression this pins: the mode existed in the docblock and nowhere else,
-  // so a bench operator could not upload an item photo at all. Matched PO lines
-  // and unfound/return lines are separate lanes and each needs its own mount —
-  // the exception lane needs the evidence MORE, not less.
+test('PO-line body does not mount an item camera (condition · serial only)', () => {
+  // Main Unbox / unmatched accordion paint condition · serial on the active
+  // line; item capture lives on the Units explosion display (and phone).
   for (const lane of [
     'components/receiving/workspace/line-edit/LinePoItemsSection.tsx',
     'components/receiving/workspace/unmatched-items/UnmatchedAccordionSurface.tsx',
   ]) {
     const mounts = MOUNTS.filter((m) => m.file === lane);
-    assert.ok(mounts.length > 0, `${lane}: expected a ReceivingPhotoButton mount`);
-    assert.ok(
-      mounts.some(itemScope),
-      `${lane}: the active line's item camera must mount with photoStage="unbox_item"`,
+    assert.equal(
+      mounts.length,
+      0,
+      `${lane}: active-line body must not mount ReceivingPhotoButton (found ${mounts.length})`,
     );
   }
+});
+
+test('Units explosion mounts the desktop item camera', () => {
+  const mounts = MOUNTS.filter(
+    (m) => m.file === 'components/receiving/workspace/UnitsExplosionDisplay.tsx',
+  );
+  assert.ok(mounts.length > 0, 'UnitsExplosionDisplay must mount ReceivingPhotoButton');
+  assert.ok(
+    mounts.some(itemScope),
+    'Units explosion item camera must use photoStage="unbox_item"',
+  );
 });
 
 test('no unbox-bench mount can stamp arrival evidence', () => {

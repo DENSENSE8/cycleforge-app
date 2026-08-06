@@ -22,7 +22,7 @@
  * these take the base type — no generics needed.
  */
 
-import { gridFrozenKeys } from './grid-column-editability';
+import { gridFrozenKeys, isGridColumnFillTrack } from './grid-column-editability';
 
 /**
  * Structural, dependency-free by design. Typing these against the concrete
@@ -94,9 +94,19 @@ export function gridColumnTrackRem(column: TrackLike): number {
  *
  * Pass `label` when the caller overrides it at runtime; otherwise the column's
  * own `gridLabel ?? label ?? key` is used.
+ *
+ * **A flex (`1fr`) column is exempt from the width gates.** Its `minmax(Xrem, 1fr)`
+ * FLOOR is not its rendered width — a flex track is the surface's slack absorber,
+ * so it renders at its 1fr share (wide) and only reaches the floor in the rare,
+ * transient state where the sheet is scrolling horizontally. Measuring the floor
+ * therefore understates the column and wrongly degrades a wide title (Product) to
+ * a type glyph — exactly what happened when Product's floor was lowered to 4rem as
+ * a resize-drain target while its label-fit stayed 8rem. A flex column always
+ * shows its label; `headerGlyphOnly` still wins first for a deliberately mute track.
  */
 export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolean {
   if (column.headerGlyphOnly) return false;
+  if (isFlexTrack(column)) return true;
   const trackRem = gridColumnTrackRem(column);
   if (trackRem < (column.labelFitRem ?? 4.5)) return false;
   return gridHeaderLabelFits(trackRem, label ?? column.gridLabel ?? column.label ?? column.key);
@@ -105,6 +115,44 @@ export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolea
 /** Sum of the visible tracks' rem floors — the surface's h-scroll activation width. */
 export function gridContentMinWidthRem(columns: readonly TrackLike[]): number {
   return columns.reduce((sum, c) => sum + gridColumnTrackRem(c), 0);
+}
+
+interface KeyedTrackLike extends TrackLike {
+  key: string;
+}
+
+/**
+ * Live content-min width in px — SoT rem floors, with persisted drag-resize px
+ * overrides replacing the rem for that track.
+ *
+ * `--cf-orders-grid-w` used to publish only the rem sum, so a staffer who
+ * widened Product past the card left the row border-box viewport-wide while
+ * `scrollWidth` grew; ResizeObserver never fired and the sticky X gutter
+ * stayed collapsed. Fill / `1fr` floors that parse to `0rem` still add 0.
+ */
+export function gridContentMinWidthPx(
+  columns: readonly KeyedTrackLike[],
+  widths: Readonly<Record<string, number>> = {},
+  remPx = 16,
+): number {
+  return columns.reduce((sum, c) => {
+    // Trailing `_fill` absorbs slack — never part of the scroll activation floor.
+    if (isGridColumnFillTrack(c)) return sum;
+    const override = widths[c.key];
+    if (typeof override === 'number' && Number.isFinite(override) && override > 0) {
+      return sum + override;
+    }
+    return sum + gridColumnTrackRem(c) * remPx;
+  }, 0);
+}
+
+/**
+ * Rem length scaled by spreadsheet / compact density (`--cf-density`).
+ * Zoom hosts set the same var (see {@link gridZoomStyle}); default `1` leaves
+ * SoT rem floors unchanged. Staff px overrides (`--cf-col-*`) stay absolute.
+ */
+export function densityScaledRem(rem: number): string {
+  return `calc(${rem}rem * var(--cf-density, 1))`;
 }
 
 /**
@@ -121,8 +169,8 @@ export function gridContentMinWidthRem(columns: readonly TrackLike[]): number {
  * the slack.
  *
  * So for a flex column the override sets its **floor**, not its width:
- * `minmax(var(--cf-col-KEY, 12rem), 1fr)`. Fixed tracks are unchanged — they
- * still take the var wholesale, so their drags stay exact to the pixel.
+ * `minmax(var(--cf-col-KEY, calc(Nrem * var(--cf-density, 1))), 1fr)`. Fixed
+ * tracks take the var wholesale (px drag) or a density-scaled rem floor.
  *
  * The trade, stated: dragging the fill column narrower than its 1fr share has
  * no visible effect while the grid still fits its card — there is no free space
@@ -132,11 +180,12 @@ export function gridContentMinWidthRem(columns: readonly TrackLike[]): number {
  */
 export function gridTemplate(columns: readonly (TrackLike & { key: string })[]): string {
   return columns
-    .map((c) =>
-      isFlexTrack(c)
-        ? `minmax(var(${gridColVar(c.key)}, ${gridColumnTrackRem(c)}rem), 1fr)`
-        : `var(${gridColVar(c.key)}, ${c.width})`,
-    )
+    .map((c) => {
+      const floor = densityScaledRem(gridColumnTrackRem(c));
+      return isFlexTrack(c)
+        ? `minmax(var(${gridColVar(c.key)}, ${floor}), 1fr)`
+        : `var(${gridColVar(c.key)}, ${floor})`;
+    })
     .join(' ');
 }
 
@@ -195,7 +244,9 @@ export function gridFrozenLeft(columns: readonly FrozenTrackLike[], key: string)
   const parts = [GRID_ROW_PX];
   for (const k of frozen.slice(0, Math.max(0, idx))) {
     const col = columns.find((c) => c.key === k);
-    parts.push(`var(${gridColVar(k)}, ${col ? `${gridColumnTrackRem(col)}rem` : '0px'})`);
+    parts.push(
+      `var(${gridColVar(k)}, ${col ? densityScaledRem(gridColumnTrackRem(col)) : '0px'})`,
+    );
   }
   return `calc(${parts.join(' + ')})`;
 }

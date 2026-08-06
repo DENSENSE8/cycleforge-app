@@ -18,6 +18,7 @@ import {
   filterTechRecordRailRows,
   getTechRecordStatusDot,
   getTechRecordStatusDotLabel,
+  techRecordRailTitle,
   techRecordToRailVM,
 } from '@/components/station/tech-record-rail-vm';
 import {
@@ -26,12 +27,19 @@ import {
   techRecordRailId,
   techRecordToPreviewOrder,
 } from './shipping-rail-shared';
+import {
+  EMPTY_STATION_HISTORY_RAIL_FACETS,
+  matchesStationHistoryRailFacets,
+  type StationHistoryRailFacets,
+} from '@/components/sidebar/rail-shell/StationHistoryRailFilters';
 
 interface Props {
   /** Signed-in TECH station operator. */
   techId: string;
   /** Client-side filter over the loaded history rows. */
   filterText?: string;
+  /** Platform facet keep-filter (account_source). */
+  facets?: StationHistoryRailFacets;
 }
 
 const SHIPPING_HISTORY_LIMIT = 25;
@@ -73,7 +81,11 @@ function HistoryRowMain({
   return <RailRowBody className="flex-1" vm={techRecordToRailVM(row)} />;
 }
 
-export function ShippingStaffScanHistoryRail({ techId, filterText = '' }: Props) {
+export function ShippingStaffScanHistoryRail({
+  techId,
+  filterText = '',
+  facets = EMPTY_STATION_HISTORY_RAIL_FACETS,
+}: Props) {
   const trimmedFilter = filterText.trim();
   const selectedOrderId = useScanHistorySelection();
 
@@ -87,8 +99,11 @@ export function ShippingStaffScanHistoryRail({ techId, filterText = '' }: Props)
     [rawRecords],
   );
   const filteredRecords = useMemo(
-    () => filterTechRecordRailRows(records, trimmedFilter),
-    [records, trimmedFilter],
+    () =>
+      filterTechRecordRailRows(records, trimmedFilter).filter((row) =>
+        matchesStationHistoryRailFacets(row.account_source, facets),
+      ),
+    [records, trimmedFilter, facets],
   );
   const recordsVersion = useMemo(
     () => records.map((row) => `${getTechRecordRowKey(row)}:${row.updated_at ?? row.created_at}`).join('|'),
@@ -131,6 +146,18 @@ export function ShippingStaffScanHistoryRail({ techId, filterText = '' }: Props)
       }}
       getStatusDot={getTechRecordStatusDot}
       getStatusDotLabel={getTechRecordStatusDotLabel}
+      getCollapsePinLabel={techRecordRailTitle}
+      getCollapsePinMeta={(row) => {
+        const trk = String(row.shipping_tracking_number || '').trim();
+        if (trk) return trk;
+        const sku = String(row.sku || '').trim();
+        return sku || null;
+      }}
+      getCollapsePinFacts={(row) => [
+        { tone: 'order', value: String(row.order_id || '') },
+        { tone: 'tracking', value: String(row.shipping_tracking_number || '') },
+        { tone: 'sku', value: String(row.sku || '') },
+      ]}
       renderRowMain={(row, ctx) => <HistoryRowMain row={row} ctx={ctx} />}
     />
   );

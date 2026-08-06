@@ -9,16 +9,16 @@ import {
 import {
   OrderIdChip,
   SkuScanRefChip,
-  TrackingChip,
   SerialChip,
   getLast8,
 } from '@/components/ui/CopyChip';
+import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-/** Matches {@link InlinePillPicker} collapsed shell — read-only status pills in the carton bar. */
+/** Matches {@link InlinePillPicker} collapsed shell — flush square in the carton bar. */
 const RAIL_PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-role-micro uppercase tracking-wide';
+  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-2.5 text-role-micro uppercase tracking-wide';
 const RAIL_PICKUP_TONE = 'border-emerald-600 bg-emerald-600 text-white';
 
 export type FulfillmentPickupPillVariant = 'chip' | 'rail';
@@ -26,7 +26,7 @@ export type FulfillmentPickupPillVariant = 'chip' | 'rail';
 /**
  * Non-copy pickup indicator for the tracking slot.
  * - `chip` (default) — ring badge for table columns, popovers, dense rows.
- * - `rail` — solid h-8 pill aligned with InlinePillPicker in CartonContextCard.
+ * - `rail` — solid h-8 flush square aligned with InlinePillPicker in CartonContextCard.
  */
 export function FulfillmentPickupPill({
   dense,
@@ -107,6 +107,11 @@ export interface ReceivingIdentityChipsProps {
    * empty tracking slot. Ignored when a tracking value is present or row is pickup.
    */
   trackingAction?: React.ReactNode;
+  /**
+   * Filled-tracking menu → Edit. Host opens the record inspector. When omitted,
+   * the menu still offers Open (carrier page) for a filled value.
+   */
+  onEditTracking?: () => void;
 }
 
 export function ReceivingIdentityChips({
@@ -123,6 +128,7 @@ export function ReceivingIdentityChips({
   className = 'flex flex-wrap items-center gap-1.5',
   dense = false,
   trackingAction,
+  onEditTracking,
 }: ReceivingIdentityChipsProps) {
   const poValue = (po || '').trim();
   const skuValue = (sku || '').trim();
@@ -138,7 +144,16 @@ export function ReceivingIdentityChips({
       ? <FulfillmentPickupPill dense={dense} />
       : !trackingValue && trackingAction
         ? trackingAction
-        : null;
+        : trackingValue
+          ? (
+              <TrackingNumberMenuChip
+                value={trackingValue}
+                carrierHint={row?.carrier}
+                plain={dense}
+                onEdit={onEditTracking}
+              />
+            )
+          : null;
   const serialsValue = (serialsCsv || '').trim();
   // Dense columns sized for last-8 mono so the full PO·SKU·tracking·serial set
   // stays on one line in a phone row.
@@ -146,8 +161,6 @@ export function ReceivingIdentityChips({
   const trackCol = dense ? 'w-[80px]' : CHIP_COL.tracking;
   const serialCol = dense ? 'w-[80px]' : CHIP_COL.serial;
 
-  // Last-8 only — matches PO / SKU / serial chips; full value still copies.
-  const trackingDisplay = getLast8(trackingValue);
   if (asColumns) {
     const columns: ChipColumn[] = [];
     if (includePo) {
@@ -160,9 +173,7 @@ export function ReceivingIdentityChips({
       columns.push({
         key: 'tracking',
         width: trackCol,
-        node:
-          trackingNode ??
-          (isPickup ? null : <TrackingChip value={trackingValue} display={trackingDisplay} dense={dense} />),
+        node: trackingNode,
       });
     }
     if (includeSerial) {
@@ -175,9 +186,7 @@ export function ReceivingIdentityChips({
     <div className={className}>
       {includePo && <OrderIdChip value={poValue} display={getLast8(poValue)} dense={dense} />}
       {includeSku && <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} dense={dense} />}
-      {includeTracking &&
-        (trackingNode ??
-          (!isPickup ? <TrackingChip value={trackingValue} display={trackingDisplay} dense={dense} /> : null))}
+      {includeTracking && trackingNode}
       {includeSerial && <SerialChip value={serialsValue} dense={dense} />}
     </div>
   );

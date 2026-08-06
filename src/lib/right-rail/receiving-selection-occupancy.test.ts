@@ -43,5 +43,6 @@ test('Unbox/History lines: any non-empty set batches (no compare)', () => {
 
 test('occupant ids are mode-stable — never fold a record id in', () => {
   assert.equal(RECEIVING_RAIL_OCCUPANT_ID.inspect, 'detail:incoming');
+  assert.equal(RECEIVING_RAIL_OCCUPANT_ID.historyInspect, 'detail:history');
   assert.equal(RECEIVING_RAIL_OCCUPANT_ID.attention, 'detail:receiving-line-batch');
 });

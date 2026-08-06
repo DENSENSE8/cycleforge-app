@@ -6,42 +6,52 @@
  * Carton-context parity ({@link IdentityLinkChip} tracking slot):
  *   • Chip click = copy (via {@link TrackingOrSkuScanChip})
  *   • Hover → white menu below: **Open** (carrier page) · **Edit** (host opens
- *     the order-inspector replace flow)
+ *     the record inspector / replace flow)
  *   • Dense uppercase verbs + ExternalLink / Pencil — same face as Unbox
  *
- * Orders identity cluster ({@link OrderIdentityChips}) is the sole consumer today;
- * receiving TRACK cells stay plain {@link TrackingChip}.
+ * Used by order identity, Incoming / Receiving LedgerGrid TRACK cells, and
+ * {@link ReceivingIdentityChips}. Plain {@link TrackingChip} remains for
+ * read-only / non-grid surfaces.
  */
 
 import { ExternalLink, Pencil } from '@/components/Icons';
 import { TrackingOrSkuScanChip } from '@/components/ui/CopyChip';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
-import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
+import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
 
 interface TrackingNumberMenuChipProps {
   value: string;
+  /**
+   * Authoritative carrier from the shipment / label (STN `carrier_code`,
+   * inbound `row.carrier`). Prefer over regex detect for Open.
+   */
+  carrierHint?: string | null;
   /** Quiet icon-less face for Sheets-like grids whose header already labels TRACK. */
   plain?: boolean;
   /**
-   * Opens the host's replace-tracking flow (order inspector + auto-start editor).
+   * Opens the host's edit / replace flow (order inspector, inbound details, …).
    * Omit to hide the Edit menu row — never clipboard-steals.
    */
-  onReplaceTracking?: () => void;
+  onEdit?: () => void;
   onMenuOpenChange?: (open: boolean) => void;
+  /** When false, omit the leading MapPin / CarrierMark (grid column already labeled TRACK). */
+  showIcon?: boolean;
+  /** Caption-mono face for LedgerGrid Sheets body (never raw text-sm). */
+  dense?: boolean;
 }
 
 export function TrackingNumberMenuChip({
   value,
+  carrierHint = null,
   plain = false,
-  onReplaceTracking,
+  onEdit,
   onMenuOpenChange,
+  showIcon,
+  dense = false,
 }: TrackingNumberMenuChipProps) {
   const raw = String(value || '').trim();
-  // Same fallback as TrackingNumberRow / carton: known carrier URL, else a
-  // tracking-number web search so Open is never a dead row on a filled chip.
-  const trackingUrl = raw
-    ? (getTrackingUrl(raw) ?? getTrackingUrlByCarrier(raw, ''))
-    : null;
+  // Stored/label carrier → pattern detect → official deep link (never Google).
+  const trackingUrl = raw ? resolveTrackingOpenUrl(raw, carrierHint) : null;
 
   const items: CopyChipHoverMenuItem[] = [];
 
@@ -57,18 +67,25 @@ export function TrackingNumberMenuChip({
     },
   });
 
-  if (onReplaceTracking) {
+  if (onEdit) {
     items.push({
       id: 'edit-trk',
       label: 'Edit',
       icon: <Pencil />,
-      onSelect: () => onReplaceTracking(),
+      onSelect: () => onEdit(),
     });
   }
 
   // No Edit and no usable Open → plain chip (copy + dark full-value tooltip).
-  if (!onReplaceTracking && !trackingUrl) {
-    return <TrackingOrSkuScanChip value={value} plain={plain} />;
+  if (!onEdit && !trackingUrl) {
+    return (
+      <TrackingOrSkuScanChip
+        value={value}
+        plain={plain || showIcon === false}
+        dense={dense}
+        carrierHint={carrierHint}
+      />
+    );
   }
 
   return (
@@ -78,7 +95,12 @@ export function TrackingNumberMenuChip({
       denseLabel
       onOpenChange={onMenuOpenChange}
     >
-      <TrackingOrSkuScanChip value={value} plain={plain} />
+      <TrackingOrSkuScanChip
+        value={value}
+        plain={plain || showIcon === false}
+        dense={dense}
+        carrierHint={carrierHint}
+      />
     </CopyChipHoverMenu>
   );
 }

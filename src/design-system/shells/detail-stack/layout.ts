@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Shared layout tokens — one place to tune inset / width / header offset. */
@@ -95,11 +96,10 @@ export const DETAIL_STACK_ASIDE_SURFACE =
  *
  * - **The card itself is the element that tweens its width**, not an
  *   `overflow-hidden` host wrapping a fixed-width absolute child (the spine's
- *   shape in `SidebarNavColumn`). The leading resize grip renders *outside* the
- *   card (`HorizontalEdgeResizeHandle` `placement="outset"`), so a clipping host
- *   would shear it. `ContextPanelLayout` solved exactly this on the left edge by
- *   animating the card at `overflow-visible` with an inner clip shell — this is
- *   that recipe mirrored, not a second drawer.
+ *   shape in `SidebarNavColumn`). The leading resize grip is
+ *   `placement="inset"` — hit sash inside the card, 1px paint on this
+ *   `border-l` seam (the display hairline). Nothing hangs into the work
+ *   surface. Left context rail still uses `outset` on its trailing edge.
  * - **Flat elevation + leading hairline** against the sunken/canvas center —
  *   outer `m-*` islands and cast shadows are not depth (source-of-truth → Depth
  *   elevation · Frame column budget).
@@ -116,6 +116,38 @@ export const DETAIL_STACK_PUSH_COLUMN_CLASS = cn(
  */
 export const DETAIL_STACK_PUSH_STRIP_CLASS =
   'relative flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card pt-3';
+
+/**
+ * Right-rail **industrial flush** body host (Cybertruck / WMS instrument plane).
+ *
+ * The single flush contract for a Station **Displays** push-column body (Unbox
+ * golden · Arrival · Testing) and any right-edge occupant that mounts reference
+ * tools. It carries **NO default horizontal inset** — the column IS the card, so
+ * depth comes from surface steps + the `border-l` seam, never an outer `px-*`
+ * gutter that every occupant then has to cancel with `-mx-4`.
+ *
+ * Chrome rows (the SpaceX topic plate, nested verb strips) sit edge-to-edge for
+ * free. Body content that genuinely needs a readable gutter opts into
+ * {@link DISPLAYS_BODY_INSET} on its own rows — it is **never** the host's job
+ * and **never** a second nested card wrapper.
+ *
+ * Ruled 2026-08-05: this inverts the legacy `px-4` push host + ad-hoc `-mx-4`
+ * cancel dance. The four-edge topic-plate handoff already pointed at this as the
+ * proper remediation ("restructure so the strip is outside the `px-4` host").
+ */
+export const DISPLAYS_FLUSH_HOST = cn(
+  'flex h-full min-h-0 flex-col overflow-hidden px-0 pt-0',
+  cornerClass('flush'),
+);
+
+/**
+ * Opt-in readable gutter for right-rail body **content rows** under
+ * {@link DISPLAYS_FLUSH_HOST}. Use on a text cluster / list row that would jam
+ * to the column edge — never on the host, never as a second card wrapper, and
+ * never on a chrome row that should read edge-to-edge (plate, verb strip). This
+ * is the "rows own their gutter" grammar the flush claim column already ships.
+ */
+export const DISPLAYS_BODY_INSET = 'px-4';
 
 /** Default detail stack — panel band (`z-panel`). */
 export const detailStackAsideClassName = `fixed z-panel ${DETAIL_STACK_ASIDE_SURFACE}`;

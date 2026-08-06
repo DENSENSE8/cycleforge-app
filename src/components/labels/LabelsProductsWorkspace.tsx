@@ -11,8 +11,8 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { cn } from '@/utils/_cn';
@@ -96,22 +96,23 @@ export function LabelsProductsWorkspace() {
       <DashboardScrollShell
         className={cn('h-full', tab === 'print' || tab === 'history' ? 'overflow-hidden' : undefined)}
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <LabelsProductsWorkspaceHeader
               tab={tab}
               onSelectTab={handleSelectTab}
               search={tab === 'history' ? historyDraft : catalogQuery}
               onSearch={tab === 'history' ? setHistoryDraft : handleCatalogSearch}
               onHistorySubmit={handleHistorySubmit}
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
             />
           </div>
         }
       >
         <div
           className={cn(
-            WORKBENCH_BODY_COLUMN,
-            'flex min-h-0 flex-1 flex-col',
-            (tab === 'print' || tab === 'history') && 'h-full overflow-hidden pt-3 pb-4',
+            WORKBENCH_SHEET_HOST,
+            'px-3 pt-3',
+            (tab === 'print' || tab === 'history') && 'h-full overflow-hidden pb-4',
           )}
         >
           {tab === 'print' ? (
@@ -124,7 +125,7 @@ export function LabelsProductsWorkspace() {
               >
                 <ProductCatalogList query={catalogQuery} onPick={handleProductPick} />
               </div>
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none border border-border-soft bg-surface-card">
                 <MultiSkuSnBarcode />
               </div>
             </div>

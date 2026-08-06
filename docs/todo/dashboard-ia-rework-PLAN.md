@@ -1,5 +1,7 @@
 # `/dashboard` IA rework — validated plan
 
+> **Amend 2026-08-05:** X9(a) / Phase 1.3 “one order shell” means one **durable** record (`/o`). Search feedback is an allowed sibling (`SearchOrderFeedback` via `searchHitHref('ORDER')` → `/search?sel=order:…`). Do not re-embed `OrderRecordBody` in search.
+
 **Status: Phases 1–3 SHIPPED 2026-07-29** (uncommitted, browser-verified). **The plan is not
 finished.**
 

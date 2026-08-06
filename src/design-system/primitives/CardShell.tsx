@@ -114,9 +114,9 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
   } ${showActiveBorder ? border.active : `${border.idle} hover:${border.active}`}`;
 
   const desktopFramedClasses = isSelected
-    // Selected: rounded ring, soft lift, tinted bg. Slight vertical margin so
+    // Selected: flush ring, soft lift, tinted bg. Slight vertical margin so
     // the ring doesn't get clipped by neighbouring rows' separators.
-    ? `relative cursor-pointer rounded-xl px-0 py-3 my-1 transition-all ${selected.bg} ring-2 ring-inset ${selected.ring} shadow-[0_1px_2px_rgba(16,185,129,0.10),0_4px_12px_-4px_rgba(16,185,129,0.15)]`
+    ? `relative cursor-pointer rounded-none px-0 py-3 my-1 transition-all ${selected.bg} ring-2 ring-inset ${selected.ring} shadow-[0_1px_2px_rgba(16,185,129,0.10),0_4px_12px_-4px_rgba(16,185,129,0.15)]`
     // Idle: continues to act as a row in the stack — bottom separator + hover.
     : `relative cursor-pointer px-0 py-3 transition-colors bg-surface-card border-b-2 ${border.idle} hover:${border.active}`;
 
@@ -132,7 +132,7 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
   // (`bg-blue-50 ring-1 ring-inset ring-blue-400`), tone is ignored. Tighter
   // padding than `linear` to match `RailRow`; hover is bg-only so neighbours
   // never shift.
-  const desktopRailClasses = `relative cursor-pointer rounded-md px-2 py-1.5 transition-colors ${
+  const desktopRailClasses = `relative cursor-pointer rounded-none px-2 py-1.5 transition-colors ${
     isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'bg-surface-card hover:bg-surface-hover'
   }`;
 

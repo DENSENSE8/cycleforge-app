@@ -156,7 +156,7 @@ function LiveSidebar() {
           {kpis.map((k) => {
             const cell = data?.summary?.[k.key];
             return (
-              <div key={k.key} className="rounded-xl border border-border-soft bg-surface-card p-2.5">
+              <div key={k.key} className="rounded-none border border-border-soft bg-surface-card p-2.5">
                 <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{k.label}</p>
                 <p className={cn('mt-0.5 text-xl font-semibold tabular-nums leading-none', k.tone)}>
                   {cell ? cell.value.toLocaleString() : isLoading ? '·' : '0'}
@@ -231,7 +231,7 @@ function AnalyticsSidebar() {
                 onClick={() => setParam('range', r)}
                 /* ds-raw-button: vertical segmented time-range toggle (selection ring) — not a Button shape */
                 className={cn(
-                  'ds-raw-button flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-role-caption font-semibold transition-colors',
+                  'ds-raw-button flex items-center justify-between rounded-none border px-3 py-1.5 text-left text-role-caption font-semibold transition-colors',
                   range === r
                     ? 'border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
                     : 'border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover',
@@ -254,7 +254,7 @@ function AnalyticsSidebar() {
                   onClick={() => setParam('section', s.id)}
                   /* ds-raw-button: jump-to nav row (icon + label, selection ring) — not a Button shape */
                   className={cn(
-                    'ds-raw-button flex w-full items-center gap-2 rounded-lg inset-cozy text-left text-role-caption font-semibold transition-colors',
+                    'ds-raw-button flex w-full items-center gap-2 rounded-none inset-cozy text-left text-role-caption font-semibold transition-colors',
                     activeSection === s.id
                       ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
                       : 'text-text-muted hover:bg-surface-hover',
@@ -302,7 +302,7 @@ function InsightsSidebar() {
 
         <div className="flex flex-col gap-2.5">
           {INSIGHTS_CAPABILITIES.map((c) => (
-            <div key={c.title} className="rounded-xl border border-border-soft bg-surface-card p-3">
+            <div key={c.title} className="rounded-none border border-border-soft bg-surface-card p-3">
               <div className="flex items-center gap-2 text-text-default">
                 <c.icon className="h-4 w-4 text-blue-500" />
                 <p className="text-role-caption font-semibold tracking-tight">{c.title}</p>
@@ -321,7 +321,7 @@ function InsightsSidebar() {
                 type="button"
                 onClick={() => emitAiChatPrompt(p)}
                 /* ds-raw-button: multi-line text-left prompt suggestion card — not a Button shape */
-                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card inset-field text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                className="ds-raw-button rounded-none border border-border-soft bg-surface-card inset-field text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
               >
                 {p}
               </button>
@@ -343,7 +343,7 @@ const SIGNALS_WINDOWS: Array<{ id: string; label: string; days: number | null }>
 ];
 
 const SIGNALS_FILTER_SELECT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-muted focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400';
+  'w-full rounded-none border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-muted focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400';
 
 function SignalsSidebar() {
   const router = useRouter();

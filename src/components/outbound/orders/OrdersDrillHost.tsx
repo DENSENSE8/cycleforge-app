@@ -3,8 +3,8 @@
 /**
  * To-ship Orders drill — thin adapter over {@link LedgerDrillHost}.
  *
- * Pending scaffold: parent map = order groups; child = lines for the selected
- * order. List mode stays the classic single {@link OrdersGridView}.
+ * Parent map = order groups (the only place multi-line rollups show); child =
+ * flat lines for the selected order. List mode is a single flat {@link OrdersGridView}.
  */
 
 import { useCallback, useMemo, type ReactNode } from 'react';
@@ -90,9 +90,12 @@ function parentMeta(rows: ShippedOrder[]): ReactNode {
 export function OrdersDrillHost({
   selectMode = false,
   className,
+  columnTriggerPortalTarget = null,
 }: {
   selectMode?: boolean;
   className?: string;
+  /** Band-3 controls slot for the child lines grid's column-display (▦) trigger. */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? '';
@@ -222,6 +225,7 @@ export function OrdersDrillHost({
         queueMode="fulfillment"
         ariaLabel="Order lines"
         data-testid="orders-drill-children"
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
     </LedgerDrillHost>
   );

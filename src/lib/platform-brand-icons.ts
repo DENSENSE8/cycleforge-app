@@ -9,10 +9,12 @@
  *   • eBay / AliExpress / Walmart / Shopify / Square — Simple Icons v15
  *     (https://github.com/simple-icons/simple-icons), CC0-1.0 path data.
  *   • Amazon / FBA / Goodwill / ECWID-RS / Other — Cycle Forge originals
- *     (ops silhouettes; no scraped favicons, no trademark lockups).
+ *     (ops silhouettes for monochrome `icon` paths).
  *
- * Amazon's mark was removed from Simple Icons on a trademark request — do not
- * vendor their smile/"a" glyph. Use the carton silhouette instead.
+ * Amazon smile/"a" brand tile: `public/icons/platforms/amazon.png` (108×108).
+ * Wire via `SourcePlatformMeta.tileSrc` + `PlatformMark preferBrandTile`
+ * (carton listing + `GridPlatformMarkValue` data sheets). Glyph-only callers
+ * keep the carton silhouette path below.
  */
 
 /** Shared canvas for every platform mark. */

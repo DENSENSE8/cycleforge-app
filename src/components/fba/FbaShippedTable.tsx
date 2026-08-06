@@ -274,7 +274,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
   return (
     <div className={embedded ? 'flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-card' : 'flex min-h-0 flex-1 flex-col bg-surface-card'}>
       {error ? (
-        <div className="mx-3 my-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700">
+        <div className="mx-3 my-2 rounded-none border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700">
           {error}
         </div>
       ) : null}
@@ -379,7 +379,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
                           {(itemsByShipment[row.id] || []).map((item) => (
                             <div
                               key={item.id}
-                              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border-hairline bg-surface-canvas px-2 py-2"
+                              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-none border border-border-hairline bg-surface-canvas px-2 py-2"
                             >
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">

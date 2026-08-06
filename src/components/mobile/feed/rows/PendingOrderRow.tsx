@@ -1,6 +1,6 @@
 'use client';
 
-import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import { OrderIdChip, SkuScanRefChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { CaptureStackRow } from '@/design-system/components/capture-stack';
@@ -8,17 +8,17 @@ import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/componen
 import { orderRowQtyTone } from '@/lib/condition-tone';
 
 /**
- * Pending-order row for the mobile Picks feed — the phone view of the
- * dashboard `?pending=` table. Mirrors MobileReceivingRow / MobilePackingRow:
+ * Pending-order row for the mobile Picks / Checklists feeds — the phone view of
+ * the dashboard `?pending=` table. Mirrors MobileReceivingRow / MobilePackingRow:
  * same CaptureStackRow chrome + shared CopyChips, so all mobile displays share
  * one set of primitives.
  *
  *   Row 1: deadline-tone dot + product title
- *   Row 2: [qty • condition • days-late] … [order] [tracking]
+ *   Row 2: [qty • condition • days-late] … [item #?] [order] [tracking]
  *
- * Only order# + tracking chips: pending orders carry no SKU/serial context yet
- * (assigned after the pick). Deadline shows just the days-late number, tone-
- * coloured, exactly like the dashboard pending/orders queue.
+ * Default chips: order# + tracking. Pass `showItemNumber` for checklist queues
+ * where the marketplace item id is the filter key. Deadline shows just the
+ * days-late number, tone-coloured, exactly like the dashboard pending queue.
  */
 
 function deadlineOf(o: ShippedOrder): string | null {
@@ -39,16 +39,20 @@ export function PendingOrderRow({
   variant,
   fresh = false,
   onTap,
+  showItemNumber = false,
 }: {
   row: ShippedOrder;
   variant: 'collapsed' | 'expanded';
   fresh?: boolean;
   onTap: () => void;
+  /** Checklist queue: show marketplace item # beside order / tracking chips. */
+  showItemNumber?: boolean;
 }) {
   const productTitle = row.product_title || row.item_number || row.sku || 'Untitled order';
   const quantity = parseInt(String(row.quantity || '1'), 10) || 1;
   const orderId = (row.order_id || '').trim();
   const trackingValue = (row.shipping_tracking_number || '').trim();
+  const itemNumber = (row.item_number || '').trim();
 
   const daysLate = getDaysLateNullable(deadlineOf(row));
 
@@ -82,6 +86,9 @@ export function PendingOrderRow({
         />
 
         <div className="ml-auto flex min-w-0 items-center gap-2 pointer-events-auto">
+          {showItemNumber && itemNumber ? (
+            <SkuScanRefChip value={itemNumber} display={getLast8(itemNumber)} />
+          ) : null}
           {orderId && <OrderIdChip value={orderId} display={getLast8(orderId)} />}
           {trackingValue && <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />}
         </div>

@@ -8,8 +8,10 @@
  * provider is absent the hooks degrade gracefully — copy still works, there is
  * just no hover bubble.
  */
-import { MouseEvent, MutableRefObject, useCallback, useEffect, useId, useRef } from 'react';
+import { KeyboardEvent, MouseEvent, MutableRefObject, useCallback, useEffect, useId, useRef } from 'react';
 import { useSiteTooltipOptional } from '@/components/providers/SiteTooltipProvider';
+import { formatTrackingTooltipLabel } from '@/lib/carrier-brand';
+import { formatPlatformTooltipLabel } from '@/lib/source-platform';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 
@@ -84,10 +86,20 @@ export function useChipTooltip({
 export interface CopyChipBehavior extends ChipTooltipAnchor {
   /** Trimmed copy payload; `''` when the value is an empty-display sentinel. */
   normalizedValue: string;
+  /**
+   * Site-tooltip / native-title label — tracking includes carrier prefix
+   * (`FedEx 8751…`); id includes platform prefix (`eBay 08-…`) when known;
+   * equals {@link normalizedValue} otherwise.
+   */
+  tooltipLabel: string;
   canCopy: boolean;
   /** Disable the button only when copy is wanted but there is nothing to copy. */
   isDisabled: boolean;
   handleCopy: (e: MouseEvent<HTMLButtonElement>) => void;
+  /** ⌘/Ctrl+C while focused — copies the full value (not the truncated face). */
+  handleKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  /** Right-click — secondary copy (no browser menu); richer menus stay on hover SoTs. */
+  handleContextMenu: (e: MouseEvent<HTMLButtonElement>) => void;
   /** Show / refresh the site tooltip bubble (copy flash or external-link preview). */
   flashTooltip: () => void;
   /** Open the site tooltip without the copied flash (external-link preview). */
@@ -108,6 +120,8 @@ export function useCopyChip({
   historyKind,
   historyDisplay,
   tooltipAction = 'copy',
+  carrierHint = null,
+  platformLabel = null,
 }: {
   value: string | null | undefined;
   disableCopy?: boolean;
@@ -122,22 +136,38 @@ export function useCopyChip({
   historyDisplay?: string;
   /** Trailing icon in the hover bubble — external-link for open-in-tab chips. */
   tooltipAction?: 'copy' | 'external-link';
+  /**
+   * Authoritative carrier for tracking tooltips (`FedEx 8751…`). Same ladder as
+   * Open URL / {@link CarrierMark}. Ignored unless `historyKind === 'tracking'`.
+   */
+  carrierHint?: string | null;
+  /**
+   * Catalog-resolved platform display name for id tooltips (`eBay 08-…`).
+   * Ignored unless `historyKind === 'id'`.
+   */
+  platformLabel?: string | null;
 }): CopyChipBehavior {
   const normalizedValue = normalizeCopyText(value);
   const canCopy = !disableCopy && !!normalizedValue && normalizedValue !== '---';
   const isDisabled = !canCopy && !disableCopy;
+  const tooltipValue =
+    historyKind === 'tracking'
+      ? formatTrackingTooltipLabel(normalizedValue, carrierHint)
+      : historyKind === 'id'
+        ? formatPlatformTooltipLabel(normalizedValue, platformLabel)
+        : normalizedValue;
 
   const { anchorId, tooltipCtxRef, chipRef, ...tooltip } = useChipTooltip({
     enabled: !disableTooltip && !!normalizedValue && normalizedValue !== '---',
-    tooltipValue: normalizedValue,
+    tooltipValue,
     tooltipAction,
   });
 
   const getRect = useCallback(() => chipRef.current?.getBoundingClientRect() ?? null, [chipRef]);
 
   useEffect(() => {
-    tooltipCtxRef.current?.syncValueIfActive(anchorId, normalizedValue);
-  }, [canCopy, anchorId, normalizedValue, tooltipCtxRef]);
+    tooltipCtxRef.current?.syncValueIfActive(anchorId, tooltipValue);
+  }, [canCopy, anchorId, tooltipValue, tooltipCtxRef]);
 
   useEffect(() => {
     if (!canCopy) {
@@ -149,7 +179,7 @@ export function useCopyChip({
     if (disableTooltip || !tooltipCtxRef.current) return;
     const ctx = tooltipCtxRef.current;
     if (!ctx.isActiveAnchor(anchorId)) {
-      ctx.activate({ anchorId, value: normalizedValue, getRect, action: tooltipAction });
+      ctx.activate({ anchorId, value: tooltipValue, getRect, action: tooltipAction });
     }
     ctx.notifyCopied(anchorId);
   };
@@ -159,18 +189,35 @@ export function useCopyChip({
     if (!normalizedValue || normalizedValue === '---') return;
     tooltipCtxRef.current.activate({
       anchorId,
-      value: normalizedValue,
+      value: tooltipValue,
       getRect,
       action: tooltipAction,
     });
   };
 
-  const handleCopy = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    if (!canCopy) return;
-    navigator.clipboard.writeText(normalizedValue);
+  const performCopy = () => {
+    if (!canCopy) return false;
+    void navigator.clipboard.writeText(normalizedValue);
     recordCopy(normalizedValue, { kind: historyKind, display: historyDisplay });
     onCopy?.(normalizedValue);
+    return true;
+  };
+
+  const notifyCopiedUi = () => {
+    if (tooltipTrigger === 'click') {
+      flashTooltip();
+      return;
+    }
+    if (tooltipCtxRef.current?.isActiveAnchor(anchorId)) {
+      tooltipCtxRef.current.notifyCopied(anchorId);
+      return;
+    }
+    flashTooltip();
+  };
+
+  const handleCopy = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (!performCopy()) return;
     if (tooltipTrigger === 'click') {
       flashTooltip();
     } else if (tooltipCtxRef.current?.isActiveAnchor(anchorId)) {
@@ -178,5 +225,32 @@ export function useCopyChip({
     }
   };
 
-  return { ...tooltip, chipRef, normalizedValue, canCopy, isDisabled, handleCopy, flashTooltip, showTooltipPreview };
+  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'c') return;
+    if (!canCopy) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (performCopy()) notifyCopiedUi();
+  };
+
+  const handleContextMenu = (e: MouseEvent<HTMLButtonElement>) => {
+    if (!canCopy) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (performCopy()) notifyCopiedUi();
+  };
+
+  return {
+    ...tooltip,
+    chipRef,
+    normalizedValue,
+    tooltipLabel: tooltipValue,
+    canCopy,
+    isDisabled,
+    handleCopy,
+    handleKeyDown,
+    handleContextMenu,
+    flashTooltip,
+    showTooltipPreview,
+  };
 }

@@ -16,7 +16,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
   }, {});
 
   return (
-    <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+    <div className="rounded-none bg-surface-card border border-border-soft p-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className={sectionLabel}>
           <MapPin className="inline h-3 w-3 mr-1" />

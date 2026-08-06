@@ -7,6 +7,8 @@
 
 ---
 
+> **Superseded in part (2026-08-05).** Search order feedback is now `SearchOrderFeedback` (not `OrderRecordBody` / `ShippedDetailsPanel`). See `order-details-page-EXECUTION-PLAN.md` §1 and `AGENTS.md` → Order surfaces.
+
 ## 0. How to use this brief
 
 You do **not** have the codebase. Everything needed is embedded here: the measured current implementation, exact file inventory, the data model that exists (and the parts that don't), and the specific decisions that are blocked.

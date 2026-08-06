@@ -22,7 +22,7 @@ export function ManifestChip({ manifestUid, unitCount, dense = false, width }: M
 
   const display =
     unitCount != null && Number.isFinite(unitCount)
-      ? `${uid} · ${Math.max(0, Math.floor(unitCount))} ${unitCount === 1 ? 'unit' : 'units'}`
+      ? `${uid} · ${Math.max(0, Math.floor(unitCount))} units`
       : uid;
 
   return (
@@ -30,7 +30,6 @@ export function ManifestChip({ manifestUid, unitCount, dense = false, width }: M
       value={uid}
       display={display}
       icon={<Package className="h-4 w-4 shrink-0" />}
-      underlineClass="border-violet-500"
       iconClass="text-violet-600"
       truncateDisplay={false}
       width={width}

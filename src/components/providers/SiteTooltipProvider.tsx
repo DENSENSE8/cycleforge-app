@@ -265,7 +265,9 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
                 onLayoutAnimationComplete={handleLayoutAnimComplete}
                 transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                 style={{ overflow: 'hidden' }}
-                className="flex max-w-[min(90vw,24rem)] items-start gap-2 rounded-md bg-surface-inverse px-2.5 py-1.5 text-role-caption font-semibold text-white shadow-md"
+                // Match HoverTooltip chrome height: py-1 + items-center +
+                // leading-none so carrier/platform id bubbles read as one line.
+                className="flex max-w-[min(90vw,24rem)] items-center gap-1.5 rounded-md bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-none text-white shadow-md"
               >
                 <AnimatePresence mode="popLayout">
                   <motion.div
@@ -274,9 +276,9 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -3 }}
                     transition={{ duration: 0.12 }}
-                    className="flex items-start gap-2"
+                    className="flex items-center gap-1.5"
                   >
-                    <span className="font-mono whitespace-nowrap leading-tight">
+                    <span className="font-mono whitespace-nowrap leading-none">
                       {session.value}
                     </span>
                     {session.action === 'external-link' ? (

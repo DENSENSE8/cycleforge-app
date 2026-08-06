@@ -23,6 +23,11 @@ interface StagedQueueTableProps {
    * (default); read-only consumers (Labels-station Recent) pass `true`.
    */
   disableBackfill?: boolean;
+  /**
+   * Band-3 triage controls slot — Labels Recent portals ▦ here. Scan-out dock
+   * omits this (no Band-3 → card-corner hover fallback).
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 export function StagedQueueTable({
@@ -30,6 +35,7 @@ export function StagedQueueTable({
   onOpenOrder,
   onCloseOrder,
   disableBackfill = false,
+  columnTriggerPortalTarget = null,
 }: StagedQueueTableProps) {
   const queryClient = useQueryClient();
   const query = useQuery(stagedOrdersQuery({ searchQuery }));
@@ -86,6 +92,7 @@ export function StagedQueueTable({
         data-testid="staged-grid-body"
         onOpenRecord={(record) => onOpenOrder(record)}
         onCloseRecord={() => onCloseOrder()}
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
     </div>
   );

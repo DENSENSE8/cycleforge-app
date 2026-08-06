@@ -59,7 +59,7 @@ export function BoxMembershipHint({
  * A LABELED unit (has a minted `unit_uid`) reads emerald (the `serial`
  * CHIP_TONE); an UNLABELED unit reads muted gray — a glanceable "not printed
  * yet" cue. No invented colors. Shared by the testing multi-picker
- * (TestingSidebarPanel) and the receiving carton rollup (CartonUnitsRollup) so
+ * (TestingSidebarPanel) and the receiving carton units explosion so
  * the two never drift.
  */
 export function SerialPreviewStrip({

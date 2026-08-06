@@ -13,6 +13,8 @@ interface ReadyQueueTableProps {
   onRetry: () => void;
   /** True while a search or a non-`all` tab is narrowing the hits. */
   isFiltered?: boolean;
+  /** Portal target for the grid's column-display (▦) trigger (triage band slot). */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /**
@@ -31,6 +33,7 @@ export function ReadyQueueTable({
   isFetching,
   onRetry,
   isFiltered = false,
+  columnTriggerPortalTarget = null,
 }: ReadyQueueTableProps) {
   // Degrade-not-fail: this list is the pane's PRIMARY resource, so a failed
   // fetch earns the retryable error state — never an empty grid, which would
@@ -58,6 +61,7 @@ export function ReadyQueueTable({
         emptyMessage="No tested units yet — completed verdicts appear here newest first."
         searchEmptyMessage="No tested units match this view. Clear the search or choose All tested."
         isSearching={isFiltered}
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
     </div>
   );

@@ -199,7 +199,7 @@ function ModelEditCard({ model, onSaved, onDeleted }: { model: BoseModel; onSave
   });
 
   return (
-    <section className="rounded-xl border border-border-soft bg-surface-card p-5">
+    <section className="rounded-none border border-border-soft bg-surface-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-text-default">{model.model_name}</h2>
@@ -249,7 +249,7 @@ function CompatibilityManager({ modelId, parts, onChanged }: { modelId: number; 
   });
 
   return (
-    <section className="rounded-xl border border-border-soft bg-surface-card p-5">
+    <section className="rounded-none border border-border-soft bg-surface-card p-5">
       <h3 className="mb-3 text-sm font-semibold text-text-default">Compatible parts ({parts.length})</h3>
 
       {parts.length === 0 ? (
@@ -280,7 +280,7 @@ function CompatibilityManager({ modelId, parts, onChanged }: { modelId: number; 
       )}
 
       {/* Add a part */}
-      <div className="rounded-lg border border-dashed border-border-default p-3">
+      <div className="rounded-none border border-dashed border-border-default p-3">
         <p className="mb-2 text-role-caption font-semibold text-text-muted">Add a compatible part</p>
         <SkuSearchField
           value={skuLabel}

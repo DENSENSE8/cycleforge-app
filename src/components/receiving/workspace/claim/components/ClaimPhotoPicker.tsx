@@ -10,9 +10,11 @@ import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
-import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
-import { photoGridLeafClass } from '@/lib/photos/photo-grid-density';
+import {
+  type PhotoGridDensity,
+  photoGridLeafClass,
+} from '@/lib/photos/photo-grid-density';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -28,6 +30,13 @@ interface Props {
   receivingId: number | null | undefined;
 }
 
+/** Claim-local flush chrome — does not change Media Library control defaults. */
+const CLAIM_CONTROL_GROUP =
+  '!rounded-none border-border-hairline !p-0 shadow-none';
+const CLAIM_ICON_BUTTON =
+  '!h-7 !w-7 !rounded-none border-border-hairline';
+const CLAIM_DENSITY_BUTTON = '!rounded-none shadow-none';
+
 /**
  * Photo-attachment grid with a send-to-phone capture trigger — the same flow as
  * the receiving workspace's `ReceivingPhotoButton`. The desktop never opens a
@@ -38,14 +47,14 @@ interface Props {
  * the claim panel. Checked photos attach to the Zendesk ticket; all PO photos
  * are saved to local storage regardless.
  *
- * Grid density is the shared library toggle ({@link usePhotoGridDensity}) —
- * same control on ReceivingClaim and Move photos (both host this picker).
+ * Flush claim band: gap-0 header/controls/grid (Media Library keeps its own
+ * photoGridLeafClass gaps). Grid density defaults to large (natural-height
+ * tiles); the header toggle adjusts for the session only.
  *
  * Evidence preference (Plan 5): line-scoped item shots order FIRST (they are
  * the claim's primary evidence per the identity law); arrival package shots
  * stay selectable below for outer-damage claims. Selection behavior is
- * unchanged — nothing preselected on first open (a line-first *preselect*
- * default is a deliberate ask-first, not shipped here).
+ * unchanged — nothing preselected on first open.
  */
 export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   const { photos: list, selectedPhotoIds, togglePhoto, toggleSelectAll, refetch } = photos;
@@ -64,7 +73,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   const { getClient } = useAblyClient();
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
+  const [gridDensity, setGridDensity] = useState<PhotoGridDensity>('lg');
 
   // Live-refresh the grid when the phone's captures land (phone-bridge upload or
   // station NAS attach), matching this carton.
@@ -107,14 +116,15 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
   }, [refetch]);
 
   const sendToPhoneControl = (
-    <HoverTooltip label="Send to phone to take more photos" asChild>
+    <HoverTooltip label="Send to phone" asChild>
       <button
         type="button"
         onClick={() => void handleSendToPhone()}
         disabled={sending || !receivingId}
-        aria-label="Send to phone to take more photos"
+        aria-label="Send to phone"
         className={cn(
-          'ds-raw-button relative flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft bg-surface-card text-text-soft transition-colors',
+          'ds-raw-button relative flex items-center justify-center border border-border-soft bg-surface-card text-text-soft transition-colors',
+          CLAIM_ICON_BUTTON,
           'hover:bg-surface-sunken hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60',
         )}
       >
@@ -132,20 +142,20 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
     </HoverTooltip>
   );
 
-  // ── Empty state — no photos yet: one big send-to-phone tile ────────────────
+  // ── Empty state — no photos yet: flush dashed send-to-phone band ──────────
   if (list.length === 0) {
     return (
-      // ds-raw-button: large multi-line dashed send-to-phone card tile, not a standard action button
+      // ds-raw-button: large multi-line dashed send-to-phone band, not a standard action button
       <button
         type="button"
         onClick={() => void handleSendToPhone()}
         disabled={sending || !receivingId}
-        className="group flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border-default bg-surface-canvas px-6 py-10 text-center transition-colors hover:border-blue-300 hover:bg-blue-50/60 disabled:cursor-not-allowed disabled:opacity-60"
+        className="group flex w-full flex-col items-center justify-center gap-1.5 rounded-none border border-dashed border-border-hairline bg-surface-sunken px-4 py-6 text-center transition-colors hover:border-blue-300 hover:bg-blue-50/60 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <span className="relative grid h-11 w-11 place-items-center rounded-full bg-surface-card text-text-faint ring-1 ring-border-soft transition-colors group-hover:text-blue-600 group-hover:ring-blue-300">
+        <span className="relative grid h-11 w-11 place-items-center rounded-none border border-border-hairline bg-surface-card text-text-faint transition-colors group-hover:border-blue-300 group-hover:text-blue-600">
           {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
           {!sending ? (
-            <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-border-hairline">
+            <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-none bg-blue-600 text-white ring-2 ring-border-hairline">
               <Plus className="h-2.5 w-2.5" />
             </span>
           ) : null}
@@ -156,41 +166,45 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
         <span className="max-w-xs text-role-micro font-medium leading-4 text-text-faint">
           {sending
             ? 'Opening the camera on your phone…'
-            : 'Send to your phone to take photos — they appear here automatically.'}
+            : 'Send to phone — they appear here.'}
         </span>
       </button>
     );
   }
 
   return (
-    <div className="min-h-0">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-1.5">
+    <div className="min-h-0" data-testid="claim-photo-picker">
+      <div className="flex items-center justify-between gap-0 border-b border-border-hairline px-0 py-0">
+        <div className="flex min-w-0 items-center gap-0">
           <HoverTooltip label="Expand — view all photos closely" asChild>
             <IconButton
               icon={<ZoomIn className="h-3.5 w-3.5" />}
               ariaLabel="View all photos fullscreen"
               onClick={() => g.openViewer(0)}
-              className="-ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center !rounded-none text-text-faint hover:bg-surface-sunken hover:text-text-muted"
             />
           </HoverTooltip>
           <p className="truncate text-role-micro uppercase tracking-widest text-text-soft">
-            Attach {selectedPhotoIds.size === 1 ? 'photo' : 'photos'} to ticket ({selectedPhotoIds.size}/{list.length})
+            Attach photos {selectedPhotoIds.size}/{list.length}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0">
           <PhotoGridDisplayControls
             density={gridDensity}
             onDensityChange={setGridDensity}
             onRefresh={() => void handleRefresh()}
             isRefreshing={refreshing}
+            className="gap-0"
+            groupClassName={CLAIM_CONTROL_GROUP}
+            buttonClassName={CLAIM_DENSITY_BUTTON}
+            refreshClassName={CLAIM_ICON_BUTTON}
           />
           {sendToPhoneControl}
           <HoverTooltip
             label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
             asChild
           >
-            <div className={cn(photoLibraryControlGroupClass, 'shrink-0')}>
+            <div className={cn(photoLibraryControlGroupClass, 'shrink-0', CLAIM_CONTROL_GROUP)}>
               <button
                 type="button"
                 onClick={toggleSelectAll}
@@ -198,7 +212,10 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
                 aria-pressed={selectedPhotoIds.size === list.length}
                 className={cn(
                   'ds-raw-button',
-                  photoLibraryControlButtonClass(selectedPhotoIds.size === list.length, 'w-7'),
+                  photoLibraryControlButtonClass(
+                    selectedPhotoIds.size === list.length,
+                    cn('w-7', CLAIM_DENSITY_BUTTON),
+                  ),
                 )}
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -208,7 +225,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
         </div>
       </div>
 
-      <div className={photoGridLeafClass(gridDensity)}>
+      <div className={cn(photoGridLeafClass(gridDensity), 'gap-0')}>
         {ordered.map((p) => {
           const isSel = selectedPhotoIds.has(p.id);
           const tile = claimPhotoTileProps(p, gridDensity);
@@ -216,7 +233,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
             <div
               key={p.id}
               className={cn(
-                'group relative rounded-lg border bg-surface-card text-left transition-colors',
+                'group relative rounded-none border bg-surface-card text-left transition-colors',
                 isSel
                   ? 'border-primary ring-2 ring-inset ring-primary'
                   : 'border-border hover:border-border-default',
@@ -224,34 +241,30 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
             >
               <SelectionMark
                 checked={isSel}
-                active
+                active={false}
                 onToggle={() => togglePhoto(p.id)}
               />
               <HoverTooltip
-                label={isSel ? 'Selected — click to remove' : 'Click to attach'}
+                label={isSel ? 'Selected' : 'Attach'}
                 asChild
               >
                 {/* ds-raw-button: photo thumbnail image tile (img selection target), not a standard action button */}
                 <button
                   type="button"
                   onClick={() => togglePhoto(p.id)}
-                  aria-label={isSel ? 'Selected — click to remove' : 'Click to attach'}
+                  aria-label={isSel ? 'Selected' : 'Attach'}
                   className={cn(
-                    'ds-raw-button block w-full rounded-lg text-left',
+                    'ds-raw-button block w-full rounded-none text-left',
                     tile.ratio === 'natural' ? '' : 'aspect-square',
                   )}
                 >
-                  <PhotoThumb src={tile.imageUrl} alt="" ratio={tile.ratio} className="rounded-lg" />
+                  <PhotoThumb src={tile.imageUrl} alt="" ratio={tile.ratio} className="rounded-none" />
                 </button>
               </HoverTooltip>
             </div>
           );
         })}
       </div>
-      <p className="mt-2 text-role-micro font-medium text-text-faint">
-        Checked photos attach to the support ticket. All carton photos also save to local storage in
-        a folder named after the Ticket #.
-      </p>
 
       {g.photoItems.length > 0 ? <PhotoViewerPortal g={g} /> : null}
     </div>

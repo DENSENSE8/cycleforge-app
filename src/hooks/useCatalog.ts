@@ -24,6 +24,8 @@ export interface CatalogOption {
   sortOrder?: number;
   /** Seeded built-in (hide-only) vs the org's own custom row. */
   isSystem?: boolean;
+  /** Optional org accent `#RRGGBB` from `platforms.color_hex`. */
+  colorHex?: string | null;
 }
 
 // Built-in fallback so every picker still works before the migration is applied
@@ -39,7 +41,14 @@ export function usePlatformCatalog() {
   const q = useQuery(platformsQuery());
   const rows: PlatformRow[] = q.data ?? [];
   const options: CatalogOption[] = rows.length
-    ? rows.map((r) => ({ value: r.slug, label: r.label, id: r.id, sortOrder: r.sort_order, isSystem: r.is_system }))
+    ? rows.map((r) => ({
+        value: r.slug,
+        label: r.label,
+        id: r.id,
+        sortOrder: r.sort_order,
+        isSystem: r.is_system,
+        colorHex: r.color_hex,
+      }))
     : BUILTIN_PLATFORMS;
   return { ...q, rows, options };
 }
@@ -61,11 +70,11 @@ export function useReceivingTypeCatalog() {
 /**
  * Catalog-aware platform tone/label resolver. Returns `resolve(value)` →
  * {@link SourcePlatformMeta}: the org catalog's **label** wins (so a renamed or
- * custom platform reads correctly), the catalog `tone` overrides the text tone
- * when set, and everything else falls back to the built-in `sourcePlatformMeta`
- * (which also supplies the border tone the catalog doesn't store yet). A custom
- * slug with no built-in match resolves to its catalog label + neutral border
- * instead of "Unknown".
+ * custom platform reads correctly), `color_hex` (when set) drives accent paint
+ * via the color-contrast SoT, else catalog `tone` overrides the text tone, and
+ * everything else falls back to the built-in `sourcePlatformMeta` (which also
+ * supplies the border tone when no hex is set). A custom slug with no built-in
+ * match resolves to its catalog label + neutral border instead of "Unknown".
  */
 export function usePlatformMeta(): (value: string | null | undefined) => SourcePlatformMeta {
   const { rows } = usePlatformCatalog();
@@ -76,12 +85,17 @@ export function usePlatformMeta(): (value: string | null | undefined) => SourceP
       const builtin = sourcePlatformMeta(key);
       const row = byValue.get(key);
       if (!row) return builtin;
+      const accentHex = row.color_hex?.trim() || null;
       return {
         value: key,
         label: row.label,
         mark: builtin.mark || row.label.slice(0, 2),
-        text: row.tone ?? builtin.text,
-        border: builtin.border,
+        text: accentHex ? '' : (row.tone ?? builtin.text),
+        border: accentHex ? '' : builtin.border,
+        dot: builtin.dot || 'bg-border-emphasis',
+        accentHex,
+        icon: builtin.icon,
+        tileSrc: builtin.tileSrc,
       };
     };
   }, [rows]);

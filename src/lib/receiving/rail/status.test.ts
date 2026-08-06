@@ -4,6 +4,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
+  getReceivingStatusDotTip,
   getUnboxRecentStatusDot,
   getUnboxRecentStatusDotLabel,
 } from './status';
@@ -75,4 +76,18 @@ test('getUnboxRecentStatusDot — testing phase reads Received (emerald)', () =>
   const r = row({ workflow_status: 'IN_TEST' });
   assert.equal(getUnboxRecentStatusDot(r), 'bg-emerald-500');
   assert.equal(getUnboxRecentStatusDotLabel(r), 'Received');
+});
+
+test('getReceivingStatusDotTip — UNBOXED names inventory provider', () => {
+  const r = row({ workflow_status: 'UNBOXED', quantity_received: 1 });
+  assert.equal(
+    getReceivingStatusDotTip(r, 'Zoho Inventory'),
+    'Awaiting confirmation in Zoho Inventory',
+  );
+  assert.equal(getReceivingStatusDotLabel(r), 'Unboxed');
+});
+
+test('getReceivingStatusDotTip — DONE / MATCHED → null (short label stays)', () => {
+  assert.equal(getReceivingStatusDotTip(row({ workflow_status: 'DONE' }), 'Zoho Inventory'), null);
+  assert.equal(getReceivingStatusDotTip(row({ workflow_status: 'MATCHED' }), 'Zoho Inventory'), null);
 });

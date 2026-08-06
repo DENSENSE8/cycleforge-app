@@ -1,106 +1,30 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { PackageOpen, Pencil } from '@/components/Icons';
 import { WorkspaceCard } from '@/design-system/components';
-import { Button, IconButton } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { openInUnboxHref } from '@/lib/receiving/surface-path';
-import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
-import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
 
 /**
- * Testing workspace analogue of {@link POUnboxingSection}: one card with PO items
- * on top and the Package Pairing dropdown below.
+ * Testing centre PO line list — the carton's lines (`TestingPoItemsSection`).
  *
- * When `suppressItemsHeader` is set (testing tab row owns the pencil), the PO
- * items eyebrow + internal Edit-PO pencil are hidden and pairing is controlled
- * via `pairingOpen` / `onPairingToggle`.
+ * Package Pairing left the centre on 2026-08-05 (scan-station Displays SoT): it
+ * is now the Linkage body of Testing's right-edge Displays push, opened from the
+ * identity `# ----` PO chip — a control on the right edge no longer opens a
+ * surface in the centre. Sibling of Unbox's {@link POUnboxingSection}.
  */
 export function TestingPoUnboxingSection({
   row,
   staffId,
   c,
   suppressItemsHeader = false,
-  pairingOpen: pairingOpenProp,
-  onPairingToggle,
 }: {
   row: ReceivingLineRow;
   staffId: string;
   c: TestingController;
-  /** Hide "PO items · N" + internal pencil — parent tab row owns them. */
+  /** Hide "PO items · N" — the parent tab row owns the label. */
   suppressItemsHeader?: boolean;
-  /** Controlled Package-Pairing open state; uncontrolled if omitted. */
-  pairingOpen?: boolean;
-  onPairingToggle?: () => void;
 }) {
-  const router = useRouter();
-  const [internalPairingOpen, setInternalPairingOpen] = useState(false);
-  const pairingOpen = pairingOpenProp ?? internalPairingOpen;
-  const togglePairing =
-    onPairingToggle ?? (() => setInternalPairingOpen((v) => !v));
-
-  if (row.receiving_id == null) {
-    // No carton yet — render only the PO-items block, which now supports serial
-    // entry for a carton-less real line (attach-by-line-id). Package pairing +
-    // the unfound auto-match strip both need a carton, so they're omitted here.
-    return (
-      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-        <div className="space-y-3">
-          <TestingPoItemsSection
-            row={row}
-            staffId={staffId}
-            c={c}
-            embedded
-            suppressHeader={suppressItemsHeader}
-          />
-        </div>
-      </WorkspaceCard>
-    );
-  }
-
-  const receivingId = row.receiving_id;
-  // Same gate unbox uses for its auto-match strip + local-receive path
-  // (`isUnfound = shouldUseLocalReceiveOnly`): unmatched / return / sales-order
-  // cartons. Real Zoho-PO cartons keep the plain (pencil-only) header.
-  const unfoundSurface = shouldUseUnmatchedItemsSurface(row);
-
-  const pairingToggleLabel = pairingOpen ? 'Hide package pairing' : 'Show package pairing';
-  const headerRight = suppressItemsHeader ? undefined : (
-    <div className="flex shrink-0 items-center gap-1.5">
-      {unfoundSurface ? (
-        <HoverTooltip
-          label="Open this carton in unbox (serial scan, photos, receive)"
-          asChild
-          focusable={false}
-        >
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<PackageOpen />}
-            onClick={() => router.push(openInUnboxHref(receivingId, row.id))}
-            ariaLabel="Open this carton in unbox"
-            className="h-7 border-blue-200 bg-blue-50 px-2.5 text-blue-700 hover:bg-blue-100"
-          >
-            Open in unbox
-          </Button>
-        </HoverTooltip>
-      ) : null}
-      <IconButton
-        icon={<Pencil className="h-4 w-4" />}
-        ariaLabel={pairingToggleLabel}
-        title={pairingToggleLabel}
-        tone="accent"
-        aria-expanded={pairingOpen}
-        onClick={togglePairing}
-      />
-    </div>
-  );
-
   return (
     <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       <div className="space-y-3">
@@ -109,26 +33,7 @@ export function TestingPoUnboxingSection({
           staffId={staffId}
           c={c}
           embedded
-          headerRight={headerRight}
           suppressHeader={suppressItemsHeader}
-        />
-        <CartonMatchHub
-          row={row}
-          staffId={staffId}
-          tabSet="unbox"
-          autoFocusSearch
-          showOpenInUnbox={false}
-          embedded
-          collapsed={!pairingOpen}
-          showTopRule
-          autoMatch={
-            unfoundSurface
-              ? {
-                  receivingId,
-                  trackingNumber: row.tracking_number ?? null,
-                }
-              : null
-          }
         />
       </div>
     </WorkspaceCard>

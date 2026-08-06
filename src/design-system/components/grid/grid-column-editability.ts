@@ -8,23 +8,26 @@
  *
  * **Membership is declared on the column model** (`frozen: true`), not by a
  * house-wide key list, because the pane is a per-surface answer to "what does
- * an operator scan first here". The **order-anchored** surfaces — Orders,
- * Receiving (Unbox / History / Testing) and Incoming — freeze
- * `select · order · title`: the order or PO is the container an operator
- * arrives by, read off a pick list, a carton label or a vendor email, so it has
- * to stay on screen while the fact columns scroll. Catalog / Repair / Pickup
- * freeze `select · title` — Catalog has no order context at all, and on the
- * other two the order is not what the row is found by (Repair quotes an RS-####
- * ticket; Pickup's order is already the group header).
+ * an operator scan first here". The **order-anchored** surfaces — Orders
+ * freezes `select · order · age · title`; Receiving (Unbox / History / Testing)
+ * freezes `select · order`; Incoming freezes `select` only. Catalog / Repair /
+ * Pickup freeze `select · title` — Catalog has no order context at all, and on
+ * the other two the order is not what the row is found by (Repair quotes an
+ * RS-#### ticket; Pickup's order is already the group header).
  * {@link GRID_IDENTITY_COLUMN_KEYS} remains the house DEFAULT for that answer
  * and the key-only fallback for surfaces with no column model in hand.
  *
- * **Receiving exception (Sheets golden, 2026-08-04):** freeze `select` only —
- * Order / Product scroll. Operator-editable freeze panes are future work.
- * The pane must be a **contiguous prefix** of the canonical column order —
- * `gridFrozenLeft`-style offset math sums the widths of the frozen columns
- * before a given one, so a frozen column with a scrolling column ahead of it
- * would pin at the wrong origin. Pinned by the per-surface layout guards.
+ * **Receiving (Unbox / History / Testing, 2026-08-05):** freeze `select · order`
+ * — PO stays pinned; Date / Product / Status / facts scroll.
+ * **Orders / To Ship (2026-08-05):** freeze `select · order · age · title` —
+ * Late stays beside Order (urgency before the long title); Product is the
+ * frozen-edge hard track and the only `resizable: true` column.
+ * Incoming stays select-only (Sheets golden). Operator-editable freeze panes
+ * are future work. The pane must be a **contiguous prefix** of the canonical
+ * column order — `gridFrozenLeft`-style offset math sums the widths of the
+ * frozen columns before a given one, so a frozen column with a scrolling
+ * column ahead of it would pin at the wrong origin. Pinned by the per-surface
+ * layout guards.
  */
 
 /** House DEFAULT identity pane — frozen, immovable, never in-cell editable. */
@@ -61,7 +64,7 @@ export function isGridColumnInCellEditable(key: string): boolean {
  * Titles, conditions, statuses, platforms, dates, staff names remain variable
  * by type (not in this set).
  */
-const FIXED_WIDTH_COLUMN_TYPES = new Set(['number']);
+const FIXED_WIDTH_COLUMN_TYPES = new Set(['number', 'price']);
 
 /**
  * Structural shape for the resize test — see the dependency note below.

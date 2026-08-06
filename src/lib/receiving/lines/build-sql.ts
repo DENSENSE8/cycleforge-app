@@ -522,7 +522,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   const {
     search, searchField, searchScope, qaFilter, dispFilter, workflowFilter,
     view, deliveryStateFilter, poFrom, poTo,
-    incomingSort, historySort, wantsPrioritySort, testerId, returnScope, weekStart, weekEnd, limit, offset,
+    incomingSort, historySort, wantsPrioritySort, testerId, returnScope, priorityOnly, weekStart, weekEnd, limit, offset,
     inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
     unboxQueueStage, unboxQueueLane, trackingIn,
   } = input.query;
@@ -736,13 +736,14 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       `(rl.workflow_status IS NULL OR rl.workflow_status IN ('EXPECTED','ARRIVED','MATCHED','UNBOXED','AWAITING_TEST','IN_TEST','PASSED','FAILED','RTV','SCRAP','DONE'))`,
     );
   } else if (view === 'activity') {
-    // "Activity" = the recent-activity rail feed: items in the UNBOXING
-    // pipeline only. A carton merely scanned at the door (workflow MATCHED /
-    // ARRIVED with nothing received and no unbox timestamp) is intentionally
-    // EXCLUDED — door scans belong only in History, not the rail (the rail
-    // drives the unboxing workspace / LineEditPanel). A line qualifies once it
-    // has actually been unboxed/received: workflow advanced to UNBOXED or
-    // beyond, OR quantity_received > 0, OR its carton has an unboxed_at stamp.
+    // "Activity" = Unbox History membership: items in the UNBOXING pipeline
+    // only. A carton merely scanned at the door (workflow MATCHED / ARRIVED
+    // with nothing received and no unbox timestamp) is intentionally EXCLUDED
+    // — door scans belong in Queue / Unfound triage, not History. A line
+    // qualifies once it has actually been unboxed/received: workflow advanced
+    // to UNBOXED or beyond, OR quantity_received > 0, OR its carton has an
+    // unboxed_at stamp. Lineless unmatched placeholders use the same Unbox-
+    // touched rule in buildUnmatchedPlaceholdersSql.
     conditions.push(
       `(
            rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
@@ -804,6 +805,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     if (applyScannedZohoExclusion) {
       conditions.push(NOT_ZOHO_RECEIVED_PREDICATE);
     }
+    if (priorityOnly) {
+      // Unbox Urgent: same explicit priority / tier predicate as Testing Urgent.
+      conditions.push(
+        `(COALESCE(r.is_priority, false) = true OR r.priority_tier IS NOT NULL)`,
+      );
+    }
   } else if (view === 'unbox_opened') {
     // Unbox sidebar work queue: every carton the operator scanned on the Unbox
     // surface, found or unfound, unboxed or not. Membership reads the committed
@@ -858,6 +865,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       conditions.push('COALESCE(r.is_return, false) = true');
     } else if (returnScope === 'standard') {
       conditions.push('COALESCE(r.is_return, false) = false');
+    }
+    if (priorityOnly) {
+      // Urgent tab: explicit priority flag or manual tier override.
+      conditions.push(
+        `(COALESCE(r.is_priority, false) = true OR r.priority_tier IS NOT NULL)`,
+      );
     }
     if (Number.isFinite(testerId) && testerId > 0) {
       conditions.push(`rlt.assigned_tech_id = $${idx}`);
@@ -1557,9 +1570,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 /**
  * Unmatched/unfound cartons live in the `receiving` table with no
  * `receiving_line` row yet, so they never come back from the main query.
- * They're appended as placeholder rows for `all` AND `activity` — a scanned
- * unfound carton has been physically touched, so it belongs in the
- * activity feed that backs both the History table and the recent rail.
+ * They're appended as placeholder rows for `all` AND `activity`. For
+ * `activity` (Unbox History), only Unbox-touched lineless cartons qualify —
+ * door-scan-only Unfound stays in Unfound / triage feeds, not History.
+ * `all` stays inclusive for search / resolution.
  */
 export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): boolean {
   return (
@@ -1568,6 +1582,17 @@ export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): 
     !receivingHistorySkipsUnmatchedPlaceholders(query.searchField)
   );
 }
+
+/**
+ * History (`view=activity`) membership for lineless unmatched placeholders:
+ * opened or unboxed on the Unbox surface — mirrors when a placeholder would
+ * render as non-SCANNED (see buildUnmatchedEmptyReceivingLine).
+ */
+const ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL = ` AND (
+              ru.unboxed_at IS NOT NULL
+              OR ru.opened_at IS NOT NULL
+              OR unbox_open.unbox_opened_at IS NOT NULL
+            )`;
 
 /** Placeholder rows + count for lineless unmatched/local-pickup cartons. */
 export function buildUnmatchedPlaceholdersSql(
@@ -1599,6 +1624,22 @@ export function buildUnmatchedPlaceholdersSql(
           )`;
     }
   }
+  const activityUnboxTouchSql =
+    query.view === 'activity' ? ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL : '';
+  // Count needs the same unbox joins when History gates membership.
+  const countUnboxJoinsSql =
+    query.view === 'activity'
+      ? `
+             LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+             LEFT JOIN LATERAL (
+               SELECT MAX(oe_uo.occurred_at) AS unbox_opened_at
+               FROM ops_events oe_uo
+               WHERE oe_uo.organization_id = r.organization_id
+                 AND oe_uo.entity_type = 'receiving'
+                 AND oe_uo.entity_id = r.id
+                 AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
+             ) unbox_open ON TRUE`
+      : '';
   return {
     list: {
       sql:
@@ -1669,7 +1710,7 @@ export function buildUnmatchedPlaceholdersSql(
                 WHERE rl.receiving_id = r.id
                   AND rl.organization_id = r.organization_id
              )
-             ${unmatchedSearchSql}
+             ${unmatchedSearchSql}${activityUnboxTouchSql}
            ORDER BY COALESCE(rs_agg.last_scan::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`,
@@ -1679,7 +1720,7 @@ export function buildUnmatchedPlaceholdersSql(
       sql:
         `SELECT COUNT(*)::bigint AS n
              FROM receiving_carton r
-             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id${countUnboxJoinsSql}
             WHERE r.organization_id = $1
               AND r.source IN ('unmatched', 'local_pickup')
               AND NOT EXISTS (
@@ -1687,7 +1728,7 @@ export function buildUnmatchedPlaceholdersSql(
                  WHERE rl.receiving_id = r.id
                    AND rl.organization_id = r.organization_id
               )
-              ${unmatchedSearchSql}`,
+              ${unmatchedSearchSql}${activityUnboxTouchSql}`,
       params: unmatchedSearchVals,
     },
   };

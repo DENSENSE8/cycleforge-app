@@ -7,9 +7,11 @@
  *   • Unbox  — rows in the order they were **unboxed** (`unboxed_newest`, the
  *     history default).
  *
- * The tab id maps 1:1 onto the History `?sort=` value (SoT `HISTORY_SORT_OPTIONS`
- * in `receiving-modes.ts`), so the tab strip, the table's day-band axis, and the
- * server ORDER BY can never disagree — the tab literally *is* the sort.
+ * The tab id maps 1:1 onto the History/Docked `?sort=` wire value
+ * (`HISTORY_SORT_WIRE_IDS` in `receiving-modes.ts`), so the tab strip, the
+ * table's day-band axis, and the server ORDER BY can never disagree — the tab
+ * literally *is* the sort. Unbox History's Sort-by menu does not expose
+ * `scanned_newest` (triage / arrival language).
  *
  * Pure data + functions (no React) so chrome and the KPI strip share one contract.
  */

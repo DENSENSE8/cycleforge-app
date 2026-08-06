@@ -237,7 +237,7 @@ export function SupportAssistDisplay({
       ) : null}
 
       {result ? (
-        <div className="rounded-xl border border-border-soft bg-surface-canvas/60 p-3">
+        <div className="border-t border-border-hairline bg-surface-canvas/60 p-3">
           {/* Provenance first — an agent decides whether to trust the draft
               before they read it, not after. */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5">

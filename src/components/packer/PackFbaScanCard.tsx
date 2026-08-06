@@ -24,13 +24,13 @@ import type { PackActiveFbaPane } from '@/components/packer/usePackerOrderPane';
 
 export function PackFbaScanCard({ scan }: { scan: PackActiveFbaPane }) {
   return (
-    <div className="rounded-2xl border border-purple-200 bg-surface-card p-4 shadow-sm">
-      <div className="mb-2 flex items-center justify-between gap-3">
+    <div className="rounded-none border border-purple-200 bg-surface-card">
+      <div className="flex items-center justify-between gap-3 border-b border-purple-100 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <Package className="h-3.5 w-3.5 shrink-0 text-purple-500" />
           <p className="text-role-micro uppercase tracking-widest text-purple-500">FBA Scan</p>
           {scan.isNew ? (
-            <span className="rounded-lg border border-blue-200 bg-blue-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider text-blue-700">
+            <span className="rounded-none border border-blue-200 bg-blue-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider text-blue-700">
               Added to Today
             </span>
           ) : null}
@@ -40,11 +40,11 @@ export function PackFbaScanCard({ scan }: { scan: PackActiveFbaPane }) {
         ) : null}
       </div>
 
-      <h3 className="text-base font-semibold leading-tight text-text-default">
+      <h3 className="px-3 py-2.5 text-base font-semibold leading-tight text-text-default">
         {scan.productTitle}
       </h3>
 
-      <div className="mt-3 flex items-stretch justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
+      <div className="flex items-stretch justify-between gap-3 border-t border-purple-100 bg-purple-50/40 px-3 py-2.5">
         <HoverTooltip label={scan.fnsku} asChild>
           <div className="min-w-0 flex-1">
             <p className="text-role-micro uppercase tracking-wider text-purple-400">FNSKU</p>

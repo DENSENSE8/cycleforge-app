@@ -83,6 +83,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     success: true,
     receiving_id: result.receivingId,
     lines_updated: result.linesUpdated,
+    lines_imported: result.linesImported ?? 0,
     zoho_purchaseorder_id: result.poId,
     zoho_purchaseorder_number: result.poNumber,
     scope: effectiveScope,
@@ -103,6 +104,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const r = response as {
         zoho_purchaseorder_id?: string;
         lines_updated?: number;
+        lines_imported?: number;
         scope?: string;
         paired_onto?: number;
         photos_moved?: number;
@@ -113,6 +115,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         zoho_purchaseorder_number: b?.zoho_purchaseorder_number ?? null,
         sku_corrected: b?.sku ? true : false,
         lines_updated: r?.lines_updated ?? 0,
+        lines_imported: r?.lines_imported ?? 0,
         scope: r?.scope ?? null,
         paired_onto: r?.paired_onto ?? null,
         photos_moved: r?.photos_moved ?? null,

@@ -1,19 +1,28 @@
 'use client';
 
 /**
- * Pack workspace chrome — tabs left (Queue | History), filters + controls
- * portal right. Mirrors ShippingWorkspaceHeader for `/pack`.
+ * Pack workspace chrome — Sheets flush stack (Unbox / To-ship recipe):
+ *
+ *   Band 1 — tabs (Queue | History) + New Order
+ *   Band 2 — KPI (PackWorkspaceView)
+ *   Band 3 — triage: search · filters / staff · portal
+ *
  * Row select lives in the table left gutter (always on), not chrome.
  */
 
-import { useEffect, useMemo, type ReactNode, type Ref } from 'react';
+import { useEffect, useMemo, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
-import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
+import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
@@ -26,16 +35,15 @@ import {
 
 const TABS: PackWorkspaceTab[] = ['queue', 'history'];
 
+/** Band 1 — tabs + New Order. Search / filters live on {@link PackTriageBand}. */
 export function PackWorkspaceHeader({
   tab,
   onSelectTab,
-  controlsSlotRef,
   onNewOrder,
   className,
 }: {
   tab: PackWorkspaceTab;
   onSelectTab: (tab: PackWorkspaceTab) => void;
-  controlsSlotRef?: Ref<HTMLDivElement>;
   /** Open new-order entry (slide-over). */
   onNewOrder?: () => void;
   className?: string;
@@ -44,8 +52,6 @@ export function PackWorkspaceHeader({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
-  const { searchQuery, setSearch } = useWorkbenchSearchParam();
-  useToShipFilterHotkeys(tab === 'queue');
 
   // Pack Queue opens on the TESTED (ready-to-pack) lane when no ustatus is set.
   useEffect(() => {
@@ -70,32 +76,6 @@ export function PackWorkspaceHeader({
     [queueCounts?.byStage.tested, queueCounts?.total],
   );
 
-  const chromeByTab: Record<PackWorkspaceTab, { search?: ReactNode; right?: ReactNode }> = {
-    queue: {
-      search: (
-        <TechRailSearchBar
-          variant="chrome"
-          value={searchQuery}
-          onChange={setSearch}
-          placeholder="Filter ready-to-pack…"
-          className="w-40 shrink-0 lg:w-56"
-        />
-      ),
-      right: <OutboundExactFilters mode="unshipped" />,
-    },
-    history: {
-      right: (
-        <StaffFilterButton
-          iconOnly
-          allLabel="All packers"
-          allToken="all"
-          meLabel="You"
-        />
-      ),
-    },
-  };
-  const chrome = chromeByTab[tab];
-
   return (
     <WorkbenchChromeHeader
       density="band"
@@ -103,11 +83,7 @@ export function PackWorkspaceHeader({
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as PackWorkspaceTab)}
       solidTone="accent"
-      controlsSlotRef={controlsSlotRef}
-      controlsSlotProps={{ 'data-pack-controls': '' }}
       className={className}
-      search={chrome.search}
-      right={chrome.right}
       trailing={
         onNewOrder ? (
           <WorkbenchTrailingCluster
@@ -115,6 +91,60 @@ export function PackWorkspaceHeader({
           />
         ) : undefined
       }
+    />
+  );
+}
+
+/** Band 3 — find left; filters / staff · portal right. Leading = Unbox KPI collapse. */
+export function PackTriageBand({
+  tab,
+  controlsSlotRef,
+  kpiOpen,
+  onToggleKpi,
+  className,
+}: {
+  tab: PackWorkspaceTab;
+  controlsSlotRef?: Ref<HTMLDivElement>;
+  kpiOpen: boolean;
+  onToggleKpi: () => void;
+  className?: string;
+}) {
+  const { searchQuery, setSearch } = useWorkbenchSearchParam();
+  useToShipFilterHotkeys(tab === 'queue');
+
+  const search =
+    tab === 'queue' ? (
+      <TechRailSearchBar
+        variant="chrome"
+        value={searchQuery}
+        onChange={setSearch}
+        placeholder="Filter ready-to-pack…"
+        className="w-40 shrink-0 lg:w-56"
+      />
+    ) : null;
+
+  const right =
+    tab === 'queue' ? (
+      <OutboundExactFilters mode="unshipped" />
+    ) : (
+      <StaffFilterButton
+        iconOnly
+        allLabel="All packers"
+        allToken="all"
+        meLabel="You"
+      />
+    );
+
+  return (
+    <WorkbenchTriageBand
+      className={className}
+      kpiToggle={
+        <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
+      }
+      search={search}
+      right={right}
+      controlsSlotRef={controlsSlotRef}
+      controlsSlotProps={{ 'data-pack-controls': '' }}
     />
   );
 }

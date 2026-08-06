@@ -38,6 +38,8 @@ const ctx: ReceivingModeContext = {
   listSearch: '',
   queueStage: null,
   queueLane: null,
+  priorityOnly: false,
+  trackingIn: [],
 };
 
 /** Capture the URL each queryFn fetches without a network. */

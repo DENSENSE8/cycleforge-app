@@ -22,7 +22,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-lg border border-border-soft bg-surface-card p-1 text-text-default',
+        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-none border border-border-soft bg-surface-card p-1 text-text-default',
         elevationClass('overlay'),
         className,
       )}
@@ -42,7 +42,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors',
+      'relative flex cursor-default select-none items-center gap-2 rounded-none px-2 py-1.5 text-sm outline-none transition-colors',
       'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       '[&>svg]:size-4 [&>svg]:shrink-0',
       tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',

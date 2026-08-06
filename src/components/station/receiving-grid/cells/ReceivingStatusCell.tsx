@@ -2,6 +2,7 @@
 
 import { GridStatusCellValue } from '@/components/ui/grid-cells';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
+import { receivingHistoryStatusTooltip } from './receiving-grid-row-helpers';
 import {
   receivingDataCellClass,
   receivingDataCellHighlightStyle,
@@ -40,9 +41,22 @@ import {
  *
  * This is also why the column-display `chip` mode no longer wraps this cell: the
  * value IS a chip, and a chip inside a chip is two rings.
+ *
+ * ## History tip (2026-08-04)
+ *
+ * On History, DONE (label Received) is bare — no chip tooltip. UNBOXED tips
+ * with the inventory-provider sync gap via {@link receivingHistoryStatusTooltip}.
+ * Non-history surfaces keep the stage-stamp tip chain.
  */
 export function ReceivingStatusCell({ col, rule, ctx }: ReceivingGridCellProps) {
-  const { statusDot, stageLabel, stageTip, dateCell, row } = ctx;
+  const { statusDot, stageLabel, stageTip, dateCell, row, isHistory, inventoryProviderLabel } = ctx;
+  const tooltip = isHistory
+    ? receivingHistoryStatusTooltip({
+        workflowStatus: row.workflow_status,
+        inventoryProviderLabel,
+        stageTip,
+      })
+    : stageTip || dateCell?.tooltip || stageLabel;
   return (
     <div data-col="status" className={receivingDataCellClass(col, rule, ctx)}
       style={receivingDataCellHighlightStyle(col, ctx)}>
@@ -52,7 +66,7 @@ export function ReceivingStatusCell({ col, rule, ctx }: ReceivingGridCellProps) 
         label={stageLabel || null}
         toneClass={workflowStageBadge(row.workflow_status)}
         dotClass={statusDot}
-        tooltip={stageTip || dateCell?.tooltip || stageLabel}
+        tooltip={tooltip}
       />
     </div>
   );

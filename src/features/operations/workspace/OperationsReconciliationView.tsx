@@ -5,8 +5,11 @@
  *
  * Lists CF-03 smear risk (unbound tech serials on multi-order cartons) and open
  * unmatched-tracking exceptions. Compose design-system Monitor blocks only.
+ * Work escape for the exceptions list is `/tracking-exceptions` (Open queue).
+ * That queue is reached only from this Reconcile monitor — not MasterNav.
  */
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   KpiStrip,
@@ -99,7 +102,19 @@ export function OperationsReconciliationView() {
         )}
       </SectionCard>
 
-      <SectionCard stagger eyebrow="Exceptions" title="Open tracking exceptions">
+      <SectionCard
+        stagger
+        eyebrow="Exceptions"
+        title="Open tracking exceptions"
+        actions={
+          <Link
+            href="/tracking-exceptions"
+            className="text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700 hover:text-blue-800"
+          >
+            Open queue
+          </Link>
+        }
+      >
         <p className="mb-3 text-role-caption text-text-muted">
           Unmatched scans held in orders_exceptions (oldest first).
         </p>

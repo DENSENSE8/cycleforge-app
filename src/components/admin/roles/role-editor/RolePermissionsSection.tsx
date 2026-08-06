@@ -25,7 +25,7 @@ export function RolePermissionsSection({
   return (
     <>
       {/* Card B.0 — .access shortcut (per-page view toggles) */}
-      <section className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
+      <section className="overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-sm">
         <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
           <div>
             <h2 className="text-sm font-semibold text-text-default">.access</h2>
@@ -54,7 +54,7 @@ export function RolePermissionsSection({
       </section>
 
       {/* Card B — Permissions */}
-      <section className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
+      <section className="overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-sm">
         <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
           <div>
             <h2 className="text-sm font-semibold text-text-default">Permissions</h2>

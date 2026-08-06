@@ -47,25 +47,11 @@ export function resolveTriageFocus(facts: TriageFocusFacts): TriageFocusTarget {
   return 'none';
 }
 
-/** SectionTabsSlider tab ids that mirror {@link TriageFocusTarget}. */
-export type TriageFocusTab = 'overview' | 'staging' | 'pairing';
-
-/**
- * Map a focus target to the triage SectionTabsSlider tab. `already-staged` /
- * `none` leave the default tab alone (caller skips).
- */
-export function triageFocusToTab(target: TriageFocusTarget): TriageFocusTab | null {
-  switch (target) {
-    case 'classify':
-      return 'overview';
-    case 'stage':
-      return 'staging';
-    case 'pair':
-      return 'pairing';
-    default:
-      return null;
-  }
-}
+// NOTE: the old `triageFocusToTab` / `TriageFocusTab` mapped a focus target to a
+// centre `SectionTabsSlider` tab. Those centre tabs were removed on 2026-08-05
+// (scan-station Displays SoT) — reference tools live on the Displays push, and
+// Arrival no longer auto-opens a display on focus. `resolveTriageFocus` remains
+// for the "already staged" short-circuit toast.
 
 // ── ReceivingLineRow → TriageFocusFacts ─────────────────────────────────────
 // Per-step predicates for {@link deriveTriageFocusFacts} — TriagePanel's live

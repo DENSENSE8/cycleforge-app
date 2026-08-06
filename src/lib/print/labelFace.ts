@@ -50,15 +50,18 @@ export interface LabelFaceModel {
 // All slots share one font size (9px) and pure black so the face reads uniformly
 // on the tiny 2×1" label without clipping; center notes stay 9px too. On-screen
 // preview scales this same CSS via a print-HTML iframe — no second type scale.
+// `.row` is width:100% so space-between actually pins left/right weight across
+// the info column (shrink-wrapped rows collapse to the left and leave a dead
+// gap before the matrix).
 export const LABEL_FACE_CSS =
-  '.row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;line-height:1}' +
-  '.tl{font-size:9px;font-weight:700;color:#000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-  '.tr{font-size:9px;font-weight:700;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}' +
-  '.center{flex:1 1 auto;min-height:0;font-size:9px;font-weight:600;color:#000;text-align:center;line-height:1.12;overflow:hidden;padding:0 1px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow-wrap:anywhere;word-break:break-word;align-self:stretch}' +
+  '.row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;line-height:1;width:100%}' +
+  '.tl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:700;color:#000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+  '.tr{flex:0 0 auto;font-size:9px;font-weight:700;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}' +
+  '.center{flex:1 1 auto;min-height:0;width:100%;font-size:9px;font-weight:600;color:#000;text-align:center;line-height:1.12;overflow:hidden;padding:0 1px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow-wrap:anywhere;word-break:break-word;align-self:stretch}' +
   // Product label title — fills a full top row, wraps up to 2 lines.
   '.ptitle{font-size:9px;font-weight:700;line-height:1.15;color:#000;text-align:left;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;word-break:break-word}' +
-  '.bl{font-size:9px;font-weight:900;color:#000;white-space:nowrap}' +
-  '.br{font-size:9px;font-weight:900;letter-spacing:0.3px;line-height:1.05;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}';
+  '.bl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:900;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+  '.br{flex:0 0 auto;font-size:9px;font-weight:900;letter-spacing:0.3px;line-height:1.05;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}';
 
 /**
  * Build the info-column HTML + CSS for a label face. Feed the result straight

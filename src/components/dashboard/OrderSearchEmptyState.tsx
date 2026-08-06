@@ -5,6 +5,8 @@ import { motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { Search } from '@/components/Icons';
 import { sectionLabel } from '@/design-system';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 interface OrderSearchEmptyStateProps {
   query: string;
@@ -35,9 +37,17 @@ export function OrderSearchEmptyState({
     <motion.div
       {...presence}
       transition={transition}
-      className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center"
+      className={cn(
+        'mx-auto max-w-xs border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center',
+        cornerClass('flush'),
+      )}
     >
-      <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface-sunken">
+      <div
+        className={cn(
+          'mx-auto mb-3 flex h-11 w-11 items-center justify-center bg-surface-sunken',
+          cornerClass('pill'),
+        )}
+      >
         <Search className="h-5 w-5 text-text-faint" />
       </div>
       <h3 className="mb-1 text-sm font-semibold uppercase tracking-tight text-text-default">{title}</h3>

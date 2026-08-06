@@ -38,7 +38,7 @@ export function MobilePhotoCountBadge({
         hasPhotos ? 'text-blue-600' : 'text-text-faint',
         className,
       )}
-      aria-label={`${safeCount} photo${safeCount === 1 ? '' : 's'}`}
+      aria-label={`Photos ${safeCount}`}
     >
       <Camera className={cn(iconSize, hasPhotos ? 'text-blue-600' : 'text-text-faint')} />
       x{safeCount}
@@ -63,7 +63,7 @@ export function MobilePhotoCountBadge({
       <IconButton
         type="button"
         onClick={onClick}
-        ariaLabel={`${safeCount} photo${safeCount === 1 ? '' : 's'}`}
+        ariaLabel={`Photos ${safeCount}`}
         icon={inner}
         className="inline-flex rounded-lg px-1 py-0.5 active:bg-blue-50"
       />

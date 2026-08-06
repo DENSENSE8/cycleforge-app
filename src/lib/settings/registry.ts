@@ -83,6 +83,35 @@ export const SETTINGS: readonly SettingDef[] = [
     permission: 'admin.manage_features',
   },
   {
+    key: 'receiving.unboxFlowCaptureOrder',
+    page: 'receiving',
+    group: 'Procedure',
+    scope: 'org',
+    label: 'Unbox step order (per flow)',
+    description:
+      'Dogfood: capture-step order for Found / Unfound / Return flows as JSON. Edited from the Unbox right-rail checklist via drag-and-drop — do not hand-edit unless you know the step keys.',
+    control: 'text',
+    // Org-scope write permission (registry law). Floor dogfood DnD still goes
+    // through the settings write path gated by this permission.
+    schema: z
+      .string()
+      .trim()
+      .refine((raw) => {
+        if (raw === '') return true;
+        try {
+          const v = JSON.parse(raw) as unknown;
+          return !!v && typeof v === 'object' && !Array.isArray(v);
+        } catch {
+          return false;
+        }
+      }, 'must be a JSON object of flow id → step key arrays')
+      .default('{}'),
+    // Floor operators who mark received can dogfood the right-rail reorder;
+    // admin.manage_features would lock SOP edits to admins only.
+    permission: 'receiving.mark_received',
+    advanced: true,
+  },
+  {
     key: 'receiving.autoPushPhoneCamera',
     page: 'receiving',
     group: 'Photos',

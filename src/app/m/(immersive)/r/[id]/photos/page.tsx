@@ -3,7 +3,10 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobileReceivingPhotoStudio } from '@/components/mobile/photos/MobileReceivingPhotoStudio';
-import { parseReceivingCartonPhotoStage } from '@/lib/receiving/photo-scope';
+import {
+  parseArrivalGuidedStep,
+  parseReceivingCartonPhotoStage,
+} from '@/lib/receiving/photo-scope';
 
 function PhotoPageInner() {
   const params = useParams<{ id: string }>();
@@ -15,6 +18,8 @@ function PhotoPageInner() {
   // unbox_carton (the safe default — arrival must be requested explicitly);
   // item requests never land here.
   const stage = parseReceivingCartonPhotoStage(searchParams.get('stage'));
+  const guided = searchParams.get('guided') === '1';
+  const initialStep = parseArrivalGuidedStep(searchParams.get('step'));
   const titleParam = (searchParams.get('title') || '').trim();
   const poRefParam = (searchParams.get('poRef') || '').trim() || null;
   const backParam = (searchParams.get('back') || '').trim();
@@ -86,6 +91,8 @@ function PhotoPageInner() {
       returnHref={backHref}
       requestId={requestId}
       maxPhotos={10}
+      guided={guided}
+      initialStep={initialStep}
     />
   );
 }

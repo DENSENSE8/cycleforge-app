@@ -7,7 +7,8 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { GridCellDash, GridDateTimeCellValue } from '@/components/ui/grid-cells';
+import { CopyableCellValue } from '@/components/ui/CopyChip';
+import { GridCellDash, GridDateTimeCellValue, GridStatusCellValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -31,13 +32,15 @@ import {
   type ReadyGridColumn,
 } from '../ready-grid-layout';
 
+/** Secondary categorical chips (reasons / velocity) — not lifecycle status. */
 const CHIP =
   'min-w-0 truncate rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset';
 
+/** Tone maps for house {@link GridStatusCellValue} — bg + text only; ring from the cell. */
 const DISPOSITION_CLASS: Record<ChannelDisposition, string> = {
-  FBA: 'bg-violet-50 text-violet-700 ring-violet-200',
-  PREBOX_STOCK: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  HOLD: 'bg-amber-50 text-amber-800 ring-amber-200',
+  FBA: 'bg-violet-50 text-violet-700',
+  PREBOX_STOCK: 'bg-emerald-50 text-emerald-700',
+  HOLD: 'bg-amber-50 text-amber-800',
 };
 
 const ALLOCATION_STATE_LABEL: Record<ReadyAllocationState, string> = {
@@ -55,9 +58,9 @@ export function readyVerdictLabel(verdict: string | null): string {
 }
 
 function verdictClass(verdict: string | null): string {
-  if (verdict === 'PASS') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-  if (verdict === 'TESTING_FAILED') return 'bg-rose-50 text-rose-700 ring-rose-200';
-  return 'bg-amber-50 text-amber-800 ring-amber-200';
+  if (verdict === 'PASS') return 'bg-emerald-50 text-emerald-700';
+  if (verdict === 'TESTING_FAILED') return 'bg-rose-50 text-rose-700';
+  return 'bg-amber-50 text-amber-800';
 }
 
 /** The unit a hit is about — title, else SKU, else the bare entity id. */
@@ -65,11 +68,33 @@ export function readyHitTitle(hit: AllocationHit): string {
   return hit.title || hit.sku || `Unit #${hit.entityId}`;
 }
 
-/** Identifier trail under the title (SKU · serial · FNSKU · ASIN). */
-function readyHitMeta(hit: AllocationHit): string {
+/** Identifier trail tokens under the title (SKU · serial · FNSKU · ASIN). */
+function readyHitMetaTokens(hit: AllocationHit): { value: string; kind: string }[] {
+  const tokens: { value: string; kind: string }[] = [];
+  if (hit.sku) tokens.push({ value: hit.sku, kind: 'sku' });
+  if (hit.serialNumber) tokens.push({ value: hit.serialNumber, kind: 'serial' });
+  if (hit.fnsku) tokens.push({ value: hit.fnsku, kind: 'fnsku' });
+  if (hit.asin) tokens.push({ value: hit.asin, kind: 'id' });
+  if (tokens.length === 0) tokens.push({ value: `id ${hit.entityId}`, kind: 'id' });
+  return tokens;
+}
+
+function ReadyHitMetaTrail({ hit }: { hit: AllocationHit }) {
+  const tokens = readyHitMetaTokens(hit);
   return (
-    [hit.sku, hit.serialNumber, hit.fnsku, hit.asin].filter(Boolean).join(' · ') ||
-    `id ${hit.entityId}`
+    <span className="inline-flex min-w-0 max-w-full shrink items-center gap-1 overflow-hidden text-role-eyebrow uppercase tracking-widest text-text-faint">
+      {tokens.map((token, i) => (
+        <span key={`${token.kind}:${token.value}`} className="inline-flex min-w-0 items-center gap-1">
+          {i > 0 ? <span className="shrink-0" aria-hidden>·</span> : null}
+          <CopyableCellValue
+            value={token.value}
+            historyKind={token.kind}
+            className="min-w-0 truncate font-mono text-role-eyebrow uppercase tracking-widest text-text-faint"
+            dense
+          />
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -121,26 +146,26 @@ export function renderReadyGridCell(
           <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
             {readyHitTitle(hit)}
           </span>
-          <span className="min-w-0 shrink truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
-            {readyHitMeta(hit)}
-          </span>
+          <ReadyHitMetaTrail hit={hit} />
         </div>
       );
     case 'verdict':
       return (
         <div data-col="verdict" className={dataCell(col, rule)}>
-          <span className={cn(CHIP, verdictClass(hit.verdict))}>
-            {readyVerdictLabel(hit.verdict)}
-          </span>
+          <GridStatusCellValue
+            label={readyVerdictLabel(hit.verdict)}
+            toneClass={verdictClass(hit.verdict)}
+          />
         </div>
       );
     case 'destination':
       return (
         <div data-col="destination" className={dataCell(col, rule)}>
           {hit.disposition ? (
-            <span className={cn(CHIP, DISPOSITION_CLASS[hit.disposition])}>
-              {CHANNEL_DISPOSITION_LABELS[hit.disposition]}
-            </span>
+            <GridStatusCellValue
+              label={CHANNEL_DISPOSITION_LABELS[hit.disposition]}
+              toneClass={DISPOSITION_CLASS[hit.disposition]}
+            />
           ) : (
             <span className="inline-flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
               <span

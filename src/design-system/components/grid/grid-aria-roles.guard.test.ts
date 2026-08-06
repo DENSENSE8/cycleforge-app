@@ -158,7 +158,6 @@ describe('grid ARIA structure', () => {
     // button/checkbox on the element that must be the row; the fix is a single
     // ternary, never two role= attributes on one element.
     const dualRole: [string, string][] = [
-      ['CollapsibleGroupRow.tsx', join(SRC_DIR, 'components/ui/CollapsibleGroupRow.tsx')],
       [
         'OrdersQueueTableRow.tsx',
         join(SRC_DIR, 'components/dashboard/orders-queue/OrdersQueueTableRow.tsx'),

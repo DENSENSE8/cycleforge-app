@@ -25,12 +25,16 @@ import { cn } from '@/utils/_cn';
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
  *   - **Toggle** — sidebar collapse (route-gated)
- *   - **Mode / Recents** — house L2 + MRU ({@link HeaderPageSwitcher} /
- *     {@link HeaderRecentsSwitcher}); Mode returns null on modeless pages.
- *     Data = {@link SIDEBAR_PAGE_NAV} via `useSidebarChildNav` — never a
- *     sidebar pill twin.
- *   - **Pins** — {@link HeaderPinsSwitcher} (hairline after Recents → pin
- *     current → sortable icons → overflow); data = `useQuickAccess` /
+ *   - **Recents / Page** — MRU then current page identity ({@link HeaderRecentsSwitcher}
+ *     → {@link HeaderPageSwitcher} icon + display name). Modeful pages open a
+ *     child-page menu; Receiving benches compose peers via
+ *     {@link stationSubgroupMembers} (same SoT as MasterNav — not legacy
+ *     `receiving` children); other modeless pages keep the same face as a
+ *     static chip. Data = {@link SIDEBAR_PAGE_NAV} (+ {@link APP_SIDEBAR_NAV}
+ *     fallback) via `useSidebarChildNav` — never a sidebar pill twin.
+ *   - **Pins** — {@link HeaderPinsSwitcher} (directly beside Page → Pin menu;
+ *     vertical DnD rows; order = ⌘/Ctrl+1–9); menu chrome shared with Page /
+ *     Recents via {@link HeaderChromeMenu}. Data = `useQuickAccess` /
  *     `cf.quickAccess` — never a pin list in the avatar menu.
  *   - **Next** — {@link HeaderTopWorkOrderChip} (work-order icon → popover; hidden when none)
  *   - **Pace** — {@link HeaderGoalChip} (progress ring → checklist popover)
@@ -78,7 +82,7 @@ export function GlobalHeader({
         appChromeMutedClass,
       )}
     >
-      {/* Left cluster: equal h-8 icon hit-boxes, shared gap + glyph stroke. */}
+      {/* Left cluster: beam-height square cells, shared gap + glyph stroke. */}
       <div className={HEADER_ICON_CLUSTER}>
         {canCollapseSidebar && onToggleSidebar ? (
           <SidebarCollapseControl
@@ -90,8 +94,8 @@ export function GlobalHeader({
             (`SpineTopPins`). When collapsed, `SidebarCollapseControl` peeks the
             same `TopDestinationPins` on hover/focus — never a permanent second
             door in this cluster while the spine is open. */}
-        <HeaderPageSwitcher />
         <HeaderRecentsSwitcher />
+        <HeaderPageSwitcher />
         <HeaderPinsSwitcher />
         <HeaderTopWorkOrderChip />
         <HeaderGoalChip />
@@ -99,7 +103,8 @@ export function GlobalHeader({
 
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
 
-      <div className="flex h-8 shrink-0 items-center">
+      {/* Beam-height so expanded find + icon washes lock flush top/bottom. */}
+      <div className="flex h-full shrink-0 items-stretch">
         <GlobalHeaderActions />
       </div>
     </header>

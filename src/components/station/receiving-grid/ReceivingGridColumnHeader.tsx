@@ -7,6 +7,7 @@ import {
 import {
   RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
+  RECEIVING_GRID_FROZEN_EDGE_KEY,
   receivingGridCell,
   receivingGridFrozenLeft,
   receivingGridRowShellClass,
@@ -25,8 +26,8 @@ const RECEIVING_HEADER_LAYOUT: LedgerHeaderLayoutApi<ReceivingGridColumn> = {
   frozenLeft: receivingGridFrozenLeft,
   isFrozen: isReceivingGridFrozen,
   isSortable: isReceivingGridSortable,
-  // Sheets-class: only the select gutter is frozen — edge cue hangs there.
-  frozenEdgeKey: 'select',
+  // Trailing frozen identity cell (`order`) owns the scroll-edge shadow.
+  frozenEdgeKey: RECEIVING_GRID_FROZEN_EDGE_KEY,
 };
 
 /**

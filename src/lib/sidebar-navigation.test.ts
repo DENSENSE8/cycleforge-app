@@ -527,8 +527,7 @@ test('getSidebarRouteKey maps the dedicated order workspace to order', () => {
   assert.equal(getSidebarRouteKey('/o'), 'order');
 });
 
-// `/search` is Workbench master–detail: hit list in the context rail, selected
-// entity detail in the main pane (`?q=` + `?sel=`).
+// `/search` is a centered find stage (no context rail) + full-bleed detail on `?sel=`.
 test('Home reserves a context column for its saved-views rail', () => {
   assert.equal(getSidebarRouteKey('/'), 'home');
   // The set is the DECLARED contract for whether the spine pins a 360px column.
@@ -539,10 +538,10 @@ test('Home reserves a context column for its saved-views rail', () => {
   assert.equal(hasSidebarContextPanel('/'), true);
 });
 
-test('/search declares its own route key and reserves a context column', () => {
+test('/search declares its own route key and does not reserve a context column', () => {
   assert.equal(getSidebarRouteKey('/search'), 'search');
   assert.equal(getSidebarRouteKey('/search/anything'), 'search');
-  assert.equal(hasSidebarContextPanel('/search'), true);
+  assert.equal(hasSidebarContextPanel('/search'), false);
   // Spine top pin so MasterNav selects Search instead of falling through to Dashboard.
   const searchNav = APP_SIDEBAR_NAV.find((item) => item.id === 'search');
   assert.ok(searchNav, 'search must be in APP_SIDEBAR_NAV');

@@ -1,5 +1,9 @@
 import { Loader2, MessageSquare, Sparkles } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  DenseComposeBodyBand,
+  DenseComposeBodyTextarea,
+} from '@/design-system/components/DenseComposeFields';
 import { Button } from '@/design-system/primitives';
 import type { FiledTicket } from '../claim-types';
 import type { UseClaimSellerMessage } from '../hooks/useClaimSellerMessage';
@@ -10,18 +14,18 @@ interface Props {
   filedTicket: FiledTicket | null;
 }
 
-/** Seller-message editor with AI redraft — flat linear section. */
+/** Seller-message editor with AI redraft — sheet-band sunken compose face. */
 export function ClaimSellerMessagePanel({ seller, filedTicket }: Props) {
   const { sellerMessage, setSellerMessage, aiModel, aiLoading, draftSellerMessage } = seller;
   const draftDisabled = aiLoading || !filedTicket || filedTicket.number === 'pending';
 
   return (
-    <section className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
+    <section className="space-y-0">
+      <div className="flex items-center justify-between gap-3 px-3 pb-2">
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-faint" />
           <div>
-            <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
+            <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
               Seller message
             </p>
             {aiModel ? (
@@ -44,15 +48,17 @@ export function ClaimSellerMessagePanel({ seller, filedTicket }: Props) {
       {aiLoading && !sellerMessage ? (
         <SellerMessageSkeleton />
       ) : (
-        <textarea
-          value={sellerMessage}
-          onChange={(e) => setSellerMessage(e.target.value)}
-          rows={12}
-          placeholder="Seller-facing message will appear here…"
-          className="block w-full resize-y rounded-lg border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
-        />
+        <DenseComposeBodyBand>
+          <DenseComposeBodyTextarea
+            value={sellerMessage}
+            onChange={(e) => setSellerMessage(e.target.value)}
+            rows={12}
+            placeholder="Seller-facing message will appear here…"
+            className="min-h-[12rem]"
+          />
+        </DenseComposeBodyBand>
       )}
-      <p className="text-role-micro font-medium text-text-faint">
+      <p className="px-3 pt-2 text-role-micro font-medium text-text-faint">
         Paste into eBay or the marketplace seller. Plain text — includes case # as reference.
       </p>
     </section>

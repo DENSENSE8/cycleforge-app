@@ -6,6 +6,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { CopyableCellValue } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -77,9 +78,11 @@ export function renderBinsGridCell(
           data-frozen-edge
         >
           {row.barcode ? (
-            <span className="min-w-0 flex-1 truncate font-mono text-role-data text-blue-700">
-              {row.barcode}
-            </span>
+            <CopyableCellValue
+              value={row.barcode}
+              historyKind="bin"
+              className="min-w-0 flex-1 text-role-data text-blue-700"
+            />
           ) : (
             <GridCellDash />
           )}

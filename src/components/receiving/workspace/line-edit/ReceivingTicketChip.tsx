@@ -177,7 +177,7 @@ export function ReceivingTicketChip({
         value={value}
         display={display}
         tone="ticket"
-        underlineClass="border-orange-500"
+        iconClass="text-orange-500"
         disableCopy={!value.trim()}
         actionsInMenu
         suppressMenu={sellerOpen}

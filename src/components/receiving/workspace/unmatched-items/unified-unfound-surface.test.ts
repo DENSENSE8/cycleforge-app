@@ -65,6 +65,27 @@ test('empty unfound ReturnScanCard matches PoLineRow anatomy (title + empty SKU 
   assert.ok(/embedded/.test(RETURN_CARD), 'SerialCard is embedded inside the row body');
 });
 
+test('ReturnScanCard uses flat PoLineRow chrome (no blue card bubble)', () => {
+  // Same data-floor contract as po-line-flat-chrome.guard.test.ts — unfound
+  // empty stub must not reintroduce the rounded blue card that found lines lost.
+  assert.ok(/QUEUE_ROW\.selectedStationClass/.test(RETURN_CARD), 'opaque station selected face');
+  assert.ok(/rounded-none/.test(RETURN_CARD), 'no card radius');
+  assert.ok(/border-b border-border-soft/.test(RETURN_CARD), 'hairline bottom only');
+  assert.ok(/pl-0 pr-0/.test(RETURN_CARD), 'flush left/right — no side pad');
+  assert.ok(
+    !/border-blue-300 bg-blue-50\/60/.test(RETURN_CARD),
+    'must not paint the legacy blue unfound card wash',
+  );
+  assert.ok(
+    !/rounded-xl border/.test(RETURN_CARD),
+    'card bubbles (rounded-xl + full border) are banned on the data floor',
+  );
+  assert.ok(
+    !/px-3 pb-1 pt-1/.test(RETURN_CARD),
+    'must not keep the old inset pad around title/serial',
+  );
+});
+
 test('return import writes the shared receivingSiblingsQueryKey cache', () => {
   assert.ok(
     /writeReceivingSiblingLine\(/.test(SURFACE),

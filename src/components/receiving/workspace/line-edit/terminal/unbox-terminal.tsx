@@ -3,6 +3,7 @@
 import {
   Clipboard,
   PackageCheck,
+  Pencil,
   Printer,
   RotateCcw,
 } from '@/components/Icons';
@@ -77,10 +78,21 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
     menuTitle: r.splitMenuHoverTitle,
     menu: [
       ...labelMenuItems,
+      ...(r.requestLabelEditor
+        ? [
+            {
+              label: 'Edit label',
+              icon: <Pencil className="h-3.5 w-3.5 shrink-0" />,
+              separatorBefore: labelMenuItems.length > 0,
+              onClick: () => r.requestLabelEditor?.(),
+              title: `Edit the selected ${activeName} before print`,
+            },
+          ]
+        : []),
       {
         label: `Print only · ${activeName}`,
         icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
-        separatorBefore: labelMenuItems.length > 0,
+        separatorBefore: labelMenuItems.length > 0 && !r.requestLabelEditor,
         onClick: () => r.runPrintLabel(),
         disabled: !r.canPrintReview,
         title: `Print the selected ${activeName} without receiving`,

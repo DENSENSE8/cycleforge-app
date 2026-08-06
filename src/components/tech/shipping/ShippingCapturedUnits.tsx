@@ -76,7 +76,7 @@ export function ShippingCapturedUnits({
                   animate={{ opacity: 1, x: 0, height: 'auto' }}
                   exit={{ opacity: 0, x: -24, height: 0 }}
                   transition={framerTransition.stationSerialRow}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors duration-500 ${
+                  className={`flex items-center gap-2 rounded-none border px-3 py-2 transition-colors duration-500 ${
                     isNew
                       ? 'border-emerald-400 bg-emerald-200 shadow-sm'
                       : 'border-emerald-100 bg-surface-card'

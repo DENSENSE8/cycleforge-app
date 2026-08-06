@@ -231,7 +231,7 @@ export function IntegrationCard({
   const openVaultConnect = useCallback(() => setVaultOpen(true), []);
 
   return (
-    <div id={def.key} className="flex h-full scroll-mt-6 flex-col rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
+    <div id={def.key} className="flex h-full scroll-mt-6 flex-col rounded-none border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
       <div className="flex items-start gap-3">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-role-body font-semibold ${def.badge}`}>
           {monogram(def.label)}
@@ -273,7 +273,7 @@ export function IntegrationCard({
       )}
 
       {state.accounts.length > 0 && (
-        <div className="mt-3 space-y-1.5 rounded-xl bg-surface-canvas/70 p-2">
+        <div className="mt-3 space-y-1.5 rounded-none bg-surface-canvas/70 p-2">
           {state.accounts.map((acct, i) => (
             <div key={acct.id ?? `${acct.label}-${i}`} className="flex items-center gap-2">
               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${ACCOUNT_DOT[acct.status]}`} />

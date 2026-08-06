@@ -84,6 +84,7 @@ export function buildReceivingPaneModeState(
     listSearch: query.listSearch?.trim() ?? '',
     queueStage: query.queueStage ?? null,
     queueLane: query.queueLane ?? null,
+    priorityOnly: false,
     trackingIn: EMPTY_TRACKING,
   };
 

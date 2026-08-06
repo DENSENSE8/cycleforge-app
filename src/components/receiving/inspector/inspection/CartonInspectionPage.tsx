@@ -26,18 +26,25 @@ import { Button, IconButton, Panel } from '@/design-system/primitives';
 import {
   Camera,
   ChevronDown,
-  ChevronRight,
   Copy,
+  ExternalLink,
   History,
   Loader2,
   Maximize2,
   Wrench,
 } from '@/components/Icons';
 import {
+  CopyableCellValue,
   PoChip,
   SerialChip,
   TrackingChip,
 } from '@/components/ui/CopyChip';
+import { CarrierMark } from '@/components/ui/CarrierMark';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import {
+  GridDateTimeCellValue,
+  GridStatusCellValue,
+} from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffAvatar } from '@/components/identity';
 import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
@@ -63,7 +70,11 @@ import { buildCartonReadCopyText } from '@/lib/receiving/carton-read-utilities';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
-import { sourcePlatformLabel } from '@/lib/source-platform';
+import {
+  CARRIER_BRANDS,
+  displayCarrierFromHint,
+} from '@/lib/carrier-brand';
+import { sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
@@ -84,6 +95,8 @@ import {
   cartonFacts,
   cartonHeaderIdentity,
   cartonRecordMeta,
+  qaStatusMeta,
+  receivingSourceLabel,
   type CartonDisposition,
   type CartonException,
   type CartonFact,
@@ -151,16 +164,119 @@ function FactValue({ fact }: { fact: CartonFact }) {
           {conditionLabel(fact.value, 'compact')}
         </span>
       );
-    case 'platform':
-      return <span className="text-role-caption text-text-default">{sourcePlatformLabel(fact.value)}</span>;
+    case 'platform': {
+      const meta = sourcePlatformMeta(fact.value);
+      const label = sourcePlatformLabel(fact.value);
+      return (
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <PlatformMark platformValue={fact.value} meta={meta} preferBrandTile />
+          <span className="min-w-0 truncate text-role-caption text-text-default">{label}</span>
+        </span>
+      );
+    }
+    case 'carrier': {
+      const hint = displayCarrierFromHint(fact.value);
+      const brand = hint ? CARRIER_BRANDS[hint] : CARRIER_BRANDS.Unknown;
+      const label = brand.carrier !== 'Unknown' ? brand.label : fact.value;
+      return (
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <CarrierMark meta={brand} />
+          <span className="min-w-0 truncate text-role-caption uppercase tracking-wide text-text-default">
+            {label}
+          </span>
+        </span>
+      );
+    }
+    case 'qaStatus': {
+      const qa = qaStatusMeta(fact.value);
+      return (
+        <GridStatusCellValue label={qa.label} toneClass={qa.badge} dotClass={qa.dot} />
+      );
+    }
     case 'receivingType':
-      return <span className="text-role-caption text-text-default">{receivingTypeMeta(fact.value).label}</span>;
+      return (
+        <span className="text-role-caption text-text-default">
+          {receivingTypeMeta(fact.value).label}
+        </span>
+      );
+    case 'source':
+      return (
+        <span className="block truncate text-role-caption text-text-default">
+          {receivingSourceLabel(fact.value)}
+        </span>
+      );
+    case 'id':
+      return (
+        <CopyableCellValue
+          value={fact.value}
+          dense
+          className="font-mono tabular-nums text-role-caption text-text-default"
+        />
+      );
+    case 'externalId':
+      // Full mono face — long provider ids stay retypable; copy ritual on click.
+      return (
+        <CopyableCellValue
+          value={fact.value}
+          dense
+          className="break-all font-mono tabular-nums text-role-caption text-text-default"
+        />
+      );
+    case 'instant':
+      return (
+        <GridDateTimeCellValue
+          raw={fact.value}
+          className="text-role-caption text-text-muted"
+        />
+      );
     default:
       // `block` is load-bearing: `truncate` sets overflow+ellipsis, which an
       // inline span ignores — so a long staging label used to run past the
       // column instead of clipping. Only visible once the rail narrowed.
       return <span className="block truncate text-role-caption text-text-default">{fact.value}</span>;
   }
+}
+
+/** One labelled fact cell — shared by the operational strip and system meta. */
+function RecordFactCell({
+  fact,
+  wide = false,
+  quietLabel = false,
+}: {
+  fact: CartonFact;
+  wide?: boolean;
+  quietLabel?: boolean;
+}) {
+  return (
+    <div className={cn('min-w-0 space-y-0.5', wide && 'col-span-3')}>
+      <p
+        className={cn(
+          'text-role-micro uppercase tracking-widest',
+          quietLabel ? 'text-text-faint' : 'text-text-soft',
+        )}
+      >
+        {fact.label}
+      </p>
+      <FactValue fact={fact} />
+    </div>
+  );
+}
+
+/** Quiet egress to the marketplace listing — secondary to facts, not a hero CTA. */
+function SourceListingButton({ href }: { href: string }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      icon={<ExternalLink className="h-3.5 w-3.5" />}
+      onClick={() => window.open(href, '_blank', 'noopener,noreferrer')}
+      ariaLabel="Open source listing"
+      className="h-auto px-0 text-text-muted hover:text-text-default"
+    >
+      Source listing
+    </Button>
+  );
 }
 
 export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
@@ -239,7 +355,9 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   }, [receiving, copyingAll]);
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+    // ONE continuous plane. The sunken identity band above is the only surface
+    // step; everything below reads as a single card, sectioned by hairlines.
+    <div className="relative flex h-full min-h-0 w-full flex-col bg-surface-card">
       <DispositionBar
         receivingId={receivingId}
         identity={headerIdentity}
@@ -254,17 +372,17 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
 
       <div className={cn('min-h-0 flex-1 overflow-y-auto', STATION_IDENTITY_SCROLL_CLEARANCE)}>
         {isLoading ? (
-          <div className="flex items-center gap-2 px-6 py-10 text-role-caption text-text-muted">
+          <div className="flex items-center gap-2 inset-card text-role-caption text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading carton…
           </div>
         ) : isError || !receiving || !disposition ? (
-          <div className="px-6 py-6">
-            <p className="rounded-xl border border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-text-danger">
+          <div className="inset-card">
+            <p className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-text-danger">
               Could not load this carton. It may have been removed, or belong to another workspace.
             </p>
           </div>
         ) : (
-          <div className="space-y-5 px-6 py-5 pb-16">
+          <div className="pb-16">
             {/*
               Photos open ABOVE the two columns, not beside them: an investigative
               read means looking at a shot and the line it belongs to at the same
@@ -279,7 +397,7 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
                   animate={photosPresence.animate}
                   exit={photosPresence.exit}
                   transition={photosTransition}
-                  className="overflow-hidden"
+                  className="overflow-hidden border-b border-border-soft"
                 >
                   <CartonPhotoTriage
                     receivingId={receiving.id}
@@ -305,8 +423,13 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
               the wider column so long line titles wrap honestly; progress /
               activity stay readable on the narrower timeline. The prior 22rem
               rail starved the title.
+
+              The columns are FLUSH (gap-0, hairline seam) — depth is planes,
+              not gutters. A `gap-5` between two sections of one record read as
+              two floating cards; the vertical rule says "same sheet, next
+              question" instead.
             */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <ContentsColumn
                 receiving={receiving}
                 lines={lines ?? []}
@@ -406,7 +529,7 @@ function DispositionBar({
             onClick={onTogglePhotos}
             disabled={utilsDisabled}
             aria-expanded={photosOpen}
-            ariaLabel={photosOpen ? 'Hide carton photos' : 'Show carton photos'}
+            ariaLabel={photosOpen ? 'Hide photos' : 'Show photos'}
             icon={<Camera />}
             className="shrink-0"
           >
@@ -477,9 +600,12 @@ function ContentsColumn({
   hideEmptyContents: boolean;
 }) {
   return (
-    <section className="space-y-5" data-testid="carton-contents-column">
+    // Sections, not cards. `divide-y` rules BETWEEN siblings only, so the last
+    // section never trails an unfinished hairline into open plane — which is
+    // what a per-section `border-b` would do on two columns of unequal length.
+    <section className="divide-y divide-border-hairline" data-testid="carton-contents-column">
       {lines.length > 0 ? (
-        <div className="space-y-2">
+        <div className="inset-card space-y-2">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Contents</p>
             <span className="text-role-micro uppercase tracking-widest text-text-soft">{totalsSummary}</span>
@@ -487,96 +613,73 @@ function ContentsColumn({
           <ContentsList lines={lines} />
         </div>
       ) : hideEmptyContents ? null : (
-        <p className="text-role-caption text-text-muted">No lines on this carton yet.</p>
+        <p className="inset-card text-role-caption text-text-muted">No lines on this carton yet.</p>
       )}
 
       {facts.length > 0 || recordMeta.length > 0 ? (
-        <Panel padding="sm" radius="xl" elevation="none" className="space-y-4">
+        <div className="inset-card space-y-3">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Record</p>
           {facts.length > 0 ? (
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-2">
               {facts.slice(0, 6).map((f) => (
-                <div key={f.key} className="min-w-0 space-y-0.5">
-                  <p className="text-role-micro uppercase tracking-widest text-text-soft">{f.label}</p>
-                  <FactValue fact={f} />
-                </div>
+                <RecordFactCell key={f.key} fact={f} />
               ))}
             </div>
           ) : null}
 
           {recordMeta.length > 0 ? (
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-2">
               {recordMeta.map((m) => (
-                <div
+                <RecordFactCell
                   key={m.key}
-                  className={cn(
-                    'min-w-0 space-y-1',
-                    WIDE_RECORD_META_KEYS.has(m.key) && 'col-span-3',
-                  )}
-                >
-                  <p className="text-role-micro uppercase tracking-widest text-text-soft">{m.label}</p>
-                  <p
-                    className={cn(
-                      'text-role-caption tabular-nums text-text-default',
-                      WIDE_RECORD_META_KEYS.has(m.key) ? 'break-words' : 'truncate',
-                    )}
-                  >
-                    {m.key === 'created' || m.key === 'updated'
-                      ? formatDateTimePST(m.value)
-                      : m.value}
-                  </p>
-                </div>
+                  fact={m}
+                  wide={WIDE_RECORD_META_KEYS.has(m.key)}
+                  quietLabel
+                />
               ))}
             </div>
           ) : null}
 
           {receiving.listing_url?.trim() ? (
-            <a
-              href={receiving.listing_url.trim()}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-muted hover:underline"
-            >
-              Source listing
-              <ChevronRight className="h-3 w-3" />
-            </a>
+            <SourceListingButton href={receiving.listing_url.trim()} />
           ) : null}
-        </Panel>
+        </div>
       ) : receiving.listing_url?.trim() ? (
-        <a
-          href={receiving.listing_url.trim()}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-muted hover:underline"
-        >
-          Source listing
-          <ChevronRight className="h-3 w-3" />
-        </a>
+        <div className="inset-card">
+          <SourceListingButton href={receiving.listing_url.trim()} />
+        </div>
       ) : null}
 
       {(purchaseOrders?.length ?? 0) > 1 ? (
-        <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
-          {purchaseOrders!.map((po) => (
-            <li
-              key={po.zoho_purchaseorder_id ?? po.zoho_purchaseorder_number ?? 'po'}
-              className="flex items-center justify-between gap-3 px-3 py-1.5"
-            >
-              <span className="truncate text-role-caption text-text-default">
-                {po.zoho_purchaseorder_number ?? 'Unnumbered PO'}
-              </span>
-              <span className="shrink-0 text-role-caption tabular-nums text-text-muted">
-                {po.line_count} {po.line_count === 1 ? 'line' : 'lines'}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="inset-card space-y-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            Purchase orders
+          </p>
+          <ul className="divide-y divide-border-hairline">
+            {purchaseOrders!.map((po) => (
+              <li
+                key={po.zoho_purchaseorder_id ?? po.zoho_purchaseorder_number ?? 'po'}
+                className="flex items-center justify-between gap-3 py-1.5"
+              >
+                <span className="truncate text-role-caption text-text-default">
+                  {po.zoho_purchaseorder_number ?? 'Unnumbered PO'}
+                </span>
+                <span className="shrink-0 text-role-caption tabular-nums text-text-muted">
+                  {po.line_count} lines
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {receiving.support_notes?.trim() ? (
-        <Panel padding="sm" radius="xl" elevation="none">
+        <div className="inset-card space-y-2">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Note</p>
           <p className="whitespace-pre-wrap text-role-caption text-text-default">
             {receiving.support_notes.trim()}
           </p>
-        </Panel>
+        </div>
       ) : null}
     </section>
   );
@@ -595,17 +698,20 @@ function ProgressRail({
   const log = useMemo(() => toReceivingDetailsLog(receiving), [receiving]);
 
   return (
-    <section className="space-y-5" data-testid="carton-timeline-column">
+    // The seam between the two questions is a rule, not a gutter: a top hairline
+    // when the tracks stack, a left one once they sit side by side.
+    <section
+      className="divide-y divide-border-hairline border-t border-border-soft xl:border-t-0 xl:border-l"
+      data-testid="carton-timeline-column"
+    >
       {/*
         No photo card here any more. Photos are the DispositionBar's primary CTA
         and open in-flow above both columns — a mid-rail launcher beside it would
         be a second front door to one surface.
       */}
-      <div className="space-y-2">
+      <div className="inset-card space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-muted">Progress</p>
-        <Panel padding="sm" radius="xl" elevation="none">
-          <ReceivingCartonPipeline log={log} readiness={readiness} />
-        </Panel>
+        <ReceivingCartonPipeline log={log} readiness={readiness} />
       </div>
 
       {/*
@@ -614,16 +720,17 @@ function ProgressRail({
         disclosure header. Progress still leads — WHERE before WHAT IS WRONG.
       */}
       {disposition.exceptions.length > 0 ? (
-        <div className="space-y-2">
+        <div className="inset-card space-y-2">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Findings</p>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {disposition.exceptions.map((ex) => (
+              // A finding keeps its tone — that is state, not decoration — but
+              // wears it as a flush tinted band with a left accent rule. An edge
+              // accent must be a border on the element itself; `rounded-*-[inherit]`
+              // on a child renders as a lens/notch.
               <li
                 key={ex.key}
-                className={cn(
-                  'rounded-xl border bg-surface-card px-3 py-2.5',
-                  EXCEPTION_TONE[ex.tone],
-                )}
+                className={cn('border-l-2 inset-field', EXCEPTION_TONE[ex.tone])}
               >
                 <p className="text-role-caption font-semibold text-text-default">{ex.label}</p>
                 <p className="mt-0.5 text-role-caption text-text-muted">{ex.ctaHint}</p>
@@ -640,11 +747,9 @@ function ProgressRail({
       */}
       {events.length > 0 ? <ActivitySection events={events} /> : null}
 
-      <div className="space-y-2">
+      <div className="inset-card space-y-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
-        <Panel padding="sm" radius="xl" elevation="none">
-          <CartonUnitJourneyHistory receivingId={receiving.id} />
-        </Panel>
+        <CartonUnitJourneyHistory receivingId={receiving.id} />
       </div>
     </section>
   );
@@ -670,7 +775,13 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
 
   return (
     <>
-      <ul className="flex min-w-0 flex-col gap-2">
+      {/*
+        Rows on the shared plane, not a stack of cards. A list of bordered cards
+        inside a section IS the nested-cards-as-rows ban — and the card's own
+        `overflow-hidden` (there to clip the radius) was shearing the focus ring
+        off the thumb button inside it.
+      */}
+      <ul className="flex min-w-0 flex-col divide-y divide-border-hairline">
         {lines.map((line) => {
           const imageUrl = (line.image_url || '').trim() || null;
           const galleryIndex = imageUrl ? galleryPhotos.indexOf(imageUrl) : -1;
@@ -678,10 +789,7 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
             .map((s) => (s.serial_number || '').trim())
             .filter(Boolean);
           return (
-            <li
-              key={line.id}
-              className="relative min-w-0 overflow-hidden rounded-xl border border-border-soft bg-surface-card px-3 py-1.5"
-            >
+            <li key={line.id} className="relative min-w-0 py-2">
               <ReceivingLineContentsRow
                 title={receivingLineContentsTitle(line)}
                 imageUrl={imageUrl}
@@ -727,12 +835,12 @@ function ActivitySection({ events }: { events: CartonInspectorEvent[] }) {
   const transition = useMotionTransition(framerTransition.stationCollapse);
 
   const newest = events[0]!;
-  const countLabel = `${events.length} ${events.length === 1 ? 'event' : 'events'}`;
+  const countLabel = `${events.length} events`;
   const canExpandList = events.length > 1;
   const visibleEvents = listOpen || !canExpandList ? events : [newest];
 
   return (
-    <div className="space-y-2">
+    <div className="inset-card space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <button
           type="button"
@@ -820,7 +928,7 @@ function EventsList({
   const chipDisambiguates = distinctSerials.size > 1;
 
   return (
-    <ul className="divide-y divide-border-soft rounded-xl border border-border-soft bg-surface-card">
+    <ul className="divide-y divide-border-hairline">
       {events.map((e) => {
         // What makes this row different from the one above it. Derived in the
         // model, never re-decided in JSX (same rule as the photo buckets).
@@ -828,7 +936,7 @@ function EventsList({
         const station = resolveStationGlyph(e.station);
         const StationGlyph = station ? TIMELINE_GLYPH_ICONS[station.id] : null;
         return (
-          <li key={e.id} className="space-y-1 px-3 py-2">
+          <li key={e.id} className="space-y-1 py-2">
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0 break-words text-role-caption font-semibold text-text-default">
                 {e.notes?.trim() || e.event_type || 'Event'}

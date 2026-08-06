@@ -4,7 +4,7 @@
  * Right-rail FRAME store + the push/overlay decision.
  *
  * `store.ts` answers "who is in the right-edge slot". This answers the other
- * half — "can that occupant PUSH the work surface, and what has to yield first".
+ * half — "can that occupant PUSH the work surface, and how wide may it grow".
  *
  * ## Why a store and not a prop
  *
@@ -16,156 +16,124 @@
  * same subscribe/emit/cached-snapshot shape as {@link RightRailPanel}'s store is
  * the idiom this file already uses next door.
  *
- * ## The ladder, and why it has two rungs and not three
+ * ## Width pressure (ruled 2026-08-05)
  *
- * `source-of-truth.md` (Right-rail modality) rules: "the panel takes its space
- * from the LEFT before it takes it from the grid: collapse/displace the spine
- * (and, if still short, the context rail) first".
+ * Opening a right-edge panel must **not** auto-close or ephemeral-mask the left
+ * context rail. Both stay open. Desk inspectors reserve
+ * {@link MIN_WORK_SURFACE_PX} for the center. Scan-station Displays push
+ * reserves {@link STATION_PUSH_CENTER_FLOOR_PX} (720 — the workbench lock) so
+ * the middle never yields below that floor. Cap: `left + centerFloor + right ≤
+ * frame`. Never a floating card over the work.
  *
- * Measured against the running app (Playwright, 1440 and 1920, every route),
- * **`[data-sidebar-nav-column]` reports width 0** — `navOpen` is
- * `useState(false)` (`ResponsiveLayout.tsx`) and nothing persists it, so the
- * spine is closed unless the operator just opened it. A spine rung would be dead
- * code in the common case, and displacing it fights `SidebarNavColumn`'s own
- * ruling that a navigator must not auto-close. So the ladder is:
- *
- *   rung 0 — nothing yields; the panel fits in the surplus as the frame stands
- *   rung 1 — the CONTEXT RAIL parks (it is the only real donor: 360px + margins
- *            against the spine's 0), and the panel fits
- *   else   — overlay, exactly as before this change
- *
- * If the operator has the spine open and rung 1 still does not fit, the answer is
- * overlay rather than yanking their navigator shut mid-task.
+ * MasterNav spine remains operator-owned (`SidebarNavColumn` never auto-closes).
  *
  * ## Why the inputs cannot oscillate
  *
  * `frameWidthPx` is measured on the content ROW, whose width is invariant under
- * everything this resolver decides — parking the rail and growing the panel both
- * redistribute space *inside* it. And `railCostOpenPx` is the rail's OPEN width
- * from its resize state, never a measurement of the parked DOM, so the resolver
- * can always ask "what would it cost if it were open" without reading back the
- * consequence of its own answer. A resolver fed the grid's live
- * `contentMinWidthRem` instead would be circular: on `/dashboard` that value is
- * filtered by a `ResizeObserver` on the very scrollport the push narrows.
+ * everything this resolver decides — growing the panel redistributes space
+ * *inside* it. And `railCostOpenPx` is the rail's OPEN width from its resize
+ * state, never a live measurement of a parked DOM, so the resolver can always
+ * ask "what does the left cost" without reading back the consequence of its
+ * own answer. A resolver fed the grid's live `contentMinWidthRem` instead would
+ * be circular: on `/dashboard` that value is filtered by a `ResizeObserver` on
+ * the very scrollport the push narrows.
  */
 
 import { CONTEXT_PANEL_COLLAPSE, CONTEXT_PANEL_WIDTH_PX } from '@/components/sidebar/context-panel-column';
+import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
 import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
 
 /** Flush planes — no outer gutter island between rail / center / push (2026-08-03). */
 export const RIGHT_RAIL_GUTTER_PX = 0;
 
-/** What a parked context rail still costs: the slim strip only (no margin islands). */
+/** What an operator-collapsed context rail still costs: the slim strip only. */
 export const CONTEXT_RAIL_PARKED_PX = CONTEXT_PANEL_COLLAPSE.stripWidthPx;
 
 /**
- * The work surface's floor — the width below which pushing stops being a favour.
+ * Station Displays push — reserve the scan middle lock so Displays / context
+ * cannot crush the workbench below {@link STATION_WORKBENCH_LOCK_PX}. Desk
+ * inspectors keep {@link MIN_WORK_SURFACE_PX}.
+ */
+export const STATION_PUSH_CENTER_FLOOR_PX = STATION_WORKBENCH_LOCK_PX;
+
+/**
+ * The work surface's floor for **desk** inspectors (dashboard / History peek).
  *
- * Derived from two real surfaces, taking the larger:
- *  - Outbound grid: `VIEWPORT_SHOW_ALL_PX` 640 (`dashboard-order-row-layout.ts`
- *    — below this the grid starts force-hiding columns) + `WORKBENCH_GUTTERS`
- *    `lg:px-8` on both sides = 704.
- *  - Station workbench: `STATION_WORKBENCH_COLUMN` `max-w-[720px]` + its `px-6`
- *    gutters = 768.
+ * Derived from Outbound show-all (~704). Scan-station Displays push publishes
+ * {@link STATION_PUSH_CENTER_FLOOR_PX} (720) so the middle stays locked while
+ * rails trade width. Desk keeps this floor so the queue stays readable.
  *
- * 784 clears both with a little air.
- *
- * **Deliberately ONE static constant, not a per-lane published floor.** The real
- * minimum differs per surface, and a descriptor could publish its own
- * `contentMinWidthRem` — but on `/dashboard` that number is computed from
- * `displayColumns`, which `useViewportForcedHidden` filters using a
- * `ResizeObserver` on the scrollport this push resizes. Feeding it back in would
- * make the decision depend on its own outcome. A conservative constant is the
- * honest input; a circular one is not.
+ * **Deliberately ONE static constant for desk, not a per-lane published floor.**
+ * On `/dashboard` `contentMinWidthRem` is filtered by a `ResizeObserver` on the
+ * scrollport the push resizes — feeding it back would be circular.
  */
 export const MIN_WORK_SURFACE_PX = 784;
 
 interface RightRailFrameInput {
-  /** Width of the content ROW (invariant under park/push — see the docblock). */
+  /** Width of the content ROW (invariant under push — see the docblock). */
   frameWidthPx: number;
   /** The route rail's cost WHEN OPEN (card + margins). 0 when the route has none. */
   railCostOpenPx: number;
-  /** True when the OPERATOR collapsed the rail — their choice, not our mask. */
+  /** True when the OPERATOR collapsed the rail — their choice, not a mask. */
   railOperatorCollapsed: boolean;
   /** False for occupants that must not push (station edge, assistant, modal). */
   wantsPush: boolean;
-  /** The panel's current preferred width. */
-  desiredWidthPx: number;
+  /**
+   * Px the center must keep while computing the right-panel cap.
+   * Desk inspectors: {@link MIN_WORK_SURFACE_PX}. Station Displays push:
+   * {@link STATION_PUSH_CENTER_FLOOR_PX} (720 — middle lock).
+   */
+  centerFloorPx: number;
 }
 
 interface RightRailFrameResolution {
   mode: 'push' | 'overlay';
-  /** Rung 1 — park the context rail for as long as the panel is open. */
-  parkRail: boolean;
   /** Ceiling for the panel's drag-resize while pushing. */
   capPx: number;
 }
 
 /**
- * Pure. Every worked number in the unit test comes from here, so the ladder is
- * provable without mounting anything.
+ * Left cost the frame must reserve: open card, operator strip, or nothing.
+ * Never an ephemeral push-park — the right edge does not close the left rail.
  */
-export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFrameResolution {
-  const { frameWidthPx, railCostOpenPx, railOperatorCollapsed, wantsPush, desiredWidthPx } = input;
-
-  // The cap is computed against the FULLY-PARKED frame on purpose: a ceiling
-  // that moved when the rail parked would change under the operator's cursor
-  // mid-drag, and it must not depend on the park state it helps decide.
-  const capPx = Math.max(
-    DETAIL_STACK_RESIZE.minWidthPx,
-    frameWidthPx - CONTEXT_RAIL_PARKED_PX - MIN_WORK_SURFACE_PX - RIGHT_RAIL_GUTTER_PX * 2,
-  );
-
-  if (!wantsPush || !Number.isFinite(frameWidthPx) || frameWidthPx <= 0) {
-    return { mode: 'overlay', parkRail: false, capPx };
-  }
-
-  // What the left costs at each rung. A rail the operator already parked costs
-  // the strip either way, so rung 0 and rung 1 collapse into one for them.
-  // A route with NO rail costs nothing at either rung — guarded here rather than
-  // trusted from the publisher, because `railOperatorCollapsed` is a persisted
-  // preference that outlives the route that set it.
-  const hasRail = railCostOpenPx > 0;
-  const restingLeftPx = hasRail
-    ? railOperatorCollapsed
-      ? CONTEXT_RAIL_PARKED_PX
-      : railCostOpenPx
-    : 0;
-  // A PUSH-parked rail costs 0, not the strip: `ContextPanelLayout` renders the
-  // expand strip only when the OPERATOR collapsed it. Masking the rail must not
-  // leave a restore control that cannot work — the rail comes back on its own
-  // when the panel closes — so the mask hides it entirely and the space it gives
-  // back is the whole card plus both gutters.
-  //
-  // When the operator HAS collapsed it, their strip stays (it is their restore),
-  // so rung 1 offers them nothing and the resolver will not claim a saving that
-  // does not exist.
-  const parkedLeftPx = hasRail && railOperatorCollapsed ? CONTEXT_RAIL_PARKED_PX : 0;
-
-  const surplus = (leftPx: number) =>
-    frameWidthPx - leftPx - MIN_WORK_SURFACE_PX - RIGHT_RAIL_GUTTER_PX * 2;
-
-  const rungs: Array<{ parkRail: boolean; surplus: number }> = [
-    { parkRail: false, surplus: surplus(restingLeftPx) },
-    { parkRail: true, surplus: surplus(parkedLeftPx) },
-  ];
-
-  // Pass A — the first rung that seats the panel at the width it actually wants.
-  const wanted = rungs.find((r) => r.surplus >= desiredWidthPx);
-  if (wanted) return { mode: 'push', parkRail: wanted.parkRail, capPx };
-
-  // Pass B — the first rung that seats it at its MINIMUM. Better a narrower
-  // panel beside the work than a wide one on top of it.
-  const minimal = rungs.find((r) => r.surplus >= DETAIL_STACK_RESIZE.minWidthPx);
-  if (minimal) return { mode: 'push', parkRail: minimal.parkRail, capPx };
-
-  // Neither rung fits — this is the sanctioned fallback, not a failure.
-  return { mode: 'overlay', parkRail: false, capPx };
+function restingLeftPx(input: Pick<RightRailFrameInput, 'railCostOpenPx' | 'railOperatorCollapsed'>): number {
+  if (input.railCostOpenPx <= 0) return 0;
+  return input.railOperatorCollapsed ? CONTEXT_RAIL_PARKED_PX : input.railCostOpenPx;
 }
 
 /**
- * The narrowest content row that can seat a pushing panel at its minimum, with
- * the route rail fully parked. Below this, overlay is the honest answer.
+ * Pure. Every worked number in the unit test comes from here, so the budget is
+ * provable without mounting anything.
+ */
+export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFrameResolution {
+  const { frameWidthPx, wantsPush, centerFloorPx } = input;
+  const leftPx = restingLeftPx(input);
+  const floor = Number.isFinite(centerFloorPx) && centerFloorPx > 0 ? centerFloorPx : 0;
+
+  // Cap against the ACTUAL left cost so the operator can keep the context rail
+  // open while the right panel grows. Station push passes
+  // STATION_PUSH_CENTER_FLOOR_PX (720); desk inspectors pass MIN_WORK_SURFACE_PX.
+  const capPx = Math.max(
+    DETAIL_STACK_RESIZE.minWidthPx,
+    frameWidthPx - leftPx - floor - RIGHT_RAIL_GUTTER_PX * 2,
+  );
+
+  if (!wantsPush) {
+    return { mode: 'overlay', capPx };
+  }
+
+  // A resident non-modal inspector never flashes through the historical
+  // floating-card geometry while the content row is still being measured.
+  // Whether the preferred width fits the surplus or not, we still PUSH and let
+  // `capPx` / the flex center constrain — never park the left donor, never overlay.
+  return { mode: 'push', capPx };
+}
+
+/**
+ * The narrowest content row that seats both the work-surface floor and panel
+ * minimum without constraining either (assuming no open context rail). Below
+ * this, the rail still pushes; this value is diagnostic geometry, not an
+ * overlay breakpoint.
  */
 export const RIGHT_RAIL_PUSH_MIN_FRAME_PX =
   MIN_WORK_SURFACE_PX + RIGHT_RAIL_GUTTER_PX * 2 + DETAIL_STACK_RESIZE.minWidthPx;
@@ -182,9 +150,12 @@ const listeners = new Set<Listener>();
  *  - UnboxPushColumn → `stationPushActive` / `stationPushDesiredWidthPx`
  *
  * `resolveRightRailFrame` sees the OR of both push demands so a station push
- * can park the context rail at 1440 even while the assistant stays `push: false`.
+ * still publishes into the shared width budget (cap) while the assistant stays
+ * `push: false`.
  */
 const state: RightRailFrameInput & {
+  /** Preferred width still published by hosts (drag freeze / diagnostics); not a ladder input. */
+  desiredWidthPx: number;
   stationPushActive: boolean;
   stationPushDesiredWidthPx: number;
 } = {
@@ -192,6 +163,7 @@ const state: RightRailFrameInput & {
   railCostOpenPx: 0,
   railOperatorCollapsed: false,
   wantsPush: false,
+  centerFloorPx: MIN_WORK_SURFACE_PX,
   desiredWidthPx: DETAIL_STACK_RESIZE.defaultWidthPx,
   stationPushActive: false,
   stationPushDesiredWidthPx: DETAIL_STACK_RESIZE.defaultWidthPx,
@@ -201,7 +173,6 @@ let snapshot: RightRailFrameResolution = resolveRightRailFrame(state);
 
 const SERVER_SNAPSHOT: RightRailFrameResolution = {
   mode: 'overlay',
-  parkRail: false,
   capPx: DETAIL_STACK_RESIZE.defaultWidthPx,
 };
 
@@ -212,7 +183,9 @@ function frameInputFromState(): RightRailFrameInput {
     railCostOpenPx: state.railCostOpenPx,
     railOperatorCollapsed: state.railOperatorCollapsed,
     wantsPush: state.wantsPush || station,
-    desiredWidthPx: station ? state.stationPushDesiredWidthPx : state.desiredWidthPx,
+    // Station Displays — floor = workbench lock (720) so middle never yields.
+    // Desk inspectors keep the outbound/work-surface floor.
+    centerFloorPx: station ? STATION_PUSH_CENTER_FLOOR_PX : MIN_WORK_SURFACE_PX,
   };
 }
 
@@ -220,11 +193,7 @@ function recompute() {
   const next = resolveRightRailFrame(frameInputFromState());
   // Cached snapshot: `useSyncExternalStore` re-renders on identity change, so a
   // no-op publish (a ResizeObserver firing at the same width) must not churn.
-  if (
-    next.mode === snapshot.mode &&
-    next.parkRail === snapshot.parkRail &&
-    next.capPx === snapshot.capPx
-  ) {
+  if (next.mode === snapshot.mode && next.capPx === snapshot.capPx) {
     return;
   }
   snapshot = next;
@@ -280,7 +249,7 @@ export function setRightRailDemand(next: {
 
 /**
  * Unbox station push (`UnboxPushColumn`) — separate writer from RightRailHost so
- * assistant `push: false` cannot clear the park-rail demand a Displays/Claim/
+ * assistant `push: false` cannot clear the width-budget demand a Displays/Claim/
  * Ticket/tool column needs at 1440.
  */
 export function setStationPushDemand(next: {
@@ -303,12 +272,31 @@ export function contextRailCostPx(openWidthPx = CONTEXT_PANEL_WIDTH_PX): number 
   return openWidthPx + RIGHT_RAIL_GUTTER_PX * 2;
 }
 
+/** Live frame inputs for station dual-rail coupling (`station-dual-rail.ts`). */
+export function getRightRailFrameWidthPx(): number {
+  return state.frameWidthPx;
+}
+
+export function getContextRailCostOpenPx(): number {
+  return state.railCostOpenPx;
+}
+
+export function getRailOperatorCollapsed(): boolean {
+  return state.railOperatorCollapsed;
+}
+
+export function getStationPushActive(): boolean {
+  return state.stationPushActive;
+}
+
+export function getStationPushDesiredWidthPx(): number {
+  return state.stationPushDesiredWidthPx;
+}
+
 /**
- * Viewport pad for station Unbox push resize — leave at least
- * {@link MIN_WORK_SURFACE_PX} (784) for the sunken center given a typical open
- * context rail. Callers may still clamp with a per-surface `maxWidth` ceiling.
- * Numeric twin of {@link MIN_WORK_SURFACE_PX} (not an alias export — knip
- * duplicate), so station push callers name the pad without importing the
- * frame-ladder constant.
+ * Viewport pad for station Unbox / Arrival / Testing Displays push resize.
+ * `0` — the hard stop is {@link STATION_PUSH_CENTER_FLOOR_PX} (720) via
+ * `resolveRightRailFrame`, not a viewport pad. Desk inspectors still use
+ * {@link MIN_WORK_SURFACE_PX} via `resolveRightRailFrame`.
  */
-export const UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX = 784;
+export const UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX = 0;

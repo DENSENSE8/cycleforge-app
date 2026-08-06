@@ -26,8 +26,9 @@
  *                "received upstream", …). Derived, not stored — there is no
  *                `removed_at` column and no lane table; the exits are read
  *                from the same evidence Incoming reads to exclude them.
- * - `activity` — `all` minus untouched-incoming. The "what was actually
- *                scanned/unpacked" feed backing the History tab + recent rail.
+ * - `activity` — Unbox-touched / unboxed work (not door-scan-only). The feed
+ *                backing the History tab; lineless unmatched placeholders must
+ *                also be opened or unboxed.
  * - `scanned`  — door-scanned and physically in, but NOT yet unboxed
  *                (received_at set, unboxed_at null, nothing received on the
  *                line). The triage "to-do" between the door scan and the unbox

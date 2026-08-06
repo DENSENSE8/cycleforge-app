@@ -198,7 +198,8 @@ export function HorizontalButtonSlider({
         cn('h-full rounded-none p-0', appChromeClass)
       : // Recessed gray track (canvas + inset ring) so the active blue
         // pill reads as raised. p-1 + h-8 tabs = 40px in a fixed 40px band.
-        cn('rounded-xl p-1 ring-1 ring-inset ring-border-soft', appCanvasClass)
+        // Flush-square (zero-radius ops chrome).
+        cn('rounded-none p-1 ring-1 ring-inset ring-border-soft', appCanvasClass)
     : useScroller
       ? `-mx-1 min-w-0 overflow-x-auto overscroll-x-contain ${scrollerPadY} [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`
       : 'overflow-visible pt-2 pb-3';
@@ -234,10 +235,10 @@ export function HorizontalButtonSlider({
               const Icon = item.icon;
               const segTabClass = segmentedFlush
                 ? 'relative flex h-full min-h-[40px] flex-1 items-center justify-center rounded-none'
-                : 'relative flex h-8 flex-1 items-center justify-center rounded-xl';
+                : 'relative flex h-8 flex-1 items-center justify-center rounded-none';
               const segIndicatorClass = segmentedFlush
                 ? 'absolute inset-0 rounded-none bg-blue-600'
-                : 'absolute inset-0 rounded-xl bg-blue-600 shadow-sm shadow-blue-600/25';
+                : 'absolute inset-0 rounded-none bg-blue-600 shadow-sm shadow-blue-600/25';
               const tab = (
                 <motion.button
                   type="button"
@@ -313,7 +314,7 @@ export function HorizontalButtonSlider({
                   transition={framerTransition.sliderIndicator}
                   whileTap={isDisabled ? undefined : { scale: 0.96 }}
                   onClick={isDisabled ? undefined : () => onChange(item.id)}
-                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-semibold uppercase transition-colors ring-1 ring-inset ${navSizeCls} ${stateClass}`}
+                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-none font-semibold uppercase transition-colors ring-1 ring-inset ${navSizeCls} ${stateClass}`}
                 >
                   {Icon ? (
                     <Icon
@@ -367,7 +368,7 @@ export function HorizontalButtonSlider({
                   transition={framerTransition.sliderIndicator}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => onChange(item.id)}
-                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-semibold uppercase transition-colors ${sizeCls} ${stateClass}`}
+                  className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-none font-semibold uppercase transition-colors ${sizeCls} ${stateClass}`}
                 >
                   {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
                   <span className={`inline-block whitespace-nowrap ${Icon ? 'ml-1.5' : ''} max-w-[160px]`}>
@@ -391,7 +392,7 @@ export function HorizontalButtonSlider({
                   transition={framerTransition.sliderIndicator}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => onChange(item.id)}
-                  className={`snap-start whitespace-nowrap rounded-full border font-semibold uppercase transition-colors ${sizeCls} ${
+                  className={`snap-start whitespace-nowrap rounded-none border font-semibold uppercase transition-colors ${sizeCls} ${
                     isActive
                       ? 'border-border-strong bg-surface-inverse text-white shadow-md shadow-gray-900/20'
                       : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-hover'
@@ -416,7 +417,7 @@ export function HorizontalButtonSlider({
                 transition={framerTransition.sliderIndicator}
                 whileTap={{ scale: 0.92 }}
                 onClick={() => onChange(item.id)}
-                className={`snap-start whitespace-nowrap rounded-full font-semibold uppercase transition-colors ring-1 ring-inset ${sizeCls} ${
+                className={`snap-start whitespace-nowrap rounded-none font-semibold uppercase transition-colors ring-1 ring-inset ${sizeCls} ${
                   isActive
                     ? `${tone.activeBg} ${tone.activeText} ${tone.ring}`
                     : 'bg-surface-card text-text-faint ring-border-soft hover:bg-surface-hover hover:text-text-muted'

@@ -1,5 +1,6 @@
 'use client';
 
+import { CopyableCellValue } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
@@ -26,9 +27,12 @@ export function ReceivingLocationCell({ col, rule, ctx }: ReceivingGridCellProps
       {locLabel ? (
         <HoverTooltip label={tip ?? locLabel} focusable={false}>
           <ReceivingChipValue enabled={chip}>
-            <span className="min-w-0 truncate font-mono text-role-caption tabular-nums text-text-muted">
-              {locLabel}
-            </span>
+            <CopyableCellValue
+              value={locLabel}
+              historyKind="bin"
+              className="min-w-0 flex-1 text-role-caption tabular-nums text-text-muted"
+              dense
+            />
           </ReceivingChipValue>
         </HoverTooltip>
       ) : (

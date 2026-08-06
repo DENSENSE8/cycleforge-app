@@ -3,17 +3,10 @@
  * Ties fall through to soonest deadline.
  */
 
-import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import { getDaysLateNullable } from '@/utils/date';
 import type { QueueDisplaySortColumn, QueueDisplaySortDir } from '@/utils/queue-display-sort';
-import {
-  queueRowShipBySource,
-  type QueueRowRecord,
-} from './helpers';
-
-const CONDITION_RANK = new Map<string, number>(
-  CONDITION_GRADES.map((g, i) => [g, i]),
-);
+import type { QueueRowRecord } from './helpers';
 
 function deadlineTime(r: ShippedOrder): number {
   return new Date(r.deadline_at || r.created_at || 0).getTime();
@@ -27,21 +20,20 @@ function trackingValue(record: QueueRowRecord): string {
   return String(raw).trim();
 }
 
-function conditionRank(raw: string | null | undefined): number {
-  const grade = resolveConditionGrade(raw);
-  const idx = CONDITION_RANK.get(grade);
-  // Unknown grades sort after the known ladder.
-  return idx ?? CONDITION_GRADES.length;
-}
-
 function qtyValue(record: QueueRowRecord): number {
   const n = Number(record.quantity);
   return Number.isFinite(n) ? n : 0;
 }
 
-function shipByTime(record: ShippedOrder): number {
-  const src = queueRowShipBySource(record);
-  return src ? new Date(src).getTime() : Number.POSITIVE_INFINITY;
+/**
+ * Same deadline source the Late cell uses (`OrdersGridView` → `daysLate`).
+ * Missing deadlines sort last in BOTH directions via ±Infinity (not a signed
+ * magnitude that would invert under ASC).
+ */
+function daysLateValue(record: ShippedOrder, dir: QueueDisplaySortDir): number {
+  const n = getDaysLateNullable(record.deadline_at || record.ship_by_date);
+  if (n === null) return dir === 'asc' ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+  return n;
 }
 
 /**
@@ -65,20 +57,12 @@ export function compareQueueColumnRows(
         sensitivity: 'base',
       });
       break;
-    case 'sla':
-      // Sort on the ABSOLUTE ship-by, not on derived lateness — ascending
-      // already IS most-overdue-first (an overdue row has an earlier ship-by),
-      // and it keeps the sort key identical to the value the cell displays,
-      // including the `created_at` fallback. Sorting on `getDaysLateNullable`
-      // instead would rank a fallback row as "never late" while the cell shows
-      // it a date, so the column would order by something it doesn't show.
-      primary = shipByTime(a) - shipByTime(b);
+    case 'age':
+      // Sort on the same derived days-late number the Late cell shows.
+      primary = daysLateValue(a, dir) - daysLateValue(b, dir);
       break;
     case 'qty':
       primary = qtyValue(ra) - qtyValue(rb);
-      break;
-    case 'condition':
-      primary = conditionRank(String(ra.condition ?? '')) - conditionRank(String(rb.condition ?? ''));
       break;
     case 'order':
       primary = String(ra.order_id || '').localeCompare(String(rb.order_id || ''), undefined, {
