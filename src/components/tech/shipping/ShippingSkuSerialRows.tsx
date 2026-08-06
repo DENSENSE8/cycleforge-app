@@ -3,29 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConditionGradeChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
+import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
+import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
-import { WorkspaceCard } from '@/design-system/components';
-import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { stripConditionPrefix } from '@/utils/upnext-helpers';
 import { initSkuSerialGroups, type SkuSerialGroup } from '@/lib/tech/sku-serial-groups';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import { cn } from '@/utils/_cn';
 
 /**
- * Ship-tab pairing surface — PoLineRow nested-grid anatomy (wrap title above
- * boxed qty | SKU | condition | serial preview). Empty serial slots show while
- * waiting on the next scan. No Units Displays host on this stand.
+ * Ship-tab pairing surface — flush PoLineRow nested-grid on the sunken floor
+ * (size-20 thumb | title top + meta bottom). No WorkspaceCard islands.
+ * Condition editing lives on Displays (ActiveOrderWorkspace), not a second card.
  */
 export function ShippingSkuSerialRows({
   activeOrder,
-  onChangeCondition,
-  isMutatingCondition,
-  isShipped,
 }: {
   activeOrder: ActiveStationOrder;
-  onChangeCondition?: (next: string) => void | Promise<void>;
-  isMutatingCondition?: boolean;
-  isShipped?: boolean;
 }) {
   const quantity = Math.max(1, Number(activeOrder.quantity) || 1);
   const productTitle =
@@ -63,37 +57,22 @@ export function ShippingSkuSerialRows({
     prevSerialCountRef.current = current;
   }, [activeOrder.serialNumbers, activeOrder.tracking]);
 
-  const showConditionEditor = onChangeCondition != null;
+  if (groups.length === 0) {
+    return <EmptyPairingHint sku={activeOrder.sku} />;
+  }
 
   return (
-    <div className="space-y-4">
-      <WorkspaceCard bodyClassName="space-y-2 p-4">
-        {groups.length === 0 ? (
-          <EmptyPairingHint sku={activeOrder.sku} />
-        ) : (
-          groups.map((group) => (
-            <SkuSerialGroupBlock
-              key={group.sku}
-              group={group}
-              quantity={quantity}
-              condition={activeOrder.condition}
-              productTitle={productTitle}
-              lastAddedSerial={lastAddedSerial}
-            />
-          ))
-        )}
-      </WorkspaceCard>
-
-      {showConditionEditor ? (
-        <WorkspaceCard label="Condition" bodyClassName="px-5 py-4">
-          <StationConditionEditor
-            condition={activeOrder.condition}
-            onChange={(next) => void onChangeCondition(next)}
-            isLocked={Boolean(isShipped) || Boolean(isMutatingCondition)}
-            collapsible={false}
-          />
-        </WorkspaceCard>
-      ) : null}
+    <div className="min-w-0">
+      {groups.map((group) => (
+        <SkuSerialGroupBlock
+          key={group.sku}
+          group={group}
+          quantity={quantity}
+          condition={activeOrder.condition}
+          productTitle={productTitle}
+          lastAddedSerial={lastAddedSerial}
+        />
+      ))}
     </div>
   );
 }
@@ -101,7 +80,7 @@ export function ShippingSkuSerialRows({
 function EmptyPairingHint({ sku }: { sku: string }) {
   const displaySku = String(sku || '').trim();
   return (
-    <div className="rounded-none border border-dashed border-border-soft bg-surface-sunken/40 px-4 py-6 text-center">
+    <div className="border-b border-border-soft bg-surface-card px-3 py-3 text-center">
       <p className="text-role-caption font-semibold text-text-muted">
         {displaySku && !/^n\/a$/i.test(displaySku)
           ? `Ready — pair serials to ${displaySku}`
@@ -126,8 +105,6 @@ function SkuSerialGroupBlock({
 }) {
   const serials = group.serials;
   const emptySlots = Math.max(0, quantity - serials.length);
-  // For multi-SKU pulls, only pad empty slots on the primary (first/only) group
-  // when the session still needs more unit captures overall — caller passes order qty.
   const showEmpty = serials.length === 0 ? 1 : emptySlots > 0 && serials.length < quantity ? emptySlots : 0;
   const title =
     productTitle ||
@@ -137,52 +114,59 @@ function SkuSerialGroupBlock({
 
   return (
     <div className="relative min-w-0 overflow-hidden rounded-none border-0 border-b border-border-soft bg-surface-card">
-      {/* PoLineRow nested-grid contract: wrap title above boxed meta. */}
-      <div className="flex min-w-0 flex-col">
-        <p className="min-w-0 px-2 py-1 text-role-caption font-semibold leading-tight text-text-default">
-          {title}
-        </p>
-        <PoLineMetaGrid
-          qty={<ProgressBadge received={serials.length} expected={quantity} />}
-          sku={
-            group.sku && group.sku !== '—' ? (
-              <SkuScanRefChip value={group.sku} display={getLast8(group.sku)} dense />
-            ) : undefined
-          }
-          condition={
-            condition ? (
-              <ConditionGradeChip grade={condition} dense />
-            ) : (
-              <span className="text-text-faint/40">—</span>
-            )
-          }
-          serial={
-            <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
-              <span
-                className={cn(
-                  'min-w-0 truncate tabular-nums text-text-muted normal-case tracking-normal',
-                  lastAddedSerial ? 'ring-1 ring-inset ring-emerald-400 px-1' : undefined,
-                )}
-              >
-                {previewSerials.length > 0
-                  ? previewSerials.map((sn) => getLast8(sn)).join(', ')
-                  : '—'}
-              </span>
-              {emptyHint > 0
-                ? Array.from({ length: emptyHint }, (_, i) => (
-                    <span
-                      key={`empty-${i}`}
-                      className="inline-flex h-5 shrink-0 items-center justify-center border border-dashed border-border-soft px-1.5 text-role-micro text-text-faint"
-                    >
-                      —
-                    </span>
-                  ))
-                : null}
-            </div>
-          }
-        />
+      <div
+        className={cn(
+          'grid min-w-0',
+          PO_LINE_HEADER_FACE.minH,
+          PO_LINE_HEADER_FACE.thumbGrid,
+        )}
+      >
+        <PoLineHeaderThumb />
+        <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
+          <p className="min-w-0 px-2 py-1 text-role-caption font-semibold leading-tight text-text-default">
+            {title}
+          </p>
+          <PoLineMetaGrid
+            qty={<ProgressBadge received={serials.length} expected={quantity} />}
+            sku={
+              group.sku && group.sku !== '—' ? (
+                <SkuScanRefChip value={group.sku} display={getLast8(group.sku)} dense />
+              ) : undefined
+            }
+            condition={
+              condition ? (
+                <ConditionGradeChip grade={condition} dense />
+              ) : (
+                <span className="text-text-faint/40">—</span>
+              )
+            }
+            serial={
+              <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
+                <span
+                  className={cn(
+                    'min-w-0 truncate tabular-nums text-text-muted normal-case tracking-normal',
+                    lastAddedSerial ? 'ring-1 ring-inset ring-emerald-400 px-1' : undefined,
+                  )}
+                >
+                  {previewSerials.length > 0
+                    ? previewSerials.map((sn) => getLast8(sn)).join(', ')
+                    : '—'}
+                </span>
+                {emptyHint > 0
+                  ? Array.from({ length: emptyHint }, (_, i) => (
+                      <span
+                        key={`empty-${i}`}
+                        className="inline-flex h-5 shrink-0 items-center justify-center border border-dashed border-border-soft px-1.5 text-role-micro text-text-faint"
+                      >
+                        —
+                      </span>
+                    ))
+                  : null}
+              </div>
+            }
+          />
+        </div>
       </div>
     </div>
   );
 }
-

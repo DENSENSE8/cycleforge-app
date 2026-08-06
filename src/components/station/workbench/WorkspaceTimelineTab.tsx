@@ -1,9 +1,12 @@
 'use client';
 
 /**
- * Universal station Timeline tab — {@link SectionTabsSlider} spines
+ * Universal station Timeline display — {@link SectionTabsSlider} spines
  * (Units default · Tracking = full carrier display). Shared by Unbox,
- * Testing, Shipping, and Packing.
+ * Testing, Shipping, and Packing Displays.
+ *
+ * Flush plane on the push column (no WorkspaceCard glass island) — same
+ * recipe as Classify / Package Pairing bare chrome.
  *
  * Carrier data paths:
  *   - poId → Incoming details query (same cache as Incoming Shipment tab)
@@ -16,7 +19,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Barcode, History, Loader2, MapPin } from '@/components/Icons';
-import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
+import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import {
   CarrierTrackingSection,
   type CarrierShipmentView,
@@ -37,7 +40,11 @@ import {
   type WorkspaceTimelineAnchor,
 } from './resolve-timeline-sections';
 import { StationUnitJourneys } from './StationUnitJourneys';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
+/** Flush Displays body — no WorkspaceCard glass island (scan-station SoT). */
+const TIMELINE_FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 export type { WorkspaceTimelineAnchor } from './resolve-timeline-sections';
 
 type TimelineSpine = 'units' | 'tracking' | 'activity';
@@ -360,11 +367,11 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
 
   if (!hasAnyContent || tabs.length === 0) {
     return (
-      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-role-caption font-medium text-text-soft">
+      <div className={TIMELINE_FLUSH_HOST_CLASS}>
+        <div className="border-b border-border-soft bg-surface-card px-3 py-6 text-center text-role-caption font-medium text-text-soft">
           Scan a serial or attach tracking to see history.
         </div>
-      </WorkspaceCard>
+      </div>
     );
   }
 
@@ -383,9 +390,5 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
     );
   }
 
-  return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-      {body}
-    </WorkspaceCard>
-  );
+  return <div className={TIMELINE_FLUSH_HOST_CLASS}>{body}</div>;
 }

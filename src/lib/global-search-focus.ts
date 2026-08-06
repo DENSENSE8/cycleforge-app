@@ -1,6 +1,6 @@
-/** Dispatched to hand focus to the active search field (re-click Search, or a
- *  surface that wants to delegate to it). On `/search` without `?sel=`,
- *  `SearchFindStage` owns focus; elsewhere `GlobalHeaderSearch` owns it.
+/** Dispatched to hand focus to the global header find field (re-click Search,
+ *  or a surface that wants to delegate to it). {@link GlobalHeaderSearch} is
+ *  the sole owner on every route — including `/search`.
  *
  *  NOT a ⌘K path — that chord opens the CommandBar palette and has exactly one
  *  owner (`src/components/layout/cmdk-owner.guard.test.ts`). */

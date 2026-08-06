@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   TestingStatusPills,
   unitStatusToVerdict,
@@ -78,8 +78,9 @@ interface Props {
 }
 
 /**
- * Columns: Condition (left, collapsed + pencil) · Verdict · Serial.
- * Only one of condition / verdict is expanded at a time.
+ * Columns: Condition Tags (leading) · Verdict fill band (trailing primary).
+ * Only one of condition / verdict is expanded at a time. Verdict takes the
+ * remaining width as equal thirds — station main action.
  */
 function ConditionVerdictColumns({
   condition,
@@ -89,6 +90,7 @@ function ConditionVerdictColumns({
   onVerdictChange,
   verdictDisabled,
   conditionLocked,
+  serialSlot = null,
 }: {
   condition: string | null | undefined;
   onConditionChange?: (next: string) => void;
@@ -97,6 +99,8 @@ function ConditionVerdictColumns({
   onVerdictChange: (next: TestingVerdict) => void;
   verdictDisabled: boolean;
   conditionLocked: boolean;
+  /** Optional serial adder between Tags and the verdict band. */
+  serialSlot?: ReactNode;
 }) {
   // Condition arrives pre-selected from receiving/unbox → start collapsed.
   // Open verdict for picking when none is set yet.
@@ -105,33 +109,33 @@ function ConditionVerdictColumns({
   );
 
   return (
-    <div className="flex min-w-0 shrink-0 items-center gap-2">
+    <div className="flex w-full min-w-0 items-stretch gap-0">
       {showCondition && onConditionChange ? (
-        <>
-          <StationConditionEditor
-            condition={condition}
-            onChange={onConditionChange}
-            isLocked={conditionLocked}
-            collapsible
-            collapsedLabel
-            expanded={expanded === 'condition'}
-            onExpandedChange={(next) => setExpanded(next ? 'condition' : null)}
-          />
-          <div className="h-8 w-px shrink-0 bg-surface-sunken" />
-        </>
+        <StationConditionEditor
+          condition={condition}
+          onChange={onConditionChange}
+          isLocked={conditionLocked}
+          collapsible
+          collapsedLabel
+          expanded={expanded === 'condition'}
+          onExpandedChange={(next) => setExpanded(next ? 'condition' : null)}
+        />
       ) : null}
-      <TestingStatusPills
-        value={verdict}
-        onChange={(next) => {
-          onVerdictChange(next);
-          setExpanded(null);
-        }}
-        disabled={verdictDisabled}
-        collapsible
-        collapsedLabel
-        expanded={expanded === 'verdict'}
-        onExpandedChange={(next) => setExpanded(next ? 'verdict' : null)}
-      />
+      {serialSlot}
+      <div className="min-w-0 flex-1">
+        <TestingStatusPills
+          value={verdict}
+          onChange={(next) => {
+            onVerdictChange(next);
+            setExpanded(null);
+          }}
+          disabled={verdictDisabled}
+          collapsible
+          collapsedLabel
+          expanded={expanded === 'verdict'}
+          onExpandedChange={(next) => setExpanded(next ? 'verdict' : null)}
+        />
+      </div>
     </div>
   );
 }
@@ -195,51 +199,50 @@ export function TestingLinePanel({
   }
 
   // When the parent header already surfaces saved serials (PoLinesAccordion /
-  // UnmatchedLineRow meta chips), skip the inline adder so condition + verdict
-  // pills stay left-aligned. Re-show it for the first scan or an in-place edit
+  // UnmatchedLineRow meta chips), skip the inline adder so the verdict band
+  // fills the trailing width. Re-show it for the first scan or an in-place edit
   // from the header chip menu.
   const headerOwnsSerial = !showSavedChips && saved.length > 0 && editingSerial == null;
 
-  return (
-    <div className="flex min-w-0 items-center gap-2">
-      <ConditionVerdictColumns
-        condition={saved[0]?.condition_grade}
-        onConditionChange={
-          saved[0]?.id != null && onSetUnitCondition
-            ? (next) => onSetUnitCondition(saved[0], next)
-            : undefined
+  const serialSlot = headerOwnsSerial ? null : (
+    <div className="min-w-0 flex-1">
+      <InlineSerialAdder
+        key={`tech-adder-${lineId}`}
+        lineId={lineId}
+        saved={saved}
+        expected={expected}
+        isSubmitting={isSubmitting}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        showSavedChips={showSavedChips}
+        editingSerial={editingSerial}
+        onEditingSerialChange={(s) =>
+          onEditingSerialChange?.(s as UnitSlotSerial | null)
         }
-        showCondition={saved[0]?.id != null && onSetUnitCondition != null}
-        verdict={verdict}
-        onVerdictChange={onSetVerdict}
-        verdictDisabled={disabled || isMutating || saved.length === 0}
-        conditionLocked={disabled || isMutating}
+        onAdd={(_lineId, sn) => onAddSerial(sn)}
+        onDelete={(_lineId, s) => onDeleteSerial(s as UnitSlotSerial)}
+        onReplaceSerial={(_lineId, original, next) =>
+          onReplaceSerial(original as UnitSlotSerial, next)
+        }
       />
-      {headerOwnsSerial ? null : (
-        <>
-          <div className="h-8 w-px shrink-0 bg-surface-sunken" />
-          <InlineSerialAdder
-            key={`tech-adder-${lineId}`}
-            lineId={lineId}
-            saved={saved}
-            expected={expected}
-            isSubmitting={isSubmitting}
-            disabled={disabled}
-            autoFocus={autoFocus}
-            showSavedChips={showSavedChips}
-            editingSerial={editingSerial}
-            onEditingSerialChange={(s) =>
-              onEditingSerialChange?.(s as UnitSlotSerial | null)
-            }
-            onAdd={(_lineId, sn) => onAddSerial(sn)}
-            onDelete={(_lineId, s) => onDeleteSerial(s as UnitSlotSerial)}
-            onReplaceSerial={(_lineId, original, next) =>
-              onReplaceSerial(original as UnitSlotSerial, next)
-            }
-          />
-        </>
-      )}
     </div>
+  );
+
+  return (
+    <ConditionVerdictColumns
+      condition={saved[0]?.condition_grade}
+      onConditionChange={
+        saved[0]?.id != null && onSetUnitCondition
+          ? (next) => onSetUnitCondition(saved[0], next)
+          : undefined
+      }
+      showCondition={saved[0]?.id != null && onSetUnitCondition != null}
+      verdict={verdict}
+      onVerdictChange={onSetVerdict}
+      verdictDisabled={disabled || isMutating || saved.length === 0}
+      conditionLocked={disabled || isMutating}
+      serialSlot={serialSlot}
+    />
   );
 }
 
@@ -346,7 +349,7 @@ function TestingUnitRows({
 
 const VERDICT_BADGE: Record<TestingVerdict, { label: string; tone: string }> = {
   PASS: { label: 'pass', tone: 'text-emerald-600' },
-  TEST_AGAIN: { label: 'test again', tone: 'text-amber-600' },
+  TEST_AGAIN: { label: 'test again', tone: 'text-blue-600' },
   TESTING_FAILED: { label: 'failed', tone: 'text-rose-600' },
 };
 

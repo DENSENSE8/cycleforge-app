@@ -111,8 +111,7 @@ test('field-density filter hosts use trailingSuffix not trailingPrefix', () => {
   assert.match(ecwid, /trailingSuffix=\{<EcwidOrderScopeFilters/);
   assert.doesNotMatch(ecwid, /trailingPrefix=\{<EcwidOrderScopeFilters/);
 
-  const search = code(sourceOf('../../search/SearchFindStage.tsx'));
-  assert.match(search, /trailingSuffix=\{/);
+  const search = code(sourceOf('../../search/SearchBrowseShell.tsx'));
   assert.match(search, /SearchRefineControls/);
   assert.doesNotMatch(
     search,

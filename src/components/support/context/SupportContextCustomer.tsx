@@ -18,6 +18,11 @@ export function SupportContextCustomer({
   onRequestLinkTicket,
   /** Station host owns floating {@link SupportTicketComposerDock}. */
   hostComposer = false,
+  /**
+   * Floor spine in the ticket stream. Station Ticket Displays leave this
+   * false — Timeline is a peer Displays tab.
+   */
+  mergeFloorTimeline = false,
 }: {
   bundle: SupportContextBundle;
   embedded?: boolean;
@@ -30,6 +35,7 @@ export function SupportContextCustomer({
    */
   onRequestLinkTicket?: () => void;
   hostComposer?: boolean;
+  mergeFloorTimeline?: boolean;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { has, isLoaded } = useAuth();
@@ -84,6 +90,7 @@ export function SupportContextCustomer({
         hideLinkedContext
         onComposerBridgeChange={hostComposer ? undefined : onBridgeChange}
         composerPlacement={hostComposer ? 'host' : 'inline'}
+        mergeFloorTimeline={mergeFloorTimeline}
       />
     </div>
   );

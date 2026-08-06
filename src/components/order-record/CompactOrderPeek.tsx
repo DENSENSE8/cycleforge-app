@@ -2,15 +2,15 @@
 
 /**
  * CompactOrderPeek — non-desk right-rail open for an order (global detail
- * stack / recents). Dense identity + a few facts + hand-off CTAs.
+ * stack / recents). Dense identity + a few facts + hand-off CTA to search
+ * feedback.
  *
  * Full inspector body stays on the shipping desk table click
- * (`ShippedDetailsPanel`). Durable record is `/o/[id]`. Search feedback is
- * `/search?sel=order:…`.
+ * (`ShippedDetailsPanel`). Search feedback is `/search?sel=order:…`.
  */
 
 import { useRouter } from 'next/navigation';
-import { ExternalLink, Search, Package } from '@/components/Icons';
+import { Search, Package } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
@@ -21,7 +21,7 @@ import {
   PaneHeaderStatusPill,
 } from '@/components/ui/pane-header';
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
-import { orderRecordHref, searchOrderFeedbackHref } from '@/lib/search/search-hit';
+import { searchOrderFeedbackHref } from '@/lib/search/search-hit';
 import { getAccountSourceLabel } from '@/utils/order-links';
 import type { ShippedOrder } from '@/types/orders';
 
@@ -114,18 +114,6 @@ export function CompactOrderPeek({
             }}
           >
             Open in search
-          </Button>
-          <Button
-            variant="secondary"
-            size="md"
-            className="w-full"
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
-            onClick={() => {
-              onClose();
-              router.push(orderRecordHref(order.id));
-            }}
-          >
-            Open full record
           </Button>
         </div>
       </div>

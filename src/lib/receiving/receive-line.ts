@@ -769,7 +769,9 @@ export async function receiveLineUnits(
           ? `${input.client_event_id}:workflow-${nextWorkflow}`
           : null,
         receivedBy: input.staff_id ?? null,
-        notes: `Stage ${workflowStageLabel(prevWorkflow)} → ${workflowStageLabel(nextWorkflow)}`,
+        // Human trail only — carton-read ACTIVITY titles this as-is. Never
+        // prefix "Stage " (legacy rows still strip that in cartonEventTitle).
+        notes: `${workflowStageLabel(prevWorkflow)} → ${workflowStageLabel(nextWorkflow)}`,
         payload: {
           workflow_transition: true,
           from: prevWorkflow,

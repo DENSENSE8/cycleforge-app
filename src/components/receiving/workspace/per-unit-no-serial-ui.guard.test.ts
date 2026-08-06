@@ -38,20 +38,41 @@ const UNIT_ROWS = code(sourceOf("./ReceivingUnitRows.tsx"));
 const UNIT_SLOTS = code(sourceOf("./UnitSlotList.tsx"));
 const PUBLISH = code(sourceOf("../../../lib/queries/receiving-queries.ts"));
 
-test("ActiveRowSlotContext carries units alongside serials", () => {
+test("ActiveRowSlotContext carries line + units alongside serials", () => {
   assert.match(TYPES, /export interface ActiveRowSlotContext/);
+  assert.match(TYPES, /line:\s*ReceivingLineRow/);
   assert.match(TYPES, /serials:\s*ActiveRowSerial\[\]/);
   assert.match(TYPES, /units:\s*ReceivingLineUnitView\[\]/);
 });
 
-test("PoLineRow passes units from the hydrated accordion line into activeRowSlot", () => {
+test("PoLineRow passes line + units from the hydrated accordion into activeRowSlot", () => {
+  assert.match(PO_LINE_ROW, /activeRowSlot\(\{[\s\S]*line,/);
   assert.match(PO_LINE_ROW, /activeRowSlot\(\{[\s\S]*units:\s*line\.units/);
   assert.match(PO_LINE_ROW, /serials:\s*line\.serials/);
 });
 
-test("LinePoItemsSection feeds ActiveLineConditionSerial units from slot context, not panel row", () => {
-  assert.match(LINE_PO_ITEMS, /activeRowSlot=\{\(\{\s*serials,\s*units\s*\}\)/);
+test("PoLineRow mounts condition/serial bodies under every editable line", () => {
+  // SKU→serial interleave: bodies are not gated on isActive alone.
+  assert.doesNotMatch(
+    PO_LINE_ROW,
+    /!readOnly && isActive && \(activeRowSlot/,
+    "must not keep the single-active-body gate — serials sit under each SKU",
+  );
+  assert.match(
+    PO_LINE_ROW,
+    /activeRowSlot && !\(isActive && activeCollapsed\)/,
+    "every editable line mounts its body; only the active line may collapse",
+  );
+});
+
+test("LinePoItemsSection feeds ActiveLineConditionSerial from slot line + units, not panel row", () => {
+  assert.match(
+    LINE_PO_ITEMS,
+    /activeRowSlot=\{\(\{\s*serials,\s*units,\s*line\s*\}\)/,
+  );
   assert.match(LINE_PO_ITEMS, /units=\{units\}/);
+  assert.match(LINE_PO_ITEMS, /lineId=\{line\.id\}/);
+  assert.match(LINE_PO_ITEMS, /enqueueSerial\(sn,\s*grade,\s*line\.id\)/);
   assert.doesNotMatch(
     LINE_PO_ITEMS,
     /units=\{row\.units/,
@@ -59,9 +80,14 @@ test("LinePoItemsSection feeds ActiveLineConditionSerial units from slot context
   );
 });
 
-test("UnmatchedAccordionSurface also passes slot units into ActiveLineConditionSerial", () => {
-  assert.match(UNMATCHED, /activeRowSlot=\{\(\{\s*serials,\s*units\s*\}\)/);
+test("UnmatchedAccordionSurface also passes slot line + units into ActiveLineConditionSerial", () => {
+  assert.match(
+    UNMATCHED,
+    /activeRowSlot=\{\(\{\s*serials,\s*units,\s*line\s*\}\)/,
+  );
   assert.match(UNMATCHED, /units=\{units\}/);
+  assert.match(UNMATCHED, /lineId=\{line\.id\}/);
+  assert.match(UNMATCHED, /submitSerial\(sn,\s*grade,\s*line\.id\)/);
 });
 
 test("usePoLinesData overlays units from include=serials onto the siblings cache", () => {

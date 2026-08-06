@@ -13,8 +13,7 @@ const QUICK_LINK_CLASS =
 
 /**
  * Slide-over replacement for the Customer / Warranty tabs: one fact row each
- * with a link out to the real workspace (warranty logger, full order page).
- * The full-page order view keeps the tabs; this keeps the panel glanceable.
+ * with a link out to the warranty logger. Keeps the panel glanceable.
  */
 export function OrderQuickLinksSection({ shipped }: { shipped: ShippedOrder }) {
   const orderNo = String(shipped.order_id || '').trim();
@@ -51,12 +50,7 @@ export function OrderQuickLinksSection({ shipped }: { shipped: ShippedOrder }) {
       </DetailsPanelRow>
 
       <DetailsPanelRow label="Customer">
-        <div className="flex items-center justify-between gap-3">
-          <LedgerValue value={coverage?.customerName ?? null} truncate />
-          <Link href={`/o/${shipped.id}`} className={QUICK_LINK_CLASS}>
-            Open full order <ExternalLink className="h-3 w-3" />
-          </Link>
-        </div>
+        <LedgerValue value={coverage?.customerName ?? null} truncate />
       </DetailsPanelRow>
     </section>
   );

@@ -2,9 +2,8 @@
  * Cross-remount handoff for "Edit serial from a non-active accordion row".
  *
  * Controllers still call {@link takeSerialEditHandoff} after a line remount.
- * Collapsed PO meta no longer mounts a SerialChip edit menu (plain last-8 +
- * View All), so nothing stashes a target today — take always returns null until
- * an edit affordance is rewired.
+ * Collapsed PO meta opens the Units display for edit (serial preview button);
+ * take returns null unless a future affordance stashes a target.
  */
 export interface PendingSerialEdit {
   id?: number;

@@ -8,13 +8,14 @@ import { motionBezier } from '../foundations/motion-framer';
  * Stagger reveal — list items cascade in for freshly-loaded queues.
  *
  * Two layers:
- *   • {@link staggerRevealContainer} / {@link staggerRevealItem} — the raw
- *     variants, for wiring straight onto an existing `motion.ul` + `motion.li`
- *     pair (used by SidebarRailShell, which owns its own list/row markup and
- *     AnimatePresence). The container orchestrates the cascade; each item
- *     inherits `hidden → show` and lands with a short slide-in.
+ *   • {@link staggerRevealContainer} / item variants — the raw variants, for
+ *     wiring straight onto an existing `motion.ul` + `motion.li` pair (used by
+ *     SidebarRailShell, which owns its own list/row markup and AnimatePresence).
+ *     The container orchestrates the cascade; each item inherits `hidden → show`.
  *   • {@link StaggerReveal} / {@link StaggerRevealItem} — turnkey wrappers for
- *     the common case (showroom, simple lists). Set `replayKey` to re-run.
+ *     the common case (showroom, desk tables, simple lists). Default item motion
+ *     is the vertical RISE ({@link staggerRevealRiseItem}) — full-bleed queues
+ *     must not wipe left→right. Set `replayKey` to re-run.
  *
  * The cascade fires once on mount (when the parent transitions hidden → show).
  * Children mounted later — e.g. a freshly-scanned row arriving via
@@ -32,17 +33,10 @@ export const staggerRevealContainer = (step: number = STAGGER_REVEAL_STEP): Vari
 });
 
 /**
- * Item variants — each child fades + slides in from the left, matching the
- * station scan bar's "arriving" entrance (`spring, damping 25, stiffness 120`,
- * from `x: -20`). **Do not use inside a vertically scrolling sidebar rail** —
- * `overflow-y: auto` clips horizontal overflow and the status dots read as cut
- * off on the left. Use {@link staggerRevealSidebarItem} there instead.
+ * Prefer {@link staggerRevealRiseItem} for desk tables / full-bleed queues.
+ * Prefer {@link staggerRevealSidebarItem} inside a vertically scrolling sidebar
+ * rail — `overflow-y: auto` clips horizontal overflow.
  */
-export const staggerRevealItem: Variants = {
-  hidden: { opacity: 0, x: -20 },
-  show: { opacity: 1, x: 0, transition: { type: 'spring', damping: 25, stiffness: 120 } },
-  exit: { opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.12, ease: motionBezier.easeOut } },
-};
 
 /**
  * Sidebar-rail stagger — rows are legible from first paint while a short upward
@@ -72,7 +66,7 @@ export const staggerRevealSidebarItem: Variants = {
  * the final style, flashing the `hidden` opacity:0 through for a frame (a blink
  * as the row lands). A plain-duration tween commits cleanly, so the fade-in has
  * no end-of-reveal flicker. Stays inside `overflow-x-clip` without clipping
- * status dots (under the unsafe `staggerRevealItem` x:-20). Exit fades out on
+ * status dots (under a leftward x:-20 wipe). Exit fades out on
  * dismiss; steady-state add/delete presence is owned by `sidebarRailRow`.
  */
 export const staggerRevealSidebarSlideItem: Variants = {
@@ -94,10 +88,11 @@ export const staggerRevealSidebarSlideItem: Variants = {
 };
 
 /**
- * Vertical "settle" reveal item — full-width stacked cards rise + fade in
- * sequence. Use for detail / workbench panes (e.g. the receiving line workspace
- * body) where the rail's horizontal `x:-20` slide reads wrong on full-bleed
- * cards. Opacity + y only (GPU-composited; never animates layout). Pair with
+ * Vertical "settle" reveal item — full-width stacked cards / desk TABLE rows
+ * rise + fade in sequence. Default for {@link StaggerRevealItem} and
+ * `CardShell` `entrance="stagger"`. Use wherever a horizontal left wipe
+ * would read wrong on full-bleed work surfaces. Opacity + y only
+ * (GPU-composited; never animates layout). Pair with
  * {@link staggerRevealContainer} on the parent, and collapse to opacity-only at
  * the call site under `prefers-reduced-motion`.
  */
@@ -148,7 +143,7 @@ export interface StaggerRevealItemProps {
 export function StaggerRevealItem({ children, className, as = 'li' }: StaggerRevealItemProps) {
   const Tag = ITEM_TAGS[as];
   return (
-    <Tag variants={staggerRevealItem} className={className}>
+    <Tag variants={staggerRevealRiseItem} className={className}>
       {children}
     </Tag>
   );

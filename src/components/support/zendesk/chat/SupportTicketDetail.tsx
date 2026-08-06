@@ -113,6 +113,15 @@ export function SupportTicketDetail({
    */
   composerPlacement = 'inline',
   photoStaging,
+  /**
+   * Interleave warehouse / carrier spine with helpdesk messages.
+   *
+   * **Default `false` (messages only).** Scan-station Ticket Displays (Unbox ·
+   * Testing · Pack) keep the floor spine on the peer **Timeline** Displays tab —
+   * never inside Ticket. Support service workspace may opt in until an explicit
+   * Floor toggle ships.
+   */
+  mergeFloorTimeline = false,
 }: {
   ticketId: number;
   onBack?: () => void;
@@ -132,6 +141,7 @@ export function SupportTicketDetail({
    * wraps the tree). Inline placement creates its own when neither is set.
    */
   photoStaging?: TicketPhotoStaging;
+  mergeFloorTimeline?: boolean;
 }) {
   const hideRequester = hideRequesterBand ?? embedded;
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
@@ -146,10 +156,10 @@ export function SupportTicketDetail({
     () => ({ ticket: String(ticketId) }),
     [ticketId],
   );
-  // Always enabled — the merged stream needs the warehouse/carrier spine even on
-  // hosts that hide the Links control (`/support` reads its linkage from the
-  // rail instead). Same query key `SupportTicketFocus` and the rail's displays
-  // already use, so this is one more READER of one fetch, never a second one.
+  // Always enabled — linkage / requester band / optional floor merge share one
+  // `SupportContextBundle` fetch (same key as Focus + Displays). Readers only;
+  // never a second query. Floor events reach the stream only when
+  // `mergeFloorTimeline` is on — station Ticket keeps them on Timeline Displays.
   const { data: contextBundle } = useSupportContext(contextAnchor, true);
   const [contextOpen, setContextOpen] = useState(false);
   const contextBadge = contextBadgeFromBundle(contextBundle);
@@ -263,7 +273,7 @@ export function SupportTicketDetail({
           requesterName={requesterLabel(ticket)}
           requesterEmail={requester.email}
           onOpenPhoto={onOpenPhoto}
-          events={contextBundle?.timeline}
+          events={mergeFloorTimeline ? contextBundle?.timeline : undefined}
           compact={embedded}
         />
       </div>

@@ -9,10 +9,12 @@ import type { ShippedOrder } from '@/types/orders';
 import { fetchDashboardOrderRowById } from '@/lib/dashboard-table-data';
 import { isFbaOrder } from '@/utils/order-platform';
 
-export type ResolvedSearchOrder =
+type ResolvedSearchOrder =
   | { status: 'ok'; order: ShippedOrder }
   | { status: 'fba' }
   | { status: 'notfound' };
+
+export type { ResolvedSearchOrder };
 
 function asString(value: unknown): string {
   return value == null ? '' : String(value);

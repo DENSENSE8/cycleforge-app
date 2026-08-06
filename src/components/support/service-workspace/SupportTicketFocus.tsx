@@ -192,6 +192,10 @@ export function SupportTicketFocus({
               hideLinkedContext
               composerPlacement="host"
               receivingId={receivingId}
+              // Support focus has no peer Timeline Displays tab yet — keep the
+              // optional floor merge here. Station Ticket Displays stay
+              // messages-only (default).
+              mergeFloorTimeline
             />
           </WorkspaceCard>
         </div>

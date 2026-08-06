@@ -21,26 +21,34 @@
  * `docs/todo/scan-station-displays-sot-PROMPT.md`). A Tier-A station's centre is
  * its LINES display (PO items / unfound); its reference tools — Pairing/Linkage ·
  * Classify · Staging · Ticket · Photos — live on the right-edge Displays push,
- * never a centre `SectionTabsSlider` strip.
+ * never a centre `SectionTabsSlider` strip. Arrival carve-out: Classify · Staging
+ * stack under items in the centre; Displays = Pairing only.
  *
  *   - Unbox   (`LineEditPanel`)  — DONE (golden). `ReceivingDisplaysPushStack`.
- *   - Arrival (`TriagePanel`)    — DONE (Phase C): centre = lines
- *                                  (`POUnboxingSection`); Pairing · Classify ·
- *                                  Staging on `arrival-displays-push`. Guard:
+ *   - Arrival (`TriagePanel`)    — DONE (carve-out 2026-08-06): centre = items
+ *                                  (`POUnboxingSection`, Unbox-parity) + Classify
+ *                                  + Staging stacked under items; Pairing only
+ *                                  on `arrival-displays-push`. Guard:
  *                                  `receiving/triage/arrival-displays-push.guard.test.ts`.
- *   - Testing (`TestingPanel`)   — DONE (Phase E, targeted): carton Package
- *                                  Pairing is the Linkage Displays body
- *                                  (`testing-displays-push`), opened from the
- *                                  identity `# ----` chip; centre work tabs
- *                                  (Testing · Ticket · SKU-Pairing · Checklist ·
- *                                  Manuals · Timeline) retained by design.
+   *   - Testing (`TestingPanel`)   — DONE (Phase E complete): centre = testing
+   *                                  work (PO lines · UnboxLabelPreview);
+   *                                  dock = carton item/label notes + Pass ·
+   *                                  Print (never swapped for ticket reply);
+   *                                  Ticket · SKU Pairing · Checklist · Manuals ·
+   *                                  Timeline · carton Linkage on
+   *                                  `testing-displays-push` (ticket composer
+   *                                  inline in Ticket body). Flow identity +
+   *                                  Open displays. Guard:
+   *                                  `testing-flush-display.guard.test.ts`.
  *   - Pack    (`PackOrderPanel`) — DONE (2026-08-06): centre = checklist /
  *                                  UNIT peek; Ticket · Photos · Support ·
  *                                  Timeline on `pack-displays-push`. Guard:
  *                                  `packer/pack-displays-push.guard.test.ts`.
  *                                  Still terminal-exempt (no sticky dock).
- *   - Labels  (`LabelsOrderWorkspace`) — DONE (Phase F): centre = Print;
- *                                  Documents · Timeline on `labels-displays-push`.
+ *   - Labels  (`LabelsOrderWorkspace`) — StationPanelRoot + flush centre tabs
+ *                                  (Print · Documents · Timeline stay mid-canvas;
+ *                                  not Displays push). Guard: phase-f Labels
+ *                                  flush assert.
  *   - Shipping (`ActiveOrderWorkspace`) — DONE (Phase F): centre = Ship · Units;
  *                                  Timeline on `shipping-displays-push`.
  *   - Packer review (`PackerReviewMode`) — DONE (Phase F): centre = Note;
@@ -213,7 +221,7 @@ export const IDENTITY_FORK_ALLOWLIST = [] as const;
 // ── Guard G — terminal modes without header chrome ────────────────────────────
 /**
  * `TerminalWorkspaceMode`s that own a terminal dock but intentionally have NO
- * `WORKSPACE_MODES` header-toolbar chrome row. Every terminal mode must be
- * either in `WORKSPACE_MODES` (Unbox-family header chrome) or here.
+ * `WORKSPACE_MODES` row. Every terminal mode must be either in `WORKSPACE_MODES`
+ * (Unbox-family nav + terminal slice) or here.
  */
 export const TERMINAL_MODES_WITHOUT_HEADER_CHROME = ['shipping', 'repair', 'pickup'] as const;

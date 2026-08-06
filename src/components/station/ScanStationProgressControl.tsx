@@ -5,16 +5,18 @@
  * bench that has a derived procedure.
  *
  * Face: bare {@link ScanStationProgressRing} (no card shell, not GoalRing).
- * Placement: **dock-anchored under the terminal** (Unbox: `UnboxDockHost`
- * progress row) — same place whether Displays/push is open or closed.
  *
- * Hover peek: Cursor-style overlap just above the ring (`top-end`,
- * viewport-clamped) with an optional footer to commit the real Displays rail.
- * Hover is **off** while any push rail is open (`railOpen`) — the full
- * checklist is already on screen. Click: toggle the station's procedure
- * Displays surface.
+ * **`variant="strip"`** (Unbox Displays): plate cell matching the icon-rail
+ * `rightSlot` peer (h-10 w-10, centered, same idle/selected underline as ⋮ /
+ * topic cells). Click opens/switches the `stripHidden` checklist body; when
+ * already selected, stays on checklist (column dismiss is `→|`). Closed
+ * Displays opens via `←|`.
  *
- * Domain benches pass percent + preview node + open/close. Unbox adapter:
+ * **`variant="default"`**: compact IconButton — hover peek + click toggles
+ * open/close (legacy dock / closed-rail call sites).
+ *
+ * Hover peek is **off** while any push rail is open (`railOpen`). Domain
+ * benches pass percent + preview node + open/close. Unbox adapter:
  * `UnboxScanProgressControl`.
  */
 
@@ -26,9 +28,15 @@ import {
   type ReactNode,
 } from 'react';
 import { ChevronRight } from '@/components/Icons';
+import {
+  SECTION_TAB_ICON_CELL_ACTIVE_CLASS,
+  SECTION_TAB_ICON_CELL_IDLE_CLASS,
+  SECTION_TAB_ICON_OVERFLOW_CELL_CLASS,
+} from '@/design-system/components/SectionTabsSlider';
 import { Button, IconButton } from '@/design-system/primitives';
 import { Popover } from '@/design-system/primitives/Popover';
 import type { AnchoredPlacement } from '@/design-system/primitives/AnchoredLayer';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useRailHoverPreview } from '@/components/sidebar/rail-shell/useRailHoverPreview';
 import { cn } from '@/utils/_cn';
 import { ScanStationProgressRing } from './ScanStationProgressRing';
@@ -44,10 +52,9 @@ export function ScanStationProgressControl({
   onClose,
   preview,
   ariaLabelOpen,
-  // Close names the REGION, not the tab — the ring toggles the whole Station
-  // push column, and one control cannot say "Hide displays" when the same edge
-  // hosts Ticket/Claim/tool. Matches UnboxDisplaysEdgeToggle's UNBOX_PUSH_CLOSE_LABEL.
-  // Law: source-of-truth.md → Displays vs inspector.
+  // Close names the REGION, not the tab — default variant toggles the whole
+  // Station push column. Strip variant never closes (→| does). Law:
+  // source-of-truth.md → Displays vs inspector.
   ariaLabelClose = 'Hide right panel',
   testId = 'scan-station-progress-button',
   previewAriaLabel = 'Procedure checklist preview',
@@ -61,6 +68,11 @@ export function ScanStationProgressControl({
    * dismisses the peek.
    */
   previewRailActionLabel,
+  /**
+   * `strip` — Displays icon-plate `rightSlot` cell (centered h-10 peer of ⋮).
+   * `default` — compact IconButton with hover peek.
+   */
+  variant = 'default',
 }: {
   percent: number;
   done: number;
@@ -79,9 +91,11 @@ export function ScanStationProgressControl({
   previewClassName?: string;
   previewStyle?: CSSProperties;
   previewRailActionLabel?: string;
+  variant?: 'default' | 'strip';
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const previewEnabled = !railOpen;
+  const strip = variant === 'strip';
+  const previewEnabled = !strip && !railOpen;
   const {
     isOpen: previewOpen,
     hoverProps,
@@ -98,16 +112,26 @@ export function ScanStationProgressControl({
     if (railOpen) dismiss();
   }, [railOpen, dismiss]);
 
-  const label = expanded
-    ? ariaLabelClose
-    : (ariaLabelOpen ??
-      `Show checklist · ${done}/${total > 0 ? total : '—'} steps`);
+  const openLabel =
+    ariaLabelOpen ?? `Show checklist · ${done}/${total > 0 ? total : '—'} steps`;
+  const label = strip
+    ? selected
+      ? `Checklist · ${done}/${total > 0 ? total : '—'} steps`
+      : openLabel
+    : expanded
+      ? ariaLabelClose
+      : openLabel;
 
   const onClick = useCallback(() => {
     dismiss();
+    if (strip) {
+      // Strip: select + show procedure. Column dismiss stays on →|.
+      onOpen();
+      return;
+    }
     if (expanded) onClose();
     else onOpen();
-  }, [dismiss, expanded, onClose, onOpen]);
+  }, [dismiss, strip, expanded, onClose, onOpen]);
 
   const onOpenInRail = useCallback(() => {
     dismiss();
@@ -136,31 +160,55 @@ export function ScanStationProgressControl({
     preview
   );
 
+  const ring = (
+    <ScanStationProgressRing
+      percent={percent}
+      tone={selected ? 'selected' : 'idle'}
+    />
+  );
+
   return (
     <div
       ref={wrapRef}
-      className="relative"
+      className={cn('relative', strip && 'flex h-10 shrink-0 items-stretch')}
       {...(previewEnabled ? hoverProps : {})}
       data-testid="scan-station-progress-control"
     >
-      <IconButton
-        size="sm"
-        tone="neutral"
-        ariaLabel={label}
-        aria-expanded={expanded || previewOpen}
-        aria-pressed={selected}
-        aria-haspopup="dialog"
-        icon={
-          <ScanStationProgressRing
-            percent={percent}
-            tone={selected ? 'selected' : 'idle'}
-          />
-        }
-        onClick={onClick}
-        data-testid={testId}
-        data-selected={selected ? 'true' : 'false'}
-        className={cn(selected && 'text-text-default')}
-      />
+      {strip ? (
+        // ds-raw-button: Displays icon-plate peer of ⋮ (SectionTabsSlider density=icon)
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={selected}
+          aria-current={selected ? 'page' : undefined}
+          onClick={onClick}
+          data-testid={testId}
+          data-selected={selected ? 'true' : 'false'}
+          className={cn(
+            SECTION_TAB_ICON_OVERFLOW_CELL_CLASS,
+            focusRing('control', 'accent'),
+            selected
+              ? SECTION_TAB_ICON_CELL_ACTIVE_CLASS
+              : SECTION_TAB_ICON_CELL_IDLE_CLASS,
+          )}
+        >
+          {ring}
+        </button>
+      ) : (
+        <IconButton
+          size="sm"
+          tone="neutral"
+          ariaLabel={label}
+          aria-expanded={expanded || previewOpen}
+          aria-pressed={selected}
+          aria-haspopup="dialog"
+          icon={ring}
+          onClick={onClick}
+          data-testid={testId}
+          data-selected={selected ? 'true' : 'false'}
+          className={cn(selected && 'text-text-default')}
+        />
+      )}
 
       <Popover
         open={previewOpen}

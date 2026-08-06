@@ -50,12 +50,13 @@ describe('carton-context-density', () => {
     );
   });
 
-  it('two-row commerce order: status · order# · tracking; under Photos price · listing · Claim', () => {
+  it('two-row commerce order: status · order# · tracking; price · listing · Claim on same bottom row', () => {
     const src = readFileSync(
       join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
       'utf8',
     );
     assert.match(src, /photosClaimColumn/);
+    assert.match(src, /carton-context-two-row/);
     // Scan-station Displays ←| · carton ↑↓ live on ScanStationUtilityRail —
     // CartonContextCard must not own that chrome. (Pack may still compose
     // sibling trailing chrome outside this card.)
@@ -64,12 +65,22 @@ describe('carton-context-density', () => {
     assert.match(
       src,
       /claimUnderPhotos = filedTicketChip \?\? claimCta/,
-      'Claim CTA or filed ticket# share the under-Photos slot',
+      'Claim CTA or filed ticket# share the row-2 trailing slot',
     );
     assert.match(
       src,
-      /justify-end gap-1\.5[\s\S]{0,120}PoTotalChip[\s\S]{0,80}\{listingChip\}[\s\S]{0,40}\{claimUnderPhotos\}/,
-      'under Photos must be end-aligned price · listing · Claim with gap-1.5',
+      /STATION_IDENTITY_ROW_CLASS, 'justify-end'\)[\s\S]{0,120}PoTotalChip[\s\S]{0,80}\{listingChip\}[\s\S]{0,40}\{claimUnderPhotos\}/,
+      'row 2 trailing must be end-aligned price · listing · Claim (gap-0 via STATION_IDENTITY_ROW_CLASS)',
+    );
+    assert.doesNotMatch(
+      src,
+      /justify-end gap-1\.5[\s\S]{0,120}PoTotalChip/,
+      'commerce must not reintroduce gap-1.5 between price · listing · Claim',
+    );
+    assert.doesNotMatch(
+      src,
+      /flex shrink-0 flex-col items-end/,
+      'must not stack Photos + commerce in a flex-col (that drops a third band)',
     );
     // Row 2 left strip: order → tracking (no listing/price there).
     assert.match(
@@ -118,8 +129,8 @@ describe('carton-context-density', () => {
     );
     assert.match(
       identity,
-      /STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-1\.5'/,
-      'classify group chips are spaced pills (gap-1.5), not abutting segmented seams',
+      /STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-0'/,
+      'classify group chips abut (gap-0), same flush grammar as Photos · Claim',
     );
     assert.doesNotMatch(
       identity,
@@ -191,6 +202,21 @@ describe('carton-context-density', () => {
       pillsCode,
       /PILL_BASE\s*=\s*['"][^'"]*px-1\.5/,
       'Classify label pills share px-1.5 inset with Claim · Photos · View All',
+    );
+    assert.match(
+      pillsCode,
+      /DEFAULT_ACTIVE\s*=\s*['"][^'"]*shadow-none/,
+      'Classify default active face must stay flat (shadow-none), matching Photos · Claim',
+    );
+    assert.doesNotMatch(
+      pillsCode,
+      /DEFAULT_ACTIVE\s*=\s*['"][^'"]*shadow-sm/,
+      'Classify default active must not reintroduce soft drop shadows',
+    );
+    assert.match(
+      pillsCode,
+      /collapsedClassName = cn\([\s\S]*?'shadow-none'/,
+      'Collapsed classify face must force shadow-none even if a tone SoT regresses',
     );
 
     const card = readFileSync(
@@ -296,6 +322,38 @@ describe('carton-context-density', () => {
       src,
       /carrierTileSeparate|preferBrandTile/,
       'IdentityLinkChip must not keep sibling SVG tile / preferBrandTile mode',
+    );
+  });
+
+  it('Photos hover strip portals above Displays (AnchoredLayer panelPopover)', () => {
+    const card = readFileSync(
+      join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    assert.match(
+      card,
+      /galleryPlacement\s*=\s*["']right["']/,
+      'Carton context opens the photos strip beside the pill (not over Claim)',
+    );
+
+    const pill = readFileSync(
+      join(SRC, 'components/receiving/workspace/line-edit/ReceivingPhotoButton.tsx'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    assert.match(pill, /AnchoredLayer/, 'hover strip must portal via AnchoredLayer');
+    assert.match(
+      pill,
+      /level\s*=\s*["']panelPopover["']/,
+      'panelPopover beats utility rail + Displays (incl. overlay z-panel)',
+    );
+    assert.doesNotMatch(
+      pill,
+      /z-30/,
+      'must not trap the strip at raw z-30 inside the overflow-hidden center',
     );
   });
 

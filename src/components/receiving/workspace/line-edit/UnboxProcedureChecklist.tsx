@@ -4,9 +4,9 @@
  * The Unbox checklist — the live "where am I" display, on the right edge.
  *
  * Mounted as the `checklist` display in the right-edge Displays push column
- * ({@link ReceivingDisplaysPushStack}). Opened via the dock-anchored scan-progress ring
- * under the terminal ({@link UnboxScanProgressControl}).
- * (ring-only — no strip cell). It is the station's live "where am I": the
+ * ({@link ReceivingDisplaysPushStack}). Opened via the Displays strip progress
+ * ring (`rightSlot`, right of ⋮ — {@link UnboxScanProgressControl}).
+ * (ring-only — no strip Lucide cell). It is the station's live "where am I": the
  * operator's first question on every carton is what is left on it.
  *
  * ## It is a second VIEW, not a second derivation

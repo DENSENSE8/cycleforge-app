@@ -12,7 +12,7 @@
  *   `A` = clear filters · `1`/`2` = Pending/Tested tabs · `3` = Blocked · `4`/`U` = Urgent
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, startTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Zap } from '@/components/Icons';
@@ -31,6 +31,7 @@ import {
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { useShippedScanOutData } from '@/hooks/useShippedScanOutData';
+import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import {
@@ -83,8 +84,12 @@ export function useToShipFilterActions() {
       const params = new URLSearchParams(searchParams.toString());
       mutator(params);
       const qs = params.toString();
-      router.replace(qs ? `${pathname || '/shipping/orders'}?${qs}` : pathname || '/shipping/orders', {
-        scroll: false,
+      // Filter / KPI URL writes are non-scan-critical — defer so paint stays calm.
+      startTransition(() => {
+        router.replace(
+          qs ? `${pathname || '/shipping/orders'}?${qs}` : pathname || '/shipping/orders',
+          { scroll: false },
+        );
       });
     },
     [router, pathname, searchParams],
@@ -214,7 +219,9 @@ export function OutboundExactFilters({ mode }: { mode: FilterMode }) {
 function ToShipExactFilters({ mode }: { mode: 'unshipped' | 'tested' }) {
   const { active, urgentOnly, selectAll, toggleBlocked, toggleUrgent } = useToShipFilterActions();
   const [open, setOpen] = useState(false);
-  const { data } = useQuery(unshippedQueueCountsQuery());
+  const searchParams = useSearchParams();
+  const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
+  const { data } = useQuery(unshippedQueueCountsQuery({ staffId }));
   const fromCombos = fulfillmentCountsFromCombos(data?.combos ?? []);
   const blockedCount = fromCombos.BLOCKED;
   const pendingCount = (fromCombos.PENDING || data?.byStage.pending || 0) + blockedCount;

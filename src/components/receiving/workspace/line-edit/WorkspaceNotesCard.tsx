@@ -27,11 +27,25 @@ import { LineNotesCard } from './LineNotesCard';
 import { useSyncedPoNote } from './hooks/useSyncedPoNote';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
-import type { UnboxLineController } from './unbox-line-controller';
+
+/**
+ * Minimal notes contract — Unbox + Testing (+ Arrival) compose the same dock
+ * without hard-wiring `UnboxLineController`.
+ */
+type WorkspaceNotesController = {
+  itemNote: string;
+  setItemNote: (next: string) => void;
+  patch: (body: Record<string, unknown>) => void | Promise<unknown>;
+  zendeskTrimmed?: string | null;
+  providerTicketId?: number | null;
+  supportTicket?: { subject?: string | null } | null;
+  prevLineNotes?: string;
+  isUnfound?: boolean;
+};
 
 interface WorkspaceNotesCardProps {
   row: ReceivingLineRow;
-  c: UnboxLineController;
+  c: WorkspaceNotesController;
   onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
@@ -81,7 +95,7 @@ export function WorkspaceNotesCard({
           return true;
         }}
         onSaveOverallNote={saveOverallNote}
-        showSyncToPo={!c.isUnfound}
+        showSyncToPo={!(c.isUnfound ?? false)}
         animateMount={animateMount}
         chrome={chrome}
         trailingAction={trailingAction}

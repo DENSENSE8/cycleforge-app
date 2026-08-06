@@ -27,6 +27,13 @@ export const STATION_CONTEXT_EXIT_PILL_CLASS = `inline-flex h-8 w-8 shrink-0 ite
 export const STATION_CONTEXT_PHOTO_PILL_CLASS = `${STATION_CONTEXT_ACTION_PILL_CLASS} w-14 justify-between px-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-700`;
 
 /**
+ * Square h-11 cell for Units explosion / joined serial rows — same blue face +
+ * outline as {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
+ */
+export const STATION_CONTEXT_PHOTO_FLUSH_CLASS =
+  `h-11 w-11 shrink-0 justify-center ${cornerClass('flush')} border border-blue-200 bg-blue-50 px-0 text-blue-700 hover:bg-blue-100 hover:text-blue-700`;
+
+/**
  * Locked width matches Photos so Claim ↔ Photos does not reflow the row.
  * Same `px-1.5` inset as Photos / serials View All — "CLAIM" stays off the
  * border. Typography matches classify pills (`text-role-micro` + uppercase).

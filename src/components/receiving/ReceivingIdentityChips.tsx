@@ -18,7 +18,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /** Matches {@link InlinePillPicker} collapsed shell — flush square in the carton bar. */
 const RAIL_PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-2.5 text-role-micro uppercase tracking-wide';
+  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-2.5 text-role-micro uppercase tracking-wide shadow-none';
 const RAIL_PICKUP_TONE = 'border-emerald-600 bg-emerald-600 text-white';
 
 export type FulfillmentPickupPillVariant = 'chip' | 'rail';

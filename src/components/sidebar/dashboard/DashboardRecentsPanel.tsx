@@ -9,8 +9,8 @@
  * chrome; this list fills it. Retrieval lives on `/search`; re-open navigation
  * lives here beside the inbound picker.
  *
- * Rows re-open through `detailStackHref`, the same SoT the ⌘K palette and the
- * order workspace rail use — so an order always lands on `/o/[id]`, never on a
+ * Rows re-open through `detailStackHref`, the same SoT the ⌘K palette uses —
+ * so an order always lands on the To-ship desk (`?openOrderId=`), never on a
  * second order shell.
  *
  * Also publishes top-N mid-strip MRU pins while the context rail is parked

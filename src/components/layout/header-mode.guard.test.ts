@@ -293,8 +293,8 @@ test('assistant Sparkles sits far-right in GlobalHeaderActions (opens right rail
 });
 
 test('GlobalHeaderSearch is always mounted (never gated off /search or carton detail)', () => {
-  // Find is a permanent chrome kind — on `/search` without sel the centered
-  // stage owns focus; header stays mounted and defers expand.
+  // Find is a permanent chrome kind — sole find surface on every route,
+  // including `/search` (no locked-width stage field).
   assert.match(HEADER_ACTIONS, /<GlobalHeaderSearch\s*\/>/);
   assert.doesNotMatch(HEADER_ACTIONS, /onSearchPage/);
   assert.doesNotMatch(

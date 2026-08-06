@@ -14,7 +14,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '../foundations/motion-framer-hooks';
-import { staggerRevealItem } from './StaggerReveal';
+import { staggerRevealRiseItem } from './StaggerReveal';
 
 type CardTone = 'emerald' | 'red' | 'orange' | 'purple' | 'teal' | 'gray';
 
@@ -51,8 +51,9 @@ interface CardShellProps {
    * Mount entrance.
    * - `self` (default): the card runs its own fade/slide on mount.
    * - `stagger`: the card inherits a parent stagger-reveal container's timeline
-   *   (see {@link staggerRevealItem}) instead, so a list of cards cascades in
-   *   together. Standalone (no orchestrating parent) it simply renders in place.
+   *   (see {@link staggerRevealRiseItem}) instead, so a list of cards cascades
+   *   upward together. Standalone (no orchestrating parent) it simply renders
+   *   in place.
    */
   entrance?: 'self' | 'stagger';
   onClick?: () => void;
@@ -165,11 +166,12 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
     shouldReduce || (!isMobile && flatRow) ? undefined : framerGesture.cardHover;
 
   // `stagger`: omit own initial/animate/transition so the card inherits the
-  // parent stagger-reveal container's hidden→show timeline (the scan-bar spring
-  // lives in the variant). `self`: the card's original standalone entrance.
+  // parent stagger-reveal container's hidden→show timeline (vertical rise —
+  // desk tables / full-bleed queues must not wipe left→right). `self`: the
+  // card's original standalone entrance.
   const entranceProps =
     entrance === 'stagger'
-      ? { variants: staggerRevealItem, exit: 'exit' as const }
+      ? { variants: staggerRevealRiseItem, exit: 'exit' as const }
       : { initial: presence.initial, animate: presence.animate, exit: presence.exit, transition };
 
   return (

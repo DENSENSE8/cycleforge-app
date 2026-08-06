@@ -1306,7 +1306,6 @@
     "types|src/components/receiving/triage/terminal/triage-terminal.tsx|TriageTerminalInput",
     "types|src/components/receiving/triage/triage-types.ts|IntegrationSourceKind",
     "types|src/components/receiving/triage/triage-types.ts|TriagePackage",
-    "types|src/components/receiving/triage/useTriagePanel.ts|TriagePanelController",
     "types|src/components/receiving/unfound/EcwidProductSearchInline.tsx|EcwidOrderScope",
     "types|src/components/receiving/unfound/EcwidProductSearchInline.tsx|EcwidProductPopoverMode",
     "types|src/components/receiving/unfound/UnfoundQueueDetailsPanel.tsx|UnfoundQueueDetailsRow",

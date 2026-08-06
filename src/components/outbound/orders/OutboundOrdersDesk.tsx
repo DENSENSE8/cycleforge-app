@@ -35,7 +35,11 @@ import {
 } from '@/lib/shipping/orders-desk';
 import { refreshDomain } from '@/lib/refresh/bus';
 
-function OutboundOrdersDeskContent() {
+function OutboundOrdersDeskContent({
+  onPrimaryPainted,
+}: {
+  onPrimaryPainted?: () => void;
+}) {
   const searchParams = useSearchParams();
   const context: OrdersDeskContext = parseOrdersDeskContext(
     searchParams.get(ORDERS_DESK_CONTEXT_KEY),
@@ -80,6 +84,7 @@ function OutboundOrdersDeskContent() {
             selectMode={selectMode}
             selectionEnabled={selectionEnabled}
             selectionOverlays={selectionOverlays}
+            onPrimaryPainted={onPrimaryPainted}
           />
         </div>
 
@@ -137,11 +142,16 @@ export function RedirectDashboardOutboundToShippingOrders() {
   return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
 }
 
-export function OutboundOrdersDesk() {
+export function OutboundOrdersDesk({
+  onPrimaryPainted,
+}: {
+  /** Fired once the Unshipped (or active) primary table has paintable rows. */
+  onPrimaryPainted?: () => void;
+} = {}) {
   return (
     <Suspense fallback={<BootSplash />}>
       <OutboundOrdersBootGate>
-        <OutboundOrdersDeskContent />
+        <OutboundOrdersDeskContent onPrimaryPainted={onPrimaryPainted} />
       </OutboundOrdersBootGate>
     </Suspense>
   );

@@ -5,8 +5,8 @@
  * condition + serial. No glass card shell — elevation belongs on the action dock.
  *
  * Unbox centre mounts this with `editLines` + `serialScan` so the operator can
- * grade and scan on the accordion. Arrival (`TriagePanel`, read-only) and
- * Testing compose it too.
+ * grade and scan on the accordion. Arrival (`TriagePanel`) mounts the same
+ * Unbox-parity flags (interactive unfound surface); Testing composes it too.
  *
  * Package Pairing left it on 2026-08-02 and is the `pairing` Displays tab on
  * the right edge ({@link buildUnboxSideTabs}).
@@ -31,8 +31,8 @@ interface POUnboxingSectionProps {
   onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   includeLinkedPoItems?: boolean;
   /**
-   * Hide the "PO items · N" header — the parent (the unbox step card) owns it.
-   * Triage omits this and keeps the header.
+   * Hide the "PO items · N" header — Unbox overview + Arrival own the label
+   * via identity / Displays; an empty unfound carton must not show "PO ITEMS · 0".
    */
   suppressItemsHeader?: boolean;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
@@ -43,7 +43,7 @@ interface POUnboxingSectionProps {
     serial_number: string;
     condition_grade?: string | null;
   }) => void;
-  /** Serials cell "View All" → Units Displays. */
+  /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 

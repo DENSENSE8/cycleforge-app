@@ -157,10 +157,11 @@ export interface ReceivingModeContext {
   incomingPoTo: string;
   incomingPage: number;
   /**
-   * Purchasing-source tab (`?inbound=`): which account the incoming order came
+   * Purchasing-source filter (`?inbound=`): which account the incoming order came
    * from. `'all'` (default) unions every source; `'zoho'` narrows to Zoho POs;
    * `'ebay'` narrows to the eBay purchasing account (Universal Incoming). Maps
-   * 1:1 to the server's `?inbound=` facet in `build-sql`.
+   * 1:1 to the server's `?inbound=` facet in `build-sql`. Band-3 search-field
+   * filter (`IncomingSourceFilters`); not a Pipeline facet tab strip.
    */
   incomingSource: 'all' | 'zoho' | 'ebay';
   /**

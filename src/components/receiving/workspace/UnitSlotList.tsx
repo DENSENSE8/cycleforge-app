@@ -11,7 +11,7 @@ import {
   type Ref,
   type RefObject,
 } from "react";
-import { X, Pencil, ScanBarcode } from "@/components/Icons";
+import { X, Trash2, ScanBarcode } from "@/components/Icons";
 import { TextField, IconButton } from "@/design-system/primitives";
 import { cornerClass } from "@/design-system/tokens/radius";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
@@ -105,8 +105,8 @@ interface Props {
    */
   flush?: boolean;
   /**
-   * Leading control on every flush unit row (e.g. line-scoped item camera).
-   * Always leftmost — before Tags / condition — when `flush` is set.
+   * Item-camera control on every flush unit row (line-scoped photos).
+   * Sits after the condition tag when `flush` is set.
    */
   activeRowLeading?: ReactNode;
   onAddSerial: (index: number, serial: string) => void | Promise<void>;
@@ -181,21 +181,64 @@ export function UnitSlotList({
   overflowSlot,
 }: Props) {
   const useUnits = Array.isArray(units) && units.length > 0;
-  const count = useUnits ? units!.length : Math.max(total, saved.length, 1);
+  // Flush Units explosion: one row per live serial (line-level adder owns
+  // empty entry). Multi-qty Station body still pads to materialised units.
+  const liveSaved = saved.filter((s) => {
+    const flag = (s as UnitLike & { _optimistic?: string })._optimistic;
+    return flag !== "removing";
+  });
+  const count = flush
+    ? liveSaved.length
+    : useUnits
+      ? Math.max(units!.length, saved.length, total)
+      : Math.max(total, saved.length, 1);
   const boundToUnits = useUnits ? bindSerialsToUnitSlots(units!, saved) : null;
-  const allRows = useUnits
-    ? units!.map((unit, index) => ({
-        index,
-        unit,
-        // Linked id wins; unbound saved (incl. optimistic) fill empty slots by
-        // ordinal so firstEmpty / primaryInputRef advance before units refresh.
-        serial: boundToUnits![index] ?? synthesizeLinkedSerial(unit),
-      }))
-    : Array.from({ length: count }, (_, i) => ({
-        index: i,
-        unit: null as UnitSlotView | null,
-        serial: saved[i] ?? null,
-      }));
+  const boundIds = new Set(
+    (boundToUnits ?? [])
+      .filter((s): s is UnitLike => s != null)
+      .map((s) => s.id),
+  );
+  const overflowSerials = useUnits
+    ? saved.filter((s) => {
+        if (boundIds.has(s.id)) return false;
+        const flag = (s as UnitLike & { _optimistic?: string })._optimistic;
+        return flag !== "removing";
+      })
+    : [];
+  const allRows = flush
+    ? liveSaved.map((serial, index) => {
+        const unit = useUnits
+          ? (units!.find((u) => u.serial_unit_id === serial.id) ?? null)
+          : null;
+        return { index, unit, serial };
+      })
+    : useUnits
+      ? Array.from({ length: count }, (_, index) => {
+          if (index < units!.length) {
+            const unit = units![index];
+            // Prefer bound saved serials; never synthesize a serial that was
+            // just removed from `saved` (stale unit.serial_unit_id).
+            const bound = boundToUnits![index] ?? null;
+            const synthesized = synthesizeLinkedSerial(unit);
+            const serial =
+              bound ??
+              (synthesized &&
+              saved.some((s) => s.id === synthesized.id)
+                ? synthesized
+                : null);
+            return { index, unit, serial };
+          }
+          return {
+            index,
+            unit: null as UnitSlotView | null,
+            serial: overflowSerials[index - units!.length] ?? null,
+          };
+        })
+      : Array.from({ length: count }, (_, i) => ({
+          index: i,
+          unit: null as UnitSlotView | null,
+          serial: saved[i] ?? null,
+        }));
 
   // Cap DOM rows: keep a window that includes the selected unit so scan-advance
   // never mounts hundreds of ExpandedRow nodes for bulk commodities.
@@ -452,6 +495,7 @@ function ExpandedRow({
   onFocusRow,
   onAdvance,
   onAddSerial,
+  onDeleteSerial,
   onReplaceSerial,
   onEditFilledSerial,
 }: {
@@ -476,7 +520,7 @@ function ExpandedRow({
   stationCompact?: boolean;
   /** Units Displays flush chrome. */
   flush?: boolean;
-  /** Optional leading cell (item camera) — leftmost on every flush row. */
+  /** Optional item-camera cell — after condition on every flush row. */
   leading?: ReactNode;
   serialEditTarget: UnitLike | null;
   /** Forwarded to the serial input so the parent can advance focus between rows. */
@@ -490,7 +534,7 @@ function ExpandedRow({
   onAddSerial: (serial: string) => void | Promise<void>;
   onDeleteSerial: (serial: UnitLike) => void;
   onReplaceSerial: (original: UnitLike, next: string) => void;
-  /** Filled unit → pencil (Units display / in-row replace). */
+  /** Filled unit → click readout (Units display / in-row replace). */
   onEditFilledSerial?: (serial: UnitLike) => void;
 }) {
   const [scan, setScan] = useState("");
@@ -509,7 +553,7 @@ function ExpandedRow({
     !scan.trim() &&
     unitId != null &&
     typeof onMarkUnitNoSerial === "function";
-  // Committed serial — show readout + pencil (not an empty field with + / check).
+  // Committed serial — show readout + delete (not an empty field with + / check).
   const showFilledReadout = !!serial && !editing && !waived;
   // Joined industrial bar: Unbox accordion single-row OR Units Displays flush.
   const joined = singleRow || flush;
@@ -605,11 +649,6 @@ function ExpandedRow({
             : "items-center gap-2",
         )}
       >
-        {leading && !flushConditionExpanded ? (
-          <div className="flex size-11 shrink-0 items-stretch [&>*]:size-full [&>*]:min-w-0">
-            {leading}
-          </div>
-        ) : null}
         {/* Active unit's n/N — same column as the collapsed rows so the qty +
             condition read down one vertical line instead of jumping left.
             Hidden in joined mode so the active unit mirrors a single-qty line. */}
@@ -624,6 +663,7 @@ function ExpandedRow({
             // min-w-11; expanded ConditionPills must grow past that lock —
             // a fixed w-11 clipped the grade row so clicks never opened it.
             // Flush expand pairing: pills own the full bar (photo + serial hide).
+            // Condition sits leftmost; item camera follows when collapsed.
             <div
               className={cn(
                 "flex h-11 items-stretch [&>*]:h-full",
@@ -660,6 +700,11 @@ function ExpandedRow({
             </div>
           )
         ) : null}
+        {leading && !flushConditionExpanded ? (
+          <div className="flex size-11 shrink-0 items-stretch [&>*]:size-full [&>*]:min-w-0">
+            {leading}
+          </div>
+        ) : null}
 
         {flushConditionExpanded ? null : stationCompact && showFilledReadout ? (
           <div className="min-w-0 flex-1" />
@@ -678,7 +723,7 @@ function ExpandedRow({
                 onChange={(next) => onUnitSerialAbsentChange(unitId, next)}
               />
             ) : showFilledReadout ? (
-              // ds-raw-button: serial readout handoff — IconButton pencil is the primary control
+              // ds-raw-button: serial readout handoff — click to edit; trailing Trash2 deletes
               <button
                 type="button"
                 disabled={disabled}
@@ -690,7 +735,7 @@ function ExpandedRow({
                     ? cn(cornerClass("flush"), "bg-surface-canvas")
                     : "rounded-xl border border-border-soft bg-surface-canvas hover:border-border-strong",
                 )}
-                // ds-allow-focus — readout is a handoff control; IconButton sibling owns the primary pencil affordance.
+                // ds-allow-focus — readout is the edit handoff; IconButton sibling owns delete.
               >
                 {serial.serial_number}
               </button>
@@ -704,10 +749,9 @@ function ExpandedRow({
                 onChange={setScan}
                 tone="neutral"
                 mono
-                // Single-row (fast-scan) mode keeps the input live during submit so
-                // the auto-advanced field accepts the next scan without waiting for
-                // the queued write to settle. Other modes block during submit.
-                disabled={disabled || (!singleRow && isSubmitting)}
+                // Never disable for in-flight writes — a disabled input blurs
+                // and drops the barcode wedge mid-lot.
+                disabled={disabled}
                 autoComplete="off"
                 spellCheck={false}
                 // eslint-disable-next-line jsx-a11y/no-autofocus -- scan-focused workflow
@@ -765,16 +809,19 @@ function ExpandedRow({
           </div>
         ) : showFilledReadout ? (
           <div className={cn(joined && "flex h-11 w-11 shrink-0 self-stretch")}>
-            <HoverTooltip label="Edit unit in Units display" asChild>
+            <HoverTooltip label="Remove serial" asChild>
               <IconButton
-                onClick={handleEditFilled}
+                onClick={() => {
+                  if (!serial) return;
+                  onDeleteSerial(serial);
+                }}
                 disabled={disabled}
-                ariaLabel="Edit unit"
-                data-unit-edit-pencil
+                ariaLabel="Remove serial"
+                data-unit-delete-serial
                 size={joined ? undefined : "touch"}
-                icon={<Pencil className="h-4 w-4" />}
+                icon={<Trash2 className="h-4 w-4" />}
                 className={cn(
-                  "text-text-muted hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60",
+                  "text-text-muted hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60",
                   joined
                     ? cn(
                         cornerClass("flush"),
@@ -803,7 +850,7 @@ function ExpandedRow({
               <IconButton
                 onClick={submit}
                 disabled={
-                  !scan.trim() || (!singleRow && isSubmitting) || disabled
+                  !scan.trim() || disabled
                 }
                 ariaLabel={editing ? "Save serial" : "Add serial"}
                 size={joined ? undefined : "touch"}

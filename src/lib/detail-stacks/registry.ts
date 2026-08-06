@@ -13,6 +13,7 @@
 
 import type { ComponentType } from 'react';
 import { Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/components/Icons';
+import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 
 export type DetailStackKind = 'shipment' | 'receiving' | 'order' | 'claim' | 'photo' | 'plan' | 'po';
 
@@ -41,22 +42,10 @@ export const DETAIL_STACK_PARAMS: ReadonlyArray<{ kind: DetailStackKind; param: 
 
 /** Pages that always own a given kind's open param (even if opened elsewhere). */
 const DETAIL_STACK_CANONICAL_PATH: Partial<Record<DetailStackKind, string>> = {
-  // Dedicated order workspace — re-open always lands on /o/[id].
-  order: '/o',
+  // Desk To-ship — re-open lands on `/shipping/orders?openOrderId=`.
+  order: '/shipping/orders',
   shipment: '/fba',
 };
-
-/** Extract `/o/[orderId]` path segment (numeric pk or human order number). */
-export function parseOrderWorkspacePath(pathname: string | null | undefined): string | null {
-  if (!pathname) return null;
-  const match = pathname.match(/^\/o\/([^/?#]+)/);
-  if (!match?.[1]) return null;
-  try {
-    return decodeURIComponent(match[1]).trim() || null;
-  } catch {
-    return match[1].trim() || null;
-  }
-}
 
 /** Build the href that re-opens a recorded stack on the page it was opened from. */
 export function detailStackHref(entry: {
@@ -66,10 +55,11 @@ export function detailStackHref(entry: {
   /** Query string captured when the stack was opened (preserves view/mode params). */
   search?: string;
 }): string {
-  // Orders live on the dedicated full-page workspace — path segment is the id,
-  // not a query param on /dashboard.
+  // Orders reopen on the To-ship desk inspector (`/o` is retired).
   if (entry.kind === 'order') {
-    return `/o/${encodeURIComponent(entry.id)}`;
+    const pk = Number(entry.id);
+    if (Number.isFinite(pk) && pk > 0) return shippingOrdersHref({ openOrderId: pk });
+    return `/shipping/orders?openOrderId=${encodeURIComponent(entry.id)}`;
   }
 
   // Receiving cartons: read inspector owns "look up this carton" (decision 2a).

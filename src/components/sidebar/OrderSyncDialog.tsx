@@ -11,6 +11,7 @@ import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRai
 import { Button, IconButton } from '@/design-system/primitives';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import type {
   ExceptionsTabState,
   OrderExceptionResolutionDetail,
@@ -67,9 +68,8 @@ function badge(kind: 'inserted' | 'updated' | 'deleted' | 'unknown' | 'resolved'
 }
 
 /**
- * Transfer / recovered / skipped list row — title leads; order + tracking sit
- * on the second line as typed CopyChips (same stacked identity as Incoming
- * bulk-tracking residuals).
+ * Transfer / recovered / skipped list row — {@link StackedRowIdentity}: title
+ * leads; order + tracking sit on the second line as typed CopyChips.
  */
 function SyncListRow({
   title,
@@ -83,23 +83,25 @@ function SyncListRow({
   trailing?: ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-2 border-b border-border-hairline inset-field last:border-b-0">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-role-caption text-text-muted">{title}</p>
-        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-          {orderId ? (
-            <OrderIdChip value={orderId} display={getLast8(orderId)} dense />
-          ) : (
-            <span className="font-mono text-role-micro text-text-faint">—</span>
-          )}
-          {tracking ? (
-            <TrackingChip value={tracking} dense />
-          ) : (
-            <span className="font-mono text-role-micro text-text-faint">—</span>
-          )}
-        </div>
-      </div>
-      {trailing ? <div className="shrink-0 pt-0.5">{trailing}</div> : null}
+    <li className="border-b border-border-hairline inset-field last:border-b-0">
+      <StackedRowIdentity
+        title={<p className="truncate text-role-caption text-text-muted">{title}</p>}
+        keys={
+          <>
+            {orderId ? (
+              <OrderIdChip value={orderId} display={getLast8(orderId)} dense />
+            ) : (
+              <span className="font-mono text-role-micro text-text-faint">—</span>
+            )}
+            {tracking ? (
+              <TrackingChip value={tracking} dense />
+            ) : (
+              <span className="font-mono text-role-micro text-text-faint">—</span>
+            )}
+          </>
+        }
+        trailing={trailing}
+      />
     </li>
   );
 }

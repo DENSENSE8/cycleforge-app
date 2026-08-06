@@ -28,6 +28,11 @@ interface Props {
   photos: UseClaimPhotos;
   /** Carton receiving id — the photo request targets this carton. */
   receivingId: number | null | undefined;
+  /**
+   * `select` (default) — claim / Move / Send attachment picker (toggle + counts).
+   * `view` — Photos gallery: inspect + capture only; no orphan attach chrome.
+   */
+  mode?: 'select' | 'view';
 }
 
 /** Claim-local flush chrome — does not change Media Library control defaults. */
@@ -38,14 +43,16 @@ const CLAIM_ICON_BUTTON =
 const CLAIM_DENSITY_BUTTON = '!rounded-none shadow-none';
 
 /**
- * Photo-attachment grid with a send-to-phone capture trigger — the same flow as
- * the receiving workspace's `ReceivingPhotoButton`. The desktop never opens a
- * camera: clicking the camera/"+" publishes a `receiving_photo_request` to the
+ * Photo grid for claim / Move / Send selection (`mode="select"`) and the Photos
+ * Displays gallery (`mode="view"`). Same flow as the receiving workspace's
+ * `ReceivingPhotoButton` for capture: the desktop never opens a camera —
+ * clicking the camera/"+" publishes a `receiving_photo_request` to the
  * operator's paired phone (`publishReceivingPhotoRequest`), the phone captures,
  * and the uploads stream back over Ably — `useReceivingPhotosRealtimeRefresh`
- * refetches so the new photos appear here live, pre-selected, without leaving
- * the claim panel. Checked photos attach to the Zendesk ticket; all PO photos
- * are saved to local storage regardless.
+ * refetches so the new photos appear here live. In select mode, checked photos
+ * attach to the Zendesk ticket / Move / Send payload; all PO photos are saved
+ * to local storage regardless. View mode is inspect + capture only — no attach
+ * chrome (selection is owned by Move / Send / Claim).
  *
  * Flush claim band: gap-0 header/controls/grid (Media Library keeps its own
  * photoGridLeafClass gaps). Grid density defaults to large (natural-height
@@ -56,7 +63,8 @@ const CLAIM_DENSITY_BUTTON = '!rounded-none shadow-none';
  * stay selectable below for outer-damage claims. Selection behavior is
  * unchanged — nothing preselected on first open.
  */
-export function ClaimPhotoPicker({ photos, receivingId }: Props) {
+export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props) {
+  const selectable = mode === 'select';
   const { photos: list, selectedPhotoIds, togglePhoto, toggleSelectAll, refetch } = photos;
   // Item (line-scoped) evidence first; groups keep the API's stable id order.
   const ordered = useMemo(
@@ -185,7 +193,9 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
             />
           </HoverTooltip>
           <p className="truncate text-role-micro uppercase tracking-widest text-text-soft">
-            Attach photos {selectedPhotoIds.size}/{list.length}
+            {selectable
+              ? `Attach photos ${selectedPhotoIds.size}/${list.length}`
+              : `Photos ${list.length}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-0">
@@ -200,34 +210,36 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
             refreshClassName={CLAIM_ICON_BUTTON}
           />
           {sendToPhoneControl}
-          <HoverTooltip
-            label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
-            asChild
-          >
-            <div className={cn(photoLibraryControlGroupClass, 'shrink-0', CLAIM_CONTROL_GROUP)}>
-              <button
-                type="button"
-                onClick={toggleSelectAll}
-                aria-label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
-                aria-pressed={selectedPhotoIds.size === list.length}
-                className={cn(
-                  'ds-raw-button',
-                  photoLibraryControlButtonClass(
-                    selectedPhotoIds.size === list.length,
-                    cn('w-7', CLAIM_DENSITY_BUTTON),
-                  ),
-                )}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </HoverTooltip>
+          {selectable ? (
+            <HoverTooltip
+              label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
+              asChild
+            >
+              <div className={cn(photoLibraryControlGroupClass, 'shrink-0', CLAIM_CONTROL_GROUP)}>
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  aria-label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
+                  aria-pressed={selectedPhotoIds.size === list.length}
+                  className={cn(
+                    'ds-raw-button',
+                    photoLibraryControlButtonClass(
+                      selectedPhotoIds.size === list.length,
+                      cn('w-7', CLAIM_DENSITY_BUTTON),
+                    ),
+                  )}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </HoverTooltip>
+          ) : null}
         </div>
       </div>
 
       <div className={cn(photoGridLeafClass(gridDensity), 'gap-0')}>
-        {ordered.map((p) => {
-          const isSel = selectedPhotoIds.has(p.id);
+        {ordered.map((p, index) => {
+          const isSel = selectable && selectedPhotoIds.has(p.id);
           const tile = claimPhotoTileProps(p, gridDensity);
           return (
             <div
@@ -239,20 +251,26 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
                   : 'border-border hover:border-border-default',
               )}
             >
-              <SelectionMark
-                checked={isSel}
-                active={false}
-                onToggle={() => togglePhoto(p.id)}
-              />
+              {selectable ? (
+                <SelectionMark
+                  checked={isSel}
+                  active={false}
+                  onToggle={() => togglePhoto(p.id)}
+                />
+              ) : null}
               <HoverTooltip
-                label={isSel ? 'Selected' : 'Attach'}
+                label={selectable ? (isSel ? 'Selected' : 'Attach') : 'View'}
                 asChild
               >
-                {/* ds-raw-button: photo thumbnail image tile (img selection target), not a standard action button */}
+                {/* ds-raw-button: photo thumbnail image tile (img selection / view target), not a standard action button */}
                 <button
                   type="button"
-                  onClick={() => togglePhoto(p.id)}
-                  aria-label={isSel ? 'Selected' : 'Attach'}
+                  onClick={() =>
+                    selectable ? togglePhoto(p.id) : g.openViewer(index)
+                  }
+                  aria-label={
+                    selectable ? (isSel ? 'Selected' : 'Attach') : 'View photo'
+                  }
                   className={cn(
                     'ds-raw-button block w-full rounded-none text-left',
                     tile.ratio === 'natural' ? '' : 'aspect-square',

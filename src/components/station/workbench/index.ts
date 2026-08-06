@@ -7,7 +7,6 @@
  * ```ts
  * import {
  *   StationWorkbench,
- *   ExternalLinkPill,
  *   buildSectionTabs,
  *   STATION_WORKBENCH_COLUMN,
  * } from '@/components/station/workbench';
@@ -22,7 +21,6 @@ export { StationPanelRoot } from './StationPanelRoot';
 export {
   SectionTabsRightTrack,
   SectionTabsRightPill,
-  ExternalLinkPill,
 } from './SectionTabsRightSlot';
 export { buildSectionTabs, type SectionTabDef } from './build-section-tabs';
 export {

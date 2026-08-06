@@ -11,7 +11,7 @@
  * What to verify (no login needed):
  *  1. Host has NO horizontal inset — the SpaceX topic plate abuts the column
  *     edge on all four sides (`DISPLAYS_FLUSH_HOST`, `px-0`).
- *  2. Nested verb strips (Browse · Move · Send) sit `gap-0` flush under the plate.
+ *  2. Nested verb strips (Photos Move · Send) sit `gap-0` flush under the plate.
  *  3. Body content is full-bleed / divide-y — NO glass `WorkspaceCard` islands.
  *  4. The ⋮ overflow menu is a SQUARE (`rounded-none`) edge-to-edge plate, not a
  *     floating `rounded-xl` card.

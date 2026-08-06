@@ -21,11 +21,21 @@ import {
 import { normalizeSku } from '@/utils/sku';
 import { useReceivingLineCore } from '@/components/receiving/workspace/line-edit/hooks/useReceivingLineCore';
 import { useCartonLabelEditor } from '@/components/receiving/workspace/line-edit/hooks/useCartonLabelEditor';
+import type { LabelEditDraft } from '@/components/receiving/workspace/line-edit/LabelEditPopover';
 import {
   dispatchTestingLineUpdated,
   narrowTestingWorkspacePatch,
 } from '@/components/tech/testing-line-events';
 import { patchTestingRailByLine } from '@/lib/queries/receiving-queries';
+import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import {
+  TESTING_LABEL_KINDS,
+  labelOptionsForSelect,
+  listAvailableLabelOptions,
+  resolveActiveLabelKind,
+  workspaceLabelToFace,
+  type WorkspaceLabelContext,
+} from '@/lib/print/workspace-label-kinds';
 
 interface NextIdResponse {
   ok: boolean;
@@ -89,8 +99,12 @@ export function useTestingLineController(
 
   const [serialSubmitting, setSerialSubmitting] = useState(false);
   const serialSubmittingRef = useRef(false);
-  const [notes, setNotes] = useState<string>('');
+  /** Dock draft — same grain as Unbox `itemNote` (`receiving_line.notes`). */
+  const [itemNote, setItemNote] = useState<string>('');
   const [isPrinting, setIsPrinting] = useState(false);
+  // Back-compat aliases — callers that still say `notes` / `setNotes`.
+  const notes = itemNote;
+  const setNotes = setItemNote;
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimInitialMode, setClaimInitialMode] = useState<'create' | 'link'>('create');
   const openClaimModal = useCallback((mode: 'create' | 'link' = 'create') => {
@@ -106,7 +120,7 @@ export function useTestingLineController(
 
   // Bootstrap notes each time the line changes.
   useEffect(() => {
-    setNotes(row.notes ?? '');
+    setItemNote(row.notes ?? '');
   }, [row.id, row.notes]);
 
   // Refresh the line's serials when it changes — table-side caches are slower.
@@ -668,8 +682,107 @@ export function useTestingLineController(
     [activeSerial, issueAndPrintLabel],
   );
 
+  // ── Unbox-shaped label bag (UnboxLabelPreview + WorkspaceNotesCard) ────────
+  // Dock draft live-drives the carton face center; save still patches `notes`
+  // only. Durable `label_note` stamps on carton print via useCartonLabelEditor.
+  const liveCartonPayload = useMemo(
+    () =>
+      cartonLabel.defaultPayload
+        ? { ...cartonLabel.defaultPayload, notes: itemNote }
+        : null,
+    [cartonLabel.defaultPayload, itemNote],
+  );
+
+  const unitInput = useMemo(() => {
+    if (!row.sku) return null;
+    const allocation = activeSerial ? previewBySerialUnit[activeSerial.id] : undefined;
+    return {
+      sku: allocation?.unitId || row.sku,
+      title: lineTitle,
+      serialNumber: activeSerial?.serial_number ?? undefined,
+      gtin: allocation?.gtin ?? undefined,
+      orgSlug,
+      qrPayload: allocation?.qrUrl ?? undefined,
+      condition: row.condition_grade || 'USED_A',
+      color: labelColor || undefined,
+    };
+  }, [
+    row.sku,
+    row.condition_grade,
+    activeSerial,
+    previewBySerialUnit,
+    lineTitle,
+    orgSlug,
+    labelColor,
+  ]);
+
+  const labelCtx: WorkspaceLabelContext = useMemo(
+    () => ({
+      hasCarton: row.receiving_id != null && row.receiving_id > 0,
+      scanValue: core.poNumber || (row.receiving_id != null ? `RCV-${row.receiving_id}` : ''),
+      sku: row.sku,
+      receivingType: core.receivingType,
+      disclosureNote: row.label_note,
+      ticketDigits: core.zendeskTrimmed,
+      cartonPayload: liveCartonPayload,
+      unitInput,
+    }),
+    [
+      row.receiving_id,
+      row.sku,
+      row.label_note,
+      core.poNumber,
+      core.receivingType,
+      core.zendeskTrimmed,
+      liveCartonPayload,
+      unitInput,
+    ],
+  );
+
+  const labelOptions = useMemo(
+    () => listAvailableLabelOptions(TESTING_LABEL_KINDS, labelCtx),
+    [labelCtx],
+  );
+  const labelSelectOptions = useMemo(() => labelOptionsForSelect(labelOptions), [labelOptions]);
+
+  const [selectedLabelKind, setSelectedLabelKind] = useState<string>('unit');
+  const [labelEditorRequestId, setLabelEditorRequestId] = useState(0);
+  const requestLabelEditor = useCallback(() => {
+    setLabelEditorRequestId((n) => n + 1);
+  }, []);
+  useEffect(() => {
+    setSelectedLabelKind('unit');
+  }, [row.id]);
+
+  const activeLabelKind = resolveActiveLabelKind(selectedLabelKind, labelOptions, 'unit');
+  const activeLabelFace = useMemo(
+    () => workspaceLabelToFace(activeLabelKind, labelCtx),
+    [activeLabelKind, labelCtx],
+  );
+
+  const labelPayload = liveCartonPayload;
+  const labelDraftDefaults = cartonLabel.draftDefaults;
+  const buildLabelPayload = cartonLabel.buildPayload;
+  const applyAndPrintLabel = useCallback(
+    (draft: LabelEditDraft) => {
+      cartonLabel.applyAndPrint(draft);
+    },
+    [cartonLabel],
+  );
+
+  /** UnboxLabelPreview unit Save & print → same path as Pass · Print draft. */
+  const applyUnitAndPrint = useCallback(
+    (draft: TestingLabelDraft) => {
+      void handleApplyAndPrint(draft);
+    },
+    [handleApplyAndPrint],
+  );
+
+  const isUnfound = shouldUseLocalReceiveOnly(row);
+
   return {
     ...core,
+    itemNote, setItemNote,
     notes, setNotes,
     serialSubmitting, headerSerialEdit, setHeaderSerialEdit, isMutating,
     activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial, activeAllocation,
@@ -683,6 +796,14 @@ export function useTestingLineController(
     cartonLabelDraftDefaults: cartonLabel.draftDefaults,
     buildCartonLabelPayload: cartonLabel.buildPayload,
     applyCartonLabel: cartonLabel.applyAndPrint,
+    // UnboxLabelPreview contract
+    labelSelectOptions, selectedLabelKind, setSelectedLabelKind, activeLabelKind,
+    labelEditorRequestId, requestLabelEditor,
+    activeLabelFace, unitInput, applyUnitAndPrint,
+    labelPayload, labelDraftDefaults, buildLabelPayload, applyAndPrintLabel,
+    labelOptions,
+    isUnfound,
+    prevLineNotes: '',
     claimOpen, setClaimOpen, claimInitialMode, openClaimModal,
   };
 }

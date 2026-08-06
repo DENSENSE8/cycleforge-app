@@ -7,9 +7,9 @@
  *
  * Replaces the former standing carton-level `SerialCard` scanner + a separate
  * `UnmatchedLineRow[]` list with ONE row surface:
- *   - ≥1 line  → {@link PoLinesAccordion} (embedded). The active row IS the
- *                condition + serial editor (`ActiveLineConditionSerial`) — the
- *                SAME leaf a matched PO line uses (Kinetic Ledger: one row
+ *   - ≥1 line  → {@link PoLinesAccordion} (embedded). Condition + serial
+ *                editors interleave under each SKU (`ActiveLineConditionSerial`) —
+ *                the SAME leaf a matched PO line uses (Kinetic Ledger: one row
  *                anatomy). There is NO standing carton scanner beside the rows,
  *                so a return import updates the row IN PLACE — no duplicate.
  *   - 0 lines  → the {@link ReturnScanCard} "scan the first return" affordance
@@ -26,7 +26,7 @@
  * carton grows — never a persistent second scanner (that was the double-row).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, PackageOpen, Pencil, Unlink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -49,8 +49,10 @@ import {
   removeSerialById,
   rollbackOptimisticSerial,
   setSerialGrade,
+  unlinkSerialFromLineUnits,
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
+import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
 import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
@@ -60,12 +62,21 @@ import { useUnmatchedItems } from './useUnmatchedItems';
 import { IntakeClassifyRow } from './IntakeClassifyRow';
 import { ReturnScanCard } from './ReturnScanCard';
 import type { UnfoundLine, UnmatchedItemsSectionProps } from './unmatched-items-shared';
+import { markReceivingSerialAbsent } from '@/components/receiving/workspace/receiving-label-helpers';
+
+const IDLE_SERIAL_LOOKUP = {
+  state: 'idle' as const,
+  unit: null,
+  serial: '',
+  matchedOrder: null,
+};
 
 /**
- * Per-line serial handlers scoped to the active unfound line — the accordion's
- * active row attaches serials to THIS line (not a carton-level create). Mirrors
- * the matched carton's `useLineSerials` against the same scan-serial / grade
- * endpoints via the shared optimistic-serials + publishLineSerials SoT.
+ * Per-line serial handlers for unfound carton lines. Interleaved SKU bodies
+ * pass an explicit `targetLineId`; otherwise defaults to the controller-active
+ * line. Mirrors the matched carton's `useLineSerials` against the same
+ * scan-serial / grade endpoints via the shared optimistic-serials +
+ * publishLineSerials SoT.
  */
 function useActiveUnfoundLineSerials({
   receivingId,
@@ -84,6 +95,16 @@ function useActiveUnfoundLineSerials({
   const [serialSubmitting, setSerialSubmitting] = useState(false);
   const [editingSerial, setEditingSerial] = useState<ActiveRowSerial | null>(null);
   const serialLookup = useSerialLookup();
+  const serialQueueRef = useRef<
+    Array<{
+      raw: string;
+      grade: string | null;
+      lineId: number;
+      tempId: number;
+      resolve: () => void;
+    }>
+  >([]);
+  const drainingRef = useRef(false);
 
   const readLineSerials = useCallback(
     (id: number): LineSerial[] => {
@@ -97,21 +118,39 @@ function useActiveUnfoundLineSerials({
     [queryClient, receivingId],
   );
 
-  const publish = useCallback(
-    (id: number, serials: LineSerial[]) => {
-      publishLineSerials(queryClient, receivingId, id, serials);
+  const readLineUnits = useCallback(
+    (id: number): ReceivingLineUnitView[] | null => {
+      const cached = queryClient.getQueryData<{
+        success: boolean;
+        receiving_lines: Array<{
+          id: number;
+          units?: ReceivingLineUnitView[] | null;
+        }>;
+      }>(receivingSiblingsQueryKey(receivingId));
+      const hit = cached?.receiving_lines?.find((l) => l.id === id);
+      return hit?.units ?? null;
     },
     [queryClient, receivingId],
   );
 
-  const submitSerial = useCallback(
-    async (raw?: string, conditionGrade?: string | null) => {
-      const serial = (raw ?? '').trim();
-      if (!serial || lineId == null || serialSubmitting) return;
-      if (lineId <= 0) return; // still on optimistic temp line — wait for remap
-      const tempId = mintOptimisticSerialId();
-      publish(lineId, appendOptimisticSerial(readLineSerials(lineId), serial, tempId));
-      setSerialSubmitting(true);
+  const publish = useCallback(
+    (
+      id: number,
+      serials: LineSerial[],
+      units?: ReceivingLineUnitView[] | null,
+    ) => {
+      publishLineSerials(queryClient, receivingId, id, serials, units);
+    },
+    [queryClient, receivingId],
+  );
+
+  const postOneSerial = useCallback(
+    async (
+      serial: string,
+      conditionGrade: string | null,
+      resolvedLineId: number,
+      tempId: number,
+    ) => {
       try {
         if (isReturn) await serialLookup.check(serial);
         const res = await fetch('/api/receiving/scan-serial', {
@@ -119,7 +158,7 @@ function useActiveUnfoundLineSerials({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             receiving_id: receivingId,
-            receiving_line_id: lineId,
+            receiving_line_id: resolvedLineId,
             serial_number: serial,
             staff_id: Number(staffId) || undefined,
             condition_grade: conditionGrade ?? lineCondition ?? undefined,
@@ -128,20 +167,26 @@ function useActiveUnfoundLineSerials({
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.success) {
           toast.error(json?.error || 'Scan failed');
-          publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
+          publish(
+            resolvedLineId,
+            rollbackOptimisticSerial(readLineSerials(resolvedLineId), tempId),
+          );
           return;
         }
         if (json.already_attached) {
           toast.info(`Already added — ${serial}`);
-          publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
+          publish(
+            resolvedLineId,
+            rollbackOptimisticSerial(readLineSerials(resolvedLineId), tempId),
+          );
           return;
         }
         const confirmed = confirmOptimisticSerial(
-          readLineSerials(lineId),
+          readLineSerials(resolvedLineId),
           tempId,
           json.serial_unit,
         );
-        publish(lineId, confirmed);
+        publish(resolvedLineId, confirmed);
         if (json.line_patch && typeof json.line_patch.id === 'number') {
           dispatchUnboxRailLineUpdated(json.line_patch);
         }
@@ -169,88 +214,188 @@ function useActiveUnfoundLineSerials({
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Scan failed');
-        publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
-      } finally {
-        setSerialSubmitting(false);
+        publish(
+          resolvedLineId,
+          rollbackOptimisticSerial(readLineSerials(resolvedLineId), tempId),
+        );
       }
     },
     [
       isReturn,
       lineCondition,
-      lineId,
       publish,
       readLineSerials,
       receivingId,
       serialLookup,
-      serialSubmitting,
       staffId,
     ],
   );
 
+  const drainSerialQueue = useCallback(async () => {
+    if (drainingRef.current) return;
+    drainingRef.current = true;
+    setSerialSubmitting(true);
+    try {
+      while (serialQueueRef.current.length > 0) {
+        const next = serialQueueRef.current.shift();
+        if (!next) break;
+        await postOneSerial(next.raw, next.grade, next.lineId, next.tempId);
+        next.resolve();
+      }
+    } finally {
+      drainingRef.current = false;
+      setSerialSubmitting(serialQueueRef.current.length > 0);
+      if (serialQueueRef.current.length > 0) {
+        void drainSerialQueue();
+      }
+    }
+  }, [postOneSerial]);
+
+  const submitSerial = useCallback(
+    async (
+      raw?: string,
+      conditionGrade?: string | null,
+      targetLineId?: number,
+    ) => {
+      const serial = (raw ?? '').trim();
+      const resolvedLineId = targetLineId ?? lineId;
+      if (!serial || resolvedLineId == null) return;
+      if (resolvedLineId <= 0) return; // still on optimistic temp line — wait for remap
+      const tempId = mintOptimisticSerialId();
+      publish(
+        resolvedLineId,
+        appendOptimisticSerial(readLineSerials(resolvedLineId), serial, tempId),
+      );
+      return new Promise<void>((resolve) => {
+        serialQueueRef.current.push({
+          raw: serial,
+          grade: conditionGrade ?? null,
+          lineId: resolvedLineId,
+          tempId,
+          resolve,
+        });
+        void drainSerialQueue();
+      });
+    },
+    [drainSerialQueue, lineId, publish, readLineSerials],
+  );
+
   const deleteSerialUnit = useCallback(
-    async (serialUnitId: number) => {
-      if (serialUnitId == null || lineId == null || serialUnitId <= 0) return;
-      publish(lineId, markSerialRemoving(readLineSerials(lineId), serialUnitId));
+    async (serialUnitId: number, targetLineId?: number) => {
+      const resolvedLineId = targetLineId ?? lineId;
+      if (serialUnitId == null || resolvedLineId == null || serialUnitId <= 0) return;
+      const currentUnits = readLineUnits(resolvedLineId);
+      const nextUnits =
+        currentUnits != null
+          ? unlinkSerialFromLineUnits(currentUnits, serialUnitId)
+          : undefined;
+      publish(
+        resolvedLineId,
+        markSerialRemoving(readLineSerials(resolvedLineId), serialUnitId),
+        nextUnits,
+      );
       try {
         const res = await fetch('/api/receiving/scan-serial', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ serial_unit_id: serialUnitId, receiving_line_id: lineId }),
+          body: JSON.stringify({
+            serial_unit_id: serialUnitId,
+            receiving_line_id: resolvedLineId,
+          }),
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.success) {
           toast.error(json?.error || 'Could not remove serial');
-          publish(lineId, clearSerialRemoving(readLineSerials(lineId), serialUnitId));
+          publish(
+            resolvedLineId,
+            clearSerialRemoving(readLineSerials(resolvedLineId), serialUnitId),
+            currentUnits ?? undefined,
+          );
           return;
         }
         if (editingSerial?.id === serialUnitId) setEditingSerial(null);
         toast.success('Serial removed');
-        publish(lineId, removeSerialById(readLineSerials(lineId), serialUnitId));
+        publish(
+          resolvedLineId,
+          removeSerialById(readLineSerials(resolvedLineId), serialUnitId),
+          nextUnits,
+        );
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not remove serial');
-        publish(lineId, clearSerialRemoving(readLineSerials(lineId), serialUnitId));
+        publish(
+          resolvedLineId,
+          clearSerialRemoving(readLineSerials(resolvedLineId), serialUnitId),
+          currentUnits ?? undefined,
+        );
       }
     },
-    [editingSerial?.id, lineId, publish, readLineSerials],
+    [editingSerial?.id, lineId, publish, readLineSerials, readLineUnits],
   );
 
   const replaceSerialUnit = useCallback(
     async (
       original: { id: number; serial_number: string; condition_grade?: string | null },
       nextSerial: string,
+      targetLineId?: number,
     ) => {
-      if (original.id == null || lineId == null || original.id <= 0) return;
+      const resolvedLineId = targetLineId ?? lineId;
+      if (original.id == null || resolvedLineId == null || original.id <= 0) return;
       const next = (nextSerial ?? '').trim();
       if (!next || next === original.serial_number) return;
-      publish(lineId, markSerialRemoving(readLineSerials(lineId), original.id));
+      const currentUnits = readLineUnits(resolvedLineId);
+      const nextUnits =
+        currentUnits != null
+          ? unlinkSerialFromLineUnits(currentUnits, original.id)
+          : undefined;
+      publish(
+        resolvedLineId,
+        markSerialRemoving(readLineSerials(resolvedLineId), original.id),
+        nextUnits,
+      );
       try {
         const res = await fetch('/api/receiving/scan-serial', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ serial_unit_id: original.id, receiving_line_id: lineId }),
+          body: JSON.stringify({
+            serial_unit_id: original.id,
+            receiving_line_id: resolvedLineId,
+          }),
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.success) {
           toast.error(json?.error || 'Could not replace serial');
-          publish(lineId, clearSerialRemoving(readLineSerials(lineId), original.id));
+          publish(
+            resolvedLineId,
+            clearSerialRemoving(readLineSerials(resolvedLineId), original.id),
+            currentUnits ?? undefined,
+          );
           return;
         }
-        publish(lineId, removeSerialById(readLineSerials(lineId), original.id));
-        await submitSerial(next, original.condition_grade ?? null);
+        publish(
+          resolvedLineId,
+          removeSerialById(readLineSerials(resolvedLineId), original.id),
+          nextUnits,
+        );
+        await submitSerial(next, original.condition_grade ?? null, resolvedLineId);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not replace serial');
-        publish(lineId, clearSerialRemoving(readLineSerials(lineId), original.id));
+        publish(
+          resolvedLineId,
+          clearSerialRemoving(readLineSerials(resolvedLineId), original.id),
+          currentUnits ?? undefined,
+        );
       }
     },
-    [lineId, publish, readLineSerials, submitSerial],
+    [lineId, publish, readLineSerials, readLineUnits, submitSerial],
   );
 
   const setUnitGrade = useCallback(
-    async (serialUnitId: number, grade: string) => {
-      if (lineId == null || serialUnitId <= 0) return;
-      const prev = readLineSerials(lineId);
+    async (serialUnitId: number, grade: string, targetLineId?: number) => {
+      const resolvedLineId = targetLineId ?? lineId;
+      if (resolvedLineId == null || serialUnitId <= 0) return;
+      const prev = readLineSerials(resolvedLineId);
       const nextGrade = String(grade || '').trim() ? grade : null;
-      publish(lineId, setSerialGrade(prev, serialUnitId, nextGrade));
+      publish(resolvedLineId, setSerialGrade(prev, serialUnitId, nextGrade));
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
@@ -261,12 +406,12 @@ function useActiveUnfoundLineSerials({
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.ok) {
           toast.error(json?.error || 'Could not set unit condition');
-          publish(lineId, prev);
+          publish(resolvedLineId, prev);
           return;
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Condition save failed');
-        publish(lineId, prev);
+        publish(resolvedLineId, prev);
       }
     },
     [lineId, publish, readLineSerials],
@@ -449,7 +594,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
       />
 
       {hasLines ? (
-        // One row surface — the active row IS the condition + serial editor.
+        // One row surface — condition/serial editors interleaved under each SKU.
         <PoLinesAccordion
           receivingId={receivingId}
           activeLineId={resolvedActiveLineId ?? c.lines[0].id}
@@ -460,7 +605,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           activeSerialActions={{
             editingSerialId: lineSerials.editingSerial?.id ?? null,
             onEdit: (s) => lineSerials.setEditingSerial(s),
-            onDelete: async (s, lineId) => {
+            onDelete: async (s, targetLineId) => {
               if (s.id == null) return;
               const ok = await requestConfirm({
                 description: `Remove serial ${s.serial_number}?`,
@@ -468,44 +613,69 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                 confirmLabel: 'Remove',
               });
               if (!ok) return;
-              void lineSerials.deleteSerialUnit(s.id);
-              void lineId;
+              void lineSerials.deleteSerialUnit(s.id, targetLineId);
             },
           }}
           onViewAllUnits={onViewAllUnits}
-          activeRowSlot={({ serials, units }) => {
-            if (!showSerialScan || !resolvedActiveLine) return null;
+          activeRowSlot={({ serials, units, line }) => {
+            if (!showSerialScan) return null;
+            const isActiveLine = line.id === resolvedActiveLineId;
             return (
               <ActiveLineConditionSerial
                 serials={serials}
-                lineId={resolvedActiveLine.id}
+                lineId={line.id}
                 receivingId={receivingId}
-                quantityExpected={resolvedActiveLine.quantity_expected ?? null}
-                cond={resolvedActiveLine.condition_grade}
+                quantityExpected={line.quantity_expected ?? null}
+                cond={line.condition_grade || 'USED_A'}
                 serialSubmitting={lineSerials.serialSubmitting}
                 editingSerial={lineSerials.editingSerial}
-                serialLookup={lineSerials.serialLookup}
+                serialLookup={
+                  isActiveLine ? lineSerials.serialLookup : IDLE_SERIAL_LOOKUP
+                }
                 onFileReturnClaim={
-                  onFileReturnClaim
+                  isActiveLine && onFileReturnClaim
                     ? (mo) => onFileReturnClaim(mo, lineSerials.serialLookup.serial)
                     : undefined
                 }
-                onSubmitSerial={(sn, grade) => lineSerials.submitSerial(sn, grade)}
-                onDeleteSerialUnit={(id) => void lineSerials.deleteSerialUnit(id)}
-                onReplaceSerialUnit={(original, next) => void lineSerials.replaceSerialUnit(original, next)}
-                onSetUnitGrade={(id, grade) => void lineSerials.setUnitGrade(id, grade)}
+                onSubmitSerial={(sn, grade) =>
+                  lineSerials.submitSerial(sn, grade, line.id)
+                }
+                onDeleteSerialUnit={(id, targetLineId) =>
+                  void lineSerials.deleteSerialUnit(id, targetLineId ?? line.id)
+                }
+                onReplaceSerialUnit={(original, next) =>
+                  void lineSerials.replaceSerialUnit(original, next, line.id)
+                }
+                onSetUnitGrade={(id, grade) =>
+                  void lineSerials.setUnitGrade(id, grade, line.id)
+                }
                 onActiveConditionChange={(next) => {
-                  if (next) onActiveConditionChange?.(next);
+                  if (isActiveLine && next) onActiveConditionChange?.(next);
                 }}
                 onConditionChange={(next) => {
-                  void c.handleConditionChange(resolvedActiveLine.id, next);
+                  void c.handleConditionChange(line.id, next);
                 }}
                 onEditingSerialChange={lineSerials.setEditingSerial}
-                serialAbsent={serialAbsent ?? false}
-                serialAbsentReason={serialAbsentReason ?? null}
+                serialAbsent={
+                  isActiveLine
+                    ? (serialAbsent ?? false)
+                    : (line.serial_absent ?? false)
+                }
+                serialAbsentReason={
+                  isActiveLine
+                    ? (serialAbsentReason ?? null)
+                    : (line.serial_absent_reason ?? null)
+                }
                 requireSerialConfirmation={requireSerialConfirmation ?? false}
-                onSerialAbsentChange={(next) => onSerialAbsentChange?.(next)}
+                onSerialAbsentChange={(next) => {
+                  if (isActiveLine) {
+                    onSerialAbsentChange?.(next);
+                    return;
+                  }
+                  markReceivingSerialAbsent(line.id, next);
+                }}
                 units={units}
+                autoFocusSerial={isActiveLine}
               />
             );
           }}

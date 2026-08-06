@@ -13,7 +13,7 @@
  *     `stationMoreDetailsPaneHostClass` absolute host inside a RightRailHost card,
  *     never `rightSlot={…PaneHeaderCloseButton}` (split cluster), never
  *     `variant="card"` ActionBar as the chrome pill. Golden: `DeskRailChromeRow`
- *     (Unbox-aligned) — Orders `RecordPaneHeader` composes it too.
+ *     (Unbox-aligned) — desk `detail:order` composes it + Unbox Displays plate.
  *
  * Run: npx tsx --test src/components/right-rail/right-rail-inspector-header.guard.test.ts
  */
@@ -139,37 +139,23 @@ describe('right-rail inspector header', () => {
     assert.match(doc, /DeskRailChromeRow/);
     assert.match(doc, /stationMoreDetailsPaneHostClass/);
     assert.match(doc, /single-card|one in-flow/i);
-    assert.match(doc, /chrome → context → identity/);
-    assert.match(doc, /chrome ONLY/);
-  });
+    assert.match(doc, /chrome → Displays topics → flush body|chrome → context → identity/);
+  assert.match(doc, /chrome ONLY/);
+});
 
-  it('RecordPaneHeader composes DeskRailChromeRow for chrome; contextual ActionBar stays chrome-free', () => {
-    const header = code(read('src/components/order-record/RecordPaneHeader.tsx'));
+  it('ShippedDetailsPanel composes DeskRailChromeRow + Unbox Displays plate', () => {
+    const panel = code(read('src/components/shipped/ShippedDetailsPanel.tsx'));
     assert.match(
-      header,
+      panel,
       /DeskRailChromeRow/,
       'chrome Row 1 must compose DeskRailChromeRow (top-left →|)',
     );
-    assert.match(
-      header,
-      /onClose=\{onClose\}/,
-      'DeskRailChromeRow must receive onClose',
-    );
-    assert.match(
-      header,
-      /cursor=\{<CursorPositionReadout/,
-      'cursor readout sits before ↑↓ via DeskRailChromeRow cursor slot',
-    );
-    assert.match(
-      header,
-      /actions=\{rowActions\}\s*\/>/,
-      'contextual ActionBar must end at actions={rowActions} with no chrome props',
-    );
-    assert.doesNotMatch(
-      header,
-      /actions=\{\[\]\}[\s\S]{0,500}?onClose=\{onClose\}/,
-      'must not use trailing-cluster PaneHeaderActionBar for close',
-    );
+    assert.match(panel, /SectionTabsSlider/);
+    assert.match(panel, /density=["']icon["']/);
+    assert.match(panel, /buildOrderInspectorDisplays/);
+    assert.match(panel, /orderInspectorOrderUpdateActions/);
+    assert.doesNotMatch(panel, /RecordPaneHeader/);
+    assert.doesNotMatch(panel, /WorkOrderAssignmentCard/);
   });
 
   it('Incoming / Unfound / Bin / Support-context compose DeskRailChromeRow', () => {

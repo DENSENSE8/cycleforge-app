@@ -10,6 +10,11 @@ import {
 } from '@/components/ui/HorizontalButtonSlider';
 import { cn } from '@/utils/_cn';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
 
 export type RouteShellView = 'actions' | 'history';
 
@@ -37,6 +42,9 @@ function parseView(raw: string | null, fallback: RouteShellView): RouteShellView
 /**
  * RouteShell — single tree per page. Desktop renders `history` only (sidebar is owned by `DashboardSidebar`).
  * Mobile renders a TabSwitch that flips between Actions and History, driven by `?view=` in the URL.
+ *
+ * Desk / table surfaces rise on appear (`framerPresence.routeHistory`) — never a
+ * left→right wipe.
  */
 export function RouteShell({
   actions,
@@ -51,6 +59,8 @@ export function RouteShell({
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeView = parseView(searchParams.get(PANE_PARAM), defaultView);
+  const presence = useMotionPresence(framerPresence.routeHistory);
+  const transition = useMotionTransition(framerTransition.routeHistoryMount);
 
   const setView = useCallback(
     (next: string) => {
@@ -75,10 +85,10 @@ export function RouteShell({
   if (!isMobile) {
     return (
       <div className={cn('flex min-h-0 w-full flex-1 flex-col overflow-hidden', className)}>
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+        <motion.div
+          initial={presence.initial}
+          animate={presence.animate}
+          transition={transition}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           {history}
@@ -103,21 +113,21 @@ export function RouteShell({
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {activeView === 'actions' ? (
-          <motion.div 
+          <motion.div
             key="actions-pane"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+            initial={presence.initial}
+            animate={presence.animate}
+            transition={transition}
             className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto"
           >
             {actions}
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             key="history-pane"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+            initial={presence.initial}
+            animate={presence.animate}
+            transition={transition}
             className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
           >
             {history}

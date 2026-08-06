@@ -1,10 +1,13 @@
 'use client';
 
 /**
- * GlobalFindCombobox — shared find field + WAI-ARIA combobox for the global
- * header (`presentation="chrome"`) and the `/search` centered stage
- * (`presentation="stage"`). One machine: preview / recents / keyboard /
- * identifier resolve. Hosts own recents storage and commit destinations.
+ * GlobalFindCombobox — find field + WAI-ARIA combobox for the global header
+ * (`presentation="chrome"`). Identifier resolve stays on the current page with
+ * {@link SearchPendingBar}; on hit it seeds the shared resolve cache then
+ * navigates to order feedback. Hosts own recents storage and commit destinations.
+ *
+ * `presentation="stage"` remains for legacy callers but `/search` browse no
+ * longer mounts a page-local field — header owns find everywhere.
  *
  * Does NOT own ⌘K — that chord belongs to CommandBar.
  * Guard: `src/components/layout/cmdk-owner.guard.test.ts`.
@@ -20,6 +23,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { IconButton, SearchField } from '@/design-system/primitives';
 import { Maximize2, Search } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -27,6 +31,7 @@ import {
   GlobalSearchDropdown,
   type GlobalSearchDropdownState,
 } from '@/components/search/GlobalSearchDropdown';
+import { SearchPendingBar } from '@/components/search/SearchPendingPulse';
 import {
   groupHitsForPreview,
   flattenPreviewGroups,
@@ -46,6 +51,7 @@ import {
   orderRecordHref,
 } from '@/lib/search/search-hit';
 import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
+import { setSearchOrderResolveCache } from '@/lib/search/search-order-resolve-query';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
@@ -114,6 +120,12 @@ interface GlobalFindComboboxProps {
   autoFocus?: boolean;
   /** Sync draft to the far-right assistant (chrome only). */
   syncAssistantDraft?: boolean;
+  /**
+   * External pending (browse resolve/retrieve via
+   * {@link subscribeGlobalSearchPending}). Combined with local identifier
+   * resolve pending for {@link SearchPendingBar}.
+   */
+  pending?: boolean;
   className?: string;
 }
 
@@ -158,10 +170,12 @@ export function GlobalFindCombobox({
   listboxId = 'global-search-listbox',
   autoFocus = false,
   syncAssistantDraft = false,
+  pending = false,
   className,
 }: GlobalFindComboboxProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const isStage = presentation === 'stage';
   const openWorkbench = showOpenWorkbench ?? !isStage;
 
@@ -181,6 +195,8 @@ export function GlobalFindCombobox({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [classicHits, setClassicHits] = useState<AiSearchHit[]>([]);
   const [classicSearching, setClassicSearching] = useState(false);
+  const [resolvePending, setResolvePending] = useState(false);
+  const showPendingBar = pending || resolvePending;
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -256,9 +272,19 @@ export function GlobalFindCombobox({
     };
   }, [syncAssistantDraft]);
 
+  // Expand chrome while it has a value — except when deferring to a host that
+  // owns find (legacy; header is now the sole find surface).
   useEffect(() => {
-    if (hasValue && !isStage) setExpanded(true);
-  }, [hasValue, isStage]);
+    if (isStage || deferExpand) return;
+    if (hasValue) setExpanded(true);
+  }, [hasValue, isStage, deferExpand]);
+
+  // Pending pulse is painted on the expanded field — never leave it icon-only
+  // while resolve/retrieve is in flight.
+  useEffect(() => {
+    if (isStage) return;
+    if (pending || resolvePending) setExpanded(true);
+  }, [pending, resolvePending, isStage]);
 
   useEffect(() => {
     return () => {
@@ -267,14 +293,29 @@ export function GlobalFindCombobox({
     };
   }, []);
 
-  // Seed uncontrolled chrome when parent passes a new initialQuery (URL sync).
+  // Layout-persistent chrome: adopt URL seed, or return to icon-rail rest.
+  // Leaving `/search?q=` used to clear the seed but leave `expanded` true —
+  // and `autoFocus={expanded}` then re-focused the field on the next page.
   useEffect(() => {
-    if (controlledQuery !== undefined) return;
-    if (initialQuery === uncontrolledQuery) return;
-    setUncontrolledQuery(initialQuery);
-    if (initialQuery.trim() && !isStage) setExpanded(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync seed only
-  }, [initialQuery]);
+    if (isStage) return;
+    if (deferExpand) {
+      // Stage owns find — keep chrome icon-only (do not mirror ?q= into expand).
+      if (controlledQuery === undefined) setUncontrolledQuery('');
+      setExpanded(false);
+      setFocused(false);
+      return;
+    }
+    if (controlledQuery === undefined) {
+      setUncontrolledQuery(initialQuery);
+    }
+    if (initialQuery.trim()) {
+      setExpanded(true);
+    } else {
+      setExpanded(false);
+      setFocused(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync seed / route rest
+  }, [initialQuery, pathname, isStage, deferExpand, controlledQuery]);
 
   const clearCollapseTimer = useCallback(() => {
     if (collapseTimerRef.current) {
@@ -306,13 +347,14 @@ export function GlobalFindCombobox({
 
   const tryCollapse = useCallback(() => {
     if (isStage) return;
+    if (pending || resolvePending) return;
     const root = rootRef.current;
     if (root?.contains(document.activeElement)) return;
     if (queryRef.current.trim()) return;
     setHoverHeld(false);
     setExpanded(false);
     setFocused(false);
-  }, [isStage]);
+  }, [isStage, pending, resolvePending]);
 
   const scheduleCollapse = useCallback(() => {
     if (isStage) return;
@@ -387,18 +429,32 @@ export function GlobalFindCombobox({
     }
 
     void (async () => {
-      const resolved = await resolveSearchOrder(trimmedQuery);
-      if (resolved.status === 'ok') {
-        if (onSelectOrderId) {
-          onSelectOrderId(resolved.order.id, trimmedQuery);
+      setResolvePending(true);
+      try {
+        const resolved = await resolveSearchOrder(trimmedQuery);
+        setSearchOrderResolveCache(queryClient, trimmedQuery, resolved);
+        if (resolved.status === 'ok') {
+          if (onSelectOrderId) {
+            onSelectOrderId(resolved.order.id, trimmedQuery);
+            return;
+          }
+          navigateSearchHref(router, orderRecordHref(resolved.order.id), pathname);
           return;
         }
-        navigateSearchHref(router, orderRecordHref(resolved.order.id), pathname);
-        return;
+        // Miss / FBA: stay on the current page — header pulse only.
+      } finally {
+        setResolvePending(false);
       }
-      navigateSearchHref(router, searchRerunHref(trimmedQuery), pathname);
     })();
-  }, [router, trimmedQuery, previewHits, pathname, onBrowseQuery, onSelectOrderId]);
+  }, [
+    router,
+    trimmedQuery,
+    previewHits,
+    pathname,
+    onBrowseQuery,
+    onSelectOrderId,
+    queryClient,
+  ]);
 
   const openSearchWorkbench = useCallback(() => {
     setFocused(false);
@@ -532,36 +588,42 @@ export function GlobalFindCombobox({
 
       if (looksLikeIdentifier(trimmed)) {
         void (async () => {
-          const resolved = await resolveSearchOrder(trimmed);
-          if (resolved.status === 'ok') {
-            const href = orderRecordHref(resolved.order.id);
+          setResolvePending(true);
+          try {
+            const resolved = await resolveSearchOrder(trimmed);
+            setSearchOrderResolveCache(queryClient, trimmed, resolved);
+            if (resolved.status === 'ok') {
+              const href = orderRecordHref(resolved.order.id);
+              onPushRecent?.({
+                query: trimmed,
+                scope: isStage ? 'dashboard' : 'global',
+                scopeHref: searchRerunHref(trimmed),
+                topHit: {
+                  title: resolved.order.product_title || resolved.order.order_id || trimmed,
+                  href,
+                  entityType: 'order',
+                },
+              });
+              if (onSelectOrderId) {
+                onSelectOrderId(resolved.order.id, trimmed);
+                return;
+              }
+              navigateSearchHref(router, href, pathname);
+              return;
+            }
             onPushRecent?.({
               query: trimmed,
               scope: isStage ? 'dashboard' : 'global',
               scopeHref: searchRerunHref(trimmed),
-              topHit: {
-                title: resolved.order.product_title || resolved.order.order_id || trimmed,
-                href,
-                entityType: 'order',
-              },
             });
-            if (onSelectOrderId) {
-              onSelectOrderId(resolved.order.id, trimmed);
+            if (onBrowseQuery) {
+              onBrowseQuery(trimmed);
               return;
             }
-            navigateSearchHref(router, href, pathname);
-            return;
+            // Miss / FBA: stay put — do not open /search?q= gray shell.
+          } finally {
+            setResolvePending(false);
           }
-          onPushRecent?.({
-            query: trimmed,
-            scope: isStage ? 'dashboard' : 'global',
-            scopeHref: searchRerunHref(trimmed),
-          });
-          if (onBrowseQuery) {
-            onBrowseQuery(trimmed);
-            return;
-          }
-          navigateSearchHref(router, searchRerunHref(trimmed), pathname);
         })();
         return;
       }
@@ -599,6 +661,7 @@ export function GlobalFindCombobox({
       onSelectOrderId,
       onBrowseQuery,
       onSelectHit,
+      queryClient,
     ],
   );
 
@@ -636,17 +699,12 @@ export function GlobalFindCombobox({
       ref={anchorRef}
       className={cn(
         // Kinetic Ledger find cell — square, zero radius. Never a pill.
-        'group/search relative flex items-center overflow-visible rounded-none',
+        // overflow-hidden so the absolute pending sweep stays inside the cell
+        // (dropdown is portaled).
+        'group/search relative flex items-center overflow-hidden rounded-none',
         isStage
           ? cn(
-              // `/search` stage: raised square block (not a floating bubble).
-              //
-              // WIDTH IS THE HOST'S, not the header's 24rem. On the stage this
-              // field is the head of the browse column beneath it — at a fixed
-              // 24rem it floated as a narrower slab above a 35rem results
-              // panel, which is what made two halves of one act read as two
-              // unrelated islands. Header chrome keeps its fixed cell because
-              // there it is one item in a beam, not the top of a column.
+              // Legacy stage presentation: raised square block.
               'h-8 w-full border border-border-soft bg-surface-card',
               elevationClass('raised'),
             )
@@ -654,8 +712,14 @@ export function GlobalFindCombobox({
               // Header chrome: fill the beam top→bottom; vertical hairlines lock
               // the cell into the header geometry. Active focus = bottom rule
               // (always border-b-2 so focus doesn't grow the beam height).
+              // Pending sweep replaces the focus rule — drop border-b while
+              // SearchPendingBar owns the bottom edge.
               'h-full self-stretch border-x border-b-2 border-border-hairline bg-transparent',
-              focused ? 'border-b-border-strong' : 'border-b-transparent',
+              showPendingBar
+                ? 'border-b-0'
+                : focused
+                  ? 'border-b-border-strong'
+                  : 'border-b-transparent',
               GLOBAL_FIND_FIELD_WIDTH,
             ),
         className,
@@ -697,6 +761,8 @@ export function GlobalFindCombobox({
         }
         trailingSuffix={trailingSuffix}
       />
+
+      {showPendingBar ? <SearchPendingBar /> : null}
 
       <GlobalSearchDropdown
         open={dropdownOpen}

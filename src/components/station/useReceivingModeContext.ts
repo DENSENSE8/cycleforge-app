@@ -121,9 +121,9 @@ export function useReceivingModeContext(): ReceivingModeState {
     : 'scanned';
   const incomingPoFrom = isIncomingMode ? (searchParams.get('po_from') || '').trim() : '';
   const incomingPoTo = isIncomingMode ? (searchParams.get('po_to') || '').trim() : '';
-  // Purchasing-source tab (`?inbound=`): which account the incoming order came
-  // from (All / Zoho / eBay). Defaults to `all`; only the two narrowing values
-  // are honored, so junk falls back to the unioned view.
+  // Purchasing-source filter (`?inbound=`): which account the incoming order came
+  // from (All / Zoho / eBay via Band-3 search-field filter). Defaults to `all`;
+  // only the two narrowing values are honored, so junk falls back to the union.
   const incomingSourceRaw = isIncomingMode
     ? (searchParams.get('inbound') || '').trim().toLowerCase()
     : '';

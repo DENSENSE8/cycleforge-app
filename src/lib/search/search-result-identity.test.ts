@@ -14,7 +14,7 @@ function hit(partial: Partial<AiSearchHit> & Pick<AiSearchHit, 'entityType'>): A
     id: 1,
     title: 'Title',
     subtitle: '',
-    href: '/o/1',
+    href: '/search?sel=order:1',
     matchField: 'order',
     score: 1,
     chips: [],

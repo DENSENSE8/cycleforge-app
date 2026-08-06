@@ -46,9 +46,9 @@ a refocus.
 | Ephemeral focus | `src/lib/receiving/procedure-focus-store.ts` | Carton-keyed, never a URL param — Station selection is ephemeral |
 | Centre work surface | `ProcedureDeck` (`@/design-system/components/procedure`) | **Primary, most prominent region** on the bench. Slow layout settle on step advance: `motionRole.procedure.advance`. Law: [`../source-of-truth.md`](../source-of-truth.md) → Scan-station procedure focus deck · [`station-workbench.md`](station-workbench.md) |
 | Edge map | `ProcedureChecklist` (same barrel) | A **display the operator picks**, never a pinned region |
-| Progress chrome | `ScanStationProgressControl` + `ScanStationProgressRing` | Dock-anchored under the terminal, open or closed |
+| Progress chrome | `ScanStationProgressControl` + `ScanStationProgressRing` | Displays strip `rightSlot` (right of ⋮); closed via `←|` |
 | Inspector body facts | `OrderFactList` / `OrderFactRow` (`@/components/order-record`) | [`right-rail-inspector.md`](right-rail-inspector.md) → Body |
-| Inspector header | `PaneHeader` blocks / `RecordPaneHeader` | Eyebrow + short key; no hero title |
+| Inspector header | `PaneHeader` blocks / `DeskRailChromeRow` (+ Unbox Displays plate on desk `detail:order`) | Eyebrow + short key; no hero title |
 
 Registered in [`src/design-system/DESIGN_SYSTEM.md`](../../../src/design-system/DESIGN_SYSTEM.md)
 → *Procedure & scan progress*.

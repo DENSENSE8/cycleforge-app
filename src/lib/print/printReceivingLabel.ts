@@ -44,11 +44,15 @@ export interface ReceivingLabelPayload {
 
 /**
  * Compact platform name for small thermal labels where the full catalog name
- * overflows the top-left slot (e.g. "Amazon - Return" → "AMZ - Return").
+ * overflows the top-left slot (e.g. "Amazon - Return" → "AMZ - Return",
+ * "Unfound - Return" → "UNF - Return"). Without this the 2×1" `.tl` ellipsis
+ * clips the type to "… - Re…".
  */
 function receivingLabelPlatformCompact(platform: string, type: string): string {
   if (!type) return platform;
-  if (platform.trim().toLowerCase() === 'amazon') return 'AMZ';
+  const key = platform.trim().toLowerCase();
+  if (key === 'amazon') return 'AMZ';
+  if (key === 'unfound') return 'UNF';
   return platform;
 }
 

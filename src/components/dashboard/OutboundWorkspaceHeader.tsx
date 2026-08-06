@@ -25,6 +25,7 @@ import {
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
+import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { fulfillmentCountsFromCombos } from '@/lib/unshipped-state';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
@@ -62,7 +63,9 @@ export function OutboundWorkspaceHeader({
   className,
 }: OutboundWorkspaceHeaderProps) {
   const active = isLifecycleView(orderView) ? orderView : 'unshipped';
-  const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
+  const searchParams = useSearchParams();
+  const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
+  const { data: queueCounts } = useQuery(unshippedQueueCountsQuery({ staffId }));
   const { openIntakeForm } = useDashboardSearchController();
 
   const fromCombos = fulfillmentCountsFromCombos(queueCounts?.combos ?? []);

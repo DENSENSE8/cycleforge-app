@@ -174,15 +174,16 @@ export function useUnboxLineController(
     return () => setPrevLineNotes(itemNoteLiveRef.current);
   }, [row.id]);
 
-  // Serial is per line; prefill from the row's recorded serials (most recent
-  // wins) so the panel reflects what the table chip shows.
+  // Serial is per line; seed the label/receive buffer once when the active
+  // line changes. Do NOT re-seed on every `row.serials` publish — optimistic
+  // confirm used to clear then refill serialInput and bounce the workspace.
   useEffect(() => {
     const localSerials = (row.serials ?? []) as Array<{ serial_number?: string | null }>;
     const latest = localSerials.length > 0
       ? String(localSerials[localSerials.length - 1]?.serial_number || '').trim()
       : '';
     setSerialInput(latest);
-  }, [row.id, row.serials]);
+  }, [row.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: line switch only
 
   // Seed the no-serial waiver from the line's DURABLE value on line change AND
   // whenever the persisted fact updates — a fresh open, a reload, another device,

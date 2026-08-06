@@ -16,28 +16,21 @@ import { cn } from '@/utils/_cn';
 export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
 
 /**
- * Clearance for a dock that carries a PAGER ROW above its shell **and** a
- * progress under-row below it (Unbox).
+ * Clearance for a dock that carries a PAGER ROW above its shell (Unbox on
+ * `unbox-work`; main Unbox notes+Print dock is shorter).
  *
  * The dock floats over the scroll canvas, so the body's bottom padding is the
  * only thing keeping content out from under it — and that padding is a constant
  * tuned to the dock's height. Add a row to the dock without adding it here and
- * the deck's last card slides under the new chrome; that is exactly what the
- * 4px overlap the pager shipped with was.
+ * the deck's last card slides under the new chrome.
  *
  * A named variant rather than a bumped shared constant: the four stations
  * without a pager must not pay dead canvas for one that has one. Same shape as
  * `reserveIdentityClearance`'s `'stacked'`.
  *
- * ## It also covers Unbox's post-composer dock (2026-08-02+) + progress row
- *
- * Unbox's band carries the step pager above the dock Panel, the active step
- * CTA + carton terminal inside it, and the scan-progress ring in an under-dock
- * row (2026-08-03). Notes open behind a dock icon into OmnichannelComposerDock
- * (taller). This clearance over-reserves when notes are collapsed — the safe
- * direction: extra canvas below the deck costs nothing, and under-reserving
- * puts the deck's last card under live chrome. Do not add a variant per dock
- * row — bump this constant when Unbox's band grows.
+ * Main Unbox: procedure progress ring lives on the Displays strip `rightSlot`
+ * (not an under-dock row). This clearance still over-reserves for the notes
+ * composer when expanded — the safe direction.
  */
 export const STATION_TERMINAL_PAGER_SCROLL_CLEARANCE = 'pb-48';
 

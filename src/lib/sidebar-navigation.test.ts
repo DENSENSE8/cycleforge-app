@@ -521,13 +521,15 @@ test('getSidebarRouteKey maps the Test surface + legacy alias to tech', () => {
   assert.equal(getSidebarRouteKey('/tech'), 'tech');
 });
 
-test('getSidebarRouteKey maps the dedicated order workspace to order', () => {
-  assert.equal(getSidebarRouteKey('/o/6057'), 'order');
-  assert.equal(getSidebarRouteKey('/o/12-34567-89012'), 'order');
-  assert.equal(getSidebarRouteKey('/o'), 'order');
+test('getSidebarRouteKey does not treat retired /o as a dedicated workspace', () => {
+  // `/o/[id]` redirects to search; route key falls through (unknown / search
+  // depending on other matchers — never a ghost `order` panel).
+  assert.notEqual(getSidebarRouteKey('/o/6057'), 'order');
+  assert.notEqual(getSidebarRouteKey('/o/12-34567-89012'), 'order');
+  assert.notEqual(getSidebarRouteKey('/o'), 'order');
 });
 
-// `/search` is a centered find stage (no context rail) + full-bleed detail on `?sel=`.
+// `/search` is header find + browse/detail (no context rail) on `?sel=`.
 test('Home reserves a context column for its saved-views rail', () => {
   assert.equal(getSidebarRouteKey('/'), 'home');
   // The set is the DECLARED contract for whether the spine pins a 360px column.

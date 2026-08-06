@@ -1,5 +1,6 @@
 import { Loader2 } from '@/components/Icons';
 import { statusBadge } from '@/components/support/zendesk/badges';
+import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import {
   DenseComposeLabel,
   DenseComposeSearchInput,
@@ -43,6 +44,9 @@ interface Props {
  * host supplies a {@link UseTicketSearch} whose `buildUrl` resolves the anchor.
  * This is the single picker for every "link an existing ticket" surface; do not
  * fork a per-surface copy.
+ *
+ * Row identity is {@link TicketPickRow} (subject → TicketChip) — same stacked
+ * grammar as Move photos / Orders import / Support subject.
  *
  * Sheet-band chrome: underline search + full-bleed hairline rows (no rounded-xl
  * list card) — same axis as Claim Subject/Body.
@@ -111,29 +115,35 @@ export function TicketPicker({
                     type="button"
                     onClick={() => onSelect(isSel ? null : t)}
                     disabled={t.linkedToThis}
-                    className={`ds-raw-button flex w-full items-center gap-2.5 border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 ${
+                    className={`ds-raw-button w-full border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 ${
                       isSel ? 'bg-rose-50' : 'hover:bg-surface-hover'
                     } ${t.linkedToThis ? 'cursor-default opacity-60' : ''}`}
                   >
-                    <span className="shrink-0 font-mono text-role-caption font-semibold text-text-default">
-                      #{t.id}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${badge.className}`}
-                    >
-                      {badge.label}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-muted">
-                      {t.subject || '—'}
-                    </span>
-                    {mode === 'reference' && t.anchoredElsewhere ? (
-                      <span className="shrink-0 rounded inset-chip text-role-eyebrow uppercase tracking-wider bg-surface-hover text-text-faint">
-                        {t.anchoredElsewhere.type.replace(/_/g, ' ').toLowerCase()}
-                      </span>
-                    ) : null}
-                    <span className="shrink-0 text-role-micro font-medium text-text-faint">
-                      {ticketDate(t.updatedAt)}
-                    </span>
+                    <TicketPickRow
+                      ticketId={t.id}
+                      subject={t.subject}
+                      emptySubject="—"
+                      subjectClassName="font-medium text-text-muted"
+                      meta={
+                        <>
+                          <span
+                            className={`rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                          {mode === 'reference' && t.anchoredElsewhere ? (
+                            <span className="rounded inset-chip text-role-eyebrow uppercase tracking-wider bg-surface-hover text-text-faint">
+                              {t.anchoredElsewhere.type.replace(/_/g, ' ').toLowerCase()}
+                            </span>
+                          ) : null}
+                        </>
+                      }
+                      trailing={
+                        <span className="text-role-micro font-medium text-text-faint">
+                          {ticketDate(t.updatedAt)}
+                        </span>
+                      }
+                    />
                   </button>
                 );
               })}

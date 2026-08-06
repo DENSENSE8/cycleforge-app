@@ -2,12 +2,14 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
-import { EmptySkuChipFace } from '@/components/ui/CopyChip';
+import { EmptySkuChipFace, UnitPriceChip } from '@/components/ui/CopyChip';
 
 /**
  * Boxed meta sub-grid for PO line accordion rows.
  * Order: qty | SKU | condition | serial | price (price last — variable width).
  * Empty SKU uses the mono `----` face (same slot as a filled SkuScanRefChip).
+ * Empty price uses {@link UnitPriceChip} with no amount — Receipt mark + `—`
+ * so unfound / unpriced lines keep the price column (never a blank cell).
  *
  * Tracks: `auto auto auto 1fr auto` so qty/SKU/condition/price hug content and
  * the serials cell absorbs remaining width. Column separation is `gap-x-3`
@@ -74,7 +76,7 @@ export function PoLineMetaGrid({
         className="flex items-center justify-end text-right tabular-nums px-2 py-1"
         data-col="price"
       >
-        {price ?? null}
+        {price ?? <UnitPriceChip amount={null} dense />}
       </span>
     </div>
   );

@@ -5,15 +5,17 @@ import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { buildShippedCopyInfo } from '@/utils/copyallshipped';
 import { useDeleteOrderRow } from '@/hooks';
 import { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
-import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
-import { WorkOrderAssignmentCard, type AssignmentConfirmPayload } from '@/components/work-orders/WorkOrderAssignmentCard';
 import type { ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { resolveDeleteRequest, toMonthDayYearCurrent } from '@/components/shipped/details-panel/shipped-details-logic';
+import {
+  orderInspectorActiveSection,
+  resolveOrderInspectorDisplayTopic,
+  resolveOrderInspectorTopicState,
+  type OrderInspectorDisplayTopic,
+  type OrderInspectorOrderChild,
+} from '@/lib/shipping/order-inspector-topics';
 import { toast } from '@/lib/toast';
-
-// Re-exported so consumers of WorkOrderAssignmentCard's confirm payload can find it here.
-export type { AssignmentConfirmPayload };
 
 /**
  * Owns the panel's working copy of the order plus the inline-editable shipping
@@ -136,39 +138,77 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
 export interface UseShippedPanelViewStateOptions {
   initialShipped: ShippedOrder;
   /**
-   * The opening tab, resolved by the caller from the contextual SoT
+   * The opening leaf section, resolved by the caller from the contextual SoT
    * (`resolveOrderInspectorContext(...).defaultTab` in
    * `@/lib/selection-context/order-inspector-context`) — Pending / fulfillment
    * opens docs-first, the search deep-link opens journey-first, everything else
-   * keeps `shipping`. The hook does not re-decide it; one decider, one place.
+   * keeps `shipping`. Mapped to Display topic + Order child via
+   * `order-inspector-topics`. The hook does not re-decide it; one decider, one place.
    */
   defaultSection?: ShippedActiveSection;
+  /** Documents tab gate — when false, a documents default falls back to Order. */
+  showDocumentsTab?: boolean;
 }
 
 /**
- * The panel's view state — the active tab plus the lifted inline-editor toggles
- * (out-of-stock / notes input, mark-as-shipped). Resets to sensible defaults
- * when the underlying order changes.
+ * The panel's view state — Display topic + Order nested child (body leaf), plus
+ * the lifted inline-editor toggles. Resets when the underlying order changes.
  */
 export function useShippedPanelViewState({
   initialShipped,
   defaultSection = 'shipping',
+  showDocumentsTab = true,
 }: UseShippedPanelViewStateOptions) {
-  const [activeSection, setActiveSection] = useState<ShippedActiveSection>(defaultSection);
+  const seed = resolveOrderInspectorTopicState(defaultSection);
+  const [displayTopic, setDisplayTopicState] = useState<OrderInspectorDisplayTopic>(
+    resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab }),
+  );
+  const [orderChild, setOrderChild] = useState<OrderInspectorOrderChild>(seed.orderChild);
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
+
+  const activeSection = orderInspectorActiveSection(displayTopic, orderChild);
+
+  const setDisplayTopic = useCallback(
+    (topic: OrderInspectorDisplayTopic) => {
+      setDisplayTopicState(
+        resolveOrderInspectorDisplayTopic(topic, { showDocumentsTab }),
+      );
+    },
+    [showDocumentsTab],
+  );
+
+  /** Leaf setter for replace-tracking / legacy callers — maps to topic + child. */
+  const setActiveSection = useCallback(
+    (section: ShippedActiveSection) => {
+      const next = resolveOrderInspectorTopicState(section);
+      setDisplayTopicState(
+        resolveOrderInspectorDisplayTopic(next.topic, { showDocumentsTab }),
+      );
+      setOrderChild(next.orderChild);
+    },
+    [showDocumentsTab],
+  );
 
   // Reset to the context default when the underlying order changes (e.g. user
   // navigates to a different order via the panel's up/down arrows). Pending
   // re-opens on Documents per record — the question the lane exists to answer.
   useEffect(() => {
-    setActiveSection(defaultSection);
-  }, [initialShipped.id, defaultSection]);
+    const next = resolveOrderInspectorTopicState(defaultSection);
+    setDisplayTopicState(
+      resolveOrderInspectorDisplayTopic(next.topic, { showDocumentsTab }),
+    );
+    setOrderChild(next.orderChild);
+  }, [initialShipped.id, defaultSection, showDocumentsTab]);
 
   useEffect(() => {
     setActiveInput('none');
   }, [initialShipped.id]);
 
   return {
+    displayTopic,
+    setDisplayTopic,
+    orderChild,
+    setOrderChild,
     activeSection,
     setActiveSection,
     activeInput,
@@ -208,49 +248,6 @@ export function useShippedDeletion(shipped: ShippedOrder, onUpdate: () => void) 
   return { isDeleteArmed, isDeleting: deleteOrderMutation.isPending, handleDelete };
 }
 
-export interface UseShippedAssignmentOptions {
-  shipped: ShippedOrder;
-  setShipped: React.Dispatch<React.SetStateAction<ShippedOrder>>;
-  onUpdate: () => void;
-}
-
-/**
- * Work-order assignment: loads today's present staff on demand, derives the
- * technician / packer option lists, and persists tech/packer/deadline changes
- * (optimistically updating the local order and firing refresh events).
- */
-export function useShippedAssignment({ shipped: _shipped, setShipped, onUpdate }: UseShippedAssignmentOptions) {
-  const [showAssignmentCard, setShowAssignmentCard] = useState(false);
-
-  // Staff options + the /api/work-orders write live in the shared waist, so the
-  // dashboard bulk bar and this panel can never drift into two writers.
-  const { technicianOptions, packerOptions, loadStaff, confirmAssignment } = useWorkOrderAssignment({
-    onAssigned: (_row, payload) => {
-      setShipped((current) => ({
-        ...current,
-        tester_id: payload.techId,
-        packer_id: payload.packerId,
-        ship_by_date: payload.deadline ?? current.ship_by_date,
-        deadline_at: payload.deadline ?? current.deadline_at,
-      }));
-      onUpdate();
-    },
-  });
-
-  const openAssignmentCard = useCallback(async () => {
-    if (await loadStaff()) setShowAssignmentCard(true);
-  }, [loadStaff]);
-
-  return {
-    showAssignmentCard,
-    setShowAssignmentCard,
-    openAssignmentCard,
-    handleAssignmentConfirm: confirmAssignment,
-    technicianOptions,
-    packerOptions,
-  };
-}
-
 /** Transient "copied ✓" feedback for the copy-all and copy-order-id actions. */
 export function useShippedCopyActions(shipped: ShippedOrder, orderIdDisplay: string) {
   const [copiedAll, setCopiedAll] = useState(false);
@@ -273,6 +270,3 @@ export function useShippedCopyActions(shipped: ShippedOrder, orderIdDisplay: str
 
   return { copiedAll, copiedOrderId, handleCopyAll, handleCopyOrderId };
 }
-
-// Re-export so the panel composition can render the card without a separate import.
-export { WorkOrderAssignmentCard };

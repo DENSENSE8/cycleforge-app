@@ -80,6 +80,13 @@ export function ReceivingLineWorkspace({
     }).catch(() => {});
   }, [row.id, row.receiving_id, recordView]);
 
+  const cartonCursor = {
+    onPrev,
+    onNext,
+    prevDisabled: nav ? !nav.canPrev : false,
+    nextDisabled: nav ? !nav.canNext : false,
+  };
+
   return (
     // Plain wrapper — NO per-line key/crossfade. Switching between sibling lines
     // of the same carton must be an in-place update, not a remount: the outer
@@ -105,8 +112,10 @@ export function ReceivingLineWorkspace({
             row={row}
             staffId={staffId}
             onClose={onClose}
-            onPrevCarton={onPrev}
-            onNextCarton={onNext}
+            onPrevCarton={cartonCursor.onPrev}
+            onNextCarton={cartonCursor.onNext}
+            prevCartonDisabled={cartonCursor.prevDisabled}
+            nextCartonDisabled={cartonCursor.nextDisabled}
           />
         ) : (
           <LineEditPanel
@@ -121,8 +130,10 @@ export function ReceivingLineWorkspace({
             // prop's handler runs. Passing it as well is what put a second,
             // panel-shaped carton-close in the pane's top-right corner
             // (2026-08-02). Triage still takes `onClose` below.
-            onPrevCarton={onPrev}
-            onNextCarton={onNext}
+            onPrevCarton={cartonCursor.onPrev}
+            onNextCarton={cartonCursor.onNext}
+            prevCartonDisabled={cartonCursor.prevDisabled}
+            nextCartonDisabled={cartonCursor.nextDisabled}
           />
         )}
       </div>

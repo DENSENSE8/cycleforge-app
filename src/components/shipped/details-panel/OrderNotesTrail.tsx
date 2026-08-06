@@ -19,13 +19,10 @@
  * here, attributed and append-only. See `.claude/rules/source-of-truth.md`
  * → Order note grain.
  *
- * Mounted at the RECORD plane: `/o/[orderId]` and the support orders
- * workspace. One component so they can never drift into two note UIs.
- *
- * **Not** in the right-rail order inspector — that panel offers no note-writing
- * (handoff §3.2), so its `ShippedPanelEditorDock` passes `showNotes={false}`
- * and the header's open-full-page action is the route to this trail. The write
- * path is unchanged: `order_notes` via `POST /api/orders/[id]/notes`.
+ * Mounted on the desk order inspector dock (`ShippedPanelEditorDock` with
+ * `showNotes`) and the support orders workspace. One component so they can
+ * never drift into two note UIs. Write path: `order_notes` via
+ * `POST /api/orders/[id]/notes`.
  */
 
 import { useCallback, useMemo, useState } from 'react';

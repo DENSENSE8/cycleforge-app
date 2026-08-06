@@ -42,8 +42,8 @@ Top-to-bottom, a station is four parts and nothing more:
 | Part | Module | Rule |
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
-| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Absolute-float two-row identity over the work canvas (`reserveIdentityClearance="stacked"`). Unbox golden; Triage/Testing/Shipping/Pack compose via thin adapters. Never fork. |
-| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). **Dock-anchored under the terminal** (Unbox: `UnboxDockHost` progress row) — same place whether Displays/push is open or closed. **Selected face** when checklist display is live. Hover peeks a Cursor-style `top-end` overlap just above the ring (viewport-clamped) with a footer to open Displays; hover is **off** while any push rail is open. Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — not on the Displays strip. Never fork a second ring. |
+| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | In-flow two-row identity (`placement="flow"`, `reserveIdentityClearance={false}`) above the work canvas. Unbox golden; Triage/Testing/Shipping/Pack compose via thin adapters. Never fork. |
+| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). Displays icon-plate **`rightSlot`** (same row, right of ⋮ — Unbox: `ReceivingDisplaysPushStack`). **Selected face** when checklist display is live. Hover peek is off while Displays is open (strip mount). Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — never a Lucide strip cell. Closed Displays opens via `←|`. Never fork a second ring under the dock. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down chrome** (no app-root banner) | `connection-health` + `useNetworkOnline` / `useRealtimeLink` → Operations TV pill + mobile `NetworkChip` | First-class, non-blocking; degrade-not-block. Never a per-bench reconnect strip. |
@@ -161,7 +161,7 @@ Full law: [`../source-of-truth.md`](../source-of-truth.md) → Scan-station proc
 |---|---|---|---|---|
 | **Centre** | focus deck | *What do I do right now?* | `ProcedureDeck` via a domain wrapper — flat expandable list (full faces · one expanded body) | **Primary — hero surface** |
 | **Right edge** | checklist display | *Where am I in the whole job?* | `ProcedureChecklist` as a Displays body | Secondary navigation |
-| **Under dock (terminal)** | progress ring | opens / closes the checklist | `ScanStationProgressControl` | Entry to checklist only |
+| **Displays strip `rightSlot`** | progress ring | opens / closes / switches the checklist | `ScanStationProgressControl` | Entry to checklist only (right of ⋮) |
 
 - **One derivation, however many views.** Both surfaces read the same hook
   (Unbox: `useUnboxProcedureSteps`). Two views was never the hazard — two derivations drifting was.
@@ -183,27 +183,25 @@ Full law: [`../source-of-truth.md`](../source-of-truth.md) → Scan-station proc
 
 ### Ring placement + interaction matrix
 
-The ring is **always dock-anchored under the terminal — the same place open or
-closed** — because it is the control that opens the checklist column, so it must
-not move when the column appears, and it must not occupy the right-edge inspector
-corner (pane top-right stays carton `↑ ↓` only).
+The ring lives on the Displays icon plate as **`rightSlot`** (same row, right of
+⋮) while Displays is open — checklist stays `stripHidden` (no Lucide strip cell).
+Closed Displays opens via `←|`; do not remount a second ring under the dock or in
+the pane utility corner (pane top-right stays carton `↑ ↓` only).
 
 | Current state | Ring click |
 |---|---|
-| Displays closed | Open the checklist display |
 | Displays open on checklist | Close Displays |
 | Displays open on another tab | **Switch** to checklist — do not close |
+| Displays closed | Ring not mounted — open via `←|`, then use the ring |
 
 Bare 16px SVG, **no numeral inside**, no card plate behind it; `tone="selected"` while the checklist
 is live. It is **not** `GoalRing` (daily-goal pace, GlobalHeader) — that swap is the most-repeated
-mistake on this surface. Hover peek uses `previewPlacement="top-end"` (Cursor-style
-overlap just above the ring, viewport-clamped) plus a footer action that opens
-the checklist in the right-edge Displays rail.
+mistake on this surface. Hover peek is suppressed while the strip mount has Displays open.
 
 ### Anti-patterns
 
-- **A checklist cell on the Displays icon strip.** The ring is the only entry; a second door is
-  control duplication.
+- **A Checklist Lucide cell on the Displays icon strip.** The ring (`rightSlot`) is the only
+  entry; a second door is control duplication.
 - **An always-on procedure column.** That is a third right-edge grammar; one was built and retired
   within a day — [`../source-of-truth.md`](../source-of-truth.md) → Right-rail modality.
 - **A hand-ticked step**, or a `skipped` step drawn as done.

@@ -2,10 +2,10 @@
 
 /**
  * DetailStackHistoryTracker — watches the URL for any known detail-stack open
- * param (openShipmentId, openReceivingId, …) AND path-based dedicated workspaces
- * (`/o/[orderId]`) and records them into the recent-detail-stacks history the
- * context rail / order sidebar show. Zero per-page wiring: every page that
- * already deep-links a slide-over via one of these params is captured for free.
+ * param (openShipmentId, openReceivingId, openOrderId, …) and records them into
+ * the recent-detail-stacks history the context rail shows. Zero per-page
+ * wiring: every page that already deep-links a slide-over via one of these
+ * params is captured for free.
  *
  * Renders nothing. Mounted once by AssistantProvider inside a Suspense boundary
  * (useSearchParams requires it in the App Router).
@@ -17,7 +17,6 @@ import { recordDetailStack } from '@/lib/detail-stacks/history-store';
 import {
   DETAIL_STACK_DEFS,
   DETAIL_STACK_PARAMS,
-  parseOrderWorkspacePath,
 } from '@/lib/detail-stacks/registry';
 
 function shorten(id: string): string {
@@ -37,19 +36,6 @@ export function DetailStackHistoryTracker(): null {
         kind,
         id,
         label: `${def.noun} ${shorten(id)}`,
-        path: pathname,
-        search: params.toString(),
-      });
-    }
-
-    // Dedicated order workspace — path segment is the open id (no query param).
-    const orderId = parseOrderWorkspacePath(pathname);
-    if (orderId) {
-      const def = DETAIL_STACK_DEFS.order;
-      recordDetailStack({
-        kind: 'order',
-        id: orderId,
-        label: `${def.noun} ${shorten(orderId)}`,
         path: pathname,
         search: params.toString(),
       });

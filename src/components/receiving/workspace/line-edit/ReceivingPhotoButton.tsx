@@ -16,6 +16,11 @@
  * The wrapper owns hover (with a short leave delay) so the cursor can cross
  * the gap to the popover without it collapsing.
  *
+ * The hover strip is an {@link AnchoredLayer} at `panelPopover` — a body portal
+ * so it escapes the scan-station center's `overflow-hidden` and sibling
+ * utility/Displays stacking and paints over the right inspector (carton
+ * context `galleryPlacement="right"`).
+ *
  * While a gallery-owned upload/move overlay is open, the peek stays pinned so
  * the upload controller is not unmounted mid-pick.
  */
@@ -28,7 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { Camera, Plus } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { AnchoredLayer, Button, type AnchoredPlacement } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   getReceivingPhotoRequestChannelName,
@@ -39,7 +44,7 @@ import { SendToDeviceStatus } from '@/components/station/send-to-device/SendToDe
 import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
-import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import { STATION_CONTEXT_PHOTO_FLUSH_CLASS, STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 import {
   RECEIVING_PHOTO_LIST_INTENT_CARTON,
   type ReceivingPhotoStage,
@@ -69,6 +74,16 @@ interface PhotosPayload {
 }
 
 const HOVER_LEAVE_MS = 140;
+/** Gap between the pill and the portaled gallery — matches prior `pt/pl/pb-1.5`. */
+const GALLERY_GAP_PX = 6;
+
+function galleryAnchoredPlacement(
+  placement: 'below' | 'above' | 'right',
+): AnchoredPlacement {
+  if (placement === 'above') return 'top-end';
+  if (placement === 'right') return 'right-start';
+  return 'bottom-end';
+}
 
 export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   receivingId,
@@ -296,6 +311,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   /** Pin while Move photos modal is open (same hover-host unmount hazard). */
   const [galleryMovePinned, setGalleryMovePinned] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+  const hostRef = useRef<HTMLDivElement | null>(null);
 
   // Hover peek is available with or without photos — empty cartons still get
   // the gallery action strip (Upload photos) so operators can pick device upload
@@ -312,17 +328,22 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     hideTimer.current = setTimeout(() => setGalleryHover(false), HOVER_LEAVE_MS);
   }, []);
 
+  /** AnchoredLayer outside-click / Escape — pins keep the gallery mounted. */
+  const closeGalleryPeek = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setGalleryHover(false);
+  }, []);
+
   useEffect(() => () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
   }, []);
 
   // One consistent resting state across every PO — a calm blue-tinted pill.
   // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
-  // Flush = square ghost cell for Units explosion unit rows.
+  // Flush = square blue cell (same blue as carton-context Photos).
   const btnClass =
     appearance === 'flush'
-      ? // Units explosion leading cell — fill the h-11 joined bar, square, no pad.
-        'h-11 w-11 shrink-0 justify-center rounded-none border-0 bg-surface-strong px-0 text-text-faint hover:bg-surface-sunken hover:text-text-muted'
+      ? STATION_CONTEXT_PHOTO_FLUSH_CLASS
       : STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const noun = isItemScope ? 'item' : 'carton';
@@ -370,6 +391,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   return (
     <div
+      ref={hostRef}
       className="relative shrink-0"
       onMouseEnter={openGallery}
       onMouseLeave={scheduleCloseGallery}
@@ -393,25 +415,29 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         carton title around mid-scan — the same reason the gallery peek floats.
       */}
       {phone.state !== 'idle' ? (
-        <div className="absolute right-0 top-full z-30 w-max max-w-[18rem] pt-1.5">
+        <div className="absolute right-0 top-full z-panelPopover w-max max-w-[18rem] pt-1.5">
           <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
         </div>
       ) : null}
 
-      {showGalleryPeek ? (
-        // Gap bridge only — panel chrome comes from CopyChipHoverMenuPanel
-        // (same drop SoT as tracking / ticket), not a second card wrapper.
-        // `right` keeps Claim / ticket under Photos reachable — a below drop
-        // would sit on that stack and steal the downward mouse path.
-        <div
-          className={
-            galleryPlacement === 'above'
-              ? 'absolute bottom-full right-0 z-30 pb-1.5'
-              : galleryPlacement === 'right'
-                ? 'absolute left-full top-0 z-30 pl-1.5'
-                : 'absolute right-0 top-full z-30 pt-1.5'
-          }
-        >
+      {/*
+        Body portal at panelPopover — escapes the locked-720 center
+        (overflow-hidden + sibling utility/Displays stacking) so carton-context
+        hover can paint over the right inspector. Gap bridge lives on the
+        portaled host via mouse enter/leave (pill leave delay still applies).
+        `right` keeps Claim / ticket under Photos reachable.
+      */}
+      <AnchoredLayer
+        open={showGalleryPeek}
+        onClose={closeGalleryPeek}
+        anchorRef={hostRef}
+        placement={galleryAnchoredPlacement(galleryPlacement)}
+        level="panelPopover"
+        gap={GALLERY_GAP_PX}
+        closeOnEscape={!galleryUploadPinned && !galleryMovePinned}
+        className="w-max max-w-[18rem]"
+      >
+        <div onMouseEnter={openGallery} onMouseLeave={scheduleCloseGallery}>
           <PhotoGallery
             photos={photos}
             orderId={`RCV-${receivingId}`}
@@ -439,7 +465,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
             onSendToTicket={onSendToTicket}
           />
         </div>
-      ) : null}
+      </AnchoredLayer>
     </div>
   );
 });

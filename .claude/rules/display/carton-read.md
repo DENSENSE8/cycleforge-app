@@ -131,6 +131,11 @@ Recipe for the durable **read** record of a carton — observe-first with a work
   as a glyph** (`resolveStationGlyph` → `TIMELINE_GLYPH_ICONS`, with an
   `sr-only` word — `RECEIVING` in caps out-shouted the note it belonged to),
   then kind / status trail / `SerialChip`. An unmapped bench keeps its text.
+  **One caption size** for title · timestamp · meta (never mix
+  `text-role-eyebrow` under a caption title). Workflow notes titled
+  `Stage Matched → Unboxed` display as **`Matched → Unboxed`**
+  (`cartonEventTitle`) and suppress the redundant `NOTE` + machine trail
+  (`cartonEventSignature`).
 - **Progress:** shared `ReceivingCartonPipeline` (Scanned → Unboxed → Received + `PipelineStageRow` details) — never a hand-rolled HANDLING provenance strip.  
 - **One plane, sectioned by hairlines** (ruled 2026-08-05, superseding *"section cards … sit on `bg-surface-card` / `Panel` — not bare canvas"*). The read body is a single `bg-surface-card` sheet under the sunken identity band; contents · record · POs · note · progress · findings · activity · history are `<section>` children separated by `divide-y divide-border-hairline`, each on `inset-card`. The two tracks are **flush** — `gap-0` with the seam carried by `border-t` (stacked) / `xl:border-l` (side by side).
   - **The old rule was right about its enemy and wrong about its fix.** It was written to stop sections falling onto bare canvas with nothing holding them; it bought that with six `Panel radius="xl"` islands on a `surface-canvas` ground, which is canvas → card → sunken, three surfaces deep, to show one carton's facts. That is the nested-box read the house flush-planes ruling bans ([`../source-of-truth.md`](../source-of-truth.md) → Depth elevation): **depth is the surface STEP, not a gutter.** Here the step is sunken identity band → card body, and it is the only one.

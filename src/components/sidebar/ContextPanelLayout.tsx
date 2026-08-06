@@ -80,12 +80,14 @@ const SidebarContextPanel = dynamic(
  *   routes doing that and classic routes doing something else.
  *
  * Every mounted context rail is drag-resizable on the trailing edge via
- * {@link useHorizontalEdgeResize} + {@link HorizontalEdgeResizeHandle}; width
- * persists in localStorage ({@link CONTEXT_PANEL_RESIZE}). Collapse via
- * sash-top `onCollapse` on that handle **or** drag-past-min
- * (`onCollapseBeyondMin`) **or** the filter-bar trailing
- * {@link RailFilterCollapseButton} — all write {@link CONTEXT_PANEL_COLLAPSE}
- * (width-drawer to 0 + slim expand strip). One shared preference across routes.
+ * {@link useHorizontalEdgeResize} + {@link HorizontalEdgeResizeHandle}
+ * (`placement="inset"` — paint is the panel's own `border-r` hairline, not an
+ * outset twin to the right of the seam); width persists in localStorage
+ * ({@link CONTEXT_PANEL_RESIZE}). Collapse via sash-top `onCollapse` on that
+ * handle **or** drag-past-min (`onCollapseBeyondMin`) **or** the filter-bar
+ * trailing {@link RailFilterCollapseButton} — all write
+ * {@link CONTEXT_PANEL_COLLAPSE} (width-drawer to 0 + slim expand strip). One
+ * shared preference across routes.
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.
@@ -248,7 +250,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           edgeHandleProps={edgeHandleProps}
           isDragging={isDragging}
           edge="trailing"
-          placement="outset"
+          placement="inset"
           tooltipLabel="Resize"
           onCollapse={() => setCollapsed(true)}
           collapseLabel="Hide sidebar"
@@ -272,9 +274,8 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
         <motion.div
           className={cn(
             CONTEXT_PANEL_COLUMN_CLASS,
-            // Outset grip sits outside the card; clip content on an inner shell
-            // so the hairline is not sheared by `overflow-hidden`.
-            'overflow-visible',
+            // Inset sash lives inside the card — clip is safe; the inner shell
+            // still owns the feed scrollport.
             isCollapsed && 'pointer-events-none m-0 border-0 opacity-0',
           )}
           data-context-panel

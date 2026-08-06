@@ -13,6 +13,8 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
+import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
+import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
 import type { PackChecklistLineDto, PackKitPartDto, PackCheckDto } from '@/lib/packing/order-pack-checklist';
 import type { KitPartDocument } from '@/lib/packing/kit-part-document';
 import { orderRowConditionLabel } from '@/lib/conditions';
@@ -229,14 +231,14 @@ export function PackChecklistLineRow({
 
   return (
     <li className="border-b border-border-hairline last:border-b-0">
-      <div className={`flex items-start gap-2 px-3 py-2 ${checked ? 'bg-emerald-50/40' : ''}`}>
+      <div className={`flex items-stretch gap-2 px-3 py-2 ${checked ? 'bg-emerald-50/40' : ''}`}>
         <HoverTooltip label="Confirm this item is in the box" asChild>
           <button
             type="button"
             onClick={onToggleCheck}
             aria-pressed={checked}
             aria-label="Confirm line item"
-            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-none border transition-colors ${touchClass} ${
+            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center self-start rounded-none border transition-colors ${touchClass} ${
               checked
                 ? 'border-emerald-600 bg-emerald-600 text-white'
                 : 'border-border-default bg-surface-card hover:border-emerald-400'
@@ -246,40 +248,32 @@ export function PackChecklistLineRow({
           </button>
         </HoverTooltip>
 
-        {/* One-row anatomy: title → meta → chips(right). The SKU chip is a
-            SIBLING of the expand button, never a child — `SkuScanRefChip` is a
-            `CopyChip`, which renders its own <button>, so nesting it produced
-            invalid DOM (hydration error) and made copy and expand fight for the
-            same click target. */}
-        <div className="flex min-w-0 flex-1 items-start gap-2">
+        {/* One-row anatomy: size-20 thumb | title top + qty/condition bottom.
+            SKU chip is a SIBLING of the expand control — never nested inside
+            `SkuScanRefChip`'s button (invalid DOM / hydration fight). */}
+        <div className="flex min-w-0 flex-1 items-stretch gap-2">
           <button
             type="button"
             onClick={onToggleExpand}
             aria-expanded={expanded}
-            className={`ds-raw-button flex min-w-0 flex-1 items-start gap-2 text-left ${touchClass}`}
+            className={cn(
+              'ds-raw-button grid min-w-0 flex-1 text-left',
+              PO_LINE_HEADER_FACE.minH,
+              PO_LINE_HEADER_FACE.thumbGrid,
+              touchClass,
+            )}
           >
-            {/* Prominent SKU catalog photo for visual verification (high-ROI scan match) */}
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-none border border-border-soft bg-surface-card">
-              {line.catalog.imageUrl ? (
-                <Image
-                  src={line.catalog.imageUrl}
-                  alt={line.productTitle}
-                  fill
-                  className="object-cover"
-                  sizes="40px"
-                  unoptimized
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-text-faint">
-                  <Package className="h-5 w-5 opacity-40" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className={`truncate text-role-caption font-semibold ${checked ? 'text-emerald-700 line-through' : 'text-text-default'}`}>
+            <PoLineHeaderThumb imageUrl={line.catalog.imageUrl} />
+            <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
+              <p
+                className={cn(
+                  'min-w-0 truncate px-2 py-1 text-role-caption font-semibold',
+                  checked ? 'text-emerald-700 line-through' : 'text-text-default',
+                )}
+              >
                 {line.productTitle}
               </p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 px-2 py-1">
                 <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
                   ×{line.quantity}
                   <span className="px-1 text-text-faint">·</span>
@@ -290,7 +284,7 @@ export function PackChecklistLineRow({
           </button>
 
           {sku ? (
-            <div className="mt-0.5 shrink-0">
+            <div className="shrink-0 self-start pt-1">
               <SkuScanRefChip value={sku} display={getLast8(sku)} />
             </div>
           ) : null}
@@ -300,9 +294,10 @@ export function PackChecklistLineRow({
           type="button"
           onClick={onToggleExpand}
           aria-label={expanded ? 'Collapse details' : 'Expand details'}
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-none text-text-soft transition-transform hover:bg-surface-sunken ${
-            expanded ? 'rotate-180' : ''
-          }`}
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center self-start rounded-none text-text-soft transition-transform hover:bg-surface-sunken',
+            expanded ? 'rotate-180' : '',
+          )}
         >
           <ChevronDown className="h-4 w-4" />
         </button>

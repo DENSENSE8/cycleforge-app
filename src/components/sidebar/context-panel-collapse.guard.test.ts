@@ -80,9 +80,19 @@ test('collapse lives on sash-top chevron + filter trailing + drag-past-min', () 
   // Every mounted context rail (dashboard included) wires sash onCollapse.
   assert.match(LAYOUT_SRC, /onCollapse=\{/);
   assert.match(LAYOUT_SRC, /collapseLabel="Hide sidebar"/);
+  assert.match(
+    LAYOUT_SRC,
+    /placement="inset"/,
+    'Context rail hairline must be inset on the panel border-r — not an outset twin to the right',
+  );
   assert.doesNotMatch(LAYOUT_SRC, /ContextPanelCollapseCue/);
   assert.match(HANDLE_SRC, /onCollapse\?:/);
   assert.match(HANDLE_SRC, /edge-resize-collapse/);
+  assert.match(
+    HANDLE_SRC,
+    /w-1 self-stretch/,
+    'Hover paint must be a 4px industry sash highlight, not a 1px twin',
+  );
 });
 
 test('drag-past-min collapse wires onCollapseBeyondMin into CONTEXT_PANEL_COLLAPSE', () => {

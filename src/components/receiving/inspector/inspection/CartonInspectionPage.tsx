@@ -92,6 +92,7 @@ import {
   cartonContentsSummary,
   cartonDisposition,
   cartonEventSignature,
+  cartonEventTitle,
   cartonFacts,
   cartonHeaderIdentity,
   cartonRecordMeta,
@@ -939,7 +940,7 @@ function EventsList({
           <li key={e.id} className="space-y-1 py-2">
             <div className="flex items-start justify-between gap-3">
               <span className="min-w-0 break-words text-role-caption font-semibold text-text-default">
-                {e.notes?.trim() || e.event_type || 'Event'}
+                {cartonEventTitle(e)}
               </span>
               <span className="shrink-0 whitespace-nowrap text-role-caption tabular-nums text-text-muted">
                 {formatDateTimePST(e.occurred_at)}
@@ -951,14 +952,15 @@ function EventsList({
               after the machine tokens. `StaffAvatar` resolves the photo by
               staff ID (never from the name), so a feed carrying only an actor
               id still gets the right face.
+
+              One caption size for the whole meta line (name · glyph · kind ·
+              trail) — never mix eyebrow/micro under a caption title.
             */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-caption text-text-muted">
               {e.actor_staff_id != null || e.actor_name ? (
-                <span className="flex items-center gap-1.5 normal-case tracking-normal">
+                <span className="flex items-center gap-1.5 text-text-default">
                   <StaffAvatar staffId={e.actor_staff_id} name={e.actor_name} size="xs" />
-                  {e.actor_name ? (
-                    <span className="text-role-caption text-text-default">{e.actor_name}</span>
-                  ) : null}
+                  {e.actor_name ? <span>{e.actor_name}</span> : null}
                 </span>
               ) : null}
               {/*
@@ -980,8 +982,8 @@ function EventsList({
               ) : e.station ? (
                 <span>{e.station}</span>
               ) : null}
-              {kind ? <span className="text-text-muted">{kind}</span> : null}
-              {trail ? <span className="text-text-muted">{trail}</span> : null}
+              {kind ? <span>{kind}</span> : null}
+              {trail ? <span>{trail}</span> : null}
               {chipDisambiguates && e.serial_number ? (
                 <SerialChip value={e.serial_number} />
               ) : null}

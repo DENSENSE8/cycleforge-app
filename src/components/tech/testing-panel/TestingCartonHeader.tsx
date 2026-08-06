@@ -16,9 +16,8 @@ import type { TestingController } from './testing-panel-types';
 /**
  * Testing adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
- * Two-row family face (same as Unbox / Triage). Identity chips are
- * display/open/copy; listing/tracking Edit tabs are Unbox-only for now
- * (omit onEdit* here). Pair host with `reserveIdentityClearance="stacked"`.
+ * Two-row family face (same as Unbox / Triage). Pair host with
+ * `placement="flow"` + `reserveIdentityClearance={false}`.
  */
 export function TestingCartonHeader({
   c,
@@ -26,6 +25,11 @@ export function TestingCartonHeader({
   staffId,
   onEditPo,
   poEditOpen = false,
+  onToggleClaimView,
+  claimViewActive = false,
+  onToggleTicketView,
+  ticketViewActive = false,
+  onExitToList,
 }: {
   c: TestingController;
   row: ReceivingLineRow;
@@ -33,6 +37,14 @@ export function TestingCartonHeader({
   /** `# ----` PO chip → open the Package Pairing (Linkage) display. */
   onEditPo?: () => void;
   poEditOpen?: boolean;
+  /** Claim CTA → open Ticket display (create claim). */
+  onToggleClaimView?: () => void;
+  claimViewActive?: boolean;
+  /** Filed ticket chip → toggle Ticket display. */
+  onToggleTicketView?: () => void;
+  ticketViewActive?: boolean;
+  /** Identity ◁ — prefer host browse clear when provided. */
+  onExitToList?: () => void;
 }) {
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
@@ -43,7 +55,8 @@ export function TestingCartonHeader({
       staffId={staffId}
       isUnmatched={row.receiving_source === 'unmatched'}
       showStaffPhotoRow
-      onMakeClaim={() => c.openClaimModal('create')}
+      onMakeClaim={onToggleClaimView ?? (() => c.openClaimModal('create'))}
+      claimViewActive={claimViewActive}
       listingLink={c.listingLink}
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
@@ -68,8 +81,11 @@ export function TestingCartonHeader({
         c.setZendesk('');
         dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
       }}
+      onToggleTicketView={onToggleTicketView}
+      ticketViewActive={ticketViewActive}
       primaryTrackingTrimmed={c.primaryTrackingTrimmed}
       filledExtraTrackingsCount={c.filledExtraTrackingsCount}
+      carrierHint={row.carrier}
       isLocalPickup={isLocalPickupFulfillment(row)}
       platformValue={c.sourcePlatform}
       onPlatformSelect={(next) => {
@@ -85,7 +101,7 @@ export function TestingCartonHeader({
       }}
       priorityTier={c.priorityTier}
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
-      onExitToList={() => dispatchSelectLine(null)}
+      onExitToList={onExitToList ?? (() => dispatchSelectLine(null))}
       onSendToTicket={() => c.setPhotoNoteOpen(true)}
       // Testing is always downstream of Unbox — a carton reaching this bench
       // has necessarily already been opened, so its carton photos are

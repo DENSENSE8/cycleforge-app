@@ -43,7 +43,9 @@ function TableFallback() {
 
 const TechTable = dynamic(
   () => import('@/components/TechTable').then((m) => m.TechTable),
-  { ssr: false, loading: TableFallback },
+  // SSR allowed — shipping history is not `/test` LCP (Testing centre is).
+  // Loading fallback is the stand-in while the chunk resolves.
+  { loading: TableFallback },
 );
 
 export interface ShippingWorkspaceViewProps {

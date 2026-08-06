@@ -14,38 +14,8 @@
 
 import type { QueryClient } from '@tanstack/react-query';
 import { receivingLinesTableQuery } from '@/lib/queries/receiving-queries';
-import {
-  RECEIVING_MODES,
-  type ReceivingModeContext,
-} from '@/lib/receiving/receiving-modes';
-
-/**
- * URL-less default context — exactly what `useReceivingModeContext` derives on
- * a bare `/unbox` (no search, default sort, all staff), so the prefetch key
- * matches the mount key. A user carrying `?staff=`/`?search=` params simply
- * misses the prefetch (harmless).
- */
-const DEFAULT_UNBOX_CONTEXT: ReceivingModeContext = {
-  historySearch: '',
-  historySearchField: 'all',
-  historySearchScope: 'all',
-  historySort: '',
-  incomingSearch: '',
-  incomingState: null,
-  incomingSort: '',
-  incomingPoFrom: '',
-  incomingPoTo: '',
-  incomingPage: 1,
-  incomingSource: 'all',
-  trackingIn: [],
-  isDeliveredUnscannedFacet: false,
-  isDeliveredNotUnboxedFacet: false,
-  staffFilterId: null,
-  listSearch: '',
-  queueStage: null,
-  queueLane: null,
-  priorityOnly: false,
-};
+import { RECEIVING_MODES } from '@/lib/receiving/receiving-modes';
+import { DEFAULT_UNBOX_CONTEXT } from '@/lib/receiving/default-unbox-context';
 
 /** Warm the default Unbox tab's spine (History · view=activity, paint tier). */
 function prefetchUnboxDefaultFeed(queryClient: QueryClient): void {

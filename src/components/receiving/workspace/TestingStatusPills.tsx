@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Pencil } from '@/components/Icons';
+import { useRef, useState, type ReactNode } from 'react';
+import { Check, Pencil, Wrench, X } from '@/components/Icons';
+import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 
@@ -24,7 +25,7 @@ interface Props {
   disabled?: boolean;
   /**
    * When set, the picker starts as the full row and collapses to the selected
-   * pill + an edit pencil once a verdict is chosen — mirroring {@link ConditionPills}.
+   * icon face once a verdict is chosen — mirroring {@link ConditionPills} Tags.
    */
   collapsible?: boolean;
   /** Controlled expanded state (collapsible mode only). */
@@ -32,51 +33,79 @@ interface Props {
   onExpandedChange?: (next: boolean) => void;
   /**
    * Collapsible mode only. When false, the collapsed state renders JUST the edit
-   * pencil (no selected-verdict pill) — used where another surface already shows
+   * pencil (no selected-verdict face) — used where another surface already shows
    * the verdict. Defaults to true.
    */
   collapsedLabel?: boolean;
 }
 
+const VERDICT_ICON = {
+  PASS: <Check className={TOP_CHROME_ICON_GLYPH} aria-hidden />,
+  TEST_AGAIN: <Wrench className={TOP_CHROME_ICON_GLYPH} aria-hidden />,
+  TESTING_FAILED: <X className={TOP_CHROME_ICON_GLYPH} aria-hidden />,
+} as const satisfies Record<TestingVerdict, ReactNode>;
+
 const TEST_OPTS: Array<{
   value: TestingVerdict;
   label: string;
+  short: string;
+  face: ReactNode;
   tone: { active: string; inactive: string };
 }> = [
   {
     value: 'PASS',
     label: 'Pass',
+    short: 'Pass',
+    face: VERDICT_ICON.PASS,
     tone: {
-      active: 'bg-emerald-600 text-white shadow-sm shadow-emerald-200 ring-emerald-700',
+      active: 'bg-emerald-600 text-white shadow-none ring-emerald-700',
       inactive: 'bg-surface-card text-emerald-800 ring-emerald-200 hover:bg-emerald-50',
     },
   },
   {
     value: 'TEST_AGAIN',
     label: 'Test Again',
+    short: 'Again',
+    face: VERDICT_ICON.TEST_AGAIN,
     tone: {
-      active: 'bg-amber-500 text-white shadow-sm shadow-amber-200 ring-amber-600',
-      inactive: 'bg-surface-card text-amber-800 ring-amber-200 hover:bg-amber-50',
+      active: 'bg-blue-600 text-white shadow-none ring-blue-700',
+      inactive: 'bg-surface-card text-blue-800 ring-blue-200 hover:bg-blue-50',
     },
   },
   {
     value: 'TESTING_FAILED',
     label: 'Testing Failed',
+    short: 'Fail',
+    face: VERDICT_ICON.TESTING_FAILED,
     tone: {
-      active: 'bg-rose-600 text-white shadow-sm shadow-rose-200 ring-rose-700',
+      active: 'bg-rose-600 text-white shadow-none ring-rose-700',
       inactive: 'bg-surface-card text-rose-800 ring-rose-200 hover:bg-rose-50',
     },
   },
 ];
 
-const PILL_BASE =
-  'ds-raw-button inline-flex h-9 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-4 text-role-caption font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-all active:scale-[0.98]';
+/**
+ * Collapsed selected face — locked square peer of condition Tags.
+ * Expanded options use {@link SEGMENT_FACE} (flex-1 fill).
+ */
+const ICON_FACE =
+  'ds-raw-button inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-none ring-1 ring-inset transition-colors active:scale-[0.98]';
 
 /**
- * Testing verdict picker. Mirrors {@link ConditionPills}' visual primitive
- * (ring-pill row, horizontal-scroll, radio semantics) so the receiving and
- * testing forms feel identical — only the choices differ. Tones intentionally
- * encode meaning: green = ship-ready, amber = re-queue, rose = fail/claim.
+ * Expanded segment — equal thirds of the trailing action band (station primary
+ * decision). Icon stays centered; hit target fills the cell.
+ */
+const SEGMENT_FACE =
+  'ds-raw-button inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-none ring-1 ring-inset transition-colors active:scale-[0.98]';
+
+/** Edit pencil — locked square peer when no verdict face is shown. */
+const PENCIL_FACE =
+  'ds-raw-button inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-none border border-border-soft bg-surface-card text-text-faint shadow-none transition-colors hover:bg-surface-hover hover:text-text-muted';
+
+/**
+ * Testing verdict picker — station primary action. Trailing fill-width band:
+ * Check · Wrench · X share equal thirds. Collapsed: selected face pins end;
+ * hover expands the full band. HoverTooltip carries the teaching name.
  */
 export function TestingStatusPills({
   value,
@@ -98,56 +127,64 @@ export function TestingStatusPills({
   };
   useHorizontalWheelScroll(scrollerRef, expanded);
 
-  // Collapsed: selected pill + pencil, or pencil-only when no verdict yet
-  // (lets condition/verdict mutex collapse the row even before a pick).
+  const openStrip = () => {
+    if (disabled) return;
+    setExpanded(true);
+  };
+  const closeStrip = () => {
+    if (!collapsible) return;
+    setExpanded(false);
+  };
+
+  // Collapsed: selected face pinned trailing (hover/focus/click expands), or
+  // pencil-only when no verdict yet / collapsedLabel off.
   if (collapsible && !expanded) {
     return (
       <div
         role="radiogroup"
         aria-label="Testing verdict"
         aria-disabled={disabled || undefined}
-        className={`flex w-fit items-center gap-1.5 ${disabled ? 'pointer-events-none opacity-60' : ''}`}
+        className={`flex w-full min-w-0 items-stretch justify-end gap-0 ${disabled ? 'pointer-events-none opacity-60' : ''}`}
+        onMouseEnter={openStrip}
+        onFocusCapture={openStrip}
       >
         {selectedOpt && collapsedLabel ? (
-          <HoverTooltip label={`${selectedOpt.label} — change`} asChild focusable={false}>
+          <HoverTooltip label={`${selectedOpt.label} — hover to change`} asChild focusable={false}>
             <button
               type="button"
               aria-label={`Verdict ${selectedOpt.label} — change`}
-              onClick={() => setExpanded(true)}
+              onClick={openStrip}
               disabled={disabled}
-              className={`${PILL_BASE} ${selectedOpt.tone.active}`}
+              className={`${ICON_FACE} ${selectedOpt.tone.active}`}
             >
-              {selectedOpt.label}
+              {selectedOpt.face}
             </button>
           </HoverTooltip>
-        ) : null}
-        <HoverTooltip
-          label={
-            selectedOpt
-              ? collapsedLabel
-                ? 'Edit verdict'
-                : `Verdict ${selectedOpt.label} — change`
-              : 'Set testing verdict'
-          }
-          asChild
-          focusable={false}
-        >
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            disabled={disabled}
-            aria-label={
+        ) : (
+          <HoverTooltip
+            label={
               selectedOpt
-                ? collapsedLabel
-                  ? 'Edit verdict'
-                  : `Verdict ${selectedOpt.label} — change`
+                ? `Verdict ${selectedOpt.label} — hover to change`
                 : 'Set testing verdict'
             }
-            className="ds-raw-button rounded p-0.5 text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted"
+            asChild
+            focusable={false}
           >
-            <Pencil className="h-3 w-3" />
-          </button>
-        </HoverTooltip>
+            <button
+              type="button"
+              onClick={openStrip}
+              disabled={disabled}
+              aria-label={
+                selectedOpt
+                  ? `Verdict ${selectedOpt.label} — change`
+                  : 'Set testing verdict'
+              }
+              className={PENCIL_FACE}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          </HoverTooltip>
+        )}
       </div>
     );
   }
@@ -158,27 +195,30 @@ export function TestingStatusPills({
       role="radiogroup"
       aria-label="Testing verdict"
       aria-disabled={disabled || undefined}
-      className={`-mx-1 flex gap-1.5 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
+      onMouseLeave={closeStrip}
+      className={`flex w-full min-w-0 items-stretch gap-0 ${
         disabled ? 'pointer-events-none opacity-60' : ''
       }`}
     >
       {TEST_OPTS.map((opt) => {
         const isActive = selected === opt.value;
         return (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={isActive}
-            onClick={() => {
-              onChange(opt.value);
-              if (collapsible) setExpanded(false);
-            }}
-            disabled={disabled}
-            className={`${PILL_BASE} ${isActive ? opt.tone.active : opt.tone.inactive}`}
-          >
-            {opt.label}
-          </button>
+          <HoverTooltip key={opt.value} label={opt.label} asChild focusable={false}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={isActive}
+              aria-label={opt.label}
+              onClick={() => {
+                onChange(opt.value);
+                if (collapsible) setExpanded(false);
+              }}
+              disabled={disabled}
+              className={`${SEGMENT_FACE} ${isActive ? opt.tone.active : opt.tone.inactive}`}
+            >
+              {opt.face}
+            </button>
+          </HoverTooltip>
         );
       })}
     </div>

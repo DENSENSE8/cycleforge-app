@@ -286,7 +286,9 @@ export function IdentityLinkChip({
             }
             iconStyle={carrierBrandPaint ? undefined : iconStyle}
             width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
-            outerPad="flush"
+            // Default chip outerPad (`px-1.5`) — row stays gap-0 flush abut;
+            // breathing lives on each face so listing text never jams the
+            // ticket icon (same inset as PoTotalChip · Claim · Photos).
             disableCopy={disableCopy || isEditing}
             fitDisplayWidth={!grow}
             displayWidth={lockLast8Width ? 'last8' : 'content'}

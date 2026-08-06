@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-06T15:38:30.651Z` · Files: **509** · Repo: `cycleforge-app`  
+> Generated: `2026-08-06T21:11:31.680Z` · Files: **510** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `20dfe0e60` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `fca8b4ce4` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -389,6 +389,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-REGION-CONTRACT-BRANCHING-SUPPORT-GEMINI-RESEARC-856B` | `WS-TODO-MISC` | [`todo/region-contract-branching-support-GEMINI-RESEARCH-BRIEFING.md`](../todo/region-contract-branching-support-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-REPAIR-CHAIN-CLOSURE-GEMINI-RESEARCH-BRIEFING-94CE` | `WS-TODO-MISC` | [`todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md`](../todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-RETURN-TO-SCAN-PORTS-D44B` | `WS-TODO-MISC` | [`todo/return-to-scan-PORTS.md`](../todo/return-to-scan-PORTS.md) |
+| `DOC-TODO-RETURNS-UNBOX-CENTRE-HISTORY-GEMINI-RESEARCH-BRI-75DF` | `WS-TODO-MISC` | [`todo/returns-unbox-centre-history-GEMINI-RESEARCH-BRIEFING.md`](../todo/returns-unbox-centre-history-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-REVERSIBILITY-FIXES-PLAN-41B8` | `WS-INT` | [`todo/reversibility-fixes-plan.md`](../todo/reversibility-fixes-plan.md) |
 | `DOC-TODO-RIGHT-PANEL-DISPLAY-HANDOFF-59A6` | `WS-TODO-MISC` | [`todo/right-panel-display-HANDOFF.md`](../todo/right-panel-display-HANDOFF.md) |
 | `DOC-TODO-RIGHT-PANEL-SHEET-BAND-FLUSH-GEMINI-RESEARCH-BRI-AF8D` | `WS-TODO-MISC` | [`todo/right-panel-sheet-band-flush-GEMINI-RESEARCH-BRIEFING.md`](../todo/right-panel-sheet-band-flush-GEMINI-RESEARCH-BRIEFING.md) |
@@ -808,7 +809,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (338)
+### `WS-TODO-MISC` (339)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1007,6 +1008,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-REGION-CONTRACT-BRANCHING-SUPPORT-GEMINI-RESEARC-856B` — [`todo/region-contract-branching-support-GEMINI-RESEARCH-BRIEFING.md`](../todo/region-contract-branching-support-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-REPAIR-CHAIN-CLOSURE-GEMINI-RESEARCH-BRIEFING-94CE` — [`todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md`](../todo/repair-chain-closure-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-RETURN-TO-SCAN-PORTS-D44B` — [`todo/return-to-scan-PORTS.md`](../todo/return-to-scan-PORTS.md)
+- `DOC-TODO-RETURNS-UNBOX-CENTRE-HISTORY-GEMINI-RESEARCH-BRI-75DF` — [`todo/returns-unbox-centre-history-GEMINI-RESEARCH-BRIEFING.md`](../todo/returns-unbox-centre-history-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-RIGHT-PANEL-DISPLAY-HANDOFF-59A6` — [`todo/right-panel-display-HANDOFF.md`](../todo/right-panel-display-HANDOFF.md)
 - `DOC-TODO-RIGHT-PANEL-SHEET-BAND-FLUSH-GEMINI-RESEARCH-BRI-AF8D` — [`todo/right-panel-sheet-band-flush-GEMINI-RESEARCH-BRIEFING.md`](../todo/right-panel-sheet-band-flush-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-RIGHT-RAIL-INSPECTOR-CONTRACT-CLAUDE-CODE-PROMPT-0C9A` — [`todo/right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md`](../todo/right-rail-inspector-contract-CLAUDE-CODE-PROMPT.md)

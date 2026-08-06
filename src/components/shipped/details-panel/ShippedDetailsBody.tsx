@@ -1,8 +1,10 @@
 'use client';
 
-import { Trash2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { TabDisplay } from '@/design-system/components/TabDisplay';
+import {
+  DISPLAYS_BODY_INSET,
+  DISPLAYS_FLUSH_HOST,
+} from '@/design-system/shells/detail-stack/layout';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { DashboardDetailsStack } from '@/components/shipped/stacks/DashboardDetailsStack';
 import { TechDetailsStack } from '@/components/shipped/stacks/TechDetailsStack';
@@ -14,10 +16,16 @@ import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { OrderWarrantySection } from '@/components/shipped/details-panel/OrderWarrantySection';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
-import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
-import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
+import { OrderUpdateDock } from '@/components/shipped/details-panel/OrderUpdateDock';
 import { OrderStationHandoff } from '@/components/shipped/details-panel/OrderStationHandoff';
 import type { OrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
+import {
+  orderInspectorOrderChildren,
+  type OrderInspectorDisplayTopic,
+  type OrderInspectorOrderChild,
+  type OrderInspectorUpdateActionKey,
+} from '@/lib/shipping/order-inspector-topics';
+import { cn } from '@/utils/_cn';
 
 export interface ShippedStackActionBar {
   onClose: () => void;
@@ -54,6 +62,10 @@ export interface ShippedDetailsBodyProps {
   /** Slide-over: render Warranty/Customer quick-link rows instead of tabs. */
   showQuickLinks?: boolean;
   activeSection: ShippedActiveSection;
+  /** Parent Display topic — drives nested Order verbs when `order`. */
+  displayTopic: OrderInspectorDisplayTopic;
+  orderChild: OrderInspectorOrderChild;
+  onOrderChildChange: (child: OrderInspectorOrderChild) => void;
   shipped: ShippedOrder;
   durationData: DetailsStackDurationData;
   copiedAll: boolean;
@@ -70,6 +82,9 @@ export interface ShippedDetailsBodyProps {
   isDeleteArmed: boolean;
   isDeletingOrder: boolean;
   onDeleteOrder: () => void;
+  /** Order-tab bottom update CTAs (Assign · urgent · notes · …). */
+  updateActions: ReadonlyArray<{ key: OrderInspectorUpdateActionKey; label: string }>;
+  onUpdateAction: (key: OrderInspectorUpdateActionKey) => void;
   /**
    * One-shot auto-start for the primary tracking replace editor (queue
    * "Replace tracking"). Forwarded into the dispatch details stack.
@@ -80,12 +95,16 @@ export interface ShippedDetailsBodyProps {
 /**
  * The scrollable body of the shipped details panel. Detail stacks render in the
  * upper scroll region; header-action editors live in {@link ShippedPanelEditorDock}.
+ * Host is flush — content rows own their inset (Unbox Displays grammar).
  */
 export function ShippedDetailsBody({
   context,
   inspectorContext,
   showQuickLinks,
   activeSection,
+  displayTopic,
+  orderChild,
+  onOrderChildChange,
   shipped,
   durationData,
   copiedAll,
@@ -102,6 +121,8 @@ export function ShippedDetailsBody({
   isDeleteArmed,
   isDeletingOrder,
   onDeleteOrder,
+  updateActions,
+  onUpdateAction,
   replaceTrackingNonce = 0,
 }: ShippedDetailsBodyProps) {
   const { documentsMode, recordCtas, showDispatchExtras, showDelete, showEditorDock } =
@@ -116,20 +137,26 @@ export function ShippedDetailsBody({
     ),
   ];
 
+  const orderChildTabs = orderInspectorOrderChildren().map((c) => ({
+    id: c.id,
+    label: c.label,
+  }));
+
   const scrollContent = (() => {
     if (activeSection === 'documents' && shipped?.id) {
       return (
-        <div className="flex min-h-full flex-col gap-4 pb-8 pt-4">
+        <div className={cn('flex min-h-full flex-col gap-4', DISPLAYS_BODY_INSET, 'pb-6 pt-3')}>
           <OrderDocumentsSection
             orderId={Number(shipped.id)}
             orderRef={shipped.order_id || `order-${shipped.id}`}
             readOnly={documentsMode !== 'manage'}
             showPreview={documentsMode === 'preview'}
+            flush
           />
           {/* The pre-pack hand-off sits under the paperwork it gates: labels +
               slip present → the order can move to Testing. One quiet deep-link,
               not a CTA repeated per document. */}
-          <OrderStationHandoff order={shipped} ctas={recordCtas} />
+          <OrderStationHandoff order={shipped} ctas={recordCtas} flush />
         </div>
       );
     }
@@ -148,9 +175,9 @@ export function ShippedDetailsBody({
 
     if (activeSection === 'timeline' && shipped?.id) {
       return (
-        <div className="flex min-h-full flex-col pb-8 pt-2">
-          <div className="flex-1 pt-2">
-            <OrderTimelineSection orderId={Number(shipped.id)} />
+        <div className={cn('flex min-h-full flex-col', DISPLAYS_BODY_INSET, 'pb-6 pt-2')}>
+          <div className="flex-1 pt-1">
+            <OrderTimelineSection orderId={Number(shipped.id)} flush />
             {orderSerials.map((sn) => (
               <SerialJourneySection
                 key={sn}
@@ -163,8 +190,7 @@ export function ShippedDetailsBody({
       );
     }
 
-    // The dispatch lanes (dashboard / queue / fulfillment / labels) share one
-    // stack; station and packer have their own below.
+    // Order parent body — Shipping / Product via stacks.
     if (showDispatchExtras) {
       return (
         <DashboardDetailsStack
@@ -177,6 +203,7 @@ export function ShippedDetailsBody({
           activeSection={activeSection}
           showQuickLinks={showQuickLinks}
           replaceTrackingNonce={replaceTrackingNonce}
+          flush
         />
       );
     }
@@ -193,6 +220,7 @@ export function ShippedDetailsBody({
           actionBar={stackActionBar}
           activeSection={activeSection}
           showQuickLinks={showQuickLinks}
+          flush
         />
       );
     }
@@ -209,12 +237,13 @@ export function ShippedDetailsBody({
           actionBar={stackActionBar}
           activeSection={activeSection}
           showQuickLinks={showQuickLinks}
+          flush
         />
       );
     }
 
     return (
-      <div className="flex min-h-full flex-col pb-8 pt-4">
+      <div className={cn('flex min-h-full flex-col', DISPLAYS_BODY_INSET, 'pb-6 pt-3')}>
         <div className="flex-1 space-y-4">
           <ShippedDetailsPanelContent
             activeSection={activeSection}
@@ -244,84 +273,55 @@ export function ShippedDetailsBody({
             }}
             showShippingTimestamp={false}
             showQuickLinks={showQuickLinks}
+            flush
           />
         </div>
       </div>
     );
   })();
 
-  const deleteFooter = showDelete ? (
-    <section className="mx-8 shrink-0 pb-8 pt-2 space-y-2">
-      <DeleteOrderControl
-        orderId={shipped.id}
-        packerLogId={(shipped as { packer_log_id?: number }).packer_log_id ?? null}
-        stationActivityLogId={
-          (shipped as { station_activity_log_id?: number }).station_activity_log_id
-          ?? (shipped as { sal_id?: number }).sal_id
-          ?? null
-        }
-        trackingType={shipped.tracking_type}
-        onDeleted={() => onUpdate?.()}
-      />
-    </section>
-  ) : context === 'shipped' ? (
-    <section className="mx-8 shrink-0 pb-8 pt-2">
-      <Button
-        type="button"
-        variant="danger"
-        size="lg"
-        onClick={onDeleteOrder}
-        disabled={isDeletingOrder}
-        icon={<Trash2 className="w-3.5 h-3.5" />}
-        className={`w-full rounded-xl bg-red-600 hover:bg-red-700 ${sectionLabel} text-white tracking-wider disabled:opacity-50`}
-      >
-        {isDeletingOrder
-          ? 'Deleting...'
-          : isDeleteArmed
-            ? 'Click Again To Confirm'
-            : 'Delete'}
-      </Button>
-    </section>
-  ) : null;
+  const showOrderUpdateDock = displayTopic === 'order';
+  const showDeleteInDock = showOrderUpdateDock && (showDelete || context === 'shipped');
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={cn(DISPLAYS_FLUSH_HOST, 'flex-1')} data-order-inspector-body="">
+      {displayTopic === 'order' ? (
+        <div className="shrink-0" data-testid="order-inspector-order-children">
+          <TabDisplay
+            tabs={orderChildTabs}
+            activeTab={orderChild}
+            onTabChange={(id) => onOrderChildChange(id as OrderInspectorOrderChild)}
+            density="nested"
+            fit="fill"
+            appearance="underline"
+            aria-label="Order sections"
+          />
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
-        {/*
-          NO triage block and NO note composer in this panel (handoff §3.2).
-          `OrderTriageSection` (row flag + attributed note trail) used to mount
-          here, with the dock reading `showNotes={!showTriage}` beneath it — so
-          turning the section off alone would have MOVED the composer into the
-          dock rather than removing it. Both are off.
-
-          Note-writing now lives only on `/o/[orderId]`, reached from the
-          open-full-page action in the header's icon row. The write path itself
-          is unchanged and still governed by `order-note-grain.guard.test.ts`:
-          `order_notes` via `POST /api/orders/[id]/notes`, one writable home.
-        */}
         {scrollContent}
       </div>
 
-      {showEditorDock ? (
-        <ShippedPanelEditorDock
+      {showOrderUpdateDock ? (
+        <OrderUpdateDock
           shipped={shipped}
+          actions={updateActions}
           activeInput={activeInput}
           setActiveInput={setActiveInput}
-          showMarkAsShipped={showDispatchExtras}
-          showOutOfStock={showDispatchExtras}
-          /* Hard off — see the §3.2 note above. This used to be
-             `!showTriage`, which is why removing the triage section alone
-             would have relocated the composer instead of removing it. */
-          showNotes={false}
+          onAction={onUpdateAction}
+          showEditorDock={showEditorDock && showDispatchExtras}
           isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
           onSaveOutOfStock={onSaveOutOfStock}
           shippingTrackingNumber={editableFields.trackingNumber}
           onMarkShippedSuccess={onMarkShippedSuccess}
+          onAssigned={onUpdate}
+          showDelete={showDeleteInDock}
+          isDeleteArmed={isDeleteArmed}
+          isDeleting={isDeletingOrder}
+          onDelete={onDeleteOrder}
         />
       ) : null}
-
-      {deleteFooter}
     </div>
   );
 }

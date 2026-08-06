@@ -111,9 +111,9 @@ export function StatCard({
         )}
 
         {!isLoading && delta !== undefined && delta !== 0 && (
-          <motion.span 
-            initial={{ opacity: 0, x: -5 }}
-            animate={{ opacity: 1, x: 0 }}
+          <motion.span
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
             className={`text-role-caption font-semibold tabular-nums flex items-center gap-0.5 ${delta >= 0 ? 'text-text-success' : 'text-text-danger'}`}
           >
             <span className="text-role-micro font-normal">{delta > 0 ? '▲' : '▼'}</span>

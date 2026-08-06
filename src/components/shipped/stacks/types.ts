@@ -9,7 +9,12 @@ export type ShippedActiveSection =
   | 'documents'
   | 'warranty'
   | 'conversation';
-export type ShippedActiveInput = 'none' | 'mark_shipped' | 'out_of_stock' | 'notes';
+export type ShippedActiveInput =
+  | 'none'
+  | 'mark_shipped'
+  | 'out_of_stock'
+  | 'notes'
+  | 'assign';
 
 export interface DetailsStackDurationData {
   boxingDuration?: string;
@@ -35,4 +40,6 @@ export interface DetailsStackProps {
    * "Replace tracking"). Forwarded to {@link ShippedDetailsPanelContent}.
    */
   replaceTrackingNonce?: number;
+  /** Desk inspector flush plane — no outer mx/px host pad. */
+  flush?: boolean;
 }

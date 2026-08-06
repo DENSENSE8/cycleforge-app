@@ -29,10 +29,10 @@ interface Props {
   receivingId: number;
   activeLineId: number;
   /**
-   * Optional slot rendered inside the active row's bubble — condition pills,
-   * inline serial adder, etc. Receives the active line's serials so children
-   * can consume the accordion's authoritative data rather than re-fetching
-   * or relying on parent state.
+   * Optional slot rendered under every editable PO line — condition pills,
+   * inline serial adder, etc. Receives that line's serials/units (+ the line
+   * itself) so children can consume the accordion's authoritative data rather
+   * than re-fetching or relying on the controller-active row alone.
    */
   activeRowSlot?: ActiveRowSlot;
   /**
@@ -102,17 +102,17 @@ interface Props {
    */
   serialSplit?: Omit<PoLineSerialSplitContext, 'receivingId'>;
   /**
-   * Serials cell "View All" → open Units Displays for that line.
+   * Serials cell click → open Units Displays for that line.
    * Omit on surfaces without a Displays host (Shipping, read-only triage).
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
 /**
- * Multi-item PO accordion. Renders the carton's sibling lines as collapsed
- * rows; the current active line shows highlighted at the top. Clicking a
- * sibling dispatches `receiving-select-line` to re-seed the workspace on that
- * line — single-active-line semantics, no duplicate form state.
+ * Multi-item PO accordion. Renders the carton's sibling lines with
+ * condition/serial editors interleaved under each SKU. The current active
+ * line is highlighted for focus / scan-default; clicking a sibling still
+ * dispatches `receiving-select-line` to re-seed the workspace controller.
  *
  * A thin shell over three collaborators (per the god-component cleanup):
  * - {@link usePoLinesData} — sibling query + cache-coordination bus.

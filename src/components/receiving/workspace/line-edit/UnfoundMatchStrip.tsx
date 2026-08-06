@@ -5,23 +5,21 @@
  * above Package Pairing avenues. Operator-initiated only; nothing here
  * runs on the scan path (see useUnfoundRefetchActions).
  *
- * Four resolution actions as a compact grid (default) or forced vertical rows
- * (`layout="rows"`). Same strip presentation on bare Unbox Displays and card
- * chrome — never absorbed into the Pairing avenue dropdown.
+ * Flush segmented toolkit (gap-0 · divide-x) on bare Displays and card chrome —
+ * never absorbed into the Pairing avenue dropdown.
  *
+ *   • **Find ticket** (TicketHelp) — when `onFindTicket` is set, jumps to the
+ *     Ticket Displays topic (claim · link). Ticket is the main display for
+ *     helpdesk work; this strip never hosts an in-lane picker.
  *   • **Return #** (Search) — opens the search row (back chip · return #
  *     input · search icon). Typing surfaces a live list of matching shipped
  *     orders; an EXACT order-number match auto-links the order onto the
  *     carton (import-sales-order), and picking a list row links that order.
  *     The search icon runs the read-only serial compare instead (for
  *     verifying before linking) — a confirmed match then logs the serial /
- *     files a support ticket inline. Back returns to the compact action grid.
+ *     files a support ticket inline. Back returns to the action row.
  *   • **Zoho** (RefreshCw) — FETCH: re-run the Zoho PO tracking search.
  *   • **Amazon return** (PackageCheck) — FETCH: reverse-tracking SP-API lookup.
- *   • **Find ticket** (TicketHelp) — search the helpdesk for a ticket matching
- *     this carton's TRACKING NUMBER and link the picked one to the carton/line.
- *     Composes the shared link waist (`TicketLinkPopover`), seeded with the
- *     tracking number — the reverse of "File ticket", which mints a new one.
  */
 
 import {
@@ -71,7 +69,6 @@ import type {
   ShippedOrderSuggestion,
 } from '@/lib/receiving/returned-serial-link';
 import { diffSerials, pickClosestShippedSerial } from '@/lib/receiving/serial-diff';
-import { TicketLinkPopover } from '@/components/support/context/TicketLinkPopover';
 import { ClaimTicketReply } from '@/components/receiving/workspace/claim/components/ClaimTicketReply';
 import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-types';
@@ -96,19 +93,14 @@ interface UnfoundMatchStripProps {
   ticketUrl?: string | null;
   /** Refetch the support-ticket link after a create/reply. */
   onTicketChanged?: () => void;
+  /**
+   * Open the Ticket Displays topic (claim · link). When set, Find ticket is the
+   * leading cell and jumps there — never an in-strip picker. Hosts without a
+   * Ticket display (Arrival) omit the cell.
+   */
+  onFindTicket?: () => void;
   /** When false, omit top divider (e.g. first block in a pairing-only card). */
   showTopRule?: boolean;
-  /**
-   * `grid` — responsive multi-col (default for hub strip on bare + card).
-   * `rows` — single-column stack (legacy callers).
-   */
-  layout?: 'grid' | 'rows';
-  /**
-   * Skip the action grid and show only this lane. Optional host override;
-   * default strip UX uses the action grid and opens lanes in-strip.
-   */
-  forcedLane?: 'order' | 'ticket' | null;
-  onForcedLaneBack?: () => void;
 }
 
 export function UnfoundMatchStrip({
@@ -120,55 +112,29 @@ export function UnfoundMatchStrip({
   ticketNumber = null,
   ticketUrl = null,
   onTicketChanged,
+  onFindTicket,
   showTopRule = true,
-  layout = 'grid',
-  forcedLane = null,
-  onForcedLaneBack,
 }: UnfoundMatchStripProps) {
   const { zoho, amazon, busy, checkZoho, checkAmazon } = useUnfoundRefetchActions(
     receivingId,
     trackingNumber,
   );
   const compare = useShippedOrderCompare();
-  // Compact action grid is the default (Return # · Zoho · Amazon · Find ticket).
-  // Return # opens the search lane; Find ticket opens the helpdesk picker; both
-  // return here on back / link. `forcedLane` is an optional host override that
-  // locks onto one lane without the peer action grid.
-  const [lane, setLane] = useState<'order' | 'ticket' | 'actions'>(
-    forcedLane ?? 'actions',
-  );
-  const activeLane = forcedLane ?? lane;
+  // Flush action row. Return # opens the search lane in-strip; Find ticket
+  // (when wired) jumps to the Ticket display. Back from Return # returns here.
+  const [lane, setLane] = useState<'order' | 'actions'>('actions');
   const trimmedTracking = (trackingNumber ?? '').trim();
   const hasTracking = Boolean(trimmedTracking);
   const noReceiving = receivingId == null;
   const notice = pickMergedRefetchNotice(zoho, amazon);
-  const actionRows = layout === 'rows';
-
-  const closeTicketLane = () => {
-    if (forcedLane) {
-      onForcedLaneBack?.();
-      return;
-    }
-    setLane('actions');
-  };
-  const toggleTicketLane = () => {
-    if (lane === 'ticket') {
-      closeTicketLane();
-      return;
-    }
-    setLane('ticket');
-  };
+  const showFindTicket = typeof onFindTicket === 'function';
 
   const closeSearch = () => {
-    if (forcedLane) {
-      onForcedLaneBack?.();
-      return;
-    }
     setLane('actions');
     compare.reset();
   };
 
-  // Crossfade the search bar ⇄ the action grid — one focus surface swaps for the
+  // Crossfade the search bar ⇄ the action row — one focus surface swaps for the
   // other. Opacity + small-y via the shared workbench-pane preset; reduced motion
   // collapses to opacity automatically through the hook bridge.
   // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
@@ -180,20 +146,7 @@ export function UnfoundMatchStrip({
       className={showTopRule ? 'space-y-2 border-t border-border-hairline pt-2' : 'space-y-2'}
     >
       <AnimatePresence mode="wait" initial={false}>
-        {activeLane === 'ticket' ? (
-          <motion.div key="ticket-search" {...stepPresence} transition={stepTransition}>
-            <TicketMatchLane
-              receivingId={receivingId}
-              lineId={lineId}
-              trackingNumber={trimmedTracking}
-              onBack={closeTicketLane}
-              onLinked={() => {
-                onTicketChanged?.();
-                closeTicketLane();
-              }}
-            />
-          </motion.div>
-        ) : activeLane === 'order' ? (
+        {lane === 'order' ? (
           <motion.div key="order-search" {...stepPresence} transition={stepTransition}>
             <OrderSearchRow
               state={compare.state}
@@ -216,20 +169,26 @@ export function UnfoundMatchStrip({
             key="actions"
             {...stepPresence}
             transition={stepTransition}
-            className={
-              actionRows
-                ? 'flex flex-col gap-2'
-                : 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4'
-            }
+            className={`flex w-full min-w-0 items-stretch overflow-hidden divide-x divide-border-soft bg-surface-card ring-1 ring-inset ring-border-soft ${cornerClass('flush')}`}
           >
-            {/* Return # opens a LOCAL search rather than firing a platform fetch;
-                chrome matches the Zoho / Amazon / Find ticket peers. */}
+            {showFindTicket ? (
+              <StripButton
+                icon={TicketHelp}
+                label="Find ticket"
+                tooltip={
+                  hasTracking
+                    ? 'Open Ticket display — New ticket · Link existing'
+                    : 'Add a tracking number to this carton first'
+                }
+                disabled={noReceiving || !hasTracking}
+                onClick={onFindTicket}
+              />
+            ) : null}
             <StripButton
               icon={Search}
               label="Return #"
               tooltip="Search our shipped records by return / order number"
               disabled={noReceiving}
-              fullLabel={actionRows}
               onClick={() => setLane('order')}
             />
             <StripButton
@@ -238,7 +197,6 @@ export function UnfoundMatchStrip({
               tooltip="Fetch from platform — re-run the Zoho PO tracking search"
               state={zoho}
               disabled={noReceiving || busy}
-              fullLabel={actionRows}
               onClick={() => void checkZoho()}
             />
             <StripButton
@@ -251,42 +209,26 @@ export function UnfoundMatchStrip({
               }
               state={amazon}
               disabled={noReceiving || !hasTracking || busy}
-              fullLabel={actionRows}
               onClick={() => void checkAmazon()}
-            />
-            {/* Reverse of "File ticket": find an EXISTING helpdesk ticket for
-                this carton by its tracking number and link it. */}
-            <StripButton
-              icon={TicketHelp}
-              label="Find ticket"
-              tooltip={
-                hasTracking
-                  ? 'Search the helpdesk for a ticket matching this tracking number'
-                  : 'Add a tracking number to this carton first'
-              }
-              disabled={noReceiving || !hasTracking}
-              fullLabel={actionRows}
-              onClick={toggleTicketLane}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {activeLane === 'actions' && notice ? <MergedNotice state={notice} /> : null}
+      {lane === 'actions' && notice ? <MergedNotice state={notice} /> : null}
     </div>
   );
 }
 
-/** One Auto-match action in the collapsed grid. Async lanes (Zoho / Amazon) pass
- *  `state` for the loading spinner. All four actions share secondary (white)
- *  chrome. */
+/** One cell in the flush Auto-match action row. Async lanes (Zoho / Amazon) pass
+ *  `state` for the loading spinner. Outer shell owns the ring · divide-x seams —
+ *  cells drop their own border so the group reads as one control. */
 function StripButton({
   icon: Icon,
   label,
   tooltip,
   state,
   disabled,
-  fullLabel = false,
   onClick,
 }: {
   icon: IconComponent;
@@ -294,8 +236,6 @@ function StripButton({
   tooltip: string;
   state?: RefetchState;
   disabled: boolean;
-  /** When true (Displays rows layout), never ellipsize the label. */
-  fullLabel?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -306,75 +246,12 @@ function StripButton({
         loading={state?.status === 'loading'}
         disabled={disabled}
         onClick={onClick}
-        className={`min-h-11 w-full justify-start gap-2 px-3 ${cornerClass('flush')}`}
+        className={`min-h-11 min-w-0 flex-1 justify-start gap-1.5 rounded-none px-2.5 ring-0 hover:bg-surface-canvas ${cornerClass('flush')}`}
         icon={<Icon className="h-4 w-4 shrink-0" />}
       >
-        <span
-          className={
-            fullLabel
-              ? 'text-role-caption font-semibold'
-              : 'truncate text-role-caption font-semibold'
-          }
-        >
-          {label}
-        </span>
+        <span className="truncate text-role-caption font-semibold">{label}</span>
       </Button>
     </HoverTooltip>
-  );
-}
-
-/**
- * "Find ticket" lane — search the helpdesk for an EXISTING ticket about this
- * carton and link it. The query is seeded with the carton's tracking number, so
- * the operator lands on the matching ticket without typing (and can still edit
- * the box or paste a `#id`).
- *
- * Composes the shared link waist rather than forking a second picker: the
- * candidate list + link mutation are {@link TicketLinkPopover}
- * (GET/POST `/api/support/tickets/link`, anchor = this receiving carton/line).
- */
-function TicketMatchLane({
-  receivingId,
-  lineId,
-  trackingNumber,
-  onBack,
-  onLinked,
-}: {
-  receivingId: number | null;
-  lineId: number | null;
-  trackingNumber: string;
-  onBack: () => void;
-  onLinked: () => void;
-}) {
-  if (receivingId == null) return null;
-  return (
-    <div className="flex min-w-0 items-start gap-2">
-      <IconButton
-        type="button"
-        icon={<ChevronLeft className="h-4 w-4" />}
-        ariaLabel="Back to auto-match options"
-        tone="neutral"
-        onClick={onBack}
-        className="grid h-11 w-9 shrink-0 place-items-center rounded-none ring-1 ring-inset ring-border-soft hover:bg-surface-canvas"
-      />
-      <div className="min-w-0 flex-1">
-        <TicketLinkPopover
-          open
-          title="Find ticket by tracking"
-          initialQuery={trackingNumber}
-          linkable={{
-            canLinkTicket: true,
-            anchorType: 'receiving',
-            anchorId: receivingId,
-            receivingId,
-            lineId: lineId ?? null,
-            trackingNumber,
-          }}
-          onClose={onBack}
-          onLinked={onLinked}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -509,7 +386,7 @@ function OrderSearchRow({
           if (trimmedOrder) onSearch(trimmedOrder, trimmedSerial);
         }}
       >
-        {/* Back — collapse to the Auto-match action grid (leftmost). */}
+        {/* Back — collapse to the Auto-match action row (leftmost). */}
         <IconButton
           type="button"
           icon={<ChevronLeft className="h-4 w-4" />}

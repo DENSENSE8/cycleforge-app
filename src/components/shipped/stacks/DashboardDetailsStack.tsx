@@ -21,6 +21,7 @@ export function DashboardDetailsStack({
   activeSection,
   showQuickLinks,
   replaceTrackingNonce = 0,
+  flush = false,
 }: DetailsStackProps) {
   const [shipByDate, setShipByDate] = useState('');
   const [orderNumber, setOrderNumber] = useState(shipped.order_id || '');
@@ -116,15 +117,15 @@ export function DashboardDetailsStack({
   };
 
   return (
-    <div className="flex min-h-full flex-col pb-8 pt-4">
+    <div className={flush ? 'flex min-h-full flex-col pb-6 pt-3' : 'flex min-h-full flex-col pb-8 pt-4'}>
       <div className="flex-1 space-y-4">
         {isCustomer ? (
           <CustomerDetailsTab customerId={shipped.customer_id} />
         ) : (
           <>
-            <section className="mx-8 space-y-2">
+            <section className={flush ? 'space-y-2 px-4' : 'mx-8 space-y-2'}>
               {mode === 'tech' ? (
-                <div className="flex items-center gap-2 rounded-xl border border-border-soft bg-surface-card p-2">
+                <div className="flex items-center gap-2 rounded-none border border-border-soft bg-surface-card p-2">
                   <span className="text-role-eyebrow uppercase tracking-wider text-text-soft whitespace-nowrap">Undo</span>
                   <Button
                     type="button"
@@ -140,7 +141,7 @@ export function DashboardDetailsStack({
               ) : null}
             </section>
 
-            <div>
+            <div className={flush ? 'px-4' : undefined}>
               <ShippedDetailsPanelContent
                 shipped={{
                   ...shipped,
@@ -170,6 +171,7 @@ export function DashboardDetailsStack({
                 activeSection={activeSection}
                 showQuickLinks={showQuickLinks}
                 replaceTrackingNonce={replaceTrackingNonce}
+                flush={flush}
               />
             </div>
           </>

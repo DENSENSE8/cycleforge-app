@@ -24,9 +24,9 @@
  *     So `→|` moved to {@link UnboxPushColumn}'s header band — the column's own
  *     top-left — and closes the column. `↑ ↓` step the CARTON, which is on
  *     screen either way, so they lost the gate they only ever had by adjacency.
- *     The ring moved to the dock under-row (2026-08-03) and is still ungated: it
- *     is the toggle that OPENS the column, so gating it would make Displays
- *     unopenable.
+ *     The ring lives on the Displays strip `rightSlot` (right of ⋮) while
+ *     Displays is open; closed Displays opens via `←|`. Do not remount a second
+ *     ring under the dock.
  *
  *     The failure modes point in three directions now, so all three are pinned:
  *     re-adding a carton-close to the pane row, re-gating the cursor on
@@ -239,22 +239,20 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('railOpen is derived ONCE, from Displays (unified strip)', () => {
-      const decls = panel.match(/const railOpen\s*=/g) ?? [];
-      assert.equal(
-        decls.length,
-        1,
-        'two derivations of "is a push column open" is how the ring and the cursor trio drift apart',
+    it('strip-mounted ring does not need a panel-level railOpen derivation', () => {
+      // Ring only mounts while Displays is open (`rightSlot` on the push stack),
+      // so hover peek is suppressed with a literal `railOpen` prop — no
+      // `const railOpen = showDisplays` that could drift from another consumer.
+      assert.doesNotMatch(
+        panel,
+        /const railOpen\s*=/,
+        'panel-level railOpen was only for dock-ring peek; strip mount hardcodes true',
       );
-      const line = panel.match(/const railOpen\s*=[^;]+;/)?.[0] ?? '';
-      assert.match(line, /showDisplays/, 'railOpen must track Displays');
-      for (const dead of ['showClaimStack', 'showTicketStack', 'showToolPush']) {
-        assert.doesNotMatch(
-          line,
-          new RegExp(dead),
-          `${dead} retired — Ticket/Claim/tools are Displays tabs, not peer columns`,
-        );
-      }
+      assert.match(
+        panel,
+        /<UnboxScanProgressControl[\s\S]{0,240}railOpen/,
+        'ring still receives railOpen for ScanStationProgressControl peek gate',
+      );
     });
 
     it('railOpen excludes any parked expand-strip vocabulary', () => {
@@ -381,7 +379,7 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.doesNotMatch(
         gated,
         /scanProgressControl|UnboxScanProgressControl/,
-        'the progress ring lives under the dock terminal, not beside ↑↓',
+        'the progress ring lives on the Displays strip rightSlot, not beside ↑↓',
       );
       // Pane utility assignment ends at `);` before stationContextBar — ring
       // must stay out of that whole JSX tree (Displays toggle + cursor).
@@ -395,57 +393,67 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('↑ is NEXT and ↓ is PREVIOUS, on every layer of the control', () => {
-      // Inverted 2026-08-02: the queue reads newest-at-top, so advancing moves
-      // the cursor UP. Hosts wire onNext→↑ / onPrev→↓ via ScanStationCartonCursor;
-      // the shared component owns glyph + aria + default labels.
+    it('↑ is PREVIOUS and ↓ is NEXT — same as left sidebar / DeskRailChromeRow', () => {
+      // ArrowUp / ChevronUp = prev; ArrowDown / ChevronDown = next. The
+      // 2026-08-02 station invert (↑ = next) fought the rail + Desk chrome.
       assert.match(panel, /ScanStationCartonCursor/);
-      assert.match(panel, /onNext=\{onNextCarton\}/);
       assert.match(panel, /onPrev=\{onPrevCarton\}/);
-      assert.match(panel, /nextTestId="unbox-carton-next"/);
+      assert.match(panel, /onNext=\{onNextCarton\}/);
       assert.match(panel, /prevTestId="unbox-carton-prev"/);
+      assert.match(panel, /nextTestId="unbox-carton-next"/);
       const cursor = read(
         'src/components/station/workbench/ScanStationCartonCursor.tsx',
       );
-      assert.match(cursor, /ChevronUp/, '↑ must be the NEXT control');
-      assert.match(cursor, /label="Next carton"/);
-      assert.match(cursor, /ariaLabel="Next carton"/);
-      assert.match(cursor, /nextTestId/);
-      assert.match(cursor, /ChevronDown/, '↓ must be the PREVIOUS control');
+      assert.match(cursor, /ChevronUp[\s\S]{0,200}onClick=\{onPrev\}/, '↑ must be PREV');
       assert.match(cursor, /label="Previous carton"/);
       assert.match(cursor, /ariaLabel="Previous carton"/);
-      assert.match(cursor, /prevTestId/);
+      assert.match(cursor, /ChevronDown[\s\S]{0,200}onClick=\{onNext\}/, '↓ must be NEXT');
+      assert.match(cursor, /label="Next carton"/);
+      assert.match(cursor, /ariaLabel="Next carton"/);
+      // Desk twin keeps the same glyph→direction contract.
+      const desk = read('src/components/right-rail/DeskRailChromeRow.tsx');
+      assert.match(desk, /ChevronUp[\s\S]{0,200}onClick=\{onPrev\}/);
+      assert.match(desk, /ChevronDown[\s\S]{0,200}onClick=\{onNext\}/);
     });
 
-    it('the RING mounts beside the notes+print dock — it is the toggle that opens the column', () => {
+    it('the RING mounts as Displays strip rightSlot — not under the dock', () => {
       assert.match(
         panel,
-        /scanProgressControl/,
-        'the ring must mount near the carton-terminal dock, not the pane utility row',
+        /rightSlot=\{scanProgressControl\}/,
+        'the ring must mount on the Displays strip (right of ⋮), not the pane utility row',
       );
       assert.match(
         panel,
         /WorkspaceNotesCard/,
         'main Unbox dock is notes + Print · Receive (WorkspaceNotesCard)',
       );
+      // Dock float stack must not remount the ring (second progress chrome).
+      assert.doesNotMatch(
+        panel,
+        /slicedActionDockWrapperClass[\s\S]{0,1200}?scanProgressControl/,
+        'do not remount the ring under the notes+Print dock',
+      );
       const gated = cursorGateBody(panel);
       assert.doesNotMatch(
         gated,
         /scanProgressControl/,
-        'gating the ring on the cursor (or railOpen) makes Displays unopenable / mis-placed',
+        'ring must not live in the pane utility / cursor gate',
       );
     });
 
-    it('railOpen reaches the ring as hover-peek suppression only', () => {
-      // The ring TAKES railOpen (to stand its hover peek down while a column is
-      // up) — that is not the same as being gated on it, and the two are easy
-      // to confuse when reading the prop list.
-      assert.match(panel, /<UnboxScanProgressControl[\s\S]{0,240}railOpen=\{railOpen\}/);
+    it('strip-mounted ring suppresses hover peek (railOpen always true)', () => {
+      // Ring only mounts while Displays is open — peek stays off.
+      assert.match(panel, /<UnboxScanProgressControl[\s\S]{0,240}railOpen/);
+      assert.doesNotMatch(
+        panel,
+        /railOpen=\{railOpen\}/,
+        'strip mount passes railOpen as always-true, not a closed-state variable',
+      );
       const control = read('src/components/receiving/workspace/UnboxScanProgressControl.tsx');
       assert.doesNotMatch(
         control,
         /if \(railOpen\) return null|railOpen \?\s*null/,
-        'the ring must render in both states — same dock place open or closed',
+        'the ring must not unmount itself when railOpen',
       );
       assert.doesNotMatch(
         control,
@@ -454,8 +462,13 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         control,
+        /variant=["']strip["']/,
+        'Unbox mounts the ring as a Displays strip cell (centered h-10 peer of ⋮)',
+      );
+      assert.match(
+        control,
         /previewPlacement=["']top-end["']/,
-        'hover peek must be Cursor-style top-end overlap just above the dock ring',
+        'peek placement kept for closed-state call sites',
       );
       assert.match(
         control,
@@ -490,16 +503,21 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
     const panel = read(PANEL_PATH);
     const displays = read(DISPLAYS_PATH);
 
-    it('the Displays strip takes no rightSlot', () => {
-      assert.doesNotMatch(
+    it('the Displays strip rightSlot is the procedure ring, not a pairing pencil', () => {
+      assert.match(
         displays,
         /rightSlot/,
-        'a control on the right edge must not open a surface in the centre — the pencil that lived here is what the ruling removed',
+        'ReceivingDisplaysPushStack must thread rightSlot for the progress ring',
       );
       assert.doesNotMatch(
         displays,
         /PairingTogglePill/,
         'PairingTogglePill is still Triage/Testing chrome; Unbox must not mount it beside the strip',
+      );
+      assert.match(
+        panel,
+        /rightSlot=\{scanProgressControl\}/,
+        'Unbox passes the progress ring as Displays rightSlot (right of ⋮)',
       );
     });
 

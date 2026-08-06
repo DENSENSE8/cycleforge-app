@@ -3,16 +3,15 @@
 /**
  * Unbox adapter for {@link ScanStationProgressControl}.
  *
- * Derives procedure % from {@link useUnboxProcedureSteps} and peeks the full
- * {@link UnboxProcedureChecklist} on hover while the right edge is closed.
- * Click opens Displays on `checklist` (or closes when checklist is showing;
- * switches from another tab).
+ * Derives procedure % from {@link useUnboxProcedureSteps}. Mounted as the
+ * Displays icon-plate `rightSlot` (same row, right of ⋮) via
+ * {@link ReceivingDisplaysPushStack} with `variant="strip"` — centered h-10
+ * cell, selected underline when checklist is live. Click opens/switches to
+ * the `stripHidden` checklist body (does not close Displays; `→|` does).
  *
- * Mounted in the UnboxDockHost under-dock progress row (right-aligned under the
- * terminal). Hover peek is a Cursor-style `top-end` overlap just above the ring
- * (viewport-clamped) with a footer to open Displays. Checklist is ring-only —
- * not on the Displays strip. Other stations compose the shared control with
- * their own derivation + preview — do not fork a second ring.
+ * Closed Displays opens via `←|`, then the ring. Checklist is ring-only —
+ * never a strip Lucide cell. Other stations compose the shared control with
+ * their own derivation — do not fork a second ring.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -50,6 +49,7 @@ export function UnboxScanProgressControl({
 
   return (
     <ScanStationProgressControl
+      variant="strip"
       percent={percent}
       done={done}
       total={total}
@@ -60,12 +60,9 @@ export function UnboxScanProgressControl({
       onClose={onClose}
       testId="unbox-displays-expand-button"
       previewAriaLabel="Unbox procedure checklist preview"
-      // Cursor-style overlap just above the dock ring (SoT).
       previewPlacement="top-end"
       previewRailActionLabel="Open in Displays"
-      preview={
-        <UnboxProcedureChecklist row={row} />
-      }
+      preview={<UnboxProcedureChecklist row={row} />}
     />
   );
 }

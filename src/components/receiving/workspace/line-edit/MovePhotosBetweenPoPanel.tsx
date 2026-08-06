@@ -32,6 +32,7 @@ import {
   TrackingChip,
   getLast8,
 } from '@/components/ui/CopyChip';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { toast } from '@/lib/toast';
 import { reassignPhotoToReceiving } from '@/components/shipped/photo-gallery/photo-gallery-api';
 import { notifyReceivingPhotoChanged } from '@/lib/queries/receiving-queries';
@@ -80,6 +81,47 @@ interface SuccessBeat {
   otherLabel: string | null;
 }
 
+/** Shared carton face for list hits and the selected (blue) row. */
+function PhotoMoveTargetFace({ row }: { row: PhotoMoveTargetRow }) {
+  const label = photoMoveTargetLabel(row);
+  const poValue = String(row.po_number || row.po_id || '').trim();
+  const tracking = (row.tracking_number || '').trim();
+  const ticketDigits =
+    row.ticket_id != null && row.ticket_id > 0 ? String(row.ticket_id) : '';
+  const ticketFace = (row.ticket_external_id || ticketDigits).trim();
+  const title = String(row.title || '').trim() || label;
+  const isUnfoundPo = title === 'Unfound PO' || row.source === 'unmatched';
+  // Carton handle when there's no PO, or always for Unfound stubs
+  // (ticket alone must not hide R-{id}).
+  const showCartonHandle = !poValue || isUnfoundPo;
+  return (
+    <StackedRowIdentity
+      title={
+        <span className="line-clamp-2 break-words text-role-body font-medium text-text-primary">
+          {title}
+        </span>
+      }
+      keys={
+        <>
+          {poValue ? <PoChip value={poValue} dense /> : null}
+          {showCartonHandle ? (
+            <OrderIdChip
+              value={`R-${row.receiving_id}`}
+              display={getLast8(`R-${row.receiving_id}`)}
+              dense
+            />
+          ) : null}
+          {tracking ? <TrackingChip value={tracking} dense /> : null}
+          {ticketDigits ? (
+            <TicketChip value={ticketDigits} display={ticketFace} dense />
+          ) : null}
+        </>
+      }
+      trailing={<Package className="h-4 w-4 text-text-faint" />}
+    />
+  );
+}
+
 /** Hold the success frame long enough for AnimatedCheck to finish, then close. */
 const SUCCESS_HOLD_MS = 1400;
 const SUCCESS_HOLD_REDUCED_MS = 600;
@@ -90,7 +132,7 @@ export function MovePhotosBetweenPoPanel({
   onClose,
   onMoved,
   /**
-   * `display` — Unbox Displays Photos→Move: strip + Browse·Move·Send tabs already
+   * `display` — Unbox Displays Photos→Move: strip + Move·Browse·Send tabs already
    * name the verb; omit icon+title band and X (column `→|` owns dismiss).
    * `modal` — right-rail / overlay hosts keep the title + close.
    */
@@ -116,13 +158,22 @@ export function MovePhotosBetweenPoPanel({
    * browse instead of an empty list (`matchedExcludedSelf` on the API).
    */
   const [matchedExcludedSelf, setMatchedExcludedSelf] = useState(false);
-  const [otherReceivingId, setOtherReceivingId] = useState<number | null>(null);
-  const [otherLabel, setOtherLabel] = useState<string | null>(null);
+  /** Selected other carton — full row so the selected face matches the list. */
+  const [otherRow, setOtherRow] = useState<PhotoMoveTargetRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<SuccessBeat | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Needle the operator cleared by deselecting the blue row — suppress
+   * re-auto-pick for that same needle until they edit the search.
+   */
+  const dismissedNeedleRef = useRef<string | null>(null);
+  /** After a sole-match auto-pick, select every photo once they load. */
+  const pendingSelectAllPhotosRef = useRef(false);
 
   // Source of photos depends on direction.
+  const otherReceivingId = otherRow?.receiving_id ?? null;
+  const otherLabel = otherRow ? photoMoveTargetLabel(otherRow) : null;
   const sourceReceivingId =
     direction === 'to' ? thisReceivingId : otherReceivingId;
   const targetReceivingId =
@@ -137,6 +188,14 @@ export function MovePhotosBetweenPoPanel({
     }
   };
 
+  /** X / deselect — clear search + pick; suppress re-autopick for this needle. */
+  const clearPicker = () => {
+    dismissedNeedleRef.current = poSearchNeedle(search) || null;
+    pendingSelectAllPhotosRef.current = false;
+    setOtherRow(null);
+    setSearch('');
+  };
+
   // Reset when closed / direction flips.
   useEffect(() => {
     if (!open) {
@@ -145,10 +204,11 @@ export function MovePhotosBetweenPoPanel({
       setSearch('');
       setTargetRows([]);
       setMatchedExcludedSelf(false);
-      setOtherReceivingId(null);
-      setOtherLabel(null);
+      setOtherRow(null);
       setBusy(false);
       setSuccess(null);
+      dismissedNeedleRef.current = null;
+      pendingSelectAllPhotosRef.current = false;
     }
   }, [open]);
 
@@ -156,24 +216,30 @@ export function MovePhotosBetweenPoPanel({
 
   useEffect(() => {
     if (success) return;
-    setOtherReceivingId(null);
-    setOtherLabel(null);
+    setOtherRow(null);
     setSearch('');
     setTargetRows([]);
     setMatchedExcludedSelf(false);
+    dismissedNeedleRef.current = null;
+    pendingSelectAllPhotosRef.current = false;
   }, [direction, success]);
 
   // Carton search — any receiving carton (PO-bearing, unmatched, ticket-linked).
   // Accepts PO #, tracking #, ticket #, and carton QR handles (`R-<id>` / `#R-<id>`).
   // Self-match (needle is this carton) → server returns recent browse + matchedExcludedSelf.
+  // Sole hit for a real needle → auto-select so Move can arm without a second click.
   useEffect(() => {
     if (!open || success) return;
     const controller = new AbortController();
+    const needle = poSearchNeedle(search);
+    // Editing the box clears a prior Change-carton dismiss for that needle.
+    if (dismissedNeedleRef.current != null && dismissedNeedleRef.current !== needle) {
+      dismissedNeedleRef.current = null;
+    }
     const timer = window.setTimeout(async () => {
       setPoLoading(true);
       try {
         const params = new URLSearchParams({ limit: '25' });
-        const needle = poSearchNeedle(search);
         if (needle) params.set('search', needle);
         if (thisReceivingId != null) params.set('exclude', String(thisReceivingId));
         const res = await fetch(`/api/receiving/photo-move-targets?${params.toString()}`, {
@@ -184,8 +250,21 @@ export function MovePhotosBetweenPoPanel({
           targets?: PhotoMoveTargetRow[];
           matchedExcludedSelf?: boolean;
         };
-        setTargetRows(data.targets ?? []);
-        setMatchedExcludedSelf(Boolean(data.matchedExcludedSelf));
+        const rows = data.targets ?? [];
+        const selfOnly = Boolean(data.matchedExcludedSelf);
+        setTargetRows(rows);
+        setMatchedExcludedSelf(selfOnly);
+
+        // Unique carton for this search → pick it (skip empty browse + self fallback).
+        if (
+          needle &&
+          !selfOnly &&
+          rows.length === 1 &&
+          dismissedNeedleRef.current !== needle
+        ) {
+          setOtherRow(rows[0]!);
+          pendingSelectAllPhotosRef.current = true;
+        }
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         setTargetRows([]);
@@ -193,12 +272,25 @@ export function MovePhotosBetweenPoPanel({
       } finally {
         setPoLoading(false);
       }
-    }, poSearchNeedle(search) ? 280 : 0);
+    }, needle ? 280 : 0);
     return () => {
       controller.abort();
       window.clearTimeout(timer);
     };
   }, [open, search, thisReceivingId, success]);
+
+  // Sole-match path arms "select all photos" — apply once the grid has loaded.
+  useEffect(() => {
+    if (!pendingSelectAllPhotosRef.current) return;
+    if (otherReceivingId == null) return;
+    if (photos.photos.length === 0) return;
+    if (photos.selectedPhotoIds.size > 0) {
+      pendingSelectAllPhotosRef.current = false;
+      return;
+    }
+    pendingSelectAllPhotosRef.current = false;
+    photos.toggleSelectAll();
+  }, [otherReceivingId, photos.photos.length, photos.selectedPhotoIds.size, photos.toggleSelectAll]);
 
   const finishAndClose = (beat: SuccessBeat) => {
     setSuccess(beat);
@@ -322,8 +414,8 @@ export function MovePhotosBetweenPoPanel({
             transition={{ duration: 0.12 }}
             className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-3 text-role-data">
-              <div className="px-3">
+            <div className="min-h-0 flex-1 space-y-0 overflow-y-auto text-role-data">
+              <div className="flex shrink-0 flex-col gap-0 border-b border-border-hairline">
                 <TabDisplay
                   tabs={[
                     { id: 'to', label: 'To another carton' },
@@ -331,151 +423,115 @@ export function MovePhotosBetweenPoPanel({
                   ]}
                   activeTab={direction}
                   onTabChange={(id) => setDirection(id as Direction)}
+                  density="nested"
                   appearance="segment"
                   fit="fill"
                   aria-label="Move direction"
+                  className="rounded-none border-x-0 border-t-0"
                 />
               </div>
 
+              <div className="space-y-3 py-3">
               {(direction === 'from' || (direction === 'to' && photos.photos.length > 0)) && (
                 <div className="space-y-2">
                   <DenseComposeLabel className="px-3" htmlFor="photo-move-search">
                     {direction === 'to' ? 'Target carton / PO' : 'Source carton / PO'}
-                    {otherLabel ? ` · ${otherLabel}` : ''}
                   </DenseComposeLabel>
-                  {!otherReceivingId ? (
-                    <>
-                      <div className="px-3">
-                        <DenseComposeSearchInput
-                          id="photo-move-search"
-                          type="search"
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                          placeholder="PO #, tracking #, ticket # / subject, or carton QR…"
-                          autoFocus
+                  <div className="px-3">
+                    <div className="relative">
+                      <DenseComposeSearchInput
+                        id="photo-move-search"
+                        type="search"
+                        value={search}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setSearch(next);
+                          // Typing while selected starts a fresh pick.
+                          if (otherRow != null) {
+                            pendingSelectAllPhotosRef.current = false;
+                            setOtherRow(null);
+                          }
+                        }}
+                        placeholder="PO #, tracking #, ticket # / subject, or carton QR…"
+                        autoFocus
+                        className={search || otherRow ? 'pr-8' : undefined}
+                      />
+                      {search || otherRow ? (
+                        <IconButton
+                          type="button"
+                          size="xs"
+                          ariaLabel="Clear carton search"
+                          onClick={clearPicker}
+                          icon={<X className="h-3.5 w-3.5" />}
+                          className="absolute right-0 top-1/2 -translate-y-1/2"
                         />
-                        <p className="mt-1 text-role-micro text-text-faint">
-                          Type or scan a different carton — not this one.
-                        </p>
-                      </div>
-                      {(matchedExcludedSelf || !poSearchNeedle(search)) &&
-                      targetRows.length > 0 ? (
-                        <p
-                          className="px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
-                          data-testid="photo-move-recent-eyebrow"
-                        >
-                          Recent cartons
-                        </p>
                       ) : null}
-                      <div className="max-h-48 overflow-y-auto">
-                        {poLoading ? (
-                          <p className="flex items-center justify-center gap-2 py-6 text-xs text-text-soft">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Searching…
-                          </p>
-                        ) : targetRows.length === 0 ? (
-                          <p className="px-3 py-8 text-center text-role-micro text-text-soft">
-                            {poSearchNeedle(search)
-                              ? 'No matching cartons'
-                              : 'Search for another carton to move photos to.'}
-                          </p>
-                        ) : (
-                          targetRows.map((r) => {
-                            const label = photoMoveTargetLabel(r);
-                            const poValue = String(r.po_number || r.po_id || '').trim();
-                            const tracking = (r.tracking_number || '').trim();
-                            const ticketDigits =
-                              r.ticket_id != null && r.ticket_id > 0
-                                ? String(r.ticket_id)
-                                : '';
-                            const ticketFace = (
-                              r.ticket_external_id ||
-                              ticketDigits
-                            ).trim();
-                            const title = String(r.title || '').trim() || label;
-                            const isUnfoundPo =
-                              title === 'Unfound PO' || r.source === 'unmatched';
-                            // Carton handle when there's no PO, or always for Unfound
-                            // stubs (ticket alone must not hide R-{id}).
-                            const showCartonHandle = !poValue || isUnfoundPo;
-                            return (
-                              <button
-                                // ds-raw-button: full-row select target; CopyChips stopPropagation on copy
-                                key={r.receiving_id}
-                                type="button"
-                                data-testid="photo-move-target-row"
-                                data-receiving-id={r.receiving_id}
-                                data-title={title}
-                                onClick={() => {
-                                  setOtherReceivingId(r.receiving_id);
-                                  setOtherLabel(label);
-                                }}
-                                className="flex w-full items-center justify-between gap-3 border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-hover"
-                              >
-                                <div className="flex min-w-0 w-full flex-col items-start gap-1">
-                                  <span className="line-clamp-2 break-words text-role-body font-medium text-text-primary">
-                                    {title}
-                                  </span>
-                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                    {poValue ? <PoChip value={poValue} dense /> : null}
-                                    {showCartonHandle ? (
-                                      <OrderIdChip
-                                        value={`R-${r.receiving_id}`}
-                                        display={getLast8(`R-${r.receiving_id}`)}
-                                        dense
-                                      />
-                                    ) : null}
-                                    {tracking ? (
-                                      <TrackingChip value={tracking} dense />
-                                    ) : null}
-                                  </div>
-                                  {ticketDigits ? (
-                                    <TicketChip
-                                      value={ticketDigits}
-                                      display={ticketFace}
-                                      dense
-                                    />
-                                  ) : null}
-                                </div>
-                                <Package className="h-4 w-4 shrink-0 text-text-faint" />
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOtherReceivingId(null);
-                        setOtherLabel(null);
-                      }}
-                      className="px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-blue-600 hover:underline"
+                    </div>
+                    <p className="mt-1 text-role-micro text-text-faint">
+                      Type or scan a different carton — not this one.
+                    </p>
+                  </div>
+                  {(matchedExcludedSelf || !poSearchNeedle(search)) &&
+                  targetRows.length > 0 ? (
+                    <p
+                      className="px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
+                      data-testid="photo-move-recent-eyebrow"
                     >
-                      Change carton
-                    </button>
-                  )}
+                      Recent cartons
+                    </p>
+                  ) : null}
+                  <div className="max-h-48 overflow-y-auto">
+                    {poLoading ? (
+                      <p className="flex items-center justify-center gap-2 py-6 text-xs text-text-soft">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Searching…
+                      </p>
+                    ) : targetRows.length === 0 ? (
+                      <p className="px-3 py-8 text-center text-role-micro text-text-soft">
+                        {poSearchNeedle(search)
+                          ? 'No matching cartons'
+                          : 'Search for another carton to move photos to.'}
+                      </p>
+                    ) : (
+                      targetRows.map((r) => {
+                        const isSel = otherRow?.receiving_id === r.receiving_id;
+                        return (
+                          <button
+                            // ds-raw-button: full-row select target; CopyChips stopPropagation on copy
+                            key={r.receiving_id}
+                            type="button"
+                            data-testid="photo-move-target-row"
+                            data-receiving-id={r.receiving_id}
+                            data-selected={isSel ? 'true' : undefined}
+                            data-title={
+                              String(r.title || '').trim() || photoMoveTargetLabel(r)
+                            }
+                            aria-pressed={isSel}
+                            onClick={() => {
+                              if (isSel) {
+                                dismissedNeedleRef.current = poSearchNeedle(search) || null;
+                                pendingSelectAllPhotosRef.current = false;
+                                setOtherRow(null);
+                                return;
+                              }
+                              setOtherRow(r);
+                            }}
+                            className={
+                              isSel
+                                ? 'flex w-full border-b border-border-hairline bg-blue-50 px-3 py-2.5 text-left ring-1 ring-inset ring-blue-400 transition-colors last:border-b-0 hover:bg-blue-50/80'
+                                : 'flex w-full border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-hover'
+                            }
+                          >
+                            <PhotoMoveTargetFace row={r} />
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
 
               {sourceReceivingId != null ? (
                 <div className="space-y-2 px-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                      {direction === 'to' ? 'Photos on this carton' : 'Photos on source carton'}
-                    </p>
-                    {photos.photos.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => photos.toggleSelectAll()}
-                        className="text-role-eyebrow font-semibold uppercase tracking-widest text-blue-600 hover:underline"
-                      >
-                        {photos.selectedPhotoIds.size === photos.photos.length
-                          ? 'Clear'
-                          : 'Select all'}
-                      </button>
-                    ) : null}
-                  </div>
                   {photos.photos.length === 0 ? (
                     <p className="border-y border-dashed border-border-soft px-3 py-8 text-center text-role-micro text-text-soft">
                       No photos on this carton yet.
@@ -489,6 +545,7 @@ export function MovePhotosBetweenPoPanel({
                   Pick a source carton to see its photos.
                 </p>
               ) : null}
+              </div>
             </div>
 
             {/*

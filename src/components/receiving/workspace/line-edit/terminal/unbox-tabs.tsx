@@ -1,17 +1,14 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { UnitsDisplayHost } from '../UnitsDisplayHost';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
-import { PhotosDisplayHost } from '../PhotosDisplayHost';
 import { LinkageDisplayHost } from '../LinkageDisplayHost';
-import { TicketDisplayHost } from '../TicketDisplayHost';
-import { ReceivingAuditPanel } from '../../ReceivingAuditPanel';
-import { SupportContextHub } from '@/components/support/context';
-import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
-import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
+import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
+import { buildSectionTabs } from '@/components/station/workbench';
 import {
   Barcode,
   ClipboardList,
@@ -37,6 +34,33 @@ import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
 import type { ClaimModalMode } from '../../claim/claim-types';
+
+/**
+ * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
+ * Ticket / Photos / Timeline / Support chat must not ride the P1 paint path.
+ * (ssr OK — they only mount when the topic is selected.)
+ */
+const TicketDisplayHost = dynamic(
+  () => import('../TicketDisplayHost').then((m) => m.TicketDisplayHost),
+  { loading: () => null },
+);
+const PhotosDisplayHost = dynamic(
+  () => import('../PhotosDisplayHost').then((m) => m.PhotosDisplayHost),
+  { loading: () => null },
+);
+const WorkspaceTimelineTab = dynamic(
+  () =>
+    import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab),
+  { loading: () => null },
+);
+const SupportContextHub = dynamic(
+  () => import('@/components/support/context').then((m) => m.SupportContextHub),
+  { loading: () => null },
+);
+const ReceivingAuditPanel = dynamic(
+  () => import('../../ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel),
+  { loading: () => null },
+);
 
 /**
  * Controller is the full `useUnboxLineController` return. Typed as unknown at
@@ -87,6 +111,11 @@ export interface BuildUnboxTabsInput {
   pairingFocusTab?: 'zoho_po' | null;
   /** Bump to re-select the PO tab when linkage is already showing. */
   pairingFocusRequestId?: number;
+  /**
+   * Auto-match "Find ticket" → Ticket Displays (claim · link). Unbox only —
+   * Arrival has no Ticket topic.
+   */
+  onFindTicket?: () => void;
   onItemDescFeedback?: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
@@ -97,7 +126,7 @@ export interface BuildUnboxTabsInput {
     serial_number: string;
     condition_grade?: string | null;
   }) => void;
-  /** Serials cell "View All" → Units Displays. */
+  /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
@@ -198,6 +227,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     classifyExpandRequestId = 0,
     pairingFocusTab = null,
     pairingFocusRequestId = 0,
+    onFindTicket,
   } = input;
 
   const ticketId = c.providerTicketId as number | null | undefined;
@@ -261,6 +291,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
                     ticketNumber: c.supportTicket?.label ?? null,
                     ticketUrl: c.supportTicket?.openUrl ?? null,
                     onTicketChanged: () => void c.invalidateSupportTicket(),
+                    onFindTicket,
                   }
                 : null
             }
@@ -338,11 +369,8 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       label: 'Checklist',
       icon: ClipboardList,
       stripHidden: true,
-      content: (
-        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-          <UnboxProcedureChecklist row={row} />
-        </WorkspaceCard>
-      ),
+      // Flush Displays body — no WorkspaceCard glass island (Classify / Pairing SoT).
+      content: <UnboxProcedureChecklist row={row} />,
     },
     {
       id: 'support',
@@ -429,7 +457,7 @@ export function UnboxSectionTabs({
   tabs: SectionTab[];
   value: string;
   onChange: (id: string) => void;
-  /** Right cluster: vertical ⋮ peer · flat pencil (pencil rightmost). */
+  /** Right cluster: vertical ⋮ peer · optional progress ring (ring rightmost). */
   rightSlot?: ReactNode;
   /**
    * Optional strip-row class. Unbox no longer passes one — the flush host

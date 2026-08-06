@@ -32,6 +32,8 @@ interface TechRightPaneProps {
   onOpenTestingLine: () => void;
   activeOrderPane: TechActiveOrderPane | null;
   onCloseActiveOrder: () => void;
+  /** Sync condition (and other local fields) after Displays edits. */
+  onActiveOrderChange?: (next: TechActiveOrderPane['activeOrder']) => void;
   previewOrder: Order | null;
   onClosePreview: () => void;
 }
@@ -45,6 +47,7 @@ export function TechRightPane({
   onOpenTestingLine,
   activeOrderPane,
   onCloseActiveOrder,
+  onActiveOrderChange,
   previewOrder,
   onClosePreview,
 }: TechRightPaneProps) {
@@ -76,6 +79,13 @@ export function TechRightPane({
           key={`workspace-active-${activeOrderPane.activeOrder.tracking || activeOrderPane.activeOrder.orderId}`}
           activeOrder={activeOrderPane.activeOrder}
           onClose={onCloseActiveOrder}
+          setActiveOrder={(next) => {
+            if (!next) {
+              onCloseActiveOrder();
+              return;
+            }
+            onActiveOrderChange?.(next);
+          }}
         />
       ) : previewOrder ? (
         <ActiveOrderWorkspace

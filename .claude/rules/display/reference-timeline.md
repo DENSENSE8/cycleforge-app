@@ -136,8 +136,15 @@ never the thing the user navigates by as a collection map, and never a parallel 
 
 **`MergedRecordStream` (`src/components/support/zendesk/chat/MergedRecordStream.tsx`) is a second renderer over the
 same `TimelineItem` waist**, and — unlike `AuditTimeline`, which forked the data shape too — it shares everything
-except the row body. It is the support ticket's merged ledger: helpdesk messages and warehouse / carrier events
-interleaved chronologically (`.claude/rules/display/workbench-service.md` → Thread anatomy).
+except the row body. It renders helpdesk messages (block markdown + attachments). Warehouse / carrier events may be
+**optionally interleaved** when the host passes a collapsed `events` spine (`SupportTicketDetail`
+`mergeFloorTimeline`).
+
+**Station Ticket Displays omit floor events** (Unbox · Testing · Pack). The floor spine is the peer **Timeline**
+Displays tab (`WorkspaceTimelineTab` → `EventTimeline`). Interleaving ops scans into Ticket teaches “timeline is
+Zendesk” and burns scroll before claim/reply work. Guard: `ticket-timeline-split.guard.test.ts`.
+
+Support service workspace may still set `mergeFloorTimeline` until an explicit Floor toggle ships.
 
 **Why it is not `EventTimeline`, stated rather than assumed:**
 

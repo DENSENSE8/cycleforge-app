@@ -20,15 +20,18 @@
  * Edge-to-edge **h-10** instrument plate at the top of a Displays push column —
  * a four-edge **`border-border-default`** frame (readable chrome 1px rule — not
  * near-invisible `border-hairline`, which is for internal row dividers only).
- * Flush cells share width (`flex-1`) with vertical dividers (Cybertruck segment
- * plate); idle = icon-only with a {@link HoverTooltip}; ACTIVE expands to icon +
- * label with a bottom underline and caption type so the plate outranks nested
- * verb switchers below. Trailing **⋮** (`MoreVertical`) is a right-edge peer on
- * the same row. Nested verb strips sit `gap-0` flush under this plate — no
- * vertical air between tab rows. No soft sunken pills / corner radius.
+ * Primary cells **share the rail equally** (`flex-1`, icon centered) with a
+ * {@link HoverTooltip} when idle; the ACTIVE cell keeps icon + caption label
+ * with a bottom underline — layout FLIP + label width/opacity via
+ * `motionRole.push.rail` (geometry tween, never a spring). Vertical dividers
+ * stay Cybertruck-segment. Trailing **⋮** (`MoreVertical`) + optional
+ * `rightSlot` (procedure ring) are a right-edge peer cluster on the same row.
+ * Nested verb strips sit `gap-0` flush under this plate — no vertical air
+ * between tab rows. No soft sunken pills / corner radius.
  *
- * `compact` only tightens horizontal padding — never shortens the plate face
- * (a short strip above nested verb rows / claim mode — inverted hierarchy).
+ * `compact` only tightens the *selected* cell's horizontal padding — never
+ * shortens the plate face (a short strip above nested verb rows / claim mode —
+ * inverted hierarchy).
  *
  * **Icon-only idle cells are the sanctioned nav-chrome exception**, not a
  * break of `ui-design-system.md` → *Icons: structural and paired*: this is a
@@ -41,6 +44,14 @@ import { useId, useRef, useState, type ReactNode } from 'react';
 import { MoreHorizontal, MoreVertical } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Popover } from '@/design-system/primitives/Popover';
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  motionRole,
+  useMotionPressRole,
+  useMotionRole,
+} from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -49,25 +60,20 @@ import { TabDisplay } from './TabDisplay';
 const FLUSH = cornerClass('flush');
 
 /**
- * SpaceX topic-plate cell (`density="icon"`). Always `h-10` — the Displays
- * mode plate must outrank nested verb underlines below. `compact` only
- * tightens horizontal padding.
+ * SpaceX topic-plate cell face (`density="icon"`). Always `h-10` — the Displays
+ * mode plate must outrank nested verb underlines below. Primary cells share the
+ * rail equally (`flex-1`); icons stay centered in each share.
  */
 const ICON_CELL_CLASS = cn(
-  'relative flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 px-2 transition-colors',
+  'relative flex h-10 min-w-10 flex-1 items-center justify-center transition-colors',
   FLUSH,
 );
-/** Compact horizontal padding for Unbox Displays — same h-10 face. */
-const ICON_CELL_COMPACT_CLASS = cn(
-  'relative flex h-10 min-w-0 flex-1 items-center justify-center gap-1 px-1.5 transition-colors',
-  FLUSH,
-);
-/** Overflow ⋮ peer — fixed width, same plate height, not flex-shared. */
-const ICON_OVERFLOW_CELL_CLASS = cn(
+/** Overflow ⋮ / strip `rightSlot` peer — fixed width, same plate height. */
+export const SECTION_TAB_ICON_OVERFLOW_CELL_CLASS = cn(
   'relative flex h-10 w-10 shrink-0 items-center justify-center transition-colors',
   FLUSH,
 );
-const ICON_CELL_IDLE_CLASS =
+export const SECTION_TAB_ICON_CELL_IDLE_CLASS =
   'border-b-2 border-b-transparent text-text-soft hover:bg-surface-hover hover:text-text-default';
 /**
  * Selected topic cell: parent underline. Staff accent stays an icon TINT.
@@ -75,8 +81,12 @@ const ICON_CELL_IDLE_CLASS =
  * Bottom-only color (`border-b-*`) — never `border-transparent` / `border-text-*`
  * on all sides (those fight `divide-x` cell seams).
  */
-const ICON_CELL_ACTIVE_CLASS =
+export const SECTION_TAB_ICON_CELL_ACTIVE_CLASS =
   'border-b-2 border-b-text-default font-semibold text-text-default';
+
+const ICON_OVERFLOW_CELL_CLASS = SECTION_TAB_ICON_OVERFLOW_CELL_CLASS;
+const ICON_CELL_IDLE_CLASS = SECTION_TAB_ICON_CELL_IDLE_CLASS;
+const ICON_CELL_ACTIVE_CLASS = SECTION_TAB_ICON_CELL_ACTIVE_CLASS;
 
 export type SectionTabPriority = 'primary' | 'overflow';
 
@@ -172,10 +182,13 @@ export function SectionTabsSlider({
   fillHeight?: boolean;
 }) {
   const menuListId = useId();
+  const layoutGroupId = useId();
   const overflowTriggerRef = useRef<HTMLButtonElement>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const iconRail = density === 'icon';
-  const iconCellClass = iconRail && compact ? ICON_CELL_COMPACT_CLASS : ICON_CELL_CLASS;
+  /** Topic-plate geometry reflow — tween on the layout curve (never a spring). */
+  const { transition: plateLayoutTransition } = useMotionRole(motionRole.push.rail);
+  const whileTap = useMotionPressRole(motionRole.gesture.press);
   const iconSizeClass = 'h-4 w-4';
   const headerRowMinClass = iconRail ? 'h-10 min-h-10' : 'min-h-9';
   const headerRowAlignClass = 'items-stretch';
@@ -331,72 +344,93 @@ export function SectionTabsSlider({
           >
             {showPills ? (
               iconRail ? (
-                <div
-                  role="group"
-                  aria-label={ariaLabel}
-                  className="flex h-full min-w-0 flex-1 items-stretch gap-0 divide-x divide-border-default overflow-x-auto scrollbar-hide"
-                >
-                  {primary.map((tab) => {
-                    const Icon = tab.icon;
-                    const selected = tab.id === activeId;
-                    const count =
-                      tab.count != null && tab.count > 0
-                        ? tab.count > 99
-                          ? '99+'
-                          : String(tab.count)
-                        : null;
-                    const cell = (
-                      // ds-raw-button: display-switcher cell (see density="icon" docblock)
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => onChange(tab.id)}
-                        aria-current={selected ? 'page' : undefined}
-                        // Idle cells are icon-only, so the label IS the
-                        // accessible name — never drop this for the tooltip.
-                        aria-label={tab.label}
-                        className={cn(
-                          iconCellClass,
-                          focusRing('control', 'accent'),
-                          selected ? ICON_CELL_ACTIVE_CLASS : ICON_CELL_IDLE_CLASS,
-                        )}
-                      >
-                        <Icon
+                <LayoutGroup id={layoutGroupId}>
+                  <div
+                    role="group"
+                    aria-label={ariaLabel}
+                    className="flex h-full min-w-0 flex-1 items-stretch gap-0 divide-x divide-border-default overflow-x-auto scrollbar-hide"
+                  >
+                    {primary.map((tab) => {
+                      const Icon = tab.icon;
+                      const selected = tab.id === activeId;
+                      const count =
+                        tab.count != null && tab.count > 0
+                          ? tab.count > 99
+                            ? '99+'
+                            : String(tab.count)
+                          : null;
+                      const cell = (
+                        // ds-raw-button: display-switcher cell (see density="icon" docblock)
+                        <motion.button
+                          key={tab.id}
+                          type="button"
+                          layout
+                          transition={plateLayoutTransition}
+                          whileTap={whileTap}
+                          onClick={() => onChange(tab.id)}
+                          aria-current={selected ? 'page' : undefined}
+                          // Idle cells are icon-only, so the label IS the
+                          // accessible name — never drop this for the tooltip.
+                          aria-label={tab.label}
                           className={cn(
-                            `${iconSizeClass} shrink-0`,
-                            selected ? 'text-accent-bg' : undefined,
+                            ICON_CELL_CLASS,
+                            focusRing('control', 'accent'),
+                            selected
+                              ? cn(
+                                  'gap-1.5',
+                                  compact ? 'px-1.5' : 'px-2',
+                                  ICON_CELL_ACTIVE_CLASS,
+                                )
+                              : cn('gap-0 px-0', ICON_CELL_IDLE_CLASS),
                           )}
-                        />
-                        {selected ? (
-                          // No `leading-none` here. `truncate` carries
-                          // `overflow:hidden`, so a line-height of 1 shears
-                          // descenders. Plate cells are fixed `h-10`.
-                          <span className="max-w-[7rem] truncate text-role-caption font-semibold">
-                            {tab.label}
-                          </span>
-                        ) : null}
-                        {count ? (
-                          <span
-                            className={cn(
-                              'tabular-nums text-role-caption',
-                              selected ? 'opacity-70' : 'opacity-80',
-                            )}
-                          >
-                            {count}
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                    // Tooltip only where the label is not already on screen.
-                    return selected ? (
-                      cell
-                    ) : (
-                      <HoverTooltip key={tab.id} label={tab.label} asChild focusable={false}>
-                        {cell}
-                      </HoverTooltip>
-                    );
-                  })}
-                </div>
+                        >
+                          <motion.span layout="position" className="flex shrink-0 items-center">
+                            <Icon
+                              className={cn(
+                                `${iconSizeClass} shrink-0`,
+                                selected ? 'text-accent-bg' : undefined,
+                              )}
+                            />
+                          </motion.span>
+                          <AnimatePresence initial={false} mode="popLayout">
+                            {selected ? (
+                              // No `leading-none` — `overflow:hidden` + line-height 1
+                              // shears descenders. Plate cells are fixed `h-10`.
+                              <motion.span
+                                key={`${tab.id}-label`}
+                                initial={{ opacity: 0, width: 0 }}
+                                animate={{ opacity: 1, width: 'auto' }}
+                                exit={{ opacity: 0, width: 0 }}
+                                transition={plateLayoutTransition}
+                                className="max-w-[7rem] overflow-hidden whitespace-nowrap text-role-caption font-semibold"
+                              >
+                                {tab.label}
+                              </motion.span>
+                            ) : null}
+                          </AnimatePresence>
+                          {count ? (
+                            <span
+                              className={cn(
+                                'tabular-nums text-role-caption',
+                                selected ? 'opacity-70' : 'opacity-80',
+                              )}
+                            >
+                              {count}
+                            </span>
+                          ) : null}
+                        </motion.button>
+                      );
+                      // Tooltip only where the label is not already on screen.
+                      return selected ? (
+                        cell
+                      ) : (
+                        <HoverTooltip key={tab.id} label={tab.label} asChild focusable={false}>
+                          {cell}
+                        </HoverTooltip>
+                      );
+                    })}
+                  </div>
+                </LayoutGroup>
               ) : (
                 <div role="group" aria-label={ariaLabel} className="min-w-0">
                   <TabDisplay

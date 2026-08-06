@@ -4,23 +4,17 @@
  * `pattern-evolution.md` Always #6: a rules file cannot fail, so the law lands
  * with a guard, not only prose.
  *
- * The law (see `.claude/rules/display/station-workbench.md` → Package Pairing is
- * a DISPLAY, and `.claude/rules/source-of-truth.md` → Scan-station centre lines
- * display): a scan station's reference tools — Pairing/Linkage · Classify ·
- * Staging · Ticket · Photos — live on the right-edge **Displays push**
- * (`ReceivingDisplaysPushStack` / `UnboxPushColumn`), never as a centre
- * `SectionTabsSlider` strip and never as a `RightRailHost` occupant. The
- * station's CENTRE is its work surface: identity + PO / unfound lines + dock.
- * Unbox (`LineEditPanel`) is the golden; Arrival composes the same grammar.
+ * Arrival carve-out (2026-08-06): the CENTRE is the door flow — identity +
+ * Unbox-parity PO / unfound items (`POUnboxingSection`) + Classify + Staging
+ * stacked under items + dock. Pairing/Linkage is the right-edge **Displays**
+ * push (`ReceivingDisplaysPushStack` / `UnboxPushColumn`), never a centre
+ * `SectionTabsSlider` strip and never a `RightRailHost` occupant. Unbox
+ * (`LineEditPanel`) remains the golden for the host; Classify stays on Unbox
+ * Displays. See `.claude/rules/source-of-truth.md` → Scan-station centre lines
+ * display.
  *
- * Landed 2026-08-05 (scan-station Displays SoT, Phase C): `TriagePanel`'s centre
- * Classify / Staging / Pairing `SectionTabsSlider` was removed; the centre now
- * mounts the carton's lines (`POUnboxingSection` → `LinePoItemsSection`) and the
- * reference tools moved to a right-edge Displays push
- * (`build-triage-displays.tsx`). The `# ----` PO chip opens the Linkage display
- * and hands the PO avenue over as DATA (`setPairingFocus`), like Unbox — so the
- * golden `unbox-right-edge-chrome.guard.test.ts` block A carve-out ("Triage
- * keeps its in-place event") was retired in the same change.
+ * The `# ----` PO chip opens the Linkage display and hands the PO avenue over
+ * as DATA (`setPairingFocus`), like Unbox.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -29,9 +23,8 @@ import { describe, it } from 'node:test';
 
 /**
  * Read the file as CODE, not prose. Every claim below is about what the panel
- * does; `TriagePanel`'s docblock still describes the old center-tab anatomy, so
- * a naive scan of the raw text would pass or fail on the comments instead of the
- * component. (Same helper the golden right-edge guard uses.)
+ * does; a naive scan of the raw text would pass or fail on the comments instead
+ * of the component. (Same helper the golden right-edge guard uses.)
  */
 function stripComments(src: string): string {
   return src
@@ -42,20 +35,22 @@ function stripComments(src: string): string {
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
 const TRIAGE_PANEL = 'src/components/receiving/triage/TriagePanel.tsx';
+const TRIAGE_DISPLAYS = 'src/components/receiving/triage/build-triage-displays.tsx';
 
 describe('Arrival Displays push — scan-station Displays SoT', () => {
   const panel = read(TRIAGE_PANEL);
+  const displays = read(TRIAGE_DISPLAYS);
 
   it('the CENTRE carries no station SectionTabsSlider chrome', () => {
-    // The screenshot fix: no Classify | Staging | Pairing pill strip in the
-    // middle. Those are reference tools; the centre is the carton's work.
+    // No Classify | Staging | Pairing pill strip in the middle — Classify ·
+    // Staging are stacked sections under items; Pairing is Displays.
     assert.ok(
       !panel.includes('TriageSectionTabs'),
-      'the center Classify/Staging/Pairing SectionTabsSlider must leave TriagePanel — reference tools live on the Displays push',
+      'the center Classify/Staging/Pairing SectionTabsSlider must leave TriagePanel',
     );
     assert.ok(
       !panel.includes('buildTriageTabs'),
-      'the center-tab builder must not be mounted as station chrome (it dies / becomes a Displays body factory in Phase C)',
+      'the center-tab builder must not be mounted as station chrome',
     );
   });
 
@@ -80,7 +75,51 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
     assert.match(
       panel,
       /POUnboxingSection|LinePoItemsSection|UnmatchedItemsSection/,
-      'the ask: unfound / matched PO lines stay in the middle (POUnboxingSection → LinePoItemsSection routes both) — not Package Pairing, not a tab strip',
+      'unfound / matched PO lines stay in the middle (POUnboxingSection → LinePoItemsSection routes both)',
+    );
+  });
+
+  it('the CENTRE stacks Classify then Staging under items (door flow)', () => {
+    assert.match(panel, /TriageClassifySection/);
+    assert.match(panel, /StagingSection/);
+    const classifyAt = panel.indexOf('TriageClassifySection');
+    const stagingAt = panel.indexOf('StagingSection');
+    assert.ok(classifyAt > 0 && stagingAt > classifyAt, 'Classify must mount above Staging in the centre');
+  });
+
+  it('Arrival Displays strip is Pairing-only (no Classify · Staging tabs)', () => {
+    assert.match(displays, /id:\s*['"]linkage['"]/);
+    assert.doesNotMatch(
+      displays,
+      /id:\s*['"]classify['"]/,
+      'Classify left the Displays strip — it stacks under items in TriagePanel',
+    );
+    assert.doesNotMatch(
+      displays,
+      /id:\s*['"]staging['"]/,
+      'Staging left the Displays strip — it stacks under Classify in TriagePanel',
+    );
+    assert.doesNotMatch(displays, /TriageClassifySection/);
+    assert.doesNotMatch(displays, /StagingSection/);
+  });
+
+  it('items use Unbox-parity editLines + serialScan (interactive unfound surface)', () => {
+    assert.match(panel, /\beditLines\b/);
+    assert.match(panel, /\bserialScan\b/);
+    assert.doesNotMatch(
+      panel,
+      /editLines=\{false\}/,
+      'Arrival must not keep a read-only items floor — unfound needs UnmatchedAccordionSurface parity with Unbox',
+    );
+    assert.doesNotMatch(
+      panel,
+      /serialScan=\{false\}/,
+      'Arrival must not hide ReturnScanCard / active-row editors on unfound',
+    );
+    assert.doesNotMatch(
+      panel,
+      /UnfoundTodoStrip/,
+      'amber UnfoundTodoStrip is retired — the interactive unfound surface is the teaching UI',
     );
   });
 
@@ -98,11 +137,13 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
 });
 
 /**
- * Testing (Tier-A twin) — Phase E landed: Package Pairing is a Displays push
- * body, not a centre `pairingOpen` toggle. Keep the same bans as Arrival.
+ * Testing (Tier-A twin) — Phase E complete: centre = testing work; reference
+ * tools on Displays push. Same chrome as Arrival / Unbox (flow identity,
+ * Open displays, no centre SectionTabsSlider).
  */
 describe('Phase E — Testing Displays push', () => {
   const testing = read('src/components/tech/TestingPanel.tsx');
+  const header = read('src/components/tech/testing-panel/TestingCartonHeader.tsx');
 
   it('Testing mounts a Displays push column (no centre pairingOpen)', () => {
     assert.match(
@@ -116,6 +157,52 @@ describe('Phase E — Testing Displays push', () => {
         `${dead} must stay deleted — Displays push selected-ness is the open state`,
       );
     }
+  });
+
+  it('centre has no SectionTabsSlider — reference tools live on Displays', () => {
+    assert.doesNotMatch(
+      testing,
+      /SectionTabsSlider/,
+      'centre SectionTabsSlider must stay deleted — Ticket · Pairing · Checklist · Manuals · Timeline · Linkage are Displays',
+    );
+    assert.match(
+      testing,
+      /buildTestingDisplayTabs/,
+      'Displays bodies come from buildTestingDisplayTabs',
+    );
+  });
+
+  it('carton identity is in-flow (zero air above testing work)', () => {
+    assert.match(testing, /placement=["']flow["']/);
+    assert.match(testing, /reserveIdentityClearance=\{false\}/);
+    assert.doesNotMatch(
+      testing,
+      /reserveIdentityClearance=["']stacked["']/,
+      'stacked pt clearance leaves a guessed gap under the absolute identity',
+    );
+    assert.match(testing, /bodyGap=["']none["']/);
+  });
+
+  it('utility rail carries Open displays while Displays is closed', () => {
+    assert.match(testing, /utilityRail=\{utilityRailBody\}/);
+    assert.match(
+      testing,
+      /UnboxDisplaysEdgeToggle variant="pane-open"/,
+      'the `←|` expand toggle mounts while Displays is closed',
+    );
+    assert.doesNotMatch(
+      testing,
+      /StationMoreDetails|StationHeaderToolbar/,
+      'Refresh · Pair corner toolbar is retired — Pairing is a Displays tab',
+    );
+  });
+
+  it('TestingCartonHeader passes carrierHint for carrier-tinted tracking', () => {
+    assert.match(
+      header,
+      /carrierHint=\{row\.carrier\}/,
+      'tracking chip must pass carrierHint (Unbox SoT — no bare MapPin)',
+    );
   });
 });
 
@@ -153,18 +240,17 @@ describe('Arrival pane controls — expand · cursor · dock note', () => {
     );
   });
 
-  it('the carton cursor is ↑ NEXT / ↓ PREVIOUS (queue reads newest-at-top)', () => {
+  it('the carton cursor is ↑ PREV / ↓ NEXT (same as left sidebar)', () => {
     assert.match(panel, /ScanStationCartonCursor/);
-    assert.match(panel, /nextTestId="arrival-carton-next"/);
     assert.match(panel, /prevTestId="arrival-carton-prev"/);
-    assert.match(panel, /onNext=\{onNextCarton\}/);
+    assert.match(panel, /nextTestId="arrival-carton-next"/);
     assert.match(panel, /onPrev=\{onPrevCarton\}/);
-    // Shared SoT: ↑ (ChevronUp) advances to the NEXT carton; ↓ goes back.
+    assert.match(panel, /onNext=\{onNextCarton\}/);
     const cursor = read('src/components/station/workbench/ScanStationCartonCursor.tsx');
-    assert.match(cursor, /ChevronUp/);
-    assert.match(cursor, /ariaLabel="Next carton"/);
-    assert.match(cursor, /ChevronDown/);
+    assert.match(cursor, /ChevronUp[\s\S]{0,200}onClick=\{onPrev\}/);
     assert.match(cursor, /ariaLabel="Previous carton"/);
+    assert.match(cursor, /ChevronDown[\s\S]{0,200}onClick=\{onNext\}/);
+    assert.match(cursor, /ariaLabel="Next carton"/);
   });
 
   it('the item note is pinned to the bottom dock float (internal — carries to Unbox)', () => {
@@ -215,21 +301,15 @@ describe('Arrival flat centre — Unbox flow identity parity', () => {
     assert.doesNotMatch(
       panel,
       /space-y-4/,
-      'centre must not reintroduce space-y-4 between lines and the unfound strip',
+      'centre must not reintroduce space-y-4 between items · Classify · Staging',
     );
   });
-});
 
-describe('Arrival UnfoundTodoStrip — flush sheet-band (no rounded card island)', () => {
-  const strip = read('src/components/receiving/triage/UnfoundTodoStrip.tsx');
-
-  it('is a flush hairline band, not a rounded-xl dashed card', () => {
-    assert.match(strip, /rounded-none/);
-    assert.doesNotMatch(
-      strip,
-      /rounded-(?:xl|2xl|lg|md)\b/,
-      'soft radius reintroduces a floating island under the flat PO floor',
+  it('suppresses the PO items eyebrow — identity abuts lines', () => {
+    assert.match(
+      panel,
+      /suppressItemsHeader/,
+      'Arrival must not show "PO ITEMS · N" (esp. empty unfound · 0) — Unbox overview SoT',
     );
-    assert.doesNotMatch(strip, /border-dashed/);
   });
 });

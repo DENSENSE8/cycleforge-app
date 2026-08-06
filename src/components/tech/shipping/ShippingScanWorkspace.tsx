@@ -22,20 +22,14 @@ export function ShippingScanWorkspace({
   activeOrder,
   previewOrder,
   onRemoveSerial,
-  onChangeCondition,
-  isMutatingCondition,
 }: {
   activeOrder: ActiveStationOrder;
   /** Up Next preview row — supplies status fields missing from ActiveStationOrder. */
   previewOrder?: Order;
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
-  onChangeCondition?: (next: string) => void | Promise<void>;
-  isMutatingCondition?: boolean;
 }) {
   const [view, setView] = useState<ShippingView>('ship');
   const hasUnits = activeOrder.serialNumbers.length > 0;
-  const isShipped =
-    previewOrder?.status === 'SHIPPED' || previewOrder?.status === 'SHIPPED_EXT';
 
   useEffect(() => {
     if (!hasUnits && view === 'units') setView('ship');
@@ -51,6 +45,9 @@ export function ShippingScanWorkspace({
     };
   }, [activeOrder]);
 
+  // previewOrder reserved for future Ship status chips; keep prop for host parity.
+  void previewOrder;
+
   const tabs = useMemo(
     () =>
       buildSectionTabs([
@@ -59,12 +56,7 @@ export function ShippingScanWorkspace({
           label: 'Ship',
           icon: Barcode,
           content: (
-            <ShippingSkuSerialRows
-              activeOrder={orderForContext}
-              onChangeCondition={onChangeCondition}
-              isMutatingCondition={isMutatingCondition}
-              isShipped={isShipped}
-            />
+            <ShippingSkuSerialRows activeOrder={orderForContext} />
           ),
         },
         {
@@ -83,9 +75,6 @@ export function ShippingScanWorkspace({
       ]),
     [
       orderForContext,
-      onChangeCondition,
-      isMutatingCondition,
-      isShipped,
       hasUnits,
       activeOrder,
       onRemoveSerial,
@@ -98,6 +87,7 @@ export function ShippingScanWorkspace({
       value={view}
       onChange={(id) => setView(id as ShippingView)}
       ariaLabel="Shipping work"
+      className="gap-0 space-y-0"
     />
   );
 }

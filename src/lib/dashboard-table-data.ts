@@ -2,121 +2,15 @@
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
-import { isFbaOrder } from '@/utils/order-platform';
 import type { ShippedSearchField } from '@/lib/shipped-search';
+import {
+  dedupeByOrderId,
+  isNonFbaRecord,
+  normalizeUnshippedOrdersPayload,
+  toOrderRecord,
+} from '@/lib/orders/order-record-normalize';
 
 const FRESH_FETCH_OPTIONS: RequestInit = { cache: 'no-store' };
-
-function toOrderRecord(order: any): ShippedOrder {
-  const primaryTracking = order.shipping_tracking_number || order.tracking_number || null;
-  const trackingNumbers = Array.isArray(order.tracking_numbers)
-    ? order.tracking_numbers.map((v: unknown) => String(v || '').trim()).filter(Boolean)
-    : primaryTracking
-      ? [String(primaryTracking).trim()]
-      : [];
-  const trackingNumberRows = Array.isArray(order.tracking_number_rows)
-    ? order.tracking_number_rows
-      .map((row: any) => ({
-        shipment_id: Number.isFinite(Number(row?.shipment_id)) ? Number(row.shipment_id) : null,
-        tracking: String(row?.tracking ?? row?.tracking_number_raw ?? '').trim(),
-        is_primary: Boolean(row?.is_primary),
-      }))
-      .filter((row: any) => row.tracking)
-    : [];
-  const mergedTrackingNumbers = trackingNumbers.length > 0
-    ? trackingNumbers
-    : trackingNumberRows.map((row: any) => row.tracking).filter(Boolean);
-  return {
-    ...order,
-    deadline_at: order.deadline_at || null,
-    shipment_id: order.shipment_id ?? null,
-    sale_amount: order.sale_amount ?? null,
-    currency: order.currency ?? null,
-    packed_at: order.packed_at || null,
-    packed_by: order.packed_by ?? null,
-    tested_by: order.tested_by ?? null,
-    serial_number: order.serial_number || '',
-    condition: order.condition || '',
-    // API returns tracking_number_raw aliased as tracking_number; map to the
-    // canonical ShippedOrder field so details-panel and all consumers work.
-    shipping_tracking_number: primaryTracking,
-    tracking_numbers: mergedTrackingNumbers,
-    tracking_number_rows: trackingNumberRows,
-    row_source: order.row_source || 'order',
-    exception_reason: order.exception_reason || null,
-    exception_status: order.exception_status || null,
-  };
-}
-
-function isNonFbaRecord(record: ShippedOrder) {
-  return !isFbaOrder(record.order_id, record.account_source);
-}
-
-function dedupeByOrderId(records: ShippedOrder[]): ShippedOrder[] {
-  const seen = new Map<string, ShippedOrder>();
-  for (const record of records) {
-    const orderKey = String(record.order_id || '').trim();
-    const key = orderKey || `id:${record.id}`;
-    if (!seen.has(key)) {
-      seen.set(key, record);
-    }
-  }
-  return Array.from(seen.values());
-}
-
-/**
- * Best-available product identity for a row — the discriminator that separates a
- * genuine multi-product order (different items under one order number → keep as
- * separate lines) from an accidental same-product dupe (collapse). `sku_catalog_id`
- * is the strongest signal but is usually null here, so fall back to a non-empty
- * `sku`, then the normalized `product_title`. Returns '' when nothing identifies
- * the product (blank import) — callers must NOT merge on an empty key.
- */
-function productKeyOf(record: ShippedOrder): string {
-  const cat = (record as { sku_catalog_id?: unknown }).sku_catalog_id;
-  if (cat != null && String(cat).trim() !== '') return `cat:${String(cat).trim()}`;
-  const sku = String(record.sku || '').trim().toLowerCase();
-  if (sku) return `sku:${sku}`;
-  const title = String(record.product_title || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  return title ? `title:${title}` : '';
-}
-
-/**
- * Collapse only TRUE duplicates — rows sharing both an order number AND a product
- * identity. Distinct products under one order number survive as separate rows (a
- * real multi-line order the queue table groups under one expandable header). Rows
- * with no order number, or no resolvable product identity, fall back to a per-id
- * key so they're never silently merged. Mirrors the dedup rule the transfer-job
- * cleanup uses, so the display and the data converge on the same notion of "dupe".
- */
-function dedupeByOrderProduct(records: ShippedOrder[]): ShippedOrder[] {
-  // Which order numbers carry at least one identified product? A blank-identity
-  // row (no sku/title — a missing-metadata dupe) is then dropped in favor of the
-  // real product line(s) so it never shows as a phantom "Unknown Product" line.
-  const ordersWithRealProduct = new Set<string>();
-  for (const record of records) {
-    const orderKey = String(record.order_id || '').trim();
-    if (orderKey && productKeyOf(record)) ordersWithRealProduct.add(orderKey);
-  }
-
-  const seen = new Map<string, ShippedOrder>();
-  for (const record of records) {
-    const orderKey = String(record.order_id || '').trim();
-    const pk = productKeyOf(record);
-    let key: string;
-    if (!orderKey) {
-      key = `id:${record.id}`;
-    } else if (pk) {
-      key = `${orderKey}::${pk}`; // distinct products survive; same-product dupes collapse
-    } else if (ordersWithRealProduct.has(orderKey)) {
-      continue; // blank dupe of an order that has a real product line → hide it
-    } else {
-      key = `${orderKey}::__blank__`; // all-blank order → keep a single row
-    }
-    if (!seen.has(key)) seen.set(key, record);
-  }
-  return Array.from(seen.values());
-}
 
 export async function fetchPendingOrdersData({
   searchQuery = '',
@@ -255,9 +149,7 @@ export async function fetchUnshippedOrdersData({
   }
 
   const data = await res.json();
-  return dedupeByOrderProduct(
-    ((data.orders || []).map(toOrderRecord) as ShippedOrder[]).filter(isNonFbaRecord)
-  );
+  return normalizeUnshippedOrdersPayload(data.orders || []);
 }
 
 /** Raw signal combo from the queue-counts endpoint — mapped to a fulfillment

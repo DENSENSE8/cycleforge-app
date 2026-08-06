@@ -34,6 +34,7 @@ import { useToShipFilterActions } from '@/components/dashboard/OutboundFilterStr
 import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { FulfillmentState } from '@/lib/unshipped-state';
+import { parseStaffParam } from '@/hooks/useStaffFilter';
 import {
   getDashboardOrderViewFromSearch,
   type DashboardOrderView,
@@ -207,7 +208,9 @@ function ShippedStrip() {
 }
 
 function UnshippedStrip() {
-  const query = useQuery(unshippedQueueCountsQuery());
+  const searchParams = useSearchParams();
+  const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
+  const query = useQuery(unshippedQueueCountsQuery({ staffId }));
   const { roi, pending: roiPending } = useGatedOperationsRoi();
   const {
     active,
@@ -218,7 +221,6 @@ function UnshippedStrip() {
     selectPendingTab,
     selectLifecycleTab,
   } = useToShipFilterActions();
-  const searchParams = useSearchParams();
   const orderView = getDashboardOrderViewFromSearch(searchParams);
 
   const toShipFilter: ToShipFilter = {

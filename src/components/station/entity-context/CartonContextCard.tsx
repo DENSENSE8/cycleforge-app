@@ -63,12 +63,14 @@ import {
  * `StationWorkbench reserveIdentityClearance="stacked"`.
  *
  *   Row 1 — *"what kind of work is this"* — urgency · platform · type; Photos
- *           pinned in a right column.
+ *           pinned trailing.
  *   Row 2 — *"which record"* — lifecycle · order#/PO# · tracking (left);
- *           price · listing · Claim/ticket right-justified under Photos.
+ *           price · listing · Claim/ticket on the SAME flush bottom row (gap-0).
  *
- * The exit chevron opens row 1 so it and the order chip share the band's left
- * edge. Never mix an identifier into row 1 or a classification into row 2.
+ * CSS grid locks both rows — commerce never drops into a third band under
+ * Photos. The exit chevron opens row 1 so it and the order chip share the
+ * band's left edge. Never mix an identifier into row 1 or a classification
+ * into row 2.
  * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `lifecycle`,
  * `showPoTotal`, classify, …) to hide that affordance per station — do not
  * invent empty placeholder tracks.
@@ -153,7 +155,7 @@ export function CartonContextCard({
    * Purchase-order money total, resolved by the adapter via `cartonPoTotal`
    * (`src/lib/receiving/po-total.ts`) — never summed in a view. `null` renders
    * the honest `—` (no line on this carton carries a mirrored price).
-   * Displayed under Photos (before listing · Claim) when {@link showPoTotal}.
+   * Displayed under Photos (before listing · Claim, gap-0 abut) when {@link showPoTotal}.
    */
   poTotal?: number | null;
   /**
@@ -516,8 +518,8 @@ export function CartonContextCard({
       />
   ) : null;
 
-  /* Filed ticket# OR empty Claim CTA — stacks directly under Photos in the
-     right column (never beside Photos, never in the row-2 identity strip). */
+  /* Filed ticket# OR empty Claim CTA — row 2 trailing with price · listing
+     (never beside Photos on row 1, never in the left identity strip). */
   const filedTicketChip =
     showStaffPhotoRow && zendeskTrimmed ? (
       <ReceivingTicketChip
@@ -562,36 +564,35 @@ export function CartonContextCard({
 
   const claimUnderPhotos = filedTicketChip ?? claimCta;
 
-  /* Right column — Photos on top; under it, right-justified
-     price · listing · Claim/ticket (that order). */
+  /* Row 2 trailing — flush end-aligned price · listing · Claim/ticket
+     (gap-0 abut, same grammar as classify). Sits on the SAME grid row as
+     lifecycle · order# · tracking — never a third stacked band under Photos. */
   const commerceUnderPhotos =
     showPoTotal || listingChip || claimUnderPhotos ? (
-      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'justify-end gap-1.5')}>
+      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'justify-end')}>
         {showPoTotal ? <PoTotalChip amount={poTotal} /> : null}
         {listingChip}
         {claimUnderPhotos}
       </div>
     ) : null;
 
-  const photosClaimColumn =
-    (showStaffPhotoRow && receivingId != null) || commerceUnderPhotos ? (
-      <div className="flex shrink-0 flex-col items-end gap-0">
-        {showStaffPhotoRow && receivingId != null ? (
-          <ReceivingPhotoButton
-            receivingId={receivingId}
-            staffId={Number(staffId) || 0}
-            poRef={effectiveOrder || null}
-            photoStage={photoStage}
-            // Open beside the pill — not under it — so Claim / ticket under
-            // Photos stays clear for a straight downward click.
-            galleryPlacement="right"
-            onSendToTicket={onSendToTicket}
-            onOpenMovePhotosExternal={onOpenMovePhotosExternal}
-          />
-        ) : null}
-        {commerceUnderPhotos}
-      </div>
+  const photosCell =
+    showStaffPhotoRow && receivingId != null ? (
+      <ReceivingPhotoButton
+        receivingId={receivingId}
+        staffId={Number(staffId) || 0}
+        poRef={effectiveOrder || null}
+        photoStage={photoStage}
+        // Open beside the pill — not under it — so Claim / ticket on row 2
+        // stays clear for a straight click.
+        galleryPlacement="right"
+        onSendToTicket={onSendToTicket}
+        onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+      />
     ) : null;
+
+  /** True when the trailing (Photos / commerce) column mounts. */
+  const photosClaimColumn = Boolean(photosCell || commerceUnderPhotos);
 
   /* PO# — or the originating ORDER# for a return: an imported RETURN shows its
      Zoho order#, and a serial-resolved return (scanned unit that was previously
@@ -663,63 +664,78 @@ export function CartonContextCard({
     </div>
   );
 
-  // ── Two-row assembly (the only face) ───────────────────────────────────────
-  // Left stack + right Photos/commerce column.
+  // ── Two-row assembly (the only face) — CSS grid so row 2 is ONE flush band ─
   //
-  //   Row 1 — classify (left) · Photos (right column top)
+  //   Row 1 — classify (left) · Photos (right)
   //   Row 2 — lifecycle · order# · tracking (left) ·
-  //           price · listing · Claim/ticket right-justified under Photos
+  //           price · listing · Claim/ticket (right) — same row, gap-0
   //
   // Never mix the two: no identifier on row 1, no classification on row 2.
+  // Never stack commerce under Photos in a third visual band.
   const hasLeadCol = !!exitControl || !!lifecycle;
+  const trailingCol = photosClaimColumn;
 
   const stackedLayout = (
-    <div className="flex min-w-0 w-full flex-1 items-stretch gap-0">
-      <div className={cn(STATION_IDENTITY_ROW_STACK_CLASS, 'min-w-0 flex-1')}>
-        {/* Row 1 — what kind of work is this. */}
-        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0 w-full')}>
-          {hasLeadCol ? (
-            <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
-          ) : null}
-          {classifyCluster}
-        </div>
-        {/* Row 2 — order status · order# · tracking (identifiers only). */}
-        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0 w-full')}>
-          {hasLeadCol ? (
-            <div className={STATION_IDENTITY_LEAD_COL_CLASS}>
-              {/* House status-indicator anatomy (2-unit dot + HoverTooltip label,
-                  never a standalone text badge). `asChild` + `inline-block` per
-                  the `StatusChip` reference: the default HoverTooltip wrapper is
-                  an inline <span>, and an inline box drops `h-2 w-2` on the floor
-                  — the dot renders 0×0. */}
-              {lifecycle ? (
-                <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
-                  <span
-                    className={cn('inline-block h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
-                    data-testid="carton-context-lifecycle-dot"
-                    aria-label={lifecycle.label}
-                  />
-                </HoverTooltip>
-              ) : null}
-            </div>
-          ) : null}
-          {orderChip}
-          {trackingSlot}
-          {qty ? (
-            <GridQtyFractionValue received={qty.received} expected={qty.expected} />
-          ) : null}
-        </div>
+    <div
+      className={cn(
+        'grid min-w-0 w-full flex-1 gap-0',
+        trailingCol
+          ? 'grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto]'
+          : 'grid-cols-1 grid-rows-[auto_auto]',
+      )}
+      data-testid="carton-context-two-row"
+    >
+      {/* Row 1 left — what kind of work is this. */}
+      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
+        {hasLeadCol ? (
+          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
+        ) : null}
+        {classifyCluster}
       </div>
-      {/* Right column — Photos on top; price · listing · Claim under, end-aligned. */}
-      {photosClaimColumn}
+      {/* Row 1 right — Photos */}
+      {trailingCol ? (
+        <div className="flex items-center justify-end self-center">{photosCell}</div>
+      ) : null}
+      {/* Row 2 left — order status · order# · tracking (identifiers only). */}
+      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
+        {hasLeadCol ? (
+          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>
+            {/* House status-indicator anatomy (2-unit dot + HoverTooltip label,
+                never a standalone text badge). `asChild` + `inline-block` per
+                the `StatusChip` reference: the default HoverTooltip wrapper is
+                an inline <span>, and an inline box drops `h-2 w-2` on the floor
+                — the dot renders 0×0. */}
+            {lifecycle ? (
+              <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
+                <span
+                  className={cn('inline-block h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
+                  data-testid="carton-context-lifecycle-dot"
+                  aria-label={lifecycle.label}
+                />
+              </HoverTooltip>
+            ) : null}
+          </div>
+        ) : null}
+        {orderChip}
+        {trackingSlot}
+        {qty ? (
+          <GridQtyFractionValue received={qty.received} expected={qty.expected} />
+        ) : null}
+      </div>
+      {/* Row 2 right — price · listing · Claim flush on the same bottom row. */}
+      {trailingCol ? (
+        <div className="flex items-center justify-end self-center">
+          {commerceUnderPhotos}
+        </div>
+      ) : null}
     </div>
   );
 
   const body = (
       <div className="px-0 py-0">
-        <div className="flex min-w-0 flex-col gap-0">
+        <div className={STATION_IDENTITY_ROW_STACK_CLASS}>
           {/* Two-row identity — row 1 classify · Photos; row 2 status · order# ·
-              tracking; under Photos: price · listing · Claim (end-aligned). */}
+              tracking · price · listing · Claim as ONE flush bottom band. */}
           <div className="flex w-full min-w-0 max-w-full items-center">
             <AnimatePresence initial={false}>
               {openPicker === null ? (

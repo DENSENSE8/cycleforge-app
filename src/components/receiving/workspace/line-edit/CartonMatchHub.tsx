@@ -5,13 +5,16 @@
  * Testing, and Arrival.
  *
  * One host, two presentations:
- *   • Auto-match — `UnfoundMatchStrip` action grid when `autoMatch` is set
- *     (unfound only). Resolution toolkit: Return # / Zoho / Amazon / Find ticket.
- *   • Pairing — avenue switcher + SearchBar attach bodies (Inventory · PO ·
- *     Store · Tickets). Never merges Auto-match into the avenue control.
+ *   • Auto-match — `UnfoundMatchStrip` flush action row when `autoMatch` is set
+ *     (unfound only). Toolkit: Find ticket (→ Ticket display · claim tabs) ·
+ *     Return # · Zoho · Amazon return.
+ *   • Pairing — avenue switcher + attach bodies (Inventory · PO · Store).
+ *     Ticket create/link lives on the Ticket Displays topic
+ *     (`ReceivingClaimPanel` New ticket · Link existing) — never a Pairing
+ *     avenue twin.
  *
  * One hub adapts via:
- *   • `tabSet` — `unbox` includes Inventory Item; `arrival` does not
+ *   • `tabSet` — `unbox` includes Inventory Item; `arrival` does not (no Tickets avenue)
  *   • `chrome` — `bare` (Station Displays push — Arrival · Unbox · Testing): no
  *     duplicate title / pencil; Pairing secondary-token dropdown; flush plane
  *     (no WorkspaceCard island). `card`: WorkspaceCard + dense slider. Both
@@ -33,12 +36,10 @@ import {
   ChevronRight,
   Link2,
   Loader2,
-  Mail,
   PackageOpen,
   Pencil,
   Search,
   ShoppingCart,
-  Ticket,
   Unlink,
 } from '@/components/Icons';
 import {
@@ -59,7 +60,6 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SearchBar } from '@/components/ui/SearchBar';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
   DropdownMenu,
@@ -67,7 +67,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import {
   HorizontalButtonSlider,
   type HorizontalSliderItem,
@@ -77,9 +76,7 @@ import { ZohoItemPairTab } from '@/components/receiving/workspace/line-edit/Zoho
 import { PoLinkTab } from '@/components/receiving/workspace/line-edit/PoLinkTab';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { MatchCard } from '@/components/receiving/triage/MatchCard';
-import { relativeTime, toTriagePackage } from '@/components/receiving/triage/triage-types';
-import { useTriagePanel } from '@/components/receiving/triage/useTriagePanel';
+import { toTriagePackage } from '@/components/receiving/triage/triage-types';
 import { useUnmatchedItems } from '@/components/receiving/workspace/unmatched-items/useUnmatchedItems';
 import { useReceivingCartonUnlink } from '@/components/receiving/workspace/unmatched-items/useReceivingCartonUnlink';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
@@ -94,7 +91,7 @@ type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // Displays body), so they are internal to this component again.
 type CartonMatchTabSet = 'unbox' | 'arrival';
 /** Pairing avenues — Inventory Item is Unbox-only. */
-type MatchTab = 'zoho_item' | 'zoho_po' | 'ecwid' | 'zendesk';
+type MatchTab = 'zoho_item' | 'zoho_po' | 'ecwid';
 
 type CartonMatchHubChrome = 'card' | 'bare';
 
@@ -107,12 +104,14 @@ type CartonMatchAutoMatch = {
   ticketNumber?: string | null;
   ticketUrl?: string | null;
   onTicketChanged?: () => void;
+  /** Jump to Ticket Displays (claim · link) — Find ticket leading cell. */
+  onFindTicket?: () => void;
 };
 
 type CartonMatchHubProps = {
   row: ReceivingLineRow;
   staffId: string;
-  /** `unbox` = Inventory Item + PO + Store + Tickets; `arrival` omits Inventory. */
+  /** `unbox` = Inventory Item + PO + Store; `arrival` omits Inventory. */
   tabSet?: CartonMatchTabSet;
   /**
    * `bare` — Unbox Displays host: no duplicate "Package Pairing" title, no
@@ -306,13 +305,6 @@ function MatchHubCard({
   const [forcePicker, setForcePicker] = useState(false);
   const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
   const pickerCollapsed = orderLinked && !forcePicker;
-  const zendeskQueriesActive =
-    !collapsed && !pickerCollapsed && tab === 'zendesk';
-  const t = useTriagePanel({
-    row,
-    loadCandidates: zendeskQueriesActive,
-    loadDeliveredEmails: zendeskQueriesActive,
-  });
   const pairingCollapse = useMotionPresence(framerPresence.collapseHeight);
   const pairingCollapseTransition = useMotionTransition(framerTransition.sidebarExpand);
 
@@ -433,13 +425,11 @@ function MatchHubCard({
       ? [
           { id: 'zoho_po', label: 'PO', icon: Link2 },
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
-          { id: 'zendesk', label: 'Tickets', icon: Ticket },
         ]
       : [
           { id: 'zoho_item', label: 'Inventory Item', icon: Search },
           { id: 'zoho_po', label: 'PO', icon: Link2 },
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
-          { id: 'zendesk', label: 'Tickets', icon: Ticket },
         ];
 
   const pairingModes: { id: MatchTab; label: string; icon: IconComponent }[] = tabs.map(
@@ -501,8 +491,8 @@ function MatchHubCard({
         ticketNumber={autoMatch.ticketNumber}
         ticketUrl={autoMatch.ticketUrl}
         onTicketChanged={autoMatch.onTicketChanged}
+        onFindTicket={autoMatch.onFindTicket}
         showTopRule={false}
-        layout="grid"
       />
     ) : null;
 
@@ -553,13 +543,6 @@ function MatchHubCard({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-      {tab === 'zendesk' && t.hiddenLinked > 0 ? (
-        <HoverTooltip label={`${t.hiddenLinked} ticket(s) already linked elsewhere are hidden`}>
-          <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-            {t.hiddenLinked} hidden
-          </span>
-        </HoverTooltip>
-      ) : null}
     </div>
   ) : (
     <div ref={cardTopRef} className="mb-2 flex min-w-0 items-center gap-2">
@@ -573,13 +556,6 @@ function MatchHubCard({
         onChange={(id) => setTab(id as MatchTab)}
         aria-label="Pairing tabs"
       />
-      {tab === 'zendesk' && t.hiddenLinked > 0 ? (
-        <HoverTooltip label={`${t.hiddenLinked} ticket(s) already linked elsewhere are hidden`}>
-          <span className="ml-auto shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-            {t.hiddenLinked} hidden
-          </span>
-        </HoverTooltip>
-      ) : null}
     </div>
   );
 
@@ -600,15 +576,13 @@ function MatchHubCard({
         allowOffPo={orderLinked}
         onAddSku={(sel) => u.handleAddLine(sel, { allowOffPo: orderLinked })}
       />
-    ) : tab === 'zoho_po' ? (
+    ) : (
       <PoLinkTab
         row={row}
         receivingId={receivingId}
         autoFocusSearch={poFocusRequestId > 0}
         focusRequestId={poFocusRequestId}
       />
-    ) : (
-      <ZendeskMatchTab t={t} />
     );
 
   const body = (
@@ -740,90 +714,5 @@ function MatchHubCard({
     <WorkspaceCard label="Package Pairing" overflow="visible" actions={headerActions}>
       {content}
     </WorkspaceCard>
-  );
-}
-
-/** The Zendesk-tickets tab body — search + candidate match cards + delivery hints. */
-function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
-  return (
-    <>
-      <div className="mb-2">
-        <SearchBar
-          value={t.matchQuery}
-          onChange={t.setMatchQuery}
-          placeholder="Search claim tickets by #, order, email, customer…"
-          isSearching={t.candidatesFetching}
-          variant="blue"
-          size="compact"
-          hideUnderline
-        />
-      </div>
-
-      {t.candidatesLoading ? (
-        <p className="flex items-center justify-center gap-2 py-5 text-xs text-text-soft">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading matches…
-        </p>
-      ) : t.candidatesError ? (
-        <p
-          className={cn(
-            cornerClass('flush'),
-            'border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600',
-          )}
-        >
-          Couldn’t load helpdesk matches. The helpdesk may not be connected.
-        </p>
-      ) : t.candidates.length === 0 ? (
-        <p
-          className={cn(
-            cornerClass('flush'),
-            'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
-          )}
-        >
-          {t.matchQuery.trim()
-            ? `No tickets match “${t.matchQuery.trim()}”.`
-            : 'No recent claim tickets. Search by order #, email, or customer name.'}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {t.candidates.map((candidate) => (
-            <MatchCard
-              key={candidate.id}
-              candidate={candidate}
-              onLink={t.linkTicket}
-              linking={t.linkingId === candidate.id}
-              anyLinking={t.linkingId !== null}
-            />
-          ))}
-        </div>
-      )}
-
-      {t.deliveredEmails.length > 0 ? (
-        <div className="mt-3 border-t border-border-hairline pt-3">
-          <WorkspaceSectionTitle as="p" className="mb-1.5">
-            Marketplace delivery signals
-          </WorkspaceSectionTitle>
-          <div className="space-y-1">
-            {t.deliveredEmails.map((sig, i) => (
-              <div
-                key={`${sig.orderNumber}-${i}`}
-                className={cn(
-                  'flex items-center gap-2 bg-violet-50/60 inset-cozy',
-                  cornerClass('flush'),
-                )}
-              >
-                <Mail className="h-3.5 w-3.5 shrink-0 text-violet-500" />
-                <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-text-muted">
-                  Order
-                  <OrderIdChip value={sig.orderNumber} display={getLast8(sig.orderNumber)} dense />
-                  {sig.deliveredAt ? (
-                    <span className="truncate text-text-faint">· delivered {relativeTime(sig.deliveredAt)}</span>
-                  ) : null}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </>
   );
 }

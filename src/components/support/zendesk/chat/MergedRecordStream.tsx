@@ -1,9 +1,14 @@
 'use client';
 
 /**
- * The ticket's MERGED RECORD STREAM — customer messages and warehouse / carrier
- * events interleaved chronologically as flat ledger rows on one shared left
+ * The ticket's MERGED RECORD STREAM — helpdesk messages, optionally interleaved
+ * with warehouse / carrier events, as flat ledger rows on one shared left
  * reading edge.
+ *
+ * **Station Ticket Displays omit `events`** (messages only). Floor spine lives
+ * on the peer Timeline Displays tab (`EventTimeline` / `WorkspaceTimelineTab`).
+ * Support service workspace may still pass a collapsed event spine via
+ * `mergeFloorTimeline` until an explicit Floor toggle ships.
  *
  * It replaced `SupportChatThread` (deleted 2026-08-02), which drew a chat: blue
  * and amber bubbles, ragged variable widths, a `PUBLIC` chip on every outbound

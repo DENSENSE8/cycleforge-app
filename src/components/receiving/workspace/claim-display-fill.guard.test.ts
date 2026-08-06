@@ -501,6 +501,16 @@ describe('Unbox Displays claim fill + pinned footer', () => {
       /appearance="segment"/,
       'To/From carton toggle is a flush TabDisplay segment',
     );
+    assert.match(
+      move,
+      /rounded-none border-x-0 border-t-0/,
+      'To/From matches ClaimWizardNav flush segment chrome',
+    );
+    assert.doesNotMatch(
+      move,
+      /<div className="px-3">\s*<TabDisplay/,
+      'To/From tabs are edge-to-edge — no px-3 gutter around the segment',
+    );
     assert.doesNotMatch(
       move,
       /PaneHeaderTabs/,

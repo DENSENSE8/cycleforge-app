@@ -102,7 +102,11 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   - **Scoped search chrome:** always-open `TechRailSearchBar` `variant="chrome"` (`@/components/sidebar/tech/TechRailSearchBar`) — same primitive as MasterNav / station-rail footers (`variant="rail"`). Leading Search glyph **inside** the field + **hover-reveal paste** (leftmost trailing control). Field-density filters seat in `trailingSuffix` (after paste); context-panel rail footers auto-seat `RailFilterCollapseButton` in the age column. The retired icon-first `ToolbarSearchToggle` is deleted.
     - **Entry-path surfaces** may still mount a bare always-open `SearchField` / `SearchBar` when search **is** the job (not a list refinement):
       1. **`/ops/photos` (Media Library)** — always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket).
-      2. **`/search`** — the cross-entity find surface; the centered `GlobalFindCombobox` stage in `SearchFindStage` is the always-open entry field (synced to `?q=`). Typing here *is* the job. Multi-hit results sit in a temporary list under the bar (no context rail). The global header search launcher stays mounted and defers focus to the stage when no `?sel=` is active.
+      2. **`/search`** — cross-entity find; **`GlobalHeaderSearch`** is the sole
+         entry field (synced to `?q=`). Typing / resolving here *is* the job —
+         the header paints `SearchPendingBar` while resolve/retrieve runs.
+         Multi-hit browse is full-bleed `SearchBrowseShell` under the header
+         (no locked-width stage field, no context rail).
   - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.

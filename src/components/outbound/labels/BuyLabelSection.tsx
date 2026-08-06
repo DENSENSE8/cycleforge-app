@@ -55,6 +55,11 @@ interface BuyLabelSectionProps {
   orderRef: string;
   /** Called after a purchase or void so the parent refreshes the document tray. */
   onChange: () => void;
+  /**
+   * Station flush host — square faces (`rounded-none`) so Buy Label matches
+   * Unbox pinned chrome under Labels Documents.
+   */
+  flush?: boolean;
 }
 
 /**
@@ -64,7 +69,14 @@ interface BuyLabelSectionProps {
  * + generated packing slip flow into the existing document tray + print view via
  * `onChange`. Includes an immediate void/refund on the success card.
  */
-export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSectionProps) {
+export function BuyLabelSection({
+  orderId,
+  orderRef,
+  onChange,
+  flush = false,
+}: BuyLabelSectionProps) {
+  const face = flush ? 'rounded-none' : 'rounded-xl';
+  const faceSm = flush ? 'rounded-none' : 'rounded-lg';
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [notifyCustomer, setNotifyCustomer] = useState(true);
@@ -173,7 +185,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
         {/* ── Success ───────────────────────────────────────────────────── */}
         {bought ? (
           <motion.div key="bought" {...paneMotion} className="space-y-2">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+            <div className={`${face} border border-emerald-200 bg-emerald-50 px-3 py-2.5`}>
               <div className="flex items-center gap-1.5 text-emerald-700">
                 <Check className="h-4 w-4" />
                 <span className="text-role-caption font-semibold">
@@ -199,7 +211,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
             </div>
 
             {bought.warning ? (
-              <div className="flex items-start gap-1.5 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-role-eyebrow text-amber-700">
+              <div className={`flex items-start gap-1.5 ${faceSm} border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-role-eyebrow text-amber-700`}>
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{bought.warning}</span>
               </div>
@@ -209,13 +221,13 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
 
             {/* Void / refund */}
             {voidOpen ? (
-              <div className="space-y-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+              <div className={`space-y-1.5 ${faceSm} border border-rose-200 bg-rose-50 px-3 py-2.5`}>
                 <label className="block text-role-eyebrow uppercase tracking-widest text-rose-700">Reason to void</label>
                 <input
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   placeholder="e.g. wrong service selected"
-                  className="w-full rounded-lg border border-rose-200 bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none focus:border-rose-400"
+                  className={`w-full ${faceSm} border border-rose-200 bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none focus:border-rose-400`}
                 />
                 {voidMutation.isError ? (
                   <p className="text-role-eyebrow text-rose-600">{voidMutation.error.message}</p>
@@ -261,7 +273,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
         ) : ratesMutation.isError ? (
           /* ── Error ──────────────────────────────────────────────────── */
           <motion.div key="error" {...paneMotion}>
-            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-4 text-center">
+            <div className={`${face} border border-dashed border-rose-200 bg-rose-50 px-4 py-4 text-center`}>
               <p className="text-role-caption font-semibold text-rose-700">{ratesMutation.error.message}</p>
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
@@ -276,7 +288,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
           /* ── Rate list ──────────────────────────────────────────────── */
           <motion.div key="rates" {...paneMotion} className="space-y-2">
             {rates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-center text-role-caption text-text-soft">
+              <p className={`${faceSm} border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-center text-role-caption text-text-soft`}>
                 No rates returned for this parcel.
               </p>
             ) : (
@@ -288,7 +300,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
                       <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                         type="button"
                         onClick={() => setSelectedRateId(rate.rateId)}
-                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+                        className={`flex w-full items-center gap-2 ${faceSm} px-2.5 py-1.5 text-left transition-colors ${
                           selected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover'
                         }`}
                       >
@@ -326,7 +338,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
             {/* Buy / confirm bar */}
             {selectedRate ? (
               confirming ? (
-                <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
+                <div className={`space-y-2 ${face} border border-violet-200 bg-violet-50 px-3 py-2.5`}>
                   <p className="text-role-caption font-semibold text-text-default">
                     Purchase this <span className="font-semibold">{money(selectedRate.amount, selectedRate.currency)}</span>{' '}
                     {selectedRate.carrierName} {selectedRate.serviceName} label?

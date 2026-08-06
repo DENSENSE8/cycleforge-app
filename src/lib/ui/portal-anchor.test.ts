@@ -1,0 +1,152 @@
+/**
+ * Portal tooltip anchor trust + clamp — bad rects must never yield a visible
+ * tip at ~(MARGIN, MARGIN) (the top-left flash).
+ */
+
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  clampPortalTooltipPosition,
+  isTrustedPortalAnchor,
+  PORTAL_TOOLTIP_MARGIN,
+  readTrustedTriggerRect,
+} from './portal-anchor';
+
+const VIEW = { width: 1200, height: 800 };
+
+function rect(partial: {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}): DOMRect {
+  const { top, left, width, height } = partial;
+  return {
+    top,
+    left,
+    width,
+    height,
+    bottom: top + height,
+    right: left + width,
+    x: left,
+    y: top,
+    toJSON() {
+      return this;
+    },
+  };
+}
+
+test('isTrustedPortalAnchor rejects null / zero-size / off-viewport', () => {
+  assert.equal(isTrustedPortalAnchor(null, VIEW), false);
+  assert.equal(isTrustedPortalAnchor(rect({ top: 100, left: 100, width: 0, height: 20 }), VIEW), false);
+  assert.equal(isTrustedPortalAnchor(rect({ top: 100, left: 100, width: 1, height: 1 }), VIEW), false);
+  assert.equal(isTrustedPortalAnchor(rect({ top: -40, left: 100, width: 20, height: 20 }), VIEW), false);
+  assert.equal(isTrustedPortalAnchor(rect({ top: 900, left: 100, width: 20, height: 20 }), VIEW), false);
+  assert.equal(isTrustedPortalAnchor(rect({ top: 100, left: -40, width: 20, height: 20 }), VIEW), false);
+  assert.equal(isTrustedPortalAnchor(rect({ top: 100, left: 1300, width: 20, height: 20 }), VIEW), false);
+});
+
+test('isTrustedPortalAnchor accepts on-screen triggers including top-left chrome', () => {
+  assert.equal(isTrustedPortalAnchor(rect({ top: 4, left: 4, width: 28, height: 28 }), VIEW), true);
+  assert.equal(isTrustedPortalAnchor(rect({ top: 200, left: 400, width: 80, height: 24 }), VIEW), true);
+  // Partially clipped but still overlapping the viewport.
+  assert.equal(isTrustedPortalAnchor(rect({ top: -10, left: 100, width: 40, height: 40 }), VIEW), true);
+});
+
+test('clampPortalTooltipPosition returns null for untrusted / undersized bubble', () => {
+  assert.equal(
+    clampPortalTooltipPosition({
+      anchor: rect({ top: 100, left: 100, width: 0, height: 20 }),
+      bubble: { width: 80, height: 28 },
+      viewport: VIEW,
+    }),
+    null,
+  );
+  assert.equal(
+    clampPortalTooltipPosition({
+      anchor: rect({ top: 200, left: 400, width: 80, height: 24 }),
+      bubble: { width: 0, height: 28 },
+      viewport: VIEW,
+    }),
+    null,
+  );
+});
+
+test('clampPortalTooltipPosition places a mid-viewport tip above the trigger', () => {
+  const anchor = rect({ top: 300, left: 500, width: 60, height: 24 });
+  const bubble = { width: 120, height: 28 };
+  const pos = clampPortalTooltipPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'auto',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.top, anchor.top - bubble.height - PORTAL_TOOLTIP_MARGIN);
+  assert.equal(pos!.left, anchor.left + anchor.width / 2 - bubble.width / 2);
+  // Must not be the top-left flash corner.
+  assert.ok(!(pos!.top <= PORTAL_TOOLTIP_MARGIN && pos!.left <= PORTAL_TOOLTIP_MARGIN));
+});
+
+test('bad mid-screen clamp path cannot paint a visible tip at ~(MARGIN,MARGIN)', () => {
+  // Trusted mid-screen anchor + oversized bubble → both axes clamp to MARGIN.
+  // Without the corner-belonging guard that would flash a stray top-left tip.
+  const anchor = rect({ top: 400, left: 600, width: 40, height: 20 });
+  const bubble = { width: 2000, height: 500 };
+  const pos = clampPortalTooltipPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'above',
+  });
+  assert.equal(
+    pos,
+    null,
+    `mid-screen trigger must not yield a top-left-pinned tip, got ${JSON.stringify(pos)}`,
+  );
+});
+
+test('legitimate top-left chrome still gets a corner-clamped tip', () => {
+  const anchor = rect({ top: 4, left: 4, width: 28, height: 28 });
+  const bubble = { width: 160, height: 28 };
+  const pos = clampPortalTooltipPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'below',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.left, PORTAL_TOOLTIP_MARGIN);
+  assert.ok(pos!.top > anchor.bottom);
+});
+
+test('readTrustedTriggerRect rejects disconnected / display:none', () => {
+  assert.equal(readTrustedTriggerRect(null, VIEW), null);
+
+  const disconnected = {
+    isConnected: false,
+    getBoundingClientRect: () => rect({ top: 10, left: 10, width: 20, height: 20 }),
+  } as unknown as HTMLElement;
+  assert.equal(readTrustedTriggerRect(disconnected, VIEW, () => ({ display: 'block', visibility: 'visible' }) as CSSStyleDeclaration), null);
+
+  const hidden = {
+    isConnected: true,
+    getBoundingClientRect: () => rect({ top: 10, left: 10, width: 20, height: 20 }),
+  } as unknown as HTMLElement;
+  assert.equal(
+    readTrustedTriggerRect(hidden, VIEW, () => ({ display: 'none', visibility: 'visible' }) as CSSStyleDeclaration),
+    null,
+  );
+
+  const visible = {
+    isConnected: true,
+    getBoundingClientRect: () => rect({ top: 10, left: 10, width: 20, height: 20 }),
+  } as unknown as HTMLElement;
+  const trusted = readTrustedTriggerRect(
+    visible,
+    VIEW,
+    () => ({ display: 'block', visibility: 'visible' }) as CSSStyleDeclaration,
+  );
+  assert.ok(trusted);
+  assert.equal(trusted!.top, 10);
+});

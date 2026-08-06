@@ -15,6 +15,7 @@ import {
   cartonContentsSummary,
   cartonDisposition,
   cartonEventSignature,
+  cartonEventTitle,
   cartonExceptions,
   cartonFacts,
   cartonFlags,
@@ -535,6 +536,52 @@ test('cartonEventSignature: never prints one fact twice', () => {
 test('cartonEventSignature: whitespace-only fields are absent, not values', () => {
   assert.deepEqual(
     cartonEventSignature({ ...EVENT, event_type: '  ', next_status: '  ', notes: '   ' }),
+    { kind: null, trail: null },
+  );
+});
+
+test('cartonEventTitle: strips Stage prefix from workflow notes', () => {
+  assert.equal(
+    cartonEventTitle({
+      event_type: 'NOTE',
+      notes: 'Stage Matched → Unboxed',
+    }),
+    'Matched → Unboxed',
+  );
+  assert.equal(
+    cartonEventTitle({
+      event_type: 'NOTE',
+      notes: 'Matched → Unboxed',
+    }),
+    'Matched → Unboxed',
+  );
+  assert.equal(
+    cartonEventTitle({ event_type: 'TRIAGED', notes: null }),
+    'TRIAGED',
+  );
+});
+
+test('cartonEventSignature: Stage workflow notes do not reprint NOTE + machine trail', () => {
+  // Legacy receive-line write: notes already ARE the human trail.
+  assert.deepEqual(
+    cartonEventSignature({
+      ...EVENT,
+      event_type: 'NOTE',
+      prev_status: 'MATCHED',
+      next_status: 'UNBOXED',
+      notes: 'Stage Matched → Unboxed',
+    }),
+    { kind: null, trail: null },
+  );
+  // Current write shape (no Stage prefix) — same suppression.
+  assert.deepEqual(
+    cartonEventSignature({
+      ...EVENT,
+      event_type: 'NOTE',
+      prev_status: 'MATCHED',
+      next_status: 'UNBOXED',
+      notes: 'Matched → Unboxed',
+    }),
     { kind: null, trail: null },
   );
 });

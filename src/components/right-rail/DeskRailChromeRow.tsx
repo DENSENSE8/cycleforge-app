@@ -7,11 +7,12 @@
  * [→|] [actions?] …………………… [cursor?] [↑][↓] [trailing?]
  * ```
  *
- * **Why this exists.** Unbox reads `[→|] ……… [↑ ↓ ◯]` across TWO regions
- * (column band + pane-absolute `stationMoreDetailsPaneHostClass`) that both sit
- * at canvas+8px. Cargo-culting that absolute host *inside* a Desk card applies
- * `top-2` only to the trailing cluster and splits the baseline. When every
- * control lives in one card, they must share ONE in-flow flex row.
+ * **Why this exists.** Unbox reads `[→|] ……… [↑ ↓]` across TWO regions
+ * (column band + pane carton cursor) with the procedure progress ring on the
+ * Displays strip `rightSlot` (right of ⋮). Cargo-culting that absolute host
+ * *inside* a Desk card applies `top-2` only to the trailing cluster and splits
+ * the baseline. When every control lives in one card, they must share ONE
+ * in-flow flex row.
  *
  * **`actions`** — optional contextual icon cluster for occupants whose actions
  * belong on the navigation row. Sits after close, left of the flex spacer +
@@ -19,10 +20,10 @@
  * contextual topics own a dedicated second row.
  *
  * **`cursor`** — optional `N / M` readout (`CursorPositionReadout`) immediately
- * before ↑↓. Orders `RecordPaneHeader` composes this.
+ * before ↑↓. Desk `detail:order` and Incoming-family rails compose this.
  *
- * **`trailing`** — far-right twin of the Unbox scan-progress ring (e.g. Incoming
- * Sync), after ↑↓.
+ * **`trailing`** — far-right peer after ↑↓ (e.g. Incoming Sync) — Desk twin of
+ * station strip controls that need a trailing instrument face.
  *
  * Recipe: `.claude/rules/display/right-rail-inspector.md` → Desk single-card
  * chrome. Guard: `right-rail-inspector-header.guard.test.ts`.
@@ -57,7 +58,7 @@ export function DeskRailChromeRow({
    * icon bar.
    */
   actions,
-  /** `N / M` readout — sits before ↑↓ (Orders RecordPaneHeader). */
+  /** `N / M` readout — sits before ↑↓ (desk queue walk). */
   cursor,
   /** Far-right twin of the Unbox scan-progress ring (e.g. Incoming Sync). */
   trailing,

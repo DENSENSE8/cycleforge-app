@@ -120,7 +120,7 @@ export function retiredFbaViewTarget(): string {
 
 /**
  * Where a retired `?mode=search` URL goes.
- *   • `openOrderId` → that order's one shell, `/o/[id]`.
+ *   • `openOrderId` → search order feedback (`/search?sel=order:…`).
  *   • `q`           → the cross-entity search route.
  *   • bare          → To-ship desk (`/shipping/orders`; was `/dashboard` outbound).
  */
@@ -128,7 +128,9 @@ export function retiredSearchModeTarget(
   searchParams: Pick<URLSearchParams, 'get'>,
 ): string {
   const openOrderId = String(searchParams.get('openOrderId') || '').trim();
-  if (openOrderId) return `/o/${encodeURIComponent(openOrderId)}`;
+  if (openOrderId) {
+    return `/search?sel=order:${encodeURIComponent(openOrderId)}`;
+  }
   const q = String(searchParams.get('q') || searchParams.get('dq') || '').trim();
   if (q) return `/search?q=${encodeURIComponent(q)}`;
   return '/shipping/orders';

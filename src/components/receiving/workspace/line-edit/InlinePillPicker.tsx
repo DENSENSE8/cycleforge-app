@@ -61,16 +61,16 @@ export const INLINE_PILL_LEADING = {
 
 /** Carton-context flush face — square corners; inset pad keeps label off the border. */
 const PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-1.5 text-role-micro uppercase tracking-wide transition-colors';
+  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-1.5 text-role-micro uppercase tracking-wide transition-colors shadow-none';
 /**
  * Locked equal width for icon-only faces — same hit box as
  * {@link HEADER_ICON_WRAP} (`h-8 w-8`).
  */
 export const INLINE_PILL_ICON_FACE =
-  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-none border transition-colors';
+  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-none border transition-colors shadow-none';
 /** Icon + full name — expanded option pads / default collapsed. */
 const INLINE_PILL_ICON_LABEL =
-  'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase tracking-wide transition-colors';
+  'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase tracking-wide transition-colors shadow-none';
 /**
  * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
  * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
@@ -79,7 +79,7 @@ const INLINE_PILL_ICON_LABEL =
 const INLINE_PILL_ICON_LABEL_BOOKMARK =
   'inline-flex h-8 w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 text-role-micro font-medium uppercase tracking-wide transition-colors shadow-none box-border';
 
-const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm';
+const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-none';
 const DEFAULT_INACTIVE =
   'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
 
@@ -205,7 +205,9 @@ export function InlinePillPicker({
   const collapsedClassName = cn(
     collapsedShell,
     faceTone,
-    isBookmark && 'shadow-none',
+    // Flat face — classify pills match Photos · Claim (`shadow-none`), even if a
+    // tone SoT regresses to `shadow-sm`.
+    'shadow-none',
     focusRing('control', 'accent'),
     readOnly && 'pointer-events-none',
   );

@@ -5,9 +5,11 @@
  *
  * Unbox Sheets three-band recipe (Incoming consumer):
  *   Band 1 — Pipeline | Docked tabs · labeled Check / Import / Add
- *   Facet  — All / Zoho / eBay (Pipeline) or Triage / Unbox (Docked)
+ *   Facet  — Triage / Unbox (Docked only; Pipeline has no facet strip)
  *   Band 2 — KPI (+ Pipeline lane note)
  *   Band 3 — triage (`WorkbenchTriageBand`: search left · refine icons right)
+ *            Pipeline source (Zoho / eBay) lives in the search-field filter
+ *            (`IncomingSourceFilters` → `?inbound=`), default All.
  *
  * Primary tabs write `?lane=` (omit = pipeline). Docked reuses Triage / Unbox
  * sort tabs (`inbound-docked-tabs`) and history `rh_*` search.
@@ -72,8 +74,12 @@ import { IncomingImportEbayOverlay } from './IncomingImportEbayOverlay';
 import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
 import { IncomingKpiStrip } from './IncomingKpiStrip';
 import { IncomingLaneNote } from './IncomingLaneNote';
+import {
+  IncomingSourceFilters,
+  IncomingSourceHotChip,
+  type IncomingSource,
+} from './IncomingSourceFilters';
 import { TILES, TONE } from './incoming-tiles';
-type IncomingSourceTab = 'all' | 'zoho' | 'ebay';
 
 const LANE_TABS = [
   { id: 'pipeline', label: 'Pipeline', color: 'blue' as const },
@@ -162,7 +168,7 @@ export function IncomingWorkspaceHeader({
     [replaceParams, searchParams],
   );
 
-  const activeSource: IncomingSourceTab = (() => {
+  const activeSource: IncomingSource = (() => {
     const raw = (searchParams.get('inbound') || '').trim().toLowerCase();
     return raw === 'ebay' ? 'ebay' : raw === 'zoho' ? 'zoho' : 'all';
   })();
@@ -191,7 +197,7 @@ export function IncomingWorkspaceHeader({
   );
 
   const setSource = useCallback(
-    (id: string) => {
+    (id: IncomingSource) => {
       const params = new URLSearchParams(searchParams.toString());
       if (id === 'all') params.delete('inbound');
       else params.set('inbound', id);
@@ -237,14 +243,6 @@ export function IncomingWorkspaceHeader({
     }
   }, [filters, isPipeline, replaceParams, searchParams]);
 
-  const sourceTabs = [
-    { id: 'all', label: 'All', color: 'blue' as const },
-    { id: 'zoho', label: 'Zoho', color: 'teal' as const, dividerBefore: true },
-    ...(universalIncoming
-      ? [{ id: 'ebay', label: 'eBay', color: 'yellow' as const }]
-      : []),
-  ];
-
   const dockedSubTabs = useMemo(
     () =>
       DASHBOARD_RECEIVING_TABS.map((t) => ({
@@ -260,9 +258,10 @@ export function IncomingWorkspaceHeader({
       {/*
         Unbox Sheets three-band chrome (Incoming consumer):
           Band 1 — tabs · labeled CTAs
-          Facet  — All / Zoho / eBay (Pipeline) or Triage / Unbox (Docked)
+          Facet  — Triage / Unbox (Docked only)
           Band 2 — KPI
-          Band 3 — triage (search left · refine icons right)
+          Band 3 — triage (search left · refine icons right);
+                   Pipeline Zoho / eBay → search-field source filter
       */}
       <WorkbenchChromeHeader
         density="band"
@@ -300,17 +299,20 @@ export function IncomingWorkspaceHeader({
         }
       />
 
-      {/* Source / Docked sub-tabs — Incoming-specific facet between Band 1 and KPI. */}
-      <div className="flex h-10 shrink-0 items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5">
-        <TabSwitch
-          tabs={isPipeline ? sourceTabs : dockedSubTabs}
-          activeTab={isPipeline ? activeSource : dockedTab}
-          onTabChange={isPipeline ? setSource : setDockedTab}
-          variant="solid"
-          solidTone="accent"
-          size="sm"
-        />
-      </div>
+      {/* Docked sub-tabs — Triage / Unbox between Band 1 and KPI. Pipeline has
+          no facet strip; purchasing source lives in the Band-3 search filter. */}
+      {!isPipeline ? (
+        <div className="flex h-10 shrink-0 items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5">
+          <TabSwitch
+            tabs={dockedSubTabs}
+            activeTab={dockedTab}
+            onTabChange={setDockedTab}
+            variant="solid"
+            solidTone="accent"
+            size="sm"
+          />
+        </div>
+      ) : null}
 
       {/* Band 2 — snap-collapsible KPI; owns the bottom hairline. */}
       <WorkbenchKpiBand
@@ -340,30 +342,43 @@ export function IncomingWorkspaceHeader({
           />
         }
         search={
-          <TechRailSearchBar
-            variant="chrome"
-            value={urlQRaw}
-            onChange={setWorkbenchSearch}
-            placeholder={
-              isPipeline
-                ? 'Filter PO #, tracking, SKU…'
-                : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
-            }
-            trailingAction={
-              isPipeline ? (
-                <HoverTooltip label="Paste a list of tracking numbers" asChild>
-                  <ToolbarButton
-                    iconOnly
-                    aria-label="Paste a list of tracking numbers"
-                    onClick={() => setPasteAction('filter')}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </ToolbarButton>
-                </HoverTooltip>
-              ) : undefined
-            }
-            className="w-52 shrink-0 lg:w-64"
-          />
+          <div className="flex min-w-0 items-center gap-1.5">
+            <TechRailSearchBar
+              variant="chrome"
+              value={urlQRaw}
+              onChange={setWorkbenchSearch}
+              placeholder={
+                isPipeline
+                  ? 'Filter PO #, tracking, SKU…'
+                  : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
+              }
+              trailingSuffix={
+                isPipeline && universalIncoming ? (
+                  <IncomingSourceFilters source={activeSource} onChange={setSource} />
+                ) : undefined
+              }
+              trailingAction={
+                isPipeline ? (
+                  <HoverTooltip label="Paste a list of tracking numbers" asChild>
+                    <ToolbarButton
+                      iconOnly
+                      aria-label="Paste a list of tracking numbers"
+                      onClick={() => setPasteAction('filter')}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </ToolbarButton>
+                  </HoverTooltip>
+                ) : undefined
+              }
+              className="w-52 shrink-0 lg:w-64"
+            />
+            {isPipeline && universalIncoming ? (
+              <IncomingSourceHotChip
+                source={activeSource}
+                onClear={() => setSource('all')}
+              />
+            ) : null}
+          </div>
         }
         right={
           <>

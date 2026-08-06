@@ -261,13 +261,18 @@ describe('To-ship Sheets flush chrome', () => {
     assert.match(topics, /WorkbenchKpiCollapseToggle/);
   });
 
-  it('order inspectors mount View topics + Unbox park contract', () => {
+  it('selected-order inspector is order-only; View topics live on detail:orders-view', () => {
     const panel = stripBlockComments(read(ORDER_PANEL));
-    assert.match(panel, /OrdersViewTopicsCluster/);
-    assert.match(panel, /viewTopics=/);
+    assert.doesNotMatch(
+      panel,
+      /OrdersViewTopicsCluster/,
+      'detail:order must not mount sheet View topics — those live on detail:orders-view',
+    );
+    assert.doesNotMatch(panel, /viewTopics=/);
+    assert.match(panel, /orderInspectorDisplayTopics|order-inspector-topics/);
     assert.match(panel, /edgeCollapse/);
     assert.match(panel, /collapsedStrip=\{false\}/);
-    assert.match(panel, /OrdersViewChromeBridge/);
+    assert.match(panel, /data-order-inspector/);
 
     const viewOnly = stripBlockComments(read(VIEW_RAIL));
     assert.match(viewOnly, /detail:orders-view/);

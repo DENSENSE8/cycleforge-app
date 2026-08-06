@@ -60,7 +60,6 @@ import { parseRouteParams } from '@/lib/routing/route-params';
 export type SidebarRouteKey =
   | 'home'
   | 'dashboard'
-  | 'order'
   | 'operations'
   | 'ops-photos'
   | 'studio'
@@ -305,7 +304,6 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'support',
   'admin',
   'audit-log',
-  'order',
   // Review station is desktop-only (packer capture stays on /m/pack). Plan §4d.
   'review',
 ]);
@@ -507,7 +505,6 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // the one thing the system cannot define for them.
   'home',
   'dashboard',
-  'order',
   'admin',
   'operations',
   'studio',
@@ -530,8 +527,8 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // made it the one desktop route reserving no column — so the transient spine
   // painted over the photo grid instead of landing on a reserved column.
   'ops-photos',
-  // `/search` is a centered find stage (no context rail) → full-bleed detail
-  // when `?sel=` is set. See `SearchFindStage` / `SearchDetailWorkspace`.
+  // `/search` is header find + browse/detail in main (no context rail)
+  // when `?sel=` is set. See `SearchBrowseShell` / `SearchDetailWorkspace`.
 ]);
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */
@@ -543,9 +540,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (!pathname) return 'unknown';
   if (pathname === '/') return 'home';
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 'dashboard';
-  // Dedicated order workspace (`/o/[orderId]`) — full-page workbench with its
-  // own Recent/Search sidebar (not the dashboard Orders/Shipping panel).
-  if (pathname === '/o' || pathname.startsWith('/o/')) return 'order';
+  // `/o/[orderId]` permanently redirects to search feedback — no dedicated
+  // order workspace sidebar.
   if (pathname === '/operations' || pathname.startsWith('/operations/')) return 'operations';
   if (pathname === '/signals' || pathname.startsWith('/signals/')) return 'operations';
   if (pathname === '/ops/photos' || pathname.startsWith('/ops/photos/')) return 'ops-photos';
@@ -593,7 +589,7 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
-  // `/search` — centered GlobalFind stage; `?sel=type:id` opens full-bleed detail.
+  // `/search` — header find + SearchBrowseShell; `?sel=type:id` opens full-bleed detail.
   if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';
   return 'unknown';
 }

@@ -56,6 +56,11 @@ interface ShippedDetailsPanelContentProps {
    * view (drops the slide-over's inner horizontal padding — the cards own it).
    */
   variant?: 'flat' | 'card';
+  /**
+   * Desk inspector flush — no host `px-8`; rows own inset via the body host.
+   * Labels centre and Display-topic rails pass this.
+   */
+  flush?: boolean;
 }
 
 export function ShippedDetailsPanelContent({
@@ -75,6 +80,7 @@ export function ShippedDetailsPanelContent({
   activeSection,
   replaceTrackingNonce = 0,
   variant = 'flat',
+  flush = false,
 }: ShippedDetailsPanelContentProps) {
   const isCard = variant === 'card';
   // In card mode each section floats in its own bubble; flat mode is byte-identical
@@ -113,7 +119,7 @@ export function ShippedDetailsPanelContent({
   );
 
   return (
-    <div className={isCard ? 'space-y-5' : 'px-8 pb-8 pt-0 space-y-6'}>
+    <div className={isCard ? 'space-y-5' : flush ? 'space-y-6' : 'px-8 pb-8 pt-0 space-y-6'}>
       {showShipping && wrapSection(<OrderPipelineSection shipped={shipped} />)}
 
       {showPackingPhotos && photosVisible && (

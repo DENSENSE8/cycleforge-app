@@ -142,6 +142,11 @@ describe('Station flush planes — Unbox golden', () => {
       /STATION_UTILITY_RAIL_CLASS\s*=\s*'[^']*border-l[^']*'/,
       'utility rail hairline against center',
     );
+    assert.match(
+      layout,
+      /STATION_UTILITY_RAIL_CLASS\s*=\s*'[^']*z-raised[^']*'/,
+      'utility rail stacks above center overflow (PhotoPeek z-20) so Open displays stays clickable',
+    );
     const host = code('src/components/station/workbench/StationScanPaneHost.tsx');
     assert.match(
       host,
@@ -315,11 +320,12 @@ describe('Station flush planes — Unbox golden', () => {
     );
     const card = code('src/components/station/entity-context/CartonContextCard.tsx');
     assert.ok(
-      /flex min-w-0 w-full flex-1 items-stretch/.test(card),
-      'CartonContextCard must keep a two-column stretch row (left stack · right actions)',
+      /grid min-w-0 w-full flex-1 gap-0/.test(card) &&
+        card.includes('carton-context-two-row'),
+      'CartonContextCard must keep a two-column stretch grid (left stack · right actions)',
     );
     assert.ok(
-      card.includes('photosClaimColumn') || /items-end/.test(card),
+      card.includes('photosClaimColumn') || /items-end|justify-end/.test(card),
       'CartonContextCard right column must end-align Photos · Claim under the measure',
     );
   });

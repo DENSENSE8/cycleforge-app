@@ -28,17 +28,12 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
     },
   },
   testing: {
-    hasSectionTabs: true,
+    // Carton-terminal: Pass · Print always. Ticket replies stay inline in the
+    // Ticket Displays body — a right-panel click must not re-label the dock
+    // (Unbox grammar). Middle dock = label / item notes only.
+    hasSectionTabs: false,
     defaultKind: 'mode-default',
-    tabs: {
-      testing: 'mode-default',
-      pairing: 'mode-default',
-      checklist: 'mode-default',
-      manuals: 'mode-default',
-      // Resolved further in TestingPanel → file-claim | none
-      ticket: 'ticket',
-      timeline: 'none',
-    },
+    tabs: {},
   },
   shipping: {
     hasSectionTabs: true,

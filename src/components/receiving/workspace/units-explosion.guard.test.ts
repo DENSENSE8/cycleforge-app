@@ -77,13 +77,19 @@ test('Units explosion mounts flush item camera on every unit row', () => {
   assert.match(EXPLOSION, /activeRowLeading=\{itemCamera\}/);
   assert.match(EXPLOSION, /\bflush\b/);
   const SLOTS = code(sourceOf('./UnitSlotList.tsx'));
-  // Camera is leftmost on every flush row — not gated to selectedIndex only.
+  // Camera mounts on every flush row (after condition) — not gated to selectedIndex.
   // cloneElement so one ReactNode prop mounts independently per row.
   assert.match(SLOTS, /cloneElement\(activeRowLeading/);
   assert.doesNotMatch(
     SLOTS,
     /index === selectedIndex[\s\S]{0,80}activeRowLeading/,
     'photo leading must not be limited to the selected unit row',
+  );
+  // Row order: condition meta, then photo leading (not camera-leftmost).
+  assert.match(
+    SLOTS,
+    /\{meta \? \([\s\S]*?\{leading && !flushConditionExpanded/,
+    'flush unit rows paint condition before the photos button',
   );
 });
 
@@ -170,6 +176,21 @@ test('ConditionPills clears selected grade on re-click (no trailing clear)', () 
   );
 });
 
+test('ConditionPills collapsible strip confirms via trailing check (not auto-collapse on pick)', () => {
+  assert.match(
+    PILLS,
+    /Confirm condition/,
+    'expanded collapsible strip must expose a confirm control',
+  );
+  assert.match(PILLS, /setExpanded\(false\)/);
+  // Grade pick must NOT collapse — only the trailing confirm closes the strip.
+  assert.doesNotMatch(
+    PILLS,
+    /onChange\(g\.value\);\s*if \(collapsible\) setExpanded\(false\)/,
+    'picking a grade must leave the strip open until confirm',
+  );
+});
+
 test('Condition grade pills are square-flush (not rounded-full sausages)', () => {
   const TONE = code(sourceOf('../../../lib/condition-tone.ts'));
   assert.match(TONE, /function conditionPillClass/);
@@ -196,6 +217,36 @@ test('Condition grade pills are square-flush (not rounded-full sausages)', () =>
 test('ReceivingUnitRows does not re-inherit line grade after a cleared unit row', () => {
   assert.match(UNIT_ROWS, /units\?\.\[index\] != null/);
   assert.match(UNIT_ROWS, /return units\[index\]\.condition_grade \?\? null/);
+});
+
+test('Units explosion forces per-serial unit rows (not SerialCard chips)', () => {
+  assert.match(
+    EXPLOSION,
+    /forceUnitRows/,
+    'UnitsExplosionDisplay must pass forceUnitRows so each serial is an editable row',
+  );
+  const ACTIVE = code(sourceOf('./line-edit/ActiveLineConditionSerial.tsx'));
+  assert.match(
+    ACTIVE,
+    /forceUnitRows\s*\|\|\s*\(quantityExpected/,
+    'ActiveLineConditionSerial must prefer ReceivingUnitRows when forceUnitRows',
+  );
+  const SLOTS = code(sourceOf('./UnitSlotList.tsx'));
+  assert.match(
+    SLOTS,
+    /overflowSerials/,
+    'UnitSlotList must append overflow serials beyond materialised unit count',
+  );
+  assert.match(
+    SLOTS,
+    /flush[\s\S]{0,120}liveSaved/,
+    'flush Units explosion must list one row per live serial (delete removes the row)',
+  );
+  assert.match(
+    SLOTS,
+    /flag !== ["']removing["']/,
+    'in-flight deletes must drop the row immediately',
+  );
 });
 
 test('Units flush serial bars are edge-to-edge (no outer px-3 around joined cells)', () => {

@@ -13,9 +13,13 @@ import React, {
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { Check, Copy, ExternalLink } from '@/components/Icons';
+import {
+  clampPortalTooltipPosition,
+  isTrustedPortalAnchor,
+  PORTAL_TOOLTIP_MARGIN,
+} from '@/lib/ui/portal-anchor';
 
 const CLOSE_DELAY_MS = 100;
-const MARGIN = 8;
 const CARET_PAD = 10;
 const MAX_PLACEMENT_RETRIES = 8;
 
@@ -144,7 +148,9 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
   const updateTooltipPosition = useCallback(() => {
     if (!session || !tooltipRef.current) return;
     const chipRect = session.getRect();
-    if (!chipRect || chipRect.width < 2 || chipRect.height < 2) {
+    if (!chipRect || !isTrustedPortalAnchor(chipRect)) {
+      // Keep prior position cleared / hidden; retry briefly for layout settle.
+      setTooltipPosition(null);
       if (placementRetryRef.current < MAX_PLACEMENT_RETRIES) {
         placementRetryRef.current += 1;
         window.requestAnimationFrame(() => updateTooltipPosition());
@@ -155,7 +161,14 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
     const tooltipEl = tooltipRef.current;
     const tooltipRect = tooltipEl.getBoundingClientRect();
 
-    if (tooltipRect.width < 2 || tooltipRect.height < 2) {
+    const next = clampPortalTooltipPosition({
+      anchor: chipRect,
+      bubble: tooltipRect,
+      placement: 'auto',
+      margin: PORTAL_TOOLTIP_MARGIN,
+    });
+    if (!next) {
+      setTooltipPosition(null);
       if (placementRetryRef.current < MAX_PLACEMENT_RETRIES) {
         placementRetryRef.current += 1;
         window.requestAnimationFrame(() => updateTooltipPosition());
@@ -164,25 +177,13 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
     }
 
     const bubbleAnchorX = chipRect.left + chipRect.width / 2;
-
-    const centeredLeft = bubbleAnchorX - tooltipRect.width / 2;
-    const minLeft = MARGIN;
-    const maxLeft = Math.max(minLeft, window.innerWidth - tooltipRect.width - MARGIN);
-    const left = Math.min(Math.max(centeredLeft, minLeft), maxLeft);
-
-    const spaceAbove = chipRect.top - MARGIN;
-    const spaceBelow = window.innerHeight - chipRect.bottom - MARGIN;
-    const preferAbove = spaceAbove >= tooltipRect.height || spaceAbove > spaceBelow;
-    const rawTop = preferAbove ? chipRect.top - tooltipRect.height - MARGIN : chipRect.bottom + MARGIN;
-    const minTop = MARGIN;
-    const maxTop = Math.max(minTop, window.innerHeight - tooltipRect.height - MARGIN);
-    const top = Math.min(Math.max(rawTop, minTop), maxTop);
-
-    const rawCaret = bubbleAnchorX - left;
-    const caretX = Math.min(Math.max(rawCaret, CARET_PAD), tooltipRect.width - CARET_PAD);
+    const caretX = Math.min(
+      Math.max(bubbleAnchorX - next.left, CARET_PAD),
+      tooltipRect.width - CARET_PAD,
+    );
 
     placementRetryRef.current = 0;
-    setTooltipPosition({ top, left });
+    setTooltipPosition(next);
     setCaretOffsetX(caretX);
   }, [session]);
 
@@ -250,13 +251,14 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
             <div
               ref={tooltipRef}
               style={{
+                position: 'fixed',
                 top: tooltipPosition?.top ?? -9999,
                 left: tooltipPosition?.left ?? -9999,
                 visibility: placementReady ? 'visible' : 'hidden',
                 opacity: placementReady ? 1 : 0,
                 transition: 'opacity 0.15s ease-out',
               }}
-              className="pointer-events-none fixed z-tooltip"
+              className="pointer-events-none z-tooltip"
             >
               {/* Shell — layout-animated width via Framer Motion */}
               <motion.div
