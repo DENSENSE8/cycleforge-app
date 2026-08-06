@@ -43,6 +43,7 @@ interface DocumentTypeGroupProps {
   readOnly: boolean;
   isLoading: boolean;
   onChange: () => void;
+  flush?: boolean;
 }
 
 function DocumentTypeGroup({
@@ -56,6 +57,7 @@ function DocumentTypeGroup({
   readOnly,
   isLoading,
   onChange,
+  flush = false,
 }: DocumentTypeGroupProps) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +161,9 @@ function DocumentTypeGroup({
           onClick={() => fileRef.current?.click()}
           role="button"
           tabIndex={0}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+          className={`flex cursor-pointer flex-col items-center justify-center gap-1 border-2 border-dashed px-4 py-5 text-center transition-colors ${
+            flush ? 'rounded-none' : 'rounded-xl'
+          } ${
             dragOver ? 'border-blue-400 bg-blue-50' : 'border-border-soft hover:bg-surface-hover'
           }`}
         >
@@ -183,7 +187,7 @@ function DocumentTypeGroup({
 
       {error ? <p className="mt-2 text-role-eyebrow text-text-danger">{error}</p> : null}
       {fetchError ? (
-        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2">
+        <div className={`mt-2 flex items-center justify-between gap-2 border border-dashed border-amber-200 bg-amber-50 px-3 py-2 ${flush ? 'rounded-none' : 'rounded-lg'}`}>
           <p className="text-role-caption text-text-warning">{fetchError}</p>
           <button
             type="button"
@@ -208,7 +212,7 @@ function DocumentTypeGroup({
             return (
               <div
                 key={doc.id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border-soft px-3 py-2"
+                className={`flex items-center justify-between gap-2 border border-border-soft px-3 py-2 ${flush ? 'rounded-none' : 'rounded-lg'}`}
               >
                 <a
                   href={`/api/documents/${doc.id}/content`}
@@ -264,6 +268,11 @@ export interface OrderDocumentsSectionProps {
    * from its own Print tab.
    */
   showPreview?: boolean;
+  /**
+   * Station flush host — zero outer gutter (`mx-8` retired), square faces.
+   * Labels centre Documents tab. Desk inspectors keep the default inset.
+   */
+  flush?: boolean;
 }
 
 /**
@@ -278,6 +287,7 @@ export function OrderDocumentsSection({
   orderRef,
   readOnly = false,
   showPreview = false,
+  flush = false,
 }: OrderDocumentsSectionProps) {
   const queryClient = useQueryClient();
   const queryKey = ['order-documents', orderId];
@@ -333,8 +343,11 @@ export function OrderDocumentsSection({
   };
 
   return (
-    <section className="mx-8 space-y-5" data-testid="order-documents-section">
-      <div className="flex items-center justify-end gap-3">
+    <section
+      className={flush ? 'space-y-0' : 'mx-8 space-y-5'}
+      data-testid="order-documents-section"
+    >
+      <div className={`flex items-center justify-end gap-3 ${flush ? 'border-b border-border-hairline px-3 py-2' : ''}`}>
         {showPreview ? (
           <Button
             variant="secondary"
@@ -357,35 +370,45 @@ export function OrderDocumentsSection({
         </Link>
       </div>
       {!readOnly ? (
-        <div className="border-b border-border-hairline pb-4">
-          <BuyLabelSection orderId={orderId} orderRef={orderRef} onChange={onChange} />
+        <div className={`border-b border-border-hairline ${flush ? 'px-3 py-2.5' : 'pb-4'}`}>
+          <BuyLabelSection
+            orderId={orderId}
+            orderRef={orderRef}
+            onChange={onChange}
+            flush={flush}
+          />
         </div>
       ) : null}
-      <DocumentTypeGroup
-        title="Shipping Label"
-        documentType="shipping_label"
-        documents={labels}
-        orderId={orderId}
-        orderRef={orderRef}
-        nasBaseUrl={data?.nasBaseUrl || ''}
-        nasFolder={data?.nasFolder || ''}
-        readOnly={readOnly}
-        isLoading={isLoading}
-        onChange={onChange}
-      />
-      <DocumentTypeGroup
-        title="Packing Slip"
-        documentType="packing_slip"
-        documents={slips}
-        orderId={orderId}
-        orderRef={orderRef}
-        nasBaseUrl={data?.nasBaseUrl || ''}
-        nasFolder={data?.nasFolder || ''}
-        readOnly={readOnly}
-        isLoading={isLoading}
-        onChange={onChange}
-      />
-
+      <div className={flush ? 'space-y-0 border-b border-border-hairline px-3 py-2.5' : undefined}>
+        <DocumentTypeGroup
+          title="Shipping Label"
+          documentType="shipping_label"
+          documents={labels}
+          orderId={orderId}
+          orderRef={orderRef}
+          nasBaseUrl={data?.nasBaseUrl || ''}
+          nasFolder={data?.nasFolder || ''}
+          readOnly={readOnly}
+          isLoading={isLoading}
+          onChange={onChange}
+          flush={flush}
+        />
+      </div>
+      <div className={flush ? 'space-y-0 px-3 py-2.5' : undefined}>
+        <DocumentTypeGroup
+          title="Packing Slip"
+          documentType="packing_slip"
+          documents={slips}
+          orderId={orderId}
+          orderRef={orderRef}
+          nasBaseUrl={data?.nasBaseUrl || ''}
+          nasFolder={data?.nasFolder || ''}
+          readOnly={readOnly}
+          isLoading={isLoading}
+          onChange={onChange}
+          flush={flush}
+        />
+      </div>
       {showPreview ? (
         <DocumentSlideOver
           open={previewOpen}

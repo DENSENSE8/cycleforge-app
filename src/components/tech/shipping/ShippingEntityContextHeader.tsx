@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle } from '@/components/Icons';
 import { CartonContextCard } from '@/components/station/entity-context';
-import { WorkspaceCard } from '@/design-system/components';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 import {
   getExternalUrlByItemNumber,
@@ -21,9 +20,9 @@ import type { CartonListingLink } from '@/lib/receiving/listing-links';
  * Maps an active outbound order onto the two-row station identity face
  * (listing · order# · tracking). Claim / photos / classify / lifecycle / PO$
  * are omitted — the ship session stays scan-driven. Mount inside
- * {@link StationContextBar}; pair host with
- * `reserveIdentityClearance="stacked"`. Out-of-stock notices stay below the
- * bar via {@link ShippingOutOfStockNotice}.
+ * {@link StationContextBar}; pair host with `placement="flow"` +
+ * `reserveIdentityClearance={false}`. Out-of-stock notices stay below the
+ * bar via {@link ShippingOutOfStockNotice} (flush hairline band, no card).
  */
 export function ShippingEntityContextHeader({
   activeOrder,
@@ -112,13 +111,11 @@ export function ShippingOutOfStockNotice({
   if (!flagged) return null;
 
   return (
-    <WorkspaceCard label="Out of stock" tone="red" bodyClassName="px-5 py-3">
-      <div className="flex items-start gap-2.5">
-        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-red-800">
-          Out of stock
-        </p>
-      </div>
-    </WorkspaceCard>
+    <div className="flex items-start gap-2.5 border-b border-red-200 bg-red-50 px-3 py-2.5">
+      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
+      <p className="min-w-0 flex-1 text-role-caption font-semibold leading-snug text-red-800">
+        Out of stock
+      </p>
+    </div>
   );
 }

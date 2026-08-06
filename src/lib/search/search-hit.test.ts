@@ -42,11 +42,14 @@ test('searchHitHref: every entity type deep-links to its record surface', () => 
   assert.equal(searchHitHref('FBA_SHIPMENT', 2), '/fba?openShipmentId=2');
 });
 
-test('searchHitHref: an ORDER hit opens search feedback (not the durable /o record)', () => {
+test('searchHitHref: an ORDER hit opens search feedback', () => {
   assert.equal(searchHitHref('ORDER', 42), '/search?sel=order:42');
   assert.equal(searchOrderFeedbackHref(42), '/search?sel=order:42');
-  assert.equal(orderRecordHref(42), '/o/42');
-  assert.equal(orderRecordHref(' 111-6350504-7603458 '), '/o/111-6350504-7603458');
+  assert.equal(orderRecordHref(42), '/search?sel=order:42');
+  assert.equal(
+    orderRecordHref(' 111-6350504-7603458 '),
+    '/search?sel=order:111-6350504-7603458',
+  );
 });
 
 test('shouldAutoOpenSearchOrder: exact sole ORDER hit only', () => {
@@ -160,12 +163,12 @@ test('journeyHandoffHref: order/unit/tracking dims; null when anchor missing', (
   assert.equal(journeyHandoffHref({ id: 1, entityType: 'sku' }), null);
 });
 
-test('globalSearchHandoffHref: identifier + one order hit jumps to the record (D4a)', () => {
-  // One confident hit → `/o/[id]`, the canonical record. A results list of one
+test('globalSearchHandoffHref: identifier + one order hit jumps to search feedback', () => {
+  // One confident hit → search order feedback. A results list of one
   // is a failure to recognize intent.
   assert.equal(
     globalSearchHandoffHref('111-6350504-7603458', [{ id: 99, entityType: 'order' }]),
-    '/o/99',
+    '/search?sel=order:99',
   );
   assert.equal(
     globalSearchHandoffHref('111-6350504-7603458', []),
@@ -179,7 +182,7 @@ test('globalSearchHandoffHref: identifier + one order hit jumps to the record (D
   );
   assert.equal(
     globalSearchHandoffHref('05-14897-15602', [{ id: 14897, entityType: 'order' }]),
-    '/o/14897',
+    '/search?sel=order:14897',
   );
   // Several ORDER candidates → Search results list (operator picks).
   assert.equal(
@@ -215,7 +218,7 @@ test('globalSearchHandoffHref: Enter stays on work surfaces (never Trace)', () =
     ]),
     '/search?q=SN-ABC-12345',
   );
-  // Identifier matching one order → the canonical record (journey stays secondary / ⌘Enter).
+  // Identifier matching one order → search feedback (journey stays secondary / ⌘Enter).
   assert.equal(
     globalSearchHandoffHref('9400111899561234567890', [
       {
@@ -224,15 +227,17 @@ test('globalSearchHandoffHref: Enter stays on work surfaces (never Trace)', () =
         facets: { tracking_number: '9400111899561234567890' },
       },
     ]),
-    '/o/99',
+    '/search?sel=order:99',
   );
 });
 
-test('orderRecordHref: canonical record path, encoded', () => {
-  assert.equal(orderRecordHref(99), '/o/99');
-  assert.equal(orderRecordHref(' 14897 '), '/o/14897');
-  // Human order ids reach the route param intact.
-  assert.equal(orderRecordHref('111-6350504-7603458'), '/o/111-6350504-7603458');
+test('orderRecordHref: aliases search order feedback', () => {
+  assert.equal(orderRecordHref(99), '/search?sel=order:99');
+  assert.equal(orderRecordHref(' 14897 '), '/search?sel=order:14897');
+  assert.equal(
+    orderRecordHref('111-6350504-7603458'),
+    '/search?sel=order:111-6350504-7603458',
+  );
 });
 
 test('searchScopeHref: URL-searchable surfaces get the query applied; others null', () => {

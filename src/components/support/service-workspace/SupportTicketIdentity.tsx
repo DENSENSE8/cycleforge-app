@@ -4,9 +4,9 @@
  * Support · Tickets identity — the dense identity block in the thread's
  * {@link PaneHeader} (Workbench branch `service-workspace`).
  *
- * Status control · subject as the scannable value · priority · compact
- * {@link SupportTicketIdMark} trailing. Open / details / close are the header's
- * icon actions.
+ * Status · subject · priority on row 1; ticket `#` on row 2 via
+ * {@link StackedRowIdentity} + {@link SupportTicketIdMark}. Open / details /
+ * close are the header's icon actions.
  *
  * **The status dot became the status control on 2026-08-02.** Status is the most
  * load-bearing fact on a ticket and it was being told twice, quietly, in two
@@ -16,7 +16,13 @@
  * rides beside it because it is the same kind of fact and had the same second
  * home. Do not restore either as a read-only echo elsewhere on this surface.
  *
- * Composes {@link PaneHeaderLabel} rather than hand-rolling the type ladder —
+ * **Ticket # is never trailing on the subject row.** Long subjects already
+ * fight for width; parking `#9693` on the far right invented a third identity
+ * grammar beside Move photos / Orders import stacked keys. The short durable
+ * key sits on its own second row — same SoT as those displays
+ * (`StackedRowIdentity`).
+ *
+ * Composes {@link TicketSubjectField} rather than hand-rolling the type ladder —
  * the right-rail inspector law caps rail identity at caption density and bans a
  * wrapping hero title, and that rule belongs in one place. Until 2026-08-01 this
  * was a `StationContextBar` bookmark and had to be allowlisted in the station
@@ -27,6 +33,7 @@
 
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { TicketSubjectField } from '@/components/support/zendesk/chat/TicketSubjectField';
 import {
   TicketPrioritySelect,
@@ -79,30 +86,33 @@ export function SupportTicketIdentity({
   });
 
   return (
-    <div className="flex min-w-0 w-full items-center gap-2 px-0.5">
-      {/* Status leads — the dot's old position, now the control itself. The dot
-          survives only as the loading/unknown face, where there is no ticket to
-          set a status on. */}
-      {live ? (
-        <div className="shrink-0">
-          <TicketStatusSelect ticket={live} size="rail" />
+    <StackedRowIdentity
+      className="px-0.5"
+      title={
+        <div className="flex min-w-0 w-full items-center gap-2">
+          {/* Status leads — the dot's old position, now the control itself. The
+              dot survives only as the loading/unknown face, where there is no
+              ticket to set a status on. */}
+          {live ? (
+            <div className="shrink-0">
+              <TicketStatusSelect ticket={live} size="rail" />
+            </div>
+          ) : (
+            <HoverTooltip label={dot.label} focusable={false}>
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.cls)} aria-hidden />
+            </HoverTooltip>
+          )}
+          {/* The subject's ONE home on `/support`. Never a second renderer in
+              the Ticket tab chat header (`hideTitle`). */}
+          <TicketSubjectField ticketId={providerTicketId} subject={subject} compact />
+          {live ? (
+            <div className="shrink-0">
+              <TicketPrioritySelect ticket={live} size="rail" />
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <HoverTooltip label={dot.label} focusable={false}>
-          <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.cls)} aria-hidden />
-        </HoverTooltip>
-      )}
-      {/* The subject's ONE home on `/support`. It is click-to-edit here rather
-          than in the Ticket tab's chat header, which used to draw the same
-          string one row below this — the same fact twice, editable in only one
-          of the two. Same field either way; never a second implementation. */}
-      <TicketSubjectField ticketId={providerTicketId} subject={subject} compact />
-      {live ? (
-        <div className="shrink-0">
-          <TicketPrioritySelect ticket={live} size="rail" />
-        </div>
-      ) : null}
-      <SupportTicketIdMark label={displayLabel} />
-    </div>
+      }
+      keys={<SupportTicketIdMark label={displayLabel} />}
+    />
   );
 }

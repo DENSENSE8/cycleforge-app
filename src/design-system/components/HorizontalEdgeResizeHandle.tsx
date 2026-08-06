@@ -2,22 +2,27 @@
 
 /**
  * Shared visual for a horizontal pane edge resize — wide hit sash + hover-reveal
- * 1px hairline (same hit-vs-paint rule as {@link ColumnResizeHandle}). Pair with
- * {@link useHorizontalEdgeResize}; do not hand-roll a second grip for the same job.
+ * thickened hairline on the panel seam (VS Code / Linear splitter grammar). Pair
+ * with {@link useHorizontalEdgeResize}; do not hand-roll a second grip for the
+ * same job.
  *
- * - `placement: 'inset'` — hit sash lives **inside** the panel; the 1px paint
- *   is flush top→bottom on the panel's own edge seam (the display hairline).
- *   Prefer for right-rail / Displays push. Parent may keep `overflow-hidden`.
- *   Top chrome (`→|` / `DeskRailChromeRow`) sits above the sash in z-order so
- *   Hide stays free of drag — never shorten the hairline with `top-*` clearance.
- * - `placement: 'outset'` — grip straddles the panel border (left context rail).
- *   Parent must not clip (`overflow-visible`); put `overflow-hidden` on an inner
- *   content shell. Hit strip stays `w-3` even when `onCollapse` is set — a wider
- *   sash was eating the LedgerGrid select gutter on Unbox History.
+ * Hit vs paint: the sash is a **12px** (`w-3`) grab zone; the painted rule is a
+ * **4px** (`w-1`) full-height bar that fades in on hover / stays lit while
+ * dragging — centered on the display hairline, never a second line parked to
+ * the side of the seam.
+ *
+ * - `placement: 'inset'` — hit sash lives **inside** the panel; paint sits on
+ *   the panel's own edge seam (trailing `border-r` / leading `border-l`).
+ *   Prefer for every flush rail (context · right-rail · Displays). Parent may
+ *   keep `overflow-hidden`. Top chrome (`→|` / `DeskRailChromeRow`) sits above
+ *   the sash in z-order so Hide stays free of drag — never shorten the
+ *   hairline with `top-*` clearance.
+ * - `placement: 'outset'` — grip straddles the panel border (legacy). Prefer
+ *   `inset` so hover paint cannot read as a line to the right of the seam.
  * - Optional `onCollapse` — same edge control grows a hover-reveal chevron
- *   parked at the **top** of the full-height edge (receiving context rail).
- *   Click collapses. When the paired hook also sets `onCollapseBeyondMin`,
- *   dragging past min collapses on release; double-click still snaps default.
+ *   parked at the **top** of the full-height edge (left context rail). Click
+ *   collapses. When the paired hook also sets `onCollapseBeyondMin`, dragging
+ *   past min collapses on release; double-click still snaps default.
  */
 
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
@@ -37,8 +42,8 @@ interface HorizontalEdgeResizeHandleProps {
   /** Which panel edge owns the handle — mirrors `useHorizontalEdgeResize` `edge`. */
   edge: HorizontalEdge;
   /**
-   * `inset` — paint on the panel's own edge seam (right-rail / Displays).
-   * `outset` — straddles the border into the adjacent surface (left context rail).
+   * `inset` — paint on the panel's own edge seam (context / right-rail / Displays).
+   * `outset` — straddles the border into the adjacent surface (legacy).
    */
   placement?: HorizontalEdgeResizePlacement;
   /** Tooltip copy. Defaults to the receiving-rail wording. */
@@ -60,23 +65,36 @@ const HIT_TARGET_BASE =
 
 function hitTargetClass(edge: HorizontalEdge, placement: HorizontalEdgeResizePlacement): string {
   if (placement === 'outset') {
-    // Center the paint on the border — half may sit outside (context rail only).
+    // Center the paint on the border — half may sit outside.
     return edge === 'trailing'
       ? cn(HIT_TARGET_BASE, 'justify-center -right-1.5 translate-x-1/2')
       : cn(HIT_TARGET_BASE, 'justify-center -left-1.5 -translate-x-1/2');
   }
   // Inset: full-height paint on the panel seam (no top-* cutoff). Chrome with
   // `relative z-raised` mounts after this sash and owns the `→|` hit target.
+  // `justify-end` / `justify-start` keep the 4px bar flush to the seam so it
+  // thickens the display hairline in place — never a twin line beside it.
   return edge === 'trailing'
     ? cn(HIT_TARGET_BASE, 'right-0 justify-end')
     : cn(HIT_TARGET_BASE, 'left-0 justify-start');
+}
+
+/** Collapse glyph sits ON the seam — inset anchors the sash edge; outset the sash center. */
+function collapseAnchorClass(
+  edge: HorizontalEdge,
+  placement: HorizontalEdgeResizePlacement,
+): string {
+  if (placement === 'inset') {
+    return edge === 'trailing' ? 'right-0' : 'left-0';
+  }
+  return 'left-1/2';
 }
 
 export function HorizontalEdgeResizeHandle({
   edgeHandleProps,
   isDragging,
   edge,
-  placement = 'outset',
+  placement = 'inset',
   tooltipLabel = 'Resize',
   onCollapse,
   collapseLabel = 'Hide sidebar',
@@ -85,11 +103,6 @@ export function HorizontalEdgeResizeHandle({
   // Trailing edge hides a left-anchored pane → chevron points left (into the
   // pane). Leading edge hides a right-anchored pane → chevron points right.
   const CollapseIcon = edge === 'trailing' ? ChevronLeft : ChevronRight;
-  // Collapse glyph sits ON the panel side of the border — never widen the
-  // full-height sash into the workspace (that stole Unbox History's 2rem
-  // select gutter under `w-8` + outset). Trailing → nudge left; leading → right.
-  const collapseNudgeClass =
-    edge === 'trailing' ? 'left-[calc(50%-4px)]' : 'left-[calc(50%+4px)]';
 
   return (
     <HoverTooltip label={tooltipLabel} asChild focusable={false} openDelayMs={1500}>
@@ -106,11 +119,10 @@ export function HorizontalEdgeResizeHandle({
             icon={<CollapseIcon className="h-4 w-4" />}
             // Absolute at the top of the full-height edge; stop sash drag.
             // Low-key glyph only — same faint→strong reveal as the resize
-            // hairline, no card bubble / shadow / ring. xs hit + 16px glyph —
-            // readable next to the scan band without overhanging so far it clips away.
+            // hairline, no card bubble / shadow / ring. Centered on the seam.
             className={cn(
               'absolute top-3.5 z-10 -translate-x-1/2',
-              collapseNudgeClass,
+              collapseAnchorClass(edge, placement),
               'text-text-faint hover:text-text-default',
               // hover:opacity-100 keeps the glyph lit when the pointer is on
               // the button itself (outset overhang can leave group-hover).
@@ -132,10 +144,10 @@ export function HorizontalEdgeResizeHandle({
         <span
           aria-hidden
           className={cn(
-            // Wide hit / 1px paint — flush top→bottom on the display seam.
-            // Outset keeps a short end inset so it does not kiss left-rail chrome.
-            'pointer-events-none w-px self-stretch rounded transition-[opacity,colors] duration-150',
-            placement === 'outset' && 'my-1',
+            // Wide hit / 4px paint — full height on the display seam (industry
+            // splitter highlight). Resting opacity 0; structural panel border
+            // carries the idle hairline; hover thickens it in place.
+            'pointer-events-none w-1 self-stretch rounded-sm transition-[opacity,colors] duration-150',
             isDragging
               ? 'bg-border-strong opacity-100'
               : 'bg-border-default opacity-0 group-hover:opacity-100',

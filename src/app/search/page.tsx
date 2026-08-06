@@ -4,20 +4,21 @@
  * `/search` — cross-entity find workbench.
  *
  * Contract:
- *   • No `?sel=` → centered {@link SearchFindStage} (global header search grammar).
+ *   • Find lives in {@link GlobalHeaderSearch} only (never a locked-width stage).
+ *   • No `?sel=` → {@link SearchBrowseShell} (empty hint / full-bleed multi-hit
+ *     browse; identifier resolve publishes header pending pulse).
  *   • `?sel=type:id` → full-bleed {@link SearchDetailWorkspace} entity shell.
  *   • `?q=` is the query; client refine: `?etype=` / `?hstat=` / `?colsort=`.
  *   • Sole / exact identifier hits set `?sel=` in-page (do not navigate away).
- *   • No silent auto-rerun on empty land — recents live in the stage dropdown.
  *
- * Region contract: Workbench (centered find → detail). No context rail.
+ * Region contract: Workbench. No context rail.
  */
 
 import { Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from '@/components/Icons';
+import { SearchBrowseShell } from '@/components/search/SearchBrowseShell';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
-import { SearchFindStage } from '@/components/search/SearchFindStage';
 import {
   SEARCH_SEL_PARAM,
   parseSearchSel,
@@ -42,7 +43,7 @@ function SearchPageContent() {
   );
 
   if (!sel) {
-    return <SearchFindStage />;
+    return <SearchBrowseShell />;
   }
 
   return <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} />;

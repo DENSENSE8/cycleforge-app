@@ -1,6 +1,5 @@
 'use client';
 
-import { WorkspaceCard } from '@/design-system/components';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
@@ -8,10 +7,12 @@ import { TestingPoItemsSection } from './TestingPoItemsSection';
 /**
  * Testing centre PO line list — the carton's lines (`TestingPoItemsSection`).
  *
- * Package Pairing left the centre on 2026-08-05 (scan-station Displays SoT): it
- * is now the Linkage body of Testing's right-edge Displays push, opened from the
- * identity `# ----` PO chip — a control on the right edge no longer opens a
- * surface in the centre. Sibling of Unbox's {@link POUnboxingSection}.
+ * Flush data floor (Unbox SoT) — zero radius / elevation. Depth lives on the
+ * elevated action dock (notes + Pass · Print), not around PO line cards.
+ * Sibling of Unbox's {@link POUnboxingSection}.
+ *
+ * Package Pairing / Ticket / Checklist / Manuals / Timeline are right-edge
+ * Displays — never a centre `SectionTabsSlider` strip.
  */
 export function TestingPoUnboxingSection({
   row,
@@ -22,20 +23,18 @@ export function TestingPoUnboxingSection({
   row: ReceivingLineRow;
   staffId: string;
   c: TestingController;
-  /** Hide "PO items · N" — the parent tab row owns the label. */
+  /** Hide "PO items · N" — the parent overview owns the label. */
   suppressItemsHeader?: boolean;
 }) {
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-      <div className="space-y-3">
-        <TestingPoItemsSection
-          row={row}
-          staffId={staffId}
-          c={c}
-          embedded
-          suppressHeader={suppressItemsHeader}
-        />
-      </div>
-    </WorkspaceCard>
+    <div className="min-w-0">
+      <TestingPoItemsSection
+        row={row}
+        staffId={staffId}
+        c={c}
+        embedded
+        suppressHeader={suppressItemsHeader}
+      />
+    </div>
   );
 }

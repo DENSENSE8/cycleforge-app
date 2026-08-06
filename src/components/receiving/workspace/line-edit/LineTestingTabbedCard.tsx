@@ -1,19 +1,30 @@
 'use client';
 
+/**
+ * Testing Displays bodies — SKU Pairing · Checklist · Manuals.
+ *
+ * Flush planes on the right-edge push column (no WorkspaceCard glass island) —
+ * same recipe as Classify / Package Pairing bare chrome. Parent
+ * {@link buildTestingDisplayTabs} owns {@link DISPLAYS_BODY_INSET}.
+ */
+
 import { Loader2 } from '@/components/Icons';
 import { ProductHubPanel } from '@/components/products/pairing/ProductHubPanel';
-import { WorkspaceCard } from '@/design-system/components';
 import { ChecklistSection } from '@/components/tech/sku-testing/ChecklistSection';
 import { ManualsSection } from '@/components/tech/sku-testing/ManualsSection';
 import {
   useSkuTestingData,
   type UseSkuTestingData,
 } from '@/components/tech/sku-testing/useSkuTestingData';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
-/** Custom event the testing toolbar "Pair" action dispatches to jump to the pairing tab. */
+/** Custom event the testing toolbar "Pair" action dispatches to jump to Pairing Displays. */
 export const TESTING_OPEN_SKU_PAIRING_EVENT = 'testing-open-sku-pairing';
 
-/** Cross-platform SKU pairing hub for the testing workspace pairing tab. */
+const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
+
+/** Cross-platform SKU pairing hub for the Testing Pairing display. */
 export function TestingSkuPairingPanel({
   skuCatalogId,
   headerTitle,
@@ -23,35 +34,36 @@ export function TestingSkuPairingPanel({
 }) {
   if (skuCatalogId == null) {
     return (
-      <WorkspaceCard bodyClassName="p-4">
-        <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft">
+      <div className={FLUSH_HOST_CLASS}>
+        <p className="border-b border-border-soft bg-surface-card px-3 py-3 text-center text-role-caption text-text-soft">
           This line has no catalog SKU yet — pair it to Zoho in receiving before
           cross-platform SKU pairing is available.
         </p>
-      </WorkspaceCard>
+      </div>
     );
   }
 
   return (
-    <WorkspaceCard overflow="visible" bodyClassName="p-0">
-      <div className="flex h-[28rem] min-h-0 flex-col overflow-hidden rounded-2xl">
-        <ProductHubPanel
-          skuCatalogId={skuCatalogId}
-          allowManualPair
-          headerTitle={headerTitle}
-        />
-      </div>
-    </WorkspaceCard>
+    <div className={cn(FLUSH_HOST_CLASS, 'flex h-[28rem] min-h-0 flex-col overflow-hidden')}>
+      <ProductHubPanel
+        skuCatalogId={skuCatalogId}
+        allowManualPair
+        headerTitle={headerTitle}
+      />
+    </div>
   );
 }
 
-function TestingSkuLoadingCard() {
+function TestingSkuLoadingRow() {
   return (
-    <WorkspaceCard bodyClassName="p-4">
-      <div className="flex items-center gap-2 py-4 text-role-caption text-text-faint">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading testing details…
-      </div>
-    </WorkspaceCard>
+    <div
+      className={cn(
+        FLUSH_HOST_CLASS,
+        'flex items-center gap-2 border-b border-border-soft bg-surface-card px-3 py-3 text-role-caption text-text-faint',
+      )}
+    >
+      <Loader2 className="h-4 w-4 animate-spin" /> Loading testing details…
+    </div>
   );
 }
 
@@ -67,11 +79,11 @@ export function TestingSkuChecklistPanel({
 }) {
   const { bundle, loading, results, canRecord, loadBundle, loadResults, onResultChange } = data;
 
-  if (loading) return <TestingSkuLoadingCard />;
+  if (loading) return <TestingSkuLoadingRow />;
   if (!bundle) return null;
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+    <div className={FLUSH_HOST_CLASS}>
       <ChecklistSection
         embedded
         receivingLineId={receivingLineId}
@@ -83,7 +95,7 @@ export function TestingSkuChecklistPanel({
         onReloadResults={loadResults}
         onResultChange={onResultChange}
       />
-    </WorkspaceCard>
+    </div>
   );
 }
 
@@ -97,18 +109,18 @@ export function TestingSkuManualsPanel({
 }) {
   const { bundle, loading, loadBundle } = data;
 
-  if (loading) return <TestingSkuLoadingCard />;
+  if (loading) return <TestingSkuLoadingRow />;
   if (!bundle) return null;
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+    <div className={FLUSH_HOST_CLASS}>
       <ManualsSection
         embedded
         receivingLineId={receivingLineId}
         bundle={bundle}
         onChanged={loadBundle}
       />
-    </WorkspaceCard>
+    </div>
   );
 }
 

@@ -6,10 +6,11 @@ import { SEARCH_RESULT_GRID } from './search-result-grid';
 
 /**
  * Comfortable /search Monitor feed SoT:
- *   • One shared CSS Grid template for live row + skeleton (zero reflow).
+ *   • One shared CSS Grid template for live rows.
  *   • Glyph | Id | Match | Tracking | Age — no status/condition/platform.
  *   • TrackingChip on the right; OrderIdChip on the left (never dual id columns).
  *   • Flat RRF list — no CATEGORY_TABS grouping on the full results surface.
+ *   • Loading is host-owned (stage bottom pulse) — never height-filled skeletons.
  */
 
 function readSibling(relativePath: string): string {
@@ -18,7 +19,6 @@ function readSibling(relativePath: string): string {
 
 describe('SearchResultRow comfortable grid', () => {
   const rowSrc = readSibling('./SearchResultRow.tsx');
-  const skeletonSrc = readSibling('./SearchResultRowSkeleton.tsx');
   const gridSrc = readSibling('./search-result-grid.ts');
   const chipsSrc = readSibling('./search-result-chips.ts');
   const surfaceSrc = readSibling('./SearchResultsSurface.tsx');
@@ -43,11 +43,9 @@ describe('SearchResultRow comfortable grid', () => {
     );
   });
 
-  it('comfortable row and skeleton both import SEARCH_RESULT_GRID', () => {
+  it('comfortable row imports SEARCH_RESULT_GRID', () => {
     assert.match(rowSrc, /SEARCH_RESULT_GRID/);
-    assert.match(skeletonSrc, /SEARCH_RESULT_GRID/);
     assert.match(rowSrc, /from '\.\/search-result-grid'/);
-    assert.match(skeletonSrc, /from '\.\/search-result-grid'/);
   });
 
   it('leads with blue package glyphs and OrderIdChip last-8', () => {
@@ -86,18 +84,21 @@ describe('SearchResultRow comfortable grid', () => {
       'SearchResultsSurface must not group by CATEGORY_TABS (flat RRF list)',
     );
     assert.match(surfaceSrc, /MonitorListBlock/);
-    assert.match(surfaceSrc, /SearchResultRowSkeleton/);
     assert.match(surfaceSrc, /mode="wait"/);
   });
 
-  it('fills the rail with height-derived skeleton rows (not a fixed SKELETON_COUNT)', () => {
+  it('never paints height-filled skeleton rows (host owns the bottom pulse)', () => {
     assert.doesNotMatch(
       surfaceSrc,
-      /SKELETON_COUNT\s*=\s*\d+/,
-      'SearchResultsSurface must not hard-code a fixed skeleton count',
+      /SearchResultRowSkeleton/,
+      'SearchResultsSurface must not mount row skeletons',
     );
-    assert.match(surfaceSrc, /searchSkeletonCount/);
-    assert.match(surfaceSrc, /ResizeObserver/);
-    assert.match(gridSrc, /export function searchSkeletonCount/);
+    assert.doesNotMatch(
+      surfaceSrc,
+      /searchSkeletonCount/,
+      'SearchResultsSurface must not fill height with skeleton rows',
+    );
+    assert.doesNotMatch(gridSrc, /searchSkeletonCount/);
+    assert.match(surfaceSrc, /onLoadingChange/);
   });
 });

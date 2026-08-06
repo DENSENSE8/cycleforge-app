@@ -18,25 +18,25 @@ import type { InlinePillOption } from './InlinePillPicker';
 
 const FACE_GLYPH = TOP_CHROME_ICON_GLYPH;
 
-/** Soft platform face fills — brand hue tint, Claim/Photos quiet language. */
+/** Soft platform face fills — brand hue tint, Claim/Photos flat language. */
 const PLATFORM_FACE_ACTIVE: Record<string, string> = {
-  ebay: 'border-yellow-200 bg-yellow-50 text-yellow-800 shadow-sm',
-  amazon: 'border-orange-200 bg-orange-50 text-orange-700 shadow-sm',
-  fba: 'border-orange-200 bg-orange-50 text-orange-700 shadow-sm',
-  aliexpress: 'border-red-200 bg-red-50 text-red-700 shadow-sm',
-  walmart: 'border-amber-200 bg-amber-50 text-amber-800 shadow-sm',
-  goodwill: 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm',
-  ecwid: 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm',
-  square: 'border-slate-200 bg-slate-50 text-slate-700 shadow-sm', // ds-allow-raw-neutral: Square brand slate
-  shopify: 'border-green-200 bg-green-50 text-green-700 shadow-sm',
-  other: 'border-slate-200 bg-slate-50 text-slate-600 shadow-sm', // ds-allow-raw-neutral: catch-all
+  ebay: 'border-yellow-200 bg-yellow-50 text-yellow-800 shadow-none',
+  amazon: 'border-orange-200 bg-orange-50 text-orange-700 shadow-none',
+  fba: 'border-orange-200 bg-orange-50 text-orange-700 shadow-none',
+  aliexpress: 'border-red-200 bg-red-50 text-red-700 shadow-none',
+  walmart: 'border-amber-200 bg-amber-50 text-amber-800 shadow-none',
+  goodwill: 'border-sky-200 bg-sky-50 text-sky-700 shadow-none',
+  ecwid: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
+  square: 'border-slate-200 bg-slate-50 text-slate-700 shadow-none', // ds-allow-raw-neutral: Square brand slate
+  shopify: 'border-green-200 bg-green-50 text-green-700 shadow-none',
+  other: 'border-slate-200 bg-slate-50 text-slate-600 shadow-none', // ds-allow-raw-neutral: catch-all
 };
 
 const PLATFORM_FACE_IDLE =
   'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
 
 /** Structural classes when hex paint supplies fill/ink via inline style. */
-const PLATFORM_FACE_HEX_ACTIVE = 'border shadow-sm';
+const PLATFORM_FACE_HEX_ACTIVE = 'border shadow-none';
 const PLATFORM_FACE_HEX_IDLE =
   'border bg-surface-card/70 hover:border-border-default hover:bg-surface-hover';
 
@@ -102,7 +102,7 @@ export function platformClassifyOptions(args: {
           shortLabel: '?',
           title: 'No Zoho PO matched this carton',
           face: <PlatformMark empty />,
-          activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm',
+          activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-none',
           inactiveClass:
             'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
         },
@@ -116,7 +116,7 @@ export function platformClassifyOptions(args: {
       const paint = o.colorHex ? platformPaintFromHex(o.colorHex) : null;
       const active =
         PLATFORM_FACE_ACTIVE[meta.value] ??
-        'border-slate-200 bg-slate-50 text-slate-600 shadow-sm'; // ds-allow-raw-neutral: unknown platform face
+        'border-slate-200 bg-slate-50 text-slate-600 shadow-none'; // ds-allow-raw-neutral: unknown platform face
       const markMeta = paint
         ? { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label, accentHex: paint.accent }
         : { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label };

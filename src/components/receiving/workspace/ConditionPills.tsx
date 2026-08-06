@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pencil, Lock, Tags } from "@/components/Icons";
+import { Pencil, Lock, Tags, Check } from "@/components/Icons";
+import { TOP_CHROME_ICON_GLYPH } from "@/components/layout/header-shell";
 import {
   CONDITION_GRADES,
   conditionLabel,
@@ -10,6 +11,8 @@ import {
 import { conditionPillClass, conditionGradeTone } from "@/lib/condition-tone";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { useHorizontalWheelScroll } from "@/hooks/useHorizontalWheelScroll";
+import { cornerClass } from "@/design-system/tokens/radius";
+import { cn } from "@/utils/_cn";
 
 interface Props {
   value: string | null | undefined;
@@ -21,8 +24,8 @@ interface Props {
   onChange: (next: string) => void;
   /**
    * When set, the picker starts as the full row (PO just opened → pick a
-   * grade) and collapses to ONLY the selected control once a grade is chosen.
-   * Clicking the icon re-expands the full row.
+   * grade) with a trailing confirm that collapses to ONLY the selected
+   * control. Clicking the Tags face re-expands the full row.
    */
   collapsible?: boolean;
   /**
@@ -80,7 +83,8 @@ const COLLAPSED_ICON_BTN = {
 } as const;
 
 const COLLAPSED_TAGS_ICON = {
-  bar: "h-4 w-4",
+  /** Bar face — same glyph token as TestingStatusPills / InlineNotice faces. */
+  bar: TOP_CHROME_ICON_GLYPH,
   header: "h-7 w-7",
 } as const;
 
@@ -157,7 +161,7 @@ function ConditionGradeCircle({
 /**
  * Bare, mobile-first condition picker. Renders every grade as a single
  * horizontally-scrolling row of pills — no nested parents. In `collapsible`
- * mode it folds to a Tags square after a grade is chosen.
+ * mode a trailing confirm folds the strip to a Tags square.
  */
 export function ConditionPills({
   value,
@@ -179,11 +183,11 @@ export function ConditionPills({
   // unreachable in narrow hosts like the shipped details sidebar.
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   // Collapsible variant starts EXPANDED on mount (the SerialCard remounts per
-  // line, so opening a PO line always shows the full row for selection); it
-  // collapses to the chosen grade once a grade is picked. Multi-unit Station
-  // rows pass startCollapsed so an already-graded unit mounts as the Tags
-  // square. The parent may take control via `expanded`/`onExpandedChange`
-  // (e.g. collapse while editing a serial); otherwise it's self-managed.
+  // line, so opening a PO line always shows the full row for selection); the
+  // trailing confirm collapses to the Tags square. Multi-unit Station rows
+  // pass startCollapsed so an already-graded unit mounts collapsed. The
+  // parent may take control via `expanded`/`onExpandedChange` (e.g. collapse
+  // while editing a serial); otherwise it's self-managed.
   const [internalExpanded, setInternalExpanded] = useState(
     () => !(startCollapsed && selectedGrade),
   );
@@ -260,42 +264,82 @@ export function ConditionPills({
 
   return (
     <div
-      ref={scrollerRef}
-      role="radiogroup"
-      aria-label="Condition grade"
-      className="flex w-max max-w-full min-w-0 items-stretch gap-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className={cn(
+        "flex min-w-0 items-stretch",
+        // Collapsible expanded: pills scroll; trailing confirm owns a fixed cell.
+        collapsible ? "w-full max-w-full" : "w-max max-w-full",
+      )}
     >
-      {GRADES.map((g) => (
+      <div
+        ref={scrollerRef}
+        role="radiogroup"
+        aria-label="Condition grade"
+        className="flex min-w-0 flex-1 items-stretch gap-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {GRADES.map((g) => (
+          <HoverTooltip
+            key={g.value}
+            label={
+              selected === g.value
+                ? `${conditionDescription(g.value)} — click again to clear`
+                : conditionDescription(g.value)
+            }
+            asChild
+            focusable={false}
+          >
+            {/* ds-raw-button: segmented condition-grade toggle — leave hand-rolled */}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={selected === g.value}
+              onClick={() => {
+                // Re-click active pill clears the grade (Units + editing surfaces).
+                // Collapse only via the trailing confirm — keep the strip open
+                // until the operator accepts the pick.
+                if (selected === g.value) {
+                  onChange("");
+                  return;
+                }
+                onChange(g.value);
+              }}
+              className={`${conditionPillClass(g.value, selected === g.value)} ds-raw-button`}
+            >
+              {g.label}
+            </button>
+          </HoverTooltip>
+        ))}
+      </div>
+      {collapsible ? (
         <HoverTooltip
-          key={g.value}
           label={
-            selected === g.value
-              ? `${conditionDescription(g.value)} — click again to clear`
-              : conditionDescription(g.value)
+            selectedGrade
+              ? `Confirm ${selectedGrade.label}`
+              : "Pick a condition first"
           }
           asChild
-          focusable={false}
         >
-          {/* ds-raw-button: segmented condition-grade toggle — leave hand-rolled */}
+          {/* ds-raw-button: confirm + collapse expanded grade strip */}
           <button
             type="button"
-            role="radio"
-            aria-checked={selected === g.value}
-            onClick={() => {
-              // Re-click active pill clears the grade (Units + editing surfaces).
-              if (selected === g.value) {
-                onChange("");
-                return;
-              }
-              onChange(g.value);
-              if (collapsible) setExpanded(false);
-            }}
-            className={`${conditionPillClass(g.value, selected === g.value)} ds-raw-button`}
+            aria-label={
+              selectedGrade
+                ? `Confirm condition ${selectedGrade.label}`
+                : "Pick a condition first"
+            }
+            disabled={!selectedGrade}
+            onClick={() => setExpanded(false)}
+            className={cn(
+              "ds-raw-button inline-flex w-11 shrink-0 self-stretch items-center justify-center border-l border-border-soft transition-colors",
+              cornerClass("flush"),
+              selectedGrade
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "cursor-not-allowed bg-surface-strong text-text-faint",
+            )}
           >
-            {g.label}
+            <Check className="h-4 w-4" aria-hidden />
           </button>
         </HoverTooltip>
-      ))}
+      ) : null}
     </div>
   );
 }

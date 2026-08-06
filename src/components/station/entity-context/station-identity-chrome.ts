@@ -74,14 +74,18 @@ export const stationIdentityPadClass = 'px-0';
 
 /**
  * Chip-to-chip step inside a peer identity row — flush (zero gap). Classify
- * urgency·platform·type uses {@link STATION_IDENTITY_GROUP_CLASS} (`gap-1.5`)
- * instead — spaced pills, not abutting segmented seams. Never reintroduce
- * `row-gap` / `row-tight` air tokens for identity chrome.
+ * urgency·platform·type uses the same flush abut as Photos · Claim
+ * ({@link STATION_IDENTITY_GROUP_CLASS}). Never reintroduce `row-gap` /
+ * `row-tight` air tokens for identity chrome.
  */
 export const STATION_IDENTITY_ROW_CLASS = 'flex items-center gap-0';
 
-/** Classify urgency·platform·type — spaced pills (`gap-1.5`), not abutting segmented seams. */
-export const STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-1.5';
+/**
+ * Classify urgency·platform·type — flush abut (`gap-0`), same grammar as
+ * Photos · Claim. Soft drop shadows live off these faces (`shadow-none` on
+ * the tone SoTs); never reintroduce `gap-1.5` spacing between classify pills.
+ */
+export const STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-0';
 
 /** Vertical step between the two rows — flush (zero gap). */
 export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';

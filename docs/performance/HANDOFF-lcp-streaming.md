@@ -1,3 +1,27 @@
+## Progress log — 2026-08-06 (paint content order + To-ship / Unbox seeds)
+
+**SoT law shipped:** P0 shell → P1 primary → P2 context → P3 trailing in
+`.claude/rules/source-of-truth.md` + `AGENTS.md`. Registry:
+`src/lib/observability/tier1-paint-order.ts`. Guard:
+`tier1-paint-order.guard.test.ts`.
+
+**To-ship (`/shipping/orders`, `/dashboard` alias):** Packer-style
+`HydrationBoundary` + `seedUnshippedQueue` + `OrdersQueueFirstPaint` LCP
+stand-in. Dropped `ssr: false` on `DashboardShippedTable`. Filter URL writes
+use `startTransition`; Unshipped search uses `useDeferredValue`.
+
+**Unbox / Arrival:** RSC `seedUnboxSpine` dehydrates History spine into the
+same key `useReceivingLinesQuery` mounts with. Displays P3 bodies
+(Ticket / Photos / Timeline / Support) are `dynamic()` in `unbox-tabs` and
+Testing `build-testing-displays`.
+
+**Search:** `GlobalHeaderSearch` + `SearchBrowseShell` are LCP (marks
+`search:chrome` / `search:primary`). No locked-width stage field.
+
+Measure with the workflow below and ratchet only after a genuine LCP win.
+
+---
+
 # Handoff — Tier-1 LCP: kill the hydrate-then-fetch waterfall
 
 Continuation of the 2026-07-19 Lighthouse initiative (see `results-2026-07-19.md`).

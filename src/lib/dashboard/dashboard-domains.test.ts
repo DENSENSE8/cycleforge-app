@@ -44,14 +44,14 @@ test('isRetiredSearchMode: only the exact retired value', () => {
 });
 
 test('retiredSearchModeTarget: an open order wins, then the query, then the default', () => {
-  // A selected order goes to its ONE shell, never back to a search surface.
+  // A selected order goes to search order feedback.
   assert.equal(
     retiredSearchModeTarget(sp('mode=search&openOrderId=42&map=search&q=x')),
-    '/o/42',
+    '/search?sel=order:42',
   );
   assert.equal(
     retiredSearchModeTarget(sp('mode=search&openOrderId=111-6350504-7603458')),
-    '/o/111-6350504-7603458',
+    '/search?sel=order:111-6350504-7603458',
   );
   // Query only → the cross-entity route, query preserved and re-encoded.
   assert.equal(

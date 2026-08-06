@@ -7,7 +7,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, History } from '@/components/Icons';
+import { AlertTriangle, History, Tags } from '@/components/Icons';
 import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
@@ -19,6 +19,9 @@ import {
 } from '@/components/station/workbench';
 import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
 import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
+import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
+import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
+import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { UpNextActionDock } from './UpNextActionDock';
@@ -32,6 +35,8 @@ import { useSubstitutionPolicy } from '@/hooks/fulfillment/useSubstitutionPolicy
 import { useOrderAmendments } from '@/hooks/fulfillment/useSubstitution';
 import { canShowTechSubstitution } from '@/lib/tech/substitution-eligibility';
 import { useOrderAssignment } from '@/hooks';
+
+type ShippingDisplayTab = 'condition' | 'timeline';
 
 interface ActiveOrderWorkspaceProps {
   activeOrder: ActiveStationOrder;
@@ -58,7 +63,7 @@ interface ActiveOrderWorkspaceProps {
 /**
  * Focused work-item view rendered in the `/test` right pane while an order is
  * active. Unbox-family host: StationScanPaneHost + StationPanelRoot; Ship · Units
- * stay centre work; Timeline is a Displays push body.
+ * stay centre work; Condition · Timeline clarify on Displays (Open displays CTA).
  */
 export function ActiveOrderWorkspace({
   activeOrder,
@@ -72,7 +77,7 @@ export function ActiveOrderWorkspace({
   const cardPresence = useMotionPresence(framerPresence.stationCard);
   const cardTransition = useMotionTransition(framerTransition.stationCardMount);
 
-  const [activeSideTab, setActiveSideTab] = useState<'timeline' | null>(null);
+  const [activeSideTab, setActiveSideTab] = useState<ShippingDisplayTab | null>(null);
 
   const policyQuery = useSubstitutionPolicy();
   const substitution = useMemo(
@@ -93,19 +98,31 @@ export function ActiveOrderWorkspace({
     : 0;
 
   const orderAssignmentMutation = useOrderAssignment();
-  const handleConditionChange = async (nextCondition: string) => {
-    const orderId = isPreview ? previewOrder?.id : activeOrder.id;
-    if (!orderId) return;
+  const isShipped =
+    previewOrder?.status === 'SHIPPED' || previewOrder?.status === 'SHIPPED_EXT';
 
-    await orderAssignmentMutation.mutateAsync({
-      orderId,
-      condition: nextCondition,
-    });
+  const handleConditionChange = useCallback(
+    async (nextCondition: string) => {
+      const rowId = isPreview ? previewOrder?.id : activeOrder.id;
+      if (!rowId) return;
 
-    if (setActiveOrder && !isPreview) {
-      setActiveOrder({ ...activeOrder, condition: nextCondition });
-    }
-  };
+      await orderAssignmentMutation.mutateAsync({
+        orderId: rowId,
+        condition: nextCondition,
+      });
+
+      if (setActiveOrder && !isPreview) {
+        setActiveOrder({ ...activeOrder, condition: nextCondition });
+      }
+    },
+    [
+      isPreview,
+      previewOrder?.id,
+      activeOrder,
+      orderAssignmentMutation,
+      setActiveOrder,
+    ],
+  );
 
   const tracking =
     String(activeOrder.tracking ?? '').trim() ||
@@ -114,14 +131,24 @@ export function ActiveOrderWorkspace({
   const hasTimelineDisplay =
     tracking.length > 0 || orderId.length > 0 || activeOrder.serialNumbers.length > 0;
 
-  const openDisplays = useCallback(() => {
-    if (hasTimelineDisplay) setActiveSideTab('timeline');
-  }, [hasTimelineDisplay]);
-  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
-
   const displayTabs = useMemo(
     () =>
       buildSectionTabs([
+        {
+          id: 'condition',
+          label: 'Condition',
+          icon: Tags,
+          content: (
+            <div className={cn('py-3', DISPLAYS_BODY_INSET)}>
+              <StationConditionEditor
+                condition={activeOrder.condition}
+                onChange={(next) => void handleConditionChange(next)}
+                isLocked={Boolean(isShipped) || orderAssignmentMutation.isPending || isPreview}
+                collapsible={false}
+              />
+            </div>
+          ),
+        },
         {
           id: 'timeline',
           label: 'Timeline',
@@ -136,15 +163,36 @@ export function ActiveOrderWorkspace({
           ),
         },
       ]),
-    [hasTimelineDisplay, orderId, tracking, activeOrder.serialNumbers],
+    [
+      activeOrder.condition,
+      activeOrder.serialNumbers,
+      handleConditionChange,
+      hasTimelineDisplay,
+      orderId,
+      tracking,
+      isShipped,
+      isPreview,
+      orderAssignmentMutation.isPending,
+    ],
   );
 
-  const utilityRailBody =
-    hasTimelineDisplay && !activeSideTab ? (
-      <div className="flex flex-col items-center gap-0 pt-0">
-        <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplays} />
-      </div>
-    ) : null;
+  const openDisplays = useCallback(() => {
+    const first = displayTabs[0]?.id as ShippingDisplayTab | undefined;
+    setActiveSideTab(first ?? 'condition');
+  }, [displayTabs]);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+
+  const resolvedSideTab: ShippingDisplayTab | null = useMemo(() => {
+    if (!activeSideTab) return null;
+    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
+    return (displayTabs[0]?.id as ShippingDisplayTab | undefined) ?? null;
+  }, [activeSideTab, displayTabs]);
+
+  const utilityRailBody = !resolvedSideTab ? (
+    <div className="flex flex-col items-center gap-0 pt-0">
+      <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplays} />
+    </div>
+  ) : null;
 
   return (
     <motion.div
@@ -156,7 +204,7 @@ export function ActiveOrderWorkspace({
       className="flex h-full min-h-0 w-full flex-col"
     >
       <StationScanPaneHost
-        displaysOpen={Boolean(activeSideTab)}
+        displaysOpen={Boolean(resolvedSideTab)}
         hostDataAttrs={{ 'data-shipping-pane-host': true }}
         centerTestId="shipping-station-center"
         utilityRail={utilityRailBody}
@@ -209,8 +257,6 @@ export function ActiveOrderWorkspace({
                   activeOrder={activeOrder}
                   previewOrder={isPreview ? previewOrder : undefined}
                   onRemoveSerial={isPreview ? undefined : onRemoveSerial}
-                  onChangeCondition={handleConditionChange}
-                  isMutatingCondition={orderAssignmentMutation.isPending}
                 />
               }
               dock={isPreview && previewOrder ? <UpNextActionDock order={previewOrder} /> : null}
@@ -226,15 +272,15 @@ export function ActiveOrderWorkspace({
           </StationPanelRoot>
         }
         displays={
-          activeSideTab ? (
+          resolvedSideTab ? (
             <ReceivingDisplaysPushStack
               ariaLabel="Shipping displays"
               storageKey="shipping-displays-push-width"
               testId="shipping-displays-push"
               resizeTestId="shipping-displays-push-resize"
               tabs={displayTabs}
-              activeTab={activeSideTab}
-              onTabChange={() => setActiveSideTab('timeline')}
+              activeTab={resolvedSideTab}
+              onTabChange={(id) => setActiveSideTab(id as ShippingDisplayTab)}
               onClose={closeDisplays}
             />
           ) : null

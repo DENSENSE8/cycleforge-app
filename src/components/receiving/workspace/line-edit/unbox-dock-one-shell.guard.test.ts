@@ -35,11 +35,15 @@ test('LineEditPanel mounts WorkspaceNotesCard + StationTerminalDock — not Unbo
   );
 });
 
-test('LineEditPanel mounts scan-progress near the dock, not in the pane cursor row', () => {
+test('LineEditPanel mounts scan-progress on Displays strip rightSlot, not the pane cursor row', () => {
   const panel = src(LINE_EDIT);
-  assert.match(panel, /scanProgressControl/, 'ring stays reachable for Displays');
+  assert.match(
+    panel,
+    /rightSlot=\{scanProgressControl\}/,
+    'ring mounts on Displays strip (right of ⋮)',
+  );
   // Pane utility always mounts (Displays ←| toggle + optional carton ↑↓). The
-  // ring is a separate const used under the dock — never assigned into the row.
+  // ring is a separate const used as Displays rightSlot — never assigned into the row.
   assert.match(panel, /const utilityRailBody = /, 'utility rail body is always composed');
   const rowOpen = panel.indexOf('const utilityRailBody = ');
   const rowClose = panel.indexOf('const stationContextBar');

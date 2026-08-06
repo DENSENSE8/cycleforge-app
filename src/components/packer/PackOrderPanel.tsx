@@ -136,6 +136,8 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 variant="station"
                 onlySegment="customer"
                 hideLinkage
+                // Messages only — Pack Timeline Displays owns the floor spine.
+                mergeFloorTimeline={false}
               />
             </div>
           ),

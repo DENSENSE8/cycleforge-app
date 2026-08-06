@@ -26,11 +26,11 @@ test('registry: every TerminalWorkspaceMode has a structurally complete entry', 
   }
 });
 
-test('registry: every terminal mode either has WORKSPACE_MODES header chrome or is documented chrome-less', () => {
+test('registry: every terminal mode either has WORKSPACE_MODES row or is documented chrome-less', () => {
   // Guard G — keep the two registries in sync. Every TerminalWorkspaceMode must
-  // be either an Unbox-family mode with a WORKSPACE_MODES header-toolbar row, or
-  // explicitly listed as chrome-less (shipping/pickup/repair own a dock but no
-  // StationHeaderToolbar). A new terminal mode must consciously pick a side.
+  // be either an Unbox-family mode with a WORKSPACE_MODES row (nav + terminal
+  // slice), or explicitly listed as chrome-less (shipping/pickup/repair own a
+  // dock but no Unbox-family mode row). A new terminal mode must pick a side.
   const CHROME_LESS = new Set<TerminalWorkspaceMode>(
     TERMINAL_MODES_WITHOUT_HEADER_CHROME as readonly TerminalWorkspaceMode[],
   );
@@ -38,13 +38,13 @@ test('registry: every terminal mode either has WORKSPACE_MODES header chrome or 
     const hasHeaderChrome = mode in WORKSPACE_MODES;
     assert.ok(
       hasHeaderChrome !== CHROME_LESS.has(mode),
-      `${mode}: terminal mode must be in WORKSPACE_MODES (header chrome) XOR the chrome-less set — ` +
+      `${mode}: terminal mode must be in WORKSPACE_MODES XOR the chrome-less set — ` +
         `add a WORKSPACE_MODES row or list it as chrome-less.`,
     );
   }
-  // Every WORKSPACE_MODES mode is header-chrome, so none may be chrome-less.
+  // Every WORKSPACE_MODES mode is Unbox-family, so none may be chrome-less.
   for (const mode of Object.keys(WORKSPACE_MODES)) {
-    assert.equal(CHROME_LESS.has(mode as TerminalWorkspaceMode), false, `${mode}: has header chrome`);
+    assert.equal(CHROME_LESS.has(mode as TerminalWorkspaceMode), false, `${mode}: Unbox-family mode`);
   }
 });
 
@@ -102,10 +102,12 @@ test('resolveTerminalKind: triage tabs → mode-default', () => {
   assert.equal(resolveTerminalKind({ mode: 'triage', tabId: 'pairing' }), 'mode-default');
 });
 
-test('resolveTerminalKind: testing tabs → mode-default / ticket; timeline hides dock', () => {
-  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'testing' }), 'mode-default');
-  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'ticket' }), 'ticket');
-  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'timeline' }), null);
+test('resolveTerminalKind: testing is carton-terminal for every Displays tab', () => {
+  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: null }), 'mode-default');
+  // Ticket replies are local to Displays — never re-label Pass · Print.
+  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'ticket' }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'timeline' }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'checklist' }), 'mode-default');
 });
 
 test('resolveTerminalKind: shipping preview (null tab) → start; active tabs → null', () => {

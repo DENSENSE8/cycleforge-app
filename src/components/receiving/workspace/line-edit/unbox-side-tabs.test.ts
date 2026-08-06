@@ -112,7 +112,9 @@ test('legacy pairing / po-note / claim canonicalize', () => {
 });
 
 test('photo / linkage / ticket / units nested action parsers', () => {
+  // absent / legacy browse = gallery default (no Browse tab)
   assert.equal(parseUnboxPhotoAction(null), 'browse');
+  assert.equal(parseUnboxPhotoAction('browse'), 'browse');
   assert.equal(parseUnboxPhotoAction('move'), 'move');
   assert.equal(parseUnboxPhotoAction('bogus'), 'browse');
   assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: true }), 'note');

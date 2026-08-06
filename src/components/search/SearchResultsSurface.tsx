@@ -9,17 +9,15 @@
  * + result rendering. Client refine (`etype`/`hstat`) + display sort over the
  * top-50. When `onSelectHit` is provided, hosts should `preventDefault` to keep
  * selection in-page (`?sel=`).
+ *
+ * Loading paints nothing here — hosts (stage) drive a thin bottom pulse via
+ * `onLoadingChange`. Never height-fill with skeleton rows.
  */
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { Search } from '@/components/Icons';
 import { SearchResultRow, type SearchRowDensity } from '@/components/search/SearchResultRow';
-import { SearchResultRowSkeleton } from '@/components/search/SearchResultRowSkeleton';
-import {
-  SEARCH_SKELETON_TOP_PAD_PX,
-  searchSkeletonCount,
-} from '@/components/search/search-result-grid';
 import { MonitorListBlock } from '@/design-system/components/monitor';
 import { EmptyState } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -71,6 +69,11 @@ export interface SearchResultsSurfaceProps {
   /** Fires when the in-flight state changes. */
   onLoadingChange?: (loading: boolean) => void;
   /**
+   * Fires when retrieve ends in error / forbidden so a host can reveal the
+   * shell (stage uses this for the compact results extension).
+   */
+  onSettle?: () => void;
+  /**
    * Fires with the UNFILTERED result set each time a query settles, so a host
    * can react (sole hit → set `sel`). Refine must not change sole-hit open.
    */
@@ -108,6 +111,7 @@ export function SearchResultsSurface({
   showEmptyTeach = true,
   onSelectHit,
   onLoadingChange,
+  onSettle,
   onResults,
   onStatusOptions,
   activeSel = null,
@@ -123,21 +127,9 @@ export function SearchResultsSurface({
     forKey: '',
   });
   const abortRef = useRef<AbortController | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [heightPx, setHeightPx] = useState(0);
   const pageContext = '/search';
   const presence = useMotionPresence(framerPresence.workbenchPaneSettle);
   const transition = useMotionTransition(framerTransition.workbenchPaneSettle);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const publish = () => setHeightPx(el.clientHeight);
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const statusOptions = useMemo(
     () => (state.status === 'done' ? statusOptionsFromHits(state.hits) : []),
@@ -202,12 +194,15 @@ export function SearchResultsSurface({
   }, [state.status, state.hits, onResults]);
 
   useEffect(() => {
+    if (state.status === 'error' || state.status === 'forbidden') onSettle?.();
+  }, [state.status, onSettle]);
+
+  useEffect(() => {
     onStatusOptions?.(statusOptions);
   }, [statusOptions, onStatusOptions]);
 
   const hasRefine = Boolean(etype || hstat);
   const showResults = state.status === 'done' && displayHits.length > 0;
-  const showLoading = state.status === 'loading';
   const isCompact = density === 'compact' || density === 'dropdown';
   /**
    * `dropdown` means "I am mounted inside a host that already owns a surface" —
@@ -219,9 +214,6 @@ export function SearchResultsSurface({
    */
   const hostOwnsShell = density === 'dropdown';
   const listShell = hostOwnsShell ? 'rounded-none border-0 bg-transparent' : undefined;
-  const skeletonCount = searchSkeletonCount(
-    heightPx > 0 ? Math.max(0, heightPx - SEARCH_SKELETON_TOP_PAD_PX) : 0,
-  );
 
   function isActive(hit: AiSearchHit): boolean {
     if (activeSel) return isSearchSelActive(activeSel, hit);
@@ -229,7 +221,7 @@ export function SearchResultsSurface({
   }
 
   return (
-    <div ref={containerRef} className={className}>
+    <div className={className}>
       {state.status === 'done' && (
         <p className="px-3 pt-2 pb-1.5 text-role-eyebrow uppercase text-text-soft">
           {hasRefine
@@ -243,7 +235,6 @@ export function SearchResultsSurface({
           {sort === 'date' ? ' · by date' : ''}
         </p>
       )}
-
 
       {showEmptyTeach && !q && (
         <EmptyState
@@ -292,23 +283,6 @@ export function SearchResultsSurface({
       )}
 
       <AnimatePresence mode="wait" initial={false}>
-        {showLoading ? (
-          <motion.div
-            key={`loading:${state.forKey}`}
-            {...presence}
-            transition={transition}
-            className="flex h-full min-h-0 flex-col pt-2 pb-0"
-          >
-            <MonitorListBlock className={cn('min-h-0 flex-1', listShell)}>
-              {Array.from({ length: skeletonCount }, (_, i) => (
-                <li key={i}>
-                  <SearchResultRowSkeleton />
-                </li>
-              ))}
-            </MonitorListBlock>
-          </motion.div>
-        ) : null}
-
         {showResults ? (
           <motion.div
             key={`results:${state.forKey}`}

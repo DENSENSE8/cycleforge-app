@@ -97,4 +97,4 @@ export const STATION_SCAN_PANE_HOST_CLASS =
  * Displays.
  */
 export const STATION_UTILITY_RAIL_CLASS =
-  'relative flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card';
+  'relative z-raised flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card';

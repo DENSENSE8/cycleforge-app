@@ -28,6 +28,26 @@ test('receivingLabelPlatformDisplay abbreviates Amazon Return for small labels',
   );
 });
 
+test('receivingLabelPlatformDisplay abbreviates Unfound Return for small labels', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Unfound',
+      receivingType: 'RETURN',
+    }),
+    'UNF - Return',
+  );
+});
+
+test('receivingLabelPlatformDisplay keeps full Unfound name without a type', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Unfound',
+      receivingType: null,
+    }),
+    'Unfound',
+  );
+});
+
 test('receivingLabelPlatformDisplay keeps full Amazon name without a type', () => {
   assert.equal(
     receivingLabelPlatformDisplay({

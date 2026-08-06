@@ -207,20 +207,35 @@ plainly that a two-clause test admitted the surface.
 |---|---|---|
 | **List** | The durable queue map — status tabs, search, pagination | Ephemeral selection; act-and-clear auto-advance; **being replaced by the thread** |
 | **Thread** | The customer conversation, and only that; the singular focus crossfade, keyed on ticket id | **A display switcher in its body** — reaching the linkage must not take the conversation off screen; replacing the whole page with a Station focus card |
-| **Fields** | Status + priority in the pane header's identity row; assignment in the rail's Connections display | A permanent dropdown band docked under the subject on the reading surface |
-| **Header** | The **split header** — an icon action row over dense identity, composed from the `PaneHeader` **blocks** onto a card shell whose radius/border/lift match the queue card. It is the subject's ONE home on this surface | `PaneHeader`'s own `mainStickyHeaderClass` (a full-bleed squared band — it seams against the rounded queue card); a wrapping hero title; `StationContextBar` / `CartonContextCard`; **the chat header restating the subject one row below it** |
+| **Fields** | Status + priority in the pane header's identity **title** row; ticket `#` on the stacked **keys** row beneath (`StackedRowIdentity`); assignment in the rail's Connections display | A permanent dropdown band docked under the subject on the reading surface; ticket `#` trailing on the subject line |
+| **Header** | The **split header** — an icon action row over dense identity, composed from the `PaneHeader` **blocks** onto a card shell whose radius/border/lift match the queue card. It is the subject's ONE home on this surface. Identity stacks title (status · subject · priority) over the ticket `CopyChip` — same `StackedRowIdentity` SoT as Move photos / Orders import | `PaneHeader`'s own `mainStickyHeaderClass` (a full-bleed squared band — it seams against the rounded queue card); a wrapping hero title; `StationContextBar` / `CartonContextCard`; **the chat header restating the subject one row below it**; ticket `#` on the subject row's trailing edge |
 | **Composer** | `OmnichannelComposerDock`, bottom-docked on the thread, **ticket-terminal** | A second sticky Support-only composer beside it; a dock whose label changes with the rail's selected display |
 | **Inspector** | `SupportContextDetailPanel` — a `RightRailHost` occupant mounted *beside* the shell, hosting `SectionTabsSlider density="icon"`. Operator noun is **Inspector** (`Show / Hide inspector`), **not** "Displays": a `RightRailHost` peek is an inspector; "Displays" is the Station scan push column (source-of-truth.md → Displays vs inspector) | Calling the region "Displays"; a private `<aside>` in the shell; floating over the thread; a Station push-column twin for CX; a nested scroll port inside the rail's own |
 
-### Thread anatomy — a merged record ledger, and bubbles are banned
+### Thread anatomy — conversation vs floor spine
 
-The conversation is a **`MergedRecordStream`**: helpdesk messages and warehouse /
-carrier events interleaved chronologically as **flat rows on one shared left
-reading edge**, `divide-y divide-border-hairline`, day-banded through the shared
-`DateGroupHeader`. **Direction is the leading mark** — the author's identity mark
-for a message, the station glyph for an event — **never a background fill**.
-Internal notes tint with `surface-sunken` **and say so in words on the row**, so
-colour is never the only carrier.
+**Ticket = helpdesk acts. Timeline = warehouse/carrier acts.** Same
+`TimelineItem` adapters; different surfaces.
+
+| Surface | Contents | Renderer |
+|---|---|---|
+| **Ticket** (station Displays · Support focus) | Helpdesk messages + composer | `MergedRecordStream` **messages-only** by default (`mergeFloorTimeline={false}`) |
+| **Timeline** (station Displays peer) | Scans · unbox · tracking · status | `WorkspaceTimelineTab` → `EventTimeline` |
+
+Scan-station Ticket Displays (Unbox · Testing · Pack) **never** interleave the
+floor spine into Ticket — that lives on the Timeline peer tab. Guard:
+`ticket-timeline-split.guard.test.ts`.
+
+Support service workspace may still pass `mergeFloorTimeline` (optional merge)
+until an explicit Floor toggle ships — it has no peer Timeline Displays yet.
+
+When merge *is* on, the conversation is a **`MergedRecordStream`**: helpdesk
+messages and warehouse / carrier events interleaved chronologically as **flat
+rows on one shared left reading edge**, `divide-y divide-border-hairline`,
+day-banded through the shared `DateGroupHeader`. **Direction is the leading
+mark** — the author's identity mark for a message, the station glyph for an
+event — **never a background fill**. Internal notes tint with `surface-sunken`
+**and say so in words on the row**, so colour is never the only carrier.
 
 It replaced a chat (`SupportChatThread`, deleted 2026-08-02): blue and amber
 bubbles, ragged variable widths, a `PUBLIC` chip repeated on every outbound row.

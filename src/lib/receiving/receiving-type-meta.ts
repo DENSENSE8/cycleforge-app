@@ -32,8 +32,8 @@ export interface ReceivingTypeMeta {
   /** Tailwind border tone for underline / idle ring accents. */
   border: string;
   /**
-   * Quiet tint when this type is the active selection — same soft face
-   * language as Claim/Photos (`border-*-200 bg-*-50 text-*-700`).
+   * Quiet flat tint when this type is the active selection — same face
+   * language as Claim/Photos (`border-*-200 bg-*-50 text-*-700 shadow-none`).
    */
   activeClass: string;
   /** Idle face tone in an expanded option set. */
@@ -52,7 +52,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'package',
     text: 'text-blue-600',
     border: 'border-blue-600',
-    activeClass: 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm',
+    activeClass: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
     inactiveClass:
       'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100',
   },
@@ -63,7 +63,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'rotate-ccw',
     text: 'text-rose-600',
     border: 'border-rose-500',
-    activeClass: 'border-rose-200 bg-rose-50 text-rose-700 shadow-sm',
+    activeClass: 'border-rose-200 bg-rose-50 text-rose-700 shadow-none',
     inactiveClass:
       'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100',
   },
@@ -74,7 +74,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'wrench',
     text: 'text-violet-600',
     border: 'border-violet-500',
-    activeClass: 'border-violet-200 bg-violet-50 text-violet-700 shadow-sm',
+    activeClass: 'border-violet-200 bg-violet-50 text-violet-700 shadow-none',
     inactiveClass:
       'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100',
   },
@@ -85,7 +85,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'arrow-left-right',
     text: 'text-amber-700',
     border: 'border-amber-500',
-    activeClass: 'border-amber-200 bg-amber-50 text-amber-800 shadow-sm',
+    activeClass: 'border-amber-200 bg-amber-50 text-amber-800 shadow-none',
     inactiveClass:
       'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100',
   },
@@ -96,7 +96,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'map-pin',
     text: 'text-emerald-600',
     border: 'border-emerald-500',
-    activeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm',
+    activeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-none',
     inactiveClass:
       'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100',
   },

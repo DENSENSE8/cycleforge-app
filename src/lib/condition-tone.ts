@@ -41,7 +41,7 @@ type ConditionGradeStatusChip = {
  */
 export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = {
   BRAND_NEW: {
-    active: 'bg-yellow-500 text-white shadow-sm shadow-yellow-200 ring-yellow-600',
+    active: 'bg-yellow-500 text-white shadow-none ring-yellow-600',
     inactive: 'bg-surface-card text-yellow-800 ring-yellow-200 hover:bg-yellow-50',
     badge: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
     text: 'text-text-warning',
@@ -49,7 +49,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     dotClass: 'bg-yellow-500',
   },
   LIKE_NEW: {
-    active: 'bg-teal-600 text-white shadow-sm shadow-teal-200 ring-teal-700',
+    active: 'bg-teal-600 text-white shadow-none ring-teal-700',
     inactive: 'bg-surface-card text-teal-800 ring-teal-200 hover:bg-teal-50',
     badge: 'bg-teal-50 text-teal-700 ring-teal-200',
     text: 'text-teal-600',
@@ -57,7 +57,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     dotClass: 'bg-teal-600',
   },
   REFURBISHED: {
-    active: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 ring-indigo-700',
+    active: 'bg-indigo-600 text-white shadow-none ring-indigo-700',
     inactive: 'bg-surface-card text-indigo-800 ring-indigo-200 hover:bg-indigo-50',
     badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
     text: 'text-indigo-600',
@@ -65,7 +65,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     dotClass: 'bg-indigo-600',
   },
   USED_A: {
-    active: 'bg-emerald-600 text-white shadow-sm shadow-emerald-200 ring-emerald-700',
+    active: 'bg-emerald-600 text-white shadow-none ring-emerald-700',
     inactive: 'bg-surface-card text-emerald-800 ring-emerald-200 hover:bg-emerald-50',
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     text: 'text-emerald-600',
@@ -73,7 +73,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     dotClass: 'bg-emerald-600',
   },
   USED_B: {
-    active: 'bg-blue-600 text-white shadow-sm shadow-blue-200 ring-blue-700',
+    active: 'bg-blue-600 text-white shadow-none ring-blue-700',
     inactive: 'bg-surface-card text-blue-800 ring-blue-200 hover:bg-blue-50',
     badge: 'bg-blue-50 text-blue-700 ring-blue-200',
     text: 'text-blue-600',
@@ -82,7 +82,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   },
   USED_C: {
     // ds-allow-raw-neutral: identity/tone hue — USED_C's slate among emerald/blue/amber grade hues, not chrome
-    active: 'bg-slate-700 text-white shadow-sm shadow-slate-300 ring-slate-800',
+    active: 'bg-slate-700 text-white shadow-none ring-slate-800',
     inactive: 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover',
     badge: 'bg-surface-sunken text-text-muted ring-border-soft',
     text: 'text-text-muted',
@@ -90,7 +90,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     dotClass: 'bg-slate-700', // ds-allow-raw-neutral: identity/tone hue — USED_C slate dot
   },
   PARTS: {
-    active: 'bg-amber-700 text-white shadow-sm shadow-amber-200 ring-amber-800',
+    active: 'bg-amber-700 text-white shadow-none ring-amber-800',
     inactive: 'bg-surface-card text-amber-800 ring-amber-200 hover:bg-amber-50',
     badge: 'bg-amber-50 text-amber-700 ring-amber-200',
     text: 'text-amber-700',

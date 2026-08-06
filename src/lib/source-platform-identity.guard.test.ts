@@ -34,7 +34,6 @@ describe('source-platform identity SoT', () => {
       ['src/components/ui/OrderIdentityChips.tsx', /<OrderIdChip[\s\S]{0,180}platformLabel=\{platformLabel\}/],
       ['src/components/station/incoming-grid/cells/index.tsx', /platformLabel=\{platformMeta\.value \? platformMeta\.label : null\}/],
       ['src/components/station/receiving-grid/cells/ReceivingOrderCell.tsx', /platformLabel=\{platformLabel \|\| null\}/],
-      ['src/components/order-record/RecordPaneHeader.tsx', /formatPlatformTooltipLabel\(orderIdDisplay, platform\)/],
     ] as const;
 
     for (const [file, pattern] of surfaces) {
@@ -46,7 +45,6 @@ describe('source-platform identity SoT', () => {
     for (const file of [
       'src/components/station/entity-context/CartonContextCard.tsx',
       'src/components/ui/OrderIdentityChips.tsx',
-      'src/components/order-record/RecordPaneHeader.tsx',
     ]) {
       const src = read(file);
       assert.doesNotMatch(src, /function\s+formatPlatformTooltip|PLATFORM_COLOR|platformColorMap/);

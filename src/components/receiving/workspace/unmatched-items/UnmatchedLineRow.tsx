@@ -13,6 +13,7 @@ import {
   ConditionGradeChip,
   EmptySkuChipFace,
   SkuScanRefChip,
+  UnitPriceChip,
   getLast8,
 } from '@/components/ui/CopyChip';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLinesAccordion';
@@ -93,7 +94,9 @@ export function UnmatchedLineRow({
   const submitSerial = useCallback(
     async (raw?: string, conditionGrade?: string | null) => {
       const serial = (raw ?? '').trim();
-      if (!serial || serialSubmitting) return;
+      if (!serial) return;
+      // Never gate on in-flight — SerialCard already cleared the field; dropping
+      // here would lose the wedge scan. Queue via optimistic path below.
       setSerialSubmitting(true);
       try {
         if (isReturn) await serialLookup.check(serial);
@@ -121,7 +124,7 @@ export function UnmatchedLineRow({
         setSerialSubmitting(false);
       }
     },
-    [isReturn, line.condition_grade, line.id, receivingId, refresh, serialLookup, serialSubmitting, staffId],
+    [isReturn, line.condition_grade, line.id, receivingId, refresh, serialLookup, staffId],
   );
 
   // Delete a serial by id (no confirm — ActiveLineConditionSerial owns the
@@ -226,7 +229,7 @@ export function UnmatchedLineRow({
         )}
       >
         <PoLineHeaderThumb imageUrl={line.image_url} />
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
           <div className="flex min-w-0 items-start gap-1 px-2 py-1">
             <p className="min-w-0 flex-1 text-role-caption font-semibold leading-tight text-text-default">
               {lineTitle}
@@ -265,6 +268,7 @@ export function UnmatchedLineRow({
                 </span>
               ) : undefined
             }
+            price={<UnitPriceChip amount={null} dense />}
           />
         </div>
       </div>

@@ -72,7 +72,7 @@ export const CONTEXT_PANEL_RESIZE = {
  *
  * Open: paths into the same preference —
  * 1. **Sash-top chevron:** {@link HorizontalEdgeResizeHandle} `onCollapse` on
- *    the trailing outset edge (every mounted context rail, including dashboard);
+ *    the trailing inset edge (every mounted context rail, including dashboard);
  * 2. **Filter trailing:** {@link RailFilterCollapseButton} — auto-seated by
  *    `TechRailSearchBar` `variant="rail"` when under
  *    {@link ContextPanelCollapseProvider} (age column / bottom-right). Hosts
@@ -143,9 +143,10 @@ export const CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS = cn(
  * canvas/sunken ground — not a decorative island.
  *
  * `relative` anchors the trailing-edge resize grip
- * (`HorizontalEdgeResizeHandle` `placement="outset"`). `w-[360px]` is the
- * fixed default; {@link ContextPanelLayout} overrides it with an inline width
- * from {@link CONTEXT_PANEL_RESIZE}.
+ * (`HorizontalEdgeResizeHandle` `placement="inset"` — paint thickens this
+ * `border-r` seam in place). `w-[360px]` is the fixed default;
+ * {@link ContextPanelLayout} overrides it with an inline width from
+ * {@link CONTEXT_PANEL_RESIZE}.
  */
 export const CONTEXT_PANEL_COLUMN_CLASS = cn(
   'relative',

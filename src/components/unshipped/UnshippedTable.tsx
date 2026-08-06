@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useDeferredValue } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -46,6 +46,8 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
    * `tested` = TESTED only. Omit for station embeds (all lanes + `?ustatus`).
    */
   fulfillmentLane?: 'pending' | 'tested';
+  /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
+  onPrimaryPainted?: () => void;
 }
 
 /** Map an assignment/order-changed event payload to the flat row patch it implies
@@ -103,6 +105,7 @@ export function UnshippedTable({
   toolbarPortalTarget,
   onOpenRecord,
   fulfillmentLane,
+  onPrimaryPainted,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -111,6 +114,8 @@ export function UnshippedTable({
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const searchQuery = String(searchParams.get('search') || '').trim();
+  // Non-scan-critical: keep the prior list paintable while the typed query catches up.
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   // Fulfillment queue stages: pending (not tested) and tested (packing now).
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
@@ -149,7 +154,7 @@ export function UnshippedTable({
 
   const query = useQuery({
     ...unshippedOrdersQuery({
-      searchQuery,
+      searchQuery: deferredSearchQuery,
       packedBy,
       testedBy,
       staffId,
@@ -157,7 +162,7 @@ export function UnshippedTable({
       // Coarse stage facet now filtered SERVER-side (Phase 1). Absent = all.
       stage: stageFilter === 'all' ? undefined : stageFilter,
       // Bounded page (Phase 2); search stays unbounded.
-      limit: searchQuery ? undefined : rowLimit,
+      limit: deferredSearchQuery ? undefined : rowLimit,
     }),
     // Keep rows visible while search/stage refetch, but never bleed the previous
     // staff scope into a new one — that made ?staff= look like it wasn't filtering.
@@ -168,11 +173,19 @@ export function UnshippedTable({
     },
   });
 
+  useEffect(() => {
+    if (!onPrimaryPainted) return;
+    // Paintable = settled with any result (including empty queue) or seeded data.
+    if (query.isSuccess || (query.data != null && !query.isLoading)) {
+      onPrimaryPainted();
+    }
+  }, [onPrimaryPainted, query.isSuccess, query.data, query.isLoading]);
+
   // Stage-aware total from the counts endpoint (dedup-independent) drives the
   // "Load more" affordance without downloading extra rows. Dedupes with the sidebar.
   const { data: queueCounts } = useQuery({
     ...unshippedQueueCountsQuery({ staffId }),
-    enabled: !searchQuery,
+    enabled: !deferredSearchQuery,
   });
 
   const ordersChannelName = safeChannelName(() => getOrdersChannelName(orgId!));
@@ -286,7 +299,9 @@ export function UnshippedTable({
       tracking_number?: string | null;
       shipping_tracking_number?: string | null;
     };
-    // Pre-pack dashboard is labeled + tracked only — no-tracking rows belong on Labels.
+    // Pre-pack board is labeled + tracked only — no-tracking rows belong on Labels.
+    // Server fulfillmentScope / queue-counts already require non-empty tracking_number_raw;
+    // keep this client gate as defense-in-depth for cached / legacy payloads.
     const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
     if (!tracking) return false;
     const state = deriveFulfillmentState({

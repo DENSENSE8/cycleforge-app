@@ -90,7 +90,17 @@ function tag(items: TimelineItem[], lens: TaggedItem['lens']): TaggedItem[] {
   return items.map((item) => ({ item, lens }));
 }
 
-export function OrderTimelineSection({ orderId }: { orderId: number }) {
+export function OrderTimelineSection({
+  orderId,
+  /**
+   * Station flush host — drop the desk `mx-8` inset so the trail sits edge-to-
+   * edge under centre tabs (Labels Print · Documents · Timeline).
+   */
+  flush = false,
+}: {
+  orderId: number;
+  flush?: boolean;
+}) {
   const [groupMode, setGroupMode] = useState<TimelineGroupMode>('time');
   const [lens, setLens] = useState<OrderTimelineLens>('all');
   const [showPhotos, setShowPhotos] = useState(false);
@@ -203,6 +213,11 @@ export function OrderTimelineSection({ orderId }: { orderId: number }) {
       items={items}
       loading={isLoading}
       groupMode={groupMode}
+      className={
+        flush
+          ? 'border-t border-border-hairline px-3 pt-3 pb-6'
+          : 'mx-8 mt-2 border-t border-border-hairline pt-4 pb-8'
+      }
       emptyMessage={
         lens === 'all' ? undefined : 'No events in this lens — switch back to All.'
       }

@@ -1,10 +1,11 @@
 /**
  * Displays nested verb switchers must use industrial TabDisplay — never soft
- * TabSwitch pills (Browse·Move·Send, Link·Note, Units·Prebox). Ticket is
+ * TabSwitch pills (Photos Move·Send, Link·Note, Units·Prebox). Ticket is
  * presence-exclusive (no Chat·Claim nested underline).
  *
- * Parent verbs use `appearance="underline"`; claim child mode (New·Link) uses
- * `appearance="segment"` in ClaimWizardNav — never a second inverse fill.
+ * Parent verbs use `appearance="underline"` (Photos · Linkage · Units). Claim
+ * child mode (New·Link) uses `appearance="segment"` in ClaimWizardNav — never
+ * a second inverse fill.
  */
 
 import assert from 'node:assert/strict';
@@ -20,12 +21,15 @@ function stripComments(src: string): string {
 
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
-/** Hosts that still nest underline verb switchers (Ticket does not). */
-const NESTED_VERB_HOSTS = [
+/** Hosts that nest underline parent verbs (Photos · Linkage · Units). */
+const UNDERLINE_VERB_HOSTS = [
   'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
 ] as const;
+
+/** Hosts that still nest verb switchers (Ticket does not). */
+const NESTED_VERB_HOSTS = [...UNDERLINE_VERB_HOSTS] as const;
 
 const FLUSH_STACK_HOSTS = [
   ...NESTED_VERB_HOSTS,
@@ -49,6 +53,12 @@ describe('Displays nested verbs use TabDisplay', () => {
         /\bTabSwitch\b/,
         `${host} must not import soft TabSwitch pills`,
       );
+    });
+  }
+
+  for (const host of UNDERLINE_VERB_HOSTS) {
+    it(`${host} parent verbs use underline appearance`, () => {
+      const src = read(host);
       assert.match(
         src,
         /appearance="underline"/,
@@ -56,6 +66,19 @@ describe('Displays nested verbs use TabDisplay', () => {
       );
     });
   }
+
+  it('PhotosDisplayHost is Move · Send only — gallery default, no Browse tab', () => {
+    const src = read(
+      'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
+    );
+    assert.match(src, /icon:\s*ArrowLeftRight/);
+    assert.match(src, /icon:\s*Send/);
+    assert.doesNotMatch(
+      src,
+      /id:\s*'browse'|label:\s*'Browse'/,
+      'gallery is default body — no Browse tab',
+    );
+  });
 
   it('TicketDisplayHost is presence-exclusive — no Chat · Claim TabDisplay', () => {
     const src = read('src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx');
@@ -101,13 +124,33 @@ describe('Displays nested verbs use TabDisplay', () => {
     );
     assert.match(
       src,
-      /ICON_CELL_COMPACT_CLASS[\s\S]*h-10/,
-      'compact only tightens padding — never shortens the plate',
+      /flex-1 items-center justify-center/,
+      'topic cells share the rail equally — icons centered in each share',
     );
     assert.doesNotMatch(
       src,
-      /ICON_CELL_COMPACT_CLASS[\s\S]*h-6/,
-      'h-6 compact face inverted hierarchy under nested verb rows',
+      /w-10 shrink-0 grow-0 basis-10/,
+      'idle cells must not stay fixed w-10 (left-clustered) — they share flex-1',
+    );
+    assert.match(
+      src,
+      /motionRole\.push\.rail/,
+      'topic-plate expand uses push.rail layout tween (never a spring)',
+    );
+    assert.match(
+      src,
+      /AnimatePresence/,
+      'selected label mounts with enter/exit presence',
+    );
+    assert.match(
+      src,
+      /width: 'auto'/,
+      'selected label click-expands width',
+    );
+    assert.doesNotMatch(
+      src,
+      /ICON_CELL_CLASS[\s\S]*h-6/,
+      'h-6 face inverted hierarchy under nested verb rows',
     );
     assert.match(src, /MoreVertical/, 'overflow ⋮ stays on the topic plate row');
     assert.match(

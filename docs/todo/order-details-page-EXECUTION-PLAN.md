@@ -23,22 +23,24 @@ is the one to revisit; nothing else in the plan depends on it.
 
 ## 1. Locked decisions
 
-> **Superseded 2026-08-05 (search feedback unlock).** D2 / D2a / “one body for
-> search + desk + `/o`” are **demolished**. Order surfaces are three jobs:
-> durable record (`OrderRecordBody` @ `/o`), search feedback (`SearchOrderFeedback`
-> @ `/search?sel=order:…`), desk table click (tabbed `ShippedDetailsPanel`).
-> Non-desk right-rail opens use `CompactOrderPeek`. See `AGENTS.md` +
-> `source-of-truth.md` → Order surface by job.
+> **Superseded 2026-08-06 (full `/o` retire).** D1 / D2b / D3 / D4 / D4a are
+> **demolished**. `/o/[orderId]` permanently redirects to search feedback.
+> Order surfaces are two jobs: durable edit/notes (desk `ShippedDetailsPanel`),
+> search feedback (`SearchOrderFeedback`). Pack checklist demoted off Workbench
+> (D7). See `AGENTS.md` + `source-of-truth.md` → Order surface by job.
+>
+> **Earlier (2026-08-05):** D2 / D2a / “one body for search + desk + `/o`”
+> demolished when search feedback became its own shell.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **Durable canonical route: `/o/[orderId]`** for the full Workbench record. Confident identifier Enter still lands here. | Durable editing + deep links need one full record. |
-| D2 | ~~One `OrderRecordBody` for search + desk + `/o`~~ **SUPERSEDED.** `OrderRecordBody` mounts only on `/o/[orderId]`. | Search feedback is a different job (read-dominant result). |
+| D1 | ~~Durable canonical route: `/o/[orderId]`~~ **SUPERSEDED 2026-08-06.** Desk `ShippedDetailsPanel` is durable edit; `/o` redirects to search feedback. | Full-page shell retired; notes returned to desk dock. |
+| D2 | ~~One `OrderRecordBody` for search + desk + `/o`~~ **SUPERSEDED.** `OrderRecordBody` deleted with `/o`. | Search feedback is a different job (read-dominant result). |
 | D2a | ~~Hard scope at `context="dashboard"` → OrderRecordBody~~ **SUPERSEDED.** Desk inspector is always tabbed `ShippedDetailsBody`; `context` is inspector capability only. | Body fork on `context==="dashboard"` blocked redesign. |
-| D2b | **`PackoutChecklistCard` stays on `/o/[orderId]` for now — demotion deferred.** | Still only mounted from `OrderFullPageView`. |
-| D4a | **Confident identifier Enter → `/o/[id]`.** ORDER search hits / preview → `/search?sel=order:…` (`SearchOrderFeedback`). | Separates durable open from search feedback. |
-| D3 | **Durable `/o` record: no 8-tab strip** — single scroll + right rail. Search feedback **may** use tabs (its own shell). | Tabs hide exceptions on the durable record; feedback is exploratory. |
-| D4 | **Instant-navigate on one confident hit → `/o/[id]`.** Fuzzy / multi-result → `/search`. | Unambiguous intent vs explore. |
+| D2b | ~~`PackoutChecklistCard` stays on `/o`~~ **SUPERSEDED / D7 executed.** Card deleted from Workbench; packer keeps interactive checklist. | Packout is Station, not Workbench. |
+| D4a | ~~Confident identifier Enter → `/o/[id]`~~ **SUPERSEDED.** Enter → `/search?sel=order:…`. | Separates shareable read from desk durable edit. |
+| D3 | ~~Durable `/o` record: no 8-tab strip~~ **SUPERSEDED** with D1. Search feedback may use its own layout. | `/o` gone. |
+| D4 | ~~Instant-navigate on one confident hit → `/o/[id]`~~ **SUPERSEDED** — same as D4a → search feedback. | Unambiguous intent opens feedback. |
 | D5 | **Bridge the keyspace — do not add money columns to `orders`.** Nullable `sales_order_id UUID` on `orders`. | Flat money columns would fork a second source of truth for facts the mirror already holds, and require per-channel finance ingest. |
 | D6 | **`order_line_items` is a prerequisite, and it is scheduled** (Week 4–5), not declared and deferred. | Combined shipping and split fulfillment are real in reseller ops; one-order-one-line cannot represent them. |
 | D7 | **Demote `PackoutChecklistCard`** off the durable record page to a Station surface. | Packout is act-and-clear, scanner-driven — a Station contract, not a Workbench one. |
@@ -51,9 +53,9 @@ is the one to revisit; nothing else in the plan depends on it.
 
 **Loose but reliable coupling between the operational spine and the commercial ledger.** `orders`
 (INTEGER) stays lean and fast for picking / testing / scanning, uncluttered by accounting columns.
-`sales_orders` (UUID) keeps carrying money, multi-line pricing, fees, and taxes. `/o/[orderId]` is the
-single pane of glass that stitches them: physical ops data on first paint, commercial data hydrated
-asynchronously after.
+`sales_orders` (UUID) keeps carrying money, multi-line pricing, fees, and taxes. Desk
+inspector + search feedback stitch operational spine and commercial ledger: physical
+ops data on first paint, commercial data hydrated asynchronously after.
 
 ---
 

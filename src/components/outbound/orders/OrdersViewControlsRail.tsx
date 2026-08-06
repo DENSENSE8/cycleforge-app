@@ -4,6 +4,11 @@
  * To Ship View-only inspector shell — Band 3 can open layout / refine chrome
  * with no selected order (`detail:orders-view`). Chrome + View topics only;
  * no fabricated order identity or body.
+ *
+ * **Sole desk host for sheet View topics** when an order is *not* selected.
+ * Selected-order `detail:order` (`ShippedDetailsPanel`) is order facts only —
+ * it must never remount {@link OrdersViewTopicsCluster}. Batch / compare rails
+ * may still compose the cluster for multi-pane layout chrome.
  */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';

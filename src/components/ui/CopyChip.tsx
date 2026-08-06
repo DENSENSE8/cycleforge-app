@@ -653,18 +653,37 @@ export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
  * (`88.77` — the `$` stays in the copy payload only). Copies the full formatted
  * string (`$88.77`). Dense LedgerGrid Price cells pass {@link showIcon} false
  * via column `omitCellIcon` (header glyph still names the type).
+ *
+ * Pass `amount={null}` / missing / non-positive for an unfound or unpriced line:
+ * still paints the Receipt mark + honest `—` (same empty grain as
+ * {@link PoTotalChip}) so the meta price column never collapses to a blank cell.
  */
 export const UnitPriceChip = ({
   amount,
   dense,
   showIcon = true,
 }: {
-  amount: number | string;
+  amount: number | string | null | undefined;
   dense?: boolean;
   /** When false, omit the tone Receipt mark. */
   showIcon?: boolean;
 }) => {
-  const numeric = Number(amount).toFixed(2);
+  const n = amount == null || amount === '' ? NaN : Number(amount);
+  if (!Number.isFinite(n) || n <= 0) {
+    return (
+      <CopyChip
+        value=""
+        display="—"
+        tone="price"
+        icon={showIcon ? undefined : null}
+        truncateDisplay={false}
+        fitDisplayWidth
+        dense={dense}
+        disableCopy
+      />
+    );
+  }
+  const numeric = n.toFixed(2);
   const formatted = `$${numeric}`;
   return (
     <CopyChip

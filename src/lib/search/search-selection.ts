@@ -1,7 +1,7 @@
 /**
  * `/search` durable selection — `?sel=order:123` / `receiving:50200` / …
  *
- * The centered find stage writes this param; the page swaps to full-bleed
+ * Header find / browse shell writes this param; the page swaps to full-bleed
  * entity detail. Sole/exact identifier hits write `sel` in-page instead of
  * navigating to `searchHitHref`.
  */

@@ -91,9 +91,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     /** awaitingOnly=true → only orders without shipment_id (Outbound Labels queue) */
     const awaitingOnly       = searchParams.get('awaitingOnly') === 'true';
     /**
-     * fulfillmentScope=true → labeled, not-yet-packed fulfillment queue (Dashboard
-     * Unshipped). Requires shipment_id and excludes PACK events — the mirror of
-     * awaitingOnly (no label) and stagedOnly (already packed).
+     * fulfillmentScope=true → labeled + tracked, not-yet-packed fulfillment queue
+     * (Dashboard Unshipped / To-ship Pending·Tested). Requires shipment_id with a
+     * non-empty tracking number (blank-tracking stays on Labels) and excludes PACK
+     * facts — the mirror of awaitingOnly (no label) and stagedOnly (already packed).
      */
     const fulfillmentScope   = searchParams.get('fulfillmentScope') === 'true';
     /** stagedOnly=true → packed (PACK event) but not yet dock scan-out (no SHIP_CONFIRM) */
@@ -603,6 +604,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     if (fulfillmentScope) {
       sql += ` AND o.shipment_id IS NOT NULL`;
+      // Pre-pack board = labeled + tracked; blank tracking_number_raw belongs on Labels.
+      sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
       // CF-04: exclude only when THIS order has a pack fact — not when a sibling
       // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
       sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;

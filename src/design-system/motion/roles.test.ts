@@ -42,9 +42,21 @@ test('named spring / fade presets resolve to the house physics tokens — no cop
   assert.equal(framerTransition.sliderIndicator, springSnappy);
   assert.equal(framerTransition.workOrderModalSpring, springSnappy);
   assert.equal(framerTransition.commandBarDialog, springSnappy);
+  assert.equal(framerTransition.routeHistoryMount, springSnappy);
   assert.equal(framerTransition.chipCopyFeedback, fadeInstant);
   assert.equal(framerTransition.overlayScrim, fadeInstant);
   assert.equal(motionRole.feedback.pulse.transition, fadeInstant);
+});
+
+test('routeHistory rises on appear — desk tables never wipe left→right', () => {
+  const { initial, animate } = framerPresence.routeHistory;
+  assert.equal((initial as { x?: number }).x, undefined);
+  assert.equal((animate as { x?: number }).x, undefined);
+  assert.ok(
+    typeof (initial as { y?: number }).y === 'number' && (initial as { y: number }).y > 0,
+    'initial y must be below rest so the surface rises into place',
+  );
+  assert.equal((animate as { y?: number }).y, 0);
 });
 
 test('there are exactly six roles', () => {

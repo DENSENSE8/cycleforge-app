@@ -106,6 +106,15 @@ test('no order UI writes the legacy scalar', () => {
     'ShippedPanelEditorDock no longer mounts OrderNotesTrail — the dock context would lose notes entirely',
   );
 
+  // Desk inspector is the durable note plane after `/o` retired.
+  const DESK_BODY = code(
+    sourceOf('../../components/shipped/details-panel/ShippedDetailsBody.tsx'),
+  );
+  assert.ok(
+    !/showNotes=\{false\}/.test(DESK_BODY),
+    'ShippedDetailsBody must not hard-disable notes — desk is the durable note plane',
+  );
+
   // The grid's in-cell editor appends; `commitAssign({ notes })` is the old
   // overwrite it replaced.
   assert.ok(

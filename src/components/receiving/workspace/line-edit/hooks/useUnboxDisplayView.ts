@@ -4,7 +4,7 @@
  * URL ⇄ state for the Unbox Displays push column (`ReceivingDisplaysPushStack`).
  *
  * `?display=<tab>` opens the column; **absence IS closed**. Nested modes:
- *   - Photos: `?photoAction=browse|move|send`
+ *   - Photos: `?photoAction=move|send` (absent / legacy `browse` = gallery)
  *   - Linkage: `?linkageAction=link|note`
  *   - Ticket: `?ticketAction=chat|claim` + `?claimMode=create|link` for claim
  *   - Units: `?unitsAction=units|prebox`
@@ -116,7 +116,13 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
 
   const setDisplay = useCallback(
     (tab: UnboxSideTab | null, opts?: SetUnboxDisplayOpts) => {
-      const next = new URLSearchParams(searchParams.toString());
+      // Seed from the live URL (same pattern as the details-overlay clear
+      // handler below). React `searchParams` can lag a concurrent
+      // `openReceivingId` write — a stale seed drops the carton key or
+      // clobbers a just-written `display=`, so Open displays looks dead.
+      const seed =
+        typeof window !== 'undefined' ? window.location.search : searchParams.toString();
+      const next = new URLSearchParams(seed);
       // Drop nested + legacy peer flags whenever the display changes.
       next.delete(PHOTO_ACTION_PARAM);
       next.delete(LINKAGE_ACTION_PARAM);

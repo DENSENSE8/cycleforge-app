@@ -7,8 +7,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(__dirname, '../../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 function readRepo(rel: string): string {
   return readFileSync(path.join(ROOT, rel), 'utf8');
@@ -26,10 +27,11 @@ describe('orders lookup tracking resolve', () => {
     assert.match(src, /loadOrderDetailById/);
   });
 
-  it('header paste commits via onSearch → resolveSearchOrder', () => {
+  it('header paste commits via onSearch → resolveSearchOrder + cache seed', () => {
     assert.match(field, /flushValue\(trimmed, Boolean\(onSearch\)\)/);
     assert.match(find, /onSearch=\{handleSearchSubmit\}/);
     assert.match(find, /resolveSearchOrder\(trimmed\)/);
+    assert.match(find, /setSearchOrderResolveCache/);
     assert.match(find, /orderRecordHref\(resolved\.order\.id\)/);
   });
 });

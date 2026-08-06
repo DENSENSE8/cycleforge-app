@@ -138,28 +138,17 @@ test('PoLineRow meta is a bordered boxed sub-grid (gap-x whitespace, no divide-x
     /grid-cols-\[auto_auto_auto_minmax\(2\.5rem,1fr\)_auto\]/,
     'meta tracks: qty|SKU|cond|serials 1fr|price auto',
   );
-  assert.match(PO_LINE_ROW, /View All/);
   assert.match(PO_LINE_ROW, /onViewAllUnits/);
   assert.match(PO_LINE_ROW, /Barcode/);
   assert.match(
     PO_LINE_ROW,
-    /View all units[\s\S]{0,220}px-1\.5 py-0/,
-    'View All keeps a small horizontal inset so label text is not edge-flush',
-  );
-  assert.match(
-    PO_LINE_ROW,
-    /View all units[\s\S]{0,200}bg-surface-card/,
-    'View All must share the white serial-row face (not canvas grey)',
+    /aria-label="Edit units"/,
+    'serial preview is the sole open-Units control (View All removed)',
   );
   assert.doesNotMatch(
     PO_LINE_ROW,
-    /View all units[\s\S]{0,200}bg-surface-canvas/,
-    'View All must not grey-out against the serial preview',
-  );
-  assert.doesNotMatch(
-    PO_LINE_ROW,
-    /View all units[\s\S]{0,200}border-l/,
-    'View All is gap-separated from serials — no border-l hairline',
+    /View [Aa]ll/,
+    'View All button must not remain beside the serial preview',
   );
 });
 
@@ -286,8 +275,8 @@ test('identity pad is horizontal-only (zero vertical pad)', () => {
   );
   assert.match(
     IDENTITY,
-    /STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-1\.5'/,
-    'classify group must be gap-1.5 spaced pills (not abutting segmented seams)',
+    /STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-0'/,
+    'classify group must be gap-0 flush pills (same abut as Photos · Claim)',
   );
 });
 

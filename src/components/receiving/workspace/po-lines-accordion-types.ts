@@ -29,7 +29,13 @@ export interface PoLineSerialActions {
 
 export interface ActiveRowSlotContext {
   /**
-   * Authoritative list of saved serials for the active line, sourced from
+   * The accordion sibling this body belongs to. Condition/serial editors mount
+   * under every editable line (SKU→serial interleave); callers MUST bind
+   * mutations to `line.id`, not the panel's controller-active row alone.
+   */
+  line: ReceivingLineRow;
+  /**
+   * Authoritative list of saved serials for this line, sourced from
    * this accordion's own query. Pass this into the inline serial adder so
    * the chip list below the input always matches the chip shown in the row
    * header — otherwise the two surfaces drift (the parent's `row.serials`
@@ -37,7 +43,7 @@ export interface ActiveRowSlotContext {
    */
   serials: ActiveRowSerial[];
   /**
-   * Materialised `receiving_line_unit` rows for the active line — same
+   * Materialised `receiving_line_unit` rows for this line — same
    * accordion SoT as `serials`. Drives the per-unit green-check no-serial
    * offer; the panel's outer `row.units` is usually unhydrated table data
    * and must not be used here (per-unit-no-serial Phase 3).

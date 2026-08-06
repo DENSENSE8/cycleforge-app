@@ -8,6 +8,7 @@ import {
   removeSerialById,
   rollbackOptimisticSerial,
   setSerialGrade,
+  unlinkSerialFromLineUnits,
 } from './optimistic-serials';
 
 describe('optimistic-serials', () => {
@@ -31,6 +32,31 @@ describe('optimistic-serials', () => {
     assert.equal(removing[0]._optimistic, 'removing');
     assert.deepEqual(removeSerialById(removing, 7), []);
     assert.deepEqual(rollbackOptimisticSerial([{ id: -2, serial_number: 'X', _optimistic: 'adding' }], -2), []);
+  });
+
+  it('unlinkSerialFromLineUnits clears the matching unit link', () => {
+    const units = [
+      { id: 1, serial_unit_id: 7, serial: 'SN7' },
+      { id: 2, serial_unit_id: 8, serial: 'SN8' },
+    ];
+    assert.deepEqual(unlinkSerialFromLineUnits(units, 7), [
+      { id: 1, serial_unit_id: null, serial: null },
+      { id: 2, serial_unit_id: 8, serial: 'SN8' },
+    ]);
+    assert.equal(unlinkSerialFromLineUnits(null, 7), null);
+  });
+
+  it('bindSerialsToUnitSlots hides in-flight removing serials', () => {
+    const units = [{ serial_unit_id: 7 }, { serial_unit_id: null }];
+    const saved = [
+      { id: 7, serial_number: 'SN7', _optimistic: 'removing' as const },
+      { id: 8, serial_number: 'SN8' },
+    ];
+    // Slot 0 stays empty (claimed by removing id); SN8 fills slot 1.
+    assert.deepEqual(bindSerialsToUnitSlots(units, saved), [
+      null,
+      { id: 8, serial_number: 'SN8' },
+    ]);
   });
 
   it('stamps a per-unit grade onto the matching serial only', () => {

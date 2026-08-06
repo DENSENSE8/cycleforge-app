@@ -434,6 +434,7 @@ export default function ReceivingLinesTable({
   // History tab whose mode id is the shared 'history') — gate the mark on it,
   // not on the queue/viewed ids, or the default tab never stamps.
   useSurfacePaintMark('unbox:table', embedded && !isLoading);
+  useSurfacePaintMark('unbox:primary', embedded && !isLoading);
 
   const emptyMessage = mode.emptyMessage(modeContext);
 

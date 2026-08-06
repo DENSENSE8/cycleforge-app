@@ -12,8 +12,11 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-
-const MARGIN = 8;
+import {
+  clampPortalTooltipPosition,
+  readTrustedTriggerRect,
+  type PortalTooltipPlacement,
+} from '@/lib/ui/portal-anchor';
 
 /**
  * Lightweight hover/focus tooltip for plain meaning/help text.
@@ -26,7 +29,9 @@ const MARGIN = 8;
  * resize-edge handle) so a cross-hover does not flash the label.
  *
  * The bubble is measured once mounted, then clamped to the viewport (8px margin)
- * and flipped above/below as needed, so it NEVER renders off the page.
+ * and flipped above/below as needed, so it NEVER renders off the page. Untrusted
+ * / near-origin anchors are rejected so the bubble cannot flash at the
+ * viewport's top-left corner.
  */
 export function HoverTooltip({
   label,
@@ -55,7 +60,7 @@ export function HoverTooltip({
    * below when there isn't room; `below` / `above` pin to that side (still
    * viewport-clamped).
    */
-  placement?: 'auto' | 'above' | 'below';
+  placement?: PortalTooltipPlacement;
   /**
    * Dwell before showing on mouse enter. `0` (default) = instant. Focus still
    * shows immediately — keyboard users are not crossing the trigger.
@@ -80,10 +85,11 @@ export function HoverTooltip({
   }, []);
 
   const show = useCallback(() => {
-    const r = triggerRef.current?.getBoundingClientRect();
-    // Ignore zero-size / detached rects — otherwise the portal can clamp to the
-    // viewport's top-left corner and look like a stray label (e.g. SKU chip).
-    if (r && r.width >= 2 && r.height >= 2) {
+    // Ignore hidden / detached / off-viewport rects — otherwise the portal can
+    // clamp to the viewport's top-left corner and look like a stray label
+    // (e.g. SKU chip).
+    const r = readTrustedTriggerRect(triggerRef.current);
+    if (r) {
       setAnchor(r);
       setPos(null);
     }
@@ -108,31 +114,16 @@ export function HoverTooltip({
   }, [clearOpenTimer, openDelayMs, show]);
 
   useLayoutEffect(() => {
-    if (!anchor || anchor.width < 2 || anchor.height < 2 || !bubbleRef.current) return;
+    if (!anchor || !bubbleRef.current) return;
     const b = bubbleRef.current.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    const roomAbove = anchor.top - MARGIN;
-    const roomBelow = vh - anchor.bottom - MARGIN;
-    const side = placementRef.current;
-    let rawTop: number;
-    if (side === 'below') {
-      rawTop = anchor.bottom + MARGIN;
-    } else if (side === 'above') {
-      rawTop = anchor.top - b.height - MARGIN;
-    } else {
-      // Prefer above the trigger; flip below when there isn't room above.
-      const preferAbove = roomAbove >= b.height || roomAbove > roomBelow;
-      rawTop = preferAbove ? anchor.top - b.height - MARGIN : anchor.bottom + MARGIN;
-    }
-    const top = Math.min(Math.max(rawTop, MARGIN), Math.max(MARGIN, vh - b.height - MARGIN));
-
-    // Center on the trigger, then clamp horizontally into the viewport.
-    const rawLeft = anchor.left + anchor.width / 2 - b.width / 2;
-    const left = Math.min(Math.max(rawLeft, MARGIN), Math.max(MARGIN, vw - b.width - MARGIN));
-
-    setPos({ top, left });
+    const next = clampPortalTooltipPosition({
+      anchor,
+      bubble: b,
+      placement: placementRef.current,
+    });
+    // Keep hidden (pos null) when clamp rejects — never paint at ~(MARGIN,MARGIN)
+    // from a bad/stale anchor.
+    setPos(next);
   }, [anchor]);
 
   // Dismiss when the trigger unmounts, the pane scrolls, or the host panel
@@ -155,11 +146,12 @@ export function HoverTooltip({
             ref={bubbleRef}
             role="tooltip"
             style={{
+              position: 'fixed',
               top: pos?.top ?? -9999,
               left: pos?.left ?? -9999,
               visibility: pos ? 'visible' : 'hidden',
             }}
-            className="pointer-events-none fixed z-tooltip max-w-[15rem] rounded-md bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line"
+            className="pointer-events-none z-tooltip max-w-[15rem] rounded-md bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line"
           >
             {label}
           </span>,

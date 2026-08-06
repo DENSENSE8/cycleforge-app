@@ -19,8 +19,9 @@ import { withAuth } from '@/lib/auth/withAuth';
  * `src/lib/order-lifecycle.ts`, Decision 8) and is applied CLIENT-side over the
  * returned `combos`. SQL only aggregates facts; TS owns the lane rule.
  *
- * Scope mirrors the fulfillment slice of `/api/orders`: labeled (shipment_id),
- * not carrier-shipped, not Amazon-fulfilled, and not yet packed (no PACK event).
+ * Scope mirrors the fulfillment slice of `/api/orders`: labeled (shipment_id)
+ * with a non-empty tracking number (blank-tracking stays on Labels), not
+ * carrier-shipped, not Amazon-fulfilled, and not yet packed (no PACK event).
  * Optional `?staff=` narrows to one staff's assigned work (packer OR tech).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -36,6 +37,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       organizationId: ctx.organizationId,
       staff: staffId ?? '',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
+      // Bump when membership SQL changes so stale tallies cannot outlive the fix.
+      queueScope: 'labeled_tracked_v1',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -76,6 +79,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       WHERE o.organization_id = $1
         AND o.shipment_id IS NOT NULL
+        AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
         AND NOT EXISTS (

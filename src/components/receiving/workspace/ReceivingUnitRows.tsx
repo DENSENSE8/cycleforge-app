@@ -103,7 +103,7 @@ interface Props {
    * Per-slot ConditionPills are collapsible; expand collapses photo + serial.
    */
   flush?: boolean;
-  /** Leading control on every flush unit row (line-scoped item camera). */
+  /** Item camera after condition on every flush unit row. */
   activeRowLeading?: ReactNode;
 }
 
@@ -222,11 +222,8 @@ export function ReceivingUnitRows({
         : (lineCondition ?? null));
     void onAddSerial(v, grade);
     setLineScan("");
-    window.setTimeout(() => {
-      const el = lineScanRef.current;
-      if (!el || el.disabled) return;
-      el.focus({ preventScroll: true });
-    }, 0);
+    // Field stays enabled during in-flight writes — keep the caret here.
+    lineScanRef.current?.focus({ preventScroll: true });
   };
 
   useEffect(() => {
@@ -390,7 +387,7 @@ export function ReceivingUnitRows({
               onChange={setLineScan}
               tone="neutral"
               mono
-              disabled={disabled || isSubmitting}
+              disabled={disabled}
               autoComplete="off"
               spellCheck={false}
               onKeyDown={(e) => {
@@ -415,7 +412,7 @@ export function ReceivingUnitRows({
             <HoverTooltip label="Add serial" asChild>
               <IconButton
                 onClick={submitLineScan}
-                disabled={!lineScan.trim() || isSubmitting || disabled}
+                disabled={!lineScan.trim() || disabled}
                 ariaLabel="Add serial"
                 icon={
                   <svg

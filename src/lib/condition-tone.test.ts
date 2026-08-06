@@ -1,6 +1,26 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { conditionGradeStatusChip } from '@/lib/condition-tone';
+import {
+  CONDITION_GRADE_TONE,
+  conditionGradeStatusChip,
+} from '@/lib/condition-tone';
+
+describe('CONDITION_GRADE_TONE', () => {
+  it('active faces stay flat (shadow-none) — same ops-chrome grammar as classify pills', () => {
+    for (const [grade, tone] of Object.entries(CONDITION_GRADE_TONE)) {
+      assert.match(
+        tone.active,
+        /\bshadow-none\b/,
+        `${grade} active must cite shadow-none`,
+      );
+      assert.doesNotMatch(
+        tone.active,
+        /\bshadow-sm\b/,
+        `${grade} active must not keep soft drop shadows`,
+      );
+    }
+  });
+});
 
 describe('conditionGradeStatusChip', () => {
   it('maps NEW through BRAND_NEW yellow badge + dot', () => {

@@ -7,8 +7,8 @@ import { test } from 'node:test';
  * Guards the unified-search end state (docs/unified-global-search-consolidation-plan.md).
  *
  * The global header pill (`GlobalHeaderSearch` → `GlobalFindCombobox` chrome) is
- * the search launcher on every route. On `/search` without `?sel=`, the centered
- * stage (`SearchFindStage`) is the expanded find surface — not a context rail.
+ * the sole find surface on every route — including `/search`. Multi-hit browse
+ * is `SearchBrowseShell` (no locked-width stage field, no context rail).
  * Master sidebars must not revive the deleted per-panel `<SidebarSearchBar>`
  * band or `SidebarShell.search` prop. Page-scoped lookup goes through the AI
  * assistant.
@@ -34,8 +34,7 @@ test('the deleted SidebarSearchBar component stays deleted', () => {
   assert.ok(
     !existsSync(join(SRC_ROOT, 'components/ui/SidebarSearchBar.tsx')),
     'SidebarSearchBar was removed — do not revive the old per-panel search band. ' +
-      'On `/search`, use SearchFindStage / GlobalFindCombobox; elsewhere the ' +
-      'global header pill is the launcher.',
+      'Find lives in GlobalHeaderSearch; `/search` browse is SearchBrowseShell.',
   );
 });
 
@@ -51,7 +50,7 @@ test('no file imports a SidebarSearchBar symbol', () => {
     offenders,
     [],
     'SidebarSearchBar no longer exists. Do not re-add a sidebar header search band — ' +
-      'use SearchFindStage on `/search`, or the global header launcher elsewhere. Offending files:\n' +
+      'use GlobalHeaderSearch (and SearchBrowseShell on `/search`). Offending files:\n' +
       offenders.map((f) => `  - ${f}`).join('\n'),
   );
 });
@@ -61,7 +60,7 @@ test('SidebarShell exposes no `search` prop (header owns search)', () => {
   assert.ok(
     !/\bsearch\??:/.test(src),
     'SidebarShell must not declare a `search` prop. The deleted SidebarSearchBar ' +
-      'band stays gone — `/search` uses the centered GlobalFind stage.',
+      'band stays gone — find lives in GlobalHeaderSearch.',
   );
 });
 
@@ -81,9 +80,20 @@ test('the 40px sidebar search band token stays deleted', () => {
   );
 });
 
-test('deleted SearchSidebarPanel stays deleted (centered stage owns /search)', () => {
+test('deleted SearchSidebarPanel stays deleted (header owns /search find)', () => {
   assert.ok(
     !existsSync(join(SRC_ROOT, 'components/sidebar/search/SearchSidebarPanel.tsx')),
-    'SearchSidebarPanel was removed — /search find lives in SearchFindStage, not a context rail.',
+    'SearchSidebarPanel was removed — /search find lives in GlobalHeaderSearch, not a context rail.',
+  );
+});
+
+test('locked-width SearchFindStage stays deleted', () => {
+  assert.ok(
+    !existsSync(join(SRC_ROOT, 'components/search/SearchFindStage.tsx')),
+    'SearchFindStage (centered locked-width find) was removed — header owns find.',
+  );
+  assert.ok(
+    !existsSync(join(SRC_ROOT, 'components/search/SearchStageBackground.tsx')),
+    'SearchStageBackground was removed with the locked-width stage.',
   );
 });

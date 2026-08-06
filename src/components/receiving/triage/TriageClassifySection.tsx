@@ -3,9 +3,9 @@
 /**
  * Classify controls — Urgency / Platform / Type.
  *
- * Shared by Arrival + Unbox Classify Displays. Flush plane on the push column
- * (no WorkspaceCard glass island) — same recipe as Package Pairing bare chrome.
- * Dimension eyebrows left; expanded options stay a **names list** (tone on the
+ * Shared by Arrival (centre door flow under items) + Unbox Classify Displays.
+ * Flush plane (no WorkspaceCard glass island) — same recipe as Package Pairing
+ * bare chrome. Dimension eyebrows left; expanded options stay a **names list**
  * active row). Collapsed value chip shows the identity face (platform mark /
  * type glyph / urgency). Carton **banner** is icon+name via `InlinePillPicker`
  * — tab icon option grids are deferred:

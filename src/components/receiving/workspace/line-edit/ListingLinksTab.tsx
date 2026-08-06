@@ -1,23 +1,30 @@
 'use client';
 
 /**
- * Unbox Listings tab — multi-open surface (when 2+ links) + nested detail
+ * Unbox Listings display — multi-open surface (when 2+ links) + nested detail
  * slider for each resolvable listing URL (manual / catalog / sync_notes /
  * derived) plus a manual override field.
+ *
+ * Flush Displays body (no WorkspaceCard glass island) — parent push column
+ * owns inset.
  */
 
 import { useMemo, useState } from 'react';
 import { Copy, ExternalLink, FileText, Link2 } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
+import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
 import { WorkspaceFieldLabel } from '@/components/receiving/workspace/WorkspaceSectionLabel';
 import { RECEIVING_SCAN_RULE_LINE_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import { recordCopy } from '@/lib/clipboard-history';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { OpenListingLinksPanel } from './OpenListingLinksPanel';
+
+/** Flush Displays body — parent push column owns inset; no glass island. */
+const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 
 function sourceIcon(source: CartonListingLink['source']) {
   switch (source) {
@@ -207,32 +214,32 @@ export function ListingLinksTab({
 
   if (tabs.length === 0) {
     return (
-      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+      <div className={FLUSH_HOST_CLASS}>
         <ListingLinkPanel
           link={null}
           listingLink={listingLink}
           setListingLink={setListingLink}
           isManualSlot
         />
-      </WorkspaceCard>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className={cn(FLUSH_HOST_CLASS, 'space-y-4')}>
       {showOpenAll ? (
-        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" className="min-w-0">
+        <div className="min-w-0">
           <OpenListingLinksPanel hrefs={hrefs} compact />
-        </WorkspaceCard>
+        </div>
       ) : null}
-      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" className={cn('min-w-0')}>
+      <div className="min-w-0">
         <SectionTabsSlider
           tabs={tabs}
           value={activeId}
           onChange={setActive}
           ariaLabel="Listing links"
         />
-      </WorkspaceCard>
+      </div>
     </div>
   );
 }

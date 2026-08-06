@@ -124,6 +124,34 @@ export interface CartonInspectorEvent {
 }
 
 /**
+ * Workflow-transition notes written by `receiveLineUnits`.
+ * Legacy: `Stage Matched → Unboxed`. Current: `Matched → Unboxed`.
+ * Both already ARE the human trail — never also print `NOTE` + machine codes.
+ */
+const WORKFLOW_STAGE_NOTE_RE = /^Stage\s+/i;
+
+/** Human trail note (`Matched → Unboxed`), not a machine trail (`MATCHED → UNBOXED`). */
+function isHumanTrailNote(notes: string): boolean {
+  const body = notes.replace(WORKFLOW_STAGE_NOTE_RE, '').trim();
+  if (!/.+\s*→\s+.+/.test(body)) return false;
+  // Machine trails are ALL_CAPS_SNAKE tokens only.
+  return !/^[A-Z][A-Z0-9_]*(\s*→\s*[A-Z][A-Z0-9_]*)+$/.test(body);
+}
+
+/**
+ * Operator-facing ACTIVITY title. Prefer notes; fall back to event type.
+ * Strips the historical `Stage ` prefix so the row header matches the
+ * human trail language (same size band as the meta line).
+ */
+export function cartonEventTitle(
+  event: Pick<CartonInspectorEvent, 'event_type' | 'notes'>,
+): string {
+  const notes = present(event.notes);
+  if (notes) return notes.replace(WORKFLOW_STAGE_NOTE_RE, '');
+  return present(event.event_type) ?? 'Event';
+}
+
+/**
  * What an ACTIVITY row DID — the fact that separates it from the row above.
  *
  * Measured on carton 50354: one unfound-return scan writes two
@@ -145,6 +173,10 @@ export interface CartonInspectorEvent {
  * `kind` is suppressed when something else already said it — the status equals
  * the type (`RECEIVED` + `→ RECEIVED` is one fact printed twice), or the title
  * already IS the type because the event carried no notes.
+ *
+ * **Workflow-stage notes** (`Stage Matched → Unboxed` / `Matched → Unboxed`)
+ * already ARE the trail in human labels — never also print `NOTE` +
+ * `MATCHED → UNBOXED` under them.
  */
 export function cartonEventSignature(
   event: Pick<CartonInspectorEvent, 'event_type' | 'prev_status' | 'next_status' | 'notes'>,
@@ -152,7 +184,13 @@ export function cartonEventSignature(
   const type = present(event.event_type);
   const prev = present(event.prev_status);
   const next = present(event.next_status);
-  const titledByNotes = present(event.notes) != null;
+  const notes = present(event.notes);
+  const titledByNotes = notes != null;
+
+  // Title already carries the human trail — suppress machine kind + trail.
+  if (notes && isHumanTrailNote(notes)) {
+    return { kind: null, trail: null };
+  }
 
   const trail = next ? (prev && prev !== next ? `${prev} → ${next}` : `→ ${next}`) : null;
   const kind = !titledByNotes || (next != null && type === next) ? null : type;

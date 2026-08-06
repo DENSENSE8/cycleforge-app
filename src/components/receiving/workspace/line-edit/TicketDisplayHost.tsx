@@ -3,8 +3,10 @@
 /**
  * Unbox Displays → Ticket topic — presence-exclusive body.
  *
- * Strip cell is "Ticket". No Chat · Claim tab row:
- * - No linked ticket → Claim (New ticket · Link existing)
+ * Strip cell is "Ticket". No Chat · Claim tab row on the topic plate:
+ * - No linked ticket → {@link ReceivingClaimPanel} with **New ticket · Link
+ *   existing** tabs (`ClaimWizardNav`) — the sole find/create surface
+ *   (Pairing no longer hosts a Tickets avenue or in-strip finder).
  * - Linked ticket → Chat only
  *
  * URL: `?display=ticket` (+ `claimMode` while on the claim surface).
@@ -60,6 +62,8 @@ export function TicketDisplayHost({
               receivingId={row.receiving_id ?? undefined}
               embedded
               hideRequesterBand={false}
+              // Messages only — floor spine lives on the Timeline Displays tab.
+              mergeFloorTimeline={false}
             />
           </div>
         ) : (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, motionRole } from '@/design-system/motion';
-import { ChevronDown, ChevronRight, Check, Barcode } from '@/components/Icons';
+import { ChevronDown, Check, Barcode } from '@/components/Icons';
 import {
   framerPresence,
   framerTransition,
@@ -130,7 +130,7 @@ interface Props {
    */
   animateLayout?: boolean;
   /**
-   * Open Units Displays for this line (serials cell "View All"). Select the line
+   * Open Units Displays for this line (serials cell click). Select the line
    * first when inactive. Omit on surfaces without a Displays host.
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
@@ -138,10 +138,11 @@ interface Props {
 
 /**
  * One PO-item row. Nested CSS grid: size-20 (5rem) thumb | wrapping title |
- * boxed meta (qty · SKU · condition · serials preview + View All · price).
+ * boxed meta (qty · SKU · condition · serials preview · price).
  * The thumb lives in the title + details band and expands that row’s height.
- * Collapsed siblings dispatch `receiving-select-line` on click; the active row
- * expands condition/serial body. Purely presentational — mutations are delegated up.
+ * Inactive siblings dispatch `receiving-select-line` on click for focus.
+ * Condition/serial bodies mount under every editable line (SKU→serial
+ * interleave). Purely presentational — mutations are delegated up.
  */
 export function PoLineRow({
   line,
@@ -172,15 +173,19 @@ export function PoLineRow({
   /**
    * Is this row's editor body on screen? When true, the green-check no-serial
    * offer lives there — suppress the meta-row committed token so the two never
-   * stack. Mirrors the body's own render gate below.
+   * stack. Mirrors the body's own render gate below. Bodies mount under every
+   * editable line; only the active line may collapse its body via the chevron.
    */
-  const editorBodyVisible = !readOnly && isActive && !activeCollapsed && !!activeRowSlot;
+  const editorBodyVisible =
+    !readOnly &&
+    !!activeRowSlot &&
+    !(isActive && activeCollapsed);
 
   const serialNumbers = (Array.isArray(line.serials) ? line.serials : [])
     .map((s) => (s.serial_number || '').trim())
     .filter(Boolean);
   const expectedQty = Number(line.quantity_expected) || 0;
-  const showViewAll =
+  const canOpenUnits =
     !!onViewAllUnits &&
     !readOnly &&
     (serialNumbers.length > 0 || expectedQty > 1 || (line.units?.length ?? 0) > 0);
@@ -269,7 +274,7 @@ export function PoLineRow({
           )}
         >
           <PoLineHeaderThumb imageUrl={line.image_url} />
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
             {/* Title band — wraps; ⋮ + expand chevron stay on the first line,
                 trailing right (chevron after line actions). */}
             <div className="flex min-w-0 items-start gap-0 px-2 py-1">
@@ -365,9 +370,40 @@ export function PoLineRow({
                     reason={line.serial_absent_reason ?? null}
                     onChange={(next) => onSerialAbsentChange(line.id, next)}
                   />
-                ) : serialNumbers.length > 0 || showViewAll ? (
-                  <div className="flex h-full min-w-0 w-full items-stretch gap-1.5 overflow-hidden">
-                    <span className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden px-2 py-1">
+                ) : serialNumbers.length > 0 || canOpenUnits ? (
+                  onViewAllUnits && !readOnly ? (
+                    <HoverTooltip label="Edit units" asChild>
+                      {/* ds-raw-button: meta-row serial preview → open Units display */}
+                      <button
+                        type="button"
+                        aria-label="Edit units"
+                        className={cn(
+                          'flex h-full min-w-0 w-full items-center gap-0.5 overflow-hidden px-2 py-1 text-left transition-colors',
+                          cornerClass('flush'),
+                          'text-text-muted hover:bg-surface-hover hover:text-text-default',
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isActive) dispatchSelectLine(line);
+                          onViewAllUnits(line);
+                        }}
+                      >
+                        <Barcode
+                          className="h-3 w-3 shrink-0 text-emerald-500"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 truncate tabular-nums normal-case tracking-normal">
+                          {serialNumbers.length > 0
+                            ? serialNumbers
+                                .slice(-SERIAL_PREVIEW_CAP)
+                                .map((sn) => getLast8(sn))
+                                .join(', ')
+                            : '—'}
+                        </span>
+                      </button>
+                    </HoverTooltip>
+                  ) : (
+                    <span className="flex h-full min-w-0 w-full items-center gap-0.5 overflow-hidden px-2 py-1">
                       <Barcode
                         className="h-3 w-3 shrink-0 text-emerald-500"
                         aria-hidden
@@ -381,46 +417,30 @@ export function PoLineRow({
                           : '—'}
                       </span>
                     </span>
-                    {showViewAll ? (
-                      <button
-                        type="button"
-                        aria-label="View all units"
-                        className="ds-raw-button inline-flex h-auto shrink-0 items-center gap-0.5 self-stretch border-0 bg-surface-card px-1.5 py-0 text-role-micro font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover hover:text-text-default"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!isActive) dispatchSelectLine(line);
-                          onViewAllUnits?.(line);
-                        }}
-                      >
-                        View All
-                        <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
-                      </button>
-                    ) : null}
-                  </div>
+                  )
                 ) : undefined
               }
-              price={
-                line.unit_price != null && Number(line.unit_price) > 0 ? (
-                  <UnitPriceChip amount={line.unit_price} dense />
-                ) : undefined
-              }
+              price={<UnitPriceChip amount={line.unit_price} dense />}
             />
           </div>
         </div>
       </div>
-      {/* Active row only — expanded body (condition pills / serial adder / desc). */}
-      {!readOnly && isActive && (activeRowSlot || descShown) ? (
+      {/* Condition/serial body under every editable SKU (interleaved). The
+          active line may collapse its body via the title chevron; inactive
+          lines stay expanded so qty×unit slots sit under their own header. */}
+      {!readOnly &&
+      ((activeRowSlot && !(isActive && activeCollapsed)) || descShown) ? (
         <motion.div
           initial={false}
           layout={animateLayout ? 'position' : false}
           animate={
-            activeCollapsed
+            isActive && activeCollapsed
               ? rowBodyCollapse.exit
               : rowBodyCollapse.animate
           }
           transition={rowBodyTransition}
           className="min-w-0 overflow-hidden border-t border-border-hairline bg-surface-card"
-          aria-hidden={activeCollapsed}
+          aria-hidden={isActive && activeCollapsed}
         >
           <div className="min-w-0 bg-surface-card px-0 py-0">
             {descShown ? (
@@ -451,6 +471,7 @@ export function PoLineRow({
               </div>
             ) : typeof activeRowSlot === 'function'
               ? activeRowSlot({
+                  line,
                   serials: line.serials ?? [],
                   units: line.units ?? [],
                 })

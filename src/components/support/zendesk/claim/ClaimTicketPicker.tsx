@@ -3,12 +3,20 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Search } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { useZendeskTickets } from '@/hooks/useZendeskQueries';
 import { cn } from '@/utils/_cn';
 import { priorityBadge, statusBadge } from '../badges';
 import type { PickedTicket } from './claim-types';
 
-/** Search + pick an existing ticket (Update mode). Reuses the support list hook. */
+/**
+ * Search + pick an existing ticket (Update mode) for the Photo Library /
+ * Zendesk claim modal.
+ *
+ * Row identity composes {@link TicketPickRow}. Receiving claim already wraps
+ * the shared {@link TicketPicker}; this surface keeps its own search hook
+ * (`useZendeskTickets`) but must not invent a third `#id` · subject grammar.
+ */
 export function ClaimTicketPicker({
   ticket,
   onPick,
@@ -34,26 +42,32 @@ export function ClaimTicketPicker({
   if (ticket) {
     const sb = statusBadge(ticket.status);
     return (
-      <div className="flex items-center justify-between gap-3 rounded-none border-l-2 border-blue-400 bg-blue-50/60 px-3.5 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-role-caption font-semibold text-blue-700">#{ticket.id}</span>
-            <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
+      <div className="flex items-center justify-between gap-3 rounded-none bg-blue-50/60 px-3.5 py-3 ring-1 ring-inset ring-blue-200">
+        <TicketPickRow
+          ticketId={ticket.id}
+          subject={ticket.subject}
+          subjectClassName="text-role-data"
+          meta={
+            <span
+              className={cn(
+                'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest',
+                sb.className,
+              )}
+            >
               {sb.label}
             </span>
-          </div>
-          <p className="mt-0.5 truncate text-role-data font-semibold text-text-default">
-            {ticket.subject || 'Untitled ticket'}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onPick(null)}
-          className="h-auto shrink-0 rounded-lg px-2 py-1 text-role-caption font-semibold text-text-soft hover:bg-surface-card hover:text-text-default"
-        >
-          Change
-        </Button>
+          }
+          trailing={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onPick(null)}
+              className="h-auto shrink-0 rounded-lg px-2 py-1 text-role-caption font-semibold text-text-soft hover:bg-surface-card hover:text-text-default"
+            >
+              Change
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -93,20 +107,35 @@ export function ClaimTicketPicker({
                     priority: (t.priority as string) ?? null,
                   })
                 }
-                className="ds-raw-button flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-surface-hover"
+                className="ds-raw-button w-full px-3.5 py-2.5 text-left transition hover:bg-surface-hover"
               >
-                <span className="text-role-caption font-semibold text-text-faint">#{t.id}</span>
-                <span className="min-w-0 flex-1 truncate text-role-data font-medium text-text-default">
-                  {t.subject || 'Untitled ticket'}
-                </span>
-                {pb ? (
-                  <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', pb.className)}>
-                    {pb.label}
-                  </span>
-                ) : null}
-                <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
-                  {sb.label}
-                </span>
+                <TicketPickRow
+                  ticketId={t.id}
+                  subject={t.subject}
+                  subjectClassName="text-role-data font-medium"
+                  meta={
+                    <>
+                      {pb ? (
+                        <span
+                          className={cn(
+                            'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest',
+                            pb.className,
+                          )}
+                        >
+                          {pb.label}
+                        </span>
+                      ) : null}
+                      <span
+                        className={cn(
+                          'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest',
+                          sb.className,
+                        )}
+                      >
+                        {sb.label}
+                      </span>
+                    </>
+                  }
+                />
               </button>
             );
           })

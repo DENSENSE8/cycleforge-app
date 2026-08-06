@@ -49,9 +49,12 @@ import { cn } from '@/utils/_cn';
 function TableFallback() {
   return <div className="flex-1 bg-surface-canvas" aria-hidden />;
 }
+// Shipped tab — allow SSR so it can share the desk paint path; loading
+// fallback is the stand-in while the chunk resolves (not ssr:false — that
+// would gate LCP if Shipped were the landing tab).
 const DashboardShippedTable = dynamic(
   () => import('@/components/shipped').then((m) => m.DashboardShippedTable),
-  { ssr: false, loading: TableFallback },
+  { loading: TableFallback },
 );
 
 interface DashboardOrdersViewProps {
@@ -62,6 +65,8 @@ interface DashboardOrdersViewProps {
   selectionEnabled: boolean;
   /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
   selectionOverlays?: ReactNode;
+  /** Primary queue has paintable rows (for SSR stand-in handoff). */
+  onPrimaryPainted?: () => void;
 }
 
 export function DashboardOrdersView({
@@ -70,6 +75,7 @@ export function DashboardOrdersView({
   selectMode,
   selectionEnabled,
   selectionOverlays,
+  onPrimaryPainted,
 }: DashboardOrdersViewProps) {
   const searchParams = useSearchParams();
   const showOutboundChrome =
@@ -83,6 +89,13 @@ export function DashboardOrdersView({
       setViewShellOpen(false);
     }
   }, [searchParams, rows.length, setViewShellOpen]);
+
+  // Packed / Shipped tabs own their own tables — release the Unshipped stand-in.
+  useEffect(() => {
+    if (orderView === 'packed' || orderView === 'shipped') {
+      onPrimaryPainted?.();
+    }
+  }, [orderView, onPrimaryPainted]);
 
   const drillLayout = parseOrdersDrillLayout(
     searchParams.get(ORDERS_DRILL_LAYOUT_PARAM),
@@ -121,6 +134,7 @@ export function DashboardOrdersView({
         railSelection
         toolbarPortalTarget={controlsEl}
         fulfillmentLane={orderView === 'tested' ? 'tested' : 'pending'}
+        onPrimaryPainted={onPrimaryPainted}
       />
     );
 

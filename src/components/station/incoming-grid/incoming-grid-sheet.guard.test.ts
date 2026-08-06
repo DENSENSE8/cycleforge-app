@@ -71,6 +71,16 @@ describe('Incoming grid Sheets recipe (Unbox golden)', () => {
       /border-t-0/,
       'Band 1 must use border-t-0 — GlobalHeader already owns the top seam',
     );
+    assert.match(
+      header,
+      /IncomingSourceFilters/,
+      'Pipeline purchasing source must live in the Band-3 search-field filter',
+    );
+    assert.doesNotMatch(
+      header,
+      /label: 'Zoho'[\s\S]*label: 'eBay'|label: 'All'[\s\S]*label: 'Zoho'/,
+      'Pipeline must not keep an All / Zoho / eBay TabSwitch facet strip',
+    );
   });
 
   it('IncomingWorkspaceHeader mounts WorkbenchTriageBand (Band 3 Unbox SoT)', () => {

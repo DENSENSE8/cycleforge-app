@@ -10,18 +10,18 @@
  * pills the condition picker uses:
  *
  *   idle       → nothing (no serial checked yet)
- *   searching  → neutral notice + spinner ("Checking serial…")
+ *   searching  → null here — the scan row's trailing check cell owns the spinner
  *   found      → success notice + the unit's status / SKU / grade / bin pills.
  *                A unit whose prior status is SHIPPED is a genuine return — we
  *                badge it "Returned item".
- *   not-found  → warning notice ("No match found").
+ *   not-found  → warning notice (title + serial chip only; dismissible).
  *
  * Presentational only: state + data are owned by the caller (see
  * {@link useSerialLookup} for the fetch side).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, Loader2 } from '@/components/Icons';
+import { AlertTriangle, Check } from '@/components/Icons';
 import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { ListingUrlChip, SerialChip } from '@/components/ui/CopyChip';
@@ -104,19 +104,20 @@ export function SerialMatchResult({
   onFileClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   className?: string;
 }) {
-  if (state === 'idle') return null;
+  // Operator can dismiss the band without clearing the lookup — reappears when
+  // the next scan resolves to a new outcome.
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    setDismissed(false);
+  }, [state, serial]);
+
+  if (state === 'idle' || dismissed) return null;
+
+  const dismiss = () => setDismissed(true);
 
   if (state === 'searching') {
-    return (
-      <InlineNotice
-        tone="neutral"
-        size="sm"
-        className={className}
-        icon={<Loader2 className="h-4 w-4 animate-spin text-text-faint" />}
-      >
-        Checking serial…
-      </InlineNotice>
-    );
+    // Spinner lives in the scan row's trailing check cell — no band under the field.
+    return null;
   }
 
   if (state === 'not-found') {
@@ -125,21 +126,13 @@ export function SerialMatchResult({
         tone="warning"
         size="sm"
         className={className}
+        onDismiss={dismiss}
         title="Returned serial — no order match"
-        icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+        icon={<AlertTriangle className="text-amber-500" />}
       >
         {serial ? (
-          <span className="inline-flex flex-wrap items-center gap-1.5">
-            <span>Serial</span>
-            <SerialChip value={serial} width="w-fit max-w-full" dense />
-            <span>
-              has no sales-order match. It&apos;s recorded for review — keep going; just
-              double-check the serial, or that the item is ours.
-            </span>
-          </span>
-        ) : (
-          'This returned serial has no sales-order match. It’s recorded for review — keep going; just double-check the serial, or that the item is ours.'
-        )}
+          <SerialChip value={serial} width="w-fit max-w-full" dense />
+        ) : null}
       </InlineNotice>
     );
   }
@@ -154,7 +147,8 @@ export function SerialMatchResult({
       tone="success"
       size="sm"
       className={className}
-      icon={<Check className="h-4 w-4 text-emerald-500" />}
+      onDismiss={dismiss}
+      icon={<Check className="text-emerald-500" />}
       title={
         <span className="flex items-center gap-2">
           Match found

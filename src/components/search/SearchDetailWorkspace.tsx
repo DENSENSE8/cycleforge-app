@@ -4,9 +4,9 @@
  * SearchDetailWorkspace — full-bleed entity shell for `/search?sel=type:id`.
  *
  * Mounted only when a selection is active (the no-sel state is
- * {@link SearchFindStage}). ORDER → `SearchOrderFeedback` (not `/o` /
- * OrderRecordBody). Receiving / unit / sku embed their inspectors. Repair /
- * FBA show an in-pane preview + deep-link CTA.
+ * {@link SearchBrowseShell}). ORDER → `SearchOrderFeedback` (not desk
+ * `ShippedDetailsPanel`). Receiving / unit / sku embed their inspectors. Repair /
+ * FBA show an in-pane preview + deep-link CTA. `/o` is retired.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -259,7 +259,7 @@ export function SearchDetailWorkspace({
 
   let body: ReactNode;
   if (!sel) {
-    // Prefer SearchFindStage at the page level; this is a defensive fallback.
+    // Prefer SearchBrowseShell at the page level; this is a defensive fallback.
     body = hasQuery ? (
       <TeachEmpty
         title="Select a result"

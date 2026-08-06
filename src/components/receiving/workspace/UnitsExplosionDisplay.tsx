@@ -10,8 +10,9 @@
  *
  * Photos remain LINE-scoped (`unbox_item` + `receivingLineId`) — shared across
  * units on that line until a future per-unit photo entity exists. The camera
- * sits leftmost on every unit row (not a standalone ITEM PHOTOS section). A
- * line-level serial entry field sits above the unit rows to add the next serial.
+ * sits after the condition tag on every unit row (not a standalone ITEM PHOTOS
+ * section). A line-level serial entry field sits above the unit rows to add
+ * the next serial.
  *
  * Flush plane: zero host gutters, hairline rows, square controls — the Displays
  * column IS the card.
@@ -198,7 +199,7 @@ function ActiveLineExplosion({
   const poRef = line.zoho_purchaseorder_number ?? null;
   const poRouteRef = line.zoho_purchaseorder_id ?? line.zoho_purchaseorder_number ?? null;
 
-  // Line-scoped camera — leftmost on every unit row (shared gallery until
+  // Line-scoped camera — after condition on every unit row (shared gallery until
   // per-unit photo entity exists).
   const itemCamera = (
     <ReceivingPhotoButton
@@ -229,7 +230,7 @@ function ActiveLineExplosion({
           </p>
         </div>
         <span className="shrink-0 font-mono text-role-caption tabular-nums text-text-muted">
-          {line.quantity_received ?? serials.length}/{qty ?? '?'}
+          {serials.length}/{qty ?? '?'}
         </span>
       </header>
 
@@ -290,6 +291,7 @@ function ActiveLineExplosion({
             c.setHeaderSerialEdit(serial as ActiveRowSerial);
           }}
           flush
+          forceUnitRows
           activeRowLeading={itemCamera}
         />
       </div>

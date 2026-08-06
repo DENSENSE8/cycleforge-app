@@ -4,19 +4,16 @@
  * Unbox Displays — the station-scoped right-edge **push** column that now holds
  * every Unbox display except the carton itself.
  *
- * The scan-progress **ring** is **dock-anchored** under the terminal
- * (`UnboxDockHost` progress row) — same place open or closed — it is the toggle
- * that opens this column, so it cannot be gated on the column being open.
+ * The scan-progress **ring** lives on the Displays icon plate as
+ * {@link UnboxSectionTabs} `rightSlot` (same row, right of the ⋮ overflow) —
+ * the face of {@link ScanStationProgressControl}. Checklist stays
+ * `stripHidden`; the ring opens it. When Displays is closed, open via `←|`
+ * then use the ring. Do not remount a second ring under the dock.
  *
  * Carton `↑ ↓` when this column is open: **top-right of this details panel**
  * (`headerTrailing` → {@link UnboxPushColumn} band). When closed, the cursor
  * lives on {@link ScanStationUtilityRail} with `←|` Open displays. Not
  * CartonContextCard / Photos. Column dismiss stays at the band's **top-left**.
- *
- * There is no `rightSlot`: the PO-pairing pencil that used to live there was
- * deleted on 2026-08-02 when Package Pairing became a display of its own. A
- * tab's selected-ness IS its open state, so a separate toggle beside the strip
- * would be a second flag to keep in sync.
  *
  * Host body uses {@link DISPLAYS_FLUSH_HOST} (`px-0`) — the column IS the card.
  * Topic plate + nested verb strips sit edge-to-edge; content rows opt into
@@ -37,6 +34,7 @@ export function ReceivingDisplaysPushStack({
   onTabChange,
   onClose,
   headerTrailing = null,
+  rightSlot = null,
   // The visual shell is shared across scan stations (Unbox golden · Arrival ·
   // Testing). These default to the Unbox strings so the Unbox call site is
   // unchanged; a sibling station passes its own so the storage key / aria label
@@ -54,6 +52,11 @@ export function ReceivingDisplaysPushStack({
   onClose: () => void;
   /** Carton ↑↓ at the details panel top-right while Displays is open. */
   headerTrailing?: ReactNode;
+  /**
+   * Displays strip trailing peer (right of ⋮) — Unbox: procedure progress ring.
+   * Optional; stations without a derived procedure leave it empty.
+   */
+  rightSlot?: ReactNode;
   ariaLabel?: string;
   storageKey?: string;
   testId?: string;
@@ -82,6 +85,7 @@ export function ReceivingDisplaysPushStack({
           tabs={tabs}
           value={activeTab}
           onChange={onTabChange}
+          rightSlot={rightSlot}
           compact
           fillHeight
         />

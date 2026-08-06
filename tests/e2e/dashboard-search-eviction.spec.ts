@@ -37,10 +37,12 @@ test.describe('Search eviction from /dashboard', () => {
     expect(url.searchParams.has('map')).toBe(false);
   });
 
-  test('?mode=search&openOrderId= lands on the one order shell', async ({ page }) => {
+  test('?mode=search&openOrderId= lands on search order feedback', async ({ page }) => {
     await page.goto('/dashboard?mode=search&openOrderId=2902&map=search&q=2902');
-    await page.waitForURL(/\/o\/2902(\?|$)/, { timeout: 15_000 });
-    expect(new URL(page.url()).pathname).toBe('/o/2902');
+    await page.waitForURL(/\/search\?/, { timeout: 15_000 });
+    const url = new URL(page.url());
+    expect(url.pathname).toBe('/search');
+    expect(url.searchParams.get('sel')).toBe('order:2902');
   });
 
   test('/search renders the cross-entity surface, not a dashboard grid', async ({ page }) => {

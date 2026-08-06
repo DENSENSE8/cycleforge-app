@@ -130,10 +130,17 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const replaceUnboxOpenReceiving = useCallback(
     (selection: { receivingId: number; lineId?: number | null } | null) => {
       if (!isUnboxSurface) return;
-      const params = new URLSearchParams(searchParams.toString());
+      // Live URL seed — concurrent `?display=` writes must not be clobbered by
+      // a stale React `searchParams` snapshot (Open displays looked dead).
+      const seed =
+        typeof window !== 'undefined' ? window.location.search : searchParams.toString();
+      const params = new URLSearchParams(seed);
       applyUnboxOpenReceivingParams(params, selection);
       const nextSearch = params.toString();
-      const currentSearch = searchParams.toString();
+      const currentSearch =
+        typeof window !== 'undefined'
+          ? window.location.search.replace(/^\?/, '')
+          : searchParams.toString();
       if (nextSearch === currentSearch) return;
       const base = UNBOX_SURFACE_ROUTE;
       router.replace(nextSearch ? `${base}?${nextSearch}` : base, { scroll: false });

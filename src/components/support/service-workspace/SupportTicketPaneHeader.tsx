@@ -7,7 +7,8 @@
  *   ┌─ Panel (rounded-2xl, same shell as the queue card) ──────────────┐
  *   │ Row 1 — icon action row      Inspector · Open     │ ⧉ · ×        │
  *   ├──────────────────────────────────────────────────────────────────┤
- *   │ Row 2 — dense identity       ● subject …                    #175 │
+ *   │ Row 2 — dense identity       ● subject … · priority              │
+ *   │                          #175  (StackedRowIdentity keys row)     │
  *   └──────────────────────────────────────────────────────────────────┘
  *
  * **Why it is not `PaneHeader` itself.** `PaneHeader`'s shell is
@@ -112,7 +113,7 @@ export function SupportTicketPaneHeader({
         </div>
       </div>
 
-      {/* Row 2 — dense identity: status dot · subject · short durable key. */}
+      {/* Row 2 — dense identity: status · subject · priority; ticket # below. */}
       <div className="flex min-w-0 items-center px-2.5 py-1.5">
         <SupportTicketIdentity ticket={ticket} fallbackId={ticketId} />
       </div>

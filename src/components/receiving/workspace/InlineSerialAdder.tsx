@@ -23,7 +23,7 @@ interface Props {
   saved: ReadonlyArray<SavedSerial>;
   /** Expected total (`row.quantity_expected`). null/0 → no target. */
   expected: number | null;
-  /** True while a submit is in flight — disables input + button. */
+  /** Soft in-flight hint for callers — never disables the scan field. */
   isSubmitting: boolean;
   /** Pass through to the parent's `submitSerial(lineId, sn)`. */
   onAdd: (lineId: number, serial: string) => void | Promise<void>;
@@ -79,7 +79,7 @@ interface Props {
 export function InlineSerialAdder({
   lineId,
   saved,
-  isSubmitting,
+  isSubmitting: _isSubmitting,
   onAdd,
   onDelete,
   onReplaceSerial,
@@ -95,11 +95,9 @@ export function InlineSerialAdder({
   const count = saved.length;
 
   const refocusScanInput = useCallback(() => {
-    window.setTimeout(() => {
-      const el = inputRef.current;
-      if (!el || el.disabled || editing) return;
-      el.focus();
-    }, 0);
+    const el = inputRef.current;
+    if (!el || el.disabled || editing) return;
+    el.focus({ preventScroll: true });
   }, [editing]);
 
   useEffect(() => {
@@ -153,9 +151,9 @@ export function InlineSerialAdder({
     setScan('');
   };
 
-  const submit = async () => {
+  const submit = () => {
     const trimmed = scan.trim();
-    if (!trimmed || isSubmitting || disabled) return;
+    if (!trimmed || disabled) return;
 
     // Replace mode — operator is finalizing an in-place edit.
     if (editing && onReplaceSerial) {
@@ -168,15 +166,12 @@ export function InlineSerialAdder({
       return;
     }
 
-    // Comma-paste expansion — receive-line writer is sequential under lock.
+    // Comma-paste → enqueue each value. Parent queues writes; clear + stay
+    // focused so the wedge can keep typing while optimistic chips land.
     const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
     setScan('');
     for (const sn of parts) {
-      try {
-        await onAdd(lineId, sn);
-      } catch {
-        /* parent shows toast; loop continues */
-      }
+      void onAdd(lineId, sn);
     }
     refocusScanInput();
   };
@@ -234,13 +229,13 @@ export function InlineSerialAdder({
           onChange={setScan}
           tone="blue"
           mono
-          disabled={disabled || isSubmitting}
+          disabled={disabled}
           autoComplete="off"
           spellCheck={false}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              void submit();
+              submit();
             } else if (e.key === 'Escape' && editing) {
               e.preventDefault();
               cancelEdit();
@@ -262,8 +257,8 @@ export function InlineSerialAdder({
         <IconButton
           icon={<Plus className="h-4 w-4" />}
           ariaLabel={editing ? 'Save serial' : 'Add serial'}
-          onClick={() => void submit()}
-          disabled={!scan.trim() || isSubmitting || disabled}
+          onClick={submit}
+          disabled={!scan.trim() || disabled}
           className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:bg-surface-strong disabled:opacity-100"
         />
       </HoverTooltip>

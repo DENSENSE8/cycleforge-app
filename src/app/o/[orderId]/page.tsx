@@ -1,18 +1,15 @@
-import { OrderFullPageView } from '@/components/shipped/OrderFullPageView';
+import { permanentRedirect } from 'next/navigation';
+import { searchOrderFeedbackHref } from '@/lib/search/search-hit';
 
 /**
- * /o/[orderId] — the dedicated order workbench detail pane. Reached from the
- * shipped slide-over's expand launcher, global search, and scanned short-links.
- *
- * `orderId` is either the numeric DB id or a human order number;
- * {@link OrderFullPageView} resolves both. The left rail is
- * `OrderWorkspaceSidebar` (via SidebarContextPanel when route key is `order`).
+ * `/o/[orderId]` — retired full order Workbench. Bookmarks and deep links
+ * permanently redirect to search order feedback.
  */
-export default async function OrderFullPage({
+export default async function OrderFullPageRedirect({
   params,
 }: {
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
-  return <OrderFullPageView orderId={orderId} layout="workbench" />;
+  permanentRedirect(searchOrderFeedbackHref(orderId));
 }

@@ -92,7 +92,8 @@ async function dockLabel(page: Page): Promise<string> {
 
 /**
  * Switch display the way an operator does — from the strip, the ⋮ menu, or the
- * scan-progress ring (Checklist is ring-only).
+ * scan-progress ring on strip `rightSlot` (Checklist is ring-only).
+ * Caller must already have Displays open (←| or `?display=`).
  */
 async function selectDisplay(page: Page, label: string) {
   if (/^checklist$/i.test(label)) {
@@ -109,8 +110,14 @@ async function selectDisplay(page: Page, label: string) {
   await page.getByRole('menuitem', { name: label }).click();
 }
 
+/** Open Displays via the closed-state ←| pane toggle. */
+async function openDisplaysViaPaneToggle(page: Page) {
+  await page.getByTestId('unbox-displays-pane-toggle').click();
+  await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+}
+
 test.describe('Unbox Displays column', () => {
-  test('the centre has no tab strip, and Displays opens from the progress ring', async ({
+  test('the centre has no tab strip, and checklist opens from the strip progress ring', async ({
     page,
     request,
   }) => {
@@ -124,20 +131,23 @@ test.describe('Unbox Displays column', () => {
     // No parked ticket/Displays expand strip on the right edge.
     await expect(page.getByTestId('unbox-push-expand-strip')).toHaveCount(0);
 
-    await page.getByTestId('unbox-displays-expand-button').click();
+    // Closed: ring is not mounted — open via ←|, then use the strip ring.
+    await expect(page.getByTestId('unbox-displays-expand-button')).toHaveCount(0);
+    await openDisplaysViaPaneToggle(page);
 
     const displays = page.getByTestId('receiving-displays-push');
-    await expect(displays).toBeVisible({ timeout: 15_000 });
     await expect(displays).toHaveAttribute('role', 'region');
     await expect(displays.getByRole('group', { name: 'Unbox displays' })).toBeVisible();
-    // Checklist is ring-only — no strip cell for it.
+
+    const ring = page.getByTestId('unbox-displays-expand-button');
+    await expect(ring).toBeVisible();
+    await ring.click();
+
+    // Checklist is ring-only — no strip Lucide cell for it.
     await expect(
       displays.getByRole('button', { name: /^checklist\b/i }),
     ).toHaveCount(0);
-    await expect(page.getByTestId('unbox-displays-expand-button')).toHaveAttribute(
-      'data-selected',
-      'true',
-    );
+    await expect(ring).toHaveAttribute('data-selected', 'true');
   });
 
   test('selecting a display never re-labels the bottom CTA', async ({ page, request }) => {
@@ -188,7 +198,8 @@ test.describe('Unbox Displays column', () => {
    * behavior, and an operator who reached for it lost their carton.
    *
    * So the dismiss moved into the column's own header band and closes the
-   * column; `↑ ↓` step the carton and are always mounted; the ring is unchanged.
+   * column; `↑ ↓` step the carton (utility rail when closed, column header when
+   * open); the procedure ring lives on the Displays strip `rightSlot`.
    *
    * The assertion that matters most is the LAST one: clicking the panel's
    * dismiss must leave the carton open. Everything above it is geometry, and
@@ -202,28 +213,30 @@ test.describe('Unbox Displays column', () => {
     const lineId = await addLine(request, receivingId);
     await openUnbox(page, receivingId, lineId);
 
-    const ring = page.getByTestId('unbox-displays-expand-button');
+    const paneOpen = page.getByTestId('unbox-displays-pane-toggle');
     const prev = page.getByTestId('unbox-carton-prev');
     const next = page.getByTestId('unbox-carton-next');
     const panelClose = page.getByTestId('unbox-push-close');
 
-    // At rest: ring + carton cursor. The cursor is no longer rail-scoped — it
-    // steps the carton, which is on screen either way.
-    await expect(ring).toBeVisible({ timeout: 15_000 });
+    // At rest: ←| + carton cursor. Ring mounts only while Displays is open.
+    await expect(paneOpen).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('unbox-displays-expand-button')).toHaveCount(0);
     await expect(prev, 'the cursor steps the CARTON, not the column').toBeVisible();
     await expect(next).toBeVisible();
     await expect(
       panelClose,
       'no column is open, so there is no column to dismiss',
     ).toHaveCount(0);
-    const ringAtRest = await ring.boundingBox();
 
-    await ring.click();
+    await paneOpen.click();
     const column = page.getByTestId('receiving-displays-push');
     await expect(column).toBeVisible({ timeout: 15_000 });
 
+    const ring = page.getByTestId('unbox-displays-expand-button');
+    await expect(ring).toBeVisible();
+
     // Open: the dismiss appears at the COLUMN's top-left — left of the column's
-    // own midpoint, and left of the pane-anchored ring, which has not moved.
+    // own midpoint, and left of the strip progress ring.
     await expect(panelClose).toBeVisible();
     // It names the REGION, not the occupant: one control closes all four push
     // surfaces, so "Hide displays" would be false on three of them. Tooltip and
@@ -240,10 +253,6 @@ test.describe('Unbox Displays column', () => {
       columnBox.x - 1,
     );
     expect(closeBox.x, 'same row as the ring, opposite end').toBeLessThan(ringOpen.x);
-    expect(
-      Math.round(ringOpen.x),
-      'the ring is pane-anchored: same corner open or closed',
-    ).toBe(Math.round(ringAtRest!.x));
 
     // THE RULING. Click the dismiss: the column goes, the carton stays. Before
     // this change the same click dropped the operator back to the browse table.
@@ -253,48 +262,38 @@ test.describe('Unbox Displays column', () => {
       page.getByTestId('receiving-workspace'),
       'closing the panel must not close the carton — this is the whole ruling',
     ).toBeVisible();
-    await expect(ring, 'the ring must still be able to re-open the column').toBeVisible();
+    await expect(
+      page.getByTestId('unbox-displays-expand-button'),
+      'ring unmounts with Displays — re-open via ←|',
+    ).toHaveCount(0);
+    await expect(paneOpen, '←| must still be able to re-open the column').toBeVisible();
     await expect(prev, 'the carton cursor outlives the column').toBeVisible();
-    await ring.click();
+    await paneOpen.click();
     await expect(column).toBeVisible({ timeout: 15_000 });
   });
 
   /**
-   * The push column's two header rows share BOTH gutter columns (2026-08-02).
-   *
-   * The column stacks a shell-owned band (`→|`) over its occupant's own strip
-   * (tabs … `⋮`), and the pane-anchored ring floats at the top-right of the
-   * first row. Measured before this was fixed, the four marks sat at four
-   * different x's — `→|` +17 / first tab +23, ring −6 / `⋮` −19 — so two rows on
-   * one card read as two unrelated toolbars.
+   * The push column's two header rows share the LEFT gutter; the strip's
+   * right cluster ends with ⋮ then the procedure progress ring (`rightSlot`).
    *
    * Asserted on the `<svg>` boxes, not the buttons: the button boxes are
    * deliberately different sizes (28px shell control, 26px icon cell, 28px
    * ring). 1px is sub-pixel rounding only — the shell's `-ml-px` pays off the
-   * 28-vs-26 difference.
-   *
-   * **This test alone is not enough, and believing it was is what let an 8px
-   * misalignment ship.** An `<svg>` box is not the drawn mark: a glyph sits ~2px
-   * inside its own viewBox, and its box sits inside its control's padding, so
-   * two rows can share an svg column while the marks in them share nothing with
-   * the text and borders beneath. It is also only ONE of the four occupants of
-   * a band that lives in the shared shell. The gutter test below measures ink,
-   * on a different occupant, and that is the pair.
+   * 28-vs-26 difference on the leading edge.
    *
    * This lives in the real runner because it is a layout claim, and a layout
    * claim read off the source is a guess (`verify.md` → Measure in the real
    * runner). A static guard cannot see a negative margin cancel a parent's
    * padding.
    */
-  test('both header rows share the same left and right gutter columns', async ({
+  test('both header rows share the left gutter; ring sits right of ⋮', async ({
     page,
     request,
   }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
     await openUnbox(page, receivingId, lineId);
-    await page.getByTestId('unbox-displays-expand-button').click();
-    await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+    await openDisplaysViaPaneToggle(page);
 
     const marks = await page.evaluate(() => {
       const glyph = (el: Element | null | undefined) => {
@@ -314,7 +313,7 @@ test.describe('Unbox Displays column', () => {
     });
 
     expect(marks.close, 'the shell band must render its dismiss').not.toBeNull();
-    expect(marks.ring, 'the ring is pane-anchored and always present').not.toBeNull();
+    expect(marks.ring, 'the ring mounts on the Displays strip rightSlot').not.toBeNull();
     expect(marks.firstTab, 'the strip must have at least one tab cell').not.toBeNull();
     expect(marks.more, 'this fixture must have enough tabs to overflow').not.toBeNull();
 
@@ -323,9 +322,9 @@ test.describe('Unbox Displays column', () => {
       'row 1 `→|` and row 2 first tab must start on ONE left column',
     ).toBeLessThanOrEqual(1);
     expect(
-      Math.abs(marks.more!.r - marks.ring!.r),
-      'row 2 `⋮` must end on the ring’s right column — the ring cannot move, so the strip comes to it',
-    ).toBeLessThanOrEqual(1);
+      marks.ring!.l,
+      'procedure ring sits to the RIGHT of the ⋮ overflow peer',
+    ).toBeGreaterThan(marks.more!.r - 1);
   });
 
   /**

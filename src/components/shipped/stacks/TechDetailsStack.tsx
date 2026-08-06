@@ -19,6 +19,7 @@ export function TechDetailsStack({
   actionBar: _actionBar,
   activeSection,
   showQuickLinks,
+  flush = false,
 }: DetailsStackProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -161,8 +162,8 @@ export function TechDetailsStack({
   };
 
   return (
-    <div className="flex min-h-full flex-col pb-8 pt-4">
-      <div className="flex-1">
+    <div className={flush ? 'flex min-h-full flex-col pb-6 pt-3' : 'flex min-h-full flex-col pb-8 pt-4'}>
+      <div className={flush ? 'flex-1 px-4' : 'flex-1'}>
       <ShippedDetailsPanelContent
         shipped={{
           ...shipped,
@@ -191,10 +192,11 @@ export function TechDetailsStack({
         showPackingPhotos={false}
         activeSection={activeSection}
         showQuickLinks={showQuickLinks}
+        flush={flush}
       />
       </div>
 
-      <section className="mx-8 pt-2">
+      <section className={flush ? 'px-4 pt-2' : 'mx-8 pt-2'}>
         <Button
           variant="danger"
           size="lg"

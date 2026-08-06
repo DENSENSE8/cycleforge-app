@@ -14,7 +14,6 @@ import { getSidebarTitle } from '@/lib/sidebar-titles';
 // downloads the one chunk its route needs.
 const HomeContextPanel = dynamic(() => import('@/components/sidebar/HomeContextPanel').then((m) => m.HomeContextPanel));
 const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
-const OrderWorkspaceSidebar = dynamic(() => import('@/components/sidebar/order/OrderWorkspaceSidebar').then((m) => m.OrderWorkspaceSidebar));
 const AdminContextPanel = dynamic(() => import('@/components/sidebar/AdminContextPanel').then((m) => m.AdminContextPanel));
 const OperationsSidebarPanel = dynamic(() => import('@/components/sidebar/OperationsSidebarPanel').then((m) => m.OperationsSidebarPanel));
 const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
@@ -51,7 +50,6 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // other Today control is chrome by rule — see HomeContextPanel's docblock.
   if (routeKey === 'home') return <HomeContextPanel />;
   if (routeKey === 'dashboard') return <DashboardOrdersContextPanel />;
-  if (routeKey === 'order') return <OrderWorkspaceSidebar />;
   if (routeKey === 'admin') return <AdminContextPanel />;
 
   if (routeKey === 'operations') return <OperationsSidebarPanel />;
@@ -91,7 +89,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;
-  // `/search` has no context rail — centered `SearchFindStage` owns find.
+  // `/search` has no context rail — GlobalHeaderSearch owns find; browse/detail fill main.
 
   return null;
 }

@@ -2,7 +2,7 @@
 
 /**
  * Dev-only paint timing overlay — shows Core Web Vitals (via web-vitals) plus
- * custom Unbox surface marks. Enable with NEXT_PUBLIC_PAINT_TIMING_HUD=true.
+ * Tier-1 surface marks (P0–P3). Enable with NEXT_PUBLIC_PAINT_TIMING_HUD=true.
  */
 
 import { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { onCLS, onFCP, onINP, onLCP, type Metric } from 'web-vitals';
 import { zIndex } from '@/design-system/tokens/z-index';
 import {
   isPaintTimingHudEnabled,
+  paintOrderViolations,
   readPaintMarks,
   type PaintMarkEntry,
 } from '@/lib/observability/paint-timing';
@@ -28,6 +29,7 @@ function vitalRating(metric: Metric): string {
 export function PaintTimingHud() {
   const [vitals, setVitals] = useState<string[]>([]);
   const [marks, setMarks] = useState<PaintMarkEntry[]>([]);
+  const [orderIssues, setOrderIssues] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isPaintTimingHudEnabled()) return;
@@ -45,7 +47,11 @@ export function PaintTimingHud() {
     onINP(pushVital);
     onCLS(pushVital);
 
-    const refreshMarks = () => setMarks(readPaintMarks());
+    const refreshMarks = () => {
+      const next = readPaintMarks();
+      setMarks(next);
+      setOrderIssues(paintOrderViolations(next));
+    };
     refreshMarks();
     window.addEventListener('cf-paint-mark', refreshMarks);
     const interval = window.setInterval(refreshMarks, 500);
@@ -79,13 +85,26 @@ export function PaintTimingHud() {
       {marks.length > 0 ? (
         <>
           <p className="mb-1 mt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
-            Unbox surfaces
+            Surfaces (P0→P3)
           </p>
           <ul className="space-y-0.5 text-text-muted">
             {marks.map((m) => (
               <li key={m.surface}>
                 {m.surface} {formatMs(m.at)}
+                {m.priority ? ` [${m.priority}]` : ''}
               </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {orderIssues.length > 0 ? (
+        <>
+          <p className="mb-1 mt-2 text-role-eyebrow uppercase tracking-widest text-intent-danger">
+            Order violations
+          </p>
+          <ul className="space-y-0.5 text-intent-danger">
+            {orderIssues.map((line) => (
+              <li key={line}>{line}</li>
             ))}
           </ul>
         </>

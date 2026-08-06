@@ -59,6 +59,10 @@ test('empty unfound ReturnScanCard matches PoLineRow anatomy (title + empty SKU 
     'empty SKU slot uses EmptySkuChipFace (matched-row parity)',
   );
   assert.ok(
+    /<UnitPriceChip\b/.test(RETURN_CARD),
+    'empty price slot uses UnitPriceChip (Receipt + —; matched-row parity)',
+  );
+  assert.ok(
     /<ConditionGradeChip\b/.test(RETURN_CARD),
     'condition stays in the meta row ConditionGradeChip slot',
   );

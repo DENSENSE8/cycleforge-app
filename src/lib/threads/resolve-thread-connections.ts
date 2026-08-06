@@ -23,7 +23,7 @@ interface ThreadAnchor {
 }
 
 function orderHref(orderId: number): string {
-  return `/o/${orderId}`;
+  return `/search?sel=order:${encodeURIComponent(String(orderId))}`;
 }
 
 /**

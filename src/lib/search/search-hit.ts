@@ -116,11 +116,10 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  * /api/serial-units/:id, which accepts the numeric id).
  *
  * Orders have two destinations by job:
- *   • Durable Workbench record → {@link orderRecordHref} (`/o/[id]`)
- *   • Search feedback shell → {@link searchOrderFeedbackHref} (`/search?sel=order:…`)
- * A search hit opens feedback; confident identifier Enter and "open full"
- * still use the durable record. Desk table row click keeps the right-rail
- * `ShippedDetailsPanel` (tabbed) and is not a search href.
+ *   • Shareable / Find / threads → {@link searchOrderFeedbackHref} (`/search?sel=order:…`)
+ *   • Desk durable edit → `/shipping/orders?openOrderId=` (`dashboardOrderHref`)
+ * {@link orderRecordHref} is a thin alias of search feedback (`/o` is retired).
+ * Desk table row click keeps the right-rail `ShippedDetailsPanel` (tabbed).
  */
 
 /**
@@ -131,14 +130,17 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  */
 const SEARCH_SURFACE_PATH = '/search';
 
-/** Canonical order-record href (`/o/[orderId]`) — the full order Workbench. */
+/**
+ * Shareable order href — alias of {@link searchOrderFeedbackHref}.
+ * `/o/[id]` is retired; bookmarks redirect there via the app route.
+ */
 export function orderRecordHref(orderId: string | number): string {
-  return `/o/${encodeURIComponent(String(orderId).trim())}`;
+  return searchOrderFeedbackHref(orderId);
 }
 
 /**
  * Search order feedback href — `/search?sel=order:{id}`.
- * Mounts {@link SearchOrderFeedback}, not the durable `/o` record.
+ * Mounts {@link SearchOrderFeedback} (read-only). Durable edit lives on desk.
  */
 export function searchOrderFeedbackHref(orderId: string | number): string {
   const id = encodeURIComponent(String(orderId).trim());
@@ -325,14 +327,14 @@ export function soleMatchingOrderHit(
 /**
  * Header Enter / "See all" handoff.
  *
- * D4a — confidence decides the destination:
- *   • identifier query resolving to **exactly one** ORDER → `/o/[id]`, the
- *     durable Workbench record. Typing a full order number is unambiguous intent.
- *   • otherwise → Search results (and ORDER preview hits open feedback via
+ * Confidence decides the destination:
+ *   • identifier query resolving to **exactly one** ORDER → search feedback
+ *     (`/search?sel=order:…`). Typing a full order number is unambiguous intent.
+ *   • otherwise → Search results (ORDER preview hits also open feedback via
  *     {@link searchHitHref} / {@link searchOrderFeedbackHref}).
  *
  * Journey Trace stays a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
- * never the Enter default.
+ * never the Enter default. Durable edit stays on the desk inspector.
  */
 export function globalSearchHandoffHref(
   query: string,
@@ -343,8 +345,8 @@ export function globalSearchHandoffHref(
   const orderHits = previewHits.filter((h) => h.entityType === 'order');
   const isIdentifier = looksLikeIdentifier(trimmed);
 
-  // One confident hit → the durable record.
-  if (isIdentifier && orderHits.length === 1) return orderRecordHref(orderHits[0].id);
+  // One confident hit → search order feedback.
+  if (isIdentifier && orderHits.length === 1) return searchOrderFeedbackHref(orderHits[0].id);
 
   return globalSearchHref(trimmed);
 }

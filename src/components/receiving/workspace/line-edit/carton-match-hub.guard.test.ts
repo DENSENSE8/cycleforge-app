@@ -49,6 +49,7 @@ describe('CartonMatchHub (P1)', () => {
     assert.doesNotMatch(hub, /selectAutoMode/);
     assert.doesNotMatch(hub, /showAutoMatchMenu/);
     assert.doesNotMatch(hub, /forcedLane=/);
+    assert.doesNotMatch(hub, /layout="grid"|layout="rows"/);
     assert.doesNotMatch(hub, /AvenueStripButton/);
     assert.doesNotMatch(hub, /variant="display"/);
     assert.doesNotMatch(hub, /flex flex-col gap-2/);
@@ -91,6 +92,64 @@ describe('CartonMatchHub (P1)', () => {
     // Strip must not be gated on `collapsed` — unfound Auto-match stays open.
     assert.doesNotMatch(hub, /!pickerCollapsed && !collapsed/);
     assert.match(hub, /Boolean\(autoMatch\) && !pickerCollapsed/);
+  });
+
+  it('Auto-match strip is one flush row: Find ticket opens Ticket display, gap-0 divide-x', () => {
+    const strip = readFileSync(
+      join(process.cwd(), 'src/components/receiving/workspace/line-edit/UnfoundMatchStrip.tsx'),
+      'utf8',
+    );
+    // Find ticket jumps to Ticket Displays — never an in-strip TicketMatchLane.
+    assert.doesNotMatch(strip, /TicketMatchLane|TicketLinkPopover/);
+    assert.match(strip, /onFindTicket\?:/);
+    assert.match(strip, /showFindTicket/);
+    const actionsBlock =
+      strip.match(/key="actions"[\s\S]*?Amazon return[\s\S]*?<\/motion\.div>/)?.[0] ?? '';
+    assert.ok(actionsBlock, 'actions motion block must exist');
+    assert.match(actionsBlock, /divide-x divide-border-soft/);
+    assert.doesNotMatch(actionsBlock, /gap-2/);
+    assert.doesNotMatch(strip, /layout\?:|forcedLane\?:/);
+    const ticketIdx = actionsBlock.indexOf('label="Find ticket"');
+    const returnIdx = actionsBlock.indexOf('label="Return #"');
+    const zohoIdx = actionsBlock.indexOf('label="Zoho"');
+    const amazonIdx = actionsBlock.indexOf('label="Amazon return"');
+    assert.ok(ticketIdx >= 0 && returnIdx > ticketIdx && zohoIdx > returnIdx && amazonIdx > zohoIdx);
+  });
+
+  it('Unbox wires Find ticket → openDisplays ticket claim/link', () => {
+    const panel = readFileSync(
+      join(process.cwd(), 'src/components/receiving/workspace/LineEditPanel.tsx'),
+      'utf8',
+    );
+    assert.match(panel, /openFindTicketDisplay/);
+    assert.match(
+      panel,
+      /openDisplays\('ticket',\s*\{\s*ticketAction:\s*'claim',\s*claimMode:\s*'link'/,
+    );
+    assert.match(
+      readFileSync(
+        join(process.cwd(), 'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx'),
+        'utf8',
+      ),
+      /onFindTicket,/,
+    );
+  });
+
+  it('Pairing has no Tickets avenue — Ticket display owns claim tabs', () => {
+    assert.doesNotMatch(hub, /id: 'zendesk'/);
+    assert.doesNotMatch(hub, /ZendeskMatchTab|useTriagePanel/);
+    assert.doesNotMatch(hub, /label: 'Tickets'/);
+    const ticketHost = readFileSync(
+      join(process.cwd(), 'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx'),
+      'utf8',
+    );
+    assert.match(ticketHost, /ReceivingClaimPanel/);
+    const claimNav = readFileSync(
+      join(process.cwd(), 'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx'),
+      'utf8',
+    );
+    assert.match(claimNav, /New ticket/);
+    assert.match(claimNav, /Link existing/);
   });
 
   it('opens PO tab on receiving-open-pairing-po (carton # ---- → Link PO)', () => {

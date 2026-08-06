@@ -140,6 +140,13 @@ export const framerTransition = {
   } satisfies Transition,
 
   /**
+   * Route history / desk table surface mount — pair with
+   * `framerPresence.routeHistory`. House utilitarian spring (no bounce); never
+   * invent stiffness/damping at the call site.
+   */
+  routeHistoryMount: springSnappy,
+
+  /**
    * Omnichannel composer dock mount — pair with `framerPresence.composerDock`.
    *
    * `OmnichannelComposerDock` used to rebuild this inline from
@@ -612,6 +619,19 @@ export const framerPresence = {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
+  },
+  /**
+   * Route history / desk TABLE surface first paint — rises into place (opacity +
+   * y). Never left→right: a horizontal wipe on a full-bleed queue reads as the
+   * sheet expanding sideways. Shared by `RouteShell` (shipping · receiving ·
+   * tech · support · sourcing desks) and `PackerPageContent`. Pair with
+   * `framerTransition.routeHistoryMount`; consume via `useMotionPresence` /
+   * `useMotionTransition`.
+   */
+  routeHistory: {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 8 },
   },
   /**
    * Omnichannel composer dock mount — the "type a message here" shell arriving

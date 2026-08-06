@@ -15,7 +15,6 @@ import { X, Pencil } from '@/components/Icons';
 import { SerialChip } from '@/components/ui/CopyChip';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { classifyInput } from '@/lib/scan-resolver';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
 import { ConditionPills } from './ConditionPills';
@@ -36,12 +35,15 @@ interface Props {
   expected: number | null;
   /**
    * Submit a new serial — calls into LineEditPanel's existing submitSerial
-   * flow. Returning a Promise lets the paste-loop below `await` each
-   * submission so the server-side FOR UPDATE lock actually serializes work.
+   * flow. Fire-and-forget: the parent queues writes; this card clears the
+   * field and keeps focus immediately.
    */
   onAdd: (sn: string) => void | Promise<void>;
-  /** Is a serial submission currently in flight? */
-  isSubmitting: boolean;
+  /**
+   * @deprecated Soft in-flight hint — kept for call-site compat. Never disables
+   * the input; burst scans stay live.
+   */
+  isSubmitting?: boolean;
   /** Disable input when package/line isn't ready (no receiving_id, etc.). */
   disabled?: boolean;
   /** Remove a saved serial. Dropdown action on chips. */
@@ -68,6 +70,11 @@ interface Props {
    * the trailing control is the normal add-"+" button only.
    */
   onMarkNoSerial?: () => void;
+  /**
+   * Replace the trailing check cell with a loading spinner (RETURN serial
+   * lookup in flight). Same footprint as {@link NoSerialOfferCheck}.
+   */
+  lookupBusy?: boolean;
   /** Render the no-serial check as active (solid green) while the waiver is set. */
   noSerialActive?: boolean;
   /**
@@ -121,7 +128,7 @@ interface Props {
 export function SerialCard({
   saved,
   onAdd,
-  isSubmitting,
+  isSubmitting: _isSubmitting = false,
   disabled = false,
   onDeleteSerial,
   onReplaceSerial,
@@ -129,6 +136,7 @@ export function SerialCard({
   onConditionChange,
   collapsedConditionLabel = true,
   onMarkNoSerial,
+  lookupBusy = false,
   noSerialActive = false,
   noSerialSlot,
   notes,
@@ -149,16 +157,9 @@ export function SerialCard({
   const [editing, setEditing] = useState<SavedSerial | null>(null);
   /**
    * Inline scan-guard feedback under the field — a big-enough state for a
-   * bench operator (never a corner toast). rose = blocked (duplicate),
-   * amber = warned (tracking-shaped value, overridable by re-submitting).
+   * bench operator (never a corner toast). Used for duplicate serials.
    */
-  const [inlineNotice, setInlineNotice] = useState<{ tone: 'rose' | 'amber'; text: string } | null>(
-    null,
-  );
-  /** Tracking-shaped value the operator was warned about — resubmitting the
-   *  same value overrides the guard (some units genuinely carry
-   *  tracking-shaped serials). Any input change re-arms the guard. */
-  const [trackingOverride, setTrackingOverride] = useState<string | null>(null);
+  const [inlineNotice, setInlineNotice] = useState<string | null>(null);
   // Condition picker expand/collapse — expand only when no grade is chosen yet
   // (operator needs the full row). When a grade is already set (e.g. unfound
   // return scan defaults USED_A, or a remount after optimistic create), start
@@ -167,8 +168,6 @@ export function SerialCard({
   const [condExpanded, setCondExpanded] = useState(
     !String(condition || '').trim(),
   );
-  /** Avoid flashing “Saving…” on fast round-trips; only shown if submit hangs ~400ms+ */
-  const [showSavingLabel, setShowSavingLabel] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const setInputRef = useCallback(
     (el: HTMLInputElement | null) => {
@@ -224,30 +223,20 @@ export function SerialCard({
   }, [editingSerial]);
 
   useEffect(() => {
-    if (!isSubmitting) {
-      setShowSavingLabel(false);
-      return;
-    }
-    const t = window.setTimeout(() => setShowSavingLabel(true), 420);
-    return () => window.clearTimeout(t);
-  }, [isSubmitting]);
-
-  useEffect(() => {
-    if (!autoFocusInput || disabled || isSubmitting || editing || editingSerial) return;
+    if (!autoFocusInput || disabled || editing || editingSerial) return;
     const t = window.setTimeout(() => {
       const el = inputRef.current;
       if (!el || el.disabled) return;
       el.focus({ preventScroll: true });
     }, 0);
     return () => window.clearTimeout(t);
-  }, [autoFocusInput, disabled, isSubmitting, editing, editingSerial, focusKey]);
+  }, [autoFocusInput, disabled, editing, editingSerial, focusKey]);
 
   const beginEdit = (s: SavedSerial) => {
     setEditing(s);
     onEditingSerialChange?.(s);
     setScan(s.serial_number);
     setInlineNotice(null);
-    setTrackingOverride(null);
     // Collapse the condition picker so the focus is on editing the serial text.
     setCondExpanded(false);
     // Defer focus until the input is enabled in the new render pass.
@@ -264,12 +253,11 @@ export function SerialCard({
     onEditingSerialChange?.(null);
     setScan('');
     setInlineNotice(null);
-    setTrackingOverride(null);
   };
 
-  const submit = async () => {
+  const submit = () => {
     const trimmed = scan.trim();
-    if (!trimmed || isSubmitting || disabled) return;
+    if (!trimmed || disabled) return;
 
     if (editing) {
       // Replace mode — operator is finalizing an edit. Skip the comma-split
@@ -283,27 +271,10 @@ export function SerialCard({
       return;
     }
 
-    // Allow comma-paste → submit each one in turn. AWAIT each onAdd so we
-    // don't fan out concurrent requests — the receive-line writer uses a
-    // SELECT FOR UPDATE lock that requires sequential calls, and parallel
-    // submissions used to cause over-receive races (e.g. 2/1).
+    // Comma-paste → enqueue each value. Parent queues writes (FOR UPDATE lock);
+    // never await the network here — clear + stay focused so the wedge can
+    // keep typing the next serial while the optimistic chip lands.
     const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-
-    // Wrong-barcode guard: a carrier-tracking-shaped scan is almost always the
-    // shipping label, not the unit serial. Warn on the first Enter and keep the
-    // value in the field; submitting the SAME value again overrides.
-    if (
-      parts.length === 1 &&
-      trackingOverride !== parts[0] &&
-      classifyInput(parts[0]).type === 'tracking'
-    ) {
-      setTrackingOverride(parts[0]);
-      setInlineNotice({
-        tone: 'amber',
-        text: 'Looks like a carrier tracking number — scan the unit serial, or press Enter again to add it anyway.',
-      });
-      return;
-    }
 
     // Duplicate guard: skip values already saved on this line so a double-scan
     // (or re-scan of a chip below) can't queue a second server write.
@@ -324,31 +295,17 @@ export function SerialCard({
     setInlineNotice(
       dupes.length === 0
         ? null
-        : {
-            tone: 'rose',
-            text:
-              dupes.length === 1
-                ? `Already on this line — ends ${getLast8Serial(dupes[0])}. Not added again.`
-                : `${dupes.length} serials already on this line — skipped.`,
-          },
+        : dupes.length === 1
+          ? `Already on this line — ends ${getLast8Serial(dupes[0])}. Not added again.`
+          : `${dupes.length} serials already on this line — skipped.`,
     );
-    setTrackingOverride(null);
     setScan('');
     if (fresh.length === 0) return;
     for (const sn of fresh) {
-      try {
-        await onAdd(sn);
-      } catch {
-        /* Parent handles toasts on its own; keep the loop going. */
-      }
+      void onAdd(sn);
     }
-    // Barcode wedge: keep the scan field focused after each Enter so multi-part
-    // PARTS lines can accept serial after serial without re-clicking.
-    window.setTimeout(() => {
-      const el = inputRef.current;
-      if (!el || el.disabled || editing || noSerialActive) return;
-      el.focus({ preventScroll: true });
-    }, 0);
+    // Field stays enabled during in-flight writes — keep the caret here.
+    inputRef.current?.focus({ preventScroll: true });
   };
 
   const Shell = embedded ? 'div' : 'section';
@@ -413,13 +370,14 @@ export function SerialCard({
             value={scan}
             onChange={(next) => {
               setScan(next);
-              // Any keystroke re-arms the scan guards and clears stale feedback.
+              // Any keystroke clears stale duplicate feedback.
               if (inlineNotice) setInlineNotice(null);
-              if (trackingOverride) setTrackingOverride(null);
             }}
             tone={embedded ? 'neutral' : 'blue'}
             mono
-            disabled={disabled || isSubmitting}
+            // Never disable for in-flight writes — a disabled input blurs and
+            // drops the barcode wedge. Queue + optimistic chips own concurrency.
+            disabled={disabled}
             autoComplete="off"
             spellCheck={false}
             // Programmatic focus uses preventScroll — avoid native autoFocus scroll jumps.
@@ -427,7 +385,7 @@ export function SerialCard({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                void submit();
+                submit();
               } else if (e.key === 'Escape' && editing) {
                 e.preventDefault();
                 cancelEdit();
@@ -451,9 +409,32 @@ export function SerialCard({
             (rendered in the field slot above) owns the whole row — it reads as a
             "No serial · {reason}" dropdown and carries UNDO inside its reason
             menu, so there is NO trailing control (no dark-green confirm check).
-            When the field is empty, a QUIET green-check no-serial OFFER. Otherwise
-            the "+" add / Save submit. */}
-        {noSerialActive ? null : !scan.trim() && !editing && onMarkNoSerial ? (
+            Lookup busy → spinner in the check cell. Empty field → quiet green
+            check offer. Otherwise the "+" add / Save submit. */}
+        {noSerialActive ? null : lookupBusy && !scan.trim() && !editing ? (
+          <div
+            role="status"
+            aria-label="Checking serial"
+            className={cn(
+              'inline-flex h-11 w-14 shrink-0 items-center justify-center text-emerald-600',
+              embedded
+                ? cn(cornerClass('flush'), 'bg-emerald-50')
+                : cn(cornerClass('field'), 'border border-emerald-300 bg-emerald-50 shadow-sm'),
+            )}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="h-5 w-5 animate-spin"
+              aria-hidden
+            >
+              <circle cx="12" cy="12" r="9" className="opacity-25" />
+              <path d="M21 12a9 9 0 0 1-9 9" strokeLinecap="round" />
+            </svg>
+          </div>
+        ) : !scan.trim() && !editing && onMarkNoSerial ? (
           // Shared with the multi-qty unit list's all-units slot — one green
           // check, so the affordance is identical whether the line is a 1-of or
           // a 3-of. (Was bespoke markup here; the copy is what let the multi-qty
@@ -465,23 +446,21 @@ export function SerialCard({
             appearance={embedded ? 'flush' : 'default'}
           />
         ) : (
-          /* ds-raw-button: solid-emerald scan-submit CTA with add-glyph / Saving… text-swap.
+          /* ds-raw-button: solid-emerald scan-submit CTA with add-glyph.
              Embedded joins the flush bar at h-11; standalone keeps soft radius. */
           <button
             type="button"
-            onClick={() => void submit()}
-            disabled={!scan.trim() || isSubmitting || disabled}
+            onClick={submit}
+            disabled={!scan.trim() || disabled}
             className={cn(
               'inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
               embedded
                 ? cn(cornerClass('flush'), 'bg-emerald-600')
                 : 'rounded-xl bg-emerald-600 shadow-sm',
-              editing || (showSavingLabel && isSubmitting) ? 'px-4' : 'w-14',
+              editing ? 'px-4' : 'w-14',
             )}
           >
-            {showSavingLabel && isSubmitting ? (
-              'Saving…'
-            ) : editing ? (
+            {editing ? (
               'Save'
             ) : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5">
@@ -495,22 +474,16 @@ export function SerialCard({
       {/* Scan-guard feedback — inline under the field where the operator is
           already looking (house rule: card state, not a corner toast). */}
       {inlineNotice ? (
-        <p
-          role="status"
-          className={`mt-2 text-role-caption font-semibold ${
-            inlineNotice.tone === 'rose' ? 'text-rose-600' : 'text-amber-700'
-          }`}
-        >
-          {inlineNotice.text}
+        <p role="status" className="mt-2 text-role-caption font-semibold text-rose-600">
+          {inlineNotice}
         </p>
       ) : null}
 
       {/* Inline slot under the scan field — RETURN serial-match (found /
-          not-found). `empty:hidden` drops the mt-3 when the slot renders null
-          (idle SerialMatchResult), so RETURN rows keep the same tight bottom
-          padding as a normal PO-line SoT accordion body. */}
+          not-found). Flush under the serial bar (no top gap); `empty:hidden`
+          drops the wrapper when the slot is null. */}
       {resultSlot ? (
-        <div className="mt-3 empty:hidden">{resultSlot}</div>
+        <div className="empty:hidden">{resultSlot}</div>
       ) : null}
 
       {/* Saved serials — rendered BELOW the input as emerald copy-chips.

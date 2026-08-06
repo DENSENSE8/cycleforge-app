@@ -171,6 +171,8 @@ function SupportOrderFocus({
                 variant="station"
                 onlySegment="customer"
                 hideLinkage={false}
+                // No peer Timeline Displays here yet — keep optional floor merge.
+                mergeFloorTimeline
               />
             </div>
           ),

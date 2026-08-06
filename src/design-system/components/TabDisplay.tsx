@@ -6,8 +6,8 @@
  * Zero corner radius. No soft pills / capsules. Motion via `@/design-system/motion`.
  *
  * Hierarchy (parent above child, cascading weight):
- * - `appearance="underline"` — **parent** nav (Browse·Move·Send, Link·Note):
- *   larger type, flush underline on active — no inverse fill.
+ * - `appearance="underline"` — **parent** nav (Photos Move·Send, Link·Note,
+ *   Units·Prebox): larger type, flush underline on active — no inverse fill.
  * - `appearance="segment"` — **child** local toggle (New ticket·Link existing):
  *   muted sunken rail + light rectangular active face, smaller type.
  * - `appearance="fill"` — high-contrast inverse sliding face (legacy nested fill).

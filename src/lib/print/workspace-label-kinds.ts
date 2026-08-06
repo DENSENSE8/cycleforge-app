@@ -146,7 +146,7 @@ export function listAvailableLabelOptions(
     .filter((kind) => isWorkspaceLabelAvailable(kind, ctx))
     .map((kind) => ({
       kind,
-      name: KIND_META[kind].name,
+      name: workspaceLabelDisplayName(kind),
       editor: KIND_META[kind].editor,
       grain: KIND_META[kind].grain,
     }));
@@ -253,6 +253,6 @@ export function printWorkspaceLabel(
   }
 }
 
-export function workspaceLabelDisplayName(kind: WorkspaceLabelKind): string {
+function workspaceLabelDisplayName(kind: WorkspaceLabelKind): string {
   return KIND_META[kind].name;
 }

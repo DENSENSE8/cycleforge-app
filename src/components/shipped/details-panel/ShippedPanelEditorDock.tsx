@@ -27,6 +27,8 @@ export interface ShippedPanelEditorDockProps {
   onSaveOutOfStock: (checked: boolean) => void;
   shippingTrackingNumber: string;
   onMarkShippedSuccess: () => void;
+  /** When true, skip the outer border shell (parent OrderUpdateDock owns chrome). */
+  embedded?: boolean;
 }
 
 /**
@@ -38,12 +40,9 @@ export interface ShippedPanelEditorDockProps {
  * writable home for an order annotation — see that file's header for why the
  * scalar became read-only.
  *
- * `showNotes={false}` means this dock carries no composer at all. Two reasons a
- * host passes it, and they are different: a surface that already mounts the
- * trail at the record plane would otherwise carry two composers for one store,
- * and the right-rail order inspector deliberately offers **no** note-writing at
- * all (handoff §3.2) — that capability lives on `/o/[orderId]`, which mounts
- * this dock with notes ON.
+ * `showNotes={false}` means this dock carries no composer at all — use it when
+ * a surface already mounts {@link OrderNotesTrail} at the record plane so the
+ * same store does not get two composers.
  */
 export function ShippedPanelEditorDock({
   shipped,
@@ -57,6 +56,7 @@ export function ShippedPanelEditorDock({
   onSaveOutOfStock,
   shippingTrackingNumber,
   onMarkShippedSuccess,
+  embedded = false,
 }: ShippedPanelEditorDockProps) {
   const [packerOptions, setPackerOptions] = useState<StaffRecipient[]>([]);
 
@@ -106,7 +106,13 @@ export function ShippedPanelEditorDock({
   if (!hasDockContent) return null;
 
   return (
-    <div className="shrink-0 border-t border-border-soft bg-surface-card/95 backdrop-blur-md">
+    <div
+      className={
+        embedded
+          ? 'shrink-0'
+          : 'shrink-0 border-t border-border-soft bg-surface-card/95 backdrop-blur-md'
+      }
+    >
       <AnimatePresence initial={false}>
         {hasExpandedEditor ? (
           <motion.div

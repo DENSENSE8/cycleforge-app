@@ -36,7 +36,7 @@ const exactHit = (id: number): GlobalSearchResult => ({
   entityType: 'order',
   title: `Order ${id}`,
   subtitle: 'sub',
-  href: `/o/${id}`,
+  href: `/search?sel=order:${id}`,
   matchField: 'order',
 });
 
@@ -281,7 +281,7 @@ test('exact hits hydrate facets + chips (no longer empty on identifier queries)'
         entityType: 'order',
         title: 'Order 7',
         subtitle: 'sub',
-        href: '/o/7',
+        href: '/search?sel=order:7',
         matchField: 'order',
         facets: {
           status: 'Shipped',

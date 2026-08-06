@@ -176,7 +176,7 @@ derivations drifting was.
 |---|---|---|
 | "What do I do right now" | `ProcedureDeck` (centre — flat 40px faces, outline selection, evidence band under the list) | Expanding the selected face; a sibling evidence region *above* the face list |
 | "Where am I in the whole job" | `ProcedureChecklist` (a Displays body) | A pinned always-on procedure column |
-| Open / close that checklist | `ScanStationProgressControl` | A second entry on the Displays icon strip |
+| Open / close that checklist | `ScanStationProgressControl` (Displays strip `rightSlot`) | A Checklist Lucide cell on the Displays icon strip |
 | Draw procedure completion | `ScanStationProgressRing` | `GoalRing` — a different product concept |
 | Daily goal pace (GlobalHeader) | `GoalRing` | Copying it onto a station bench |
 | Inspector body facts | `OrderFactList` + `OrderFactRow` (`@/components/order-record`) | Card soup; a hero title in the header |
@@ -251,8 +251,8 @@ sidebar header row.
 
 | `appearance` | Weight | Active treatment | Use for |
 |---|---|---|---|
-| `underline` | **Parent** | Bottom rule + body type; no inverse fill | Displays nested verbs (Browse·Move·Send, Link·Note, Units·Prebox) |
-| `segment` | **Child** | Sunken rail + **flush** light face (no gutter); caption type | Local subset under a parent (Claim New ticket·Link existing) |
+| `underline` | **Parent** | Bottom rule + body type; no inverse fill | Displays nested verbs (Link·Note, Units·Prebox) |
+| `segment` | **Child** | Sunken rail + **flush** light face (no gutter); caption type | Local subset under a parent (Claim New ticket·Link existing; Photos Move·Send) |
 | `fill` | High-contrast | Inverse sliding rectangular face, inset by a `p-0.5` gutter | When a single-layer inverse switcher is required |
 
 Parent must sit above child and carry more weight — never stack two inverse fills.

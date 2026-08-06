@@ -93,6 +93,28 @@ export function removeSerialById(
   return (serials ?? []).filter((s) => s.id !== serialUnitId);
 }
 
+/**
+ * Clear a deleted serial from materialised `receiving_line_unit` rows so the
+ * Units list cannot resurrect it via a stale `serial_unit_id` / `serial`
+ * snapshot after {@link removeSerialById}.
+ */
+export function unlinkSerialFromLineUnits<
+  T extends { serial_unit_id: number | null; serial?: string | null },
+>(
+  units: ReadonlyArray<T> | null | undefined,
+  serialUnitId: number,
+): T[] | null {
+  if (units == null) return null;
+  if (units.length === 0) return [];
+  let changed = false;
+  const next = units.map((u) => {
+    if (u.serial_unit_id !== serialUnitId) return u;
+    changed = true;
+    return { ...u, serial_unit_id: null, serial: null };
+  });
+  return changed ? next : [...units];
+}
+
 /** Optimistically stamp (or clear) a per-unit condition grade onto one serial. */
 export function setSerialGrade(
   serials: LineSerial[] | null | undefined,
@@ -136,10 +158,18 @@ export function bindSerialsToUnitSlots<T extends { id: number; _optimistic?: Opt
   saved: ReadonlyArray<T>,
 ): Array<T | null> {
   const claimedIds = new Set<number>();
+  const removingClaimedIds = new Set<number>();
   const linked: Array<T | null> = units.map((unit) => {
     if (unit.serial_unit_id == null) return null;
     claimedIds.add(unit.serial_unit_id);
-    return saved.find((s) => s.id === unit.serial_unit_id) ?? null;
+    const hit = saved.find((s) => s.id === unit.serial_unit_id) ?? null;
+    // In-flight delete: keep the id claimed so another serial does not jump
+    // into this slot, but render the slot empty until remove finishes.
+    if (hit?._optimistic === 'removing') {
+      removingClaimedIds.add(unit.serial_unit_id);
+      return null;
+    }
+    return hit;
   });
 
   const unbound = saved.filter(
@@ -149,6 +179,10 @@ export function bindSerialsToUnitSlots<T extends { id: number; _optimistic?: Opt
   return linked.map((serial, index) => {
     if (serial) return serial;
     if (units[index]?.serial_absent) return null;
+    const unitSerialId = units[index]?.serial_unit_id;
+    if (unitSerialId != null && removingClaimedIds.has(unitSerialId)) {
+      return null;
+    }
     const take = unbound[nextUnbound];
     if (!take) return null;
     nextUnbound += 1;

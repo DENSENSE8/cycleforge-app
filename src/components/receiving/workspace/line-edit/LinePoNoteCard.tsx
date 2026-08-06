@@ -1,26 +1,28 @@
 'use client';
 
+/**
+ * Synced PO-note editor — carton-level note on the linked purchase order.
+ *
+ * Flush Displays body (no WorkspaceCard glass island) — parent push column
+ * owns {@link DISPLAYS_BODY_INSET}. Save / Sync stay local in this footer;
+ * the panel dock is carton-terminal (Print · Receive).
+ */
+
 import { Check, Download, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import {
-  WorkspaceCard,
   WORKSPACE_NESTED_FIELD,
   WORKSPACE_NESTED_FIELD_PAD,
 } from '@/design-system/components';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 const NOTES_TEXTAREA_FOCUS =
   'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
+const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
+
 /**
- * Synced PO-note editor — the carton-level note that lives on the linked
- * purchase order in the connected inventory system.
- *
- * Save / Sync are LOCAL controls in this card's footer. They used to ride the
- * panel-level StationTerminalDock, but the dock is carton-terminal now
- * (Print · Receive) and the editor lives in the right-edge Displays column — a
- * dock button that changed meaning with a right-panel selection was
- * cross-region action-at-a-distance.
- *
  * Draft state is still owned by {@link usePoNoteTabState} at the panel level so
  * a carton switch re-seeds it.
  */
@@ -44,7 +46,7 @@ export function LinePoNoteCard({
   onSyncFromInventory?: () => void;
 }) {
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+    <div className={FLUSH_HOST_CLASS}>
       <div className="space-y-2">
         <textarea
           rows={6}
@@ -99,6 +101,6 @@ export function LinePoNoteCard({
           </div>
         </div>
       </div>
-    </WorkspaceCard>
+    </div>
   );
 }

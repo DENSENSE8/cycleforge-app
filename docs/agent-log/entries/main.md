@@ -658,3 +658,4 @@
 - `2026-08-04T04:07:27.000Z` · **main** · main · agent · Unbox flush Phase 5: geometry E2E green @1440/@1920; setStationPushDemand parks context rail; unbox-station-center measure hook; AI→Claim yield residual (App Router soft-replace) — partial
 - `2026-08-04T05:39:47.773Z` · **main** · main · agent · P1+P2 page-mode condensation: /shipping/orders desk + Support Inquiries alias — done
 - `2026-08-05T18:17:40.295Z` · **main** · main · agent · Product header T→Product (flex-label rule + 8rem min/720 max); KPI collapse toggle → To-ship + Incoming; All-tab ▦ portal (Testing/Shipping/Unbox) — ok
+- `2026-08-06T20:12:47.655Z` · **main** · main · agent · Photos Displays: drop Browse tab — gallery default + Move·Send only; view-mode picker — ok

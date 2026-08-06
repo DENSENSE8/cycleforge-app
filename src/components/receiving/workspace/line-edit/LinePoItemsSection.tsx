@@ -37,6 +37,30 @@ import {
   shouldUseUnmatchedItemsSurface,
 } from "@/lib/receiving/intake-items-routing";
 import { isReturnIntake } from "@/lib/receiving/triage-intake-kind";
+import { markReceivingSerialAbsent } from "../receiving-label-helpers";
+
+/** Line-scoped condition write for interleaved sibling SKU bodies. */
+function patchLineCondition(lineId: number, next: string) {
+  const cleared = !String(next || "").trim();
+  dispatchLineUpdated({
+    id: lineId,
+    condition_grade: cleared ? "" : next,
+  });
+  void fetch(`/api/receiving/lines/${lineId}/condition`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      cleared ? { reopen: true } : { condition_grade: next },
+    ),
+  }).catch(() => {});
+}
+
+const IDLE_SERIAL_LOOKUP = {
+  state: "idle" as const,
+  unit: null,
+  serial: "",
+  matchedOrder: null,
+};
 
 interface LinePoItemsSectionProps {
   row: ReceivingLineRow;
@@ -65,7 +89,7 @@ interface LinePoItemsSectionProps {
     serial_number: string;
     condition_grade?: string | null;
   }) => void;
-  /** Serials cell "View All" → Units Displays. */
+  /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
@@ -240,45 +264,78 @@ export function LinePoItemsSection({
           void c.deleteSerialUnit(s.id, lineId);
         },
       }}
-      activeRowSlot={({ serials, units }) =>
-        !serialScan ? null : (
+      activeRowSlot={({ serials, units, line }) => {
+        if (!serialScan) return null;
+        const isControllerLine = line.id === row.id;
+        return (
           <ActiveLineConditionSerial
             serials={serials}
-            lineId={row.id}
+            lineId={line.id}
             receivingId={receivingId}
-            quantityExpected={row.quantity_expected ?? null}
-            cond={c.cond}
+            quantityExpected={line.quantity_expected ?? null}
+            cond={
+              isControllerLine
+                ? c.cond
+                : line.condition_grade || "USED_A"
+            }
             serialSubmitting={c.serialSubmitting}
             editingSerial={c.headerSerialEdit}
-            serialLookup={c.serialLookup}
-            onFileReturnClaim={c.handleFileReturnClaim}
-            onSubmitSerial={(sn, grade) => c.enqueueSerial(sn, grade)}
+            serialLookup={
+              isControllerLine ? c.serialLookup : IDLE_SERIAL_LOOKUP
+            }
+            onFileReturnClaim={
+              isControllerLine ? c.handleFileReturnClaim : undefined
+            }
+            onSubmitSerial={(sn, grade) =>
+              c.enqueueSerial(sn, grade, line.id)
+            }
             onDeleteSerialUnit={(id, lineId) =>
-              void c.deleteSerialUnit(id, lineId)
+              void c.deleteSerialUnit(id, lineId ?? line.id)
             }
             onReplaceSerialUnit={(original, next) =>
-              void c.replaceSerialUnit(original, next)
+              void c.replaceSerialUnit(original, next, line.id)
             }
-            onSetUnitGrade={(id, grade) => void c.setUnitGrade(id, grade)}
-            onActiveConditionChange={c.setUnitLabelCondition}
+            onSetUnitGrade={(id, grade) =>
+              void c.setUnitGrade(id, grade, line.id)
+            }
+            onActiveConditionChange={(next) => {
+              if (isControllerLine) c.setUnitLabelCondition(next);
+            }}
             onConditionChange={(next) => {
-              c.setCond(next);
-              void c.patch({ condition_grade: next });
+              if (isControllerLine) {
+                c.setCond(next);
+                void c.patch({ condition_grade: next });
+                return;
+              }
+              patchLineCondition(line.id, next);
             }}
             onEditingSerialChange={c.setHeaderSerialEdit}
-            serialAbsent={c.serialAbsent}
-            serialAbsentReason={c.serialAbsentReason}
-            requireSerialConfirmation={c.requireSerialConfirmation}
-            onSerialAbsentChange={({ absent, reason }) =>
-              c.commitSerialAbsent({ absent, reason })
+            serialAbsent={
+              isControllerLine
+                ? c.serialAbsent
+                : (line.serial_absent ?? false)
             }
+            serialAbsentReason={
+              isControllerLine
+                ? c.serialAbsentReason
+                : (line.serial_absent_reason ?? null)
+            }
+            requireSerialConfirmation={c.requireSerialConfirmation}
+            onSerialAbsentChange={(next) => {
+              if (isControllerLine) {
+                c.commitSerialAbsent(next);
+                return;
+              }
+              markReceivingSerialAbsent(line.id, next);
+            }}
             units={units}
-            serialInputRef={c.serialRef}
+            serialInputRef={isControllerLine ? c.serialRef : undefined}
+            autoFocusSerial={isControllerLine}
             onEditFilledSerial={onEditFilledSerial}
             stationCompact
           />
-        )
-      }
+        );
+      }}
     />
   );
 }

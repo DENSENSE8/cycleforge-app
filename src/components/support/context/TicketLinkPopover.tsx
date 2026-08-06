@@ -9,6 +9,7 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Link2, Search, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { toast } from '@/lib/toast';
 import { invalidateSupportContextCaches } from '@/hooks';
 import type { SupportContextLinkable } from '@/lib/support/context-types';
@@ -275,19 +276,20 @@ export function TicketLinkPopover({
                     type="button"
                     disabled={t.linkedToThis}
                     onClick={() => setSelectedId(selected ? null : t.id)}
-                    className={`ds-raw-button flex w-full items-center gap-2 border-b border-border-hairline px-2.5 py-2 text-left last:border-b-0 ${
+                    className={`ds-raw-button w-full border-b border-border-hairline px-2.5 py-2 text-left last:border-b-0 ${
                       selected ? 'bg-blue-50' : 'hover:bg-surface-hover'
                     } ${t.linkedToThis ? 'opacity-50' : ''}`}
                   >
-                    <span className="shrink-0 font-mono text-role-eyebrow tabular-nums text-text-soft">
-                      #{t.id}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-                      {t.subject || 'Untitled'}
-                    </span>
-                    <span className="shrink-0 text-role-eyebrow uppercase text-text-faint">
-                      {t.linkedToThis ? 'linked' : t.status}
-                    </span>
+                    <TicketPickRow
+                      ticketId={t.id}
+                      subject={t.subject}
+                      emptySubject="Untitled"
+                      trailing={
+                        <span className="text-role-eyebrow uppercase text-text-faint">
+                          {t.linkedToThis ? 'linked' : t.status}
+                        </span>
+                      }
+                    />
                   </button>
                 </li>
               );

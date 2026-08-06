@@ -44,7 +44,11 @@ export function TicketSubjectField({
   subject: string | null | undefined;
   /** Dense caption density (station rail / pane-header identity row). */
   compact?: boolean;
-  /** Rendered after the title — e.g. the short `#id` mark. */
+  /**
+   * Rendered after the title — ephemeral edit chrome only. Ticket `#` is NOT a
+   * trailing sibling: it lives on {@link StackedRowIdentity}'s keys row under
+   * the subject (`SupportTicketIdMark`).
+   */
   trailing?: ReactNode;
   className?: string;
 }) {

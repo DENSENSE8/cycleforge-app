@@ -10,9 +10,12 @@ import { DEFAULT_FOCUS_SCAN_HOTKEY } from '../../src/lib/schemas/staff-preferenc
  * with Enter, so both of these are load-bearing and both are silent when they
  * break — the operator scans, nothing happens, and there is no error anywhere.
  *
- *  1. **Auto-refocus after submit.** `SerialCard.submit()` re-focuses the field
- *     on a 0ms defer so a multi-unit line takes serial after serial with no
- *     click between them.
+ *  1. **Auto-refocus after submit.** Serial add clears the field and keeps
+ *     focus — fire-and-forget into the write queue so a multi-unit line takes
+ *     serial after serial with no click between them.
+ *
+ *     Values may be any string (including tracking-shaped) — unbox does not
+ *     soft-block carrier barcodes on the serial field.
  *  2. **The focus hotkey.** `src/lib/scan-hotkey/store.ts` — one global keydown
  *     listener, last-registered target wins — slams focus back to the station's
  *     scan bar from anywhere on the bench.
@@ -83,9 +86,6 @@ test.describe('unbox focus lock', () => {
     await expect(input).toBeVisible({ timeout: 30_000 });
 
     // Two serials in a row, no click between them — that IS the wedge loop.
-    // Values are deliberately not carrier-tracking-shaped: a tracking-looking
-    // scan trips the wrong-barcode guard, which holds the value in the field on
-    // purpose and would make this test assert the wrong thing.
     for (const serial of [`E2EFOCUSA${uniq()}`, `E2EFOCUSB${uniq()}`]) {
       await input.click();
       await input.fill(serial);

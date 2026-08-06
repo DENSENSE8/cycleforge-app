@@ -67,6 +67,12 @@ export interface SupportContextHubProps {
    * the sticky Internal/Public card.
    */
   hostComposer?: boolean;
+  /**
+   * Interleave floor spine in the Customer ticket stream. Default false —
+   * station Ticket Displays stay messages-only (Timeline is a peer tab).
+   * Support hosts without a Timeline peer may opt in.
+   */
+  mergeFloorTimeline?: boolean;
 }
 
 export function SupportContextHub({
@@ -86,6 +92,7 @@ export function SupportContextHub({
   onRequestLinkTicket,
   hideTicketEmbed = false,
   hostComposer = false,
+  mergeFloorTimeline = false,
 }: SupportContextHubProps) {
   const flush = surface === 'flush';
   const cardShellClass = flush
@@ -199,6 +206,7 @@ export function SupportContextHub({
             onBridgeChange={onBridgeChange}
             onRequestLinkTicket={onRequestLinkTicket}
             hostComposer={hostComposer}
+            mergeFloorTimeline={mergeFloorTimeline}
           />
         ) : null}
         {activeSegment === 'team' ? (

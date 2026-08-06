@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown } from '@/components/Icons';
-import { ConditionGradeChip, EmptySkuChipFace } from '@/components/ui/CopyChip';
+import { ConditionGradeChip, EmptySkuChipFace, UnitPriceChip } from '@/components/ui/CopyChip';
 import { META_COL } from '@/components/ui/RowMetaColumns';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { SerialCard } from '@/components/receiving/workspace/SerialCard';
@@ -67,7 +67,7 @@ export function ReturnScanCard({
           )}
         >
           <PoLineHeaderThumb />
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
             <div className="flex min-w-0 items-start px-2 py-1">
               <p className="min-w-0 flex-1 text-role-caption font-semibold leading-tight text-text-default">
                 {title}
@@ -86,6 +86,7 @@ export function ReturnScanCard({
               qty={<ProgressBadge received={0} expected={1} />}
               sku={<EmptySkuChipFace dense />}
               condition={<ConditionGradeChip grade={condition} dense />}
+              price={<UnitPriceChip amount={null} dense />}
             />
           </div>
         </div>

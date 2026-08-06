@@ -175,10 +175,10 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     // so the response shape and the legacy Zoho-only tiles are unchanged.
     let ebay_pending = 0;
     let ebay_incoming = 0;
-    // `universal_incoming` gates the eBay purchasing-source tab + KPI on the
-    // incoming workbench: when the org has the eBay purchasing account wired in,
-    // the surface offers All / Zoho / eBay; otherwise it stays Zoho-only (no
-    // confusing always-empty eBay tab).
+    // `universal_incoming` gates the eBay purchasing-source search filter + KPI
+    // on the incoming workbench: when the org has the eBay purchasing account
+    // wired in, Band-3 offers All / Zoho / eBay (`?inbound=`); otherwise it
+    // stays Zoho-only (no confusing always-empty eBay option).
     const universal_incoming = await isIncomingUniversal(orgId);
     if (universal_incoming) {
       const er = await tenantQuery<{ ebay_pending: number; ebay_incoming: number }>(

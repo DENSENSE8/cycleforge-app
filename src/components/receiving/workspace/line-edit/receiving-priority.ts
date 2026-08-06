@@ -16,7 +16,7 @@ interface PriorityTone {
   short: string;
   /** Longer text for the title tooltip. */
   title: string;
-  /** Quiet tint — color-coded heat, same face language as Claim/Photos. */
+  /** Quiet flat tint — color-coded heat, same face language as Claim/Photos (`shadow-none`). */
   className: string;
 }
 
@@ -36,35 +36,35 @@ export function receivingPriorityTone(rank: number): PriorityTone {
         label: 'Priority',
         short: 'Pri',
         title: 'Flagged priority — pending-order match or manual; test/unbox first',
-        className: 'border-red-200 bg-red-50 text-red-700 shadow-sm',
+        className: 'border-red-200 bg-red-50 text-red-700 shadow-none',
       };
     case 1:
       return {
         label: 'High',
         short: 'High',
         title: 'Highest priority — unfound/untagged carton, triage first',
-        className: 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm',
+        className: 'border-amber-200 bg-amber-50 text-amber-700 shadow-none',
       };
     case 2:
       return {
         label: 'High',
         short: 'High',
         title: 'High priority — Amazon',
-        className: 'border-rose-200 bg-rose-50 text-rose-700 shadow-sm',
+        className: 'border-rose-200 bg-rose-50 text-rose-700 shadow-none',
       };
     case 3:
       return {
         label: 'Medium',
         short: 'Med',
         title: 'Medium priority — eBay',
-        className: 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm',
+        className: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
       };
     case 4:
       return {
         label: 'Low',
         short: 'Low',
         title: 'Low priority — Goodwill',
-        className: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-none',
       };
     default:
       return {
@@ -72,7 +72,7 @@ export function receivingPriorityTone(rank: number): PriorityTone {
         short: 'Oth',
         title: 'Lowest priority — other platform',
         // ds-allow-raw-neutral: identity tone — neutral member of the quiet tint family
-        className: 'border-slate-200 bg-slate-50 text-slate-600 shadow-sm',
+        className: 'border-slate-200 bg-slate-50 text-slate-600 shadow-none',
       };
   }
 }

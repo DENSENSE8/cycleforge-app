@@ -10,7 +10,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import { cn } from '@/utils/_cn';
@@ -72,25 +71,5 @@ export function SectionTabsRightPill({
         {children}
       </button>
     </HoverTooltip>
-  );
-}
-
-/** External-link pill — Zendesk / provider ticket deep link on support tabs. */
-export function ExternalLinkPill({
-  href,
-  label = 'Open ticket',
-}: {
-  href: string;
-  label?: string;
-}) {
-  return (
-    <SectionTabsRightTrack>
-      <SectionTabsRightPill
-        label={label}
-        onClick={() => window.open(href, '_blank', 'noopener,noreferrer')}
-      >
-        <ExternalLink className="h-4 w-4" />
-      </SectionTabsRightPill>
-    </SectionTabsRightTrack>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Link2, Loader2, MessageSquare, Search, Send, Unlink, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -384,20 +385,20 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                                 },
                               })
                             }
-                            className="h-auto w-full items-start justify-start gap-2 rounded-md border border-border-hairline px-2 py-1.5 text-left hover:border-border-accent hover:bg-surface-accent/40"
+                            className="h-auto w-full justify-start rounded-md border border-border-hairline px-2 py-1.5 text-left hover:border-border-accent hover:bg-surface-accent/40"
                           >
-                            <span className="mt-0.5 shrink-0 font-mono text-role-micro font-semibold text-text-faint">
-                              #{t.id}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-role-caption font-medium text-text-muted">
-                                {t.subject || '(no subject)'}
-                              </span>
-                              <span className="block text-role-micro uppercase tracking-wide text-text-faint">
-                                {t.status}
-                              </span>
-                            </span>
-                            <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-accent" />
+                            <TicketPickRow
+                              ticketId={t.id}
+                              subject={t.subject}
+                              emptySubject="(no subject)"
+                              subjectClassName="font-medium text-text-muted"
+                              meta={
+                                <span className="text-role-micro uppercase tracking-wide text-text-faint">
+                                  {t.status}
+                                </span>
+                              }
+                              trailing={<Link2 className="h-3.5 w-3.5 text-text-accent" />}
+                            />
                           </Button>
                         ))
                       )}

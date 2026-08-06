@@ -96,6 +96,8 @@ export function LineEditPanel({
   accordionBootstrap = 'default',
   onPrevCarton,
   onNextCarton,
+  prevCartonDisabled = false,
+  nextCartonDisabled = false,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -104,19 +106,13 @@ export function LineEditPanel({
   /** Snapshot of `receiving.accordionExpand` at carton open — expands PO lines. */
   accordionBootstrap?: 'default' | 'all';
   /**
-   * Record cursor for the CARTON, rendered in the pane-anchored utility row
-   * (top-right). The progress ring peeks procedure % from the Displays strip.
-   * `ReceivingLineWorkspace` has carried these since the workspace was built but
-   * only ever handed them to Triage — Unbox had no visible prev/next at all.
-   *
-   * **There is deliberately no `onCloseCarton` here.** Carton dismiss is the
-   * identity bar's leading `◁` (`CartonContextCard` `onExitToList`), which
-   * dispatches the same `receiving-workspace-close` the pane handler listens
-   * for. The `→|` that used to sit in this row wore panel semantics and closed
-   * the carton — see the pane utility row's docblock.
+   * Carton cursor — same mapping as the left sidebar / DeskRailChromeRow:
+   * ↑ previous · ↓ next via `receiving-navigate-table`.
    */
   onPrevCarton?: () => void;
   onNextCarton?: () => void;
+  prevCartonDisabled?: boolean;
+  nextCartonDisabled?: boolean;
 }) {
   // All state, effects, and handlers live in the controller — this panel is pure
   // composition. See useUnboxLineController / useReceivingLineCore.
@@ -288,6 +284,12 @@ export function LineEditPanel({
     if (ticketViewActive && ticketAction === 'chat') closeDisplays();
     else openDisplays('ticket', { ticketAction: hasTicketId ? 'chat' : 'claim' });
   }, [ticketViewActive, ticketAction, hasTicketId, closeDisplays, openDisplays]);
+
+  /** Auto-match "Find ticket" → Ticket display as the main surface (claim · link). */
+  const openFindTicketDisplay = useCallback(() => {
+    if (hasTicketId) openDisplays('ticket', { ticketAction: 'chat' });
+    else openDisplays('ticket', { ticketAction: 'claim', claimMode: 'link' });
+  }, [hasTicketId, openDisplays]);
 
   const closeClaimView = useCallback(() => {
     c.setReturnClaimPrefill(null);
@@ -502,6 +504,7 @@ export function LineEditPanel({
         classifyExpandRequestId: classifyExpand?.requestId ?? 0,
         pairingFocusTab: pairingFocus?.tab ?? null,
         pairingFocusRequestId: pairingFocus?.requestId ?? 0,
+        onFindTicket: openFindTicketDisplay,
       }),
     [
       row,
@@ -536,6 +539,7 @@ export function LineEditPanel({
       accordionBootstrap,
       classifyExpand,
       pairingFocus,
+      openFindTicketDisplay,
     ],
   );
 
@@ -546,14 +550,15 @@ export function LineEditPanel({
     [openDisplays],
   );
 
-  /** Displays column occupies the right edge — ring suppresses hover peek. */
-  const railOpen = showDisplays;
-
+  /**
+   * Ring mounts on the Displays strip (`rightSlot`) — only while Displays is
+   * open — so hover peek stays suppressed (`railOpen` always true at mount).
+   */
   const scanProgressControl = (
     <UnboxScanProgressControl
       row={row}
-      railOpen={railOpen}
-      checklistActive={showDisplays && activeSideTab === 'checklist'}
+      railOpen
+      checklistActive={activeSideTab === 'checklist'}
       onOpenChecklist={openChecklistDisplay}
       onCloseDisplays={closeDisplays}
     />
@@ -563,10 +568,10 @@ export function LineEditPanel({
    * Scan-station chrome for Displays `←|` + carton `↑ ↓`.
    *
    * **Closed:** {@link ScanStationUtilityRail} — `←|` on top, then vertical `↑↓`.
-   * **Open:** cursor moves to {@link UnboxPushColumn} top-right (`headerTrailing`);
+   * **Open:** cursor on {@link UnboxPushColumn} top-right (`headerTrailing`);
    * utility rail unmounts. `→|` lives on the column band.
    *
-   * Never inside CartonContextCard / Photos.
+   * Cursor mapping matches left sidebar / DeskRailChromeRow: ↑ prev · ↓ next.
    */
   const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
 
@@ -582,11 +587,13 @@ export function LineEditPanel({
       />
       {showCartonCursor ? (
         <ScanStationCartonCursor
-          onNext={onNextCarton}
           onPrev={onPrevCarton}
+          onNext={onNextCarton}
+          prevDisabled={prevCartonDisabled}
+          nextDisabled={nextCartonDisabled}
           orientation="vertical"
-          nextTestId="unbox-carton-next"
           prevTestId="unbox-carton-prev"
+          nextTestId="unbox-carton-next"
           groupTestId="unbox-carton-cursor"
         />
       ) : null}
@@ -595,12 +602,14 @@ export function LineEditPanel({
 
   const displaysCartonCursor = showCartonCursor ? (
     <ScanStationCartonCursor
-      onNext={onNextCarton}
       onPrev={onPrevCarton}
+      onNext={onNextCarton}
+      prevDisabled={prevCartonDisabled}
+      nextDisabled={nextCartonDisabled}
       orientation="horizontal"
       size="sm"
-      nextTestId="unbox-carton-next"
       prevTestId="unbox-carton-prev"
+      nextTestId="unbox-carton-next"
       groupTestId="unbox-carton-cursor"
     />
   ) : null;
@@ -693,7 +702,6 @@ export function LineEditPanel({
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
-                      <div className="mb-1.5 flex justify-end">{scanProgressControl}</div>
                       {showReceiveFeedback ? (
                         <div className="mb-1.5">
                           <ReceiveFeedbackRegion
@@ -777,6 +785,7 @@ export function LineEditPanel({
               }}
               onClose={closeDisplays}
               headerTrailing={displaysCartonCursor}
+              rightSlot={scanProgressControl}
             />
           ) : null
         }

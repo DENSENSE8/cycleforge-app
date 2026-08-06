@@ -28,7 +28,7 @@ export type UnboxSideTab =
   | 'tracking'
   | 'timeline';
 
-/** Nested Photos topic actions (`?photoAction=`). */
+/** Nested Photos topic actions (`?photoAction=`). Absent / `browse` = gallery. */
 export type UnboxPhotoAction = 'browse' | 'move' | 'send';
 
 /** Nested Linkage topic actions (`?linkageAction=`). */
@@ -57,7 +57,7 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'timeline',
 ];
 
-/** Strip-visible tabs only — `checklist` opens from the scan-progress ring. */
+/** Strip-visible tabs only — `checklist` opens from the strip progress ring (`rightSlot`). */
 export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = UNBOX_SIDE_TAB_ORDER.filter(
   (tab) => tab !== 'checklist',
 );
@@ -91,6 +91,7 @@ export function canonicalizeUnboxSideTab(raw: string): UnboxSideTab | null {
 }
 
 export function parseUnboxPhotoAction(raw: string | null): UnboxPhotoAction {
+  // `browse` kept as the gallery default (URL omits it; legacy deep-links still work).
   if (raw === 'move' || raw === 'send' || raw === 'browse') return raw;
   return 'browse';
 }

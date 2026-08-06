@@ -6,6 +6,7 @@ import { RouteShell } from '@/design-system/components/RouteShell';
 import { ShippingHistoryFeedProvider } from '@/hooks/station/ShippingHistoryFeedProvider';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
+import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 
 interface TechPageContentProps {
   techId: string;
@@ -19,6 +20,8 @@ interface TechPageContentProps {
 export function TechPageContent({ techId }: TechPageContentProps) {
   useSurfaceParamHygiene();
   useRealtimeToasts('tech');
+  useSurfacePaintMark('test:chrome', true);
+  useSurfacePaintMark('test:primary', true);
 
   return (
     <ShippingHistoryFeedProvider techId={techId}>

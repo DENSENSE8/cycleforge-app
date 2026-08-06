@@ -21,7 +21,7 @@ type SerialLookupView = Pick<
 >;
 
 /**
- * Body rendered inside the active PO line's `activeRowSlot` (PoLinesAccordion).
+ * Body rendered inside each PO line's `activeRowSlot` (PoLinesAccordion).
  * Branches on line quantity:
  *  - Multi-qty same-product line → one selectable {@link ReceivingUnitRows} row
  *    per physical unit, each with its own condition grade + serial.
@@ -65,6 +65,9 @@ export function ActiveLineConditionSerial({
   hideCondition = false,
   flush = false,
   activeRowLeading,
+  autoFocusSerial = true,
+  showSavedChips = false,
+  forceUnitRows = false,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -103,11 +106,28 @@ export function ActiveLineConditionSerial({
    */
   flush?: boolean;
   /**
-   * Leading control on every flush unit row (e.g. line-scoped item camera).
-   * Always leftmost. Units explosion mounts {@link ReceivingPhotoButton} here —
-   * not a standalone ITEM PHOTOS section.
+   * Item-camera control on every flush unit row (e.g. line-scoped photos).
+   * Sits after the condition tag. Units explosion mounts
+   * {@link ReceivingPhotoButton} here — not a standalone ITEM PHOTOS section.
    */
   activeRowLeading?: ReactNode;
+  /**
+   * Autofocus the serial input. Only the controller-active interleaved line
+   * should pass true — otherwise every SKU body fights for the caret.
+   */
+  autoFocusSerial?: boolean;
+  /**
+   * Show saved serial chips under the scan field. Centre PO accordion keeps
+   * chips in the meta row (`false`); rarely used when {@link forceUnitRows}
+   * is on (Units Displays lists one row per serial instead).
+   */
+  showSavedChips?: boolean;
+  /**
+   * Always use per-unit rows ({@link ReceivingUnitRows}), even when
+   * quantity_expected is 1. Units Displays explosion needs one editable row
+   * per serial — not a single SerialCard with chips.
+   */
+  forceUnitRows?: boolean;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   /** Programmatic focus target for the dock Add serial handoff. */
@@ -142,13 +162,13 @@ export function ActiveLineConditionSerial({
     "receiving.confirmSerialRemoval",
   );
   const shouldConfirmRemoval = confirmSerialRemoval ?? true;
-  const isMultiQty = (quantityExpected ?? 0) > 1;
-  // Serial-match band only when a lookup is in flight / resolved. Idle must
-  // pass `undefined` (not a null-rendering element) so SerialCard does not
-  // reserve the resultSlot's mt-3 — that ghost margin was the extra bottom
-  // padding on RETURN / return-serial accordion rows vs the PO-line SoT.
+  // Units Displays always explodes into per-serial rows. Centre accordion
+  // still uses qty>1 for ReceivingUnitRows vs single SerialCard.
+  const isMultiQty = forceUnitRows || (quantityExpected ?? 0) > 1;
+  // Match band only for resolved outcomes. Searching is a spinner in the
+  // trailing check cell — never a band under the field.
   const matchResult =
-    serialLookup.state !== "idle" ? (
+    serialLookup.state === "found" || serialLookup.state === "not-found" ? (
       <SerialMatchResult
         state={serialLookup.state}
         unit={serialLookup.unit}
@@ -157,12 +177,13 @@ export function ActiveLineConditionSerial({
         onFileClaim={onFileReturnClaim}
       />
     ) : undefined;
+  const lookupBusy = serialLookup.state === "searching";
 
   return (
     <div className={flush ? 'min-w-0' : 'min-w-0 space-y-2'}>
       {/* Item photos — house eyebrow header + right action slot. Labeled, so the
           step the checklist points at is legible on the work surface itself.
-          Units explosion uses activeRowLeading instead (leftmost on every unit row). */}
+          Units explosion uses activeRowLeading instead (after condition on every unit row). */}
       {itemPhotoSlot ? (
         <div
           className="flex min-w-0 items-center justify-between gap-2"
@@ -186,7 +207,12 @@ export function ActiveLineConditionSerial({
             lineId={lineId}
             saved={serials as UnitSerial[]}
             units={units}
-            quantityExpected={quantityExpected ?? 1}
+            quantityExpected={Math.max(
+              quantityExpected ?? 1,
+              serials.length,
+              units?.length ?? 0,
+              1,
+            )}
             lineCondition={cond}
             defaultAbsentReason={serialAbsentReason}
             disabled={!receivingId}
@@ -208,7 +234,7 @@ export function ActiveLineConditionSerial({
               ) {
                 return;
               }
-              onDeleteSerialUnit(id);
+              onDeleteSerialUnit(id, lineId);
             }}
             onReplaceSerial={(original, next) =>
               onReplaceSerialUnit(original, next)
@@ -271,13 +297,14 @@ export function ActiveLineConditionSerial({
                 isSubmitting={serialSubmitting}
                 disabled={!receivingId}
                 embedded
-                autoFocusInput
+                autoFocusInput={autoFocusSerial}
                 focusKey={lineId}
                 externalInputRef={serialInputRef}
-                showSavedChips={false}
+                showSavedChips={showSavedChips}
                 editingSerial={editingSerial}
                 onEditingSerialChange={onEditingSerialChange}
                 resultSlot={matchResult}
+                lookupBusy={lookupBusy}
                 condition={hideCondition ? undefined : cond}
                 onConditionChange={hideCondition ? undefined : onConditionChange}
                 // Collapsed picker: filled circle (grade hue) + white Tags icon.
@@ -329,7 +356,7 @@ export function ActiveLineConditionSerial({
                   ) {
                     return;
                   }
-                  onDeleteSerialUnit(s.id);
+                  onDeleteSerialUnit(s.id, lineId);
                 }}
               />
             </div>

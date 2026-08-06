@@ -11,9 +11,9 @@ const SECTION = join(
   process.cwd(),
   'src/components/receiving/triage/TriageClassifySection.tsx',
 );
-const ARRIVAL = join(
+const ARRIVAL_PANEL = join(
   process.cwd(),
-  'src/components/receiving/triage/build-triage-displays.tsx',
+  'src/components/receiving/triage/TriagePanel.tsx',
 );
 const UNBOX_TABS = join(
   process.cwd(),
@@ -55,11 +55,13 @@ describe('TriageClassifySection flush Displays', () => {
     assert.match(src, /INLINE_PILL_ICON_FACE/);
   });
 
-  it('Arrival + Unbox Displays mount TriageClassifySection', () => {
-    const arrival = readFileSync(ARRIVAL, 'utf8');
+  it('Arrival centre + Unbox Displays mount TriageClassifySection', () => {
+    const arrival = readFileSync(ARRIVAL_PANEL, 'utf8');
     const unbox = readFileSync(UNBOX_TABS, 'utf8');
-    assert.match(arrival, /id: 'classify'/);
+    // Arrival: Classify stacks under items in the centre (not a Displays tab).
     assert.match(arrival, /<TriageClassifySection/);
+    assert.doesNotMatch(arrival, /openDisplays\(\s*['"]classify['"]/);
+    // Unbox: Classify remains a Displays strip tab.
     assert.match(unbox, /id: 'classify'/);
     assert.match(unbox, /<TriageClassifySection/);
   });

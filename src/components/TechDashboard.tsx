@@ -80,6 +80,9 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               onOpenTestingLine={openTestingLine}
               activeOrderPane={activeOrderPane}
               onCloseActiveOrder={() => setActiveOrderPane(null)}
+              onActiveOrderChange={(next) =>
+                setActiveOrderPane((prev) => (prev ? { ...prev, activeOrder: next } : null))
+              }
               previewOrder={previewOrder}
               onClosePreview={() => setPreviewOrder(null)}
             />
