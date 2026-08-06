@@ -40,12 +40,27 @@ export const QUEUE_ROW = {
    */
   selectedClass: 'bg-blue-50 ring-1 ring-inset ring-blue-400',
   /**
+   * Selected chrome for a list/accordion row on a **sunken station canvas**
+   * (Unbox/Triage/Testing `StationPanelRoot` → `bg-surface-sunken`).
+   *
+   * The working row is the operator's current context, so it needs an opaque
+   * **white face** (`bg-surface-card`) to lift the title, meta chips, and the
+   * expanded condition/serial evidence off the ground plane. Selection is the
+   * face — not a blue inset glow (that stacked with row `border-b` and read as
+   * chrome noise on the flat unit floor). The plain
+   * {@link QUEUE_ROW.selectedClass} `bg-blue-50` wash is ~the same luminance as
+   * `bg-surface-sunken`, so on a station floor it reads as *no* face (the input
+   * appears to float on empty canvas). Flat geometry is unchanged — the row
+   * keeps `rounded-none` + hairline `border-b`; this only supplies the fill.
+   */
+  selectedStationClass: 'bg-surface-card',
+  /**
    * Selected chrome for **airtable LedgerGrid** rows — fill only.
    *
    * An inset ring on the row fights `[data-grid-skin='airtable']` paint order:
-   * sticky identity cells (`bg-inherit` + `z-raised`) cover left, cell
-   * RIGHT+BOTTOM rules cover those edges, and transparent fact cells leave
-   * only a top/right L-glow. Sheets/Airtable selection is a wash; use this
+   * sticky identity cells (`bg-inherit` + `z-raised`) cover left, BOTTOM row
+   * rules cover that edge (1B — no vertical column cage), and transparent fact
+   * cells leave only a top/right L-glow. Sheets selection is a wash; use this
    * (via {@link ledgerRowStateClass} or Pending `gridSkin`) — never
    * {@link QUEUE_ROW.selectedClass} under the skin.
    */
@@ -56,16 +71,6 @@ export const QUEUE_ROW = {
    * Never blue — linked ≠ "working this row."
    */
   linkedLedgerClass: 'bg-surface-sunken',
-  /**
-   * Expanded-group child nest when a disclosure chevron is shown — pad past the
-   * glyph so nesting reads clearly.
-   */
-  nestWithChevron: 'pl-5',
-  /**
-   * Expanded-group child nest when chevron is hidden — border + wash only so
-   * nested lines share the singleton title edge.
-   */
-  nestNoChevron: 'pl-0',
 } as const;
 
 /**
@@ -88,14 +93,14 @@ export const NAV_ROW = {
  * ternary. This is the one home for both.
  *
  * **There is no zebra here, deliberately.** Zebra exists to carry row tracking
- * on a surface with no cell rules; every LedgerGrid draws a full cell rule grid
- * inside a raised card frame, so a stripe is a THIRD separation system on top
- * of rules and hover. Its fill (`surface-canvas`) is also a page-canvas ground
- * plane tuned for floating cards, not a row tint — at that luminance step the
- * shaded rows read as a different SURFACE rather than the same one alternately
- * banded. The Pending grid removed it first (2026-07) and the rest followed
- * here; rules + hover + the selected fill carry row tracking on all of them.
- * Do not reintroduce an `index % 2` fill — guard:
+ * on a surface with no cell rules; every LedgerGrid draws BOTTOM row hairlines
+ * inside a raised/sheet frame (1B — no vertical column cage), so a stripe is a
+ * THIRD separation system on top of rules and hover. Its fill (`surface-canvas`)
+ * is also a page-canvas ground plane tuned for floating cards, not a row tint —
+ * at that luminance step the shaded rows read as a different SURFACE rather than
+ * the same one alternately banded. The Pending grid removed it first (2026-07)
+ * and the rest followed here; row rules + hover + the selected fill carry row
+ * tracking on all of them. Do not reintroduce an `index % 2` fill — guard:
  * `ledger-row-zebra.guard.test.ts`.
  *
  * Selection is fill only under airtable (see {@link QUEUE_ROW.selectedLedgerClass}),
@@ -167,9 +172,4 @@ type MetaIndentTrack = 'default' | 'wide';
 export function metaIndentFor(track: MetaIndentTrack, selectMode: boolean): string {
   const base = QUEUE_ROW_META_INDENT[track];
   return selectMode ? `calc(${base} + ${QUEUE_ROW.selectGutter})` : base;
-}
-
-/** Nest padding class for CollapsibleGroupRow children. */
-export function queueGroupNestClass(showChevron: boolean): string {
-  return showChevron ? QUEUE_ROW.nestWithChevron : QUEUE_ROW.nestNoChevron;
 }

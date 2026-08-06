@@ -44,7 +44,11 @@ export function ScanStationProgressControl({
   onClose,
   preview,
   ariaLabelOpen,
-  ariaLabelClose = 'Hide displays',
+  // Close names the REGION, not the tab — the ring toggles the whole Station
+  // push column, and one control cannot say "Hide displays" when the same edge
+  // hosts Ticket/Claim/tool. Matches UnboxDisplaysEdgeToggle's UNBOX_PUSH_CLOSE_LABEL.
+  // Law: source-of-truth.md → Displays vs inspector.
+  ariaLabelClose = 'Hide right panel',
   testId = 'scan-station-progress-button',
   previewAriaLabel = 'Procedure checklist preview',
   /** Anchored popover placement — SoT for station progress is `top-end`. */

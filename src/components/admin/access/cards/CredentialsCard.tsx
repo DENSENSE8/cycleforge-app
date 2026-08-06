@@ -28,7 +28,7 @@ export function CredentialsCard({
   onUpdatePin, onResetPin, onRevokePasskey, onRevokeSession, onRevokeAll, onChangeSessionPolicy,
 }: CredentialsCardProps) {
   return (
-    <section className={`overflow-hidden rounded-2xl border ${borderClass} bg-surface-card shadow-sm`}>
+    <section className={`overflow-hidden rounded-none border ${borderClass} bg-surface-card shadow-sm`}>
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Credentials</h2>
@@ -69,7 +69,7 @@ export function CredentialsCard({
           {passkeys.length === 0 ? (
             <p className="mt-1 text-role-caption text-text-faint">No passkeys registered.</p>
           ) : (
-            <ul className="mt-2 divide-y divide-border-hairline rounded-lg border border-border-hairline">
+            <ul className="mt-2 divide-y divide-border-hairline rounded-none border border-border-hairline">
               {passkeys.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 inset-field">
                   <div className="min-w-0">
@@ -144,7 +144,7 @@ export function CredentialsCard({
           {sessions.length === 0 ? (
             <p className="mt-1 text-role-caption text-text-faint">No active sessions.</p>
           ) : (
-            <ul className="mt-2 divide-y divide-border-hairline rounded-lg border border-border-hairline">
+            <ul className="mt-2 divide-y divide-border-hairline rounded-none border border-border-hairline">
               {sessions.map((s) => (
                 <li key={s.sid} className="flex items-center justify-between gap-3 inset-field">
                   <div className="min-w-0">

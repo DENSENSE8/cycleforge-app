@@ -53,6 +53,11 @@ import {
   UNBOX_FLOW_LABEL,
   type UnboxFlowId,
 } from '@/lib/stations/procedure';
+import {
+  parseUnboxFlowCaptureOrder,
+  serializeUnboxFlowCaptureOrder,
+  UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY,
+} from '@/lib/stations/unbox-flow-capture-order';
 import { conditionLabel } from '@/lib/conditions';
 import {
   formatDateTimePST,
@@ -172,6 +177,11 @@ interface UnboxProcedureStepsResult {
   stepCount: number;
   /** Jump the pointer to a settled step (the reopen affordance). */
   focusStep: (key: string | null) => void;
+  /**
+   * Persist capture-step order for the active named flow as org SOP
+   * (`receiving.unboxFlowCaptureOrder`). Deck + checklist both re-derive.
+   */
+  reorderCaptureSteps: (orderedKeys: string[]) => void;
 }
 
 export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureStepsResult {
@@ -198,6 +208,17 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     [requiredAspectsRaw],
   );
 
+  // Org SOP capture order (dogfood right-rail DnD). One JSON string in the
+  // settings registry — both surfaces read it through the resolver override.
+  const { value: captureOrderRaw, set: setCaptureOrder } = useSetting<string>(
+    'receiving',
+    UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY,
+  );
+  const captureOrderMap = useMemo(
+    () => parseUnboxFlowCaptureOrder(captureOrderRaw ?? '{}'),
+    [captureOrderRaw],
+  );
+
   // Shared across surfaces, not per-component: the checklist is the map and
   // clicking a row there must move the CENTRE's card. Two `useState` pointers
   // would render two answers on one screen.
@@ -214,15 +235,22 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   const perUnitAbsentCount = (row.units ?? []).filter((u) => u.serial_absent).length;
   const classified = isIntakeClassified(row);
 
-  const vocabulary = useMemo(
-    () =>
-      resolveContextFromFlags({
-        isUnfound: !row.zoho_purchaseorder_id,
-        isLocalPickup: isLocalPickupFulfillment(row),
-        isReturn: isReturnIntake(row),
-      }),
-    [row],
-  );
+  const vocabulary = useMemo(() => {
+    const base = resolveContextFromFlags({
+      isUnfound: !row.zoho_purchaseorder_id,
+      isLocalPickup: isLocalPickupFulfillment(row),
+      isReturn: isReturnIntake(row),
+    });
+    const override = captureOrderMap[base.flow];
+    if (!override?.length) return base;
+    return {
+      ...base,
+      modifiers: {
+        ...base.modifiers,
+        captureOrderOverride: override,
+      },
+    };
+  }, [row, captureOrderMap]);
   const flow = vocabulary.flow;
   const flowLabel = UNBOX_FLOW_LABEL[flow];
 
@@ -379,6 +407,17 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     [cartonId],
   );
 
+  const reorderCaptureSteps = useCallback(
+    (orderedKeys: string[]) => {
+      const next = serializeUnboxFlowCaptureOrder({
+        ...captureOrderMap,
+        [flow]: orderedKeys,
+      });
+      void setCaptureOrder(next, 'org');
+    },
+    [captureOrderMap, flow, setCaptureOrder],
+  );
+
   return {
     steps,
     flow,
@@ -391,5 +430,6 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     settled: counts.settled,
     stepCount: captureStepVocabulary(input.vocabulary).length,
     focusStep,
+    reorderCaptureSteps,
   };
 }

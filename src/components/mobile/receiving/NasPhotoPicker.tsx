@@ -207,7 +207,7 @@ export function NasPhotoPicker({ scope, onClose, onAttached }: NasPhotoPickerPro
             ? 'Attaching…'
             : selected.size === 0
               ? 'Select photos'
-              : `Attach ${selected.size} photo${selected.size === 1 ? '' : 's'}`}
+              : `Attach ${selected.size}`}
         </Button>
       </div>
     </div>

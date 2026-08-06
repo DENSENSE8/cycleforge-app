@@ -5,18 +5,18 @@ import type { TicketCandidate } from '@/components/support/link/useTicketSearch'
 export type ClaimModalMode = 'create' | 'link';
 
 /**
- * Unified claim wizard step. Create starts at `photos` (skips `find`);
- * link starts at `find`. The success step is always `filed` (label "Filed"
- * or "Linked" depending on mode).
+ * Claim scroll sections. Create starts at `photos` (skips `find`);
+ * link starts at `find`. Ticket (`compose`) is editable details only.
+ * Pre-file photo-backup copy lives on the sticky File footer (not a section).
+ * Success is always `filed`.
  */
-export type ClaimWizardStep = 'find' | 'photos' | 'compose' | 'review' | 'filed' | 'seller';
+export type ClaimWizardStep = 'find' | 'photos' | 'compose' | 'filed' | 'seller';
 
-/** Full left-to-right order (create filters out `find`). */
+/** Full top-to-bottom order (create filters out `find`). */
 const CLAIM_WIZARD_STEP_ORDER: readonly ClaimWizardStep[] = [
   'find',
   'photos',
   'compose',
-  'review',
   'filed',
   'seller',
 ] as const;
@@ -27,7 +27,7 @@ export function claimWizardStartStep(mode: ClaimModalMode): ClaimWizardStep {
 }
 
 /** Step order visible for the active mode (create omits Find). */
-export function claimWizardOrderForMode(mode: ClaimModalMode): readonly ClaimWizardStep[] {
+function claimWizardOrderForMode(mode: ClaimModalMode): readonly ClaimWizardStep[] {
   return mode === 'link'
     ? CLAIM_WIZARD_STEP_ORDER
     : CLAIM_WIZARD_STEP_ORDER.filter((s) => s !== 'find');
@@ -90,7 +90,7 @@ interface ClaimWizardStepDef {
   label: string;
 }
 
-/** Stepper defs for the active mode (Seller omitted when not applicable). */
+/** Scroll-spy defs for the active mode (Seller omitted when not applicable). */
 export function claimWizardStepsForMode(
   mode: ClaimModalMode,
   sellerStepApplicable: boolean,
@@ -102,26 +102,28 @@ export function claimWizardStepsForMode(
           { key: 'find', label: 'Find' },
           { key: 'photos', label: 'Photos' },
           { key: 'compose', label: 'Ticket' },
-          { key: 'review', label: 'Review' },
           { key: 'filed', label: filedLabel },
           { key: 'seller', label: 'Seller' },
         ]
       : [
           { key: 'photos', label: 'Photos' },
           { key: 'compose', label: 'Ticket' },
-          { key: 'review', label: 'Review' },
           { key: 'filed', label: filedLabel },
           { key: 'seller', label: 'Seller' },
         ];
   return steps.filter((s) => s.key !== 'seller' || sellerStepApplicable);
 }
 
+/** DOM id for a claim scroll section (`claim-section-photos`, …). */
+export function claimSectionDomId(step: ClaimWizardStep): string {
+  return `claim-section-${step}`;
+}
+
 export const SELLER_SKELETON_WIDTHS = ['92%', '88%', '76%', '84%', '68%', '56%'] as const;
 
 /**
- * Derive the dot-stepper state for the active mode. States are purely
- * positional: every step left of the current one is `done`, the current one is
- * `active`, the rest `pending`.
+ * Derive positional step states for the active mode (legacy helper for any
+ * remaining stepper consumers).
  */
 export function claimWizardStepStates(
   step: ClaimWizardStep,

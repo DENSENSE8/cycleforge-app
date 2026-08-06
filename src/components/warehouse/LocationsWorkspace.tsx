@@ -8,12 +8,13 @@
  * Rooms / Map) keep their bodies; any data table mounts flush.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
+  WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useLocations } from '@/hooks/useLocations';
@@ -34,7 +35,6 @@ import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
 import { LocationsWorkspaceHeader } from './LocationsWorkspaceHeader';
 import { LocationsBinsKpiBand } from './LocationsBinsKpiBand';
-import { LocationsTriageBand } from './LocationsTriageBand';
 import { parseLocationsTab } from '@/lib/inventory/locations-path';
 import { cn } from '@/utils/_cn';
 
@@ -42,6 +42,8 @@ export function LocationsWorkspace() {
   const searchParams = useSearchParams();
   const tab = parseLocationsTab(searchParams.get('tab'));
   const rackCodeParam = searchParams.get('code');
+  // Band-3 ▦ host — lifted so chrome (pinned) and BinsTabSheet (body) share it.
+  const [binsControlsEl, setBinsControlsEl] = useState<HTMLDivElement | null>(null);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
@@ -50,7 +52,9 @@ export function LocationsWorkspace() {
         chrome={
           <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <LocationsWorkspaceHeader />
-            {tab === 'bins' ? <LocationsBinsChrome /> : null}
+            {tab === 'bins' ? (
+              <LocationsBinsChrome controlsSlotRef={setBinsControlsEl} />
+            ) : null}
           </div>
         }
       >
@@ -61,7 +65,9 @@ export function LocationsWorkspace() {
             rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
           ) : null}
           {tab === 'map' ? <MapTabBody /> : null}
-          {tab === 'bins' ? <BinsTabSheet /> : null}
+          {tab === 'bins' ? (
+            <BinsTabSheet columnTriggerPortalTarget={binsControlsEl} />
+          ) : null}
         </div>
       </DashboardScrollShell>
     </div>
@@ -69,7 +75,11 @@ export function LocationsWorkspace() {
 }
 
 /** Band 2 KPI + Band 3 triage for the Bins spreadsheet. */
-function LocationsBinsChrome() {
+function LocationsBinsChrome({
+  controlsSlotRef,
+}: {
+  controlsSlotRef: Ref<HTMLDivElement>;
+}) {
   const { status, room, q, onParamChange } = useBinsFilterParams();
   const { rooms } = useLocations();
   const { counts } = useBinsOverview({ room, q });
@@ -88,7 +98,8 @@ function LocationsBinsChrome() {
         status={status}
         onSelectStatus={onSelectStatus}
       />
-      <LocationsTriageBand
+      <WorkbenchTriageBand
+        controlsSlotRef={controlsSlotRef}
         search={
           <TechRailSearchBar
             value={q}
@@ -121,7 +132,11 @@ function LocationsBinsChrome() {
   );
 }
 
-function BinsTabSheet() {
+function BinsTabSheet({
+  columnTriggerPortalTarget = null,
+}: {
+  columnTriggerPortalTarget?: HTMLElement | null;
+}) {
   const { status, room, q } = useBinsFilterParams();
   const { rows, loading, refetch } = useBinsOverview({ room, q });
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -153,6 +168,7 @@ function BinsTabSheet() {
         onSelectChange={setSelected}
         onRowClick={(row) => setFlyoutRow(row)}
         surface="sheet"
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
 
       <BinsBulkActionBar

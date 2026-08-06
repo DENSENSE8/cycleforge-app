@@ -15,6 +15,8 @@ import {
   PairingLinkButton,
   PairingLinkedBadge,
 } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import { ticketStatusTone, relativeTime, type TicketCandidate } from './triage-types';
 
 interface MatchCardProps {
@@ -35,9 +37,14 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
   return (
     <PairingCandidateRow
       linked={linked}
-      className="rounded-xl px-0.5 py-0.5"
+      className={cn(cornerClass('flush'), 'px-0.5 py-0.5')}
       media={
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-text-soft">
+        <span
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center bg-surface-sunken text-text-soft',
+            cornerClass('flush'),
+          )}
+        >
           <Ticket className="h-4 w-4" />
         </span>
       }

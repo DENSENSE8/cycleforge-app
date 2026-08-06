@@ -60,7 +60,7 @@ export function LandingPageCard({
   const mobileDefault = primaryRoleKey ? MOBILE_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/m/home' : '/m/home';
 
   return (
-    <section className={`overflow-hidden rounded-2xl border ${borderClass} bg-surface-card shadow-sm`}>
+    <section className={`overflow-hidden rounded-none border ${borderClass} bg-surface-card shadow-sm`}>
       <header className="border-b border-border-hairline px-5 py-3">
         <h2 className="text-sm font-semibold text-text-default">Landing page</h2>
         <p className="mt-0.5 text-role-caption text-text-soft">

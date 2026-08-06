@@ -223,7 +223,7 @@ test('the Photos CTA is the primary entry, and there is only one', () => {
   // the first version of this matched a literal `aria-label={...}` and broke the
   // moment the control migrated from a raw <button> to <Button ariaLabel>, which
   // is a DS improvement a guard should never punish.
-  for (const name of ['Show carton photos', 'Hide carton photos']) {
+  for (const name of ['Show photos', 'Hide photos']) {
     assert.ok(ALL.includes(name), `the Photos control must expose the "${name}" accessible name`);
   }
   assert.ok(
@@ -237,7 +237,7 @@ test('the Photos CTA is the primary entry, and there is only one', () => {
   );
 });
 
-test('progress uses the shared carton pipeline on a Panel, not a hand-rolled strip', () => {
+test('progress uses the shared carton pipeline, not a hand-rolled strip', () => {
   assert.ok(
     ALL.includes('ReceivingCartonPipeline'),
     'carton progress must reuse ReceivingCartonPipeline (stepper + stage detail rows)',
@@ -246,14 +246,52 @@ test('progress uses the shared carton pipeline on a Panel, not a hand-rolled str
     ALL.includes('deriveCartonReadiness'),
     'stepper states must come from deriveCartonReadiness, not ad-hoc timestamps',
   );
-  assert.ok(
-    ALL.includes('Panel'),
-    'pipeline sits on a Panel background surface',
-  );
   assert.equal(
     ALL.includes('ProvenanceBlock') || ALL.includes('collapseProvenance'),
     false,
     'hand-rolled HANDLING provenance strip is deleted — use the shared stepper',
+  );
+});
+
+/**
+ * The read body is ONE plane (2026-08-05).
+ *
+ * This assertion replaced `ALL.includes('Panel')`, which pinned the pipeline to
+ * a card shell. That pin was written when the alternative was a hand-rolled
+ * provenance strip, so "sits on a Panel" was standing in for "is the shared
+ * component on a real surface" — and the three assertions above say that
+ * directly. Meanwhile the literal check could never fail: `stationIdentityPanelClass`
+ * carries the substring `Panel`, so the test passed no matter what the body did.
+ *
+ * What replaces it is stricter, not looser. Six `Panel radius="xl"` islands on a
+ * `surface-canvas` ground had grown into the exact nested-box read the house
+ * flush-planes ruling bans (`source-of-truth.md` → Depth elevation): canvas →
+ * card → sunken, three surfaces deep, to show one carton's facts. Depth here is
+ * the surface STEP between the sunken identity band and the card body; sections
+ * separate with hairlines.
+ */
+test('the read body is one continuous plane, not a stack of cards', () => {
+  const PAGE = stripComments(
+    readFileSync(join(HERE, 'inspection', 'CartonInspectionPage.tsx'), 'utf8'),
+  );
+  assert.equal(
+    /radius="xl"/.test(PAGE),
+    false,
+    'a per-section Panel card is back — sections separate with a hairline on one plane',
+  );
+  assert.equal(
+    /rounded-xl border border-border-soft bg-surface-card/.test(PAGE),
+    false,
+    'hand-rolled card shell — that is the twin the Panel islands were removed to kill',
+  );
+  assert.ok(
+    PAGE.includes('divide-border-hairline'),
+    'sections + rows separate with hairlines; without them the flattened plane has no structure',
+  );
+  assert.equal(
+    /gap-5 xl:grid-cols/.test(PAGE),
+    false,
+    'the two columns are flush with a rule between them — a gutter reads as two floating cards',
   );
 });
 
@@ -285,7 +323,16 @@ test('milestone stamps go through the date SoT, never a Date reparse', () => {
 });
 
 test('the read model stays pure — no fetching, no components', () => {
-  assert.equal(MODEL.includes('import'), false, 'the model must have no imports at all');
+  // Matches an import STATEMENT (static or dynamic) and `require(`, not the
+  // letters. `MODEL.includes('import')` fired on `sourcing_import: 'Sourcing
+  // import'` — a source-label map entry, i.e. exactly the pure data this file
+  // exists to hold. A guard that fails on its own subject's vocabulary gets
+  // muted, so the substring check bought nothing and cost the gate.
+  assert.equal(
+    /^\s*import\s/m.test(MODEL) || /\bimport\s*\(/.test(MODEL) || /\brequire\s*\(/.test(MODEL),
+    false,
+    'the model must have no imports at all',
+  );
   assert.equal(/fetch\(/.test(MODEL), false, 'the model must not fetch');
 });
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Check, Download, History, Loader2, DollarSign, User, Tag, Pencil } from '@/components/Icons';
+import { Check, Download, History, Loader2, Receipt, User, Tag, Pencil } from '@/components/Icons';
 import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
@@ -255,7 +255,7 @@ export function LineNotesCard({
         id: 'unit-price',
         label: `Unit price · ${formattedUnitPrice}`,
         ariaLabel: 'Insert unit price',
-        icon: <DollarSign className={NOTE_OVERLAY_ICON} />,
+        icon: <Receipt className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_UNIT_PRICE_BTN,
         onClick: () => appendToNotes(formattedUnitPrice),
       });

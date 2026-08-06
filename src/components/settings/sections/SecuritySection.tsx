@@ -176,7 +176,7 @@ export function SecuritySection() {
       {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
       {ok && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{ok}</div>}
 
-      <div className="rounded-xl border border-border-soft bg-surface-card p-5 space-y-4">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Change your PIN</h2>
           <p className="text-xs text-text-soft">4–6 digit number. Used at shared stations.</p>
@@ -208,7 +208,7 @@ export function SecuritySection() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border-soft bg-surface-card p-5 space-y-4">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Change your password</h2>
           <p className="text-xs text-text-soft">Used for email sign-in across your workspaces.</p>
@@ -240,7 +240,7 @@ export function SecuritySection() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border-soft bg-surface-card p-5 space-y-3">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Passkeys</h2>
           <p className="text-xs text-text-soft">One-tap sign-in via Touch ID, Face ID, Windows Hello, or your device PIN.</p>
@@ -250,7 +250,7 @@ export function SecuritySection() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border-soft bg-surface-card p-5 space-y-3">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Account passkey (cross-workspace)</h2>
           <p className="text-xs text-text-soft">
@@ -263,7 +263,7 @@ export function SecuritySection() {
         </Button>
 
         {acctPasskeys.length > 0 && (
-          <div className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border-soft">
+          <div className="divide-y divide-border-hairline overflow-hidden rounded-none border border-border-soft">
             {acctPasskeys.map((p) => (
               <div key={p.id} className="flex items-center gap-3 px-3 py-2">
                 <div className="min-w-0 flex-1">

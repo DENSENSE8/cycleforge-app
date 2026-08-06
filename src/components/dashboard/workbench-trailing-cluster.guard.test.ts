@@ -3,26 +3,22 @@
  * chrome-altitude column Fields.
  *
  * Fields left the page chrome on 2026-08-02. The operator entry for column
- * visibility / display is `GridColumnGutter` — the trigger hover-revealed over
- * the grid card's own top-right corner, which also owns the open state and
- * mounts `GridColumnDetailsPanel`. Rationale: Fields mutates the column set of
- * the card it sits on, so a page-chrome control acting on that card is an
- * altitude mismatch — and seven surfaces shipped BOTH doors onto the same rail
- * id at once.
+ * visibility / display is `GridColumnGutter` — owns open state + mounts
+ * `GridColumnDetailsPanel`. Rationale: Fields mutates the column set of the
+ * card it sits on, so a page-chrome control acting on that card is an altitude
+ * mismatch — and seven surfaces shipped BOTH doors onto the same rail id.
  *
- * That control is **hover-revealed over the card's own top-right corner**, and
- * reserves no space in either budget (amended the same day, twice). A permanent
- * `w-9` header track plus `pr-9` taxed every ROW of every grid; a permanent
- * gutter beside the card taxed every PAGE instead — same overpayment, different
- * budget. Revealed on hover / focus-within, and pinned while its own rail is
- * open, it costs neither. Overlapping the trailing label is acceptable only
- * because it is transient: the version that sat there at rest covered
- * `TRACKING`, and that is the bug.
+ * **Band-3 portal is the norm (2026-08-06):** every table with a
+ * `WorkbenchTriageBand` passes its controls slot as `columnTriggerPortalTarget`
+ * so ▦ sits resident beside filter / staff / week / sort. Card-corner
+ * hover-reveal (opacity-0 until hover/focus-within) is the fallback for tables
+ * with no Band-3 — it reserves neither a `w-9` header track nor a page gutter.
+ * A permanent lip on the trailing column covered `TRACKING`; that is the bug
+ * the fallback still prevents.
  *
  * This does not relax the sticky-docking law: the banned shape is a Sheets-like
  * `TableActionBar` ABOVE the grid, which would add a second sticky layer to the
- * scroll port. That ban is asserted below and is unchanged — a floating,
- * absolutely-positioned trigger adds no sticky layer.
+ * scroll port. That ban is asserted below and is unchanged.
  *
  * @see .claude/rules/display/workbench-ops-queue.md → Trailing Display & Actions
  * @see docs/todo/fields-to-notion-header-hover-HANDOFF.md
@@ -47,7 +43,8 @@ const GRID_HEADERS = [
  */
 const TRAILING_CLUSTER_ADOPTERS = [
   'src/components/packer/PackWorkspaceHeader.tsx',
-  'src/components/tech/testing/TestingWorkspaceHeader.tsx',
+  // Testing: Sheets three-band — sort lives on TestingTriageBand (icon), like
+  // To-ship OutboundTriageBand; Band 1 has no trailing cluster (honest absence).
   'src/components/tech/shipping/ShippingWorkspaceHeader.tsx',
   'src/components/outbound/labels/LabelsWorkspaceHeader.tsx',
   'src/components/support/zendesk/SupportTicketsBoard.tsx',
@@ -155,9 +152,11 @@ describe('WorkbenchTrailingCluster SoT', () => {
     assert.ok(afterIdx > actionsIdx);
   });
 
-  it('exports workbench chrome pill class (History band-tab radius)', () => {
+  it('exports workbench chrome pill class as flush-square (zero-radius law)', () => {
     assert.match(shell, /export const WORKBENCH_CHROME_PILL_CLASS/);
-    assert.match(shell, /nestedCornerClass\('card',\s*0\.5\)/);
+    assert.match(shell, /WORKBENCH_CHROME_PILL_CLASS = cornerClass\('flush'\)/);
+    // The soft-concentric pill is retired debt — it must not come back.
+    assert.doesNotMatch(shell, /WORKBENCH_CHROME_PILL_CLASS = nestedCornerClass/);
     assert.doesNotMatch(shell, /WORKBENCH_TRAILING_HAIRLINE_JOIN_/);
     assert.doesNotMatch(shell, /rounded-l-none rounded-r-full/);
   });
@@ -222,11 +221,11 @@ describe('WorkbenchTrailingCluster SoT', () => {
     });
   }
 
-  it('the column-display control reserves no layout — hover-revealed, not resident', () => {
+  it('card-corner hover is the no-Band-3 fallback; Band-3 / View portal is the paint host', () => {
     const src = readFileSync(join(ROOT, TRIGGER), 'utf8');
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     assert.match(code, /export function GridColumnGutter/);
-    // Default: floats over the card — reserving neither a column track nor a page lane.
+    // Fallback: floats over the card — reserving neither a column track nor a page lane.
     assert.match(code, /absolute right-1\.5 top-1\.5/, 'must float over the card corner by default');
     assert.doesNotMatch(code, /\bgap-2\b/, 'a reserved gutter is the shape this replaced');
     // Hidden at rest, revealed by pointer OR keyboard, pinned while open. All
@@ -241,9 +240,9 @@ describe('WorkbenchTrailingCluster SoT', () => {
     // CSS opacity only — a framer whileHover here binds a re-render to mousemove
     // across the whole card.
     assert.doesNotMatch(code, /whileHover/, 'never a framer hover on a grid card');
-    // Unbox may portal the same trigger into the triage band — open state +
-    // rail stay on GridColumnGutter (one door). Not a second Fields mount.
-    assert.match(code, /triggerPortalTarget/, 'optional Unbox triage-band portal');
+    // Band-3 / View topics portal rehosts paint — open state + rail stay on GridColumnGutter.
+    assert.match(code, /triggerPortalTarget/, 'Band-3 / View topics portal');
+    assert.match(code, /triggerPortalOnly/, 'View-topics desks suppress corner while host absent');
     assert.match(code, /createPortal/, 'portal rehosts paint, not ownership');
 
     // The surface mounts the card INSIDE the wrapper.
@@ -251,7 +250,89 @@ describe('WorkbenchTrailingCluster SoT', () => {
       join(ROOT, 'src/design-system/components/grid/LedgerGridSurface.tsx'),
       'utf8',
     );
-    assert.match(surface, /<GridColumnGutter[\s\S]{0,280}data-table-surface/);
+    assert.match(surface, /<GridColumnGutter[\s\S]{0,400}data-table-surface/);
+    assert.match(surface, /columnTriggerPortalOnly/);
+    assert.match(surface, /triggerPortalOnly=\{columnTriggerPortalOnly\}/);
+
+    // To Ship Orders grid is portal-only — never the card-corner hover twin.
+    const orders = readFileSync(
+      join(ROOT, 'src/components/dashboard/orders-queue/OrdersGridView.tsx'),
+      'utf8',
+    );
+    assert.match(
+      orders,
+      /columnTriggerPortalOnly/,
+      'To Ship must suppress card-corner ▦ — paint lives on inspector View topics',
+    );
+  });
+
+  /**
+   * Band-3 + fieldsMenu surfaces must wire the portal end-to-end (norm 2026-08-06).
+   * Card-corner-only surfaces (Scan-out / Warranty / Unfound / Tracking-exceptions)
+   * are deliberately absent from this list.
+   */
+  it('Band-3 fieldsMenu desks portal ▦ into the triage controls slot', () => {
+    const cases: { file: string; pattern: RegExp; why: string }[] = [
+      {
+        file: 'src/components/receiving/pickup/PickupWorkspace.tsx',
+        pattern: /controlsSlotRef=\{setPickupControlsEl\}[\s\S]*columnTriggerPortalTarget=\{pickupControlsEl\}/,
+        why: 'Pickup',
+      },
+      {
+        file: 'src/components/warehouse/LocationsWorkspace.tsx',
+        pattern: /controlsSlotRef=\{setBinsControlsEl\}[\s\S]*columnTriggerPortalTarget=\{binsControlsEl\}/,
+        why: 'Locations / Bins',
+      },
+      {
+        file: 'src/components/sidebar/receiving/HistoryWorkspaceHeader.tsx',
+        pattern: /controlsSlotRef=\{controlsSlotRef\}/,
+        why: 'History triage band accepts portal host',
+      },
+      {
+        file: 'src/components/station/ReceivingLinesTable.tsx',
+        pattern: /historyControlsEl/,
+        why: 'standalone History wires portal target',
+      },
+      {
+        file: 'src/components/station/ReceivingLinesTable.tsx',
+        pattern: /isInboundDocked[\s\S]{0,80}incomingControlsEl/,
+        why: 'Incoming Docked uses incomingControlsEl',
+      },
+      {
+        file: 'src/components/tech/TestingHistoryList.tsx',
+        pattern: /columnTriggerPortalTarget=\{toolbarPortalTarget\}/,
+        why: 'Testing Pending/Returns/History',
+      },
+      {
+        file: 'src/components/outbound/labels/LabelsWorkspaceView.tsx',
+        pattern: /columnTriggerPortalTarget=\{labelsControlsEl\}/,
+        why: 'Labels Queue + Recent',
+      },
+      {
+        file: 'src/components/outbound/scan-out/StagedQueueTable.tsx',
+        pattern: /columnTriggerPortalTarget/,
+        why: 'StagedQueueTable accepts portal (Labels Recent; Scan-out omits)',
+      },
+      {
+        file: 'src/components/dashboard/DashboardOrdersView.tsx',
+        pattern: /OrdersDrillHost[\s\S]{0,120}columnTriggerPortalTarget=\{controlsEl\}/,
+        why: 'To-ship Drill (View topics portal)',
+      },
+      {
+        file: 'src/components/dashboard/DashboardOrdersView.tsx',
+        pattern: /OrdersCompareHost[\s\S]{0,120}columnTriggerPortalTarget=\{controlsEl\}/,
+        why: 'To-ship Compare (View topics portal)',
+      },
+      {
+        file: 'src/components/outbound/orders/OrdersViewTopicsCluster.tsx',
+        pattern: /ref=\{setControlsEl\}/,
+        why: 'To-ship View topics host grid-owned ▦ / lane-date portal',
+      },
+    ];
+    for (const { file, pattern, why } of cases) {
+      const src = readFileSync(join(ROOT, file), 'utf8');
+      assert.match(src, pattern, `${why} must portal ▦ into the controls host (${file})`);
+    }
   });
 
   it('neither grid header reserves space for, or mounts, the column-display control', () => {
@@ -286,7 +367,7 @@ describe('WorkbenchTrailingCluster SoT', () => {
       join(ROOT, 'src/design-system/components/grid/grid-column-editability.ts'),
       'utf8',
     );
-    assert.match(rule, /FIXED_WIDTH_COLUMN_TYPES = new Set\(\['number'\]\)/);
+    assert.match(rule, /FIXED_WIDTH_COLUMN_TYPES = new Set\(\['number', 'price'\]\)/);
 
     // Widths persist per staff, and the write must not drop its siblings: the
     // whole tableColumns map is sent, so a widths-only write that forgot

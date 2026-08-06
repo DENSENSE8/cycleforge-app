@@ -1,5 +1,6 @@
 import type { CarrierCode, ShipmentRow } from './types';
-import { detectCarrier, normalizeTrackingNumber } from './normalize';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
+import { detectCarrier } from './normalize';
 import {
   getShipmentById,
   getShipmentByTracking,
@@ -49,7 +50,8 @@ export async function syncShipment(
       : null;
 
   if (!shipment && input.trackingNumber) {
-    const normalized = normalizeTrackingNumber(input.trackingNumber);
+    // Canonical key (FedEx GS1 unwrap) — raw gun read stays on tracking_number_raw.
+    const normalized = extractCanonicalTracking(input.trackingNumber);
     shipment = await getShipmentByTracking(normalized, orgId);
 
     if (!shipment) {
@@ -161,7 +163,8 @@ export async function registerShipment(params: {
   carrier?: CarrierCode;
   sourceSystem?: string;
 }, orgId?: OrgId) {
-  const normalized = normalizeTrackingNumber(params.trackingNumber);
+  // Canonical key so GS1 scans join/create the short human STN; preserve raw input.
+  const normalized = extractCanonicalTracking(params.trackingNumber);
   if (!normalized) throw new Error('Invalid tracking number');
 
   const carrier = params.carrier ?? detectCarrier(normalized);
@@ -205,7 +208,7 @@ export async function registerShipmentPermissive(params: {
   // SKU-formatted scans ("PROD:qty", ":tag") are never carrier tracking numbers.
   if (raw.includes(':')) return null;
 
-  const normalized = normalizeTrackingNumber(raw);
+  const normalized = extractCanonicalTracking(raw);
   if (!normalized || normalized.length < 8) return null;
 
   const detected = detectCarrier(normalized);

@@ -4,7 +4,7 @@ import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNod
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, Check, ChevronDown, FileText, Link2, Maximize2, Plus } from '@/components/Icons';
+import { AlertTriangle, ChevronDown, FileText, Link2, Maximize2, Plus } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -14,7 +14,6 @@ import {
   CellTextEditPopover,
   ConditionSelectPopover,
   RowInfoMenuPopover,
-  ShipByDatePopover,
 } from './cell-editors';
 import {
   RowTitle,
@@ -24,11 +23,14 @@ import {
   metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
-import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
+import {
+  GridRowCheckbox,
+  isEmptyGutterChrome,
+  type GridSelectGutterChrome,
+} from '@/components/ui/GridRowCheckbox';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import {
   getOrderPlatformColor,
-  getOrderPlatformBorderColor,
   isFbaOrder,
   marketplaceOrderUrl,
 } from '@/utils/order-platform';
@@ -51,9 +53,9 @@ import {
   ordersQueueRowShellClass,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
-import { orderRowConditionTone, orderRowQtyTone } from '@/lib/condition-tone';
+import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import { resolveOrderRowFlag } from '@/lib/orders/order-row-flags';
-import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
+import { conditionGradeTableLabel, isEmptyMetaDash } from '@/lib/conditions';
 import {
   replenishmentTooltip,
   rowReplenishmentFacts,
@@ -71,8 +73,7 @@ import {
   GridAgeCellValue,
   GridCellDash,
   GridDateCellValue,
-  GridDateTimeCellValue,
-  GridSlaCellValue,
+  GridMonthDayTimeCellValue,
   GridStaffCellValue,
 } from '@/components/ui/grid-cells';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
@@ -112,18 +113,17 @@ export interface OrdersQueueTableRowProps {
   opaqueStripe?: boolean;
   /**
    * Airtable grid-view skin. Always-visible row-select checkbox in the gutter
-   * ({@link onToggleSelect}) unless {@link clickSelect} (Sheets empty spacer).
-   * Sheets-style in-cell editors, corner-indicator popovers. Zebra still applies
-   * (opaque canvas / card — required for the frozen identity pane). Off →
-   * display-only cells; Product-cell note/OOS corner indicators stay for every
-   * consumer.
+   * via {@link onToggleSelect} + {@link selectGutterChrome}. Sheets-style
+   * in-cell editors, corner-indicator popovers. Zebra still applies (opaque
+   * canvas / card — required for the frozen identity pane). Off → display-only
+   * cells; Product-cell note/OOS corner indicators stay for every consumer.
    */
   gridSkin?: boolean;
-  /** Sheets click-select (Unbox History / To-ship): row click toggles bulk;
-   * double-click opens. Select track is an empty spacer — no checklist face.
+  /** Sheets click-select: row click toggles bulk; double-click opens. Gutter
+   * still mounts a real checkbox (`selectGutterChrome='always'` on To-ship).
    */
   clickSelect?: boolean;
-  /** Select-gutter face chrome — `'sheets'` when clickSelect. */
+  /** Select-gutter face chrome — `'always'` paints the 16px checklist square. */
   selectGutterChrome?: GridSelectGutterChrome;
   /** Persisted Sheets row paint hex (selection wash wins when checked). */
   rowFillHex?: string | null;
@@ -135,10 +135,9 @@ export interface OrdersQueueTableRowProps {
    */
   rowIndex?: number;
   /** Toggle this row's selection from the gutter checkbox (stops propagation, so
-   *  it never opens the record). Supplying it makes the gutter INTERACTIVE — the
-   *  row click stays "open the record", so without this there is no way to
-   *  select. Grid skin renders the control regardless, for the select-all UI.
-   *  Omitted under {@link clickSelect} (row body owns toggle). */
+   *  it never opens the record). Supplying it makes the gutter INTERACTIVE —
+   *  required on grid skin so the leftmost cell is a real checkbox even when
+   *  {@link clickSelect} also lets the row body toggle membership. */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   /** Grid skin only — true when this row is the ONLY checked row. Surfaces the
    *  row info-edit dropdown (Notes · OOS · Details) on the Product cell. */
@@ -181,7 +180,7 @@ export interface OrdersQueueTableRowProps {
 /** In-cell / popover editors this row can host (one open at a time).
  *  `title` is deliberately absent — the product title is a read-only identity
  *  anchor in the collection map; correction lives at the record plane. */
-type RowEditField = 'qty' | 'date' | 'condition' | 'note' | 'link';
+type RowEditField = 'qty' | 'condition' | 'note' | 'link';
 
 /**
  * Pending / fulfillment queue row — Sheets-like WMS grid:
@@ -224,7 +223,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   opaqueStripe = false,
   gridSkin = false,
   clickSelect = false,
-  selectGutterChrome: _selectGutterChrome = 'always',
+  selectGutterChrome = 'always',
   rowFillHex = null,
   rowIndex,
   onToggleSelect,
@@ -261,7 +260,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const mobileFlagsRef = useRef<HTMLSpanElement | null>(null);
   const noteIndicatorRef = useRef<HTMLButtonElement | null>(null);
   const oosIndicatorRef = useRef<HTMLButtonElement | null>(null);
-  const dateCellRef = useRef<HTMLDivElement | null>(null);
   const conditionCellRef = useRef<HTMLDivElement | null>(null);
   const editorAnchorRef = isMobile ? mobileFlagsRef : titleCellRef;
 
@@ -391,7 +389,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const noteCount = Number(record.note_count ?? 0) || 0;
   const hasNotes = notesValue.trim().length > 0 || noteCount > 0;
   const noteSummary = [
-    noteCount > 0 ? `${noteCount} ${noteCount === 1 ? 'note' : 'notes'} on the record` : '',
+    noteCount > 0 ? `${noteCount} notes` : '',
     notesValue.trim(),
   ]
     .filter(Boolean)
@@ -413,22 +411,23 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     : null;
 
   const conditionValue = String(record.condition || '').trim();
-  const hasConditionValue = Boolean(conditionValue) && conditionValue !== EMPTY_META_DASH;
+  const conditionLabel = conditionGradeTableLabel(conditionValue);
+  const conditionEmpty = isEmptyMetaDash(conditionLabel);
 
   const identityChipProps = {
     platformLabel,
     platformIconClass: platformLabel && productPageUrl ? platformColor : 'text-text-soft',
-    platformBorderClass: getOrderPlatformBorderColor(platformLabel),
     productPageUrl,
     marketplaceOrderUrl: orderMarketplaceUrl,
     isFba,
     orderId: record.order_id || '',
     hideOrderId: hideOrderIdChip,
     tracking: trackingRaw,
+    carrierHint: record.carrier ?? null,
     trackingAction,
     onPasteTracking:
       queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined,
-    onReplaceTracking:
+    onEditTracking:
       queueMode === 'fulfillment' || queueMode === 'labels'
         ? onRequestReplaceTracking
           ? () => onRequestReplaceTracking(record)
@@ -436,7 +435,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         : undefined,
     onEditListingLink: gridEditable ? () => openEditor('link') : undefined,
     serialChip,
-    variant: 'plain' as const,
+    // Sheets grid: header already labels Order / Tracking — cell Hash/MapPin
+    // is noise. Mobile cluster keeps the icon family.
+    variant: (gridSkin ? 'plain' : 'icons') as 'plain' | 'icons',
   };
 
   // Chip nodes built once per row; the registry places each in its own cell so
@@ -475,26 +476,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     />
   );
 
+  // Mobile meta: days-late + lane-age fallback. Desktop Late column is
+  // days-late only (ship-by civil date stays in the tooltip).
   const ageNode = (
     <GridAgeCellValue
       daysLate={daysLate}
       laneAgeLabel={showLaneAge ? laneAgeLabel : null}
       laneAgeHours={laneAgeHours}
       tooltip={ageTooltip}
-      className={densityClasses.metaText}
-    />
-  );
-
-  // Desktop grid: one fused cell. Mobile keeps `dateNode` / `ageNode` separate
-  // in the meta row, where they are already on their own lines.
-  const slaNode = (
-    <GridSlaCellValue
-      dateLabel={dateCellData?.label}
-      dateTooltip={dateCellData?.tooltip}
-      daysLate={daysLate}
-      laneAgeLabel={showLaneAge ? laneAgeLabel : null}
-      laneAgeHours={laneAgeHours}
-      ageTooltip={ageTooltip}
       className={densityClasses.metaText}
     />
   );
@@ -744,49 +733,28 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       </span>
     ) : null;
 
-  // Select cell — under clickSelect an empty spacer (header select-all still
-  // aligns on the 2rem track). Otherwise always-on checklist face.
-  const leadControls = clickSelect ? (
+  // Select cell — full-track hit plane + centered checklist face via
+  // GridRowCheckbox (To-ship keeps clickSelect row gestures; any click in this
+  // column toggles — operators need not aim at the 16px square).
+  const leadControls = (
     <div
       data-select-gutter
       className={cn(
         ordersQueueGridCell({ inset: 'none', rule: true }),
+        isEmptyGutterChrome(selectGutterChrome) ? 'items-stretch p-0' : 'justify-center',
         ORDERS_QUEUE_FROZEN_CELL,
       )}
       style={{ left: ordersQueueFrozenLeft('select') }}
-      aria-hidden
-    />
-  ) : (
-    <div
-      data-select-gutter
-      className={cn(
-        ordersQueueGridCell({ inset: 'none', rule: true }),
-        'justify-center',
-        ORDERS_QUEUE_FROZEN_CELL,
-      )}
-      style={{ left: ordersQueueFrozenLeft('select') }}
-      onClick={(e) => (selectMode || gridSkin) && e.stopPropagation()}
+      onClick={(e) => (selectMode || gridSkin || clickSelect) && e.stopPropagation()}
     >
-      {gridSkin || selectMode ? (
-        gridSkin || onToggleSelect ? (
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={isChecked}
-            aria-label={isChecked ? 'Deselect row' : 'Select row'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect?.(record, { shiftKey: e.shiftKey });
-            }}
-            className={cn(
-              'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-              isChecked
-                ? 'border-accent-bg bg-accent-bg text-text-inverse'
-                : 'border-border-default bg-surface-card',
-            )}
-          >
-            {isChecked ? <Check className="h-3 w-3" /> : null}
-          </button>
+      {gridSkin || selectMode || clickSelect ? (
+        onToggleSelect ? (
+          <GridRowCheckbox
+            checked={isChecked}
+            onToggle={() => onToggleSelect(record, { shiftKey: false })}
+            label={isChecked ? 'Deselect row' : 'Select row'}
+            chrome={selectGutterChrome}
+          />
         ) : (
           <span
             className={cn(
@@ -795,9 +763,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 ? 'border-accent-bg bg-accent-bg text-text-inverse'
                 : 'border-border-default bg-surface-card',
             )}
-          >
-            {isChecked ? <Check className="h-3 w-3" /> : null}
-          </span>
+            aria-hidden
+          />
         )
       ) : (
         <span className="h-4 w-4 shrink-0" aria-hidden />
@@ -823,8 +790,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             // product title is a catalog fact + this row's identity anchor; a
             // text caret (click / Enter / F2 / printable) put a destructive
             // typo one keystroke away. Correction happens at the record plane.
-            // No focus ring: the ring is the tell that a cell edits, and
-            // clicks must fall through to the row (open record).
+            // No focus ring on the title itself: the ring is the tell that a
+            // cell edits, and clicks must fall through to the row (open record).
+            // Note / OOS corners stay here; Cond owns its own column.
             className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5')}
             style={{ left: ordersQueueFrozenLeft('title') }}
             data-frozen-edge
@@ -844,15 +812,72 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             {noteIndicator}
           </div>
         );
-      case 'sla':
+      case 'condition': {
+        // Unbox flush grade face — uppercase table label + conditionGradeTextClass.
+        // Editable → ConditionSelectPopover (same editor as the old Product chip).
+        const gradeFace = conditionEmpty ? (
+          <GridCellDash />
+        ) : (
+          <span
+            className={cn(
+              'min-w-0 truncate text-role-eyebrow uppercase',
+              conditionGradeTextClass(conditionValue),
+            )}
+          >
+            {conditionLabel}
+          </span>
+        );
         return (
           <div
-            data-col="sla"
-            ref={dateCellRef}
-            className={cn(dataCell(col, rule), gridEditable && cn('relative', focusRing('cell')))}
-            {...cellTriggerProps('date', { label: 'Edit ship-by date' })}
+            data-col="condition"
+            ref={conditionCellRef}
+            className={cn(dataCell(col, rule), gridEditable && 'group/cond')}
           >
-            {slaNode}
+            {gridEditable ? (
+              <button
+                type="button"
+                aria-label={
+                  conditionEmpty
+                    ? 'Set condition'
+                    : `Change condition — ${conditionLabel}`
+                }
+                aria-haspopup="listbox"
+                aria-expanded={editing === 'condition'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditor('condition');
+                }}
+                className={cn(
+                  'ds-raw-button inline-flex min-w-0 max-w-full items-center gap-0.5 rounded transition-colors',
+                  focusRing('cell'),
+                )}
+              >
+                {gradeFace}
+                <ChevronDown
+                  className="h-3 w-3 shrink-0 text-text-faint opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/cond:opacity-100 group-hover/cond:opacity-100"
+                  aria-hidden
+                />
+              </button>
+            ) : (
+              gradeFace
+            )}
+          </div>
+        );
+      }
+      case 'age':
+        // Display-only derived days late — ship-by correction lives on the
+        // record plane, not as an in-cell edit on this urgency track.
+        return (
+          <div
+            data-col="age"
+            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL)}
+            style={{ left: ordersQueueFrozenLeft('age') }}
+          >
+            <GridAgeCellValue
+              daysLate={daysLate}
+              tooltip={ageTooltip}
+              className={densityClasses.metaText}
+            />
           </div>
         );
       case 'tester':
@@ -868,7 +893,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         return (
           <div data-col="testedAt" className={dataCell(col, rule)}>
             {testedAtRaw ? (
-              <GridDateTimeCellValue
+              <GridMonthDayTimeCellValue
                 raw={testedAtRaw}
                 className={cn('text-text-muted', densityClasses.metaText)}
               />
@@ -911,73 +936,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             ) : null}
           </div>
         );
-      case 'condition':
-        return (
-          <div
-            data-col="condition"
-            ref={conditionCellRef}
-            className={cn(dataCell(col, rule), 'text-role-caption')}
-          >
-            {gridEditable ? (
-              hasConditionValue ? (
-                // Quiet text value, not a pill or hue-dot. Caption type matches
-                // other data tracks; hue comes from {@link orderRowConditionTone}
-                // (yellow NEW · brown PARTS · muted else) — text only, no dot.
-                // The whole cell is the trigger; caret is hover/focus only.
-                <button
-                  type="button"
-                  aria-label={`Change condition — ${conditionGradeTableLabel(conditionValue)}`}
-                  aria-haspopup="listbox"
-                  aria-expanded={editing === 'condition'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditor('condition');
-                  }}
-                  className={cn(
-                    'ds-raw-button group/cond inline-flex min-w-0 max-w-full items-center gap-0.5 rounded text-role-caption font-medium transition-colors',
-                    orderRowConditionTone(conditionValue),
-                    focusRing('cell'),
-                  )}
-                >
-                  <span className="min-w-0 truncate">{conditionGradeTableLabel(conditionValue)}</span>
-                  <ChevronDown
-                    className="h-3 w-3 shrink-0 text-text-faint opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/cond:opacity-100"
-                    aria-hidden
-                  />
-                </button>
-              ) : (
-                // Quiet set-affordance for empty cells (Canva-sheet `Not set ⌄`).
-                <button
-                  type="button"
-                  aria-label="Set condition"
-                  aria-haspopup="listbox"
-                  aria-expanded={editing === 'condition'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditor('condition');
-                  }}
-                  className={cn(
-                    'ds-raw-button inline-flex items-center gap-0.5 rounded text-role-caption text-text-faint hover:bg-surface-hover hover:text-text-muted',
-                    focusRing('cell'),
-                  )}
-                >
-                  <span aria-hidden>—</span>
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-              )
-            ) : (
-              <span className="min-w-0 truncate">
-                <RowConditionMeta condition={record.condition} />
-              </span>
-            )}
-          </div>
-        );
       case 'order':
-        // Identity pane, not a fact column — the order is the container an
-        // operator scans a dispatch queue by, so it stays pinned beside the
-        // product while ship-by…tracking scroll under it. Read-only in the
-        // collection map for the same reason `title` is: correction happens at
-        // the record plane. No focus ring — clicks fall through to open the row.
+        // Identity pane — order stays pinned with ship-by + product while
+        // qty…tracking scroll. Read-only in the collection map for the same
+        // reason `title` is: correction happens at the record plane. No focus
+        // ring — clicks fall through to open the row.
         return (
           <div
             data-col="order"
@@ -1019,6 +982,16 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               identityNodes.tracking
             )}
           </div>
+        );
+      case '_fill':
+        // Structural slack track — empty header/body; never a fact column.
+        return (
+          <div
+            data-col="_fill"
+            role="presentation"
+            aria-hidden
+            className={cn(dataCell(col, false), 'min-h-0')}
+          />
         );
       default:
         return <span className={dataCell(col, rule)} />;
@@ -1084,7 +1057,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       // Inside a `role="table"` grid this element IS the row — an element has
       // exactly one role, and a table whose rows claim `button`/`checkbox` has
       // no rows at all. Selection moves to `aria-selected` (valid on `row`);
-      // under clickSelect the wash is the face (no gutter checklist).
+      // under clickSelect the gutter checkbox + wash both show membership.
       // Outside a table the original interactive roles stand.
       role={inTable ? 'row' : clickSelect || selectMode ? 'checkbox' : 'button'}
       tabIndex={0}
@@ -1199,16 +1172,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       ) : null}
 
       {/* Cell-anchored editor popovers (body-portaled — never clipped). */}
-      {editing === 'date' && gridEditable ? (
-        <ShipByDatePopover
-          anchorRef={dateCellRef}
-          currentKey={dateCellData?.key ?? null}
-          onSelect={(key) =>
-            commitAssign({ shipByDate: key }, 'Ship-by date updated', 'Failed to update ship-by date')
-          }
-          onDone={closeEditor}
-        />
-      ) : null}
       {editing === 'condition' && gridEditable ? (
         <ConditionSelectPopover
           anchorRef={conditionCellRef}

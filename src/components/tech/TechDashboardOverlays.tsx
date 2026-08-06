@@ -2,13 +2,15 @@
 
 /**
  * Page-level overlays for the tech dashboard: repair details + testing claim
- * modal. Carton "look" navigates to `/carton/[id]` (decision 2a) — editable
- * ReceivingDetailsStack is no longer mounted from the inbound feed.
+ * modal + testing assign picker. Carton "look" navigates to `/carton/[id]`
+ * (decision 2a) — editable ReceivingDetailsStack is no longer mounted from the
+ * inbound feed.
  */
 
 import { AnimatePresence } from '@/design-system/motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { RepairDetailsPanel } from '@/components/repair/RepairDetailsPanel';
+import { TestingAssignDialog } from '@/components/tech/TestingAssignDialog';
 import { toast } from '@/lib/toast';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TechRepairPanel } from '@/components/tech/useTechDetailOverlays';
@@ -20,6 +22,9 @@ interface TechDashboardOverlaysProps {
   testingClaimRow: ReceivingLineRow | null;
   onCloseClaim: () => void;
   onClaimFiled: () => void;
+  testingAssignRows: ReceivingLineRow[] | null;
+  onCloseAssign: () => void;
+  onAssignPick: (techId: number) => void;
 }
 
 export function TechDashboardOverlays({
@@ -29,6 +34,9 @@ export function TechDashboardOverlays({
   testingClaimRow,
   onCloseClaim,
   onClaimFiled,
+  testingAssignRows,
+  onCloseAssign,
+  onAssignPick,
 }: TechDashboardOverlaysProps) {
   return (
     <>
@@ -60,6 +68,13 @@ export function TechDashboardOverlays({
           }}
         />
       ) : null}
+
+      <TestingAssignDialog
+        open={testingAssignRows != null && testingAssignRows.length > 0}
+        count={testingAssignRows?.length ?? 0}
+        onClose={onCloseAssign}
+        onPick={onAssignPick}
+      />
     </>
   );
 }

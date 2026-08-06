@@ -57,7 +57,7 @@ test('resolveSupportTerminal: ticket tab label follows the mode with no draft', 
   assert.equal(pub?.disabled, false);
 });
 
-test('resolveSupportTerminal: ticket tab Add note / Send reply from draft mode', () => {
+test('resolveSupportTerminal: ticket tab Add note / Send from draft mode', () => {
   const internal = resolveSupportTerminal({
     tabId: 'ticket',
     ticketBridge: composerBridge({ hasDraft: true, isPublic: false }),
@@ -68,7 +68,7 @@ test('resolveSupportTerminal: ticket tab Add note / Send reply from draft mode',
     tabId: 'ticket',
     ticketBridge: composerBridge({ hasDraft: true, isPublic: true }),
   });
-  assert.equal(pub?.label, 'Send reply');
+  assert.equal(pub?.label, 'Send');
 });
 
 test('resolveSupportTerminal: missing ticket bridge disables with reason', () => {

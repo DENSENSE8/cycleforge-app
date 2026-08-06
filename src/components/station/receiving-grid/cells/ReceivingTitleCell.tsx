@@ -1,5 +1,6 @@
 'use client';
 
+import { ledgerCell } from '@/design-system/tokens/typography/presets';
 import {
   receivingDataCellClass,
   receivingDataCellHighlightStyle,
@@ -7,8 +8,8 @@ import {
 } from './receiving-grid-cell-types';
 
 /**
- * Product title — scrollable fact track on the Sheets-class Receiving grid
- * (only `select` is frozen). Still identity for in-cell editability
+ * Product title — scrollable fact track on Receiving (identity pane is
+ * `select · order`). Still identity for in-cell editability
  * (`GRID_IDENTITY_COLUMN_KEYS`); correction is rematch / catalog at the
  * record plane, not an in-cell caret.
  *
@@ -18,6 +19,9 @@ import {
  * highlighted with the rest of its own column — and it spent the title's
  * truncation budget on every row to repeat what the `status` track already says
  * (`ReceivingStatusCell`, which now leads its chip with that same dot).
+ *
+ * Type: caption-dense Ledger body (`ledgerCell`) — same rung as date / qty /
+ * dense identity chips.
  */
 export function ReceivingTitleCell({ col, rule, ctx }: ReceivingGridCellProps) {
   return (
@@ -26,9 +30,7 @@ export function ReceivingTitleCell({ col, rule, ctx }: ReceivingGridCellProps) {
       className={receivingDataCellClass(col, rule, ctx)}
       style={receivingDataCellHighlightStyle(col, ctx)}
     >
-      <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
-        {ctx.productTitle}
-      </span>
+      <span className={ledgerCell}>{ctx.productTitle}</span>
     </div>
   );
 }

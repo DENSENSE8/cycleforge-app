@@ -6,8 +6,16 @@ import { SkeletonList } from '@/design-system/components/Skeletons';
 import { GridColumnGutter } from '@/design-system/components/grid/GridColumnDetailsTrigger';
 import { LedgerGrid } from '@/design-system/components/grid/LedgerGrid';
 import { useGridColumnWidths } from '@/components/ui/table-column-config/useGridColumnWidths';
+import { useGridColumnWidthBounds } from '@/components/ui/table-column-config/useGridColumnWidthBounds';
 import { useGridColumnVisibility } from '@/design-system/components/grid/useGridColumnVisibility';
 import { useGridSurface } from '@/design-system/components/grid/useGridSurface';
+import {
+  clampPersistedGridColumnWidths,
+  filterAppliedGridColumnWidths,
+  gridColumnWidthVars,
+} from '@/design-system/components/grid/grid-column-applied-widths';
+import { GridColumnWidthBoundsProvider } from '@/design-system/components/grid/grid-column-width-bounds-context';
+import { gridContentMinWidthPx } from '@/design-system/components/grid/grid-column-geometry';
 import type {
   GridSurfaceDescriptor,
   LedgerGridColumnModel,
@@ -56,10 +64,10 @@ import { TABLE_SURFACE_CLIP_CLASS, TABLE_SURFACE_SHEET_CLASS } from '@/design-sy
  * `pattern-evolution.md` bans. This surface owns the *plumbing*, not the
  * columns.
  *
- * Orders mounts this surface with `surface="sheet"`, optional `forceHidden` +
- * controlled `columnOrder`, and the allowlisted `OrdersQueueColumnHeader` fork
- * (drag-reorder UI) via {@link renderColumnHeader}. Do **not** half-port that
- * header onto `makeLedgerGridColumnHeader`.
+ * Orders mounts this surface with `surface="sheet"`, optional `forceHidden`,
+ * and the allowlisted `OrdersQueueColumnHeader` fork (resize + viewport
+ * force-hide) via {@link renderColumnHeader}. Column order is pinned to the
+ * layout SoT. Do **not** half-port that header onto `makeLedgerGridColumnHeader`.
  *
  * Station adopters: Incoming POS (`IncomingGridView`) and Unbox / History /
  * Testing (`ReceivingGridView`). Outbound: Ready + Orders (`OrdersGridView`).
@@ -246,11 +254,16 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   columnOrder?: ColumnOrderState;
   onColumnOrderChange?: OnChangeFn<ColumnOrderState>;
   /**
-   * Host for the column-display trigger (Unbox triage band). When set, the
-   * trigger portals there instead of floating on the card corner. See
+   * Host for the column-display trigger (Band-3 / inspector View topics). When
+   * set, the trigger portals there instead of floating on the card corner. See
    * {@link GridColumnGutter}.
    */
   columnTriggerPortalTarget?: HTMLElement | null;
+  /**
+   * Portal-only desks (To Ship · Unbox History View topics): never paint the
+   * card-corner hover ▦ while the host is absent.
+   */
+  columnTriggerPortalOnly?: boolean;
   /**
    * Reset to canonical order — caller owns persistence + toast. Only wired into
    * the header api while a custom order is active.
@@ -299,6 +312,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   onColumnOrderChange,
   onResetColumnOrder,
   columnTriggerPortalTarget = null,
+  columnTriggerPortalOnly = false,
 }: LedgerGridSurfaceProps<Row, K, C>) {
   // ONE visibility resolution: descriptor default tier + this staffer's delta
   // + optional ephemeral viewport collapse.
@@ -353,7 +367,25 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   // One style object drives header, rows, group summaries AND the frozen pane's
   // sticky-left `calc()` — they all read the same `--cf-col-*` vars, which is
   // what keeps a resized `title` from unpinning the identity pane.
-  const { columnVars, setWidth, clearWidth } = useGridColumnWidths(tableId);
+  //
+  // Quiet-display / locked tracks (`resizable: false`) and retired keys never
+  // paint prefs — stale Unbox Date 12rem stamp widths stay inert.
+  const { widths, setWidth, clearWidth } = useGridColumnWidths(tableId);
+  const { boundsByKey } = useGridColumnWidthBounds(tableId);
+  const appliedWidths = useMemo(() => {
+    const filtered = filterAppliedGridColumnWidths(widths, columns);
+    return clampPersistedGridColumnWidths(filtered, columns, boundsByKey);
+  }, [widths, columns, boundsByKey]);
+  const columnVars = useMemo(() => gridColumnWidthVars(appliedWidths), [appliedWidths]);
+  // Live content-min (px) so `--cf-orders-grid-w` grows after drag-resize and the
+  // sticky X gutter can measure overflow (rem-only floor stayed viewport-wide).
+  // Only publish a live px floor when staff resized a track — rem floors scale
+  // via `--cf-density` in `ledgerGridWidthVarValue`. Passing rem×16px at 80%
+  // zoom would outrank the density-scaled rem floor and re-open empty slack.
+  const contentMinWidthPx = useMemo(() => {
+    if (Object.keys(appliedWidths).length === 0) return undefined;
+    return gridContentMinWidthPx(visible, appliedWidths);
+  }, [visible, appliedWidths]);
 
   const toggleColumnSort = useCallback(
     (key: K) => {
@@ -418,50 +450,54 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   const hasSearchEmpty = Boolean(resolvedSearchEmpty);
 
   return (
-    <GridColumnGutter
-      tableId={tableId}
-      columns={columns}
-      triggerPortalTarget={columnTriggerPortalTarget}
-    >
-      <div
-        ref={shellRef as Ref<HTMLDivElement> | undefined}
-        data-testid={testId}
-        data-table-surface={surface === 'sheet' ? 'sheet' : ''}
-        className={cn(
-          'flex min-w-0 w-full flex-col',
-          // Ancestor-scroll hosts grow with content; self-scroll hosts fill.
-          !scrollParentRef && 'h-full min-h-0 flex-1',
-          surface === 'sheet' ? TABLE_SURFACE_SHEET_CLASS : TABLE_SURFACE_CLIP_CLASS,
-          className,
-        )}
+    <GridColumnWidthBoundsProvider boundsByKey={boundsByKey}>
+      <GridColumnGutter
+        tableId={tableId}
+        columns={columns}
+        triggerPortalTarget={columnTriggerPortalTarget}
+        triggerPortalOnly={columnTriggerPortalOnly}
       >
-        {showSkeleton ? (
-          <div className="p-3">
-            <SkeletonList count={12} type="row" />
-          </div>
-        ) : (
-          <LedgerGrid<Row>
-            scrollX
-            scrollParentRef={scrollParentRef}
-            contentMinWidthRem={descriptor.contentMinWidthRem}
-            columnVars={columnVars}
-            gridSkin="airtable"
-            showDayHeaders={dayHeadersActive}
-            aria-label={ariaLabel}
-            data-testid={`${testId}-scroll`}
-            bodyRef={scrollRef as RefObject<HTMLDivElement> | undefined}
-            orderGroupsByDate={orderGroupsByDate}
-            columnHeader={renderColumnHeader(headerApi)}
-            renderGroup={(group, baseStripeIndex) => renderGroup(group, baseStripeIndex, rowApi)}
-            renderRow={(row, stripeIndex, rowIndex) =>
-              renderRow(row, stripeIndex, rowApi, rowIndex)
-            }
-            emptyState={resolvedEmpty}
-            isSearching={isSearching && hasSearchEmpty}
-            searchEmptyState={resolvedSearchEmpty}
-          />
-        )}
-      </div>
-    </GridColumnGutter>
+        <div
+          ref={shellRef as Ref<HTMLDivElement> | undefined}
+          data-testid={testId}
+          data-table-surface={surface === 'sheet' ? 'sheet' : ''}
+          className={cn(
+            'flex min-w-0 w-full flex-col',
+            // Ancestor-scroll hosts grow with content; self-scroll hosts fill.
+            !scrollParentRef && 'h-full min-h-0 flex-1',
+            surface === 'sheet' ? TABLE_SURFACE_SHEET_CLASS : TABLE_SURFACE_CLIP_CLASS,
+            className,
+          )}
+        >
+          {showSkeleton ? (
+            <div className="p-3">
+              <SkeletonList count={12} type="row" />
+            </div>
+          ) : (
+            <LedgerGrid<Row>
+              scrollX
+              scrollParentRef={scrollParentRef}
+              contentMinWidthRem={descriptor.contentMinWidthRem}
+              contentMinWidthPx={contentMinWidthPx}
+              columnVars={columnVars}
+              gridSkin="airtable"
+              showDayHeaders={dayHeadersActive}
+              aria-label={ariaLabel}
+              data-testid={`${testId}-scroll`}
+              bodyRef={scrollRef as RefObject<HTMLDivElement> | undefined}
+              orderGroupsByDate={orderGroupsByDate}
+              columnHeader={renderColumnHeader(headerApi)}
+              renderGroup={(group, baseStripeIndex) => renderGroup(group, baseStripeIndex, rowApi)}
+              renderRow={(row, stripeIndex, rowIndex) =>
+                renderRow(row, stripeIndex, rowApi, rowIndex)
+              }
+              emptyState={resolvedEmpty}
+              isSearching={isSearching && hasSearchEmpty}
+              searchEmptyState={resolvedSearchEmpty}
+            />
+          )}
+        </div>
+      </GridColumnGutter>
+    </GridColumnWidthBoundsProvider>
   );
 }

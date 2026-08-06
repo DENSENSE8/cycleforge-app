@@ -112,8 +112,8 @@ function fixtureRows(): MockRow[] {
       is_out_of_stock: true,
     }),
   );
-  // Multi-line order — same order_id, different products, SAME day band
-  // (grouping folds within a band) → CollapsibleGroupRow.
+  // Multi-line order — same order_id, different products, SAME day band.
+  // List sheet renders flat leaves (no CollapsibleGroupRow summary).
   const foldDay = '2026-07-21T18:00:00.000Z';
   rows.push(
     makeRow(10, {
@@ -388,40 +388,36 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
       .toBe(true);
   });
 
-  test('E1–E4: multi-line order folds under one summary; expand reveals children on shared tracks', async ({ page }) => {
+  test('E1–E4: multi-line order renders two flat leaves on shared tracks (no summary fold)', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
 
-    // E2 — the shared-order fold renders ONE summary row (not two leaf rows).
-    const summary = table.locator('[data-grid-summary-row]');
-    await expect(summary).toHaveCount(1);
-    await expect(summary).toContainText('Order 90-7777-88888');
-    await expect(table.locator('[data-order-row-id="910010"]')).toHaveCount(0);
+    // No in-grid summary — parent rollups live on drill only.
+    await expect(table.locator('[data-grid-summary-row]')).toHaveCount(0);
 
-    // E1 — singleton orders are plain rows (no summary chrome).
+    // Both multi-line leaves are visible without expand.
+    const lineA = table.locator('[data-order-row-id="910010"]');
+    const lineB = table.locator('[data-order-row-id="910011"]');
+    await expect(lineA).toBeVisible();
+    await expect(lineB).toBeVisible();
+    await expect(lineA).toContainText('E2E Fold Line A');
+    await expect(lineB).toContainText('E2E Fold Line B');
+
+    // E1 — singleton orders are plain rows.
     await expect(table.locator('[data-order-row-id="910003"]')).toHaveCount(1);
 
-    // E4 — the summary's cells ride the same tracks as leaf rows + header.
+    // E4 — leaf cells ride the same tracks as the header.
     const headerRow = headerRowIn(table);
     for (const col of ['order', 'qty'] as const) {
       const headerX = await leftX(headerRow.locator(`[data-col="${col}"]`));
-      const summaryX = await leftX(summary.locator(`[data-col="${col}"]`));
-      expect(Math.abs(headerX - summaryX), `fold summary ${col} locks to the header track`).toBeLessThan(4);
+      const leafX = await leftX(lineA.locator(`[data-col="${col}"]`));
+      expect(Math.abs(headerX - leafX), `leaf ${col} locks to the header track`).toBeLessThan(4);
     }
 
-    // E3 — expanding reveals both child rows; collapse hides them again.
-    // The disclosure header is the summary's `role=button` wrapper — clicking a
-    // neutral summary cell (title) bubbles to it (chips stopPropagation).
-    const summaryTitle = summary.locator('[data-col="title"]');
-    await summaryTitle.click();
-    await expect(table.locator('[data-order-row-id="910010"]')).toBeVisible();
-    await expect(table.locator('[data-order-row-id="910011"]')).toBeVisible();
-    await page.screenshot({ path: 'test-results/pending-grid-fold-expanded.png', fullPage: false });
-    await summaryTitle.click();
-    await expect(table.locator('[data-order-row-id="910010"]')).toHaveCount(0);
+    await page.screenshot({ path: 'test-results/pending-grid-multi-line-flat.png', fullPage: false });
   });
 
   test('F2–F4: keyboard edit contract (F2 opens · Esc reverts · Tab commits through assign)', async ({ page }) => {
@@ -525,10 +521,9 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
         { timeout: 10_000, message: 'Qty force-hides on a tight scrollport' },
       )
       .toBe(0);
-    // The priority ladder never touches Ship by / Order / Tracking / Product —
-    // `sla` in particular carries BOTH the deadline and the lateness now, so
-    // collapsing it would blind the dispatch queue on a small screen.
-    await expect(headerRow.locator('[data-col="sla"]')).toHaveCount(1);
+    // The priority ladder never touches Late / Order / Tracking / Product —
+    // collapsing Late would blind the dispatch queue on a small screen.
+    await expect(headerRow.locator('[data-col="age"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="tracking"]')).toHaveCount(1);
     await expect(headerRow.locator('[data-col="title"]')).toHaveCount(1);
 
@@ -540,8 +535,8 @@ test.describe('Pending grid · TanStack + TESTED mode (mocked feed)', () => {
         { timeout: 10_000, message: 'widening restores the Qty column' },
       )
       .toBe(1);
-    await expect(headerRow.locator('[data-col="sla"]')).toHaveCount(1);
-    await expect(headerRow.locator('[data-col="condition"]')).toHaveCount(1);
+    await expect(headerRow.locator('[data-col="age"]')).toHaveCount(1);
+    await expect(headerRow.locator('[data-col="order"]')).toHaveCount(1);
   });
 
   test('I1/I2: 400-row feed stays windowed; grid stays usable after a lane toggle', async ({ page }) => {

@@ -7,29 +7,28 @@
  * container — panels stay mounted (`hidden`) so per-panel state survives
  * switching.
  *
- * - Primary tabs render as a labeled {@link TabSwitch} (`fit="hug"`,
- *   `variant="solid"` + `solidTone="accent"`) so the active pill follows
- *   staff / theme accent (`bg-accent-bg`).
- * - Tabs marked `priority: 'overflow'` collapse into a ⋯ trigger **inside**
- *   the same rail. When the active tab is in overflow (inline density), the ⋯
- *   takes the accent fill and the active label shows beside the strip.
+ * - Primary tabs (`density="inline"`) render as industrial {@link TabDisplay}
+ *   `appearance="underline"` (parent weight) — never soft `TabSwitch` pills.
+ * - Tabs marked `priority: 'overflow'` collapse into a ⋯ trigger. When the
+ *   active tab is in overflow (inline density), the ⋯ takes the active
+ *   treatment and the active label shows beside the strip.
  * - With a single tab there is no bar — it renders exactly like the plain
  *   display, and the switcher only appears once a second display exists.
  *
- * ## `density="icon"` — the quiet display switcher (2026-08-02)
+ * ## `density="icon"` — SpaceX Displays topic plate
  *
- * A **flat icon row**, no rail box: idle cells are icon-only with a
- * {@link HoverTooltip}, and the ACTIVE cell expands to icon + label so the
- * current display always names itself exactly once. The vertical ⋮ leaves the
- * rail and becomes a right-aligned peer of `rightSlot` (flat pencil),
- * separated by a hairline. Scan-progress rings stay pane-anchored — not here.
+ * Edge-to-edge **h-10** instrument plate at the top of a Displays push column —
+ * a four-edge **`border-border-default`** frame (readable chrome 1px rule — not
+ * near-invisible `border-hairline`, which is for internal row dividers only).
+ * Flush cells share width (`flex-1`) with vertical dividers (Cybertruck segment
+ * plate); idle = icon-only with a {@link HoverTooltip}; ACTIVE expands to icon +
+ * label with a bottom underline and caption type so the plate outranks nested
+ * verb switchers below. Trailing **⋮** (`MoreVertical`) is a right-edge peer on
+ * the same row. Nested verb strips sit `gap-0` flush under this plate — no
+ * vertical air between tab rows. No soft sunken pills / corner radius.
  *
- * This replaced the `stacked` (icon-over-label) density it briefly shipped
- * with. Stacked fixed the width overflow but bought it with a two-row 44px
- * band and a bordered, shadowed, accent-filled rail — three chrome objects
- * competing on one row inside a 360px push column. Icon cells are narrower
- * still, so the strip never overflows, and the switcher stops out-shouting
- * the display it switches.
+ * `compact` only tightens horizontal padding — never shortens the plate face
+ * (a short strip above Chat·Claim inverted hierarchy).
  *
  * **Icon-only idle cells are the sanctioned nav-chrome exception**, not a
  * break of `ui-design-system.md` → *Icons: structural and paired*: this is a
@@ -43,28 +42,41 @@ import { MoreHorizontal, MoreVertical } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Popover } from '@/design-system/primitives/Popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { operatorAccentClasses } from '@/utils/operator-accent';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { TabSwitch } from './TabSwitch';
+import { TabDisplay } from './TabDisplay';
+
+const FLUSH = cornerClass('flush');
 
 /**
- * Quiet icon cell geometry (`density="icon"`). 32px tall so the row keeps the
- * existing `min-h-9` band — the switcher must not grow the panel header.
+ * SpaceX topic-plate cell (`density="icon"`). Always `h-10` — the Displays
+ * mode plate must outrank nested verb underlines below. `compact` only
+ * tightens horizontal padding.
  */
-const ICON_CELL_CLASS =
-  'relative flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 transition-colors';
-/** Compact icon row for Unbox Displays — sits under the pane-anchored ring. */
-const ICON_CELL_COMPACT_CLASS =
-  'relative flex h-6 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 transition-colors';
+const ICON_CELL_CLASS = cn(
+  'relative flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 px-2 transition-colors',
+  FLUSH,
+);
+/** Compact horizontal padding for Unbox Displays — same h-10 face. */
+const ICON_CELL_COMPACT_CLASS = cn(
+  'relative flex h-10 min-w-0 flex-1 items-center justify-center gap-1 px-1.5 transition-colors',
+  FLUSH,
+);
+/** Overflow ⋮ peer — fixed width, same plate height, not flex-shared. */
+const ICON_OVERFLOW_CELL_CLASS = cn(
+  'relative flex h-10 w-10 shrink-0 items-center justify-center transition-colors',
+  FLUSH,
+);
 const ICON_CELL_IDLE_CLASS =
-  'text-text-soft hover:bg-surface-hover hover:text-text-default';
+  'border-b-2 border-b-transparent text-text-soft hover:bg-surface-hover hover:text-text-default';
 /**
- * Selected cell: neutral wash + full-contrast ink, staff accent kept as an icon
- * TINT rather than a saturated fill. A filled accent pill on a 360px column
- * reads louder than the display it selects, and it fought the state colours
- * inside the body (the checklist's own done/active dots).
+ * Selected topic cell: parent underline. Staff accent stays an icon TINT.
+ * Idle cells keep a transparent 2px bottom border so selection does not shift.
+ * Bottom-only color (`border-b-*`) — never `border-transparent` / `border-text-*`
+ * on all sides (those fight `divide-x` cell seams).
  */
-const ICON_CELL_ACTIVE_CLASS = 'bg-surface-sunken text-text-default';
+const ICON_CELL_ACTIVE_CLASS =
+  'border-b-2 border-b-text-default font-semibold text-text-default';
 
 export type SectionTabPriority = 'primary' | 'overflow';
 
@@ -120,6 +132,7 @@ export function SectionTabsSlider({
   showActiveLabel = false,
   density = 'inline',
   compact = false,
+  fillHeight = false,
 }: {
   tabs: SectionTab[];
   value: string;
@@ -127,8 +140,8 @@ export function SectionTabsSlider({
   ariaLabel?: string;
   className?: string;
   /**
-   * Extra class on the strip ROW only — e.g. Unbox Displays flush-edge
-   * adjustments (`-mr-4`) so the trailing ⋮ sits on the column edge.
+   * Extra class on the strip ROW only — Unbox Displays cancels host `px-4`
+   * with `-mx-4` so the SpaceX plate + trailing ⋮ sit column-edge flush.
    */
   headerClassName?: string;
   /** Context control pinned to the right of the bar row (e.g. an Edit-PO pencil). */
@@ -140,24 +153,34 @@ export function SectionTabsSlider({
    */
   showActiveLabel?: boolean;
   /**
-   * `inline` (default) — labeled `TabSwitch` segments.
-   * `icon` — flat icon row; the selected cell expands to icon + label. Opt-in
-   * (Unbox Displays first); do not flip the default without a second adopter.
+   * `inline` (default) — labeled industrial `TabDisplay` underline segments.
+   * `icon` — SpaceX h-10 edge-to-edge topic plate; selected expands to icon + label.
+   * Opt-in (Unbox Displays first); do not flip the default without a second adopter.
    */
   density?: 'inline' | 'icon';
-  /** Tighter icon row + body gap — Unbox Displays under pane-anchored ring. */
+  /**
+   * Icon plate only: tighter horizontal padding. Never shortens the h-10 face —
+   * a short strip above Chat·Claim inverted hierarchy.
+   */
   compact?: boolean;
+  /**
+   * Fill the host column: strip stays `shrink-0`, the active tab panel owns
+   * remaining height (`min-h-0 flex-1`). Opt-in for push columns whose body
+   * pins a footer (Unbox Displays → Ticket → Claim). Default stays content-
+   * sized so Workbench / Support callers do not change.
+   */
+  fillHeight?: boolean;
 }) {
   const menuListId = useId();
   const overflowTriggerRef = useRef<HTMLButtonElement>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const iconRail = density === 'icon';
   const iconCellClass = iconRail && compact ? ICON_CELL_COMPACT_CLASS : ICON_CELL_CLASS;
-  const iconSizeClass = iconRail && compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
-  const headerRowMinClass = iconRail && compact ? 'min-h-6' : 'min-h-9';
-  const headerRowAlignClass = iconRail && compact ? 'items-end' : 'items-center';
-  const rightClusterMinClass = iconRail && compact ? 'min-h-6' : 'min-h-8';
-  const bodyGapClass = iconRail && compact ? 'space-y-1' : 'space-y-4';
+  const iconSizeClass = 'h-4 w-4';
+  const headerRowMinClass = iconRail ? 'h-10 min-h-10' : 'min-h-9';
+  const headerRowAlignClass = 'items-stretch';
+  const rightClusterMinClass = iconRail ? 'h-10' : 'min-h-8';
+  const bodyGapClass = iconRail ? 'space-y-0' : 'space-y-4';
   const stripTabs = tabs.filter((t) => !t.stripHidden);
   const activeId = resolveActiveTabId(
     tabs.map((t) => t.id),
@@ -199,13 +222,14 @@ export function SectionTabsSlider({
             focusRing('control', 'accent'),
             iconRail
               ? cn(
-                  iconCellClass,
+                  ICON_OVERFLOW_CELL_CLASS,
                   overflowActive ? ICON_CELL_ACTIVE_CLASS : ICON_CELL_IDLE_CLASS,
                 )
               : cn(
-                  'rounded-full px-2.5',
+                  FLUSH,
+                  'px-2.5 py-1.5',
                   overflowActive
-                    ? `${operatorAccentClasses.activePill} text-white`
+                    ? 'border-b-2 border-b-text-default text-text-default'
                     : 'text-text-soft hover:text-text-default',
                 ),
           )}
@@ -226,7 +250,12 @@ export function SectionTabsSlider({
           role="menu"
           id={menuListId}
           aria-label="More displays"
-          className="min-w-[12rem] py-1 shadow-xl ring-1 ring-border-soft/80"
+          // Industrial flush plate — square (`rounded-none`) with a four-edge
+          // `border-border-default` frame + `divide-y` rows matching the SpaceX
+          // topic plate, not a floating `rounded-xl` card. Overrides the Popover
+          // primitive default via `cn(base, className)` (twMerge). Full-bleed
+          // rows: no menu `py-*`; each row owns its `px-3 py-2.5`.
+          className="min-w-[12rem] rounded-none border border-border-default divide-y divide-border-default"
         >
           {overflow.map((tab) => {
             const Icon = tab.icon;
@@ -276,23 +305,36 @@ export function SectionTabsSlider({
   );
 
   return (
-    <div className={className ? `${bodyGapClass} ${className}` : bodyGapClass}>
+    <div
+      className={cn(
+        bodyGapClass,
+        fillHeight && 'flex h-full min-h-0 flex-col',
+        className,
+      )}
+    >
       {showPills || rightSlot ? (
         <div
           className={cn(
-            'flex justify-between gap-1.5',
+            'flex justify-between gap-0',
+            fillHeight && 'shrink-0',
             headerRowAlignClass,
             headerRowMinClass,
+            iconRail && 'border border-border-default bg-surface-card',
             headerClassName,
           )}
         >
-          <div className={cn('flex min-w-0 items-center', iconRail ? 'gap-0.5' : 'gap-2.5')}>
+          <div
+            className={cn(
+              'flex min-w-0 items-stretch',
+              iconRail ? 'flex-1 gap-0' : 'items-center gap-2.5',
+            )}
+          >
             {showPills ? (
               iconRail ? (
                 <div
                   role="group"
                   aria-label={ariaLabel}
-                  className="flex min-w-0 items-center gap-0.5 overflow-x-auto scrollbar-hide"
+                  className="flex h-full min-w-0 flex-1 items-stretch gap-0 divide-x divide-border-default overflow-x-auto scrollbar-hide"
                 >
                   {primary.map((tab) => {
                     const Icon = tab.icon;
@@ -327,20 +369,16 @@ export function SectionTabsSlider({
                         />
                         {selected ? (
                           // No `leading-none` here. `truncate` carries
-                          // `overflow:hidden`, so a line-height of 1 makes the
-                          // line box exactly the 10px font size and SHEARS every
-                          // descender — "Pairin(g)", "Trackin(g)", "Classif(y)"
-                          // all render with their tails cut off. The role's own
-                          // 1.2 leading costs nothing: the cell is a fixed `h-6`
-                          // / `h-8`, so a taller line box cannot grow the row.
-                          <span className="max-w-[7rem] truncate text-role-micro">
+                          // `overflow:hidden`, so a line-height of 1 shears
+                          // descenders. Plate cells are fixed `h-10`.
+                          <span className="max-w-[7rem] truncate text-role-caption font-semibold">
                             {tab.label}
                           </span>
                         ) : null}
                         {count ? (
                           <span
                             className={cn(
-                              'tabular-nums text-role-micro',
+                              'tabular-nums text-role-caption',
                               selected ? 'opacity-70' : 'opacity-80',
                             )}
                           >
@@ -361,7 +399,7 @@ export function SectionTabsSlider({
                 </div>
               ) : (
                 <div role="group" aria-label={ariaLabel} className="min-w-0">
-                  <TabSwitch
+                  <TabDisplay
                     tabs={primary.map((tab) => ({
                       id: tab.id,
                       label: tab.label,
@@ -370,10 +408,9 @@ export function SectionTabsSlider({
                     }))}
                     activeTab={primaryActiveId}
                     onTabChange={onChange}
-                    variant="solid"
-                    solidTone="accent"
+                    density="nested"
                     fit="hug"
-                    countStyle="plain"
+                    appearance="underline"
                     trailing={
                       overflowControl ? (
                         <>
@@ -397,7 +434,12 @@ export function SectionTabsSlider({
               rail overflowed (the accent ⋯ covering the Unbox PO pencil). */}
           {iconRail ? (
             overflowControl || rightSlot ? (
-              <div className={cn('flex shrink-0 items-center gap-0.5', rightClusterMinClass)}>
+              <div
+                className={cn(
+                  'flex shrink-0 items-stretch gap-0 border-l border-border-default',
+                  rightClusterMinClass,
+                )}
+              >
                 {overflowControl}
                 {overflowControl && rightSlot ? hairline : null}
                 {rightSlot}
@@ -409,12 +451,24 @@ export function SectionTabsSlider({
         </div>
       ) : null}
 
-      <div>
-        {tabs.map((tab) => (
-          <div key={tab.id} role="tabpanel" hidden={tab.id !== activeId}>
-            {tab.content}
-          </div>
-        ))}
+      <div
+        className={cn(fillHeight && 'flex min-h-0 flex-1 flex-col')}
+      >
+        {tabs.map((tab) => {
+          const active = tab.id === activeId;
+          return (
+            <div
+              key={tab.id}
+              role="tabpanel"
+              hidden={!active}
+              className={cn(
+                fillHeight && active && 'flex h-full min-h-0 flex-col',
+              )}
+            >
+              {tab.content}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

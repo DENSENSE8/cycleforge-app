@@ -5,6 +5,7 @@ import { motion, type HTMLMotionProps } from '@/design-system/motion';
 import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
+import { cornerClass } from '../tokens/radius';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -48,24 +49,27 @@ const variantClasses: Record<ButtonVariant, string> = {
 
 // ─── Size classes ────────────────────────────────────────────────────────────
 
+/** Solid CTAs are flush industrial squares — soft workbench pills opt in at call sites. */
+const BUTTON_CORNER = cornerClass('flush');
+
 const desktopSize: Record<ButtonSize, string> = {
-  sm: 'h-8 gap-1.5 rounded-lg px-3 text-role-caption',
-  md: 'h-9 gap-1.5 rounded-xl px-3.5 text-role-data',
-  lg: 'h-10 gap-2 rounded-xl px-5 text-sm',
+  sm: cn('h-8 gap-1.5 px-3 text-role-caption', BUTTON_CORNER),
+  md: cn('h-9 gap-1.5 px-3 text-role-data', BUTTON_CORNER),
+  lg: cn('h-10 gap-2 px-4 text-sm', BUTTON_CORNER),
 };
 
-// Mobile — every size meets the 44px minimum touch target.
+// Mobile — every size meets the 44px minimum touch target; same flush corner.
 const mobileSize: Record<ButtonSize, string> = {
-  sm: 'h-11 gap-2 rounded-xl px-4 text-role-data',
-  md: 'h-12 gap-2 rounded-2xl px-5 text-sm',
-  lg: 'h-14 gap-2.5 rounded-2xl px-6 text-base',
+  sm: cn('h-11 gap-2 px-4 text-role-data', BUTTON_CORNER),
+  md: cn('h-12 gap-2 px-5 text-sm', BUTTON_CORNER),
+  lg: cn('h-14 gap-2.5 px-6 text-base', BUTTON_CORNER),
 };
 
 // Icon-only squares (mobile).
 const mobileIconOnly: Record<ButtonSize, string> = {
-  sm: 'h-11 w-11 rounded-xl',
-  md: 'h-12 w-12 rounded-2xl',
-  lg: 'h-14 w-14 rounded-2xl',
+  sm: cn('h-11 w-11', BUTTON_CORNER),
+  md: cn('h-12 w-12', BUTTON_CORNER),
+  lg: cn('h-14 w-14', BUTTON_CORNER),
 };
 
 const iconBox: Record<ButtonSize, string> = {
@@ -84,6 +88,8 @@ const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
  * One component, five variants. Replaces the ~1,300 hand-rolled
  * `<button className="bg-… px-… rounded-…">` scattered across the app.
  *
+ * - Corner SoT: `cornerClass('flush')` → `rounded-none`. Soft workbench chrome
+ *   CTAs add `WORKBENCH_CHROME_PILL_CLASS` at the call site.
  * - Children-based API: `<Button variant="brand" icon={<Plus />}>Save</Button>`
  * - Spring press feedback (framer-motion `whileTap`) on every variant
  * - Mode-aware: promotes to 44px+ touch targets on mobile via `UIModeProvider`

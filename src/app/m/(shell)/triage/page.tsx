@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * /m/triage — Mobile door-scan entry (mirrors desktop `/triage`).
+ * /m/triage — Mobile Arrival Station (door scan → photos → classify).
  */
 
-import RedesignedMobileReceive from '@/components/mobile/redesign/Receive';
+import MobileArrivalStation from '@/components/mobile/receiving/MobileArrivalStation';
 
 export default function MobileTriageScanPage() {
-  return <RedesignedMobileReceive surface="triage" title="Arrival" />;
+  return <MobileArrivalStation />;
 }

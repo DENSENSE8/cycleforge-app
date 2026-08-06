@@ -27,8 +27,25 @@ test('Testing photo peek is anchored to the full-pane overlay shell', () => {
   assert.equal(PO_SECTION.includes('UnitPackPhotoPeek'), false);
 });
 
-test('Testing workbench presents Returns before Pending and History', () => {
-  assert.match(HEADER, /const TABS[^=]*=\s*\['returns', 'pending', 'history'\]/);
+test('Testing workbench presents Urgent · Returns · Pending · All · History', () => {
+  assert.match(HEADER, /TESTING_WORKSPACE_TABS/);
+  assert.match(HEADER, /urgent/);
+  assert.match(HEADER, /all/);
+  // Band-1 order is owned by TESTING_WORKSPACE_TABS in testing-workspace-state.
+  const state = source('../../utils/testing-workspace-state.ts');
+  const tabsBlock = state.slice(state.indexOf('TESTING_WORKSPACE_TABS'));
+  assert.match(tabsBlock, /'urgent'/);
+  assert.match(tabsBlock, /'returns'/);
+  assert.match(tabsBlock, /'pending'/);
+  assert.match(tabsBlock, /'all'/);
+  assert.match(tabsBlock, /'history'/);
+  assert.ok(
+    tabsBlock.indexOf("'urgent'") < tabsBlock.indexOf("'returns'") &&
+      tabsBlock.indexOf("'returns'") < tabsBlock.indexOf("'pending'") &&
+      tabsBlock.indexOf("'pending'") < tabsBlock.indexOf("'all'") &&
+      tabsBlock.indexOf("'all'") < tabsBlock.indexOf("'history'"),
+    'TESTING_WORKSPACE_TABS must stay Urgent · Returns · Pending · All · History',
+  );
 });
 
 test('Testing History suppresses received and failed workflow icons', () => {

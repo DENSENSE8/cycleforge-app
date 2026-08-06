@@ -10,7 +10,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  *
  * Picking which photos go on a ticket is done AGAINST the carton on screen, so
  * the centered overlay it used to be hid its own reference material. Unbox keeps
- * the station **push** ({@link ReceivingToolPushStack}).
+ * Unbox Displays Photos→Send.
  */
 export function SendPhotoNoteRail({
   open,
@@ -37,7 +37,7 @@ export function SendPhotoNoteRail({
       push={false}
       onClose={onClose}
       modal={false}
-      ariaLabel="Send photos to a ticket"
+      ariaLabel="Send photos"
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <SendPhotoNotePanel

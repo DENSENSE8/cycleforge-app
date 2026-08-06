@@ -70,6 +70,11 @@ export const receivingLinesQuerySchema = z.object({
   testerId: numberish,
   /** Testing queue partition: forward intake, returns, or both. */
   returnScope: z.enum(['all', 'standard', 'returns']),
+  /**
+   * Testing Urgent tab — only cartons with explicit priority
+   * (`is_priority` or a manual `priority_tier`).
+   */
+  priorityOnly: z.boolean(),
   /** `view=testing` verdict-time bounds; ISO `YYYY-MM-DD` or empty. */
   weekStart: z.string(),
   weekEnd: z.string(),
@@ -219,6 +224,8 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
       : returnScopeRaw === 'standard'
         ? 'standard'
         : 'all';
+  const priorityOnlyRaw = String(searchParams.get('priority_only') || '').trim().toLowerCase();
+  const priorityOnly = priorityOnlyRaw === '1' || priorityOnlyRaw === 'true';
   // Testing History only: verdict-time week range. Camel-case names are the
   // shared station feed contract; the retired no-view snake-case fallback
   // (`week_start` / `week_end`) remains ignored.
@@ -287,6 +294,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     hideZohoReceived,
     testerId,
     returnScope,
+    priorityOnly,
     weekStart,
     weekEnd,
     includeSerials,

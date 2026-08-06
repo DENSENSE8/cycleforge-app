@@ -12,7 +12,7 @@ export function ManualPicker({
   const { query, setQuery, results, searching, pairingId, pair } = useManualPicker(receivingLineId, onPaired);
 
   return (
-    <div className="mb-3 rounded-lg border border-border-soft/70 bg-surface-canvas/60 p-2">
+    <div className="mb-3 rounded-none border border-border-soft/70 bg-surface-canvas/60 p-2">
       <div className="flex items-center gap-2 rounded-md border border-border-soft bg-surface-card px-2 py-1.5">
         <Search className="h-4 w-4 shrink-0 text-text-faint" />
         <input

@@ -1,9 +1,15 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Barcode, DollarSign, Download, FileText, Pencil, Tag, User } from '@/components/Icons';
+import { Barcode, Download, FileText, Pencil, Receipt, Tag, User } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  DenseComposeBodyBand,
+  DenseComposeBodyTextarea,
+  DenseComposeLabel,
+  DenseComposeSubjectInput,
+} from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
 import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../../NoteComposerInsertRail';
@@ -25,12 +31,10 @@ import {
   NOTE_UNIT_PRICE_BTN,
   parseZendeskTicketId,
 } from '../../note-composer-helpers';
-import type { FiledTicket } from '../claim-types';
 import type { UseClaimTemplate } from '../hooks/useClaimTemplate';
 
 interface Props {
   template: UseClaimTemplate;
-  filedTicket: FiledTicket | null;
   row: ReceivingLineRow;
 }
 
@@ -39,8 +43,9 @@ interface Props {
  * operator edits a field we stop overwriting it; "Reset to template" refetches.
  * Body textarea mirrors the label-notes insert rail — staff stamp, serial, and
  * the same context inserts (internal notes, title, price, sync notes, ticket subject).
+ * Ticket identity chrome lives in scroll-spy / Displays — not restated here.
  */
-export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
+export function ClaimTemplateEditor({ template, row }: Props) {
   const {
     subject,
     description,
@@ -166,7 +171,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
         id: 'unit-price',
         label: `Unit price · ${formattedUnitPrice}`,
         ariaLabel: 'Insert unit price',
-        icon: <DollarSign className={NOTE_OVERLAY_ICON} />,
+        icon: <Receipt className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_UNIT_PRICE_BTN,
         onClick: () => appendToBody(formattedUnitPrice),
       });
@@ -216,65 +221,57 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
   }, [description, onDescriptionChange]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
-            Support ticket {previewLoading ? '(updating…)' : '(editable)'}
-          </p>
-          {filedTicket ? (
-            <p className="mt-0.5 text-role-micro font-semibold text-emerald-600">Filed {filedTicket.number}</p>
-          ) : null}
+    <div className="space-y-0">
+      <div className="space-y-3 px-3">
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <DenseComposeLabel htmlFor="claim-subject" className="mb-0">
+              Subject
+              {previewLoading ? (
+                <span className="ml-2 font-medium normal-case tracking-normal text-text-faint">
+                  updating…
+                </span>
+              ) : null}
+            </DenseComposeLabel>
+            {edited ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetTemplate}
+                className="h-auto shrink-0 rounded-none px-0 py-0 text-role-eyebrow font-semibold uppercase tracking-[0.14em] text-text-faint hover:bg-transparent hover:text-text-default"
+              >
+                Reset to template
+              </Button>
+            ) : null}
+          </div>
+          <DenseComposeSubjectInput
+            id="claim-subject"
+            value={subject}
+            onChange={(e) => onSubjectChange(e.target.value)}
+            placeholder={previewLoading ? 'Generating…' : 'Subject'}
+          />
         </div>
-        {edited ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetTemplate}
-            className="text-text-soft hover:text-text-default"
-          >
-            Reset to template
-          </Button>
-        ) : null}
       </div>
 
-      <label
-        htmlFor="claim-subject"
-        className="mb-1 block text-role-eyebrow uppercase tracking-[0.14em] text-text-faint"
-      >
-        Subject
-      </label>
-      <input
-        id="claim-subject"
-        type="text"
-        value={subject}
-        onChange={(e) => onSubjectChange(e.target.value)}
-        placeholder={previewLoading ? 'Generating…' : 'Subject'}
-        className="mb-3 block h-10 w-full rounded-lg border border-border-default bg-surface-card px-3 text-role-caption font-medium text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
-      />
+      <div className="mt-3 border-t border-border-hairline">
+        <div className="px-3 pt-2">
+          <DenseComposeLabel htmlFor="claim-body">Body</DenseComposeLabel>
+        </div>
 
-      <div>
-        <label
-          htmlFor="claim-body"
-          className="mb-1 block text-role-eyebrow uppercase tracking-[0.14em] text-text-faint"
-        >
-          Body
-        </label>
-
-        <div className="group relative">
-          <textarea
+        <DenseComposeBodyBand className="group">
+          <DenseComposeBodyTextarea
             ref={bodyTextareaRef}
             id="claim-body"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
             rows={8}
             placeholder={previewLoading ? 'Generating…' : 'Ticket body'}
-            className={`block min-h-[14rem] w-full resize-y rounded-lg border border-border-default bg-surface-card px-4 text-role-caption font-medium leading-5 tracking-[0.01em] text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20 ${NOTE_COMPOSER_OVERLAY_PAD} ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS}`}
+            className={`${NOTE_COMPOSER_OVERLAY_PAD} ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS}`}
           />
 
           <NoteComposerInsertRail actions={insertActions} />
 
-          <div className="pointer-events-none absolute bottom-2 left-2">
+          <div className="pointer-events-none absolute bottom-2 left-3">
             <div className="pointer-events-auto">
               <button
                 type="button"
@@ -287,7 +284,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
               </button>
             </div>
           </div>
-        </div>
+        </DenseComposeBodyBand>
       </div>
     </div>
   );

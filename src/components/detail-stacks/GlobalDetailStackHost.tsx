@@ -22,12 +22,8 @@ import { cartonReadHref } from '@/lib/receiving/surface-path';
 import { dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { toast } from '@/lib/toast';
 
-const ShippedDetailsPanel = dynamic(
-  () => import('@/components/shipped').then((m) => m.ShippedDetailsPanel),
-  { ssr: false },
-);
-const UnshippedDetailsPanel = dynamic(
-  () => import('@/components/unshipped/UnshippedDetailsPanel').then((m) => m.UnshippedDetailsPanel),
+const CompactOrderPeek = dynamic(
+  () => import('@/components/order-record/CompactOrderPeek').then((m) => m.CompactOrderPeek),
   { ssr: false },
 );
 const FbaBoardDetailPanel = dynamic(
@@ -120,19 +116,9 @@ export function GlobalDetailStackHost() {
   }
 
   if (loaded.kind === 'order') {
-    if (loaded.context === 'queue') {
-      return (
-        <UnshippedDetailsPanel shipped={loaded.order} onClose={handleClose} onUpdate={handleUpdate} />
-      );
-    }
-    return (
-      <ShippedDetailsPanel
-        shipped={loaded.order}
-        context="dashboard"
-        onClose={handleClose}
-        onUpdate={handleUpdate}
-      />
-    );
+    // Non-desk opens: compact peek only. Full tabbed inspector stays on the
+    // shipping desk table click (`DashboardOrderDetails` → ShippedDetailsPanel).
+    return <CompactOrderPeek order={loaded.order} onClose={handleClose} />;
   }
 
   if (loaded.kind === 'plan') {

@@ -46,7 +46,7 @@ Top-to-bottom, a station is four parts and nothing more:
 | **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). **Dock-anchored under the terminal** (Unbox: `UnboxDockHost` progress row) — same place whether Displays/push is open or closed. **Selected face** when checklist display is live. Hover peeks a Cursor-style `top-end` overlap just above the ring (viewport-clamped) with a footer to open Displays; hover is **off** while any push rail is open. Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — not on the Displays strip. Never fork a second ring. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
-| **Station-down banner** (singleton, app root) | `OfflineBanner` (`src/components/layout/OfflineBanner.tsx`) | First-class, non-blocking, mounted once. |
+| **Station-down chrome** (no app-root banner) | `connection-health` + `useNetworkOnline` / `useRealtimeLink` → Operations TV pill + mobile `NetworkChip` | First-class, non-blocking; degrade-not-block. Never a per-bench reconnect strip. |
 
 - **Compose the scan bar, never re-wire its chrome.** Geometry, padding, icon slot, and placeholder styling live in
   `src/components/station/scan-bar/tokens.ts` (`STATION_SCAN_BAR_INPUT_CLASS`, `STATION_SCAN_BAR_ICON_SLOT_CLASS`, …).
@@ -271,36 +271,29 @@ the checklist in the right-edge Displays rail.
 
 ## 8. Station-down is first-class
 
-- **`OfflineBanner` is a singleton mounted once near app root.** It shows when `navigator.onLine` is false, when the
-  station's **realtime link is degraded**, **OR** when the offline write queue depth (`useOfflineWriteQueue`) is `> 0`,
-  and stays up while syncing (`src/components/layout/OfflineBanner.tsx`). It is `fixed inset-x-0 top-0 z-banner` —
-  pinned, non-blocking, color-coded (rose offline / amber degraded-or-syncing / emerald back-online). *Rationale: the
-  operator can't fix the network mid-shift; the state must be visible and the bench must keep moving.*
+- **No app-root connection banner.** The retired layout/mobile `OfflineBanner` twins are gone (2026-08-05). Station-down
+  is still first-class: the **answer** lives in `src/lib/realtime/connection-health.ts` (pure, unit-tested) and is read
+  through `useNetworkOnline()` / `useRealtimeLink()` (`src/hooks/useConnectionHealth.ts`). Visible chrome is the
+  Operations TV wall pill (`REALTIME_DEGRADED_LABEL`) and mobile `NetworkChip` — never a fixed top band, never a
+  per-bench reconnect strip (D4). *Rationale: the top band stole viewport on every Ably blip and trained operators to
+  ignore it; degrade-not-block + durable queue is the real floor safety net.*
 - **THREE different problems, ONE answer, resolved in ONE pure module.** Device offline · realtime link paused · edits
-  still draining are not the same failure and must stay distinguishable — but which one leads, the operator copy, and
-  the debounce are decided once in `src/lib/realtime/connection-health.ts` (pure, unit-tested) and read through
-  `useConnectionChrome()` / `useNetworkOnline()` / `useRealtimeLink()` (`src/hooks/useConnectionHealth.ts`).
+  still draining are not the same failure. Debounce and classification are decided once in `connection-health.ts`.
   **Placement may differ; the answer may not.** Four surfaces each ran their own `navigator.onLine` listener before
-  2026-08-02, so wiring realtime health into any one of them would have left the rest confidently telling the old
-  story — and a bench that says "online" while the station's realtime link is dead is worse than a bench that says
-  nothing. The dead `station/OfflineBanner` was deleted; `mobile/OfflineBanner` is the phone-shell **placement** of the
-  same answer; the Operations TV board renders it read-only at wall scale (D12 — never an upload or pairing modal on a
-  Monitor). **Never add a fifth `navigator.onLine` listener or a per-bench reconnect strip** (D4).
+  2026-08-02; do not reintroduce a fifth listener or a per-bench strip.
 - **Realtime state is published to a MODULE STORE, never added to the Ably context value.**
   `src/lib/realtime/connection-store.ts` (`useSyncExternalStore`) carries it; `AblyContext`'s value stays exactly
   `{ getClient }` on an empty-dep `useCallback`. *Rationale: that value has ~23 consumers, and widening it so it
-  changes on every reconnect re-fires precisely the effects whose churn once flooded Ably at >1000 msg/s. The store is
-  also the only shape the global banner can read — it is mounted **above** `AuthenticatedAblyProvider`.*
+  changes on every reconnect re-fires precisely the effects whose churn once flooded Ably at >1000 msg/s.*
 - **Debounce the transient; never name the mechanism.** Ably `disconnected` is what a routine wifi hiccup looks like,
   so it is reported only after it holds for `REALTIME_DEGRADE_GRACE_MS` (8s); `suspended`/`failed` arrive
   pre-debounced and report on sight; pre-init is `unknown` and reports **nothing** (a sign-in page has no station link
-  to be down). A banner that flashes on every blip trains operators to ignore the one signal that matters. Copy states
-  the *consequence* and what still works — **"Station sync paused — scans still save"** — never `suspended`,
+  to be down). Operator-facing labels state the *consequence* — e.g. wall **"Sync paused"** — never `suspended`,
   `connecting`, a channel name, or an error code.
 - **Degrade-not-block: keep scanning into a durable queue.** A down printer/scale/network never gates a scan; the scan
   enqueues and the idempotent retry (§7) drains it on reconnect. *Rationale: throughput is the job — blocking the bar on
   infra failure stops the line for something the operator can't repair.*
-- **Printer-down / scale-down are distinct, non-blocking banners** — separate from the offline banner, because they
+- **Printer-down / scale-down are distinct, non-blocking banners** — separate from connection-health chrome, because they
   fail independently and the operator needs to know *which* peripheral is down. *Rationale: "station down" is a family of
   orthogonal states, not one boolean.*
 
@@ -407,7 +400,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
 | Confirm model | scan-to-confirm (`PackChecklist`), optimistic + `clientEventId` idempotency |
 | Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert()` |
 | Idempotency | client mints key; server **must** honor via `api_idempotency_responses` |
-| Down state | `OfflineBanner` singleton + durable queue; degrade-not-block |
+| Down state | `connection-health` + durable queue; TV pill / `NetworkChip`; degrade-not-block |
 | Connection health | offline · realtime-degraded · syncing — one answer from `connection-health.ts`, debounced, no Ably jargon |
 | Mobile | same Station on `MobileShell` via `ScanInput`; same endpoints/keys |
 

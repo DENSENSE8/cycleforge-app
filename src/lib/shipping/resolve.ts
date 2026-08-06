@@ -1,6 +1,7 @@
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { detectCarrier, normalizeTrackingNumber } from './normalize';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
+import { detectCarrier } from './normalize';
 import { getShipmentByTracking, healShipmentOrganizationId } from './repository';
 import { registerAndSyncShipment } from './sync-shipment';
 
@@ -23,7 +24,8 @@ export async function lookupShipmentId(
     return { shipmentId: null, scanRef: trimmed };
   }
 
-  const normalized = normalizeTrackingNumber(trimmed);
+  // FedEx GS1 SoT — unwrap 96… gun reads so lookup hits the short human STN key.
+  const normalized = extractCanonicalTracking(trimmed);
   try {
     const existing =
       orgId != null
@@ -87,7 +89,8 @@ export async function resolveShipmentId(
     return { shipmentId: null, scanRef: trimmed };
   }
 
-  const normalized = normalizeTrackingNumber(trimmed);
+  // FedEx GS1 SoT — unwrap 96… gun reads so lookup/register share the short STN key.
+  const normalized = extractCanonicalTracking(trimmed);
   const carrier = detectCarrier(normalized);
 
   if (!carrier) {

@@ -7,29 +7,23 @@ import type { RowGroup } from '@/lib/group-rows';
  * has only a window of its rows in the DOM: without them a screen reader
  * announces "row 3 of 30" when the user is really on row 403 of 1,200.
  *
- * **Indices are computed as if every fold were expanded, and never renumber.**
- * That is the ARIA-recommended behaviour, not a shortcut — WAI-ARIA on
- * `aria-rowindex`: when rows are hidden (by a filter, or by collapsing a node)
- * it is useful to keep the remaining rows' indices stable, as long as
- * `aria-rowcount` reflects the total, so the user does not lose their place.
+ * Sheet list bodies render **flat leaves** (no in-grid summary row). Indices
+ * match what the group renderers emit: one row per leaf, plus optional day-band
+ * headers. Parent rollups live only on the drill parent map and are outside
+ * this table's row count.
  *
- * The practical payoff: collapsing a fold does NOT have to renumber the grid,
- * so this module never needs to know a fold's expanded state — which lives
- * inside `CollapsibleGroupRow` and is deliberately not lifted.
- *
- * Row budget per item (mirrors what the group renderers actually emit):
+ * Row budget per item:
  *  • day band header  → 1 row
- *  • singleton group  → 1 row  (`QueueGroupRow` renders the leaf directly)
- *  • multi-row group  → 1 summary row + `rows.length` child rows
+ *  • group            → `rows.length` leaf rows
  *  • flat row         → 1 row
  */
 
 /** The column header occupies row 1; body numbering starts at 2. */
 export const GRID_HEADER_ROW_INDEX = 1;
 
-/** Rows a single fold contributes: a singleton is just its leaf. */
+/** Rows a group contributes — one leaf per member (no summary chrome). */
 export function groupRowSpan<T>(group: RowGroup<T>): number {
-  return group.rows.length === 1 ? 1 : 1 + group.rows.length;
+  return group.rows.length;
 }
 
 interface CountGridRowsArgs<T> {
@@ -41,8 +35,7 @@ interface CountGridRowsArgs<T> {
 
 /**
  * Total rows in the table INCLUDING the column header — the `aria-rowcount`
- * value. Counts every row the grid could show with all folds expanded, which is
- * what the stable-index contract above requires.
+ * value. Counts every leaf the grid shows (flat sheet contract).
  */
 export function countGridRows<T>({
   orderGroupsByDate,

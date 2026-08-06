@@ -3,6 +3,7 @@ import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
 } from '@/components/station/receiving-lines-table-helpers';
+import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { formatDateTimePST } from '@/utils/date';
 
 export function displayReceivingProductTitle(row: ReceivingLineRow): string {
@@ -43,4 +44,26 @@ export function receivingStageTooltip(
     }
   }
   return parts.join(' · ');
+}
+
+/**
+ * History-mode status-chip tooltip. DONE (shown as Received) is bare — stamps
+ * live on the Date column. UNBOXED uses the shared sync tip SoT
+ * ({@link receivingUnboxedSyncTooltip}). Other stages keep the stage tip.
+ */
+export function receivingHistoryStatusTooltip({
+  workflowStatus,
+  inventoryProviderLabel,
+  stageTip,
+}: {
+  workflowStatus: string | null | undefined;
+  inventoryProviderLabel: string;
+  stageTip?: string | null;
+}): string | null {
+  const s = String(workflowStatus ?? '').trim().toUpperCase();
+  if (s === 'DONE') return null;
+  const syncTip = receivingUnboxedSyncTooltip({ workflowStatus, inventoryProviderLabel });
+  if (syncTip) return syncTip;
+  const tip = String(stageTip ?? '').trim();
+  return tip || null;
 }

@@ -5,10 +5,7 @@
  *
  * Ruled 2026-08-02: a procedure step card carries no action button. The item
  * capture pill lives in the bottom dock (`dock/SlotDockControls` →
- * `ItemPhotoDockControl`), and `data-unbox-item-photos` travelled there with it
- * — `unbox-item-photo-capture.spec.ts` asserts the capture control is INSIDE
- * that anchor, so the anchor follows the control rather than staying on a card
- * that no longer has one.
+ * `ItemPhotoDockControl`) when that lane is mounted.
  *
  * It fetches its own line-scoped list rather than taking a slot, exactly like
  * {@link CartonPhotoStepBody}. A slot would have to be threaded from the adapter
@@ -86,7 +83,7 @@ export function ItemPhotoStepBody({ row, receivingId, poRef }: UnboxStepBodyCont
   if (photos.length === 0) {
     return (
       <p className="text-role-caption text-text-soft">
-        No item photos on this line yet — the camera is in the dock below.
+        No item photos on this line yet — use the item camera to capture.
       </p>
     );
   }

@@ -86,7 +86,7 @@ export function PackSendToPhoneButton({
 
   const pill = (
     <HoverTooltip
-      label={hasPhotos ? `${count} pack photo${count === 1 ? '' : 's'} · send to phone` : 'Send to phone'}
+      label={hasPhotos ? `Photos ${count} · phone` : 'Send to phone'}
       asChild
     >
       <Button
@@ -95,11 +95,7 @@ export function PackSendToPhoneButton({
         size="sm"
         onClick={() => void handleSend()}
         disabled={phone.pending}
-        ariaLabel={
-          hasPhotos
-            ? `${count} pack photo${count === 1 ? '' : 's'}; send capture request to phone`
-            : 'Send capture request to phone'
-        }
+        ariaLabel={hasPhotos ? `Photos ${count}; send to phone` : 'Send to phone'}
         icon={<Camera className="h-4 w-4" />}
         iconRight={hasPhotos ? undefined : <Plus className="h-3 w-3" />}
         className={STATION_CONTEXT_PHOTO_PILL_CLASS}

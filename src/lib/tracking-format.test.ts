@@ -4,7 +4,12 @@ import {
   extractCanonicalTracking,
   stripFedexConcatPrefix,
   normalizeTrackingNumber,
+  normalizeTrackingKey18,
   last8FromStoredTracking,
+  orderTrackingMatchKeys,
+  getTrackingUrl,
+  getTrackingUrlByCarrier,
+  resolveTrackingOpenUrl,
 } from './tracking-format';
 
 // ─── The reconciliation invariant ─────────────────────────────────────────────
@@ -18,6 +23,32 @@ test('FedEx GS1/"96" barcode collapses to the embedded 12-digit human number', (
   assert.equal(extractCanonicalTracking(pasted), pasted);
   // The reconciliation invariant: both sides converge.
   assert.equal(extractCanonicalTracking(scanned), extractCanonicalTracking(pasted));
+});
+
+test('incident STN 382780447243: GS1 gun read exact-equals sheet short after unwrap', () => {
+  // Packer scanned full GS1; sheet/transfer stored the short FedEx Express STN.
+  const short = '382780447243';
+  const scanned = `9632001960200651497200${short}`; // valid ^96\d{31,32}$ envelope
+  assert.equal(scanned.length, 34);
+  assert.equal(extractCanonicalTracking(scanned), short);
+  assert.equal(extractCanonicalTracking(short), short);
+  assert.equal(extractCanonicalTracking(scanned), extractCanonicalTracking(short));
+  // last8 remains a safety net (human is the GS1 tail) — exact is stronger.
+  assert.equal(last8FromStoredTracking(scanned), last8FromStoredTracking(short));
+  assert.equal(last8FromStoredTracking(short), '80447243');
+});
+
+test('orderTrackingMatchKeys: GS1 and short FedEx share exact · key18 · last8', () => {
+  const short = '382780447243';
+  const gs1 = `9632001960200651497200${short}`;
+  const fromGs1 = orderTrackingMatchKeys(gs1);
+  const fromShort = orderTrackingMatchKeys(short);
+  assert.deepEqual(fromGs1, fromShort);
+  assert.equal(fromGs1.exact, short);
+  assert.equal(fromGs1.last8, '80447243');
+  assert.equal(fromGs1.key18, short); // 12-digit human < 18 → whole string
+  // Raw GS1 key18 must NOT be used for the ladder (would miss the short STN).
+  assert.notEqual(normalizeTrackingKey18(gs1), fromGs1.key18);
 });
 
 test('the scanned-vs-pasted last-8 happens to agree here, but full equality is stronger', () => {
@@ -108,4 +139,66 @@ test('a UPS 1Z label is never mistaken for a FedEx GS1 envelope', () => {
 test('only the 96-prefixed GS1-34 FedEx envelope collapses to its human number', () => {
   const scanned = '9632001960200651497200382141152045'; // 34-digit, 96-prefixed
   assert.equal(stripFedexConcatPrefix(scanned), '382141152045');
+});
+
+// ─── Open URL resolution (stored carrier → detect → official deep link) ──────
+
+test('resolveTrackingOpenUrl: UPS 1Z detects to UPS track URL', () => {
+  const ups = '1Z999AA10123456784';
+  const url = resolveTrackingOpenUrl(ups);
+  assert.ok(url);
+  assert.match(url!, /ups\.com/i);
+  assert.ok(url!.includes(ups));
+});
+
+test('resolveTrackingOpenUrl: FedEx 12-digit detects to FedEx track URL', () => {
+  const fedex = '382141152045';
+  const url = resolveTrackingOpenUrl(fedex);
+  assert.ok(url);
+  assert.match(url!, /fedex\.com/i);
+  assert.ok(url!.includes(fedex));
+});
+
+test('resolveTrackingOpenUrl: USPS 22-digit detects to USPS track URL', () => {
+  const usps = '9400111899223344556677';
+  const url = resolveTrackingOpenUrl(usps);
+  assert.ok(url);
+  assert.match(url!, /usps\.com/i);
+  assert.ok(url!.includes(usps));
+});
+
+test('resolveTrackingOpenUrl: knownCarrier wins over a conflicting pattern', () => {
+  // A UPS-shaped number forced to FedEx via stored label carrier.
+  const upsShaped = '1Z999AA10123456784';
+  const url = resolveTrackingOpenUrl(upsShaped, 'FedEx');
+  assert.ok(url);
+  assert.match(url!, /fedex\.com/i);
+  assert.doesNotMatch(url!, /ups\.com/i);
+});
+
+test('resolveTrackingOpenUrl: unrecognized / empty → null (never Google)', () => {
+  assert.equal(resolveTrackingOpenUrl(''), null);
+  assert.equal(resolveTrackingOpenUrl('N/A'), null);
+  assert.equal(resolveTrackingOpenUrl('NOTATRACKING'), null);
+  assert.equal(resolveTrackingOpenUrl('NOTATRACKING', 'MysteryCarrier'), null);
+  assert.equal(resolveTrackingOpenUrl('NOTATRACKING', ''), null);
+});
+
+test('getTrackingUrlByCarrier: empty carrier string returns null (no Google)', () => {
+  assert.equal(getTrackingUrlByCarrier('1Z999AA10123456784', ''), null);
+  assert.equal(getTrackingUrlByCarrier('1Z999AA10123456784', 'Unknown'), null);
+});
+
+test('getTrackingUrl / byCarrier: OnTrac · LaserShip · GSO map to official hosts', () => {
+  const ontrac = 'C12345678901234';
+  assert.match(getTrackingUrl(ontrac)!, /ontrac\.com/i);
+  assert.match(getTrackingUrlByCarrier(ontrac, 'OnTrac')!, /ontrac\.com/i);
+
+  const lasership = '1LS123456789012';
+  assert.match(getTrackingUrl(lasership)!, /lasership\.com/i);
+  assert.match(getTrackingUrlByCarrier(lasership, 'LaserShip')!, /lasership\.com/i);
+
+  const gso = 'AB12345678901234';
+  assert.match(getTrackingUrl(gso)!, /gls-us\.com/i);
+  assert.match(getTrackingUrlByCarrier(gso, 'GSO')!, /gls-us\.com/i);
 });

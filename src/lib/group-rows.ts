@@ -3,9 +3,10 @@
  * paint in", and the one place fold identity is minted.
  *
  * `groupRowsBy` has always answered the small half of that question: fold a flat
- * list into one summary row per PO / shipment / order (see
- * {@link CollapsibleGroupRow}). This module now also names the *whole* shape a
- * grouped ops surface renders — **bands → folds → rows** — because two separate
+ * list into one group per PO / shipment / order for ordering. Sheet list bodies
+ * render those groups as **flat leaves**; parent rollups live on the drill
+ * parent map. This module now also names the *whole* shape a
+ * grouped ops surface renders — **bands → groups → rows** — because two separate
  * concerns kept re-deriving it by hand and drifting:
  *
  *  - `useOrdersQueueRows` and `useReceivingGrouping` each hand-rolled a nested
@@ -201,11 +202,11 @@ export function flattenRenderOrder<T>(order: GroupedRenderOrder<T>): T[] {
  *   `groupId != null && collapsedGroups.has(groupId) && groupIndex > 0`, so index
  *   `0` is still a rendered, id-keyed row.
  * - `'summary-only'` — **every** member is unmounted and a *derived* summary takes
- *   their place. `QueueGroupRow` works this way: a group of >1 renders
- *   `CollapsibleGroupRow` with `summary={<OrderGroupSummary rows={group.rows}/>}`,
- *   and `CollapsibleGroupRow` renders children only `{isOpen ? … : null}`. The
- *   summary is chrome aggregated from the whole group — it carries no single
- *   record's id.
+ *   their place. Historically `QueueGroupRow` did this with `CollapsibleGroupRow`
+ *   + an order summary row; sheet grids are now flat leaves and parent rollups
+ *   live only on the drill parent map. The mode remains for
+ *   `flattenVisibleRenderOrder` consumers that still model collapsed chrome
+ *   with no record id.
  *
  * Getting this wrong is not cosmetic. The two consumers this function exists for —
  * scroll-into-view and roving focus — look a row up **by id**. Returning a
@@ -226,9 +227,8 @@ export type CollapsedFoldRendering = 'leading-row' | 'summary-only';
  * up by autocomplete.
  *
  * A group with exactly one row is **always** visible, in both renderings: a
- * singleton renders its leaf directly with no summary row and no chevron
- * (`QueueGroupRow` returns `renderRow(group.rows[0])` before it ever reaches
- * `CollapsibleGroupRow`), so it can never *be* collapsed — a fold key naming one is
+ * singleton has always rendered its leaf directly with no summary row and no
+ * chevron, so it can never *be* collapsed — a fold key naming one is
  * dead state. Dropping a singleton because its inert key sits in the set would make
  * a record unreachable with no affordance to bring it back.
  *

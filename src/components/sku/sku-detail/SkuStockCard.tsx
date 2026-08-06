@@ -7,7 +7,7 @@ import type { SkuDetailController } from './useSkuDetailView';
 /** Stock quantity card — quick +/- adjust, bulk delta, or set-exact mode. */
 export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
   return (
-    <div className="rounded-xl bg-surface-card border border-border-soft p-4">
+    <div className="rounded-none bg-surface-card border border-border-soft p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className={sectionLabel}>Stock Quantity</h2>
         <Button

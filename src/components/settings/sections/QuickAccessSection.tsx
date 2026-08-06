@@ -93,7 +93,7 @@ export function QuickAccessSection() {
         </p>
       </header>
 
-      <div className="divide-y divide-border-hairline rounded-2xl border border-border-soft bg-surface-card px-5 shadow-sm">
+      <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card px-5 shadow-sm">
         <ToggleRow
           label="Show quick access button"
           description="The ⚡ floating button in the bottom-right corner."
@@ -102,7 +102,7 @@ export function QuickAccessSection() {
         />
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-2 text-sm font-semibold text-text-default">Optional actions</h3>
         <p className="mb-2 text-role-caption text-text-soft">Shown at the bottom of the account menu when enabled.</p>
         <div className="divide-y divide-border-hairline">
@@ -120,7 +120,7 @@ export function QuickAccessSection() {
           />
         </div>
 
-        <div className="rounded-2xl border border-border-soft bg-surface-card">
+        <div className="rounded-none border border-border-soft bg-surface-card">
           <div className="border-b border-border-hairline px-4 pb-1 pt-3">
             <h3 className="text-role-caption font-semibold uppercase tracking-wider text-text-soft">FAB appearance</h3>
           </div>
@@ -135,7 +135,7 @@ export function QuickAccessSection() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <div className="mb-3 flex items-baseline justify-between">
           <h3 className="text-sm font-semibold text-text-default">Pinned pages</h3>
           <span className="text-role-caption font-medium text-text-soft">
@@ -149,7 +149,7 @@ export function QuickAccessSection() {
         </p>
 
         {settings.pinned.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border-default bg-surface-canvas px-4 py-6 text-center text-xs text-text-soft">
+          <p className="rounded-none border border-dashed border-border-default bg-surface-canvas px-4 py-6 text-center text-xs text-text-soft">
             No pinned pages. Use the <span className="font-semibold text-blue-600">+</span> pin
             control in the global header, or add a URL below.
           </p>
@@ -158,7 +158,7 @@ export function QuickAccessSection() {
             {settings.pinned.map((p, index) => (
               <li
                 key={p.id}
-                className="flex items-center gap-2 rounded-xl border border-border-soft px-3 py-2"
+                className="flex items-center gap-2 rounded-none border border-border-soft px-3 py-2"
               >
                 <div className="flex shrink-0 flex-col">
                   <IconButton

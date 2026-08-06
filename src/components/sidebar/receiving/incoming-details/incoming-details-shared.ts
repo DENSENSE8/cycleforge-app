@@ -166,6 +166,13 @@ export interface IncomingDetailsPanelProps {
    */
   inboundSourceType?: string | null;
   inboundSourceOrderId?: string | null;
+  /**
+   * Unbox/Triage carton focus. When set, the details API prefers this
+   * receiving row for notes / shipment / receive_events (multi-box POs).
+   */
+  focusReceivingId?: number | null;
+  /** Active Unbox line — PoTab highlights the matching line_items row. */
+  focusReceivingLineId?: number | null;
   onClose: () => void;
 }
 

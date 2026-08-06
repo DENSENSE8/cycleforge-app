@@ -28,8 +28,8 @@ import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-t
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { DashboardScrollShell, useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
 import { Panel } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
@@ -277,7 +277,7 @@ export function PhotoLibraryPage() {
 
   const metaLine = query.isLoading
     ? 'Loading…'
-    : `${photos.length} photo${photos.length === 1 ? '' : 's'} in view · ${subtitle}`;
+    : `Photos ${photos.length} · ${subtitle}`;
 
   const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
     const res = await fetch(url);
@@ -349,7 +349,7 @@ export function PhotoLibraryPage() {
         ? [
             {
               key: 'zendesk',
-              label: 'Attach to support ticket',
+              label: 'Attach to ticket',
               icon: <TicketHelp className="h-3.5 w-3.5" />,
               onClick: () =>
                 setClaimPhotos([
@@ -466,7 +466,7 @@ export function PhotoLibraryPage() {
             {
               // Attach the selection to a support ticket (new or existing).
               key: 'zendesk',
-              label: 'Add photos to a ticket',
+              label: 'Add photos',
               icon: <TicketHelp className="h-4 w-4" />,
               tone: 'blue' as const,
               primary: true,
@@ -571,7 +571,7 @@ export function PhotoLibraryPage() {
     <RightPaneOverlayHost className="flex h-full min-h-0 flex-col">
     <DashboardScrollShell
       chrome={
-        <div className={WORKBENCH_CHROME_COLUMN}>
+        <div className={cn(WORKBENCH_SHEET_CHROME, 'px-3 py-2')}>
           {selectionActive ? (
             <PhotoLibraryToolbar
               rows={selectedPhotos}
@@ -590,7 +590,7 @@ export function PhotoLibraryPage() {
         </div>
       }
     >
-      <div className={cn(WORKBENCH_BODY_COLUMN, 'pt-0')}>
+      <div className={cn(WORKBENCH_SHEET_HOST, 'px-3 pb-6 pt-0')}>
         {!selectionActive ? (
           <PhotoLibraryHeader
             breadcrumb={
@@ -668,7 +668,7 @@ export function PhotoLibraryPage() {
             />
           ) : !query.isLoading && photos.length > 0 ? (
             <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
-              {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
+              {`Photos ${photos.length}`}
             </p>
           ) : null}
         </Panel>

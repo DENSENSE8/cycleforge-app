@@ -22,8 +22,9 @@ import {
 } from '@/lib/nav/spine-section-accent';
 import {
   SPINE_SECTIONS,
-  STATION_SUBGROUPS,
+  getStationSubgroupDef,
   spineSectionIdForPage,
+  stationSubgroupMembers,
   type SidebarPageNav,
   type SpineSectionId,
   type StationSubgroupId,
@@ -115,11 +116,6 @@ interface SidebarNavListProps {
 
 function pagesForSection(pages: SidebarPageNav[], sectionId: SpineSectionId): SidebarPageNav[] {
   return pages.filter((p) => spineSectionIdForPage(p) === sectionId);
-}
-
-function subgroupDef(id: StationSubgroupId | undefined) {
-  if (!id) return null;
-  return STATION_SUBGROUPS.find((g) => g.id === id) ?? null;
 }
 
 // There is deliberately NO local matcher here. A query switches the body to the
@@ -326,7 +322,7 @@ export function SidebarNavList({
           onClick={opts.onClick}
           onMouseEnter={opts.onMouseEnter}
           className={cn(
-            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 pl-1 pr-2 text-left transition-colors duration-150',
+            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-none py-1 pl-1 pr-2 text-left transition-colors duration-150',
             opts.active ? accent.childActive : accent.childIdle,
           )}
         >
@@ -395,7 +391,7 @@ export function SidebarNavList({
         aria-label={opts.ariaLabel}
         aria-expanded={opts.disclosure ? opts.disclosure.expanded : undefined}
         className={cn(
-          'ds-raw-button group flex h-9 w-full items-center gap-2 rounded-lg px-2 text-left transition-colors duration-150',
+          'ds-raw-button group flex h-9 w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150',
           opts.active ? accent.activePage : accent.idlePage,
         )}
       >
@@ -590,10 +586,8 @@ export function SidebarNavList({
         if (subgroup === lastSubgroup) continue;
         lastSubgroup = subgroup;
 
-        const def = subgroupDef(subgroup);
-        const members = pages.filter(
-          (p) => p.kind === 'station' && p.stationSubgroup === subgroup,
-        );
+        const def = getStationSubgroupDef(subgroup);
+        const members = stationSubgroupMembers(subgroup, pages);
         const subgroupActive = members.some((m) => m.id === activePage.id);
         const firstMember = members[0];
         const subgroupExpanded = subgroupActive || expandedSubgroups.has(subgroup);
@@ -671,7 +665,7 @@ export function SidebarNavList({
           type="button"
           onClick={() => onStationsDrillChange(false)}
           aria-label="Back to pages"
-          className="ds-raw-button mb-1 grid h-9 w-full grid-cols-[1.25rem_1fr_1.25rem] items-center gap-2 rounded-lg px-2 transition-colors duration-150 hover:bg-surface-hover"
+          className="ds-raw-button mb-1 grid h-9 w-full grid-cols-[1.25rem_1fr_1.25rem] items-center gap-2 rounded-none px-2 transition-colors duration-150 hover:bg-surface-hover"
         >
           <ChevronLeft className="h-3.5 w-3.5 shrink-0 justify-self-start text-text-muted" aria-hidden />
           <span className="min-w-0 truncate text-center text-role-body font-semibold leading-tight">
@@ -768,7 +762,7 @@ export function SidebarNavList({
             if (page) onRowHover?.(page);
           }}
           className={cn(
-            'ds-raw-button group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors duration-150',
+            'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 py-1.5 text-left transition-colors duration-150',
             isCursor ? accent.activePage : accent.idlePage,
           )}
         >
@@ -839,7 +833,7 @@ export function SidebarNavList({
           to answer, and `.claude/rules/verify.md` requires that answer to come
           from the real runner — so the port names itself rather than making a
           spec guess at a class chain that will drift. */}
-      <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-1">
+      <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-0">
         <AnimatePresence mode="wait" initial={false}>
           {/* Keyed on the MODE, not the query: typing must update the list in
               place, never replay the crossfade on every keystroke. The swap
@@ -874,7 +868,7 @@ export function SidebarNavList({
           density="row"
         />
         {bottomPages.length > 0 ? (
-          <div className="border-t border-border-soft p-1">
+          <div className="border-t border-border-soft p-0">
             {bottomPages.map((page) => renderRow(page, 'bottom', neutralAccent, { pinned: true }))}
           </div>
         ) : null}

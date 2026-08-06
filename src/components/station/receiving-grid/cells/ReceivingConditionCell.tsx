@@ -1,7 +1,8 @@
 'use client';
 
+import { GridCellDash } from '@/components/ui/grid-cells';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
-import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { isEmptyMetaDash } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
 import { ReceivingChipValue } from './ReceivingChipValue';
 import {
@@ -14,20 +15,24 @@ import {
 export function ReceivingConditionCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { condGrade, conditionLabel } = ctx;
   const chip = receivingCellWantsChip(col, ctx);
+  const empty = isEmptyMetaDash(conditionLabel);
   return (
     <div data-col="condition" className={receivingDataCellClass(col, rule, ctx)}
       style={receivingDataCellHighlightStyle(col, ctx)}>
-      <ReceivingChipValue enabled={chip}>
-        <span
-          className={cn(
-            'min-w-0 truncate text-role-eyebrow uppercase',
-            conditionGradeTextClass(condGrade),
-            conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
-          )}
-        >
-          {conditionLabel}
-        </span>
-      </ReceivingChipValue>
+      {empty ? (
+        <GridCellDash />
+      ) : (
+        <ReceivingChipValue enabled={chip}>
+          <span
+            className={cn(
+              'min-w-0 truncate text-role-eyebrow uppercase',
+              conditionGradeTextClass(condGrade),
+            )}
+          >
+            {conditionLabel}
+          </span>
+        </ReceivingChipValue>
+      )}
     </div>
   );
 }

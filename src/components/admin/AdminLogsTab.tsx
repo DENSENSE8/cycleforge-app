@@ -150,7 +150,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
           </div>
 
           {(event.detail_value || event.detail_route) && (
-            <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+            <div className="rounded-none border border-border-soft bg-surface-card p-4">
               <p className="text-role-micro uppercase tracking-widest text-text-soft">Detail</p>
               {event.detail_value ? (
                 <p className="mt-1 break-words text-sm text-text-default">{event.detail_value}</p>
@@ -167,7 +167,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
           )}
 
           {event.notes ? (
-            <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+            <div className="rounded-none border border-border-soft bg-surface-card p-4">
               <p className="text-role-micro uppercase tracking-widest text-text-soft">Notes</p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm text-text-default">
                 {event.notes}
@@ -183,7 +183,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
           )}
 
           {event.metadata && Object.keys(event.metadata).length > 0 ? (
-            <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+            <div className="rounded-none border border-border-soft bg-surface-card p-4">
               <p className="text-role-micro uppercase tracking-widest text-text-soft">Metadata</p>
               <pre className="mt-2 overflow-x-auto rounded-lg bg-surface-canvas p-3 text-role-caption text-text-default">
                 {JSON.stringify(event.metadata, null, 2)}
@@ -198,7 +198,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
 function DetailCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-3">
+    <div className="rounded-none border border-border-soft bg-surface-card p-3">
       <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
       <div className="mt-1 break-words text-sm font-semibold text-text-default">{value}</div>
     </div>

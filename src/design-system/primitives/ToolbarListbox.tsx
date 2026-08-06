@@ -32,7 +32,7 @@ import { Check } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 
 /** `Popover` className for a toolbar listbox panel — one panel geometry. */
-export const TOOLBAR_LISTBOX_PANEL_CLASS = 'min-w-[11rem] rounded-lg p-0.5 shadow-md';
+export const TOOLBAR_LISTBOX_PANEL_CLASS = 'min-w-[11rem] rounded-none p-0.5 shadow-md';
 
 /**
  * Roving focus + Escape for a listbox option. Options are located by
@@ -122,7 +122,7 @@ export function ToolbarListboxOption({
         // `role-caption` (12px sans), not `role-micro`: a menu option is CONTENT
         // the operator reads, not the dense chrome the condensed 10px cut exists
         // for. One role for all three menus — never a per-menu size.
-        'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors',
+        'flex w-full items-center gap-2 rounded-none px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors',
         selected
           ? 'text-text-default hover:bg-surface-sunken'
           : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',

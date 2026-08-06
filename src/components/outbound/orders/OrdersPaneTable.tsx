@@ -43,6 +43,7 @@ export function OrdersPaneTable({
   onActivate,
   selectMode = false,
   className,
+  columnTriggerPortalTarget = null,
 }: {
   paneId: OrdersComparePaneId;
   view: DashboardOrderView;
@@ -50,6 +51,8 @@ export function OrdersPaneTable({
   onActivate: () => void;
   selectMode?: boolean;
   className?: string;
+  /** Band-3 ▦ host — host passes only for the active pane. */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }) {
   const scope = `orders:compare:${paneId}`;
   const { searchQuery, setSearch } = useDashboardSearchController();
@@ -78,11 +81,20 @@ export function OrdersPaneTable({
             selectionScope={scope}
             searchQuery={searchQuery}
             onClearSearch={() => setSearch('')}
+            columnTriggerPortalTarget={columnTriggerPortalTarget}
           />
         ) : view === 'packed' ? (
-          <PackedOrdersTable selectMode={selectMode} railSelection={false} />
+          <PackedOrdersTable
+            selectMode={selectMode}
+            railSelection={false}
+            toolbarPortalTarget={columnTriggerPortalTarget}
+          />
         ) : (
-          <DashboardShippedTable selectMode={selectMode} railSelection={false} />
+          <DashboardShippedTable
+            selectMode={selectMode}
+            railSelection={false}
+            toolbarPortalTarget={columnTriggerPortalTarget}
+          />
         )}
       </div>
     </div>
@@ -95,12 +107,14 @@ function UnshippedComparePane({
   selectionScope,
   searchQuery,
   onClearSearch,
+  columnTriggerPortalTarget = null,
 }: {
   view: 'unshipped' | 'tested';
   selectMode: boolean;
   selectionScope: string;
   searchQuery: string;
   onClearSearch: () => void;
+  columnTriggerPortalTarget?: HTMLElement | null;
 }) {
   const { data, isPending } = useQuery(unshippedOrdersQuery());
   const records = useMemo(() => {
@@ -125,6 +139,7 @@ function UnshippedComparePane({
       railSelection={false}
       queueMode="fulfillment"
       ariaLabel={`${DASHBOARD_ORDER_VIEW_LABEL[view]} compare pane`}
+      columnTriggerPortalTarget={columnTriggerPortalTarget}
     />
   );
 }

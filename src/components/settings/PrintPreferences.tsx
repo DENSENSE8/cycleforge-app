@@ -58,7 +58,7 @@ function SilentPrintToggle() {
     setSilentPrintEnabled(next);
   };
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3">
+    <div className="mb-4 flex items-center gap-3 rounded-none border border-border-soft bg-surface-canvas px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-text-default">Silent printing</div>
         <p className="mt-0.5 text-xs text-text-soft">
@@ -81,7 +81,7 @@ export function PrintPreferences({ onClose }: PrintPreferencesProps) {
   const webAvail = isBrowserPrintSupported();
 
   return (
-    <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+    <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h3 className="text-base font-semibold text-text-default">Print preferences</h3>
@@ -103,7 +103,7 @@ export function PrintPreferences({ onClose }: PrintPreferencesProps) {
       {webAvail ? (
         <BrowserProfiles />
       ) : (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="rounded-none border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Silent printing isn&rsquo;t available in this browser.</p>
           <p className="mt-1 text-amber-800">
             Use Chrome or Edge to pair wired label printers on Windows or macOS.
@@ -182,7 +182,7 @@ function BrowserProfiles() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-xs text-text-muted">
+      <div className="rounded-none border border-border-soft bg-surface-canvas px-3 py-2 text-xs text-text-muted">
         Pair a printer for each role. Labels &amp; receipts print silently from the browser (raw
         TSPL/ZPL/ESC-POS). Paper/office printers use the browser print dialog.
         <span className="mt-1 block text-text-soft">
@@ -192,7 +192,7 @@ function BrowserProfiles() {
       </div>
 
       {profiles.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border-default bg-surface-card px-3 py-6 text-center text-sm text-text-soft">
+        <p className="rounded-none border border-dashed border-border-default bg-surface-card px-3 py-6 text-center text-sm text-text-soft">
           No printers paired yet.
         </p>
       ) : (
@@ -277,7 +277,7 @@ function ProfileCard({
   }
 
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-3">
+    <div className="rounded-none border border-border-soft bg-surface-card p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <input
           value={profile.name}

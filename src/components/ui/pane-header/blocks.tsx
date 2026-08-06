@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
+import { Fragment, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
 import {
   ArrowRightToLine,
   ChevronDown,
@@ -346,6 +346,11 @@ export interface PaneHeaderActionBarAction {
   title?: string;
   /** Override the rendered aria-label. Defaults to `label`. */
   ariaLabel?: string;
+  /**
+   * Hairline before this action — Display | Edit topic groups on History peek
+   * (`detail:history` golden). Prefer this over a second ActionBar + local rule.
+   */
+  dividerBefore?: boolean;
 }
 
 interface PaneHeaderActionBarProps {
@@ -425,29 +430,36 @@ export function PaneHeaderActionBar({
     <>
       {leftSlot}
       {actions.map((action) => (
-        <HoverTooltip
-          key={action.key}
-          label={action.title ?? renderText(action.label) ?? action.key}
-          asChild
-        >
-          {/* ds-raw-button: compact 28px toolbar action that is icon-only OR icon+label and wraps the icon in a per-action toneClassName span — Button's icon-box sizing can't preserve that */}
-          <button
-            type="button"
-            onClick={action.onClick}
-            disabled={action.disabled}
-            aria-label={action.ariaLabel ?? renderText(action.label) ?? action.key}
-            aria-pressed={action.active}
-            className={cn(
-              PANE_HEADER_ACTION_BTN_CLASS,
-              iconOnly && 'h-7 w-7 justify-center gap-0 px-0',
-              action.active &&
-                'bg-surface-sunken text-text-default ring-1 ring-inset ring-border-default hover:bg-surface-sunken',
-            )}
+        <Fragment key={action.key}>
+          {action.dividerBefore ? (
+            <div
+              className="mx-0.5 h-4 w-px shrink-0 bg-border-hairline"
+              aria-hidden
+            />
+          ) : null}
+          <HoverTooltip
+            label={action.title ?? renderText(action.label) ?? action.key}
+            asChild
           >
-            <span className={cn('inline-flex items-center', action.toneClassName)}>{action.icon}</span>
-            {iconOnly ? null : action.label}
-          </button>
-        </HoverTooltip>
+            {/* ds-raw-button: compact 28px toolbar action that is icon-only OR icon+label and wraps the icon in a per-action toneClassName span — Button's icon-box sizing can't preserve that */}
+            <button
+              type="button"
+              onClick={action.onClick}
+              disabled={action.disabled}
+              aria-label={action.ariaLabel ?? renderText(action.label) ?? action.key}
+              aria-pressed={action.active}
+              className={cn(
+                PANE_HEADER_ACTION_BTN_CLASS,
+                iconOnly && 'h-7 w-7 justify-center gap-0 px-0',
+                action.active &&
+                  'bg-surface-sunken text-text-default ring-1 ring-inset ring-border-default hover:bg-surface-sunken',
+              )}
+            >
+              <span className={cn('inline-flex items-center', action.toneClassName)}>{action.icon}</span>
+              {iconOnly ? null : action.label}
+            </button>
+          </HoverTooltip>
+        </Fragment>
       ))}
       {status != null ? (
         <span

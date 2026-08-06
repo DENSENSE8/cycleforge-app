@@ -41,13 +41,15 @@
  *    that a barrel pulls than to one a page imports directly.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RotateCcw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { ColorSwatchPicker } from '@/components/ui/ColorSwatchPicker';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
 import { useGridFields } from '@/design-system/components/grid/useGridColumnVisibility';
+import { isGridColumnResizable } from '@/design-system/components/grid/grid-column-editability';
+import { gridColVar } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import {
   GRID_HIGHLIGHT_PRESETS,
@@ -57,12 +59,27 @@ import {
   type GridColumnCellMode,
   type GridColumnTextEmphasis,
 } from '@/design-system/components/grid/grid-column-display';
+import {
+  gridTrackRemToPx,
+  resolveGridColumnMinTrackRem,
+} from '@/design-system/components/grid/grid-column-type-track';
 import { Button } from '@/design-system/primitives/Button';
 import { Switch } from '@/design-system/primitives/Switch';
 import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import type { TableId } from '@/lib/tables/table-columns';
+import {
+  COLUMN_WIDTH_MAX,
+  COLUMN_WIDTH_MIN,
+  clampColumnWidth,
+  resolveColumnWidthClamp,
+} from './useColumnWidths';
+import { useGridColumnWidthBounds } from './useGridColumnWidthBounds';
 import { useGridColumnWidths } from './useGridColumnWidths';
 import { cn } from '@/utils/_cn';
+
+/** Horizontal drag past this many px becomes a Figma-style scrub (not a click). */
+const SCRUB_ACTIVATE_PX = 3;
 
 const CELL_OPTS: { id: GridColumnCellMode; label: string }[] = [
   { id: 'default', label: 'Default' },
@@ -82,24 +99,35 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   columns,
   /** Prefill selection (e.g. Fields → Add a column opens on first hidden). */
   initialHideKey = null,
+  /**
+   * Resolve this card's `[data-cf-grid]` so Width scrubbing can live-mutate
+   * `--cf-col-*` the same way {@link ColumnResizeHandle} does. Absent → numeric
+   * commits still persist; live preview is skipped.
+   */
+  getGridSurface = null,
 }: {
   open: boolean;
   onClose: () => void;
   tableId: TableId;
   columns: readonly C[];
   initialHideKey?: string | null;
+  getGridSurface?: (() => HTMLElement | null) | null;
 }) {
   const { fields, setFieldVisible, reset, dirtyCount } = useGridFields(tableId, columns);
-  // A drag-resized width is part of this surface's display delta, so "Reset to
-  // default" must clear it too — otherwise Reset leaves the grid visibly
-  // non-default and the control quietly lies about what it did.
-  const { widths, resetWidths } = useGridColumnWidths(tableId);
+  // A drag-resized width / staff min-max clamp is part of this surface's display
+  // delta, so "Reset to default" must clear them too — otherwise Reset leaves
+  // the grid visibly non-default and the control quietly lies about what it did.
+  const { widths, setWidth, clearWidth, resetWidths } = useGridColumnWidths(tableId);
+  const { boundsByKey, setBound, clearBounds, resetBounds } =
+    useGridColumnWidthBounds(tableId);
   const widthCount = Object.keys(widths).length;
+  const boundsCount = Object.keys(boundsByKey).length;
   const resetAll = () => {
     reset();
     if (widthCount > 0) resetWidths();
+    if (boundsCount > 0) resetBounds();
   };
-  const dirtyTotal = dirtyCount + widthCount;
+  const dirtyTotal = dirtyCount + widthCount + boundsCount;
   const { displayByKey, setHighlight, setCellMode, setTextEmphasis } =
     useGridColumnDisplay(tableId);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -133,6 +161,13 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   if (!open) return null;
 
   const selected = fields.find((f) => f.key === selectedKey) ?? null;
+  const selectedColumn =
+    selectedKey != null
+      ? (columns.find((c) => (c.hideKey ?? c.key) === selectedKey) ?? null)
+      : null;
+  const widthKey = selectedColumn?.key ?? selectedKey;
+  const resizable =
+    selectedColumn != null ? isGridColumnResizable(selectedColumn) : false;
   const pref = selectedKey ? displayByKey[selectedKey] : undefined;
   const highlight = normalizeGridColumnHighlight(pref?.highlight);
   const cellMode = pref?.cell ?? 'default';
@@ -211,6 +246,56 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
                       aria-label={`Show ${selected.label}`}
                     />
                   </section>
+
+                  {resizable && widthKey && selectedColumn ? (
+                    <ColumnWidthSection
+                      column={selectedColumn}
+                      widthKey={widthKey}
+                      widthPx={widths[widthKey]}
+                      bound={boundsByKey[widthKey]}
+                      getGridSurface={getGridSurface}
+                      onSetWidth={(px) => {
+                        const minTrackRem = resolveGridColumnMinTrackRem(selectedColumn);
+                        const typedFloorPx =
+                          minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+                        setWidth(widthKey, px, { typedFloorPx });
+                      }}
+                      onClearWidth={() => {
+                        getGridSurface?.()?.style.removeProperty(gridColVar(widthKey));
+                        clearWidth(widthKey);
+                      }}
+                      onSetBound={(patch) => {
+                        const minTrackRem = resolveGridColumnMinTrackRem(selectedColumn);
+                        const typedFloorPx =
+                          minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+                        const prev = boundsByKey[widthKey];
+                        const nextMin =
+                          'min' in patch ? (patch.min ?? undefined) : prev?.min;
+                        const nextMax =
+                          'max' in patch ? (patch.max ?? undefined) : prev?.max;
+                        setBound(widthKey, patch);
+                        // Keep current width inside the new clamp when present.
+                        const cur = widths[widthKey];
+                        if (cur != null) {
+                          const { minPx, maxPx } = resolveColumnWidthClamp({
+                            typedFloorPx,
+                            staffMin: nextMin,
+                            staffMax: nextMax,
+                          });
+                          const clamped = clampColumnWidth(cur, minPx, maxPx);
+                          if (clamped !== cur) {
+                            const surface = getGridSurface?.() ?? null;
+                            surface?.style.setProperty(
+                              gridColVar(widthKey),
+                              `${clamped}px`,
+                            );
+                            setWidth(widthKey, clamped, { typedFloorPx });
+                          }
+                        }
+                      }}
+                      onClearBounds={() => clearBounds(widthKey)}
+                    />
+                  ) : null}
 
                   <section className="space-y-2">
                     <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
@@ -324,5 +409,340 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
         </div>
       </div>
     </DetailStackRailRegistrar>
+  );
+}
+
+function measureRenderedColWidth(
+  surface: HTMLElement | null,
+  colKey: string,
+): number | null {
+  if (!surface) return null;
+  const cell = surface.querySelector<HTMLElement>(
+    `[data-col="${CSS.escape(colKey)}"]`,
+  );
+  if (!cell) return null;
+  const w = cell.getBoundingClientRect().width;
+  return Number.isFinite(w) && w > 0 ? w : null;
+}
+
+function ColumnWidthSection<C extends LedgerGridColumnModel>({
+  column,
+  widthKey,
+  widthPx,
+  bound,
+  getGridSurface,
+  onSetWidth,
+  onClearWidth,
+  onSetBound,
+  onClearBounds,
+}: {
+  column: C;
+  widthKey: string;
+  widthPx?: number;
+  bound?: { min?: number; max?: number };
+  getGridSurface?: (() => HTMLElement | null) | null;
+  onSetWidth: (px: number) => void;
+  onClearWidth: () => void;
+  onSetBound: (patch: { min?: number | null; max?: number | null }) => void;
+  onClearBounds: () => void;
+}) {
+  const minTrackRem = resolveGridColumnMinTrackRem(column);
+  const typedFloorPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+  const { minPx: effectiveMin, maxPx: effectiveMax } = resolveColumnWidthClamp({
+    typedFloorPx,
+    staffMin: bound?.min,
+    staffMax: bound?.max,
+  });
+  const hasBound = bound?.min != null || bound?.max != null;
+  const hasWidth = widthPx != null;
+
+  /** Live-paint the grid track (no React render) — same path as header drag. */
+  const paintLiveWidth = useCallback(
+    (px: number) => {
+      const surface = getGridSurface?.() ?? null;
+      surface?.style.setProperty(gridColVar(widthKey), `${px}px`);
+    },
+    [getGridSurface, widthKey],
+  );
+
+  const resolveStartWidth = useCallback(() => {
+    if (widthPx != null) return widthPx;
+    const measured = measureRenderedColWidth(getGridSurface?.() ?? null, widthKey);
+    if (measured != null) return Math.round(measured);
+    return effectiveMin;
+  }, [widthPx, getGridSurface, widthKey, effectiveMin]);
+
+  return (
+    <section className="space-y-2" data-column-width-section={widthKey}>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          Width
+        </h3>
+        {hasWidth || hasBound ? (
+          <button
+            type="button"
+            className={cn(
+              'ds-raw-button text-role-micro font-semibold uppercase tracking-widest text-text-muted hover:text-text-default',
+              focusRing('control', 'accent'),
+            )}
+            onClick={() => {
+              if (hasWidth) onClearWidth();
+              if (hasBound) onClearBounds();
+            }}
+          >
+            Use default
+          </button>
+        ) : null}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <ColumnWidthPxField
+          label="Width"
+          value={widthPx}
+          placeholder="Default"
+          min={effectiveMin}
+          max={effectiveMax}
+          resolveStartValue={resolveStartWidth}
+          onLiveChange={paintLiveWidth}
+          onCommit={onSetWidth}
+          onClear={hasWidth ? onClearWidth : undefined}
+          ariaLabel={`${column.label ?? widthKey} width`}
+          scrubHint
+        />
+        <ColumnWidthPxField
+          label="Min"
+          value={bound?.min}
+          placeholder={String(typedFloorPx ?? COLUMN_WIDTH_MIN)}
+          min={COLUMN_WIDTH_MIN}
+          max={effectiveMax}
+          resolveStartValue={() => bound?.min ?? typedFloorPx ?? COLUMN_WIDTH_MIN}
+          onCommit={(px) => onSetBound({ min: px })}
+          onClear={bound?.min != null ? () => onSetBound({ min: null }) : undefined}
+          ariaLabel={`${column.label ?? widthKey} min width`}
+          scrubHint
+        />
+        <ColumnWidthPxField
+          label="Max"
+          value={bound?.max}
+          placeholder={String(COLUMN_WIDTH_MAX)}
+          min={effectiveMin}
+          max={2000}
+          resolveStartValue={() => bound?.max ?? COLUMN_WIDTH_MAX}
+          onCommit={(px) => onSetBound({ max: px })}
+          onClear={bound?.max != null ? () => onSetBound({ max: null }) : undefined}
+          ariaLabel={`${column.label ?? widthKey} max width`}
+          scrubHint
+        />
+      </div>
+      <p className="text-role-micro text-text-soft">
+        px · drag label or value to resize · same clamps as the header grip
+      </p>
+    </section>
+  );
+}
+
+function ColumnWidthPxField({
+  label,
+  value,
+  placeholder,
+  min,
+  max,
+  resolveStartValue,
+  onLiveChange,
+  onCommit,
+  onClear,
+  ariaLabel,
+  scrubHint = false,
+}: {
+  label: string;
+  value?: number;
+  placeholder: string;
+  min: number;
+  max: number;
+  /** Baseline when the field is empty (SoT / house default / measured track). */
+  resolveStartValue: () => number;
+  /** Optional live paint while scrubbing / typing (Width → grid CSS var). */
+  onLiveChange?: (px: number) => void;
+  onCommit: (px: number) => void;
+  onClear?: () => void;
+  ariaLabel: string;
+  /** Show ew-resize cursor — Figma scrub affordance. */
+  scrubHint?: boolean;
+}) {
+  const [draft, setDraft] = useState(value != null ? String(value) : '');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const scrubbingRef = useRef(false);
+
+  useEffect(() => {
+    if (scrubbingRef.current) return;
+    setDraft(value != null ? String(value) : '');
+  }, [value]);
+
+  const applyClamped = useCallback(
+    (raw: number, { live, commit }: { live?: boolean; commit?: boolean }) => {
+      const next = clampColumnWidth(raw, min, max);
+      setDraft(String(next));
+      if (live) onLiveChange?.(next);
+      if (commit) onCommit(next);
+      return next;
+    },
+    [min, max, onLiveChange, onCommit],
+  );
+
+  const commitDraft = () => {
+    const trimmed = draft.trim();
+    if (trimmed === '') {
+      onClear?.();
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) {
+      setDraft(value != null ? String(value) : '');
+      return;
+    }
+    applyClamped(n, { live: true, commit: true });
+  };
+
+  const onScrubPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    // Only primary button; leave text-caret click-to-edit for a still click.
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startValue = resolveStartValue();
+    let activated = false;
+    let last = startValue;
+    const prevCursor = document.body.style.cursor;
+    const prevSelect = document.body.style.userSelect;
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      if (!activated) {
+        if (Math.abs(dx) < SCRUB_ACTIVATE_PX) return;
+        activated = true;
+        scrubbingRef.current = true;
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        // Blur so the input does not fight selection while scrubbing.
+        inputRef.current?.blur();
+      }
+      // 1px mouse → 1px column (Figma pixel scrub). Shift = fine (0.25×).
+      const scale = ev.shiftKey ? 0.25 : 1;
+      last = applyClamped(startValue + dx * scale, { live: true });
+    };
+
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevSelect;
+      if (activated) {
+        scrubbingRef.current = false;
+        onCommit(last);
+      } else {
+        // Still click on the label → focus the input for typing.
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <span
+        className={cn(
+          'select-none text-role-micro font-semibold uppercase tracking-widest text-text-soft',
+          scrubHint && 'cursor-ew-resize',
+        )}
+        onPointerDown={onScrubPointerDown}
+      >
+        {label}
+      </span>
+      <input
+        ref={inputRef}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        step={1}
+        value={draft}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        data-column-width-field={label.toLowerCase()}
+        onChange={(e) => {
+          const next = e.target.value;
+          setDraft(next);
+          const n = Number(next);
+          if (next.trim() !== '' && Number.isFinite(n)) {
+            const clamped = clampColumnWidth(n, min, max);
+            onLiveChange?.(clamped);
+          }
+        }}
+        onBlur={commitDraft}
+        onPointerDown={(e) => {
+          // Drag on the value scrubbing; a still click keeps caret/edit.
+          if (e.button !== 0) return;
+          // Don't preventDefault yet — activation threshold decides scrub vs edit.
+          const startX = e.clientX;
+          const startValue = resolveStartValue();
+          let activated = false;
+          let last = startValue;
+          const prevCursor = document.body.style.cursor;
+          const prevSelect = document.body.style.userSelect;
+          const el = e.currentTarget;
+
+          const move = (ev: PointerEvent) => {
+            const dx = ev.clientX - startX;
+            if (!activated) {
+              if (Math.abs(dx) < SCRUB_ACTIVATE_PX) return;
+              activated = true;
+              scrubbingRef.current = true;
+              el.setPointerCapture(ev.pointerId);
+              document.body.style.cursor = 'ew-resize';
+              document.body.style.userSelect = 'none';
+              el.blur();
+            }
+            const scale = ev.shiftKey ? 0.25 : 1;
+            last = applyClamped(startValue + dx * scale, { live: true });
+          };
+          const up = () => {
+            window.removeEventListener('pointermove', move);
+            window.removeEventListener('pointerup', up);
+            document.body.style.cursor = prevCursor;
+            document.body.style.userSelect = prevSelect;
+            if (activated) {
+              scrubbingRef.current = false;
+              onCommit(last);
+            }
+          };
+          window.addEventListener('pointermove', move);
+          window.addEventListener('pointerup', up);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const base = Number(draft);
+            const start = Number.isFinite(base) ? base : resolveStartValue();
+            const delta = e.key === 'ArrowUp' ? 1 : -1;
+            const step = e.shiftKey ? 10 : 1;
+            applyClamped(start + delta * step, { live: true, commit: true });
+          }
+        }}
+        className={cn(
+          'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default tabular-nums',
+          'placeholder:text-text-faint',
+          scrubHint && 'cursor-ew-resize',
+          focusRing('control', 'accent'),
+        )}
+      />
+    </div>
   );
 }

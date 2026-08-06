@@ -28,6 +28,9 @@ import { useZohoLinePrefill } from './useZohoLinePrefill';
 import { useReceivingLineCore } from './useReceivingLineCore';
 import { useCartonLabelEditor } from './useCartonLabelEditor';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { useSetting } from '@/hooks/useSettings';
 import type { LabelEditDraft } from '../LabelEditPopover';
 import type { AsListedLabelDraft } from '@/components/labels/AsListedEditPopover';
@@ -452,6 +455,11 @@ export function useUnboxLineController(
   const labelSelectOptions = useMemo(() => labelOptionsForSelect(labelOptions), [labelOptions]);
 
   const [selectedLabelKind, setSelectedLabelKind] = useState<string>('carton');
+  // Dock "Edit label" bumps this; UnboxLabelPreview opens the matching editor.
+  const [labelEditorRequestId, setLabelEditorRequestId] = useState(0);
+  const requestLabelEditor = useCallback(() => {
+    setLabelEditorRequestId((n) => n + 1);
+  }, []);
   useEffect(() => {
     setSelectedLabelKind('carton');
   }, [row.id]);
@@ -812,11 +820,9 @@ export function useUnboxLineController(
     [serialLookup.serial, core.poNumber, core.persistPoNumber, openClaimModal],
   );
 
-  // PO-number field commit: first try to IMPORT a sales order by this number
-  // (resolves an `orders` row → classifies the carton as a return: type RETURN,
-  // listing populated, order# as display rep, off the Unfound queue). If the
-  // value isn't a sales order, fall back to the normal PO# persist. So the one
-  // field handles both "type a PO#" and "import a return order#".
+  // PO-number field commit: (1) try sales-order return import, (2) resolve
+  // against the local Zoho PO mirror and relink (claims/imports lines), (3)
+  // fall back to a plain PO# stamp only when neither resolves.
   const commitPoNumberOrImportOrder = useCallback(
     async (value: string) => {
       const trimmed = value.trim();
@@ -840,22 +846,12 @@ export function useUnboxLineController(
         });
         const data = await res.json().catch(() => null);
         if (res.ok && data?.success && data.imported) {
-          // Reflect the import: type → RETURN (drives the label + listing chip),
-          // listing populated, PO editor closed. setReceivingType is the instant
-          // local flip; the row patch below carries the durable type/source/PO#/
-          // status so every surface re-seeds — listingLink doesn't re-seed from
-          // the row, so set it here.
           core.setReceivingType('RETURN');
           const listingUrl = data.matched_order?.listing_url as string | undefined;
           if (listingUrl) core.setListingLink(listingUrl);
           core.setPoEditorOpen(false);
           autoBoundOrderRef.current = trimmed;
           toast.success(`Imported order ${data.matched_order?.order_id ?? trimmed} as a return`);
-          // Apply the server's exact line patch optimistically — type→RETURN,
-          // listing, carton source flip, order# display rep, and received status
-          // all land in one merge. Replaces the old heavy /api/receiving-lines
-          // refetch (one of the app's most expensive queries) with a zero-fetch
-          // patch, so the workspace flips instantly and durably.
           if (data.line_patch) {
             dispatchUnboxRailLineUpdated(
               data.line_patch as Partial<ReceivingLineRow> & { id: number },
@@ -864,8 +860,92 @@ export function useUnboxLineController(
           return;
         }
       } catch {
-        /* fall through to a plain PO# persist */
+        /* fall through to mirror resolve / plain PO# persist */
       }
+
+      // Resolve against the local Zoho PO mirror — exact PO# / reference hit →
+      // relink (adopts/claims/imports lines). Avoids stamp-only "fake found".
+      try {
+        const searchRes = await fetch(
+          `/api/receiving/po-search?q=${encodeURIComponent(trimmed)}`,
+        );
+        const searchBody = (await searchRes.json().catch(() => null)) as {
+          success?: boolean;
+          candidates?: Array<{
+            zoho_purchaseorder_id: string;
+            zoho_purchaseorder_number: string | null;
+            reference_number: string | null;
+          }>;
+        } | null;
+        const norm = (s: string | null | undefined) =>
+          String(s || '')
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+        const want = norm(trimmed);
+        const hit = (searchBody?.candidates ?? []).find((c) => {
+          return (
+            norm(c.zoho_purchaseorder_number) === want ||
+            norm(c.reference_number) === want ||
+            norm(c.zoho_purchaseorder_id) === want
+          );
+        });
+        if (hit && row.receiving_id != null) {
+          const relinkRes = await fetch('/api/receiving/relink', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              receiving_id: row.receiving_id,
+              line_id: row.id > 0 ? row.id : undefined,
+              zoho_purchaseorder_id: hit.zoho_purchaseorder_id,
+              zoho_purchaseorder_number: hit.zoho_purchaseorder_number,
+              scope: 'both',
+            }),
+          });
+          const relinkBody = (await relinkRes.json().catch(() => null)) as {
+            success?: boolean;
+            error?: string;
+            receiving_id?: number;
+            paired_onto?: number;
+            lines_imported?: number;
+            zoho_purchaseorder_number?: string | null;
+          } | null;
+          if (relinkRes.ok && relinkBody?.success) {
+            const poLabel =
+              hit.zoho_purchaseorder_number || hit.zoho_purchaseorder_id;
+            const imported = Number(relinkBody.lines_imported ?? 0);
+            core.setPoEditorOpen(false);
+            autoBoundOrderRef.current = trimmed;
+            dispatchUnboxRailLineUpdated({
+              id: row.id,
+              zoho_purchaseorder_id: hit.zoho_purchaseorder_id,
+              zoho_purchaseorder_number: hit.zoho_purchaseorder_number,
+              receiving_source: 'zoho_po',
+            });
+            toast.success(
+              imported > 0
+                ? `Linked PO ${poLabel} · ${imported} line${imported === 1 ? '' : 's'}`
+                : `Linked PO ${poLabel}`,
+            );
+            refreshDomains(REFRESH_BUNDLES.receivingWrite);
+            const winnerId =
+              relinkBody.paired_onto ??
+              (typeof relinkBody.receiving_id === 'number'
+                ? relinkBody.receiving_id
+                : null);
+            if (winnerId != null && winnerId !== row.receiving_id) {
+              window.location.assign(
+                `${UNBOX_SURFACE_ROUTE}?openReceivingId=${winnerId}`,
+              );
+            }
+            return;
+          }
+          toast.error(relinkBody?.error || 'PO link failed');
+          return;
+        }
+      } catch {
+        /* fall through to plain PO# persist */
+      }
+
       fallbackPersistPo();
     },
     [
@@ -919,6 +999,7 @@ export function useUnboxLineController(
     labelDraftDefaults, buildLabelPayload, applyAndPrintLabel,
     // workspace label kind selection (preview dropdown + dock pre-select)
     labelOptions, labelSelectOptions, selectedLabelKind, setSelectedLabelKind, activeLabelKind,
+    labelEditorRequestId, requestLabelEditor,
     activeLabelFace, unitInput,     asListedDraftDefaults, buildAsListedPayload, applyAsListedAndPrint,
     asListedPayload, ticketPayload, applyUnitAndPrint,
     canPrintReview, canReceiveReview, canZohoReceive, isUnfound, isReceived, canUnreceive, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,

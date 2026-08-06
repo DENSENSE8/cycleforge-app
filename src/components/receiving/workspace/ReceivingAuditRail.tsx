@@ -11,7 +11,7 @@ import { ReceivingAuditPanel } from './ReceivingAuditPanel';
  * middle of the screen and dimmed the carton it describes. Reading an audit
  * trail is a look-beside job, so it takes the same right-edge float as every
  * other queue / station inspector. Unbox keeps its station-scoped **push**
- * ({@link ReceivingToolPushStack}) — that column squeezes the workbench in-flow
+ * (Unbox Displays Timeline) — that column squeezes the workbench in-flow
  * and stays mutually exclusive with Displays / Ticket / Claim.
  *
  * Close is the panel's own header X or Escape on the host.

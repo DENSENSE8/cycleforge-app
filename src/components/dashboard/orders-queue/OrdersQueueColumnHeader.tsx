@@ -6,27 +6,11 @@ import {
   gridTrackRemToPx,
   resolveGridColumnMinTrackRem,
 } from '@/design-system/components/grid/grid-column-type-track';
+import { useGridColumnWidthBoundsContext } from '@/design-system/components/grid/grid-column-width-bounds-context';
+import { resolveColumnWidthClamp } from '@/components/ui/table-column-config/useColumnWidths';
 
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Calendar, ChevronUp, ChevronDown } from '@/components/Icons';
+import { ChevronUp, ChevronDown } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
-import { elevationClass } from '@/design-system/tokens/shadows';
 import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
@@ -38,6 +22,7 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
+import { isGridColumnFillTrack } from '@/design-system/components/grid/grid-column-editability';
 import {
   ORDERS_QUEUE_COL_HEADER_STICKY,
   ORDERS_QUEUE_COLUMNS,
@@ -69,17 +54,15 @@ import { cn } from '@/utils/_cn';
  * Pending Grid (`gridSkin`): adaptive label + type glyph (Airtable), taller bar,
  * tooltips = full labels; content-hard mins + `min-w-max` so h-scroll works.
  * Board / Packed: glyph + full text labels.
- *   select · product · date · age · qty · cond · order · tracking
  *
  * Header, body rows, and group summaries all map over ONE ordered `columns`
  * list (cell-renderer registry) — already RESOLVED to the visible tracks by
  * `useGridColumnVisibility` in the view — so the three can never disagree on
  * order, and a hidden column loses its TRACK instead of leaving a dead ruled
  * band. This header never re-asks "is this hidden?".
- * When `onReorderColumns` is provided (Pending grid), every column except the
- * locked pane (`select · title`) is drag-reorderable: whole-header-cell drag
- * (Airtable), house 6px pointer activation (SwimlaneBoard recipe), keyboard
- * path via dnd-kit's KeyboardSensor (Space lift · arrows move · Space drop).
+ *
+ * Column order is pinned to the layout SoT (Unbox History parity) — no
+ * drag-reorder. This fork remains for resize handles + viewport force-hide.
  */
 export function OrdersQueueColumnHeader({
   isMobile = false,
@@ -91,8 +74,6 @@ export function OrdersQueueColumnHeader({
   gridSkin = false,
   selectGutterChrome = 'always',
   columns = ORDERS_QUEUE_COLUMNS,
-  onReorderColumns,
-  onResetColumnOrder,
   activeSort,
   sortDir = null,
   onSortColumn,
@@ -112,19 +93,11 @@ export function OrdersQueueColumnHeader({
    * Off → board/Packed header.
    */
   gridSkin?: boolean;
-  /** Select-gutter face — `'sheets'` = invisible hit plane (To-ship click-select). */
+  /** Select-gutter face — To-ship uses `'always'` (painted checklist square). */
   selectGutterChrome?: GridSelectGutterChrome;
-  /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
+  /** Ordered VISIBLE column models (already visibility-resolved).
    *  Default = canonical order. */
   columns?: readonly OrdersQueueColumn[];
-  /**
-   * Commit a new MOVABLE-column order after a header drag (locked keys are
-   * re-prepended by the sanitizer). Presence enables drag-reorder.
-   */
-  onReorderColumns?: (nextMovable: OrdersQueueColumnKey[]) => void;
-  /** Reset to canonical order — wired to double-click on a movable header
-   *  cell; parent passes it only while a custom order is active. */
-  onResetColumnOrder?: () => void;
   /** Active column-sort key (URL `?sort=` when a data column). */
   activeSort?: QueueDisplaySortColumn;
   /** Active column-sort direction; null when not column-sorting. */
@@ -142,13 +115,6 @@ export function OrdersQueueColumnHeader({
   const allSelected = Boolean(selectActive && selectionScope && total > 0 && selectedCount >= total);
   const someSelected = Boolean(selectActive && selectionScope && selectedCount > 0 && !allSelected);
 
-  // dnd-kit: the house 6px pointer threshold (SwimlaneBoard) disambiguates
-  // click vs drag; KeyboardSensor gives the Space/arrows reorder path.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
   if (isMobile) return null;
 
   const template = ordersQueueGridTemplateFor(columns);
@@ -157,26 +123,13 @@ export function OrdersQueueColumnHeader({
   const resizeEdges = onResizeColumn
     ? resolveColumnResizeEdges(dataColumns, frozenEdgeKey)
     : null;
-  // `columns` is already the RESOLVED visible list (`useGridColumnVisibility` in
-  // the view), so every movable key here has a rendered header cell — sortable
-  // targets and drop indices read the same list, with no second hidden-ness test.
-  const sortableItems = columns.filter((c) => !isOrdersQueueFrozen(c.key)).map((c) => c.key);
 
   const onToggleAll = () => {
     if (!selectionScope || !selectActive) return;
     emitToggleAll(selectionScope, allSelected ? 'none' : 'all');
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!onReorderColumns || !over || active.id === over.id) return;
-    const oldIdx = sortableItems.indexOf(String(active.id) as OrdersQueueColumnKey);
-    const newIdx = sortableItems.indexOf(String(over.id) as OrdersQueueColumnKey);
-    if (oldIdx < 0 || newIdx < 0) return;
-    onReorderColumns(arrayMove([...sortableItems], oldIdx, newIdx));
-  };
-
-  const headerRow = (
+  return (
     <div
       role="row"
       aria-rowindex={GRID_HEADER_ROW_INDEX}
@@ -185,7 +138,7 @@ export function OrdersQueueColumnHeader({
         // whole band freezes as one layer; this row fills that band.
         'group/hrow grid border-b border-border-default',
         gridSkin
-          ? cn('min-h-11 px-0 py-0', TABLE_FROZEN_HEADER_CLASS)
+          ? cn('h-10 min-h-10 px-0 py-0', TABLE_FROZEN_HEADER_CLASS)
           : cn('sticky top-0 z-sticky bg-surface-canvas/95 py-2 backdrop-blur-sm', ORDERS_QUEUE_COL_HEADER_STICKY, QUEUE_ROW.px),
         ordersQueueRowShellClass(false, { scrollMinContent: gridSkin }),
         className,
@@ -194,8 +147,7 @@ export function OrdersQueueColumnHeader({
         gridTemplateColumns: template,
       }}
     >
-      {/* select — select-all only (grid); board may show grip elsewhere. Locked:
-          never wrapped in a sortable, so drag listeners can't swallow clicks. */}
+      {/* select — select-all only (grid); board may show grip elsewhere. */}
       <div
         className={cn(
           ordersQueueGridCell({ inset: 'none', rule: true }),
@@ -218,7 +170,20 @@ export function OrdersQueueColumnHeader({
 
       {dataColumns.map((column, i) => {
         const last = i === dataColumns.length - 1;
-        const sortable = Boolean(onReorderColumns) && !isOrdersQueueFrozen(column.key);
+        if (isGridColumnFillTrack(column)) {
+          return (
+            <div
+              key={column.key}
+              role="presentation"
+              data-col={column.key}
+              aria-hidden
+              className={cn(
+                gridSkin ? 'h-10 min-h-10' : 'h-10 min-h-10',
+                ordersQueueGridCell({ rule: false, inset: 'none' }),
+              )}
+            />
+          );
+        }
         const sortActive = Boolean(onSortColumn) && isQueueColumnSort(column.key);
         const isActiveSort = activeSort === column.key;
         const edges =
@@ -231,23 +196,7 @@ export function OrdersQueueColumnHeader({
         const onReset = edges && onResetColumn
           ? () => onResetColumn(column.key)
           : undefined;
-        return sortable ? (
-          <SortableHeaderCell
-            key={column.key}
-            column={column}
-            last={last}
-            gridSkin={gridSkin}
-            onResize={onResize}
-            onReset={onReset}
-            resizeEdges={edges}
-            frozenEdgeKey={frozenEdgeKey}
-            onResetOrder={onResetColumnOrder}
-            sortActive={sortActive}
-            isActiveSort={isActiveSort}
-            sortDir={isActiveSort ? sortDir : null}
-            onSort={sortActive ? () => onSortColumn?.(column.key) : undefined}
-          />
-        ) : (
+        return (
           <HeaderCell
             key={column.key}
             column={column}
@@ -266,88 +215,6 @@ export function OrdersQueueColumnHeader({
       })}
     </div>
   );
-
-  // Column DISPLAY is not this component's job: its control lives in a gutter
-  // beside the card (`GridColumnGutter`, mounted by the view), because anything
-  // parked at the band's right edge either reserves a permanent track or covers
-  // the last column's label.
-  if (!onReorderColumns) return headerRow;
-  return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={sortableItems} strategy={horizontalListSortingStrategy}>
-        {headerRow}
-      </SortableContext>
-    </DndContext>
-  );
-}
-
-/** Injected drag chrome for a reorderable header cell. */
-interface HeaderCellDragProps {
-  setNodeRef: (el: HTMLElement | null) => void;
-  style: React.CSSProperties | undefined;
-  attributes: Record<string, unknown>;
-  listeners: Record<string, unknown> | undefined;
-  isDragging: boolean;
-}
-
-/** Reorderable wrapper — whole-header-cell drag (no separate grip glyph; the
- *  6px activation distance does the click-vs-drag disambiguation). */
-function SortableHeaderCell({
-  column,
-  last,
-  gridSkin,
-  onResize,
-  onReset,
-  resizeEdges,
-  frozenEdgeKey,
-  onResetOrder,
-  sortActive,
-  isActiveSort,
-  sortDir,
-  onSort,
-}: {
-  column: OrdersQueueColumn;
-  last: boolean;
-  gridSkin: boolean;
-  onResize?: (px: number) => void;
-  onReset?: () => void;
-  resizeEdges?: readonly GridColumnResizeEdge[];
-  frozenEdgeKey: string;
-  onResetOrder?: () => void;
-  sortActive?: boolean;
-  isActiveSort?: boolean;
-  sortDir?: QueueDisplaySortDir | null;
-  onSort?: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: column.key,
-  });
-  return (
-    <HeaderCell
-      column={column}
-      last={last}
-      gridSkin={gridSkin}
-      onResize={onResize}
-      onReset={onReset}
-      resizeEdges={resizeEdges}
-      frozenEdgeKey={frozenEdgeKey}
-      onResetOrder={onResetOrder}
-      sortActive={sortActive}
-      isActiveSort={isActiveSort}
-      sortDir={sortDir}
-      onSort={onSort}
-      drag={{
-        setNodeRef,
-        style: {
-          transform: transform ? CSS.Transform.toString(transform) : undefined,
-          transition,
-        },
-        attributes: attributes as unknown as Record<string, unknown>,
-        listeners: listeners as unknown as Record<string, unknown> | undefined,
-        isDragging,
-      }}
-    />
-  );
 }
 
 /**
@@ -363,8 +230,6 @@ function HeaderCell({
   resizeEdges,
   frozenEdgeKey = 'title',
   gridSkin = false,
-  drag,
-  onResetOrder,
   sortActive = false,
   isActiveSort = false,
   sortDir = null,
@@ -377,8 +242,6 @@ function HeaderCell({
   resizeEdges?: readonly GridColumnResizeEdge[];
   frozenEdgeKey?: string;
   gridSkin?: boolean;
-  drag?: HeaderCellDragProps;
-  onResetOrder?: () => void;
   sortActive?: boolean;
   isActiveSort?: boolean;
   sortDir?: QueueDisplaySortDir | null;
@@ -390,18 +253,13 @@ function HeaderCell({
   const frozen = isOrdersQueueFrozen(column.key);
   const cellInset = gridSkin ? 'grid' : 'cell';
 
-  // Grid skin: every typed column shows its glyph; label only when the track fits.
-  // Board look: glyph only on the roomy flexible (fr) columns — a glyph would
-  // crowd the narrow fact columns' labels (skin-scoping guardrail).
-  const showGlyph = gridSkin ? Boolean(column.type) : column.width.includes('fr');
-  // Ship by = calendar (the commitment is a day, not a duration — the clock
-  // glyph left with the retired Age column).
-  const glyph = !showGlyph ? null :
-    column.key === 'sla' ? (
-      <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-    ) : column.type ? (
-      <ColumnTypeGlyph type={column.type} className={gridSkin ? 'h-3 w-3 text-text-faint' : undefined} />
-    ) : null;
+  // Grid skin: text (+ sort chevron) by default — type glyphs only when the
+  // track is too narrow for its label (SoT: GridHeaderLabel). Board look: glyph
+  // only on the roomy flexible (fr) columns.
+  const showGlyph = gridSkin ? !showTextLabel : column.width.includes('fr');
+  const glyph = !showGlyph || !column.type ? null : (
+    <ColumnTypeGlyph type={column.type} className={gridSkin ? 'h-3 w-3 text-text-faint' : undefined} />
+  );
 
   const sortChevron = isActiveSort && sortDir ? (
     sortDir === 'asc' ? (
@@ -434,13 +292,18 @@ function HeaderCell({
         ? 'none'
         : undefined;
 
+  const widthBoundsByKey = useGridColumnWidthBoundsContext();
   const minTrackRem = resolveGridColumnMinTrackRem(column);
-  const minWidthPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+  const typedFloorPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
+  const bound = widthBoundsByKey[column.key];
+  const { minPx: minWidthPx, maxPx: maxWidthPx } = resolveColumnWidthClamp({
+    typedFloorPx,
+    staffMin: bound?.min,
+    staffMax: bound?.max,
+  });
 
   const cell = (
     <div
-      ref={drag?.setNodeRef}
-      {...(drag ? { ...drag.attributes, ...drag.listeners } : {})}
       role="columnheader"
       data-col={column.key}
       data-frozen-edge={column.key === 'title' ? true : undefined}
@@ -454,21 +317,12 @@ function HeaderCell({
         ordersQueueGridCell({ rule: !last, inset: cellInset }),
         frozen && ORDERS_QUEUE_FROZEN_CELL,
         tableHeader,
-        gridSkin && 'min-h-11',
-        // Reorderable: whole-cell drag handle; keep touch scrolling from
-        // hijacking the drag; lift the cell above siblings mid-drag.
-        drag && 'cursor-grab touch-none select-none',
-        sortActive && !drag && 'cursor-pointer',
-        sortActive && 'hover:text-text-default',
+        gridSkin && 'h-10 min-h-10',
+        sortActive && 'cursor-pointer hover:text-text-default',
         isActiveSort && 'text-text-default',
-        drag?.isDragging && cn('z-raised cursor-grabbing bg-surface-card opacity-90', elevationClass('overlay')),
       )}
-      style={{
-        ...(frozen ? { left: ordersQueueFrozenLeft(column.key) } : {}),
-        ...(drag?.style ?? {}),
-      }}
+      style={frozen ? { left: ordersQueueFrozenLeft(column.key) } : undefined}
       onClick={onSort}
-      onDoubleClick={onResetOrder}
     >
       {inner}
       {onResize && onReset && resizeEdges
@@ -482,6 +336,7 @@ function HeaderCell({
               edge={edge}
               flush={edge === 'end' && column.key === frozenEdgeKey}
               minWidthPx={minWidthPx}
+              maxWidthPx={maxWidthPx}
             />
           ))
         : null}

@@ -8,7 +8,9 @@
  * tracking) plus the manual send-to-phone pill — the packing counterpart of
  * the Unbox carton photo pill, which lives in the same trailing position.
  * Read-only — pack session identity comes from the scan / queue select.
- * Pair host with `reserveIdentityClearance="stacked"`.
+ * Pair host with `placement="flow"` + `reserveIdentityClearance={false}`
+ * (Unbox-family flat centre). Displays `←|` lives on ScanStationUtilityRail,
+ * not inside this identity adapter.
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
@@ -75,7 +77,8 @@ export function PackOrderIdentity({
         />
       </div>
 
-      {/* Trailing photo pill — same slot Unbox gives ReceivingPhotoButton. */}
+      {/* Trailing photo pill — same slot Unbox gives ReceivingPhotoButton.
+          Displays ←| lives on ScanStationUtilityRail, not here. */}
       {canSendToPhone ? (
         <PackSendToPhoneButton
           packerLogId={packerLogId}

@@ -2,8 +2,9 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Unbox History Sheets geometry: airtable cell hairlines + click-select.
- * Select track stays for header select-all; body select cells are empty
- * spacers. Hairlines live in `globals.css` on `[data-grid-skin='airtable']`.
+ * Select track stays for header select-all; body paints decorative
+ * `GridClickSelectFace` when selected (not an interactive gutter checkbox).
+ * Hairlines live in `globals.css` on `[data-grid-skin='airtable']`.
  *
  * Run against the QA org (`.claude/rules/verify.md`):
  *   npx playwright test tests/e2e/unbox-sheets-select-hairlines.spec.ts --project=qa-desktop
@@ -48,8 +49,10 @@ test.describe('Unbox History — sheet hairlines + click-select wash', () => {
     const orderCell = row.locator('[data-col="order"]').first();
     await expect(selectCell).toBeVisible();
     await expect(orderCell).toBeVisible();
-    // Body has no select checkbox control — click-select owns the row.
+    // Body has no interactive select chrome — click-select owns the row;
+    // membership paints via data-click-select-face when checked.
     await expect(row.locator('[data-select-chrome]')).toHaveCount(0);
+    await expect(row.locator('[data-click-select-face="off"]')).toHaveCount(1);
 
     const selectBorder = await cellBorderBottom(selectCell);
     const orderBorder = await cellBorderBottom(orderCell);
@@ -80,6 +83,7 @@ test.describe('Unbox History — sheet hairlines + click-select wash', () => {
     await row.click();
     await expect(row).toHaveAttribute('aria-checked', 'true');
     await expect(row).toHaveClass(/bg-blue-50/);
+    await expect(row.locator('[data-click-select-face="on"]')).toHaveCount(1);
     await expect(page.getByTestId('receiving-workspace')).toHaveCount(0);
 
     const after = await cellBorderBottom(selectCell);
@@ -89,6 +93,7 @@ test.describe('Unbox History — sheet hairlines + click-select wash', () => {
     await row.click();
     await expect(row).toHaveAttribute('aria-checked', 'false');
     await expect(row).not.toHaveClass(/bg-blue-50/);
+    await expect(row.locator('[data-click-select-face="off"]')).toHaveCount(1);
   });
 
   test('header + body share continuous bottom hairlines under airtable', async ({ page }) => {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { transitionReceivingLine } from '@/lib/receiving/state-machine';
+import { ensurePoLinesOnReceiving } from '@/lib/receiving/adopt-po-lines';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { upsertReceivingLineTesting, upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
 import { isTestTrackingShortcutAllowed } from '@/lib/tenancy/test-tracking';
@@ -482,65 +482,16 @@ async function verifyPoNumberMatches(
 }
 
 /**
- * Adopt the pre-existing local receiving_lines for a PO onto the carton being
- * unboxed — the local equivalent of importZohoPurchaseOrderToReceiving, WITHOUT
- * a Zoho round-trip (the lines already exist from the incoming sync). Only takes
- * unattached lines (receiving_id IS NULL); lines already on another carton are
- * left alone. `updated_at` is trigger-maintained. Returns the count adopted.
+ * Adopt / claim local PO lines onto the carton, then import when still empty
+ * (shared SoT: {@link ensurePoLinesOnReceiving}). Optional live sync is inside
+ * the helper — this route never imports zoho-receiving-sync directly.
  */
 async function linkLocalPoLinesToReceiving(poId: string, receivingId: number, orgId: string): Promise<number> {
-  // Tenant-scoped: only adopt THIS org's unattached lines. receiving_line is
-  // FORCEd, so under the GUC pool RLS guarantees the UPDATE can never pull
-  // another tenant's lines onto this carton (the prior owner-pool cross-org
-  // adoption leak).
-  //
-  // Step D fold (receiving state-machine chokepoint): the old one-shot UPDATE
-  // listed workflow_status in its SET (CASE EXPECTED→MATCHED ELSE unchanged),
-  // which fired the coarse-status trigger for EVERY adopted line and
-  // COALESCE-stamped scanned_at even on non-transitioning rows. Now the
-  // linkage (receiving_id) is a raw facts UPDATE that does NOT list
-  // workflow_status, and only rows actually moving EXPECTED→MATCHED go through
-  // transitionReceivingLine — so an already-MATCHED line no longer picks up a
-  // spurious scanned_at stamp (house rule: Scanned = triage-only).
-  // skipEvent: the bulk adopt never emitted an inventory_event, and the scan
-  // flow records its own receiving_scans row. `updated_at` stays
-  // trigger-maintained on the linkage UPDATE.
-  const adopted = await withTenantTransaction(orgId, async (client) => {
-    // PO identity keys off receiving_line_zoho (rz) — the spine copy is
-    // write-dead. FOR UPDATE OF rl locks only the line rows.
-    const lines = await client.query<{ id: number; workflow_status: string | null }>(
-      `SELECT rl.id, rl.workflow_status::text AS workflow_status
-         FROM receiving_line rl
-         JOIN receiving_line_zoho rz
-           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
-        WHERE rz.zoho_purchaseorder_id = $1
-          AND rl.receiving_id IS NULL
-        ORDER BY rl.id
-        FOR UPDATE OF rl`,
-      [poId],
-    );
-    if (lines.rows.length === 0) return 0;
-    await client.query(
-      `UPDATE receiving_line
-          SET receiving_id = $1
-        WHERE id = ANY($2::int[])`,
-      [receivingId, lines.rows.map((r) => r.id)],
-    );
-    for (const row of lines.rows) {
-      // Check-and-skip in TS: an identity transition through the chokepoint
-      // would still run its UPDATE (firing the coarse trigger), so only rows
-      // genuinely in EXPECTED transition. EXPECTED→MATCHED is a modeled edge.
-      if (row.workflow_status !== 'EXPECTED') continue;
-      await transitionReceivingLine(
-        { receivingLineId: row.id, to: 'MATCHED', skipEvent: true },
-        client,
-        orgId,
-      );
-    }
-    return lines.rows.length;
+  const result = await ensurePoLinesOnReceiving(poId, receivingId, orgId, {
+    importIfEmpty: true,
   });
   await stampInboundHandlingUnit(receivingId, orgId);
-  return adopted;
+  return result.lineCount;
 }
 
 /**
@@ -1168,7 +1119,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       // and give the same verdict to both writes — the attribution upsert and
       // the open stamp must never disagree about what this scan was.
       const orderScanKind = await scanKindForMaybeExisting(receivingId, orderPreexisting);
-      // Local adopt only — never live-import PO lines on the scan hot path.
+      // Adopt/claim local lines (unattached + unmatched donors); import only
+      // when still empty — see linkLocalPoLinesToReceiving / adopt-po-lines.
       // registerTracking=false when the match was a pure PO-number identity
       // (poMatchIsTracking false) — never fabricate a shipment tracking entry
       // from a value that is really just the order number.

@@ -1,6 +1,24 @@
 'use client';
 
-import { Check, ChevronRight } from '@/components/Icons';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Check, ChevronRight, GripVertical } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import type { ProcedureStepRow, ProcedureStepState } from './types';
 
@@ -27,8 +45,13 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
  * different questions from opposite edges: *where am I in the whole job* versus
  * *what do I do right now*. Both render from the SAME resolved
  * `ProcedureStepRow[]`, so they cannot disagree — that, not deletion, is what
- * keeps two views of one procedure honest. Rows here render in vocabulary order,
- * always, with no reordering.
+ * keeps two views of one procedure honest.
+ *
+ * ## Order
+ *
+ * Rows render in the resolved vocabulary order the caller passed. Reorder is
+ * allowed **only** when `onReorderSteps` is provided (authoring / dogfood SOP
+ * mode); the default remains read-only vocabulary order with click-to-focus.
  *
  * ## Anatomy
  *
@@ -77,10 +100,124 @@ function StepMarker({ state, position }: { state: ProcedureStepState; position: 
  */
 const PROCEDURE_CHECKLIST_ROW_PX = 40;
 
+function StepRowContent({ step }: { step: ProcedureStepRow }) {
+  const trailing =
+    step.state === 'skipped'
+      ? step.skipReason
+        ? `Skipped · ${step.skipReason}`
+        : 'Skipped'
+      : step.summary;
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <StepMarker state={step.state} position={step.position} />
+      <span
+        className={cn(
+          'truncate text-role-caption font-semibold',
+          step.state === 'pending' || step.state === 'skipped'
+            ? 'text-text-muted'
+            : 'text-text-default',
+        )}
+      >
+        {step.label}
+      </span>
+      {trailing ? (
+        <span className="ml-auto truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+          {trailing}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function ChecklistRowShell({
+  step,
+  onSelectStep,
+  dragHandle,
+  setNodeRef,
+  style,
+}: {
+  step: ProcedureStepRow;
+  onSelectStep?: (key: string) => void;
+  dragHandle?: ReactNode;
+  setNodeRef?: (node: HTMLElement | null) => void;
+  style?: CSSProperties;
+}) {
+  const isActive = step.state === 'active';
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      data-procedure-step={step.key}
+      data-procedure-state={step.state}
+      // Selection never size-shifts: fill + inset ring only, constant py.
+      // Fixed min-height keeps the hover-peek viewport honest at N rows.
+      className={cn(
+        'inset-cozy min-h-10 box-border',
+        isActive && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-1.5">
+        {dragHandle}
+        {onSelectStep ? (
+          <button
+            type="button"
+            onClick={() => onSelectStep(step.key)}
+            className="ds-raw-button block min-w-0 flex-1 text-left"
+          >
+            <StepRowContent step={step} />
+          </button>
+        ) : (
+          <StepRowContent step={step} />
+        )}
+      </div>
+    </li>
+  );
+}
+
+function SortableChecklistRow({
+  step,
+  onSelectStep,
+}: {
+  step: ProcedureStepRow;
+  onSelectStep?: (key: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: step.key,
+  });
+  return (
+    <ChecklistRowShell
+      step={step}
+      onSelectStep={onSelectStep}
+      setNodeRef={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.55 : undefined,
+        position: 'relative',
+        zIndex: isDragging ? 1 : undefined,
+      }}
+      dragHandle={
+        // ds-raw-button: dnd-kit drag handle (spreads listeners; IconButton
+        // active:scale would fight drag). Handle-only so row click still focuses.
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag to reorder ${step.label}`}
+          className="ds-raw-button -ml-0.5 flex h-6 w-5 shrink-0 cursor-grab items-center justify-center text-text-faint transition hover:text-text-soft active:cursor-grabbing"
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+      }
+    />
+  );
+}
+
 export function ProcedureChecklist({
   steps,
   title,
   onSelectStep,
+  onReorderSteps,
   className,
   maxVisibleRows,
 }: {
@@ -89,6 +226,11 @@ export function ProcedureChecklist({
   title?: string;
   /** Optional: jump to a step. Omit for a read-only checklist. */
   onSelectStep?: (key: string) => void;
+  /**
+   * When set, rows become sortable (dogfood / authoring). Omit for vocabulary
+   * order only — the default for every non-authoring surface.
+   */
+  onReorderSteps?: (orderedKeys: string[]) => void;
   className?: string;
   /**
    * Cap the visible list to N rows (scroll for the rest). Omit for fit-height
@@ -96,12 +238,50 @@ export function ProcedureChecklist({
    */
   maxVisibleRows?: number;
 }) {
+  const sortable = !!onReorderSteps;
+  const sortableIds = useMemo(() => steps.map((s) => s.key), [steps]);
+
+  // House 6px pointer threshold (SwimlaneBoard / OrdersQueue) disambiguates
+  // click vs drag; KeyboardSensor gives Space/arrows reorder.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   if (steps.length === 0) return null;
 
   const listMaxHeight =
     maxVisibleRows != null && maxVisibleRows > 0
       ? maxVisibleRows * PROCEDURE_CHECKLIST_ROW_PX
       : undefined;
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    if (!onReorderSteps) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = sortableIds.indexOf(String(active.id));
+    const newIdx = sortableIds.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    onReorderSteps(arrayMove([...sortableIds], oldIdx, newIdx));
+  };
+
+  const list = (
+    <ol
+      className={cn(
+        'flex min-w-0 flex-col divide-y divide-border-hairline',
+        listMaxHeight != null && 'overflow-y-auto',
+      )}
+      style={listMaxHeight != null ? { maxHeight: listMaxHeight } : undefined}
+    >
+      {steps.map((step) =>
+        sortable ? (
+          <SortableChecklistRow key={step.key} step={step} onSelectStep={onSelectStep} />
+        ) : (
+          <ChecklistRowShell key={step.key} step={step} onSelectStep={onSelectStep} />
+        ),
+      )}
+    </ol>
+  );
 
   return (
     <section
@@ -118,69 +298,15 @@ export function ProcedureChecklist({
         </p>
       ) : null}
 
-      <ol
-        className={cn(
-          'flex min-w-0 flex-col divide-y divide-border-hairline',
-          listMaxHeight != null && 'overflow-y-auto',
-        )}
-        style={listMaxHeight != null ? { maxHeight: listMaxHeight } : undefined}
-      >
-        {steps.map((step) => {
-          const isActive = step.state === 'active';
-          const trailing =
-            step.state === 'skipped'
-              ? step.skipReason
-                ? `Skipped · ${step.skipReason}`
-                : 'Skipped'
-              : step.summary;
-          const row = (
-            <div className="flex min-w-0 items-center gap-2">
-              <StepMarker state={step.state} position={step.position} />
-              <span
-                className={cn(
-                  'truncate text-role-caption font-semibold',
-                  step.state === 'pending' || step.state === 'skipped'
-                    ? 'text-text-muted'
-                    : 'text-text-default',
-                )}
-              >
-                {step.label}
-              </span>
-              {trailing ? (
-                <span className="ml-auto truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  {trailing}
-                </span>
-              ) : null}
-            </div>
-          );
-
-          return (
-            <li
-              key={step.key}
-              data-procedure-step={step.key}
-              data-procedure-state={step.state}
-              // Selection never size-shifts: fill + inset ring only, constant py.
-              // Fixed min-height keeps the hover-peek viewport honest at N rows.
-              className={cn(
-                'inset-cozy min-h-10 box-border',
-                isActive && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
-              )}
-            >
-              {onSelectStep ? (
-                <button
-                  type="button"
-                  onClick={() => onSelectStep(step.key)}
-                  className="ds-raw-button block w-full min-w-0 text-left"
-                >
-                  {row}
-                </button>
-              ) : (
-                row
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      {sortable ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+            {list}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        list
+      )}
     </section>
   );
 }

@@ -39,6 +39,8 @@ import {
   setSerialGrade,
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
+import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
+import { pulseScanLine } from '@/lib/scan-feedback/visual';
 import type { useSerialLookup } from '../../SerialMatchResult';
 
 interface UseLineSerialsArgs {
@@ -61,6 +63,7 @@ export function useLineSerials({
   serialInputRef,
 }: UseLineSerialsArgs) {
   const queryClient = useQueryClient();
+  const { playScanFeedback } = useScanFeedback();
   const [serialSubmitting, setSerialSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
@@ -165,6 +168,7 @@ export function useLineSerials({
       if (!res.ok || !data?.success) {
         toast.error(data?.error || `Scan failed (${res.status})`);
         publish(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
+        playScanFeedback('reject');
         return;
       }
 
@@ -172,6 +176,7 @@ export function useLineSerials({
       if (data.already_attached) {
         toast.info(`Already added — ${serial}`);
         publish(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
+        playScanFeedback('reject');
         return;
       }
 
@@ -183,6 +188,8 @@ export function useLineSerials({
           data.serial_unit,
         );
         publish(data.line_state.id, confirmed);
+        playScanFeedback('success');
+        pulseScanLine(data.line_state.id);
         // Return scan: the server resolved + persisted the originating order and
         // returns the exact row patch (type→RETURN / listing / carton source /
         // order# / status). Apply it optimistically so the workspace flips to
@@ -245,7 +252,19 @@ export function useLineSerials({
             is_return: !!data.is_return,
           },
         }));
-        setTimeout(() => serialInputRef.current?.focus(), 40);
+        // Multi-qty singleRowExpanded already advanced focus via onAdvance.
+        // Don't steal back to primaryInputRef (first empty) when a unit serial
+        // input already has the caret — that was the snap-to-unit-0 bug.
+        setTimeout(() => {
+          const active = document.activeElement;
+          if (
+            active instanceof HTMLElement &&
+            active.matches('[data-unbox-serial-input]')
+          ) {
+            return;
+          }
+          serialInputRef.current?.focus();
+        }, 40);
         // No post-scan refetch: the optimistic serials merge above + the return
         // line_patch carry everything the workspace needs. The mount-time
         // reconcile (and delete/replace/grade) still pull fresh serials; the hot
@@ -254,6 +273,7 @@ export function useLineSerials({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error scanning serial');
       publish(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
+      playScanFeedback('reject');
     } finally {
       submittingRef.current = false;
       setSerialSubmitting(false);
@@ -269,6 +289,7 @@ export function useLineSerials({
     serialInputRef,
     readLineSerials,
     publish,
+    playScanFeedback,
   ]);
 
   // Keep a live ref to the latest submitSerial so the queue drainer always
@@ -377,19 +398,21 @@ export function useLineSerials({
 
   // Persist a per-unit condition grade on an already-scanned serial_unit via
   // the dedicated grade endpoint (writes serial_units.condition_grade +
-  // GRADED audit). 409 means "no change" — silently ignored.
+  // GRADED audit). Empty grade clears. 409 means "no change" — silently ignored.
   const setUnitGrade = useCallback(
     async (serialUnitId: number, grade: string) => {
-      // Optimistic: stamp the new grade onto the chip in the siblings cache
-      // immediately (mirrors add/delete), so the graded chip updates within a
-      // frame instead of waiting on a full per-line refetch. Roll back on error.
+      // Optimistic serials mint negative ids; the grade route 400s on ≤0.
+      if (!(serialUnitId > 0)) return;
+      // Optimistic: stamp (or clear) the grade onto the chip in the siblings
+      // cache immediately. Roll back on error.
       const prev = readLineSerials(row.id);
-      publish(row.id, setSerialGrade(prev, serialUnitId, grade));
+      const nextGrade = String(grade || '').trim() ? grade : null;
+      publish(row.id, setSerialGrade(prev, serialUnitId, nextGrade));
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ new_grade: grade }),
+          body: JSON.stringify({ new_grade: nextGrade }),
         });
         // 409 = "no change" — the optimistic value already equals the server's.
         if (res.status === 409) return;

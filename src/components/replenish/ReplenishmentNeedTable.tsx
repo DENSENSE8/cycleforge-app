@@ -30,7 +30,6 @@ function SkuChip({ sku }: { sku: string }) {
       value={sku}
       display={display}
       icon={<HashIcon />}
-      underlineClass="border-border-emphasis"
       iconClass="text-text-soft"
       truncateDisplay={false}
     />
@@ -155,7 +154,6 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
                       {sku && (
                         <PlatformChip
                           label={sku}
-                          underlineClass="border-border-emphasis"
                           iconClass="text-text-soft"
                           onClick={(e) => {
                             e.stopPropagation();

@@ -1,17 +1,17 @@
 'use client';
 
 /**
- * OrderRecordBody — the single-scroll order record (Week 1, D2/D3; concise redesign).
+ * OrderRecordBody — the single-scroll durable order record on `/o/[orderId]`.
  *
  * Main column: Item · photos · Fulfillment · Financials · Documents · Timeline,
  * with Serial Journey + Conversation collapsed by default. Right rail: Customer ·
  * Buyer note · Returns · Warranty. Identity (order # / platform / status) lives
  * in the page header — not reprinted here.
  *
- * SCOPE (D2a) — ORDER-RECORD surfaces only:
- *   `/o/[orderId]` · Dashboard Search detail · `DashboardOrderDetails`.
- * Station / packer / fulfillment / labels / staged / shipped / queue stay on
- * the legacy tabbed `ShippedDetailsBody`.
+ * SCOPE — durable Workbench record only (`OrderFullPageView` → `/o/[orderId]`).
+ * Search feedback is `SearchOrderFeedback`. Desk table click is tabbed
+ * `ShippedDetailsPanel` → `ShippedDetailsBody`. Do not mount this body in those
+ * shells.
  */
 
 import type { ReactNode } from 'react';

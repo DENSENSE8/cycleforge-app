@@ -58,7 +58,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
   }
 
   return (
-    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+    <div className="mb-3 rounded-none border border-blue-200 bg-blue-50/40 p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-role-micro uppercase tracking-wider text-blue-700">Manual pairing</span>
         <IconButton

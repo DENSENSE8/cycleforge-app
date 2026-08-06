@@ -124,7 +124,7 @@ export function ManualsSection({
           {manuals.map((m) => {
             const name = m.display_name || m.file_name || `Manual #${m.id}`;
             return (
-              <li key={m.id} className="flex items-center gap-3 rounded-lg border border-border-soft/70 bg-surface-card px-3 py-2">
+              <li key={m.id} className="flex items-center gap-3 rounded-none border border-border-soft/70 bg-surface-card px-3 py-2">
                 {m.thumbnail_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.thumbnail_url} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-border-soft" />

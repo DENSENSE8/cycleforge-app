@@ -1,19 +1,35 @@
 /**
  * Testing-mode workspace tabs on `/test?view=testing`.
- * Param: `?testTab=returns|pending|history` — absent defaults to Returns.
+ * Param: `?testTab=urgent|returns|pending|all|history` — absent defaults to Returns.
  */
 
-export type TestingWorkspaceTab = 'pending' | 'returns' | 'history';
+export type TestingWorkspaceTab =
+  | 'urgent'
+  | 'returns'
+  | 'pending'
+  | 'all'
+  | 'history';
 
 const TESTING_WORKSPACE_TAB_PARAM = 'testTab';
 
+/** Band-1 order — Urgent · Returns · Pending · All · History. */
+export const TESTING_WORKSPACE_TABS: readonly TestingWorkspaceTab[] = [
+  'urgent',
+  'returns',
+  'pending',
+  'all',
+  'history',
+] as const;
+
 export const TESTING_WORKSPACE_TAB_LABEL: Record<TestingWorkspaceTab, string> = {
-  pending: 'Pending',
+  urgent: 'Urgent',
   returns: 'Returns',
+  pending: 'Pending',
+  all: 'All',
   history: 'History',
 };
 
-const VALID: ReadonlySet<string> = new Set(['pending', 'returns', 'history']);
+const VALID: ReadonlySet<string> = new Set(TESTING_WORKSPACE_TABS);
 
 /**
  * Raw-string form of {@link getTestingWorkspaceTabFromSearch}, for callers that
@@ -34,7 +50,9 @@ export function getTestingWorkspaceTabFromSearch(
 
 /**
  * Normalize URL state for a Testing workbench tab switch.
- * Tab-specific search, layout, and staff filters never bleed across tables.
+ * Search never bleeds. History-only layout / weekOffset clear on queue tabs.
+ * Staff scope (`?staff=`) persists across queue tabs (Pending · Urgent · Returns · All)
+ * and History — ownership focus is orthogonal to lifecycle tabs.
  */
 export function normalizeTestingWorkspaceTabParams(
   params: URLSearchParams,
@@ -44,7 +62,6 @@ export function normalizeTestingWorkspaceTabParams(
   params.delete(TESTING_WORKSPACE_TAB_PARAM);
 
   if (nextTab !== 'history') {
-    params.delete('staff');
     params.delete('layout');
     params.delete('weekOffset');
   }

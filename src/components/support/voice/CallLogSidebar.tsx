@@ -137,7 +137,7 @@ function SummaryCell({
   emphasize?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-2.5">
+    <div className="rounded-none border-t border-border-hairline bg-surface-card p-2.5">
       <p className="flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
         {icon}
         {label}

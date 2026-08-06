@@ -68,7 +68,7 @@ export function FilterRefinementBar({
     ? `flex h-[40px] w-full items-center gap-2.5 bg-surface-card px-3 transition-colors hover:bg-surface-hover ${
         isOpen || hasActive ? 'text-blue-600' : 'text-text-soft'
       }`
-    : `flex w-full items-center gap-3 rounded-2xl border px-5 py-3 text-role-data font-semibold tracking-tight transition-all ${
+    : `flex w-full items-center gap-3 rounded-none border px-5 py-3 text-role-data font-semibold tracking-tight transition-all ${
         isOpen
           ? 'border-blue-500/50 bg-surface-card shadow-[0_0_20px_rgba(59,130,246,0.12)] ring-1 ring-blue-500/20'
           : hasActive
@@ -87,7 +87,7 @@ export function FilterRefinementBar({
         aria-haspopup="dialog"
         className={`${triggerClasses} ${barClassName}`}
       >
-        <div className={isSidebar ? 'shrink-0' : `flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
+        <div className={isSidebar ? 'shrink-0' : `flex h-6 w-6 items-center justify-center rounded-none transition-colors ${
           isOpen || hasActive ? 'bg-blue-600 text-white' : 'bg-surface-sunken text-text-faint'
         }`}>
           <Filter className={isSidebar ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
@@ -143,7 +143,7 @@ export function FilterRefinementBar({
           initial={{ opacity: 0, y: 12, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.8 }}
-          className="overflow-hidden rounded-3xl border border-white/40 bg-surface-card/80 p-1 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.18)] backdrop-blur-xl ring-1 ring-black/[0.08]"
+          className="overflow-hidden rounded-none border border-border-default bg-surface-card p-1 shadow-md"
         >
           <div className="max-h-[70vh] overflow-y-auto px-5 py-6">
             {renderDropdown(() => setIsOpen(false))}
@@ -172,7 +172,7 @@ export function FilterRefinementBar({
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 className={cn(
-                  'group inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-role-caption font-semibold shadow-sm ring-1 ring-inset transition-all',
+                  'group inline-flex items-center gap-2 rounded-none px-3.5 py-1.5 text-role-caption font-semibold shadow-sm ring-1 ring-inset transition-all',
                   ref.pillClassName ??
                     'bg-surface-card text-text-default ring-border-soft hover:ring-blue-300',
                 )}

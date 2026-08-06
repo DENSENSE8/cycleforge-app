@@ -80,7 +80,7 @@ export function Stat({
       ? 'text-amber-700'
       : 'text-text-default';
   return (
-    <div className="rounded-2xl bg-gradient-to-b from-gray-50/70 to-white px-3 py-2.5 ring-1 ring-border-hairline">
+    <div className="rounded-none bg-gradient-to-b from-gray-50/70 to-white px-3 py-2.5 ring-1 ring-border-hairline">
       <div className="flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wider text-text-soft">
         {icon}
         {label}

@@ -99,7 +99,7 @@ const upNextLabelTextClass: Record<string, { active: string; inactive: string }>
 };
 
 const upNextRailBaseClass =
-  'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_4px_rgba(0,0,0,0.14)]';
+  'rounded-none bg-surface-strong p-1.5 shadow-[inset_0_1px_4px_rgba(0,0,0,0.14)]';
 
 /** Shared chrome for sidebar order/view TabSwitch rows (dashboard, repair, etc.). */
 export function SidebarTabSwitchChrome({ children }: { children: ReactNode }) {
@@ -132,10 +132,10 @@ export function TabSwitch({
   const defaultRailClass = upNext
     ? `${upNextRailBaseClass} ${upNextOutline}`
     : solid
-      ? `rounded-full border border-border-default bg-surface-card ${solidRailPad} shadow-sm`
+      ? `rounded-none border border-border-default bg-surface-card ${solidRailPad} shadow-sm`
       : highContrast
-        ? 'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
-        : 'bg-surface-sunken rounded-xl p-1';
+        ? 'rounded-none bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
+        : 'bg-surface-sunken rounded-none p-1';
   const railCombined = railClassName ?? defaultRailClass;
   // Hug keeps an intrinsic track even when `scrollable` — `min-w-full` would
   // stretch short rails (Incoming Sources) and fight the compact padding.
@@ -256,8 +256,8 @@ export function TabSwitch({
           aria-hidden
           className={cn(
             'pointer-events-none absolute z-0',
-            // band/sm: concentric inside card + p-0.5; default stays pill.
-            compact ? nestedCornerClass('card', 0.5) : 'rounded-full',
+            // band/sm: concentric inside card + p-0.5; default is square (not sausage).
+            compact ? nestedCornerClass('card', 0.5) : 'rounded-none',
             solid ? (solidAccent ? 'bg-accent-bg' : 'bg-surface-inverse') : 'bg-surface-card',
             upNext ? upNextOutline : solid ? '' : 'ring-1 ring-inset ring-border-soft',
           )}
@@ -296,7 +296,8 @@ export function TabSwitch({
                 className={cn(
                   'relative z-10 min-w-[3rem] whitespace-nowrap transition-colors duration-150',
                   tabFlexClass,
-                  compact ? nestedCornerClass('card', 0.5) : 'rounded-full',
+                  // Industrial: square segments — never a soft sausage pill.
+                  compact ? nestedCornerClass('card', 0.5) : 'rounded-none',
                   solid ? 'font-semibold' : 'font-semibold uppercase tracking-widest',
                   upNext
                     ? 'px-3 py-2 text-role-caption'

@@ -10,18 +10,21 @@ export type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
  * domain presets:
  *   • receiving/testing → `RecentActivityRailBase` (`ReceivingLineRow`)
  *   • shipping          → `ShippingStaffScanHistoryRail` (`TechRecord` history feed)
+ *   • pack / labels / pickup / product-labels — same shell
  *
- * It applies the recent-rail defaults (stagger reveal + pin-selected-lead) and
- * forwards everything else to the fully-generic {@link SidebarRailShell}. A
- * preset supplies only its row type, fetch/query wiring, and slot renderers —
- * neither domain calls `SidebarRailShell` raw, so the "recent rail" contract has
- * exactly one home. Both defaults are overridable per preset.
+ * It applies the recent-rail defaults (stagger reveal + pin-selected-lead +
+ * collapsed-strip MRU publish) and forwards everything else to the fully-generic
+ * {@link SidebarRailShell}. A preset supplies only its row type, fetch/query
+ * wiring, and slot renderers — neither domain calls `SidebarRailShell` raw, so
+ * the "recent rail" contract has exactly one home. Defaults are overridable.
  */
 export function SidebarRecentRailBase<TRow>({
   staggerReveal = true,
   pinSelectedLead = true,
   // Flush-right under full-bleed scan bands (Unboxed / Testing / Labels).
   railInset = 'scanDock',
+  // Parked mid-strip peek — every recent-activity rail publishes by default.
+  publishCollapseMru = true,
   ...rest
 }: SidebarRecentRailBaseProps<TRow>) {
   return (
@@ -29,6 +32,7 @@ export function SidebarRecentRailBase<TRow>({
       staggerReveal={staggerReveal}
       pinSelectedLead={pinSelectedLead}
       railInset={railInset}
+      publishCollapseMru={publishCollapseMru}
       {...rest}
     />
   );

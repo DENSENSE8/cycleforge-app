@@ -23,9 +23,16 @@ const CARDS: PeekCard[] = [
   { id: 'p12', imgUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=560&fit=crop', alt: 'Headphones 3' },
 ];
 
+/** Pending placeholders first (newest) — mirrors Ably in-flight merge on Unbox. */
+const CARDS_WITH_PENDING: PeekCard[] = [
+  { id: 'pending:demo:0', imgUrl: '', alt: 'Uploading photo', pending: true },
+  { id: 'pending:demo:1', imgUrl: '', alt: 'Uploading photo', pending: true },
+  ...CARDS.slice(0, 4),
+];
+
 export default function PhotoPeekDemoPage() {
   return (
-    <div className="grid min-h-screen place-items-center bg-surface-sunken p-6">
+    <div className="grid min-h-screen place-items-center gap-8 bg-surface-sunken p-6">
       {/* Mock right-pane: same relative + gray surface as the unbox LineEditPanel. */}
       <div className="relative flex h-[720px] w-[900px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-canvas shadow-xl">
         <div className="border-b border-border-hairline px-5 py-3 text-role-caption font-semibold uppercase tracking-widest text-text-faint">
@@ -37,6 +44,16 @@ export default function PhotoPeekDemoPage() {
           <div className="h-40 rounded-xl bg-surface-card shadow-sm" />
         </div>
         <PhotoPeekFan cards={CARDS} />
+      </div>
+      <div className="relative flex h-[720px] w-[900px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-canvas shadow-xl">
+        <div className="border-b border-border-hairline px-5 py-3 text-role-caption font-semibold uppercase tracking-widest text-text-faint">
+          Mock unbox panel — in-flight placeholders
+        </div>
+        <div className="flex-1 space-y-3 p-5">
+          <div className="h-24 rounded-xl bg-surface-card shadow-sm" />
+          <div className="h-32 rounded-xl bg-surface-card shadow-sm" />
+        </div>
+        <PhotoPeekFan cards={CARDS_WITH_PENDING} />
       </div>
     </div>
   );

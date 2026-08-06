@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import type { PaintSurface } from '@/lib/observability/paint-timing';
 import { motion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
@@ -19,12 +19,14 @@ import { railRelativeTime, type SidebarRailRowContext } from '@/components/sideb
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { usePlatformMeta } from '@/hooks/useCatalog';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import {
   fulfillmentModeLabel,
   isLocalPickupFulfillment,
   displayTrackingNumber,
 } from '@/lib/receiving/fulfillment-mode';
+import { getReceivingStatusDotTip } from '@/lib/receiving/rail/status';
 import {
   receivingRailRowTitle,
   type ReceivingRailRowTitleMode,
@@ -60,6 +62,10 @@ export interface RecentActivityRailBaseProps {
    * of blanking the rail. See {@link SidebarRailShellProps.excludedIds}.
    */
   excludedIds?: ReadonlySet<number>;
+  /**
+   * Client-side keep filter — see {@link SidebarRailShellProps.includeRow}.
+   */
+  includeRow?: (row: ReceivingLineRow) => boolean;
   /**
    * Cold-reload first-paint seed (Upstash-backed). See
    * {@link SidebarRailShellProps.loadSnapshot} / `persistSnapshot`. Unset = off.
@@ -210,6 +216,7 @@ export function RecentActivityRailBase({
   queryKey,
   fetchFn,
   excludedIds,
+  includeRow,
   loadSnapshot,
   persistSnapshot,
   updateEvent,
@@ -240,15 +247,25 @@ export function RecentActivityRailBase({
   showTicketFlag = true,
 }: RecentActivityRailBaseProps) {
   const resolvePlatformMeta = usePlatformMeta();
-  const resolvePlatformLabel = (raw: string) => resolvePlatformMeta(raw).label;
-  const rowTitle = (row: ReceivingLineRow) =>
-    receivingRailRowTitle(row, rowTitleMode, resolvePlatformLabel);
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
+  const rowTitle = useCallback(
+    (row: ReceivingLineRow) =>
+      receivingRailRowTitle(row, rowTitleMode, (raw) => resolvePlatformMeta(raw).label),
+    [rowTitleMode, resolvePlatformMeta],
+  );
+  /** Short chip label — never the sync tip sentence. */
+  const shortStatusLabel = (row: ReceivingLineRow) =>
+    getStatusDotLabel?.(row) ?? workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
+  /** Dot hover: Unboxed sync tip when coarse UNBOXED, else short label. */
+  const statusDotHoverLabel = (row: ReceivingLineRow) =>
+    getReceivingStatusDotTip(row, inventoryProviderLabel) ?? shortStatusLabel(row);
 
   return (
     <SidebarRecentRailBase<ReceivingLineRow>
       queryKey={queryKey}
       fetchFn={async () => (await fetchFn()).receiving_lines ?? []}
       excludedIds={excludedIds}
+      includeRow={includeRow}
       loadSnapshot={loadSnapshot}
       persistSnapshot={persistSnapshot}
       updateEvent={updateEvent}
@@ -266,6 +283,15 @@ export function RecentActivityRailBase({
       preserveServerOrder={preserveServerOrder}
       staggerRevealMotion={staggerRevealMotion}
       contentPaintSurface={contentPaintSurface}
+      getCollapsePinLabel={rowTitle}
+      getCollapsePinMeta={(row) => {
+        const trk = displayTrackingNumber(row)?.trim();
+        if (trk) return trk;
+        const po = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
+        if (po) return po;
+        const sku = (row.sku || '').trim();
+        return sku || null;
+      }}
       eyebrowTitle={eyebrowTitle}
       eyebrowSuffix={eyebrowSuffix}
       eyebrowAction={eyebrowAction}
@@ -281,7 +307,7 @@ export function RecentActivityRailBase({
       getActivityAt={getActivityAt}
       onSelect={selectRow}
       getStatusDot={getStatusDot}
-      getStatusDotLabel={getStatusDotLabel}
+      getStatusDotLabel={statusDotHoverLabel}
       renderRowMain={(row, ctx) => (
         <ReceivingRowMain
           row={row}
@@ -300,7 +326,7 @@ export function RecentActivityRailBase({
           getQty={getPreviewQty}
           activityAt={getActivityAt(row) ?? null}
           statusDot={getStatusDot(row)}
-          statusLabel={getStatusDotLabel?.(row) ?? workflowStatusTableLabel(row.workflow_status || 'EXPECTED')}
+          statusLabel={shortStatusLabel(row)}
           onOpenWorkspace={() => { p.openWorkspace(); p.dismiss(); }}
           ticket={showTicketFlag ? railTicketNumber(row) : null}
           contextSlot={renderPopoverContext?.(row)}
@@ -442,7 +468,7 @@ function ReceivingPopoverContent({
             </span>
           ) : null}
           <HoverTooltip
-            label={`${row.photo_count ?? 0} ${(row.photo_count ?? 0) === 1 ? 'photo' : 'photos'}`}
+            label={`Photos ${row.photo_count ?? 0}`}
             asChild
           >
             <span

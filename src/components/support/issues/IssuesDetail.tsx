@@ -174,7 +174,7 @@ function IssueActions({
       </div>
 
       {editing ? (
-        <div className="stack-section rounded-lg border border-border-soft bg-surface-card inset-card">
+        <div className="stack-section border-t border-border-hairline inset-card">
           <TextField label="Title" value={draftTitle} onChange={setDraftTitle} />
           <TextField
             label="Description"

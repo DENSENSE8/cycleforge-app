@@ -2,10 +2,11 @@ import { test, expect } from '@playwright/test';
 // Imported, never re-typed: the cap is derived, so a spec that hardcoded the
 // number would keep passing after the derivation changed underneath it.
 import {
-  CONTEXT_RAIL_PARKED_PX,
+  contextRailCostPx,
   MIN_WORK_SURFACE_PX,
   RIGHT_RAIL_GUTTER_PX,
 } from '@/lib/right-rail/frame';
+import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
 
 /**
  * Dashboard order inspector = a NON-MODAL region (execution plan Phase 1).
@@ -172,14 +173,14 @@ test.describe('Dashboard order inspector — non-modal', () => {
   });
 
   test('the inspector is resizable, clamps to the derived cap, and persists', async ({ page }) => {
-    // The cap leaves the queue readable. Since the inspector became a PUSH
-    // column it is derived by `resolveRightRailFrame` against the FULLY-PARKED
-    // frame — content row − (parked context-rail strip + both its gutters +
-    // MIN_WORK_SURFACE_PX + the panel's own gutters) — so a ceiling the operator
-    // drags against cannot move when the rail parks underneath them.
-    // At 1440 with the spine closed: 1440 − 48 − 784 − 16 = 592.
-    const EXPECTED_CAP =
-      1440 - CONTEXT_RAIL_PARKED_PX - MIN_WORK_SURFACE_PX - RIGHT_RAIL_GUTTER_PX * 2;
+    // The cap leaves the queue readable beside an OPEN context rail — the right
+    // edge must not auto-park the left. Derived by `resolveRightRailFrame`:
+    // content row − open context cost − MIN_WORK_SURFACE_PX (floored at panel min).
+    // At 1440 with the default 360 rail: max(360, 1440 − 360 − 784) = 360.
+    const EXPECTED_CAP = Math.max(
+      DETAIL_STACK_RESIZE.minWidthPx,
+      1440 - contextRailCostPx() - MIN_WORK_SURFACE_PX - RIGHT_RAIL_GUTTER_PX * 2,
+    );
 
     const inspector = page.locator('aside[role="region"]');
     const openFirstRow = async () => {
@@ -201,7 +202,11 @@ test.describe('Dashboard order inspector — non-modal', () => {
     await page.goto('/dashboard?unshipped');
 
     await openFirstRow();
-    expect((await inspector.boundingBox())?.width).toBeCloseTo(420, 0);
+    // Default 420 may already exceed the open-left cap at 1440 — clamp on open.
+    expect((await inspector.boundingBox())?.width).toBeCloseTo(
+      Math.min(DETAIL_STACK_RESIZE.defaultWidthPx, EXPECTED_CAP),
+      0,
+    );
 
     // Drag the left edge well past the cap — dragging LEFT grows a right-anchored pane.
     const handle = page.getByTestId('detail-inspector-resize');

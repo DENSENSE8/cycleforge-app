@@ -16,7 +16,7 @@ function readRepo(rel: string): string {
 
 describe('orders lookup tracking resolve', () => {
   const src = readRepo('src/app/api/orders/lookup/[orderId]/route.ts');
-  const header = readRepo('src/components/layout/GlobalHeaderSearch.tsx');
+  const find = readRepo('src/components/search/GlobalFindCombobox.tsx');
   const field = readRepo('src/design-system/primitives/SearchField.tsx');
 
   it('falls back to findOrderByTrackingKey when order_id misses', () => {
@@ -28,8 +28,8 @@ describe('orders lookup tracking resolve', () => {
 
   it('header paste commits via onSearch → resolveSearchOrder', () => {
     assert.match(field, /flushValue\(trimmed, Boolean\(onSearch\)\)/);
-    assert.match(header, /onSearch=\{handleSearchSubmit\}/);
-    assert.match(header, /resolveSearchOrder\(trimmed\)/);
-    assert.match(header, /orderRecordHref\(resolved\.order\.id\)/);
+    assert.match(find, /onSearch=\{handleSearchSubmit\}/);
+    assert.match(find, /resolveSearchOrder\(trimmed\)/);
+    assert.match(find, /orderRecordHref\(resolved\.order\.id\)/);
   });
 });

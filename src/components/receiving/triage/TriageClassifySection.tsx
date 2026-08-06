@@ -3,11 +3,13 @@
 /**
  * Classify controls — Urgency / Platform / Type.
  *
- * Shared by Arrival Overview + Unbox Classify tab. Dimension eyebrows left;
- * expanded options stay a **names list** (tone on the active row). Collapsed
- * value chip shows the identity face (platform mark / type glyph / urgency).
- * Carton **banner** is icon+name via `InlinePillPicker` — tab icon option
- * grids are deferred: docs/todo/classify-option-icon-faces-handoff.md.
+ * Shared by Arrival + Unbox Classify Displays. Flush plane on the push column
+ * (no WorkspaceCard glass island) — same recipe as Package Pairing bare chrome.
+ * Dimension eyebrows left; expanded options stay a **names list** (tone on the
+ * active row). Collapsed value chip shows the identity face (platform mark /
+ * type glyph / urgency). Carton **banner** is icon+name via `InlinePillPicker`
+ * — tab icon option grids are deferred:
+ * docs/todo/classify-option-icon-faces-handoff.md.
  *
  * Accordion: CSS `grid-template-rows` (not AnimatePresence exit) so switching
  * from an open row to another never stacks two option lists (layout jump).
@@ -15,8 +17,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronRight, Flag, Globe, Tag } from '@/components/Icons';
-import { WorkspaceCard } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
   INLINE_PILL_ICON_FACE,
@@ -36,6 +38,9 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 type ClassifyPicker = 'urgency' | 'platform' | 'type';
 
 type ClassifyExpandDimension = ClassifyPicker;
+
+/** Flush Displays body — sits in the push column `px-4`; no glass card island. */
+const CLASSIFY_FLUSH_HOST_CLASS = cn('min-h-0', cornerClass('flush'));
 
 const DIMENSION_ICON: Record<ClassifyPicker, ReactNode> = {
   urgency: <Flag className="h-3.5 w-3.5" />,
@@ -156,7 +161,7 @@ export function TriageClassifySection({
   }, [openPicker]);
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+    <div className={CLASSIFY_FLUSH_HOST_CLASS}>
       <div
         ref={rootRef}
         role="list"
@@ -214,7 +219,7 @@ export function TriageClassifySection({
           }}
         />
       </div>
-    </WorkspaceCard>
+    </div>
   );
 }
 
@@ -264,7 +269,8 @@ function ClassifyDimension({
       >
         <span
           className={cn(
-            'grid h-5 w-5 shrink-0 place-items-center rounded-md transition-colors',
+            'grid h-5 w-5 shrink-0 place-items-center transition-colors',
+            cornerClass('flush'),
             set ? 'text-text-muted' : 'text-text-faint',
           )}
           aria-hidden
@@ -331,7 +337,8 @@ function ClassifyDimension({
                     title={opt.title ?? opt.label}
                     onClick={() => onSelect(opt.value)}
                     className={cn(
-                      'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors',
+                      'flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors',
+                      cornerClass('flush'),
                       focusRing('control', 'accent'),
                       isActive
                         ? opt.activeClass ??

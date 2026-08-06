@@ -145,6 +145,7 @@ export function OrderFulfillmentFacts({
                 key={`tracking-${index}-${row.shipmentId ?? 'none'}`}
                 label={`Tracking${allTrackingRows.length > 1 ? ` ${index + 1}` : ''}`}
                 value={draftValue}
+                carrierHint={order.carrier}
                 placeholder="Enter tracking number"
                 onReplace={async (next) => {
                   const trimmed = String(next || '').trim();

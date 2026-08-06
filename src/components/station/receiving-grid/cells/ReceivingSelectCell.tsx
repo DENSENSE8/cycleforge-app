@@ -1,7 +1,11 @@
 'use client';
 
 import { Check } from '@/components/Icons';
-import { GridRowCheckbox, isEmptyGutterChrome } from '@/components/ui/GridRowCheckbox';
+import {
+  GridClickSelectFace,
+  GridRowCheckbox,
+  isEmptyGutterChrome,
+} from '@/components/ui/GridRowCheckbox';
 import {
   RECEIVING_GRID_FROZEN_CELL,
   receivingGridCell,
@@ -16,8 +20,9 @@ import type { ReceivingGridCellProps } from './receiving-grid-cell-types';
  * inside a cell that only swallowed the click, so the row underneath owned the
  * toggle and "open the record" had no gesture left.
  *
- * Chrome: Unbox History passes `selectGutterChrome: 'sheets'` (empty hit-plane;
- * row wash is the select signal); other surfaces keep `'always'`.
+ * Click-select (Unbox History / Incoming): decorative {@link GridClickSelectFace}
+ * in the select track; the row body owns bulk toggle. Other surfaces keep
+ * interactive `'always'` chrome.
  */
 export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
   const {
@@ -30,7 +35,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
   } = ctx;
   const emptyGutter = isEmptyGutterChrome(selectGutterChrome);
 
-  // Click-select: the row body owns bulk toggle; gutter is a spacer so the
+  // Click-select: the row body owns bulk toggle; gutter paints membership so
   // header select-all still aligns on the select track.
   if (clickSelect) {
     return (
@@ -38,11 +43,21 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
         className={cn(
           receivingGridCell({ inset: 'none', rule: true }),
           RECEIVING_GRID_FROZEN_CELL,
+          // Clip the absolute face to the 2rem track — in-flow full-bleed wash
+          // was bleeding a selection strip into the next column under h-scroll.
+          // `sticky` (from FROZEN_CELL) is already a containing block for the
+          // absolute face — do NOT add `relative` here; it overrides sticky and
+          // the select gutter scrolls away with the facts.
+          'overflow-hidden p-0',
         )}
         style={{ left: receivingGridFrozenLeft('select') }}
-        data-frozen-edge
         aria-hidden
-      />
+      >
+        <GridClickSelectFace
+          checked={isChecked}
+          className="absolute inset-0"
+        />
+      </div>
     );
   }
 
@@ -54,7 +69,6 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
         emptyGutter ? 'items-stretch p-0' : 'justify-center',
       )}
       style={{ left: receivingGridFrozenLeft('select') }}
-      data-frozen-edge
     >
       {selectMode && onToggle ? (
         <GridRowCheckbox
@@ -66,8 +80,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
       ) : selectMode ? (
         // Legacy single-gesture surface (Testing / Pickup / non-Unbox):
         // the ROW click still ticks the box, so this stays a painted indicator
-        // and must not swallow the click that does the ticking. Unbox History
-        // always passes `onToggle` — it never lands here.
+        // and must not swallow the click that does the ticking.
         <span
           className={cn(
             'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',

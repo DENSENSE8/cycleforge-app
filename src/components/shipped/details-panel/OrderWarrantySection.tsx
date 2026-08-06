@@ -59,16 +59,18 @@ export function OrderWarrantySection({ order }: { order: ShippedOrder }) {
   }, [claims, order.id]);
 
   return (
-    <div className="flex min-h-full flex-col gap-4 pb-8 pt-4">
-      <CoverageBlock
-        query={coverageQuery}
-        coverage={coverage}
-        isLoading={coverageLoading}
-        isFetching={isFetching}
-        onLogClaim={() => setLogOpen(true)}
-      />
+    <div className="flex min-h-full flex-col pb-8 pt-4">
+      <div className="px-4">
+        <CoverageBlock
+          query={coverageQuery}
+          coverage={coverage}
+          isLoading={coverageLoading}
+          isFetching={isFetching}
+          onLogClaim={() => setLogOpen(true)}
+        />
+      </div>
 
-      <section className="rounded-xl border border-border-soft bg-surface-card">
+      <section className="mt-4 border-y border-border-hairline">
         <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-4 py-2.5">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Claims for this order

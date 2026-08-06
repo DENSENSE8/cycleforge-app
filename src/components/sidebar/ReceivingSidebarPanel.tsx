@@ -43,9 +43,14 @@ import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRa
 import { TriageScanBand, UnboxScanBand, PickupScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
-import { useContextPanelCollapse } from '@/components/sidebar/context-panel-collapse-context';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
+import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
+import { useReceivingRailFacets } from '@/components/sidebar/rail-shell/useReceivingRailFacets';
+import {
+  EMPTY_PICKUP_RAIL_FACETS,
+  PickupRailFilters,
+  type PickupRailFacets,
+} from '@/components/sidebar/rail-shell/PickupRailFilters';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
 import { PickupSidebarRail } from '@/components/receiving/pickup/PickupSidebarRail';
@@ -160,11 +165,15 @@ export function ReceivingSidebarPanel() {
   const [triageQuery, setTriageQuery] = useState('');
   /** Pre-resolve row pinned at the top of the Triage list (tracking # title). */
   const [triageLeadingRow, setTriageLeadingRow] = useState<ReceivingLineRow | null>(null);
-  /** Client-side Unboxed rail filter (mirrors Testing/Shipping TechRailSearchBar). */
+  /** Client-side Unboxed / Triage rail text filter + shared facet SoT. */
   const [unboxRailFilter, setUnboxRailFilter] = useState('');
-  const contextPanelCollapse = useContextPanelCollapse();
+  const receivingRailFacets = useReceivingRailFacets();
   /** Local Pickup scan wedge — open/match an LCPU order (not create). */
   const [pickupScanQuery, setPickupScanQuery] = useState('');
+  const [pickupRailFilter, setPickupRailFilter] = useState('');
+  const [pickupRailFacets, setPickupRailFacets] = useState<PickupRailFacets>(
+    EMPTY_PICKUP_RAIL_FACETS,
+  );
   const scanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -423,8 +432,22 @@ export function ReceivingSidebarPanel() {
               staffId={staffId}
             />
             <SidebarRailScrollport>
-              <PickupSidebarRail />
+              <PickupSidebarRail
+                filterText={pickupRailFilter}
+                facets={pickupRailFacets}
+              />
             </SidebarRailScrollport>
+            <TechRailSearchBar
+              value={pickupRailFilter}
+              onChange={setPickupRailFilter}
+              placeholder="Filter pickup…"
+              trailingSuffix={
+                <PickupRailFilters
+                  facets={pickupRailFacets}
+                  onChange={setPickupRailFacets}
+                />
+              }
+            />
           </div>
         ) : mode === 'history' ? (
           // History has no scan session and no rail — the right-pane table is
@@ -509,7 +532,13 @@ export function ReceivingSidebarPanel() {
                 selectedLine={selectedLine}
                 triageLeadingRow={triageLeadingRow}
                 triageFilterText={mode === 'triage' ? triageListQuery : ''}
+                triageIncludeRow={
+                  mode === 'triage' ? receivingRailFacets.includeRow : undefined
+                }
                 unboxFilterText={mode === 'receive' ? unboxRailFilter : ''}
+                unboxIncludeRow={
+                  mode === 'receive' ? receivingRailFacets.includeRow : undefined
+                }
               />
             </SidebarRailScrollport>
 
@@ -519,24 +548,32 @@ export function ReceivingSidebarPanel() {
                 (PoLinkTab, kept as-is). Hidden while bulk-editing so it never
                 collides with the selection action bar. */}
             {mode === 'triage' && !railEditMode ? (
-              <TriageCartonSearchBar value={triageListQuery} onChange={updateTriageQuery} />
+              <TriageCartonSearchBar
+                value={triageListQuery}
+                onChange={updateTriageQuery}
+                trailingSuffix={
+                  <ReceivingRecentRailFilters
+                    facets={receivingRailFacets.facets}
+                    onChange={receivingRailFacets.setFacets}
+                  />
+                }
+              />
             ) : null}
 
             {/* Unboxed rail filter — same bottom-anchored TechRailSearchBar as
-                Testing/Shipping. Hidden while bulk-editing (bulk bar owns the
-                footer). Mode id is `receive` (Unbox surface). */}
+                Testing/Shipping (paste hover-reveal + auto context-panel
+                collapse). Facets seat in trailingSuffix so paste leads.
+                Hidden while bulk-editing (bulk bar owns the footer). */}
             {mode === 'receive' && !railEditMode ? (
               <TechRailSearchBar
                 value={unboxRailFilter}
                 onChange={setUnboxRailFilter}
                 placeholder="Filter unboxed…"
-                trailingAction={
-                  contextPanelCollapse ? (
-                    <RailFilterCollapseButton
-                      onCollapse={contextPanelCollapse.collapse}
-                      label="Hide sidebar"
-                    />
-                  ) : null
+                trailingSuffix={
+                  <ReceivingRecentRailFilters
+                    facets={receivingRailFacets.facets}
+                    onChange={receivingRailFacets.setFacets}
+                  />
                 }
               />
             ) : null}

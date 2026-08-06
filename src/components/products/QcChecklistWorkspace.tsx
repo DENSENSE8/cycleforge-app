@@ -118,7 +118,7 @@ export function QcChecklistWorkspace() {
           </Button>
         </HoverTooltip>
         <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-role-micro uppercase tracking-wider text-blue-600">
-          {checks.length} {checks.length === 1 ? 'step' : 'steps'}
+          {checks.length} steps
         </span>
       </div>
 

@@ -147,18 +147,14 @@ test('no grid row paints a zebra stripe', () => {
       false,
       `${file} re-introduced an index-parity row fill — LedgerGrid rows draw cell rules, so a stripe is a third separation system. Use ledgerRowFillClass / ledgerRowStateClass.`,
     );
-    // Conditional, not blanket: a group SUMMARY renders inside
-    // `CollapsibleGroupRow`, which owns its fill, so it paints no row state at
-    // all and has nothing to compose. The rule is therefore "IF you paint a row
-    // fill, take it from the SoT" — hand-rolling the selected fill beside a
-    // hand-rolled default is how the stripe got in the first place.
+    // IF you paint a row fill, take it from the SoT — hand-rolling the selected
+    // fill beside a hand-rolled default is how the stripe got in the first place.
     assert.equal(
       src.includes('QUEUE_ROW.selectedClass'),
       false,
       `${file} hand-rolls the selected-row fill. A file that paints row state must use ledgerRowFillClass / ledgerRowStateClass.`,
     );
-    // Leaf rows that compose fill must use the capability-gated SoT. Group
-    // summaries sit inside CollapsibleGroupRow (no leaf fill) and skip this.
+    // Leaf rows that compose fill must use the capability-gated SoT.
     if (/(GridRow|TableRow)\.tsx$/.test(file) || /PickupGridGroupRow\.tsx$/.test(file)) {
       assert.ok(
         src.includes('ledgerRowFillClass'),

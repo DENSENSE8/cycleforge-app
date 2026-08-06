@@ -2,6 +2,7 @@
 
 import { useMemo, type RefObject } from 'react';
 import { LedgerGridSurface, useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
@@ -50,10 +51,9 @@ interface ReceivingGridViewProps {
    * span (Unbox workbench, Testing history, Pickup).
    */
   handleToggleRow?: (row: ReceivingLineRow) => void;
-  handleSelectGroup: (ids: readonly number[]) => void;
   /** Activity-axis stamp — drives the `date` cell + the column sort. */
   activityAxis?: ReceivingActivityAxis;
-  /** History reads status dots as uniform received-green. */
+  /** History / recent surface flag; status dots use getStatusDotBg (terminal tones win). */
   isHistory?: boolean;
   /** Selection bus scope (defaults to receiving). */
   selectionScope?: string;
@@ -87,16 +87,25 @@ interface ReceivingGridViewProps {
   /** Enable Sheets header context menu (Unbox / compare). Default true. */
   enableColumnMenu?: boolean;
   /**
-   * Select-gutter chrome. Unbox History uses `'sheets'` (empty hit-plane +
-   * row wash); default `'always'` keeps Recent / Queue / Docked History.
-   * Ignored when {@link clickSelect} is true (no select column).
+   * Select-gutter chrome. Unbox History / Incoming click-select paint
+   * {@link GridClickSelectFace} in the cell (not this chrome); default
+   * `'always'` keeps Recent / Queue / Docked History.
+   * Ignored when {@link clickSelect} is true.
    */
   selectGutterChrome?: GridSelectGutterChrome;
   /**
-   * Unbox History click-select golden: no select column; click toggles bulk;
-   * double-click opens; header paint-bucket paints selected rows.
+   * Unbox History / Incoming click-select: click toggles bulk; double-click
+   * opens; select track shows decorative check when selected; header
+   * paint-bucket paints selected rows (History).
    */
   clickSelect?: boolean;
+  /**
+   * Unbox History: double-click / Enter opens LineEditPanel while left-click
+   * (`handleSelectRow`) opens the triage rail.
+   */
+  onOpenWorkspace?: (row: ReceivingLineRow) => void;
+  /** Unbox History — richer context menu. */
+  historyTriageMenu?: boolean;
   /**
    * Unbox compare crosshair — carton `receiving_id` to wash as linked peer.
    * Omitted on single-pane mounts.
@@ -105,10 +114,15 @@ interface ReceivingGridViewProps {
   /** Pointer enter/leave on a carton row (compare host only). */
   onCrosshairHover?: (receivingId: number | null) => void;
   /**
-   * Unbox triage-band host for the column-display trigger (staff / filter /
-   * week row). When set, the Columns control portals there.
+   * Unbox triage-band / History View topics host for the column-display
+   * trigger. When set, the Columns control portals there.
    */
   columnTriggerPortalTarget?: HTMLElement | null;
+  /**
+   * History View topics: never paint card-corner ▦ while the inspector host
+   * is absent (same contract as To Ship).
+   */
+  columnTriggerPortalOnly?: boolean;
 }
 
 function poFoldKey(row: ReceivingLineRow): string {
@@ -133,7 +147,6 @@ export function ReceivingGridView({
   selectedIds,
   handleSelectRow,
   handleToggleRow,
-  handleSelectGroup,
   activityAxis = 'unboxed',
   isHistory = false,
   selectionScope = RECEIVING_SELECTION_SCOPE,
@@ -150,10 +163,17 @@ export function ReceivingGridView({
   enableColumnMenu = true,
   selectGutterChrome = 'always',
   clickSelect = false,
+  onOpenWorkspace,
+  historyTriageMenu = false,
   linkedReceivingId = null,
   onCrosshairHover,
   columnTriggerPortalTarget = null,
+  columnTriggerPortalOnly = false,
 }: ReceivingGridViewProps) {
+  // One fetch for the whole grid — History UNBOXED tips name the connected
+  // inventory provider (falls back to capability title while loading).
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
+
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
   // clear it via the route's param spec. TanStack still owns the asc↔desc cycle.
@@ -253,6 +273,7 @@ export function ReceivingGridView({
       tableId={tableId}
       surface="sheet"
       columnTriggerPortalTarget={columnTriggerPortalTarget}
+      columnTriggerPortalOnly={columnTriggerPortalOnly || isHistory}
       renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
         <ReceivingGridColumnHeader
           isMobile={isMobile}
@@ -290,9 +311,9 @@ export function ReceivingGridView({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleToggleRow={handleToggleRow}
-          handleSelectGroup={handleSelectGroup}
           activityAxis={activityAxis}
           isHistory={isHistory}
+          inventoryProviderLabel={inventoryProviderLabel}
           columns={visible}
           columnDisplay={displayByKey}
           selectGutterChrome={selectGutterChrome}
@@ -312,13 +333,15 @@ export function ReceivingGridView({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleToggleRow={handleToggleRow}
-          handleSelectGroup={handleSelectGroup}
           activityAxis={activityAxis}
           isHistory={isHistory}
+          inventoryProviderLabel={inventoryProviderLabel}
           columns={visible}
           columnDisplay={displayByKey}
           selectGutterChrome={selectGutterChrome}
           clickSelect={clickSelect}
+          onOpenWorkspace={onOpenWorkspace}
+          historyTriageMenu={historyTriageMenu}
           rowFillsById={clickSelect ? fillsById : undefined}
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}

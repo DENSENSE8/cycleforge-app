@@ -13,7 +13,7 @@
  */
 
 import { useRouter } from 'next/navigation';
-import { DollarSign, Package, ShoppingCart, Wrench } from '@/components/Icons';
+import { Package, Receipt, ShoppingCart, Wrench } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import { sectionLabel, cardTitle } from '@/design-system/tokens/typography/presets';
@@ -29,7 +29,7 @@ const STATION_LINKS: Array<{
     job: 'sales',
     label: 'New sale',
     hint: 'Square terminal charge',
-    icon: DollarSign,
+    icon: Receipt,
   },
   {
     job: 'pickup',

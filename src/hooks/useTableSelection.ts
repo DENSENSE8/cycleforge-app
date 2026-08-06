@@ -45,8 +45,8 @@ export function useTableSelection<T>(
 
 /**
  * Track the count of currently-selectable (visible) rows a table publishes via
- * `emitSelectionTotal(scope, …)`. Lets a `<ContextualSelectionBar>` know when
- * everything is selected so its select-all ring can fill. Defaults to `0` until
+ * `emitSelectionTotal(scope, …)`. Lets a rail `RailSelectionBand` know when
+ * everything is selected so its select-all control can reflect that. Defaults to `0` until
  * the table broadcasts.
  */
 export function useTableSelectionTotal(scope: string): number {

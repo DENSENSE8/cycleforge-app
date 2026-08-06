@@ -21,7 +21,7 @@ import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewe
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { receivingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton, Panel } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { SectionTabsSlider, type SectionTab } from '@/design-system/components/SectionTabsSlider';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { photoGridLeafClass } from '@/lib/photos/photo-grid-density';
@@ -106,7 +106,10 @@ export function CartonPhotoTriage({
   );
 
   return (
-    <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
+    // A flush band on the read plane, not a card floating above it — the panel
+    // opens BETWEEN the identity chrome and the two columns, so it is a section
+    // of the same sheet.
+    <div className="inset-card space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Photos</p>
@@ -130,7 +133,7 @@ export function CartonPhotoTriage({
         onChange={(id) => setLane(id as CartonPhotoLane)}
         ariaLabel="Carton photo lanes"
       />
-    </Panel>
+    </div>
   );
 }
 

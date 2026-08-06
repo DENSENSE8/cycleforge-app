@@ -38,10 +38,9 @@ interface IncomingGridViewProps {
   handleSelectRow: (row: ReceivingLineRow) => void;
   /** Bulk membership — gutter when split planes; whole-row click when clickSelect. */
   handleToggleRow: (row: ReceivingLineRow) => void;
-  handleSelectGroup: (ids: readonly number[]) => void;
   /**
    * Unbox Sheets click-select: plain click toggles bulk; double-click / Enter
-   * opens the inspector. Select track stays for header select-all only.
+   * opens the inspector. Select track paints decorative check when selected.
    */
   clickSelect?: boolean;
   /** Select-gutter face chrome — `'sheets'` when clickSelect. */
@@ -57,6 +56,11 @@ interface IncomingGridViewProps {
   /** Mirror of LedgerGrid scroll body for keyboard-nav / page scroll-to-top. */
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
+  /**
+   * Band-3 triage controls slot — when set, the column-display (▦) trigger
+   * portals there beside the refine icons instead of the card corner.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 function poFoldKey(row: ReceivingLineRow): string {
@@ -66,8 +70,9 @@ function poFoldKey(row: ReceivingLineRow): string {
 
 /**
  * Incoming POS spreadsheet — receiving-domain adapter over {@link LedgerGrid}.
- * Unbox Sheets golden: flush `surface="sheet"` + click-select (no checkbox
- * faces); double-click opens the Incoming inspector.
+ * Unbox Sheets golden: flush `surface="sheet"` + click-select (decorative
+ * check face when selected; row owns toggle); double-click opens the Incoming
+ * inspector.
  */
 export function IncomingGridView({
   filteredGroupedRecords,
@@ -80,13 +85,13 @@ export function IncomingGridView({
   selectedIds,
   handleSelectRow,
   handleToggleRow,
-  handleSelectGroup,
   clickSelect = false,
   selectGutterChrome = 'always',
   columns = INCOMING_GRID_COLUMNS,
   tableId = 'incoming',
   scrollRef,
   className,
+  columnTriggerPortalTarget,
 }: IncomingGridViewProps) {
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Deliberately
@@ -148,6 +153,7 @@ export function IncomingGridView({
       testId="incoming-grid-body"
       tableId={tableId}
       surface="sheet"
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <IncomingGridColumnHeader
           isMobile={isMobile}
@@ -172,7 +178,6 @@ export function IncomingGridView({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleToggleRow={handleToggleRow}
-          handleSelectGroup={handleSelectGroup}
           clickSelect={clickSelect}
           selectGutterChrome={selectGutterChrome}
           columns={visible}
@@ -188,7 +193,6 @@ export function IncomingGridView({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleToggleRow={handleToggleRow}
-          handleSelectGroup={handleSelectGroup}
           clickSelect={clickSelect}
           selectGutterChrome={selectGutterChrome}
           columns={visible}

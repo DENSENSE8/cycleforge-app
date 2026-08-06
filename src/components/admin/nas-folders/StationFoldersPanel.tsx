@@ -8,7 +8,7 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
   const { draft, setFolder, dirty, save, isLoading, setPicking } = c;
   return (
     <>
-      <div className="divide-y divide-border-hairline overflow-hidden rounded-2xl border border-border-soft bg-surface-card">
+      <div className="divide-y divide-border-hairline overflow-hidden rounded-none border border-border-soft bg-surface-card">
         {STATIONS.map((s) => (
           <div key={s.key} className="flex items-center gap-3 px-4 py-3">
             <div className="w-36 shrink-0">

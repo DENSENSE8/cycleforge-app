@@ -5,6 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import PackScanColumn from '@/components/station/PackScanColumn';
 import { PackRecentPacksRail } from '@/components/sidebar/packer/PackRecentPacksRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import {
+  EMPTY_STATION_HISTORY_RAIL_FACETS,
+  StationHistoryRailFilters,
+  type StationHistoryRailFacets,
+} from '@/components/sidebar/rail-shell/StationHistoryRailFilters';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveStaffDirectory } from './hooks';
 
@@ -18,6 +23,9 @@ export function PackerSidebarPanel() {
   const packerId = String(staffIdNum);
   const staffDirectory = useActiveStaffDirectory();
   const [railFilter, setRailFilter] = useState('');
+  const [railFacets, setRailFacets] = useState<StationHistoryRailFacets>(
+    EMPTY_STATION_HISTORY_RAIL_FACETS,
+  );
 
   // Pack mode — persisted via ?packMode= URL param so refresh/sharing preserves it.
   const rawMode = searchParams.get('packMode') ?? 'standard';
@@ -34,12 +42,21 @@ export function PackerSidebarPanel() {
           userName={packerName}
           staffId={packerId}
           packMode={packMode}
-          railSlot={<PackRecentPacksRail packerId={staffIdNum} filterText={railFilter} />}
+          railSlot={
+            <PackRecentPacksRail
+              packerId={staffIdNum}
+              filterText={railFilter}
+              facets={railFacets}
+            />
+          }
           railFooter={
             <TechRailSearchBar
               value={railFilter}
               onChange={setRailFilter}
               placeholder="Filter recent packs…"
+              trailingSuffix={
+                <StationHistoryRailFilters facets={railFacets} onChange={setRailFacets} />
+              }
             />
           }
         />

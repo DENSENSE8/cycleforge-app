@@ -9,15 +9,13 @@ import {
 } from 'react';
 import { AlertTriangle, Check, FileText, Maximize2 } from '@/components/Icons';
 import { Popover } from '@/design-system/primitives/Popover';
-import { Calendar } from '@/design-system/components/Calendar';
 import { conditionOptions, conditionDescription, resolveConditionGrade } from '@/lib/conditions';
 import { conditionGradeTextClass, conditionGradeTone } from '@/lib/condition-tone';
-import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
 /**
  * Cell-anchored editor popovers for the Pending grid (Phase 4/4b of the
- * industry-standard grid plan). All three compose the house {@link Popover}
+ * industry-standard grid plan). Compose the house {@link Popover}
  * (AnchoredLayer portal — never clipped by the virtualized scroll surface) and
  * commit through the parent's `useOrderAssignment` waist.
  *
@@ -386,51 +384,6 @@ export function RowInfoMenuPopover({
           </button>
         ))}
       </div>
-    </Popover>
-  );
-}
-
-// ─── Ship-by — civil-day calendar (warehouse zone SoT) ──────────────────────
-
-interface ShipByDatePopoverProps {
-  anchorRef: RefObject<HTMLElement | null>;
-  /** Current ship-by civil key (`YYYY-MM-DD`) or null. */
-  currentKey: string | null;
-  /** Commit a new civil key. */
-  onSelect: (dateKey: string) => void;
-  onDone: () => void;
-}
-
-export function ShipByDatePopover({
-  anchorRef,
-  currentKey,
-  onSelect,
-  onDone,
-}: ShipByDatePopoverProps) {
-  // Calendar widgets round-trip via dateKeyToLocalDate / localDateToDateKey —
-  // the civil-date law (never `new Date(dateKey)` local-midnight reparses).
-  const selected = currentKey ? dateKeyToLocalDate(currentKey) : undefined;
-  return (
-    <Popover
-      open
-      onClose={onDone}
-      anchorRef={anchorRef}
-      placement="bottom-start"
-      role="dialog"
-      aria-label="Ship by date"
-      padded={false}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <Calendar
-        mode="single"
-        selected={selected}
-        defaultMonth={selected}
-        onSelect={(day) => {
-          const key = localDateToDateKey(day ?? null);
-          if (key) onSelect(key);
-          onDone();
-        }}
-      />
     </Popover>
   );
 }

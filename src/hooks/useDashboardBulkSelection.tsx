@@ -10,15 +10,16 @@
  * by the page from `selectionActions`; overlays those actions open (the
  * assignment carousel, the ship-by picker) come back as `selectionOverlays`.
  *
- * Capsule consumers only: Pack and Shipping still mount `ContextualSelectionBar`.
- * The dashboard outbound grid publishes to the right rail via
- * {@link useOrderRailSelection} instead — do not add a publish flag here.
+ * Right-rail publishers wrap this via {@link useOrderRailSelection} — do not
+ * add a publish flag here. Surfaces that still need a floating capsule (none of
+ * the order queues) would call this hook directly; Pack / Shipping / dashboard
+ * all publish through the wrapper.
  *
  * **Actions diverge by lifecycle stage, layout does not** (the house rule these
  * lanes are built on). All four outbound tabs render one grid component with one
  * persisted column layout, but "assign a tester" is meaningless on Shipped and
  * "print a shipping label" is meaningless on Pending — so every action declares
- * the views it belongs to via `enabled`, and `ContextualSelectionBar` drops the
+ * the views it belongs to via `enabled`, and the rail action region drops the
  * ones that cannot fire instead of showing dead buttons.
  */
 
@@ -106,15 +107,8 @@ export interface DashboardBulkSelection {
   /** Lifecycle-scoped bulk actions for the contextual selection bar. */
   selectionActions: SelectionAction<DashSelectableRow>[];
   /** Modal surfaces some actions open (assignment carousel, ship-by picker).
-   *  The page renders this beside the bar — never inside the capsule. */
+   *  The page renders this beside the rail — never inside a selection capsule. */
   selectionOverlays: ReactNode;
-  /**
-   * True while the pinned capsule is actually on screen. Bounded table hosts
-   * thread this into `workbenchTableViewportClass({ bulkBarInset })` so their
-   * last row clears it. Derived HERE rather than at each page so the bar's
-   * visibility and the space reserved for it can never disagree.
-   */
-  bulkBarVisible: boolean;
 }
 
 export function useDashboardBulkSelection(
@@ -509,17 +503,11 @@ export function useDashboardBulkSelection(
     </>
   );
 
-  // Mirrors ContextualSelectionBar's own mount condition (`visible` defaults to
-  // count > 0, and it renders null when no action can fire).
-  const bulkBarVisible =
-    selectionEnabled && selectedRows.length > 0 && selectionActions.length > 0;
-
   return {
     selectionEnabled,
     selectMode,
     selectedRows,
     selectionActions,
     selectionOverlays,
-    bulkBarVisible,
   };
 }

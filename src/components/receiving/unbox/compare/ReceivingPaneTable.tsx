@@ -130,14 +130,6 @@ export function ReceivingPaneTable({
     [onActivate],
   );
 
-  const handleSelectGroup = useCallback(
-    (ids: readonly number[]) => {
-      onActivate();
-      setSelectedIds(new Set(ids));
-    },
-    [onActivate],
-  );
-
   // Sticky select → scroll first matching peer row into view (not on hover).
   useEffect(() => {
     if (stickyReceivingId == null) return;
@@ -229,7 +221,6 @@ export function ReceivingPaneTable({
           selectedIds={selectedIds}
           handleSelectRow={handleSelectRow}
           handleToggleRow={handleToggleRow}
-          handleSelectGroup={handleSelectGroup}
           activityAxis={modeState.historyAxis}
           isHistory={modeState.isHistoryMode}
           selectionScope={selectionScope}

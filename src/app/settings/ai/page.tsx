@@ -86,7 +86,7 @@ const USAGE_COLUMNS: DataTableColumn<AiUsageSummaryRow>[] = [
 
 function ProviderCard({ title, config, note }: { title: string; config: OrgAiConfig | null; note?: string }) {
   return (
-    <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
+    <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
       <p className="text-role-micro uppercase tracking-widest text-text-soft">{title}</p>
       {config ? (
         <>
@@ -170,17 +170,17 @@ export default async function AiSettingsPage() {
             Usage &amp; pricing · last {days} days
           </p>
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
+            <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
               <p className="text-role-micro uppercase tracking-widest text-text-soft">AI calls</p>
               <p className="text-xl font-semibold text-text-default">{totalCalls.toLocaleString()}</p>
             </div>
-            <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
+            <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
               <p className="text-role-micro uppercase tracking-widest text-text-soft">
                 Estimated provider cost
               </p>
               <p className="text-xl font-semibold text-text-default">{microcentsToUsd(estimated)}</p>
             </div>
-            <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
+            <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
               <p className="text-role-micro uppercase tracking-widest text-text-soft">
                 Billed{marginPercent > 0 ? ` (cost + ${marginPercent}%)` : ''}
               </p>

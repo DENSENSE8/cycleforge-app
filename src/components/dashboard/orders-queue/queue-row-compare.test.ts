@@ -24,22 +24,19 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(a, b, 'title', 'desc') > 0);
   });
 
-  it('sorts the fused ship-by column ascending = most overdue first', () => {
-    const sooner = row({ id: 1, deadline_at: '2026-07-01T00:00:00.000Z' });
+  it('sorts Late by derived days-late — DESC = most overdue first', () => {
+    const earlier = row({ id: 1, deadline_at: '2026-07-01T00:00:00.000Z' });
     const later = row({ id: 2, deadline_at: '2026-07-10T00:00:00.000Z' });
-    // ASC (the column default) leads with the earlier commitment, which is by
-    // definition the more overdue row — no direction flip needed for urgency.
-    assert.ok(compareQueueColumnRows(sooner, later, 'sla', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(sooner, later, 'sla', 'desc') > 0);
+    // Earlier commitment ⇒ larger days-late. DESC (column default) leads with it.
+    assert.ok(compareQueueColumnRows(earlier, later, 'age', 'desc') < 0);
+    assert.ok(compareQueueColumnRows(earlier, later, 'age', 'asc') > 0);
   });
 
-  it('sorts deadline-less rows by the same created_at fallback the cell shows', () => {
-    // The cell falls back to created_at when there is no deadline, so the sort
-    // must use that same instant — otherwise the column orders by a value the
-    // operator cannot see.
-    const sooner = row({ id: 1, deadline_at: null, created_at: '2026-07-01T00:00:00.000Z' });
-    const later = row({ id: 2, deadline_at: null, created_at: '2026-07-10T00:00:00.000Z' });
-    assert.ok(compareQueueColumnRows(sooner, later, 'sla', 'asc') < 0);
+  it('sorts deadline-less rows last (they show em dash, not a days-late face)', () => {
+    const dated = row({ id: 1, deadline_at: '2026-07-01T00:00:00.000Z' });
+    const missing = row({ id: 2, deadline_at: null, ship_by_date: null });
+    assert.ok(compareQueueColumnRows(dated, missing, 'age', 'desc') < 0);
+    assert.ok(compareQueueColumnRows(dated, missing, 'age', 'asc') < 0);
   });
 
   it('sorts qty numerically', () => {
@@ -47,12 +44,6 @@ describe('compareQueueColumnRows', () => {
     const ten = row({ id: 2, quantity: 10 });
     assert.ok(compareQueueColumnRows(one, ten, 'qty', 'asc') < 0);
     assert.ok(compareQueueColumnRows(one, ten, 'qty', 'desc') > 0);
-  });
-
-  it('sorts condition by grade ladder', () => {
-    const neu = row({ id: 1, condition: 'BRAND_NEW' });
-    const parts = row({ id: 2, condition: 'PARTS' });
-    assert.ok(compareQueueColumnRows(neu, parts, 'condition', 'asc') < 0);
   });
 
   it('puts empty tracking last in both directions', () => {

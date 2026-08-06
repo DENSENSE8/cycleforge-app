@@ -16,8 +16,10 @@ import { MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPh
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { cn } from '@/utils/_cn';
 import {
   resolveReceivingRowStageStamp,
@@ -68,10 +70,16 @@ export function MobileReceivingRow({
   display = { isHistory: true },
   activityAxis = 'unboxed',
 }: MobileReceivingRowProps) {
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
   const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
+  const statusDotTip =
+    receivingUnboxedSyncTooltip({
+      workflowStatus: row.workflow_status,
+      inventoryProviderLabel,
+    }) ?? workflowLabel;
   // Icon mapping + show/hide are the SAME shared decision the desktop table uses.
   const { Icon: WorkflowIcon, tone: workflowIconTone } = getWorkflowIconMeta(workflowLabel);
   const showWorkflowIcon = shouldShowWorkflowStatusIcon(display);
@@ -98,7 +106,7 @@ export function MobileReceivingRow({
       {/* Title — identical primitive to the desktop table row. */}
       <RowTitle
         dot={getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected)}
-        dotTitle={workflowLabel}
+        dotTitle={statusDotTip}
         dotTrack={META_COL.dotTrackWide}
         title={productTitle}
       />

@@ -18,6 +18,8 @@
   not blocking. `dashboard-inspector-non-modal` was not re-run (known-red,
   unscoped `edge-resize-collapse` locator — see §4).
 
+> **Note 2026-08-05:** `isOrderRecord` / `context==="dashboard"` body fork is **demolished**. Desk inspector is always tabbed `ShippedDetailsBody`. See `order-details-page-EXECUTION-PLAN.md` §1.
+
 ## OPEN BUG — checkbox multi-select collapses to one row
 
 **Status (2026-08-01):** FIXED. Root cause was the adopt-effect race on the

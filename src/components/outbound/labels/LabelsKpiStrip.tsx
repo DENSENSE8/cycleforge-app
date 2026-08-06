@@ -1,24 +1,23 @@
 'use client';
 
 /**
- * Labels-station attention strip — Monitor KPIs for the Queue / Recent facets of
- * the `/shipping` labels station. Same tile anatomy as ShippingKpiStrip; reads
- * the same awaiting-label / staged feeds the tables + tab counts use (React
- * Query dedupes), so nothing drifts.
+ * Labels-station attention strip — Band 2 flush KPIs for Queue / Recent on
+ * `/shipping` labels. Same band density as OutboundKpiStrip.
  */
 
 import { useMemo } from 'react';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { KpiTile, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
+import {
+  KpiTile,
+  OpsKpiBand,
+  OpsKpiBandCell,
+  OpsKpiBandError,
+  OpsKpiBandSkeletonTile,
+} from '@/design-system/components/monitor';
 import { awaitingLabelsQuery, stagedOrdersQuery } from '@/lib/queries/outbound-queries';
 import { toPSTDateKey } from '@/utils/date';
-import { RefreshCw } from '@/components/Icons';
 import type { LabelsWorkspaceTab } from '@/utils/labels-workspace-state';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { cn } from '@/utils/_cn';
-
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
 interface Tile {
   id: string;
@@ -56,41 +55,16 @@ function countOverdue(rows: ShippedOrder[]): number {
   return n;
 }
 
-function SkeletonTile() {
-  return (
-    <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-      <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
-      <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-    </div>
-  );
-}
-
 function StripSkeleton({ slots }: { slots: number }) {
   return (
-    <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
+    <OpsKpiBand density="band" className="animate-pulse" aria-label="Loading labels metrics">
       <span className="sr-only">Loading labels metrics…</span>
       {Array.from({ length: slots }).map((_, i) => (
-        <div key={i} className={TILE_CELL_CLASS}>
-          <SkeletonTile />
-        </div>
+        <OpsKpiBandCell key={i} density="band">
+          <OpsKpiBandSkeletonTile density="band" />
+        </OpsKpiBandCell>
       ))}
-    </div>
-  );
-}
-
-function StripError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-      <p className="text-role-caption font-semibold text-rose-700">Couldn&apos;t load labels metrics.</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        // ds-raw-button: retry affordance inside a dashed error box (matches ShippingKpiStrip).
-        className="mt-2 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-surface-card px-2.5 py-1 text-role-eyebrow uppercase tracking-widest text-rose-700 hover:bg-rose-100"
-      >
-        <RefreshCw className="h-3.5 w-3.5" /> Try again
-      </button>
-    </div>
+    </OpsKpiBand>
   );
 }
 
@@ -104,22 +78,29 @@ function StripLayout({
   tiles: Tile[];
 }) {
   if (query.isError) {
-    return <StripError onRetry={() => void query.refetch()} />;
+    return (
+      <OpsKpiBandError
+        density="band"
+        message="Couldn't load labels metrics."
+        onRetry={() => void query.refetch()}
+      />
+    );
   }
   if (query.isPending) return <StripSkeleton slots={slots} />;
   return (
-    <div className={TILE_BAND_CLASS}>
+    <OpsKpiBand density="band" aria-label="Labels attention metrics">
       {tiles.map((t) => (
-        <div key={t.id} className={TILE_CELL_CLASS}>
+        <OpsKpiBandCell key={t.id} density="band">
           <KpiTile
+            density="band"
             label={t.label}
             value={t.value}
             valueClassName={t.value > 0 ? toneClass(t.tone) : undefined}
             className="h-full"
           />
-        </div>
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }
 

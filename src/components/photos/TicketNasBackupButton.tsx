@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Manual “Upload & sync to NAS” control for a filed claim ticket.
+ * Manual “Sync to NAS” control for a filed claim ticket.
  *
  * Shared by carton ticket chrome, the photo-library ticket leaf / group
  * headers, and (via the same archive-only API) the claim modal — so backup is
@@ -22,7 +22,7 @@ export function TicketNasBackupButton({
   variant = 'secondary',
   className,
   label = 'Sync to NAS',
-  tooltip = "Upload & sync this ticket's photos to the NAS claim folder",
+  tooltip = 'Sync this ticket’s photos to the NAS claim folder',
   disabled = false,
 }: {
   ticketNumber: string;

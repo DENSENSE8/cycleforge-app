@@ -49,6 +49,11 @@ import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-
 import { FBA_BOARD_GRID_CAPABILITIES } from '@/components/fba/fba-board-capabilities';
 import { MY_DAY_GRID_CAPABILITIES, makeMyDayGridDescriptor } from '@/features/my-day/grid/my-day-grid-descriptor';
 import { MY_DAY_GRID_COLUMNS } from '@/lib/my-day/my-day-grid-layout';
+import {
+  TECH_ALL_GRID_CAPABILITIES,
+  makeTechAllGridDescriptor,
+} from '@/components/tech/all/tech-all-grid-descriptor';
+import { TECH_ALL_GRID_COLUMNS } from '@/lib/tech/tech-all-grid-layout';
 import { WARRANTY_GRID_CAPABILITIES } from '@/components/warranty/grid/warranty-grid-descriptor';
 import { makeWarrantyGridDescriptor } from '@/components/warranty/grid/warranty-grid-descriptor';
 import { WARRANTY_GRID_COLUMNS } from '@/components/warranty/grid/warranty-grid-layout';
@@ -103,6 +108,7 @@ const DECLARED_CAPABILITIES: Record<string, GridSurfaceCapabilities> = {
   fba: FBA_BOARD_GRID_CAPABILITIES,
   warranty: WARRANTY_GRID_CAPABILITIES,
   'my-day': MY_DAY_GRID_CAPABILITIES,
+  'tech-all': TECH_ALL_GRID_CAPABILITIES,
   ready: READY_GRID_CAPABILITIES,
   'tracking-exceptions': TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
   unfound: UNFOUND_GRID_CAPABILITIES,
@@ -198,6 +204,10 @@ describe('grid surface capabilities', () => {
       makeMyDayGridDescriptor(MY_DAY_GRID_COLUMNS).capabilities,
       MY_DAY_GRID_CAPABILITIES,
     );
+    assert.deepEqual(
+      makeTechAllGridDescriptor(TECH_ALL_GRID_COLUMNS).capabilities,
+      TECH_ALL_GRID_CAPABILITIES,
+    );
     // Both Review tabs resolve to the SAME bag — the whole point of one
     // declaration for one surface.
     assert.deepEqual(
@@ -288,6 +298,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/receiving/unfound/grid/UnfoundGridView.tsx': 'unfound',
   'src/components/warehouse/bins-grid/BinsGridView.tsx': 'bins',
   'src/features/my-day/grid/MyDayGridView.tsx': 'my-day',
+  'src/components/tech/all/TechAllGridView.tsx': 'tech-all',
   // Both Review · Catalog-link tabs mount from ONE file under ONE bag.
   'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx': 'catalog-link',
   'src/components/station/StationListTable.tsx': 'station-history',

@@ -169,7 +169,7 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
         return (
           <div
             key={part.id}
-            className="flex items-center gap-2 rounded-xl bg-surface-canvas px-2.5 py-2 group"
+            className="flex items-center gap-2 rounded-none bg-surface-canvas px-2.5 py-2 group"
           >
             <span className="shrink-0 w-5 text-center text-role-micro text-text-faint tabular-nums">{idx + 1}</span>
             <span className="flex-1 min-w-0 truncate text-role-caption font-semibold text-text-default">
@@ -220,7 +220,7 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-xl border border-border-soft bg-surface-card p-2.5 space-y-2">
+            <div className="rounded-none border border-border-soft bg-surface-card p-2.5 space-y-2">
               <input
                 type="text"
                 value={componentName}
@@ -273,7 +273,7 @@ export function KitPartsSection({ catalogId, kitParts, onRefresh }: KitPartsSect
                 Required item — drives the &ldquo;all items in the box&rdquo; pack signal
               </label>
 
-              <div className="space-y-1.5 rounded-lg border border-border-hairline bg-surface-canvas p-2">
+              <div className="space-y-1.5 rounded-none border border-border-hairline bg-surface-canvas p-2">
                 <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
                   Insert (optional)
                 </p>

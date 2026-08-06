@@ -115,12 +115,12 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  * SERIAL_UNIT uses the inventory workbench's `?unit=` view (ByUnitView →
  * /api/serial-units/:id, which accepts the numeric id).
  *
- * There is exactly ONE order shell: `/o/[orderId]` ({@link orderRecordHref}).
- * A search hit for an order deep-links there like every other opener does —
- * recents (`detailStackHref`), ⌘K, and the order rail already did. The former
- * `orderSearchHref` built a third one (`/dashboard?mode=search&openOrderId=`,
- * a mode-local detail shell beside the slide-in panel and the full page); it
- * was deleted with Search mode (`docs/todo/dashboard-ia-rework-PLAN.md` X9a).
+ * Orders have two destinations by job:
+ *   • Durable Workbench record → {@link orderRecordHref} (`/o/[id]`)
+ *   • Search feedback shell → {@link searchOrderFeedbackHref} (`/search?sel=order:…`)
+ * A search hit opens feedback; confident identifier Enter and "open full"
+ * still use the durable record. Desk table row click keeps the right-rail
+ * `ShippedDetailsPanel` (tabbed) and is not a search href.
  */
 
 /**
@@ -136,13 +136,20 @@ export function orderRecordHref(orderId: string | number): string {
   return `/o/${encodeURIComponent(String(orderId).trim())}`;
 }
 
+/**
+ * Search order feedback href — `/search?sel=order:{id}`.
+ * Mounts {@link SearchOrderFeedback}, not the durable `/o` record.
+ */
+export function searchOrderFeedbackHref(orderId: string | number): string {
+  const id = encodeURIComponent(String(orderId).trim());
+  return `${SEARCH_SURFACE_PATH}?sel=order:${id}`;
+}
+
 export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
   switch (dbType) {
     case 'ORDER':
-      // The one order shell. Shipping-mode slide-over stays the in-place board
-      // experience; search / ⌘K / recents always land on the record page.
-      // Keep in sync with global-entity-search.ts.
-      return orderRecordHref(entityId);
+      // Search feedback shell. Keep in sync with global-entity-search.ts.
+      return searchOrderFeedbackHref(entityId);
     case 'SERIAL_UNIT':
       return `/inventory/units?unit=${entityId}`;
     case 'RECEIVING':
@@ -262,8 +269,8 @@ export function shouldAutoOpenSearchOrder(
  * operator on a one-row list they had to click. One row is not a choice.
  *
  * Returns null for 0 or 2+ hits (a real list — never force a destination), an
- * unusable id, or an entity vocabulary this build does not know. Orders need no
- * special case any more: `searchHitHref('ORDER')` IS the order record page.
+ * unusable id, or an entity vocabulary this build does not know. ORDER hits
+ * open search feedback via {@link searchHitHref}.
  */
 export function soleHitHref(
   hits: ReadonlyArray<{ id: number; entityType: string }>,
@@ -320,12 +327,9 @@ export function soleMatchingOrderHit(
  *
  * D4a — confidence decides the destination:
  *   • identifier query resolving to **exactly one** ORDER → `/o/[id]`, the
- *     canonical record. Typing a full order number is unambiguous intent; a
- *     results list of one is a failure to recognize it.
- *   • identifier with several ORDER hits, or no ORDER hit at all (receiving PO /
- *     tracking / serial may match other entities) → Search results list with the
- *     hit-map rail. Never force `openOrderId`, which dead-ends on "not found".
- *   • cross-entity natural language → results list.
+ *     durable Workbench record. Typing a full order number is unambiguous intent.
+ *   • otherwise → Search results (and ORDER preview hits open feedback via
+ *     {@link searchHitHref} / {@link searchOrderFeedbackHref}).
  *
  * Journey Trace stays a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
  * never the Enter default.
@@ -337,18 +341,11 @@ export function globalSearchHandoffHref(
   const trimmed = query.trim();
   if (!trimmed) return SEARCH_SURFACE_PATH;
   const orderHits = previewHits.filter((h) => h.entityType === 'order');
-  const orderOnly =
-    previewHits.length > 0 && previewHits.every((h) => h.entityType === 'order');
   const isIdentifier = looksLikeIdentifier(trimmed);
 
-  // One confident hit → the record itself.
+  // One confident hit → the durable record.
   if (isIdentifier && orderHits.length === 1) return orderRecordHref(orderHits[0].id);
 
-  if (isIdentifier || orderOnly) {
-    const top = orderHits[0];
-    if (top) return orderRecordHref(top.id);
-    return globalSearchHref(trimmed);
-  }
   return globalSearchHref(trimmed);
 }
 

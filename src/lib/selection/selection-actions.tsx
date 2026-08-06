@@ -5,10 +5,10 @@ import type { StickyActionTone } from '@/design-system/components/StickyActionBa
  * One contextual bulk action for a selection of table rows.
  *
  * A page (receiving history, testing history, …) declares an array of these
- * and hands it to {@link ContextualSelectionBar}. The bar picks the `primary`
- * one for the big CTA, drops the rest into the overflow menu, and disables any
- * action whose selection-count / predicate constraints aren't met — so the
- * contextual logic lives next to each feature while the bar stays generic.
+ * and publishes it via `publishRailActions` for the right-rail action region.
+ * The region surfaces the `primary` CTA, keeps secondaries labeled, and drops
+ * any action whose selection-count / predicate constraints aren't met — so the
+ * contextual logic lives next to each feature while the rail chrome stays generic.
  */
 export interface SelectionAction<T> {
   /** Stable identity for React keys + analytics. */

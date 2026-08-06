@@ -13,10 +13,12 @@
  * It used to mount a `SectionTabsSlider` here — Ticket | Conversations |
  * Timeline — so reading the linkage or the history meant swapping the
  * conversation off screen on the surface whose whole job is that conversation.
- * The displays moved to the right edge ({@link useSupportTicketDisplays} →
- * `SupportContextDetailPanel`), which is the shape Unbox already ships: the
- * workbench body is the work, every other display is a thing the operator picks
- * on the right and which then persists (`display/station-workbench.md`).
+ * That context moved to the right edge ({@link useSupportTicketDisplays} →
+ * `SupportContextDetailPanel`), a `RightRailHost` **inspector**: the workbench
+ * body is the work, and its context is a thing the operator opens on the right
+ * and which then persists (`display/right-rail-inspector.md`). It is an
+ * inspector, NOT Station "Displays" — that noun is reserved for the scan push
+ * column (source-of-truth.md → Displays vs inspector).
  *
  * The dock followed from that and is now **ticket-terminal**: it is always the
  * reply composer, never re-labelled by a click on the right edge. A control in
@@ -38,10 +40,7 @@
  */
 
 import { useMemo } from 'react';
-import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
-} from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_CHROME } from '@/components/dashboard/workbench-shell';
 import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal';
 import { WorkspaceCard } from '@/design-system/components';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
@@ -73,7 +72,7 @@ export function SupportTicketFocus({
 }: {
   ticketId: number;
   onClose: () => void;
-  /** Whether the `RightRailHost` currently holds this ticket's displays. */
+  /** Whether the `RightRailHost` inspector currently holds this ticket's context. */
   contextOpen: boolean;
   onToggleContext: () => void;
   /**
@@ -138,9 +137,12 @@ export function SupportTicketFocus({
   return (
     <TicketComposerStagingProvider value={photoStaging}>
       <div className="relative isolate flex h-full min-h-0 w-full flex-col bg-surface-canvas">
-        {/* Same gutter column the queue board's chrome uses, so flipping between
-            the two does not shift the card edge sideways. */}
-        <div className={WORKBENCH_CHROME_COLUMN}>
+        {/* Flush chrome plane — matches the now-flush queue board so flipping
+            between list and thread does not shift the card edge sideways. This
+            is a service-workspace THREAD (workbench-service.md), not a lifecycle
+            grid, so it keeps its PaneHeader + glass conversation rather than
+            taking the five-row Sheets stack. */}
+        <div className={WORKBENCH_SHEET_CHROME}>
           <SupportTicketPaneHeader
             ticket={ticket}
             ticketId={ticketId}
@@ -161,8 +163,7 @@ export function SupportTicketFocus({
             the composer cover the last reply. */}
         <div
           className={cn(
-            WORKBENCH_BODY_COLUMN,
-            'min-h-0 flex-1 pb-0',
+            'relative flex min-h-0 min-w-0 flex-1 flex-col pb-0',
             STATION_TERMINAL_SCROLL_CLEARANCE,
           )}
         >

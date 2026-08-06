@@ -1,16 +1,24 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle } from '@/components/Icons';
+import { AlertTriangle, History } from '@/components/Icons';
 import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import { StationContextBar } from '@/components/station/entity-context';
-import { StationPanelRoot, StationWorkbench } from '@/components/station/workbench';
+import {
+  StationPanelRoot,
+  StationScanPaneHost,
+  StationWorkbench,
+  WorkspaceTimelineTab,
+  buildSectionTabs,
+} from '@/components/station/workbench';
+import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
+import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { UpNextActionDock } from './UpNextActionDock';
@@ -49,19 +57,8 @@ interface ActiveOrderWorkspaceProps {
 
 /**
  * Focused work-item view rendered in the `/test` right pane while an order is
- * active. Crossfades in over the shipping workbench (see TechRightPane) — this
- * is the master-detail "detail" surface for the shipping station.
- *
- * Station Workbench host (`.claude/rules/display/station-workbench.md`): the
- * sticky {@link StationContextBar} identity bookmark hangs flush under
- * GlobalHeader (`STATION_IDENTITY_INSET_TOP` = `top-0`), above
- * {@link StationWorkbench}, which owns the scroll body
- * (notices → section tabs → siblings) and the terminal dock band. There is no
- * second `PaneHeader` title row — the identity bookmark IS the header, and its
- * back chevron returns to the list.
- *
- * The scan bar lives in the sidebar and stays focused; this surface should not
- * steal focus. Closing returns the pane to the history view.
+ * active. Unbox-family host: StationScanPaneHost + StationPanelRoot; Ship · Units
+ * stay centre work; Timeline is a Displays push body.
  */
 export function ActiveOrderWorkspace({
   activeOrder,
@@ -72,18 +69,11 @@ export function ActiveOrderWorkspace({
   setActiveOrder,
 }: ActiveOrderWorkspaceProps) {
   const isPreview = mode === 'preview';
-  // Station crossfade — route the active-card preset through the reduced-motion
-  // bridge so `prefers-reduced-motion` collapses the y-slide to a pure opacity
-  // crossfade automatically (motion-crossfade.md: don't consume framerPresence.*
-  // raw on a user-facing surface). The parent `TechRightPane` owns the
-  // `AnimatePresence mode="wait"` + stable per-entity key.
   const cardPresence = useMotionPresence(framerPresence.stationCard);
   const cardTransition = useMotionTransition(framerTransition.stationCardMount);
 
-  // Fulfillment substitution (docs/todo/tech-substitution-wiring-plan.md §5
-  // Phase 1.3): org policy + pure eligibility gate. Hidden for FBA / repair /
-  // exception sessions, not-found orders, and whenever policy.canSubstitute is
-  // false (flag off, 'test' node not allowed, or missing permission).
+  const [activeSideTab, setActiveSideTab] = useState<'timeline' | null>(null);
+
   const policyQuery = useSubstitutionPolicy();
   const substitution = useMemo(
     () =>
@@ -95,10 +85,6 @@ export function ActiveOrderWorkspace({
       }),
     [policyQuery.data, activeOrder, mode, previewOrder?.id],
   );
-  // Pending-amendment banner (§5 Phase 2.3): under block_until_approved the
-  // order cannot pack/ship while a substitution is PENDING — surface that at
-  // the top of the workspace body. The amendments query is shared with
-  // SubstituteUnitCard (same key), so this costs no extra fetch while shown.
   const blockEnforced =
     substitution.show && policyQuery.data?.enforcement === 'block_until_approved';
   const amendments = useOrderAmendments(blockEnforced ? substitution.orderId : null);
@@ -121,6 +107,45 @@ export function ActiveOrderWorkspace({
     }
   };
 
+  const tracking =
+    String(activeOrder.tracking ?? '').trim() ||
+    String(previewOrder?.shipping_tracking_number ?? '').trim();
+  const orderId = String(activeOrder.orderId ?? '').trim();
+  const hasTimelineDisplay =
+    tracking.length > 0 || orderId.length > 0 || activeOrder.serialNumbers.length > 0;
+
+  const openDisplays = useCallback(() => {
+    if (hasTimelineDisplay) setActiveSideTab('timeline');
+  }, [hasTimelineDisplay]);
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+
+  const displayTabs = useMemo(
+    () =>
+      buildSectionTabs([
+        {
+          id: 'timeline',
+          label: 'Timeline',
+          icon: History,
+          visible: hasTimelineDisplay,
+          content: (
+            <WorkspaceTimelineTab
+              orderId={orderId || null}
+              tracking={tracking || null}
+              serials={activeOrder.serialNumbers}
+            />
+          ),
+        },
+      ]),
+    [hasTimelineDisplay, orderId, tracking, activeOrder.serialNumbers],
+  );
+
+  const utilityRailBody =
+    hasTimelineDisplay && !activeSideTab ? (
+      <div className="flex flex-col items-center gap-0 pt-0">
+        <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplays} />
+      </div>
+    ) : null;
+
   return (
     <motion.div
       key={activeOrder.tracking || activeOrder.orderId}
@@ -130,79 +155,91 @@ export function ActiveOrderWorkspace({
       transition={cardTransition}
       className="flex h-full min-h-0 w-full flex-col"
     >
-      <StationPanelRoot className="flex-1">
-        <StationContextBar
-          identity={
-            <ShippingEntityContextHeader
-              activeOrder={activeOrder}
-              onExitToList={onClose}
+      <StationScanPaneHost
+        displaysOpen={Boolean(activeSideTab)}
+        hostDataAttrs={{ 'data-shipping-pane-host': true }}
+        centerTestId="shipping-station-center"
+        utilityRail={utilityRailBody}
+        center={
+          <StationPanelRoot className="flex-1">
+            <StationContextBar
+              placement="flow"
+              identity={
+                <ShippingEntityContextHeader
+                  activeOrder={activeOrder}
+                  onExitToList={onClose}
+                />
+              }
             />
-          }
-        />
-        <StationWorkbench
-          ambientWash={false}
-          className="relative z-0 flex-1 bg-transparent"
-          // Preview mounts the floating Start dock (docked=false → absolute
-          // bottom slice), so the scroll column reserves its clearance.
-          reserveScrollClearance={isPreview && Boolean(previewOrder)}
-          reserveIdentityClearance="stacked"
-          entityContext={
-            <>
-              {/* The station active card — pass/fail feedback for the scan that
-                  opened this workspace (`display/station.md` §6). It lived under
-                  the sidebar scan bar until 2026-08-02, which drew the order a
-                  second time beside the identity bookmark above. It carries two
-                  facts nothing else on this surface does: the amber **No order**
-                  exception state (`ShippingEntityContextHeader` hardcodes
-                  `isUnmatched={false}`) and **Undo last serial**. Deleting it
-                  rather than moving it would have taken the silent-success fix
-                  §6 names by name with it.
-
-                  Suppressed in PREVIEW: nothing has been scanned into an Up Next
-                  card, so a `0/1 · Active` meter there would report a session
-                  that has not started. */}
-              {isPreview ? null : (
-                <ActiveOrderScanFeedback activeOrder={activeOrder} />
-              )}
-              <ShippingOutOfStockNotice
-                isOutOfStock={Boolean(previewOrder?.is_out_of_stock)}
-              />
-              {pendingCount > 0 ? (
-                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                  <div className="space-y-0.5">
-                    <p className="text-role-caption font-semibold text-amber-800">
-                      Substitution pending approval
-                    </p>
-                    <p className="text-role-micro font-semibold text-amber-700">
-                      {pendingCount === 1 ? 'A substitution on this order is' : `${pendingCount} substitutions on this order are`}{' '}
-                      awaiting supervisor approval — the order cannot pack or ship until approved.
-                    </p>
-                  </div>
-                </div>
+            <StationWorkbench
+              ambientWash={false}
+              className="relative z-0 flex-1 bg-transparent"
+              reserveScrollClearance={isPreview && Boolean(previewOrder)}
+              reserveIdentityClearance={false}
+              bodyGap="none"
+              entityContext={
+                <>
+                  {isPreview ? null : (
+                    <ActiveOrderScanFeedback activeOrder={activeOrder} />
+                  )}
+                  <ShippingOutOfStockNotice
+                    isOutOfStock={Boolean(previewOrder?.is_out_of_stock)}
+                  />
+                  {pendingCount > 0 ? (
+                    <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-4 py-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                      <div className="space-y-0.5">
+                        <p className="text-role-caption font-semibold text-amber-800">
+                          Substitution pending approval
+                        </p>
+                        <p className="text-role-micro font-semibold text-amber-700">
+                          {pendingCount === 1
+                            ? 'A substitution on this order is'
+                            : `${pendingCount} substitutions on this order are`}{' '}
+                          awaiting supervisor approval — the order cannot pack or ship until
+                          approved.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              }
+              tabs={
+                <ShippingScanWorkspace
+                  activeOrder={activeOrder}
+                  previewOrder={isPreview ? previewOrder : undefined}
+                  onRemoveSerial={isPreview ? undefined : onRemoveSerial}
+                  onChangeCondition={handleConditionChange}
+                  isMutatingCondition={orderAssignmentMutation.isPending}
+                />
+              }
+              dock={isPreview && previewOrder ? <UpNextActionDock order={previewOrder} /> : null}
+            >
+              {substitution.show && substitution.orderId !== null ? (
+                <TechSubstituteSection
+                  orderId={substitution.orderId}
+                  orderLabel={substitution.orderLabel}
+                  enforcement={policyQuery.data?.enforcement ?? 'advisory'}
+                />
               ) : null}
-            </>
-          }
-          tabs={
-            <ShippingScanWorkspace
-              activeOrder={activeOrder}
-              previewOrder={isPreview ? previewOrder : undefined}
-              onRemoveSerial={isPreview ? undefined : onRemoveSerial}
-              onChangeCondition={handleConditionChange}
-              isMutatingCondition={orderAssignmentMutation.isPending}
+            </StationWorkbench>
+          </StationPanelRoot>
+        }
+        displays={
+          activeSideTab ? (
+            <ReceivingDisplaysPushStack
+              ariaLabel="Shipping displays"
+              storageKey="shipping-displays-push-width"
+              testId="shipping-displays-push"
+              resizeTestId="shipping-displays-push-resize"
+              tabs={displayTabs}
+              activeTab={activeSideTab}
+              onTabChange={() => setActiveSideTab('timeline')}
+              onClose={closeDisplays}
             />
-          }
-          dock={isPreview && previewOrder ? <UpNextActionDock order={previewOrder} /> : null}
-        >
-          {substitution.show && substitution.orderId !== null ? (
-            <TechSubstituteSection
-              orderId={substitution.orderId}
-              orderLabel={substitution.orderLabel}
-              enforcement={policyQuery.data?.enforcement ?? 'advisory'}
-            />
-          ) : null}
-        </StationWorkbench>
-      </StationPanelRoot>
+          ) : null
+        }
+      />
     </motion.div>
   );
 }

@@ -39,7 +39,7 @@ export function SupportPhotoLibraryPicker({
       ticketId={ticketId}
       receivingId={receivingId}
       defaultTab="ticket"
-      subtitle={`Link photos to ticket #${ticketId} and attach on your next reply`}
+      subtitle={`Link photos · #${ticketId}`}
       selected={selected}
       onSelectedChange={setSelected}
       excludePhotoIds={excludePhotoIds}

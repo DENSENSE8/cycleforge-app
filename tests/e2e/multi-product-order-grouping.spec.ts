@@ -3,18 +3,18 @@ import { test, expect } from '@playwright/test';
 import { Pool } from '@neondatabase/serverless';
 
 /**
- * Multi-product order grouping in the dashboard Unshipped queue.
+ * Multi-product orders in the dashboard Unshipped queue.
  *
  * When one order number carries DIFFERENT products (a real multi-line order),
- * the queue keeps them as separate rows folded under a single expandable header
- * (CollapsibleGroupRow) with a "×N" product-count chip — the same disclosure the
- * receiving + FBA tables use. When the rows are the SAME product (an accidental
- * import dupe), `dedupeByOrderProduct` collapses them to a single plain row.
+ * the list sheet shows both product lines as flat leaves — parent rollups live
+ * only on the drill parent map (`olayout=drill`). When the rows are the SAME
+ * product (an accidental import dupe), `dedupeByOrderProduct` collapses them to
+ * a single plain row.
  *
  * Seeds throwaway `orders` rows directly (there is no order-insert API), drives
  * the real /dashboard view, and deletes the rows afterward. Auth comes from
- * tests/.auth/admin.json (global-setup). Desktop-only — the queue grouping is a
- * desktop layout (ChipColumns); the mobile project is skipped.
+ * tests/.auth/admin.json (global-setup). Desktop-only — the queue layout under
+ * test is desktop (ChipColumns); the mobile project is skipped.
  */
 
 const DB = process.env.DATABASE_URL;
@@ -22,7 +22,7 @@ const uniq = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 // Goodwill-style, definitively non-FBA order number (account_source reinforces it).
 const makeOrderNo = () => `90-9${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 90000 + 10000)}`;
 
-test.describe('Multi-product order grouping (unshipped queue)', () => {
+test.describe('Multi-product order lines (unshipped queue)', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'queue grouping is a desktop layout');
   test.skip(!DB, 'requires DATABASE_URL to seed orders');
 
@@ -71,7 +71,7 @@ test.describe('Multi-product order grouping (unshipped queue)', () => {
     return ids;
   }
 
-  test('different products under one order → one expandable group with a ×2 chip', async ({ page }) => {
+  test('different products under one order → two flat leaf rows (no summary fold)', async ({ page }) => {
     const orderNo = makeOrderNo();
     const tag = uniq();
     const titleA = `E2E Multi A ${tag}`;
@@ -92,18 +92,11 @@ test.describe('Multi-product order grouping (unshipped queue)', () => {
 
     await page.goto(`/dashboard?unshipped&search=${encodeURIComponent(orderNo)}`);
 
-    // Collapsed group header carries the shared order identity + the ×2 product
-    // count, and the per-product rows are NOT in the DOM until expanded.
-    const groupTitle = page.getByText(`Order ${orderNo}`, { exact: false });
-    await expect(groupTitle).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText('×2')).toBeVisible();
-    await expect(page.getByText(titleA)).toHaveCount(0);
-    await expect(page.getByText(titleB)).toHaveCount(0);
-
-    // Expand → both distinct product lines reveal.
-    await groupTitle.click();
-    await expect(page.getByText(titleA)).toBeVisible();
+    // List sheet: both product lines are visible leaves — no ×N fold chip.
+    await expect(page.getByText(titleA)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(titleB)).toBeVisible();
+    await expect(page.getByText('×2')).toHaveCount(0);
+    await expect(page.locator('[data-grid-summary-row]')).toHaveCount(0);
   });
 
   test('identical products under one order → collapsed to a single plain row (no group)', async ({ page }) => {

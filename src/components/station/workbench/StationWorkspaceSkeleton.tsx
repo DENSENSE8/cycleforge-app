@@ -21,6 +21,7 @@ import {
 import { Panel } from '@/design-system/primitives/Panel';
 import {
   STATION_WORKBENCH_BODY_COLUMN,
+  STATION_WORKBENCH_COLUMN,
   STATION_WORKBENCH_HEADER_COLUMN,
   STATION_WORKBENCH_IDENTITY_COLUMN,
 } from '@/components/station/workbench/workbench-layout';
@@ -76,7 +77,8 @@ function IdentityTabsHeader() {
           className={cn(
             stationIdentityPanelClass,
             stationIdentityPadClass,
-            'flex min-h-10 w-full max-w-full items-center overflow-hidden',
+            STATION_WORKBENCH_COLUMN,
+            'flex min-h-10 items-center overflow-hidden',
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 px-0.5">

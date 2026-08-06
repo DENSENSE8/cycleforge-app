@@ -1,6 +1,9 @@
 /**
  * Composed typography presets — Tailwind class strings for common text patterns.
  * These eliminate drift from hand-rolling the same size/weight/tracking combos.
+ *
+ * LedgerGrid Sheets body is caption-dense (`ledgerCell` + dense CopyChips via
+ * `chipText`). Headers / status chips stay `text-role-micro` (intentional chrome).
  */
 
 /** Section headers in sidebars, panels, and cards (e.g. "SHIPPING", "DETAILS") */
@@ -21,12 +24,22 @@ export const chipText = 'text-role-caption font-semibold font-mono' as const;
 /** PO line received/expected counts (e.g. accordion "1/3" meta) */
 export const qtyProgress = 'text-role-caption font-semibold font-mono tabular-nums leading-none' as const;
 
+/**
+ * LedgerGrid Sheets body fact (product title, plain cell text).
+ * Pair with dense CopyChips (`chipText`) for mono IDs — never raw `text-sm`.
+ */
+export const ledgerCell = 'min-w-0 truncate text-role-caption text-text-default' as const;
+
 /** Card titles (e.g. OrderCard, FbaItemCard, RepairCard main heading) */
 export const cardTitle = 'text-base font-semibold text-text-default leading-tight' as const;
 
-/** Table column headers — quiet label chrome (override role-micro's 600 weight). */
-export const tableHeader =
-  'text-role-micro font-normal uppercase tracking-[0.06em] text-text-soft' as const;
+/**
+ * LedgerGrid / DataTable column headers — quiet label chrome (override
+ * role-micro's 600 weight). Sentence case as authored (`label` / `gridLabel`);
+ * never CSS `uppercase` (eyebrows · chips · field/section labels keep that).
+ * Guard: `table-header-casing.guard.test.ts`.
+ */
+export const tableHeader = 'text-role-micro font-normal text-text-soft' as const;
 
 /** Table cell content */
 export const tableCell = 'text-sm font-semibold text-text-default' as const;
@@ -41,6 +54,7 @@ export const typographyPresets = {
   monoValue,
   chipText,
   qtyProgress,
+  ledgerCell,
   cardTitle,
   tableHeader,
   tableCell,

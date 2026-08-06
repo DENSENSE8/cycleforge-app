@@ -1,7 +1,7 @@
 /**
  * Shared waist for linking an existing Zendesk ticket to an internal entity
- * (SHIPMENT / RECEIVING / RECEIVING_LINE). Used by /api/support/tickets/link
- * and the receiving claim-link route.
+ * (SHIPMENT / RECEIVING / RECEIVING_LINE / REPAIR / ORDER). Used by
+ * /api/support/tickets/link and the receiving claim-link route.
  */
 import { ApiError } from '@/lib/api';
 import {
@@ -155,15 +155,32 @@ export async function resolveTicketLinkAnchor(
     };
   }
 
-  // order
+  // order — prefer the primary STN when the outbound loop has one; otherwise
+  // anchor directly on ORDER so walk-in / phone Ecwid orders without tracking
+  // still get a durable ticket_links row (and Timeline can seed the loop).
   const ship = await resolveOrderPrimaryShipment(orgId, input.orderId);
-  if (!ship) {
-    throw ApiError.notFound('Order shipment', input.orderId);
+  if (ship) {
+    return {
+      entityType: 'SHIPMENT',
+      entityId: ship.shipmentId,
+      label: ship.tracking ?? `shipment #${ship.shipmentId}`,
+    };
   }
+  const orderRow = await tenantQuery<{ order_id: string | null }>(
+    orgId,
+    `SELECT order_id FROM orders
+      WHERE organization_id = $1 AND id = $2
+      LIMIT 1`,
+    [orgId, input.orderId],
+  );
+  if (!orderRow.rows[0]) {
+    throw ApiError.notFound('Order', input.orderId);
+  }
+  const orderLabel = orderRow.rows[0].order_id?.trim() || `order #${input.orderId}`;
   return {
-    entityType: 'SHIPMENT',
-    entityId: ship.shipmentId,
-    label: ship.tracking ?? `shipment #${ship.shipmentId}`,
+    entityType: 'ORDER',
+    entityId: input.orderId,
+    label: orderLabel.startsWith('#') ? orderLabel : `Order #${orderLabel}`,
   };
 }
 
@@ -312,6 +329,17 @@ export async function linkTicketToAnchor(args: {
  * Best-effort by design: a timeline row must never fail a link the operator
  * actually completed. The `ticket_links` row is the record of truth.
  */
+/** Map ticket_links entity types that emit append-only link moments onto
+ *  `ops_events.entity_type`. RECEIVING / RECEIVING_LINE stay on row state in
+ *  the support hub (history already lives on those rows). */
+const TICKET_LINK_OPS_ENTITY: Partial<
+  Record<TicketLinkEntityType, 'shipment' | 'order' | 'repair'>
+> = {
+  SHIPMENT: 'shipment',
+  ORDER: 'order',
+  REPAIR: 'repair',
+};
+
 async function recordTicketLinkEvent(args: {
   orgId: OrgId;
   kind: 'linked' | 'unlinked';
@@ -320,13 +348,12 @@ async function recordTicketLinkEvent(args: {
   ticketId: number;
   staffId?: number | null;
 }): Promise<void> {
-  // Only SHIPMENT maps onto an ops_events entity type here; RECEIVING /
-  // RECEIVING_LINE link moments still come from row state in the support hub.
-  if (args.entityType !== 'SHIPMENT') return;
+  const opsEntityType = TICKET_LINK_OPS_ENTITY[args.entityType];
+  if (!opsEntityType) return;
   try {
     await recordOpsEvent({
       organizationId: args.orgId,
-      entityType: 'shipment',
+      entityType: opsEntityType,
       entityId: args.entityId,
       eventType: args.kind === 'linked' ? 'TICKET_LINKED' : 'TICKET_UNLINKED',
       actorStaffId: args.staffId ?? null,
@@ -739,10 +766,21 @@ export async function unlinkTicketFromAnchor(args: {
   // then matches zero rows: the ticket_links row survives, the chip keeps
   // showing "linked", and the STN unpair below (keyed off the real ticketId)
   // can drift out of sync with it too. Ground truth beats re-derivation.
+  // Same for order anchors: a no-STN ORDER link must not be re-resolved to a
+  // SHIPMENT that appeared later (or vice versa) — detach what's stored.
   if (args.anchor.type === 'receiving') {
     const actual = await getTicketEntity(args.orgId, args.ticketId);
     if (actual && (actual.type === 'RECEIVING' || actual.type === 'RECEIVING_LINE')) {
       resolved = { entityType: actual.type, entityId: actual.id, label: resolved.label };
+    }
+  } else if (args.anchor.type === 'order') {
+    const actual = await getTicketEntity(args.orgId, args.ticketId);
+    if (actual && (actual.type === 'ORDER' || actual.type === 'SHIPMENT')) {
+      resolved = {
+        entityType: actual.type as 'ORDER' | 'SHIPMENT',
+        entityId: actual.id,
+        label: resolved.label,
+      };
     }
   }
   let removed = await unlinkTicket({

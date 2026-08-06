@@ -30,6 +30,12 @@ interface Props {
   /** 'pill' = single-line offer token; 'check' = all-units offer token (multi-qty line level). */
   variant?: 'pill' | 'check';
   /**
+   * Offer-check face only (`variant="check"`). Defaults to `flush` — the check
+   * sits in the unit trailing action column / joined scan bar (square, no soft
+   * island). Pass `default` only for a standalone soft control.
+   */
+  appearance?: 'default' | 'flush';
+  /**
    * Committed state spans the full width of its slot as a dense chip face
    * (reason icon + underlined label), matching SKU/condition CopyChips. Use when
    * this *replaces an input field* (single-qty SerialCard).
@@ -62,23 +68,21 @@ const reasonIcon = (code: string | null | undefined): Glyph =>
 
 /**
  * Menu-row + clear affordance tones keyed off reason *severity*. Committed chip
- * face uses {@link CHIP_TONES}.serial (routine) or amber underline (anomaly) —
+ * face uses {@link CHIP_TONES}.serial (routine) or amber icon (anomaly) —
  * dense CopyChip anatomy, not a pill.
  */
 const TONE: Record<
   SerialAbsentSeverity,
-  { icon: string; underline: string; clear: string; rowSel: string; tick: string }
+  { icon: string; clear: string; rowSel: string; tick: string }
 > = {
   routine: {
     icon: CHIP_TONES.serial.iconClass,
-    underline: CHIP_TONES.serial.underline,
     clear: 'text-text-faint hover:bg-surface-strong hover:text-text-muted',
     rowSel: 'bg-surface-canvas text-text-default',
     tick: 'text-text-soft',
   },
   anomaly: {
     icon: 'text-amber-600',
-    underline: 'border-amber-500',
     clear: 'text-amber-500 hover:bg-amber-100 hover:text-amber-700',
     rowSel: 'bg-amber-50 text-amber-800',
     tick: 'text-amber-600',
@@ -110,7 +114,7 @@ const ChevronGlyph = ({ className = '' }: { className?: string }) => (
  * (the `serial_absent_reason` Class-D vocabulary) rather than a silent blank — so
  * a cable received with no serial is a first-class fact, not missing data.
  *
- * Committed display: dense CopyChip anatomy (reason icon + underlined label) so
+ * Committed display: dense CopyChip anatomy (reason icon + quiet label) so
  * the token matches SKU/condition height in the PO meta row and SerialCard slot.
  * Click opens the reason picker; HoverTooltip carries the hint.
  */
@@ -121,6 +125,7 @@ export function NoSerialControl({
   required = false,
   disabled = false,
   variant = 'pill',
+  appearance,
   fullWidth = false,
   hideClear = false,
 }: Props) {
@@ -169,6 +174,7 @@ export function NoSerialControl({
           disabled={disabled}
           required={required}
           width="w-11"
+          appearance={appearance ?? 'flush'}
         />
       );
     }
@@ -230,7 +236,7 @@ export function NoSerialControl({
               <Icon />
             </span>
             <span
-              className={`text-role-caption font-semibold font-mono text-text-default tracking-tight leading-none border-b-2 pb-0.5 text-left truncate ${tone.underline} ${
+              className={`text-role-caption font-semibold font-mono text-text-default tracking-tight leading-none text-left truncate ${
                 fullWidth ? 'min-w-0 flex-1' : ''
               }`}
             >

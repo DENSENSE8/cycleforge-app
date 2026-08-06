@@ -105,16 +105,22 @@ export interface RightRailPanel {
    */
   push?: boolean;
   /**
-   * Whether the host may park this occupant via the outset edge-collapse
-   * chevron (`HorizontalEdgeResizeHandle.onCollapse`). **Defaults to `true`.**
+   * Whether the host may park this occupant via `DETAIL_STACK_COLLAPSE`
+   * (Band 3 Show/Hide inspector · Cmd+\ · parked expand strip).
+   * **Defaults to `true`.**
    *
-   * Pass `false` for Unbox-parity occupants whose header already owns the
-   * in-band `→|` dismiss (e.g. Incoming details) — a second collapse twin on
-   * the leading edge is exactly what Unbox banned. Resize grip stays; only
-   * the hover-reveal chevron is omitted. Header `→|` / Escape remain the
-   * dismiss path.
+   * Pass `false` for Unbox-parity occupants whose header `→|` dismisses the
+   * claim entirely (e.g. Incoming details) — they must not also park into a
+   * collapsed strip. Hairline is always drag-to-resize only on
+   * `RightRailHost` (no sash-top chevron; Unbox Displays is the golden twin).
    */
   edgeCollapse?: boolean;
+  /**
+   * Whether a parked occupant paints the host's 32px expand strip.
+   * Defaults to `true`. Pass `false` when the owning workbench already keeps
+   * a resident reopen icon in its chrome (Unbox History Band 3).
+   */
+  collapsedStrip?: boolean;
   /** Accessible name for the aside. Required in spirit for non-modal occupants
    *  (`role="region"` needs a name); the host falls back to a generic label. */
   ariaLabel?: string;
@@ -167,6 +173,7 @@ export function registerRightRailPanel(input: {
   closeOnOutsideClick?: boolean;
   push?: boolean;
   edgeCollapse?: boolean;
+  collapsedStrip?: boolean;
   ariaLabel?: string;
 }): () => void {
   seq += 1;
@@ -181,6 +188,7 @@ export function registerRightRailPanel(input: {
     closeOnOutsideClick: input.closeOnOutsideClick,
     push: input.push,
     edgeCollapse: input.edgeCollapse,
+    collapsedStrip: input.collapsedStrip,
     ariaLabel: input.ariaLabel,
     seq: mySeq,
   });
@@ -211,6 +219,7 @@ export function updateRightRailPanelNode(input: {
   closeOnOutsideClick?: boolean;
   push?: boolean;
   edgeCollapse?: boolean;
+  collapsedStrip?: boolean;
   ariaLabel?: string;
 }): void {
   const {
@@ -222,6 +231,7 @@ export function updateRightRailPanelNode(input: {
     closeOnOutsideClick,
     push,
     edgeCollapse,
+    collapsedStrip,
     ariaLabel,
   } = input;
   const current = panels.get(id);
@@ -236,6 +246,7 @@ export function updateRightRailPanelNode(input: {
       // policy must re-emit, or the host would keep rendering the old geometry.
       current.push === push &&
       current.edgeCollapse === edgeCollapse &&
+      current.collapsedStrip === collapsedStrip &&
       current.ariaLabel === ariaLabel)
   )
     return;
@@ -248,6 +259,7 @@ export function updateRightRailPanelNode(input: {
     closeOnOutsideClick,
     push,
     edgeCollapse,
+    collapsedStrip,
     ariaLabel,
   });
   recomputeTop();

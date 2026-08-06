@@ -19,6 +19,8 @@ interface Props {
   onRowClick: (row: BinsOverviewRow) => void;
   /** Sheets flush mount (Locations desk). Default framed for legacy embeds. */
   surface?: 'framed' | 'sheet';
+  /** Band-3 controls slot for the column-display (▦) trigger. */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 export function BinsTable({
@@ -28,6 +30,7 @@ export function BinsTable({
   onSelectChange,
   onRowClick,
   surface = 'framed',
+  columnTriggerPortalTarget = null,
 }: Props) {
   return (
     <div
@@ -45,6 +48,7 @@ export function BinsTable({
         onRowClick={onRowClick}
         emptyMessage="No bins match the current filters."
         surface={surface}
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
     </div>
   );

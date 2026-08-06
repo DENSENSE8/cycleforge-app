@@ -14,15 +14,13 @@ const group = (key: string, n: number): RowGroup<Row> =>
   ({ key, rows: Array.from({ length: n }, (_, i) => ({ id: `${key}-${i}` })) }) as RowGroup<Row>;
 
 describe('grid row span', () => {
-  it('a singleton group is ONE row, not a summary plus a child', () => {
-    // QueueGroupRow short-circuits `rows.length === 1` to renderRow directly —
-    // counting a phantom summary here would shift every later index by one.
+  it('a singleton group is ONE leaf row', () => {
     assert.equal(groupRowSpan(group('a', 1)), 1);
   });
 
-  it('a multi-row group is its summary plus every child', () => {
-    assert.equal(groupRowSpan(group('a', 2)), 3);
-    assert.equal(groupRowSpan(group('a', 5)), 6);
+  it('a multi-row group is one leaf per member (no summary chrome)', () => {
+    assert.equal(groupRowSpan(group('a', 2)), 2);
+    assert.equal(groupRowSpan(group('a', 5)), 5);
   });
 });
 
@@ -53,16 +51,14 @@ describe('countGridRows', () => {
     assert.equal(total, 1 + 2 + 3);
   });
 
-  it('counts folded groups as if fully expanded', () => {
-    // Collapsed folds must NOT shrink the count — indices stay stable and
-    // aria-rowcount stays the total, which is what keeps a user's place.
+  it('counts groups as flat leaves', () => {
     const total = countGridRows<Row>({
       orderGroupsByDate: [['2026-07-01', [group('a', 1), group('b', 3)]]],
     });
-    assert.equal(total, 1 + 1 + 4);
+    assert.equal(total, 1 + 1 + 3);
   });
 
-  it('mixes day bands and folds', () => {
+  it('mixes day bands and groups', () => {
     const total = countGridRows<Row>({
       orderGroupsByDate: [
         ['2026-07-01', [group('a', 1), group('b', 2)]],
@@ -70,8 +66,8 @@ describe('countGridRows', () => {
       ],
       showDayHeaders: true,
     });
-    // header + (band + 1 + 3) + (band + 1)
-    assert.equal(total, 1 + (1 + 1 + 3) + (1 + 1));
+    // header + (band + 1 + 2) + (band + 1)
+    assert.equal(total, 1 + (1 + 1 + 2) + (1 + 1));
   });
 
   it('groups win when both shapes are passed (LedgerGrid treats them exclusive)', () => {

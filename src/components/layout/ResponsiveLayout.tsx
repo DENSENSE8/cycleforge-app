@@ -201,9 +201,8 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   }, []);
 
   // Publish the content row's width to the right-rail frame store. `useEffect`
-  // (not layout) is fine: the store starts at 0, which resolves to overlay, so
-  // the pre-measurement frame degrades to today's behavior rather than flashing
-  // a push it cannot afford.
+  // (not layout) is fine: a resident desktop inspector stays in-flow before
+  // measurement, then the resolver decides whether the context rail yields.
   useEffect(() => {
     const el = contentRowRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
@@ -356,10 +355,9 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
               </div>
             )}
           </main>
-          {/* Chromeless (auth / enroll / offline): no content row to push, so
-              the host mounts bare and its occupants — if any ever register —
-              resolve to the float. */}
-          {chromeless ? <RightRailHost /> : null}
+          {/* Chromeless (auth / enroll / offline): no content row exists to
+              share with an in-flow details column. */}
+          {chromeless ? <RightRailHost inline={false} /> : null}
         </div>
 
         <CommandBar />
@@ -396,10 +394,9 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         {children}
       </main>
 
-      {/* Mobile keeps the FLOAT: a phone has no room to push, and the frame
-          store's width stays 0 here (no content row is observed), which
-          `resolveRightRailFrame` resolves to overlay by construction. */}
-      <RightRailHost />
+      {/* Mobile is explicitly overlay-only: it has no horizontal content row.
+          Desktop width pressure never invokes this branch. */}
+      <RightRailHost inline={false} />
     </div>
   );
 }

@@ -32,12 +32,19 @@ import {
   getPackerRecordStatusDotLabel,
   packerRecordToRailVM,
 } from './pack-record-rail-vm';
+import {
+  EMPTY_STATION_HISTORY_RAIL_FACETS,
+  matchesStationHistoryRailFacets,
+  type StationHistoryRailFacets,
+} from '@/components/sidebar/rail-shell/StationHistoryRailFilters';
 
 interface Props {
   /** Signed-in packer's staff id. */
   packerId: number;
   /** Client-side filter over the loaded history rows. */
   filterText?: string;
+  /** Platform facet keep-filter (account_source). */
+  facets?: StationHistoryRailFacets;
 }
 
 const PACK_HISTORY_LIMIT = 25;
@@ -68,7 +75,11 @@ function PackRowMain({ row }: { row: PackerRecord }) {
   return <RailRowBody className="flex-1" vm={packerRecordToRailVM(row)} />;
 }
 
-export function PackRecentPacksRail({ packerId, filterText = '' }: Props) {
+export function PackRecentPacksRail({
+  packerId,
+  filterText = '',
+  facets = EMPTY_STATION_HISTORY_RAIL_FACETS,
+}: Props) {
   const trimmedFilter = filterText.trim();
   const activePane = useActivePackPane();
 
@@ -82,8 +93,11 @@ export function PackRecentPacksRail({ packerId, filterText = '' }: Props) {
   const { data: records = [], isLoading } = usePackerLogs(packerId, { weekRange });
 
   const filteredRecords = useMemo(
-    () => filterPackerRailRows(records, trimmedFilter),
-    [records, trimmedFilter],
+    () =>
+      filterPackerRailRows(records, trimmedFilter).filter((row) =>
+        matchesStationHistoryRailFacets(row.account_source, facets),
+      ),
+    [records, trimmedFilter, facets],
   );
 
   const recordsVersion = useMemo(
@@ -145,6 +159,20 @@ export function PackRecentPacksRail({ packerId, filterText = '' }: Props) {
       onSelect={handleSelect}
       getStatusDot={getPackerRecordStatusDot}
       getStatusDotLabel={getPackerRecordStatusDotLabel}
+      getCollapsePinLabel={(row) =>
+        packerRecordToRailVM(row).titleAttr ?? 'Unknown Product'
+      }
+      getCollapsePinMeta={(row) => {
+        const trk = String(row.shipping_tracking_number || '').trim();
+        if (trk) return trk;
+        const orderId = String(row.order_id || '').trim();
+        return orderId || null;
+      }}
+      getCollapsePinFacts={(row) => [
+        { tone: 'order', value: String(row.order_id || '') },
+        { tone: 'tracking', value: String(row.shipping_tracking_number || '') },
+        { tone: 'sku', value: String(row.sku || '') },
+      ]}
       renderRowMain={(row) => <PackRowMain row={row} />}
     />
   );

@@ -36,7 +36,7 @@ export function HandlingUnitChip({
 
   const display =
     unitCount != null && Number.isFinite(unitCount)
-      ? `${handle} · ${Math.max(0, Math.floor(unitCount))} ${unitCount === 1 ? 'unit' : 'units'}`
+      ? `${handle} · ${Math.max(0, Math.floor(unitCount))} units`
       : handle;
 
   return (
@@ -44,7 +44,6 @@ export function HandlingUnitChip({
       value={handle}
       display={display}
       icon={<Package className="h-4 w-4 shrink-0" />}
-      underlineClass="border-teal-500"
       iconClass="text-teal-600"
       truncateDisplay={false}
       width={width}

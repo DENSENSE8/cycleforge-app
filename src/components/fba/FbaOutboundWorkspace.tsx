@@ -19,14 +19,16 @@ import { FbaBoardTable } from '@/components/fba/FbaBoardTable';
 import { FbaShippedTable } from '@/components/fba/FbaShippedTable';
 import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
-import { FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
+import { FbaTriageBand, FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
 import { FbaKpiStrip } from '@/components/fba/FbaKpiStrip';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
+import { ReadyKpiBand } from '@/components/outbound/ready/ReadyKpiBand';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_BODY_COLUMN,
-  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
+import { cn } from '@/utils/_cn';
 import { SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
@@ -74,6 +76,9 @@ export function FbaOutboundWorkspace() {
   const [statusFilter, setStatusFilter] = useState<FbaBoardStatusFilter>('ALL');
   const [search, setSearch] = useState('');
   const readySearch = String(searchParams.get('q') || '');
+  // Portal target for the Ready grid's column-display (▦) trigger — seats it in
+  // the triage band controls slot instead of the sheet card corner.
+  const [readyControlsEl, setReadyControlsEl] = useState<HTMLDivElement | null>(null);
 
   const handleSelectTab = useCallback(
     (tab: FbaMode) => {
@@ -144,10 +149,31 @@ export function FbaOutboundWorkspace() {
       <DashboardScrollShell
         className="h-full bg-surface-canvas"
         chrome={
-          <div className={WORKBENCH_CHROME_COLUMN}>
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             <FbaWorkspaceHeader
               tab={activeMode}
               onSelectTab={handleSelectTab}
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
+            />
+            {/* Band 2 — KPI. Board modes (Plan · Combine) show stage counts;
+                Ready shows the disposition tiles pinned in chrome (folded out of
+                the scroll body); Shipped is honest absence. Plain flush band (no
+                snap-collapse — the strip is mode-scoped, not a per-staff pref). */}
+            {isBoard ? (
+              <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+                <FbaKpiStrip
+                  counts={stageCounts}
+                  activeFilter={statusFilter}
+                  onToggleFilter={handleToggleFilter}
+                />
+              </div>
+            ) : isReady ? (
+              <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+                <ReadyKpiBand />
+              </div>
+            ) : null}
+            <FbaTriageBand
+              tab={activeMode}
               search={isReady ? readySearch : search}
               onSearchChange={handleSearchChange}
               weekRange={isBoard ? weekRange : undefined}
@@ -155,21 +181,12 @@ export function FbaOutboundWorkspace() {
               onPrevWeek={isBoard ? () => setWeekOffset((o) => o - 1) : undefined}
               onNextWeek={isBoard ? () => setWeekOffset((o) => Math.min(0, o + 1)) : undefined}
               visibleCount={filteredPendingItems.length}
+              controlsSlotRef={setReadyControlsEl}
             />
           </div>
         }
       >
-        <div className={WORKBENCH_BODY_COLUMN}>
-          {isBoard ? (
-            <div className="mb-4">
-              <FbaKpiStrip
-                counts={stageCounts}
-                activeFilter={statusFilter}
-                onToggleFilter={handleToggleFilter}
-              />
-            </div>
-          ) : null}
-
+        <div className={WORKBENCH_SHEET_HOST}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeMode}
@@ -177,7 +194,7 @@ export function FbaOutboundWorkspace() {
               className="relative flex min-w-0 flex-col"
             >
               {isReady ? (
-                <ReadyWorkspaceBody />
+                <ReadyWorkspaceBody columnTriggerPortalTarget={readyControlsEl} />
               ) : error ? (
                 <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
               ) : activeMode === 'shipped' ? (

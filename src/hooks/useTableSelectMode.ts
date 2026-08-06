@@ -17,8 +17,8 @@ import {
  *   • publishes the selectable total so the action bar's ring can fill,
  *   • clears the selection when select mode turns off.
  *
- * The owning page keeps selectMode always on for selectable surfaces and renders
- * the <ContextualSelectionBar>; the table just calls this with its visible rows.
+ * The owning page keeps selectMode always on for selectable surfaces and mounts
+ * the right-rail selection plane; the table just calls this with its visible rows.
  *
  * `rows` / `getId` are read through refs so the broadcast fires only when the
  * *selection* changes — not on every parent re-render. That matters because the

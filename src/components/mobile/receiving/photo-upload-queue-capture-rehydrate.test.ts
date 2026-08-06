@@ -57,6 +57,7 @@ interface Posted {
   entityId: string;
   capturedAt: string | null;
   photoType: string | null;
+  photoAspect: string | null;
 }
 
 const posted: Posted[] = [];
@@ -89,6 +90,7 @@ function stubGlobals() {
       entityId: String(form.get('entityId')),
       capturedAt: captured === null ? null : String(captured),
       photoType: form.get('photoType') === null ? null : String(form.get('photoType')),
+      photoAspect: form.get('photoAspect') === null ? null : String(form.get('photoAspect')),
     });
     return {
       ok: true,
@@ -104,6 +106,7 @@ function stubGlobals() {
         receivingId: 42,
         receivingLineId: null,
         stage: 'arrival_package',
+        aspect: 'shipping_label',
         capturedAtMs: CAPTURED_MS,
       }),
       persistedEntry('entry-b', { receivingId: 42, receivingLineId: 7 }),
@@ -155,8 +158,9 @@ describe('§2 rehydration · a queued photo keeps its capture time across a tab 
     assert.ok(a, 'expected the PO-level entry to have uploaded');
     assert.equal(a.capturedAt, String(CAPTURED_MS));
     assert.notEqual(Number(a.capturedAt), Date.now());
-    // Stage survived the same round trip (they share `scope`).
+    // Stage + aspect survived the same round trip (they share `scope`).
     assert.equal(a.photoType, 'receiving_package');
+    assert.equal(a.photoAspect, 'shipping_label');
   });
 
   it('entry B — a legacy stage-less, timestamp-less payload — still uploads, with no field', () => {
@@ -166,6 +170,7 @@ describe('§2 rehydration · a queued photo keeps its capture time across a tab 
     assert.ok(b, 'expected the line-level legacy entry to have uploaded');
     assert.equal(b.entityId, '7');
     assert.equal(b.capturedAt, null, 'no capture time must mean NO field, not an empty one');
+    assert.equal(b.photoAspect, null, 'no aspect must omit the form field');
   });
 
   it('STORAGE_VERSION was not bumped for the additive field', async () => {

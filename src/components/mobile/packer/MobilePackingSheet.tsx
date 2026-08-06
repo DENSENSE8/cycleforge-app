@@ -104,10 +104,11 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
 
         {(() => {
           const itemNumber = (row.item_number || '').trim();
-          if (!itemNumber && !skuValue) return null;
-          const checklistParams = new URLSearchParams(
-            itemNumber ? { itemNumber } : { itemNumber: skuValue },
-          );
+          if (orderRowId == null && !itemNumber && !skuValue) return null;
+          const checklistParams = new URLSearchParams();
+          if (orderRowId != null) checklistParams.set('orderRowId', String(orderRowId));
+          else if (itemNumber) checklistParams.set('itemNumber', itemNumber);
+          else checklistParams.set('itemNumber', skuValue);
           return (
             <Link
               href={`/m/checklist?${checklistParams.toString()}`}
@@ -122,7 +123,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
 
         {photos.length > 0 ? (
           <div className="rounded-2xl border border-border-hairline bg-surface-canvas/60 p-3">
-            <PhotoGallery photos={photos} orderId={orderId} compact launcherTitle={`${photos.length} pack photo${photos.length === 1 ? '' : 's'}`} />
+            <PhotoGallery photos={photos} orderId={orderId} compact launcherTitle={`Photos ${photos.length}`} />
           </div>
         ) : (
           <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">

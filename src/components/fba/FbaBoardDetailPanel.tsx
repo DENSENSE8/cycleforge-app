@@ -160,7 +160,7 @@ export function FbaBoardDetailPanel({
                 {scanLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-canvas/60 px-2.5 py-1.5"
+                    className="flex items-center justify-between gap-3 rounded-none border border-border-hairline bg-surface-canvas/60 px-2.5 py-1.5"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider bg-purple-100 text-purple-700">

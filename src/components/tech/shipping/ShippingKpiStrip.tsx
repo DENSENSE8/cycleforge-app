@@ -13,7 +13,7 @@ import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { KpiTile, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
+import { KpiTile, metricIntentTextClass, OpsKpiBand, OpsKpiBandCell, OpsKpiBandEmpty, OpsKpiBandError, OpsKpiBandSkeletonTile } from '@/design-system/components/monitor';
 import {
   resolveShippingMetrics,
   splitShippingAttention,
@@ -25,16 +25,11 @@ import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { RefreshCw } from '@/components/Icons';
-import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import { computeWeekRange, toPSTDateKey } from '@/utils/date';
 import type { FulfillmentState } from '@/lib/unshipped-state';
-import { cn } from '@/utils/_cn';
 
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0 };
 
 type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
@@ -47,6 +42,7 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
 
   const tile = (
     <KpiTile
+      density="band"
       label={metric.label}
       value={metric.value}
       valueClassName={toneHero ? tone : undefined}
@@ -68,61 +64,42 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
   );
 }
 
-function SkeletonKpiTile() {
-  return (
-    <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
-        <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
-      </div>
-      <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-    </div>
-  );
-}
-
 function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
   return (
-    <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
+    <OpsKpiBand density="band" className="animate-pulse" aria-label="Loading shipping attention metrics">
       <span className="sr-only">Loading shipping attention metrics…</span>
       {Array.from({ length: reservedSlots }).map((_, i) => (
-        <div key={i} className={TILE_CELL_CLASS}>
-          <SkeletonKpiTile />
-        </div>
+        <OpsKpiBandCell key={i} density="band">
+          <OpsKpiBandSkeletonTile density="band" />
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }
 
 function StripAllClear({ mode }: { mode: ShippingWorkspaceTab }) {
   const copy =
-    mode === 'pending'
-      ? { title: 'The queue is clear.', hint: 'Blocked units, backlog, and week throughput surface here.' }
+    mode === 'pending' || mode === 'urgent' || mode === 'all'
+      ? {
+          title:
+            mode === 'urgent'
+              ? 'No urgent orders.'
+              : mode === 'all'
+                ? 'Nothing to triage.'
+                : 'The queue is clear.',
+          hint: 'Blocked units, backlog, and week throughput surface here.',
+        }
       : { title: 'No scan-outs in view.', hint: 'Today and week throughput surface here.' };
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      <AnimatedCheck size={20} />
-      <div className="min-w-0">
-        <p className="text-role-caption font-semibold text-text-default">{copy.title}</p>
-        <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-          {copy.hint}
-        </p>
-      </div>
-    </div>
-  );
+  return <OpsKpiBandEmpty density="band" title={copy.title} description={copy.hint} />;
 }
 
 function StripError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
-      <p className="text-role-caption font-semibold text-rose-700">Couldn&apos;t load shipping metrics.</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="mt-2 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-surface-card px-2.5 py-1 text-role-eyebrow uppercase tracking-widest text-rose-700 hover:bg-rose-100"
-      >
-        <RefreshCw className="h-3.5 w-3.5" /> Try again
-      </button>
-    </div>
+    <OpsKpiBandError
+      density="band"
+      message="Couldn't load shipping metrics."
+      onRetry={onRetry}
+    />
   );
 }
 
@@ -168,13 +145,13 @@ function StripLayout({
   const tiles = [...attention, ...rest];
   if (tiles.length === 0) return <StripAllClear mode={mode} />;
   return (
-    <div className={TILE_BAND_CLASS}>
+    <OpsKpiBand density="band" aria-label="Shipping attention metrics">
       {tiles.map((metric) => (
-        <div key={metric.id} className={TILE_CELL_CLASS}>
+        <OpsKpiBandCell key={metric.id} density="band">
           <MetricKpiTile metric={metric} toShipFilter={toShipFilter} />
-        </div>
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }
 
@@ -252,10 +229,10 @@ export function ShippingKpiStrip({
 }) {
   return (
     <section aria-label="Shipping attention" className="shrink-0">
-      {mode === 'pending' ? (
-        <PendingStrip />
-      ) : (
+      {mode === 'history' ? (
         <HistoryStrip techId={techId} />
+      ) : (
+        <PendingStrip />
       )}
     </section>
   );

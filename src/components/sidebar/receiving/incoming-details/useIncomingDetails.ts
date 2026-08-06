@@ -15,7 +15,14 @@ import type { DetailsResponse, IncomingDetailsPanelProps, TabId } from './incomi
  * delete (PO lines or PO-less shipment row), and the derived header/mode flags.
  * Returns a controller bag the thin panel shell renders from.
  */
-export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipmentId, inboundSourceType, inboundSourceOrderId }: IncomingDetailsPanelProps) {
+export function useIncomingDetails({
+  zohoPurchaseOrderId,
+  poNumberHint,
+  shipmentId,
+  inboundSourceType,
+  inboundSourceOrderId,
+  focusReceivingId,
+}: IncomingDetailsPanelProps) {
   // Shipment-only mode: a delivered box with no resolved PO. The panel keys on
   // the shipment id instead, defaults to the Shipment tab, hides PO-only actions
   // (Sync), and its delete hard-removes the shipment from Incoming.
@@ -28,6 +35,10 @@ export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipment
   // Stable react-query key for the details fetch in each mode.
   const detailsKey = zohoPurchaseOrderId
     ?? (shipmentId != null ? `shipment:${shipmentId}` : isInboundOnly ? `inbound:${inboundSourceType}:${inboundSourceOrderId}` : '');
+  const focusKey =
+    focusReceivingId != null && Number.isFinite(focusReceivingId) && focusReceivingId > 0
+      ? focusReceivingId
+      : null;
 
   const [tab, setTab] = useState<TabId>(defaultTab);
   const [syncing, setSyncing] = useState(false);
@@ -39,21 +50,23 @@ export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipment
   useEffect(() => setTab(defaultTab), [zohoPurchaseOrderId, shipmentId, inboundSourceOrderId, defaultTab]);
 
   const invalidateIncoming = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey] });
+    queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey, focusKey] });
     queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
     queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
     queryClient.invalidateQueries({ queryKey: ['incoming-delivered-unscanned'] });
-  }, [queryClient, detailsKey]);
+  }, [queryClient, detailsKey, focusKey]);
 
   const { data, isLoading, isError, refetch } = useQuery<DetailsResponse>({
-    queryKey: ['incoming-details', detailsKey],
+    queryKey: ['incoming-details', detailsKey, focusKey],
     queryFn: async () => {
       const qs = isShipmentOnly
         ? `shipment_id=${encodeURIComponent(String(shipmentId))}`
         : isInboundOnly
           ? `inbound_source=${encodeURIComponent(inboundSourceType ?? '')}&inbound_order_id=${encodeURIComponent(inboundSourceOrderId ?? '')}`
           : `po_id=${encodeURIComponent(zohoPurchaseOrderId ?? '')}`;
-      const res = await fetch(`/api/receiving-lines/incoming/details?${qs}`, { cache: 'no-store' });
+      const focusQs =
+        focusKey != null ? `${qs}&receiving_id=${encodeURIComponent(String(focusKey))}` : qs;
+      const res = await fetch(`/api/receiving-lines/incoming/details?${focusQs}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`details ${res.status}`);
       return res.json();
     },
@@ -165,7 +178,7 @@ export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipment
   // `shipment.changed`; refresh the panel + the incoming list/summary instantly
   // so the displayed status matches the carrier's live state without a reload.
   useAblyChannel(stationChannel, 'shipment.changed', () => {
-    queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey] });
+    queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey, focusKey] });
     queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
     queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
   }, !!stationChannel);

@@ -33,13 +33,13 @@ export const SIDEBAR_SPINE_WIDTH_PX = 240;
  *
  * Menus are a **child of the trigger**, not a second wider panel:
  * `AnchoredLayer` `*-stretch` against the trigger/row anchor (inset by the
- * band pad), so width ≤ {@link SIDEBAR_SPINE_WIDTH}. Dense chrome
- * (`rounded-lg` · `shadow-md`) + caption type — never a chunkier twin of the
- * band. Never fork `w-[260px]` / `w-[280px]` (or any wider literal) —
- * guard: `header-mode.guard.test.ts`.
+ * band pad), so width ≤ {@link SIDEBAR_SPINE_WIDTH}. Flush industrial chrome
+ * (`rounded-none` · `shadow-md`) + caption type — peer of `HeaderChromeMenu`,
+ * never a chunkier twin of the band. Never fork `w-[260px]` / `w-[280px]` (or
+ * any wider literal) — guard: `header-mode.guard.test.ts`.
  */
 export const SIDEBAR_SPINE_MENU_PANEL_CLASS =
-  'w-full overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-md';
+  'w-full overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-md';
 
 /** Dense header strip inside an identity menu (current workspace / staff card). */
 export const SIDEBAR_SPINE_MENU_HEADER_CLASS =
@@ -47,7 +47,7 @@ export const SIDEBAR_SPINE_MENU_HEADER_CLASS =
 
 /** Dense action row inside an identity menu. */
 export const SIDEBAR_SPINE_MENU_ACTION_CLASS =
-  'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left transition hover:bg-surface-hover';
+  'flex w-full items-center gap-2 rounded-none px-2 py-1 text-left transition hover:bg-surface-hover';
 
 /** Primary name inside an identity menu (org or staff). */
 export const SIDEBAR_SPINE_MENU_TITLE_CLASS =

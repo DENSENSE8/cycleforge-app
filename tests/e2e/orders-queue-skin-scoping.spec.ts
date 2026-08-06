@@ -68,23 +68,28 @@ async function assertAirtableGridShell(grid: Locator) {
   expect(parseFloat(framed.borderTopWidth), 'ops table shell has perimeter border').toBeGreaterThan(0);
   expect(framed.overflow, 'ops table shell clips corners').toBe('hidden');
 
-  // Continuous column lines: header cell + body cell both draw a right rule.
+  // BOTTOM-only row rules (1B): no vertical column cage. Assert a bottom edge.
   const headerCellBorder = await header.locator('[data-col="title"]').evaluate(
-    (el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0,
+    (el) => parseFloat(getComputedStyle(el).borderBottomWidth) || 0,
   );
-  expect(headerCellBorder, 'header draws continuous column rules').toBeGreaterThan(0);
+  expect(headerCellBorder, 'header draws bottom row rules').toBeGreaterThan(0);
 
   const firstCell = grid.locator('[data-order-row-id] > [data-col]').first();
   const cellBorder = await firstCell.evaluate(
+    (el) => parseFloat(getComputedStyle(el).borderBottomWidth) || 0,
+  );
+  expect(cellBorder, 'body draws bottom row rules').toBeGreaterThan(0);
+
+  const rightBorder = await firstCell.evaluate(
     (el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0,
   );
-  expect(cellBorder, 'body draws continuous column rules').toBeGreaterThan(0);
+  expect(rightBorder, 'body has no vertical column rule (1B)').toBe(0);
 }
 
 test.describe('outbound OrdersGridView / LedgerGrid (Pending + Packed)', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'orders-queue grid is a desktop layout');
 
-  test('Pending GRID — rounded clip shell, continuous column lines, always-select', async ({ page }) => {
+  test('Pending GRID — rounded clip shell, bottom row rules, always-select', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
     const grid = page.locator('[data-testid="pending-grid-body"]').first();
     await assertAirtableGridShell(grid);

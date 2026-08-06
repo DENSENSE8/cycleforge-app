@@ -374,7 +374,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                     className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50"
                   >
                     <Download className="h-4 w-4 shrink-0" />
-                    This photo ({currentIndex + 1}/{photoItems.length})
+                    Photo {currentIndex + 1}/{photoItems.length}
                   </button>
                   <button
                     type="button"

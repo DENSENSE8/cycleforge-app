@@ -1,19 +1,25 @@
 'use client';
 
 /**
- * History workbench chrome — dashboard-parity `WorkbenchChromeHeader` for
- * `?mode=history` on Receiving. Lifts search / scope / field / sort out of the
- * sidebar (`ReceivingHistorySearchSection`) into the top bar.
+ * History workbench chrome — five-row Sheets flush stack (Unbox golden):
  *
- * Left:   carton-source tabs — All / Unfound.
- * Right:  [⌕ search] · [⫶ field / sort] · [calendar period].
- * Trailing: none — column display lives on the grid's top-right lip.
- * Row select lives in the table left gutter.
+ *   Band 1 — carton-source tabs (All / Unfound) + honest-absence trailing
+ *            ({@link HistoryWorkspaceHeader}).
+ *   Band 2 — honest absence (standalone /receiving/history has no metrics strip).
+ *   Band 3 — {@link HistoryTriageBand}: search LEFT · refine (sort / field
+ *            popover) + week pill RIGHT — composes the SoT {@link WorkbenchTriageBand}.
+ *
+ * Search / field / sort / week all live on Band 3 now — never Band 1. Mirrors
+ * `OutboundWorkspaceHeader` / `OutboundTriageBand`. Row select lives in the
+ * table left gutter; column display (▦) portals into Band-3 `controlsSlotRef`.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchChromeHeader,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -38,53 +44,27 @@ import {
 } from '@/lib/receiving-history-search';
 import { formatWeekRangeCompact } from '@/utils/date';
 
-interface HistoryWorkspaceHeaderProps {
-  weekRange: { startStr: string; endStr: string };
-  weekOffset: number;
-  weekCount: number;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
-}
-
-export function HistoryWorkspaceHeader({
-  weekRange,
-  weekOffset,
-  weekCount,
-  onPrevWeek,
-  onNextWeek,
-}: HistoryWorkspaceHeaderProps) {
+/** Shared URL replace — both bands write history search params. */
+function useHistoryParamReplace() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const searchField = useMemo(
-    () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
-    [searchParams],
-  );
-  const searchScope = useMemo(
-    () => normalizeReceivingHistorySearchScope(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.scope)),
-    [searchParams],
-  );
-  const historySort = useMemo(
-    () => normalizeHistorySort(searchParams.get('sort')),
-    [searchParams],
-  );
-
-  const replaceParams = useCallback(
+  return useCallback(
     (next: URLSearchParams) => {
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [pathname, router],
   );
+}
 
-  const urlQRaw = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
+/** Band 1 — carton-source tabs. Search / refine live on {@link HistoryTriageBand}. */
+export function HistoryWorkspaceHeader({ className }: { className?: string }) {
+  const searchParams = useSearchParams();
+  const replaceParams = useHistoryParamReplace();
 
-  const setHistorySearch = useCallback(
-    (q: string) => {
-      replaceParams(setReceivingHistoryUrlParams(searchParams, { q }));
-    },
-    [replaceParams, searchParams],
+  const searchScope = useMemo(
+    () => normalizeReceivingHistorySearchScope(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.scope)),
+    [searchParams],
   );
 
   const setScope = useCallback(
@@ -94,6 +74,70 @@ export function HistoryWorkspaceHeader({
           scope: normalizeReceivingHistorySearchScope(id),
         }),
       );
+    },
+    [replaceParams, searchParams],
+  );
+
+  const tabs: Array<{
+    id: ReceivingHistorySearchScope;
+    label: string;
+    color: 'blue' | 'orange';
+    dividerBefore?: boolean;
+  }> = [
+    { id: 'all', label: 'All', color: 'blue' },
+    { id: 'unmatched', label: 'Unfound', color: 'orange', dividerBefore: true },
+  ];
+
+  return (
+    <WorkbenchChromeHeader
+      density="band"
+      className={className}
+      tabs={tabs}
+      activeTab={searchScope}
+      onTabChange={setScope}
+      solidTone="accent"
+    />
+  );
+}
+
+interface HistoryTriageBandProps {
+  weekRange: { startStr: string; endStr: string };
+  weekOffset: number;
+  weekCount: number;
+  onPrevWeek: () => void;
+  onNextWeek: () => void;
+  className?: string;
+  /** Band-3 controls slot — hosts the portaled column-display (▦) trigger. */
+  controlsSlotRef?: Ref<HTMLDivElement>;
+}
+
+/** Band 3 — search left; refine (sort / field) + week pill + ▦ right. */
+export function HistoryTriageBand({
+  weekRange,
+  weekOffset,
+  weekCount,
+  onPrevWeek,
+  onNextWeek,
+  className,
+  controlsSlotRef,
+}: HistoryTriageBandProps) {
+  const searchParams = useSearchParams();
+  const replaceParams = useHistoryParamReplace();
+
+  const searchField = useMemo(
+    () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
+    [searchParams],
+  );
+  const historySort = useMemo(
+    () => normalizeHistorySort(searchParams.get('sort')),
+    [searchParams],
+  );
+
+  const urlQRaw = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
+
+  const setHistorySearch = useCallback(
+    (q: string) => {
+      replaceParams(setReceivingHistoryUrlParams(searchParams, { q }));
     },
     [replaceParams, searchParams],
   );
@@ -129,35 +173,19 @@ export function HistoryWorkspaceHeader({
   const [filterOpen, setFilterOpen] = useState(false);
   const filterHot = searchField !== 'all' || historySort !== HISTORY_DEFAULT_SORT;
 
-  const tabs: Array<{
-    id: ReceivingHistorySearchScope;
-    label: string;
-    color: 'blue' | 'orange';
-    dividerBefore?: boolean;
-  }> = [
-    { id: 'all', label: 'All', color: 'blue' },
-    { id: 'unmatched', label: 'Unfound', color: 'orange', dividerBefore: true },
-  ];
-
   const placeholder = getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter');
 
-  // No `trailing` cluster: History has no display sort and no chrome CTA, and
-  // column display moved to the grid's own top-right lip (2026-08-02). Honest
-  // absence — WorkbenchTrailingCluster would render null anyway.
   return (
-    <WorkbenchChromeHeader
-      density="band"
-      tabs={tabs}
-      activeTab={searchScope}
-      onTabChange={setScope}
-      solidTone="accent"
+    <WorkbenchTriageBand
+      className={className}
+      controlsSlotRef={controlsSlotRef}
       search={
         <TechRailSearchBar
           variant="chrome"
           value={urlQRaw}
           onChange={setHistorySearch}
           placeholder={placeholder}
-          className="w-40 shrink-0 lg:w-56"
+          className="w-52 shrink-0 lg:w-64"
         />
       }
       right={
@@ -168,19 +196,23 @@ export function HistoryWorkspaceHeader({
             hot={filterHot}
             label="Filters"
           >
-            <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
-            {HISTORY_SORT_OPTIONS.map((option) => (
-              <WorkbenchFilterMenuRow
-                key={option.id}
-                label={option.label}
-                active={historySort === option.id}
-                onClick={() => {
-                  setSort(option.id);
-                  setFilterOpen(false);
-                }}
-              />
-            ))}
-            <WorkbenchFilterDivider />
+            {HISTORY_SORT_OPTIONS.length > 1 ? (
+              <>
+                <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
+                {HISTORY_SORT_OPTIONS.map((option) => (
+                  <WorkbenchFilterMenuRow
+                    key={option.id}
+                    label={option.label}
+                    active={historySort === option.id}
+                    onClick={() => {
+                      setSort(option.id);
+                      setFilterOpen(false);
+                    }}
+                  />
+                ))}
+                <WorkbenchFilterDivider />
+              </>
+            ) : null}
             <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
             {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
               <WorkbenchFilterMenuRow

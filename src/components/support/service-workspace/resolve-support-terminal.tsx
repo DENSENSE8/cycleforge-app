@@ -55,7 +55,7 @@ function resolveTicketTerminal(bridge: ThreadComposerBridge | null): TerminalAct
       : 'Saving…'
     : isPublic
       ? hasDraft
-        ? 'Send reply'
+        ? 'Send'
         : 'Reply'
       : hasDraft
         ? 'Add note'
@@ -70,11 +70,11 @@ function resolveTicketTerminal(bridge: ThreadComposerBridge | null): TerminalAct
         ? 'You need helpdesk access to post'
         : !hasDraft
           ? isPublic
-            ? 'Focus the composer to write a reply to the customer'
-            : 'Focus the composer to write an internal note'
+            ? 'Write a reply'
+            : 'Write an internal note'
           : isPublic
-            ? 'Send this reply to the customer'
-            : 'Post this internal note',
+            ? 'Send reply'
+            : 'Post note',
     disabled: !bridge || !bridge.canPost || submitting,
     disabledReason: !bridge
       ? 'Ticket composer unavailable'

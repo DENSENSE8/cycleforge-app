@@ -151,7 +151,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           >
             <div className="flex min-w-0 flex-col">
               <span className="text-role-micro uppercase tracking-wider text-blue-600">
-                {photoItems.length} {photoItems.length === 1 ? 'photo' : 'photos'}
+                Photos {photoItems.length}
               </span>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-role-micro font-semibold">
                 {loadedCount < photoItems.length && errorCount === 0 ? (
@@ -195,7 +195,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             <span className="text-sm font-semibold text-text-default">{g.launcherTitle}</span>
             <div className="mt-0.5 flex items-center gap-2">
               <span className="text-role-micro uppercase tracking-wider text-blue-600">
-                {photoItems.length} {photoItems.length === 1 ? 'Photo' : 'Photos'}
+                Photos {photoItems.length}
               </span>
               {loadedCount < photoItems.length && errorCount === 0 && (
                 <span className="text-role-micro font-semibold text-amber-600">• Loading...</span>

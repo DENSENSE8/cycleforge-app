@@ -427,7 +427,7 @@ function DefaultGroupHeader({ group }: { group: SerialGroup }) {
         </span>
       )}
       <span className="text-role-micro font-medium text-text-faint">
-        {group.items.length} {group.items.length === 1 ? 'event' : 'events'}
+        {group.items.length} events
       </span>
     </div>
   );

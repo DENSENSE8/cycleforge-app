@@ -42,12 +42,13 @@
  * grid owns its own scroll (`display/workbench.md` → Sticky docking).
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
   withScopeDivider,
 } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
@@ -89,6 +90,8 @@ export function MyDayWorkspace() {
     openWatch,
     closeWatch,
   } = useMyDayView();
+
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const tasks = useMemo(() => myDayTasksFromFeed(data), [data]);
   const counts = useMemo(() => myDayLaneCounts(tasks), [tasks]);
@@ -144,7 +147,23 @@ export function MyDayWorkspace() {
           activeTab={lane}
           onTabChange={(id) => setLane(id as MyDayLaneFilter)}
           solidTone="accent"
-          // Always-open TechRailSearchBar — filter+paste, not icon-first expand.
+          // Trailing = solid Add CTA (opens Watch rail — ticket or tracking).
+          // Sort stays on the grid header (`?colsort=`); column display stays on
+          // the grid lip — neither belongs in this cluster.
+          trailing={
+            <WorkbenchTrailingCluster
+              actions={<MyDayWatchTicketAction onOpen={openWatch} />}
+            />
+          }
+        />
+        {/*
+          Band 3 — data-table triage: find LEFT (always-open TechRailSearchBar —
+          filter+paste, not icon-first expand), refine RIGHT (the due-horizon
+          chips narrow the rows below — `display/workbench-ops-queue.md` →
+          "Filters / refine stay in `right`; query ≠ display"). Search + refine
+          live here, off Band 1, per the five-row Sheets SoT.
+        */}
+        <WorkbenchTriageBand
           search={
             <TechRailSearchBar
               variant="chrome"
@@ -154,12 +173,6 @@ export function MyDayWorkspace() {
               className="w-40 shrink-0 lg:w-56"
             />
           }
-          // `right` is the REFINE cluster — controls that narrow the rows below
-          // (`display/workbench-ops-queue.md` → Trailing Display & Actions:
-          // "Filters / refine stay in `right`; query ≠ display"). The due
-          // horizon is exactly that, so it lands here rather than in `trailing`,
-          // which is the DISPLAY cluster (how this list is drawn, not which
-          // rows it holds).
           right={
             !isError ? (
               <MyDayDueHorizonChips
@@ -170,14 +183,7 @@ export function MyDayWorkspace() {
               />
             ) : null
           }
-          // Trailing = solid Add CTA (opens Watch rail — ticket or tracking).
-          // Sort stays on the grid header (`?colsort=`); column display stays on
-          // the grid lip — neither belongs in this cluster.
-          trailing={
-            <WorkbenchTrailingCluster
-              actions={<MyDayWatchTicketAction onOpen={openWatch} />}
-            />
-          }
+          controlsSlotRef={setControlsEl}
         />
       </div>
 
@@ -201,6 +207,7 @@ export function MyDayWorkspace() {
         ) : (
           <MyDayGridView
             tasks={visibleTasks}
+            columnTriggerPortalTarget={controlsEl}
             loading={isLoading}
             // Settled-with-nothing on a "what needs me" queue is an ALL-CLEAR,
             // not an absence — say so rather than showing a create prompt.

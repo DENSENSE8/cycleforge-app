@@ -106,7 +106,7 @@ export function SupportContextDetailPanel({
     <DetailStackRailRegistrar
       id={`detail:support-context:${ticketId}`}
       // Per host, not per panel: inside `SupportTicketDetail` this registers from
-      // within `ReceivingTicketStack` — itself an `UnboxPushColumn` — so pushing
+      // within Unbox Displays Ticket (`UnboxPushColumn`) — so pushing
       // would make them two columns fighting one edge. On `/support` nothing else
       // owns the edge, so it pushes and the thread reflows beside it.
       push={push}
@@ -146,13 +146,16 @@ export function SupportContextDetailPanel({
               tabs={displays!}
               value={display}
               onChange={setDisplay}
-              ariaLabel="Ticket displays"
+              ariaLabel="Ticket inspector"
               // The quiet switcher: idle cells are icon-only, the selected one
               // names itself. A labelled rail in a ~420px column reads louder
               // than the display it selects.
               density="icon"
-              className="p-2"
-              headerClassName="px-0.5"
+              // Flush body bands own their pad; only the icon strip keeps inset.
+              // Override the slider's default space-y-4 so Assigned/Linkage read
+              // as squared hairline bands, not detached islands.
+              className="space-y-0"
+              headerClassName="px-2 pt-2 pb-1"
             />
           ) : (
             <SupportContextHub

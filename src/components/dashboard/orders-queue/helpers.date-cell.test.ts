@@ -7,10 +7,18 @@ import {
 } from '@/components/dashboard/orders-queue/helpers';
 
 describe('queue row Date column helpers', () => {
-  it('queueRowShipBySource prefers deadline then created', () => {
+  it('queueRowShipBySource prefers deadline → ship_by_date → created', () => {
     assert.equal(
       queueRowShipBySource({ deadline_at: '2026-06-09T12:00:00-07:00', created_at: '2026-06-01T12:00:00-07:00' }),
       '2026-06-09T12:00:00-07:00',
+    );
+    assert.equal(
+      queueRowShipBySource({
+        deadline_at: null,
+        ship_by_date: '2026-06-08',
+        created_at: '2026-06-01T12:00:00-07:00',
+      }),
+      '2026-06-08',
     );
     assert.equal(
       queueRowShipBySource({ deadline_at: null, created_at: '2026-06-01T12:00:00-07:00' }),

@@ -33,6 +33,7 @@ function fakes(cartonExists = true, lineExists = true) {
       recomputeCalls.push(id);
     },
     runTx: async (_orgId, fn) => fn(client),
+    ensurePoLines: async () => ({ adopted: 0, imported: false, lineCount: 0 }),
   };
   return { deps, queries, recomputeCalls };
 }

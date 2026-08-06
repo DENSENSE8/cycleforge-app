@@ -53,7 +53,6 @@ import {
 } from '@/lib/receiving/optimistic-serials';
 import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
-import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import { requestConfirm } from '@/design-system/components/confirm';
@@ -250,12 +249,13 @@ function useActiveUnfoundLineSerials({
     async (serialUnitId: number, grade: string) => {
       if (lineId == null || serialUnitId <= 0) return;
       const prev = readLineSerials(lineId);
-      publish(lineId, setSerialGrade(prev, serialUnitId, grade));
+      const nextGrade = String(grade || '').trim() ? grade : null;
+      publish(lineId, setSerialGrade(prev, serialUnitId, nextGrade));
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ new_grade: grade }),
+          body: JSON.stringify({ new_grade: nextGrade }),
         });
         if (res.status === 409) return;
         const json = await res.json().catch(() => null);
@@ -301,6 +301,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     headerRight,
     suppressHeader = false,
     activeLineId,
+    onViewAllUnits,
   } = props;
 
   const queryClient = useQueryClient();
@@ -471,6 +472,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
               void lineId;
             },
           }}
+          onViewAllUnits={onViewAllUnits}
           activeRowSlot={({ serials, units }) => {
             if (!showSerialScan || !resolvedActiveLine) return null;
             return (
@@ -504,26 +506,6 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                 requireSerialConfirmation={requireSerialConfirmation ?? false}
                 onSerialAbsentChange={(next) => onSerialAbsentChange?.(next)}
                 units={units}
-                // Item evidence matters MORE on this lane, not less — an
-                // unfound / return carton is the exception path, and the photo
-                // is what an insurer or a platform dispute reads. Stage is
-                // threaded explicitly with the line id; `arrival_package` is
-                // not reachable from the bench. Without a linked PO the phone
-                // leg is click-inert and device upload still works.
-                itemPhotoSlot={
-                  <ReceivingPhotoButton
-                    receivingId={receivingId}
-                    staffId={Number(staffId) || 0}
-                    poRef={props.linkedOrderHint?.zoho_purchaseorder_number ?? null}
-                    photoStage="unbox_item"
-                    receivingLineId={resolvedActiveLine.id}
-                    poRouteRef={
-                      props.linkedOrderHint?.zoho_purchaseorder_id ??
-                      props.linkedOrderHint?.zoho_purchaseorder_number ??
-                      null
-                    }
-                  />
-                }
               />
             );
           }}

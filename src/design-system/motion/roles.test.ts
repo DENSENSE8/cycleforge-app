@@ -11,6 +11,7 @@ import {
 } from '../foundations/motion-framer';
 import { reducePresenceShape } from '../foundations/motion-framer-hooks';
 import { motionRole } from './roles';
+import { fadeInstant, springSnappy } from './tokens';
 
 /**
  * The role layer must stay an INDEXING layer over the preset catalog — never a
@@ -32,6 +33,18 @@ test('every role resolves to the exact catalog object — no copied physics', ()
   assert.equal(motionRole.gesture.press.whileTap, framerGesture.tapPress);
   assert.equal(motionRole.feedback.pulse.transition, framerTransition.chipCopyFeedback);
   assert.equal(motionRole.procedure.advance.transition, framerTransition.procedureStackLayout);
+});
+
+test('named spring / fade presets resolve to the house physics tokens — no copied physics', () => {
+  assert.equal(framerTransition.captureStackRowMount, springSnappy);
+  assert.equal(framerTransition.cardExpansion, springSnappy);
+  assert.equal(framerTransition.quantityBump, springSnappy);
+  assert.equal(framerTransition.sliderIndicator, springSnappy);
+  assert.equal(framerTransition.workOrderModalSpring, springSnappy);
+  assert.equal(framerTransition.commandBarDialog, springSnappy);
+  assert.equal(framerTransition.chipCopyFeedback, fadeInstant);
+  assert.equal(framerTransition.overlayScrim, fadeInstant);
+  assert.equal(motionRole.feedback.pulse.transition, fadeInstant);
 });
 
 test('there are exactly six roles', () => {

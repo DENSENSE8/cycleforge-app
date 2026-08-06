@@ -8,8 +8,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   effectiveReceivingPhotoStage,
+  mobileArrivalGuidedPhotosHref,
   mobileCaptureHrefForRequest,
   normalizeReceivingPhotoRequest,
+  parseArrivalGuidedStep,
   parseReceivingCartonPhotoStage,
   parseReceivingPhotoStage,
   receivingPhotoListIntentForScope,
@@ -185,7 +187,7 @@ test('mobileCaptureHrefForRequest routes carton stages to /m/r/{id}/photos', () 
       poRef: null,
       requestId: null,
     }),
-    '/m/r/9/photos?stage=arrival_package',
+    '/m/r/9/photos?stage=arrival_package&guided=1&back=%2Fm%2Ftriage%3Frid%3D9%26step%3Dplatform',
   );
   assert.equal(
     mobileCaptureHrefForRequest({
@@ -223,4 +225,23 @@ test('mobileCaptureHrefForRequest — item without a PO degrades to the carton p
     }),
     '/m/r/9/photos?stage=unbox_carton',
   );
+});
+
+test('mobileArrivalGuidedPhotosHref always stamps arrival_package + guided', () => {
+  assert.equal(
+    mobileArrivalGuidedPhotosHref(42, { back: '/m/triage', title: '1Z999' }),
+    '/m/r/42/photos?stage=arrival_package&guided=1&back=%2Fm%2Ftriage&title=1Z999',
+  );
+  assert.equal(
+    mobileArrivalGuidedPhotosHref(7),
+    '/m/r/7/photos?stage=arrival_package&guided=1',
+  );
+});
+
+test('parseArrivalGuidedStep accepts box_exterior and defaults to shipping_label', () => {
+  assert.equal(parseArrivalGuidedStep('box_exterior'), 'box_exterior');
+  assert.equal(parseArrivalGuidedStep('BOX_EXTERIOR'), 'box_exterior');
+  assert.equal(parseArrivalGuidedStep('shipping_label'), 'shipping_label');
+  assert.equal(parseArrivalGuidedStep(null), 'shipping_label');
+  assert.equal(parseArrivalGuidedStep('packing_material'), 'shipping_label');
 });

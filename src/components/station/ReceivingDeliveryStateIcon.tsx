@@ -61,7 +61,7 @@ function carrierConfirmedTip(args: {
  * label. Labels come from {@link incomingDeliveryStateFace} — same vocabulary
  * as the Incoming hunt tiles.
  */
-export function DeliveryStateIcon({
+function DeliveryStateIcon({
   state,
   className,
   suppressTooltip = false,

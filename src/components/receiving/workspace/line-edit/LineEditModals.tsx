@@ -8,7 +8,7 @@
  * them mutually exclusive, so rendering all three here is safe: only the one
  * whose `open` is true registers.
  *
- * Unbox mounts the same bodies in {@link ReceivingToolPushStack} instead — a
+ * Unbox mounts the same bodies in Displays (Photos / Timeline) instead — a
  * station-scoped push column that squeezes the workbench in-flow — see
  * LineEditPanel.
  */

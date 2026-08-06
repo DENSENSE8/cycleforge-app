@@ -15,6 +15,12 @@ export const QA_ADMIN_EMAIL = process.env.QA_ADMIN_EMAIL ?? 'qa-admin@cycleforge
 export const QA_ADMIN_NAME = process.env.QA_ADMIN_NAME ?? 'QA Admin';
 /** Non-obvious dev PIN; override via QA_ADMIN_PIN in .env. */
 export const QA_ADMIN_PIN = process.env.QA_ADMIN_PIN ?? '847291';
+/**
+ * Email+password for `/signin` into org `…0002` (CycleForge QA Sandbox).
+ * Local default is sandbox-only — override via `QA_ADMIN_PASSWORD` in `.env`.
+ * Never reuse this on dogfood / production tenants.
+ */
+export const QA_ADMIN_PASSWORD = process.env.QA_ADMIN_PASSWORD ?? 'CycleForge-QA-local!';
 
 /**
  * Per-org feature flags force-enabled on the QA tenant so gated surfaces are
@@ -34,6 +40,74 @@ export const QA_FIXTURE_SKUS = {
   earbuds: 'QA-APPL-APP2-WH',
   overlapProbe: 'BOSE-SLM2-BK',
 } as const;
+
+/**
+ * Extra catalog SKUs for demo-volume order titles — keeps outbound grids from
+ * looking like five copies of the same two products. Not referenced by E2E.
+ */
+export const QA_DEMO_SKUS = {
+  keyboard: 'QA-LOG-MXK-BK',
+  headset: 'QA-SNY-WH1000',
+  tablet: 'QA-SAM-TAB-A8',
+  charger: 'QA-ANK-737',
+  mouse: 'QA-LOG-MX3',
+  webcam: 'QA-LGT-C920',
+} as const;
+
+/** Product titles paired with `QA_DEMO_SKUS` (and the E2E fixture SKUs) for rotation. */
+export const QA_DEMO_SKU_CATALOG: ReadonlyArray<{ sku: string; title: string }> = [
+  { sku: QA_FIXTURE_SKUS.speaker, title: 'QA Bose SoundLink Mini II' },
+  { sku: QA_FIXTURE_SKUS.earbuds, title: 'QA Apple AirPods Pro (2nd Gen)' },
+  { sku: QA_DEMO_SKUS.keyboard, title: 'QA Logitech MX Keys' },
+  { sku: QA_DEMO_SKUS.headset, title: 'QA Sony WH-1000XM5' },
+  { sku: QA_DEMO_SKUS.tablet, title: 'QA Samsung Galaxy Tab A8' },
+  { sku: QA_DEMO_SKUS.charger, title: 'QA Anker 737 Power Bank' },
+  { sku: QA_DEMO_SKUS.mouse, title: 'QA Logitech MX Master 3' },
+  { sku: QA_DEMO_SKUS.webcam, title: 'QA Logitech C920 HD Webcam' },
+];
+
+/**
+ * Demo outbound volume — fills Awaiting / Pending / Packed / Shipped so the QA
+ * sandbox looks like a running warehouse. Separate ID prefix from `QA-TEST-*`
+ * so Playwright fixtures stay stable; re-provision is idempotent.
+ *
+ * Tracking uses USPS-shaped digits in a reserved block (`…03xxxx`) that does
+ * not overlap `QA_FIXTURE_TRACKING_*` (`…0199` / `…0205` / `…0212` / `…0229`).
+ */
+export const QA_DEMO_ORDER_VOLUME = {
+  awaiting: 12,
+  pending: 24,
+  packed: 8,
+  shipped: 16,
+  idPrefixes: {
+    awaiting: 'QA-DEMO-ORD-A',
+    pending: 'QA-DEMO-ORD-P',
+    packed: 'QA-DEMO-ORD-K',
+    shipped: 'QA-DEMO-ORD-S',
+  },
+  /**
+   * 18-digit stem; `qaDemoTrackingNumber(i)` appends a 4-digit sequence → 22
+   * digits total (USPS IMpb shape that `detectCarrier` accepts).
+   */
+  trackingBase: '940010000000000003',
+} as const;
+
+/** Deterministic USPS-shaped tracking for demo order index `i` (0-based). */
+export function qaDemoTrackingNumber(index: number): string {
+  if (!Number.isInteger(index) || index < 0 || index > 9999) {
+    throw new RangeError(`qaDemoTrackingNumber: index out of range (${index})`);
+  }
+  return `${QA_DEMO_ORDER_VOLUME.trackingBase}${String(index).padStart(4, '0')}`;
+}
+
+/** Zero-padded demo order_id, e.g. `QA-DEMO-ORD-P007`. */
+export function qaDemoOrderId(
+  lane: keyof typeof QA_DEMO_ORDER_VOLUME.idPrefixes,
+  index: number,
+): string {
+  const n = index + 1;
+  return `${QA_DEMO_ORDER_VOLUME.idPrefixes[lane]}${String(n).padStart(3, '0')}`;
+}
 
 export const QA_FIXTURE_TRACKING = 'QA-MOCK-TRK-PO';
 export const QA_FIXTURE_PO_ID = 'QA-MOCK-PO-8001';

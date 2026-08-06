@@ -1,14 +1,20 @@
 'use client';
 
-import { useCallback, useMemo, useState, type HTMLAttributes, type ReactNode, type Ref } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
   WORKBENCH_CHROME_PILL_CLASS,
-  withScopeDivider,
 } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchKpiBand,
+  WorkbenchKpiCollapseToggle,
+  WORKBENCH_KPI_SURFACE,
+} from '@/components/dashboard/workbench-kpi-collapse';
+import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -16,96 +22,77 @@ import {
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ReceivingModeUnbox } from '@/components/icons/stations';
 import { Printer } from '@/components/icons/media';
+import { ColumnsTwo } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { printReturnsBinLabel } from '@/lib/print/printReturnsBinLabel';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam, useStaffFilter } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import {
   HISTORY_SORT_OPTIONS,
-  HISTORY_DEFAULT_SORT,
   normalizeHistorySort,
 } from '@/lib/receiving/receiving-modes';
 import {
   RECEIVING_HISTORY_SEARCH_FIELDS,
-  RECEIVING_HISTORY_URL_PARAMS,
   getReceivingHistoryPlaceholder,
   normalizeReceivingHistorySearchField,
+  normalizeReceivingHistorySearchScope,
   setReceivingHistoryUrlParams,
 } from '@/lib/receiving-history-search';
+import {
+  applyHistoryCommandFilterState,
+  EMPTY_HISTORY_COMMAND_FILTER,
+  HISTORY_REFINE_FACETS,
+  HISTORY_REFINE_SOURCE_OPTIONS,
+  HISTORY_REFINE_WEEK_OPTIONS,
+  isHistoryCommandFilterHot,
+  isHistoryRefineFacetHot,
+  readHistoryCommandFilterState,
+  type HistoryCommandFilterState,
+  type HistoryRefineFacetId,
+} from '@/lib/receiving/history-command-filter';
+import { computeWeekRange, formatWeekRangeCompact } from '@/utils/date';
+import { cn } from '@/utils/_cn';
+import {
+  classifyHistoryCommandScan,
+  type HistoryCommandScanKind,
+} from '@/lib/receiving/history-command-scan';
+import {
+  getDetailInspectorCollapsed,
+  setDetailInspectorCollapsed,
+  toggleDetailInspectorCollapsed,
+  DETAIL_INSPECTOR_COLLAPSE_EVENT,
+  type DetailInspectorCollapseDetail,
+} from '@/design-system/shells/detail-stack';
+import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
 import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import {
   UNBOX_WORKSPACE_TAB_LABEL,
   UNBOX_WORKSPACE_TABS,
+  unboxKpiFeedTab,
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ScanRoute } from '@/lib/barcode-routing';
 import { UnboxChromeKpiCluster } from './UnboxChromeKpiCluster';
-import { cn } from '@/utils/_cn';
 
-/**
- * Row 2 — the data-table triage band: search pinned left, refine controls
- * (staff / stage / week) pinned right. Same shell tokens as row 1's
- * `WorkbenchChromeHeader band` face, but the opposite grouping — row 1 puts
- * everything after tabs on the right; this row deliberately splits its two
- * questions ("find" vs "refine") to opposite edges instead of clustering
- * them, since neither has a lifecycle-tab rail competing for the left side.
- *
- * Unbox-local for now (one consumer) — promote into `workbench-shell.tsx`
- * only when a second surface needs the same split-row shape.
- */
-function UnboxTriageBand({
-  search,
-  right,
-  compareChrome,
-  historyDrillChrome,
-  controlsSlotRef,
-  controlsSlotProps,
-}: {
-  search: ReactNode;
-  right: ReactNode;
-  compareChrome?: ReactNode;
-  /** History Drill | List — only when History + compare is single. */
-  historyDrillChrome?: ReactNode;
-  controlsSlotRef?: Ref<HTMLDivElement>;
-  controlsSlotProps?: HTMLAttributes<HTMLDivElement> & Partial<Record<`data-${string}`, string>>;
-}) {
-  return (
-    <div
-      className={cn(
-        // Flush sheet chrome: abut context rail (no left radius / border —
-        // the rail owns the hairline). No top/bottom — KPI owns the seam
-        // above; the sheet owns the seam below. One hairline per joint.
-        // `pl-0` — flush to the sheet edge (search icon lives inside the
-        // TechRailSearchBar field, not a separate select-gutter track).
-        // No vertical pad — chrome search is a sunken plane edge-to-edge
-        // with this row (not a floated pill).
-        // History drill: search is null (find sits on the parent-map footer);
-        // keep pl-0 so refine controls still align to the sheet edge.
-        'flex h-10 min-w-0 shrink-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card pl-0 pr-0.5 shadow-sm',
-      )}
-    >
-      <div className="flex min-w-0 shrink items-stretch">{search}</div>
-      <div className="flex shrink-0 items-center gap-2 self-center">
-        {historyDrillChrome}
-        {compareChrome}
-        {right}
-        <div ref={controlsSlotRef} className="flex shrink-0 items-center gap-2" {...controlsSlotProps} />
-      </div>
-    </div>
-  );
-}
-
-// Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Recent · Queue · History, with
-// the archive tab last (emerald, dividerBefore) after the working tabs. Recent
-// leads because it is the operator's own set — same placement Labels gives its
-// recents tab.
+// Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Urgent · Recent · Queue · All ·
+// History, with the archive tab last (emerald, dividerBefore) after the working tabs.
 const TABS: readonly UnboxWorkspaceTab[] = UNBOX_WORKSPACE_TABS;
+
+const TAB_COLOR: Record<UnboxWorkspaceTab, 'red' | 'blue' | 'orange' | 'gray' | 'emerald'> = {
+  urgent: 'red',
+  recent: 'blue',
+  queue: 'orange',
+  all: 'gray',
+  history: 'emerald',
+};
 
 const QUEUE_STAGE_OPTS = [
   { id: null, label: 'All' },
@@ -118,7 +105,7 @@ export function UnboxWorkspaceHeader({
   onSelectTab,
   controlsSlotRef,
   compareChrome,
-  historyDrillChrome,
+  historyTriageOpen = false,
   className,
 }: {
   tab: UnboxWorkspaceTab;
@@ -127,10 +114,10 @@ export function UnboxWorkspaceHeader({
     opts?: { clearLine?: boolean },
   ) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  /** Layout toggle + spreadsheet zoom (Sheets / TradingView compare). */
+  /** Layout toggle + spreadsheet zoom — non-History tabs only (History View cluster). */
   compareChrome?: ReactNode;
-  /** History Drill | List (linked dual vs folded list). */
-  historyDrillChrome?: ReactNode;
+  /** `detail:history` occupant registered — toggle parks without clearing target. */
+  historyTriageOpen?: boolean;
   className?: string;
 }) {
   const router = useRouter();
@@ -138,8 +125,14 @@ export function UnboxWorkspaceHeader({
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
+    WORKBENCH_KPI_SURFACE.unbox,
+  );
+  const historyViewChrome = useHistoryViewChromeOptional();
   const isHistoryTab = tab === 'history';
-  const isQueueTab = tab === 'queue';
+  const isQueueTab = tab === 'queue' || tab === 'urgent';
+  const isAllTab = tab === 'all';
+  const kpiFeedTab = unboxKpiFeedTab(tab);
   // History drill seats find in the parent-map footer (`TechRailSearchBar`
   // rail) so the map matches receiving-rail anatomy — one find surface, not
   // chrome + footer. List mode keeps the chrome search.
@@ -194,14 +187,16 @@ export function UnboxWorkspaceHeader({
     })();
   }, [onSelectTab, staffId]);
 
-  const searchField = useMemo(
-    () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
+  const historyFilter: HistoryCommandFilterState = useMemo(
+    () => readHistoryCommandFilterState(searchParams),
     [searchParams],
   );
-  const historySort = useMemo(
-    () => normalizeHistorySort(searchParams.get('sort')),
-    [searchParams],
-  );
+  const searchField = historyFilter.field;
+  const historySort = historyFilter.sort;
+  const historyScope = historyFilter.scope;
+  const historyWeekOffset = historyFilter.weekOffset;
+  const historyStaffId = historyFilter.staffId;
+  const { options: staffOptions } = useStaffFilter();
 
   const ustageRaw = (searchParams.get('ustage') || '').trim().toLowerCase();
   const queueStage: 'staged' | 'unstaged' | null =
@@ -221,7 +216,7 @@ export function UnboxWorkspaceHeader({
   );
 
   // History tab: TechRailSearchBar owns the 250ms draft debounce → `?rh_q=`.
-  const urlQRaw = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
+  const urlQRaw = historyFilter.q;
   const setHistorySearch = useCallback(
     (q: string) => {
       replaceParams(setReceivingHistoryUrlParams(searchParams, { q }));
@@ -229,33 +224,60 @@ export function UnboxWorkspaceHeader({
     [replaceParams, searchParams],
   );
 
-  const setField = useCallback(
-    (id: string) => {
-      replaceParams(
-        setReceivingHistoryUrlParams(searchParams, {
-          field: normalizeReceivingHistorySearchField(id),
-        }),
-      );
+  const patchHistoryFilter = useCallback(
+    (patch: Partial<HistoryCommandFilterState>) => {
+      replaceParams(applyHistoryCommandFilterState(searchParams, patch));
     },
     [replaceParams, searchParams],
+  );
+
+  const setField = useCallback(
+    (id: string) => {
+      patchHistoryFilter({ field: normalizeReceivingHistorySearchField(id) });
+    },
+    [patchHistoryFilter],
   );
 
   const setSort = useCallback(
     (id: string) => {
-      const next = new URLSearchParams(searchParams.toString());
-      const normalized = normalizeHistorySort(id);
-      if (normalized === HISTORY_DEFAULT_SORT) next.delete('sort');
-      else next.set('sort', normalized);
-      replaceParams(next);
+      patchHistoryFilter({ sort: normalizeHistorySort(id) });
     },
-    [replaceParams, searchParams],
+    [patchHistoryFilter],
+  );
+
+  const setScope = useCallback(
+    (id: string) => {
+      patchHistoryFilter({ scope: normalizeReceivingHistorySearchScope(id) });
+    },
+    [patchHistoryFilter],
+  );
+
+  const setHistoryStaff = useCallback(
+    (id: number | null) => {
+      patchHistoryFilter({ staffId: id });
+    },
+    [patchHistoryFilter],
+  );
+
+  const setHistoryWeek = useCallback(
+    (offset: number) => {
+      patchHistoryFilter({ weekOffset: offset });
+    },
+    [patchHistoryFilter],
   );
 
   const clearHistoryFilters = useCallback(() => {
-    const next = setReceivingHistoryUrlParams(searchParams, { field: 'all' });
-    next.delete('sort');
-    replaceParams(next);
-  }, [replaceParams, searchParams]);
+    replaceParams(
+      applyHistoryCommandFilterState(searchParams, {
+        q: historyFilter.q,
+        field: EMPTY_HISTORY_COMMAND_FILTER.field,
+        scope: EMPTY_HISTORY_COMMAND_FILTER.scope,
+        sort: EMPTY_HISTORY_COMMAND_FILTER.sort,
+        staffId: EMPTY_HISTORY_COMMAND_FILTER.staffId,
+        weekOffset: EMPTY_HISTORY_COMMAND_FILTER.weekOffset,
+      }),
+    );
+  }, [replaceParams, searchParams, historyFilter.q]);
 
   const setQueueStage = useCallback(
     (id: 'staged' | 'unstaged' | null) => {
@@ -330,8 +352,88 @@ export function UnboxWorkspaceHeader({
   });
 
   const [filterOpen, setFilterOpen] = useState(false);
-  const historyFilterHot = isHistoryTab && (searchField !== 'all' || historySort !== HISTORY_DEFAULT_SORT);
+  /** Active facet tab inside History Refine (Staff · Source · Field · Week). */
+  const [refineFacet, setRefineFacet] = useState<HistoryRefineFacetId>('staff');
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(() => getDetailInspectorCollapsed());
+  const historyFilterHot = isHistoryTab && isHistoryCommandFilterHot(historyFilter);
   const queueFilterHot = isQueueTab && (queueStage != null || queueLane != null);
+
+  const setHistoryFilterOpen = useCallback((next: boolean) => {
+    setFilterOpen(next);
+    if (!next) setRefineFacet('staff');
+  }, []);
+
+  useEffect(() => {
+    const onCollapse = (event: Event) => {
+      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
+      if (!detail || typeof detail.collapsed !== 'boolean') return;
+      setInspectorCollapsed(detail.collapsed);
+    };
+    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
+    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
+  }, []);
+
+  const toggleHistoryInspector = useCallback(() => {
+    // No occupant yet — open View-only shell so layout / refine chrome is reachable.
+    if (!historyTriageOpen) {
+      historyViewChrome?.setViewShellOpen(true);
+      setDetailInspectorCollapsed(false);
+      setInspectorCollapsed(false);
+      return;
+    }
+    toggleDetailInspectorCollapsed();
+    setInspectorCollapsed(getDetailInspectorCollapsed());
+  }, [historyTriageOpen, historyViewChrome]);
+
+  // Cmd+\ (and bare `]`) parks / expands the History push inspector without
+  // clearing `historyTriage` — filter URL edits keep the same target. When the
+  // rail is closed, the same keys open the View-only shell.
+  useEffect(() => {
+    if (!isHistoryTab) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const isCmdBackslash =
+        (e.metaKey || e.ctrlKey) && (e.key === '\\' || e.code === 'Backslash');
+      const isBracket = !e.metaKey && !e.ctrlKey && !e.altKey && e.key === ']';
+      if (!isCmdBackslash && !isBracket) return;
+      e.preventDefault();
+      toggleHistoryInspector();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isHistoryTab, toggleHistoryInspector]);
+
+  // Esc park→clear lives on the History record-cursor publisher
+  // (`ReceivingLinesTable` → `useRecordCursorKeyboard`).
+
+  // Wedge → History command-row find (same `?rh_q=` as TechRailSearchBar).
+  useEffect(() => {
+    if (!isHistoryTab) return;
+    const applyFind = (patch: Partial<HistoryCommandFilterState>) => {
+      replaceParams(applyHistoryCommandFilterState(searchParams, patch));
+    };
+    const onWedge = (event: Event) => {
+      const ce = event as CustomEvent<{ value?: string; route?: ScanRoute | null }>;
+      const value = String(ce.detail?.value ?? '').trim();
+      if (!value) return;
+      const classified: HistoryCommandScanKind = classifyHistoryCommandScan(
+        value,
+        ce.detail?.route ?? null,
+      );
+      if (classified.kind === 'find') {
+        event.preventDefault();
+        applyFind({ q: classified.raw });
+        return;
+      }
+      if (classified.kind === 'field') {
+        event.preventDefault();
+        applyFind({ q: classified.value, field: classified.field });
+      }
+      // station_command / open_carton / passthrough — leave to global routeScan
+    };
+    window.addEventListener('wedge-scan', onWedge);
+    return () => window.removeEventListener('wedge-scan', onWedge);
+  }, [isHistoryTab, replaceParams, searchParams]);
 
   const tabCount = (id: UnboxWorkspaceTab): number | undefined => {
     const n = id === 'queue' ? queueCount : id === 'recent' ? recentCount : undefined;
@@ -340,48 +442,200 @@ export function UnboxWorkspaceHeader({
     return typeof n === 'number' && n > 0 ? n : undefined;
   };
 
-  // The hairline belongs to Recent's RIGHT edge: Recent is the operator's own
-  // scope and Queue · History are the station's lists. `withScopeDivider` owns
-  // that placement so Home's strip reads the same way.
-  const tabs = withScopeDivider(
-    TABS.map((id) => ({
-      id,
-      label: UNBOX_WORKSPACE_TAB_LABEL[id],
-      count: tabCount(id),
-      color: (id === 'queue' ? 'orange' : id === 'recent' ? 'blue' : 'emerald') as
-        | 'blue'
-        | 'orange'
-        | 'emerald',
-    })),
-  );
+  // History keeps the trailing divider (archive after working tabs) — same as
+  // Testing / Pack. Do not use withScopeDivider (that put a hairline after Recent).
+  const tabs = TABS.map((id) => ({
+    id,
+    label: UNBOX_WORKSPACE_TAB_LABEL[id],
+    count: tabCount(id),
+    color: TAB_COLOR[id],
+    dividerBefore: id === 'history',
+  }));
 
-  // Row 2 content — the data-table triage band. Always-open TechRailSearchBar
-  // (same as sidebar footer) — not icon-first expand. Search answers "find";
-  // staff/stage/lane/sort filters + week pill answer "refine" — the two
-  // questions this row keeps apart from row 1's tabs/KPI/CTA.
-  // History drill: find lives on the parent-map footer (`?rh_q=`) — omit here.
+  // Band 3 — find left · refine right. History is the command-row golden:
+  // flex-1 search + in-field Refine funnel (Staff · Source · Field · Week
+  // as top labeled facet tabs — one body at a time). Sheet layout chrome
+  // lives on the detail:history View topic cluster.
+  const historyRefineBody = (() => {
+    switch (refineFacet) {
+      case 'staff':
+        return (
+          <>
+            <WorkbenchFilterMenuRow
+              label="All staff"
+              active={historyStaffId == null}
+              onClick={() => {
+                setHistoryStaff(null);
+                setHistoryFilterOpen(false);
+              }}
+            />
+            {staffOptions.map((opt) => (
+              <WorkbenchFilterMenuRow
+                key={opt.id}
+                label={opt.name}
+                active={historyStaffId === opt.id}
+                onClick={() => {
+                  setHistoryStaff(opt.id);
+                  setHistoryFilterOpen(false);
+                }}
+              />
+            ))}
+          </>
+        );
+      case 'source':
+        return HISTORY_REFINE_SOURCE_OPTIONS.map((opt) => (
+          <WorkbenchFilterMenuRow
+            key={opt.id}
+            label={opt.label}
+            active={historyScope === opt.id}
+            onClick={() => {
+              setScope(opt.id);
+              setHistoryFilterOpen(false);
+            }}
+          />
+        ));
+      case 'field':
+        return RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
+          <WorkbenchFilterMenuRow
+            key={field.id}
+            label={field.label}
+            active={searchField === field.id}
+            onClick={() => {
+              setField(field.id);
+              setHistoryFilterOpen(false);
+            }}
+          />
+        ));
+      case 'week':
+        return HISTORY_REFINE_WEEK_OPTIONS.map((opt) => {
+          const range = computeWeekRange(opt.offset);
+          const rangeLabel = formatWeekRangeCompact(range.startStr, range.endStr);
+          const active = historyWeekOffset === opt.offset;
+          return (
+            <WorkbenchFilterMenuRow
+              key={opt.offset}
+              label={active ? `${opt.label} · ${rangeLabel}` : opt.label}
+              active={active}
+              onClick={() => {
+                setHistoryWeek(opt.offset);
+                setHistoryFilterOpen(false);
+              }}
+            />
+          );
+        });
+    }
+  })();
+
+  const historyInFieldFilter = isHistoryTab ? (
+    <WorkbenchFilterPopover
+      open={filterOpen}
+      onOpenChange={setHistoryFilterOpen}
+      hot={historyFilterHot}
+      label="Refine"
+      density="field"
+      contentClassName="w-72"
+    >
+      <div
+        role="tablist"
+        aria-label="Refine facets"
+        className="flex gap-0.5 border-b border-border-default px-1"
+      >
+        {HISTORY_REFINE_FACETS.map((facet) => {
+          const selected = refineFacet === facet.id;
+          const facetHot = isHistoryRefineFacetHot(facet.id, historyFilter);
+          return (
+            <button
+              key={facet.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              // Keep the popover open while switching facets.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setRefineFacet(facet.id)}
+              className={cn(
+                // ds-raw-button: compact facet tabs inside WorkbenchFilterPopover.
+                'ds-raw-button relative flex-1 border-b-2 px-1.5 py-1.5 text-role-caption font-medium transition-colors',
+                selected
+                  ? 'border-blue-600 text-text-primary'
+                  : 'border-transparent text-text-muted hover:text-text-primary',
+              )}
+            >
+              {facet.label}
+              {facetHot ? (
+                <span
+                  className="absolute right-0.5 top-1 h-1 w-1 rounded-full bg-blue-500"
+                  aria-hidden
+                />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      <div className="max-h-64 overflow-y-auto py-0.5">{historyRefineBody}</div>
+      {HISTORY_SORT_OPTIONS.length > 1 ? (
+        <>
+          <WorkbenchFilterDivider />
+          <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
+          {HISTORY_SORT_OPTIONS.map((opt) => (
+            <WorkbenchFilterMenuRow
+              key={opt.id}
+              label={opt.label}
+              active={historySort === opt.id}
+              onClick={() => {
+                setSort(opt.id);
+                setHistoryFilterOpen(false);
+              }}
+            />
+          ))}
+        </>
+      ) : null}
+      {historyFilterHot ? (
+        <>
+          <WorkbenchFilterDivider />
+          <WorkbenchFilterMenuRow
+            label="Clear filters"
+            active={false}
+            onClick={() => {
+              clearHistoryFilters();
+              setHistoryFilterOpen(false);
+            }}
+          />
+        </>
+      ) : null}
+    </WorkbenchFilterPopover>
+  ) : null;
+
   const triageSearch = historyFindInParentMap ? null : isHistoryTab ? (
     <TechRailSearchBar
       variant="chrome"
       value={urlQRaw}
       onChange={setHistorySearch}
       placeholder={getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')}
-      className="w-52 shrink-0 lg:w-64"
+      className="min-w-0 flex-1"
+      trailingSuffix={historyInFieldFilter}
     />
   ) : (
     <TechRailSearchBar
       variant="chrome"
       value={searchQuery}
       onChange={setSearch}
-      placeholder={tab === 'queue' ? 'Filter queue…' : 'Filter viewed…'}
+      placeholder={
+        tab === 'urgent'
+          ? 'Filter urgent…'
+          : tab === 'queue'
+            ? 'Filter queue…'
+            : tab === 'all'
+              ? 'Search across types…'
+              : 'Filter viewed…'
+      }
       className="w-52 shrink-0 lg:w-64"
     />
   );
 
   const triageRight = (
     <>
-      {tab !== 'recent' ? <StaffFilterButton iconOnly align="end" /> : null}
-      {isQueueTab ? (
+      {tab !== 'recent' && !isAllTab ? <StaffFilterButton iconOnly align="end" /> : null}
+      {isQueueTab && tab === 'queue' ? (
         <WorkbenchFilterPopover
           open={filterOpen}
           onOpenChange={setFilterOpen}
@@ -436,55 +690,37 @@ export function UnboxWorkspaceHeader({
           ) : null}
         </WorkbenchFilterPopover>
       ) : null}
-      {isHistoryTab ? (
-        <WorkbenchFilterPopover
-          open={filterOpen}
-          onOpenChange={setFilterOpen}
-          hot={historyFilterHot}
-          label="Sort / search field"
-        >
-          <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
-          {HISTORY_SORT_OPTIONS.map((opt) => (
-            <WorkbenchFilterMenuRow
-              key={opt.id}
-              label={opt.label}
-              active={historySort === opt.id}
-              onClick={() => {
-                setSort(opt.id);
-                setFilterOpen(false);
-              }}
-            />
-          ))}
-          <WorkbenchFilterDivider />
-          <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
-          {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
-            <WorkbenchFilterMenuRow
-              key={field.id}
-              label={field.label}
-              active={searchField === field.id}
-              onClick={() => {
-                setField(field.id);
-                setFilterOpen(false);
-              }}
-            />
-          ))}
-          {historyFilterHot ? (
-            <>
-              <WorkbenchFilterDivider />
-              <WorkbenchFilterMenuRow
-                label="Clear filters"
-                active={false}
-                onClick={() => {
-                  clearHistoryFilters();
-                  setFilterOpen(false);
-                }}
-              />
-            </>
-          ) : null}
-        </WorkbenchFilterPopover>
-      ) : null}
     </>
   );
+
+  const historyInspectorToggle = isHistoryTab ? (
+    <HoverTooltip
+      label={
+        !historyTriageOpen
+          ? 'Show inspector'
+          : inspectorCollapsed
+            ? 'Show inspector'
+            : 'Hide inspector'
+      }
+      asChild
+    >
+      <IconButton
+        size="sm"
+        tone="neutral"
+        ariaLabel={
+          !historyTriageOpen
+            ? 'Show inspector'
+            : inspectorCollapsed
+              ? 'Show inspector'
+              : 'Hide inspector'
+        }
+        aria-pressed={historyTriageOpen && !inspectorCollapsed}
+        icon={<ColumnsTwo className="h-4 w-4" />}
+        onClick={toggleHistoryInspector}
+        data-testid="unbox-history-inspector-toggle"
+      />
+    </HoverTooltip>
+  ) : null;
 
   return (
     <div className={cn('flex flex-col gap-0', className)}>
@@ -535,29 +771,48 @@ export function UnboxWorkspaceHeader({
         }
       />
       {/*
-        KPI row — its own pinned row between tabs/CTA and the triage band, not
-        squeezed into either. Big clickable KpiTile cards (UnboxChromeKpiCluster);
-        clicking a filterable one narrows the table via `?ukpi=` (wired in
-        ReceivingLinesTable). Replaced the body-mounted card strip
-        (`UnboxKpiStrip`, deleted) so the operator reads + acts on attention
-        state without scrolling past it.
+        KPI row — snap-collapsible Band 2 (`WorkbenchKpiBand`). Grok-like
+        analytics canvas (`UnboxKpiCanvas` via UnboxChromeKpiCluster): time ·
+        facets · viz toggle · charts; `?ukpi=` still filters the table.
+        Persist collapse: staff_preferences.kpiCollapsed.unbox.
       */}
-      <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
-        <UnboxChromeKpiCluster mode={tab} />
-      </div>
+      <WorkbenchKpiBand
+        open={!kpiCollapsed}
+        onSnapCollapse={() => setKpiCollapsed(true)}
+        onSnapExpand={() => setKpiCollapsed(false)}
+      >
+        <UnboxChromeKpiCluster mode={kpiFeedTab} />
+      </WorkbenchKpiBand>
       {/*
-        Row 2 — the data-table triage band. Search left, refine controls +
-        the History week pill right. Shows on every tab (Recent/Queue/History
-        all render the same grid) so the operator always has one place to
-        reach for it.
+        Band 3 — triage. History golden: find (+ in-field Refine: staff · scope ·
+        field · week) + inspector park — View topics own layout chrome only
+        (paint · drill · compare · zoom · ▦ · KPI). Other Unbox tabs keep Band 3
+        refine + kpiToggle.
       */}
-      <UnboxTriageBand
+      <WorkbenchTriageBand
         search={triageSearch}
-        right={triageRight}
-        historyDrillChrome={isHistoryTab ? historyDrillChrome : null}
-        compareChrome={compareChrome}
-        controlsSlotRef={controlsSlotRef}
-        controlsSlotProps={{ 'data-unbox-controls': '' }}
+        right={
+          isHistoryTab ? undefined : (
+            <>
+              {compareChrome}
+              {triageRight}
+            </>
+          )
+        }
+        kpiToggle={
+          isHistoryTab ? undefined : (
+            <WorkbenchKpiCollapseToggle
+              open={!kpiCollapsed}
+              onToggle={() => setKpiCollapsed(!kpiCollapsed)}
+            />
+          )
+        }
+        trailing={historyInspectorToggle}
+        controlsSlotRef={isHistoryTab ? undefined : controlsSlotRef}
+        controlsSlotProps={
+          isHistoryTab ? undefined : { 'data-unbox-controls': '' }
+        }
+        controlsSlotClassName={isHistoryTab ? undefined : 'contents'}
       />
     </div>
   );

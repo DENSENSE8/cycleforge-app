@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import {
   CHIP_DISPLAY_LEN,
   EMPTY_CHIP_DISPLAY,
+  QUIET_CHIP_EMPTY,
   disambiguateSerialDisplays,
   getLast8,
   getLast8Serial,
@@ -23,12 +24,14 @@ test('getLast8: truncates to trailing 8', () => {
   assert.equal(getLast8(''), '---');
 });
 
-test('resolveChipDisplay / resolveSerialDisplay empty face is 8 dashes', () => {
+test('resolveChipDisplay / resolveSerialDisplay empty face is quiet em dash (2B)', () => {
   assert.equal(EMPTY_CHIP_DISPLAY.length, CHIP_DISPLAY_LEN);
-  assert.equal(resolveChipDisplay(''), EMPTY_CHIP_DISPLAY);
-  assert.equal(resolveChipDisplay('----'), EMPTY_CHIP_DISPLAY); // legacy 4-dash
-  assert.equal(resolveSerialDisplay(''), EMPTY_CHIP_DISPLAY);
-  assert.equal(resolveSerialDisplay('SERIAL'), EMPTY_CHIP_DISPLAY);
+  assert.equal(QUIET_CHIP_EMPTY, '—');
+  assert.equal(resolveChipDisplay(''), QUIET_CHIP_EMPTY);
+  assert.equal(resolveChipDisplay('----'), QUIET_CHIP_EMPTY); // legacy 4-dash
+  assert.equal(resolveChipDisplay(EMPTY_CHIP_DISPLAY), QUIET_CHIP_EMPTY);
+  assert.equal(resolveSerialDisplay(''), QUIET_CHIP_EMPTY);
+  assert.equal(resolveSerialDisplay('SERIAL'), QUIET_CHIP_EMPTY);
 });
 
 test('disambiguateSerialDisplays: unique last-8 stay at 8', () => {

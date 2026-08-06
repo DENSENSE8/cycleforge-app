@@ -31,7 +31,7 @@ interface QueuedRequest {
   idempotencyKey: string;
   attempts: number;
   enqueuedAt: number;
-  /** Last error message — surfaced in the OfflineBanner badge. */
+  /** Last error message — diagnostic / queue UI. */
   lastError?: string | null;
 }
 
@@ -130,6 +130,9 @@ export async function queueOrFetch(input: {
     throw new Error('queueOrFetch: Idempotency-Key header is required');
   }
 
+  // First mutating call arms the online/heartbeat drainer (banner hook retired).
+  installOfflineQueueDrainer();
+
   // Try the network first when we think we have signal.
   if (isOnline()) {
     try {
@@ -217,9 +220,8 @@ async function drainOnce(): Promise<{ flushed: number; remaining: number }> {
 }
 
 let installed = false;
-let heartbeat: ReturnType<typeof setInterval> | null = null;
 
-export function installOfflineQueueDrainer(): void {
+function installOfflineQueueDrainer(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
 
@@ -229,25 +231,10 @@ export function installOfflineQueueDrainer(): void {
   });
 
   // Heartbeat — recover from captive portals + `navigator.onLine` lying.
-  heartbeat = setInterval(() => {
+  setInterval(() => {
     void drainOnce();
   }, 30_000);
 
   // Initial drain (covers reload-while-online with pending items).
   void drainOnce();
 }
-
-/** Stop the heartbeat. Useful in dev hot-reload tests. */
-export function teardownOfflineQueueDrainer(): void {
-  if (heartbeat) {
-    clearInterval(heartbeat);
-    heartbeat = null;
-  }
-  installed = false;
-}
-
-export async function getQueueDepth(): Promise<number> {
-  return (await listRecords()).length;
-}
-
-export { QUEUE_EVENT };

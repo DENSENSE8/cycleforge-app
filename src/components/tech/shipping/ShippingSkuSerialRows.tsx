@@ -1,22 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { ConditionGradeChip, SerialChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
+import { ConditionGradeChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
-import { META_COL } from '@/components/ui/RowMetaColumns';
 import { WorkspaceCard } from '@/design-system/components';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { stripConditionPrefix } from '@/utils/upnext-helpers';
 import { initSkuSerialGroups, type SkuSerialGroup } from '@/lib/tech/sku-serial-groups';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import { cn } from '@/utils/_cn';
 
 /**
- * Ship-tab pairing surface — PoLineRow anatomy (title above qty | SKU |
- * condition | serial) reused from unbox. Empty serial slots show while waiting
- * on the next scan; new serials slide in.
+ * Ship-tab pairing surface — PoLineRow nested-grid anatomy (wrap title above
+ * boxed qty | SKU | condition | serial preview). Empty serial slots show while
+ * waiting on the next scan. No Units Displays host on this stand.
  */
 export function ShippingSkuSerialRows({
   activeOrder,
@@ -103,7 +101,7 @@ export function ShippingSkuSerialRows({
 function EmptyPairingHint({ sku }: { sku: string }) {
   const displaySku = String(sku || '').trim();
   return (
-    <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken/40 px-4 py-6 text-center">
+    <div className="rounded-none border border-dashed border-border-soft bg-surface-sunken/40 px-4 py-6 text-center">
       <p className="text-role-caption font-semibold text-text-muted">
         {displaySku && !/^n\/a$/i.test(displaySku)
           ? `Ready — pair serials to ${displaySku}`
@@ -134,63 +132,57 @@ function SkuSerialGroupBlock({
   const title =
     productTitle ||
     (group.sku && group.sku !== '—' ? group.sku : 'Untitled item');
+  const previewSerials = serials.slice(-2);
+  const emptyHint = showEmpty > 0 ? Math.min(showEmpty, 3) : 0;
 
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card px-3 py-2.5">
-      {/* PoLineRow contract: title above meta chips. */}
-      <p
-        className="min-w-0 truncate text-role-caption font-semibold text-text-default"
-        title={title}
-      >
-        {title}
-      </p>
-      <PoLineMetaGrid
-        indent={META_COL.indentWide}
-        qty={<ProgressBadge received={serials.length} expected={quantity} />}
-        sku={
-          group.sku && group.sku !== '—' ? (
-            <SkuScanRefChip value={group.sku} display={getLast8(group.sku)} dense />
-          ) : undefined
-        }
-        condition={
-          condition ? (
-            <ConditionGradeChip grade={condition} dense />
-          ) : (
-            <span className="text-text-faint/40">—</span>
-          )
-        }
-        serial={
-          <div className="flex min-w-0 flex-wrap items-center gap-1">
-            <AnimatePresence initial={false}>
-              {serials.map((sn) => {
-                const isNew = sn === lastAddedSerial;
-                return (
-                  <motion.span
-                    key={sn}
-                    initial={{ opacity: 0, x: 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    transition={framerTransition.stationSerialRow}
-                    className={isNew ? 'ring-2 ring-emerald-400 rounded-md' : undefined}
-                  >
-                    <SerialChip value={sn} dense />
-                  </motion.span>
-                );
-              })}
-            </AnimatePresence>
-            {showEmpty > 0
-              ? Array.from({ length: Math.min(showEmpty, 3) }, (_, i) => (
-                  <span
-                    key={`empty-${i}`}
-                    className="inline-flex h-6 min-w-[3.5rem] items-center justify-center rounded-md border border-dashed border-border-soft px-1.5 text-role-micro text-text-faint"
-                  >
-                    —
-                  </span>
-                ))
-              : null}
-          </div>
-        }
-      />
+    <div className="relative min-w-0 overflow-hidden rounded-none border-0 border-b border-border-soft bg-surface-card">
+      {/* PoLineRow nested-grid contract: wrap title above boxed meta. */}
+      <div className="flex min-w-0 flex-col">
+        <p className="min-w-0 px-2 py-1 text-role-caption font-semibold leading-tight text-text-default">
+          {title}
+        </p>
+        <PoLineMetaGrid
+          qty={<ProgressBadge received={serials.length} expected={quantity} />}
+          sku={
+            group.sku && group.sku !== '—' ? (
+              <SkuScanRefChip value={group.sku} display={getLast8(group.sku)} dense />
+            ) : undefined
+          }
+          condition={
+            condition ? (
+              <ConditionGradeChip grade={condition} dense />
+            ) : (
+              <span className="text-text-faint/40">—</span>
+            )
+          }
+          serial={
+            <div className="flex min-w-0 w-full items-center gap-1 overflow-hidden">
+              <span
+                className={cn(
+                  'min-w-0 truncate tabular-nums text-text-muted normal-case tracking-normal',
+                  lastAddedSerial ? 'ring-1 ring-inset ring-emerald-400 px-1' : undefined,
+                )}
+              >
+                {previewSerials.length > 0
+                  ? previewSerials.map((sn) => getLast8(sn)).join(', ')
+                  : '—'}
+              </span>
+              {emptyHint > 0
+                ? Array.from({ length: emptyHint }, (_, i) => (
+                    <span
+                      key={`empty-${i}`}
+                      className="inline-flex h-5 shrink-0 items-center justify-center border border-dashed border-border-soft px-1.5 text-role-micro text-text-faint"
+                    >
+                      —
+                    </span>
+                  ))
+                : null}
+            </div>
+          }
+        />
+      </div>
     </div>
   );
 }
+

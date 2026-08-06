@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * POUnboxingSection — the PO **line list** card with optional condition + serial.
+ * POUnboxingSection — the PO **line list** (flat data floor) with optional
+ * condition + serial. No glass card shell — elevation belongs on the action dock.
  *
  * Unbox centre mounts this with `editLines` + `serialScan` so the operator can
- * grade and scan on the accordion. Triage ({@link TriagePoUnboxingSection}) and
+ * grade and scan on the accordion. Arrival (`TriagePanel`, read-only) and
  * Testing compose it too.
  *
  * Package Pairing left it on 2026-08-02 and is the `pairing` Displays tab on
@@ -12,7 +13,6 @@
  */
 
 import { LinePoItemsSection } from './LinePoItemsSection';
-import { WorkspaceCard } from '@/design-system/components';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
@@ -37,6 +37,14 @@ interface POUnboxingSectionProps {
   suppressItemsHeader?: boolean;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
   accordionBootstrap?: 'default' | 'all';
+  /** Filled multi-qty unit pencil → open Units display. */
+  onEditFilledSerial?: (serial: {
+    id: number;
+    serial_number: string;
+    condition_grade?: string | null;
+  }) => void;
+  /** Serials cell "View All" → Units Displays. */
+  onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
 export function POUnboxingSection({
@@ -53,19 +61,18 @@ export function POUnboxingSection({
   includeLinkedPoItems = true,
   suppressItemsHeader = false,
   accordionBootstrap = 'default',
+  onEditFilledSerial,
+  onViewAllUnits,
 }: POUnboxingSectionProps) {
   const linkedPo = !c.isUnfound && !shouldUseUnmatchedItemsSurface(row);
   const showPoItems = poItems || (includeLinkedPoItems && matching && linkedPo);
 
   if (!showPoItems) return null;
 
+  // Flush data floor — zero radius / elevation. Depth lives on the elevated
+  // action dock (notes + Print·Receive), not around PO line cards.
   return (
-    <WorkspaceCard
-      variant="glass"
-      overflow="visible"
-      bodyDensity="nested"
-      bodyClassName="px-3 pt-3 pb-2"
-    >
+    <div className="min-w-0">
       <LinePoItemsSection
         row={row}
         staffId={staffId}
@@ -78,7 +85,9 @@ export function POUnboxingSection({
         onItemDescFeedback={onItemDescFeedback}
         onItemDescSaved={onItemDescSaved}
         accordionBootstrap={accordionBootstrap}
+        onEditFilledSerial={onEditFilledSerial}
+        onViewAllUnits={onViewAllUnits}
       />
-    </WorkspaceCard>
+    </div>
   );
 }

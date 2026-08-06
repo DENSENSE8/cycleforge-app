@@ -28,6 +28,7 @@ import { toast } from '@/lib/toast';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { exceptionDotClass, exceptionTooltipLabel } from '@/lib/receiving/triage-exception-context';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';
 import { useTriageUnfoundExceptions } from './useTriageUnfoundExceptions';
 import { useReceivingClaimModal } from './useReceivingClaimModal';
@@ -37,10 +38,12 @@ import { TriageStagingChips } from './TriageStagingChips';
 export function TriageUnfoundList({
   selectedLineId,
   filterText = '',
+  includeRow,
   hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   filterText?: string;
+  includeRow?: (row: ReceivingLineRow) => boolean;
   hideEyebrow?: boolean;
 }) {
   const exceptionMap = useTriageUnfoundExceptions();
@@ -82,6 +85,7 @@ export function TriageUnfoundList({
         feed="triageUnfound"
         selectedLineId={selectedLineId}
         filterText={filterText}
+        includeRow={includeRow}
         hideEyebrow={hideEyebrow}
         renderPopoverContext={(row) => {
           // B3: open Zoho-sync exception state for this carton (read-only).

@@ -15,7 +15,8 @@
  * grow the shared primitive, don't fork a second menu.
  *
  * Also hosts **in-field** filters (`density="field"`) — same menu rows, paste-
- * sized trigger left of SearchField paste/clear (Store order scope, etc.).
+ * sized trigger in a SearchField trailing slot (`trailingPrefix` or
+ * `trailingSuffix`; Store order scope, Unbox rail facets, etc.).
  *
  * Keyboard contract (menu-button pattern, not combobox):
  * - Trigger is a `<button>` adjacent to / visually inside the search field.
@@ -51,7 +52,8 @@ export function WorkbenchFilterPopover({
   icon,
   /**
    * `toolbar` (default) — h-8 ToolbarButton for chrome right clusters.
-   * `field` — paste-sized glyph for SearchField `trailingPrefix` (left of paste).
+   * `field` — paste-sized glyph for SearchField trailing slots
+   * (`trailingPrefix` left of paste, or `trailingSuffix` after paste/clear).
    */
   density = 'toolbar',
 }: {
@@ -99,14 +101,14 @@ export function WorkbenchFilterPopover({
             // Keep focus in the search field when opening the menu.
             onMouseDown={(e) => e.preventDefault()}
             className={cn(
-              'ds-raw-button relative inline-flex h-4 w-4 shrink-0 items-center justify-center transition-colors duration-100 ease-out active:scale-95',
+              'ds-raw-button relative inline-flex h-6 w-6 shrink-0 items-center justify-center transition-colors duration-100 ease-out active:scale-95',
               open || hot
                 ? 'text-blue-600'
                 : 'text-text-faint hover:text-blue-600',
             )}
           >
-            <HoverTooltip label={ariaLabel} focusable={false}>
-              <span className="relative inline-flex">
+            <HoverTooltip label={ariaLabel} focusable={false} asChild>
+              <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center leading-none">
                 {glyph}
                 {hotDot}
               </span>
@@ -209,6 +211,7 @@ export function WorkbenchFilterMenuRow({
   onClick,
   leading,
   shortcut,
+  sectionHeader = false,
 }: {
   label: string;
   count?: number;
@@ -216,6 +219,12 @@ export function WorkbenchFilterMenuRow({
   onClick: () => void;
   leading?: ReactNode;
   shortcut?: string;
+  /**
+   * Clickable default for an icon-bearing section (e.g. All types/platforms).
+   * It replaces the separate eyebrow and starts flush: no check gutter,
+   * leading-icon gutter, or row left padding.
+   */
+  sectionHeader?: boolean;
 }) {
   return (
     <ToolbarListboxOption
@@ -223,7 +232,13 @@ export function WorkbenchFilterMenuRow({
       semantics="toggle"
       selected={active}
       onClick={onClick}
-      leading={leading ?? <span className="w-2 shrink-0" aria-hidden />}
+      icon={sectionHeader ? <></> : undefined}
+      leading={
+        sectionHeader
+          ? undefined
+          : (leading ?? <span className="w-2 shrink-0" aria-hidden />)
+      }
+      className={sectionHeader ? 'px-0' : undefined}
       trailing={
         count === undefined && !shortcut ? null : (
           <span className="flex shrink-0 items-center gap-2">

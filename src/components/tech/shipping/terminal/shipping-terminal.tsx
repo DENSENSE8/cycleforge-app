@@ -10,7 +10,7 @@
 import { Play, AlertCircle } from '@/components/Icons';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 
-export type ShippingView = 'ship' | 'units' | 'timeline';
+export type ShippingView = 'ship' | 'units';
 
 /** Dock track width — matches STATION_WORKBENCH_COLUMN (720), like unbox-terminal. */
 const SHIPPING_DOCK_MAX = 'max-w-[720px]';

@@ -11,10 +11,10 @@ Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
 (+ `station-terminal.test.ts`). Baselines shrink only — never raise one to pass.
 
 ## Always
-- Identity: `StationContextBar` flush under GlobalHeader (`stationContextBarHostClass` + square-top `stationIdentityPanelClass`) + entity-context adapter (two-row `CartonContextCard`) **above** `StationWorkbench` (`reserveIdentityClearance="stacked"`).
-- **Top padding SoT:** `STATION_IDENTITY_INSET_TOP` (`top-0`) = identity flush under GlobalHeader (square-top strip). Never host `py-*` under the identity. Unbox push is **flush** (no outer `my-2` / `pr-2` islands) — depth is planes on the shared canvas host.
+- Identity: `StationContextBar` flush under GlobalHeader (`placement="flow"` on Unbox + coplanar flush `stationIdentityPanelClass` — `rounded-none`, hairline `border-b`, no elevation) + entity-context adapter (two-row `CartonContextCard`) **above** `StationWorkbench` (`reserveIdentityClearance={false}`, Unbox `bodyGap="none"`) so identity abuts PO lines with zero air.
+- **Top padding SoT:** `STATION_IDENTITY_INSET_TOP` (`top-0`) = identity flush under GlobalHeader. `stationIdentityPadClass` is horizontal only (zero `pt`/`pb`). Never host `py-*` under the identity. Unbox push is **flush** (no outer `my-2` / `pr-2` islands) — depth is planes on the shared canvas host.
 - Outer shell: `StationPanelRoot` (owns `bg-surface-sunken` column + `StationAmbientWash`).
-- Column: `STATION_WORKBENCH_*` (720px + `px-4 sm:px-6`) from `workbench-layout.ts`.
+- Column: `STATION_WORKBENCH_*` (720 lock, start-aligned, zero body pad) from `workbench-layout.ts`. Displays drag min = `STATION_DISPLAYS_MIN_WIDTH_PX` (280).
 - Terminal: `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or `TERMINAL_HAND_VM_ALLOWLIST` + follow-up).
 - Unbox overview notes: `UnboxDockHost` (one raised shell; fixed `h-11`; `entry` | `notes` swaps leading for `UnboxDockNotesEntry`; scan-progress ring in under-dock `progress` row outside the shell) floating over the canvas via `slicedActionDockWrapperClass({ docked: false })` (+ compact `SlicedActionDock` `align="end"` embedded) — not a mid-canvas nested notes card, in-flow shelf, or height-growing composer.
 - Tabs: `buildSectionTabs` + `SectionTabsSlider`. Mid-canvas jump: `StationRightEdgeAction`.

@@ -38,7 +38,9 @@ describe('Locations Sheets flush mount', () => {
   it('does not park KPI in a guttered mb-4 body island', () => {
     assert.doesNotMatch(workspace, /className=["'][^"']*mb-4/);
     assert.match(workspace, /LocationsBinsKpiBand/);
-    assert.match(workspace, /LocationsTriageBand/);
+    // Band 3 composes the SoT WorkbenchTriageBand — the page-local twin is deleted.
+    assert.match(workspace, /WorkbenchTriageBand/);
+    assert.doesNotMatch(workspace, /LocationsTriageBand/);
   });
 
   it('Band 1 clears border-t under GlobalHeader (no double hairline)', () => {

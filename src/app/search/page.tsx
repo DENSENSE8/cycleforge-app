@@ -1,28 +1,23 @@
 'use client';
 
 /**
- * `/search` — cross-entity search Workbench (master–detail).
+ * `/search` — cross-entity find workbench.
  *
  * Contract:
- *   • `?q=` is the query (global header + rail SearchBar both sync via URL).
- *   • `?sel=type:id` is durable selection — main pane embeds that entity shell.
- *   • Client refine: `?etype=` / `?hstat=` / `?colsort=` over the retrieved top-50.
- *   • Hit list lives in the context rail (`SearchSidebarPanel`); this page is
- *     the detail workspace only.
- *   • A SOLE / exact identifier hit sets `?sel=` in-page (does not navigate away).
- *     Canonical `searchHitHref` remains for hit-row / notification deep links.
- *   • Empty land auto-reruns this staff member's most recent query.
+ *   • No `?sel=` → centered {@link SearchFindStage} (global header search grammar).
+ *   • `?sel=type:id` → full-bleed {@link SearchDetailWorkspace} entity shell.
+ *   • `?q=` is the query; client refine: `?etype=` / `?hstat=` / `?colsort=`.
+ *   • Sole / exact identifier hits set `?sel=` in-page (do not navigate away).
+ *   • No silent auto-rerun on empty land — recents live in the stage dropdown.
  *
- * Region contract: Workbench master–detail
- * (`.claude/rules/display/workbench.md`).
+ * Region contract: Workbench (centered find → detail). No context rail.
  */
 
-import { Suspense, useEffect, useMemo, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Loader2 } from '@/components/Icons';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
-import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
-import { SEARCH_RECENTS_SCOPE, searchRerunHref } from '@/lib/search/search-page-recents';
+import { SearchFindStage } from '@/components/search/SearchFindStage';
 import {
   SEARCH_SEL_PARAM,
   parseSearchSel,
@@ -39,7 +34,6 @@ function SearchPageFallback() {
 }
 
 function SearchPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? '').trim();
   const sel = useMemo(
@@ -47,32 +41,9 @@ function SearchPageContent() {
     [searchParams],
   );
 
-  const { push: pushRecent, recents, isLoading: recentsLoading } = useStaffSearchRecents({
-    scope: SEARCH_RECENTS_SCOPE,
-  });
-
-  // Record every distinct query against staff recents (DB).
-  const lastRecorded = useRef<string>('');
-  useEffect(() => {
-    if (!q || q === lastRecorded.current) return;
-    lastRecorded.current = q;
-    void pushRecent({
-      query: q,
-      scope: SEARCH_RECENTS_SCOPE,
-      scopeLabel: 'Search',
-      scopeHref: searchRerunHref(q),
-    });
-  }, [q, pushRecent]);
-
-  // Empty land → auto-rerun the most recent staff query once recents settle.
-  const autoReranRef = useRef(false);
-  useEffect(() => {
-    if (q || recentsLoading || autoReranRef.current) return;
-    const latest = recents[0]?.query?.trim();
-    if (!latest) return;
-    autoReranRef.current = true;
-    router.replace(searchRerunHref(latest));
-  }, [q, recents, recentsLoading, router]);
+  if (!sel) {
+    return <SearchFindStage />;
+  }
 
   return <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} />;
 }

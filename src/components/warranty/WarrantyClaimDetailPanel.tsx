@@ -219,7 +219,7 @@ function DetailBody({ claim }: { claim: WarrantyClaimDetail }) {
         ) : (
           <ul className="space-y-3">
             {claim.repairAttempts.map((a) => (
-              <li key={a.id} className="rounded-lg border border-border-hairline p-3">
+              <li key={a.id} className="rounded-none border border-border-hairline p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-text-muted">Attempt #{a.attemptNo}</span>
                   {a.outcome && (
@@ -251,7 +251,7 @@ function DetailBody({ claim }: { claim: WarrantyClaimDetail }) {
 
       <Section title="Conversation">
         {claim.notes && (
-          <p className="mb-3 whitespace-pre-wrap rounded-lg border border-border-hairline bg-surface-sunken px-3 py-2 text-role-caption text-text-muted">
+          <p className="mb-3 whitespace-pre-wrap rounded-none border border-border-hairline bg-surface-sunken px-3 py-2 text-role-caption text-text-muted">
             {claim.notes}
           </p>
         )}

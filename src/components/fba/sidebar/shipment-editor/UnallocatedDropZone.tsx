@@ -38,7 +38,7 @@ export function UnallocatedDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border transition-colors ${
+      className={`rounded-none border transition-colors ${
         isOver
           ? 'border-dashed border-amber-400 bg-amber-50/40'
           : 'border-border-soft bg-surface-canvas/30'

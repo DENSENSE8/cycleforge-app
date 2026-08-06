@@ -1,5 +1,5 @@
 /**
- * PO-group display title — shared by {@link ReceivingPoSummary} (collapsed PO
+ * PO-group display title — shared by drill / identity chrome (collapsed PO
  * rows in the receiving table) and receiving sidebar rails.
  * Title = platform · buyer account · PO/Order when multi-SKU; product title when single-SKU.
  */
@@ -40,7 +40,7 @@ export function getReceivingPoIdentityParts(
   return { poValue, idPrefix, platformLabel, accountLabel };
 }
 
-/** Collapsed-PO / carton-level title — mirrors ReceivingPoSummary. */
+/** Collapsed-PO / carton-level title — drill / identity chrome. */
 export function getReceivingPoGroupTitle(
   row: ReceivingLineRow,
   resolvePlatformLabel: (raw: string) => string,

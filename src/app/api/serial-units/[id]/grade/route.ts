@@ -13,13 +13,14 @@ import type { ConditionGrade } from '@/lib/quality/qualityScore';
  * POST /api/serial-units/[id]/grade
  *
  * Records a condition assessment on a serial_unit:
- *   1. Updates `serial_units.condition_grade` to the new grade.
+ *   1. Updates `serial_units.condition_grade` to the new grade (or NULL to clear).
  *   2. Appends an `inventory_events` row (event_type=GRADED).
  *   3. Appends a `serial_unit_condition_history` row linked to the event
- *      so the timeline cross-references the audit log.
+ *      so the timeline cross-references the audit log (skipped on clear —
+ *      history.new_grade is NOT NULL).
  *
  * Body: {
- *   new_grade: 'BRAND_NEW'|'USED_A'|'USED_B'|'USED_C'|'PARTS',
+ *   new_grade: 'BRAND_NEW'|'USED_A'|…|'PARTS' | null | '',
  *   cosmetic_notes?: string,
  *   functional_notes?: string,
  *   client_event_id?: string,
@@ -44,10 +45,15 @@ export const POST = withAuth(async (request, ctx) => {
         /* empty body handled below */
     }
 
-    const newGrade = String(body.new_grade ?? '').trim().toUpperCase();
-    if (!(CONDITION_GRADE_VALUES as ReadonlyArray<string>).includes(newGrade)) {
+    const rawGrade = body.new_grade;
+    const clearing =
+        rawGrade === null ||
+        rawGrade === '' ||
+        (typeof rawGrade === 'string' && !rawGrade.trim());
+    const newGrade = clearing ? null : String(rawGrade ?? '').trim().toUpperCase();
+    if (!clearing && !(CONDITION_GRADE_VALUES as ReadonlyArray<string>).includes(newGrade!)) {
         return NextResponse.json(
-            { ok: false, error: 'new_grade must be one of: ' + CONDITION_GRADE_VALUES.join(', ') },
+            { ok: false, error: 'new_grade must be one of: ' + CONDITION_GRADE_VALUES.join(', ') + ' (or null to clear)' },
             { status: 400 },
         );
     }
@@ -101,6 +107,7 @@ export const POST = withAuth(async (request, ctx) => {
         // one tenant transaction, preserving the prior behavior: GRADED event is
         // idempotent on client_event_id, and the condition-history row links the
         // event via inventory_event_id (DB CHECK still rejects no-op grade rows).
+        // Clear skips history — new_grade is NOT NULL on that table.
         const eventNotes =
             cosmeticNotes || functionalNotes
                 ? `cosmetic: ${cosmeticNotes ?? '-'} | functional: ${functionalNotes ?? '-'}`
@@ -139,24 +146,26 @@ export const POST = withAuth(async (request, ctx) => {
                 newEventId = existing.rows[0]?.id ?? null;
             }
 
-            // Condition-history row, linked to the GRADED event. The DB CHECK
-            // (prev_grade IS DISTINCT FROM new_grade) is already satisfied — we
-            // 409 above on an unchanged grade.
-            await client.query(
-                `INSERT INTO serial_unit_condition_history
-                   (serial_unit_id, prev_grade, new_grade, assessed_by_staff_id, cosmetic_notes, functional_notes, inventory_event_id, organization_id)
-                 VALUES ($1, $2::condition_grade_enum, $3::condition_grade_enum, $4, $5, $6, $7, $8)`,
-                [
-                    serialUnitId,
-                    prevGrade,
-                    newGrade,
-                    actorStaffId,
-                    cosmeticNotes,
-                    functionalNotes,
-                    newEventId,
-                    orgId,
-                ],
-            );
+            if (!clearing) {
+                // Condition-history row, linked to the GRADED event. The DB CHECK
+                // (prev_grade IS DISTINCT FROM new_grade) is already satisfied — we
+                // 409 above on an unchanged grade. Skipped on clear (new_grade NOT NULL).
+                await client.query(
+                    `INSERT INTO serial_unit_condition_history
+                       (serial_unit_id, prev_grade, new_grade, assessed_by_staff_id, cosmetic_notes, functional_notes, inventory_event_id, organization_id)
+                     VALUES ($1, $2::condition_grade_enum, $3::condition_grade_enum, $4, $5, $6, $7, $8)`,
+                    [
+                        serialUnitId,
+                        prevGrade,
+                        newGrade,
+                        actorStaffId,
+                        cosmeticNotes,
+                        functionalNotes,
+                        newEventId,
+                        orgId,
+                    ],
+                );
+            }
             return newEventId;
         });
 
@@ -179,16 +188,18 @@ export const POST = withAuth(async (request, ctx) => {
 
         // Advisory grade signals (non-blocking) + quality recompute.
         let warnings: ReturnType<typeof evaluateGradeAdvice>['warnings'] = [];
-        try {
-            const gathered = await gatherQualityInputs(serialUnitId, orgId);
-            if (gathered) {
-                warnings = evaluateGradeAdvice({
-                    grade: newGrade as ConditionGrade,
-                    openFailures: gathered.openFailures,
-                }).warnings;
+        if (newGrade) {
+            try {
+                const gathered = await gatherQualityInputs(serialUnitId, orgId);
+                if (gathered) {
+                    warnings = evaluateGradeAdvice({
+                        grade: newGrade as ConditionGrade,
+                        openFailures: gathered.openFailures,
+                    }).warnings;
+                }
+            } catch (adviceErr) {
+                console.warn('[grade] advice failed (non-fatal)', adviceErr);
             }
-        } catch (adviceErr) {
-            console.warn('[grade] advice failed (non-fatal)', adviceErr);
         }
         await recomputeUnitQualitySafe(serialUnitId, orgId);
 
@@ -213,6 +224,7 @@ export const POST = withAuth(async (request, ctx) => {
             parts_sorted: partsSort?.sorted === true,
             parts_bin: partsSort?.sorted === true ? partsSort.bin : null,
             warnings,
+            cleared: clearing,
         });
     } catch (err) {
         const message = err instanceof Error ? err.message : 'grade failed';

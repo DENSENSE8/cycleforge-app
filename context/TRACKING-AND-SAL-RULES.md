@@ -47,7 +47,7 @@ All tracking number lookups MUST use this three-layer fallback cascade. Do not s
 WHERE stn.tracking_number_normalized = $normalizedInput
 ```
 
-`normalizedInput` = `normalizeTrackingNumber(rawScan)` — uppercase, alphanumeric-only, USPS routing prefix stripped.
+`normalizedInput` = `extractCanonicalTracking(rawScan)` — uppercase, alphanumeric-only, USPS routing prefix stripped, **and** FedEx GS1/"96" concat envelope unwrapped to the short human STN. Prefer `orderTrackingMatchKeys(rawScan).exact` so key18/last8 stay in lock-step. Do **not** use bare `normalizeTrackingNumber` here — a gun-scanned GS1 will never equal a short STN key.
 
 ### Layer 2: Key-18 Suffix Match (fallback for partial mismatches)
 
@@ -55,7 +55,7 @@ WHERE stn.tracking_number_normalized = $normalizedInput
 WHERE RIGHT(regexp_replace(UPPER(stn.tracking_number_normalized), '[^A-Z0-9]', '', 'g'), 18) = $key18
 ```
 
-`key18` = `normalizeTrackingKey18(rawScan)` — last 18 alphanumeric characters.
+`key18` = `orderTrackingMatchKeys(rawScan).key18` — last 18 alphanumeric characters of the **canonical** value (never of the raw GS1).
 
 ### Layer 3: Last-8 Digits Match (broadest fallback)
 
@@ -63,7 +63,7 @@ WHERE RIGHT(regexp_replace(UPPER(stn.tracking_number_normalized), '[^A-Z0-9]', '
 WHERE RIGHT(regexp_replace(stn.tracking_number_normalized, '[^0-9]', '', 'g'), 8) = $last8
 ```
 
-`last8` = `normalizeTrackingLast8(rawScan)` — last 8 digits only.
+`last8` = `orderTrackingMatchKeys(rawScan).last8` — last 8 digits of the **canonical** value.
 
 ### Why All Three Layers
 
@@ -116,8 +116,8 @@ export function stripUspsRoutingPrefix(input: string): string {
 
 Both client and server MUST normalize tracking numbers:
 
-- **Client-side** (`StationPacking.tsx`, `useStationTestingController.ts`): Call `normalizeTrackingNumber()` before sending to API. This makes the exact match (Layer 1) succeed immediately.
-- **Server-side** (`/api/packing-logs`, `/api/tech/scan`): Also normalizes via the same function. Idempotent — double-normalizing is safe.
+- **Client-side** (`StationPacking.tsx`, `useStationTestingController.ts`): Call `normalizeTrackingNumber()` before sending to API (USPS strip). Server still runs `extractCanonicalTracking` for FedEx GS1 unwrap.
+- **Server-side** (`/api/packing-logs`, `/api/tech/scan`, `/api/shipped/scan-out`, `resolveShipmentId` / `registerShipment`): Match and STN keys via `extractCanonicalTracking` / `orderTrackingMatchKeys`. Never fold FedEx unwrap into global `normalizeTrackingNumber` (USPS risk).
 
 ### `useLast8TrackingSearch` Hook
 
@@ -231,7 +231,9 @@ All normalization functions live in `src/lib/tracking-format.ts`. Do NOT create 
 | Function | Purpose | Returns |
 |----------|---------|---------|
 | `normalizeTrackingCanonical(input)` | Uppercase, alphanumeric-only | `string` |
-| `normalizeTrackingNumber(input)` | Canonical + strip USPS prefix | `string` |
+| `normalizeTrackingNumber(input)` | Canonical + strip USPS prefix (no FedEx GS1 unwrap) | `string` |
+| `extractCanonicalTracking(input)` | + FedEx GS1/"96" unwrap — scan match / STN key SoT | `string` |
+| `orderTrackingMatchKeys(rawScan)` | exact · key18 · last8 from canonical (packing ladder) | `{ exact, key18, last8 }` |
 | `normalizeTrackingKey18(input)` | Last 18 alphanumeric chars | `string` |
 | `normalizeTrackingLast8(input)` | Last 8 digits | `string` |
 | `stripUspsRoutingPrefix(input)` | Strip 420+ZIP prefix only | `string` |

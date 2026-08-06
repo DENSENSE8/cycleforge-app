@@ -3,7 +3,7 @@
 import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PoChip, TrackingChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
+import { PoChip, TrackingChip, SerialChip, CopyableCellValue, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass, LedgerCellEditor } from '@/design-system/components/grid';
@@ -215,9 +215,12 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
             {...cellTriggerProps('ticket', { typing: true, label: 'Edit ticket id' })}
           >
             {value ? (
-              <span className="min-w-0 truncate font-mono text-role-caption text-text-default">
-                {value}
-              </span>
+              <CopyableCellValue
+                value={value}
+                historyKind="ticket"
+                className="min-w-0 flex-1 text-role-caption text-text-default"
+                dense
+              />
             ) : (
               <GridCellDash />
             )}

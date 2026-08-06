@@ -11,5 +11,4 @@ export {
   RailActionRegion,
   RailSelectionBand,
   useRailActionSnapshot,
-  useRailHeaderActions,
 } from '@/components/right-rail/RailSelectionActions';

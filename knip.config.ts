@@ -62,8 +62,6 @@ const config: KnipConfig = {
     'src/lib/my-day/my-day-grid-layout.ts',
     'src/lib/my-day/my-day-tasks.ts',
     'src/lib/work-orders/work-status-display.ts',
-    'src/components/dashboard/rail/OrderRailShell.tsx',
-    'src/components/dashboard/rail/OrderRailActions.tsx',
 
     // Mid-wire WIP (photo aspect helpers) — ASPECTS_BY_STAGE is already composed
     // from photo-aspects; remaining helpers mount next.
@@ -77,6 +75,16 @@ const config: KnipConfig = {
     'src/design-system/components/procedure/ProcedureDeck.tsx',
     'src/components/receiving/workspace/line-edit/steps/**',
     'src/components/receiving/workspace/line-edit/UnboxStepDock.tsx',
+
+    // Mid-canvas right-edge sliced action — SoT file; Triage/Unbox mount lands
+    // next (not inside StationContextBar moreDetails).
+    'src/components/station/entity-context/StationRightEdgeAction.tsx',
+
+    // Mid-wire WIP (dense motion primitives) — files exist beside the barrel;
+    // first consumer mounts next. Keep SoT out of the dead-code gate.
+    'src/design-system/motion/ActionFlash.tsx',
+    'src/design-system/motion/DenseList.tsx',
+    'src/design-system/motion/DenseRowReveal.tsx',
   ],
 
   ignoreDependencies: [

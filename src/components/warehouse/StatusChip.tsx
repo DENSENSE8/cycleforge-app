@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { GridStatusCellValue } from '@/components/ui/grid-cells';
 
 export type BinStatus = 'empty' | 'low' | 'over' | 'stale' | 'ok';
 
@@ -11,26 +12,34 @@ interface Props {
   compact?: boolean;
 }
 
-const TONE: Record<BinStatus, { bg: string; text: string; ring: string; dot: string; label: string }> = {
+const TONE: Record<
+  BinStatus,
+  { toneClass: string; dot: string; label: string }
+> = {
   empty: {
-    bg: 'bg-surface-canvas', text: 'text-text-muted', ring: 'ring-border-soft',
-    dot: 'bg-border-emphasis', label: 'Empty',
+    toneClass: 'bg-surface-canvas text-text-muted',
+    dot: 'bg-border-emphasis',
+    label: 'Empty',
   },
   low: {
-    bg: 'bg-amber-50', text: 'text-amber-800', ring: 'ring-amber-200',
-    dot: 'bg-amber-500', label: 'Low',
+    toneClass: 'bg-amber-50 text-amber-800',
+    dot: 'bg-amber-500',
+    label: 'Low',
   },
   over: {
-    bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-red-200',
-    dot: 'bg-red-500', label: 'Over cap',
+    toneClass: 'bg-red-50 text-red-700',
+    dot: 'bg-red-500',
+    label: 'Over cap',
   },
   stale: {
-    bg: 'bg-purple-50', text: 'text-purple-700', ring: 'ring-purple-200',
-    dot: 'bg-purple-500', label: 'Stale',
+    toneClass: 'bg-purple-50 text-purple-700',
+    dot: 'bg-purple-500',
+    label: 'Stale',
   },
   ok: {
-    bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200',
-    dot: 'bg-emerald-500', label: 'OK',
+    toneClass: 'bg-emerald-50 text-emerald-700',
+    dot: 'bg-emerald-500',
+    label: 'OK',
   },
 };
 
@@ -47,12 +56,11 @@ export function StatusChip({ status, compact }: Props) {
     );
   }
   return (
-    <span
-      className={`inline-flex min-w-0 max-w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider ring-1 ${tone.bg} ${tone.text} ${tone.ring}`}
-    >
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} />
-      <span className="min-w-0 truncate">{tone.label}</span>
-    </span>
+    <GridStatusCellValue
+      label={tone.label}
+      toneClass={tone.toneClass}
+      dotClass={tone.dot}
+    />
   );
 }
 

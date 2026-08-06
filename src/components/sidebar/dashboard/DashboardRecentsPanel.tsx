@@ -12,21 +12,46 @@
  * Rows re-open through `detailStackHref`, the same SoT the ⌘K palette and the
  * order workspace rail use — so an order always lands on `/o/[id]`, never on a
  * second order shell.
+ *
+ * Also publishes top-N mid-strip MRU pins while the context rail is parked
+ * (not a `SidebarRecentRailBase` — thin `usePublishCollapsePins` here).
  */
 
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Clock, X } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { CONTEXT_PANEL_COLLAPSE } from '@/components/sidebar/context-panel-column';
+import {
+  usePublishCollapsePins,
+  type CollapseStripPeekCtx,
+} from '@/components/sidebar/context-panel-collapse-context';
+import { RailPeekCard } from '@/components/sidebar/rail-shell/RailPeekCard';
 import { useRecentDetailStacks } from '@/hooks/useRecentDetailStacks';
 import {
   removeDetailStack,
   type DetailStackEntry,
 } from '@/lib/detail-stacks/history-store';
-import { DETAIL_STACK_DEFS, detailStackHref } from '@/lib/detail-stacks/registry';
+import {
+  DETAIL_STACK_DEFS,
+  detailStackHref,
+  type DetailStackKind,
+} from '@/lib/detail-stacks/registry';
 import { formatRelativeTime } from '@/lib/search/search-recents';
 import { cn } from '@/utils/_cn';
+
+/** Kind → collapse-strip status dot (not a second lifecycle model). */
+const DASHBOARD_RECENT_PIN_DOT: Record<DetailStackKind, string> = {
+  order: 'bg-blue-500',
+  receiving: 'bg-indigo-500',
+  shipment: 'bg-emerald-500',
+  claim: 'bg-amber-500',
+  photo: 'bg-violet-500',
+  plan: 'bg-sky-500',
+  po: 'bg-teal-500',
+};
 
 function relativeOpenedLabel(at: number): string {
   try {
@@ -117,6 +142,46 @@ function DashboardRecentsList({ entries }: { entries: DetailStackEntry[] }) {
  */
 export function DashboardRecentsPanel() {
   const entries = useRecentDetailStacks();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const openOrderId = (searchParams.get('openOrderId') ?? '').trim() || null;
+
+  const collapseMru = useMemo(() => {
+    const top = entries.slice(0, CONTEXT_PANEL_COLLAPSE.mruPinCount);
+    if (top.length === 0) return null;
+    return {
+      totalCount: entries.length,
+      pins: top.map((entry) => {
+        const noun = DETAIL_STACK_DEFS[entry.kind]?.noun ?? 'Record';
+        const when = relativeOpenedLabel(entry.at);
+        return {
+          id: `${entry.kind}:${entry.id}`,
+          label: entry.label,
+          statusDotClass: DASHBOARD_RECENT_PIN_DOT[entry.kind] ?? 'bg-slate-400',
+          statusLabel: noun,
+          meta: entry.id,
+          age: when || undefined,
+          selected: isSelectedEntry(entry, openOrderId),
+          onSelect: () => {
+            router.push(detailStackHref(entry));
+          },
+          // Same peek card the rail-shell feeds publish — copyable id, Open →.
+          renderPeek: ({ openWorkspace }: CollapseStripPeekCtx) => (
+            <RailPeekCard
+              title={entry.label}
+              statusLabel={noun}
+              statusDotClass={DASHBOARD_RECENT_PIN_DOT[entry.kind] ?? 'bg-slate-400'}
+              facts={[{ tone: entry.kind === 'po' ? 'po' : 'order', value: entry.id }]}
+              age={when || undefined}
+              onOpen={openWorkspace}
+            />
+          ),
+        };
+      }),
+    };
+  }, [entries, openOrderId, router]);
+  usePublishCollapsePins(collapseMru);
+
   return (
     <SidebarShell
       headerAbove={

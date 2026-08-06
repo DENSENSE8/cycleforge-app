@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { OnChangeFn } from '@tanstack/react-table';
 import { getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
-import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrder';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LedgerGridSurface } from '@/design-system/components/grid';
@@ -18,7 +16,6 @@ import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFil
 import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
 import {
   ordersQueueColumnsFor,
-  sanitizeOrdersQueueColumnOrder,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
   type OrdersQueueColumnMode,
@@ -28,7 +25,6 @@ import {
   makeOrdersGridDescriptorTested,
   ORDERS_GRID_CAPABILITIES,
 } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
-import { toast } from '@/lib/toast';
 import {
   isQueueColumnSort,
   type QueueDisplaySortColumn,
@@ -51,12 +47,7 @@ import { useViewportForcedHidden } from './ViewportForcedHidden';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { resolveRailOccupancy } from '@/lib/right-rail/selection-occupancy';
 import { armReplaceTrackingIntent } from '@/lib/order-inspector/replace-tracking-intent';
-import {
-  useFoldState,
-  useGroupFoldKeys,
-  usePublishRecordCursor,
-} from '@/lib/record-cursor/useRecordCursor';
-import { recordIdKey } from '@/lib/record-cursor/cursor-model';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
 import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 
@@ -82,10 +73,9 @@ interface OrdersGridViewProps {
    * that row). Off by default: this grid has seven mount sites and only the
    * three dashboard outbound lanes opt in.
    *
-   * When on, also enables Sheets click-select (`clickSelect` +
-   * `selectGutterChrome='sheets'`): row click toggles bulk, double-click opens;
-   * the select track is an empty spacer (no checklist face). Pack / Labels /
-   * Review keep the painted checkbox gutter.
+   * When on, also enables Sheets click-select (`clickSelect`): row click
+   * toggles bulk, double-click opens; the select track keeps the painted
+   * `'always'` checkbox gutter (header select-all + every leftmost row cell).
    *
    * `selectionScope` cannot stand in for this. Six of the seven hosts pass
    * `DASHBOARD_ORDERS_SELECTION_SCOPE` — including Labels, Staged, and both
@@ -133,21 +123,21 @@ interface OrdersGridViewProps {
    * scroll away and the column header sticks under pinned chrome.
    */
   scrollParentRef?: RefObject<HTMLElement | null>;
+  /**
+   * Inspector View topics controls portal — when set, ▦ portals there. To Ship
+   * always uses portal-only mode (no card-corner hover fallback).
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /**
  * Bring a stepped-to row into view.
  *
- * A DOM query, and deferred two frames — both deliberate:
- *
- *  - `LedgerGrid`'s `scrollToKey` cannot serve this. It matches `r:<key>` items,
- *    and in GROUPED mode `VirtualGroupedSections` emits only `group` items, so a
- *    leaf inside a fold is unreachable through it. Teaching it grouped-mode leaf
- *    keys is a public change to a shared grid primitive — *Ask first*.
- *  - A step may REVEAL a collapsed fold, so the row it lands on is not in the
- *    DOM yet: one frame for React to flush the fold state, one for
- *    `CollapsibleGroupRow` to mount its children. A single frame lands on the
- *    exact rows the operator most needs moved to.
+ * A DOM query deferred one frame — deliberate: `LedgerGrid`'s `scrollToKey`
+ * matches `r:<key>` items, and in GROUPED mode `VirtualGroupedSections` emits
+ * only `group` items, so a leaf is unreachable through it. Teaching it
+ * grouped-mode leaf keys is a public change to a shared grid primitive —
+ * *Ask first*.
  *
  * Best-effort by design: a row outside the virtualizer's window has no element,
  * and a missing scroll is a far smaller failure than a thrown step.
@@ -155,10 +145,8 @@ interface OrdersGridViewProps {
 function scrollQueueRowIntoView(id: number | string) {
   if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const el = document.querySelector(`[data-order-row-id="${String(id)}"]`);
-      if (el instanceof HTMLElement) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    });
+    const el = document.querySelector(`[data-order-row-id="${String(id)}"]`);
+    if (el instanceof HTMLElement) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 }
 
@@ -193,6 +181,7 @@ export function OrdersGridView({
   className,
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
+  columnTriggerPortalTarget,
 }: OrdersGridViewProps) {
   const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
@@ -233,9 +222,9 @@ export function OrdersGridView({
   const getRowId = useCallback((r: ShippedOrder) => Number(r.id), []);
   const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
   // To-ship (`railSelection`): Sheets click-select — row click toggles the set;
-  // double-click opens. Select track stays for header select-all alignment but
-  // paints no checklist face. Other mounts keep Airtable always-on checkboxes;
-  // `selectMode` only gates visible pencil chrome.
+  // double-click opens. Select track keeps the always-painted checkbox face
+  // (Unbox History interactive gutter language). `selectMode` only gates
+  // visible pencil chrome on non-rail mounts.
   const clickSelect = railSelection;
   const { fillsById } = useGridRowFills(tableId);
   const { selectedIds, toggle, selectOnly, clear } = useTableSelectMode<ShippedOrder>({
@@ -365,17 +354,14 @@ export function OrdersGridView({
     selectOnly(selectedRecordId);
   }, [railSelection, selectedRecordId, selectOnly, selectedIds]);
 
-  // ─── Fold state + the record cursor ────────────────────────────────────────
-  // `dataTestId` is the surface identity, not `selectionScope`: six of the seven
-  // hosts pass the same `DASHBOARD_ORDERS_SELECTION_SCOPE` (see the prop
-  // docblock), so scoping on it would let Labels and Pending overwrite each
-  // other's claim and share each other's expanded folds.
-  const fold = useFoldState(dataTestId, 'default-collapsed');
-  const foldKeys = useGroupFoldKeys(orderGroupsByDate);
-  const { reveal: revealFold } = fold;
+  // ─── Record cursor ─────────────────────────────────────────────────────────
+  // Sheet body is flat leaves (no in-grid order fold). Parent rollups live only
+  // on the drill parent map. Omit `folds` so the cursor treats every group as
+  // open. `dataTestId` is the surface identity, not `selectionScope`: six of the
+  // seven hosts pass the same `DASHBOARD_ORDERS_SELECTION_SCOPE`.
 
   /**
-   * Open a record on behalf of the cursor — reveal, open, then scroll.
+   * Open a record on behalf of the cursor — open, then scroll.
    *
    * **The `railSelection` branch is load-bearing.** On the three dashboard
    * outbound lanes the CHECK-SET is the single selection SoT and the open record
@@ -391,13 +377,12 @@ export function OrdersGridView({
    * default there re-creates the bug the second event name was minted to avoid.
    */
   const handleCursorOpen = useCallback(
-    (record: ShippedOrder, ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
-      if (ctx.revealFoldKey) revealFold(ctx.revealFoldKey);
+    (record: ShippedOrder, _ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
       if (railSelection) selectOnly(Number(record.id));
       else openRecord(record);
       scrollQueueRowIntoView(record.id);
     },
-    [revealFold, railSelection, selectOnly, openRecord],
+    [railSelection, selectOnly, openRecord],
   );
 
   /**
@@ -417,7 +402,7 @@ export function OrdersGridView({
     [railSelection, selectOnly, openRecord],
   );
 
-  const cursor = usePublishRecordCursor<ShippedOrder>({
+  usePublishRecordCursor<ShippedOrder>({
     surfaceId: dataTestId,
     scope: 'record',
     // This grid is the primary collection wherever it mounts; it never hands the
@@ -425,65 +410,15 @@ export function OrdersGridView({
     enabled: true,
     priority: RECORD_CURSOR_PRIORITY.grid,
     order: orderGroupsByDate,
-    folds: fold.folds,
     openId: selectedRecordId,
     getId: getRowId,
     onOpen: handleCursorOpen,
   });
 
-  /**
-   * Reveal the fold around an ALREADY-open record — a deep link (`?openOrderId=`)
-   * or a search jump that lands inside a collapsed multi-line order.
-   *
-   * Fires **once per opened record**, tracked by id. Re-running it on every
-   * change of `openRevealFoldKey` would fight the operator: collapsing the fold
-   * that holds the open record would immediately re-expand it, and a fold the
-   * operator shut is a decision, not a state to repair.
-   *
-   * The latch is claimed only once the cursor has ACTUALLY LOCATED the record
-   * (`position !== null`). Claiming it earlier is the deep-link boot bug: a
-   * `?openOrderId=` resolves and opens before the queue's own fetch lands
-   * (see `railOpenedIdRef` below and `useOrdersQueueSelection.ts:73-79`), so on
-   * that first commit the order is empty, `openRevealFoldKey` is null, and a
-   * latch taken there makes the effect bail forever — leaving the record behind
-   * a still-collapsed fold, which is plan §2.2 in new clothes.
-   */
-  const revealedForIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const key = recordIdKey(selectedRecordId);
-    if (key === null) {
-      revealedForIdRef.current = null;
-      return;
-    }
-    if (revealedForIdRef.current === key) return;
-    // Not found in the published order yet — no answer to latch.
-    if (cursor.position === null) return;
-    revealedForIdRef.current = key;
-    if (cursor.openRevealFoldKey) revealFold(cursor.openRevealFoldKey);
-  }, [selectedRecordId, cursor.position, cursor.openRevealFoldKey, revealFold]);
-
-  const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder(tableId);
-  const sanitizedOrder = useMemo(
-    () => sanitizeOrdersQueueColumnOrder(persistedOrder, canonicalColumns),
-    [persistedOrder, canonicalColumns],
-  );
   const shellRef = useRef<HTMLDivElement>(null);
   // Viewport priority collapse (By → Qty · Cond) — house logic, ephemeral and
   // never persisted to staff prefs. Observed on the surface shell.
   const forceHidden = useViewportForcedHidden(shellRef);
-
-  const handleColumnOrderChange = useCallback<OnChangeFn<string[]>>(
-    (updater) => {
-      const next = typeof updater === 'function' ? updater([...sanitizedOrder]) : updater;
-      setOrder(sanitizeOrdersQueueColumnOrder(next, canonicalColumns));
-    },
-    [sanitizedOrder, setOrder, canonicalColumns],
-  );
-
-  const handleResetColumnOrder = useCallback(() => {
-    resetOrder();
-    toast.success('Column order reset');
-  }, [resetOrder]);
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
@@ -592,10 +527,10 @@ export function OrdersGridView({
           opaqueStripe
           gridSkin
           clickSelect={clickSelect}
-          selectGutterChrome={clickSelect ? 'sheets' : 'always'}
+          selectGutterChrome="always"
           rowFillHex={rowFillHex}
           rowIndex={rowIndex}
-          onToggleSelect={clickSelect ? undefined : handleToggleSelect}
+          onToggleSelect={handleToggleSelect}
           singleSelected={singleSelectedId === Number(record.id)}
           record={r}
           isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
@@ -610,7 +545,10 @@ export function OrdersGridView({
           rowStatus={resolveRowStatus(r, queueMode)}
           hasOutOfStock={hasOutOfStock}
           notesValue={notesValue}
-          daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
+          daysLate={getDaysLateNullable(
+            (r.deadline_at as string | null | undefined) ||
+              (r.ship_by_date as string | null | undefined),
+          )}
           queueMode={queueMode}
           columns={visible}
           capabilities={ORDERS_GRID_CAPABILITIES}
@@ -670,35 +608,26 @@ export function OrdersGridView({
       isSearching={isSearching}
       shellRef={shellRef}
       scrollParentRef={scrollParentRef}
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
+      columnTriggerPortalOnly
       className={className}
       testId={dataTestId}
       tableId={tableId}
       surface="sheet"
       forceHidden={forceHidden}
-      columnOrder={sanitizedOrder}
-      onColumnOrderChange={handleColumnOrderChange}
-      onResetColumnOrder={handleResetColumnOrder}
       renderColumnHeader={({
         toggleColumnSort,
         onResizeColumn,
         onResetColumn,
         columns: visible,
-        onReorderColumns,
-        onResetColumnOrder,
       }) => (
         <OrdersQueueColumnHeader
           isMobile={isMobile}
           selectMode={selectMode}
           selectionScope={selectionScope}
           gridSkin
-          selectGutterChrome={clickSelect ? 'sheets' : 'always'}
+          selectGutterChrome="always"
           columns={visible}
-          onReorderColumns={
-            onReorderColumns
-              ? (next) => onReorderColumns(next)
-              : undefined
-          }
-          onResetColumnOrder={onResetColumnOrder}
           activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
           sortDir={columnSortDir}
           onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
@@ -706,23 +635,15 @@ export function OrdersGridView({
           onResetColumn={onResetColumn}
         />
       )}
-      renderGroup={(group, baseStripeIndex, { columns: visible }) => {
-        const key = foldKeys.get(group);
-        return (
-          <QueueGroupRow
-            group={group}
-            baseStripeIndex={baseStripeIndex}
-            isMobile={isMobile}
-            gridSkin
-            columns={visible}
-            expanded={key === undefined ? undefined : fold.isOpen(key)}
-            onToggleExpanded={key === undefined ? undefined : (next) => fold.toggle(key, next)}
-            renderRow={(record, stripeIndex, rowIndex) =>
-              renderLeaf(record, stripeIndex, visible, rowIndex)
-            }
-          />
-        );
-      }}
+      renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+        <QueueGroupRow
+          group={group}
+          baseStripeIndex={baseStripeIndex}
+          renderRow={(record, stripeIndex, rowIndex) =>
+            renderLeaf(record, stripeIndex, visible, rowIndex)
+          }
+        />
+      )}
       renderRow={(record, stripeIndex, { columns: visible }, rowIndex) =>
         renderLeaf(record, stripeIndex, visible, rowIndex)
       }

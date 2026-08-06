@@ -12,6 +12,8 @@ ruling reverses.
 
 ---
 
+> **Note 2026-08-05:** `isOrderRecord` / `context==="dashboard"` body fork is **demolished**. Desk inspector is always tabbed `ShippedDetailsBody`. See `order-details-page-EXECUTION-PLAN.md` §1.
+
 ## Paste this into a new session
 
 > Read `docs/todo/right-panel-display-HANDOFF.md`. Do not re-open §2 (settled) or

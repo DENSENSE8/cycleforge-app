@@ -79,4 +79,43 @@ describe('resolveColumnResizeEdges', () => {
     assert.deepEqual(edges.get('title'), ['end']);
     assert.deepEqual(edges.get('date'), ['end']);
   });
+
+  it('Receiving / Unbox History: locked order freeze → Product end-only (no left grip)', () => {
+    // Frozen edge is order with an explicit resizable:false override (Receiving
+    // locks identity tracks). Product is the only resizable track. Leading grip
+    // must NOT mount — there is no overhanging frozen trailing grip to compensate.
+    const edges = resolveColumnResizeEdges(
+      [
+        { key: 'select' },
+        { key: 'order', type: 'id', resizable: false },
+        { key: 'date', type: 'date', resizable: false },
+        { key: 'title', type: 'text' },
+        { key: 'status', type: 'tag', resizable: false },
+        { key: 'qty', type: 'number' },
+      ],
+      'order',
+    );
+    assert.equal(edges.has('order'), false);
+    assert.deepEqual(edges.get('title'), ['end']);
+    assert.equal(edges.has('status'), false);
+    assert.equal(edges.has('date'), false);
+  });
+
+  it('Orders / To Ship: Product is frozen edge + only resizable → end grip only', () => {
+    const edges = resolveColumnResizeEdges(
+      [
+        { key: 'select', resizable: false },
+        { key: 'order', type: 'id', resizable: false },
+        { key: 'age', type: 'number', resizable: false },
+        { key: 'title', type: 'text', resizable: true },
+        { key: 'qty', type: 'number', resizable: false },
+        { key: 'tracking', type: 'tracking', resizable: false },
+      ],
+      'title',
+    );
+    assert.deepEqual(edges.get('title'), ['end']);
+    assert.equal(edges.has('order'), false);
+    assert.equal(edges.has('age'), false);
+    assert.equal(edges.has('tracking'), false);
+  });
 });

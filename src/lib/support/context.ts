@@ -142,15 +142,76 @@ async function lookupSupportTicketByScan(
   };
 }
 
+type TicketLinkOpsRow = {
+  id: string;
+  occurred_at: string;
+  event_type: string;
+  payload: { zendeskTicketId?: number } | null;
+  actor_name: string | null;
+};
+
+async function fetchTicketLinkOpsEvents(
+  orgId: OrgId,
+  entityType: 'shipment' | 'order' | 'repair',
+  entityIds: number[],
+): Promise<TicketLinkOpsRow[]> {
+  const ids = entityIds.filter((n) => Number.isFinite(n) && n > 0);
+  if (ids.length === 0) return [];
+  const res = await tenantQuery<TicketLinkOpsRow>(
+    orgId,
+    `SELECT oe.id, oe.occurred_at, oe.event_type, oe.payload,
+            s.name AS actor_name
+       FROM ops_events oe
+       LEFT JOIN staff s ON s.id = oe.actor_staff_id
+      WHERE oe.organization_id = $1
+        AND lower(oe.entity_type) = $2
+        AND oe.entity_id = ANY($3::bigint[])
+        AND oe.event_type IN ('TICKET_LINKED', 'TICKET_UNLINKED')
+      ORDER BY oe.occurred_at DESC
+      LIMIT 20`,
+    [orgId, entityType, ids],
+  );
+  return res.rows ?? [];
+}
+
+function ticketLinkOpsToTimelineRows(rows: TicketLinkOpsRow[]): TicketLinkTimelineRow[] {
+  return rows.map((r) => {
+    const raw = r.payload?.zendeskTicketId;
+    const ticketId = raw != null ? String(raw).replace(/^#/, '') : '';
+    return {
+      id: `ops:${r.id}`,
+      at: r.occurred_at,
+      kind: (r.event_type === 'TICKET_UNLINKED' ? 'unlinked' : 'linked') as
+        | 'linked'
+        | 'unlinked',
+      ticketLabel: ticketId ? `#${ticketId}` : '#—',
+      actorName: r.actor_name,
+      href: ticketId ? `/support?ticket=${ticketId}` : null,
+    };
+  });
+}
+
 async function fetchTimelineSpines(args: {
   orgId: OrgId;
   receivingId: number | null;
   shipmentIds: number[];
+  /** Operational `orders.id` values for ORDER-anchored ticket link moments. */
+  orderIds?: number[];
+  /** `repair_service.id` values for REPAIR-anchored ticket link moments. */
+  repairIds?: number[];
   threadId: number | null;
 }): Promise<TimelineItem[]> {
-  const { orgId, receivingId, shipmentIds, threadId } = args;
+  const {
+    orgId,
+    receivingId,
+    shipmentIds,
+    orderIds = [],
+    repairIds = [],
+    threadId,
+  } = args;
 
-  const [opsRes, carrierRes, msgRes, linkRes, shipLinkRes] = await Promise.all([
+  const [opsRes, carrierRes, msgRes, linkRes, shipLinkRes, orderLinkRes, repairLinkRes] =
+    await Promise.all([
     receivingId != null
       ? tenantQuery<OpsEventRow>(
           orgId,
@@ -232,33 +293,14 @@ async function fetchTimelineSpines(args: {
           [orgId, receivingId],
         )
       : Promise.resolve({ rows: [] }),
-    // SHIPMENT link/unlink moments, from the append-only ops_events spine.
-    // Both kinds are real events here, so 'unlinked' finally renders.
-    // Not folded into the `opsEvents` arm above: that one is entity_type
-    // 'receiving' only, and opsEventsToTimeline would render these a second
-    // time with a prettified title.
-    shipmentIds.length > 0
-      ? tenantQuery<{
-          id: string;
-          occurred_at: string;
-          event_type: string;
-          payload: { zendeskTicketId?: number } | null;
-          actor_name: string | null;
-        }>(
-          orgId,
-          `SELECT oe.id, oe.occurred_at, oe.event_type, oe.payload,
-                  s.name AS actor_name
-             FROM ops_events oe
-             LEFT JOIN staff s ON s.id = oe.actor_staff_id
-            WHERE oe.organization_id = $1
-              AND lower(oe.entity_type) = 'shipment'
-              AND oe.entity_id = ANY($2::bigint[])
-              AND oe.event_type IN ('TICKET_LINKED', 'TICKET_UNLINKED')
-            ORDER BY oe.occurred_at DESC
-            LIMIT 20`,
-          [orgId, shipmentIds],
-        )
-      : Promise.resolve({ rows: [] }),
+    // SHIPMENT / ORDER / REPAIR link/unlink moments from the append-only
+    // ops_events spine. Both kinds are real events here, so 'unlinked' finally
+    // renders. Not folded into the `opsEvents` arm above: that one is
+    // entity_type 'receiving' only, and opsEventsToTimeline would render these
+    // a second time with a prettified title.
+    fetchTicketLinkOpsEvents(orgId, 'shipment', shipmentIds),
+    fetchTicketLinkOpsEvents(orgId, 'order', orderIds),
+    fetchTicketLinkOpsEvents(orgId, 'repair', repairIds),
   ]);
 
   const ticketLinks: TicketLinkTimelineRow[] = [
@@ -273,20 +315,9 @@ async function fetchTimelineSpines(args: {
         href: ticketId ? `/support?ticket=${ticketId}` : null,
       };
     }),
-    ...(shipLinkRes.rows ?? []).map((r) => {
-      const raw = r.payload?.zendeskTicketId;
-      const ticketId = raw != null ? String(raw).replace(/^#/, '') : '';
-      return {
-        id: `ops:${r.id}`,
-        at: r.occurred_at,
-        kind: (r.event_type === 'TICKET_UNLINKED' ? 'unlinked' : 'linked') as
-          | 'linked'
-          | 'unlinked',
-        ticketLabel: ticketId ? `#${ticketId}` : '#—',
-        actorName: r.actor_name,
-        href: ticketId ? `/support?ticket=${ticketId}` : null,
-      };
-    }),
+    ...ticketLinkOpsToTimelineRows(shipLinkRes),
+    ...ticketLinkOpsToTimelineRows(orderLinkRes),
+    ...ticketLinkOpsToTimelineRows(repairLinkRes),
   ];
 
   return mergeSupportContextTimeline({
@@ -321,7 +352,9 @@ export async function resolveSupportContext(
   let providerTicketId: number | null = null;
   let ticketShipmentIds: number[] = [];
 
-  // ── Ticket anchor: reverse-resolve to receiving / shipment ───────────────
+  // ── Ticket anchor: reverse-resolve to receiving / shipment / order / repair ─
+  let ticketOrderPk: number | null = null;
+  let ticketRepairId: number | null = null;
   if (ticketScan) {
     ticketRow = await lookupSupportTicketByScan(orgId, ticketScan);
     if (ticketRow?.provider === 'zendesk' && ticketRow.externalTicketId) {
@@ -367,6 +400,33 @@ export async function resolveSupportContext(
         if (parent.rows[0]?.receiving_id != null) {
           receivingId = Number(parent.rows[0].receiving_id);
         }
+      } else if (entity?.type === 'ORDER') {
+        // Direct ORDER anchor (walk-in / phone Ecwid with no STN).
+        ticketOrderPk = entity.id;
+        const ord = await tenantQuery<{ order_id: string | null }>(
+          orgId,
+          `SELECT order_id FROM orders
+            WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+          [orgId, entity.id],
+        );
+        orderQ = orderQ ?? ord.rows[0]?.order_id ?? String(entity.id);
+      } else if (entity?.type === 'REPAIR') {
+        // Counter repair: soft-link Ecwid via repair_service.source_* columns.
+        ticketRepairId = entity.id;
+        const rs = await tenantQuery<{
+          source_order_id: string | null;
+          source_tracking_number: string | null;
+        }>(
+          orgId,
+          `SELECT source_order_id, source_tracking_number
+             FROM repair_service
+            WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+          [orgId, entity.id],
+        );
+        const srcOrder = rs.rows[0]?.source_order_id?.trim() || null;
+        const srcTracking = rs.rows[0]?.source_tracking_number?.trim() || null;
+        orderQ = orderQ ?? srcOrder;
+        tracking = tracking ?? srcTracking;
       }
     }
   }
@@ -533,10 +593,24 @@ export async function resolveSupportContext(
     }
   }
 
+  const timelineOrderIds = [
+    ...new Set(
+      [ticketOrderPk, linkage.order?.id ?? null].filter(
+        (n): n is number => n != null && Number.isFinite(n) && n > 0,
+      ),
+    ),
+  ];
+  const timelineRepairIds =
+    ticketRepairId != null && Number.isFinite(ticketRepairId) && ticketRepairId > 0
+      ? [ticketRepairId]
+      : [];
+
   const timeline = await fetchTimelineSpines({
     orgId,
     receivingId,
     shipmentIds,
+    orderIds: timelineOrderIds,
+    repairIds: timelineRepairIds,
     threadId: thread?.id ?? null,
   });
 

@@ -83,7 +83,7 @@ export function PhotosPlatformPanel() {
         ].map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-border-soft bg-surface-card px-4 py-3 shadow-sm"
+            className="rounded-none border border-border-soft bg-surface-card px-4 py-3 shadow-sm"
           >
             <p className="text-role-micro uppercase tracking-wider text-text-faint">
               {card.label}
@@ -95,7 +95,7 @@ export function PhotosPlatformPanel() {
 
       <PhotoAnalysisProviderPanel />
 
-      <div className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-text-default">NAS mirror backlog</p>
@@ -114,7 +114,7 @@ export function PhotosPlatformPanel() {
       </div>
 
       {data.byMonth.length > 0 ? (
-        <div className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm">
+        <div className="rounded-none border border-border-soft bg-surface-card p-4 shadow-sm">
           <p className="text-sm font-semibold text-text-default">Uploads by month</p>
           <ul className="mt-3 space-y-1.5">
             {data.byMonth.map((row) => (

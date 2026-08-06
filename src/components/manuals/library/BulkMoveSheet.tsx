@@ -39,7 +39,7 @@ export function BulkMoveSheet({
           <div>
             <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">Bulk Move</p>
             <DialogTitle className="mt-1 text-sm font-semibold">
-              Move {count} {count === 1 ? 'manual' : 'manuals'}
+              Move {count} manuals
             </DialogTitle>
             <DialogDescription className="sr-only">
               Choose a destination folder for the selected manuals.

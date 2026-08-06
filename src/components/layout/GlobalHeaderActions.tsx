@@ -22,6 +22,7 @@ import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_CLUSTER,
+  HEADER_ICON_GAP,
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
@@ -123,7 +124,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
           onClose={() => setPopover('none')}
           anchorRef={clipboardAnchorRef}
           placement="bottom-end"
-          gap={4}
+          gap={0}
         >
           <ClipboardHistoryPopover onClose={() => setPopover('none')} />
         </AnchoredLayer>
@@ -165,7 +166,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
           onClose={() => setPopover('none')}
           anchorRef={inboxAnchorRef}
           placement="bottom-end"
-          gap={4}
+          gap={0}
         >
           <ActivityInboxPopover onClose={() => setPopover('none')} />
         </AnchoredLayer>
@@ -197,7 +198,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
             onClose={() => setPopover('none')}
             anchorRef={accountAnchorRef}
             placement="bottom-end"
-            gap={4}
+            gap={0}
           >
             <QuickAccessPopover
               onClose={() => setPopover('none')}
@@ -211,7 +212,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
             onClose={() => setPopover('none')}
             anchorRef={accountAnchorRef}
             placement="bottom-end"
-            gap={4}
+            gap={0}
           >
             <PhoneHistoryPopover onClose={() => setPopover('none')} />
           </AnchoredLayer>
@@ -220,7 +221,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
             onClose={() => setPopover('none')}
             anchorRef={accountAnchorRef}
             placement="bottom-end"
-            gap={4}
+            gap={0}
           >
             <FeedbackPopover onClose={() => setPopover('none')} />
           </AnchoredLayer>
@@ -236,11 +237,20 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   // Order: find · be told · ask — AI last, at the right edge it opens.
   // Search stays mounted on `/search` (and carton detail) so find is always
   // reachable from the header — page-rail entry is additive, not a replacement.
+  // Stretch the row to the header beam so expanded find + icon washes lock flush.
   return (
-    <div className={cn(HEADER_ICON_CLUSTER, 'justify-end', HEADER_RAIL_WIDTH)}>
+    <div
+      className={cn(
+        'flex h-full shrink-0 items-stretch justify-end',
+        HEADER_ICON_GAP,
+        HEADER_RAIL_WIDTH,
+      )}
+    >
       <GlobalHeaderSearch />
-      {iconCluster}
-      <GlobalHeaderAssistantButton />
+      <div className={HEADER_ICON_CLUSTER}>
+        {iconCluster}
+        <GlobalHeaderAssistantButton />
+      </div>
     </div>
   );
 }

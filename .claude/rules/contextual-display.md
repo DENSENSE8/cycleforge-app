@@ -97,7 +97,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 | Persistence | act-and-clear | CRUD | none | draft → publish |
 | Empty / error | station-down first-class | teaching empty + degrade-not-fail | empty range teaching | empty graph / failed version |
 | Density default | `floor` | `ops` | `rollup` | `studio` |
-| Reference modules | `StationScanBar`, `StationPacking`, `PackChecklist`, `OfflineBanner` | `ProductsWorkspace`, `SidebarRailShell`, boards/tables in feature folders | `MonitorPageShell`, `SectionCard`, `KpiStrip`, `EventTimeline` | `StudioShell`, `StudioCanvas`, `StudioInspector` |
+| Reference modules | `StationScanBar`, `StationPacking`, `PackChecklist`, `connection-health` | `ProductsWorkspace`, `SidebarRailShell`, boards/tables in feature folders | `MonitorPageShell`, `SectionCard`, `KpiStrip`, `EventTimeline` | `StudioShell`, `StudioCanvas`, `StudioInspector` |
 | Deep dive | [station.md](display/station.md) | [workbench.md](display/workbench.md) | [monitor-and-canvas.md](display/monitor-and-canvas.md) · [monitor-rollup-blocks.md](display/monitor-rollup-blocks.md) | [monitor-and-canvas.md](display/monitor-and-canvas.md) |
 
 ---
@@ -106,7 +106,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 
 ### Station — `scan → crossfade → display`
 
-**Scanner-driven.** Focus-locked scan bar + single active-entity card that *replaces* on each scan. Selection is **ephemeral** — never URL. Station-down is first-class (`OfflineBanner`). Density **`floor`**. Presentation of the active unit is a **fact stack** resolved via SoTs.
+**Scanner-driven.** Focus-locked scan bar + single active-entity card that *replaces* on each scan. Selection is **ephemeral** — never URL. Station-down is first-class (`connection-health` + durable queue; TV pill / `NetworkChip` — no app-root banner). Density **`floor`**. Presentation of the active unit is a **fact stack** resolved via SoTs.
 
 > Screen serves the scan, not the pointer. No competing browse grids. → [display/station.md](display/station.md).
 
@@ -165,7 +165,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 4. **RE-FOCUS:** clear + re-focus; watchdog on blur/visibilitychange.
 5. **ACT:** scan-to-confirm; optimistic UI; `clientEventId` / `idempotencyKey` honored server-side; 409 → big rose fail card (not a quiet toast / not `alert()`); unmatched tracking → amber exception card (continue scanning, never emerald Active).
 6. **CLEAR:** ephemeral — never URL selection.
-7. **STATION-DOWN:** `OfflineBanner`; degrade-not-block.
+7. **STATION-DOWN:** `connection-health` + durable queue; degrade-not-block (no app-root banner).
 
 ### Workbench — `mount → select → fetch → focus-crossfade → edit → persist`
 

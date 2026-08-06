@@ -5,6 +5,10 @@
  * return-to-scan CTA; row 2: search · refine/week filters — the data-table
  * triage band) over `ReceivingLinesTable` or TradingView-like compare host.
  *
+ * History tab: Band 3 is find + Refine funnel (staff · scope · field · week) +
+ * inspector park; View topics own layout chrome only
+ * ({@link HistoryViewTopicsCluster}).
+ *
  * Multi-select opens `ReceivingLineRailShell` on RightRailHost (no bottom
  * capsule). When the line workspace overlays browse, publishing + the shell
  * are suppressed so Ticket/Claim/tool stacks keep the right edge.
@@ -26,8 +30,8 @@ import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLin
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
 import { UnboxCompareChrome } from '@/components/receiving/unbox/compare/UnboxCompareChrome';
-import { HistoryDrillChrome } from '@/components/receiving/unbox/HistoryDrillChrome';
-import { HistoryRowPaintChrome } from '@/components/receiving/unbox/HistoryRowPaintChrome';
+import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
+import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import {
   gridZoomStyle,
   type GridZoomPercent,
@@ -59,16 +63,27 @@ function formatReceivingCopyRow(r: ReceivingLineRow): string {
 export function UnboxWorkspaceView(props: {
   /** Non-null while UnboxLineWorkspace overlays browse — suppress the selection rail. */
   selectedLine: ReceivingLineRow | null;
+  /** History triage inspect open — keep batch shell off for a single-row inspect. */
+  historyTriageOpen?: boolean;
 }) {
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const [zoom, setZoom] = useState<GridZoomPercent>(100);
+  const historyViewChrome = useHistoryViewChromeOptional();
+  const isHistory = unboxView === 'history';
+  const [band3ControlsEl, setBand3ControlsEl] = useState<HTMLDivElement | null>(null);
+  const [localZoom, setLocalZoom] = useState<GridZoomPercent>(100);
   const searchParams = useSearchParams();
   const compareLayout = parseUnboxCompareLayout(
     searchParams.get(UNBOX_COMPARE_LAYOUT_PARAM),
   );
   const isCompare = compareLayout !== 'single';
   const lineWorkspaceOpen = props.selectedLine != null;
+  const historyTriageOpen = Boolean(props.historyTriageOpen);
+
+  // History: week/▦ portal + zoom live on the inspector View cluster.
+  const controlsEl = isHistory
+    ? (historyViewChrome?.controlsEl ?? null)
+    : band3ControlsEl;
+  const zoom = isHistory ? (historyViewChrome?.zoom ?? localZoom) : localZoom;
 
   useSurfacePaintMark('unbox:chrome', true);
 
@@ -82,29 +97,26 @@ export function UnboxWorkspaceView(props: {
     });
 
   const onZoomChange = useCallback((percent: GridZoomPercent) => {
-    setZoom(percent);
+    setLocalZoom(percent);
   }, []);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <DashboardScrollShell
-        className="h-full bg-transparent"
+        // Sheet grids self-scroll (sticky X gutter pins to the sheet floor).
+        // Page Y here would bury that gutter under the row stack.
+        className="h-full overflow-y-hidden bg-transparent"
         chrome={
           <div className={WORKBENCH_SHEET_CHROME}>
             <UnboxWorkspaceHeader
               tab={unboxView}
               onSelectTab={setUnboxView}
-              controlsSlotRef={setControlsEl}
-              historyDrillChrome={
-                unboxView === 'history' && !isCompare ? (
-                  <div className="flex shrink-0 items-center gap-1">
-                    <HistoryRowPaintChrome />
-                    <HistoryDrillChrome />
-                  </div>
-                ) : null
-              }
+              controlsSlotRef={isHistory ? undefined : setBand3ControlsEl}
+              historyTriageOpen={historyTriageOpen}
               compareChrome={
-                <UnboxCompareChrome onZoomChange={onZoomChange} />
+                isHistory ? undefined : (
+                  <UnboxCompareChrome onZoomChange={onZoomChange} />
+                )
               }
             />
           </div>
@@ -116,7 +128,9 @@ export function UnboxWorkspaceView(props: {
           data-grid-zoom={zoom}
         >
           <Suspense fallback={<UnboxTableCardSkeleton />}>
-            {isCompare ? (
+            {unboxView === 'all' ? (
+              <TechAllTriageTable scope="unbox" columnTriggerPortalTarget={controlsEl} />
+            ) : isCompare ? (
               <UnboxCompareHost selectMode={selectMode} />
             ) : (
               <ReceivingLinesTable
@@ -130,7 +144,11 @@ export function UnboxWorkspaceView(props: {
         </div>
       </DashboardScrollShell>
 
-      <ReceivingLineRailShell surface="lines" enabled={!lineWorkspaceOpen} />
+      <ReceivingLineRailShell
+        surface="lines"
+        enabled={!lineWorkspaceOpen}
+        inspectOpen={historyTriageOpen}
+      />
 
       {claimRow ? (
         <ReceivingClaimModal

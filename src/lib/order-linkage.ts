@@ -12,7 +12,8 @@
  *   - order ↔ serial   : `order_unit_allocations` (inventory-v2), with a
  *     `tech_serial_numbers` fallback for pre-v2 / FBA / tech ships.
  *   - ticket bridge     : `ticket_links.entity_type='SHIPMENT'` (= STN id) — the
- *     existing tracking↔ticket bridge (see zendesk-links.ts#linkTicketToShipment).
+ *     existing tracking↔ticket bridge (see zendesk-links.ts#linkTicketToShipment);
+ *     plus direct `entity_type='ORDER'` anchors for no-STN walk-in / phone orders.
  *
  * The live linkage graph runs on the operational `orders` table (integer PK),
  * NOT `sales_orders` (the UUID Zoho mirror, a separate island). Everything here
@@ -48,8 +49,12 @@ export interface LinkedTicket {
   subject: string | null;
   status: string | null;
   openUrl: string | null;
-  /** Which loop node the ticket hangs off ('tracking' via the SHIPMENT bridge). */
-  linkedVia: 'tracking';
+  /**
+   * Which loop node the ticket hangs off:
+   *   - `tracking` — `ticket_links.entity_type='SHIPMENT'`
+   *   - `order` — direct `ticket_links.entity_type='ORDER'` (no-STN walk-in / phone)
+   */
+  linkedVia: 'tracking' | 'order';
 }
 
 export interface OrderLinkage {
@@ -187,41 +192,27 @@ async function resolveOrderAnchor(
   return null;
 }
 
-/** Tickets linked to any of the loop's shipments (STN) via the SHIPMENT bridge. */
-async function getLinkedTicketsForShipments(
-  orgId: OrgId,
-  stnIds: number[],
-  deps: OrderLinkageDeps,
-): Promise<LinkedTicket[]> {
-  const ids = stnIds.filter((n) => Number.isFinite(n));
-  if (ids.length === 0) return [];
-  const r = await deps.query<{
-    zendesk_ticket_id: string | number | null;
-    support_ticket_id: string | number | null;
-    external_ticket_id: string | null;
-    subject_cache: string | null;
-    status_cache: string | null;
-  }>(
-    orgId,
-    `SELECT tl.zendesk_ticket_id, tl.support_ticket_id,
-            st.external_ticket_id, st.subject_cache, st.status_cache
-       FROM ticket_links tl
-       LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
-      WHERE tl.organization_id = $1
-        AND tl.entity_type = 'SHIPMENT'
-        AND tl.entity_id = ANY($2::bigint[])`,
-    [orgId, ids],
-  );
+type TicketLinkRow = {
+  zendesk_ticket_id: string | number | null;
+  support_ticket_id: string | number | null;
+  external_ticket_id: string | null;
+  subject_cache: string | null;
+  status_cache: string | null;
+};
 
-  const seen = new Set<number>();
+function mapTicketLinkRows(
+  rows: TicketLinkRow[],
+  linkedVia: LinkedTicket['linkedVia'],
+  seen: Set<number>,
+): LinkedTicket[] {
   const out: LinkedTicket[] = [];
-  for (const row of r.rows) {
+  for (const row of rows) {
     const extRaw =
       row.external_ticket_id ??
       (row.zendesk_ticket_id != null ? String(row.zendesk_ticket_id) : null);
     const extNum = extRaw ? Number(String(extRaw).replace(/^#/, '')) : NaN;
     const zid = row.zendesk_ticket_id != null ? Number(row.zendesk_ticket_id) : null;
-    // Dedup by zendesk ticket id (one ticket may bridge several shipments).
+    // Dedup by zendesk ticket id (one ticket may bridge several shipments / ORDER).
     if (zid != null && seen.has(zid)) continue;
     if (zid != null) seen.add(zid);
     const hasExt = Number.isFinite(extNum);
@@ -232,10 +223,54 @@ async function getLinkedTicketsForShipments(
       subject: row.subject_cache,
       status: row.status_cache,
       openUrl: hasExt ? zendeskTicketUrl(extNum) : null,
-      linkedVia: 'tracking',
+      linkedVia,
     });
   }
   return out;
+}
+
+/** Tickets linked to any of the loop's shipments (STN) via the SHIPMENT bridge. */
+async function getLinkedTicketsForShipments(
+  orgId: OrgId,
+  stnIds: number[],
+  deps: OrderLinkageDeps,
+): Promise<LinkedTicket[]> {
+  const ids = stnIds.filter((n) => Number.isFinite(n));
+  if (ids.length === 0) return [];
+  const r = await deps.query<TicketLinkRow>(
+    orgId,
+    `SELECT tl.zendesk_ticket_id, tl.support_ticket_id,
+            st.external_ticket_id, st.subject_cache, st.status_cache
+       FROM ticket_links tl
+       LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+      WHERE tl.organization_id = $1
+        AND tl.entity_type = 'SHIPMENT'
+        AND tl.entity_id = ANY($2::bigint[])`,
+    [orgId, ids],
+  );
+  return mapTicketLinkRows(r.rows, 'tracking', new Set());
+}
+
+/** Tickets anchored directly on the operational order (no-STN walk-in / phone). */
+async function getLinkedTicketsForOrder(
+  orgId: OrgId,
+  orderPk: number,
+  deps: OrderLinkageDeps,
+  seen: Set<number>,
+): Promise<LinkedTicket[]> {
+  if (!Number.isFinite(orderPk) || orderPk <= 0) return [];
+  const r = await deps.query<TicketLinkRow>(
+    orgId,
+    `SELECT tl.zendesk_ticket_id, tl.support_ticket_id,
+            st.external_ticket_id, st.subject_cache, st.status_cache
+       FROM ticket_links tl
+       LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+      WHERE tl.organization_id = $1
+        AND tl.entity_type = 'ORDER'
+        AND tl.entity_id = $2`,
+    [orgId, orderPk],
+  );
+  return mapTicketLinkRows(r.rows, 'order', seen);
 }
 
 /**
@@ -372,11 +407,18 @@ export async function resolveOrderLinkage(
       .map((t) => ({ serialUnitId: null, serial: String(t.serial_number), state: null }));
   }
 
-  const tickets = await getLinkedTicketsForShipments(
+  const shipmentTickets = await getLinkedTicketsForShipments(
     orgId,
     trackings.map((t) => t.shipmentId),
     deps,
   );
+  const seenTicketIds = new Set(
+    shipmentTickets
+      .map((t) => t.zendeskTicketId)
+      .filter((n): n is number => n != null && Number.isFinite(n)),
+  );
+  const orderTickets = await getLinkedTicketsForOrder(orgId, orderPk, deps, seenTicketIds);
+  const tickets = [...shipmentTickets, ...orderTickets];
 
   return {
     matchedBy,

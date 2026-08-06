@@ -9,14 +9,12 @@ import {
   ledgerRowFillClass,
   ledgerRowStateClass,
   metaIndentFor,
-  queueGroupNestClass,
 } from '@/components/ui/queue-row-chrome';
 
 /**
  * Queue-row left-edge SoT:
  *   • Ops/station rows use QUEUE_ROW.px + metaIndentFor (never page-local px-4
  *     or hand-rolled select-gutter calcs).
- *   • CollapsibleGroupRow nest padding is tokenized; no always-on pl-5.
  *   • Navigator rails (facet / saved-view / day-tree) use NAV_ROW — never the
  *     queue blue selectedClass.
  */
@@ -39,15 +37,9 @@ describe('queue-row left-edge chrome', () => {
     );
   });
 
-  it('queueGroupNestClass pads only when chevron is shown', () => {
-    assert.equal(queueGroupNestClass(true), QUEUE_ROW.nestWithChevron);
-    assert.equal(queueGroupNestClass(false), QUEUE_ROW.nestNoChevron);
-  });
-
   it('core queue rows compose QUEUE_ROW.px and metaIndentFor', () => {
     const files = [
       ['ReceivingLineOrderRow', '../station/ReceivingLineOrderRow.tsx'],
-      ['ReceivingPoSummary', '../station/ReceivingPoSummary.tsx'],
       ['OrdersQueueTableRow', '../dashboard/orders-queue/OrdersQueueTableRow.tsx'],
     ] as const;
 
@@ -64,12 +56,9 @@ describe('queue-row left-edge chrome', () => {
           `${name} must use the orders-queue columnar shell`,
         );
         assert.ok(src.includes('metaIndentFor('), `${name} must keep metaIndentFor for mobile`);
-      } else if (name !== 'ReceivingPoSummary') {
+      } else {
         assert.ok(src.includes('QUEUE_ROW.px'), `${name} must apply QUEUE_ROW.px`);
         assert.ok(src.includes('metaIndentFor('), `${name} must call metaIndentFor(`);
-      }
-      if (name === 'ReceivingPoSummary') {
-        assert.ok(src.includes("metaIndentFor('wide'"), `${name} must use wide metaIndentFor`);
       }
       assert.doesNotMatch(
         src,
@@ -82,13 +71,6 @@ describe('queue-row left-edge chrome', () => {
         `${name} must not hand-roll select-gutter meta indent`,
       );
     }
-  });
-
-  it('CollapsibleGroupRow uses QUEUE_ROW nest tokens', () => {
-    const src = readSibling('./CollapsibleGroupRow.tsx');
-    assert.ok(src.includes('queueGroupNestClass'), 'CollapsibleGroupRow must call queueGroupNestClass');
-    assert.ok(src.includes('QUEUE_ROW.px'), 'CollapsibleGroupRow header must use QUEUE_ROW.px');
-    assert.doesNotMatch(src, /\bpl-5\b/, 'CollapsibleGroupRow must not hardcode pl-5');
   });
 
   it('OrdersGridView outer shell has no list-body px-2 inset', () => {

@@ -55,6 +55,7 @@ export const POST = withAuth(
         slug,
         label: parsed.label,
         tone: parsed.tone ?? null,
+        colorHex: parsed.colorHex != null ? parsed.colorHex.toLowerCase() : parsed.colorHex,
         provider: parsed.provider ?? null,
         sortOrder: parsed.sortOrder,
       });

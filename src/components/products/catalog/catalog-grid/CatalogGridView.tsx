@@ -34,6 +34,8 @@ interface CatalogGridViewProps {
   columns?: readonly CatalogGridColumn[];
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
+  /** Portal target for the column-display (▦) trigger — e.g. a triage-band controls slot. */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /**
@@ -55,6 +57,7 @@ export function CatalogGridView({
   columns = CATALOG_GRID_COLUMNS,
   scrollRef,
   className,
+  columnTriggerPortalTarget,
 }: CatalogGridViewProps) {
   const { selectedIds, toggle } = useTableSelectMode<CatalogListRow>({
     scope: selectionScope,
@@ -93,6 +96,7 @@ export function CatalogGridView({
   return (
     <LedgerGridSurface<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
       ariaLabel="Product catalog"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeCatalogGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -107,6 +111,7 @@ export function CatalogGridView({
       className={className}
       testId="catalog-grid-body"
       tableId={CATALOG_TABLE_ID}
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <CatalogGridColumnHeader
           selectionScope={selectionScope}

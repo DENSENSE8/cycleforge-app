@@ -7,14 +7,14 @@
  * — `ordersQueueGridTemplateFor` / frozen offsets / force-hide keep reading the
  * house model, so TanStack never grows a second width system (plan risk #1).
  * Cell markup stays in the house per-column registries
- * (`OrdersQueueTableRow.renderDesktopCell`, `OrderGroupSummary`); accessors
+ * (`OrdersQueueTableRow.renderDesktopCell`); accessors
  * here exist for state math (and future TanStack-sorted surfaces), not JSX.
  *
  * Mode → column set:
- *   `fulfillment.default` — select · title · date · age · qty · cond ·
- *     order · tracking (the canonical `ORDERS_QUEUE_COLUMNS`).
- *   `fulfillment.tested` (`?tested`) — **tester** + **testedAt** surface per
- *     plan §9 (`ORDERS_QUEUE_TESTED_COLUMNS`).
+ *   `fulfillment.default` — select · order · age · title · condition · qty · tracking · _fill
+ *     (the canonical `ORDERS_QUEUE_COLUMNS`; Product-only resize; `_fill` slack).
+ *   `fulfillment.tested` (`?tested`) — **tester** + **testedAt** after Product,
+ *     then Cond, per plan §9 (`ORDERS_QUEUE_TESTED_COLUMNS`).
  *
  * Capabilities live on {@link makeOrdersGridDescriptor} /
  * {@link ORDERS_GRID_CAPABILITIES} — this module re-exports stable TanStack

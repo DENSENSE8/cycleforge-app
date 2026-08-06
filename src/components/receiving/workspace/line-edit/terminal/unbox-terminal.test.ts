@@ -86,6 +86,27 @@ test('resolveUnboxReceiveTerminal: primary label from controller', () => {
   assert.equal(carton?.keepOpen, true);
   assert.equal(printOnly?.separatorBefore, true);
 
+  let edited = 0;
+  const withEdit = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        labelSelectOptions: [
+          { key: 'carton', name: 'Carton label' },
+          { key: 'unit', name: 'Unit label' },
+        ],
+        activeLabelKind: 'carton',
+        requestLabelEditor: () => {
+          edited += 1;
+        },
+      },
+    }),
+  );
+  const editItem = withEdit.menu?.find((m) => m.label === 'Edit label');
+  assert.ok(editItem, 'dock split menu must offer Edit label');
+  editItem?.onClick();
+  assert.equal(edited, 1);
+
   let selected: string | null = null;
   let printed: string | null = null;
   const selectOnly = resolveUnboxReceiveTerminal(

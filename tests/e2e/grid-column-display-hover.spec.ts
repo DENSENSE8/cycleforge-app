@@ -2,8 +2,13 @@ import { test, expect, type Page } from '@playwright/test';
 
 /**
  * Per-staff grid column fields → `staff_preferences.tableColumns` delta, driven
- * from the **hover-revealed column-display control on the card's top-right
- * corner**.
+ * from the **Band-3 resident column-display (▦) trigger** beside filter / week
+ * on workbench desks that have a `WorkbenchTriageBand`.
+ *
+ * Placement (2026-08-06): Band-3 portal is the norm for every table with a
+ * triage band. Card-corner hover-reveal remains only for surfaces with no
+ * Band-3 (Scan-out, Warranty, Unfound, Tracking-exceptions). This spec drives
+ * standalone `/receiving/history`, which portals ▦ into `HistoryTriageBand`.
  *
  * It is the SOLE entry as of 2026-08-02: the chrome `GridFieldsMenu` that used
  * to open a second door onto this same rail was deleted, because Fields mutates
@@ -11,19 +16,8 @@ import { test, expect, type Page } from '@playwright/test';
  * actually carries every job the retired popover did — otherwise the migration
  * would be a silent capability loss.
  *
- * Its PLACEMENT was ruled twice the same day, and (0) below is what both
- * rulings were about: the control must reserve nothing. A permanent `w-9` header
- * track plus `pr-9` charged every row; a permanent gutter beside the card
- * charged every page. Hover-revealed, it charges neither — so every interaction
- * here hovers the card first, and (0) asserts it is invisible and inert at rest.
- *
- * The behaviour this locks is the whole point of the unified visibility waist:
- * a column a staffer turns off loses its TRACK everywhere (header, body rows,
- * group summaries) rather than rendering an empty ruled band — and the choice
- * follows the staffer across reloads because it is persisted, not local state.
- *
  * Asserts:
- *   (0) the control is invisible + inert at rest and reveals on hover;
+ *   (0) the control is resident in Band-3 (visible without hover);
  *   (1) the grid opens LEAN — `tier: 'optional'` columns (condition / platform /
  *       serial on receiving) are absent until opted into;
  *   (2) opting one IN adds its track to header AND body;
@@ -35,7 +29,7 @@ import { test, expect, type Page } from '@playwright/test';
  *   (8) no chrome Fields control survives anywhere on the page.
  */
 
-test.describe('Grid column fields — the hover-revealed header control', () => {
+test.describe('Grid column fields — Band-3 resident column display', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'ledger grid is a desktop layout');
 
   const HISTORY_URL = '/receiving/history';
@@ -44,24 +38,15 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
   /** Header + body cells share `data-col`, so one selector proves the whole track. */
   const track = (page: Page, key: string) => grid(page).locator(`[data-col="${key}"]`);
 
-  /** The reveal wrapper — `toBeVisible()` cannot see `opacity: 0`, so assert CSS. */
-  const triggerHost = (page: Page) =>
-    page.locator('[data-grid-column-details-trigger]').locator('xpath=ancestor::div[1]');
   const trigger = (page: Page) =>
     page.locator('[data-grid-column-details-trigger]').getByRole('button', {
       name: 'Column display',
     });
   const rail = (page: Page) => page.getByRole('region', { name: 'Column display' });
 
-  /**
-   * Hover the CARD, then click. The control is `opacity-0` +
-   * `pointer-events-none` at rest, so a bare `.click()` would land on the header
-   * cell underneath — the honest consequence of a control that reserves nothing,
-   * and exactly what this spec must model.
-   */
+  /** Resident Band-3 control — click without hovering the card corner. */
   const openRail = async (page: Page) => {
-    await grid(page).hover();
-    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
+    await expect(trigger(page)).toBeVisible();
     await trigger(page).click();
     await expect(rail(page)).toBeVisible();
   };
@@ -138,39 +123,28 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
   });
 
   test('it is the only column control — no chrome Fields survives', async ({ page }) => {
-    await grid(page).hover();
-    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
+    await expect(trigger(page)).toBeVisible();
     // The retired popover's own marker and its listbox must both be gone.
     await expect(page.locator('[data-grid-fields-menu]')).toHaveCount(0);
     await expect(page.getByRole('listbox', { name: 'Grid fields' })).toHaveCount(0);
   });
 
   /**
-   * THE point of the placement rulings, and the one assertion neither resident
-   * version could pass — a `w-9` track and a page gutter are both visible at
-   * rest, and both would sail through every other test in this file.
+   * Band-3 portal norm: ▦ is resident beside refine icons — no card-corner
+   * hover, no opacity-0 at rest. HistoryTriageBand owns the paint host.
    */
-  test('nothing is painted at rest; hover reveals, leaving hides again', async ({ page }) => {
-    // Park the pointer off the card — `restoreDefaults` leaves it on the rail's
-    // Done button.
+  test('column display is resident in Band-3 without hovering the card', async ({ page }) => {
     await page.mouse.move(0, 0);
-    await expect(triggerHost(page)).toHaveCSS('opacity', '0');
-    // Hidden means inert: the header cell underneath keeps its own clicks.
-    await expect(triggerHost(page)).toHaveCSS('pointer-events', 'none');
-
-    await grid(page).hover();
-    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
-
-    await page.mouse.move(0, 0);
-    await expect(triggerHost(page)).toHaveCSS('opacity', '0');
+    await expect(trigger(page)).toBeVisible();
+    // Not the retired card-corner float (absolute + opacity-0 until hover).
+    const host = page.locator('[data-grid-column-details-trigger]');
+    await expect(host).not.toHaveCSS('opacity', '0');
   });
 
   test('the control stays painted while its own rail is open', async ({ page }) => {
     await openRail(page);
-    // Pointer leaves the card entirely — hover alone would drop the trigger out
-    // from under the rail it just opened, leaving the panel with no owner.
     await page.mouse.move(0, 0);
-    await expect(triggerHost(page)).toHaveCSS('opacity', '1');
+    await expect(trigger(page)).toBeVisible();
     await closeRail(page);
   });
 
@@ -211,7 +185,9 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
   test('opens lean — optional columns are absent until opted in', async ({ page }) => {
     await expect(track(page, 'title').first()).toBeVisible();
     await expect(track(page, 'tracking').first()).toBeVisible();
-    for (const optional of ['condition', 'platform', 'serial']) {
+    await expect(track(page, 'platform').first()).toBeVisible();
+    await expect(track(page, 'price').first()).toBeVisible();
+    for (const optional of ['condition', 'serial']) {
       await expect(track(page, optional)).toHaveCount(0);
     }
   });
@@ -301,6 +277,84 @@ test.describe('Grid column fields — the hover-revealed header control', () => 
     await openRail(page);
     await rail(page).locator('[role="option"][data-column-details-key="qty"]').click();
     await rail(page).locator('[data-highlight="none"]').click();
+    await closeRail(page);
+  });
+
+  test('Columns Display sets exact width + min/max for a resizable column', async ({
+    page,
+  }) => {
+    // Status is hideable + resizable — the Width section only mounts for
+    // resizable tracks (Product/title has no hideKey so it never appears here).
+    const headerCell = grid(page).locator('[role="columnheader"][data-col="status"]');
+    const before = (await headerCell.boundingBox())!.width;
+
+    await openRail(page);
+    await rail(page).locator('[role="option"][data-column-details-key="status"]').click();
+    const widthSection = rail(page).locator('[data-column-width-section="status"]');
+    await expect(widthSection).toBeVisible();
+
+    const widthField = widthSection.locator('[data-column-width-field="width"]');
+    const minField = widthSection.locator('[data-column-width-field="min"]');
+    const maxField = widthSection.locator('[data-column-width-field="max"]');
+
+    await minField.fill('120');
+    await minField.blur();
+    await maxField.fill('280');
+    await maxField.blur();
+    await widthField.fill('200');
+    await widthField.blur();
+    await closeRail(page);
+
+    await expect
+      .poll(async () => (await headerCell.boundingBox())!.width)
+      .toBeGreaterThan(before + 20);
+    await expect
+      .poll(async () => Math.round((await headerCell.boundingBox())!.width))
+      .toBeCloseTo(200, -1);
+
+    // Persists across reload.
+    await page.reload();
+    await expect(grid(page)).toBeVisible();
+    await expect
+      .poll(async () => Math.round((await headerCell.boundingBox())!.width))
+      .toBeCloseTo(200, -1);
+
+    // Reset clears width + bounds.
+    await openRail(page);
+    await expect(resetButton(page)).toBeVisible();
+    await resetButton(page).click();
+    await expect(resetButton(page)).toHaveCount(0);
+    await closeRail(page);
+  });
+
+  test('Columns Display Width scrub live-resizes the track like the header grip', async ({
+    page,
+  }) => {
+    const headerCell = grid(page).locator('[role="columnheader"][data-col="status"]');
+    const before = (await headerCell.boundingBox())!.width;
+
+    await openRail(page);
+    await rail(page).locator('[role="option"][data-column-details-key="status"]').click();
+    const widthSection = rail(page).locator('[data-column-width-section="status"]');
+    const widthField = widthSection.locator('[data-column-width-field="width"]');
+    const box = (await widthField.boundingBox())!;
+
+    // Figma scrub: hold the value and drag right — grid track must move LIVE
+    // (CSS var) before pointer-up commits prefs.
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, {
+      steps: 10,
+    });
+    await expect
+      .poll(async () => (await headerCell.boundingBox())!.width)
+      .toBeGreaterThan(before + 40);
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => (await headerCell.boundingBox())!.width)
+      .toBeGreaterThan(before + 40);
+
     await closeRail(page);
   });
 });

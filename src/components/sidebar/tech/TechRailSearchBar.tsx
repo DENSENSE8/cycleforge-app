@@ -16,15 +16,22 @@
  *   bubble) hosts the field + optional `trailingAction`, edge-to-edge with the
  *   triage row. No rail band.
  *
+ * **Trailing icon grammar (rail footers):**
+ * 1. Empty-field **paste** — hover-reveal only (`SearchField` + `group/search-bar`)
+ * 2. In-field **filters** — `trailingSuffix` (after paste; paste leads the cluster)
+ * 3. Age-column **collapse** — auto from {@link useContextPanelCollapse} when
+ *    mounted under `ContextPanelCollapseProvider`; override via `trailingAction`
+ *    (LedgerDrill parent map, Incoming list-paste, etc.)
+ * All three use a 24px control / 14px glyph box and one centered row.
+ *
  * Not the global header search (the app's only "search the app" surface).
  */
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Search } from '@/components/Icons';
-import {
-  SIDEBAR_RAIL_ROW_PAD_RIGHT,
-  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
-} from '@/components/layout/header-shell';
+import { SIDEBAR_RAIL_TRAILING_TRACK_CLASS } from '@/components/layout/header-shell';
+import { useContextPanelCollapse } from '@/components/sidebar/context-panel-collapse-context';
+import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { cn } from '@/utils/_cn';
 
@@ -37,6 +44,8 @@ export function TechRailSearchBar({
   density = 'row',
   variant = 'rail',
   isSearching = false,
+  trailingPrefix,
+  trailingSuffix,
   trailingAction,
   className,
 }: {
@@ -81,10 +90,23 @@ export function TechRailSearchBar({
    */
   isSearching?: boolean;
   /**
+   * In-field actions **left of** paste/clear — non-filter CTAs that must lead
+   * the trailing cluster (e.g. Ecwid “Product not added yet?”). Field-density
+   * {@link WorkbenchFilterPopover} filters use {@link trailingSuffix} instead
+   * so hover-reveal paste stays leftmost.
+   */
+  trailingPrefix?: ReactNode;
+  /**
+   * In-field actions **after** paste/clear — field-density filters (Unbox rail
+   * facets, `/search` refine, Ecwid order scope). Paste leads; filter follows.
+   */
+  trailingSuffix?: ReactNode;
+  /**
    * Sibling control in the rail **age column** (`SIDEBAR_RAIL_TRAILING_TRACK_CLASS`)
    * — same vertical track as row relative-time (`11h`) and the parked expand
-   * strip. Incoming paste also seats here. Keep to ONE icon-only control with
-   * a `HoverTooltip`.
+   * strip. When omitted on `variant="rail"` inside a context panel, defaults to
+   * {@link RailFilterCollapseButton}. Pass explicitly for LedgerDrill parent-map
+   * collapse, Incoming list-paste, or to suppress (`null`).
    */
   trailingAction?: ReactNode;
   className?: string;
@@ -107,6 +129,23 @@ export function TechRailSearchBar({
   };
 
   const chrome = variant === 'chrome';
+  const contextPanelCollapse = useContextPanelCollapse();
+
+  // Rail footers under ContextPanelCollapseProvider inherit collapse — every
+  // recent rail (Unbox · Triage · Testing · Shipping · Packer · …) shares one
+  // grammar without each host re-wiring RailFilterCollapseButton. Explicit
+  // trailingAction wins (LedgerDrill, Incoming paste, chrome hosts).
+  const resolvedTrailingAction =
+    trailingAction !== undefined
+      ? trailingAction
+      : !chrome && contextPanelCollapse
+        ? (
+            <RailFilterCollapseButton
+              onCollapse={contextPanelCollapse.collapse}
+              label="Hide sidebar"
+            />
+          )
+        : null;
 
   const field = (
     <SearchBar
@@ -118,6 +157,8 @@ export function TechRailSearchBar({
       isSearching={chrome ? false : isSearching}
       leadingIcon={<Search className="h-3.5 w-3.5" />}
       hideUnderline
+      trailingPrefix={trailingPrefix}
+      trailingSuffix={trailingSuffix}
     />
   );
 
@@ -140,10 +181,11 @@ export function TechRailSearchBar({
             'flex h-full min-w-0 self-stretch items-stretch'
           : [
               'border-t border-border-hairline bg-surface-card',
-              // With a trailing collapse, match rail row right pad so the age
-              // column lines up; otherwise keep the denser bilateral `px-3`.
-              trailingAction
-                ? cn('py-0 pl-3', SIDEBAR_RAIL_ROW_PAD_RIGHT)
+              // With a trailing collapse, flush right so the age / collapse
+              // column lines up with full-bleed rail rows; otherwise keep the
+              // denser bilateral `px-3`.
+              resolvedTrailingAction
+                ? 'py-0 pl-3 pr-0'
                 : density === 'row'
                   ? 'px-3'
                   : 'inset-field',
@@ -152,15 +194,17 @@ export function TechRailSearchBar({
       )}
     >
       {chrome ? (
-        <div className="flex h-full min-w-0 flex-1 items-center gap-1 bg-surface-sunken px-2">
+        <div className="flex h-full min-w-0 flex-1 items-center gap-0.5 bg-surface-sunken px-2">
           <div className="min-w-0 flex-1">{field}</div>
-          {trailingAction}
+          {resolvedTrailingAction}
         </div>
       ) : (
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="flex min-w-0 items-center gap-0.5">
           <div className="min-w-0 flex-1">{field}</div>
-          {trailingAction ? (
-            <div className={SIDEBAR_RAIL_TRAILING_TRACK_CLASS}>{trailingAction}</div>
+          {resolvedTrailingAction ? (
+            <div className={cn('-ml-1', SIDEBAR_RAIL_TRAILING_TRACK_CLASS)}>
+              {resolvedTrailingAction}
+            </div>
           ) : null}
         </div>
       )}

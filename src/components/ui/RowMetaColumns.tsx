@@ -78,28 +78,21 @@ export const META_COL = {
   /** Fixed condition-column track — NEW / USED / L-NEW / PARTS (table labels). */
   condCol: '2.25rem',
   /**
-   * PO line accordion — fixed condition-column track sized to the LONGEST
-   * `ConditionGradeChip` table label ("PARTS" / "L-NEW", both ~57.7px measured
-   * dense). Fixed (not `max-content`) so the chip starts at the same x on every
-   * row and the columns don't drift; 3.75rem (60px) fits the widest label with a
-   * sub-pixel safety margin. Wider than the shared 2.5rem `condCol` (which clips
-   * "PARTS" → "PAR"), so it stays a separate PoLineMetaGrid-only token. */
+   * PO line accordion — legacy fixed condition track. PoLineMetaGrid now uses
+   * `auto` boxed cells (`grid-cols-[auto_auto_auto_minmax(2.5rem,1fr)_auto]`);
+   * keep this token for any sibling that still sizes a dedicated condition slot.
+   */
   poCondCol: '3.75rem',
   /**
-   * PO line accordion — SKU last-8 chip column. Content-width, NOT a fixed
-   * 2.75rem: `SkuScanRefChip` truncates itself inside a fixed track, so the
-   * 4-char last-8 was clipping to "0…". `max-content` sizes the track to the
-   * full last-8 (mono → consistent across rows). Only PoLineMetaGrid uses this.
+   * PO line accordion — SKU last-8 chip column (legacy). Nested-grid meta uses
+   * `auto` intrinsic width; keep for queue/header mirrors that still need it.
    */
   skuCol: 'max-content',
-  /** PO line accordion — serial chip column (the flex track that absorbs slack). */
+  /** PO line accordion — serial flex track (legacy token; meta grid embeds this). */
   serialCol: 'minmax(2.5rem, 1fr)',
   /**
-   * PO line accordion — unit price (tabular, right-aligned). Content-width, NOT a
-   * fixed 2.75rem: the price chip is intentionally non-shrinking (fitDisplayWidth),
-   * so a fixed track clipped any amount wider than "$8.88" off the card's right
-   * edge. `max-content` sizes the track to the full amount ($1,299.00) and the
-   * serial column (1fr) gives up the slack.
+   * PO line accordion — unit price (legacy). Nested-grid meta places price in a
+   * trailing `auto` cell after the serials `1fr` cell.
    */
   priceCol: 'max-content',
 } as const;

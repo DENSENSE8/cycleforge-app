@@ -51,7 +51,7 @@ export function CcEmailField({
   const available = suggestions.filter((e) => e && !emails.includes(e));
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 border-0 border-b-2 border-border-soft bg-transparent px-0 py-1.5">
       <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
         <Mail className="h-3 w-3" /> {label}
       </span>
@@ -85,7 +85,7 @@ export function CcEmailField({
         }}
         onBlur={() => addCc(input)}
         placeholder={emails.length ? 'Add another…' : (placeholder ?? 'Add email to CC…')}
-        className="min-w-[8rem] flex-1 bg-transparent px-1 text-role-caption text-text-default outline-none placeholder:text-text-faint disabled:opacity-50"
+        className="min-w-[8rem] flex-1 bg-transparent px-0 text-role-caption text-text-default outline-none placeholder:text-text-faint disabled:opacity-50"
       />
       <datalist id={listId}>
         {available.map((email) => (

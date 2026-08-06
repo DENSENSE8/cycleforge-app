@@ -36,6 +36,7 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept — must match proxy.ts
 
   /^\/offline(?:$|\/)/,
+  /^\/design-demo(?:$|\/)/,             // dev/preview DS showcase — 404s in prod via design-demo layout (must match proxy.ts)
   /^\/share\/photos\//,                 // public photo share-pack viewer — must match proxy.ts
   // GS1 Digital Link resolver — server-side redirects anon callers to
   // the storefront before any client-side guard runs, but listing the

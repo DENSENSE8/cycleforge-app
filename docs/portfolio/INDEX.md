@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (485 files, regenerated 2026-08-04) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (509 files, regenerated 2026-08-06) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Lane registry:** [`dev-worktrees.json`](../../dev-worktrees.json) — a registry only. The
 > per-lane port resolver and `pnpm dev:switcher` were removed 2026-07-29; `pnpm dev` is a plain
@@ -38,7 +38,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 
 | WT-ID | Absolute path | Branch | HEAD | Switcher card | Unlock parked | Workstreams |
 |-------|---------------|--------|------|---------------|---------------|-------------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `e627e3d3e` | yes · :3000 | no | WS-DOGFOOD + lane=main |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `20dfe0e60` | yes · :3000 | no | WS-DOGFOOD + lane=main |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes · :3010 | yes | WS-AI |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes · :3020 | yes | WS-FBA |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes · :3030 | yes | WS-GLASS |
@@ -49,7 +49,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes · :3110 | yes | — |
 | `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes · :3000 | yes | — |
 | `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes · :3060 | yes | WS-SRC |
-| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `370521de9` | yes · :3080 | yes | — |
+| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `e627e3d3e` | yes · :3080 | yes | — |
 | `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes · :3090 | yes | WS-WH |
 
 **Relative paths (for switcher / docs):**

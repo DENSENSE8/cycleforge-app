@@ -50,7 +50,7 @@ export function HeaderGoalChip() {
         </span>
       )}
 
-      <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-start" gap={8}>
+      <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-start" gap={0}>
         <GoalPopover g={g} view={view} tone={tone} chipCount={chipCount} hasSwitch={hasSwitch} />
       </AnchoredLayer>
     </div>

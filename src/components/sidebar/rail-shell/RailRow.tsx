@@ -7,12 +7,13 @@ import { framerPresence, framerTransition, motionBezier } from '@/design-system/
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
   SIDEBAR_RAIL_DOT_TRACK,
-  SIDEBAR_RAIL_ROW_PAD_RIGHT,
+  SIDEBAR_RAIL_INSET_LEFT,
   SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
   SIDEBAR_SCAN_DOCK_LEADING_ROW,
 } from '@/components/layout/header-shell';
 import { Check, ChevronDown } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { cn } from '@/utils/_cn';
 import { railRelativeTime, type SidebarRailRowContext } from './sidebar-rail-shared';
 import { RailPopover } from './RailPopover';
@@ -122,12 +123,10 @@ export function RailRow<TRow>({
       // `layout` so a dismissed row reflows its siblings smoothly.
       layout={!staggerItemVariants}
       {...motionProps}
-      // Right inset on the ROW: selection ring clears the canvas cutout and
-      // shares a right edge with the eyebrow pencil. The status dot rides a FLOW
-      // leading track (SIDEBAR_SCAN_DOCK_LEADING_ROW) so the
-      // title tucks one tight gap after it — no absolute dot + deep title inset
-      // (that combo opened a ~50px canyon between the dot and the title).
-      className={`relative ${SIDEBAR_RAIL_ROW_PAD_RIGHT}`}
+      // Full-bleed host: selection wash / ring paints edge-to-edge. Content
+      // column pad nests inside (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW) so
+      // titles still share the dense scan-dock column with the scan bar.
+      className="relative"
       onMouseEnter={scheduleOpen}
       onMouseLeave={scheduleClose}
     >
@@ -151,64 +150,64 @@ export function RailRow<TRow>({
         onClick={onClick}
         onMouseDown={(e) => { if (editActive && e.shiftKey) e.preventDefault(); }}
         className={cn(
-          // Leading FLOW track (SIDEBAR_SCAN_DOCK_LEADING_ROW) holds the
-          // dot/checkbox; the title sits one gap after it — same column as the
-          // dense scan bar + UNBOXED eyebrow. No deep title inset (canyon).
           'ds-raw-button group relative w-full text-left transition-colors',
-          SIDEBAR_SCAN_DOCK_LEADING_ROW,
           isDisabled ? 'cursor-wait opacity-80' : '',
           (editActive ? isChecked : isSelected)
-            ? 'rounded-md bg-blue-50 ring-1 ring-inset ring-blue-400 py-1'
-            : `rounded-md py-1 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`,
+            ? cn(QUEUE_ROW.selectedClass, 'py-1')
+            : `py-1 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`,
         )}
       >
-        {/* Leading track — dot hugs the far-left; edit mode swaps in the checkbox
-            (same track width so the title never shifts on toggle). */}
-        <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'flex shrink-0 items-center justify-center')}>
-          {editActive ? (
-            <span
-              aria-hidden
-              data-rail-select-box
-              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors ${
-                isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-border-default bg-surface-card'
-              }`}
-            >
-              {isChecked ? <Check className="h-2.5 w-2.5" /> : null}
-            </span>
-          ) : getStatusDotLabel ? (
-            <HoverTooltip label={getStatusDotLabel(row)} focusable={false} asChild>
-              <span
-                data-rail-status-dot
-                className={`block h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
-                aria-label={getStatusDotLabel(row)}
-              />
-            </HoverTooltip>
-          ) : (
-            <span
-              data-rail-status-dot
-              className={`h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
-              aria-hidden
-            />
-          )}
-        </span>
-        <div data-rail-row-title className="min-w-0 flex-1">
-          {renderRowMain(row, { isSelected, isFocused, pkgChip })}
-        </div>
-        {getActivityAt ? (
-          activityAt != null ? (
-            <span
-              className={cn(
-                SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
-                'self-center tabular-nums text-role-micro font-medium text-text-faint',
+        {/* Nested pads ADD (outer gutter + leading pl-2) — never stack both pl-*
+            on one node or Tailwind collapses them. */}
+        <span className={cn(SIDEBAR_RAIL_INSET_LEFT, 'block w-full')}>
+          <span className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'w-full')}>
+            <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'flex shrink-0 items-center justify-center')}>
+              {editActive ? (
+                <span
+                  aria-hidden
+                  data-rail-select-box
+                  className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors ${
+                    isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-border-default bg-surface-card'
+                  }`}
+                >
+                  {isChecked ? <Check className="h-2.5 w-2.5" /> : null}
+                </span>
+              ) : getStatusDotLabel ? (
+                <HoverTooltip label={getStatusDotLabel(row)} focusable={false} asChild>
+                  <span
+                    data-rail-status-dot
+                    className={`block h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
+                    aria-label={getStatusDotLabel(row)}
+                  />
+                </HoverTooltip>
+              ) : (
+                <span
+                  data-rail-status-dot
+                  className={`h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
+                  aria-hidden
+                />
               )}
-            >
-              {railRelativeTime(activityAt)}
             </span>
-          ) : (
-            // Keep the age column so titles do not jump when one row lacks activity.
-            <span className={SIDEBAR_RAIL_TRAILING_TRACK_CLASS} aria-hidden />
-          )
-        ) : null}
+            <div data-rail-row-title className="min-w-0 flex-1">
+              {renderRowMain(row, { isSelected, isFocused, pkgChip })}
+            </div>
+            {getActivityAt ? (
+              activityAt != null ? (
+                <span
+                  className={cn(
+                    SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
+                    'self-center tabular-nums text-role-micro font-medium text-text-faint',
+                  )}
+                >
+                  {railRelativeTime(activityAt)}
+                </span>
+              ) : (
+                // Keep the age column so titles do not jump when one row lacks activity.
+                <span className={SIDEBAR_RAIL_TRAILING_TRACK_CLASS} aria-hidden />
+              )
+            ) : null}
+          </span>
+        </span>
       </button>
       <AnimatePresence>
         {previewOpen && renderPopover ? (

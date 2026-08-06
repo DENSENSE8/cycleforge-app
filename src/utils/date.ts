@@ -458,6 +458,32 @@ export function formatDateTimePST(
     .replace(',', '');
 }
 
+/**
+ * Dense instant face for ledger columns: short month + day + wall clock, no
+ * year — e.g. `Jul 13, 4:15 PM`. Warehouse PST; follows the user's 12h/24h
+ * preference (override with `hour12`). Use for Tested-at and similar stamps
+ * where the full numeric `formatDateTimePST` truncates in a narrow track.
+ */
+export function formatMonthDayTimePST(
+  input: string | Date | null | undefined,
+  options?: { hour12?: boolean },
+): string {
+  if (!input) return 'N/A';
+  if (!(input instanceof Date)) {
+    const raw = String(input).trim();
+    if (!raw || raw === '1') return 'N/A';
+  } else if (Number.isNaN(input.getTime())) {
+    return 'N/A';
+  }
+
+  const dateKey = toPSTDateKey(input);
+  if (!dateKey) return 'N/A';
+  const day = formatDateKeyShort(dateKey);
+  const time = formatTime12hPST(input, { withSeconds: false, hour12: options?.hour12 });
+  if (!day || time === '--:--') return 'N/A';
+  return `${day}, ${time}`;
+}
+
 export function formatDatePST(
   input: string | Date | null | undefined,
   options?: { shortYear?: boolean; withLeadingZeros?: boolean }

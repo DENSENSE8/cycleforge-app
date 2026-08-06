@@ -1,5 +1,7 @@
 /**
  * GET /api/receiving-lines/incoming/details?po_id=<zoho_purchaseorder_id>
+ *   optional: &receiving_id=<carton> — prefer that carton for notes/shipment
+ *             when it belongs to the PO (multi-box Unbox focus).
  *
  * One round-trip read for the IncomingDetailsPanel tabs:
  *   - po               — zoho_po_mirror header
@@ -30,6 +32,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const url = new URL(req.url);
     const poId = (url.searchParams.get('po_id') || '').trim();
     const shipmentIdParam = (url.searchParams.get('shipment_id') || '').trim();
+    const focusReceivingParam = (url.searchParams.get('receiving_id') || '').trim();
+    const focusReceivingId = (() => {
+      const n = Number(focusReceivingParam);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })();
 
     // ── Shipment-anchored fallback (no resolved PO) ─────────────────────────
     // A "Delivered · not scanned" box whose tracking# never resolved to a Zoho
@@ -313,13 +320,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     // Cache the dominant PO-anchored detail branch org-scoped (polled 60s per open
-    // drawer). Keyed by po_id; every receiving write busts receiving-lines
-    // (org-scoped). The shipment/inbound fallback branches above return before
-    // this and stay uncached (rarer; some resolve transient shipment state).
+    // drawer). Keyed by po_id (+ optional focus receiving_id for multi-box);
+    // every receiving write busts receiving-lines (org-scoped). The shipment/
+    // inbound fallback branches above return before this and stay uncached
+    // (rarer; some resolve transient shipment state).
     const payload = await getOrSet(
       CACHE_NS.receivingIncomingDetails,
       orgId,
-      createCacheLookupKey({ poId }),
+      createCacheLookupKey({ poId, focusReceivingId }),
       CACHE_TTL.rollup,
       [CACHE_TAGS.receivingLines],
       async () => {
@@ -353,6 +361,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const mirror = mirrorRes.rows[0] ?? null;
 
     // ── receiving row + shipment + carrier status ──────────────────────────
+    // Prefer the Unbox/Triage focus carton when it belongs to this PO (multi-box);
+    // otherwise fall back to any zoho_po carton for the PO.
     const recvRes = await tenantQuery<{
       id: number;
       shipment_id: number | null;
@@ -367,29 +377,75 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       shipment_out_for_delivery_at: string | null;
     }>(
       orgId,
-      `SELECT r.id,
-              r.shipment_id,
-              r.support_notes,
-              -- Wave-2 reader cutover: door-received stamp from receiving_triage
-              -- (1:1 street table); alias keeps the response key received_at.
-              rt.door_received_at::text       AS received_at,
-              stn.tracking_number_raw         AS shipment_tracking_number_raw,
-              stn.carrier                     AS shipment_carrier,
-              stn.latest_status_category      AS shipment_status_category,
-              stn.is_delivered                AS shipment_is_delivered,
-              stn.delivered_at::text          AS shipment_delivered_at,
-              stn.last_checked_at::text       AS shipment_last_checked_at,
-              stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
-         FROM receiving_carton r
-         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
-         LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-        WHERE r.source = 'zoho_po'
-          AND r.zoho_purchaseorder_id = $1
-          AND r.organization_id = $2
-        LIMIT 1`,
-      [poId, orgId],
+      focusReceivingId != null
+        ? `SELECT r.id,
+                  r.shipment_id,
+                  r.support_notes,
+                  rt.door_received_at::text       AS received_at,
+                  stn.tracking_number_raw         AS shipment_tracking_number_raw,
+                  stn.carrier                     AS shipment_carrier,
+                  stn.latest_status_category      AS shipment_status_category,
+                  stn.is_delivered                AS shipment_is_delivered,
+                  stn.delivered_at::text          AS shipment_delivered_at,
+                  stn.last_checked_at::text       AS shipment_last_checked_at,
+                  stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
+             FROM receiving_carton r
+             LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+            WHERE r.id = $3
+              AND r.organization_id = $2
+              AND r.source = 'zoho_po'
+              AND r.zoho_purchaseorder_id = $1
+            LIMIT 1`
+        : `SELECT r.id,
+                  r.shipment_id,
+                  r.support_notes,
+                  -- Wave-2 reader cutover: door-received stamp from receiving_triage
+                  -- (1:1 street table); alias keeps the response key received_at.
+                  rt.door_received_at::text       AS received_at,
+                  stn.tracking_number_raw         AS shipment_tracking_number_raw,
+                  stn.carrier                     AS shipment_carrier,
+                  stn.latest_status_category      AS shipment_status_category,
+                  stn.is_delivered                AS shipment_is_delivered,
+                  stn.delivered_at::text          AS shipment_delivered_at,
+                  stn.last_checked_at::text       AS shipment_last_checked_at,
+                  stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
+             FROM receiving_carton r
+             LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+            WHERE r.source = 'zoho_po'
+              AND r.zoho_purchaseorder_id = $1
+              AND r.organization_id = $2
+            LIMIT 1`,
+      focusReceivingId != null ? [poId, orgId, focusReceivingId] : [poId, orgId],
     );
-    const recv = recvRes.rows[0] ?? null;
+    let recv = recvRes.rows[0] ?? null;
+    // Focus carton missing or not on this PO — fall back to any matching carton.
+    if (!recv && focusReceivingId != null) {
+      const fallbackRes = await tenantQuery<typeof recvRes.rows[0]>(
+        orgId,
+        `SELECT r.id,
+                r.shipment_id,
+                r.support_notes,
+                rt.door_received_at::text       AS received_at,
+                stn.tracking_number_raw         AS shipment_tracking_number_raw,
+                stn.carrier                     AS shipment_carrier,
+                stn.latest_status_category      AS shipment_status_category,
+                stn.is_delivered                AS shipment_is_delivered,
+                stn.delivered_at::text          AS shipment_delivered_at,
+                stn.last_checked_at::text       AS shipment_last_checked_at,
+                stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
+           FROM receiving_carton r
+           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+           LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+          WHERE r.source = 'zoho_po'
+            AND r.zoho_purchaseorder_id = $1
+            AND r.organization_id = $2
+          LIMIT 1`,
+        [poId, orgId],
+      );
+      recv = fallbackRes.rows[0] ?? null;
+    }
 
     // ── Shipment events (last 25) ──────────────────────────────────────────
     let shipmentEvents: Array<{

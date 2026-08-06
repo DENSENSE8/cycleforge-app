@@ -308,7 +308,7 @@ export function StudioCanvas({
           ) : (
             <>
               <span className="tabular-nums">
-                {procedureByNode.size} mapped {procedureByNode.size === 1 ? 'node' : 'nodes'}
+                {procedureByNode.size} mapped nodes
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-sky-500" /> reads

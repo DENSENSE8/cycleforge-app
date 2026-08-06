@@ -458,7 +458,7 @@ html[data-color-scheme='dark'] .ring-gray-100 { --tw-ring-color: #1e293b; }
 html[data-color-scheme='dark'] .ring-slate-100 { --tw-ring-color: #1e293b; }
 
 /* Scrollbar thumb — the light-mode rgba(0,0,0,.1) vanishes on a dark canvas. */
-html[data-color-scheme='dark'] ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); }
+html[data-color-scheme='dark'] ::-webkit-scrollbar-thumb { background-color: rgba(148, 163, 184, 0.25); }
 
 /* Disabled-state neutral fills (disabled:bg-gray-*) — distinct utility class
    from the bare bg-gray-*, so they need their own dark mapping. */
@@ -646,6 +646,17 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
     inset -10px 0 10px -10px rgba(15, 23, 42, 0.2);
 }
 
+/* Sticky bottom X triage gutter — custom always-on track/thumb is painted in
+   GridStickyXScrollbar (macOS overlay native bars only appear while scrolling).
+   Keep this hook so accidental native chrome on the sync scroller stays hidden. */
+[data-grid-sticky-x] .no-scrollbar {
+  scrollbar-width: none;
+}
+[data-grid-sticky-x] .no-scrollbar::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+
 /* Sticky column header — soft depth once rows scroll under the frozen band. */
 [data-cf-grid].cf-grid-scrolled-y [data-grid-col-header] {
   box-shadow: 0 4px 10px -6px rgba(15, 23, 42, 0.16);
@@ -690,38 +701,30 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   transform: translateX(calc(-1 * var(--cf-grid-sx, 0px)));
 }
 
-/* ── Ops spreadsheet skin (LedgerGrid) — continuous airtable grid ──
-   ONE line color (`border-default`) through header AND body so column rules
-   stay visible on the card-white frozen band (light `border-subtle` ≡
-   `surface-strong` and would erase header verticals). Outer frame is
-   `[data-table-surface]` (rounded-xl + overflow-hidden + raised). Opt-in via
-   `data-grid-skin="airtable"`. Never border-strong (the black cage). */
+/* ── Ops spreadsheet skin (LedgerGrid) — quiet row rules only (1B) ──
+   BOTTOM hairlines separate rows; NO vertical column cage so data pops and
+   structure recedes. `--cf-grid-line` = `border-hairline` (near-invisible).
+   Outer frame is `[data-table-surface]`. Opt-in via `data-grid-skin="airtable"`.
+   Never border-strong (the black cage). */
 [data-grid-skin='airtable'] {
-  --cf-grid-line: var(--ds-color-border-default);
+  --cf-grid-line: var(--ds-color-border-hairline);
   --cf-grid-line-w: var(--ds-border-width-thin);
   --cf-queue-row-px: 0px;
   background-color: var(--ds-color-background-surface);
 }
 
-/* Internal grid only (RIGHT + BOTTOM) — header + body + summary share one
-   continuous column-line language. Shell owns the outer perimeter. */
+/* Internal grid: BOTTOM row rules only — header + body + summary share one
+   horizontal-line language. No border-right (1B). Shell owns the outer perimeter. */
 [data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > *,
 [data-grid-skin='airtable'] [data-order-row-id] > *,
 [data-grid-skin='airtable'] [data-grid-summary-row] > * {
-  border-right: var(--cf-grid-line-w) solid var(--cf-grid-line);
   border-bottom: var(--cf-grid-line-w) solid var(--cf-grid-line);
+  border-right-width: 0;
   border-left-width: 0;
   border-top-width: 0;
 }
 
-/* Trailing column: shell owns the right perimeter — no cell right rule. */
-[data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > *:last-child,
-[data-grid-skin='airtable'] [data-order-row-id] > *:last-child,
-[data-grid-skin='airtable'] [data-grid-summary-row] > *:last-child {
-  border-right-width: 0;
-}
-
-/* Drop React container hairlines so cell rules are the only seams (no doubles). */
+/* Drop React container hairlines so cell bottom rules are the only seams (no doubles). */
 [data-grid-skin='airtable'] [role='row'],
 [data-grid-skin='airtable'] [data-order-row-id],
 [data-grid-skin='airtable'] [data-grid-summary-row] {

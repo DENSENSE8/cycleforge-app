@@ -34,13 +34,13 @@ function qtyValue(row: ReceivingLineRow): number {
   return Number(row.quantity_expected ?? row.quantity_received ?? 0) || 0;
 }
 
+function priceValue(row: ReceivingLineRow): number {
+  return Number(row.unit_price) || 0;
+}
+
 function conditionRank(row: ReceivingLineRow): number {
   const grade = resolveConditionGrade(row.condition_grade);
   return CONDITION_RANK.get(grade) ?? CONDITION_GRADES.length;
-}
-
-function platformValue(row: ReceivingLineRow): string {
-  return (row.source_platform || row.inbound_source_type || '').trim().toLowerCase();
 }
 
 function orderValue(row: ReceivingLineRow): string {
@@ -95,6 +95,9 @@ export function compareReceivingGridRows(
     case 'qty':
       primary = qtyValue(a) - qtyValue(b);
       break;
+    case 'price':
+      primary = priceValue(a) - priceValue(b);
+      break;
     case 'condition':
       primary = conditionRank(a) - conditionRank(b);
       break;
@@ -103,9 +106,6 @@ export function compareReceivingGridRows(
         numeric: true,
         sensitivity: 'base',
       });
-      break;
-    case 'platform':
-      primary = platformValue(a).localeCompare(platformValue(b), undefined, { sensitivity: 'base' });
       break;
     case 'order':
       primary = orderValue(a).localeCompare(orderValue(b), undefined, {

@@ -154,6 +154,61 @@ test('needs-test return_scope partitions return and standard cartons', () => {
   assert.match(build('standard').list.sql, /COALESCE\(r\.is_return, false\) = false/);
 });
 
+test('needs-test priority_only filters explicit priority cartons', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(
+      new URLSearchParams('view=needs-test&return_scope=all&priority_only=1'),
+    ),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(
+    built.list.sql,
+    /COALESCE\(r\.is_priority, false\) = true OR r\.priority_tier IS NOT NULL/,
+  );
+});
+
+test('needs-test with tester scopes to assigned_tech_id; without tester is the full pool', () => {
+  const scoped = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(
+      new URLSearchParams('view=needs-test&tester=12'),
+    ),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(scoped.list.sql, /rlt\.assigned_tech_id = \$/);
+  assert.ok(scoped.list.params.includes(12));
+
+  const pool = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=needs-test')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.doesNotMatch(pool.list.sql, /rlt\.assigned_tech_id = \$/);
+});
+
+test('scanned priority_only filters Unbox Urgent queue', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(
+      new URLSearchParams('view=scanned&priority_only=1'),
+    ),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(
+    built.list.sql,
+    /COALESCE\(r\.is_priority, false\) = true OR r\.priority_tier IS NOT NULL/,
+  );
+});
+
 test('testing history scopes membership and verdict rollup to the requested week', () => {
   const built = buildReceivingLinesListSql({
     query: parseReceivingLinesQuery(
@@ -347,6 +402,28 @@ test('unmatched placeholders included only for all/activity, non-zoho_po scope, 
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=all&search_field=serial')), false);
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=all&search_field=po')), true);
   assert.equal(shouldIncludeUnmatchedPlaceholders(q('view=all&search_field=tracking')), true);
+});
+
+test('unmatched placeholders: activity requires Unbox-touch; all stays ungated', () => {
+  const UNBOX_TOUCH = /ru\.unboxed_at IS NOT NULL\s+OR ru\.opened_at IS NOT NULL\s+OR unbox_open\.unbox_opened_at IS NOT NULL/;
+  const activity = buildUnmatchedPlaceholdersSql(
+    parseReceivingLinesQuery(new URLSearchParams('view=activity')),
+    ORG,
+  );
+  assert.match(activity.list.sql, UNBOX_TOUCH, 'activity list must gate on Unbox-touch');
+  assert.match(activity.count.sql, UNBOX_TOUCH, 'activity count must gate on Unbox-touch');
+  assert.match(
+    activity.count.sql,
+    /LEFT JOIN receiving_unbox ru/,
+    'activity count needs receiving_unbox for the Unbox-touch gate',
+  );
+
+  const all = buildUnmatchedPlaceholdersSql(
+    parseReceivingLinesQuery(new URLSearchParams('view=all')),
+    ORG,
+  );
+  assert.doesNotMatch(all.list.sql, UNBOX_TOUCH, 'view=all list must stay inclusive of door-scan Unfound');
+  assert.doesNotMatch(all.count.sql, UNBOX_TOUCH, 'view=all count must stay inclusive of door-scan Unfound');
 });
 
 test('unbox-opened placeholders included only for view=unbox_opened with the same gates', () => {

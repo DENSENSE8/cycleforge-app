@@ -38,7 +38,7 @@ export function resolveTestingTerminal(
       : isPublic
         ? submitting
           ? 'Sending…'
-          : 'Send reply'
+          : 'Send'
         : submitting
           ? 'Saving…'
           : 'Add note';

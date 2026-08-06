@@ -64,7 +64,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
     if (error || !payload?.success) {
         return (
             <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error || 'Product not found'}
                 </div>
                 <p className="mt-4 text-sm text-text-soft">
@@ -235,7 +235,7 @@ interface DetailCardProps {
 function DetailCard({ title, action, className, children }: DetailCardProps) {
     return (
         <section
-            className={`rounded-lg border border-border-soft bg-surface-card p-4 ${className ?? ''}`}
+            className={`rounded-none border border-border-soft bg-surface-card p-4 ${className ?? ''}`}
         >
             <header className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-text-default">{title}</h2>

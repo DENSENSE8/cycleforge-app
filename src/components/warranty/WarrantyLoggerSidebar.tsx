@@ -185,7 +185,7 @@ export function WarrantyLoggerSidebar({
                   type="button"
                   onClick={() => openClaim(selected ? null : claim.id)}
                   className={cn(
-                    'w-full rounded-lg border px-3 py-2 text-left transition',
+                    'w-full rounded-none border px-3 py-2 text-left transition',
                     selected
                       ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
                       : 'border-border-hairline bg-surface-card hover:border-border-soft hover:bg-surface-hover',

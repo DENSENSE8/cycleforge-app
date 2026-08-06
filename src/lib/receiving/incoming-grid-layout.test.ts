@@ -92,9 +92,10 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
       'Incoming opts out of the fill track so columns can exceed the card',
     );
     // Fixed preferred width; drag-resize still overrides via `--cf-col-title`.
+    // Rem floors density-scale for spreadsheet zoom (`--cf-density`).
     assert.match(
       template,
-      /var\(--cf-col-title, minmax\(16rem, 16rem\)\)/,
+      /var\(--cf-col-title, calc\(16rem \* var\(--cf-density, 1\)\)\)/,
       'title is a fixed 16rem preferred track, not minmax(…, 1fr)',
     );
   });

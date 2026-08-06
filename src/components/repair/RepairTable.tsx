@@ -1,47 +1,45 @@
 'use client';
 
-import { AnimatePresence } from '@/design-system/motion';
+/**
+ * Repair queue host — thin composer for the {@link RepairGridView} spreadsheet.
+ * Owns fetch, the open (detail-panel) record + keyboard move, the `?openRepair=`
+ * deep-link, rail multi-select (History SoT — no bottom capsule), and workbench chrome.
+ * Sort is URL-backed (`?sort=`/`?dir=`, {@link useRepairDisplaySort}) so the
+ * top-bar dropdown and the grid header clicks share one state (dashboard
+ * parity). Per-row Print / Square-pay live in `RepairDetailsPanel`.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Copy, Maximize2 } from '../Icons';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { RepairDetailsPanel } from './RepairDetailsPanel';
 import { RepairGridView } from './repair-grid/RepairGridView';
+import { RepairRailShell } from './rail/RepairRailShell';
 import { useRepairsTable } from '@/hooks/useRepairs';
 import { useRepairDisplaySort } from '@/hooks/useRepairDisplaySort';
+import { useRepairRailSelection } from '@/hooks/useRepairRailSelection';
 import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
-import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
-import { useTableSelection } from '@/hooks/useTableSelection';
 import { REPAIR_SELECTION_SCOPE } from '@/lib/selection/repair-scopes';
-import type { SelectionAction } from '@/lib/selection/selection-actions';
+import { emitToggleAll } from '@/lib/selection/table-selection';
 import { compareRepairGridRows } from '@/lib/repair/repair-grid-compare';
-import { repairTicketValue } from '@/lib/repair/repair-grid-layout';
 import {
-  WORKBENCH_CHROME_COLUMN,
-  WORKBENCH_GUTTERS,
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
-import { RepairWorkspaceHeader } from './RepairWorkspaceHeader';
-import { toast } from '@/lib/toast';
+import { RepairTriageBand, RepairWorkspaceHeader } from './RepairWorkspaceHeader';
 import { cn } from '@/utils/_cn';
 
 interface RepairTableProps {
   filter: RepairTab;
 }
 
-/**
- * Repair queue host — thin composer for the {@link RepairGridView} spreadsheet.
- * Owns fetch, the open (detail-panel) record + keyboard move, the `?openRepair=`
- * deep-link, the repair-scoped bulk-selection bar, and the workbench chrome.
- * Sort is URL-backed (`?sort=`/`?dir=`, {@link useRepairDisplaySort}) so the
- * top-bar dropdown and the grid header clicks share one state (dashboard
- * parity). Per-row Print / Square-pay live in `RepairDetailsPanel`.
- */
 export function RepairTable({ filter }: RepairTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.get('search');
   const [selectedRepair, setSelectedRepair] = useState<RSRecord | null>(null);
+  const [repairControlsEl, setRepairControlsEl] = useState<HTMLDivElement | null>(null);
 
   // URL-backed display sort — `newest` (default) keeps the server `created_at
   // DESC`; a column sort re-orders via the house comparator.
@@ -61,6 +59,22 @@ export function RepairTable({ filter }: RepairTableProps) {
         : repairs,
     [repairs, columnSort, dir],
   );
+
+  const handleOpen = useCallback((repair: RSRecord) => setSelectedRepair(repair), []);
+
+  const { selectedRows } = useRepairRailSelection({
+    onOpenRepair: handleOpen,
+  });
+
+  // Cardinality decides the body: 1 → inspect panel; 2+ → batch shell (panel off).
+  useEffect(() => {
+    if (selectedRows.length === 1) {
+      const row = selectedRows[0]!;
+      setSelectedRepair((prev) => (prev?.id === row.id ? prev : row));
+    } else if (selectedRows.length >= 2) {
+      setSelectedRepair(null);
+    }
+  }, [selectedRows]);
 
   /** Open RepairDetailsPanel when landing from a printed repair QR (`?openRepair=`). */
   useEffect(() => {
@@ -102,8 +116,11 @@ export function RepairTable({ filter }: RepairTableProps) {
     };
   }, [loading, pathname, repairs, router, searchParams]);
 
-  const handleOpen = useCallback((repair: RSRecord) => setSelectedRepair(repair), []);
-  const handleCloseDetails = useCallback(() => setSelectedRepair(null), []);
+  // D4: closing the rail clears the check-set.
+  const handleCloseDetails = useCallback(() => {
+    setSelectedRepair(null);
+    emitToggleAll(REPAIR_SELECTION_SCOPE, 'none');
+  }, []);
 
   // Keyboard move up/down walks the DISPLAYED order (matches the grid).
   const selectedIndex = selectedRepair
@@ -118,51 +135,15 @@ export function RepairTable({ filter }: RepairTableProps) {
     }
   }, [selectedIndex, displayRepairs]);
 
-  // ── Bulk selection (minimal, non-destructive) ─────────────────────────────
-  const selectedRows = useTableSelection<RSRecord>(REPAIR_SELECTION_SCOPE, (r) => r.id);
-  const bulkActions = useMemo<SelectionAction<RSRecord>[]>(
-    () => [
-      {
-        key: 'open',
-        label: 'Open selected repair',
-        icon: <Maximize2 className="h-4 w-4" />,
-        primary: true,
-        maxSelected: 1,
-        run: (rows) => {
-          const row = rows[0];
-          if (row) setSelectedRepair(row);
-        },
-      },
-      {
-        key: 'copy-tickets',
-        label: 'Copy ticket numbers',
-        icon: <Copy className="h-4 w-4" />,
-        run: async (rows) => {
-          const tickets = rows.map(repairTicketValue).filter(Boolean);
-          if (!tickets.length) {
-            toast.error('No ticket numbers to copy');
-            return;
-          }
-          try {
-            await navigator.clipboard.writeText(tickets.join('\n'));
-            toast.success(`Copied ${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`);
-          } catch {
-            toast.error('Failed to copy');
-          }
-        },
-      },
-    ],
-    [],
-  );
-
   return (
     <div className="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <div className={`relative z-header shrink-0 ${WORKBENCH_CHROME_COLUMN}`}>
-        <RepairWorkspaceHeader />
+      <div className={cn('relative z-header shrink-0 flex flex-col gap-0', WORKBENCH_SHEET_CHROME)}>
+        <RepairWorkspaceHeader className="rounded-none border-l-0 border-t-0 shadow-sm" />
+        <RepairTriageBand controlsSlotRef={setRepairControlsEl} />
       </div>
-      {/* Grid gutter column — the grid's own TABLE_SURFACE_CLIP is the single
-          card (no DateRangeHeader band, no nested card wrapper). */}
-      <div className={cn(WORKBENCH_GUTTERS, 'relative flex min-h-0 min-w-0 flex-1 flex-col pb-4 pt-3')}>
+      {/* Grid mounts flush in the sheet host — the grid's own sheet surface is
+          the single plane (no gutter column, no nested card wrapper). */}
+      <div className={WORKBENCH_SHEET_HOST}>
         <RepairGridView
           records={displayRepairs}
           loading={loading}
@@ -175,29 +156,25 @@ export function RepairTable({ filter }: RepairTableProps) {
           onSortChange={(key, nextDir) => {
             if (isRepairColumnSort(key)) setSort(key, nextDir);
           }}
-        />
-        <ContextualSelectionBar
-          scope={REPAIR_SELECTION_SCOPE}
-          rows={selectedRows}
-          actions={bulkActions}
+          columnTriggerPortalTarget={repairControlsEl}
         />
       </div>
 
-      <AnimatePresence>
-        {selectedRepair && (
-          <RepairDetailsPanel
-            repair={selectedRepair}
-            onClose={handleCloseDetails}
-            onUpdate={() => {
-              void refetchRepairs();
-            }}
-            onMoveUp={handleMoveUp}
-            onMoveDown={handleMoveDown}
-            disableMoveUp={selectedIndex <= 0}
-            disableMoveDown={selectedIndex < 0 || selectedIndex >= displayRepairs.length - 1}
-          />
-        )}
-      </AnimatePresence>
+      <RepairRailShell />
+
+      {selectedRepair ? (
+        <RepairDetailsPanel
+          repair={selectedRepair}
+          onClose={handleCloseDetails}
+          onUpdate={() => {
+            void refetchRepairs();
+          }}
+          onMoveUp={handleMoveUp}
+          onMoveDown={handleMoveDown}
+          disableMoveUp={selectedIndex <= 0}
+          disableMoveDown={selectedIndex < 0 || selectedIndex >= displayRepairs.length - 1}
+        />
+      ) : null}
     </div>
   );
 }

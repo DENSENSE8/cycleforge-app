@@ -19,13 +19,10 @@ export function getTestingStatusDot(row: ReceivingLineRow): string {
 }
 
 function getTestingStatusDotLabel(row: ReceivingLineRow): string {
-  const stage = workflowStage(row.workflow_status);
   // Short lifecycle label only — the old `${label} — ${description}` form wrapped
-  // into a full-width banner in the hover popover badge. DONE is the terminal
-  // "finalized" stage, but operator-facing it reads as "Received" (matching the
-  // receiving rails + workflowStatusTableLabel's DONE → RECEIVED), never "Done".
-  if (stage.status === 'DONE') return 'Received';
-  return stage.label;
+  // into a full-width banner in the hover popover badge. DONE's SoT label is
+  // "Received" (workflow-stages.ts); no local remap.
+  return workflowStage(row.workflow_status).label;
 }
 
 /** Full invalidation triggers — module-scope so the shell's refresh-listener
@@ -69,6 +66,8 @@ interface Props {
   testerId?: number | null;
   /** Client-side filter over the loaded rail rows. */
   filterText?: string;
+  /** Client-side facet keep-filter (priority / type / platform). */
+  includeRow?: (row: ReceivingLineRow) => boolean;
 }
 
 /**
@@ -82,6 +81,7 @@ export function TestingRecentRail({
   limit = 25,
   testerId = null,
   filterText = '',
+  includeRow,
 }: Props) {
   const scopedTesterId =
     Number.isFinite(testerId) && (testerId as number) > 0 ? (testerId as number) : null;
@@ -124,6 +124,7 @@ export function TestingRecentRail({
         limit={limit}
         queryKey={queryKey}
         fetchFn={fetchFn}
+        includeRow={includeRow}
         // Mode isolation: ignore shared `receiving-line-updated`. Workspace
         // patches (serials / verdict) stay on that bus; dock membership +
         // tested qty reconcile via refreshEvents + allowlisted RQ helpers.

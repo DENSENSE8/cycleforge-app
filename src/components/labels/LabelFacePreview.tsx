@@ -6,11 +6,16 @@
  * Renders the SAME HTML document Chrome prints ({@link buildLabelHtml} with
  * `preview: true`) inside a scaled iframe — so the Unbox / Testing / Products
  * preview cannot drift from the physical sticker. `embedded` strips the
- * bordered card chrome for use inside a menu/popover.
+ * bordered card chrome for use inside a menu/popover / procedure host.
  *
  * The iframe is always black-on-white paper (print-faithful). Host width is
- * measured and the 2in×1in document is scaled up to at most 2.5× (~480×240)
- * so it stays readable without overflowing narrow popovers.
+ * measured and the 2in×1in document is scaled to fit. Default `fit="capped"`
+ * stops at 2.5× (~480×240) for popovers; Unbox centre uses `fit="host"` so the
+ * sticker spans the same fixed column width as the PO lines above it.
+ *
+ * **Width wrapper:** the outer shell is full-width + transparent (`embedded`)
+ * so left/right gutters never paint a card fill. Only the sticker box owns the
+ * white paper background.
  *
  * Text-slot updates (center note, corners, HRI) patch the live iframe DOM via
  * {@link patchLabelFaceDocument} — rewriting `srcDoc` on every keystroke would
@@ -24,6 +29,8 @@ import {
   patchLabelFaceDocument,
   type LabelFaceModel,
 } from '@/lib/print/labelFace';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 /** CSS px per CSS inch (browser convention). */
 const CSS_PX_PER_IN = 96;
@@ -31,15 +38,21 @@ const CSS_PX_PER_IN = 96;
 const LABEL_WIDTH_IN = 2;
 /** Intrinsic label height in inches. */
 const LABEL_HEIGHT_IN = 1;
-/** Cap so the sticker stays readable but not giant on a wide card. */
-const MAX_SCALE = 2.5;
+/** Cap for popovers / nested cards — readable, not giant. */
+const MAX_SCALE_CAPPED = 2.5;
 
 export function LabelFacePreview({
   model,
   embedded,
+  fit = 'capped',
 }: {
   model: LabelFaceModel;
   embedded?: boolean;
+  /**
+   * `capped` — scale up to {@link MAX_SCALE_CAPPED} (popover / nested).
+   * `host` — fill the measured host width (Unbox centre under PO lines).
+   */
+  fit?: 'capped' | 'host';
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -112,30 +125,41 @@ export function LabelFacePreview({
     const update = () => {
       const widthPx = el.clientWidth;
       if (widthPx <= 0) return;
-      const fit = widthPx / (LABEL_WIDTH_IN * CSS_PX_PER_IN);
-      setScale(Math.min(MAX_SCALE, Math.max(0.5, fit)));
+      const fitScale = widthPx / (LABEL_WIDTH_IN * CSS_PX_PER_IN);
+      const next =
+        fit === 'host'
+          ? fitScale
+          : Math.min(MAX_SCALE_CAPPED, fitScale);
+      setScale(Math.max(0.5, next));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [fit]);
 
   if (!matrixValue) return null;
 
+  // Embedded: full-width transparent shell — white lives ONLY on the sticker.
+  // Default: soft card chrome around the face (worksheet / standalone hosts).
   const shell = embedded
-    ? 'w-full bg-transparent'
-    : 'w-full rounded-lg border border-border-soft/80 bg-surface-card px-3 py-3 shadow-sm';
+    ? 'w-full min-w-0 bg-transparent'
+    : cn(
+        'w-full border border-border-soft/80 bg-surface-card px-3 py-3 shadow-sm',
+        cornerClass('control'),
+      );
 
   const scaledW = LABEL_WIDTH_IN * CSS_PX_PER_IN * scale;
   const scaledH = LABEL_HEIGHT_IN * CSS_PX_PER_IN * scale;
 
   return (
-    <div className={shell}>
-      <div ref={hostRef} className="w-full">
+    <div className={shell} data-label-face-shell={embedded ? 'embedded' : 'card'}>
+      {/* Width host — measures available width; L/R gutters stay transparent. */}
+      <div ref={hostRef} className="w-full min-w-0">
         <div
           className="relative mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-border-soft/60"
           style={{ width: scaledW, height: scaledH, maxWidth: '100%' }}
+          data-label-sticker
         >
           {html ? (
             <iframe

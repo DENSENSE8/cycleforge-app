@@ -70,7 +70,7 @@ export function MasterNavView({
           These five are the only content that can sit here for free: the band's
           height is already reserved by the seam, so as icons they cost the map
           nothing, where as ROWS they cost it vertical space. */}
-      <div className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-center')}>
+      <div className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-stretch')}>
         <SpineTopPins />
       </div>
 

@@ -8,8 +8,8 @@
  *   no selection, receive   → ReceivingLinesTable (history)
  *
  * Logic lives in focused hooks; the rail-selection layer publishes bulk actions
- * into `rail-actions-store` so History / Incoming open the right rail instead of
- * the bottom capsule (Tech Testing keeps the plain bulk hook + capsule):
+ * into `rail-actions-store` so History / Incoming / Tech Testing open the right
+ * rail instead of the bottom capsule:
  *   - useReceivingDashboardMode .... `?mode=` → surface flags
  *   - useReceivingWorkspacePane .... workspace + nav + scan loader + recovery
  *   - useReceivingDetailOverlays ... carton details stack + incoming PO panel
@@ -20,7 +20,7 @@ import { useCallback, useEffect } from 'react';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
-import { dispatchReceivingWorkspaceClose } from '@/utils/events';
+import { dispatchReceivingWorkspaceClose, dispatchReceivingCloseHistoryTriage } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
@@ -66,6 +66,8 @@ export default function ReceivingDashboard() {
     setOverlayLog,
     incomingDetails,
     setIncomingDetails,
+    historyTriage,
+    setHistoryTriage,
     enrichOverlayLog,
   } = useReceivingDetailOverlays(isIncomingMode, incomingView);
 
@@ -89,6 +91,13 @@ export default function ReceivingDashboard() {
     }
   }, [isIncomingMode, selectedRows.length, incomingDetails, setIncomingDetails]);
 
+  // History triage (1-row inspect) yields to the batch shell at 2+ checks.
+  useEffect(() => {
+    if (selectedRows.length >= 2 && historyTriage) {
+      setHistoryTriage(null);
+    }
+  }, [selectedRows.length, historyTriage, setHistoryTriage]);
+
   const closeWorkspace = useCallback(() => {
     setWorkspace(null);
     setNav(null);
@@ -103,6 +112,11 @@ export default function ReceivingDashboard() {
     // no visible dismiss affordance after the capsule is gone.
     exitSelectMode();
   }, [setIncomingDetails, exitSelectMode]);
+
+  const closeHistoryTriage = useCallback(() => {
+    dispatchReceivingCloseHistoryTriage();
+    emitReceiving('receiving-clear-line');
+  }, []);
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -122,6 +136,8 @@ export default function ReceivingDashboard() {
         staffId={staffId}
         incomingDetails={incomingDetails}
         onCloseIncoming={closeIncoming}
+        historyTriage={historyTriage}
+        onCloseHistoryTriage={closeHistoryTriage}
         onCloseWorkspace={closeWorkspace}
       />
 

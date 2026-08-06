@@ -9,16 +9,16 @@
  * Region contracts (contextual-display.md): Pickup/Sales are **Monitor** (read
  * feeds). Repair Workbench lives on `/repair`, not here.
  *
- * Layout is the boxed sidebar-mode recipe (workbench-shell.tsx): pinned
- * `WorkbenchChromeHeader` above a bounded flex body whose table sits in a
- * `WorkbenchTablePane` card — not the KPI-scrolls-away full-bleed shell.
+ * Layout is the Sheets flush stack (workbench-shell.tsx): pinned flush
+ * `WalkInDeskHeader` (Band 1 tabs) above the mode feed, which mounts flush in
+ * `WORKBENCH_SHEET_HOST` (Band 2 KPI + feed live in `WalkInFeedPane`).
  */
 
 import { useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { zIndex } from '@/design-system/tokens/z-index';
-import { WORKBENCH_CHROME_COLUMN } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_SHEET_CHROME } from '@/components/dashboard/workbench-shell';
 import { WalkInDeskHeader } from '@/components/walk-in/WalkInDeskHeader';
 import { SalesHistoryTable } from '@/components/walk-in/SalesHistoryTable';
 import {
@@ -86,12 +86,13 @@ export function WalkInHistoryHub() {
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
       <div className="relative shrink-0" style={{ zIndex: zIndex.header }}>
-        <div className={WORKBENCH_CHROME_COLUMN}>
+        <div className={WORKBENCH_SHEET_CHROME}>
           <WalkInDeskHeader
             tabs={tabItems}
             activeTab={activeTab}
             onSelectTab={setTab}
             onOpenStation={openStation}
+            className="rounded-none border-l-0 border-t-0 shadow-sm"
           />
         </div>
       </div>

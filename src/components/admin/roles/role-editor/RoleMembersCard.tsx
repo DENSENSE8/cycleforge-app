@@ -18,7 +18,7 @@ export function RoleMembersCard({
   onRemove: (staffId: number) => void;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
+    <section className="overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Members</h2>
@@ -52,9 +52,9 @@ export function RoleMembersCard({
         <div className="border-t border-border-hairline px-5 py-3">
           <details>
             <summary className="cursor-pointer text-role-caption font-semibold text-text-muted hover:text-text-default">
-              + Add staff to role ({eligibleStaff.length} eligible)
+              + Add staff ({eligibleStaff.length})
             </summary>
-            <ul className="mt-2 max-h-64 divide-y divide-border-hairline overflow-y-auto rounded-lg border border-border-hairline">
+            <ul className="mt-2 max-h-64 divide-y divide-border-hairline overflow-y-auto rounded-none border border-border-hairline">
               {eligibleStaff.map((s) => (
                 <li key={s.id} className="flex items-center justify-between px-3 py-1.5">
                   <span className="text-xs text-text-default">{s.name} <span className="text-role-micro text-text-faint">· {s.role}</span></span>

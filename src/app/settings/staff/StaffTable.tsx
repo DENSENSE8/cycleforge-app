@@ -218,7 +218,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border-soft bg-surface-card p-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-none border border-border-soft bg-surface-card p-3 shadow-sm">
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}

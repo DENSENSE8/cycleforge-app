@@ -15,7 +15,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
-import { orderRecordHref, searchHitHref } from '@/lib/search/search-hit';
+import { searchHitHref } from '@/lib/search/search-hit';
 import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
@@ -125,9 +125,8 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
       subtitle: [row.order_id, row.serial_number, row.sku, row.account_source]
         .filter(Boolean)
         .join(' · '),
-      // Canonical Dashboard Search detail — kept in sync with searchHitHref('ORDER') /
-      // orderRecordHref so exact-arm and doc-arm hits deep-link identically.
-      href: orderRecordHref(row.id),
+      // Search feedback shell — kept in sync with searchHitHref('ORDER').
+      href: searchHitHref('ORDER', Number(row.id)),
       matchField: 'order',
       facets: {
         status: row.status != null ? String(row.status) : null,

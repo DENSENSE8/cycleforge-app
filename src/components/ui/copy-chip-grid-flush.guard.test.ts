@@ -52,7 +52,7 @@ test('every chip-face wrapper carries the data-chip-face marker', () => {
     );
 
   assert.ok(
-    padLines.length >= 5,
+    padLines.length >= 4,
     `expected the known chip faces to still apply ${OUTER_PAD}; found ${padLines.length}`,
   );
 

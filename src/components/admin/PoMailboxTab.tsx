@@ -103,7 +103,7 @@ export function PoMailboxTab() {
         </div>
       </header>
 
-      <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+      <section className="rounded-none border border-border-soft bg-surface-card shadow-sm">
         <div className="border-b border-border-hairline px-5 py-3">
           <h2 className="text-sm font-medium text-text-default">Connection</h2>
         </div>
@@ -172,7 +172,7 @@ export function PoMailboxTab() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+      <section className="rounded-none border border-border-soft bg-surface-card shadow-sm">
         <div className="border-b border-border-hairline px-5 py-3">
           <h2 className="text-sm font-medium text-text-default">Scope &amp; storage</h2>
         </div>

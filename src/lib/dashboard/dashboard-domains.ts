@@ -158,7 +158,7 @@ export function retiredWalkInHistoryTarget(
 
 // The inbound Triage/Unbox tab contract lives with the Docked lane
 // (`components/sidebar/receiving/incoming/inbound-docked-tabs.ts`), which reads the
-// `?sort=` axis (HISTORY_SORT_OPTIONS) directly. That axis is the INBOUND
+// `?sort=` wire axis (`HISTORY_SORT_WIRE_IDS`) directly. That axis is the INBOUND
 // desk's Docked server ordering; the outbound display sort is `QueueSortSwitch`'s own
 // state and grid COLUMN sort is `?colsort=`/`?coldir=` (`useUrlColumnSort`) —
 // three different jobs, three different keys, never overloaded onto one.

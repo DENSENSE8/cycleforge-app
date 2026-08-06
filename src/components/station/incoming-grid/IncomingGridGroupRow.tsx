@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
-import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
+import type { ReactNode } from 'react';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { IncomingGridColumn } from '@/lib/receiving/incoming-grid-layout';
-import { IncomingGridGroupSummary } from './IncomingGridGroupSummary';
 import { IncomingGridRow } from './IncomingGridRow';
 
 interface IncomingGridGroupRowProps {
@@ -18,15 +16,17 @@ interface IncomingGridGroupRowProps {
   selectedIds: Set<number>;
   handleSelectRow: (row: ReceivingLineRow) => void;
   handleToggleRow: (row: ReceivingLineRow) => void;
-  handleSelectGroup: (ids: readonly number[]) => void;
   clickSelect?: boolean;
   selectGutterChrome?: GridSelectGutterChrome;
   columns?: readonly IncomingGridColumn[];
 }
 
 /**
- * One PO group inside the Incoming LedgerGrid. Singleton → plain row;
- * multi-line → collapsible summary + child rows.
+ * One PO group inside the Incoming LedgerGrid.
+ *
+ * Always a flat list of leaf lines — no collapsible PO title summary (same
+ * Sheets golden as Unbox History). Grouping still drives upstream ordering;
+ * each line is its own selectable record.
  */
 export function IncomingGridGroupRow({
   group,
@@ -37,17 +37,10 @@ export function IncomingGridGroupRow({
   selectedIds,
   handleSelectRow,
   handleToggleRow,
-  handleSelectGroup,
   clickSelect = false,
   selectGutterChrome = 'always',
   columns,
 }: IncomingGridGroupRowProps) {
-  const isMulti = group.rows.length > 1;
-  const hasSelected = group.rows.some(
-    (r) => selectedId === r.id || (selectMode && selectedIds.has(r.id)),
-  );
-  const [expanded, setExpanded] = useState(selectMode || hasSelected);
-
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => (
     <IncomingGridRow
       key={row.id}
@@ -68,42 +61,9 @@ export function IncomingGridGroupRow({
     />
   );
 
-  if (!isMulti) {
-    return <>{renderLeaf(group.rows[0], baseStripeIndex)}</>;
-  }
-
-  const childIds = group.rows.map((r) => r.id);
-  const selectedCount = childIds.filter((id) => selectedIds.has(id)).length;
-  const allSelected = selectMode && childIds.length > 0 && selectedCount === childIds.length;
-  const someSelected = selectMode && selectedCount > 0 && !allSelected;
-
-  const onToggleGroupSelect = () => {
-    setExpanded(true);
-    handleSelectGroup(childIds);
-  };
-
   return (
-    <CollapsibleGroupRow
-      index={baseStripeIndex}
-      showChevron={false}
-      nestRail={false}
-      expanded={expanded}
-      onToggle={setExpanded}
-      summary={
-        <IncomingGridGroupSummary
-          rows={group.rows}
-          isMobile={isMobile}
-          columns={columns}
-          selectMode={selectMode}
-          allSelected={allSelected}
-          someSelected={someSelected}
-          onToggleGroupSelect={onToggleGroupSelect}
-          clickSelect={clickSelect}
-          selectGutterChrome={selectGutterChrome}
-        />
-      }
-    >
-      {group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + 1 + i))}
-    </CollapsibleGroupRow>
+    <>
+      {group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + i))}
+    </>
   );
 }

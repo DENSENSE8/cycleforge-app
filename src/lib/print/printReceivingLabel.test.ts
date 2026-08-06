@@ -38,6 +38,17 @@ test('receivingLabelPlatformDisplay keeps full Amazon name without a type', () =
   );
 });
 
+test('receivingLabelPlatformDisplay uses type alone when it already names the platform', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'ECWID',
+      receivingType: 'CUSTOM',
+      receivingTypeLabel: 'ECWID-RS',
+    }),
+    'ECWID-RS',
+  );
+});
+
 test('receivingLabelPoCornerDisplay shows provider ticket on label face', () => {
   assert.equal(
     receivingLabelPoCornerDisplay({

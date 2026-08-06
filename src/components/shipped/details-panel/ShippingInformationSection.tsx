@@ -226,6 +226,7 @@ export function ShippingInformationSection({
               key={`tracking-${index}-${row.shipmentId ?? 'none'}`}
               label={`Tracking Number${allTrackingRows.length > 1 ? ` ${index + 1}` : ''}`}
               value={draftValue}
+              carrierHint={shipped.carrier}
               placeholder="Enter tracking number"
               replaceNonce={index === 0 ? replaceTrackingNonce : 0}
               // Per-STN, not per-order: each tracking number links to its own

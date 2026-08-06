@@ -11,7 +11,6 @@
  *     chrome={<div className={WORKBENCH_SHEET_CHROME}><WorkbenchChromeHeader … /></div>}
  *   >
  *     <div className={WORKBENCH_SHEET_HOST}> sheet grid </div>
- *     // Framed (guttered) workbenches: WORKBENCH_CHROME_COLUMN / WORKBENCH_BODY_COLUMN
  *     // Sheets flush: WORKBENCH_SHEET_HOST + TABLE_SURFACE_SHEET_CLASS
  *   </DashboardScrollShell>
  *
@@ -25,39 +24,16 @@
 
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
-// Dependency-free geometry module on purpose — importing the capsule component
-// itself would pull framer-motion + the icon set into every layout consumer.
-import { SELECTION_BAR_SCROLL_INSET } from '@/design-system/components/selection-bar-geometry';
-import { cornerClass, nestedCornerClass } from '@/design-system/tokens/radius';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-
-/** Centered max-width gutter column — the one horizontal-inset SoT (chrome + body share it). */
-export const WORKBENCH_GUTTERS = 'mx-auto w-full max-w-[1440px] min-w-0 px-4 sm:px-6 lg:px-8';
-/** Chrome-slot wrapper: the pinned header band lives here (outside the scroll port).
- *  Unbox / Triage beside a floated scan dock use this same column so the 40px
- *  band face shares a Y row with `receivingScanBandClass` (panel outer `m-2`). */
-export const WORKBENCH_CHROME_COLUMN = cn(WORKBENCH_GUTTERS, 'py-2');
-/**
- * Scroll-body column: KPI strip then the framed ops table.
- *
- * The strip does NOT scroll away — {@link WORKBENCH_TABLE_VIEWPORT} bounds the
- * table below it, so the body never overflows by more than its own gutter and
- * the strip stays read-able beside the grid. (This comment said "scrolls away"
- * until 2026-07-31, contradicting the viewport docblock 15 lines down and the
- * E2E that asserted it.)
- * `pt-2` + chrome `py-2` = 1rem chrome→KPI, matching the KPI wrapper’s `mb-4`
- * so both seams around the strip are equal.
- */
-export const WORKBENCH_BODY_COLUMN = cn('relative flex flex-col', WORKBENCH_GUTTERS, 'pb-8 pt-2');
 
 /**
  * Flush spreadsheet body host — no horizontal gutters, no bottom float pad.
  *
  * Chrome on sheet surfaces uses {@link WORKBENCH_SHEET_CHROME} (same flush
- * left edge); framed workbenches keep {@link WORKBENCH_CHROME_COLUMN} gutters.
- * Pair with `TABLE_SURFACE_SHEET_CLASS` on the grid shell — never raw `p-0`
- * at call sites.
+ * left edge) — every workbench ops page is a flush sheet now (the framed
+ * `WORKBENCH_CHROME_COLUMN` gutter recipe was retired 2026-08-05). Pair with
+ * `TABLE_SURFACE_SHEET_CLASS` on the grid shell — never raw `p-0` at call sites.
  *
  * Golden: Unbox (major SoT) · Incoming Pipeline · History browse.
  */
@@ -65,32 +41,66 @@ export const WORKBENCH_SHEET_HOST = 'relative flex min-h-0 min-w-0 flex-1 flex-c
 
 /**
  * Flush spreadsheet chrome — same left edge as {@link WORKBENCH_SHEET_HOST}.
- * No `WORKBENCH_GUTTERS` side pad: tabs / KPI / triage abut the context rail
+ * No framed gutter side pad: tabs / KPI / triage abut the context rail
  * hairline instead of floating as inset card islands on the sunken ground.
  * Vertical rhythm comes from the band borders themselves (no outer `py`).
  */
 export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
 
 /**
- * Flush data-table triage band (Unbox Band 3 golden) — search left, refine /
- * controls right. Sits under KPI, above the sheet. `border-r` only: KPI owns
- * the seam above; the sheet owns `border-t` below. `pl-0` — flush to the sheet
- * edge (search icon lives inside the field). No vertical pad — chrome search
- * is a sunken plane edge-to-edge with this row (not a floated pill).
+ * Flush data-table triage band (Unbox History golden) — search flush left ·
+ * refine / controls · view toggles right. Sits under KPI, above the sheet.
+ * `border-r` only: KPI owns the seam above; the sheet owns `border-t` below.
+ * `pl-0` — flush to the sheet edge (search icon lives inside the field). No
+ * vertical pad — chrome search is a sunken plane edge-to-edge with this row
+ * (not a floated pill).
  *
- * Consumers: Unbox (`UnboxTriageBand` local twin), Locations, To-ship.
+ * Zone grammar (scanner left · workspace config right):
+ * - **Left** — data entry / queue filter (`search` flush to the sheet edge).
+ * - **Right** — refine (`right` + controls portal) then **view toggles**
+ *   (`kpiToggle` → `trailing` inspector). KPI hide sits immediately left of
+ *   the right-rail inspector so layout-modifying controls share one cluster.
+ *
+ * Consumers: Unbox (golden), Incoming, Locations, To-ship, cohort stations.
+ * KPI snap-collapse: {@link WorkbenchKpiBand} + {@link WorkbenchKpiCollapseToggle}
+ * (`workbench-kpi-collapse.tsx`) — `kpiToggle` hosts the toggle (never left of
+ * search; never over the select gutter).
  */
+
 export function WorkbenchTriageBand({
   search,
   right,
+  kpiToggle,
+  trailing,
   controlsSlotRef,
   controlsSlotProps,
+  controlsSlotClassName,
   className,
 }: {
   search: ReactNode;
   right?: ReactNode;
+  /**
+   * View-toggle zone — {@link WorkbenchKpiCollapseToggle}. Renders after the
+   * controls portal and immediately before {@link trailing} so KPI hide and
+   * the right-rail inspector read as one layout-control cluster. Never left of
+   * search (scanner ingestion stays flush-left).
+   */
+  kpiToggle?: ReactNode;
+  /**
+   * Far-right of the band (after `kpiToggle`) — e.g. Unbox History inspector
+   * toggle. Keeps secondary refine (`right` + portal) left of the primary
+   * park/expand affordances.
+   */
+  trailing?: ReactNode;
   controlsSlotRef?: Ref<HTMLDivElement>;
   controlsSlotProps?: HTMLAttributes<HTMLDivElement> & Partial<Record<`data-${string}`, string>>;
+  /**
+   * Class on the toolbar-portal host. Default is a `flex gap-2` cluster; pass
+   * `"contents"` when the portaled controls (week pill + column trigger) must be
+   * flat peers of `right` under the row's single `gap-2` (Unbox), rather than a
+   * nested flex seam.
+   */
+  controlsSlotClassName?: string;
   className?: string;
 }) {
   return (
@@ -100,85 +110,29 @@ export function WorkbenchTriageBand({
         className,
       )}
     >
-      <div className="flex min-w-0 shrink items-stretch">{search}</div>
+      <div className="flex min-w-0 flex-1 items-stretch">{search}</div>
       <div className="flex shrink-0 items-center gap-2 self-center">
         {right}
         {controlsSlotRef !== undefined || controlsSlotProps ? (
-          <div ref={controlsSlotRef} className="flex shrink-0 items-center gap-2" {...controlsSlotProps} />
+          <div
+            ref={controlsSlotRef}
+            className={controlsSlotClassName ?? 'flex shrink-0 items-center gap-2'}
+            {...controlsSlotProps}
+          />
         ) : null}
+        {kpiToggle}
+        {trailing}
       </div>
     </div>
   );
 }
 
-
-/**
- * Bounded host for a framed ops table that sits **under the KPI strip**
- * (Pending · Packed · Shipped · Labels). Sizes the grid to the viewport
- * remainder so the table owns Y scroll internally and the page does not grow.
- *
- * This is a depth contract, not just layout. `TABLE_SURFACE_*` frames the grid
- * as a raised card; an unbounded host lets that card grow past the fold, so its
- * bottom edge — and the elevation that sells the card — is never on screen. A
- * bounded host keeps all four edges visible and keeps the KPI strip pinned
- * instead of scrolling away under the tabs.
- *
- * `15.5rem` ≈ global header + tab band + KPI strip + triage band (Sheets flush
- * chrome stack). Gutters retired on To-ship.
- */
-export const WORKBENCH_TABLE_VIEWPORT = 'h-[calc(100dvh-15.5rem)] min-h-[24rem] min-w-0';
-
-/** {@link WORKBENCH_TABLE_VIEWPORT} for lanes with **no KPI strip** (Review). */
-export const WORKBENCH_TABLE_VIEWPORT_NO_KPI = 'h-[calc(100dvh-8rem)] min-h-[24rem] min-w-0';
-
-/** Bottom inset a bounded table host uses when nothing floats over it. */
-const WORKBENCH_TABLE_VIEWPORT_INSET = 'pb-3';
-
-/**
- * {@link WORKBENCH_TABLE_VIEWPORT} plus the right bottom inset for the lane.
- *
- * The bounded host is what makes this necessary: the grid sizes itself to the
- * host's CONTENT box and self-scrolls inside it, so its last row ends exactly
- * at the host's bottom edge — under the pinned bulk-selection capsule, which is
- * `fixed` to the viewport. Padding the page's outer scroll body does nothing
- * here; only the bounded host can move that edge.
- *
- * `bulkBarInset` is per-render, not permanent: reserving the capsule's height
- * on every grid all the time would cost ~1.5 rows of a warehouse monitor for a
- * bar that is usually not there.
- */
-export function workbenchTableViewportClass(
-  opts: { bulkBarInset?: boolean; noKpi?: boolean } = {},
-): string {
-  return cn(
-    opts.noKpi ? WORKBENCH_TABLE_VIEWPORT_NO_KPI : WORKBENCH_TABLE_VIEWPORT,
-    opts.bulkBarInset ? SELECTION_BAR_SCROLL_INSET : WORKBENCH_TABLE_VIEWPORT_INSET,
-  );
-}
-
-/**
- * Padded, boxed table pane — the gutter column + one monitor card wrapping a
- * fixed-height, self-scrolling table (header band + scroll list). The shared
- * "was full-bleed → padded" body used by sidebar-mode surfaces whose modes stay
- * in the sidebar (Outbound Labels/Scan-out, Receiving incoming/history, Walk-in
- * repair). Caller owns the outer element (its bg / `relative` / height); this is
- * the gutter + card only. Compose it as a flex child of a flex parent.
- */
-export function WorkbenchTablePane({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn(WORKBENCH_GUTTERS, 'flex min-h-0 min-w-0 flex-1 flex-col pb-4 pt-3', className)}>
-      <div className={cn(MONITOR_SECTION_CARD_SCROLL_CLASS, 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden')}>
-        {children}
-      </div>
-    </div>
-  );
-}
+// Bounded absolute-height table hosts (`h-[calc(100dvh-15.5rem)]`) were retired
+// 2026-08-05: the `100dvh` calc ignores the app header above `<main>` and the
+// `flex-1` sheet host defeats the explicit height, so the To-ship lanes
+// collapsed to the `min-h` floor and destabilized the virtualizer. Every ops
+// sheet now self-scrolls via a flex-fill `WORKBENCH_SHEET_HOST` inside a
+// definite flex chain (Unbox golden) — one Y port, no absolute viewport calc.
 
 type TabSwitchTabs = React.ComponentProps<typeof TabSwitch>['tabs'];
 type TabSwitchSolidTone = React.ComponentProps<typeof TabSwitch>['solidTone'];
@@ -231,13 +185,13 @@ export function withScopeDivider<T extends { id: string }>(
  */
 
 /**
- * Solid workbench-chrome control radius — same as the band {@link TabSwitch}
- * active pill (History / Queue / …). Soft concentric corners on **all** sides
- * (`nestedCornerClass('card', 0.5)` → `rounded-xl`). Never square-flat
- * (`rounded-*-none`) against a trailing hairline — that was the wrong update.
- * Law: `source-of-truth.md` → Workbench chrome pill.
+ * Solid workbench-chrome control radius — **flush-square** (`cornerClass('flush')`
+ * → `rounded-none`). Ops chrome is zero-radius industrial: solid CTAs, tab bands,
+ * selects and toggle rows sit square on their hairline. The former soft-concentric
+ * pill (`nestedCornerClass('card', 0.5)` → `rounded-xl`) is retired debt.
+ * Law: `source-of-truth.md` → Workbench chrome flush.
  */
-export const WORKBENCH_CHROME_PILL_CLASS = nestedCornerClass('card', 0.5);
+export const WORKBENCH_CHROME_PILL_CLASS = cornerClass('flush');
 
 interface WorkbenchTrailingClusterProps {
   /** Escapes that precede display prefs (e.g. Incoming pagination). */
@@ -255,9 +209,8 @@ interface WorkbenchTrailingClusterProps {
    * controls; a hairline between Calendar and Sort reads as a broken pair of
    * display icons.
    *
-   * Neighbors of this hairline keep {@link WORKBENCH_CHROME_PILL_CLASS} on
-   * all sides (History band-tab SoT) — never `rounded-*-none`. Law:
-   * `source-of-truth.md` → Workbench chrome pill.
+   * Neighbors of this hairline are flush-square ({@link WORKBENCH_CHROME_PILL_CLASS}
+   * = `cornerClass('flush')`). Law: `source-of-truth.md` → Workbench chrome flush.
    */
   divide?: boolean;
   className?: string;
@@ -351,10 +304,11 @@ export interface WorkbenchChromeHeaderProps {
 }
 
 /**
- * The rounded-card tab strip: solid `TabSwitch` left · flex spacer · right
- * controls + toolbar portal · trailing CTAs. The single content-chrome tab
- * band for every workbench page (replaces the sidebar mode rail on migrating
- * surfaces).
+ * Flush tab strip: solid `TabSwitch` left · flex spacer · right controls +
+ * toolbar portal · trailing CTAs. The single content-chrome tab band for every
+ * workbench page (replaces the sidebar mode rail on migrating surfaces).
+ * Outer shell + rails are `cornerClass('flush')` — callers do not pass
+ * `rounded-none` to fight a soft SoT.
  */
 export function WorkbenchChromeHeader({
   tabs,
@@ -376,13 +330,12 @@ export function WorkbenchChromeHeader({
       className={cn(
         // default: p-1.5 matches the solid TabSwitch rail’s own p-1 so left
         // tabs and right h-8 icon controls share one outer inset.
-        // band: h-10 p-0.5 — 2px inset so the active pill sits inside the
-        // shell with a concentric radius (nestedCorner card/0.5). items-stretch
-        // so TabSwitch fills the inset face; the right cluster re-centers
-        // its own h-8 icons.
+        // band: h-10 p-0.5 — 2px content rhythm inside the flush face
+        // (not an outer gutter). items-stretch so TabSwitch fills the inset;
+        // the right cluster re-centers its own h-8 icons.
         'flex min-w-0 shrink-0 gap-2 border border-border-soft bg-surface-card shadow-sm',
         band ? 'h-10 items-stretch p-0.5' : 'items-center p-1.5',
-        cornerClass('card'),
+        cornerClass('flush'),
         className,
       )}
     >
@@ -415,12 +368,11 @@ export function WorkbenchChromeHeader({
         variant="solid"
         solidTone={solidTone}
         countStyle="plain"
-        // band: flat track inside the outer card — no nested pill card
-        // (Linear single-surface). default: bordered hug rail as before.
+        // Flat flush track — no soft pill rail (ops chrome flush law).
         railClassName={
           band
-            ? `h-full border-0 bg-transparent p-0 shadow-none ${cornerClass('card')}`
-            : 'rounded-full border border-border-default bg-surface-card p-1 shadow-sm'
+            ? `h-full border-0 bg-transparent p-0 shadow-none ${cornerClass('flush')}`
+            : `border border-border-default bg-surface-card p-1 shadow-sm ${cornerClass('flush')}`
         }
       />
       ) : null}

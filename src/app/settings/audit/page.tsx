@@ -143,7 +143,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
           Every privileged write, every permission denial. Last {PAGE_SIZE} rows{source || action ? ' matching filter' : ''}.
         </p>
 
-        <form className="flex flex-wrap items-center gap-2 rounded-2xl border border-border-soft bg-surface-card p-3 text-role-caption shadow-sm">
+        <form className="flex flex-wrap items-center gap-2 rounded-none border border-border-soft bg-surface-card p-3 text-role-caption shadow-sm">
           <label className="flex items-center gap-2">
             <span className="font-medium text-text-soft">Source</span>
             <input

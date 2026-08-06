@@ -24,6 +24,10 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recomputeCartonSourceLink } from './carton-source-link';
 import { claimOrAbsorbZohoPoShell } from './claim-zoho-po-shell';
 import { reparentReceivingCartonPhotos } from './reparent-carton-photos';
+import {
+  ensurePoLinesOnReceiving,
+  type AdoptPoLinesResult,
+} from './adopt-po-lines';
 import type { AttachBoxResult } from './attach-box';
 
 export type RelinkScope = 'line' | 'carton' | 'both';
@@ -55,6 +59,8 @@ export interface RelinkPoResult {
   pairedOnto?: number;
   /** Photos moved from the orphan unmatched carton onto the winning shell. */
   photosMoved?: number;
+  /** Lines adopted/claimed/imported onto the winning carton after link. */
+  linesImported?: number;
 }
 
 /** Minimal query surface — lets the unit test pass a fake client (DB-free). */
@@ -78,6 +84,13 @@ export interface RelinkDeps {
     staffId: number | null;
     organizationId: string;
   }) => Promise<AttachBoxResult>;
+  /** After a successful carton/both link — adopt/claim/import PO lines. */
+  ensurePoLines?: (
+    poId: string,
+    receivingId: number,
+    orgId: string,
+    options?: { importIfEmpty?: boolean },
+  ) => Promise<AdoptPoLinesResult>;
 }
 
 const defaultDeps: RelinkDeps = {
@@ -338,6 +351,14 @@ export async function relinkReceivingPo(
       })
       .catch(() => undefined);
 
+    // Claim / import PO lines onto the winning shell (unmatched donors + Zoho).
+    const linesEnsured = await ensurePoLinesOnWinningCarton(
+      zohoPurchaseorderId,
+      shellId,
+      orgId,
+      deps,
+    );
+
     // Realtime: both galleries so the rail/photo panes refresh combined shots.
     if ((txResult.photosMoved ?? 0) > 0) {
       try {
@@ -360,9 +381,39 @@ export async function relinkReceivingPo(
     }
 
     const { attachTracking: _a, orphanReceivingId: _o, ...publicResult } = txResult;
-    return publicResult;
+    return { ...publicResult, linesImported: linesEnsured };
+  }
+
+  // Same-carton promote / free claim — bring lines onto the working carton.
+  let linesImported = 0;
+  if (txResult.ok && (scope === 'carton' || scope === 'both')) {
+    linesImported = await ensurePoLinesOnWinningCarton(
+      zohoPurchaseorderId,
+      txResult.receivingId,
+      orgId,
+      deps,
+    );
   }
 
   const { attachTracking: _a, orphanReceivingId: _o, ...publicResult } = txResult;
-  return publicResult;
+  return { ...publicResult, linesImported };
+}
+
+async function ensurePoLinesOnWinningCarton(
+  poId: string,
+  receivingId: number,
+  orgId: string,
+  deps: RelinkDeps,
+): Promise<number> {
+  try {
+    const ensure = deps.ensurePoLines ?? ensurePoLinesOnReceiving;
+    const result = await ensure(poId, receivingId, orgId, { importIfEmpty: true });
+    return result.lineCount;
+  } catch (err) {
+    console.warn(
+      `[relink-po] ensurePoLines failed po=${poId} receiving=${receivingId}:`,
+      err instanceof Error ? err.message : err,
+    );
+    return 0;
+  }
 }

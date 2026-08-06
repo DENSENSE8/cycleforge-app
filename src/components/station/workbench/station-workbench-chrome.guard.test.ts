@@ -259,7 +259,12 @@ test('bodyAlign=end uses flex gap — space-y dies under Items mb-auto', () => {
   assert.match(
     src,
     /bodyAlign\s*===\s*['"]end['"]\s*\?[\s\S]*?gap-4/,
-    'bodyAlign=end must space siblings with flex gap-4',
+    'bodyAlign=end default spacing must keep flex gap-4',
+  );
+  assert.match(
+    src,
+    /bodyGap\s*===\s*['"]none['"]\s*\?\s*['"]gap-0['"]/,
+    'bodyGap=none must collapse end-align sibling gap to zero',
   );
   assert.equal(
     /bodyAlign\s*===\s*['"]end['"]\s*&&\s*['"][^'"]*space-y-/.test(src),

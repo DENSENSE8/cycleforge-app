@@ -10,6 +10,11 @@
  *   - the ROLE layer (`./roles`) — `motionRole`, the intent vocabulary
  *   - the role HOOK (`./use-motion-role`) — role → render-ready bridged pair
  *
+ * Physics tokens (`springSnappy` / `fadeInstant`) and dense primitives
+ * (`DenseRowReveal` / `DenseList` / `ActionFlashRow`) live beside this barrel;
+ * import them from their modules (or foundations catalog) until a first consumer
+ * lands on the barrel — keeps knip from treating mid-wire SoT as dead exports.
+ *
  * What it deliberately does NOT carry:
  *   - `AnimateNumber` — stays at `@/design-system/motion/plus`. Re-exporting it
  *     here would put `motion-plus` in the module graph of every consumer of this

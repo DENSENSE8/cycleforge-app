@@ -62,7 +62,7 @@ test('ticket terminal submits internal notes and public replies through the brid
     ticketId: 9395,
     ticketBridge: publicReply.bridge,
   });
-  assert.equal(publicVm?.label, 'Send reply');
+  assert.equal(publicVm?.label, 'Send');
   publicVm?.onClick();
   assert.equal(publicReply.calls.submit, 1);
 });

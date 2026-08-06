@@ -304,10 +304,10 @@ export function SearchField({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={handlePaste}
-        className="inline-flex h-3.5 w-3.5 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
+        className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
         aria-label="Paste from clipboard"
       >
-        <Clipboard className="h-3 w-3" />
+        <Clipboard className="h-3.5 w-3.5" />
       </button>
     ) : hasValue ? (
       hideClear ? (
@@ -317,7 +317,7 @@ export function SearchField({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
-          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-text-faint transition-colors duration-100 ease-out hover:bg-surface-sunken hover:text-text-default active:scale-95"
+          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-none text-text-faint transition-colors duration-100 ease-out hover:bg-surface-sunken hover:text-text-default active:scale-95"
           aria-label="Clear search"
         >
           <X className="h-3.5 w-3.5" />
@@ -327,16 +327,16 @@ export function SearchField({
       // Empty-field paste is secondary (Cmd/Ctrl+V still works) — hover-reveal
       // only on THIS field (or a `group/search-bar` host like TechRailSearchBar),
       // never the whole rail/nav. Same quiet chrome as StationScanBar paste.
-      // Glyph is intentionally smaller than the leading Search icon — paste is
-      // a quiet affordance, not a second primary control.
+      // Paste shares the field-action 24px control / 14px glyph box with
+      // field-density filters and rail collapse; opacity keeps it secondary.
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={handlePaste}
-        className="pointer-events-none inline-flex h-3.5 w-3.5 items-center justify-center text-text-faint opacity-0 transition-[opacity,color] duration-100 ease-out hover:text-blue-600 active:scale-95 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover/search-bar:pointer-events-auto group-hover/search-bar:opacity-100 group-focus-within/search-bar:pointer-events-auto group-focus-within/search-bar:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+        className="pointer-events-none inline-flex h-6 w-6 shrink-0 items-center justify-center text-text-faint opacity-0 transition-[opacity,color] duration-100 ease-out hover:text-blue-600 active:scale-95 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover/search-bar:pointer-events-auto group-hover/search-bar:opacity-100 group-focus-within/search-bar:pointer-events-auto group-focus-within/search-bar:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
         aria-label="Paste from clipboard"
       >
-        <Clipboard className="h-3 w-3" />
+        <Clipboard className="h-3.5 w-3.5" />
       </button>
     );
 
@@ -367,7 +367,7 @@ export function SearchField({
 
         {/* Trailing row: prefix → spinner/pending/clear/paste → suffix */}
         <span
-          className={`flex shrink-0 items-center gap-1.5 ${sizeClasses.rightSlot}`.trim()}
+          className={`flex shrink-0 items-center gap-0.5 ${sizeClasses.rightSlot}`.trim()}
         >
           {trailingPrefix}
           {trailingControl}

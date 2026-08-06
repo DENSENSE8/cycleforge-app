@@ -4,12 +4,13 @@
  *
  * ## Hard rule (also in `AGENTS.md` + `source-of-truth.md`)
  *
- * - **Magnitudes end-align** — `number` (qty, price), `id` (SKU, serial, ticket),
- *   and `date` (civil days, stamps, durations): things you compare down a column
- *   by their ones place / soonest edge.
- * - **Labels start-align** — `text` · `longtext` · `tag` (condition, status) ·
- *   `external` (platform) · `location` (bin codes) · `tracking` (carrier #). A label is read
- *   from its left edge; only a magnitude is scanned from its right.
+ * - **Magnitudes end-align** — `number` (qty), `price` (unit cost / PO total),
+ *   and `date` (civil days, stamps, durations): things you compare down a
+ *   column by their ones place / soonest edge.
+ * - **Labels + IDs start-align** — `text` · `longtext` · `tag` · `external` ·
+ *   `location` · `tracking` · `id` (SKU, serial, ticket, order #). A label or
+ *   identifier is read from its left edge; only a magnitude is scanned from
+ *   its right.
  *
  * Alignment used to be decided twice per column, in two files, in two
  * vocabularies: a `column.key === 'qty' ? 'end' : 'start'` ternary in each
@@ -51,8 +52,9 @@ export type GridColumnAlign = 'start' | 'end';
  *
  * | Type | Align | Why |
  * |---|---|---|
- * | `number` | `end` | Magnitude. Qty / price compare down the column by their ones place, and `role-data` binds `tabular-nums`, so the digits form a true grid. |
- * | `id` | `end` | A SKU / serial / ticket is a fixed-width reference attribute *of* the row — it sits in the same numeric fact cluster as qty, and a column of last-8s scans as one right edge. (`order` overrides — see below.) |
+ * | `number` | `end` | Magnitude. Qty compare down the column by their ones place, and `role-data` binds `tabular-nums`, so the digits form a true grid. |
+ * | `price` | `end` | Magnitude (money). Unit cost / PO total — same ones-place scan as qty; Receipt glyph distinguishes it from `number` Hash. |
+ * | `id` | `start` | **Label / ID** (ruled 2026-08-04 quiet-display). A SKU · serial · ticket · order # is read and retyped from the left edge — same scan line as tracking. (`order` keeps an explicit `align: 'start'` for clarity.) |
  * | `date` | `end` | Magnitude (ruled 2026-08-03). A civil day, stamp, or duration — `Aug 3` / `12d` — is compared down the column (“which line is sooner / overdue?”), so the right edge stacks with qty. |
  * | `location` | `start` | **Label** (ruled 2026-08-02). A bin / staging code is an identifier you read and retype. |
  * | `tracking` | `start` | **Label** — carrier tracking last-8; same start rule as `location`, distinct glyph (MapPin). |
@@ -74,20 +76,15 @@ export type GridColumnAlign = 'start' | 'end';
  * centered content.
  *
  * A column whose *type* disagrees with its *content* sets `align` on the model —
- * once, where the column is declared. One live case:
- *
- * - **`order` → `start`** (ruled + shipped 2026-08-02). An identifier that is
- *   the row's own **transaction identity** — a PO number, a sales-order number —
- *   is a name you read, and on an order-anchored surface it is the first thing
- *   scanned. A catalog SKU / serial / ticket is the opposite, an attribute *of*
- *   a row whose identity is its title, so it stays `end`. Same `type: 'id'`,
- *   different role — which is exactly why this is an `align` override on those
- *   column models and **never** a change to `ALIGN_BY_TYPE.id`, which would
- *   drag SKU and serial left with it.
+ * once, where the column is declared. Historical note: `order` used to be the
+ * only `id` that started (transaction identity); as of 2026-08-04 **all `id`s
+ * start**, matching the Law of Strict Alignment (text + IDs left; numbers +
+ * dates right). Explicit `align: 'start'` on order columns stays for clarity.
  */
 const ALIGN_BY_TYPE: Record<ColumnType, GridColumnAlign> = {
   number: 'end',
-  id: 'end',
+  price: 'end',
+  id: 'start',
   date: 'end',
   location: 'start',
   tracking: 'start',
@@ -112,13 +109,13 @@ export function resolveGridColumnAlign(
 }
 
 /**
- * Flex justification class. Module-private on purpose: exporting THREE names for
- * one decision ("which do I call?") is how the header and cell halves drifted
- * apart in the first place. Callers take one of the two below — a header passes
- * a resolved align, a cell passes the column.
+ * Flex + text justification. Both halves are load-bearing: `justify-*` parks a
+ * shrink-wrapped chip at the correct edge; `text-*` keeps full-width faces
+ * (long stamps, stretched buttons) from reading as the opposite edge — the
+ * zig-zag the Law of Strict Alignment forbids.
  */
 function alignClass(align: GridColumnAlign): string {
-  return align === 'end' ? 'justify-end' : 'justify-start';
+  return align === 'end' ? 'justify-end text-right' : 'justify-start text-left';
 }
 
 /** Header justification — pass `resolveGridColumnAlign(column)`, never a literal. */

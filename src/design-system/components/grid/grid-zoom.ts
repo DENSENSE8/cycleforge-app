@@ -2,9 +2,10 @@
  * Spreadsheet zoom for LedgerGrid hosts — discrete steps via CSS var, never
  * `transform: scale()` (blurs text and breaks resize hit targets).
  *
- * Hosts set `--cf-grid-zoom` on a wrapper; {@link grid-column-geometry} and
- * density-aware chrome already multiply through `--cf-density`. Zoom multiplies
- * density so row height + type scale together.
+ * Hosts set `--cf-density` (and mirror `--cf-grid-zoom`) on a wrapper. Track
+ * rem floors, frozen sticky offsets, and content-min rem all multiply through
+ * `--cf-density` in {@link grid-column-geometry} / {@link ledgerGridWidthVarValue}
+ * so 80% zoom shrinks columns with type — not only padding inside fixed rem.
  */
 
 export const GRID_ZOOM_LEVELS = [80, 90, 100, 110, 125] as const;

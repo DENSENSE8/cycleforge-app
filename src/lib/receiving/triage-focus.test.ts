@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   resolveTriageFocus,
-  triageFocusToTab,
   isPairingAnswered,
   PAIRING_ANSWERED_STATES,
   type TriageFocusFacts,
@@ -16,31 +15,22 @@ const base: TriageFocusFacts = {
   isTriageComplete: false,
 };
 
-describe('triageFocusToTab', () => {
-  it('maps classify / stage / pair to SectionTabsSlider ids', () => {
-    assert.equal(triageFocusToTab('classify'), 'overview');
-    assert.equal(triageFocusToTab('stage'), 'staging');
-    assert.equal(triageFocusToTab('pair'), 'pairing');
+describe('resolveTriageFocus', () => {
+  // The centre-tab mapping (`triageFocusToTab`) was removed on 2026-08-05 —
+  // reference tools moved to the Displays push and Arrival no longer auto-opens
+  // one on focus. The resolver still drives the "already staged" short-circuit.
+  it('short-circuits to already-staged when the carton is complete', () => {
+    assert.equal(resolveTriageFocus({ ...base, isTriageComplete: true }), 'already-staged');
   });
 
-  it('returns null for already-staged and none', () => {
-    assert.equal(triageFocusToTab('already-staged'), null);
-    assert.equal(triageFocusToTab('none'), null);
+  it('returns the first unmet step in Scan→Classify→Stage→Pair order', () => {
+    assert.equal(resolveTriageFocus({ ...base, isClassified: false }), 'classify');
+    assert.equal(resolveTriageFocus({ ...base, isStaged: false }), 'stage');
+    assert.equal(resolveTriageFocus({ ...base, isPaired: false }), 'pair');
   });
 
-  it('stays aligned with resolveTriageFocus order', () => {
-    assert.equal(
-      triageFocusToTab(resolveTriageFocus({ ...base, isClassified: false })),
-      'overview',
-    );
-    assert.equal(
-      triageFocusToTab(resolveTriageFocus({ ...base, isStaged: false })),
-      'staging',
-    );
-    assert.equal(
-      triageFocusToTab(resolveTriageFocus({ ...base, isPaired: false })),
-      'pairing',
-    );
+  it('returns none when every step is met', () => {
+    assert.equal(resolveTriageFocus(base), 'none');
   });
 });
 

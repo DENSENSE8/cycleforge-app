@@ -67,18 +67,22 @@ test('normalizeReceivingTicketEntityRefs drops placeholder line id without inven
   );
 });
 
-test('pickTicketLinkAnchor prefers line > carton > shipment', () => {
+test('pickTicketLinkAnchor prefers line > carton > shipment > order', () => {
   assert.deepEqual(
-    pickTicketLinkAnchor({ lineId: 41, receivingId: 88, shipmentId: 555 }),
+    pickTicketLinkAnchor({ lineId: 41, receivingId: 88, shipmentId: 555, orderId: 9 }),
     { entityType: 'RECEIVING_LINE', entityId: 41 },
   );
   assert.deepEqual(
-    pickTicketLinkAnchor({ lineId: null, receivingId: 88, shipmentId: 555 }),
+    pickTicketLinkAnchor({ lineId: null, receivingId: 88, shipmentId: 555, orderId: 9 }),
     { entityType: 'RECEIVING', entityId: 88 },
   );
   assert.deepEqual(
-    pickTicketLinkAnchor({ lineId: null, receivingId: null, shipmentId: 555 }),
+    pickTicketLinkAnchor({ lineId: null, receivingId: null, shipmentId: 555, orderId: 9 }),
     { entityType: 'SHIPMENT', entityId: 555 },
+  );
+  assert.deepEqual(
+    pickTicketLinkAnchor({ lineId: null, receivingId: null, shipmentId: null, orderId: 9 }),
+    { entityType: 'ORDER', entityId: 9 },
   );
   assert.equal(pickTicketLinkAnchor({}), null);
 });

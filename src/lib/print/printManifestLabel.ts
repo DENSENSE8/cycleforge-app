@@ -30,7 +30,7 @@ export function printManifestLabel(payload: ManifestLabelPayload): void {
   if (!uid) return;
   const count =
     payload.unitCount != null && Number.isFinite(payload.unitCount)
-      ? `${Math.max(0, Math.floor(payload.unitCount))} ${payload.unitCount === 1 ? 'unit' : 'units'}`
+      ? `${Math.max(0, Math.floor(payload.unitCount))} units`
       : '';
   const sku = (payload.sku || '').trim();
 

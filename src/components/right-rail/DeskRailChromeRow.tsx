@@ -4,7 +4,7 @@
  * DeskRailChromeRow — SoT for Unbox-aligned chrome on a single RightRailHost card.
  *
  * ```text
- * [→|] ……………………………… [↑][↓][trailing?]
+ * [→|] [actions?] …………………… [cursor?] [↑][↓] [trailing?]
  * ```
  *
  * **Why this exists.** Unbox reads `[→|] ……… [↑ ↓ ◯]` across TWO regions
@@ -13,8 +13,16 @@
  * `top-2` only to the trailing cluster and splits the baseline. When every
  * control lives in one card, they must share ONE in-flow flex row.
  *
- * Orders keep {@link RecordPaneHeader} / `PaneHeaderActionBar onClose` (close
- * leads the trailing cluster). Incoming-family Desk rails compose this row.
+ * **`actions`** — optional contextual icon cluster for occupants whose actions
+ * belong on the navigation row. Sits after close, left of the flex spacer +
+ * ↑↓. History `detail:history` deliberately does not use this slot: its
+ * contextual topics own a dedicated second row.
+ *
+ * **`cursor`** — optional `N / M` readout (`CursorPositionReadout`) immediately
+ * before ↑↓. Orders `RecordPaneHeader` composes this.
+ *
+ * **`trailing`** — far-right twin of the Unbox scan-progress ring (e.g. Incoming
+ * Sync), after ↑↓.
  *
  * Recipe: `.claude/rules/display/right-rail-inspector.md` → Desk single-card
  * chrome. Guard: `right-rail-inspector-header.guard.test.ts`.
@@ -27,8 +35,10 @@ import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
-/** Optical `pl-2` — Unbox push-band twin so the `→|` mark lands on content ink. */
-const DESK_RAIL_CHROME_ROW_CLASS = 'flex h-8 shrink-0 items-center pl-2 pr-2';
+/** Optical `pl-2` — Unbox push-band twin so the `→|` mark lands on content ink.
+ *  `relative z-raised` keeps Hide free of the inset resize sash. */
+const DESK_RAIL_CHROME_ROW_CLASS =
+  'relative z-raised flex h-8 shrink-0 items-center pl-2 pr-2';
 
 export function DeskRailChromeRow({
   onClose,
@@ -41,11 +51,20 @@ export function DeskRailChromeRow({
   nextTitle = 'Next row',
   prevTestId,
   nextTestId,
+  /**
+   * Contextual icon cluster between close and the cursor. Compose
+   * `PaneHeaderActionBar iconOnly variant="flat"` — do not invent a page-local
+   * icon bar.
+   */
+  actions,
+  /** `N / M` readout — sits before ↑↓ (Orders RecordPaneHeader). */
+  cursor,
   /** Far-right twin of the Unbox scan-progress ring (e.g. Incoming Sync). */
   trailing,
   className,
 }: {
-  onClose: () => void;
+  /** Omit on full-page `/o` (no dismiss) — trail cluster still mounts. */
+  onClose?: () => void;
   closeTitle?: string;
   onPrev?: () => void;
   onNext?: () => void;
@@ -55,22 +74,35 @@ export function DeskRailChromeRow({
   nextTitle?: string;
   prevTestId?: string;
   nextTestId?: string;
+  actions?: ReactNode;
+  cursor?: ReactNode;
   trailing?: ReactNode;
   className?: string;
 }) {
-  const hasTrail = Boolean(onPrev || onNext || trailing);
+  const hasTrail = Boolean(onPrev || onNext || cursor || trailing);
 
   return (
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
-      <PaneHeaderCloseButton
-        onClick={onClose}
-        title={closeTitle}
-        ariaLabel={closeTitle}
-        className="-ml-px h-7 w-7"
-      />
+      {onClose ? (
+        <PaneHeaderCloseButton
+          onClick={onClose}
+          title={closeTitle}
+          ariaLabel={closeTitle}
+          className="-ml-px h-7 w-7"
+        />
+      ) : null}
+      {actions ? (
+        <div
+          className="ml-0.5 flex min-w-0 items-center overflow-x-auto"
+          data-testid="desk-rail-chrome-actions"
+        >
+          {actions}
+        </div>
+      ) : null}
       {hasTrail ? <div className="flex-1" /> : null}
       {hasTrail ? (
         <div className="flex items-center gap-0">
+          {cursor}
           {onPrev ? (
             <HoverTooltip label={prevTitle} asChild>
               <IconButton

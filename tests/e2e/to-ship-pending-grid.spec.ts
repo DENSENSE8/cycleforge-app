@@ -12,8 +12,7 @@ import {
  *   (2) drag grip only in the header (grid skin: no grip — select-all only);
  *   (3) order / tracking lock under their headers;
  *   (4) frozen identity pane on h-scroll;
- *   (5) header drag-reorder persists per staff (select · order · title locked);
- *   (6) Sheets-style in-cell edit (qty) commits through the assign waist.
+ *   (5) Sheets-style in-cell edit (qty) commits through the assign waist.
  */
 
 test.describe('To Ship · Pending Sheets-like grid', () => {
@@ -30,17 +29,10 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     table.locator('[role="row"]:has([data-col="title"])').first();
 
   /**
-   * Clear this staffer's persisted column order so every test starts from the
-   * canonical layout.
-   *
-   * Column order is a per-staff SERVER preference, so a reorder test that dies
-   * mid-run leaves its custom order behind for every later test AND every later
-   * run — which is how "last column has no trailing rule" and the Product-header
-   * sort started failing on runs that never touched reordering. The reset has to
-   * happen before the grid mounts, so it goes through the API rather than the
-   * in-app double-click (a background PUT that races the test's own writes).
+   * Clear this staffer's persisted column widths so resize tests start clean.
+   * (Column order is pinned to the layout SoT — no staff reorder prefs.)
    */
-  const resetColumnOrder = async (page: Page) => {
+  const resetColumnPrefs = async (page: Page) => {
     await page.evaluate(async () => {
       const cur = await fetch('/api/staff-preferences').then((r) => (r.ok ? r.json() : null));
       const tableColumns = { ...(cur?.prefs?.tableColumns ?? {}) };
@@ -56,24 +48,8 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
   test.beforeEach(async ({ page }) => {
     // Any same-origin page will do; the grid routes mount after this.
     await page.goto('/dashboard?unshipped');
-    await resetColumnOrder(page);
+    await resetColumnPrefs(page);
   });
-
-  /** Drag one header cell onto another (dnd-kit PointerSensor, 6px activation). */
-  const dragHeader = async (page: Page, from: Locator, to: Locator) => {
-    const a = await from.boundingBox();
-    const b = await to.boundingBox();
-    if (!a || !b) throw new Error('no header boxes');
-    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
-    await page.mouse.down();
-    // Clear the 6px activation constraint, then travel in steps so dnd-kit
-    // tracks the pointer.
-    await page.mouse.move(a.x + a.width / 2 + 10, a.y + a.height / 2, { steps: 3 });
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
-    await page.waitForTimeout(120);
-    await page.mouse.up();
-    await page.waitForTimeout(250);
-  };
 
   test('every fact owns its own locked column', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
@@ -91,7 +67,7 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
      *
      * Names come from the layout SoT (`ORDERS_QUEUE_COLUMNS`) rather than
      * re-typed literals — the previous copies drifted the moment a column was
-     * renamed (`date`/`age` → `sla`) or given a short `gridLabel` (`Tracking` →
+     * renamed (`date`/`age` → `age`) or given a short `gridLabel` (`Tracking` →
      * `Track`), and the stale locators just resolved to zero elements.
      */
     const expectHeader = async (col: OrdersQueueColumnKey) => {
@@ -108,32 +84,32 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
       }
     };
     await expectHeader('title');
-    // `sla` is the Ship-by track — the `date` / `age` columns were retired.
-    await expectHeader('sla');
+    // `age` is Late days — fused `sla` / civil `date` tracks were retired.
+    await expectHeader('age');
     await expectHeader('order');
     await expectHeader('tracking');
 
     // Grid skin: no drag grip on rows; header may omit grip (select-all only).
     await expect(row.locator('.cursor-grab')).toHaveCount(0);
 
-    // Flat Ship-by column — no floating day-band chrome; Status/Platform retired
+    // Flat Late column — no floating day-band chrome; Status/Platform retired
     // (lifecycle tabs own Pending vs Tested); no retired notes / stock columns.
     await expect(table.locator('[data-grid-day-band]')).toHaveCount(0);
     await expect(row.locator('[data-col="status"]')).toHaveCount(0);
     await expect(row.locator('[data-col="platform"]')).toHaveCount(0);
     await expect(row.locator('[data-col="notes"]')).toHaveCount(0);
     await expect(row.locator('[data-col="stock"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="sla"]')).toHaveCount(1);
+    await expect(row.locator('[data-col="age"]')).toHaveCount(1);
     // The retired tracks must stay gone, not silently return under old names.
     await expect(row.locator('[data-col="date"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="age"]')).toHaveCount(0);
+    await expect(row.locator('[data-col="sla"]')).toHaveCount(0);
     // No empty-tracking rows on Pending (filtered client-side).
     await expect(row.locator('[data-add-label]')).toHaveCount(0);
-    const slaHeader = headerRow.locator('[data-col="sla"]');
+    const ageHeader = headerRow.locator('[data-col="age"]');
     const qtyHeader = headerRow.locator('[data-col="qty"]');
-    await expect(slaHeader).toHaveCount(1);
-    expect(Math.abs((await leftX(slaHeader)) - (await leftX(row.locator('[data-col="sla"]'))))).toBeLessThan(4);
-    expect((await leftX(qtyHeader)) > (await leftX(slaHeader)), 'Qty header sits right of Ship by').toBe(true);
+    await expect(ageHeader).toHaveCount(1);
+    expect(Math.abs((await leftX(ageHeader)) - (await leftX(row.locator('[data-col="age"]'))))).toBeLessThan(4);
+    expect((await leftX(qtyHeader)) > (await leftX(ageHeader)), 'Qty header sits right of Late').toBe(true);
 
     for (const col of ['order', 'tracking'] as const) {
       const cell = row.locator(`[data-col="${col}"]`);
@@ -148,6 +124,43 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await page.screenshot({ path: 'test-results/to-ship-pending-grid.png', fullPage: false });
   });
 
+  test('select gutter paints real checkboxes; condition is a vertically centered chip', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(table).toBeVisible({ timeout: 20_000 });
+    const headerRow = headerRowIn(table);
+    const row = table.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    // Top-left select-all + every leftmost row cell — always-painted square.
+    const headerCheck = headerRow.locator('[role="checkbox"][data-select-chrome="always"]');
+    await expect(headerCheck).toBeVisible();
+    const rowCheck = row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="always"]');
+    await expect(rowCheck).toBeVisible();
+
+    // Condition micro-tag on Product: house status chip (dot + uppercase label).
+    const titleCell = row.locator('[data-col="title"]');
+    const conditionChip = titleCell.locator('.inset-chip').first();
+    const chipCount = await titleCell.locator('.inset-chip').count();
+    if (chipCount > 0) {
+      await expect(conditionChip).toBeVisible();
+      await expect(conditionChip.locator('.rounded-full')).toHaveCount(1);
+      const titleBox = await titleCell.boundingBox();
+      const chipBox = await conditionChip.boundingBox();
+      if (titleBox && chipBox) {
+        const titleMid = titleBox.y + titleBox.height / 2;
+        const chipMid = chipBox.y + chipBox.height / 2;
+        expect(
+          Math.abs(titleMid - chipMid),
+          'condition chip shares the Product cell vertical midline',
+        ).toBeLessThan(6);
+      }
+    }
+
+    await page.screenshot({ path: 'test-results/to-ship-pending-grid-chips-checks.png', fullPage: false });
+  });
+
   test('renders as a gridlined spreadsheet — cells carry column rules, last column does not', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
@@ -159,9 +172,9 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const borderRight = (loc: Locator) =>
       loc.evaluate((el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0);
 
-    const condition = row.locator('[data-col="condition"]');
-    await expect(condition).toHaveCount(1);
-    expect(await borderRight(condition), 'condition cell has a vertical column rule').toBeGreaterThan(0);
+    const age = row.locator('[data-col="age"]');
+    await expect(age).toHaveCount(1);
+    expect(await borderRight(age), 'Late cell has a vertical column rule').toBeGreaterThan(0);
 
     const tracking = row.locator('[data-col="tracking"]');
     await expect(tracking).toHaveCount(1);
@@ -182,9 +195,8 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const headerRow = headerRowIn(table);
     await expect(headerRow).toBeVisible();
 
-    // Same retired-column drift as above: `date` / `age` are gone, `sla` is the
-    // ship-by track. A stale key here resolved to zero cells and asserted nothing.
-    for (const col of ['title', 'sla', 'qty', 'condition'] as const) {
+    // Typed headers on live tracks. Cond retired as a column — do not assert it.
+    for (const col of ['title', 'age', 'qty', 'order'] as const) {
       const cell = headerRow.locator(`[data-col="${col}"]`);
       await expect(cell.locator('svg')).toHaveCount(1);
       // Visible short label OR sr-only full label — never a clipped "A…" alone.
@@ -255,95 +267,6 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     }
 
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-view.png', fullPage: false });
-  });
-
-
-  test('column reorder: drag Tracking before Cond, persist across reload, reset restores canonical', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    // `beforeEach` already cleared the persisted order; reload so the grid
-    // mounts against it.
-    await page.reload();
-
-    const grid = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(grid).toBeVisible({ timeout: 20_000 });
-    await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
-
-    const headerRow = headerRowIn(grid);
-    // `order` is part of the FROZEN identity pane (select · order · title) and is
-    // deliberately not draggable — Tracking is the movable fact column here.
-    const trackHeader = headerRow.locator('[data-col="tracking"]');
-    const condHeader = headerRow.locator('[data-col="condition"]');
-    await expect(trackHeader).toBeVisible();
-    await expect(condHeader).toBeVisible();
-
-    await expect
-      .poll(async () => (await leftX(trackHeader)) > (await leftX(condHeader)), {
-        timeout: 10_000,
-        message: 'canonical: tracking right of condition',
-      })
-      .toBe(true);
-
-    const condX0 = await leftX(condHeader);
-
-    // The order persists via a BACKGROUND PUT — capture it so the later reload
-    // can't race (and abort) the in-flight save under parallel-worker load.
-    const prefsSaved = page.waitForResponse(
-      (r) => r.url().includes('/api/staff-preferences') && r.request().method() === 'PUT',
-    );
-    await dragHeader(page, trackHeader, condHeader);
-
-    // Live reorder: tracking now left of condition — header AND body agree.
-    expect((await leftX(trackHeader)) < (await leftX(condHeader)), 'tracking moved before condition').toBe(true);
-    const row = grid.locator('[data-order-row-id]').first();
-    expect(
-      (await leftX(row.locator('[data-col="tracking"]'))) < (await leftX(row.locator('[data-col="condition"]'))),
-      'body cells follow the header order',
-    ).toBe(true);
-
-    // The identity pane (select · order · title) stays locked first/frozen.
-    // Only its labelled tracks are asserted here — the select gutter is a
-    // control cell and carries no `data-col`.
-    for (const key of ['order', 'title']) {
-      const cell = row.locator(`[data-col="${key}"]`);
-      expect(
-        await cell.evaluate((el) => getComputedStyle(el).position),
-        `${key} is sticky-frozen`,
-      ).toBe('sticky');
-    }
-    const titleCell = row.locator('[data-col="title"]');
-    expect((await leftX(row.locator('[data-col="order"]'))) < (await leftX(titleCell))).toBe(true);
-    expect((await leftX(titleCell)) < (await leftX(row.locator('[data-col="sla"]')))).toBe(true);
-
-    // Persisted per staff: survive a reload. The header renders canonical until
-    // the staff-prefs fetch resolves — poll, don't one-shot (slow under load).
-    const saveRes = await prefsSaved;
-    expect(saveRes.ok(), 'staff-preferences order PUT succeeded').toBe(true);
-    await page.reload();
-    await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
-    const headerRow2 = headerRowIn(grid);
-    await expect
-      .poll(
-        async () =>
-          (await leftX(headerRow2.locator('[data-col="tracking"]'))) <
-          (await leftX(headerRow2.locator('[data-col="condition"]'))),
-        { timeout: 10_000, message: 'tracking persists across reload' },
-      )
-      .toBe(true);
-
-    await page.screenshot({ path: 'test-results/to-ship-pending-grid-reorder.png', fullPage: false });
-
-    // Reset path: double-click a MOVABLE header → canonical order again.
-    // (`order` is frozen now, so it carries no reset handler.)
-    await headerRow2.locator('[data-col="tracking"]').dblclick();
-    await expect
-      .poll(
-        async () =>
-          (await leftX(headerRow2.locator('[data-col="tracking"]'))) >
-          (await leftX(headerRow2.locator('[data-col="condition"]'))),
-        { timeout: 10_000, message: 'double-click reset restores canonical order' },
-      )
-      .toBe(true);
   });
 
   test('qty edits in-cell (Sheets contract) and commits through assign', async ({ page }) => {

@@ -11,6 +11,7 @@
  * — mirrors TriageUnfoundList/TriageCombinedList.
  */
 
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';
 import { useTriageStagingMap } from './useTriageStagingMap';
 import { TriageStagingChips } from './TriageStagingChips';
@@ -18,10 +19,12 @@ import { TriageStagingChips } from './TriageStagingChips';
 export function TriageDoneList({
   selectedLineId,
   filterText = '',
+  includeRow,
   hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   filterText?: string;
+  includeRow?: (row: ReceivingLineRow) => boolean;
   hideEyebrow?: boolean;
 }) {
   const stagingMap = useTriageStagingMap();
@@ -30,6 +33,7 @@ export function TriageDoneList({
       feed="triageDone"
       selectedLineId={selectedLineId}
       filterText={filterText}
+      includeRow={includeRow}
       hideEyebrow={hideEyebrow}
       renderPopoverContext={(row) => (
         <TriageStagingChips

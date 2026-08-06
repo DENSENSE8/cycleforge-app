@@ -17,6 +17,10 @@ function read(rel: string): string {
   return readFileSync(join(ROOT, rel), 'utf8');
 }
 
+function stripBlockComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
 describe('My Day Sheets recipe', () => {
   it('MyDayGridView mounts LedgerGridSurface with surface="sheet"', () => {
     const src = read('src/features/my-day/grid/MyDayGridView.tsx');
@@ -57,5 +61,20 @@ describe('My Day Sheets recipe', () => {
       /border-t-0/,
       'Band 1 must use border-t-0 — GlobalHeader already owns the top seam',
     );
+  });
+
+  it('find lives on Band 3 (WorkbenchTriageBand) — never Band 1', () => {
+    const src = stripBlockComments(read('src/features/my-day/MyDayWorkspace.tsx'));
+    const chromeIdx = src.indexOf('<WorkbenchChromeHeader');
+    const triageIdx = src.indexOf('<WorkbenchTriageBand');
+    assert.ok(chromeIdx >= 0, 'Band 1 WorkbenchChromeHeader must exist');
+    assert.ok(triageIdx > chromeIdx, 'Band 3 WorkbenchTriageBand must follow Band 1');
+    // Band 1 (chrome → triage) carries no search prop; find is on Band 3.
+    assert.doesNotMatch(
+      src.slice(chromeIdx, triageIdx),
+      /\bsearch=/,
+      'Band 1 (WorkbenchChromeHeader) must not carry a search prop',
+    );
+    assert.match(src.slice(triageIdx), /TechRailSearchBar/, 'find field lives inside the triage band');
   });
 });

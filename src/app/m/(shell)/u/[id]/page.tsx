@@ -501,7 +501,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
           Timeline
         </p>
         <span className="ml-auto text-role-micro font-semibold text-text-faint">
-          {sorted.length} {sorted.length === 1 ? 'event' : 'events'}
+          {sorted.length} events
         </span>
       </header>
       {sorted.length === 0 ? (

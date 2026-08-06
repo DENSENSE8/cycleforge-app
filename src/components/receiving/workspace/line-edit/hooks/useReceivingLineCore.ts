@@ -10,7 +10,7 @@ import { sendToDevice, type DeviceAckChannel } from '@/lib/realtime/device-hands
 import { copyToClipboard } from '@/utils/_dom';
 import { buildReceivingCopyInfo } from '@/utils/copy-all-receiving';
 import { useEntitySupportTicket } from '@/hooks/useEntitySupportTicket';
-import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
+import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
 import { collectCartonListingLinks } from '@/lib/receiving/listing-links';
@@ -612,9 +612,7 @@ export function useReceivingLineCore(
   const primaryTrackingTrimmed = trackingEdit.trim();
   const filledExtraTrackingsCount = extraTrackings.filter((t) => t.trim().length > 0).length;
   const trackingOpenHref = primaryTrackingTrimmed
-    ? row.carrier
-      ? getTrackingUrlByCarrier(primaryTrackingTrimmed, row.carrier)
-      : getTrackingUrl(primaryTrackingTrimmed)
+    ? resolveTrackingOpenUrl(primaryTrackingTrimmed, row.carrier)
     : null;
 
   return {
@@ -646,10 +644,6 @@ export function useReceivingLineCore(
     poNumber, listingOpenHref, listingLinks, poOpenHref,
     zendeskTrimmed, zendeskHref, zendeskChipDisplay,
     supportTicket, providerTicketId,
-    // True only while the linked-ticket lookup is in flight — lets the inline
-    // ticket editor's guardrail wait for a settled "no ticket" before clearing
-    // ?ticketView=1, so a deep-link doesn't self-close mid-fetch.
-    supportTicketLoading: supportTicketQuery.isLoading,
     invalidateSupportTicket: () => void supportTicketQuery.refetch(),
     primaryTrackingTrimmed, filledExtraTrackingsCount, trackingOpenHref,
   };

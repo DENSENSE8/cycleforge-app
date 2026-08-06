@@ -29,7 +29,7 @@ export function ChecklistStepRow({
 
   return (
     <li
-      className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition-colors duration-150 ${
+      className={`flex items-start gap-2 rounded-none border px-3 py-2 transition-colors duration-150 ${
         checked ? 'border-emerald-200 bg-emerald-50/60' : 'border-border-soft/70 bg-surface-card'
       }`}
     >

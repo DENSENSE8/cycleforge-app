@@ -65,11 +65,16 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - `tokens/typography/families.ts`
   - `tokens/typography/sizes.ts`
   - `tokens/typography/weights.ts`
-  - `tokens/typography/presets.ts` — composed Tailwind class presets (`sectionLabel`, `fieldLabel`, `dataValue`, `monoValue`, `chipText`, `cardTitle`, `tableHeader`, `tableCell`, `microBadge`)
+  - `tokens/typography/presets.ts` — composed Tailwind class presets (`sectionLabel`, `fieldLabel`, `dataValue`, `monoValue`, `chipText`, `cardTitle`, `tableHeader`, `tableCell`, `microBadge`). `tableHeader` is Sentence case (no CSS `uppercase`); eyebrows / chips / field·section labels stay uppercase micro chrome.
 - Density and structure:
   - `tokens/spacing.ts` — includes `density` presets (compact/standard/spacious)
   - `tokens/borders.ts`
-  - `tokens/radii.ts` — graduated scale (none → sm → md → lg → xl → 2xl → 3xl → full)
+  - `tokens/radius.ts` — the corner-radius SoT (renamed from `radii.ts`). **Zero-radius law:** ops
+    chrome is flush-square — solid CTAs, tab bands, selects, chips and toggle rows compose
+    `cornerClass('flush')` (`rounded-none`); soft radius and horizontal pill bands are debt. Roles:
+    `flush` (ops default) · `chip` · `row` · `control` · `field` · `card` · `canvas` · `pill` (status
+    dots / avatars / Switch only); `nestedCorner(outer, padStep)` for concentric nesting. Tab-band SoT
+    is `TabDisplay`; compose-field SoT is `DenseComposeFields` / `SearchableSelectField appearance="flush"`.
   - `tokens/shadows.ts` — raw box-shadow CSS vars + elevation roles
     (`elevationClass('flat' | 'raised' | 'overlay')`; raised intensity `soft` | `default`)
   - `tokens/table-surface.ts` — ops table / spreadsheet shell
@@ -135,10 +140,10 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - Overlays: `AssignmentOverlayCard`, `Tooltip`
 - **Workbench spreadsheet (SoT):** `components/grid/`
   - `LedgerGrid` — virtualized sticky-header spreadsheet shell (`scrollX`, `gridSkin="airtable"`, optional day bands). Golden path: Pending / To Ship via `OrdersGridView`. Under ancestor page scroll + `scrollX` it runs **split-x mode**: the header band lives outside the inner h-scroll box (an `overflow-x` container captures `position: sticky` on both axes) and is translated via the synced `--cf-grid-sx` offset. H-scroll affordance: **sticky bottom X gutter** (`GridStickyXScrollbar` + `useSyncedHorizontalScrollbar` — always reachable for triage; body keeps `no-scrollbar`) plus `cf-grid-overflow-start` / `-end` inset shadows via `applyGridOverflowXClasses` (right edge visible at rest when columns sit off-card). Dense / admin tables use `TableStickyXScroll`.
-  - Outer frame: `TABLE_SURFACE_CLIP_CLASS` (framed card — rounded-xl + raised) or `TABLE_SURFACE_SHEET_CLASS` (flush Sheets plane — hairline only, `border-l-0`; Receiving golden via `LedgerGridSurface` `surface="sheet"` + `WORKBENCH_SHEET_HOST`). Airtable draws **continuous** column rules (`border-default`) through header + body.
+  - Outer frame: `TABLE_SURFACE_CLIP_CLASS` (framed card — rounded-xl + raised) or `TABLE_SURFACE_SHEET_CLASS` (flush Sheets plane — hairline only, `border-l-0`; Receiving golden via `LedgerGridSurface` `surface="sheet"` + `WORKBENCH_SHEET_HOST`). Airtable draws **BOTTOM-only** row rules (`border-hairline`) through header + body — **no vertical column rules** (1B; structure recedes).
   - `LedgerCellEditor` — Sheets-style in-cell edit commit shell.
   - `VirtualGroupedSections` — shared date→groups/rows virtualizer (LedgerGrid + station/receiving feeds).
-  - **Column visibility (ONE rule, one place):** `useGridColumnVisibility({ columns, tableId, forceHidden })` resolves descriptor default tier + the staffer's persisted delta + ephemeral viewport collapse into the visible track list; the view passes that list to the header, rows, group summaries **and** its geometry fn, so a hidden column loses its TRACK. `useGridFields(tableId, columns)` backs `GridColumnDetailsPanel`, generated from the descriptor and opened from `GridColumnGutter` — hover-revealed over the card's top-right corner and reserving no layout, never page chrome (retired 2026-08-02 with `GridFieldsMenu`) and never a resident track or gutter, both of which charge standing rent (a row's width, or a page's) for an occasional action. Column models carry `tier: 'core' | 'optional'` — `optional` ships OFF so grids open lean and staff opt in; prefs persist as a delta (`hidden`/`shown`) in `staff_preferences.tableColumns[tableId]`, never an absolute list. **Do not** call `useIsColumnHidden()` from a grid family — that is the retired cell-granularity path (it left an empty ruled band where the track should have gone) and now serves only the legacy `ChipColumns`/`RowMetaColumns` row primitives. Guard: `grid-column-tier.guard.test.ts` + `grid-column-visibility.test.ts`.
+  - **Column visibility (ONE rule, one place):** `useGridColumnVisibility({ columns, tableId, forceHidden })` resolves descriptor default tier + the staffer's persisted delta + ephemeral viewport collapse into the visible track list; the view passes that list to the header, rows, group summaries **and** its geometry fn, so a hidden column loses its TRACK. `useGridFields(tableId, columns)` backs `GridColumnDetailsPanel`, generated from the descriptor and opened from `GridColumnGutter`. **Band-3 portal is the norm (2026-08-06):** pass the triage `controlsSlotRef` element as `columnTriggerPortalTarget` so ▦ sits resident beside filter / staff / week / sort. Card-corner hover-reveal is the fallback for tables with no Band-3. Never page chrome (retired 2026-08-02 with `GridFieldsMenu`) and never a resident header track / `pr-9` (covered `TRACKING`). Column models carry `tier: 'core' | 'optional'` — `optional` ships OFF so grids open lean and staff opt in; prefs persist as a delta (`hidden`/`shown`) in `staff_preferences.tableColumns[tableId]`, never an absolute list. **Do not** call `useIsColumnHidden()` from a grid family — that is the retired cell-granularity path (it left an empty ruled band where the track should have gone) and now serves only the legacy `ChipColumns`/`RowMetaColumns` row primitives. Guard: `grid-column-tier.guard.test.ts` + `grid-column-visibility.test.ts` + `workbench-trailing-cluster.guard.test.ts`.
   - **Column width is a per-staff drag:** `ColumnResizeHandle` on each resizable header cell mutates only the surface's `--cf-col-<key>` var (so header, rows, summaries and the frozen pane's sticky-left `calc()` reflow together with no React render), committing once on drop through `useGridColumnWidths` → `staff_preferences.tableColumns[t].widths`, applied back via `LedgerGrid` `columnVars`. `isGridColumnResizable` is the one rule for who gets a grip: variable-content tracks yes; `select` and the fixed-format types (`number` · `id` · `location`) no — their cells render a last-8 chip or a short numeral run, so a drag only moves whitespace. Override with `resizable` on the column model.
   - **Column sort is URL-durable:** `useUrlColumnSort({ isColumn, defaultDir })` owns `?colsort=`/`?coldir=` — deliberately NOT `?sort=`/`?dir=`, which are already taken by *server* ordering vocabularies on `/incoming` (`useIncomingFilters`) and History (`normalizeHistorySort`). Both params are registered in `MODE_SCOPED_PARAMS` + `stripCrossSurfaceParams`, so a column sort clears on mode/surface switch. Pending/Testing (`useQueueDisplaySort`) and Repair (`useRepairDisplaySort`) keep their composite wrappers.
   - **Headless state engine (TanStack Table v8 — state math ONLY):** `useGridSurface` (`"use no memo"` — React Compiler trap) owns column defs + sorting + visibility + column order; markup, virtualization, grouping/folds, fetch, and mutations stay house. `grid-surface-descriptor.ts` (`buildLedgerColumnDefs`, `makeGridSurfaceDescriptor`, `GridSurfaceDescriptor`) lifts a house column-model list (`ORDERS_QUEUE_COLUMNS` / `INCOMING_GRID_COLUMNS` / `RECEIVING_GRID_COLUMNS`) into TanStack defs carrying the house model on `meta.gridColumn`. **Never** mount a foreign UI grid (AG Grid / MUI / Glide) and never let TanStack own widths/markup — geometry stays on the house CSS-var templates.
@@ -147,7 +152,7 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - **Row anatomy — a fact belongs to its own COLUMN** (2026-08-02): a column is the only address at which a fact can be sorted, hidden, resized, highlighted and aligned with its own kind. So **no status dot in the identity cell** — the title column shows the title; the dot rides the `status` track. **The status cell is `GridStatusCellValue`**: the house 3-layer chip with the dot **inside** it, tone from the surface's lifecycle registry (`workflowStage().badge`, `pickupOrderStatusChipClass`, …) and the ring derived from the resolved ink (`ring-current/20`), so no registry needs a new field — never a page-local status chip (four surfaces had one). A civil day and its stamp share ONE column. **The `META_COL` dot track on list/accordion rows is NOT this** and stays correct: a list has no columns, so the row's left edge is the only address a state mark can have. Full set + the `order`-freeze / `#`-header preconditions: `.claude/rules/display/workbench-ops-queue.md` → Row anatomy.
   - **Frozen-pane sticky offset:** `gridFrozenLeft(columns, key)` (`components/grid/grid-column-geometry.ts`) — one implementation, taking the SURFACE's own columns, with the width fallback as the track's rem FLOOR. Ten hand-rolled copies pushed `var(--cf-col-KEY, ${col.width})` instead, and `col.width` is a `minmax()` grid-track string: illegal inside `calc()`, so `left` computed to `auto` and the pane silently did not pin at all (invisible to review, because a staffer who had drag-resized the preceding column set the var to a real px and saw it work). Guard: `grid-frozen-left.guard.test.ts`.
   - **Do not** fork sticky header / scrollX / virtual body chrome for ops queues — compose `LedgerGrid` + a domain thin composer (`OrdersGridView`, receiving/station wrappers). Domain cell registries stay out of DS.
-  - **Two expand jobs (never merge):** Maximize2 / non-edit open = domain `onOpenRecord` (detail pane); multi-child fold = `CollapsibleGroupRow` + `groupRowsBy` (summary → child rows).
+  - **Two expand jobs (never merge):** Maximize2 / non-edit open = domain `onOpenRecord` (detail pane); parent→child collection drill = `LedgerDrillHost` / `LedgerDrillParentMap` (parent rollups only on the drill map; list sheets stay flat leaves via `groupRowsBy`).
   - Sibling SoT for non-virtualized HTML tables: `components/DataTable/` (lifecycle/admin tables — `{ key, header, cell, align, width }` schema; **no TanStack, no virtualizer** — that simplicity is its job). Boards / pickers / rails stay their own surfaces.
 - **New components:**
   - `DateGroupHeader.tsx` — sticky date group header for tables with variant-based tonal backgrounds
@@ -155,7 +160,8 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - `OverlaySearch.tsx` — animated toggle between trigger element and search input
 - **Re-exported from `components/ui/`:**
   - `CopyChip.tsx` — semantic chip family (TrackingChip, FnskuChip, SerialChip, OrderIdChip, TicketChip, SourceOrderChip)
-  - `TabSwitch.tsx` — universal tab switcher with variant support
+  - `TabSwitch.tsx` — legacy soft-pill tab switcher with variant support
+  - `TabDisplay.tsx` — industrial SoT tab switcher (flush / zero radius; Displays nested verbs)
 - Sidebar intake chrome: `sidebar-intake/` (intakeFormClasses, SidebarIntakeFormShell) — **create / import / prefs only**. Record right-rail peeks use `PaneHeader` + `PaneHeaderLabel` (see `.claude/rules/display/right-rail-inspector.md`).
 
 ### Procedure & scan progress (`components/procedure/` + station chrome)
@@ -207,33 +213,66 @@ deleted).
 ## CopyChip Semantic Rules
 
 **Hard rule: chip variants are semantically bound to data types and must never be interchanged.**
+Quiet faces: tone is **icon hue + mono + click-to-copy** (no bottom underline rule).
+Plain full-string cells use `CopyableCellValue` (same `useCopyChip` behavior).
 
-| Chip | Color | Icon | Use for | Never use for |
-|------|-------|------|---------|---------------|
-| `TrackingChip` | Blue / `border-blue-500` | MapPin | Carrier shipping tracking numbers (UPS, FedEx, USPS…) | FNSKU codes, order IDs |
-| `FnskuChip` | Purple / `border-purple-500` | Package | Amazon FNSKU identifiers (e.g. `X001ABC123`) | Shipping tracking numbers |
-| `SerialChip` | Emerald / `border-emerald-500` | Barcode | Device / unit serial numbers | Any non-serial value |
-| `OrderIdChip` | Gray / `border-gray-400` | Hash | Internal order IDs | Tracking or FNSKU |
-| `TicketChip` | Orange / `border-orange-500` | Settings | Repair / support ticket IDs | Any other type |
-| `SourceOrderChip` | Gray / `border-gray-400` | Hash | External platform order numbers | Tracking or FNSKU |
+| Chip | Icon hue | Icon | Use for | Never use for |
+|------|----------|------|---------|---------------|
+| `TrackingChip` | Blue (default) · **carrier brand hex when known** | MapPin (`CarrierMark`) | Carrier shipping tracking numbers (UPS, FedEx, USPS…) — brand paint from `carrier-brand.ts` | FNSKU codes, order IDs |
+| `UnitPriceChip` | Emerald | Receipt | Zoho PO unit cost / money facts | Qty / counts |
+| `FnskuChip` | Purple | Package | Amazon FNSKU identifiers (e.g. `X001ABC123`) | Shipping tracking numbers |
+| `SerialChip` | Emerald | Barcode | Device / unit serial numbers | Any non-serial value |
+| `OrderIdChip` | Gray | Hash | Internal order IDs | Tracking or FNSKU |
+| `TicketChip` | Orange | Ticket | Repair / support ticket IDs | Any other type |
+| `SourceOrderChip` | Gray | Hash | External platform order numbers | Tracking or FNSKU |
 
 **FNSKU ≠ Tracking Number.** FNSKUs are Amazon product identifiers scanned at FBA intake. Tracking numbers are carrier labels attached to outbound shipments. Displaying an FNSKU inside a `TrackingChip` (blue, MapPin) or a tracking number inside an `FnskuChip` (purple, Package) is a design-system violation.
 
 ## Tab Switcher Rules
 
-**Hard rule: all tab-like UI must use `TabSwitch` from `src/design-system/components/TabSwitch.tsx`** (barrel: `@/design-system/components`). Custom pill buttons or ad-hoc toggle rows are not permitted. Wrap the switcher in `SidebarTabSwitchChrome` when it sits in a sidebar header row.
+**Industrial SoT (Displays nested verbs):** use `TabDisplay` from
+`src/design-system/components/TabDisplay.tsx` (barrel: `@/design-system/components`).
+Square / flush / zero corner radius — no soft pills. Densities: `nested` (shipped for
+Unbox Displays verb switchers), `band` / `icon` reserved for later migrations.
 
-**`variant` (the visual treatment — one sliding pill, always):**
+**Legacy soft pills:** `TabSwitch` (`variant="solid"` etc.) remains for workbench
+lifecycle bands (`WorkbenchChromeHeader`) and other non-Displays call sites until
+they migrate to `TabDisplay`. Custom pill buttons or ad-hoc toggle rows are not
+permitted. Wrap legacy `TabSwitch` in `SidebarTabSwitchChrome` when it sits in a
+sidebar header row.
+
+**`TabDisplay` (industrial):**
+
+| `density` | Geometry | Use for |
+|---|---|---|
+| `nested` | Displays verb / claim-mode switchers | Photos · Ticket · Linkage · Claim New/Link |
+| `band` | ~40px flush strip sizing | Workbench lifecycle (API ready; consumers still on TabSwitch) |
+| `icon` | Quiet topic strip | Owned by `SectionTabsSlider` `density="icon"` — SpaceX `h-10` edge-to-edge plate + underline active + trailing ⋮ |
+
+| `appearance` | Weight | Active treatment | Use for |
+|---|---|---|---|
+| `underline` | **Parent** | Bottom rule + body type; no inverse fill | Displays nested verbs (Chat·Claim, Browse·Move·Send, Link·Note) |
+| `segment` | **Child** | Sunken rail + **flush** light face (no gutter); caption type | Local subset under a parent (Claim New ticket·Link existing) |
+| `fill` | High-contrast | Inverse sliding rectangular face, inset by a `p-0.5` gutter | When a single-layer inverse switcher is required |
+
+Parent must sit above child and carry more weight — never stack two inverse fills.
+
+**`segment` carries no gutter** (2026-08-05). It shared `fill`'s `p-0.5` inset
+until then, which put 2px of sunken rail around a light face on a light rail —
+a floating capsule doing the job the rail's own hairline already does. `fill`
+keeps its gutter because an inverse face genuinely needs to read as inset.
+
+**`TabSwitch` `variant` (legacy soft pill — one sliding pill, always):**
 
 | `variant` | Rail | Active pill | Active text | Labels | Use for |
 |---|---|---|---|---|---|
 | `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | uppercase, `font-semibold`, tracked | most in-app tab rows |
-| `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-semibold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control |
+| `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-semibold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control **(legacy)** |
 | `upNext` | tinted station rail (`bg-surface-strong`) | light pill + station outline | semantic hue | uppercase | station up-next queue |
 
-- `countStyle`: `badge` (mini pill bubble, default) or `plain` (inline, same size as label — preferred for dense ops headers).
-- `solid` labels come from the source string as-is (no CSS uppercasing) — store them title-case. All treatments are token-only (inverse surface/text, not black hex) so they flip under `data-theme` dark mode.
-- Don't hand-set pill/rail colors at the call site — pick a `variant` and, if a genuinely new treatment is needed, **add a variant to the primitive** rather than forking chrome via `railClassName`.
+- `TabSwitch` `countStyle`: `badge` (mini pill bubble, default) or `plain` (inline — preferred for dense ops headers). `TabDisplay` always uses plain tabular counts.
+- `solid` / `TabDisplay` labels come from the source string as-is (no CSS uppercasing) — store them title-case. All treatments are token-only so they flip under `data-theme` dark mode.
+- Don't hand-set rail colors at the call site — pick the SoT primitive (`TabDisplay` for Displays nested verbs; `TabSwitch` variant until migrated) rather than forking chrome via class overrides.
 
 ## Functional Color Mapping (the color story)
 

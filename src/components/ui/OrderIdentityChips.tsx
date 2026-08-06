@@ -41,8 +41,6 @@ export interface OrderIdentityChipsProps {
   platformLabel: string;
   /** Icon color for the platform chip (gray when not linkable). */
   platformIconClass: string;
-  /** Underline color for the platform chip. */
-  platformBorderClass: string;
   /** Product/listing URL; primary action is **copy**, open is secondary. */
   productPageUrl: string | null;
   /** Marketplace order detail URL (secondary open on order chip). */
@@ -54,13 +52,18 @@ export interface OrderIdentityChipsProps {
   hideOrderId: boolean;
   /** Raw tracking / scan ref; when empty the paste / trackingAction shows. */
   tracking: string;
+  /**
+   * Authoritative shipment / order carrier when the host has it. Prefer for Open
+   * over regex detect ({@link TrackingNumberMenuChip} `carrierHint`).
+   */
+  carrierHint?: string | null;
   /** Action node for the empty tracking slot when no clipboard tracking (e.g. Add TRK#). */
   trackingAction?: React.ReactNode;
   /** Optional callback when operator pastes clipboard tracking into empty slot. */
   onPasteTracking?: (tracking: string) => void;
-  /** Optional callback from the filled-tracking menu → "Replace tracking".
-   *  Host opens the order inspector replace flow — never clipboard-steals. */
-  onReplaceTracking?: () => void;
+  /** Optional callback from the filled-tracking menu → "Edit". Host opens the
+   *  order inspector replace flow — never clipboard-steals. */
+  onEditTracking?: () => void;
   /** Opens the host row's listing-link (`item_number`) editor — surfaces the
    *  "Edit listing link" hover action on the platform cell (Pending grid). */
   onEditListingLink?: () => void;
@@ -118,16 +121,16 @@ function copyValue(value: string, kind?: string, display?: string) {
 export function useOrderIdentityCellNodes({
   platformLabel,
   platformIconClass,
-  platformBorderClass,
   productPageUrl,
   marketplaceOrderUrl = null,
   isFba,
   orderId,
   hideOrderId,
   tracking,
+  carrierHint = null,
   trackingAction,
   onPasteTracking,
-  onReplaceTracking,
+  onEditTracking,
   onEditListingLink,
   serialChip,
   variant = 'icons',
@@ -273,7 +276,6 @@ export function useOrderIdentityCellNodes({
     <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems} onOpenChange={handleMenuOpenChange}>
       <PlatformChip
         label={platformLabel}
-        underlineClass={platformBorderClass}
         iconClass={platformIconClass}
         showIcon={!plain}
         tooltipValue={productPageUrl ? 'Open listing' : 'No listing link'}
@@ -288,15 +290,22 @@ export function useOrderIdentityCellNodes({
     <OrderIdChipPlaceholder plain={plain} />
   ) : (
     <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
-      <OrderIdChip value={orderId} display={getLast8(orderId)} plain={plain} fitDisplayWidth />
+      <OrderIdChip
+        value={orderId}
+        display={getLast8(orderId)}
+        platformLabel={platformLabel}
+        plain={plain}
+        fitDisplayWidth
+      />
     </CopyChipHoverMenu>
   );
 
   const trackingChipNode = tracking ? (
     <TrackingNumberMenuChip
       value={tracking}
+      carrierHint={carrierHint}
       plain={plain}
-      onReplaceTracking={onReplaceTracking}
+      onEdit={onEditTracking}
       onMenuOpenChange={handleMenuOpenChange}
     />
   ) : (

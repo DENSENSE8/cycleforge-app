@@ -25,7 +25,7 @@ export function ChevronToggle({ isExpanded, tone = 'emerald', className = '' }: 
     <motion.span
       animate={{ rotate: isExpanded ? 180 : 0 }}
       transition={framerTransition.upNextChevron}
-      className={`inline-flex items-center justify-center rounded-full border ${TONE_CLASSES[tone]} ${
+      className={`inline-flex items-center justify-center rounded-none border ${TONE_CLASSES[tone]} ${
         isMobile
           ? 'h-11 w-11 active:scale-95 transition-transform'
           : 'h-8 w-8'

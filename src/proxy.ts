@@ -52,6 +52,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/pickup(?:$|\/)/,       // device-authed order pickup lookup/collect (withKioskAuth)
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
+  /^\/design-demo(?:$|\/)/,            // dev/preview DS showcase — 404s in prod via design-demo layout (matches AuthContext)
   /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)
   // Anonymous share-pack read + zip download by token — a token IS the
   // capability. The `[^/]+` requires a token segment, so the bare collection
@@ -153,8 +154,8 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   // shell, whose bottom nav already labels itself "Unbox".
   ['/unbox', '/m/receiving'],
   ['/unbox/', '/m/receiving'],
-  ['/triage', '/m/receiving'],
-  ['/triage/', '/m/receiving'],
+  ['/triage', '/m/triage'],
+  ['/triage/', '/m/triage'],
   ['/incoming', '/m/receiving'],
   ['/incoming/', '/m/receiving'],
   // Walk-In station + Receiving History surfaces (operator-surfaces refactor Phase 9)

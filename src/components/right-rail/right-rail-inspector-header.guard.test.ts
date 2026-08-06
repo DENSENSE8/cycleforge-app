@@ -13,7 +13,7 @@
  *     `stationMoreDetailsPaneHostClass` absolute host inside a RightRailHost card,
  *     never `rightSlot={…PaneHeaderCloseButton}` (split cluster), never
  *     `variant="card"` ActionBar as the chrome pill. Golden: `DeskRailChromeRow`
- *     (Unbox-aligned) or `PaneHeaderActionBar onClose` (orders / RecordPaneHeader).
+ *     (Unbox-aligned) — Orders `RecordPaneHeader` composes it too.
  *
  * Run: npx tsx --test src/components/right-rail/right-rail-inspector-header.guard.test.ts
  */
@@ -43,11 +43,12 @@ const INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST = new Set<string>([
 ]);
 
 /**
- * Station pane hosts may use `stationMoreDetailsPaneHostClass` — Unbox's
- * two-region chrome. Desk RightRailHost cards must not.
+ * Station pane hosts may use `stationMoreDetailsPaneHostClass` — Unbox-family
+ * two-region chrome via {@link StationScanPaneHost}. Desk RightRailHost cards
+ * must not.
  */
 const STATION_PANE_HOST_ALLOWLIST = new Set<string>([
-  'src/components/receiving/workspace/LineEditPanel.tsx',
+  'src/components/station/workbench/StationScanPaneHost.tsx',
 ]);
 
 /** Record peeks that must never re-adopt the intake hero-title shell. */
@@ -62,6 +63,7 @@ const DESK_RAIL_CHROME_ROW_GOLDEN = [
   'src/components/warehouse/BinDetailFlyout.tsx',
   'src/components/support/context/SupportContextDetailPanel.tsx',
   'src/components/receiving/workspace/ZohoSplitPane.tsx',
+  'src/components/receiving/history/HistoryCartonTriagePanel.tsx',
 ] as const;
 
 function walkTsx(dir: string, out: string[] = []): string[] {
@@ -137,6 +139,37 @@ describe('right-rail inspector header', () => {
     assert.match(doc, /DeskRailChromeRow/);
     assert.match(doc, /stationMoreDetailsPaneHostClass/);
     assert.match(doc, /single-card|one in-flow/i);
+    assert.match(doc, /chrome → context → identity/);
+    assert.match(doc, /chrome ONLY/);
+  });
+
+  it('RecordPaneHeader composes DeskRailChromeRow for chrome; contextual ActionBar stays chrome-free', () => {
+    const header = code(read('src/components/order-record/RecordPaneHeader.tsx'));
+    assert.match(
+      header,
+      /DeskRailChromeRow/,
+      'chrome Row 1 must compose DeskRailChromeRow (top-left →|)',
+    );
+    assert.match(
+      header,
+      /onClose=\{onClose\}/,
+      'DeskRailChromeRow must receive onClose',
+    );
+    assert.match(
+      header,
+      /cursor=\{<CursorPositionReadout/,
+      'cursor readout sits before ↑↓ via DeskRailChromeRow cursor slot',
+    );
+    assert.match(
+      header,
+      /actions=\{rowActions\}\s*\/>/,
+      'contextual ActionBar must end at actions={rowActions} with no chrome props',
+    );
+    assert.doesNotMatch(
+      header,
+      /actions=\{\[\]\}[\s\S]{0,500}?onClose=\{onClose\}/,
+      'must not use trailing-cluster PaneHeaderActionBar for close',
+    );
   });
 
   it('Incoming / Unfound / Bin / Support-context compose DeskRailChromeRow', () => {

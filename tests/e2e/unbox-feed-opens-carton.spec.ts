@@ -2,9 +2,9 @@ import { test, expect } from '@playwright/test';
 
 /**
  * The Unbox workbench feed — Recent / Queue keep two action planes (row body
- * opens, select gutter owns bulk). History is click-select golden: no select
- * column; plain click toggles bulk; double-click opens; header paint-bucket
- * paints selected rows (Rose + siblings).
+ * opens, select gutter owns bulk). History is click-select golden: plain click
+ * toggles bulk; double-click opens; select track paints decorative check when
+ * selected; header paint-bucket paints selected rows (Rose + siblings).
  *
  * Before 2026-08-01, `useReceivingLineBulkSelection({ active: true })` pinned
  * `selectMode` ON and `handleSelectRow` swallowed every click into the bulk

@@ -209,12 +209,16 @@ test.describe('Zendesk claim subject — UI compose step agrees with the API (be
     }
     await claimBtn.click();
 
-    const nextTicketBtn = page.getByRole('button', { name: /Next: Ticket/ });
+    // Continuous-scroll drawer: jump to the Ticket section via scroll-spy nav
+    // (no Next: Ticket paging anymore).
+    const ticketSectionNav = page.getByRole('navigation', { name: /Claim sections/i }).getByRole('button', {
+      name: /Ticket/i,
+    });
     try {
-      await nextTicketBtn.waitFor({ state: 'visible', timeout: 10_000 });
-      await nextTicketBtn.click();
+      await ticketSectionNav.waitFor({ state: 'visible', timeout: 10_000 });
+      await ticketSectionNav.click();
     } catch {
-      test.skip(true, 'Claim wizard did not open on the Photos step as expected — skipping the UI half.');
+      test.skip(true, 'Claim drawer did not open with scroll-spy sections as expected — skipping the UI half.');
       return;
     }
 

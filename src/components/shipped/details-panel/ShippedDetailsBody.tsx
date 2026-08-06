@@ -135,11 +135,7 @@ export function ShippedDetailsBody({
     }
 
     if (activeSection === 'warranty') {
-      return (
-        <div className="px-6">
-          <OrderWarrantySection order={shipped} />
-        </div>
-      );
+      return <OrderWarrantySection order={shipped} />;
     }
 
     if (activeSection === 'conversation' && shipped?.id) {

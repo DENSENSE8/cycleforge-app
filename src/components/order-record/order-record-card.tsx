@@ -1,15 +1,10 @@
 'use client';
 
 /**
- * Order-record card vocabulary — the shared surface primitives for every order
- * detail surface (`/o/[orderId]`, Dashboard Search detail, the dashboard
- * slide-over).
+ * Order-record card vocabulary — shared fact atoms for the durable `/o/[orderId]`
+ * record (and siblings that compose the same atoms without forking them).
  *
- * Promoted out of `dashboard/search/SearchOrderTabFrame` in Week 1: these were
- * already the right shapes, but they were named for one consumer. That file now
- * re-exports these under its old names so the eight search tabs compile
- * unchanged — no call-site churn, one definition.
- *
+ * Promoted out of `dashboard/search/SearchOrderTabFrame` in Week 1.
  * Composes the canonical `Panel` shell; never hand-rolls `rounded-2xl border …`.
  */
 

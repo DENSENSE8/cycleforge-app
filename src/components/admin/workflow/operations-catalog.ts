@@ -343,7 +343,7 @@ export const FLOWS: OpsFlow[] = [
       { stage: 'Awaiting Test', key: 'AWAITING_TEST', station: 'TECH', note: 'Queued for QA (display state; row stays UNBOXED until first verdict)' },
       { stage: 'Testing', key: 'IN_TEST', station: 'TECH', note: 'A tech is actively testing the line', signal: 'TEST_START', by: '/api/serial-units/[id]/test' },
       { stage: 'Passed', key: 'PASSED', station: 'TECH', note: 'All units TESTED, no failures → ready to finalize', signal: 'TEST_PASS' },
-      { stage: 'Done', key: 'DONE', station: 'RECEIVING', note: 'Line finalized, put away (shows as “Received”)', signal: 'PUTAWAY' },
+      { stage: 'Received', key: 'DONE', station: 'RECEIVING', note: 'Line finalized, put away — inventory receive confirmed (or no provider sync needed)', signal: 'PUTAWAY' },
     ],
     offPath: [
       { stage: 'Failed', note: 'Any unit ON_HOLD → FAILED / FAILED_FUNCTIONAL (claim flow)' },

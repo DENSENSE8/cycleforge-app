@@ -18,22 +18,27 @@
  * search) — see sidebar-search-bar.guard.test.ts.
  */
 
+import type { ReactNode } from 'react';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 
 export function TriageCartonSearchBar({
   value,
   onChange,
+  trailingSuffix,
 }: {
   /** Current `?triq=` value (server/URL truth). */
   value: string;
   /** Debounced commit — writes `?triq=`. */
   onChange: (next: string) => void;
+  /** Field-density facets after paste (Receiving recent-rail filter SoT). */
+  trailingSuffix?: ReactNode;
 }) {
   return (
     <TechRailSearchBar
       value={value}
       onChange={onChange}
       placeholder="Find a scanned carton…"
+      trailingSuffix={trailingSuffix}
     />
   );
 }

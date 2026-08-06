@@ -6,14 +6,20 @@
  *
  * ## Where it lives
  *
- * **Default:** hover-revealed over the grid card's top-right corner (Notion /
- * Airtable grammar — table chrome on the table). Reserves no column track and
- * no page gutter.
+ * **Band-3 / inspector View topics (the norm):** when
+ * {@link triggerPortalTarget} is set, the trigger portals into that host so it
+ * sits with the other refine icons (staff / filter / week / sort). Open state +
+ * rail stay here — one door, one room; only the paint host moves.
  *
- * **Unbox triage band (2026-08-03):** when {@link triggerPortalTarget} is set,
- * the same trigger portals into the Unbox header refine row (staff / filter /
- * week) so it sits with those icon controls. Open state + rail stay here —
- * one door, one room; only the paint host moves.
+ * **Portal-only desks (Unbox History · To Ship View topics):** pass
+ * {@link triggerPortalOnly}. When the inspector host is not mounted yet, paint
+ * **nothing** — never the card-corner hover float. ▦ belongs on the right
+ * panel View cluster, not over the sheet.
+ *
+ * **Card-corner fallback:** with neither a portal target nor
+ * {@link triggerPortalOnly} (a surface that has no Band-3 / View host), the
+ * trigger hover-reveals over the grid card's top-right corner (Notion /
+ * Airtable grammar), reserving no column track and no page gutter.
  *
  * Mount via {@link GridColumnGutter}.
  */
@@ -23,6 +29,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -64,8 +71,9 @@ export function useGridColumnFieldsApi(): GridColumnFieldsApi | null {
  *
  * `children` is the framed table card. The wrapper is a positioning context
  * for the default card-corner float. When {@link triggerPortalTarget} is set
- * (Unbox triage band), the trigger paints there instead — still owned here so
- * open state and panel cannot fork.
+ * (Band-3 / View topics), the trigger paints there instead — still owned here
+ * so open state and panel cannot fork. When {@link triggerPortalOnly} is set
+ * and the host is absent, paint nothing (no hover float).
  *
  * `columns` is the family's **FULL canonical model**, never the resolved-visible
  * list — the rail must offer the tracks that are currently OFF.
@@ -75,6 +83,7 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
   columns,
   children,
   triggerPortalTarget = null,
+  triggerPortalOnly = false,
 }: {
   /** Staff-prefs identity — the panel's bucket and the visibility key. */
   tableId: TableId;
@@ -82,13 +91,25 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
   columns: readonly C[];
   children: ReactNode;
   /**
-   * Optional host (e.g. Unbox `data-unbox-controls` slot). When set, the
-   * trigger portals there as a resident icon — no card-corner float.
+   * Optional host (e.g. Band-3 controls slot · inspector View topics). When
+   * set, the trigger portals there as a resident icon — no card-corner float.
    */
   triggerPortalTarget?: HTMLElement | null;
+  /**
+   * When true and {@link triggerPortalTarget} is null, paint no trigger (wait
+   * for the View / Band-3 host). Suppresses the card-corner hover fallback.
+   */
+  triggerPortalOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [seedKey, setSeedKey] = useState<string | null>(null);
+  // Host owns the framed card so Columns Display can live-scrub `--cf-col-*`
+  // on THIS grid's surface even though the rail itself is portaled out.
+  const hostRef = useRef<HTMLDivElement>(null);
+  const getGridSurface = useCallback(
+    () => hostRef.current?.querySelector<HTMLElement>('[data-cf-grid]') ?? null,
+    [],
+  );
   const openDetails = useCallback<OpenColumnDetailsFn>((hideKey) => {
     setSeedKey(hideKey ?? null);
     setOpen(true);
@@ -125,14 +146,21 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
     </div>
   );
 
+  const paintedTrigger = triggerPortalTarget
+    ? createPortal(trigger, triggerPortalTarget)
+    : triggerPortalOnly
+      ? null
+      : cardCornerTrigger;
+
   return (
     <GridColumnDetailsOpenContext.Provider value={openDetails}>
       <GridColumnFieldsContext.Provider value={fieldsApi}>
-        <div className="group/grid-card relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          ref={hostRef}
+          className="group/grid-card relative flex h-full min-h-0 min-w-0 flex-1 flex-col"
+        >
           {children}
-          {triggerPortalTarget
-            ? createPortal(trigger, triggerPortalTarget)
-            : cardCornerTrigger}
+          {paintedTrigger}
           <GridColumnDetailsPanel
             open={open}
             onClose={() => {
@@ -142,6 +170,7 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
             tableId={tableId}
             columns={columns}
             initialHideKey={seedKey}
+            getGridSurface={getGridSurface}
           />
         </div>
       </GridColumnFieldsContext.Provider>

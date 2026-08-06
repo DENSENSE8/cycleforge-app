@@ -6,15 +6,16 @@ import { cn } from '@/utils/_cn';
 import { AnchoredLayer, type AnchoredPlacement } from './AnchoredLayer';
 import { framerPresence, framerTransition } from '../foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '../foundations/motion-framer-hooks';
+import { elevationClass } from '../tokens/shadows';
 import type { ZIndexToken } from '../tokens/z-index';
 
 // ─── Popover ─────────────────────────────────────────────────────────────────
 //
 // The canonical anchored, *styled* popover panel. <AnchoredLayer> owns the hard
 // part (portal, rect-tracking, dismissal) but no visual chrome; <Popover> adds
-// the token-driven surface (rounded card, border, elevation) and the shared
-// dropdown enter/exit motion — so callers stop re-rolling the same
-// `rounded-xl border bg-surface-card shadow-lg` + AnimatePresence boilerplate.
+// the industrial flush surface (zero radius, zero pad, hairline border, soft
+// elevation) and the shared dropdown enter/exit motion — so callers stop
+// re-rolling rounded floating-card boilerplate.
 //
 // Motion comes from the SHARED presets (`framerPresence.dropdownPanel` +
 // `framerTransition.dropdownOpen`), run through the reduced-motion-aware hooks.
@@ -46,7 +47,7 @@ export interface PopoverProps
   anchorRef: RefObject<HTMLElement | null>;
   /** Edge + alignment relative to the trigger. Default 'bottom-start'. */
   placement?: AnchoredPlacement;
-  /** Gap in px between the trigger and the panel. Default 6. */
+  /** Gap in px between the trigger and the panel. Default 0 (flush extension). */
   gap?: number;
   /** Stacking band — use `panelOverlay` inside {@link RightPaneOverlay}. Default `dropdown`. */
   level?: ZIndexToken;
@@ -57,7 +58,10 @@ export interface PopoverProps
    * from outside-click-commit pass false and handle Escape on their own input.
    */
   closeOnEscape?: boolean;
-  /** Inner padding. Default true. */
+  /**
+   * Inner padding. Default false — list rows / menu items bleed to the edges
+   * (Kinetic Ledger flush). Pass true only when the panel hosts free-form content.
+   */
   padded?: boolean;
   /** Classes on the styled panel. */
   className?: string;
@@ -69,11 +73,11 @@ export function Popover({
   onClose,
   anchorRef,
   placement = 'bottom-start',
-  gap = 6,
+  gap = 0,
   level = 'dropdown',
   matchWidth = false,
   closeOnEscape = true,
-  padded = true,
+  padded = false,
   className,
   children,
   ...rest
@@ -115,7 +119,8 @@ export function Popover({
             exit={presence.exit}
             transition={transition}
             className={cn(
-              'min-w-[10rem] overflow-hidden rounded-xl border border-border-soft bg-surface-card text-text-default shadow-md',
+              'min-w-[10rem] overflow-hidden rounded-none border border-border-default bg-surface-card text-text-default',
+              elevationClass('raised', 'soft'),
               padded && 'p-2',
               className,
             )}

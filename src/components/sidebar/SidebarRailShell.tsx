@@ -8,9 +8,14 @@ import {
   SIDEBAR_RAIL_DOT_TRACK,
   SIDEBAR_RAIL_INSET_LEFT,
   SIDEBAR_RAIL_INSET_X,
-  SIDEBAR_RAIL_ROW_PAD_RIGHT,
+  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
   SIDEBAR_SCAN_DOCK_LEADING_ROW,
 } from '@/components/layout/header-shell';
+import { CONTEXT_PANEL_COLLAPSE } from '@/components/sidebar/context-panel-column';
+import {
+  usePublishCollapsePins,
+  type CollapseStripPeekCtx,
+} from '@/components/sidebar/context-panel-collapse-context';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
 import {
@@ -20,11 +25,15 @@ import {
   staggerRevealSidebarItem,
   staggerRevealSidebarSlideItem,
 } from '@/design-system/primitives/StaggerReveal';
+import { RailPeekCard } from './rail-shell/RailPeekCard';
 import { useSidebarRail } from './rail-shell/useSidebarRail';
 import { RailEditPencil } from './rail-shell/RailEditPencil';
 import { RailRow } from './rail-shell/RailRow';
 import { PkgGroupHeader } from './rail-shell/PkgGroupHeader';
-import type { SidebarRailShellProps } from './rail-shell/sidebar-rail-shared';
+import {
+  railRelativeTime,
+  type SidebarRailShellProps,
+} from './rail-shell/sidebar-rail-shared';
 
 /**
  * Generic sidebar "recent activity" rail skeleton. Owns the reusable shell —
@@ -67,6 +76,11 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     staggerRevealMotion = 'slide',
     railInset = 'gutter',
     contentPaintSurface,
+    onVisibleRowsChange,
+    publishCollapseMru = false,
+    getCollapsePinLabel,
+    getCollapsePinMeta,
+    getCollapsePinFacts,
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
     renderRowMain, renderPopover,
   } = props;
@@ -84,6 +98,76 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   useEffect(() => {
     if (contentPaintSurface && !showSkeleton) markSurfacePainted(contentPaintSurface);
   }, [contentPaintSurface, showSkeleton]);
+
+  useEffect(() => {
+    onVisibleRowsChange?.(rows);
+  }, [rows, onVisibleRowsChange]);
+
+  // Parked mid-strip MRU peek — same visible top-N the open rail paints.
+  // Pin hover always opens a RailPopover card: the rail's own `renderPopover`
+  // when it has one (Receiving), else the shared `RailPeekCard` built from the
+  // feed's typed identity facts. Never a text-only twin.
+  const collapseMru = useMemo(() => {
+    if (!publishCollapseMru) return null;
+    const top = rows.slice(0, CONTEXT_PANEL_COLLAPSE.mruPinCount);
+    if (top.length === 0) return null;
+    return {
+      totalCount: rows.length,
+      pins: top.map((row, i) => {
+        const numericId = getId(row);
+        const id = getReconcileId ? getReconcileId(row) : numericId;
+        const statusLabel = getStatusDotLabel?.(row);
+        const meta = getCollapsePinMeta?.(row)?.trim() || undefined;
+        const ageRaw = getActivityAt?.(row);
+        const age = ageRaw ? (railRelativeTime(ageRaw) ?? undefined) : undefined;
+        const groupSize = grouped[i]?.groupSize ?? 1;
+        return {
+          id,
+          label: getCollapsePinLabel?.(row) ?? statusLabel ?? String(numericId),
+          statusDotClass: getStatusDot(row),
+          statusLabel,
+          meta,
+          age: age && age !== '—' ? age : undefined,
+          selected: selectedId != null && numericId === selectedId,
+          onSelect: () => onSelect(row),
+          renderPeek: (ctx: CollapseStripPeekCtx) =>
+            renderPopover ? (
+              renderPopover(row, {
+                groupSize,
+                openWorkspace: ctx.openWorkspace,
+                dismiss: ctx.dismiss,
+              })
+            ) : (
+              <RailPeekCard
+                title={getCollapsePinLabel?.(row) ?? statusLabel ?? String(numericId)}
+                statusLabel={statusLabel}
+                statusDotClass={getStatusDot(row)}
+                meta={meta}
+                facts={getCollapsePinFacts?.(row) ?? []}
+                age={age && age !== '—' ? age : undefined}
+                onOpen={ctx.openWorkspace}
+              />
+            ),
+        };
+      }),
+    };
+  }, [
+    publishCollapseMru,
+    rows,
+    grouped,
+    selectedId,
+    getId,
+    getReconcileId,
+    getCollapsePinLabel,
+    getCollapsePinMeta,
+    getCollapsePinFacts,
+    getActivityAt,
+    getStatusDot,
+    getStatusDotLabel,
+    onSelect,
+    renderPopover,
+  ]);
+  usePublishCollapsePins(collapseMru);
 
   // Latches TRUE the moment this feed first paints rows, and stays true for the
   // component's whole life. Two jobs: (1) keep the list host mounted for the last
@@ -142,28 +226,31 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     () => staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP),
     [reduceMotion],
   );
-  // scanDock: list + eyebrow share SIDEBAR_RAIL_INSET_LEFT (sidebar gutter) so
-  // selection rings clear the pane edge; leading `pad → track → gap` then lands
-  // titles on the dense scan-dock column with the scan bar above.
+  // scanDock: list host is flush (`SIDEBAR_RAIL_INSET_X` = px-0) so selection
+  // washes edge-to-edge; eyebrow matches. Content column pad lives inside each
+  // RailRow / the dense scan bar (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW).
   const listInsetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
-  const eyebrowOuterX =
-    railInset === 'scanDock'
-      ? cn(SIDEBAR_RAIL_INSET_LEFT, SIDEBAR_RAIL_ROW_PAD_RIGHT)
-      : SIDEBAR_GUTTER;
+  const eyebrowOuterX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
 
   return (
     <section className={cn('min-w-0 border-t border-border-hairline', appSurfaceFillClass('chrome'))}>
       {!hideEyebrow ? (
         <div className={cn('flex items-center justify-between py-1', eyebrowOuterX)}>
-          {/* Leading spacer = RailRow's dot track (pad → w-4 → gap) so the
-              eyebrow title shares the row-title x. */}
-          <div className={SIDEBAR_SCAN_DOCK_LEADING_ROW}>
-            <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
-            <p data-rail-eyebrow className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              {eyebrowTitle} · {topCount}
-            </p>
+          {/* Nested gutter + leading track — same content column as RailRow. */}
+          <div className={cn(railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_LEFT : null, 'min-w-0')}>
+            <div className={SIDEBAR_SCAN_DOCK_LEADING_ROW}>
+              <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
+              <p data-rail-eyebrow className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                {eyebrowTitle} · {topCount}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              'flex items-center gap-2',
+              railInset === 'scanDock' ? SIDEBAR_RAIL_TRAILING_TRACK_CLASS : null,
+            )}
+          >
             {eyebrowAction
               ? eyebrowAction
               : eyebrowSuffix && (

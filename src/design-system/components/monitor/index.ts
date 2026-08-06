@@ -17,6 +17,7 @@ export {
   OpsKpiBandCell,
   OpsKpiBandEmpty,
   OpsKpiBandError,
+  OpsKpiBandSkeletonTile,
 } from './OpsKpiBand';
 export { MetricTile, metricIntentTextClass, type MetricTileProps, type MetricIntent } from './MetricTile';
 export { MetricRing } from './MetricRing';
@@ -24,3 +25,6 @@ export { DeltaChip, type DeltaChipProps } from './DeltaChip';
 export { MonitorListBlock, MonitorListRow, type MonitorListBlockProps, type MonitorListRowProps } from './MonitorListBlock';
 export { MonitorPageShell, type MonitorPageShellProps } from './MonitorPageShell';
 export { FilterBand, type FilterBandProps } from './FilterBand';
+// Chart primitives: import from `@/design-system/components/monitor/charts`
+// (Operations / Analytics already do). Band 2 composes KpiChartCard (compact).
+export { KpiChartCard } from './KpiChartCard';

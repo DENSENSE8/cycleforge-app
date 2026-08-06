@@ -197,7 +197,7 @@ test.describe('unbox siderail first-load stagger', () => {
     expect(result.minOpacity, 'opacity stayed at 1 on refetch').toBeGreaterThanOrEqual(0.95);
   });
 
-  test('row affordance (selection ring + age) clears the rounded canvas edge — Problem 1', async ({ page }) => {
+  test('row affordance (selection ring) is edge-to-edge — warehouse list wash', async ({ page }) => {
     await page.goto('/unbox');
     const firstRow = page.locator(`${RAIL} li[role="option"]`).first();
     await firstRow.waitFor({ state: 'visible', timeout: 30_000 });
@@ -215,25 +215,30 @@ test.describe('unbox siderail first-load stagger', () => {
       const li = btn.closest('li')!;
       const age = btn.querySelector('span.tabular-nums');
       const sr = section.getBoundingClientRect().right;
+      const sl = section.getBoundingClientRect().left;
+      const br = btn.getBoundingClientRect();
       const tf = getComputedStyle(li).transform;
       const m = tf && tf !== 'none' ? tf.match(/matrix\(([^)]+)\)/) : null;
       const settledX = m ? Math.abs(+m[1].split(',').map(Number)[4]) : 0;
       return {
         settledX,
-        ringGap: Math.round(sr - btn.getBoundingClientRect().right), // ring is ring-inset on the button box
+        ringGapRight: Math.round(sr - br.right),
+        ringGapLeft: Math.round(br.left - sl),
         ageGap: age ? Math.round(sr - age.getBoundingClientRect().right) : null,
       };
     });
 
     expect(geom.settledX, 'row is at rest before measuring geometry').toBeLessThan(1);
 
-    // The button box (which carries the ring-inset selection ring + hover fill)
-    // must sit ~6px inside the sidebar edge so it clears the work-canvas
-    // rounded-tl-2xl cutout instead of tucking under it.
-    expect(geom.ringGap, 'selection ring clears the rounded canvas edge (~6px)').toBeGreaterThanOrEqual(4);
-    expect(geom.ringGap, 'ring inset is not excessive').toBeLessThanOrEqual(9);
+    // Full-bleed selection: button box flush to the rail section; age sits in
+    // the trailing w-8 track (breathing room inside the ring, not outside it).
+    expect(geom.ringGapRight, 'selection ring flush right').toBeGreaterThanOrEqual(0);
+    expect(geom.ringGapRight, 'selection ring not inset from the pane').toBeLessThanOrEqual(2);
+    expect(geom.ringGapLeft, 'selection ring flush left').toBeGreaterThanOrEqual(0);
+    expect(geom.ringGapLeft, 'selection ring not inset from the pane').toBeLessThanOrEqual(2);
     if (geom.ageGap != null) {
-      expect(geom.ageGap, 'age sits inside the ring with breathing room').toBeGreaterThanOrEqual(7);
+      expect(geom.ageGap, 'age sits inside the trailing track').toBeGreaterThanOrEqual(4);
+      expect(geom.ageGap, 'age is not pushed into a side gutter').toBeLessThanOrEqual(28);
     }
   });
 });

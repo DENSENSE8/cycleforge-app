@@ -93,14 +93,18 @@ export function removeSerialById(
   return (serials ?? []).filter((s) => s.id !== serialUnitId);
 }
 
-/** Optimistically stamp a per-unit condition grade onto one serial in place. */
+/** Optimistically stamp (or clear) a per-unit condition grade onto one serial. */
 export function setSerialGrade(
   serials: LineSerial[] | null | undefined,
   serialUnitId: number,
-  grade: string,
+  grade: string | null,
 ): LineSerial[] {
+  const next =
+    grade != null && String(grade).trim()
+      ? String(grade).trim().toUpperCase()
+      : null;
   return (serials ?? []).map((s) =>
-    s.id === serialUnitId ? { ...s, condition_grade: grade } : s,
+    s.id === serialUnitId ? { ...s, condition_grade: next } : s,
   );
 }
 
@@ -108,4 +112,46 @@ export function readOptimisticFlag(
   serial: { _optimistic?: OptimisticSerialFlag },
 ): OptimisticSerialFlag | undefined {
   return serial._optimistic;
+}
+
+/** Minimal unit slot shape for {@link bindSerialsToUnitSlots}. */
+type BindableUnitSlot = {
+  serial_unit_id: number | null;
+  serial_absent?: boolean;
+};
+
+/**
+ * Resolve one serial per materialised unit for multi-qty UI.
+ *
+ * 1. Units with `serial_unit_id` take their matching saved serial (claimed).
+ * 2. Remaining unbound saved serials (not `_optimistic: 'removing'`) fill empty
+ *    non-waived units in ordinal order.
+ *
+ * Step 2 covers optimistic / post-confirm scans that update `serials` before
+ * `receiving_line_unit.serial_unit_id` is refreshed — without it, every slot
+ * stays "empty", `primaryInputRef` sticks on unit 0, and focus snaps back.
+ */
+export function bindSerialsToUnitSlots<T extends { id: number; _optimistic?: OptimisticSerialFlag }>(
+  units: ReadonlyArray<BindableUnitSlot>,
+  saved: ReadonlyArray<T>,
+): Array<T | null> {
+  const claimedIds = new Set<number>();
+  const linked: Array<T | null> = units.map((unit) => {
+    if (unit.serial_unit_id == null) return null;
+    claimedIds.add(unit.serial_unit_id);
+    return saved.find((s) => s.id === unit.serial_unit_id) ?? null;
+  });
+
+  const unbound = saved.filter(
+    (s) => !claimedIds.has(s.id) && s._optimistic !== 'removing',
+  );
+  let nextUnbound = 0;
+  return linked.map((serial, index) => {
+    if (serial) return serial;
+    if (units[index]?.serial_absent) return null;
+    const take = unbound[nextUnbound];
+    if (!take) return null;
+    nextUnbound += 1;
+    return take;
+  });
 }

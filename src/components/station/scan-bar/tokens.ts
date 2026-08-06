@@ -124,6 +124,24 @@ export const STATION_SCAN_BAR_SUBMIT_TRACE_CLASS: Record<StationTheme, string> =
 
 export const STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS = 'bg-blue-500';
 
+/**
+ * Parked-strip mini scan cell — idle Plus hover wash + bottom-rule preview in
+ * the staff theme (same hue family as {@link STATION_SCAN_BAR_BOTTOM_RULE_CLASS}).
+ */
+export const STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS: Record<StationTheme, string> = {
+  green: 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-b-emerald-500',
+  blue: 'hover:bg-blue-50 hover:text-blue-700 hover:border-b-blue-500',
+  purple: 'hover:bg-purple-50 hover:text-purple-700 hover:border-b-purple-500',
+  yellow: 'hover:bg-amber-50 hover:text-amber-800 hover:border-b-amber-500',
+  black: 'hover:bg-surface-hover hover:text-text-default hover:border-b-slate-700', // ds-allow-raw-neutral: identity hue — staff vocabulary
+  red: 'hover:bg-red-50 hover:text-red-700 hover:border-b-red-500',
+  lightblue: 'hover:bg-sky-50 hover:text-sky-700 hover:border-b-sky-500',
+  pink: 'hover:bg-pink-50 hover:text-pink-700 hover:border-b-pink-500',
+};
+
+export const STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS =
+  'hover:bg-surface-hover hover:text-text-default hover:border-b-border-soft';
+
 /** Focus brightens the same bottom rule — no second ring language. */
 export function stationScanBarFocusInputClass(theme: StationTheme): string {
   return `focus:border-b-${theme}-600 focus:ring-0`;

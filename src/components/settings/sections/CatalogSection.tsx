@@ -22,12 +22,12 @@ export function CatalogSection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Platforms</h3>
         <CatalogManagerList kind="platform" />
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-1 text-sm font-semibold text-text-default">Storefront accounts</h3>
         <p className="mb-3 text-xs text-text-soft">
           The specific stores under each platform (e.g. your eBay accounts). A flow type can pin one
@@ -36,7 +36,7 @@ export function CatalogSection() {
         <PlatformAccountsManager />
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-1 text-sm font-semibold text-text-default">Receiving types</h3>
         <p className="mb-3 text-xs text-text-soft">
           Use the <span className="font-semibold">gear</span> on a type to bind it to a storefront

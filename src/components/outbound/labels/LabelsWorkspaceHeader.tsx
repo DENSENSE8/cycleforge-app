@@ -1,15 +1,17 @@
 'use client';
 
 /**
- * Labels-station workspace chrome — tabs left (Queue · Recent), station filters
- * (search + Urgent/lane like Dashboard · To Ship) right, then sort + primary
- * Import / Add CTAs. Mirrors ShippingWorkspaceHeader / OutboundWorkspaceHeader
- * for `/shipping` labels.
+ * Labels-station workspace chrome — Sheets flush stack (Unbox / To-ship recipe):
+ *
+ *   Band 1 — tabs (Queue · Recent) + solid Import / Add CTAs
+ *   Band 2 — KPI (`WorkbenchKpiBand` in LabelsWorkspaceView)
+ *   Band 3 — triage: search · Urgent/lane filters · icon-sort · KPI-collapse kpiToggle
  */
 
 import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { WorkbenchChromeHeader, WorkbenchTrailingCluster } from '@/components/dashboard/workbench-shell';
+import { WorkbenchChromeHeader, WorkbenchTrailingCluster, WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
+import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
@@ -41,13 +43,8 @@ const SORT_LABEL: Record<OutboundSort, string> = Object.fromEntries(
 interface LabelsWorkspaceHeaderProps {
   tab: LabelsWorkspaceTab;
   onSelectTab: (tab: LabelsWorkspaceTab) => void;
-  search: string;
-  onSearch: (value: string) => void;
-  sort: OutboundSort;
-  onToggleSort: () => void;
   /** Open the New-order entry form (slide-over) — moved off the dashboard. */
   onNewOrder: () => void;
-  controlsSlotRef?: Ref<HTMLDivElement>;
   className?: string;
 }
 
@@ -67,22 +64,17 @@ function SortToggle({ sort, onToggle }: { sort: OutboundSort; onToggle: () => vo
   );
 }
 
+/** Band 1 — lifecycle tabs + solid Import / Add CTAs. Find / filters / sort live on {@link LabelsTriageBand}. */
 export function LabelsWorkspaceHeader({
   tab,
   onSelectTab,
-  search,
-  onSearch,
-  sort,
-  onToggleSort,
   onNewOrder,
-  controlsSlotRef,
   className,
 }: LabelsWorkspaceHeaderProps) {
   // Counts share the same feeds the tables + KPI strip read (React Query dedupes),
   // so tab badges never drift from the list below.
   const { data: awaiting } = useQuery(awaitingLabelsQuery({ searchQuery: '' }));
   const { data: staged } = useQuery(stagedOrdersQuery({ searchQuery: '' }));
-  useToShipFilterHotkeys(tab === 'queue');
 
   const tabs = useMemo(
     () =>
@@ -103,9 +95,45 @@ export function LabelsWorkspaceHeader({
       activeTab={tab}
       onTabChange={(id) => onSelectTab(id as LabelsWorkspaceTab)}
       solidTone="accent"
-      controlsSlotRef={controlsSlotRef}
-      controlsSlotProps={{ 'data-labels-controls': '' }}
       className={className}
+      trailing={
+        <WorkbenchTrailingCluster
+          actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
+        />
+      }
+    />
+  );
+}
+
+/** Band 3 — search left; Urgent/lane filters · icon-sort right. Leading = Unbox KPI collapse. */
+export function LabelsTriageBand({
+  tab,
+  search,
+  onSearch,
+  sort,
+  onToggleSort,
+  kpiOpen,
+  onToggleKpi,
+  controlsSlotRef,
+  className,
+}: {
+  tab: LabelsWorkspaceTab;
+  search: string;
+  onSearch: (value: string) => void;
+  sort: OutboundSort;
+  onToggleSort: () => void;
+  kpiOpen: boolean;
+  onToggleKpi: () => void;
+  controlsSlotRef?: Ref<HTMLDivElement>;
+  className?: string;
+}) {
+  useToShipFilterHotkeys(tab === 'queue');
+
+  return (
+    <WorkbenchTriageBand
+      className={className}
+      controlsSlotRef={controlsSlotRef}
+      kpiToggle={<WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />}
       search={
         <TechRailSearchBar
           variant="chrome"
@@ -115,13 +143,11 @@ export function LabelsWorkspaceHeader({
           className="w-40 shrink-0 lg:w-56"
         />
       }
-      // Same Urgent + lane popover as Dashboard · To Ship / Shipping · Pending.
-      right={tab === 'queue' ? <OutboundExactFilters mode="unshipped" /> : undefined}
-      trailing={
-        <WorkbenchTrailingCluster
-          sort={<SortToggle sort={sort} onToggle={onToggleSort} />}
-          actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
-        />
+      right={
+        <>
+          {tab === 'queue' ? <OutboundExactFilters mode="unshipped" /> : null}
+          <SortToggle sort={sort} onToggle={onToggleSort} />
+        </>
       }
     />
   );

@@ -27,6 +27,11 @@ import {
   RailSelectionBand,
   useRailActionSnapshot,
 } from './OrderRailActions';
+import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
+import {
+  OrdersViewChromeBridge,
+  useOrdersViewChromeOptional,
+} from '@/components/outbound/orders/orders-view-chrome-context';
 
 /** The few fields the roster reads. Satisfied by both outbound row shapes. */
 type RosterRow = {
@@ -48,6 +53,7 @@ function rosterTitle(row: RosterRow): string {
 
 export function OrderRailShell() {
   const { scope, rows } = useRailActionSnapshot();
+  const viewChrome = useOrdersViewChromeOptional();
   const occupancy = useMemo(
     () => resolveRailOccupancy((rows as RosterRow[]).map((r) => Number(r.id))),
     [rows],
@@ -73,10 +79,22 @@ export function OrderRailShell() {
       enabled={active}
       onClose={handleClose}
       modal={false}
+      edgeCollapse
+      collapsedStrip={false}
       ariaLabel={`${rows.length} orders selected`}
     >
+      <OrdersViewChromeBridge value={viewChrome}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
         <RailSelectionBand onClose={handleClose} />
+        {active && viewChrome ? (
+          <div
+            className="flex h-9 min-w-0 items-center justify-end gap-2 border-b border-border-hairline px-2"
+            role="toolbar"
+            aria-label="Orders view topics"
+          >
+            <OrdersViewTopicsCluster />
+          </div>
+        ) : null}
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <ul className="divide-y divide-border-soft">
@@ -95,6 +113,7 @@ export function OrderRailShell() {
 
         <RailActionRegion />
       </div>
+      </OrdersViewChromeBridge>
     </DetailStackRailRegistrar>
   );
 }

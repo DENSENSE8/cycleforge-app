@@ -17,10 +17,9 @@ export const receivingHeaderHairlineClass = appChromeBandHairlineClass;
  * change it here and every section that references it re-aligns together.
  *
  * 6px (px-1.5) is the house sidebar gutter. Mode pills inset to this line.
- * Scan-dock rails inset the list to {@link SIDEBAR_RAIL_INSET_X} (left =
- * {@link SIDEBAR_GUTTER}); the status
- * dot rides a compact FLOW track at the row's left and the title sits one tight
- * {@link SIDEBAR_RAIL_LEADING_GAP} after it (see {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}).
+ * Scan-dock recent rails are **flush** ({@link SIDEBAR_RAIL_INSET_X} = `px-0`)
+ * so selection washes edge-to-edge; content column padding lives inside each
+ * row (gutter + {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}), not around the ring.
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
@@ -65,30 +64,23 @@ export const SIDEBAR_SCAN_DOCK_LEADING_ROW = cn(
 );
 
 /**
- * Left inset for scan-dock chrome (list host, eyebrow, dense scan bar).
- * Same value as {@link SIDEBAR_GUTTER}'s horizontal pad — selection rings sit on
- * this gutter; {@link SIDEBAR_SCAN_DOCK_LEADING_ROW} measures from here so scan
- * text / eyebrow / row titles stay one column.
+ * Left content gutter for scan-dock chrome (dense scan bar, row inner pad).
+ * Same value as {@link SIDEBAR_GUTTER}'s horizontal pad. Nested *inside* the
+ * full-bleed selection host so titles / scan text share one column without
+ * insetting the blue wash from the pane edge.
  */
 export const SIDEBAR_RAIL_INSET_LEFT = 'pl-1.5';
 
 /**
- * Horizontal inset for scan-dock recent-rail **list hosts**. Left =
- * {@link SIDEBAR_RAIL_INSET_LEFT} (sidebar gutter); right flush so rows own
- * {@link SIDEBAR_RAIL_ROW_PAD_RIGHT} alone (avoids doubling the right edge).
+ * Horizontal inset for scan-dock recent-rail **list hosts** — flush (`px-0`).
+ * Selection rings paint edge-to-edge; content pad is on the row / scan bar
+ * via {@link SIDEBAR_RAIL_INSET_LEFT} + {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}.
  */
-export const SIDEBAR_RAIL_INSET_X = cn(SIDEBAR_RAIL_INSET_LEFT, 'pr-0');
-
-/**
- * Right pad on scan-dock rail rows (and the matching eyebrow). Narrows the
- * selection ring + age so they clear `rounded-tl-2xl` and share one right edge
- * with the eyebrow pencil / optical `#` mode glyph.
- */
-export const SIDEBAR_RAIL_ROW_PAD_RIGHT = 'pr-1.5';
+export const SIDEBAR_RAIL_INSET_X = 'px-0';
 
 /**
  * Trailing track for rail relative-age (`11h`) **and** filter-bar collapse /
- * expand — one vertical column flush to the right pad. Width matches
+ * expand — one vertical column flush to the pane edge. Width matches
  * `CONTEXT_PANEL_COLLAPSE.stripWidthPx` / `w-8` so the parked expand strip is
  * the same column, not a different gutter.
  */
@@ -159,10 +151,11 @@ export const appContentShellClass = cn(
 
 /**
  * Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail).
- * Pair with IconButton `size="md"` (h-8) — wrappers stay `flex h-8 items-center`
- * so absolute badges don't shift the flex baseline.
+ * Pair with IconButton `size="md"` — wrappers stretch to the full {@link TOP_CHROME_BAND_FACE}
+ * height so hover / open washes meet the top and bottom hairlines (never a floated
+ * h-8 island inside the 40px beam).
  */
-export const HEADER_ICON_WRAP = 'relative flex h-8 w-8 shrink-0 items-center justify-center';
+export const HEADER_ICON_WRAP = 'relative flex h-full min-h-8 w-8 shrink-0 items-stretch justify-center';
 
 /**
  * Desktop top-chrome seam — GlobalHeader and the MasterNav spine identity band
@@ -175,36 +168,23 @@ export const HEADER_ICON_WRAP = 'relative flex h-8 w-8 shrink-0 items-center jus
 export const TOP_CHROME_BAND_FACE = 'h-[40px] shrink-0 border-b border-border-soft';
 
 /** Flex row face for GlobalHeader (and any centered top-chrome band). */
-export const TOP_CHROME_BAND_CLASS = `flex items-center ${TOP_CHROME_BAND_FACE}`;
+export const TOP_CHROME_BAND_CLASS = `flex items-stretch ${TOP_CHROME_BAND_FACE}`;
 
 /**
- * Horizontal inset for GlobalHeader and any chrome that must column-align with it
- * (station context bookmarks, sticky main headers).
- *
- * **Left is the rail gutter** ({@link SIDEBAR_RAIL_INSET_LEFT} / `pl-1.5`) so the
- * sidebar-toggle MARK shares a column with the context-rail scan icon under the
- * hairline (`SIDEBAR_SCAN_DOCK_LEADING_ROW`). Right stays roomy for actions
- * (`pr-3 sm:pr-4`). Do not re-symmetricize to `px-3 sm:px-4` — that pushes the
- * toggle right of the scan glyph.
+ * Horizontal inset for GlobalHeader — flush to both edges (no left/right pad).
+ * Icon cells own their geometry; edge alignment is not via header padding.
  */
-export const HEADER_INSET_X = cn(SIDEBAR_RAIL_INSET_LEFT, 'pr-3 sm:pr-4');
+export const HEADER_INSET_X = 'px-0';
 
 /**
  * Exact gap between every GlobalHeader icon hit-box (left cluster + right rail).
  * One knob — left toggle / WO / goal / search / AI / clipboard / phone / inbox /
  * avatar all share this rhythm. Reuse for station more-details icon clusters.
  */
-export const HEADER_ICON_GAP = 'gap-0.5';
+export const HEADER_ICON_GAP = 'gap-0';
 
-/** Flex row for a GlobalHeader icon cluster. */
-export const HEADER_ICON_CLUSTER = `flex h-8 shrink-0 items-center ${HEADER_ICON_GAP}`;
-
-/**
- * Vertical hairline between Recents and the header pin group. Pair with a
- * small horizontal margin so Mode/Recents stay tight while pins read as a
- * separate station strip.
- */
-export const HEADER_CLUSTER_HAIRLINE = 'mx-1.5 h-4 w-px shrink-0 bg-border-hairline';
+/** Flex row for a GlobalHeader icon cluster — beam-height, square cells. */
+export const HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch ${HEADER_ICON_GAP}`;
 
 /**
  * Glyph box for GlobalHeader icon actions (sidebar, Mode, Recents, WO, clipboard,
@@ -215,11 +195,13 @@ export const HEADER_CLUSTER_HAIRLINE = 'mx-1.5 h-4 w-px shrink-0 bg-border-hairl
 export const TOP_CHROME_ICON_GLYPH = 'h-4 w-4';
 
 /**
- * Shared IconButton chrome for GlobalHeader — same radius, mute tone, and hover
- * fill across the entire top bar (stroke glyphs sit on this face).
+ * Shared IconButton chrome for GlobalHeader — square hit wash filling the beam
+ * cell (never a circle, never a floated h-8 island), mute tone, sunken hover.
+ * `h-full w-full` overrides IconButton `size="md"` box so the wash meets the
+ * header hairlines. Page face adds `w-auto` for icon+label width.
  */
 export const HEADER_ICON_BTN_CLASS =
-  'rounded-full text-text-muted hover:bg-surface-sunken';
+  'h-full min-h-8 w-full rounded-none text-text-muted hover:bg-surface-sunken';
 
 /** Pressed / open fill for header icon toggles. */
 export const HEADER_ICON_BTN_OPEN_CLASS = 'bg-surface-sunken';

@@ -7,10 +7,26 @@ interface Props {
   submitting: boolean;
   archiveSubmitting?: boolean;
   onClose: () => void;
+  /**
+   * `display` — Unbox Displays push: strip + Chat·Claim tabs already name the
+   * verb; carton identity lives on StationContextBar. No second gray title /
+   * PO restatement / X (column `→|` owns dismiss).
+   * `modal` — right slide-over (Testing / triage): no carton context beside it,
+   * so eyebrow + PO key + close are load-bearing.
+   */
+  chrome?: 'modal' | 'display';
 }
 
-/** Modal header — claim eyebrow + carton/PO title + cancel affordance. */
-export function ClaimModalHeader({ row, submitting, archiveSubmitting, onClose }: Props) {
+/** Claim title chrome — modal only; Displays hosts omit this band. */
+export function ClaimModalHeader({
+  row,
+  submitting,
+  archiveSubmitting,
+  onClose,
+  chrome = 'modal',
+}: Props) {
+  if (chrome === 'display') return null;
+
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
       <div>

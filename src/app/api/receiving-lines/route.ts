@@ -10,6 +10,7 @@ import {
 } from '@/lib/receiving/serial-projection';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { withAuth } from '@/lib/auth/withAuth';
+import { audit } from '@/lib/auth/audit';
 import { sortSerialUnitToParts } from '@/lib/inventory/parts-sort';
 import { isTestingApiView } from '@/lib/surface-isolation';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
@@ -273,9 +274,9 @@ export async function handleReceivingLinesGet(
 
     // Unmatched/unfound cartons live in the `receiving_carton` table with no
     // `receiving_line` row yet, so they never come back from the main query.
-    // Append them as placeholder rows for `all` AND `activity` — a scanned
-    // unfound carton has been physically touched, so it belongs in the
-    // activity feed that backs both the History table and the recent rail.
+    // Append them as placeholder rows for `all` AND `activity`. For History
+    // (`activity`), buildUnmatchedPlaceholdersSql requires Unbox-touch
+    // (opened/unboxed) so door-scan-only SCANNED Unfound never lands here.
     if (shouldIncludeUnmatchedPlaceholders(query)) {
       const placeholders = buildUnmatchedPlaceholdersSql(query, orgId);
       const [unmatchedPkgsRes, unmatchedCntRes] = await withTenantConnection(orgId, (client) => Promise.all([
@@ -519,6 +520,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 }, { permission: 'receiving.mark_received' });
 
 // ─── PATCH ────────────────────────────────────────────────────────────────────
+// Permission: receiving.mark_received for general edits. Assign-only patches
+// (`id` + `assigned_tech_id`) also accept tech.qc_pass so Testing triage can
+// claim/assign without widening mark_received onto the technician role.
 export const PATCH = withAuth(async (request: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId as OrgId;
@@ -527,6 +531,31 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 
     if (!Number.isFinite(id) || id <= 0) {
       return NextResponse.json({ success: false, error: 'Valid id is required' }, { status: 400 });
+    }
+
+    const bodyKeys = Object.keys(body as Record<string, unknown>);
+    const assignOnly =
+      bodyKeys.every((k) => k === 'id' || k === 'assigned_tech_id' || k === 'assignedTechId') &&
+      (body?.assigned_tech_id !== undefined || body?.assignedTechId !== undefined);
+    const canMarkReceived = ctx.permissions.has('receiving.mark_received');
+    const canQcAssign = ctx.permissions.has('tech.qc_pass');
+    if (assignOnly ? !(canMarkReceived || canQcAssign) : !canMarkReceived) {
+      const needed = assignOnly
+        ? 'receiving.mark_received|tech.qc_pass'
+        : 'receiving.mark_received';
+      await audit({
+        staffId: ctx.staffId,
+        event: 'permission.denied',
+        result: 'denied',
+        sid: ctx.session?.sid ?? null,
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null,
+        userAgent: request.headers.get('user-agent'),
+        detail: { permission: needed, api: true, path: request.nextUrl.pathname },
+      });
+      return NextResponse.json(
+        { error: 'FORBIDDEN', permission: needed, role: ctx.role },
+        { status: 403 },
+      );
     }
 
     const updates: string[] = [];
@@ -894,7 +923,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     console.error('receiving-lines PATCH failed:', error);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
-}, { permission: 'receiving.mark_received' });
+}); // permission enforced in-handler (mark_received, or tech.qc_pass for assign-only)
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {

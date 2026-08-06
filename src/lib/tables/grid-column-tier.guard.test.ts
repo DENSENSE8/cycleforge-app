@@ -38,16 +38,17 @@ import { TRACKING_EXCEPTIONS_GRID_COLUMNS } from '@/components/tracking-exceptio
 import { UNFOUND_GRID_COLUMNS } from '@/components/receiving/unfound/grid/unfound-grid-layout';
 import { BINS_GRID_COLUMNS } from '@/components/warehouse/bins-grid/bins-grid-layout';
 import { MY_DAY_GRID_COLUMNS } from '@/lib/my-day/my-day-grid-layout';
+import { TECH_ALL_GRID_COLUMNS } from '@/lib/tech/tech-all-grid-layout';
 import { CATALOG_LINK_GRID_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { IMPORT_EXCEPTION_GRID_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 
 /**
  * Structural columns are the family's FROZEN IDENTITY PANE, read off the model's
  * own `frozen` flag rather than a hardcoded key list — the pane is a per-surface
- * answer (Orders freezes `select · order · title`; Unbox Sheets golden —
- * Receiving + Incoming — freezes `select` only; Catalog / Repair / Pickup freeze
- * `select · title`), and a key list here would silently stop guarding the moment
- * a surface declared a different one.
+ * answer (Orders freezes `select · order · age · title`; Receiving freezes
+ * `select · order`; Incoming freezes `select` only; Catalog / Repair / Pickup
+ * freeze `select · title`), and a key list here would silently stop guarding
+ * the moment a surface declared a different one.
  */
 const isStructural = (c: LedgerGridColumnModel) => c.frozen === true;
 
@@ -64,6 +65,7 @@ const FAMILIES: Record<string, readonly LedgerGridColumnModel[]> = {
   unfound: UNFOUND_GRID_COLUMNS,
   bins: BINS_GRID_COLUMNS,
   'my-day': MY_DAY_GRID_COLUMNS,
+  'tech-all': TECH_ALL_GRID_COLUMNS,
   'catalog-link': CATALOG_LINK_GRID_COLUMNS,
   'import-exception': IMPORT_EXCEPTION_GRID_COLUMNS,
 };
@@ -170,19 +172,47 @@ describe('typed date track floors', () => {
     });
   }
 
-  it('receiving date is the stamp face at ≥12rem', () => {
+  it('receiving date is the day face at the 4.5rem floor', () => {
     const date = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'date');
     assert.ok(date);
-    assert.equal(date.dateFace, 'stamp');
-    assert.equal(date.width, 'minmax(12rem, 12rem)');
-    assert.equal(resolveGridColumnMinTrackRem(date), 12);
+    assert.equal(date.dateFace, 'day');
+    assert.equal(date.width, 'minmax(4.5rem, 4.5rem)');
+    assert.equal(resolveGridColumnMinTrackRem(date), 4.5);
+  });
+});
+
+describe('typed external (platform) track floors', () => {
+  for (const [name, columns] of Object.entries(FAMILIES)) {
+    it(`${name}: every external column clears the channel-mark floor`, () => {
+      for (const c of columns) {
+        if (c.type !== 'external') continue;
+        const floor = resolveGridColumnMinTrackRem(c);
+        const rem = gridColumnTrackRem(c);
+        assert.ok(
+          rem >= floor,
+          `${name}.${c.key} track ${rem}rem < external floor ${floor}rem ` +
+            `(mark + inset + hairline; widen width)`,
+        );
+      }
+    });
+  }
+
+  it('incoming platform is 4rem external (Unbox dropped platform)', () => {
+    const receiving = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'platform');
+    const incoming = INCOMING_GRID_COLUMNS.find((c) => c.key === 'platform');
+    assert.equal(receiving, undefined);
+    assert.ok(incoming);
+    assert.equal(incoming.type, 'external');
+    assert.equal(incoming.width, 'minmax(4rem, 4rem)');
+    assert.equal(resolveGridColumnMinTrackRem(incoming), 4);
   });
 });
 
 /**
- * Unbox Sheets golden freezes `select` only. Receiving keeps the Qty word so
- * `# Order` and bare `#` do not share one scan path. Incoming Pipeline is the
- * icon-only exception (`headerGlyphOnly` on every data column).
+ * Incoming freezes `select` only. Receiving freezes `select · order` (PO
+ * identity). Receiving keeps the Qty word so `# Order` and bare `#` do
+ * not share one scan path. Incoming Pipeline is the icon-only exception
+ * (`headerGlyphOnly` on every data column).
  */
 describe('Sheets-class freeze + Qty header (receiving family)', () => {
   it('incoming: qty is glyph-only while order scrolls (icon-only headers)', () => {
@@ -206,43 +236,43 @@ describe('Sheets-class freeze + Qty header (receiving family)', () => {
     assert.equal(INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')?.frozen, undefined);
   });
 
-  it('receiving: qty keeps the word label while order scrolls', () => {
+  it('receiving: qty keeps the word label while order is frozen identity', () => {
     const qty = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'qty');
     assert.ok(qty);
     assert.equal(qty.headerGlyphOnly, undefined);
     assert.equal(qty.label, 'Qty');
     const order = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'order');
     assert.ok(order);
-    assert.equal(order.frozen, undefined);
+    assert.equal(order.frozen, true);
   });
 
-  it('receiving: only select is frozen (Sheets-class)', () => {
+  it('receiving: freezes select · order (PO identity)', () => {
     assert.deepEqual(
       RECEIVING_GRID_COLUMNS.filter((c) => c.frozen).map((c) => c.key),
-      ['select'],
+      ['select', 'order'],
     );
     assert.equal(RECEIVING_GRID_COLUMNS.find((c) => c.key === 'title')?.frozen, undefined);
+    assert.equal(RECEIVING_GRID_COLUMNS.find((c) => c.key === 'date')?.frozen, undefined);
   });
 });
 
 describe('default (core) column sets — change these deliberately', () => {
-  // Receiving is the surface the lean default was designed around: which PO
-  // (`order`), what is it, what STATE is it in (`status` — dot · chip), WHEN
-  // did it get there (`date` — day + time), how many, where in the flow, and
-  // the other identifier an operator scans. Only `select` is frozen
-  // (Sheets-class). condition / platform / serial are opt-in because they are
-  // usually still empty at the moment the row is scanned. There is no `stage`
-  // track at all any more (deleted 2026-08-02): its clock moved into `date`
-  // and its runtime header label became `status`, so opting it back on showed
-  // the same clock twice.
-  it('receiving ships the lean scan set', () => {
+  // Receiving default: which PO (`order`, frozen with select), WHEN (`date`),
+  // what is it, what STATE (`status`), how many (`qty`), what it cost (`price`),
+  // where in the flow, and the other scan identifier (`tracking`). Identity
+  // pane is `select · order`. Platform dropped 2026-08-05. condition / serial
+  // stay opt-in (usually empty at scan time). There is no `stage` track
+  // (deleted 2026-08-02): its clock moved into `date` and its runtime header
+  // label became `status`.
+  it('receiving ships the import-support scan set', () => {
     assert.deepEqual(coreKeys(RECEIVING_GRID_COLUMNS), [
       'select',
       'order',
+      'date',
       'title',
       'status',
-      'date',
       'qty',
+      'price',
       'location',
       'tracking',
     ]);

@@ -1,19 +1,29 @@
 /**
  * Shipping-mode workspace tabs on `/test` (nested under top-level `?view=`).
- * Param: `?ship=pending|history` — absent defaults to Pending.
+ * Param: `?ship=urgent|pending|all|history` — absent defaults to Pending.
  * FBA tab removed 2026-07-29 (IA row L) — FBA owns `/shipping/fba`.
  */
 
-export type ShippingWorkspaceTab = 'pending' | 'history';
+export type ShippingWorkspaceTab = 'urgent' | 'pending' | 'all' | 'history';
 
 export const SHIPPING_WORKSPACE_TAB_PARAM = 'ship';
 
+/** Band-1 order — Urgent · Pending · All · History. */
+export const SHIPPING_WORKSPACE_TABS: readonly ShippingWorkspaceTab[] = [
+  'urgent',
+  'pending',
+  'all',
+  'history',
+] as const;
+
 export const SHIPPING_WORKSPACE_TAB_LABEL: Record<ShippingWorkspaceTab, string> = {
+  urgent: 'Urgent',
   pending: 'Pending',
+  all: 'All',
   history: 'History',
 };
 
-const VALID: ReadonlySet<string> = new Set(['pending', 'history']);
+const VALID: ReadonlySet<string> = new Set(SHIPPING_WORKSPACE_TABS);
 
 /**
  * Raw-string form of {@link getShippingWorkspaceTabFromSearch}, for callers that
@@ -34,8 +44,9 @@ export function getShippingWorkspaceTabFromSearch(
 
 /**
  * Normalize URL for a shipping workspace tab switch.
- * Clears tab-specific filters so they don't bleed across Pending / History.
+ * Clears tab-specific filters so they don't bleed across tables.
  * Omits `ship` when pending (default) so the default URL stays clean.
+ * Urgent owns `?attention=1` (orders.is_urgent); cleared on every other tab.
  * Legacy `?ship=fba` normalizes to pending.
  */
 export function normalizeShippingWorkspaceTabParams(
@@ -45,16 +56,21 @@ export function normalizeShippingWorkspaceTabParams(
   const nextTab = preferredTab ?? getShippingWorkspaceTabFromSearch(params);
   params.delete(SHIPPING_WORKSPACE_TAB_PARAM);
 
-  // Pending-only (dashboard unshipped keys)
-  if (nextTab !== 'pending') {
+  // Queue facets (dashboard unshipped keys) — only Urgent / Pending keep them.
+  if (nextTab !== 'pending' && nextTab !== 'urgent') {
     params.delete('ustatus');
     params.delete('stage');
     params.delete('late');
-    params.delete('attention');
     params.delete('surface');
   }
 
-  if (nextTab === 'pending') {
+  if (nextTab === 'urgent') {
+    params.set('attention', '1');
+  } else {
+    params.delete('attention');
+  }
+
+  if (nextTab === 'pending' || nextTab === 'urgent') {
     params.delete('layout');
   }
 

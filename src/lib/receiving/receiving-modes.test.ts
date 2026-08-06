@@ -2,11 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   getReceivingModeDescriptor,
+  getReceivingTableModeDescriptor,
   resolveReceivingTableMode,
   resolveUnboxReceivingTableMode,
   RECEIVING_MODES,
   INCOMING_PAGE_SIZE,
   RECEIVING_TABLE_LIMIT,
+  HISTORY_SORT_OPTIONS,
+  HISTORY_SORT_WIRE_IDS,
   historySortGroupAxis,
   type ReceivingModeContext,
 } from '@/lib/receiving/receiving-modes';
@@ -40,6 +43,7 @@ function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContex
     listSearch: '',
     queueStage: null,
     queueLane: null,
+    priorityOnly: false,
     trackingIn: [],
     ...overrides,
   };
@@ -67,15 +71,28 @@ test('resolveUnboxReceivingTableMode maps workbench tabs to table modes', () => 
 });
 
 test('Unbox tab labels follow the house vocabulary (Recent, not Viewed)', () => {
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.urgent, 'Urgent');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.recent, 'Recent');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.queue, 'Queue');
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.all, 'All');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.history, 'History');
 });
 
-test('Recent leads the strip and History closes it', () => {
-  // Placement rule, not taste: the operator's own working set comes first and
-  // the full archive last — the order `labels-workspace-state.ts` already uses.
-  assert.deepEqual([...UNBOX_WORKSPACE_TABS], ['recent', 'queue', 'history']);
+test('Urgent leads the strip and History closes it', () => {
+  assert.deepEqual([...UNBOX_WORKSPACE_TABS], ['urgent', 'recent', 'queue', 'all', 'history']);
+});
+
+test('Urgent and All resolve to the queue table mode', () => {
+  assert.equal(resolveUnboxReceivingTableMode('urgent'), 'unbox_queue');
+  assert.equal(resolveUnboxReceivingTableMode('all'), 'unbox_queue');
+  assert.equal(resolveUnboxReceivingTableMode('queue'), 'unbox_queue');
+});
+
+test('Unbox queue buildParams sets priority_only when Urgent', () => {
+  const mode = getReceivingTableModeDescriptor('unbox_queue');
+  const p = mode.buildParams(ctx({ priorityOnly: true }));
+  assert.equal(p.get('priority_only'), '1');
+  assert.equal(p.get('view'), 'scanned');
 });
 
 // ── The core invariant: History is the scanned/unpacked log, NOT incoming ────
@@ -151,7 +168,7 @@ test('history buildParams omits search when blank but always sends field/scope',
   assert.equal(p.get('search_scope'), 'all');
 });
 
-test('history sort: default unboxed is always sent to the API; scanned when selected', () => {
+test('history sort: default unboxed is always sent; scanned wire still accepted for Docked Triage', () => {
   assert.equal(
     RECEIVING_MODES.history.buildParams(ctx()).get('sort'),
     'unboxed_newest',
@@ -164,6 +181,14 @@ test('history sort: default unboxed is always sent to the API; scanned when sele
     RECEIVING_MODES.history.buildParams(ctx({ historySort: 'scanned_newest' })).get('sort'),
     'scanned_newest',
   );
+});
+
+test('Unbox History Sort-by menu is Unboxed only (Scanned is triage / Docked wire)', () => {
+  assert.deepEqual(
+    HISTORY_SORT_OPTIONS.map((o) => o.id),
+    ['unboxed_newest'],
+  );
+  assert.ok(HISTORY_SORT_WIRE_IDS.includes('scanned_newest'));
 });
 
 test('historySortGroupAxis maps sort ids to lifecycle axes', () => {

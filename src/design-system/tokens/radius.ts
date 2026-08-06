@@ -30,7 +30,10 @@
 
 /** Tailwind's stock borderRadius values — the typed mirror of what classes render. */
 export const radius = {
-  /** Flush — data rows, table cells, inline values */
+  /**
+   * Flush — data rows, table cells, solid {@link Button} CTAs
+   * (`cornerClass('flush')`), industrial instrument chrome.
+   */
   none: '0px',
   /** 2px — hairline softening, rarely the right call */
   sm: '0.125rem',
@@ -38,7 +41,7 @@ export const radius = {
   DEFAULT: '0.25rem',
   /** 6px — list rows, menu items */
   md: '0.375rem',
-  /** 8px — buttons, inputs, menus */
+  /** 8px — soft menus / dropdown chrome (`control` role) */
   lg: '0.5rem',
   /** 12px — fields, ops tables, popovers */
   xl: '0.75rem',
@@ -55,15 +58,21 @@ export type Radius = typeof radius;
 /**
  * Interaction/containment role → corner. Pick by what the element IS, not by a
  * pixel value. Ordered smallest to largest; `pill` is outside the ladder.
+ *
+ * Prefer {@link cornerClass}(`'flush'`) for new industrial chrome (Kinetic
+ * Ledger / Stitch zero-radius). Soft ladder steps remain for chips · legacy
+ * card·canvas shells · true pills (avatars · switches) until those surfaces
+ * migrate call-site by call-site — remapping `field`/`control` here would
+ * silently rewrite `nestedCornerClass('card', …)` consumers.
  */
 export type CornerRole =
-  /** Flush with its container — grid cells, full-bleed rows */
+  /** Flush with its container — grid cells, full-bleed rows, solid Button CTAs */
   | 'flush'
   /** Chips, badges, copy chips */
   | 'chip'
   /** List rows, menu items */
   | 'row'
-  /** Buttons, inputs, dropdown/context menus */
+  /** Soft menus / dropdown chrome (`rounded-lg`). Solid {@link Button} uses `flush`. */
   | 'control'
   /** Form fields, ops-table surfaces, popovers */
   | 'field'
@@ -74,14 +83,19 @@ export type CornerRole =
   /** Pills, dots, avatars */
   | 'pill';
 
+// Zero-radius industrial: ops chrome is flush-square. Every non-`pill` role
+// renders `rounded-none` (Wave 0b/0c/0d/0e). `pill` is the ONE surviving radius
+// — status dots · avatars · Switch tracks. CORNER_PX below is deliberately
+// UNTOUCHED so `nestedCorner`'s concentric ROLE math is unchanged (only the
+// rendered CLASS flushed); concentric nesting is a no-op under zero-radius.
 const CORNER_CLASS: Record<CornerRole, string> = {
   flush: 'rounded-none',
-  chip: 'rounded',
-  row: 'rounded-md',
-  control: 'rounded-lg',
-  field: 'rounded-xl',
-  card: 'rounded-2xl',
-  canvas: 'rounded-3xl',
+  chip: 'rounded-none',
+  row: 'rounded-none',
+  control: 'rounded-none',
+  field: 'rounded-none',
+  card: 'rounded-none',
+  canvas: 'rounded-none',
   pill: 'rounded-full',
 };
 

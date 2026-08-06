@@ -53,7 +53,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
             <div className="px-3 py-2">
               <div className="mb-1.5 flex items-center justify-between">
                 <p className="text-role-eyebrow uppercase tracking-wider text-blue-800">
-                  {c.selectionCount} selected — move to
+                  {c.selectionCount} selected
                 </p>
                 <Button type="button" variant="ghost" size="sm" onClick={c.clearSelection} className="h-auto px-0 text-role-micro text-blue-500 hover:bg-transparent hover:text-blue-700">
                   Clear
@@ -179,7 +179,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
               <div className="space-y-1">
                 {c.visibleUndos.map((entry) => (
-                  <div key={entry.item_id} className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-1.5">
+                  <div key={entry.item_id} className="flex items-center gap-2 rounded-none border border-amber-200 bg-amber-50/80 px-2.5 py-1.5">
                     <RotateCcw className="h-3 w-3 shrink-0 text-amber-500" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-role-eyebrow text-text-muted">{entry.display_title || entry.fnsku}</p>

@@ -97,8 +97,9 @@ type PlumbingSymbol = keyof typeof PLUMBING;
  */
 const ALLOWLIST: Readonly<Record<string, readonly PlumbingSymbol[]>> = {
   // Orders shell plumbing closed 2026-08-03 — `OrdersGridView` mounts
-  // `LedgerGridSurface` with `forceHidden` + controlled `columnOrder`. The
-  // allowlisted header fork (`OrdersQueueColumnHeader`) remains; it is not a
+  // `LedgerGridSurface` with `forceHidden`. Column order is pinned to the
+  // layout SoT (no staff reorder). The allowlisted header fork
+  // (`OrdersQueueColumnHeader`) remains for resize + force-hide; it is not a
   // plumbing exemption here (header factory guard owns that).
 };
 
@@ -207,7 +208,7 @@ describe('grid view plumbing', () => {
     );
     assert.match(
       code,
-      /<GridColumnGutter\s+tableId=\{tableId\}\s+columns=\{columns\}(?:\s+triggerPortalTarget=\{columnTriggerPortalTarget\})?\s*>/,
+      /<GridColumnGutter\s+tableId=\{tableId\}\s+columns=\{columns\}(?:\s+triggerPortalTarget=\{columnTriggerPortalTarget\})?(?:\s+triggerPortalOnly=\{columnTriggerPortalOnly\})?\s*>/,
       'mounts the control',
     );
 

@@ -136,6 +136,7 @@ export function UnfoundGridView({
   return (
     <LedgerGridSurface<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
       ariaLabel="Unfound queue"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeUnfoundGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}

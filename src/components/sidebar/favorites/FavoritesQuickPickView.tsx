@@ -70,7 +70,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
       {!readOnly && f.showForm && f.editingFavoriteId === null ? <FavoriteForm f={f} /> : null}
 
       {f.error ? (
-        <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 inset-field text-red-700">
+        <div className="flex items-start gap-2 rounded-none border border-red-100 bg-red-50 inset-field text-red-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p className={fieldLabel}>{f.error}</p>
         </div>
@@ -83,7 +83,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : f.favorites.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft px-4 py-8 text-center">
+            <div className="rounded-none border border-dashed border-border-soft px-4 py-8 text-center">
               <p className="text-role-micro text-text-faint">{emptyLabel}</p>
             </div>
           ) : (
@@ -106,7 +106,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
                     type="button"
                     onClick={start}
                     className={cn(
-                      'group flex min-h-[5.5rem] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card p-3.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
+                      'group flex min-h-[5.5rem] flex-col overflow-hidden rounded-none border border-border-soft bg-surface-card p-3.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
                       focusRing('control', 'neutral'),
                     )}
                     aria-label={`${useLabel}: ${favorite.label}`}

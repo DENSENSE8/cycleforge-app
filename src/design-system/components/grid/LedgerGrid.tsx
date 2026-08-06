@@ -31,8 +31,10 @@ import { cn } from '@/utils/_cn';
  * Station / receiving feeds may pass `showDayHeaders` and/or `daySections`.
  *
  * Domain cell registries stay outside DS — pass `columnHeader` / `renderRow` /
- * `renderGroup`. Multi-child folds use {@link CollapsibleGroupRow}; Maximize2 /
- * open-row is domain `onOpenRecord`, not this shell.
+ * `renderGroup`. Sheet list bodies render **flat leaves** (grouping orders rows
+ * upstream only); parent→child rollups live on {@link LedgerDrillHost} /
+ * {@link LedgerDrillParentMap}. Maximize2 / open-row is domain `onOpenRecord`,
+ * not this shell.
  *
  * Design invariants:
  *  • **One sticky layer, measured** — header docks at `top-0`; ResizeObserver
@@ -64,6 +66,11 @@ interface LedgerGridProps<T> {
    * virtualized row/header shares one width (locked columns). Omitted → `100%`.
    */
   contentMinWidthRem?: number;
+  /**
+   * Live content-min in px (SoT rem floors + persisted `--cf-col-*` overrides).
+   * Lifts `--cf-orders-grid-w` and remeasures the sticky X gutter after resize.
+   */
+  contentMinWidthPx?: number;
   /** Width-override CSS custom properties for the grid surface (`--cf-col-*`). */
   columnVars?: CSSProperties;
   /** The sticky column-header row (caller composes it; it self-pins at `top-0`). */
@@ -119,6 +126,7 @@ export function LedgerGrid<T>({
   showDayHeaders = false,
   scrollX = false,
   contentMinWidthRem,
+  contentMinWidthPx,
   columnVars,
   columnHeader,
   renderGroup,
@@ -172,6 +180,8 @@ export function LedgerGrid<T>({
   const { gutterRef, spacerWidth, overflowX } = useSyncedHorizontalScrollbar(
     hScrollSourceRef,
     stickyXEnabled,
+    contentMinWidthRem,
+    contentMinWidthPx,
   );
 
   // Self-scrolling mode windows against our OWN scroll port, which is still null
@@ -261,7 +271,7 @@ export function LedgerGrid<T>({
       ro.observe(surface.firstElementChild);
     }
     return () => ro.disconnect();
-  }, [scrollX, splitX, empty, contentMinWidthRem, selfScrollX]);
+  }, [scrollX, splitX, empty, contentMinWidthRem, contentMinWidthPx, selfScrollX]);
 
   const surfaceStyle: CSSProperties = {
     ...columnVars,
@@ -269,6 +279,7 @@ export function LedgerGrid<T>({
       ? {
           [LEDGER_GRID_WIDTH_VAR]: ledgerGridWidthVarValue(
             contentMinWidthRem ?? 40,
+            contentMinWidthPx,
           ),
         }
       : {}),
@@ -325,7 +336,7 @@ export function LedgerGrid<T>({
   );
 
   // Always mount when scrollX + rows so the sync hook can attach; collapse
-  // visually when content fits (no triage bar without overflow).
+  // visually when content fits (empty sunken track reads as fake bottom padding).
   const stickyGutter = stickyXEnabled ? (
     <GridStickyXScrollbar
       gutterRef={gutterRef}

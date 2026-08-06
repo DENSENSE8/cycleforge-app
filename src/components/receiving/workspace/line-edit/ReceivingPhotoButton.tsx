@@ -79,6 +79,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   receivingLineId = null,
   poRouteRef = null,
   galleryPlacement = 'below',
+  appearance = 'pill',
   onSendToTicket,
   onOpenMovePhotosExternal,
 }: {
@@ -127,11 +128,20 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    */
   poRouteRef?: string | null;
   /**
-   * Where the hover gallery card opens relative to the pill. Header pills keep
-   * the default `below`; bottom-anchored chrome (the unbox item cluster) passes
-   * `above` so the card never runs off the pane edge.
+   * Where the hover gallery card opens relative to the pill.
+   * - `below` — under the pill (unit rows, default).
+   * - `above` — bottom-anchored chrome (unbox item dock) so the card never
+   *   runs off the pane edge.
+   * - `right` — beside the pill (carton context header) so the menu does not
+   *   cover Claim / ticket stacked under Photos; the pointer can travel down
+   *   from the pill to Claim.
    */
-  galleryPlacement?: 'below' | 'above';
+  galleryPlacement?: 'below' | 'above' | 'right';
+  /**
+   * `pill` — station identity / section chrome (rounded photo pill).
+   * `flush` — square ghost cell for flush unit rows (Units Displays explosion).
+   */
+  appearance?: 'pill' | 'flush';
   /** Opens SendPhotoNoteRail — ticket icon in the photo dropdown toolbar. */
   onSendToTicket?: () => void;
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
@@ -308,22 +318,26 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   // One consistent resting state across every PO — a calm blue-tinted pill.
   // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
-  const btnClass = STATION_CONTEXT_PHOTO_PILL_CLASS;
+  // Flush = square ghost cell for Units explosion unit rows.
+  const btnClass =
+    appearance === 'flush'
+      ? // Units explosion leading cell — fill the h-11 joined bar, square, no pad.
+        'h-11 w-11 shrink-0 justify-center rounded-none border-0 bg-surface-strong px-0 text-text-faint hover:bg-surface-sunken hover:text-text-muted'
+      : STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const noun = isItemScope ? 'item' : 'carton';
-  const phoneHint = canSendToPhone ? 'send to phone' : 'hover to upload';
 
   const title = hasGallery
-    ? `${count} ${noun} photo${count === 1 ? '' : 's'} · ${phoneHint}`
+    ? `Photos ${count} · ${canSendToPhone ? 'phone' : 'upload'}`
     : canSendToPhone
-      ? `Send to phone · hover for upload`
-      : `Hover to upload ${noun} photos`;
+      ? 'Send to phone'
+      : `Upload ${noun} photos`;
 
   const ariaLabel = hasGallery
-    ? `${count} ${noun} photo${count === 1 ? '' : 's'}; ${phoneHint} or hover for gallery`
+    ? `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
     : canSendToPhone
-      ? 'Send capture request to phone; hover for upload options'
-      : `Hover for ${noun} upload options`;
+      ? 'Send to phone'
+      : `Upload ${noun} photos`;
 
   const handlePillClick = useCallback(() => {
     void handleRequestOnPhone();
@@ -346,10 +360,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       // Right face: count when photos exist (children), else "+". Camera stays
       // left via justify-between on the locked photo-pill width. Count is not
       // iconRight — Button's icon box would crush multi-digit tabular nums.
-      iconRight={hasGallery ? undefined : <Plus className="h-3 w-3" />}
+      // Flush square: camera only (count lives in aria / tooltip).
+      iconRight={appearance === 'flush' || hasGallery ? undefined : <Plus className="h-3 w-3" />}
       className={btnClass}
     >
-      {hasGallery ? count : null}
+      {appearance === 'flush' ? null : hasGallery ? count : null}
     </Button>
   );
 
@@ -386,11 +401,15 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       {showGalleryPeek ? (
         // Gap bridge only — panel chrome comes from CopyChipHoverMenuPanel
         // (same drop SoT as tracking / ticket), not a second card wrapper.
+        // `right` keeps Claim / ticket under Photos reachable — a below drop
+        // would sit on that stack and steal the downward mouse path.
         <div
           className={
             galleryPlacement === 'above'
               ? 'absolute bottom-full right-0 z-30 pb-1.5'
-              : 'absolute right-0 top-full z-30 pt-1.5'
+              : galleryPlacement === 'right'
+                ? 'absolute left-full top-0 z-30 pl-1.5'
+                : 'absolute right-0 top-full z-30 pt-1.5'
           }
         >
           <PhotoGallery

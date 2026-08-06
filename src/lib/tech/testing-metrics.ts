@@ -75,7 +75,7 @@ function metric(
 const TESTING_METRICS: TestingMetricDef[] = [
   {
     id: 'queue-depth',
-    modes: ['pending', 'returns'],
+    modes: ['pending', 'returns', 'urgent', 'all'],
     compute: ({ queue }) =>
       queue.total > 0
         ? metric(
@@ -93,7 +93,7 @@ const TESTING_METRICS: TestingMetricDef[] = [
   },
   {
     id: 'oldest',
-    modes: ['pending', 'returns'],
+    modes: ['pending', 'returns', 'urgent', 'all'],
     compute: ({ queue }) =>
       queue.oldestAgeHours > 0
         ? metric(
@@ -113,7 +113,7 @@ const TESTING_METRICS: TestingMetricDef[] = [
   },
   {
     id: 'mine',
-    modes: ['pending', 'returns'],
+    modes: ['pending', 'returns', 'urgent', 'all'],
     compute: ({ queue }) =>
       queue.assignedToMe > 0
         ? metric(
@@ -131,7 +131,7 @@ const TESTING_METRICS: TestingMetricDef[] = [
   },
   {
     id: 'unassigned',
-    modes: ['pending', 'returns'],
+    modes: ['pending', 'returns', 'urgent', 'all'],
     compute: ({ queue }) =>
       queue.unassigned > 0
         ? metric(

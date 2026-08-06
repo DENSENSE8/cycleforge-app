@@ -76,7 +76,7 @@ export function ChannelManualAdd({
   }
 
   return (
-    <div className="mt-2 space-y-2 rounded-lg border border-blue-200 bg-blue-50/40 p-2.5">
+    <div className="mt-2 space-y-2 rounded-none border border-blue-200 bg-blue-50/40 p-2.5">
       <TextField label="Item number" value={itemNumber} onChange={setItemNumber} mono trailing={<PasteButton onPaste={setItemNumber} />} />
       <TextField label="SKU" value={sku} onChange={setSku} mono trailing={<PasteButton onPaste={setSku} />} />
       <TextField label="Account (optional)" value={account} onChange={setAccount} />

@@ -6,11 +6,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   KpiTile,
   metricIntentTextClass,
-  MONITOR_KPI_TILE_CLASS,
+  OpsKpiBand,
+  OpsKpiBandCell,
+  OpsKpiBandEmpty,
+  OpsKpiBandError,
+  OpsKpiBandSkeletonTile,
 } from '@/design-system/components/monitor';
-import { Button } from '@/design-system/primitives';
-import { RefreshCw } from '@/components/Icons';
-import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import {
@@ -22,15 +23,17 @@ import {
   type TestingHistoryCounts,
   type TestingQueueCounts,
 } from '@/lib/tech/testing-metrics';
+import {
+  buildTestingWorkspaceSearchParams,
+  resolveTestingWorkspaceTesterId,
+  testingWorkspaceEmptyCopy,
+  testingWorkspaceQueryKey,
+} from '@/lib/tech/testing-workspace-query';
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
 import { computeWeekRange, toPSTDateKey } from '@/utils/date';
-import { cn } from '@/utils/_cn';
 import { WEEK_OFFSET_PARAM, parseWeekOffset } from '@/lib/station/table-url-params';
-
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
 interface ApiResponse {
   success: boolean;
@@ -41,6 +44,7 @@ function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
   const tone = metricIntentTextClass(metric.intent);
   const tile = (
     <KpiTile
+      density="band"
       label={metric.label}
       value={metric.value}
       valueClassName={metric.intent === 'warn' || metric.intent === 'bad' ? tone : undefined}
@@ -58,50 +62,46 @@ function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
 
 function StripSkeleton() {
   return (
-    <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
+    <OpsKpiBand density="band" className="animate-pulse" aria-label="Loading testing metrics">
       <span className="sr-only">Loading testing metrics…</span>
       {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, TILE_CELL_CLASS, 'h-20')}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
-            <div className="h-2.5 w-8 rounded-full bg-surface-strong" />
-          </div>
-          <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-        </div>
+        <OpsKpiBandCell key={index} density="band">
+          <OpsKpiBandSkeletonTile density="band" />
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }
 
-function StripEmpty({ mode }: { mode: TestingWorkspaceTab }) {
-  const copy =
-    mode === 'pending'
-      ? 'No standard intake is waiting for testing.'
-      : mode === 'returns'
-        ? 'No returns are waiting for quality control.'
-        : 'No testing history is in this staff scope.';
+function StripEmpty({
+  mode,
+  testerId,
+  ownTesterId,
+  explicitlyAll,
+}: {
+  mode: TestingWorkspaceTab;
+  testerId: number | null;
+  ownTesterId: number | null;
+  explicitlyAll: boolean;
+}) {
+  const copy = testingWorkspaceEmptyCopy({
+    mode,
+    testerId,
+    ownTesterId,
+    explicitlyAll,
+  });
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      <AnimatedCheck size={20} />
-      <div className="min-w-0">
-        <p className="text-role-caption font-semibold text-text-default">All clear.</p>
-        <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-          {copy}
-        </p>
-      </div>
-    </div>
+    <OpsKpiBandEmpty density="band" title="All clear." description={copy} />
   );
 }
 
 function StripError({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="rounded-xl border border-dashed border-border-danger bg-fill-danger px-4 py-8 text-center">
-      <p className="text-role-caption font-semibold text-text-danger">Couldn&apos;t load testing metrics.</p>
-      <Button variant="secondary" size="sm" onClick={onRetry} className="mt-2">
-        <RefreshCw className="h-3.5 w-3.5" />
-        Try again
-      </Button>
-    </div>
+    <OpsKpiBandError
+      density="band"
+      message="Couldn't load testing metrics."
+      onRetry={onRetry}
+    />
   );
 }
 
@@ -169,11 +169,18 @@ export function TestingKpiStrip({
 }) {
   const searchParams = useSearchParams();
   const { staffId } = useStaffFilter({ allToken: 'all' });
-  const allStaff =
+  const explicitlyAll =
     String(searchParams.get(STAFF_FILTER_PARAM) || '').trim().toLowerCase() === 'all';
-  const historyTester = allStaff ? null : (staffId ?? techId ?? null);
-  const queryTester = mode === 'history' ? historyTester : null;
+  const ownTesterId =
+    techId != null && Number.isFinite(techId) && techId > 0 ? techId : null;
+  const queryTester = resolveTestingWorkspaceTesterId({
+    mode,
+    filteredStaffId: staffId,
+    ownTesterId,
+    explicitlyAll,
+  });
   const search = String(searchParams.get('search') || '').trim();
+  const priorityOnly = mode === 'urgent';
   const weekOffset =
     mode === 'history'
       ? Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)))
@@ -184,25 +191,22 @@ export function TestingKpiStrip({
     // Exact key + request contract shared with TestingHistoryList: React Query
     // deduplicates the 500-row feed, then the table and KPI strip derive from
     // one cached response.
-    queryKey: ['testing-workspace', mode, queryTester ?? 'all', search, weekOffset],
-    enabled: mode !== 'history' || queryTester != null || allStaff,
+    queryKey: testingWorkspaceQueryKey({
+      mode,
+      testerId: queryTester,
+      search,
+      weekOffset,
+      priorityOnly,
+    }),
+    enabled: mode !== 'history' || queryTester != null || explicitlyAll,
     queryFn: async () => {
-      const params = new URLSearchParams({
-        limit: '500',
-        offset: '0',
-        include: 'serials',
-        view: mode === 'history' ? 'testing' : 'needs-test',
+      const params = buildTestingWorkspaceSearchParams({
+        mode,
+        testerId: queryTester,
+        search,
+        weekStart: weekRange.startStr,
+        weekEnd: weekRange.endStr,
       });
-      if (mode !== 'history') {
-        params.set('return_scope', mode === 'returns' ? 'returns' : 'standard');
-      } else if (queryTester != null) {
-        params.set('tester', String(queryTester));
-      }
-      if (mode === 'history') {
-        params.set('weekStart', weekRange.startStr);
-        params.set('weekEnd', weekRange.endStr);
-      }
-      if (search) params.set('search', search);
       const response = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to load testing metrics');
       return response.json();
@@ -229,15 +233,20 @@ export function TestingKpiStrip({
       ) : query.isPending ? (
         <StripSkeleton />
       ) : tiles.length === 0 ? (
-        <StripEmpty mode={mode} />
+        <StripEmpty
+          mode={mode}
+          testerId={queryTester}
+          ownTesterId={ownTesterId}
+          explicitlyAll={explicitlyAll}
+        />
       ) : (
-        <div className={TILE_BAND_CLASS}>
+        <OpsKpiBand density="band" aria-label="Testing attention metrics">
           {tiles.map((metric) => (
-            <div key={metric.id} className={TILE_CELL_CLASS}>
+            <OpsKpiBandCell key={metric.id} density="band">
               <MetricKpiTile metric={metric} />
-            </div>
+            </OpsKpiBandCell>
           ))}
-        </div>
+        </OpsKpiBand>
       )}
     </section>
   );

@@ -168,6 +168,8 @@ export function useReceivingModeContext(): ReceivingModeState {
     || ulaneRaw === 'HOLD'
       ? ulaneRaw
       : null;
+  const priorityOnlyRaw = (searchParams.get('priority_only') || '').trim().toLowerCase();
+  const priorityOnly = priorityOnlyRaw === '1' || priorityOnlyRaw === 'true';
 
   // Single bag of parsed URL state handed to the active descriptor. Memoized so
   // the query key / params stay referentially stable across unrelated re-renders.
@@ -190,6 +192,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       listSearch,
       queueStage,
       queueLane,
+      priorityOnly,
       trackingIn,
     }),
     [
@@ -210,6 +213,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       listSearch,
       queueStage,
       queueLane,
+      priorityOnly,
       // Depend on the JOINED key, not the array: `parseTrackingInParam` returns
       // a fresh array every render, so the array itself would defeat the memo
       // and re-key the react-query fetch on every keystroke elsewhere.

@@ -1,3 +1,5 @@
+> **ARCHIVED / SUPERSEDED 2026-08-05.** `SearchOrderDetailShell` is deleted. Order search feedback is `SearchOrderFeedback` (`src/components/search/order-feedback/`). Do not revive the deleted shell. Durable record remains `/o/[id]`.
+
 # Handoff: Dashboard Search exact-open flash (Playwright + fix)
 
 **For:** Claude Code (or any agent continuing this lane)  

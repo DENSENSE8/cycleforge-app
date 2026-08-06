@@ -21,8 +21,10 @@ test.use({ storageState: QA_STORAGE });
 
 const uniq = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
 
-/** MIN_WORK_SURFACE_PX from frame.ts — center must not go below this with push open. */
-const MIN_WORK_SURFACE_PX = 784;
+import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
+
+/** Station workbench lock — center hugs this when both rails stay open. */
+const STATION_CENTER_LOCK_PX = STATION_WORKBENCH_LOCK_PX;
 
 async function hasQaSession(request: APIRequestContext): Promise<boolean> {
   const probe = await request.get('/api/receiving-lines?view=recent&limit=1');
@@ -170,7 +172,7 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
       expect(g.workspaceBg).not.toBe('rgba(0, 0, 0, 0)');
     });
 
-    test(`@${viewport.width}: Displays push is flush; center stays ≥ floor`, async ({
+    test(`@${viewport.width}: Displays push is flush; left stays; center hugs station lock`, async ({
       page,
       request,
     }) => {
@@ -187,6 +189,8 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
       const g = await measureFlush(page, 'receiving-displays-push');
       expect(g.push).toBeTruthy();
       expect(g.workspace).toBeTruthy();
+      expect(g.context, 'context rail must stay open beside Displays').toBeTruthy();
+      expect(g.context!.width, 'context rail must not auto-park').toBeGreaterThan(200);
 
       // Wide viewport: in-flow flush (not absolute overlay).
       if (viewport.width >= 1024) {
@@ -198,10 +202,11 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
         expect(seam, `workspace|push seam at ${viewport.width}`).toBeLessThanOrEqual(2);
       }
 
+      // Center hugs the station workbench lock (~720); both side rails stay open.
       expect(
         g.workspace!.width,
-        `center floor ≥ ${MIN_WORK_SURFACE_PX} at ${viewport.width}`,
-      ).toBeGreaterThanOrEqual(MIN_WORK_SURFACE_PX - 8);
+        `center hugs ≥ ${STATION_CENTER_LOCK_PX} at ${viewport.width}`,
+      ).toBeGreaterThanOrEqual(STATION_CENTER_LOCK_PX - 8);
     });
   }
 

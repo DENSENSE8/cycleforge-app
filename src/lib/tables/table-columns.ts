@@ -45,7 +45,9 @@ export type ColumnType =
   /** Geo / bin / staging place (folded map header glyph). */
   | 'location'
   /** Carrier tracking number (MapPin header glyph — distinct from bin `location`). */
-  | 'tracking';
+  | 'tracking'
+  /** Money / unit cost (Receipt header glyph — distinct from qty `number` Hash). */
+  | 'price';
 
 export interface TableColumnSpec {
   /** Must equal the ChipColumn.key or RowMetaColumns slot key it controls. */
@@ -85,6 +87,8 @@ export type TableId =
   | 'unfound'
   /** Home › Today task spreadsheet (`MY_DAY_GRID_COLUMNS`). */
   | 'my-day'
+  /** Tech / Unbox All triage spreadsheet (`TECH_ALL_GRID_COLUMNS`). */
+  | 'tech-all'
   /** Review › Catalog link chores (`CATALOG_LINK_GRID_COLUMNS`). */
   | 'catalog-link'
   /**
@@ -137,22 +141,24 @@ const GRID_COL = (key: string, label: string, type?: ColumnType): TableColumnSpe
  */
 export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // Unbox / History / Testing receiving-line grids (`RECEIVING_GRID_COLUMNS`).
-  // `status` = the merged lifecycle track (dot · stage name, 2026-08-02);
-  // `date` joined the list when that column absorbed the clock.
+  // `status` = the merged lifecycle track (dot · stage name, 2026-08-02).
+  // `order` is frozen identity (`select · order`) — no hideKey, absent here.
+  // `date` scrolls with facts (always-on, no hideKey). Platform column removed
+  // from the Unbox spreadsheet SoT (2026-08-05); board-layout chips still use
+  // other surfaces' platform toggles.
   //
   // `rest` no longer maps to a grid TRACK — the `stage` column that carried
   // `hideKey: 'rest'` was deleted 2026-08-02. It stays because it is still the
   // vocabulary for the legacy row primitives under this same tableId: the
-  // board-layout `ReceivingLineOrderRow` / `ReceivingPoSummary` pass a `rest`
+  // board-layout `ReceivingLineOrderRow` pass a `rest`
   // cluster to `RowMetaColumns`, which asks `useIsColumnHidden('rest')`.
   // Dropping the entry would take that toggle away, not clean anything up.
   receiving: [
     META_STATUS,
-    GRID_COL('date', 'Date', 'date'),
     META_QTY,
+    GRID_COL('price', 'Price', 'price'),
     META_CONDITION,
     META_REST,
-    CHIP_PLATFORM,
     CHIP_ORDERID,
     CHIP_TRACKING,
     CHIP_SERIAL,
@@ -183,7 +189,7 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('date', 'Date', 'date'),
     GRID_COL('qty', 'Qty', 'number'),
     GRID_COL('condition', 'Cond', 'tag'),
-    GRID_COL('price', 'Price', 'number'),
+    GRID_COL('price', 'Price', 'price'),
     GRID_COL('status', 'Status', 'tag'),
   ],
   // Keys are the `hideKey`s in `src/lib/repair/repair-grid-layout.ts`.
@@ -191,7 +197,7 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('date', 'Created', 'date'),
     GRID_COL('customer', 'Customer', 'text'),
     GRID_COL('phone', 'Phone', 'text'),
-    GRID_COL('price', 'Price', 'number'),
+    GRID_COL('price', 'Price', 'price'),
     GRID_COL('order', 'Walk-in / Order', 'id'),
     GRID_COL('ticket', 'Ticket', 'id'),
   ],
@@ -247,6 +253,13 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('record', 'Record', 'id'),
     GRID_COL('due', 'Due', 'date'),
     GRID_COL('status', 'Status', 'tag'),
+  ],
+  // Keys are the `hideKey`s in `src/lib/tech/tech-all-grid-layout.ts`. `select`
+  // and `identity` are absent — frozen identity, structurally un-hideable.
+  'tech-all': [
+    GRID_COL('type', 'Type', 'tag'),
+    GRID_COL('stage', 'Stage', 'text'),
+    GRID_COL('urgency', 'Urgency', 'number'),
   ],
   // Keys are the `hideKey`s in
   // `src/features/review/catalog-link/grid/catalog-link-grid-layout.ts`.

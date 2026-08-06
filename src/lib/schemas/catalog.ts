@@ -16,6 +16,14 @@ const slug = trimmed
   .max(64)
   .regex(/^[a-z0-9_]+$/, 'slug must be lowercase letters, numbers, or underscores');
 
+/** Org platform accent — `#RRGGBB` only; ink is derived at render. */
+const colorHex = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'colorHex must be #RRGGBB')
+  .nullable()
+  .optional();
+
 const typeKind = z.enum(['receiving', 'shipping', 'both']);
 
 // ─── platforms ────────────────────────────────────────────────────────────────
@@ -25,6 +33,7 @@ export const PlatformCreateBody = z
     label: trimmed.min(1, 'label is required'),
     slug: slug.optional(),
     tone: trimmed.min(1).nullable().optional(),
+    colorHex,
     provider: trimmed.min(1).nullable().optional(),
     sortOrder: z.number().int().optional(),
     idempotencyKey: z.string().trim().min(1).optional(),
@@ -35,6 +44,7 @@ export const PlatformUpdateBody = z
   .object({
     label: trimmed.min(1).optional(),
     tone: trimmed.min(1).nullable().optional(),
+    colorHex,
     provider: trimmed.min(1).nullable().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),

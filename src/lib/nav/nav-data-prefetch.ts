@@ -44,6 +44,7 @@ const DEFAULT_UNBOX_CONTEXT: ReceivingModeContext = {
   listSearch: '',
   queueStage: null,
   queueLane: null,
+  priorityOnly: false,
 };
 
 /** Warm the default Unbox tab's spine (History · view=activity, paint tier). */

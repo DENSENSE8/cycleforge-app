@@ -28,7 +28,6 @@ import {
   receivingGridTemplate,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
-import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -71,8 +70,10 @@ interface ReceivingGridRowProps {
   onCrosshairHover?: (receivingId: number | null) => void;
   /** History / Unbox axis for the stage clock column. */
   activityAxis?: ReceivingActivityAxis;
-  /** History reads the status dot as uniform received-green. */
+  /** History / recent surface flag (mobile row chrome); dots use getStatusDotBg. */
   isHistory?: boolean;
+  /** Connected inventory provider label for History UNBOXED tips. */
+  inventoryProviderLabel?: string;
   columns?: readonly ReceivingGridColumn[];
   columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /**
@@ -81,6 +82,13 @@ interface ReceivingGridRowProps {
    * single-gesture apply.
    */
   clickSelect?: boolean;
+  /**
+   * When set (Unbox History triage), double-click / Enter call this instead of
+   * `onSelect` so left-click can open the inspect rail while Enter opens work.
+   */
+  onOpenWorkspace?: () => void;
+  /** Unbox History — richer column + row-state context menu. */
+  historyTriageMenu?: boolean;
   /** Persisted custom row fill hex (Sheets paint). Selection wash outranks. */
   rowFillHex?: string | null;
   selectGutterChrome?: GridSelectGutterChrome;
@@ -107,9 +115,12 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   onCrosshairHover,
   activityAxis = 'unboxed',
   isHistory = false,
+  inventoryProviderLabel = 'Inventory',
   columns = RECEIVING_GRID_COLUMNS,
   columnDisplay,
   clickSelect = false,
+  onOpenWorkspace,
+  historyTriageMenu = false,
   rowFillHex = null,
   selectGutterChrome = 'always',
 }: ReceivingGridRowProps) {
@@ -136,10 +147,14 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   }
 
   const stageStamp = resolveReceivingRowStageStamp(row, activityAxis);
-  const platformRaw = (row.source_platform || row.inbound_source_type || '').trim();
-  const platformResolved = platformRaw ? resolvePlatformMeta(platformRaw) : null;
-  const platformMeta = sourcePlatformMetaFromLabel(platformResolved?.label || platformRaw);
-  const { poValue } = getReceivingPoIdentityParts(row, (raw) => resolvePlatformMeta(raw).label);
+  const { poValue, platformLabel } = getReceivingPoIdentityParts(
+    row,
+    (raw) => resolvePlatformMeta(raw).label,
+  );
+  // Same raw ladder as getReceivingPoIdentityParts (source_platform → inbound).
+  const platformMeta = resolvePlatformMeta(
+    row.source_platform || row.inbound_source_type || null,
+  );
 
   const ctx: ReceivingGridCellCtx = {
     row,
@@ -156,16 +171,21 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     stageLabel: workflowStageLabel(row.workflow_status),
     stageTip: stageStamp ? receivingStageTooltip(row, stageStamp, activityAxis) : '',
     dateCell: receivingActivityDateCell(stageStamp?.instant),
-    platformMeta,
-    markLabel: platformResolved?.label || platformRaw || 'No platform',
     poValue,
+    platformLabel,
+    platformMeta,
     isPickup: isLocalPickupFulfillment(row),
     pickupLabel: fulfillmentModeLabel(row),
     trackingValue: displayTrackingNumber(row) ?? '',
+    onEditTracking: onSelect,
+    onEditOrder: onSelect,
     serialsCsv: resolveReceivingLineSerialsCsv(row),
-    statusDot: isHistory
-      ? 'bg-emerald-500'
-      : getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected),
+    statusDot: getStatusDotBg(
+      row.workflow_status,
+      row.quantity_received,
+      row.quantity_expected,
+    ),
+    inventoryProviderLabel,
     columnDisplay,
     selectGutterChrome,
     clickSelect,
@@ -205,7 +225,11 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         onSelect();
       }}
       onDoubleClick={() => {
-        if (clickSelect) onSelect();
+        if (clickSelect) {
+          onSelect();
+          return;
+        }
+        onOpenWorkspace?.();
       }}
       onKeyDown={(event) => {
         if (clickSelect) {
@@ -221,7 +245,13 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
           }
           return;
         }
-        if (event.key === 'Enter' || event.key === ' ') {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          if (onOpenWorkspace) onOpenWorkspace();
+          else onSelect();
+          return;
+        }
+        if (event.key === ' ') {
           event.preventDefault();
           onSelect();
         }
@@ -262,7 +292,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   );
 
   return (
-    <ReceivingRowTriageContextMenu row={row}>
+    <ReceivingRowTriageContextMenu row={row} historyTriage={historyTriageMenu}>
       {rowEl}
     </ReceivingRowTriageContextMenu>
   );

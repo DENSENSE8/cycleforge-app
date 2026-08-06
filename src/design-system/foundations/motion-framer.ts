@@ -1,9 +1,11 @@
 import type { Transition, Variants } from '../motion/framer';
+import { fadeInstant, springSnappy } from '../motion/tokens';
 
 /**
  * Cubic-bezier tuples for Framer Motion `ease`.
  * Primary curve matches station / Up Next cards (kinetic ledger rhythm).
  */
+
 export const motionBezier = {
   /** Cards, chevrons, list rows, opacity */
   easeOut: [0.22, 1, 0.36, 1] as const,
@@ -251,32 +253,19 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Height + opacity synced for expand/collapse (active order panel) */
+  /**
+   * Height + opacity synced for expand/collapse (active order panel).
+   * Height uses `springSnappy` (utilitarian settle); opacity uses `fadeInstant`.
+   */
   stationCollapse: {
-    height: {
-      type: 'tween' as const,
-      duration: framerDuration.stationCollapseHeight,
-      ease: motionBezier.layout,
-    },
-    opacity: {
-      type: 'tween' as const,
-      duration: framerDuration.stationCollapseOpacity,
-      ease: motionBezier.easeOut,
-    },
+    height: springSnappy,
+    opacity: fadeInstant,
   } satisfies Transition,
 
-  /** Up Next expanded block — snappier height, quick opacity */
+  /** Up Next expanded block — same utilitarian height + instant opacity */
   upNextCollapse: {
-    height: {
-      type: 'tween' as const,
-      duration: framerDuration.upNextCollapseHeight,
-      ease: motionBezier.easeOut,
-    },
-    opacity: {
-      type: 'tween' as const,
-      duration: framerDuration.upNextCollapseOpacity,
-      ease: 'easeOut' as const,
-    },
+    height: springSnappy,
+    opacity: fadeInstant,
   } satisfies Transition,
 
   stationSerialRow: {
@@ -289,14 +278,10 @@ export const framerTransition = {
    * Capture-stack row push-up. A SPRING, not a tween, and deliberately so: rows
    * arrive at scan cadence and every arrival reflows its siblings under
    * `layout="position"`, which is a physical settle rather than a discrete view
-   * swap. Pair with `framerPresence.captureStackRow*`.
+   * swap. Physics = `springSnappy` (house utilitarian spring). Pair with
+   * `framerPresence.captureStackRow*`.
    */
-  captureStackRowMount: {
-    type: 'spring' as const,
-    damping: 28,
-    stiffness: 340,
-    mass: 0.55,
-  } satisfies Transition,
+  captureStackRowMount: springSnappy,
 
   /**
    * Capture-stack fresh-arrival ring pulse. Suppressed outright under reduced
@@ -315,39 +300,21 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Work order assignment overlay backdrop */
-  overlayScrim: {
-    duration: framerDuration.overlayScrim,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
+  /** Work order assignment overlay backdrop — opacity only */
+  overlayScrim: fadeInstant,
 
-  /** Centered assignment modal shell */
-  workOrderModalSpring: {
-    type: 'spring' as const,
-    damping: 26,
-    stiffness: 400,
-    mass: 0.4,
-  } satisfies Transition,
+  /** Centered assignment modal shell — `springSnappy` */
+  workOrderModalSpring: springSnappy,
 
   /**
    * ⌘K command palette dialog — top-anchored slide-down (negative y), unlike
    * centered `workOrderModalSpring` which rises from below. Pair with
-   * `framerPresence.commandBarDialog`.
+   * `framerPresence.commandBarDialog`. Physics = `springSnappy`.
    */
-  commandBarDialog: {
-    type: 'spring' as const,
-    damping: 28,
-    stiffness: 360,
-    mass: 0.7,
-  } satisfies Transition,
+  commandBarDialog: springSnappy,
 
-  /** Horizontal slide between rows inside the modal */
-  workOrderSlideSpring: {
-    type: 'spring' as const,
-    damping: 28,
-    stiffness: 380,
-    mass: 0.42,
-  } satisfies Transition,
+  /** Horizontal slide between rows inside the modal — `springSnappy` */
+  workOrderSlideSpring: springSnappy,
 
   /** Table row enter/exit */
   tableRowMount: {
@@ -361,18 +328,10 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Sidebar expandable section height + opacity */
+  /** Sidebar expandable section height + opacity — utilitarian spring + fade */
   sidebarExpand: {
-    height: {
-      type: 'tween' as const,
-      duration: framerDuration.sidebarExpand,
-      ease: motionBezier.layout,
-    },
-    opacity: {
-      type: 'tween' as const,
-      duration: framerDuration.sidebarExpand * 0.7,
-      ease: motionBezier.easeOut,
-    },
+    height: springSnappy,
+    opacity: fadeInstant,
   } satisfies Transition,
 
   /** Dropdown menu open/close */
@@ -400,11 +359,8 @@ export const framerTransition = {
     bounce: 0,
   } satisfies Transition,
 
-  /** Copy feedback flash */
-  chipCopyFeedback: {
-    duration: framerDuration.chipCopyFeedback,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
+  /** Copy feedback flash — opacity-only `fadeInstant` */
+  chipCopyFeedback: fadeInstant,
 
   /**
    * Station scan-band glow — idle ⇄ focused opacity. Pair with
@@ -486,74 +442,38 @@ export const framerTransition = {
   /**
    * Assignment title block — height/position layout from bottom edge (`transformOrigin: bottom center`)
    * so multi-line titles feel like they grow upward; pair with `LayoutGroup` scoped to the title only.
+   * Physics = `springSnappy`.
    */
-  workOrderTitleLayoutSpring: {
-    type: 'spring' as const,
-    damping: 38,
-    stiffness: 320,
-    mass: 0.28,
-  } satisfies Transition,
+  workOrderTitleLayoutSpring: springSnappy,
 
-  /** Collapsible card/section expansion (softer than sidebarExpand) */
-  cardExpansion: {
-    type: 'spring' as const,
-    damping: 24,
-    stiffness: 300,
-  } satisfies Transition,
+  /** Collapsible card/section expansion — `springSnappy` (same house spring as DenseRowReveal) */
+  cardExpansion: springSnappy,
 
-  /** Sliding indicator on horizontal tab/button sliders */
-  sliderIndicator: {
-    type: 'spring' as const,
-    damping: 28,
-    stiffness: 380,
-    mass: 0.6,
-  } satisfies Transition,
+  /** Sliding indicator on horizontal tab/button sliders — `springSnappy` */
+  sliderIndicator: springSnappy,
 
-  /** Bumping animated numeric quantities (FBA qty, counts, badges) */
-  quantityBump: {
-    type: 'spring' as const,
-    damping: 30,
-    stiffness: 500,
-  } satisfies Transition,
+  /** Bumping animated numeric quantities (FBA qty, counts, badges) — `springSnappy` */
+  quantityBump: springSnappy,
 
   /**
    * Swimlane board column reflow — lanes slide into new grid slots when toggling
    * 1-up / 2-up / 3-up. No bounce (ops dashboard); pair with `layout` on bubbles.
+   * Physics = `springSnappy`.
    */
-  boardLaneLayout: {
-    type: 'spring' as const,
-    visualDuration: 0.38,
-    bounce: 0,
-  } satisfies Transition,
+  boardLaneLayout: springSnappy,
 
   /** Table chip columns (platform / order id / tracking) reflow when toggling visibility */
-  chipColumnLayout: {
-    type: 'spring' as const,
-    visualDuration: 0.28,
-    bounce: 0,
-  } satisfies Transition,
+  chipColumnLayout: springSnappy,
 
   /**
    * Title row swap + layout — `layout` for line-wrap; opacity/y for keyed row changes.
    * Footer stays outside `LayoutGroup` / `AnimatePresence` so it does not crossfade or layout-shift.
+   * Springs = `springSnappy`; opacity = `fadeInstant`.
    */
   workOrderAssignmentTitleBlock: {
-    layout: {
-      type: 'spring' as const,
-      damping: 38,
-      stiffness: 320,
-      mass: 0.28,
-    },
-    opacity: {
-      duration: 0.17,
-      ease: motionBezier.easeOut,
-    },
-    y: {
-      type: 'spring' as const,
-      damping: 24,
-      stiffness: 420,
-      mass: 0.3,
-    },
+    layout: springSnappy,
+    opacity: fadeInstant,
+    y: springSnappy,
   } satisfies Transition,
 } as const;
 
@@ -711,7 +631,7 @@ export const framerPresence = {
    *      and `swap.scan` is scan-cadence with a zero-duration exit. Adopting
    *      either would put a documented out-of-contract region on half the
    *      call sites — a false intent claim, which is exactly why
-   *      `motionRole.feedback.pulse` ships with no consumers.
+   *      `motionRole.feedback.pulse` — PoLineRow match acknowledgement.
    *
    * The exit drifts DOWN (`y: 4`), toward the edge the dock sits on — same
    * reasoning as {@link chatScrollToLatest}, and deliberately opposite to
@@ -957,22 +877,16 @@ export const framerDurationMobile = {
 // ─── Mobile-specific transitions ─────────────────────────────────────────────
 
 export const framerTransitionMobile = {
-  /** Bottom sheet — spring-damped vertical slide */
-  sheetSlide: {
-    type: 'spring' as const,
-    damping: 30,
-    stiffness: 350,
-    mass: 0.5,
-  } satisfies Transition,
+  /** Bottom sheet — utilitarian spring settle */
+  sheetSlide: springSnappy,
 
   /**
-   * Fullscreen photo viewer paging / dismiss settle — crisp spring with no
-   * overshoot (bounce reads as tacky on a photo). Duration-based (visualDuration
-   * + bounce) rather than stiffness/damping so the snap lands in the SAME visual
-   * time whether the finger barely nudged or hard-flicked — physics springs vary
-   * their perceived duration with distance + release velocity, which is what made
-   * paging feel uneven and left a slow overdamped tail crawling into the frame.
-   * Inherited flick `velocity` (passed at the call site) is still respected.
+   * Fullscreen photo viewer paging / dismiss settle — duration-locked spring
+   * (visualDuration + bounce: 0), NOT `springSnappy`. Physics springs vary their
+   * perceived duration with distance + release velocity; paging must land in the
+   * SAME visual time whether the finger barely nudged or hard-flicked. Bounce
+   * reads as tacky on a photo. Inherited flick `velocity` (call site) is still
+   * respected.
    */
   viewerPaging: {
     type: 'spring' as const,
@@ -1006,13 +920,8 @@ export const framerTransitionMobile = {
     mass: 0.3,
   } satisfies Transition,
 
-  /** FAB entrance spring */
-  fabMount: {
-    type: 'spring' as const,
-    damping: 22,
-    stiffness: 400,
-    mass: 0.4,
-  } satisfies Transition,
+  /** FAB entrance — `springSnappy` */
+  fabMount: springSnappy,
 
   /** Bottom nav active icon crossfade */
   navIconSwap: {
@@ -1038,21 +947,11 @@ export const framerTransitionMobile = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Scan confirmation bottom sheet — spring-damped slide up */
-  confirmationSlideUp: {
-    type: 'spring' as const,
-    damping: 28,
-    stiffness: 320,
-    mass: 0.5,
-  } satisfies Transition,
+  /** Scan confirmation bottom sheet — `springSnappy` */
+  confirmationSlideUp: springSnappy,
 
-  /** Search bar expand in bottom action bar */
-  searchExpand: {
-    type: 'spring' as const,
-    damping: 26,
-    stiffness: 380,
-    mass: 0.4,
-  } satisfies Transition,
+  /** Search bar expand in bottom action bar — `springSnappy` */
+  searchExpand: springSnappy,
 } as const;
 
 // ─── Mobile-specific presence shapes ─────────────────────────────────────────

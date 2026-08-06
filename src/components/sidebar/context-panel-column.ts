@@ -56,7 +56,14 @@ export const CONTEXT_PANEL_RESIZE = {
   storageKey: 'context-panel-width',
   defaultWidthPx: CONTEXT_PANEL_WIDTH_PX,
   minWidthPx: 300,
+  /**
+   * Desk / picker routes — leave ~760 for the work surface.
+   * Scan stations use {@link CONTEXT_PANEL_RESIZE.stationMaxWidthPadPx} (0) so
+   * the left rail can meet an open Displays column.
+   */
   maxWidthPadPx: 760,
+  /** Scan stations — no forced center pad; rails may close the gap entirely. */
+  stationMaxWidthPadPx: 0,
 } as const;
 
 /**
@@ -64,25 +71,32 @@ export const CONTEXT_PANEL_RESIZE = {
  * feed — whatever the route mounts in {@link ContextPanelLayout}).
  *
  * Open: paths into the same preference —
- * 1. **Primary (visible):** {@link RailFilterCollapseButton} in
- *    `TechRailSearchBar` `trailingAction` (far right / age column of the
- *    bottom filter bar) — the only display collapse glyph;
- * 2. drag the trailing edge past min (`useHorizontalEdgeResize`
+ * 1. **Sash-top chevron:** {@link HorizontalEdgeResizeHandle} `onCollapse` on
+ *    the trailing outset edge (every mounted context rail, including dashboard);
+ * 2. **Filter trailing:** {@link RailFilterCollapseButton} — auto-seated by
+ *    `TechRailSearchBar` `variant="rail"` when under
+ *    {@link ContextPanelCollapseProvider} (age column / bottom-right). Hosts
+ *    may override via explicit `trailingAction` (LedgerDrill parent map);
+ * 3. drag the trailing edge past min (`useHorizontalEdgeResize`
  *    `onCollapseBeyondMin` / `collapseBelowPx` ≈ min − 48) — release-time
  *    only; live layout still floors at {@link CONTEXT_PANEL_RESIZE.minWidthPx}.
  *
- * The resize sash has **no** top chevron on this rail (filter-trailing only).
- *
  * Collapsed: width-drawer to 0 + a slim expand strip on the canvas
- * ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}). Persists beside
- * {@link CONTEXT_PANEL_RESIZE} — one shared preference across routes. Do not
- * put a close icon in-row or in the UNBOXED eyebrow — filter trailing track
- * (same column as relative-age) + drag-past-min only.
+ * ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}) — whole-strip click restores;
+ * optional mid-strip MRU pins (`mruPinCount`) from the open rail feed. Persists
+ * beside {@link CONTEXT_PANEL_RESIZE} — one shared preference across routes. Do
+ * not put a close icon in-row or in the UNBOXED eyebrow — sash + filter
+ * trailing track (same column as relative-age) + drag-past-min only.
  */
 export const CONTEXT_PANEL_COLLAPSE = {
   storageKey: 'context-panel-collapsed',
   /** Slim expand strip width when the rail is parked (Tailwind twin: `w-8`). */
   stripWidthPx: 32,
+  /**
+   * Mid-strip MRU peek when the operator parks the rail — top-N from the open
+   * rail's visible feed (Unbox golden = `unboxRecent` status-dot pins).
+   */
+  mruPinCount: 5,
 } as const;
 
 /**

@@ -41,7 +41,7 @@ export type { IncomingDetailsPanelProps } from './incoming-details/incoming-deta
  * suppressed (`edgeCollapse={false}`) — Unbox parity.
  */
 export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
-  const { onClose } = props;
+  const { onClose, focusReceivingId, focusReceivingLineId } = props;
   const c = useIncomingDetails(props);
   const {
     isShipmentOnly,
@@ -114,7 +114,13 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
           ) : (
             <div className="px-6 py-5">
               {tab === 'ebay' && <EbayTab data={data} />}
-              {tab === 'po' && <PoTab data={data} />}
+              {tab === 'po' && (
+                <PoTab
+                  data={data}
+                  focusReceivingId={focusReceivingId}
+                  focusReceivingLineId={focusReceivingLineId}
+                />
+              )}
               {tab === 'shipment' && <ShipmentTab data={data} />}
               {tab === 'activity' && <ActivityTab data={data} />}
               {tab === 'email' && <EmailTab data={data} />}

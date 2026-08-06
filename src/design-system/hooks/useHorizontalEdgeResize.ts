@@ -201,7 +201,24 @@ export function useHorizontalEdgeResize({
     setWidthState(
       readPersistedWidth(storageKey, defaultWidth, minWidth, maxWidthPad, maxWidth),
     );
-  }, [storageKey, defaultWidth, minWidth, maxWidthPad, maxWidth]);
+    // Hydrate from storage when the preference key / defaults change — not on
+    // every `maxWidth` tick. Cap changes clamp the live width below so a
+    // mid-drag frame-cap bump (station dual-rail coupling) cannot re-read an
+    // stale localStorage value and stomp the sash.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- maxWidth via clamp effect
+  }, [storageKey, defaultWidth, minWidth, maxWidthPad]);
+
+  useEffect(() => {
+    setWidthState((current) => {
+      const viewportWidth = typeof window === 'undefined' ? undefined : window.innerWidth;
+      const cap = edgeResizeWidthCap(minWidth, maxWidthPad, maxWidth, viewportWidth);
+      if (!Number.isFinite(cap)) return Math.max(minWidth, current);
+      const next = Math.max(minWidth, Math.min(cap, current));
+      if (next === current) return current;
+      widthRef.current = next;
+      return next;
+    });
+  }, [minWidth, maxWidthPad, maxWidth]);
 
   const clamp = useCallback(
     (next: number) => {

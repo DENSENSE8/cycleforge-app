@@ -5,10 +5,15 @@ import { Copy, ExternalLink, RefreshCw } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
-import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
+import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
 
 export interface TrackingNumberRowProps {
   value: string;
+  /**
+   * Authoritative carrier from the shipment / order when known. Prefer over
+   * regex detect for the Open link ({@link resolveTrackingOpenUrl}).
+   */
+  carrierHint?: string | null;
   /** Uppercase ledger label. Default "Tracking Number" (shipped panel wording). */
   label?: string;
   placeholder?: string;
@@ -56,6 +61,7 @@ export interface TrackingNumberRowProps {
  */
 export function TrackingNumberRow({
   value,
+  carrierHint = null,
   label = 'Tracking Number',
   placeholder = 'No tracking number',
   onChange,
@@ -93,11 +99,9 @@ export function TrackingNumberRow({
       await onReplace(next);
     }
   };
-  // Carrier tracking page for the live in-depth updates. getTrackingUrl resolves
-  // known carriers by number pattern; fall back to the carrier-agnostic builder
-  // (a tracking-number web search) so the link always opens something useful.
+  // Stored/label carrier → pattern detect → official deep link (never Google).
   const trackingUrl = displayValue
-    ? (getTrackingUrl(displayValue) ?? getTrackingUrlByCarrier(displayValue, ''))
+    ? resolveTrackingOpenUrl(displayValue, carrierHint)
     : null;
 
   const actions = (

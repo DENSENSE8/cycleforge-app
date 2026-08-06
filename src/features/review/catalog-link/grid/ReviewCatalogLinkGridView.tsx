@@ -73,6 +73,13 @@ interface SharedGridProps {
   /** Settled with no MATCHES — a different answer (clear the filter). */
   searchEmptyMessage?: string;
   isSearching?: boolean;
+  /**
+   * Element to portal the column-display (▦) trigger into — the Band-3 triage
+   * controls slot, so the lip sits with the surface's other refine controls
+   * instead of floating over the card corner. Default null keeps it on the
+   * card. Same shape as `OrdersGridView`.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 // ── Tab A · Needs catalog link ────────────────────────────────────────────────
@@ -109,6 +116,7 @@ export function CatalogLinkChoresGrid({
   selectedChoreId,
   onOpenChore,
   columns = CATALOG_LINK_GRID_COLUMNS,
+  columnTriggerPortalTarget,
   ...shared
 }: SharedGridProps & {
   rows: CatalogLinkChoreRow[];
@@ -153,6 +161,7 @@ export function CatalogLinkChoresGrid({
   return (
     <LedgerGridSurface<CatalogLinkChoreRow, CatalogLinkGridColumnKey, CatalogLinkGridColumn>
       ariaLabel="Listings needing a catalog link"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeCatalogLinkGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -168,6 +177,7 @@ export function CatalogLinkChoresGrid({
       scrollRef={scrollRef}
       testId="catalog-link-grid-body"
       tableId={CATALOG_LINK_TABLE_ID}
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <CatalogLinkGridColumnHeader
           columns={visible}
@@ -230,6 +240,7 @@ export function ImportExceptionsGrid({
   selectedExceptionId,
   onOpenException,
   columns = IMPORT_EXCEPTION_GRID_COLUMNS,
+  columnTriggerPortalTarget,
   ...shared
 }: SharedGridProps & {
   rows: ImportExceptionRow[];
@@ -271,6 +282,7 @@ export function ImportExceptionsGrid({
   return (
     <LedgerGridSurface<ImportExceptionRow, ImportExceptionGridColumnKey, ImportExceptionGridColumn>
       ariaLabel="Sheet rows missing an item number"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeImportExceptionGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -286,6 +298,7 @@ export function ImportExceptionsGrid({
       scrollRef={scrollRef}
       testId="import-exception-grid-body"
       tableId={IMPORT_EXCEPTION_TABLE_ID}
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <ImportExceptionGridColumnHeader
           columns={visible}

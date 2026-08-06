@@ -80,7 +80,7 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
 
   return (
     <div className={cn('border-b', tone.ring, 'border-border-hairline bg-surface-card')}>
-      <div className={cn('m-3 rounded-xl ring-1 ring-inset p-4', tone.ring, tone.bg)}>
+      <div className={cn('m-3 rounded-none ring-1 ring-inset p-4', tone.ring, tone.bg)}>
         <div className="flex items-start gap-3">
           <span className={cn('mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card ring-1 ring-inset', tone.ring, tone.text)}>
             <Icon className="h-5 w-5" />

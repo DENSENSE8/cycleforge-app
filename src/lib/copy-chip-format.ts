@@ -7,16 +7,24 @@
  * these, so existing importers keep working.
  *
  * Display SoT: trailing **8** characters (dock match + fewer collisions than
- * last-8). Empty faces use the 8-char `'--------'` placeholder so empty
- * columns line up with filled last-8 chips.
+ * last-8). Empty faces on LedgerGrid / queue sheets use the quiet em dash
+ * {@link QUIET_CHIP_EMPTY} (2B) — never loud `--------`. Non-grid layouts that
+ * still need an 8-char width-matching placeholder may pass
+ * {@link EMPTY_CHIP_DISPLAY} explicitly.
  */
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 
 /** Trailing preview length for all typed id chips (serial, tracking, order, …). */
 export const CHIP_DISPLAY_LEN = 8 as const;
 
-/** Empty-state face — same width as a filled last-8 mono label. */
+/**
+ * Legacy 8-char width-matching empty face — **non-grid only**. Prefer
+ * {@link QUIET_CHIP_EMPTY} / `GridCellDash` on LedgerGrid tracks (2B).
+ */
 export const EMPTY_CHIP_DISPLAY = '--------';
+
+/** House empty-chip face on LedgerGrid / queue sheets — quiet em dash (2B). */
+export const QUIET_CHIP_EMPTY = '—' as const;
 
 export function normalizeCopyText(value: string | null | undefined): string {
   if (isEmptyDisplayValue(value)) return '';
@@ -51,39 +59,37 @@ export function isSkuFormattedScanRef(value: string | null | undefined): boolean
   return raw.includes(':');
 }
 
-/** True when a chip label is one of the "no value" spellings (`''`/null/`'---'`/`'--------'`). */
+/** True when a chip label is one of the "no value" spellings. */
 export function isEmptyChipDisplay(value: string | null | undefined): boolean {
   const trimmed = String(value || '').trim();
   return (
     isEmptyDisplayValue(value) ||
     trimmed === '---' ||
     trimmed === EMPTY_CHIP_DISPLAY ||
+    trimmed === QUIET_CHIP_EMPTY ||
     trimmed === '----' // legacy 4-dash empty face
   );
 }
 
 /**
  * The shared empty-state fallback for id-chip labels: collapses every "no
- * value" spelling to the 8-char {@link EMPTY_CHIP_DISPLAY} placeholder so empty
- * columns line up with filled rows; otherwise returns the label unchanged.
+ * value" spelling to the quiet em dash {@link QUIET_CHIP_EMPTY} (2B); otherwise
+ * returns the label unchanged.
  */
 export function resolveChipDisplay(display: string | null | undefined): string {
-  return isEmptyChipDisplay(display) ? EMPTY_CHIP_DISPLAY : String(display);
+  return isEmptyChipDisplay(display) ? QUIET_CHIP_EMPTY : String(display);
 }
 
 /**
  * The single source of truth for a serial chip's label. Derives the last-8
  * preview from the raw serial (or CSV of serials), and collapses every "no
  * serial" spelling callers used to pass — `''`/`null`, the literal sentinel
- * `'SERIAL'`, or `'---'` — to one {@link EMPTY_CHIP_DISPLAY} placeholder that
- * matches the empty state of the other id chips (OrderIdChip/TrackingChip), so
- * an empty serial column reads like an 8-char value and lines up with filled
- * rows instead of showing the wider `SERIAL` word.
+ * `'SERIAL'`, or `'---'` — to {@link QUIET_CHIP_EMPTY}.
  */
 export function resolveSerialDisplay(value: string | null | undefined): string {
   const raw = (value || '').trim();
   if (isEmptyDisplayValue(raw) || raw === '---' || raw.toUpperCase() === 'SERIAL') {
-    return EMPTY_CHIP_DISPLAY;
+    return QUIET_CHIP_EMPTY;
   }
   return getLast8Serial(raw);
 }
@@ -110,6 +116,6 @@ export function disambiguateSerialDisplays(serials: readonly string[]): string[]
     len += 1;
   }
   return cleaned.map((s) =>
-    resolveSerialDisplay(s) === EMPTY_CHIP_DISPLAY ? EMPTY_CHIP_DISPLAY : s,
+    resolveSerialDisplay(s) === QUIET_CHIP_EMPTY ? QUIET_CHIP_EMPTY : s,
   );
 }

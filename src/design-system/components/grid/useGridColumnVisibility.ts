@@ -108,10 +108,9 @@ interface GridColumnVisibility<C extends LedgerGridColumnModel> {
  * Resolve one grid's visible column tracks from descriptor defaults + staff
  * prefs + ephemeral viewport collapse.
  *
- * Standalone (no provider) — mirrors {@link useColumnOrder}, which already
- * reads `staff_preferences` directly by `tableId`. That is deliberate: the
- * Dashboard grid never had a `TableColumnConfigProvider` mounted, so a
- * provider-based API would have silently no-op'd there.
+ * Standalone (no provider) — reads `staff_preferences` directly by `tableId`.
+ * That is deliberate: the Dashboard grid never had a `TableColumnConfigProvider`
+ * mounted, so a provider-based API would have silently no-op'd there.
  */
 export function useGridColumnVisibility<C extends LedgerGridColumnModel>({
   columns,

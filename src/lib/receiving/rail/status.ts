@@ -15,6 +15,7 @@
  */
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { receivingCoarseUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import {
   deriveReceivingLineStatus,
   type ReceivingLineStatus,
@@ -63,12 +64,27 @@ export function getReceivingStatusDot(row: ReceivingLineRow): string {
 }
 
 /**
- * Hover tooltip for the rail status dot. Unboxed / Queue / Viewed are view
- * filters only — the label reflects the line's physical 3-state status (Scanned
- * / Unboxed / Received), not which tab you're on.
+ * Short chip / aria label for the rail status dot (Scanned / Unboxed / Received).
+ * Unboxed / Queue / Viewed are view filters only — the label reflects the line's
+ * physical 3-state status, not which tab you're on.
  */
 export function getReceivingStatusDotLabel(row: ReceivingLineRow): string {
   return COARSE_LABEL[railCoarseStatus(row)];
+}
+
+/**
+ * Richer hover tip for the rail status dot. Coarse UNBOXED → inventory sync
+ * pending (`Awaiting confirmation in {provider}`); otherwise null so callers
+ * fall back to {@link getReceivingStatusDotLabel}.
+ */
+export function getReceivingStatusDotTip(
+  row: ReceivingLineRow,
+  inventoryProviderLabel: string,
+): string | null {
+  return receivingCoarseUnboxedSyncTooltip({
+    coarse: railCoarseStatus(row),
+    inventoryProviderLabel,
+  });
 }
 
 /**

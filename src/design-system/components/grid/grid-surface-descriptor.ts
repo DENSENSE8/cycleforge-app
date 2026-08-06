@@ -191,7 +191,7 @@ export function buildLedgerColumnDefs<Row, C extends LedgerGridColumnModel>(
 export interface GridSurfaceCapabilities {
   /** Staff triage wash on leaf rows (`order-row-flags` — Orders only today). */
   rowTriageFlags: boolean;
-  /** Checkbox multi-select + ContextualSelectionBar / select-all wiring. */
+  /** Checkbox multi-select + right-rail selection / select-all wiring. */
   multiSelect: boolean;
   /** In-cell editors via LedgerCellEditor / isGridColumnInCellEditable. */
   inCellEdit: boolean;

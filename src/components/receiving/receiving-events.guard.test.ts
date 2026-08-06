@@ -35,7 +35,7 @@ const SRC_ROOT = join(process.cwd(), 'src');
 // useReceivingEvents; never raise. 2026-07-21: armed at 94 after migrating the
 // Unbox selection cluster (sidebar selection hook + dashboard + pane dispatch)
 // off the raw bus (was 111).
-const RAW_BUS_BASELINE = 94;
+const RAW_BUS_BASELINE = 85;
 
 const ESCAPE_MARKER = 'receiving-bus-allow';
 const LIST = process.env.RECEIVING_BUS_LIST === '1';

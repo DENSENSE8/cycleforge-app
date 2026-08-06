@@ -15,8 +15,8 @@
  *     to prevent. This list only ever SHRINKS — an entry leaves when the
  *     edge-ownership question is settled for that surface, never because a
  *     refactor lost the prop.
- *  3. **The threshold is derived, not a hand-picked breakpoint.** A literal
- *     viewport width in the host would drift from the arithmetic in `frame.ts`.
+ *  3. **Width pressure never selects the float.** The derived fit geometry
+ *     lives in `frame.ts`; it is not a breakpoint that changes shell grammar.
  *
  * Run: `npx tsx --test src/components/right-rail/right-rail-push.guard.test.ts`
  */
@@ -107,7 +107,7 @@ describe('right-rail push — the host', () => {
     );
   });
 
-  it('derives the threshold instead of hardcoding a viewport breakpoint', () => {
+  it('keeps width decisions in frame.ts instead of hardcoding a viewport breakpoint', () => {
     const src = code(HOST);
     // A literal like `1440` / `1024` here would drift from `frame.ts`'s arithmetic.
     const literals = src.match(/\b(?:9\d{2}|1[0-9]{3})\b/g) ?? [];
@@ -115,7 +115,7 @@ describe('right-rail push — the host', () => {
       literals,
       [],
       `RightRailHost hardcodes viewport-sized literals (${literals.join(', ')}). ` +
-        'The push/overlay decision belongs to resolveRightRailFrame.',
+        'The inline pressure decision belongs to resolveRightRailFrame.',
     );
   });
 

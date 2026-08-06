@@ -21,12 +21,13 @@ type WorkspaceCardBodyDensity = 'default' | 'nested';
  * Pair with `variant="glass"` + `bodyDensity="nested"` so stacked overview cards
  * share one left edge.
  *
- * Radius is `rounded-xl` (not `rounded-lg`): glass shell is `rounded-3xl` and
- * nested body is `p-3`, so inner = outer − pad ≈ concentric with PO line rows
- * (`PoLineRow` also uses `rounded-xl` inside the same glass card).
+ * Radius is flush (`rounded-none`): the WorkspaceCard shell is now zero-radius
+ * industrial, so a nested field is flush too — concentric-corner math collapses
+ * to flush and the field sits square inside the flush shell. PO line rows
+ * themselves are a flat hairline list (`QUEUE_ROW` selection) — not card islands.
  */
 export const WORKSPACE_NESTED_FIELD =
-  'rounded-xl border border-border-soft bg-surface-card';
+  'rounded-none border border-border-soft bg-surface-card';
 
 /** Padding for {@link WORKSPACE_NESTED_FIELD} — spacing intent `inset-field` (px-3 py-2). */
 export const WORKSPACE_NESTED_FIELD_PAD = 'inset-field';
@@ -127,8 +128,8 @@ export function WorkspaceCard({
   // clips its own box-shadow) and only the translucent fill + blur on the
   // inset span below (so the section never becomes a stacking context).
   const surfaceClass = glass
-    ? `rounded-3xl ${elevationClass('raised', elevation)} ring-1 ring-border-soft/60`
-    : 'rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60';
+    ? `rounded-none ${elevationClass('raised', elevation)} ring-1 ring-border-soft/60`
+    : 'rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60';
   // Glass: header/body get `relative` (positioned, z-auto) so they paint above
   // the inset glass span by DOM order — without introducing any z-index.
   const layerClass = glass ? 'relative' : '';
@@ -139,7 +140,7 @@ export function WorkspaceCard({
         <>
           <span
             aria-hidden
-            className="absolute inset-0 rounded-3xl bg-surface-card/75 backdrop-blur-xl backdrop-saturate-150"
+            className="absolute inset-0 rounded-none bg-surface-card/75 backdrop-blur-xl backdrop-saturate-150"
           />
           {/* Light-catch top hairline — the glass signature. `glass` is the
               scheme-independent white highlight token, correct on light and
@@ -153,7 +154,7 @@ export function WorkspaceCard({
       {tone ? (
         <span
           aria-hidden
-          className={`absolute inset-y-0 left-0 w-[3px] ${glass ? 'rounded-l-3xl' : ''} ${TONE_RAIL[tone]}`}
+          className={`absolute inset-y-0 left-0 w-[3px] ${TONE_RAIL[tone]}`}
         />
       ) : null}
       {(label || actions) && (

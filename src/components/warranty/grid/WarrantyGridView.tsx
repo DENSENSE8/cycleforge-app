@@ -149,6 +149,7 @@ export function WarrantyGridView({
   return (
     <LedgerGridSurface<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
       ariaLabel="Warranty claims"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeWarrantyGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}

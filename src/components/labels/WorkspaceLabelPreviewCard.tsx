@@ -2,12 +2,12 @@
 
 /**
  * Headerless workspace label preview — shared by Unbox and Testing.
- * Clean face at rest; hover/focus reveals the label-type selector (top-left)
- * and Edit label CTA (top-right).
  *
  * Chrome:
- * - `worksheet` (default) — glass + nested field for standalone Testing / non-deck hosts.
- * - `procedure` — bare face; ProcedureDeck's Smart Stack evidence card owns the frame.
+ * - `worksheet` (default) — glass + nested field; hover reveals label-type
+ *   selector (top-left) and Edit label CTA (top-right).
+ * - `procedure` — bare face for Unbox centre. Overlays are off by default:
+ *   label kind + Edit live on the Print · Receive dock split menu.
  */
 
 import { useState, type ReactNode } from 'react';
@@ -18,6 +18,7 @@ import {
   WORKSPACE_NESTED_OVERLAY_CORNER,
 } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { Pencil } from '@/components/Icons';
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
 import {
@@ -27,6 +28,7 @@ import {
 import { LabelTypeSelect, type LabelTypeOption } from '@/components/labels/LabelTypeSelect';
 import { unitLabelToFace } from '@/lib/print/printProductLabel';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
+import { cn } from '@/utils/_cn';
 
 export function WorkspaceLabelPreviewCard({
   sku,
@@ -42,6 +44,9 @@ export function WorkspaceLabelPreviewCard({
   onEdit,
   onApplyAndPrint,
   chrome = 'worksheet',
+  showHoverChrome,
+  editorOpen: editorOpenControlled,
+  onEditorOpenChange,
 }: {
   sku: string;
   title: string;
@@ -62,8 +67,18 @@ export function WorkspaceLabelPreviewCard({
    * `procedure` — bare host; deck focus card owns chrome (Unbox Label step).
    */
   chrome?: 'worksheet' | 'procedure';
+  /**
+   * Hover type-select + Edit overlays. Defaults **on** for `worksheet`, **off**
+   * for `procedure` (Unbox — dock owns kind + Edit).
+   */
+  showHoverChrome?: boolean;
+  /** Controlled open for the built-in unit ProductLabelEditPopover. */
+  editorOpen?: boolean;
+  onEditorOpenChange?: (open: boolean) => void;
 }) {
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorOpenUncontrolled, setEditorOpenUncontrolled] = useState(false);
+  const editorOpen = editorOpenControlled ?? editorOpenUncontrolled;
+  const setEditorOpen = onEditorOpenChange ?? setEditorOpenUncontrolled;
   const productTitle = title.trim();
   const matrix = { value: dataMatrixValue, symbology: dataMatrixSymbology, scale: 4 } as const;
   const face =
@@ -71,9 +86,10 @@ export function WorkspaceLabelPreviewCard({
   const builtInEditor = !faceOverride && Boolean(onApplyAndPrint);
   const canEdit = Boolean(onEdit) || builtInEditor;
   const procedure = chrome === 'procedure';
+  const hoverChrome = showHoverChrome ?? !procedure;
 
   const typeSelect: ReactNode =
-    labelOptions.length > 1 ? (
+    hoverChrome && labelOptions.length > 1 ? (
       <LabelTypeSelect value={activeLabel} options={labelOptions} onChange={onLabelChange} />
     ) : null;
 
@@ -81,28 +97,36 @@ export function WorkspaceLabelPreviewCard({
     <div
       className={
         procedure
-          ? 'group relative'
+          ? 'relative'
           : `group relative ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`
       }
     >
-      <LabelFacePreview model={face} embedded />
+      <LabelFacePreview model={face} embedded fit={procedure ? 'host' : 'capped'} />
       {typeSelect ? (
-        <div className="pointer-events-none absolute left-1.5 top-1.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
-          <div className="rounded-md bg-surface-card/95 px-1.5 py-0.5 shadow-sm ring-1 ring-border-soft/60 backdrop-blur-sm">
+        <div className="pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+          <div
+            className={cn(
+              'border border-border-default bg-surface-card px-1.5 py-0.5',
+              cornerClass('flush'),
+            )}
+          >
             {typeSelect}
           </div>
         </div>
       ) : null}
-      {canEdit ? (
+      {hoverChrome && canEdit ? (
         <div
-          className={`pointer-events-none absolute ${WORKSPACE_NESTED_OVERLAY_CORNER} w-[104px] opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100`}
+          className={cn(
+            'pointer-events-none absolute w-[104px] opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100',
+            procedure ? 'right-0 top-0' : WORKSPACE_NESTED_OVERLAY_CORNER,
+          )}
         >
           <Button
             variant="secondary"
             size="sm"
             icon={<Pencil />}
             onClick={() => (onEdit ? onEdit() : setEditorOpen(true))}
-            className="w-full whitespace-nowrap px-2"
+            className={cn('w-full whitespace-nowrap px-2', cornerClass('flush'))}
           >
             Edit label
           </Button>

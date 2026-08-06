@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * SearchResultsSurface — shared results body for the `/search` workbench rail
- * (and any host that wants the same retrieve + refine + flat RRF list).
+ * SearchResultsSurface — shared results body for the `/search` find stage
+ * browse list (and any host that wants the same retrieve + refine + flat RRF
+ * list).
  *
  * Controlled: the host owns the query (URL state); the surface owns retrieval
  * + result rendering. Client refine (`etype`/`hstat`) + display sort over the
@@ -208,6 +209,16 @@ export function SearchResultsSurface({
   const showResults = state.status === 'done' && displayHits.length > 0;
   const showLoading = state.status === 'loading';
   const isCompact = density === 'compact' || density === 'dropdown';
+  /**
+   * `dropdown` means "I am mounted inside a host that already owns a surface" —
+   * the header dropdown and the `/search` stage browse panel. `MonitorListBlock`
+   * draws its own `rounded-xl border bg-surface-card`, which is right on a
+   * Monitor rollup and is a card-inside-a-card here. Both hosts were migrated to
+   * flush shells; the nested one survived because it lives a component down,
+   * where their guards do not read.
+   */
+  const hostOwnsShell = density === 'dropdown';
+  const listShell = hostOwnsShell ? 'rounded-none border-0 bg-transparent' : undefined;
   const skeletonCount = searchSkeletonCount(
     heightPx > 0 ? Math.max(0, heightPx - SEARCH_SKELETON_TOP_PAD_PX) : 0,
   );
@@ -288,7 +299,7 @@ export function SearchResultsSurface({
             transition={transition}
             className="flex h-full min-h-0 flex-col pt-2 pb-0"
           >
-            <MonitorListBlock className="min-h-0 flex-1">
+            <MonitorListBlock className={cn('min-h-0 flex-1', listShell)}>
               {Array.from({ length: skeletonCount }, (_, i) => (
                 <li key={i}>
                   <SearchResultRowSkeleton />
@@ -305,7 +316,7 @@ export function SearchResultsSurface({
             transition={transition}
             className="pb-4"
           >
-            <MonitorListBlock>
+            <MonitorListBlock className={listShell}>
               {displayHits.map((hit) => (
                 <li key={`${hit.entityType}:${hit.id}`}>
                   <SearchResultRow

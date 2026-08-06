@@ -155,6 +155,7 @@ export function TrackingExceptionsGridView({
       TrackingExceptionsGridColumn
     >
       ariaLabel="Tracking exceptions"
+      surface="sheet"
       columns={columns}
       makeDescriptor={makeTrackingExceptionsGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}

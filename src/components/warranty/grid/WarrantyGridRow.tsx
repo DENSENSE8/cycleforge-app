@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, memo, type ReactNode } from 'react';
-import { OrderIdChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
+import { CopyableCellValue, OrderIdChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateTimeCellValue } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
@@ -81,9 +81,12 @@ export const WarrantyGridRow = memo(function WarrantyGridRow({
               <GridCellDash />
             )}
             {claim.sku && claim.productTitle ? (
-              <span className="min-w-0 shrink truncate font-mono text-role-eyebrow uppercase tracking-widest text-text-faint">
-                {claim.sku}
-              </span>
+              <CopyableCellValue
+                value={claim.sku}
+                historyKind="sku"
+                className="min-w-0 shrink truncate font-mono text-role-eyebrow uppercase tracking-widest text-text-faint"
+                dense
+              />
             ) : null}
           </div>
         );

@@ -29,7 +29,9 @@ import {
   SIDEBAR_PAGE_NAV,
   STATION_GROUPS,
   STATION_SUBGROUPS,
+  getSidebarPageNav,
   spineSectionIdForPage,
+  stationSubgroupMembers,
   type StationGroupId,
 } from '@/lib/sidebar-navigation';
 import { ScanBarcode } from '@/components/Icons';
@@ -152,6 +154,30 @@ test('Receiving subgroup covers Arrival → Unbox → Local Pickup → Repair Se
   assert.equal(repair?.label, 'Repair Service');
 });
 
+test('stationSubgroupMembers is the Receiving display SoT (excludes Incoming + legacy family)', () => {
+  const members = stationSubgroupMembers('receiving');
+  assert.deepEqual(
+    members.map((m) => m.id),
+    [...RECEIVING_SUBGROUP],
+    'Receiving peers must be first-class APP stations only',
+  );
+  assert.equal(
+    members.some((m) => m.id === 'incoming'),
+    false,
+    'Incoming is Inbound domain — not a Receiving station peer',
+  );
+  assert.equal(
+    members.some((m) => m.id === 'receiving'),
+    false,
+    'legacy receiving family entry must not appear as a display member',
+  );
+  const incoming = getSidebarPageNav('incoming');
+  assert.ok(incoming && incoming.kind === 'domain');
+  assert.equal(incoming.domainGroup, 'inbound');
+  // Legacy entry may still resolve deep-links, but is not the display source.
+  assert.ok(getSidebarPageNav('receiving')?.children?.some((c) => c.id === 'incoming'));
+});
+
 test('Scan out is floor modeless; Fulfillment Shipping owns the carrier modes', () => {
   const scanOut = APP_SIDEBAR_NAV.find((i) => i.id === 'scan-out');
   assert.ok(scanOut && scanOut.kind === 'station');
@@ -186,9 +212,9 @@ test('SidebarNavList imports SPINE_SECTIONS and does not twin section labels', (
   assert.match(LIST_SRC, /role=["']group["']/);
 });
 
-test('The flat map reads STATION_SUBGROUPS — Receiving header comes from SoT only', () => {
+test('The flat map reads stationSubgroupMembers — Receiving header comes from SoT only', () => {
   // Free-form uppercase eyebrow twins remain banned; Receiving page-style header
-  // reads STATION_SUBGROUPS (label + icon; no hardcoded "Receiving" string in list).
+  // reads getStationSubgroupDef (label + icon; no hardcoded "Receiving" string).
   assert.doesNotMatch(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
   assert.doesNotMatch(LIST_SRC, /text-role-micro font-semibold text-text-faint/);
   // Eyebrow voice is gone from the list entirely (2026-08-03 polish): Scan
@@ -204,9 +230,14 @@ test('The flat map reads STATION_SUBGROUPS — Receiving header comes from SoT o
   assert.match(LIST_SRC, /\{section\.label\}/);
   assert.doesNotMatch(LIST_SRC, /['"]Receiving['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Scan Stations['"]/);
-  assert.match(LIST_SRC, /STATION_SUBGROUPS/);
+  assert.match(LIST_SRC, /getStationSubgroupDef/);
+  assert.match(LIST_SRC, /stationSubgroupMembers/);
   assert.match(LIST_SRC, /stationSubgroup/);
-  assert.match(LIST_SRC, /subgroupDef/);
+  assert.doesNotMatch(
+    LIST_SRC,
+    /function\s+subgroupDef/,
+    'local subgroupDef twin is retired — use getStationSubgroupDef',
+  );
   assert.match(LIST_SRC, /renderPageHeader/);
   // Receiving discloses inside the Scan Stations drill — accordion open.
   assert.match(LIST_SRC, /openSubgroup/);

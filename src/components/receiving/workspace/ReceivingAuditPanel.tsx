@@ -107,17 +107,21 @@ function groupEvents(events: ReceivingAuditEvent[]): AuditGroup[] {
 
 /**
  * Carton audit log — chrome-free panel body.
- * Hosted by Unbox {@link ReceivingToolPushStack} or {@link ReceivingAuditRail}.
+ * Hosted by Unbox Displays Timeline, History Audit topic, or {@link ReceivingAuditRail}.
+ * Pass `hideHeader` when the host already owns the title (History / Timeline).
  */
 export function ReceivingAuditPanel({
   open,
   onClose,
   receivingId,
+  hideHeader = false,
   hideHeaderClose = false,
 }: {
   open: boolean;
   onClose: () => void;
   receivingId: number;
+  /** Skip title + package subtitle + close (host owns chrome). */
+  hideHeader?: boolean;
   hideHeaderClose?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
@@ -166,25 +170,27 @@ export function ReceivingAuditPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
-        <div className="min-w-0">
-          <p
-            id="receiving-audit-title"
-            className="text-role-micro uppercase tracking-[0.16em] text-text-soft"
-          >
-            Audit log
-          </p>
-          <p className="truncate text-xs font-semibold text-text-default">{cartonLabel}</p>
+      {!hideHeader ? (
+        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+          <div className="min-w-0">
+            <p
+              id="receiving-audit-title"
+              className="text-role-micro uppercase tracking-[0.16em] text-text-soft"
+            >
+              Audit log
+            </p>
+            <p className="truncate text-xs font-semibold text-text-default">{cartonLabel}</p>
+          </div>
+          {!hideHeaderClose ? (
+            <IconButton
+              onClick={onClose}
+              ariaLabel="Close audit log"
+              icon={<X className="h-4 w-4" />}
+              className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+            />
+          ) : null}
         </div>
-        {!hideHeaderClose ? (
-          <IconButton
-            onClick={onClose}
-            ariaLabel="Close audit log"
-            icon={<X className="h-4 w-4" />}
-            className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-          />
-        ) : null}
-      </div>
+      ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto inset-field">
         {loading ? (
           <p className="py-6 text-center text-role-caption text-text-soft">Loading activity…</p>

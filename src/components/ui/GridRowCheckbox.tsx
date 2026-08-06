@@ -15,12 +15,17 @@
  * ## Chrome
  *
  * - `'always'` (default): the 16px bordered square is always painted
- *   (checklist face — deliberately NOT the Radix `Checkbox` primitive).
+ *   (checklist face — deliberately NOT the Radix `Checkbox` primitive). The
+ *   **hit plane is the full select track** — operators need not aim at the
+ *   square; any click in the first column toggles.
  * - `'selected-only'`: legacy pilot — full-cell hit plane, blank until
  *   checked/mixed; then the same 16px accent face. Kept until callers migrate.
- * - `'sheets'` (Unbox History golden): full-cell hit plane, **zero painted
- *   face** in every state. Selection signal is the row wash
- *   (`ledgerRowFillClass`), not a checklist icon in the gutter.
+ * - `'sheets'` (header select-all on click-select surfaces): full-cell hit
+ *   plane; paints {@link GridClickSelectFace} when checked / mixed (flush
+ *   accent wash + check). Blank while unchecked. Body rows on Unbox History /
+ *   Incoming mount decorative {@link GridClickSelectFace} separately (row owns
+ *   toggle). To-ship Orders uses `'always'` on header **and** body so every
+ *   leftmost cell is a real checklist square with a full-cell hit plane.
  */
 
 import { Check } from '@/components/Icons';
@@ -30,9 +35,12 @@ import { cn } from '@/utils/_cn';
 /** How the select-gutter face (or lack of one) is painted. */
 export type GridSelectGutterChrome = 'always' | 'selected-only' | 'sheets';
 
-/** Full-cell stretch hit-plane (Sheets / selected-only) vs centered face (`always`). */
-export function isEmptyGutterChrome(chrome: GridSelectGutterChrome): boolean {
-  return chrome !== 'always';
+/**
+ * Every chrome fills the select track as the hit plane; only the painted face
+ * differs. Callers stretch the host cell (`items-stretch p-0`) when true.
+ */
+export function isEmptyGutterChrome(_chrome: GridSelectGutterChrome): boolean {
+  return true;
 }
 
 function faceClassName(isOn: boolean, isMixed: boolean): string {
@@ -43,6 +51,56 @@ function faceClassName(isOn: boolean, isMixed: boolean): string {
       : isMixed
         ? 'border-accent-bg bg-accent-bg/20 text-accent-bg'
         : 'border-border-default bg-surface-card hover:border-border-strong',
+  );
+}
+
+/**
+ * Decorative select-track face for click-select surfaces (Unbox History /
+ * Incoming Pipeline). The row owns bulk toggle (`role="checkbox"`); this
+ * paints membership only — never a second interactive control.
+ *
+ * Fills the frozen select track (`2rem` × row `h-10`) flush — full-cell
+ * accent wash + centered glyph when checked / mixed; blank when unchecked.
+ * No inset 16px checklist square (that face belongs to interactive
+ * `'always'` gutter chrome only).
+ *
+ * Callers mount this inside a `relative overflow-hidden` track cell and pass
+ * `absolute inset-0` so the wash cannot inflate the grid track or bleed into
+ * the next column under sticky scroll (in-flow `w-full` + `overflow:visible`
+ * was painting a wash strip into Platform).
+ *
+ * Also composed inside {@link GridRowCheckbox} `chrome="sheets"` for header
+ * select-all so the top-left control shows the same check when all/mixed.
+ */
+export function GridClickSelectFace({
+  checked,
+  className,
+}: {
+  checked: boolean | 'mixed';
+  className?: string;
+}) {
+  const isMixed = checked === 'mixed';
+  const isOn = checked === true;
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center',
+        isOn
+          ? 'bg-accent-bg text-text-inverse'
+          : isMixed
+            ? 'bg-accent-bg/20 text-accent-bg'
+            : null,
+        className,
+      )}
+      aria-hidden
+      data-click-select-face={isOn ? 'on' : isMixed ? 'mixed' : 'off'}
+    >
+      {isOn ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : isMixed ? (
+        <span className="h-0.5 w-2.5 rounded-full bg-current" />
+      ) : null}
+    </div>
   );
 }
 
@@ -59,13 +117,13 @@ export function GridRowCheckbox({
   /** Accessible name — say what toggling does, e.g. "Select carton 123". */
   label: string;
   className?: string;
-  /** Defaults to `'always'`. Unbox History uses `'sheets'`. */
+  /** Defaults to `'always'`. Unbox History / Incoming click-select use `'sheets'`. */
   chrome?: GridSelectGutterChrome;
 }) {
   const isMixed = checked === 'mixed';
   const isOn = checked === true;
-  const emptyGutter = isEmptyGutterChrome(chrome);
-  const washOnly = chrome === 'sheets';
+  const sheetsChrome = chrome === 'sheets';
+  const selectedOnly = chrome === 'selected-only';
 
   const face = (
     <>
@@ -75,6 +133,12 @@ export function GridRowCheckbox({
         <span className="h-0.5 w-2 rounded-full bg-current" />
       ) : null}
     </>
+  );
+
+  const checklistFace = (
+    <span className={faceClassName(isOn, isMixed)} aria-hidden>
+      {face}
+    </span>
   );
 
   return (
@@ -93,23 +157,21 @@ export function GridRowCheckbox({
         if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
       }}
       className={cn(
-        // ds-raw-button: gutter check — DS Button has no glyph-square variant
-        'ds-raw-button flex shrink-0 items-center justify-center',
-        emptyGutter
-          ? 'h-full min-h-10 w-full self-stretch rounded-none border-0 bg-transparent'
-          : faceClassName(isOn, isMixed),
+        // ds-raw-button: gutter check — DS Button has no glyph-square variant.
+        // Full-track hit plane for every chrome — the 16px square is the face,
+        // not the only clickable pixels.
+        'ds-raw-button flex h-full min-h-10 w-full shrink-0 items-center justify-center self-stretch rounded-none border-0 bg-transparent',
+        sheetsChrome && 'relative overflow-hidden',
         focusRing('control'),
         className,
       )}
     >
-      {washOnly ? null : emptyGutter ? (
-        isOn || isMixed ? (
-          <span className={faceClassName(isOn, isMixed)} aria-hidden>
-            {face}
-          </span>
-        ) : null
+      {sheetsChrome ? (
+        <GridClickSelectFace checked={checked} className="absolute inset-0" />
+      ) : selectedOnly ? (
+        isOn || isMixed ? checklistFace : null
       ) : (
-        face
+        checklistFace
       )}
     </button>
   );

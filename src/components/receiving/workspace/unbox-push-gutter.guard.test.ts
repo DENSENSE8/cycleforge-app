@@ -20,6 +20,7 @@ import {
   CONTEXT_PANEL_COLUMN_CLASS,
   CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,
 } from '@/components/sidebar/context-panel-column';
+import { STATION_WORKBENCH_LOCK_PX, STATION_WORKBENCH_BODY_PAD_X, STATION_DISPLAYS_MIN_WIDTH_PX, STATION_WORKBENCH_COLUMN, STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 import {
   STATION_IDENTITY_INSET_RIGHT,
   STATION_IDENTITY_INSET_TOP,
@@ -27,7 +28,7 @@ import {
   stationMoreDetailsPaneHostClass,
 } from '@/components/station/entity-context';
 import { DETAIL_STACK_PUSH_COLUMN_CLASS } from '@/design-system/shells/detail-stack';
-import { TICKET_PUSH_HOST_PAD_CLASS } from './ReceivingTicketStack';
+import { TICKET_PUSH_HOST_PAD_CLASS } from './UnboxPushColumn';
 
 const ROOT = resolve(import.meta.dirname, '../../../..');
 
@@ -100,11 +101,11 @@ describe('Station flush planes — Unbox golden', () => {
     );
     assert.ok(
       src.includes('UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX'),
-      'resize pad must come from frame MIN_WORK_SURFACE SoT',
+      'resize pad must come from frame station pad SoT',
     );
     assert.ok(
       src.includes('setStationPushDemand'),
-      'wide push must publish station demand so 1440 parks the context rail',
+      'wide push must publish station demand into the shared width budget',
     );
     assert.equal(
       /inset-y-0/.test(src),
@@ -125,15 +126,32 @@ describe('Station flush planes — Unbox golden', () => {
     );
   });
 
-  it('pane carton cursor sits above panel-band push overlay', () => {
+  it('scan-station utility rail is a separate white trailing chrome', () => {
+    const layout = code('src/components/station/workbench/workbench-layout.ts');
     assert.ok(
-      stationMoreDetailsPaneHostClass.includes('z-panelPopover'),
-      'pane ↑↓ must clear z-panel fullscreen push',
+      layout.includes('STATION_UTILITY_RAIL_CLASS'),
+      'utility rail class must be named in workbench-layout',
     );
-    assert.equal(
-      stationMoreDetailsPaneHostClass.includes('z-raised'),
-      false,
-      'z-raised sits under z-panel and would hide ↑↓ when expanded',
+    assert.match(
+      layout,
+      /STATION_UTILITY_RAIL_CLASS\s*=\s*'[^']*bg-surface-card[^']*'/,
+      'utility rail is white card face',
+    );
+    assert.match(
+      layout,
+      /STATION_UTILITY_RAIL_CLASS\s*=\s*'[^']*border-l[^']*'/,
+      'utility rail hairline against center',
+    );
+    const host = code('src/components/station/workbench/StationScanPaneHost.tsx');
+    assert.match(
+      host,
+      /ScanStationUtilityRail/,
+      'StationScanPaneHost mounts ScanStationUtilityRail between center and Displays',
+    );
+    assert.doesNotMatch(
+      host,
+      /stationMoreDetailsPaneHostClass/,
+      'utility is in-flow rail chrome — not an absolute float over identity',
     );
   });
 
@@ -145,23 +163,228 @@ describe('Station flush planes — Unbox golden', () => {
     );
   });
 
-  it('LineEditPanel exposes unbox-station-center for flush geometry E2E', () => {
+  it('LineEditPanel composes StationScanPaneHost for locked-720 middle + pinned Displays', () => {
     const src = code('src/components/receiving/workspace/LineEditPanel.tsx');
     assert.ok(src.includes('unbox-station-center'));
+    assert.ok(
+      src.includes('StationScanPaneHost'),
+      'Unbox must compose StationScanPaneHost (one host SoT)',
+    );
+    assert.equal(
+      src.includes('STATION_DISPLAYS_OPEN_SPACER_CLASS'),
+      false,
+      'must NOT reintroduce the leading spacer (gutter left of middle)',
+    );
+    assert.equal(
+      /showDisplays\s*&&\s*['"]justify-between['"]/.test(src) ||
+        src.includes("showDisplays && 'justify-between'"),
+      false,
+      'host must NOT justify-between when Displays is open — that leaves a gray gutter',
+    );
+    assert.equal(STATION_WORKBENCH_LOCK_PX, 720);
+    const layout = code('src/components/station/workbench/workbench-layout.ts');
+    assert.match(
+      layout,
+      new RegExp(
+        `STATION_CENTER_COLUMN_CLASS\\s*=\\s*'[^']*min-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
+      ),
+      'open-Displays center must min-w at STATION_WORKBENCH_LOCK_PX (720 lock)',
+    );
+    assert.match(
+      layout,
+      new RegExp(
+        `STATION_CENTER_COLUMN_CLASS\\s*=\\s*'[^']*max-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
+      ),
+      'open-Displays center must max-w at STATION_WORKBENCH_LOCK_PX',
+    );
+    assert.equal(
+      /STATION_CENTER_COLUMN_CLASS\s*=\s*'[^']*\bmin-w-0\b/.test(layout),
+      false,
+      'open-Displays center must NOT be min-w-0 (middle must not yield below 720)',
+    );
+    assert.equal(
+      /STATION_CENTER_COLUMN_CLASS\s*=\s*'[^']*\bflex-1\b/.test(layout),
+      false,
+      'open-Displays center must NOT be flex-1 — that parks surplus AFTER Displays',
+    );
+    assert.match(
+      layout,
+      new RegExp(
+        `STATION_WORKBENCH_COLUMN\\s*=\\s*'[^']*max-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
+      ),
+      'middle content must max-w at STATION_WORKBENCH_LOCK_PX',
+    );
+    for (const panel of [
+      'src/components/receiving/triage/TriagePanel.tsx',
+      'src/components/tech/TestingPanel.tsx',
+    ]) {
+      const panelSrc = code(panel);
+      assert.ok(
+        panelSrc.includes('StationScanPaneHost'),
+        `${panel} must compose StationScanPaneHost`,
+      );
+    }
   });
 
-  it('Ticket stack no longer ships a parked expand strip', () => {
-    const src = code('src/components/receiving/workspace/ReceivingTicketStack.tsx');
+  it('station push publishes centerFloorPx = STATION_PUSH_CENTER_FLOOR_PX (720 lock)', () => {
+    const src = code('src/lib/right-rail/frame.ts');
+    assert.ok(
+      src.includes('STATION_PUSH_CENTER_FLOOR_PX = STATION_WORKBENCH_LOCK_PX'),
+      'frame must set STATION_PUSH_CENTER_FLOOR_PX = STATION_WORKBENCH_LOCK_PX (720)',
+    );
+    assert.ok(
+      /centerFloorPx:\s*station\s*\?\s*STATION_PUSH_CENTER_FLOOR_PX/.test(src),
+      'station push must publish STATION_PUSH_CENTER_FLOOR_PX so middle stays locked',
+    );
+    assert.equal(
+      src.includes('STATION_PUSH_CENTER_FLOOR_PX = 0'),
+      false,
+      'station push must not use center floor 0 (middle must not yield)',
+    );
+  });
+
+  it('middle wrapper caps at 720; Displays flex-1 pins trailing; PhotoPeek hugs Displays', () => {
+    assert.equal(
+      STATION_WORKBENCH_BODY_PAD_X,
+      '',
+      'body pad must be empty — readable air lives inside rows, not against rails',
+    );
+    assert.ok(
+      STATION_WORKBENCH_COLUMN.includes(`max-w-[${STATION_WORKBENCH_LOCK_PX}px]`),
+      'middle wrapper must max-w at the station lock (720)',
+    );
+    assert.ok(
+      /\bmx-auto\b/.test(STATION_WORKBENCH_COLUMN),
+      'middle wrapper mx-auto centres when Displays is closed',
+    );
+    assert.equal(
+      /min-w-\[\d+px\]/.test(STATION_WORKBENCH_COLUMN),
+      false,
+      'middle wrapper must not ship min-w-[Npx]',
+    );
+    assert.equal(
+      STATION_WORKBENCH_IDENTITY_COLUMN,
+      'w-full min-w-0',
+      'identity host must be full-bleed for layout (white face on the ≤720 measure)',
+    );
+    assert.equal(STATION_DISPLAYS_MIN_WIDTH_PX, 280);
+    const push = code('src/components/receiving/workspace/UnboxPushColumn.tsx');
+    assert.ok(
+      push.includes('STATION_DISPLAYS_MIN_WIDTH_PX'),
+      'Displays resize must use the station min (280), not desk DETAIL_STACK 360',
+    );
+    assert.ok(
+      push.includes("'min-w-0 flex-1 self-stretch'") ||
+        /'min-w-0 flex-1 self-stretch'/.test(push),
+      'in-flow Displays must be flex-1 so it fills from the middle to the pane right',
+    );
+    assert.equal(
+      /'shrink-0 self-stretch'/.test(push) &&
+        !/overlay[\s\S]{0,400}'shrink-0 self-stretch'/.test(push),
+      false,
+      'in-flow Displays must not be unconditional shrink-0 (overlay may still shrink-0)',
+    );
+    assert.ok(
+      push.includes('applyStationDisplaysDelta') || push.includes('station-dual-rail'),
+      'Displays sash must wire station dual-rail coupling',
+    );
+    const peek = code('src/components/receiving/workspace/line-edit/PhotoPeekFan.tsx');
+    assert.ok(
+      /absolute inset-y-0 right-0/.test(peek),
+      'PhotoPeek must pin to the center column right edge (Displays seam or pane edge)',
+    );
+  });
+
+  it('identity measure matches the 720 max; rows justify-between', () => {
+    assert.ok(
+      STATION_WORKBENCH_COLUMN.includes(`max-w-[${STATION_WORKBENCH_LOCK_PX}px]`),
+      'identity chips share the workbench max',
+    );
+    const bar = code('src/components/station/entity-context/StationContextBar.tsx');
+    assert.ok(
+      bar.includes('STATION_WORKBENCH_COLUMN'),
+      'StationContextBar must compose the middle measure as the white face',
+    );
+    assert.ok(
+      bar.includes('station-identity-measure'),
+      'measure host keeps a stable test id for E2E / guards',
+    );
+    assert.ok(
+      /stationIdentityPanelClass[\s\S]{0,400}STATION_WORKBENCH_COLUMN/.test(bar),
+      'identity Panel must compose STATION_WORKBENCH_COLUMN',
+    );
+    const card = code('src/components/station/entity-context/CartonContextCard.tsx');
+    assert.ok(
+      /flex min-w-0 w-full flex-1 items-stretch/.test(card),
+      'CartonContextCard must keep a two-column stretch row (left stack · right actions)',
+    );
+    assert.ok(
+      card.includes('photosClaimColumn') || /items-end/.test(card),
+      'CartonContextCard right column must end-align Photos · Claim under the measure',
+    );
+  });
+
+  it('Displays push does not ship a parked expand strip', () => {
+    const src = code('src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx');
     assert.equal(src.includes('ReceivingTicketExpandStrip'), false);
+    assert.equal(src.includes('ReceivingPushExpandStrip'), false);
   });
 
-  it('identity strip is square-top flush (no top radius / top border)', () => {
+  it('Displays push fills leftover (flex-1); no per-surface taste ceiling', () => {
+    const stack = code('src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx');
+    assert.equal(
+      /DISPLAYS_PUSH_MAX_WIDTH_PX/.test(stack),
+      false,
+      'ReceivingDisplaysPushStack must not ship a hard maxWidth constant',
+    );
+    assert.equal(
+      /maxWidthPx=\{/.test(stack),
+      false,
+      'ReceivingDisplaysPushStack must not pass maxWidthPx into UnboxPushColumn',
+    );
+    const push = code('src/components/receiving/workspace/UnboxPushColumn.tsx');
+    assert.ok(
+      /maxWidthPx\?:/.test(push) || /maxWidthPx\?\s*:/.test(push),
+      'UnboxPushColumn.maxWidthPx must be optional',
+    );
+    assert.ok(
+      /min-w-0 flex-1 self-stretch/.test(push),
+      'in-flow Displays must flex-1 fill leftover (pinned to pane right)',
+    );
+    assert.ok(
+      /width:\s*overlay\s*\?/.test(push) || /width: overlay \?/.test(push),
+      'in-flow must not paint a fixed width — only overlay/expanded set width',
+    );
+  });
+
+  it('identity strip is a coplanar flush white band (no radius / elevation / pad)', () => {
     const src = code(
       'src/components/station/entity-context/station-identity-chrome.ts',
     );
-    assert.ok(src.includes('rounded-t-none'));
-    assert.ok(src.includes('border-t-0'));
-    assert.ok(src.includes("stationIdentityPadClass = 'px-1 pt-1 pb-1.5'"));
+    assert.ok(src.includes('rounded-none'));
+    assert.ok(src.includes('border-b border-border-soft'));
+    assert.ok(src.includes("stationIdentityPadClass = 'px-0'"));
+    assert.ok(
+      src.includes('bg-surface-card'),
+      'identity band must paint white card face',
+    );
+    assert.equal(
+      /stationIdentityPanelClass[\s\S]*?bg-surface-sunken/.test(src),
+      false,
+      'identity band must not stay sunken',
+    );
+    assert.equal(
+      /stationIdentityPadClass\s*=\s*'[^']*\bpt-/.test(src),
+      false,
+      'identity pad must not carry vertical pt-*',
+    );
+    assert.equal(
+      /stationIdentityPadClass\s*=\s*'[^']*\bpb-/.test(src),
+      false,
+      'identity pad must not carry vertical pb-*',
+    );
+    assert.equal(src.includes('rounded-b-2xl'), false);
+    assert.equal(src.includes("elevationClass('raised'"), false);
     assert.equal(src.includes('stationBookmark'), false);
   });
 });

@@ -100,7 +100,7 @@ function KitPartDocumentStrip({
       className={cn('px-1 -mx-1', settled ? 'overflow-visible' : 'overflow-hidden')}
       data-testid="kit-part-document-strip"
     >
-      <div className="mt-1 flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2 py-1.5">
+      <div className="mt-1 flex items-center gap-2 rounded-none border border-border-soft bg-surface-card px-2 py-1.5">
         <FileText className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-muted">
           {doc.title}
@@ -153,7 +153,7 @@ function SubCheckRow({
         type="button"
         onClick={onToggle}
         aria-pressed={checked}
-        className={`ds-raw-button flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors ${
+        className={`ds-raw-button flex w-full items-center gap-2 rounded-none border px-2 py-1.5 text-left transition-colors ${
           checked
             ? 'border-emerald-200 bg-emerald-50'
             : critical
@@ -163,7 +163,7 @@ function SubCheckRow({
       >
         <span
           aria-hidden
-          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
+          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-none border ${
             checked
               ? 'border-emerald-500 bg-emerald-500 text-white'
               : 'border-border-default bg-surface-card'
@@ -178,19 +178,19 @@ function SubCheckRow({
           <span className="text-role-eyebrow tabular-nums text-text-soft">×{qty}</span>
         ) : null}
         {tag ? (
-          <span className="rounded-md bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
+          <span className="rounded-none bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
             {tag}
           </span>
         ) : null}
         {critical && !checked ? (
-          <span className="rounded-md bg-amber-100 px-1 py-0.5 text-role-eyebrow uppercase text-amber-700">
+          <span className="rounded-none bg-amber-100 px-1 py-0.5 text-role-eyebrow uppercase text-amber-700">
             Required
           </span>
         ) : null}
         {/* Document-bearing parts: the tap is the advisory override. Print on
             the strip below is the durable path — keep that class legible. */}
         {hasDocument && !checked ? (
-          <span className="rounded-md bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
+          <span className="rounded-none bg-surface-sunken px-1 py-0.5 text-role-eyebrow uppercase text-text-soft">
             Confirm
           </span>
         ) : null}
@@ -236,7 +236,7 @@ export function PackChecklistLineRow({
             onClick={onToggleCheck}
             aria-pressed={checked}
             aria-label="Confirm line item"
-            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${touchClass} ${
+            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-none border transition-colors ${touchClass} ${
               checked
                 ? 'border-emerald-600 bg-emerald-600 text-white'
                 : 'border-border-default bg-surface-card hover:border-emerald-400'
@@ -259,7 +259,7 @@ export function PackChecklistLineRow({
             className={`ds-raw-button flex min-w-0 flex-1 items-start gap-2 text-left ${touchClass}`}
           >
             {/* Prominent SKU catalog photo for visual verification (high-ROI scan match) */}
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border-soft bg-surface-card">
+            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-none border border-border-soft bg-surface-card">
               {line.catalog.imageUrl ? (
                 <Image
                   src={line.catalog.imageUrl}
@@ -300,7 +300,7 @@ export function PackChecklistLineRow({
           type="button"
           onClick={onToggleExpand}
           aria-label={expanded ? 'Collapse details' : 'Expand details'}
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-text-soft transition-transform hover:bg-surface-sunken ${
+          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-none text-text-soft transition-transform hover:bg-surface-sunken ${
             expanded ? 'rotate-180' : ''
           }`}
         >
@@ -312,7 +312,7 @@ export function PackChecklistLineRow({
         <div className="space-y-3 border-t border-border-hairline bg-surface-canvas/60 px-3 py-3">
           {/* Larger photo + visual verification emphasis (top priority: confirm SKU photo matches physical) */}
           <div className="flex gap-3">
-            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-border-soft bg-surface-card ring-1 ring-inset ring-blue-100">
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-none border border-border-soft bg-surface-card ring-1 ring-inset ring-blue-100">
               {line.catalog.imageUrl ? (
                 <Image
                   src={line.catalog.imageUrl}

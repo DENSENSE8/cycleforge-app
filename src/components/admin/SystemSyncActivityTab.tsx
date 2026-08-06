@@ -98,7 +98,7 @@ export function SystemSyncActivityTab() {
       )}
 
       {/* Run history */}
-      <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+      <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
         <header className="flex items-center justify-between px-5 py-4">
           <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
             Run history {jobFilter ? `· ${jobFilter}` : ''}
@@ -148,7 +148,7 @@ function JobCard({
   const last = job.lastRun;
   return (
     <div
-      className={`rounded-xl bg-surface-card p-3 shadow-sm ring-1 transition ${
+      className={`rounded-none bg-surface-card p-3 shadow-sm ring-1 transition ${
         active ? 'ring-blue-300' : 'ring-border-soft/60 hover:ring-border-default'
       }`}
     >

@@ -1,6 +1,8 @@
 /**
- * Hard law: POST /api/receiving/lookup-po never calls live Zoho / inventory on
- * the scan hot path (tracking, ticket#, order/PO#, auto).
+ * Hard law: POST /api/receiving/lookup-po never imports live Zoho / inventory
+ * modules directly on the scan hot path. Line attach goes through
+ * `ensurePoLinesOnReceiving` (local adopt + unmatched-donor claim; optional
+ * import lives inside that helper, not in this route file).
  *
  * Source guard — cheaper than standing up the full route + Zoho client.
  *
@@ -29,4 +31,9 @@ test('lookup-po route does not import Zoho receiving sync on scan', () => {
 
 test('lookup-po route does not call inventory provider on scan', () => {
   assert.equal(CODE.includes('getInventoryProvider'), false);
+});
+
+test('lookup-po attaches lines via ensurePoLinesOnReceiving (shared adopt/claim)', () => {
+  assert.equal(CODE.includes("from '@/lib/receiving/adopt-po-lines'"), true);
+  assert.equal(CODE.includes('ensurePoLinesOnReceiving'), true);
 });

@@ -25,10 +25,12 @@ const cellOf = (el: HTMLElement | null) => (el?.closest('[data-col]') as HTMLEle
  * **Default (`edge="end"`):** mounts on the cell's right edge and mutates this
  * column — left-of-divider owns the seam.
  *
- * **Frozen-edge exception (`edge="start"`):** the first resizable column after
- * the sticky identity pane also mounts a leading grip so operators grabbing the
- * scrollable side of the frozen seam (Incoming By, Orders Ship by) resize that
- * column, not Product. Drag/keyboard deltas invert: drag left grows. See
+ * **Frozen-edge exception (`edge="start"`):** when the frozen edge column itself
+ * is resizable, the first resizable column after the sticky identity pane also
+ * mounts a leading grip so operators grabbing the scrollable side of the frozen
+ * seam (Incoming By, Orders Ship by) resize that column, not Product. A locked
+ * frozen edge (Receiving `order`) skips this — Product keeps a right grip only.
+ * Drag/keyboard deltas invert on `start`: drag left grows. See
  * {@link resolveColumnResizeEdges}.
  *
  * `flush` drops the `-right-1` overhang on a trailing frozen-edge grip so it
@@ -61,6 +63,7 @@ export function ColumnResizeHandle({
   edge = 'end',
   flush = false,
   minWidthPx,
+  maxWidthPx,
 }: {
   colKey: string;
   label: string;
@@ -71,10 +74,14 @@ export function ColumnResizeHandle({
   /** Trailing grip on the frozen-edge column — no overhang into the next track. */
   flush?: boolean;
   /**
-   * Typed content floor (px). Defaults to the house 64px clamp. Stamp-face
-   * dates pass `gridTrackRemToPx(resolveGridColumnMinTrackRem(col))`.
+   * Resolved floor (px) — typed track + staff min. Defaults to the house 64px
+   * clamp. Stamp-face dates pass `gridTrackRemToPx(resolveGridColumnMinTrackRem(col))`.
    */
   minWidthPx?: number;
+  /**
+   * Resolved ceiling (px) — staff max, else house 720. Absolute rail is 2000.
+   */
+  maxWidthPx?: number;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   // After double-click reset, the trailing pointerup must not re-commit a width.
@@ -82,8 +89,8 @@ export function ColumnResizeHandle({
   // Leading edge: drag left grows (inverted). Trailing: drag right grows.
   const sign = edge === 'start' ? -1 : 1;
   const clamp = useCallback(
-    (px: number) => clampColumnWidth(px, minWidthPx),
-    [minWidthPx],
+    (px: number) => clampColumnWidth(px, minWidthPx, maxWidthPx),
+    [minWidthPx, maxWidthPx],
   );
 
   const resetToDefault = useCallback(() => {

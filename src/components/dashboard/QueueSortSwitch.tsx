@@ -2,7 +2,7 @@
 
 /**
  * Compact queue display-sort dropdown — Priority | Newest | Deadline plus
- * spreadsheet column sorts (Product, Ship by, …). Workbench chrome: quiet
+ * spreadsheet column sorts (Product, Days late, …). Workbench chrome: quiet
  * control in the trailing CTA cluster (left of Import when present), never a
  * solid TabSwitch beside search. Used by Pending (To Ship) and Testing.
  * Options grow from {@link QUEUE_DISPLAY_SORT_OPTIONS}.

@@ -5,18 +5,18 @@
  *
  * Logic lives in focused hooks under `@/components/tech/`:
  *   - useTechRightView ........... `?view=` → right-pane mode
- *   - useTechTestingSelection .... Testing workbench always-on multi-select + actions
+ *   - useTechTestingSelection .... Testing workbench rail multi-select + actions
  *   - useTechOrderPanes .......... active-order + Up Next preview (event bridges)
  *   - useTechDetailOverlays ...... selected log + repair panel (event bridges)
  *
- * Render is pure composition: <TechRightPane> (the mode-swapped right pane) +
- * the testing table selection bar, then the page-level <TechDashboardOverlays>.
+ * Multi-select opens `ReceivingLineRailShell` on RightRailHost (Unbox History
+ * SoT) — no bottom ContextualSelectionBar. Claim modal suppresses the shell
+ * while it owns the right edge (receiving R7).
  */
 
 import { useState } from 'react';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
-import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
-import { TESTING_SELECTION_SCOPE } from '@/components/tech/TestingHistoryList';
+import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { StationDetailsHandler } from '@/components/station/StationDetailsHandler';
 import { useTechRightView } from '@/components/tech/useTechRightView';
 import { useTechTestingSelection } from '@/components/tech/useTechTestingSelection';
@@ -42,13 +42,17 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
 
   const {
     testingSelectMode,
-    testingSelectedRows,
     testingClaimRow,
     setTestingClaimRow,
+    testingAssignRows,
+    setTestingAssignRows,
+    assignTestingLines,
     exitTestingSelect,
     openTestingLine,
-    testingBulkActions,
-  } = useTechTestingSelection(browseActive);
+  } = useTechTestingSelection(
+    browseActive,
+    Number.isFinite(Number(techId)) && Number(techId) > 0 ? Number(techId) : null,
+  );
 
   const { activeOrderPane, setActiveOrderPane, previewOrder, setPreviewOrder } = useTechOrderPanes();
 
@@ -57,6 +61,10 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     setRepairPanel,
     loadingRepair,
   } = useTechDetailOverlays();
+
+  // Suppress batch rail while claim / assign picker owns the edge (line open
+  // already gates via browseActive → publish false inside the selection hook).
+  const railEnabled = browseActive && testingClaimRow == null && testingAssignRows == null;
 
   return (
     <div className="relative flex h-full w-full flex-col">
@@ -75,13 +83,7 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               previewOrder={previewOrder}
               onClosePreview={() => setPreviewOrder(null)}
             />
-            {browseActive ? (
-              <ContextualSelectionBar
-                scope={TESTING_SELECTION_SCOPE}
-                rows={testingSelectedRows}
-                actions={testingBulkActions}
-              />
-            ) : null}
+            <ReceivingLineRailShell surface="lines" enabled={railEnabled} />
           </RightPaneOverlayHost>
         </div>
       </div>
@@ -97,6 +99,11 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
         onClaimFiled={() => {
           setTestingClaimRow(null);
           exitTestingSelect();
+        }}
+        testingAssignRows={testingAssignRows}
+        onCloseAssign={() => setTestingAssignRows(null)}
+        onAssignPick={(assigneeId) => {
+          if (testingAssignRows) void assignTestingLines(testingAssignRows, assigneeId);
         }}
       />
     </div>

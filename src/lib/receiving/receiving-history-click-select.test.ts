@@ -12,11 +12,15 @@ import {
 } from '@/design-system/components/grid/grid-column-display';
 
 describe('Unbox History click-select column model', () => {
-  it('keeps a frozen select track for header select-all', () => {
+  it('keeps frozen select · order identity pane for header select-all + PO', () => {
     const select = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'select');
+    const order = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'order');
     assert.ok(select);
+    assert.ok(order);
     assert.equal(select!.frozen, true);
     assert.equal(select!.sortable, false);
+    assert.equal(order!.frozen, true);
+    assert.equal(order!.hideKey, undefined);
   });
 });
 

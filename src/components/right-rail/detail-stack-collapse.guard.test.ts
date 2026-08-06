@@ -1,9 +1,13 @@
 /**
- * Source guard: non-modal RightRailHost collapse uses the SoT storage key +
- * DS edge-resize `onCollapse` (no page-local twin / raw collapse button).
+ * Source guard: non-modal RightRailHost collapse parks via DETAIL_STACK_COLLAPSE
+ * + Band 3 / header `→|` — never a sash-top `onCollapse` chevron twin of close.
+ *
+ * Hairline = drag-to-resize only (`useHorizontalEdgeResize` +
+ * `HorizontalEdgeResizeHandle` without `onCollapse`). Unbox Displays
+ * (`UnboxPushColumn`) is the golden twin.
  *
  * SoT: detail-stack/layout.ts → DETAIL_STACK_COLLAPSE
- * Host: RightRailHost.tsx → HorizontalEdgeResizeHandle.onCollapse
+ * Host: RightRailHost.tsx
  *
  * Run: node --test --import tsx \
  *        src/components/right-rail/detail-stack-collapse.guard.test.ts
@@ -50,26 +54,67 @@ test('RightRailHost persists via DETAIL_STACK_COLLAPSE.storageKey', () => {
   assert.match(HOST_SRC, /detail-inspector-expand/);
 });
 
-test('collapse lives on HorizontalEdgeResizeHandle.onCollapse', () => {
-  // Host still wires onCollapse through the DS handle; the callback may be
-  // conditional on the occupant's `edgeCollapse` flag (Incoming opts out for
-  // Unbox parity). The affordance path must remain the handle — never a
-  // page-local twin.
-  assert.match(HOST_SRC, /onCollapse=\{/);
-  assert.match(HOST_SRC, /allowEdgeCollapse/);
-  assert.match(HOST_SRC, /edgeCollapse/);
+test('RightRailHost syncs same-tab collapse via DETAIL_INSPECTOR_COLLAPSE_EVENT', () => {
+  assert.match(HOST_SRC, /DETAIL_INSPECTOR_COLLAPSE_EVENT/);
+  const control = code(
+    sourceOf('../../design-system/shells/detail-stack/collapse-control.ts'),
+  );
+  assert.match(control, /detail-inspector-collapsed-change/);
+  assert.match(control, /toggleDetailInspectorCollapsed/);
+});
+
+test('hairline is the panel seam — inset, no sash onCollapse twin of →|', () => {
+  // Display hairline = panel border-l; hit sash inside the card (inset).
+  // No outset overhang into the work surface; no onCollapse chevron twin of →|.
+  // Handle may still expose `onCollapse` for the LEFT context rail.
   assert.match(HOST_SRC, /HorizontalEdgeResizeHandle/);
+  assert.match(HOST_SRC, /useHorizontalEdgeResize/);
+  assert.match(HOST_SRC, /placement="inset"/);
+  assert.equal(
+    /placement="outset"/.test(HOST_SRC),
+    false,
+    'RightRailHost must use inset (panel seam), not outset overhang',
+  );
+  assert.equal(
+    /onCollapse=\{/.test(HOST_SRC),
+    false,
+    'RightRailHost must not pass onCollapse to HorizontalEdgeResizeHandle',
+  );
+  assert.equal(
+    /collapseLabel=/.test(HOST_SRC),
+    false,
+    'RightRailHost must not pass collapseLabel (chevron twin of →|)',
+  );
+  // Inset hit is full-height on the panel seam (no top-8 cutoff — that
+  // shortened the display hairline under the header). Chrome owns `→|` via
+  // `relative z-raised` mounting after the sash.
+  assert.match(HANDLE_SRC, /left-0 justify-start/);
+  assert.equal(
+    /INSET_CHROME_CLEARANCE|top-8 bottom-0/.test(HANDLE_SRC),
+    false,
+    'inset hairline must be flush top→bottom; never top-8 chrome clearance on the paint',
+  );
   assert.match(HANDLE_SRC, /onCollapse\?:/);
   assert.match(HANDLE_SRC, /edge-resize-collapse/);
 });
 
-test('Incoming details opts out of outset edge collapse', () => {
+test('Incoming details opts out of host park (edgeCollapse=false)', () => {
   const panel = code(
     sourceOf('../sidebar/receiving/IncomingDetailsPanel.tsx'),
   );
   assert.match(panel, /edgeCollapse=\{false\}/);
 });
 
+test('push column width tweens only on open/close — not live resize', () => {
+  assert.match(HOST_SRC, /pushWidthSettled/);
+  assert.match(HOST_SRC, /pushWidthTransition/);
+  assert.match(HOST_SRC, /isDragging \|\| pushWidthSettled/);
+  assert.match(HOST_SRC, /duration:\s*0/);
+  // Exit must keep the rail tween so close still animates.
+  assert.match(HOST_SRC, /exit=\{\{[\s\S]*?transition:\s*pushTransition/);
+  // Mid-drag must not re-ladder park via live desiredWidthPx.
+  assert.match(HOST_SRC, /publishedDesireRef/);
+});
 test('collapse / expand affordances use IconButton (not raw buttons)', () => {
   assert.match(HOST_SRC, /IconButton/);
   assert.match(HOST_SRC, /ChevronLeft/);

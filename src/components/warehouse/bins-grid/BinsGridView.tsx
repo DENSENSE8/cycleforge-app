@@ -40,6 +40,11 @@ interface BinsGridViewProps {
   columns?: readonly BinsGridColumn[];
   /** Sheets flush (Locations) vs framed card (legacy). */
   surface?: 'framed' | 'sheet';
+  /**
+   * Band-3 triage controls slot — when set, the column-display (▦) trigger
+   * portals there beside find / room filter instead of floating on the card corner.
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 /**
@@ -100,6 +105,7 @@ export function BinsGridView({
   emptyMessage = 'No bins match the current filters.',
   columns = BINS_GRID_COLUMNS,
   surface = 'framed',
+  columnTriggerPortalTarget = null,
 }: BinsGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -197,6 +203,7 @@ export function BinsGridView({
       testId="bins-grid-body"
       tableId={BINS_TABLE_ID}
       surface={surface}
+      columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <BinsGridColumnHeader
           selectionScope={BINS_SELECTION_SCOPE}

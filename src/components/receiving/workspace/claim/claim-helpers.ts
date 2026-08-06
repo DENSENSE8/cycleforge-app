@@ -11,7 +11,7 @@ import {
  * `?thumb`; prod loads the full image through the same-origin /api/nas proxy
  * (session cookie).
  */
-export function claimThumb(url: string, photoId?: number): string {
+function claimThumb(url: string, photoId?: number): string {
   if (photoId != null && photoId > 0) {
     return resolvePhotoThumbUrl({ id: photoId, url }, normalizePhotoDisplayUrl);
   }

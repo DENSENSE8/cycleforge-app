@@ -43,6 +43,7 @@ describe('renderInlineMarkdown', () => {
     const out = html('![shot](https://cdn.example.com/a.png)', {
       onOpenPhoto: () => {},
     });
+    // ds-raw-button — assertion regex matching generated HTML, not a JSX element
     assert.match(out, /<button[^>]*>shot<\/button>/);
     assert.doesNotMatch(out, /href=/);
   });

@@ -43,6 +43,7 @@ import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/Rec
 import { UnboxWorkspaceView } from '@/components/receiving/unbox/UnboxWorkspaceView';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
   resolveWorkspacePaneSlot,
   type WorkspacePaneSlot,
@@ -66,6 +67,8 @@ interface UnboxLineWorkspaceProps {
   lookupReceipt?: UnboxLookupScanDetail | null;
   onClearLookupReceipt?: () => void;
   onCloseWorkspace: () => void;
+  /** History triage slide-over open — suppress batch rail so inspectors don't fight. */
+  historyTriageOpen?: boolean;
 }
 
 export function UnboxLineWorkspace({
@@ -76,6 +79,7 @@ export function UnboxLineWorkspace({
   lookupReceipt = null,
   onClearLookupReceipt,
   onCloseWorkspace,
+  historyTriageOpen = false,
 }: UnboxLineWorkspaceProps) {
   // `motionRole.swap.scan` — the station-cadence swap, carried as one pair so
   // the carton→carton exit can never drift off its zero-duration contract.
@@ -123,7 +127,10 @@ export function UnboxLineWorkspace({
         {showRestoreSkeleton ? (
           <ReceivingWorkspaceSkeleton />
         ) : (
-          <UnboxWorkspaceView selectedLine={row} />
+          <UnboxWorkspaceView
+            selectedLine={row}
+            historyTriageOpen={historyTriageOpen}
+          />
         )}
       </div>
 
@@ -179,14 +186,10 @@ export function UnboxLineWorkspace({
               // those is a deliberate open of one carton, so it records.
               recordView={workspace.recordView !== false}
               onPrev={() => {
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-table', { detail: 'prev' }),
-                );
+                emitReceiving('receiving-navigate-table', 'prev');
               }}
               onNext={() => {
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-table', { detail: 'next' }),
-                );
+                emitReceiving('receiving-navigate-table', 'next');
               }}
               onClose={onCloseWorkspace}
             />

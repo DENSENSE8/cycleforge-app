@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-04T19:02:52Z",
-  "totalRoutes": 916,
+  "generatedAt": "2026-08-05T03:11:46Z",
+  "totalRoutes": 917,
   "summary": {
-    "permissionGated": 775,
+    "permissionGated": 776,
     "authenticatedNoPermission": 52,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -5456,6 +5456,15 @@
     },
     {
       "path": "/api/receiving/triage/staging-map/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/unbox-kpi/route.ts",
       "methods": [
         "GET"
       ],

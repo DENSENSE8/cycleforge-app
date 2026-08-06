@@ -10,10 +10,12 @@ import {
   getStatusDotBg,
 } from '@/components/station/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
+import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { sourcePlatformMeta, UNKNOWN_PLATFORM } from '@/lib/source-platform';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { ReceivingQaActionSheet } from '@/components/mobile/receiving/ReceivingQaActionSheet';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
@@ -98,14 +100,31 @@ interface FullCarton {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function StatusPill({ status }: { status: string | null }) {
+function StatusPill({
+  status,
+  inventoryProviderLabel,
+}: {
+  status: string | null;
+  inventoryProviderLabel: string;
+}) {
   const v = status || 'EXPECTED';
-  return (
+  const label = workflowStatusTableLabel(v);
+  const tip = receivingUnboxedSyncTooltip({
+    workflowStatus: v,
+    inventoryProviderLabel,
+  });
+  const pill = (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${workflowStageBadge(v)}`}
     >
-      {workflowStatusTableLabel(v)}
+      {label}
     </span>
+  );
+  if (!tip) return pill;
+  return (
+    <HoverTooltip label={tip} asChild focusable={false}>
+      {pill}
+    </HoverTooltip>
   );
 }
 
@@ -161,6 +180,7 @@ function CartonPageInner() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const receivingId = Number(params?.id);
+  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
   // Identity from the verified session cookie.
 
   const [data, setData] = useState<FullCarton | null>(null);
@@ -330,7 +350,13 @@ function CartonPageInner() {
                     {/* Slim identity row — status dot + product title. */}
                     <div className="flex min-w-0 items-center gap-2">
                       <HoverTooltip
-                        label={workflowStatusTableLabel(line.workflow_status ?? 'EXPECTED')}
+                        label={
+                          receivingUnboxedSyncTooltip({
+                            workflowStatus: line.workflow_status,
+                            inventoryProviderLabel,
+                          }) ??
+                          workflowStatusTableLabel(line.workflow_status ?? 'EXPECTED')
+                        }
                         asChild
                         focusable={false}
                       >
@@ -344,7 +370,10 @@ function CartonPageInner() {
                     </div>
                     {/* Color-coded status / condition / qty. */}
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
-                      <StatusPill status={line.workflow_status} />
+                      <StatusPill
+                        status={line.workflow_status}
+                        inventoryProviderLabel={inventoryProviderLabel}
+                      />
                       {line.condition_grade && (
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
                           {conditionGradeTableLabel(line.condition_grade)}

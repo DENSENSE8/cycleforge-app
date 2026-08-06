@@ -87,7 +87,7 @@ export function MobilePackageGroup({
           ) : null}
         </span>
         <span className="ml-auto shrink-0 text-role-eyebrow uppercase tracking-widest text-indigo-600">
-          {count} {count === 1 ? 'Item' : 'Items'}
+          {count} items
         </span>
       </div>
 

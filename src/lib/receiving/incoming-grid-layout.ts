@@ -97,7 +97,9 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   // Icon + short Unv. chip when it adds signal (full phrase in tooltip).
   // 4.75rem fits icon + 4-char eyebrow; cells clip via ledgerGridCell grid inset.
   { key: 'status', width: 'minmax(4.75rem, 4.75rem)', label: 'Status', type: 'tag', hideKey: 'rest', headerGlyphOnly: true },
-  { key: 'platform', width: 'minmax(3rem, 3rem)', label: 'Platform', type: 'external', hideKey: 'platform', tier: 'optional', headerGlyphOnly: true },
+  // Channel mark — same 4rem external floor as Receiving (mark + inset +
+  // hairline breathing). Glyph-only header by intent.
+  { key: 'platform', width: 'minmax(4rem, 4rem)', label: 'Platform', type: 'external', hideKey: 'platform', tier: 'optional', headerGlyphOnly: true },
   // Fits icon + last-8 tracking face (or + TRK# attach face).
   { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'tracking', omitCellIcon: true, hideKey: 'tracking', headerGlyphOnly: true },
   // Vendor receipt state (`zoho_po_mirror.status`).

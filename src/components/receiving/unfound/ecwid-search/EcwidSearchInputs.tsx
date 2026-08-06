@@ -100,8 +100,8 @@ export function EcwidSearchInputs({
             variant="blue"
             size="compact"
             hideUnderline
-            // Scope filter sits left of paste — WorkbenchFilterPopover field density.
-            trailingPrefix={<EcwidOrderScopeFilters c={c} />}
+            // Scope filter after paste — paste-left SoT (trailingSuffix).
+            trailingSuffix={<EcwidOrderScopeFilters c={c} />}
           />
         </div>
         <EcwidOrderScopeHotChip c={c} />

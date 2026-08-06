@@ -73,6 +73,30 @@ describe('Incoming grid Sheets recipe (Unbox golden)', () => {
     );
   });
 
+  it('IncomingWorkspaceHeader mounts WorkbenchTriageBand (Band 3 Unbox SoT)', () => {
+    const header = read(
+      'src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx',
+    );
+    assert.match(header, /WorkbenchTriageBand/);
+    assert.match(
+      header,
+      /IncomingKpiStrip/,
+      'KPI lives in IncomingWorkspaceHeader Band 2 (Unbox parity)',
+    );
+    // Band 1 keeps labeled CTAs — not icon-only refine density.
+    const actions = read(
+      'src/components/sidebar/receiving/incoming/IncomingChromeActions.tsx',
+    );
+    assert.match(actions, />\s*Check\s*</);
+    assert.match(actions, /Import/);
+    assert.match(actions, />\s*Add\s*</);
+    assert.doesNotMatch(
+      actions,
+      /ICON_PILL/,
+      'Check/Import/Add must be labeled pills, not square icon-only',
+    );
+  });
+
   it('IncomingGridView wires clickSelect + selectGutterChrome', () => {
     const src = read('src/components/station/incoming-grid/IncomingGridView.tsx');
     assert.match(src, /clickSelect/);
@@ -80,5 +104,13 @@ describe('Incoming grid Sheets recipe (Unbox golden)', () => {
     const table = read('src/components/station/ReceivingLinesTable.tsx');
     assert.match(table, /incomingClickSelect/);
     assert.match(table, /clickSelect=\{incomingClickSelect\}/);
+  });
+
+  it('Incoming leaf rows are flat — no PO title summary fold (Sheets golden)', () => {
+    assert.doesNotMatch(
+      read('src/components/station/incoming-grid/IncomingGridGroupRow.tsx'),
+      /IncomingGridGroupSummary|CollapsibleGroupRow/,
+      'IncomingGridGroupRow must render flat leaves — no PO title summary fold',
+    );
   });
 });

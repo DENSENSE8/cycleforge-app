@@ -552,6 +552,18 @@ test('regression: tech.view gates the fulfillment substitution-policy read; the 
   assert.ok(substitute.methods.includes('POST'));
 });
 
+test('regression: receiving-lines PATCH assign-only accepts tech.qc_pass in-handler', () => {
+  // Testing triage ownership (docs/todo/testing-triage-ownership-scope-HANDOFF.md):
+  // technicians lack receiving.mark_received; assign-only PATCHes
+  // (`id` + `assigned_tech_id`) accept tech.qc_pass without widening the
+  // technician role. Pin the in-handler OR so it cannot silently regress to
+  // mark_received-only.
+  const src = readFileSync(join(process.cwd(), 'src/app/api/receiving-lines/route.ts'), 'utf8');
+  assert.match(src, /tech\.qc_pass/);
+  assert.match(src, /receiving\.mark_received\|tech\.qc_pass/);
+  assert.match(src, /assignOnly/);
+});
+
 test('regression: shipping.buy_label / shipping.void_label gate the operator label-engine routes', () => {
   // Tier-3 C1 + studio-integrations exit criteria: the generic ShipStation
   // operator routes (rate-shop from an explicit spec, buy a quoted rate, void

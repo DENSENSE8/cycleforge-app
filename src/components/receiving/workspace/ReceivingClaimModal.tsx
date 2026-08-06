@@ -5,8 +5,8 @@ import type { ClaimModalProps } from './claim/hooks/useReceivingClaimController'
 import { ReceivingClaimPanel } from './ReceivingClaimPanel';
 
 /**
- * Make-a-claim centered overlay — Testing / dashboard / triage hosts.
- * Unbox mounts the same wizard body in {@link ReceivingClaimStack} (push column).
+ * Make-a-claim right slide-over — Testing / dashboard / triage hosts.
+ * Unbox mounts the same wizard body in Displays (`display=claim`).
  *
  * Posts to /api/receiving/zendesk-claim (create) or /link (existing ticket).
  * Wizard state lives in {@link useReceivingClaimController}.
@@ -16,12 +16,12 @@ export function ReceivingClaimModal(props: ClaimModalProps) {
     <RightPaneOverlay
       open={props.open}
       onClose={props.onClose}
-      align="center"
+      align="right"
+      anchor="viewport"
       resizable
-      storageKey="receiving-claim-modal-size"
-      minWidth={460}
-      minHeight={420}
-      className="-mt-8 h-[min(86vh,44rem)] w-[min(94vw,52rem)]"
+      width={560}
+      minWidth={420}
+      storageKey="receiving-claim-drawer-width"
       aria-label="File a claim"
     >
       <ReceivingClaimPanel {...props} />

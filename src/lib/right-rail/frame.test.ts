@@ -1,5 +1,5 @@
 /**
- * The push/overlay ladder, pinned.
+ * The always-inline push budget, pinned.
  *
  * `resolveRightRailFrame` is pure and DOM-free, so every number the design rests
  * on is provable here before a browser is opened. The worked cases below are the
@@ -10,11 +10,13 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
 import {
   CONTEXT_RAIL_PARKED_PX,
   MIN_WORK_SURFACE_PX,
   RIGHT_RAIL_GUTTER_PX,
   RIGHT_RAIL_PUSH_MIN_FRAME_PX,
+  STATION_PUSH_CENTER_FLOOR_PX,
   contextRailCostPx,
   resolveRightRailFrame,
 } from './frame';
@@ -22,109 +24,123 @@ import {
 /** A route rail at its 360px default (flush — no outer gutter islands). */
 const RAIL_OPEN = contextRailCostPx();
 
-const base = {
+const desk = {
   railCostOpenPx: RAIL_OPEN,
   railOperatorCollapsed: false,
   wantsPush: true,
-  desiredWidthPx: 420,
+  centerFloorPx: MIN_WORK_SURFACE_PX,
+};
+
+const station = {
+  railCostOpenPx: RAIL_OPEN,
+  railOperatorCollapsed: false,
+  wantsPush: true,
+  centerFloorPx: STATION_PUSH_CENTER_FLOOR_PX,
 };
 
 describe('right-rail frame constants', () => {
-  it('parked rail costs the strip only (flush planes — no margin islands)', () => {
+  it('operator-collapsed strip costs the strip only (flush planes — no margin islands)', () => {
     assert.equal(CONTEXT_RAIL_PARKED_PX, 32);
     assert.equal(RAIL_OPEN, 360);
     assert.equal(RIGHT_RAIL_GUTTER_PX, 0);
     assert.equal(MIN_WORK_SURFACE_PX, 784);
+    assert.equal(STATION_WORKBENCH_LOCK_PX, 720);
+    assert.equal(STATION_PUSH_CENTER_FLOOR_PX, STATION_WORKBENCH_LOCK_PX);
+    assert.equal(STATION_PUSH_CENTER_FLOOR_PX, 720);
   });
 
-  it('the push threshold is derived, not a hand-picked breakpoint', () => {
-    // work floor + panel gutters (0) + the panel's own minimum, with the route
-    // rail fully masked away (a push-park renders no strip — see `parkedLeftPx`).
+  it('the unconstrained-fit threshold is derived, not a hand-picked breakpoint', () => {
+    // work floor + panel gutters (0) + the panel's own minimum (no left rail).
     assert.equal(RIGHT_RAIL_PUSH_MIN_FRAME_PX, 784 + 0 + 360);
     assert.equal(RIGHT_RAIL_PUSH_MIN_FRAME_PX, 1144);
   });
 });
 
-describe('the ladder', () => {
-  it('1920: pushes at rung 0 — nothing yields', () => {
-    const r = resolveRightRailFrame({ ...base, frameWidthPx: 1920 });
+describe('desk inspector budget — left rail stays open', () => {
+  it('1920: pushes; left stays; cap leaves the center floor', () => {
+    // surplus = 1920 − 360 − 784 = 776 ≥ default 420
+    const r = resolveRightRailFrame({ ...desk, frameWidthPx: 1920 });
     assert.equal(r.mode, 'push');
-    assert.equal(r.parkRail, false, 'a 1920 frame has room without taking the rail away');
+    assert.equal(r.capPx, 776);
   });
 
-  it('1440: pushes at rung 1 — the context rail parks', () => {
-    // rung 0 surplus = 1440 - 360 - 784 - 0 = 296, short of the 420 wanted.
-    // rung 1 surplus = 1440 -   0 - 784 - 0 = 656, which seats it in full.
-    const r = resolveRightRailFrame({ ...base, frameWidthPx: 1440 });
+  it('1440: pushes without parking the context rail; right caps to panel min', () => {
+    // surplus = 1440 − 360 − 784 = 296 < panel min 360 → cap floors at 360.
+    const r = resolveRightRailFrame({ ...desk, frameWidthPx: 1440 });
     assert.equal(r.mode, 'push');
-    assert.equal(r.parkRail, true);
+    assert.equal(r.capPx, 360);
   });
 
-  it('1440 with no route rail: pushes at rung 0', () => {
-    const r = resolveRightRailFrame({ ...base, frameWidthPx: 1440, railCostOpenPx: 0 });
+  it('1440 with no route rail: wider cap (full frame minus floor)', () => {
+    const r = resolveRightRailFrame({ ...desk, frameWidthPx: 1440, railCostOpenPx: 0 });
     assert.equal(r.mode, 'push');
-    assert.equal(r.parkRail, false, 'there is no rail to park');
+    assert.equal(r.capPx, 1440 - 784);
   });
 
-  it('1440 with the rail ALREADY parked by the operator: never re-parks it', () => {
+  it('1440 with the rail ALREADY collapsed by the operator: cap vs strip, not open card', () => {
     const r = resolveRightRailFrame({
-      ...base,
+      ...desk,
       frameWidthPx: 1440,
       railOperatorCollapsed: true,
     });
     assert.equal(r.mode, 'push');
-    assert.equal(
-      r.parkRail,
-      false,
-      'the operator already parked it — masking it again would fight their own restore',
-    );
+    assert.equal(r.capPx, 1440 - CONTEXT_RAIL_PARKED_PX - 784);
   });
 
-  it('takes a NARROWER panel over covering the work surface (pass B)', () => {
-    // 1144 is exactly the minimum: rung 1 surplus == the panel's 360px floor.
-    const at = resolveRightRailFrame({ ...base, frameWidthPx: RIGHT_RAIL_PUSH_MIN_FRAME_PX });
-    assert.equal(at.mode, 'push');
-    assert.equal(at.parkRail, true);
-  });
-
-  it('one pixel below the threshold, it honestly gives up and overlays', () => {
-    const below = resolveRightRailFrame({
-      ...base,
-      frameWidthPx: RIGHT_RAIL_PUSH_MIN_FRAME_PX - 1,
-    });
-    assert.equal(below.mode, 'overlay');
-    assert.equal(below.parkRail, false, 'an overlaying panel must not also steal the rail');
-  });
-
-  it('an occupant that opts out never pushes and never parks anything', () => {
-    const r = resolveRightRailFrame({ ...base, frameWidthPx: 1920, wantsPush: false });
+  it('an occupant that opts out never pushes', () => {
+    const r = resolveRightRailFrame({ ...desk, frameWidthPx: 1920, wantsPush: false });
     assert.equal(r.mode, 'overlay');
-    assert.equal(r.parkRail, false);
   });
 
-  it('an unmeasured frame (SSR / first paint) overlays rather than guessing', () => {
-    assert.equal(resolveRightRailFrame({ ...base, frameWidthPx: 0 }).mode, 'overlay');
-    assert.equal(resolveRightRailFrame({ ...base, frameWidthPx: NaN }).mode, 'overlay');
+  it('an unmeasured frame never flashes the historical floating card', () => {
+    assert.equal(resolveRightRailFrame({ ...desk, frameWidthPx: 0 }).mode, 'push');
+    assert.equal(resolveRightRailFrame({ ...desk, frameWidthPx: NaN }).mode, 'push');
+  });
+});
+
+describe('station Displays budget — center floor 720 (middle lock)', () => {
+  it('1440: right caps to frame minus open left minus 720 lock', () => {
+    // surplus = 1440 − 360 − 720 = 360
+    const r = resolveRightRailFrame({ ...station, frameWidthPx: 1440 });
+    assert.equal(r.mode, 'push');
+    assert.equal(r.capPx, 1440 - 360 - 720);
+  });
+
+  it('1920: Displays cap leaves the 720 middle beside an open left rail', () => {
+    // surplus = 1920 − 360 − 720 = 840
+    const r = resolveRightRailFrame({ ...station, frameWidthPx: 1920 });
+    assert.equal(r.mode, 'push');
+    assert.equal(r.capPx, 1920 - 360 - 720);
+  });
+
+  it('no left rail: Displays caps to frame minus 720 lock', () => {
+    const r = resolveRightRailFrame({
+      ...station,
+      frameWidthPx: 1440,
+      railCostOpenPx: 0,
+    });
+    assert.equal(r.mode, 'push');
+    assert.equal(r.capPx, 1440 - 720);
   });
 });
 
 describe('the resize cap', () => {
-  it('is measured against the FULLY-PARKED frame, so it cannot move mid-drag', () => {
-    const open = resolveRightRailFrame({ ...base, frameWidthPx: 1440 });
-    const parked = resolveRightRailFrame({
-      ...base,
+  it('desk: tracks the open left cost against MIN_WORK_SURFACE', () => {
+    const open = resolveRightRailFrame({ ...desk, frameWidthPx: 1440 });
+    const collapsed = resolveRightRailFrame({
+      ...desk,
       frameWidthPx: 1440,
       railOperatorCollapsed: true,
     });
-    const noRail = resolveRightRailFrame({ ...base, frameWidthPx: 1440, railCostOpenPx: 0 });
-    assert.equal(open.capPx, 624);
-    assert.equal(parked.capPx, 624, 'the cap must not depend on the park state it decides');
-    assert.equal(noRail.capPx, 624);
+    const noRail = resolveRightRailFrame({ ...desk, frameWidthPx: 1440, railCostOpenPx: 0 });
+    assert.equal(open.capPx, 360, 'open left → tight cap (panel min floor)');
+    assert.equal(collapsed.capPx, 624, 'operator strip → roomier cap');
+    assert.equal(noRail.capPx, 656);
   });
 
   it('never caps below the panel’s own minimum, however narrow the frame', () => {
-    const r = resolveRightRailFrame({ ...base, frameWidthPx: 900 });
-    assert.equal(r.mode, 'overlay');
+    const r = resolveRightRailFrame({ ...desk, frameWidthPx: 900 });
+    assert.equal(r.mode, 'push');
     assert.equal(r.capPx, 360);
   });
 });

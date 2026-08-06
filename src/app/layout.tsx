@@ -19,7 +19,6 @@ import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { BOOT_SPLASH_SCRIPT } from "@/lib/boot-splash-script";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
-import { OfflineBanner } from "../components/layout/OfflineBanner";
 import { ReducedMotionProvider } from "../components/providers/ReducedMotionProvider";
 import { InstallPrompt } from "../components/station/InstallPrompt";
 import { AppearanceApplier } from "../components/settings/AppearanceApplier";
@@ -106,7 +105,6 @@ export default async function RootLayout({
                 */}
                 <ReducedMotionProvider>
                 <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
-                    <OfflineBanner />
                     <PostHogProvider>
                     <Providers>
                         <AuthProvider initial={initialUser} kioskHost={kioskHost}>

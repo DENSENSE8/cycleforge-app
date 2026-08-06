@@ -2,17 +2,17 @@
 
 /**
  * The dashboard's main orders region: outbound KPI strip + unified outbound
- * header (lifecycle slider · contextual filters/controls) + the active list for
- * the current tab. Presentational — selection state + actions are owned by
+ * header (lifecycle slider · find-only triage) + the active list for the
+ * current tab. Presentational — selection state + actions are owned by
  * useDashboardBulkSelection. Extracted from the dashboard page.
  *
- * Sheets flush chrome (Unbox recipe): tabs · KPI · triage live in one pinned
- * sheet-chrome stack; the grid body is the flush sheet host — no side
- * gutters. Body may be list, OrdersDrillHost (`olayout=drill`), or
- * OrdersCompareHost (`clayout=split|quad`).
+ * Sheets flush chrome (Unbox History recipe): tabs · KPI · find-only triage
+ * live in one pinned sheet-chrome stack; sheet refine / layout / KPI hide live
+ * on the pushing right inspector View cluster. Body may be list,
+ * OrdersDrillHost (`olayout=drill`), or OrdersCompareHost (`clayout=split|quad`).
  */
 
-import { Suspense, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
@@ -27,10 +27,14 @@ import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchKpiBand } from '@/components/dashboard/workbench-kpi-collapse';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
+import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { OrdersDrillHost } from '@/components/outbound/orders/OrdersDrillHost';
 import { OrdersCompareHost } from '@/components/outbound/orders/OrdersCompareHost';
+import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewControlsRail';
+import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import {
   isPrePackOrderView,
   type DashboardOrderView,
@@ -70,7 +74,15 @@ export function DashboardOrdersView({
   const searchParams = useSearchParams();
   const showOutboundChrome =
     isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped';
-  const [outboundControlsEl, setOutboundControlsEl] = useState<HTMLDivElement | null>(null);
+  const { controlsEl, kpiOpen, onToggleKpi, setViewShellOpen } = useOrdersViewChrome();
+  const { rows } = useRailActionSnapshot();
+
+  // Order / batch occupant outranks the View-only shell.
+  useEffect(() => {
+    if (searchParams.get('openOrderId') || rows.length > 0) {
+      setViewShellOpen(false);
+    }
+  }, [searchParams, rows.length, setViewShellOpen]);
 
   const drillLayout = parseOrdersDrillLayout(
     searchParams.get(ORDERS_DRILL_LAYOUT_PARAM),
@@ -94,20 +106,20 @@ export function DashboardOrdersView({
       <DashboardShippedTable
         selectMode={selectMode}
         railSelection
-        toolbarPortalTarget={outboundControlsEl}
+        toolbarPortalTarget={controlsEl}
       />
     ) : orderView === 'packed' ? (
       <PackedOrdersTable
         selectMode={selectMode}
         railSelection
-        toolbarPortalTarget={outboundControlsEl}
+        toolbarPortalTarget={controlsEl}
       />
     ) : (
       <UnshippedTable
         strictSearchScope
         selectMode={selectMode}
         railSelection
-        toolbarPortalTarget={outboundControlsEl}
+        toolbarPortalTarget={controlsEl}
         fulfillmentLane={orderView === 'tested' ? 'tested' : 'pending'}
       />
     );
@@ -120,15 +132,20 @@ export function DashboardOrdersView({
             <OutboundWorkspaceHeader
               orderView={orderView}
               onSelectView={onSelectView}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
+              className="border-l-0 border-t-0 shadow-sm"
             />
-            <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+            <WorkbenchKpiBand
+              open={kpiOpen}
+              onSnapCollapse={() => {
+                if (kpiOpen) onToggleKpi();
+              }}
+              onSnapExpand={() => {
+                if (!kpiOpen) onToggleKpi();
+              }}
+            >
               <OutboundKpiStrip mode={kpiMode} />
-            </div>
-            <OutboundTriageBand
-              orderView={orderView}
-              controlsSlotRef={setOutboundControlsEl}
-            />
+            </WorkbenchKpiBand>
+            <OutboundTriageBand orderView={orderView} />
           </div>
         ) : undefined
       }
@@ -136,9 +153,15 @@ export function DashboardOrdersView({
       <div className={showOutboundChrome ? WORKBENCH_SHEET_HOST : 'relative flex min-w-0 flex-col'}>
         <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
           {showCompare ? (
-            <OrdersCompareHost selectMode={selectMode} />
+            <OrdersCompareHost
+              selectMode={selectMode}
+              columnTriggerPortalTarget={controlsEl}
+            />
           ) : showDrill ? (
-            <OrdersDrillHost selectMode={selectMode} />
+            <OrdersDrillHost
+              selectMode={selectMode}
+              columnTriggerPortalTarget={controlsEl}
+            />
           ) : (
             listBody
           )}
@@ -149,9 +172,12 @@ export function DashboardOrdersView({
         <>
           <OrderRailCompare />
           <OrderRailShell />
+          <OrdersViewControlsRail />
           {selectionOverlays}
         </>
-      ) : null}
+      ) : (
+        <OrdersViewControlsRail />
+      )}
     </DashboardScrollShell>
   );
 }

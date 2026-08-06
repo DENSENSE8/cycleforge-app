@@ -31,12 +31,11 @@ import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
-import { HistoryWorkspaceHeader } from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
-import { IncomingKpiStrip } from '@/components/sidebar/receiving/incoming/IncomingKpiStrip';
-import { IncomingLaneNote } from '@/components/sidebar/receiving/incoming/IncomingLaneNote';
 import {
-  WORKBENCH_CHROME_COLUMN,
-  WORKBENCH_CHROME_PILL_CLASS,
+  HistoryWorkspaceHeader,
+  HistoryTriageBand,
+} from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
+import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
@@ -44,6 +43,16 @@ import { cn } from '@/utils/_cn';
 import { incomingGridColumnsFor } from '@/lib/receiving/incoming-grid-layout';
 import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
+import type { GroupedRenderOrder } from '@/lib/group-rows';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
+import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
+import {
+  getDetailInspectorCollapsed,
+  setDetailInspectorCollapsed,
+} from '@/design-system/shells/detail-stack';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -59,11 +68,21 @@ import { ReceivingDrillHost } from '@/components/station/receiving-grid/Receivin
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
-import { LAYOUT_PARAM, parseLayout } from '@/lib/station/table-url-params';
+import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cartonReadHref, INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { toast } from '@/lib/toast';
+import {
+  dispatchReceivingOpenHistoryTriage,
+} from '@/utils/events';
+import {
+  historyTriageTargetFromRow,
+} from '@/lib/receiving/history-triage-row';
+import {
+  dispatchSelectLine,
+  poGroupAnchorMs,
+} from '@/components/station/receiving-lines-table-helpers';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
 import {
@@ -132,7 +151,7 @@ export interface ReceivingLinesTableProps {
    * it is the grid's own header lip (chrome Fields retired 2026-08-02).
    */
   embedded?: boolean;
-  /** Portal week DateRangePickerPill into Unbox chrome controls slot. */
+  /** Portal ▦ column trigger into Unbox History View controls (week lives in Refine). */
   toolbarPortalTarget?: HTMLElement | null;
 }
 
@@ -145,9 +164,13 @@ export default function ReceivingLinesTable({
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
-  const [weekOffset, setWeekOffset] = useState(0);
+  // Band-3 controls slot for the standalone Incoming desk (/incoming). Fresh
+  // state — NOT `toolbarPortalTarget` (that is the Unbox-embedded week-pill
+  // target, null here). Hosts the portaled column-display (▦) trigger.
+  const [incomingControlsEl, setIncomingControlsEl] = useState<HTMLElement | null>(null);
+  // Standalone `/receiving/history` Band-3 slot (separate from Incoming Docked).
+  const [historyControlsEl, setHistoryControlsEl] = useState<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const weekRange = computeWeekRange(weekOffset);
 
   const {
     mode,
@@ -160,6 +183,28 @@ export default function ReceivingLinesTable({
     skipWeekFilter,
     modeContext,
   } = useReceivingModeContext();
+
+  // History week is a query facet (`?weekOffset=`); other modes keep session-local.
+  const [localWeekOffset, setLocalWeekOffset] = useState(0);
+  const weekOffsetFromUrl = Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)));
+  const weekOffset = isHistoryMode ? weekOffsetFromUrl : localWeekOffset;
+  const setWeekOffset = useCallback(
+    (next: number | ((prev: number) => number)) => {
+      const resolved = typeof next === 'function' ? next(weekOffset) : next;
+      const offset = Math.max(0, Math.trunc(resolved) || 0);
+      if (isHistoryMode) {
+        const params = new URLSearchParams(searchParams.toString());
+        if (offset <= 0) params.delete(WEEK_OFFSET_PARAM);
+        else params.set(WEEK_OFFSET_PARAM, String(offset));
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
+        return;
+      }
+      setLocalWeekOffset(offset);
+    },
+    [isHistoryMode, weekOffset, searchParams, pathname, router],
+  );
+  const weekRange = computeWeekRange(weekOffset);
 
   const isUnboxTableMode = mode.id === 'unbox_queue' || mode.id === 'unbox_viewed';
 
@@ -184,19 +229,17 @@ export default function ReceivingLinesTable({
   // `useReceivingWorkspacePane` says operators "open a line via click or scan".
   // Flipped as a SET so no tab diverges from its siblings.
   const isUnboxWorkbench = embedded;
-  // Unbox History click-select golden (2026-08-04): no select column; click
-  // toggles bulk; double-click opens; header paint-bucket. Never `mode.id ===
-  // 'history'` alone (Docked / standalone History share that id).
-  const historyClickSelect = embedded && isHistoryMode;
-  // Incoming Pipeline joins the same Unbox click-select SoT (2026-08-04):
-  // click toggles bulk; double-click / Enter opens the inspector (not carton).
+  // Unbox History (2026-08-04): left-click opens History triage rail
+  // (`detail:history`); gutter checkbox owns bulk; double-click / Enter opens
+  // LineEditPanel. Never `mode.id === 'history'` alone (Docked / standalone
+  // History share that id).
+  const isUnboxHistoryTriage = embedded && isHistoryMode;
+  // Incoming Pipeline: click toggles bulk; double-click / Enter opens the
+  // inspector (not carton).
   const incomingClickSelect = isIncomingMode;
-  // Legacy sheets empty-gutter chrome — only for non-click-select History paths
-  // that still keep a select track (none today on Unbox; kept for clarity).
+  // Sheets click-select face — Incoming only (History uses split planes).
   const selectGutterChrome =
-    historyClickSelect || incomingClickSelect
-      ? ('sheets' as const)
-      : ('always' as const);
+    incomingClickSelect ? ('sheets' as const) : ('always' as const);
 
   /**
    * History's record plane: the durable carton READ page. `receiving_id` is the
@@ -215,6 +258,21 @@ export default function ReceivingLinesTable({
     },
     [router],
   );
+
+  /** Embedded Unbox History — left-click opens the triage slide-over. */
+  const openHistoryTriage = useCallback((row: ReceivingLineRow) => {
+    const target = historyTriageTargetFromRow(row);
+    if (!target) {
+      toast.error('No carton record for this row yet');
+      return;
+    }
+    dispatchReceivingOpenHistoryTriage(target);
+  }, []);
+
+  /** Double-click / Enter on Unbox History — full station LineEditPanel. */
+  const openHistoryWorkspace = useCallback((row: ReceivingLineRow) => {
+    dispatchSelectLine(row, { recordView: false });
+  }, []);
 
   const { data, isLoading, localRows } = useReceivingLinesData({
     mode,
@@ -249,7 +307,6 @@ export default function ReceivingLinesTable({
     selectedIds,
     handleSelectRow,
     handleToggleRow,
-    handleSelectGroup,
     selectedIdRef,
     selectModeRef,
   } = useReceivingRowSelection({
@@ -283,7 +340,11 @@ export default function ReceivingLinesTable({
     // sidebar or overlay host. It has been a dead click since it shipped (its
     // own release note says so); giving it the same carton destination is the
     // fix that note asked for, and costs nothing here.
-    openRow: isHistorySurface ? openHistoryCarton : undefined,
+    openRow: isUnboxHistoryTriage
+      ? openHistoryTriage
+      : isHistorySurface
+        ? openHistoryCarton
+        : undefined,
     // A click on the Unbox FEED opens the carton but does NOT stamp the
     // operator's recents. Browsing a queue is navigation; Recent answers "which
     // cartons did I actually open", and if the map itself counted it would
@@ -304,6 +365,57 @@ export default function ReceivingLinesTable({
     selectedId,
     // History / Incoming / Unbox workbench table own the chevron channel.
     tableNavEnabled: isHistoryMode || isIncomingMode || isUnboxTableMode || embedded,
+  });
+
+  // Unbox History — publish on-screen order for ambient ↑↓ / j/k / Esc
+  // (record-cursor SoT). Left-click path stays triage; Enter on a focused row
+  // still opens LineEdit via the row's own key handler.
+  const historyCursorOrder = useMemo((): GroupedRenderOrder<ReceivingLineRow> => {
+    if (!isUnboxHistoryTriage) return [];
+    return Object.entries(filteredGroupedRecords)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, dayGroups]) => {
+        const sorted = mode.serverSorted
+          ? dayGroups
+          : [...dayGroups].sort((a, b) => poGroupAnchorMs(b) - poGroupAnchorMs(a));
+        return [
+          date,
+          sorted.map((group) => ({ key: group.key, rows: group.rows })),
+        ] as const;
+      });
+  }, [isUnboxHistoryTriage, filteredGroupedRecords, mode.serverSorted]);
+
+  const handleHistoryCursorOpen = useCallback(
+    (row: ReceivingLineRow, _ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
+      handleSelectRow(row);
+    },
+    [handleSelectRow],
+  );
+
+  const handleHistoryCursorClose = useCallback(() => {
+    // Esc: park first (keep target); second Esc clears triage.
+    if (!getDetailInspectorCollapsed()) {
+      setDetailInspectorCollapsed(true);
+      return;
+    }
+    emitReceiving('receiving-close-history-triage');
+  }, []);
+
+  usePublishRecordCursor<ReceivingLineRow>({
+    surfaceId: 'unbox-history-grid',
+    scope: 'record',
+    enabled: isUnboxHistoryTriage,
+    priority: RECORD_CURSOR_PRIORITY.grid,
+    order: historyCursorOrder,
+    openId: isUnboxHistoryTriage ? selectedId : null,
+    getId: (row) => row.id,
+    onOpen: handleHistoryCursorOpen,
+    onClose: handleHistoryCursorClose,
+  });
+
+  useRecordCursorKeyboard({
+    enabled: isUnboxHistoryTriage,
+    scope: 'record',
   });
 
   useReceivingDeepLink({ isLoading, localRows, setSelectedId });
@@ -404,6 +516,16 @@ export default function ReceivingLinesTable({
     unboxTab === 'history' &&
     parseHistoryDrillLayout(searchParams.get('hlayout')) === 'drill';
 
+  // Band-3 ▦ host: Unbox embed → toolbar portal; Incoming Docked → incoming
+  // controls; standalone History → HistoryTriageBand; else null (card-corner).
+  const columnDisplayPortalTarget = embedded
+    ? (toolbarPortalTarget ?? null)
+    : isInboundDocked
+      ? incomingControlsEl
+      : isHistorySurface
+        ? historyControlsEl
+        : null;
+
   const receivingGrid = () =>
     historyDrill ? (
       <ReceivingDrillHost
@@ -418,18 +540,17 @@ export default function ReceivingLinesTable({
         handleToggleRow={
           isHistorySurface || isUnboxWorkbench ? handleToggleRow : undefined
         }
-        handleSelectGroup={handleSelectGroup}
         activityAxis={historyAxis}
         isHistory={isHistoryMode}
         selectGutterChrome={selectGutterChrome}
-        clickSelect={historyClickSelect}
+        clickSelect={false}
+        onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
+        historyTriageMenu={isUnboxHistoryTriage}
         scrollRef={scrollRef}
-        columnTriggerPortalTarget={
-          embedded ? toolbarPortalTarget ?? null : null
-        }
+        columnTriggerPortalTarget={columnDisplayPortalTarget}
       />
     ) : (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ReceivingGridView
           filteredGroupedRecords={filteredGroupedRecords}
           serverSorted={mode.serverSorted}
@@ -443,38 +564,43 @@ export default function ReceivingLinesTable({
           handleToggleRow={
             isHistorySurface || isUnboxWorkbench ? handleToggleRow : undefined
           }
-          handleSelectGroup={handleSelectGroup}
           activityAxis={historyAxis}
           isHistory={isHistoryMode}
           selectGutterChrome={selectGutterChrome}
-          clickSelect={historyClickSelect}
+          clickSelect={false}
+          onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
+          historyTriageMenu={isUnboxHistoryTriage}
           scrollRef={scrollRef}
-          columnTriggerPortalTarget={
-            embedded ? toolbarPortalTarget ?? null : null
-          }
+          columnTriggerPortalTarget={columnDisplayPortalTarget}
+          className="h-full min-h-0 flex-1"
         />
       </div>
     );
 
   // Unbox Queue / Viewed skip the week filter — do NOT portal a static
   // "Door queue · N" fact chip (duplicates the Queue tab badge; not actionable).
-  // History keeps the interactive week pill. Column display portals into the
-  // same Unbox triage-band controls slot (staff / filter / week) via
-  // GridColumnGutter.triggerPortalTarget — not a second chrome Fields door.
+  // Unbox History week lives in the Band 3 Refine funnel (`?weekOffset=`) — do
+  // not portal a week pill into the inspector View cluster. Standalone History
+  // still mounts the week pill on its own Band 3. Column display portals into
+  // the View / triage controls slot via GridColumnGutter.triggerPortalTarget.
   const chromePill =
-    isHistoryMode || !skipWeekFilter ? (
-      <DateRangePickerPill
-        label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
-        count={weekCount}
-        // Match band History tab radius on all sides (never square-flat).
-        className={embedded ? WORKBENCH_CHROME_PILL_CLASS : undefined}
-        weekNav={{
-          weekOffset,
-          onPrev: () => setWeekOffset(weekOffset + 1),
-          onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
-        }}
-      />
-    ) : null;
+    isHistoryMode && embedded
+      ? null
+      : isHistoryMode || !skipWeekFilter
+        ? (
+          <DateRangePickerPill
+            label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+            count={weekCount}
+            // Triage-band peer of filter / column icons — ghost ToolbarButton, not
+            // a pill island (WORKBENCH_CHROME_PILL_CLASS is for Band 1 CTA neighbors).
+            weekNav={{
+              weekOffset,
+              onPrev: () => setWeekOffset(weekOffset + 1),
+              onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
+            }}
+          />
+        )
+        : null;
 
   // Unbox workbench embeds the table under UnboxWorkspaceHeader — week pill
   // (History only) portals into the top tabs bar controls slot.
@@ -501,6 +627,7 @@ export default function ReceivingLinesTable({
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
           <div className={cn(WORKBENCH_SHEET_CHROME, 'relative z-header flex shrink-0 flex-col gap-0')}>
             <IncomingWorkspaceHeader
+              controlsSlotRef={setIncomingControlsEl}
               total={
                 isIncomingMode
                   ? isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
@@ -509,23 +636,22 @@ export default function ReceivingLinesTable({
                   : Number(data?.total ?? localRows.length)
               }
               page={isIncomingMode ? incomingPage : 1}
+              laneNote={
+                isIncomingMode
+                  ? {
+                      view: mode.apiView,
+                      trackingFiltered: modeContext.trackingIn.length > 0,
+                      rowCount: orderedVisibleRows.length,
+                      providerLabel: providerCatalogLabel('zoho'),
+                    }
+                  : null
+              }
             />
-            {/* KPI owns the bottom hairline; sheet keeps border-t — one seam. */}
-            <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
-              <IncomingKpiStrip />
-              {isIncomingMode ? (
-                <IncomingLaneNote
-                  view={mode.apiView}
-                  trackingFiltered={modeContext.trackingIn.length > 0}
-                  rowCount={orderedVisibleRows.length}
-                  providerLabel={providerCatalogLabel('zoho')}
-                />
-              ) : null}
-            </div>
           </div>
           {isIncomingMode ? (
             <div className={WORKBENCH_SHEET_HOST}>
               <IncomingGridView
+                columnTriggerPortalTarget={incomingControlsEl}
                 filteredGroupedRecords={filteredGroupedRecords}
                 serverSorted={mode.serverSorted}
                 loading={isLoading && localRows.length === 0}
@@ -536,7 +662,6 @@ export default function ReceivingLinesTable({
                 selectedIds={selectedIds}
                 handleSelectRow={handleSelectRow}
                 handleToggleRow={handleToggleRow}
-                handleSelectGroup={handleSelectGroup}
                 selectGutterChrome={selectGutterChrome}
                 clickSelect={incomingClickSelect}
                 columns={incomingGridColumnsFor({
@@ -555,13 +680,16 @@ export default function ReceivingLinesTable({
   }
 
   // History — standalone `/receiving/history` (until redirected). Unbox embeds
-  // use the branch above via `embedded`.
+  // use the branch above via `embedded`. Sheets flush (Unbox golden): tabs
+  // (Band 1) + triage (Band 3) abut the context rail; grid on WORKBENCH_SHEET_HOST.
   if (isHistoryMode) {
     return (
       <TableColumnConfigProvider tableId="receiving">
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-          <div className={`relative z-header shrink-0 ${WORKBENCH_CHROME_COLUMN}`}>
-            <HistoryWorkspaceHeader
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'relative z-header flex shrink-0 flex-col gap-0')}>
+            <HistoryWorkspaceHeader className="rounded-none border-l-0 border-t-0 shadow-sm" />
+            <HistoryTriageBand
+              controlsSlotRef={setHistoryControlsEl}
               weekRange={weekRange}
               weekOffset={weekOffset}
               weekCount={getWeekCount()}

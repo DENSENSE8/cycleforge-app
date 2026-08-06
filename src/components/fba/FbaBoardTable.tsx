@@ -299,6 +299,23 @@ export function FbaBoardTable({
     };
   }, [sortedItems, emitSelection]);
 
+  // Full-bleed LedgerGrid SoT — sticky header + day bands by due date.
+  // Must stay above loading/empty early returns so hook count is stable.
+  const daySections = useMemo<[string, FbaBoardItem[]][]>(() => {
+    const byDay: Record<string, FbaBoardItem[]> = {};
+    for (const item of sortedItems) {
+      const key = item.due_date ? String(item.due_date).slice(0, 10) : 'No due date';
+      (byDay[key] ??= []).push(item);
+    }
+    return Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [sortedItems]);
+
+  const flatIndexById = useMemo(() => {
+    const map = new Map<number, number>();
+    sortedItems.forEach((item, index) => map.set(item.item_id, index));
+    return map;
+  }, [sortedItems]);
+
   if (loading) {
     return (
       <div className={cn('flex min-w-0 flex-col py-2', contentClassName)}>
@@ -326,22 +343,6 @@ export function FbaBoardTable({
       </div>
     );
   }
-
-  // Full-bleed LedgerGrid SoT — sticky header + day bands by due date.
-  const daySections = useMemo<[string, FbaBoardItem[]][]>(() => {
-    const byDay: Record<string, FbaBoardItem[]> = {};
-    for (const item of sortedItems) {
-      const key = item.due_date ? String(item.due_date).slice(0, 10) : 'No due date';
-      (byDay[key] ??= []).push(item);
-    }
-    return Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [sortedItems]);
-
-  const flatIndexById = useMemo(() => {
-    const map = new Map<number, number>();
-    sortedItems.forEach((item, index) => map.set(item.item_id, index));
-    return map;
-  }, [sortedItems]);
 
   return (
     <div className={cn('relative flex min-h-0 min-w-0 flex-1 flex-col', contentClassName)}>

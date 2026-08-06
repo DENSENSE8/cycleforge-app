@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, DollarSign, Ticket } from '@/components/Icons';
+import { Calendar, Ticket } from '@/components/Icons';
 import {
   makeLedgerGridColumnHeader,
   type LedgerHeaderLayoutApi,
@@ -32,9 +32,8 @@ const REPAIR_HEADER_LAYOUT: LedgerHeaderLayoutApi<RepairGridColumn> = {
  * Sticky column header for the repair queue LedgerGrid. Repair multi-select is
  * always-on, so `selectMode: 'always'` makes `selectionScope` a REQUIRED prop.
  *
- * The date / price / ticket glyphs are a FAMILY-wide override, so they live in
- * the factory config rather than at each mount — a repair `price` column means
- * the same thing wherever it renders.
+ * Date / ticket glyphs stay family overrides; Price uses ColumnType `price` →
+ * Receipt via the type→glyph SoT (no local money-mark fork).
  */
 export const RepairGridColumnHeader = makeLedgerGridColumnHeader<
   RepairGridColumn,
@@ -47,8 +46,6 @@ export const RepairGridColumnHeader = makeLedgerGridColumnHeader<
   glyphFor: (column) =>
     column.key === 'date' ? (
       <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-    ) : column.key === 'price' ? (
-      <DollarSign className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
     ) : column.key === 'ticket' ? (
       <Ticket className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
     ) : undefined,

@@ -73,6 +73,9 @@ export const getReceivingRequireSerialConfirmation = (s: OrgSettings): boolean =
 export const getReceivingRequiredItemPhotoAspects = (s: OrgSettings): PhotoAspect[] =>
   parsePhotoAspectList(readOrg<string>(s, 'receiving.requiredItemPhotoAspects', 'included,serial'));
 
+export const getReceivingUnboxFlowCaptureOrderRaw = (s: OrgSettings): string =>
+  readOrg<string>(s, 'receiving.unboxFlowCaptureOrder', '{}');
+
 export const getReceivingVisionConsensus = (s: OrgSettings): number =>
   readOrg<number>(s, 'receiving.vision.consensusNeeded', 2);
 

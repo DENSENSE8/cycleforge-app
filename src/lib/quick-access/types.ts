@@ -46,5 +46,8 @@ export interface QuickAccessSettings {
 }
 
 export const MAX_PINS = 30;
-/** Always-visible pin icons in GlobalHeader; extras go behind the overflow menu. */
-export const MAX_HEADER_PIN_ICONS = 5;
+/**
+ * First N pins in list order bind ⌘/Ctrl+1…N in GlobalHeader.
+ * Order owns the slot — there is no per-pin `hotkey` field.
+ */
+export const MAX_PIN_HOTKEY_SLOTS = 9;

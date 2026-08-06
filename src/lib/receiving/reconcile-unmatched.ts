@@ -35,7 +35,6 @@ import {
   searchPurchaseOrdersByTracking,
 } from '@/lib/zoho';
 import { ZohoRateLimitError } from '@/lib/zoho/httpClient';
-import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 import { resolveReceivingExceptionsByReceivingId } from '@/lib/tracking-exceptions';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { claimOrAbsorbZohoPoShell } from '@/lib/receiving/claim-zoho-po-shell';
@@ -402,7 +401,7 @@ export async function reconcileUnmatchedReceiving(
     }
   }
 
-  // ─── Import Zoho lines onto the winning carton ──────────────────────────
+  // ─── Claim local PO lines (unattached + unmatched donors), then import ───
   let linesImported = 0;
   if (!orgId) {
     console.warn(
@@ -410,24 +409,17 @@ export async function reconcileUnmatchedReceiving(
     );
   } else {
     try {
-      const importResult = await importZohoPurchaseOrderToReceiving(
-        orgId,
+      const { ensurePoLinesOnReceiving } = await import('@/lib/receiving/adopt-po-lines');
+      const ensured = await ensurePoLinesOnReceiving(
         primaryPoId,
-        { receivingId: winningReceivingId },
+        winningReceivingId,
+        orgId,
+        { importIfEmpty: true },
       );
-      if (importResult && typeof importResult === 'object') {
-        const maybeLines = (importResult as { linesImported?: number; lines?: unknown[] })
-          .linesImported;
-        const maybeArr = (importResult as { lines?: unknown[] }).lines;
-        linesImported = typeof maybeLines === 'number'
-          ? maybeLines
-          : Array.isArray(maybeArr)
-            ? maybeArr.length
-            : 0;
-      }
+      linesImported = Math.max(ensured.adopted, ensured.lineCount);
     } catch (err) {
       console.warn(
-        `[reconcile-unmatched] line import failed for receiving=${winningReceivingId} po=${primaryPoId}:`,
+        `[reconcile-unmatched] line ensure failed for receiving=${winningReceivingId} po=${primaryPoId}:`,
         err instanceof Error ? err.message : err,
       );
     }

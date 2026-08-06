@@ -168,7 +168,7 @@ export function LedgerDrillHost({
                 edgeHandleProps={edgeHandleProps}
                 isDragging={isDragging}
                 placement="inset"
-                tooltipLabel="Drag to resize panes · drag past minimum to hide · double-click for default"
+                tooltipLabel="Resize"
               />
             ) : null}
           </div>
