@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react';
 import { Trash2 } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
-import { SerialChipWithMenu } from '@/components/receiving/workspace/SerialCard';
 import {
   useSerialLookup,
   type SerialMatchedOrder,
@@ -19,18 +18,23 @@ import {
 import { ProgressBadge } from '@/components/receiving/workspace/PoLinesAccordion';
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
+import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import type { SerialAbsentState } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { requestConfirm } from '@/design-system/components/confirm';
+import { cn } from '@/utils/_cn';
+import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
 import type { UnfoundLine, UnmatchedLineRenderHelpers } from './unmatched-items-shared';
+
+/** Max last-8 serials in the collapsed meta preview (matches PoLineRow). */
+const SERIAL_PREVIEW_CAP = 2;
 
 interface UnmatchedLineRowProps {
   line: UnfoundLine;
   receivingId: number;
   staffId?: string;
   receivingType: string;
-  onConditionChange: (lineId: number, condition: string) => Promise<void>;
+  onConditionChange: (lineId: number, next: string) => Promise<void>;
   onRemove: (lineId: number) => Promise<void>;
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null, serial: string) => void;
   /** Report the active/selected unit's grade up so the label preview tracks it (matched parity). */
@@ -76,6 +80,10 @@ export function UnmatchedLineRow({
   const serialLookup = useSerialLookup();
   const isReturn = String(receivingType || '').toUpperCase() === 'RETURN';
   const saved = (line.serials ?? []) as ActiveRowSerial[];
+  const serialNumbers = saved
+    .map((s) => (s.serial_number || '').trim())
+    .filter(Boolean);
+  const lineTitle = line.item_name ?? line.sku ?? `Line ${line.id}`;
 
   // Submit a serial against this unfound line. Runs the return lookup first
   // (so it reflects prior inventory, not the row we're about to write), then
@@ -117,8 +125,7 @@ export function UnmatchedLineRow({
   );
 
   // Delete a serial by id (no confirm — ActiveLineConditionSerial owns the
-  // settings-gated confirm before it calls this). The meta-line chip delete
-  // keeps its own confirm via `deleteSerial` below.
+  // settings-gated confirm before it calls this).
   const deleteSerialUnit = useCallback(
     async (serialUnitId: number) => {
       if (serialUnitId == null) return;
@@ -140,22 +147,6 @@ export function UnmatchedLineRow({
       }
     },
     [editingSerial?.id, line.id, refresh],
-  );
-
-  // Delete a serial from the meta-line chip menu — keeps the confirm prompt the
-  // chip has always shown (ActiveLineConditionSerial's editor does its own).
-  const deleteSerialChip = useCallback(
-    async (serial: { id?: number; serial_number: string }) => {
-      if (serial.id == null) return;
-      const ok = await requestConfirm({
-        description: `Remove serial ${serial.serial_number}?`,
-        tone: 'danger',
-        confirmLabel: 'Remove',
-      });
-      if (!ok) return;
-      await deleteSerialUnit(serial.id);
-    },
-    [deleteSerialUnit],
   );
 
   // Replace a serial in place (typo fix): delete then re-scan, preserving the
@@ -191,11 +182,12 @@ export function UnmatchedLineRow({
   // "no change", ignored) — matched parity via useLineSerials.setUnitGrade.
   const setUnitGrade = useCallback(
     async (serialUnitId: number, grade: string) => {
+      const nextGrade = String(grade || '').trim() ? grade : null;
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ new_grade: grade }),
+          body: JSON.stringify({ new_grade: nextGrade }),
         });
         if (res.status === 409) return;
         const json = await res.json().catch(() => null);
@@ -213,7 +205,7 @@ export function UnmatchedLineRow({
 
   const handleCondition = useCallback(
     async (next: string) => {
-      if (next === line.condition_grade) return;
+      if (next === (line.condition_grade ?? '')) return;
       setUpdating(true);
       try {
         await onConditionChange(line.id, next);
@@ -225,25 +217,30 @@ export function UnmatchedLineRow({
   );
 
   return (
-    <div className="rounded-xl border border-blue-300 bg-blue-50/60 p-3">
-      <div className="flex items-start gap-3">
-        {line.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={line.image_url}
-            alt=""
-            className="h-12 w-12 shrink-0 rounded border border-blue-100 object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-role-caption font-semibold text-text-default">
-            {line.item_name ?? line.sku ?? `Line ${line.id}`}
+    <div className="relative min-w-0 overflow-hidden rounded-none border-0 border-b border-border-soft bg-surface-card">
+      <div
+        className={cn(
+          'grid min-w-0',
+          PO_LINE_HEADER_FACE.minH,
+          PO_LINE_HEADER_FACE.thumbGrid,
+        )}
+      >
+        <PoLineHeaderThumb imageUrl={line.image_url} />
+        <div className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 items-start gap-1 px-2 py-1">
+            <p className="min-w-0 flex-1 text-role-caption font-semibold leading-tight text-text-default">
+              {lineTitle}
+            </p>
+            <HoverTooltip label="Remove item" asChild>
+              <IconButton
+                icon={<Trash2 className="h-4 w-4" />}
+                onClick={() => void onRemove(line.id)}
+                ariaLabel="Remove item"
+                className="shrink-0 self-start rounded-md p-1.5 text-text-faint hover:bg-rose-50 hover:text-rose-600"
+              />
+            </HoverTooltip>
           </div>
-          {/* Same fixed-column meta as PoLineRow: qty | SKU | condition | serial. */}
           <PoLineMetaGrid
-            indent="0px"
             qty={
               <ProgressBadge
                 received={line.quantity_received ?? 0}
@@ -259,42 +256,19 @@ export function UnmatchedLineRow({
             }
             condition={<ConditionGradeChip grade={line.condition_grade} dense />}
             serial={
-              saved.length > 0 ? (
-                <span className="flex min-w-0 flex-wrap items-center gap-1">
-                  {saved.map((s, i) => {
-                    const sn = (s.serial_number || '').trim();
-                    if (!sn) return null;
-                    // Menu chip (delete/edit on hover) — the ONLY serial display
-                    // on the row; ActiveLineConditionSerial below has its saved
-                    // chips off so the serial isn't shown twice.
-                    return (
-                      <SerialChipWithMenu
-                        key={`${sn}-${i}`}
-                        serial={s}
-                        dense
-                        isEditing={editingSerial?.id != null && editingSerial.id === s.id}
-                        onEdit={(target) => setEditingSerial(target as ActiveRowSerial)}
-                        onDelete={(target) => void deleteSerialChip(target)}
-                      />
-                    );
-                  })}
+              serialNumbers.length > 0 ? (
+                <span className="min-w-0 truncate tabular-nums text-text-muted normal-case tracking-normal">
+                  {serialNumbers
+                    .slice(-SERIAL_PREVIEW_CAP)
+                    .map((sn) => getLast8(sn))
+                    .join(', ')}
                 </span>
               ) : undefined
             }
           />
         </div>
-        {/* Right-edge trash — removes the line via DELETE /api/receiving-lines.
-            Confirms before deleting so an accidental tap doesn't lose work. */}
-        <HoverTooltip label="Remove item" asChild>
-          <IconButton
-            icon={<Trash2 className="h-4 w-4" />}
-            onClick={() => void onRemove(line.id)}
-            ariaLabel="Remove item"
-            className="shrink-0 self-start rounded-md p-1.5 text-text-faint hover:bg-rose-50 hover:text-rose-600"
-          />
-        </HoverTooltip>
       </div>
-      <div className="mt-3 border-t border-blue-200/60 pt-3">
+      <div className="min-w-0 overflow-hidden border-t border-border-hairline bg-surface-card">
         <div
           className={updating ? 'pointer-events-none opacity-60' : undefined}
           aria-busy={updating || undefined}
@@ -308,8 +282,7 @@ export function UnmatchedLineRow({
             })
           ) : (
             // Same condition + serial editor as a matched PO line — one leaf for
-            // both surfaces (Kinetic Ledger: one row anatomy). Multi-qty and
-            // single-qty branches now behave identically to the matched carton.
+            // both surfaces (Kinetic Ledger: one row anatomy).
             <ActiveLineConditionSerial
               serials={saved}
               lineId={line.id}
