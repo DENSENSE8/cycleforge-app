@@ -3,7 +3,7 @@
 /**
  * Unbox right-edge **push** column — the shared shell for
  * {@link ReceivingDisplaysPushStack} (Ticket · Photos · Linkage · … — Ticket
- * nests Chat · Claim). LineEditPanel wires exclusion vs `detail:receiving` / AI
+ * presence-exclusive Claim vs Chat). LineEditPanel wires exclusion vs `detail:receiving` / AI
  * (see `unbox-right-edge.ts`).
  *
  * These are **not** `RightRailHost` occupants: receiving More details keeps the
@@ -135,9 +135,11 @@ const NARROW_PUSH_MQ = '(max-width: 1023px)';
  * Cybertruck plate + trailing ⋮). Nested verb strips sit `gap-0` flush under it.
  * The E2E pins that dismiss + plate stay column-aligned.
  */
-/** `relative z-raised` keeps `→|` above the inset resize sash (same token). */
+/** `relative z-raised` keeps `→|` above the inset resize sash (same token).
+ *  One horizontal row: `[→|] [fullscreen] ……… [↑ ↓]` — `items-center`, never a
+ *  stacked trailing cluster. */
 const UNBOX_PUSH_TOP_BAND =
-  'relative z-raised flex h-8 shrink-0 items-start gap-0.5 pl-2 pr-4';
+  'relative z-raised flex h-8 shrink-0 items-center gap-0.5 pl-2 pr-2';
 
 /**
  * The band's dismiss names the REGION, not the occupant — "Hide right panel",
@@ -373,9 +375,9 @@ export function UnboxPushColumn({
               data-testid="unbox-push-fullscreen"
             />
           </HoverTooltip>
-          {/* Carton ↑↓ — top-right of the details panel (SoT when Displays open). */}
+          {/* Carton ↑↓ — same row, top-right (SoT when Displays open). */}
           {headerTrailing != null ? (
-            <div className="ml-auto flex items-start">{headerTrailing}</div>
+            <div className="ml-auto flex shrink-0 items-center gap-0">{headerTrailing}</div>
           ) : null}
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>

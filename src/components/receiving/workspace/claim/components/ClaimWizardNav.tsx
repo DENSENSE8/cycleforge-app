@@ -5,14 +5,13 @@ import type { ClaimModalMode } from '../claim-types';
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 
 /**
- * Claim child mode (New ticket · Link existing).
+ * Claim child mode (New ticket · Link existing) — only on the no-ticket Claim
+ * surface. Ticket topic is presence-exclusive (Claim vs Chat); there is no
+ * parent Chat · Claim underline switcher.
  *
- * Hierarchy: parent Chat·Claim lives on {@link TicketDisplayHost} as underline
- * `TabDisplay`. This nav is the **child** segmented layer — lighter than the
- * parent. Section progress is the stacked scroll body (no ScrollSpy strip).
- *
- * Cybertruck stack: `gap-0` under Chat·Claim. Mode row shares one flush
- * instrument column with the topic plate above.
+ * Section progress is the stacked scroll body (no ScrollSpy strip).
+ * Cybertruck stack: `gap-0` under the topic plate. Mode row shares one flush
+ * instrument column with the plate above.
  */
 export function ClaimWizardNav({ c }: { c: ReceivingClaimController }) {
   return (

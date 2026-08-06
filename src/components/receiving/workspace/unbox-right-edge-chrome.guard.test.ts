@@ -160,8 +160,13 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         column,
-        /ml-auto flex items-start/,
-        'carton cursor seats at the details panel top-right',
+        /ml-auto flex shrink-0 items-center/,
+        'carton cursor seats on the same header row, top-right',
+      );
+      assert.match(
+        column,
+        /items-center gap-0\.5/,
+        'top band is one horizontal row (items-center)',
       );
       // The edge grip's chevron is `opacity-0 group-hover:opacity-100`, so it
       // does not exist until the pointer is already on the 8px sash. A
@@ -304,7 +309,7 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.match(
         panel,
         /openDisplays\('ticket',\s*\{\s*ticketAction:\s*hasTicketId \? 'chat' : 'claim'/,
-        'closed → opens Displays on Ticket with sticky Chat/Claim verb (avoids null→chat after create)',
+        'closed → opens Displays on Ticket with presence verb (chat if linked, else claim)',
       );
       assert.match(
         panel,

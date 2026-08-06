@@ -85,7 +85,6 @@ import {
   type UnboxLinkageAction,
   type UnboxPhotoAction,
   type UnboxSideTab,
-  type UnboxTicketAction,
   type UnboxUnitsAction,
 } from './line-edit/unbox-side-tabs';
 import { UnboxDisplaysEdgeToggle } from './UnboxDisplaysEdgeToggle';
@@ -524,8 +523,6 @@ export function LineEditPanel({
       onPhotoActionChange,
       linkageAction,
       onLinkageActionChange,
-      ticketAction,
-      onTicketActionChange,
       unitsAction,
       onUnitsActionChange,
       hasPrebox,
@@ -601,6 +598,7 @@ export function LineEditPanel({
       onNext={onNextCarton}
       onPrev={onPrevCarton}
       orientation="horizontal"
+      size="sm"
       nextTestId="unbox-carton-next"
       prevTestId="unbox-carton-prev"
       groupTestId="unbox-carton-cursor"
