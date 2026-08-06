@@ -309,6 +309,7 @@ export function TriagePanel({
       onNext={onNextCarton}
       onPrev={onPrevCarton}
       orientation="horizontal"
+      size="sm"
       nextTestId="arrival-carton-next"
       prevTestId="arrival-carton-prev"
       groupTestId="arrival-carton-cursor"

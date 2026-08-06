@@ -28,7 +28,7 @@
  * vertical air between tab rows. No soft sunken pills / corner radius.
  *
  * `compact` only tightens horizontal padding — never shortens the plate face
- * (a short strip above Chat·Claim inverted hierarchy).
+ * (a short strip above nested verb rows / claim mode — inverted hierarchy).
  *
  * **Icon-only idle cells are the sanctioned nav-chrome exception**, not a
  * break of `ui-design-system.md` → *Icons: structural and paired*: this is a
@@ -160,7 +160,7 @@ export function SectionTabsSlider({
   density?: 'inline' | 'icon';
   /**
    * Icon plate only: tighter horizontal padding. Never shortens the h-10 face —
-   * a short strip above Chat·Claim inverted hierarchy.
+   * a short strip above nested verb rows / claim mode — inverted hierarchy.
    */
   compact?: boolean;
   /**

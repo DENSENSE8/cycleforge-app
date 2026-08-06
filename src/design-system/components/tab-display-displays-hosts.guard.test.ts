@@ -1,6 +1,7 @@
 /**
  * Displays nested verb switchers must use industrial TabDisplay — never soft
- * TabSwitch pills (Browse·Move·Send, Chat·Claim, Link·Note).
+ * TabSwitch pills (Browse·Move·Send, Link·Note, Units·Prebox). Ticket is
+ * presence-exclusive (no Chat·Claim nested underline).
  *
  * Parent verbs use `appearance="underline"`; claim child mode (New·Link) uses
  * `appearance="segment"` in ClaimWizardNav — never a second inverse fill.
@@ -19,18 +20,23 @@ function stripComments(src: string): string {
 
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
-const HOSTS = [
+/** Hosts that still nest underline verb switchers (Ticket does not). */
+const NESTED_VERB_HOSTS = [
   'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
-  'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
+] as const;
+
+const FLUSH_STACK_HOSTS = [
+  ...NESTED_VERB_HOSTS,
+  'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
 ] as const;
 
 const TAB_DISPLAY = 'src/design-system/components/TabDisplay.tsx';
 const CLAIM_NAV = 'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx';
 
 describe('Displays nested verbs use TabDisplay', () => {
-  for (const host of HOSTS) {
+  for (const host of NESTED_VERB_HOSTS) {
     it(`${host} imports TabDisplay and not TabSwitch`, () => {
       const src = read(host);
       assert.match(
@@ -50,6 +56,13 @@ describe('Displays nested verbs use TabDisplay', () => {
       );
     });
   }
+
+  it('TicketDisplayHost is presence-exclusive — no Chat · Claim TabDisplay', () => {
+    const src = read('src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx');
+    assert.doesNotMatch(src, /\bTabDisplay\b/, 'no nested Chat · Claim switcher');
+    assert.doesNotMatch(src, /\bTabSwitch\b/, 'no soft TabSwitch either');
+    assert.doesNotMatch(src, /TICKET_TABS/, 'no Chat · Claim tab catalog');
+  });
 
   it('TabDisplay is flush / zero-radius (no rounded-full pills)', () => {
     const src = read(TAB_DISPLAY);
@@ -94,7 +107,7 @@ describe('Displays nested verbs use TabDisplay', () => {
     assert.doesNotMatch(
       src,
       /ICON_CELL_COMPACT_CLASS[\s\S]*h-6/,
-      'h-6 compact face inverted hierarchy under Chat·Claim',
+      'h-6 compact face inverted hierarchy under nested verb rows',
     );
     assert.match(src, /MoreVertical/, 'overflow ⋮ stays on the topic plate row');
     assert.match(
@@ -149,17 +162,12 @@ describe('Displays nested verbs use TabDisplay', () => {
   });
 
   it('Displays nested verb hosts sit gap-0 flush under the topic plate', () => {
-    for (const file of [
-      'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
-      'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
-      'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
-      'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
-    ]) {
+    for (const file of FLUSH_STACK_HOSTS) {
       const src = read(file);
       assert.match(
         src,
         /flex-col gap-0/,
-        `${file}: Cybertruck stack — no vertical gap between topic plate and nested verbs`,
+        `${file}: Cybertruck stack — no vertical gap between topic plate and body`,
       );
       assert.doesNotMatch(
         src,
@@ -199,7 +207,7 @@ describe('Displays nested verbs use TabDisplay', () => {
     assert.doesNotMatch(
       src,
       /\bPaneHeaderTabs\b/,
-      'must not reintroduce inverse PaneHeaderTabs under Chat·Claim',
+      'must not reintroduce inverse PaneHeaderTabs on Claim New·Link',
     );
     assert.doesNotMatch(src, /\bTabSwitch\b/, 'no soft TabSwitch in claim nav');
     assert.doesNotMatch(

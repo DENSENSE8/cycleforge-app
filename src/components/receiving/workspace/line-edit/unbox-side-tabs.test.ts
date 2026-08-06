@@ -117,13 +117,9 @@ test('photo / linkage / ticket / units nested action parsers', () => {
   assert.equal(parseUnboxPhotoAction('bogus'), 'browse');
   assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: true }), 'note');
   assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: false }), 'link');
-  // Explicit claim always wins — create/link must not auto-flip to chat.
-  assert.equal(resolveUnboxTicketAction('claim', true), 'claim');
-  assert.equal(resolveUnboxTicketAction('claim', false), 'claim');
-  assert.equal(resolveUnboxTicketAction('chat', false), 'claim');
-  assert.equal(resolveUnboxTicketAction('chat', true), 'chat');
-  assert.equal(resolveUnboxTicketAction(null, true), 'chat');
-  assert.equal(resolveUnboxTicketAction(null, false), 'claim');
+  // Presence-only: linked ticket → chat; no ticket → claim (URL verb ignored).
+  assert.equal(resolveUnboxTicketAction(true), 'chat');
+  assert.equal(resolveUnboxTicketAction(false), 'claim');
   assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: true }), 'prebox');
   assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: false }), 'units');
   assert.equal(parseUnboxUnitsAction(null, { hasPrebox: true }), 'units');

@@ -31,7 +31,6 @@ import type {
   UnboxLinkageAction,
   UnboxPhotoAction,
   UnboxSideTab,
-  UnboxTicketAction,
   UnboxUnitsAction,
 } from '../unbox-side-tabs';
 import { TrackingNumbersTab } from '../TrackingNumbersTab';

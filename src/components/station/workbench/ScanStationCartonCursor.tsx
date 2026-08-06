@@ -5,7 +5,8 @@
  *
  * Queue reads newest-at-top, so advancing moves UP. Mount sites:
  * - Displays **closed** — vertical stack on {@link ScanStationUtilityRail}
- * - Displays **open** — horizontal pair at {@link UnboxPushColumn} top-right
+ * - Displays **open** — same header row as `→|` / fullscreen on
+ *   {@link UnboxPushColumn} (`orientation="horizontal"`, `size="sm"`)
  *
  * Never inside CartonContextCard / Photos.
  */
@@ -19,6 +20,7 @@ export function ScanStationCartonCursor({
   onNext,
   onPrev,
   orientation = 'vertical',
+  size = 'xs',
   nextTestId,
   prevTestId,
   groupTestId,
@@ -26,11 +28,15 @@ export function ScanStationCartonCursor({
   onNext?: () => void;
   onPrev?: () => void;
   orientation?: 'vertical' | 'horizontal';
+  /** Panel header row uses `sm` to match `→|` / fullscreen; utility rail stays `xs`. */
+  size?: 'xs' | 'sm';
   nextTestId: string;
   prevTestId: string;
   groupTestId: string;
 }) {
   if (!onNext && !onPrev) return null;
+
+  const glyph = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4';
 
   return (
     <div
@@ -43,11 +49,12 @@ export function ScanStationCartonCursor({
       {onNext ? (
         <HoverTooltip label="Next carton" asChild>
           <IconButton
-            size="xs"
+            size={size}
             tone="neutral"
             ariaLabel="Next carton"
-            icon={<ChevronUp className="h-4 w-4" />}
+            icon={<ChevronUp className={glyph} />}
             onClick={onNext}
+            className={cn(size === 'sm' && 'rounded-none')}
             data-testid={nextTestId}
           />
         </HoverTooltip>
@@ -55,11 +62,12 @@ export function ScanStationCartonCursor({
       {onPrev ? (
         <HoverTooltip label="Previous carton" asChild>
           <IconButton
-            size="xs"
+            size={size}
             tone="neutral"
             ariaLabel="Previous carton"
-            icon={<ChevronDown className="h-4 w-4" />}
+            icon={<ChevronDown className={glyph} />}
             onClick={onPrev}
+            className={cn(size === 'sm' && 'rounded-none')}
             data-testid={prevTestId}
           />
         </HoverTooltip>

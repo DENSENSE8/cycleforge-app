@@ -124,34 +124,44 @@ describe('Unbox Displays claim fill + pinned footer', () => {
       /\bpb-\d+\b/,
       'Displays host must not add pb-* under pinned claim/chat footers',
     );
-    assert.match(
+    assert.doesNotMatch(
       ticket,
-      /hasTicket \? \([\s\S]*shrink-0[\s\S]*TabDisplay/,
-      'Chat · Claim switcher stays above the claim body',
+      /\bTabDisplay\b/,
+      'Ticket topic has no Chat · Claim nested TabDisplay — presence-exclusive body',
+    );
+    assert.doesNotMatch(
+      ticket,
+      /TICKET_TABS/,
+      'no Chat · Claim tab catalog on TicketDisplayHost',
     );
     assert.match(
       ticket,
       /const hasTicket = ticketId != null/,
-      'Chat chrome gates on linked carton ticket id',
+      'body gates on linked carton ticket id',
+    );
+    assert.match(
+      ticket,
+      /hasTicket \? \([\s\S]*SupportTicketDetail[\s\S]*\) : \([\s\S]*ReceivingClaimPanel/,
+      'linked ticket → Chat; no ticket → Claim (New ticket · Link existing)',
     );
     assert.doesNotMatch(
       ticket,
       /No linked ticket on this carton/,
-      'empty Chat state removed — no ticket means Claim-only, not a visible Chat tab',
+      'empty Chat state removed — no ticket means Claim-only',
     );
   });
 
-  it('create/link keeps Claim tab — does not auto-switch to Chat mid-wizard', () => {
+  it('create/link opens Chat — presence flips Ticket body after link', () => {
     const line = read(LINE_EDIT);
     assert.match(
       line,
-      /onClaimTicketCreated[\s\S]*ticketAction:\s*'claim'/,
-      'filing/linking a ticket must re-assert ticketAction=claim so resolve cannot flip to chat',
+      /onClaimTicketCreated[\s\S]*ticketAction:\s*'chat'/,
+      'filing/linking a ticket opens Chat (no sticky Claim mid-wizard)',
     );
-    assert.match(
+    assert.doesNotMatch(
       line,
       /ticketActionRaw === 'claim'[\s\S]*ticketAction:\s*'claim'/,
-      'sticky-write claim verb while claim form is showing without an explicit URL param',
+      'sticky-write claim verb removed — presence alone chooses Claim vs Chat',
     );
   });
 

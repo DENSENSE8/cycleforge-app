@@ -251,7 +251,7 @@ sidebar header row.
 
 | `appearance` | Weight | Active treatment | Use for |
 |---|---|---|---|
-| `underline` | **Parent** | Bottom rule + body type; no inverse fill | Displays nested verbs (Chat·Claim, Browse·Move·Send, Link·Note) |
+| `underline` | **Parent** | Bottom rule + body type; no inverse fill | Displays nested verbs (Browse·Move·Send, Link·Note, Units·Prebox) |
 | `segment` | **Child** | Sunken rail + **flush** light face (no gutter); caption type | Local subset under a parent (Claim New ticket·Link existing) |
 | `fill` | High-contrast | Inverse sliding rectangular face, inset by a `p-0.5` gutter | When a single-layer inverse switcher is required |
 
