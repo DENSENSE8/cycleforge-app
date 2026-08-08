@@ -1044,6 +1044,16 @@ type ReceivingLinesFetchPhase = 'full' | 'spine';
 const SPINE_PAINT_LIMIT = 150;
 
 /**
+ * Bound the lines fetch so a slow/hung `/api/receiving-lines` can never pin the
+ * skeleton forever (the `/incoming` "feels broken" symptom). On timeout the
+ * fetch aborts → the query settles `isError` → the surface shows a retryable
+ * degraded state instead of an infinite skeleton. Generous enough that a
+ * legitimately slow authoritative `include=serials` resolve still completes;
+ * the SSR seed (unbox / incoming) is what makes first paint feel instant.
+ */
+export const RECEIVING_LINES_FETCH_TIMEOUT_MS = 15_000;
+
+/**
  * The ONE query-options builder for the receiving/unbox lines table. Every
  * consumer of the table's rows (the table itself via useReceivingLinesQuery,
  * the Unbox KPI strip, prefetchers) MUST build its options here so they share
@@ -1075,7 +1085,9 @@ export function receivingLinesTableQuery(
   return {
     queryKey,
     queryFn: async (): Promise<ReceivingLinesListResponse> => {
-      const res = await fetch(`/api/receiving-lines?${params.toString()}`);
+      const res = await fetch(`/api/receiving-lines?${params.toString()}`, {
+        signal: AbortSignal.timeout(RECEIVING_LINES_FETCH_TIMEOUT_MS),
+      });
       if (!res.ok) throw new Error('fetch failed');
       return res.json();
     },

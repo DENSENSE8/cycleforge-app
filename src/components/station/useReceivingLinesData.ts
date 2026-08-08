@@ -45,6 +45,10 @@ interface UseReceivingLinesDataArgs {
 export interface ReceivingLinesData {
   data: ApiResponse | undefined;
   isLoading: boolean;
+  /** Nothing paintable AND the authoritative fetch failed — render degraded + retry. */
+  isError: boolean;
+  /** Retry the authoritative list fetch (degraded-state "Retry" action). */
+  refetch: () => void;
   deliveredRows: ReceivingLineRow[];
   localRows: ReceivingLineRow[];
   setLocalRows: React.Dispatch<React.SetStateAction<ReceivingLineRow[]>>;
@@ -71,7 +75,7 @@ export function useReceivingLinesData({
   // KPI strip reads the SAME cache entry — no second fetch of the same view.
   // Unbox tabs paint the cheap spine phase first; the authoritative
   // include=serials rows land in a background pass and upgrade in place.
-  const { data, isLoading } = useReceivingLinesQuery({
+  const { data, isLoading, isError, refetch } = useReceivingLinesQuery({
     mode,
     modeContext,
     enabled: !isDeliveredUnscannedFacet && !isDeliveredNotUnboxedFacet,
@@ -213,5 +217,5 @@ export function useReceivingLinesData({
     return () => window.removeEventListener('receiving-lines-prepended', handler);
   }, [setWeekOffset, scrollRef]);
 
-  return { data, isLoading, deliveredRows, localRows, setLocalRows };
+  return { data, isLoading, isError, refetch, deliveredRows, localRows, setLocalRows };
 }

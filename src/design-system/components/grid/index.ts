@@ -122,6 +122,8 @@ export { GridStickyXScrollbar } from './GridStickyXScrollbar';
 export type { GridStickyXScrollbarMode, GridStickyXScrollbarProps } from './GridStickyXScrollbar';
 export { useSyncedHorizontalScrollbar } from './useSyncedHorizontalScrollbar';
 export { TableStickyXScroll } from './TableStickyXScroll';
+/** The house DEGRADED (fourth settled) state — dashed rose box + Retry. */
+export { GridDegradedBox } from './GridDegradedBox';
 /** Parent→child linked dual-pane drill (WMS-wide). Not fold; not compare. */
 export { LedgerDrillHost, useLedgerDrillCollapse } from './LedgerDrillHost';
 export type { LedgerDrillHostProps } from './LedgerDrillHost';
