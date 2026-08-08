@@ -28,22 +28,20 @@ import { TRACKING_PATTERNS, type CarrierCode } from '@/utils/carrier-patterns';
 // both barrel-only exports with zero callers). Import `CarrierCode` from
 // '@/utils/carrier-patterns' directly; there was never a second carrier type.
 
-export type ClassifiedScanType = 'tracking' | 'serial_full' | 'serial_partial' | 'unknown';
+type ClassifiedScanType = 'tracking' | 'serial_full' | 'serial_partial' | 'unknown';
 
-export interface ClassifyResult {
+interface ClassifyResult {
   type: ClassifiedScanType;
   carrier: CarrierCode | null;
   /** Upper-cased, non-alphanumeric-stripped value used for pattern matching. */
   normalized: string;
 }
 
-export interface SerialMatchResult {
+interface SerialMatchResult {
   matchType: 'exact' | 'suffix' | 'contains' | 'none';
   matches: string[];
 }
 
-// Re-export TRACKING_PATTERNS for any downstream consumers
-export { TRACKING_PATTERNS } from '@/utils/carrier-patterns';
 
 // ─── SERIAL NUMBER PATTERNS ───────────────────────────────────────────────────
 //
@@ -53,14 +51,14 @@ export { TRACKING_PATTERNS } from '@/utils/carrier-patterns';
 //                 short strings that are not valid carrier tracking (e.g. 9 digits).
 //                 e.g. "4A2B", "012XY", "123456789", "ABCDEFGHIJ", "1ZSHORT"
 
-export const SERIAL_FULL_REGEX    = /^[A-Z0-9]{15,17}([A-Z]{2})?$/i;
-export const SERIAL_PARTIAL_REGEX = /^[A-Z0-9]{1,10}$/i;
+const SERIAL_FULL_REGEX    = /^[A-Z0-9]{15,17}([A-Z]{2})?$/i;
+const SERIAL_PARTIAL_REGEX = /^[A-Z0-9]{1,10}$/i;
 
 /**
  * Amazon FNSKU (X00 + 7) or ASIN (B0 + 8). Exactly 10 A-Z/0-9 characters.
  * Normalized before matching so scanner punctuation does not break detection.
  */
-export const FNSKU_OR_ASIN_REGEX = /^(X00[A-Z0-9]{7}|B0[A-Z0-9]{8})$/;
+const FNSKU_OR_ASIN_REGEX = /^(X00[A-Z0-9]{7}|B0[A-Z0-9]{8})$/;
 
 export function looksLikeFnsku(value: string): boolean {
   const v = normalizeTrackingCanonical(value);
@@ -220,30 +218,6 @@ export function parseScannedUrl(raw: string): ScannedUrlEntity | null {
     default:
       return null;
   }
-}
-
-/**
- * Encode a GTIN + unit serial as a GS1 Digital Link URL. Pair with
- * {@link parseScannedUrl} for roundtrip.
- *
- * Origin is the public-facing base URL (e.g. https://inv.example.com).
- * Falls back to a relative path if origin is empty.
- */
-export function buildGs1UnitUrl(origin: string, gtin: string, unitSerial: string): string {
-  const path = `/01/${encodeURIComponent(gtin)}/21/${encodeURIComponent(unitSerial)}`;
-  const base = (origin ?? '').trim().replace(/\/+$/, '');
-  return base ? `${base}${path}` : path;
-}
-
-export function buildInternalEntityUrl(
-  origin: string,
-  kind: 'location' | 'package' | 'order' | 'stock' | 'generic',
-  payload: string,
-): string {
-  const prefix = { location: 'l', package: 'p', order: 'o', stock: 's', generic: 'q' }[kind];
-  const path = `/${prefix}/${encodeURIComponent(payload)}`;
-  const base = (origin ?? '').trim().replace(/\/+$/, '');
-  return base ? `${base}${path}` : path;
 }
 
 // ─── MULTI-AI DATA MATRIX PARSER ──────────────────────────────────────────────
