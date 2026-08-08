@@ -10,6 +10,9 @@ import { PrimaryKpiGrid } from './PrimaryKpiGrid';
 import { OperationsGoalHero } from './OperationsGoalHero';
 import { OperationsSectionHeader as SectionHeader } from './OperationsSectionHeader';
 import { useOperationsDashboardData } from './useOperationsDashboardData';
+import { realtimeLinkToAblyStatus } from './operations-live-status';
+import { useRealtimeLink } from '@/hooks/useConnectionHealth';
+import { GridDegradedBox } from '@/design-system/components/grid';
 import { selectKpiValue } from './operations-dashboard-logic';
 
 /**
@@ -23,11 +26,29 @@ import { selectKpiValue } from './operations-dashboard-logic';
  */
 export function OperationsDashboard() {
   const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
-  const { data, isLoading } = useOperationsDashboardData();
+  const { data, isLoading, isError, refetch } = useOperationsDashboardData();
+  // Honest realtime — derive the Live pill from the shared connection store,
+  // never a hardcoded literal (H1 Phase A). Same source as the Ops TV pill.
+  const realtimeLink = useRealtimeLink();
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-surface-canvas text-text-default">
       <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-16 space-y-6">
+
+        {/* Degraded band (fourth settled state) — the snapshot fetch failed. A
+            localized, non-blocking Retry so the Monitor never shows empty KPI
+            tiles that read as a quiet warehouse; nav + self-fetching sections
+            (Exceptions / Pipeline) stay live (H1 Phase B). */}
+        {isError ? (
+          <div className="py-2">
+            <GridDegradedBox
+              message="Couldn't load the operations snapshot."
+              onRetry={() => {
+                void refetch();
+              }}
+            />
+          </div>
+        ) : null}
 
         {/* ── TOP: the current goal (P3-ADM-01 acceptance A — goal-first) ── */}
         <OperationsGoalHero staffProgress={data?.staffProgress} isLoading={isLoading} />
@@ -61,7 +82,7 @@ export function OperationsDashboard() {
           <LiveFeedCard
             feed={data?.activityFeed}
             isLoading={isLoading}
-            ablyStatus="connected"
+            ablyStatus={realtimeLinkToAblyStatus(realtimeLink)}
           />
         </section>
       </main>
