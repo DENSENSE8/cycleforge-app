@@ -300,7 +300,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/products/catalog/ProductsCatalogWorkspace.tsx': 'catalog',
   'src/components/repair/repair-grid/RepairGridView.tsx': 'repair',
   'src/components/receiving/pickup/grid/PickupGridView.tsx': 'pickup',
-  'src/components/warranty/grid/WarrantyGridView.tsx': 'warranty',
+  'src/components/warranty/WarrantyClaimsTable.tsx': 'warranty',
   'src/components/outbound/ready/grid/ReadyGridView.tsx': 'ready',
   'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx': 'tracking-exceptions',
   'src/components/receiving/unfound/grid/UnfoundGridView.tsx': 'unfound',
@@ -423,7 +423,6 @@ const GRID_VIEW_FOREST: string[] = [
   'src/components/tech/all/TechAllGridView.tsx',
   'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
   'src/components/warehouse/bins-grid/BinsGridView.tsx',
-  'src/components/warranty/grid/WarrantyGridView.tsx',
   'src/features/my-day/grid/MyDayGridView.tsx',
   'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
 ];

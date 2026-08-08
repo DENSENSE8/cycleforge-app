@@ -2,7 +2,7 @@
  * Warranty claims grid surface descriptor — lifts the house
  * {@link WARRANTY_GRID_COLUMNS} SoT into the TanStack defs `LedgerGridSurface`
  * mounts. Sorting stays inside the warranty sort vocabulary; row ORDER stays
- * with the house comparator in {@link WarrantyGridView} (state math only).
+ * with the house comparator in `WarrantyClaimsTable` (state math only).
  */
 
 import {
@@ -56,6 +56,6 @@ export function makeWarrantyGridDescriptor(
 }
 
 // No pre-built canonical descriptor: the column set is resolved per staffer by
-// `useGridColumnVisibility`, so `WarrantyGridView` always builds from the
+// `useGridColumnVisibility`, so the warranty grid mount always builds from the
 // RESOLVED list (which keeps `contentMinWidthRem` and the CSS grid template
 // honest when a track is hidden).

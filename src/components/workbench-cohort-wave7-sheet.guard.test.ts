@@ -124,7 +124,8 @@ const GRID_SURFACES: {
 const RESIDUAL_GRID_PINS: { label: string; gridView: string; definition?: TableDefinition }[] = [
   {
     label: 'Warranty',
-    gridView: 'src/components/warranty/grid/WarrantyGridView.tsx',
+    // Grid mount now lives in the claims table (no wrapper file).
+    gridView: 'src/components/warranty/WarrantyClaimsTable.tsx',
     definition: WARRANTY_TABLE_DEFINITION,
   },
   {

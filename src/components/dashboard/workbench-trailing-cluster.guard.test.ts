@@ -84,7 +84,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/products/catalog/catalog-grid/CatalogGridColumnHeader.tsx',
-    'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+    'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
   ],
   [
     'src/components/repair/repair-grid/RepairGridColumnHeader.tsx',
@@ -96,7 +96,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/warranty/grid/WarrantyGridColumnHeader.tsx',
-    'src/components/warranty/grid/WarrantyGridView.tsx',
+    'src/components/warranty/WarrantyClaimsTable.tsx',
   ],
   [
     'src/components/receiving/unfound/grid/UnfoundGridColumnHeader.tsx',
