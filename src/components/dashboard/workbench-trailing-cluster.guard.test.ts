@@ -104,7 +104,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/warehouse/bins-grid/BinsGridColumnHeader.tsx',
-    'src/components/warehouse/bins-grid/BinsGridView.tsx',
+    'src/components/warehouse/BinsTable.tsx',
   ],
   [
     'src/components/tracking-exceptions/grid/TrackingExceptionsGridColumnHeader.tsx',
