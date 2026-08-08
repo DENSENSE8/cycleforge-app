@@ -345,10 +345,9 @@ Detection priority:
 
 | Desktop | Mobile |
 |---------|--------|
-| Left sidebar (360px) with labels, sections, back nav | Bottom `MobileNavBar` with 3–5 icon tabs + active dot |
-| `DesktopShell` with sidebar + main content | `MobileShell` with toolbar + scrollable content + bottom nav |
-| Collapsible sidebar (details panel override) | `MobileToolbar` (48px) with title + 1–2 trailing actions |
-| Section headers within sidebar | Slide-in drawer for deep navigation (future) |
+| MasterNav push spine + `ResponsiveLayout` | `RedesignedMobileShell` (`@/components/mobile/redesign/MobileShell`) |
+| Left context rail via `ContextPanelLayout` | `MobileTopBar` with title + trailing actions |
+| Collapsible rails (resize + park) | `MobileSidebarDrawer` for deep navigation |
 
 ### Lists / Tables
 
@@ -372,7 +371,7 @@ Detection priority:
 
 | Desktop | Mobile |
 |---------|--------|
-| `ScanInputDesktop`: hidden input listening for scanner keystrokes | `ScanCameraMobile`: fullscreen camera viewfinder |
+| `StationScanBar` (`@/components/station/scan-bar`): focus-locked wedge input | `ScanInput` (`@/components/mobile/redesign/ScanInput`) — the same bar plus a ZXing camera toggle |
 | Auto-focused, always ready, Enter to confirm | Auto-scan or tap capture, manual entry fallback |
 | Inline success/error feedback (ring + shake) | Viewfinder ring color + success checkmark / error X |
 | Results appear inline below input | Results appear as cards, camera closes on success |
@@ -386,16 +385,18 @@ Detection priority:
 | Secondary actions inline | Secondary actions in overflow menu (`...`) |
 | Hover states | Active/press states, `whileTap` scale feedback |
 
-### Mobile Touch Tokens (`tokens/touch.ts`)
+### Mobile Touch Targets
 
-- `touchTarget.min: 44px` — absolute minimum tappable area (iOS HIG)
-- `touchTarget.comfortable: 48px` — standard action buttons
-- `touchTarget.large: 56px` — FABs, primary CTAs
-- `safeArea.*` — `env(safe-area-inset-*)` for notch/home-bar devices
-- `mobileDensity.*` — promoted px/py/gap/minH for mobile rows
-- `mobileIconSize.*` — consistent icon sizing (nav: 24px, toolbar: 20px, fab: 24px)
-- `bottomNav.height: 56px` — bottom navigation height
-- `fab.size: 56px` — floating action button diameter
+`tokens/touch.ts` is **retired**; a control owns its own hit box:
+
+- `IconButton size="touch"` (`h-11 w-11`) — the 44px iOS-HIG tap floor, and the only
+  way to spell it. Never a hand-set `h-N w-N` on the button (guard:
+  `control-size-tokens.guard.test.ts`).
+- `Button` promotes its own sizes on mobile via `useUIModeOptional()`.
+- Safe-area insets are applied by the shell that owns the edge
+  (`RedesignedMobileShell` / `MobileTopBar`), not by a shared token module.
+- Spacing is the density-aware scale (`tokens/spacing.mjs`, `calc(rem × var(--cf-density))`),
+  so mobile rows tighten through `data-density` rather than a parallel `mobileDensity.*` map.
 
 ### Mobile Motion Presets (`foundations/motion-framer.ts`)
 
@@ -406,22 +407,22 @@ Mobile-specific additions to the existing motion system:
 
 ### Mobile Icon UX Rules
 
-- **Primary actions** = icon + optional short label (`MobileActionButton` extended FAB)
+- **Primary actions** = icon + optional short label
 - **Bottom nav** = icon + 9px uppercase label (always visible, per iOS HIG)
 - **Secondary actions** = overflow menu (`...` icon) on mobile, inline on desktop
-- **Toolbar** = max 2 trailing icon buttons (44px touch targets)
+- **Toolbar** = max 2 trailing icon buttons (`IconButton size="touch"`)
 - **Accessibility**: all icon-only buttons require `ariaLabel`; desktop adds `title` for tooltip hover
 
 ### Accessibility & Usability
 
 **Mobile-specific:**
 - All tappable elements meet 44px minimum (enforced by `mobileDensity` and `PrimaryButton` size promotion)
-- Safe-area-inset handling in `MobileShell`, `MobileNavBar`, `ScanCameraMobile`
-- `prefers-reduced-motion` respected: `UIModeProvider.prefersReducedMotion` flag
-- Camera permission denied: graceful fallback to manual text entry in `ScanCameraMobile`
+- Safe-area-inset handling in `RedesignedMobileShell` / `MobileTopBar`
+- `prefers-reduced-motion` respected: app-wide `<MotionConfig reducedMotion="user">` (`ReducedMotionProvider`)
+- Camera permission denied: graceful fallback to manual text entry in `ScanInput`
 
 **Desktop scanning:**
-- `ScanInputDesktop` auto-focuses on mount, window refocus, and after each scan submission
+- `StationScanBar` auto-focuses on mount, window refocus, and after each scan submission; the global focus hotkey is `DEFAULT_FOCUS_SCAN_HOTKEY`
 - Visual confirmation: green ring pulse (success), red ring + shake (error)
 - Enter key hint badge always visible
 
@@ -432,24 +433,24 @@ design-system/
 ├── providers/
 │   ├── UIModeProvider.tsx    — React context: mode, capabilities, override
 │   └── index.ts
-├── tokens/
-│   └── touch.ts              — Touch targets, safe areas, mobile density, icon sizes
 ├── foundations/
 │   └── motion-framer.ts      — Extended with framerDurationMobile, framerTransitionMobile, framerPresenceMobile
 ├── primitives/
-│   └── PrimaryButton.tsx     — Mode-aware button (auto-promotes touch targets on mobile)
-├── components/
-│   ├── ResponsiveShell.tsx   — Auto-selects DesktopShell or MobileShell
-│   ├── desktop/
-│   │   ├── DesktopShell.tsx  — Sidebar + main content frame
-│   │   └── ScanInputDesktop.tsx — Keyboard/scanner barcode input
-│   └── mobile/
-│       ├── MobileShell.tsx       — Toolbar + content + bottom dock + nav
-│       ├── MobileNavBar.tsx      — Bottom tab navigation
-│       ├── MobileActionButton.tsx — Floating action button (FAB)
-│       ├── MobileToolbar.tsx     — Top app bar
-│       └── ScanCameraMobile.tsx  — Fullscreen camera scanner
+│   ├── Button.tsx            — Mode-aware button (auto-promotes touch targets on mobile)
+│   └── IconButton.tsx        — Owns the hit box via `size`; `size="touch"` is the 44px floor
+└── components/
+    └── RouteShell.tsx        — Mode-aware route frame
 ```
+
+The mobile app shell is **not** in the design system — it lives with its routes at
+`@/components/mobile/redesign/` (`RedesignedMobileShell` · `MobileTopBar` ·
+`MobileSidebarDrawer` · `ScanInput`), mounted by `src/app/m/(shell)/layout.tsx`.
+Desktop framing is `ResponsiveLayout` + the MasterNav spine.
+
+> **Retired 2026-08-07.** The `ResponsiveShell` / `desktop/` / `mobile/` shell family
+> and `tokens/touch.ts` were deleted — a pre-flush-square generation superseded by the
+> components above. Nothing imported them; the barrel was the only thing keeping them
+> reachable. Do not reintroduce a second shell family beside the live one.
 
 ## Next Integration Step
 

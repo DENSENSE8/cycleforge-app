@@ -14,7 +14,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 import { RECEIVING_TYPES } from '@/lib/receiving/receiving-type-meta';
-import type { ClaimSeverity, ClaimType } from '@/lib/receiving-claim-type';
+import type { ClaimType } from '@/lib/receiving-claim-type';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pic
 // off automatically when the operator scans / marks-received (workflow
 // advances past EXPECTED or quantity_received goes positive).
 export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'incoming', label: 'Incoming',     icon: RECEIVING_NAV_ICONS.incoming },
+  { id: 'incoming', label: 'Inbound',      icon: RECEIVING_NAV_ICONS.incoming },
   { id: 'triage',   label: 'Arrival',    icon: RECEIVING_NAV_ICONS.triage },
   { id: 'receive',  label: 'Unbox',        icon: RECEIVING_NAV_ICONS.receive },
   { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_NAV_ICONS.pickup },
@@ -62,7 +62,7 @@ export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
  * nav within the same carton. PO item notes live in DB (`receiving_lines.notes`)
  * per line, not here.
  */
-export const RECEIVING_LINE_DETAILS_STORAGE_KEY = (
+const RECEIVING_LINE_DETAILS_STORAGE_KEY = (
   receivingId: number,
   orgId?: string | null,
 ) => {
@@ -74,7 +74,7 @@ export const RECEIVING_LINE_DETAILS_STORAGE_KEY = (
 const LEGACY_RECEIVING_LINE_DETAILS_STORAGE_KEY = (receivingId: number) =>
   `receiving.sidebar.lineDetails.v1:${receivingId}`;
 
-export type ReceivingLineDetailScratch = {
+type ReceivingLineDetailScratch = {
   zendesk: string;
   listing: string;
   /** Extra carrier refs for multi-piece POs; primary tracking still PATCHes shipment. */
@@ -161,24 +161,11 @@ export type PoContext = {
 
 // ── Platform + type labels ──────────────────────────────────────────────────
 
-export const RETURN_PLATFORM_LABELS: Record<string, string> = {
-  AMZ: 'Amazon',
-  EBAY_DRAGONH: 'eBay (DH)',
-  EBAY_USAV: 'eBay',
-  EBAY_MK: 'eBay (MK)',
-  FBA: 'FBA',
-  WALMART: 'Walmart',
-  ECWID: 'Ecwid',
-};
-
 /** Built-in type pills — derived from the receiving-type SoT (incl. Repair). */
 export const RECEIVING_TYPE_OPTS = RECEIVING_TYPES.map((t) => ({
   value: t.value,
   label: t.label,
 }));
-
-/** Carton-level default types the carton pill can set (PICKUP is a carton source, not a pill type). */
-export const CARTON_INTAKE_TYPES = ['PO', 'RETURN', 'REPAIR', 'TRADE_IN'] as const;
 
 // Pill options + printed-label map both derive from the platform SoT so a
 // platform never reads two ways across surfaces. Add a platform in
@@ -188,10 +175,6 @@ export const SOURCE_PLATFORM_OPTS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Unknown' },
   ...SOURCE_PLATFORMS.map((p) => ({ value: p.value, label: p.label })),
 ];
-
-export const SOURCE_PLATFORM_LABELS: Record<string, string> = Object.fromEntries(
-  SOURCE_PLATFORMS.map((p) => [p.value, p.label]),
-);
 
 /**
  * Detect a source_platform value from a listing URL's hostname.
@@ -257,44 +240,6 @@ export function mapApiLineToPoSummary(l: {
   };
 }
 
-export function platformLabel(
-  pkg: ReceivingPackageMeta | null,
-  lineReceivingType: string | null | undefined,
-): string {
-  const override = (pkg?.source_platform || '').trim().toLowerCase();
-  if (override) return SOURCE_PLATFORM_LABELS[override] ?? override;
-  const t = String(lineReceivingType || 'PO').trim().toUpperCase();
-  if (t === 'PICKUP') return 'Local pickup';
-  if (pkg?.is_return && pkg.return_platform) {
-    return RETURN_PLATFORM_LABELS[pkg.return_platform] ?? pkg.return_platform.replace(/_/g, ' ');
-  }
-  if (pkg?.is_return) return 'Return';
-  return 'Unknown';
-}
-
-export function formatPackageUnboxDate(pkg: ReceivingPackageMeta | null): string {
-  const raw = pkg?.unboxed_at || pkg?.received_at || pkg?.created_at;
-  if (!raw) return '—';
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
-}
-
-export function resolvePoScanValue(
-  line: PoLineSummary | null | undefined,
-  poIds: string[],
-  receivingId?: number | null,
-): string {
-  const fromLine = (line?.zoho_purchaseorder_number || '').trim();
-  if (fromLine) return fromLine;
-  const fromIds = (poIds[0] || '').trim();
-  if (fromIds) return fromIds;
-  const fromLineId = (line?.zoho_purchaseorder_id || '').trim();
-  if (fromLineId) return fromLineId;
-  if (receivingId != null) return `RCV-${receivingId}`;
-  return '';
-}
-
 // ── Scan / exception types ──────────────────────────────────────────────────
 
 export function randomId(): string {
@@ -336,24 +281,6 @@ export function receivingShareUrl(receivingId: number, lineId?: number): string 
 }
 
 /** Short human-facing label for a listing URL (host + clipped path); not for navigation. */
-export function listingLinkPreview(raw: string): string {
-  const t = raw.trim();
-  if (!t) return '';
-  try {
-    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
-    const u = new URL(withProto);
-    const host = u.hostname.replace(/^www\./i, '');
-    const path = `${u.pathname}${u.search}`;
-    if (path && path !== '/') {
-      const clipped = path.length > 22 ? `${path.slice(0, 18)}…` : path;
-      return `${host}${clipped}`;
-    }
-    return host || t;
-  } catch {
-    return t.length > 32 ? `${t.slice(0, 28)}…` : t;
-  }
-}
-
 // ── Select-line event payload ───────────────────────────────────────────────
 
 /**
@@ -405,8 +332,6 @@ export function readSelectLineDetail(
 
 export const SELECT_CLASS =
   'w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
-export const INPUT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
 
 // ── Type scale (sidebar + workspace share this) ─────────────────────────────
 /**
@@ -420,168 +345,26 @@ export const INPUT_CLASS =
  *   TITLE    14/extrabold/snug   — product title (visual anchor of Item lane)
  */
 
-export const TYPE_PRODUCT_TITLE_CLASS =
-  'text-sm font-semibold leading-snug tracking-tight text-text-default break-words';
-
-export const TYPE_PRODUCT_TITLE_COMPACT_CLASS =
-  'text-sm font-semibold leading-snug tracking-tight text-text-default break-words line-clamp-3';
-
-export const TYPE_SECTION_TITLE_CLASS =
-  'shrink-0 text-role-micro uppercase tracking-wider';
-
-export const TYPE_FIELD_LABEL_CLASS =
+const TYPE_FIELD_LABEL_CLASS =
   'block text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
-
-export const TYPE_HEADER_SUMMARY_CLASS =
-  'inline-flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-1 gap-y-0.5 text-role-eyebrow font-semibold leading-none tracking-wide text-text-muted';
-
-export const TYPE_INPUT_INLINE_CLASS =
-  'text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint';
 
 // ── Flow-section class + tone tokens ────────────────────────────────────────
 
-export const FLOW_SECTION_BTN_CLASS =
-  'flex min-h-[28px] w-full items-center gap-2 px-2 py-0.5 text-left transition-colors hover:bg-surface-hover';
-
-export const FLOW_SECTION_TITLE_CLASS = TYPE_SECTION_TITLE_CLASS;
-export const FLOW_SECTION_SUMMARY_CLASS = TYPE_HEADER_SUMMARY_CLASS;
 /** Back-compat alias — field labels above inputs. */
 export const FLOW_SECTION_LABEL = TYPE_FIELD_LABEL_CLASS;
 
-export const FLOW_SECTION_SUMMARY_SEP_CLASS = 'shrink-0 select-none font-normal text-text-faint';
-
 export const RECEIVING_SCAN_RULE_LINE_CLASS =
   '-mx-3 h-px shrink-0 bg-surface-strong transition-colors group-focus-within:bg-blue-500';
-
-export const RECEIVING_TRAIL_SLOT_CLASS =
-  'flex h-[14px] w-[14px] shrink-0 items-center justify-center';
-
-/** Fill a {@link RECEIVING_TRAIL_SLOT_CLASS} — keeps `w-full` inside the 14×14 box. */
-export const RECEIVING_TRAIL_BTN_CLASS =
-  'flex h-full w-full items-center justify-center rounded-sm transition-colors duration-100 ease-out active:scale-95';
-
-export const TRACKING_ROW_LEADING_ICON_CLASS =
-  'shrink-0 text-text-faint transition-colors duration-100 ease-out group-focus-within:text-text-default';
 
 export const RECEIVING_CHIP_EDIT_BTN_CLASS =
   'flex size-[22px] shrink-0 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-default active:scale-95';
 
 // ── Section tone tokens ─────────────────────────────────────────────────────
-/**
- * Per-section tone tokens. Color lives ONLY on the dropdown header (trigger
- * row) — body + container stay neutral white so the dense fields read clean.
- */
-
-export type FlowSectionTone = 'shipment' | 'item' | 'support' | 'staff';
-
-export const FLOW_SECTION_TONE_STYLES: Record<
-  FlowSectionTone,
-  { header: string; rail: string; title: string }
-> = {
-  shipment: {
-    header: 'bg-red-50 hover:bg-red-100/70',
-    rail: 'bg-red-500',
-    title: 'text-red-900',
-  },
-  item: {
-    header: 'bg-blue-50 hover:bg-blue-100/70',
-    rail: 'bg-blue-500',
-    title: 'text-blue-900',
-  },
-  support: {
-    header: 'bg-orange-50 hover:bg-orange-100/70',
-    rail: 'bg-orange-500',
-    title: 'text-orange-900',
-  },
-  // Staff/Scanned/Received header — emerald rail signals an "actor + time"
-  // record (who scanned, when received) versus the read/edit data lanes.
-  staff: {
-    header: 'bg-emerald-50 hover:bg-emerald-100/70',
-    rail: 'bg-emerald-500',
-    title: 'text-emerald-900',
-  },
-};
-
-// ─── Receiving variant theme ─────────────────────────────────────────────────
-// Drives accent color across the workspace surface: context-card chip,
-// sticky-action-bar CTA tone, focus-ring tint on inputs. Sourced from
-// `row.receiving_type` via `receivingVariantFromType`.
-
-export type ReceivingVariant = 'PO' | 'RETURN' | 'TRADE_IN' | 'PICKUP' | 'OTHER';
-
-export interface ReceivingVariantStyle {
-  tone: 'blue' | 'red' | 'orange' | 'emerald' | 'gray';
-  label: string;
-  /** Chip pill — e.g. variant badge in the context card. */
-  chip: string;
-  /** Solid CTA background (with hover). */
-  cta: string;
-  /** Focus ring for inputs (cosmetic). */
-  focusRing: string;
-  /** Icon container background (header variant icon). */
-  iconBg: string;
-}
-
-export const RECEIVING_VARIANT_THEME: Record<ReceivingVariant, ReceivingVariantStyle> = {
-  PO: {
-    tone: 'blue',
-    label: 'PO',
-    chip: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200',
-    cta: 'bg-blue-600 hover:bg-blue-700',
-    focusRing: 'focus:ring-blue-500/30 focus:border-blue-500',
-    iconBg: 'bg-blue-600',
-  },
-  RETURN: {
-    tone: 'red',
-    label: 'Return',
-    chip: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200',
-    cta: 'bg-rose-600 hover:bg-rose-700',
-    focusRing: 'focus:ring-rose-500/30 focus:border-rose-500',
-    iconBg: 'bg-rose-600',
-  },
-  TRADE_IN: {
-    tone: 'orange',
-    label: 'Trade In',
-    chip: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
-    cta: 'bg-amber-600 hover:bg-amber-700',
-    focusRing: 'focus:ring-amber-500/30 focus:border-amber-500',
-    iconBg: 'bg-amber-600',
-  },
-  PICKUP: {
-    tone: 'emerald',
-    label: 'Pickup',
-    chip: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
-    cta: 'bg-emerald-600 hover:bg-emerald-700',
-    focusRing: 'focus:ring-emerald-500/30 focus:border-emerald-500',
-    iconBg: 'bg-emerald-600',
-  },
-  OTHER: {
-    tone: 'gray',
-    label: 'Other',
-    chip: 'bg-surface-sunken text-text-muted ring-1 ring-inset ring-border-soft',
-    // ds-allow-raw-neutral: identity/tone hue — OTHER's gray among blue/rose/amber/emerald variants, not chrome
-    cta: 'bg-gray-700 hover:bg-gray-800',
-    focusRing: 'focus:ring-gray-400/30 focus:border-border-emphasis', // ds-allow-raw-neutral: identity/tone hue
-    iconBg: 'bg-gray-700', // ds-allow-raw-neutral: identity/tone hue
-  },
-};
-
-export function receivingVariantFromType(
-  receivingType: string | null | undefined,
-): ReceivingVariant {
-  const v = String(receivingType ?? '').trim().toUpperCase();
-  if (v === 'PO' || v === 'PURCHASE_ORDER' || v === 'PURCHASEORDER') return 'PO';
-  if (v === 'RETURN' || v === 'RETURNS') return 'RETURN';
-  if (v === 'TRADE_IN' || v === 'TRADEIN' || v === 'TRADE-IN') return 'TRADE_IN';
-  if (v === 'PICKUP' || v === 'LOCAL_PICKUP' || v === 'LOCALPICKUP') return 'PICKUP';
-  return 'OTHER';
-}
-
 // ─── Claim modal ────────────────────────────────────────────────────────────
-// ClaimType / ClaimSeverity live in `@/lib/zendesk-claim-template` (SoT).
+// ClaimType lives in `@/lib/receiving-claim-type` (SoT).
 // Pill chrome for ReceivingClaimModal lives here.
 
-export type { ClaimType, ClaimSeverity } from '@/lib/receiving-claim-type';
+export type { ClaimType } from '@/lib/receiving-claim-type';
 
 export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
   value: ClaimType;
@@ -604,17 +387,6 @@ export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
   { value: 'unfound',          label: 'Unfound',          active: 'bg-yellow-600 text-white',  inactive: 'bg-yellow-50 text-yellow-700' },
   // Repair routing — entry point for warranty / in-house bench work.
   { value: 'repair_service',   label: 'Repair service',   active: 'bg-sky-600 text-white',     inactive: 'bg-sky-50 text-sky-700' },
-];
-
-export const CLAIM_SEVERITY_OPTIONS: ReadonlyArray<{
-  value: ClaimSeverity;
-  label: string;
-  active: string;
-  inactive: string;
-}> = [
-  { value: 'low',    label: 'Low',    active: 'bg-emerald-600 text-white', inactive: 'bg-emerald-50 text-emerald-700' },
-  { value: 'medium', label: 'Medium', active: 'bg-amber-600 text-white',   inactive: 'bg-amber-50 text-amber-700' },
-  { value: 'high',   label: 'High',   active: 'bg-rose-600 text-white',    inactive: 'bg-rose-50 text-rose-700' },
 ];
 
 import { normalizeScanKey } from '@/lib/receiving/scan/normalize';

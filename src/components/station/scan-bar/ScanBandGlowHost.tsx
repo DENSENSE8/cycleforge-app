@@ -42,7 +42,7 @@ import {
 } from '@/lib/scan-feedback/visual';
 import { cn } from '@/utils/_cn';
 
-/** Match ScanInputDesktop feedback auto-reset (~800ms). */
+/** Scan feedback auto-reset window (~800ms). */
 const OUTCOME_FLASH_MS = 800;
 
 const OUTCOME_FLASH_CLASS: Record<ScanVisualKind, string> = {

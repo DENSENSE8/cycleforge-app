@@ -30,7 +30,7 @@ export interface IntakeColumns {
   /** Per-line on `receiving_lines`; carried as a hint for added items. */
   receiving_type: 'PO' | 'RETURN' | 'TRADE_IN' | 'PICKUP' | null;
   is_return: boolean;
-  /** Key of RETURN_PLATFORM_LABELS. */
+  /** Value of the `return_platform_enum` DB type. */
   return_platform: string | null;
   /** Value of SOURCE_PLATFORM_OPTS. */
   source_platform: string | null;
@@ -99,8 +99,8 @@ export const INTAKE_CLASSIFICATION_OPTS: ReadonlyArray<{
   tone: IntakeTone;
 }> = [
   { value: 'UNKNOWN', label: 'Unknown', short: '—', tone: 'slate' },
-  { value: 'PO', label: 'PO', short: 'PO', tone: 'blue' },
-  { value: 'FBA_RETURN', label: 'FBA Return', short: 'FBA', tone: 'rose' },
+  { value: 'PO', label: 'Purchase order', short: 'PO', tone: 'blue' },
+  { value: 'FBA_RETURN', label: 'Amazon return', short: 'AMZ', tone: 'rose' },
   { value: 'AMAZON_RETURN', label: 'Amazon Return', short: 'AMZ', tone: 'rose' },
   { value: 'EBAY_RETURN_DH', label: 'eBay Return (DH)', short: 'eBay·DH', tone: 'rose' },
   { value: 'EBAY_RETURN_USAV', label: 'eBay Return', short: 'eBay', tone: 'rose' },
@@ -118,12 +118,12 @@ export function classificationLabel(c: IntakeClassification): string {
  * Platform-only identity for a return classification — same platform, without
  * the trailing "Return" word. Used by `zendesk-claim-subject-identity.ts` when
  * the claim TYPE segment already says "Return", so the ticket subject reads
- * "FBA // Return // TRK#…" instead of duplicating it as
- * "FBA Return // Return // TRK#…". Non-return codes (PO/TRADE_IN/LOCAL_PICKUP/
+ * "Amazon // Return // TRK#…" instead of duplicating it as
+ * "Amazon return // Return // TRK#…". Non-return codes (PO/TRADE_IN/LOCAL_PICKUP/
  * UNKNOWN) never reach that dedup path, so they fall back to the full label.
  */
 const RETURN_CLASSIFICATION_PLATFORM_LABEL: Partial<Record<IntakeClassification, string>> = {
-  FBA_RETURN: 'FBA',
+  FBA_RETURN: 'Amazon',
   AMAZON_RETURN: 'Amazon',
   EBAY_RETURN_DH: 'eBay (DH)',
   EBAY_RETURN_USAV: 'eBay',

@@ -36,10 +36,9 @@ const SOURCE_PLATFORMS = new Set([
 const INTAKE_TYPES = new Set(['PO', 'RETURN', 'REPAIR', 'TRADE_IN']);
 
 // Return-platform vocabulary (receiving.return_platform). Mirrors the
-// return_platform_enum DB type and the RETURN_PLATFORM_LABELS keys in
-// src/components/sidebar/receiving/receiving-sidebar-shared.ts. Kept as a local
-// Set so the API route stays independent of the UI layer, matching the
-// SOURCE_PLATFORMS / INTAKE_TYPES convention above.
+// return_platform_enum DB type. Kept as a local Set so the API route stays
+// independent of the UI layer, matching the SOURCE_PLATFORMS / INTAKE_TYPES
+// convention above.
 const RETURN_PLATFORMS = new Set([
   'AMZ',
   'EBAY_DRAGONH',

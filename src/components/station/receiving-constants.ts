@@ -4,79 +4,12 @@
 import type { ComponentType } from 'react';
 import { WORKFLOW_STAGES, workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { PackageCheck, Clock, Truck, Package } from '@/components/Icons';
-import {
-  CONDITION_GRADES,
-  CONDITION_LABELS,
-  conditionLabel,
-  conditionGradeTableLabel,
-} from '@/lib/conditions';
+import { CONDITION_LABELS, conditionGradeTableLabel } from '@/lib/conditions';
 
 // Condition-grade labels live in one place now — see src/lib/conditions.ts.
 // Re-exported here so existing `from '@/components/station/receiving-constants'`
 // import sites keep working.
-export { conditionLabel, conditionGradeTableLabel };
-
-// ─── Dropdown option arrays ───────────────────────────────────────────────────
-
-export const QA_OPTS = [
-  { value: 'PENDING',           label: 'Pending' },
-  { value: 'PASSED',            label: 'Passed' },
-  { value: 'FAILED_DAMAGED',    label: 'Failed Damaged' },
-  { value: 'FAILED_INCOMPLETE', label: 'Failed Incomplete' },
-  { value: 'FAILED_FUNCTIONAL', label: 'Failed Functional' },
-  { value: 'HOLD',              label: 'Hold' },
-];
-
-export const DISPOSITION_OPTS = [
-  { value: 'ACCEPT', label: 'Accept' },
-  { value: 'HOLD',   label: 'Hold' },
-  { value: 'RTV',    label: 'Return to Seller' },
-  { value: 'SCRAP',  label: 'Claim' },
-  { value: 'REWORK', label: 'Repair' },
-];
-
-export const CARRIER_OPTS = [
-  'Unknown', 'UPS', 'FedEx', 'USPS', 'AMAZON', 'DHL', 'AliExpress', 'GoFo', 'UniUni', 'LOCAL',
-].map((v) => ({ value: v, label: v }));
-
-// For the bulk-scan carrier pill selector (empty value = auto-detect)
-export const RECEIVING_CARRIERS = [
-  { value: '',           label: 'Auto' },
-  { value: 'UPS',        label: 'UPS' },
-  { value: 'FEDEX',      label: 'FedEx' },
-  { value: 'USPS',       label: 'USPS' },
-  { value: 'AMAZON',     label: 'AMZ' },
-  { value: 'DHL',        label: 'DHL' },
-  { value: 'UNIUNI',     label: 'UniUni' },
-  { value: 'GOFO',       label: 'GoFo' },
-  { value: 'ALIEXPRESS', label: 'AliEx' },
-];
-
-export const CONDITION_OPTS = CONDITION_GRADES.map((v) => ({
-  value: v,
-  label: conditionLabel(v, 'option'),
-}));
-
-// ─── Pill-button option arrays (active/inactive Tailwind classes) ─────────────
-
-export const QA_BTN_OPTS = [
-  // ds-allow-raw-neutral: identity/tone hue — PENDING's gray among colored verdict pills, not chrome
-  { value: 'PENDING',           label: 'Pending',    active: 'bg-gray-600 text-white',      inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'PASSED',            label: 'Passed',     active: 'bg-emerald-500 text-white',   inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'FAILED_DAMAGED',    label: 'Damaged',    active: 'bg-red-500 text-white',       inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'FAILED_INCOMPLETE', label: 'Incomplete', active: 'bg-orange-400 text-white',    inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'FAILED_FUNCTIONAL', label: 'Functional', active: 'bg-rose-500 text-white',      inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'HOLD',              label: 'Hold',       active: 'bg-yellow-400 text-text-default', inactive: 'bg-surface-sunken text-text-soft' },
-];
-
-export const DISP_BTN_OPTS = [
-  { value: 'ACCEPT', label: 'Accept', active: 'bg-emerald-500 text-white',      inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'HOLD',   label: 'Hold',   active: 'bg-yellow-400 text-text-default',    inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'RTV',    label: 'RTV',    active: 'bg-purple-500 text-white',       inactive: 'bg-surface-sunken text-text-soft' },
-  // ds-allow-raw-neutral: identity/tone hue — SCRAP's gray among colored disposition pills, not chrome
-  { value: 'SCRAP',  label: 'Scrap',  active: 'bg-gray-700 text-white',         inactive: 'bg-surface-sunken text-text-soft' },
-  { value: 'REWORK', label: 'Rework', active: 'bg-blue-500 text-white',         inactive: 'bg-surface-sunken text-text-soft' },
-];
+export { conditionGradeTableLabel };
 
 // ─── Badge class maps ─────────────────────────────────────────────────────────
 
@@ -87,14 +20,6 @@ export const QA_BADGE: Record<string, string> = {
   FAILED_INCOMPLETE: 'bg-orange-100 text-orange-600',
   FAILED_FUNCTIONAL: 'bg-rose-100 text-rose-700',
   HOLD:              'bg-yellow-100 text-yellow-700',
-};
-
-export const DISP_BADGE: Record<string, string> = {
-  ACCEPT: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  HOLD:   'bg-yellow-50 text-yellow-700 border-yellow-200',
-  RTV:    'bg-purple-50 text-purple-700 border-purple-200',
-  SCRAP:  'bg-surface-sunken text-text-soft border-border-soft',
-  REWORK: 'bg-blue-50 text-blue-700 border-blue-200',
 };
 
 // Badge tone per workflow status, derived from the single lifecycle registry
@@ -125,7 +50,7 @@ export const COND_LABEL: Record<string, string> = CONDITION_LABELS.compact;
 
 /** Soft pill tone per condition grade. Shared by table rows and the scanned
  *  line/receipt detail headers so condition reads the same color everywhere. */
-export const CONDITION_BADGE: Record<string, string> = {
+const CONDITION_BADGE: Record<string, string> = {
   BRAND_NEW:   'bg-yellow-100 text-yellow-700',
   LIKE_NEW:    'bg-emerald-100 text-emerald-700',
   REFURBISHED: 'bg-teal-100 text-teal-700',
@@ -143,7 +68,7 @@ export function conditionBadgeTone(code: string | null | undefined): string {
 /** Soft pill tone per serial-unit lifecycle status (RECEIVED → … → SHIPPED).
  *  This is the unit domain, distinct from receiving workflow_status. Shared by
  *  the desktop /serial/[id] page and the mobile /m/u/[id] page. */
-export const UNIT_STATUS_BADGE: Record<string, string> = {
+const UNIT_STATUS_BADGE: Record<string, string> = {
   UNKNOWN:  'bg-surface-sunken text-text-muted',
   LABELED:  'bg-amber-100 text-amber-700',
   RECEIVED: 'bg-amber-100 text-amber-800',
@@ -169,24 +94,23 @@ export function unitStatusBadgeTone(status: string | null | undefined): string {
  * complete — a failed line must never read as success. Unlike the registry
  * `workflowStageDot`, this folds in qty for in-flight stages.
  */
+/**
+ * Lifecycle status-dot color. Emerald means terminal Received / Passed —
+ * never qty-complete alone (Unboxed ≠ Received: UNBOXED at floor 1/1 stays indigo).
+ *
+ * `qtyReceived` / `qtyExpected` are accepted for call-site compatibility but do
+ * not drive emerald; stage vocabulary owns the tone.
+ */
 export function getStatusDotBg(
   status: string | null | undefined,
-  qtyReceived?: number,
-  qtyExpected?: number | null,
+  _qtyReceived?: number,
+  _qtyExpected?: number | null,
 ): string {
   const value = String(status || '').trim().toUpperCase();
-  // Terminal first — qty-complete must not paint rose/purple/slate dispositions emerald.
+  // Terminal dispositions first — never overridden by qty.
   if (value.startsWith('FAILED')) return 'bg-rose-500';
   if (value === 'SCRAP') return 'bg-slate-600';
   if (value === 'RTV') return 'bg-purple-500';
-  if (
-    qtyExpected != null &&
-    qtyExpected > 0 &&
-    qtyReceived != null &&
-    qtyReceived >= qtyExpected
-  ) {
-    return 'bg-emerald-500';
-  }
   if (value === 'EXPECTED') return 'bg-amber-400';
   if (value === 'ARRIVED' || value === 'MATCHED') return 'bg-blue-500';
   if (value === 'UNBOXED') return 'bg-indigo-500';
