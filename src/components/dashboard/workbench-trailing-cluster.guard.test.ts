@@ -80,7 +80,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/receiving/pickup/grid/PickupGridColumnHeader.tsx',
-    'src/components/receiving/pickup/grid/PickupGridView.tsx',
+    'src/components/receiving/pickup/PickupWorkspace.tsx',
   ],
   [
     'src/components/products/catalog/catalog-grid/CatalogGridColumnHeader.tsx',
