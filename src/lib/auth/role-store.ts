@@ -91,21 +91,6 @@ async function getRolesSnapshot(): Promise<RolesSnapshot> {
   return inflightRoles;
 }
 
-export async function loadAllRoles(): Promise<ReadonlyArray<RoleRow>> {
-  const snap = await getRolesSnapshot();
-  return snap.orderedByPosition;
-}
-
-export async function loadRoleById(id: number): Promise<RoleRow | null> {
-  const snap = await getRolesSnapshot();
-  return snap.byId.get(id) ?? null;
-}
-
-export async function loadRoleByKey(key: string): Promise<RoleRow | null> {
-  const snap = await getRolesSnapshot();
-  return snap.byKey.get(key) ?? null;
-}
-
 export function invalidateRoleCache(): void {
   rolesCache = null;
 }
@@ -135,7 +120,7 @@ const staffRolesCache = new Map<number, StaffAssignmentSnapshot>();
  * path), so a security-filtered miss can never poison the unfiltered hot path.
  * When `orgId` is omitted the behavior is byte-identical to before.
  */
-export async function loadStaffRoleIds(staffId: number, orgId?: OrgId): Promise<number[]> {
+async function loadStaffRoleIds(staffId: number, orgId?: OrgId): Promise<number[]> {
   if (orgId) {
     const r = await tenantQuery<{ role_id: number }>(
       orgId,
@@ -200,11 +185,3 @@ export async function effectivePermissionsForStaff(
   return computeEffectivePermissions(roles, overrides.added ?? [], overrides.removed ?? []);
 }
 
-/**
- * Primary role for a staff (used for legacy `staff.role` consumers and the
- * avatar theme color). Returns null if the staff has no role assignments.
- */
-export async function primaryRoleForStaff(staffId: number, orgId?: OrgId): Promise<RoleRow | null> {
-  const roles = await loadRolesForStaff(staffId, orgId);
-  return roles[0] ?? null;
-}

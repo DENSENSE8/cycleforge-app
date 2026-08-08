@@ -28,15 +28,9 @@
 import { queryOne } from '@/lib/neon-client';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import {
-  shortSku,
-  isoWeekParts,
-  parseUnitId,
-  describeUnitId,
-  formatUnitId,
-} from '@/lib/inventory/unit-id-format';
+import { shortSku, isoWeekParts, parseUnitId, formatUnitId } from '@/lib/inventory/unit-id-format';
 
-export { shortSku, isoWeekParts, parseUnitId, describeUnitId, formatUnitId };
+export { parseUnitId };
 
 /**
  * Allocate the next unit sequence for (sku_catalog_id, calendar_year) via
