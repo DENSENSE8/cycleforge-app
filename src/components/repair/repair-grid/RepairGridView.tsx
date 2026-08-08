@@ -1,22 +1,20 @@
 'use client';
 
 import { useCallback, useMemo, type RefObject } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import type { RowGroup } from '@/lib/group-rows';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import {
-  REPAIR_GRID_COLUMNS,
   type RepairGridColumn,
   type RepairGridColumnKey,
 } from '@/lib/repair/repair-grid-layout';
-import { makeRepairGridDescriptor } from './repair-grid-descriptor';
+import { REPAIR_TABLE_BINDING } from './repair-table-definition';
 import { RepairGridColumnHeader } from './RepairGridColumnHeader';
 import { RepairGridRow } from './RepairGridRow';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one repair queue, one Fields selection. */
-const REPAIR_TABLE_ID = 'repair' as const;
 
 interface RepairGridViewProps {
   /** Rows in display order (already sorted by the active column, or server order). */
@@ -58,7 +56,7 @@ export function RepairGridView({
   sort,
   dir,
   onSortChange,
-  columns = REPAIR_GRID_COLUMNS,
+  columns,
   scrollRef,
   className,
   columnTriggerPortalTarget,
@@ -107,11 +105,9 @@ export function RepairGridView({
   );
 
   return (
-    <LedgerGridSurface<RSRecord, RepairGridColumnKey, RepairGridColumn>
-      ariaLabel="Repair queue"
-      surface="sheet"
+    <NonlinearTableHost<RSRecord, RepairGridColumnKey, RepairGridColumn>
+      binding={REPAIR_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeRepairGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={records}
       getRowId={(r) => String(r.id)}
@@ -122,8 +118,6 @@ export function RepairGridView({
       emptyMessage={emptyMessage}
       scrollRef={scrollRef}
       className={className}
-      testId="repair-grid-body"
-      tableId={REPAIR_TABLE_ID}
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <RepairGridColumnHeader

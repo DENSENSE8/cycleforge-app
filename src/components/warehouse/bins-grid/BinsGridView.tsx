@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { RowGroup } from '@/lib/group-rows';
@@ -10,23 +10,17 @@ import {
   emitSelectionTotal,
   onToggleAll,
 } from '@/lib/selection/table-selection';
-import {
-  BINS_SELECTION_SCOPE,
-  makeBinsGridDescriptor,
-} from './bins-grid-descriptor';
+import { BINS_SELECTION_SCOPE } from './bins-grid-descriptor';
+import { BINS_TABLE_BINDING } from './bins-table-definition';
 import { BinsGridColumnHeader } from './BinsGridColumnHeader';
 import { BinsGridRow } from './BinsGridRow';
 import {
-  BINS_GRID_COLUMNS,
   defaultDirForBinsGridSort,
   isBinsGridSortable,
   type BinsGridColumn,
   type BinsGridColumnKey,
 } from './bins-grid-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
-
-/** Staff-prefs identity — one bins spreadsheet, one Fields selection. */
-const BINS_TABLE_ID = 'bins' as const;
 
 interface BinsGridViewProps {
   rows: BinsOverviewRow[];
@@ -36,10 +30,8 @@ interface BinsGridViewProps {
   onSelectChange: (next: Set<number>) => void;
   onRowClick: (row: BinsOverviewRow) => void;
   emptyMessage?: string;
-  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
+  /** FULL canonical column list — the host resolves visibility. */
   columns?: readonly BinsGridColumn[];
-  /** Sheets flush (Locations) vs framed card (legacy). */
-  surface?: 'framed' | 'sheet';
   /**
    * Band-3 triage controls slot — when set, the column-display (▦) trigger
    * portals there beside find / room filter instead of floating on the card corner.
@@ -103,8 +95,7 @@ export function BinsGridView({
   onSelectChange,
   onRowClick,
   emptyMessage = 'No bins match the current filters.',
-  columns = BINS_GRID_COLUMNS,
-  surface = 'framed',
+  columns,
   columnTriggerPortalTarget = null,
 }: BinsGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -187,10 +178,9 @@ export function BinsGridView({
   );
 
   return (
-    <LedgerGridSurface<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
-      ariaLabel="Warehouse bins"
+    <NonlinearTableHost<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
+      binding={BINS_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeBinsGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -200,9 +190,6 @@ export function BinsGridView({
       loading={loading}
       emptyMessage={emptyMessage}
       scrollRef={scrollRef}
-      testId="bins-grid-body"
-      tableId={BINS_TABLE_ID}
-      surface={surface}
       columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <BinsGridColumnHeader

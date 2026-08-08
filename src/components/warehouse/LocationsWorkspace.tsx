@@ -167,7 +167,6 @@ function BinsTabSheet({
         selected={reconciledSelected}
         onSelectChange={setSelected}
         onRowClick={(row) => setFlyoutRow(row)}
-        surface="sheet"
         columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
 

@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { BINS_TABLE_DEFINITION } from '@/components/warehouse/bins-grid/bins-table-definition';
 
 const ROOT = process.cwd();
 
@@ -31,8 +32,16 @@ describe('Locations Sheets flush mount', () => {
     assert.doesNotMatch(workspace, /WORKBENCH_CHROME_COLUMN/);
   });
 
-  it('Bins grid mounts surface="sheet"', () => {
-    assert.match(workspace, /surface=["']sheet["']/);
+  it('Bins grid mounts on a sheet-surface definition', () => {
+    // The shell recipe moved from a `surface="sheet"` prop on the <BinsTable>
+    // mount to the `warehouse.bins` definition (plan Phase 1, wave 3) — the dead
+    // `'framed'` path was removed with the override chain.
+    assert.equal(BINS_TABLE_DEFINITION.surface, 'sheet');
+    assert.doesNotMatch(
+      workspace,
+      /surface=/,
+      'LocationsWorkspace must not pass a surface prop — the definition owns it',
+    );
   });
 
   it('does not park KPI in a guttered mb-4 body island', () => {

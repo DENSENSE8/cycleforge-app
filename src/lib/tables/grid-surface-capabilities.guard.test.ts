@@ -277,7 +277,15 @@ const ROOT = resolve(import.meta.dirname, '../../..');
  * declaration IS the caller's. Anything else added here is a surface opting out
  * of the gate — say why in a comment or do not add it.
  */
-const MOUNT_EXEMPT = new Set(['src/design-system/components/grid/LedgerGridSurface.tsx']);
+const MOUNT_EXEMPT = new Set([
+  'src/design-system/components/grid/LedgerGridSurface.tsx',
+  // The registry host (plan Phase 1) is the same category as the surface above:
+  // it mounts the engine on behalf of a `TableSurfaceBinding` its caller
+  // supplies, so its capability declaration IS the caller's. It is exempt from
+  // naming a bag, NOT from the gate — the discovery regex below counts a
+  // `<NonlinearTableHost` mount, so a page binding still has to name one.
+  'src/components/tables/NonlinearTableHost.tsx',
+]);
 
 /**
  * Mount file → the surface name whose bag it renders under.
@@ -305,8 +313,19 @@ const MOUNTS: Record<string, string> = {
   'src/components/fba/FbaBoardTable.tsx': 'fba',
 };
 
-/** JSX mounts only — `<LedgerGrid`/`<LedgerGridSurface` opening a generic or a prop. */
-const MOUNT_RE = /<LedgerGrid(?:Surface)?[<\s/>]/;
+/**
+ * JSX mounts only — `<LedgerGrid` / `<LedgerGridSurface` / `<NonlinearTableHost`
+ * opening a generic or a prop.
+ *
+ * The host joined this regex when the definition registry landed (plan Phase 1).
+ * It has to: a page that mounts the host is still a grid surface, and if
+ * discovery only knew the engine's names then migrating a view onto the host
+ * would silently drop it out of the gate — the surface would keep rendering and
+ * the guard would go quiet, which is precisely the failure the discovery half
+ * was added to catch. What this guard pins is the invariant (no grid surface
+ * without a declared bag), not the mechanism that reaches it.
+ */
+const MOUNT_RE = /<(?:LedgerGrid(?:Surface)?|NonlinearTableHost)[<\s/>]/;
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {

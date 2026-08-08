@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { AllocationHit } from '@/lib/channel-allocation';
-import { makeReadyGridDescriptor } from './ready-grid-descriptor';
+import { READY_TABLE_BINDING } from './ready-table-definition';
 import { ReadyGridColumnHeader } from './ReadyGridColumnHeader';
 import {
   ReadyGridRow,
@@ -14,7 +14,6 @@ import {
   readyVerdictLabel,
 } from './ReadyGridRow';
 import {
-  READY_GRID_COLUMNS,
   defaultDirForReadyGridSort,
   isReadyGridSortable,
   type ReadyGridColumn,
@@ -23,7 +22,6 @@ import {
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one Ready spreadsheet, one Fields selection. */
-const READY_TABLE_ID = 'ready' as const;
 
 interface ReadyGridViewProps {
   rows: AllocationHit[];
@@ -96,7 +94,7 @@ export function ReadyGridView({
   emptyMessage,
   searchEmptyMessage,
   isSearching,
-  columns = READY_GRID_COLUMNS,
+  columns,
   columnTriggerPortalTarget = null,
 }: ReadyGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -137,11 +135,9 @@ export function ReadyGridView({
   );
 
   return (
-    <LedgerGridSurface<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
-      ariaLabel="Recently tested units"
-      surface="sheet"
+    <NonlinearTableHost<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
+      binding={READY_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeReadyGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.testingResultId)}
@@ -153,8 +149,6 @@ export function ReadyGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isSearching}
       scrollRef={scrollRef}
-      testId="ready-grid-body"
-      tableId={READY_TABLE_ID}
       columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <ReadyGridColumnHeader

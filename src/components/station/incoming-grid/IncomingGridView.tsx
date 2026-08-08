@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type RefObject } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
@@ -13,14 +13,13 @@ import {
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import {
-  INCOMING_GRID_COLUMNS,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
   type IncomingGridColumn,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/incoming-grid-layout';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
-import { makeIncomingGridDescriptor } from './incoming-grid-descriptor';
+import { INCOMING_TABLE_BINDING } from './incoming-table-definition';
 import { IncomingGridColumnHeader } from './IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from './IncomingGridGroupRow';
 
@@ -69,10 +68,12 @@ function poFoldKey(row: ReceivingLineRow): string {
 }
 
 /**
- * Incoming POS spreadsheet — receiving-domain adapter over {@link LedgerGrid}.
- * Unbox Sheets golden: flush `surface="sheet"` + click-select (decorative
- * check face when selected; row owns toggle); double-click opens the Incoming
- * inspector.
+ * Incoming POS spreadsheet — the `inbound.incoming` binding for
+ * {@link NonlinearTableHost}. Unbox Sheets golden: flush sheet plane +
+ * click-select (decorative check face when selected; row owns toggle);
+ * double-click opens the Incoming inspector. Shell recipe, prefs bucket, aria
+ * name and testid resolve from the definition; this file owns the feed, the
+ * PO-fold / day-band math, sort durability, and the renderers.
  */
 export function IncomingGridView({
   filteredGroupedRecords,
@@ -87,8 +88,8 @@ export function IncomingGridView({
   handleToggleRow,
   clickSelect = false,
   selectGutterChrome = 'always',
-  columns = INCOMING_GRID_COLUMNS,
-  tableId = 'incoming',
+  columns,
+  tableId,
   scrollRef,
   className,
   columnTriggerPortalTarget,
@@ -137,10 +138,9 @@ export function IncomingGridView({
   }, [filteredGroupedRecords, serverSorted, columnSort, sortDir]);
 
   return (
-    <LedgerGridSurface<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
-      ariaLabel="Incoming cartons"
+    <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+      binding={INCOMING_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeIncomingGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}
       sort={columnSort}
@@ -150,9 +150,7 @@ export function IncomingGridView({
       emptyMessage={emptyMessage}
       scrollRef={scrollRef}
       className={className}
-      testId="incoming-grid-body"
       tableId={tableId}
-      surface="sheet"
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <IncomingGridColumnHeader

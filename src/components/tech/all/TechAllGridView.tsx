@@ -1,20 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 import {
-  TECH_ALL_GRID_COLUMNS,
-  TECH_ALL_TABLE_ID,
   defaultDirForTechAllGridSort,
   isTechAllGridSortable,
   type TechAllGridColumn,
   type TechAllGridColumnKey,
 } from '@/lib/tech/tech-all-grid-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
-import { makeTechAllGridDescriptor } from './tech-all-grid-descriptor';
+import { TECH_ALL_TABLE_BINDING } from './tech-all-table-definition';
 import { TechAllGridColumnHeader } from './TechAllGridColumnHeader';
 import { TechAllGridRow } from './TechAllGridRow';
 
@@ -68,7 +66,7 @@ export function TechAllGridView({
   searchEmptyMessage,
   isSearching,
   onOpen,
-  columns = TECH_ALL_GRID_COLUMNS,
+  columns,
   columnTriggerPortalTarget,
 }: TechAllGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -103,10 +101,9 @@ export function TechAllGridView({
   }, [rows, columnSort, sortDir]);
 
   return (
-    <LedgerGridSurface<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
-      ariaLabel="Tech All triage"
+    <NonlinearTableHost<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
+      binding={TECH_ALL_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeTechAllGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => r.id}
@@ -126,9 +123,6 @@ export function TechAllGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isSearching}
       scrollRef={scrollRef}
-      testId="tech-all-grid-body"
-      tableId={TECH_ALL_TABLE_ID}
-      surface="sheet"
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <TechAllGridColumnHeader

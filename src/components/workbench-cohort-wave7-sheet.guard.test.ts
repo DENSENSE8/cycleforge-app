@@ -18,6 +18,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import type { TableDefinition } from '@/lib/tables/table-definition';
+import { PICKUP_TABLE_DEFINITION } from '@/components/receiving/pickup/grid/pickup-table-definition';
+import { WARRANTY_TABLE_DEFINITION } from '@/components/warranty/grid/warranty-table-definition';
+import { UNFOUND_TABLE_DEFINITION } from '@/components/receiving/unfound/grid/unfound-table-definition';
+import { TRACKING_EXCEPTIONS_TABLE_DEFINITION } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
+import { CATALOG_TABLE_DEFINITION } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
+import { REPAIR_TABLE_DEFINITION } from '@/components/repair/repair-grid/repair-table-definition';
 
 const ROOT = join(process.cwd());
 
@@ -27,6 +34,37 @@ function read(rel: string): string {
 
 function stripBlockComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+/**
+ * The sheet recipe, asserted two ways because this cohort straddles the
+ * registry migration (plan Phase 1). A MIGRATED surface mounts
+ * `NonlinearTableHost` and its shell recipe lives on the definition, so assert
+ * `definition.surface === 'sheet'` + the host mount. An un-migrated surface
+ * still mounts `LedgerGridSurface` directly, so grep the literal. Either way the
+ * grid cannot fall back to the framed CLIP default.
+ */
+function assertSheetRecipe(label: string, gridView: string, definition?: TableDefinition) {
+  const src = read(gridView);
+  if (definition) {
+    assert.equal(definition.surface, 'sheet', `${label} definition must declare surface: 'sheet'`);
+    assert.match(
+      src,
+      /<NonlinearTableHost[\s\S]*?binding=\{/,
+      `${label} GridView must mount NonlinearTableHost with its binding`,
+    );
+    assert.doesNotMatch(
+      src,
+      /<LedgerGridSurface/,
+      `${label} GridView must not reach past the host to the engine`,
+    );
+  } else {
+    assert.match(
+      src,
+      /<LedgerGridSurface[\s\S]*?surface="sheet"/,
+      `${label} GridView must pin surface="sheet" — never the framed CLIP default`,
+    );
+  }
 }
 
 /** No surface may carry the retired gutter / framed-island markers. */
@@ -47,24 +85,29 @@ const GRID_SURFACES: {
   view: string;
   triageFiles: string[];
   gridView?: string;
+  /** Set once the surface is on the registry host (plan Phase 1). */
+  definition?: TableDefinition;
 }[] = [
   {
     label: 'Pickup',
     view: 'src/components/receiving/pickup/PickupWorkspace.tsx',
     triageFiles: ['src/components/receiving/pickup/PickupWorkspace.tsx'],
     gridView: 'src/components/receiving/pickup/grid/PickupGridView.tsx',
+    definition: PICKUP_TABLE_DEFINITION,
   },
   {
     label: 'Repair',
     view: 'src/components/repair/RepairTable.tsx',
     triageFiles: ['src/components/repair/RepairWorkspaceHeader.tsx'],
     gridView: 'src/components/repair/repair-grid/RepairGridView.tsx',
+    definition: REPAIR_TABLE_DEFINITION,
   },
   {
     label: 'Catalog',
     view: 'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
     triageFiles: ['src/components/products/catalog/ProductsCatalogWorkspace.tsx'],
     gridView: 'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+    definition: CATALOG_TABLE_DEFINITION,
   },
   {
     label: 'FBA',
@@ -77,12 +120,21 @@ const GRID_SURFACES: {
 // chrome is not yet a full three-band stack (bare padded host / bespoke
 // FilterBar). Pins `surface="sheet"` so the grid can never fall back to the
 // framed CLIP default. Full chrome migration of these hosts is a follow-up.
-const RESIDUAL_GRID_PINS: { label: string; gridView: string }[] = [
-  { label: 'Warranty', gridView: 'src/components/warranty/grid/WarrantyGridView.tsx' },
-  { label: 'Unfound', gridView: 'src/components/receiving/unfound/grid/UnfoundGridView.tsx' },
+const RESIDUAL_GRID_PINS: { label: string; gridView: string; definition?: TableDefinition }[] = [
+  {
+    label: 'Warranty',
+    gridView: 'src/components/warranty/grid/WarrantyGridView.tsx',
+    definition: WARRANTY_TABLE_DEFINITION,
+  },
+  {
+    label: 'Unfound',
+    gridView: 'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+    definition: UNFOUND_TABLE_DEFINITION,
+  },
   {
     label: 'Tracking exceptions',
     gridView: 'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+    definition: TRACKING_EXCEPTIONS_TABLE_DEFINITION,
   },
 ];
 
@@ -119,12 +171,8 @@ describe('Sheets-flush cohort — Wave 7 grid surfaces', () => {
       });
 
       if (s.gridView) {
-        it('inner GridView pins surface="sheet" (never the framed CLIP default)', () => {
-          assert.match(
-            read(s.gridView!),
-            /<LedgerGridSurface[\s\S]*?surface="sheet"/,
-            `${s.label} GridView must pin surface="sheet"`,
-          );
+        it('inner GridView carries the flush sheet recipe', () => {
+          assertSheetRecipe(s.label, s.gridView!, s.definition);
         });
       }
     });
@@ -133,12 +181,8 @@ describe('Sheets-flush cohort — Wave 7 grid surfaces', () => {
 
 describe('Sheets-flush cohort — residual GridView surface pins', () => {
   for (const s of RESIDUAL_GRID_PINS) {
-    it(`${s.label} GridView pins surface="sheet"`, () => {
-      assert.match(
-        read(s.gridView),
-        /<LedgerGridSurface[\s\S]*?surface="sheet"/,
-        `${s.label} GridView must pin surface="sheet" — never the framed CLIP default`,
-      );
+    it(`${s.label} GridView carries the flush sheet recipe`, () => {
+      assertSheetRecipe(s.label, s.gridView, s.definition);
     });
   }
 

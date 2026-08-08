@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { PatchBody, QueueRow } from '../queue-table/unfound-queue-shared';
-import { makeUnfoundGridDescriptor } from './unfound-grid-descriptor';
+import { UNFOUND_TABLE_BINDING } from './unfound-table-definition';
 import { UnfoundGridColumnHeader } from './UnfoundGridColumnHeader';
 import { UnfoundGridRow, unfoundRowKey, unfoundRowTitle } from './UnfoundGridRow';
 import {
-  UNFOUND_GRID_COLUMNS,
   defaultDirForUnfoundGridSort,
   isUnfoundGridSortable,
   type UnfoundGridColumn,
@@ -18,7 +17,6 @@ import {
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one Unfound spreadsheet, one Fields selection. */
-const UNFOUND_TABLE_ID = 'unfound' as const;
 
 interface UnfoundGridViewProps {
   rows: QueueRow[];
@@ -77,7 +75,7 @@ export function UnfoundGridView({
   onPush,
   pushingKey,
   savedKeys,
-  columns = UNFOUND_GRID_COLUMNS,
+  columns,
 }: UnfoundGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -134,11 +132,9 @@ export function UnfoundGridView({
   };
 
   return (
-    <LedgerGridSurface<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
-      ariaLabel="Unfound queue"
-      surface="sheet"
+    <NonlinearTableHost<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
+      binding={UNFOUND_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeUnfoundGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => unfoundRowKey(r)}
@@ -150,8 +146,6 @@ export function UnfoundGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isSearching}
       scrollRef={scrollRef}
-      testId="unfound-grid-body"
-      tableId={UNFOUND_TABLE_ID}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <UnfoundGridColumnHeader
           columns={visible}
