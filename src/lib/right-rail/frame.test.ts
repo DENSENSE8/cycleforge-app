@@ -18,7 +18,11 @@ import {
   RIGHT_RAIL_PUSH_MIN_FRAME_PX,
   STATION_PUSH_CENTER_FLOOR_PX,
   contextRailCostPx,
+  getStationDisplaysCollapsed,
   resolveRightRailFrame,
+  resolveStationDisplaysCollapse,
+  setRightRailContextRail,
+  setRightRailFrameWidth,
 } from './frame';
 
 /** A route rail at its 360px default (flush — no outer gutter islands). */
@@ -142,5 +146,38 @@ describe('the resize cap', () => {
     const r = resolveRightRailFrame({ ...desk, frameWidthPx: 900 });
     assert.equal(r.mode, 'push');
     assert.equal(r.capPx, 360);
+  });
+});
+
+describe('reactive Displays-collapse slice (Fiori/M3 — the store latches hysteresis)', () => {
+  it('the pure resolver reopens only after the full deadband', () => {
+    // Rail open (minLeft 300): close < 1300, reopen ≥ 1332.
+    const open = (frameWidthPx: number, wasCollapsed: boolean) =>
+      resolveStationDisplaysCollapse({ frameWidthPx, minLeftPx: 300, wasCollapsed });
+    assert.equal(open(1920, false), false);
+    assert.equal(open(1299, false), true, 'closes below the fit threshold');
+    assert.equal(open(1320, true), true, 'stays collapsed in the deadband');
+    assert.equal(open(1332, true), false, 'reopens only past the deadband');
+    // Parking the rail (strip 32) lowers the threshold so Displays survives narrower.
+    assert.equal(
+      resolveStationDisplaysCollapse({ frameWidthPx: 1200, minLeftPx: 32, wasCollapsed: true }),
+      false,
+      'parked rail keeps Displays open at 1200',
+    );
+  });
+
+  it('the store publishes the flag off a frame measurement (singleton — drive it in order)', () => {
+    setRightRailContextRail({ railCostOpenPx: 360, railOperatorCollapsed: false });
+    setRightRailFrameWidth(1920);
+    assert.equal(getStationDisplaysCollapsed(), false);
+    setRightRailFrameWidth(1200);
+    assert.equal(getStationDisplaysCollapsed(), true, 'collapses at 1200');
+    setRightRailFrameWidth(1320); // inside the deadband
+    assert.equal(getStationDisplaysCollapsed(), true, 'hysteresis holds it collapsed');
+    setRightRailFrameWidth(1400);
+    assert.equal(getStationDisplaysCollapsed(), false, 'reopens above the deadband');
+    // Reset the singleton so nothing downstream inherits the sticky state.
+    setRightRailFrameWidth(1920);
+    assert.equal(getStationDisplaysCollapsed(), false);
   });
 });

@@ -27,6 +27,27 @@
  *
  * MasterNav spine remains operator-owned (`SidebarNavColumn` never auto-closes).
  *
+ * ## The yield ladder (Fiori / M3 collapse hierarchy)
+ *
+ * The three-column Station frame (Context · locked Primary · Displays) is a
+ * width BUDGET, distributed by a `shrinkPriority` ladder rather than crushed
+ * uniformly. Precedent:
+ *  - **SAP Fiori Flexible Column Layout** — when the viewport narrows, columns
+ *    collapse in a defined priority order; the column you are working in is
+ *    preserved while a supporting column yields.
+ *  - **Material 3 supporting-pane** — the *supporting* pane collapses to an
+ *    overlay before the *primary* pane is squeezed.
+ *
+ * Here the middle (720 workbench lock) is Locked (`shrinkPriority: 0`), Displays
+ * yields first (`1` — {@link resolveStationDisplaysCollapse} collapses it to an
+ * overlay at the auto-close threshold), and the context rail yields second
+ * (`2`, toward its 300 hardMin). Tuple SoT: {@link STATION_COLUMN_BUDGET}. The
+ * DESK lane (context 360 · primary {@link MIN_WORK_SURFACE_PX} 784 · inspector
+ * {@link DETAIL_STACK_RESIZE} 360/420) resolves through
+ * {@link resolveRightRailFrame} rather than the station ladder, and its budget
+ * is proved by `frame.test.ts`. Pure distributor + invariants I1–I7:
+ * `station-dual-rail.ts` → `resolveStationYieldLadder`.
+ *
  * ## Why the inputs cannot oscillate
  *
  * `frameWidthPx` is measured on the content ROW, whose width is invariant under
@@ -39,8 +60,16 @@
  * the very scrollport the push narrows.
  */
 
-import { CONTEXT_PANEL_COLLAPSE, CONTEXT_PANEL_WIDTH_PX } from '@/components/sidebar/context-panel-column';
-import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
+import {
+  CONTEXT_PANEL_COLLAPSE,
+  CONTEXT_PANEL_RESIZE,
+  CONTEXT_PANEL_WIDTH_PX,
+} from '@/components/sidebar/context-panel-column';
+import {
+  STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
+  STATION_DISPLAYS_AUTO_CLOSE_HYSTERESIS_PX,
+  STATION_WORKBENCH_LOCK_PX,
+} from '@/components/station/workbench/workbench-layout';
 import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
 
 /** Flush planes — no outer gutter island between rail / center / push (2026-08-03). */
@@ -93,6 +122,21 @@ interface RightRailFrameResolution {
 }
 
 /**
+ * The store's published snapshot — the pure frame resolution PLUS the reactive
+ * Displays-collapse flag (hysteresis needs prior state, so it lives in the
+ * store, not in the pure {@link resolveRightRailFrame}).
+ */
+interface RightRailFrameSnapshot extends RightRailFrameResolution {
+  /**
+   * Station Displays has yielded to an overlay at this frame width (Fiori / M3
+   * collapse hierarchy — {@link resolveStationDisplaysCollapse}). Consumers use
+   * it to float Displays (rather than crush the 720 middle) and to fill the
+   * center when Displays is no longer an in-flow sibling.
+   */
+  stationDisplaysCollapsed: boolean;
+}
+
+/**
  * Left cost the frame must reserve: open card, operator strip, or nothing.
  * Never an ephemeral push-park — the right edge does not close the left rail.
  */
@@ -138,6 +182,43 @@ export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFram
 export const RIGHT_RAIL_PUSH_MIN_FRAME_PX =
   MIN_WORK_SURFACE_PX + RIGHT_RAIL_GUTTER_PX * 2 + DETAIL_STACK_RESIZE.minWidthPx;
 
+/**
+ * Pure hysteresis: should the station Displays column COLLAPSE (yield to an
+ * overlay) at this frame width?
+ *
+ * Displays yields first (Fiori / M3 collapse hierarchy). It CLOSES the instant
+ * it can no longer hold its hardMin beside the locked middle and a context rail
+ * already yielded to `minLeftPx` — the close edge is HARD at that threshold, so
+ * an OPEN Displays is always one that genuinely fits (invariant I6). It only
+ * REOPENS once the frame clears the threshold by the full deadband
+ * (`2 × hysteresisPx`), so a manual drag or a scrollbar-injection blip near the
+ * boundary cannot flap it open/closed.
+ *
+ * The close threshold is the named budget sum
+ * {@link STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX} (300 + 720 + 280) at the rail-open
+ * case; parking the rail (or a route with no rail) lowers it by exactly what the
+ * rail no longer costs, so Displays survives to a narrower frame — the rail has
+ * already yielded. `minLeftPx` is the rail's resting minimum: its 300 hardMin
+ * when open, the {@link CONTEXT_RAIL_PARKED_PX} strip when parked, or 0 when
+ * there is no rail.
+ */
+export function resolveStationDisplaysCollapse(input: {
+  frameWidthPx: number;
+  minLeftPx: number;
+  wasCollapsed: boolean;
+  hysteresisPx?: number;
+}): boolean {
+  const frame = Number.isFinite(input.frameWidthPx) ? input.frameWidthPx : 0;
+  // Unmeasured frame (0 on first paint) is not a collapse signal — hold prior
+  // state so opening the bench never flashes an overlay before layout settles.
+  if (frame <= 0) return input.wasCollapsed;
+  const hyst = input.hysteresisPx ?? STATION_DISPLAYS_AUTO_CLOSE_HYSTERESIS_PX;
+  const railSavings = CONTEXT_PANEL_RESIZE.minWidthPx - Math.max(0, input.minLeftPx);
+  const closeAt = STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX - railSavings;
+  const reopenAt = closeAt + hyst * 2;
+  return input.wasCollapsed ? frame < reopenAt : frame < closeAt;
+}
+
 // ── The store ────────────────────────────────────────────────────────────────
 
 type Listener = () => void;
@@ -158,6 +239,8 @@ const state: RightRailFrameInput & {
   desiredWidthPx: number;
   stationPushActive: boolean;
   stationPushDesiredWidthPx: number;
+  /** Sticky prior collapse state — the hysteresis latch. */
+  stationDisplaysCollapsed: boolean;
 } = {
   frameWidthPx: 0,
   railCostOpenPx: 0,
@@ -167,13 +250,26 @@ const state: RightRailFrameInput & {
   desiredWidthPx: DETAIL_STACK_RESIZE.defaultWidthPx,
   stationPushActive: false,
   stationPushDesiredWidthPx: DETAIL_STACK_RESIZE.defaultWidthPx,
+  stationDisplaysCollapsed: false,
 };
 
-let snapshot: RightRailFrameResolution = resolveRightRailFrame(state);
+/** Rail cost the frame reserves at its floor — 300 open · strip parked · 0 none. */
+function restingMinLeftPx(): number {
+  if (state.railCostOpenPx <= 0) return 0;
+  return state.railOperatorCollapsed
+    ? CONTEXT_RAIL_PARKED_PX
+    : CONTEXT_PANEL_RESIZE.minWidthPx;
+}
 
-const SERVER_SNAPSHOT: RightRailFrameResolution = {
+let snapshot: RightRailFrameSnapshot = {
+  ...resolveRightRailFrame(state),
+  stationDisplaysCollapsed: false,
+};
+
+const SERVER_SNAPSHOT: RightRailFrameSnapshot = {
   mode: 'overlay',
   capPx: DETAIL_STACK_RESIZE.defaultWidthPx,
+  stationDisplaysCollapsed: false,
 };
 
 function frameInputFromState(): RightRailFrameInput {
@@ -191,12 +287,26 @@ function frameInputFromState(): RightRailFrameInput {
 
 function recompute() {
   const next = resolveRightRailFrame(frameInputFromState());
+  // Displays-collapse latch (hysteresis) — reads the sticky prior state, so the
+  // deadband holds. Independent of push demand / cap, so it cannot loop with the
+  // push column's `setStationPushDemand` writes (collapse depends only on frame
+  // + rail cost).
+  const collapsed = resolveStationDisplaysCollapse({
+    frameWidthPx: state.frameWidthPx,
+    minLeftPx: restingMinLeftPx(),
+    wasCollapsed: state.stationDisplaysCollapsed,
+  });
+  state.stationDisplaysCollapsed = collapsed;
   // Cached snapshot: `useSyncExternalStore` re-renders on identity change, so a
   // no-op publish (a ResizeObserver firing at the same width) must not churn.
-  if (next.mode === snapshot.mode && next.capPx === snapshot.capPx) {
+  if (
+    next.mode === snapshot.mode &&
+    next.capPx === snapshot.capPx &&
+    collapsed === snapshot.stationDisplaysCollapsed
+  ) {
     return;
   }
-  snapshot = next;
+  snapshot = { ...next, stationDisplaysCollapsed: collapsed };
   listeners.forEach((l) => l());
 }
 
@@ -205,12 +315,22 @@ export function subscribeRightRailFrame(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-export function getRightRailFrame(): RightRailFrameResolution {
+export function getRightRailFrame(): RightRailFrameSnapshot {
   return snapshot;
 }
 
-export function getServerRightRailFrame(): RightRailFrameResolution {
+export function getServerRightRailFrame(): RightRailFrameSnapshot {
   return SERVER_SNAPSHOT;
+}
+
+/**
+ * Reactive: has station Displays yielded to an overlay at the current frame?
+ * `useSyncExternalStore(subscribeRightRailFrame, getStationDisplaysCollapsed,
+ * () => false)`. Same store as the frame budget, so a single frame measurement
+ * updates cap + collapse together.
+ */
+export function getStationDisplaysCollapsed(): boolean {
+  return snapshot.stationDisplaysCollapsed;
 }
 
 /** `ResponsiveLayout` — the content row's measured width. */
