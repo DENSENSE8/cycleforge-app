@@ -27,6 +27,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, it } from 'node:test';
+import { INCOMING_TABLE_DEFINITION } from '@/components/station/incoming-grid/incoming-table-definition';
+import { RECEIVING_BROWSE_DEFINITION } from '@/components/station/receiving-grid/receiving-table-definition';
 
 const ROOT = process.cwd();
 const SHELL = join(ROOT, 'src/components/dashboard/workbench-shell.tsx');
@@ -197,12 +199,13 @@ describe('WorkbenchTrailingCluster SoT', () => {
       );
       // The door is the control over the card's own corner, never one in the
       // header band. A view reaches it by mounting the surface (which mounts the
-      // gutter by construction) or, if it is bespoke, by composing the gutter.
+      // gutter by construction), via NonlinearTableHost (which mounts the
+      // surface), or, if it is bespoke, by composing the gutter.
       assert.match(
         viewSrc,
-        /<LedgerGridSurface[<\s]|<GridColumnGutter[\s>]/,
-        `${view} must reach column display — via LedgerGridSurface, which mounts ` +
-          `GridColumnGutter, or by composing GridColumnGutter itself if bespoke`,
+        /<LedgerGridSurface[<\s]|<NonlinearTableHost[<\s]|<GridColumnGutter[\s>]/,
+        `${view} must reach column display — via LedgerGridSurface / NonlinearTableHost ` +
+          `(which mounts GridColumnGutter), or by composing GridColumnGutter itself if bespoke`,
       );
       assert.doesNotMatch(
         viewSrc,
@@ -396,15 +399,16 @@ describe('WorkbenchTrailingCluster SoT', () => {
   });
 
   it('Incoming uses tableId incoming; History/Unbox keep receiving', () => {
-    const incomingGrid = readFileSync(
-      join(ROOT, 'src/components/station/incoming-grid/IncomingGridView.tsx'),
-      'utf8',
-    );
     const linesTable = readFileSync(
       join(ROOT, 'src/components/station/ReceivingLinesTable.tsx'),
       'utf8',
     );
-    assert.match(incomingGrid, /tableId = 'incoming'/);
+    // The prefs-bucket DEFAULT moved from a prop literal to the table definition
+    // when Incoming migrated onto the registry host (plan Phase 1). The bucket
+    // is unchanged — `inbound.incoming` persists under `incoming`, distinct from
+    // `receiving.browse`'s `receiving` — so the guard reads it off the SoT.
+    assert.equal(INCOMING_TABLE_DEFINITION.tableId, 'incoming');
+    assert.equal(RECEIVING_BROWSE_DEFINITION.tableId, 'receiving');
     // Incoming vs History share ReceivingLinesTable — prefs bucket is mode-gated.
     assert.match(linesTable, /tableId=\{isIncomingMode \? 'incoming' : 'receiving'\}/);
   });

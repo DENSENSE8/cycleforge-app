@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
-import { makeWarrantyGridDescriptor } from './warranty-grid-descriptor';
+import { WARRANTY_TABLE_BINDING } from './warranty-table-definition';
 import { WarrantyGridColumnHeader } from './WarrantyGridColumnHeader';
 import { WarrantyGridRow, warrantyClaimItemLabel } from './WarrantyGridRow';
 import {
-  WARRANTY_GRID_COLUMNS,
   defaultDirForWarrantyGridSort,
   isWarrantyGridSortable,
   type WarrantyGridColumn,
@@ -18,7 +17,6 @@ import {
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one warranty spreadsheet, one Fields selection. */
-const WARRANTY_TABLE_ID = 'warranty' as const;
 
 interface WarrantyGridViewProps {
   rows: WarrantyClaimListRow[];
@@ -94,7 +92,7 @@ export function WarrantyGridView({
   isSearching,
   openClaimId,
   onOpenClaim,
-  columns = WARRANTY_GRID_COLUMNS,
+  columns,
 }: WarrantyGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -147,11 +145,9 @@ export function WarrantyGridView({
   );
 
   return (
-    <LedgerGridSurface<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
-      ariaLabel="Warranty claims"
-      surface="sheet"
+    <NonlinearTableHost<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
+      binding={WARRANTY_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeWarrantyGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -163,8 +159,6 @@ export function WarrantyGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isSearching}
       scrollRef={scrollRef}
-      testId="warranty-grid-body"
-      tableId={WARRANTY_TABLE_ID}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <WarrantyGridColumnHeader
           columns={visible}

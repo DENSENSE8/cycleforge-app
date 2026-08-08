@@ -43,7 +43,7 @@ export function makeTrackingExceptionsGridDescriptor(
   columns: readonly TrackingExceptionsGridColumn[],
 ): GridSurfaceDescriptor<TrackingExceptionRow, TrackingExceptionsGridColumn> {
   return makeGridSurfaceDescriptor<TrackingExceptionRow, TrackingExceptionsGridColumn>(
-    'ops.trackingExceptions',
+    'ops.tracking-exceptions',
     columns,
     {
       isSortable: isTrackingExceptionsGridSortable,

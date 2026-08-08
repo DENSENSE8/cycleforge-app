@@ -1,22 +1,20 @@
 'use client';
 
 import { useCallback, useMemo, type RefObject } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import type { RowGroup } from '@/lib/group-rows';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import {
-  CATALOG_GRID_COLUMNS,
   type CatalogGridColumn,
   type CatalogGridColumnKey,
 } from '@/lib/products/catalog-grid-layout';
-import { makeCatalogGridDescriptor } from './catalog-grid-descriptor';
+import { CATALOG_TABLE_BINDING } from './catalog-table-definition';
 import { CatalogGridColumnHeader } from './CatalogGridColumnHeader';
 import { CatalogGridRow } from './CatalogGridRow';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one catalog spreadsheet, one Fields selection. */
-const CATALOG_TABLE_ID = 'catalog' as const;
 
 interface CatalogGridViewProps {
   rows: CatalogListRow[];
@@ -54,7 +52,7 @@ export function CatalogGridView({
   sort,
   dir,
   onSortChange,
-  columns = CATALOG_GRID_COLUMNS,
+  columns,
   scrollRef,
   className,
   columnTriggerPortalTarget,
@@ -94,11 +92,9 @@ export function CatalogGridView({
   );
 
   return (
-    <LedgerGridSurface<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
-      ariaLabel="Product catalog"
-      surface="sheet"
+    <NonlinearTableHost<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
+      binding={CATALOG_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeCatalogGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -109,8 +105,6 @@ export function CatalogGridView({
       emptyMessage={emptyMessage}
       scrollRef={scrollRef}
       className={className}
-      testId="catalog-grid-body"
-      tableId={CATALOG_TABLE_ID}
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <CatalogGridColumnHeader

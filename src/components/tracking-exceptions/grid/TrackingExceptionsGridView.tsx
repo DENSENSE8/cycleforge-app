@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import {
@@ -9,11 +9,10 @@ import {
   trackingExceptionStaffLabel,
   type TrackingExceptionRow,
 } from '../types';
-import { makeTrackingExceptionsGridDescriptor } from './tracking-exceptions-grid-descriptor';
+import { TRACKING_EXCEPTIONS_TABLE_BINDING } from './tracking-exceptions-table-definition';
 import { TrackingExceptionsGridColumnHeader } from './TrackingExceptionsGridColumnHeader';
 import { TrackingExceptionsGridRow } from './TrackingExceptionsGridRow';
 import {
-  TRACKING_EXCEPTIONS_GRID_COLUMNS,
   defaultDirForTrackingExceptionsGridSort,
   isTrackingExceptionsGridSortable,
   type TrackingExceptionsGridColumn,
@@ -22,7 +21,6 @@ import {
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one Tracking Exceptions spreadsheet, one Fields selection. */
-const TRACKING_EXCEPTIONS_TABLE_ID = 'tracking-exceptions' as const;
 
 interface TrackingExceptionsGridViewProps {
   rows: TrackingExceptionRow[];
@@ -101,7 +99,7 @@ export function TrackingExceptionsGridView({
   refreshingIds,
   onOpenEdit,
   onRefresh,
-  columns = TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  columns,
 }: TrackingExceptionsGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -149,15 +147,13 @@ export function TrackingExceptionsGridView({
   );
 
   return (
-    <LedgerGridSurface<
+    <NonlinearTableHost<
       TrackingExceptionRow,
       TrackingExceptionsGridColumnKey,
       TrackingExceptionsGridColumn
     >
-      ariaLabel="Tracking exceptions"
-      surface="sheet"
+      binding={TRACKING_EXCEPTIONS_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeTrackingExceptionsGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -169,8 +165,6 @@ export function TrackingExceptionsGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isSearching}
       scrollRef={scrollRef}
-      testId="tracking-exceptions-grid-body"
-      tableId={TRACKING_EXCEPTIONS_TABLE_ID}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <TrackingExceptionsGridColumnHeader
           columns={visible}

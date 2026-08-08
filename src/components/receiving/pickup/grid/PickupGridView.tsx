@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { PickupLine } from '../pickup-lines';
-import { makePickupGridDescriptor } from './pickup-grid-descriptor';
+import { PICKUP_TABLE_BINDING } from './pickup-table-definition';
 import { PickupGridColumnHeader } from './PickupGridColumnHeader';
 import { PickupGridGroupRow } from './PickupGridGroupRow';
 import {
-  PICKUP_GRID_COLUMNS,
   defaultDirForPickupGridSort,
   isPickupGridSortable,
   type PickupGridColumn,
@@ -18,7 +17,6 @@ import {
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Staff-prefs identity — one pickup spreadsheet, one Fields selection. */
-const PICKUP_TABLE_ID = 'pickup' as const;
 
 interface PickupGridViewProps {
   rows: PickupLine[];
@@ -89,7 +87,7 @@ export function PickupGridView({
   isSearching,
   selectedOrderId,
   onSelectOrder,
-  columns = PICKUP_GRID_COLUMNS,
+  columns,
   columnTriggerPortalTarget = null,
 }: PickupGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -133,11 +131,9 @@ export function PickupGridView({
   }, [rows, columnSort, sortDir]);
 
   return (
-    <LedgerGridSurface<PickupLine, PickupGridColumnKey, PickupGridColumn>
-      ariaLabel="Local pickup order lines"
-      surface="sheet"
+    <NonlinearTableHost<PickupLine, PickupGridColumnKey, PickupGridColumn>
+      binding={PICKUP_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makePickupGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -149,8 +145,6 @@ export function PickupGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isSearching}
       scrollRef={scrollRef}
-      testId="pickup-grid-body"
-      tableId={PICKUP_TABLE_ID}
       columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <PickupGridColumnHeader

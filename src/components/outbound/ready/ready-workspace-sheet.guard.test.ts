@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { READY_TABLE_DEFINITION } from '@/components/outbound/ready/grid/ready-table-definition';
 
 const ROOT = join(process.cwd());
 
@@ -24,13 +25,16 @@ function stripBlockComments(src: string): string {
 }
 
 describe('Ready Sheets recipe', () => {
-  it('ReadyGridView pins surface="sheet" (never the framed CLIP default)', () => {
+  it('ReadyGridView mounts the registry host on a sheet-surface definition', () => {
+    assert.equal(READY_TABLE_DEFINITION.surface, 'sheet');
     const src = read('src/components/outbound/ready/grid/ReadyGridView.tsx');
     assert.match(
       src,
-      /<LedgerGridSurface[\s\S]*?surface="sheet"/,
-      'ReadyGridView must pass surface="sheet"',
+      /<NonlinearTableHost[\s\S]*?binding=\{READY_TABLE_BINDING\}/,
+      'ReadyGridView must mount NonlinearTableHost with the Ready binding',
     );
+    assert.doesNotMatch(src, /<LedgerGridSurface/, 'must not reach past the host to the engine');
+    assert.doesNotMatch(src, /surface="(sheet|framed)"/, 'shell recipe belongs to the definition');
   });
 
   it('ReadyWorkspaceBody parks NO KPI island in the scrolling body', () => {

@@ -1,16 +1,18 @@
 /**
  * Incoming Sheets recipe — pin flush surface + host SoT (Unbox golden).
  *
- * `IncomingGridView` mounts `LedgerGridSurface` with `surface="sheet"` so the
- * Pipeline grid uses `TABLE_SURFACE_SHEET_CLASS`. Hosts wire
- * `WORKBENCH_SHEET_HOST` / `WORKBENCH_SHEET_CHROME` — never framed
- * `WorkbenchTablePane` or body gutters around the grid.
+ * `inbound.incoming` declares `surface: 'sheet'` so the Pipeline grid uses
+ * `TABLE_SURFACE_SHEET_CLASS`; `IncomingGridView` mounts it through
+ * `NonlinearTableHost` (plan Phase 1). Hosts wire `WORKBENCH_SHEET_HOST` /
+ * `WORKBENCH_SHEET_CHROME` — never framed `WorkbenchTablePane` or body gutters
+ * around the grid.
  */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { INCOMING_TABLE_DEFINITION } from '@/components/station/incoming-grid/incoming-table-definition';
 
 const ROOT = process.cwd();
 
@@ -19,17 +21,31 @@ function read(rel: string): string {
 }
 
 describe('Incoming grid Sheets recipe (Unbox golden)', () => {
-  it('IncomingGridView mounts LedgerGridSurface with surface="sheet"', () => {
+  it('the inbound.incoming DEFINITION declares surface: "sheet"', () => {
+    assert.equal(INCOMING_TABLE_DEFINITION.surface, 'sheet');
+  });
+
+  it('IncomingGridView mounts the registry host, not the engine directly', () => {
     const src = read('src/components/station/incoming-grid/IncomingGridView.tsx');
     assert.match(
       src,
-      /<LedgerGridSurface[\s\S]*?surface="sheet"/,
-      'IncomingGridView must pass surface="sheet" — Unbox Sheets golden',
+      /<NonlinearTableHost[\s\S]*?binding=\{INCOMING_TABLE_BINDING\}/,
+      'IncomingGridView must mount NonlinearTableHost with the incoming binding',
+    );
+    assert.doesNotMatch(
+      src,
+      /<LedgerGridSurface/,
+      'The page binding must not reach past the host to the engine',
+    );
+    assert.doesNotMatch(
+      src,
+      /surface="(sheet|framed)"/,
+      'The shell recipe belongs to the definition, never to the mount',
     );
     assert.doesNotMatch(
       src,
       /TABLE_SURFACE_CLIP_CLASS/,
-      'Incoming must not hand-compose the framed CLIP class — surface prop owns it',
+      'Incoming must not hand-compose the framed CLIP class — the surface owns it',
     );
   });
 

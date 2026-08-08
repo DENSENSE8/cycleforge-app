@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { MY_DAY_TABLE_DEFINITION } from '@/features/my-day/grid/my-day-table-definition';
 
 const ROOT = join(process.cwd());
 
@@ -22,13 +23,18 @@ function stripBlockComments(src: string): string {
 }
 
 describe('My Day Sheets recipe', () => {
-  it('MyDayGridView mounts LedgerGridSurface with surface="sheet"', () => {
-    const src = read('src/features/my-day/grid/MyDayGridView.tsx');
+  it('MyDayGridView mounts the registry host on a sheet-surface definition', () => {
+    assert.equal(MY_DAY_TABLE_DEFINITION.surface, 'sheet');
+    // Strip block comments first — a docstring may legitimately mention
+    // `surface="sheet"` while the mount no longer carries the literal.
+    const src = stripBlockComments(read('src/features/my-day/grid/MyDayGridView.tsx'));
     assert.match(
       src,
-      /<LedgerGridSurface[\s\S]*?surface="sheet"/,
-      'MyDayGridView must pass surface="sheet" — flush Sheets mount',
+      /<NonlinearTableHost[\s\S]*?binding=\{MY_DAY_TABLE_BINDING\}/,
+      'MyDayGridView must mount NonlinearTableHost with the My Day binding',
     );
+    assert.doesNotMatch(src, /<LedgerGridSurface/, 'must not reach past the host to the engine');
+    assert.doesNotMatch(src, /surface="(sheet|framed)"/, 'shell recipe belongs to the definition');
   });
 
   it('MyDayWorkspace uses WORKBENCH_SHEET hosts (not BODY/CHROME gutters)', () => {

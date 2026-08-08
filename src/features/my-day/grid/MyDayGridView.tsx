@@ -1,19 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
 import {
-  MY_DAY_GRID_COLUMNS,
-  MY_DAY_TABLE_ID,
   defaultDirForMyDayGridSort,
   isMyDayGridSortable,
   type MyDayGridColumn,
   type MyDayGridColumnKey,
 } from '@/lib/my-day/my-day-grid-layout';
-import { makeMyDayGridDescriptor } from './my-day-grid-descriptor';
+import { MY_DAY_TABLE_BINDING } from './my-day-table-definition';
 import { MyDayGridColumnHeader } from './MyDayGridColumnHeader';
 import { MyDayGridRow } from './MyDayGridRow';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -88,7 +86,7 @@ export function MyDayGridView({
   isFiltered,
   selectedTaskId,
   onSelectTask,
-  columns = MY_DAY_GRID_COLUMNS,
+  columns,
   columnTriggerPortalTarget = null,
 }: MyDayGridViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -129,10 +127,9 @@ export function MyDayGridView({
   }, [tasks, columnSort, sortDir]);
 
   return (
-    <LedgerGridSurface<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
-      ariaLabel="My Day tasks"
+    <NonlinearTableHost<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
+      binding={MY_DAY_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeMyDayGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={tasks}
       getRowId={(t) => t.id}
@@ -144,13 +141,6 @@ export function MyDayGridView({
       searchEmptyMessage={searchEmptyMessage}
       isSearching={isFiltered}
       scrollRef={scrollRef}
-      testId="my-day-grid-body"
-      // `my-day` is the Fields-menu vocabulary (`TABLE_COLUMNS`) and the
-      // per-staff prefs bucket. It is deliberately its own bucket, not shared
-      // with another grid: a Fields toggle on Today must not silently hide a
-      // track on a surface that happens to use the same column key.
-      tableId={MY_DAY_TABLE_ID}
-      surface="sheet"
       columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <MyDayGridColumnHeader

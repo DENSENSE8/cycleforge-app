@@ -17,8 +17,6 @@ interface Props {
   selected: Set<number>;
   onSelectChange: (next: Set<number>) => void;
   onRowClick: (row: BinsOverviewRow) => void;
-  /** Sheets flush mount (Locations desk). Default framed for legacy embeds. */
-  surface?: 'framed' | 'sheet';
   /** Band-3 controls slot for the column-display (▦) trigger. */
   columnTriggerPortalTarget?: HTMLElement | null;
 }
@@ -29,17 +27,13 @@ export function BinsTable({
   selected,
   onSelectChange,
   onRowClick,
-  surface = 'framed',
   columnTriggerPortalTarget = null,
 }: Props) {
+  // Flush Sheets mount (Locations desk) — the only mount this table ever had.
+  // The `warehouse.bins` definition owns `surface: 'sheet'`; the dead `'framed'`
+  // path was removed with the wave-3 registry migration.
   return (
-    <div
-      className={
-        surface === 'sheet'
-          ? 'flex min-h-0 min-w-0 flex-1 flex-col'
-          : 'flex min-h-[240px] min-w-0 flex-col'
-      }
-    >
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <BinsGridView
         rows={rows}
         loading={loading}
@@ -47,7 +41,6 @@ export function BinsTable({
         onSelectChange={onSelectChange}
         onRowClick={onRowClick}
         emptyMessage="No bins match the current filters."
-        surface={surface}
         columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
     </div>

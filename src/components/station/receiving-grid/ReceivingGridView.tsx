@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, type RefObject } from 'react';
-import { LedgerGridSurface, useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
+import { useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
@@ -15,13 +16,12 @@ import {
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
 import {
-  RECEIVING_GRID_COLUMNS,
   defaultDirForReceivingGridSort,
   isReceivingGridSortable,
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
-import { makeReceivingGridDescriptor } from './receiving-grid-descriptor';
+import { RECEIVING_TABLE_BINDING } from './receiving-table-definition';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { ReceivingGridColumnHeader } from './ReceivingGridColumnHeader';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
@@ -131,9 +131,15 @@ function poFoldKey(row: ReceivingLineRow): string {
 }
 
 /**
- * Unbox / History / Testing spreadsheet — receiving-domain adapter over
- * {@link LedgerGrid}. Sheets-class flush shell (`surface="sheet"`) — sticky
- * header + frozen select gutter — matching the Workbench spreadsheet recipe.
+ * Unbox / History / Testing spreadsheet — the receiving-domain **binding** for
+ * the `receiving.browse` table definition.
+ *
+ * Since the definition registry landed (plan Phase 1) this file no longer
+ * decides what kind of grid it is: the shell recipe, prefs bucket, accessible
+ * name, testid and column model all resolve from
+ * {@link RECEIVING_TABLE_BINDING} through {@link NonlinearTableHost}. What
+ * stays here is what is genuinely per-page — the feed, the PO fold + day-band
+ * math, sort durability, and the family's header / group / row renderers.
  */
 export function ReceivingGridView({
   filteredGroupedRecords,
@@ -150,12 +156,12 @@ export function ReceivingGridView({
   activityAxis = 'unboxed',
   isHistory = false,
   selectionScope = RECEIVING_SELECTION_SCOPE,
-  columns = RECEIVING_GRID_COLUMNS,
-  tableId = 'receiving',
-  showDayHeaders = false,
+  columns,
+  tableId,
+  showDayHeaders,
   scrollRef,
   className,
-  testId = 'receiving-grid-body',
+  testId,
   controlledSort,
   controlledSortDir,
   onControlledSortChange,
@@ -173,6 +179,14 @@ export function ReceivingGridView({
   // One fetch for the whole grid — History UNBOXED tips name the connected
   // inventory provider (falls back to capability title while loading).
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
+
+  // Geometry + identity resolve from the `receiving.browse` DEFINITION; the two
+  // overrides below exist because Testing History genuinely mounts this same
+  // definition under its own prefs bucket. The header's column menu and the
+  // per-staff display/fill hooks need the resolved values locally, so read them
+  // once here rather than re-typing the defaults.
+  const allColumns = columns ?? RECEIVING_TABLE_BINDING.columns;
+  const prefsTableId = tableId ?? RECEIVING_TABLE_BINDING.definition.tableId;
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
@@ -210,8 +224,8 @@ export function ReceivingGridView({
     onControlledSortClear
     ?? clearSort;
 
-  const { displayByKey } = useGridColumnDisplay(tableId);
-  const { fillsById } = useGridRowFills(tableId);
+  const { displayByKey } = useGridColumnDisplay(prefsTableId);
+  const { fillsById } = useGridRowFills(prefsTableId);
 
   const { orderGroupsByDate, flatRows } = useMemo(() => {
     const flatFromGroups = filteredGroupedRecords
@@ -255,10 +269,9 @@ export function ReceivingGridView({
   }, [filteredGroupedRecords, daySections, serverSorted, columnSort, sortDir, activityAxis]);
 
   return (
-    <LedgerGridSurface<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
-      ariaLabel="Receiving carton lines"
+    <NonlinearTableHost<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
+      binding={RECEIVING_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeReceivingGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}
       sort={columnSort}
@@ -271,7 +284,6 @@ export function ReceivingGridView({
       className={className}
       testId={testId}
       tableId={tableId}
-      surface="sheet"
       columnTriggerPortalTarget={columnTriggerPortalTarget}
       columnTriggerPortalOnly={columnTriggerPortalOnly || isHistory}
       renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
@@ -289,8 +301,8 @@ export function ReceivingGridView({
           columnMenu={
             enableColumnMenu
               ? {
-                  tableId,
-                  allColumns: columns,
+                  tableId: prefsTableId,
+                  allColumns: allColumns,
                   activeSort: columnSort,
                   sortDir,
                   onSortColumn: (key, dir) =>
