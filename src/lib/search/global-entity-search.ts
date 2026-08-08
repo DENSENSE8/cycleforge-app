@@ -1,14 +1,13 @@
 /**
- * global-entity-search — the 5 per-entity exact/ILIKE searchers extracted
- * verbatim from src/app/api/global-search/route.ts (AI search Phase 0) so the
- * hybrid engine's exact-ID/serial bypass REUSES them instead of duplicating
- * the last-8 / normalization / aggregation logic. The route now imports from
- * here; query text and behavior are unchanged.
+ * global-entity-search — per-entity exact/ILIKE searchers extracted from
+ * src/app/api/global-search/route.ts (AI search Phase 0) so the hybrid
+ * engine's exact-ID/serial bypass REUSES them instead of duplicating the
+ * last-8 / normalization / aggregation logic. The route imports from here.
  *
  * These hit the PARENT tables directly (orders + tech_serial_numbers +
- * shipping_tracking_numbers joins, etc.) — they are the deterministic fast
- * path that must never be removed (plan non-goal), independent of
- * entity_search_docs freshness.
+ * serial_units + shipping_tracking_numbers joins, etc.) — they are the
+ * deterministic fast path that must never be removed (plan non-goal),
+ * independent of entity_search_docs freshness.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -21,9 +20,14 @@ import {
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
 
+/** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
+function normalizeSerialQuery(raw: string): string {
+  return String(raw || '').trim().toUpperCase();
+}
+
 export interface GlobalSearchResult {
   id: number;
-  entityType: 'order' | 'repair' | 'fba' | 'receiving' | 'sku';
+  entityType: 'order' | 'repair' | 'fba' | 'receiving' | 'sku' | 'unit';
   title: string;
   subtitle: string;
   href: string;
@@ -51,7 +55,7 @@ export interface GlobalSearchResult {
   };
 }
 
-export async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // Mirror the unshipped/shipped order search: match order_id, title, SKU, the
   // order's serial number(s) (tech_serial_numbers, order-grain join) and
   // the carrier tracking number, plus a last-8-digit fallback so a partial
@@ -143,7 +147,7 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
   });
 }
 
-export async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   const result = await tenantQuery(
     orgId,
     `SELECT id, ticket_number, product_title, serial_number, status
@@ -172,7 +176,7 @@ export async function searchRepairs(orgId: OrgId, query: string, limit: number):
   }));
 }
 
-export async function searchFba(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+async function searchFba(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   const result = await tenantQuery(
     orgId,
     `SELECT id, shipment_ref, status
@@ -199,7 +203,7 @@ export async function searchFba(orgId: OrgId, query: string, limit: number): Pro
   }));
 }
 
-export async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // Join shipping_tracking_numbers so search matches rows reachable only via
   // receiving.shipment_id (post inbound-tracking unification). Falls back to
   // hyphens/spaces carriers sometimes include. Also match Zoho PO /
@@ -261,7 +265,9 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
         sourceOrderId,
         sourcePlatform,
         firstItemName,
-        fallback: `Receiving #${row.id}`,
+        fallback: row.tracking_number
+          ? `Carton · ${String(row.tracking_number).slice(-8)}`
+          : 'Unmatched carton',
       }),
       subtitle: [orderId, row.carrier].filter(Boolean).join(' · ') || 'Unknown carrier',
       // Compose the SoT rather than re-deriving: this fast path and hybrid
@@ -283,7 +289,7 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
   });
 }
 
-export async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // sku_catalog is the marketplace SKU scheme the Products workbench selects on
   // (NOT the Zoho `items` namespace — they collide on the same strings). Match
   // the SKU string or title; deep-link to the workbench with the numeric
@@ -312,6 +318,64 @@ export async function searchSkus(orgId: OrgId, query: string, limit: number): Pr
 }
 
 /**
+ * Exact/ILIKE over serial_units — header Find + hybrid exact arm. Independent
+ * of entity_search_docs so AI-off classic `/api/global-search` still surfaces
+ * unit serials (receiving unfound units included).
+ */
+async function searchSerialUnits(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  const normalized = normalizeSerialQuery(query);
+  if (!normalized) return [];
+  const result = await tenantQuery(
+    orgId,
+    `SELECT su.id,
+            su.serial_number,
+            su.normalized_serial,
+            su.sku,
+            su.current_status::text AS current_status,
+            su.condition_grade
+     FROM serial_units su
+     WHERE su.organization_id = $4
+       AND (
+            su.normalized_serial = $2
+         OR su.serial_number ILIKE $1
+         OR su.normalized_serial ILIKE $1
+         OR CAST(su.id AS TEXT) = $3
+       )
+     ORDER BY CASE
+                WHEN su.normalized_serial = $2 THEN 0
+                WHEN UPPER(TRIM(su.serial_number)) = $2 THEN 0
+                ELSE 1
+              END,
+              su.id DESC
+     LIMIT $5`,
+    [`%${normalized}%`, normalized, query, orgId, limit],
+  );
+
+  return result.rows.map((row: any) => {
+    const serial = String(row.serial_number || row.normalized_serial || '').trim();
+    const sku = row.sku != null ? String(row.sku) : null;
+    const status = row.current_status != null ? String(row.current_status) : null;
+    return {
+      id: Number(row.id),
+      entityType: 'unit' as const,
+      title: serial || `Unit #${row.id}`,
+      subtitle: [serial, sku, status].filter(Boolean).join(' · '),
+      href: searchHitHref('SERIAL_UNIT', Number(row.id)),
+      matchField: 'serial',
+      facets: {
+        status,
+        condition_grade: row.condition_grade != null ? String(row.condition_grade) : null,
+        serial_number: serial || null,
+      },
+    };
+  });
+}
+
+/**
  * Fan out across entity searchers — the same shape global-search's handler
  * uses (per-entity cap, degrade-not-fail per searcher). Ticket-shaped queries
  * (`#4821` / `4821`) resolve via support_tickets FIRST so numeric ids do not
@@ -326,13 +390,14 @@ export async function searchAllEntities(
     const tickets = await searchSupportTickets(orgId, query).catch(() => []);
     if (tickets.length > 0) return tickets.slice(0, limit);
   }
-  const perEntity = Math.ceil(limit / 5);
-  const [orders, repairs, fba, receiving, skus] = await Promise.all([
+  const perEntity = Math.ceil(limit / 6);
+  const [orders, repairs, fba, receiving, skus, units] = await Promise.all([
     searchOrders(orgId, query, perEntity).catch(() => []),
     searchRepairs(orgId, query, perEntity).catch(() => []),
     searchFba(orgId, query, perEntity).catch(() => []),
     searchReceiving(orgId, query, perEntity).catch(() => []),
     searchSkus(orgId, query, perEntity).catch(() => []),
+    searchSerialUnits(orgId, query, perEntity).catch(() => []),
   ]);
-  return [...orders, ...repairs, ...fba, ...receiving, ...skus].slice(0, limit);
+  return [...orders, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
 }
