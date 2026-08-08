@@ -31,37 +31,33 @@ export const FACT_KINDS = [
 export type FactKind = (typeof FACT_KINDS)[number];
 
 /** Marketplace / triage provenance for unmatched lines (source_platform_pill, listing_url, …). */
-export const marketplaceListingSchema = z.object({
+const marketplaceListingSchema = z.object({
   sourcePlatform: z.string().optional(),
   sourcePlatformPill: z.string().optional(),
   listingUrl: z.string().optional(),
   listingReference: z.string().optional(),
   skuPlatformIdRow: z.number().int().optional(),
 });
-export type MarketplaceListingFact = z.infer<typeof marketplaceListingSchema>;
 
 /** Sourcing-import provenance (source_system, source_order_id, manual_entry_at). */
-export const sourcingImportSchema = z.object({
+const sourcingImportSchema = z.object({
   sourceSystem: z.string().optional(),
   sourceOrderId: z.string().optional(),
   manualEntryAt: z.string().optional(), // ISO-8601
 });
-export type SourcingImportFact = z.infer<typeof sourcingImportSchema>;
 
 /** Trade-in valuation facts. */
-export const tradeInValuationSchema = z.object({
+const tradeInValuationSchema = z.object({
   offeredAmountCents: z.number().int().nonnegative().optional(),
   currency: z.string().length(3).optional(),
   valuedByStaffId: z.number().int().optional(),
 });
-export type TradeInValuationFact = z.infer<typeof tradeInValuationSchema>;
 
 /** Repair-service flag/ref (was receiving_lines.is_repair_service). */
-export const repairServiceSchema = z.object({
+const repairServiceSchema = z.object({
   isRepairService: z.boolean().default(true),
   ticketRef: z.string().optional(),
 });
-export type RepairServiceFact = z.infer<typeof repairServiceSchema>;
 
 /**
  * eBay buyer-purchase marketplace payload for an Incoming line sourced from an
@@ -69,7 +65,7 @@ export type RepairServiceFact = z.infer<typeof repairServiceSchema>;
  * platform_account_id) live on the spine / link row; this holds the eBay-specific
  * provenance. Universal Incoming plan §3.7.
  */
-export const ebayPurchaseSchema = z.object({
+const ebayPurchaseSchema = z.object({
   legacyOrderId: z.string().optional(),
   sellerUsername: z.string().optional(),
   purchaseOrderStatus: z.string().optional(),
@@ -78,9 +74,8 @@ export const ebayPurchaseSchema = z.object({
   /** Untranslated upstream status string, for debugging / display. */
   rawStatus: z.string().optional(),
 });
-export type EbayPurchaseFact = z.infer<typeof ebayPurchaseSchema>;
 
-export interface FactKindDef {
+interface FactKindDef {
   /** Human label for pickers / audit. */
   label: string;
   /** Payload validator; `parse` throws on a malformed write. */
