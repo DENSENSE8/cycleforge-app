@@ -51,9 +51,11 @@ const SRC = path.join(ROOT, 'src');
 const SURFACE = 'src/design-system/components/grid/LedgerGridSurface.tsx';
 const GUTTER = 'src/design-system/components/grid/GridColumnDetailsTrigger.tsx';
 const PANEL = 'src/components/ui/table-column-config/GridColumnDetailsPanel.tsx';
+/** The registry host (plan Phase 1) — mounts the surface on a binding's behalf. */
+const HOST = 'src/components/tables/NonlinearTableHost.tsx';
 
 /** The modules that DEFINE the recipe rather than composing it. */
-const DS_OWN = new Set([SURFACE, GUTTER, PANEL]);
+const DS_OWN = new Set([SURFACE, GUTTER, PANEL, HOST]);
 
 /**
  * The banned plumbing, by the symbol a re-expansion would reintroduce.
@@ -114,12 +116,20 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 /**
- * Anything that touches the spreadsheet plumbing — a surface mount, a gutter
- * mount, or an import of the rail. Discovery is by CONTENT, never by filename:
- * a `*GridView.tsx` walk would certify the thirteen that exist today and miss
- * the fourteenth the moment someone names it `FooTable.tsx`.
+ * Anything that composes the spreadsheet surface — a direct engine mount
+ * (`<LedgerGridSurface>`, for the DS wrapper + any not-yet-migrated view), a
+ * **registry-host mount** (`<NonlinearTableHost>`, the migrated views, plan
+ * Phase 1), a gutter mount, or an import of the rail. Discovery is by CONTENT,
+ * never by filename: a `*GridView.tsx` walk would certify the views that exist
+ * today and miss the next one named `FooTable.tsx`.
+ *
+ * The host counts because a migrated view is still a "grid view" for the purpose
+ * of the no-hand-wired-plumbing assertions below — it just passes them trivially,
+ * since the host owns visibility/gutter/descriptor and the view can only reach
+ * them by hand-wiring the banned symbols anyway.
  */
-const TOUCHES = /<LedgerGridSurface[<\s/>]|<GridColumnGutter[\s>]|GridColumnDetailsPanel/;
+const TOUCHES =
+  /<LedgerGridSurface[<\s/>]|<NonlinearTableHost[<\s/>]|<GridColumnGutter[\s>]|GridColumnDetailsPanel/;
 
 const CONSUMERS = walk(SRC)
   .filter((rel) => !DS_OWN.has(rel))

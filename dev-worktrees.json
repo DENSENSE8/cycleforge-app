@@ -139,6 +139,14 @@
       "appPort": 3090,
       "unlockParked": true,
       "note": "WS · topic/warehouse · :3090"
+    },
+    {
+      "id": "tables",
+      "label": "Nonlinear data-table engine",
+      "path": "../cycleforge-tables",
+      "appPort": 3150,
+      "unlockParked": true,
+      "note": "WS-TABLES · topic/tables · :3150 · registry-driven table engine — every Workbench spreadsheet mounts via the table-definition registry + NonlinearTableHost, never a page-local *GridView twin. Handoff: docs/todo/nonlinear-data-table-engine-HANDOFF.md"
     }
   ]
 }

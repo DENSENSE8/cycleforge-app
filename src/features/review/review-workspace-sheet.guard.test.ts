@@ -15,6 +15,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import {
+  CATALOG_LINK_TABLE_DEFINITION,
+  IMPORT_EXCEPTION_TABLE_DEFINITION,
+} from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 
 const ROOT = join(process.cwd());
 const FILES = [
@@ -68,13 +72,15 @@ describe('Review family Sheets flush chrome', () => {
     });
   }
 
-  it('ReviewCatalogLinkGridView pins surface="sheet" on both mounts', () => {
+  it('both catalog-link definitions declare surface: "sheet" and mount the host', () => {
+    // Two definitions, one shared bag (plan Phase 1, wave 4). The shell recipe
+    // moved from a `surface="sheet"` mount literal to each definition; the file
+    // now mounts NonlinearTableHost twice, once per binding.
+    assert.equal(CATALOG_LINK_TABLE_DEFINITION.surface, 'sheet');
+    assert.equal(IMPORT_EXCEPTION_TABLE_DEFINITION.surface, 'sheet');
     const src = read('src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx');
-    const mounts = src.match(/<LedgerGridSurface[\s\S]*?surface="sheet"/g) ?? [];
-    assert.equal(
-      mounts.length,
-      2,
-      'both catalog-link grid mounts (chores + import exceptions) must pin surface="sheet"',
-    );
+    const mounts = src.match(/<NonlinearTableHost[\s\S]*?binding=\{/g) ?? [];
+    assert.equal(mounts.length, 2, 'both catalog-link grids must mount NonlinearTableHost');
+    assert.doesNotMatch(src, /<LedgerGridSurface/, 'must not reach past the host to the engine');
   });
 });

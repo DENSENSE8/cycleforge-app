@@ -17,6 +17,7 @@ import { describe, it } from 'node:test';
 const ROOT = join(process.cwd());
 const ORDERS_VIEW = 'src/components/dashboard/DashboardOrdersView.tsx';
 const ORDERS_GRID = 'src/components/dashboard/orders-queue/OrdersGridView.tsx';
+const ORDERS_PLANE = 'src/components/dashboard/orders-queue/useOrdersQueuePlane.ts';
 const ORDERS_ROW = 'src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx';
 const OUTBOUND_HEADER = 'src/components/dashboard/OutboundWorkspaceHeader.tsx';
 const VIEW_TOPICS = 'src/components/outbound/orders/OrdersViewTopicsCluster.tsx';
@@ -292,10 +293,12 @@ describe('To-ship Sheets flush chrome', () => {
 
   it('To-ship railSelection keeps click-select gestures + always-painted checkboxes', () => {
     const src = stripBlockComments(read(ORDERS_GRID));
+    // clickSelect = railSelection now lives in the selection plane hook (wave 5c),
+    // where the row-action gestures it gates also live.
     assert.match(
-      src,
+      stripBlockComments(read(ORDERS_PLANE)),
       /const clickSelect = railSelection/,
-      'railSelection must drive Sheets clickSelect on To-ship',
+      'railSelection must drive Sheets clickSelect on To-ship (in useOrdersQueuePlane)',
     );
     assert.match(
       src,
