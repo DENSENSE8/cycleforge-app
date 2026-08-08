@@ -1,4 +1,4 @@
-export const TRIAGE_PILES = ['inbox', 'upload', 'ignore', 'done'] as const;
+const TRIAGE_PILES = ['inbox', 'upload', 'ignore', 'done'] as const;
 export type TriagePile = (typeof TRIAGE_PILES)[number];
 
 export interface TriageRow {
@@ -21,27 +21,20 @@ export interface TriageRow {
   resolved_at: string | null;
 }
 
-export interface TriagePileBucket {
+interface TriagePileBucket {
   items: TriageRow[];
   count: number;
   truncated: boolean;
 }
 
-export type TriagePiles = Record<TriagePile, TriagePileBucket>;
+type TriagePiles = Record<TriagePile, TriagePileBucket>;
 
-export interface TriagePileMeta {
+interface TriagePileMeta {
   id: TriagePile;
   label: string;
   short: string;
   helper: string;
 }
-
-export const TRIAGE_PILE_META: Record<TriagePile, TriagePileMeta> = {
-  inbox:  { id: 'inbox',  label: 'Inbox',          short: 'Inbox',  helper: 'New scans waiting for triage' },
-  upload: { id: 'upload', label: 'Upload to Zoho', short: 'Upload', helper: 'Confirmed POs to enter in Zoho' },
-  ignore: { id: 'ignore', label: 'Ignore',         short: 'Ignore', helper: 'Not a real PO (marketing, dupes)' },
-  done:   { id: 'done',   label: 'Done',           short: 'Done',   helper: 'Auto-closed when Zoho mirror catches up' },
-};
 
 export interface TriageDetailBody {
   text: string;
@@ -56,7 +49,7 @@ export interface TriageDetailBody {
   error: string | null;
 }
 
-export interface TriageZohoMatch {
+interface TriageZohoMatch {
   zoho_purchaseorder_id: string;
   zoho_purchaseorder_number: string;
   zoho_purchaseorder_number_norm: string;
@@ -109,7 +102,7 @@ export const LLM_FIELD_LABEL: Record<LlmFieldKey, string> = {
   ship_to:          'Ship to',
 };
 
-export function getFieldState(
+function getFieldState(
   state: Record<string, unknown>,
   field: string,
 ): TriageFieldState | undefined {
@@ -120,40 +113,15 @@ export function getFieldState(
   return f as TriageFieldState;
 }
 
-export function isFieldConfirmed(
-  state: Record<string, unknown>,
-  field: string,
-): boolean {
-  return Boolean(getFieldState(state, field)?.confirmed_at);
-}
-
 /**
  * AI-suggested triage pile, written into triage_state.suggested_pile by the
  * extract endpoint. Advisory only — the operator confirms before the email
  * moves. The model never suggests the terminal `done` pile.
  */
-export interface SuggestedPileState {
+interface SuggestedPileState {
   value: Exclude<TriagePile, 'done'>;
   confidence: 'high' | 'medium' | 'low';
   source: 'llm';
   extracted_at: string;
 }
 
-export function getSuggestedPile(
-  state: Record<string, unknown>,
-): SuggestedPileState | undefined {
-  const sp = state?.suggested_pile;
-  if (!sp || typeof sp !== 'object') return undefined;
-  const value = (sp as Record<string, unknown>).value;
-  if (value !== 'upload' && value !== 'ignore' && value !== 'inbox') return undefined;
-  return sp as SuggestedPileState;
-}
-
-export function emptyPiles(): TriagePiles {
-  return {
-    inbox:  { items: [], count: 0, truncated: false },
-    upload: { items: [], count: 0, truncated: false },
-    ignore: { items: [], count: 0, truncated: false },
-    done:   { items: [], count: 0, truncated: false },
-  };
-}

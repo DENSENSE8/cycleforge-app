@@ -33,26 +33,9 @@ export function registerStationBuiltins(): void {
 // Side-effect registration on import — consumers just import and read.
 registerStationBuiltins();
 
-export {
-  registerBlock,
-  getBlock,
-  hasBlock,
-  listBlocks,
-  listBlockMeta,
-} from './blocks/registry';
-export {
-  registerDataSource,
-  getDataSource,
-  listDataSources,
-  listDataSourceMeta,
-} from './data-sources';
-export {
-  registerAction,
-  getAction,
-  listActions,
-  listActionMeta,
-  actionsForSource,
-} from './actions';
+export { getBlock, listBlockMeta } from './blocks/registry';
+export { getDataSource, listDataSources, listDataSourceMeta } from './data-sources';
+export { getAction, listActionMeta, actionsForSource } from './actions';
 // The procedure registry is deliberately NOT re-exported here: its only
 // consumers are the Studio's Procedure lens and the lineage guard, and both
 // import '@/lib/stations/procedure' directly. Re-exporting it would put a
