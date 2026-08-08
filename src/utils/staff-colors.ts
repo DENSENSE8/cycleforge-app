@@ -1,22 +1,16 @@
 export type StationTheme = 'green' | 'purple' | 'blue' | 'yellow' | 'black' | 'red' | 'lightblue' | 'pink';
-export type TechStationTheme = 'green' | 'purple' | 'blue' | 'yellow';
-export type PackerStationTheme = 'black' | 'red';
+type TechStationTheme = 'green' | 'purple' | 'blue' | 'yellow';
+type PackerStationTheme = 'black' | 'red';
 
 /**
  * Soft 1px outline in the staff tech theme hue (e.g. up-next TabSwitch rail + pill).
  */
-export const techStationLightChromeOutlineClass: Record<TechStationTheme, string> = {
+const techStationLightChromeOutlineClass: Record<TechStationTheme, string> = {
   green: 'border border-emerald-200',
   blue: 'border border-blue-200',
   purple: 'border border-purple-200',
   yellow: 'border border-amber-200',
 };
-
-export function getTechStationLightChromeOutlineClass(
-  techId: number | string | null | undefined,
-): string {
-  return techStationLightChromeOutlineClass[getTechThemeById(techId)];
-}
 
 export interface StationThemeColors {
   bg: string;
@@ -143,7 +137,7 @@ export const stationThemeClasses: Record<
   },
 };
 
-export const packerInputThemeClasses: Record<PackerStationTheme, StationInputThemeClasses> = {
+const packerInputThemeClasses: Record<PackerStationTheme, StationInputThemeClasses> = {
   black: {
     text: 'text-text-default',
     bg: 'bg-slate-900', // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
@@ -580,17 +574,6 @@ export const printQueueTableUi: Record<
   },
 };
 
-export function getPrintQueueTableUi(staffId: number | string | null | undefined) {
-  const theme = getStaffThemeById(staffId);
-  return printQueueTableUi[theme];
-}
-
-export function getPrintQueueStationTheme(
-  staffId: number | string | null | undefined
-): StationTheme {
-  return getStaffThemeById(staffId);
-}
-
 /**
  * FBA workspace sidebar ({@link FbaWorkspaceScanField}): tracking card + FNSKU list chrome.
  */
@@ -717,58 +700,7 @@ export const fbaWorkspaceScanChrome: Record<
   },
 };
 
-/**
- * FBA plan / FNSKU checklist main column: same gradient family as {@link fbaWorkspaceScanChrome}.`trackingCard`,
- * with a darker frame than the sidebar tracking card (`border-*-600` vs `border-*-400/95`).
- */
-export const fbaFnskuChecklistChrome: Record<
-  StationTheme,
-  { shell: string; headerBarDivider: string }
-> = {
-  green: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-emerald-600/90 bg-gradient-to-b from-emerald-50/88 via-white to-stone-50 shadow-md shadow-emerald-200/25',
-    headerBarDivider: 'border-b-2 border-emerald-300',
-  },
-  blue: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-blue-600/90 bg-gradient-to-b from-blue-50/88 via-white to-stone-50 shadow-md shadow-blue-200/25',
-    headerBarDivider: 'border-b-2 border-blue-300',
-  },
-  purple: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-purple-600/90 bg-gradient-to-b from-purple-50/88 via-white to-stone-50 shadow-md shadow-purple-200/25',
-    headerBarDivider: 'border-b-2 border-purple-300',
-  },
-  yellow: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-amber-500/90 bg-gradient-to-b from-amber-50/88 via-white to-stone-50 shadow-md shadow-amber-200/25',
-    headerBarDivider: 'border-b-2 border-amber-300',
-  },
-  black: {
-    shell:
-      // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-slate-700/95 bg-gradient-to-b from-slate-50/90 via-white to-stone-50 shadow-md shadow-slate-300/30',
-    headerBarDivider: 'border-b-2 border-border-emphasis',
-  },
-  red: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-red-600/90 bg-gradient-to-b from-red-50/88 via-white to-stone-50 shadow-md shadow-red-200/25',
-    headerBarDivider: 'border-b-2 border-red-300',
-  },
-  lightblue: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-sky-600/90 bg-gradient-to-b from-sky-50/88 via-white to-stone-50 shadow-md shadow-sky-200/25',
-    headerBarDivider: 'border-b-2 border-sky-300',
-  },
-  pink: {
-    shell:
-      'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border-2 border-pink-600/90 bg-gradient-to-b from-pink-50/88 via-white to-stone-50 shadow-md shadow-pink-200/25',
-    headerBarDivider: 'border-b-2 border-pink-300',
-  },
-};
-
-export interface FbaSidebarThemeChrome {
+interface FbaSidebarThemeChrome {
   sectionRule: string;
   sectionLabel: string;
   loading: string;
@@ -1108,7 +1040,3 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
   },
 };
 
-export function getFbaWorkspaceScanChrome(staffId: number | string | null | undefined) {
-  const theme = getStaffThemeById(staffId);
-  return fbaWorkspaceScanChrome[theme];
-}
