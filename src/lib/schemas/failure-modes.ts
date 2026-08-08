@@ -7,12 +7,12 @@ import { z } from 'zod';
 
 const trimmed = z.string().trim();
 
-export const FAILURE_CATEGORIES = ['hardware', 'software', 'cosmetic', 'electrical', 'accessory', 'other'] as const;
-export const FAILURE_SEVERITIES = ['critical', 'major', 'minor'] as const;
-export const FAILURE_TAG_SOURCES = ['qc', 'return', 'manual', 'repair'] as const;
-export const FAILURE_TAG_RESOLUTIONS = ['open', 'resolved', 'scrapped', 'wontfix'] as const;
+const FAILURE_CATEGORIES = ['hardware', 'software', 'cosmetic', 'electrical', 'accessory', 'other'] as const;
+const FAILURE_SEVERITIES = ['critical', 'major', 'minor'] as const;
+const FAILURE_TAG_SOURCES = ['qc', 'return', 'manual', 'repair'] as const;
+const FAILURE_TAG_RESOLUTIONS = ['open', 'resolved', 'scrapped', 'wontfix'] as const;
 /** Mirrors condition_grade_enum (schema.ts). */
-export const CONDITION_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
+const CONDITION_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 
 export const FailureModeCreateBody = z.object({
   code: trimmed.min(1).max(60),
