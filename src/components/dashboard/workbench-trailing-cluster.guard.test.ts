@@ -112,7 +112,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/features/review/catalog-link/grid/CatalogLinkGridColumnHeader.tsx',
-    'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
+    'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx',
   ],
   // The two that chrome Fields used to serve exclusively.
   [
