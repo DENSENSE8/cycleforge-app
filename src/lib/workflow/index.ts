@@ -4,7 +4,7 @@
  * Composes the production engine from its injectable parts and registers the
  * built-in node types. Routes and triggers should import from here.
  *
- *   import { advance, listNodeMeta, registerBuiltins } from '@/lib/workflow';
+ *   import { advance, listNodeMeta } from '@/lib/workflow';
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -32,10 +32,10 @@ import './nodes/parts-harvest.node';
 import './nodes/decision.node';
 
 /**
- * Kept for API compatibility — builtins now register when this module loads
- * (the side-effect imports above), so this is a no-op.
+ * Builtins register when this module loads (the side-effect imports above),
+ * so this is a no-op. Module-private — nothing outside calls it.
  */
-export function registerBuiltins(): void {
+function registerBuiltins(): void {
   /* no-op */
 }
 
@@ -57,9 +57,5 @@ export async function advance(
   );
 }
 
-export { listNodeMeta, listNodes, getNode, registerNode, hasNode } from './registry';
-export { createDrizzleStore, enrollItem } from './store';
-export { emitWorkflowEvent } from './events';
-export { advanceItem } from './advance';
-export type { AdvanceArgs, AdvanceOutcome } from './advance';
+export { listNodeMeta, getNode, hasNode } from './registry';
 export * from './contract';
