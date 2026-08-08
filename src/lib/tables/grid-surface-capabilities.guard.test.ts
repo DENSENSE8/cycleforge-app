@@ -296,7 +296,7 @@ const MOUNT_EXEMPT = new Set([
 const MOUNTS: Record<string, string> = {
   'src/components/dashboard/orders-queue/OrdersGridView.tsx': 'orders',
   'src/components/station/receiving-grid/ReceivingGridView.tsx': 'receiving',
-  'src/components/station/incoming-grid/IncomingGridView.tsx': 'incoming',
+  'src/components/station/ReceivingLinesTable.tsx': 'incoming',
   'src/components/products/catalog/ProductsCatalogWorkspace.tsx': 'catalog',
   'src/components/repair/RepairTable.tsx': 'repair',
   'src/components/receiving/pickup/PickupWorkspace.tsx': 'pickup',
@@ -414,7 +414,6 @@ describe('ledger grid mounts', () => {
  */
 const GRID_VIEW_FOREST: string[] = [
   'src/components/dashboard/orders-queue/OrdersGridView.tsx',
-  'src/components/station/incoming-grid/IncomingGridView.tsx',
   'src/components/station/receiving-grid/ReceivingGridView.tsx',
 ];
 
