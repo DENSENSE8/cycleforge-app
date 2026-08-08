@@ -24,7 +24,7 @@ const TZ_SUFFIX_RE = /(Z|[+-]\d{2}:\d{2})$/i;
 //   Civil date   → YYYY-MM-DD only; use parseDateKey / addDaysToDateKey / formatDateKey*
 //   Zoned wall   → Instant + explicit zone (SQL: timezone('America/Los_Angeles', ts)::date)
 
-export interface DateKeyParts {
+interface DateKeyParts {
   y: number;
   m: number;
   d: number;
@@ -243,10 +243,6 @@ function getPstYmdFromDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function getCurrentPSTTime(): Date {
-  return new Date();
-}
-
 export function formatPSTTimestamp(date?: Date): string {
   const base = date ?? new Date();
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -332,36 +328,6 @@ export function normalizePSTTimestamp(
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return fallbackToNow ? formatPSTTimestamp() : null;
   return formatPSTTimestamp(parsed);
-}
-
-export function toISOStringPST(timestamp: string): string {
-  try {
-    if (timestamp && timestamp.includes('/')) {
-      const [datePart, timePart] = timestamp.split(' ');
-      const [month, day, year] = datePart.split('/');
-      const date = new Date(
-        `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart || '00:00:00'}`
-      );
-
-      return date
-        .toLocaleString('en-US', {
-          timeZone: PST_TIME_ZONE,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hourCycle: 'h23',
-        })
-        .replace(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/, '$3-$1-$2T$4:$5:$6');
-    }
-
-    return timestamp;
-  } catch (error) {
-    console.error('Error converting timestamp to ISO PST:', error);
-    return timestamp;
-  }
 }
 
 export function getCurrentPSTDateKey(): string {
@@ -500,15 +466,6 @@ export function formatDatePST(
   const year = shortYear ? String(yearRaw).slice(-2) : String(yearRaw);
 
   return `${month}/${day}/${year}`;
-}
-
-export function formatTimePST(
-  input: string | Date | null | undefined,
-  options?: { withSeconds?: boolean; hour12?: boolean }
-): string {
-  // Time-of-day display follows the user's clock-format preference; delegate to
-  // the canonical formatter (which resolves 12h/24h unless explicitly overridden).
-  return formatTime12hPST(input, options);
 }
 
 /**
@@ -688,7 +645,7 @@ export function formatStageClockTimePST(input: string | Date | null | undefined)
 }
 
 /** Wall-clock HH:mm (24-hour, zero-padded) in America/Los_Angeles — no date, no seconds. */
-export function formatClockTimePST(input: string | Date | null | undefined): string {
+function formatClockTimePST(input: string | Date | null | undefined): string {
   const placeholder = '--:--';
   if (!input) return placeholder;
 
@@ -714,15 +671,6 @@ export function formatClockTimePST(input: string | Date | null | undefined): str
   const [hh, mm] = timePart.split(':');
   if (!hh || !mm) return placeholder;
   return `${hh}:${mm}`;
-}
-
-export function isSamePSTDate(
-  a: string | Date | null | undefined,
-  b: string | Date | null | undefined
-): boolean {
-  const keyA = toPSTDateKey(a);
-  const keyB = toPSTDateKey(b);
-  return !!keyA && !!keyB && keyA === keyB;
 }
 
 export function formatDateWithOrdinal(dateStr: string): string {
@@ -785,39 +733,6 @@ export function formatWeekRangeCompact(startStr: string, endStr: string): string
     return `${months[start.m - 1]} ${getOrdinal(start.d)} - ${getOrdinal(end.d)}`;
   }
   return `${months[start.m - 1]} ${getOrdinal(start.d)} - ${months[end.m - 1]} ${getOrdinal(end.d)}`;
-}
-
-export function formatShortDate(dateString: string | null | undefined): string {
-  if (!dateString) return 'N/A';
-
-  try {
-    const dateKey = toPSTDateKey(dateString);
-    if (dateKey) {
-      const [year, month, day] = dateKey.split('-').map(Number);
-      return `${month}/${day}/${String(year).slice(-2)}`;
-    }
-
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return 'Invalid Date';
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().slice(-2)}`;
-  } catch {
-    return 'Invalid Date';
-  }
-}
-
-export function formatMonthDay(dateString: string | null | undefined): string | null {
-  if (!dateString) return null;
-  const dateKey = toPSTDateKey(dateString);
-  if (dateKey) {
-    const [, month, day] = dateKey.split('-').map(Number);
-    if (!month || !day) return null;
-    return `${month}/${day}`;
-  }
-  const parsed = new Date(dateString);
-  if (Number.isNaN(parsed.getTime())) return null;
-  const month = parsed.getMonth() + 1;
-  const day = parsed.getDate();
-  return `${month}/${day}`;
 }
 
 // ─── Days-late helpers ──────────────────────────────────────────────────────

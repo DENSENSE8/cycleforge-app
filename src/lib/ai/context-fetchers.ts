@@ -186,7 +186,7 @@ export async function fetchOrdersContext(params: IntentParams, orgId: OrgId): Pr
   ].join('\n');
 }
 
-export async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<string> {
+async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<string> {
   const values: Array<string | OrgId> = [orgId];
   let whereClause = `WHERE s.active = true AND s.organization_id = $1`;
 
@@ -274,7 +274,7 @@ export async function fetchStaffContext(params: IntentParams, orgId: OrgId): Pro
   ].join('\n');
 }
 
-export async function fetchRepairContext(params: IntentParams, orgId: OrgId): Promise<string> {
+async function fetchRepairContext(params: IntentParams, orgId: OrgId): Promise<string> {
   const lookup = params.ticketNumber || params.orderId;
   if (lookup) {
     const detail = await tenantQuery(
@@ -381,7 +381,7 @@ export async function fetchRepairContext(params: IntentParams, orgId: OrgId): Pr
   return ['=== OPEN REPAIRS ===', ...lines, `Total open: ${total}`].join('\n');
 }
 
-export async function fetchReceivingContext(orgId: OrgId): Promise<string> {
+async function fetchReceivingContext(orgId: OrgId): Promise<string> {
   const [receiving, lines] = await Promise.all([
     tenantQuery(
       orgId,
@@ -428,7 +428,7 @@ export async function fetchReceivingContext(orgId: OrgId): Promise<string> {
   ].join('\n');
 }
 
-export async function fetchFbaContext(params: IntentParams, orgId: OrgId): Promise<string> {
+async function fetchFbaContext(params: IntentParams, orgId: OrgId): Promise<string> {
   const values: string[] = [];
   let whereClause = `WHERE COALESCE(fs.status, 'PLANNED') != 'SHIPPED'`;
 
@@ -465,7 +465,7 @@ export async function fetchFbaContext(params: IntentParams, orgId: OrgId): Promi
   ].join('\n');
 }
 
-export async function fetchInventoryContext(params: IntentParams, orgId: OrgId): Promise<string> {
+async function fetchInventoryContext(params: IntentParams, orgId: OrgId): Promise<string> {
   if (params.sku) {
     const specific = await tenantQuery(
       orgId,
@@ -511,7 +511,7 @@ export async function fetchInventoryContext(params: IntentParams, orgId: OrgId):
   ].join('\n');
 }
 
-export async function fetchExceptionsContext(orgId: OrgId): Promise<string> {
+async function fetchExceptionsContext(orgId: OrgId): Promise<string> {
   const result = await tenantQuery(
     orgId,
     `
