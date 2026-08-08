@@ -12,16 +12,6 @@ export const STAFF_NAMES: Record<number, string> = {
 /** Packer staff IDs in display order. */
 export const PACKER_IDS: readonly number[] = [4, 5];
 
-/** Technician names in display/sort order. */
-export const TECH_NAME_ORDER: readonly string[] = ['michael', 'thuc', 'sang', 'cuong'];
-
-/** Packer names in display/sort order. */
-export const PACKER_NAME_ORDER: readonly string[] = ['tuan', 'thuy'];
-
-/** Default bulk-assign staff: Cuong (tech) + Thuy (packer). */
-export const DEFAULT_TECH_ID = 6;   // Cuong
-export const DEFAULT_PACKER_ID = 5; // Thuy
-
 /** Legacy employee ID mapping (station number → employee_id in DB). */
 export const TECH_EMPLOYEE_IDS: Record<string, string> = {
   '1': 'TECH001',
@@ -31,7 +21,7 @@ export const TECH_EMPLOYEE_IDS: Record<string, string> = {
 };
 
 /** Reverse lookup: staff name (lowercase) → staff ID. */
-export const STAFF_ID_BY_NAME: Record<string, number> = Object.fromEntries(
+const STAFF_ID_BY_NAME: Record<string, number> = Object.fromEntries(
   Object.entries(STAFF_NAMES).map(([id, name]) => [name.toLowerCase(), Number(id)])
 );
 
@@ -56,6 +46,3 @@ export function getStaffName(staffId: number | null | undefined): string {
   return STAFF_NAMES[staffId] || `Staff #${staffId}`;
 }
 
-export function getStaffIdByName(name: string): number | null {
-  return STAFF_ID_BY_NAME[name.trim().toLowerCase()] ?? null;
-}

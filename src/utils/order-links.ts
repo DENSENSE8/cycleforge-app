@@ -1,5 +1,5 @@
 import { getOrderPlatformLabel } from './order-platform';
-export { getTrackingUrl } from './tracking';
+export { getTrackingUrl } from '@/lib/tracking-format';
 
 export function getOrderIdUrl(orderId: string): string | null {
   if (!orderId || orderId === 'Not available' || orderId === 'N/A') return null;

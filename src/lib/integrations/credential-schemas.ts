@@ -8,18 +8,18 @@ import type { IntegrationProvider } from './credentials';
 const nonEmpty = z.string().min(1);
 const optionalNonEmpty = z.string().min(1).optional();
 
-export const ZendeskCredentialSchema = z.object({
+const ZendeskCredentialSchema = z.object({
   subdomain: nonEmpty,
   email: z.string().email(),
   apiToken: nonEmpty,
 });
 
-export const EcwidCredentialSchema = z.object({
+const EcwidCredentialSchema = z.object({
   storeId: nonEmpty,
   apiToken: nonEmpty,
 });
 
-export const ShipStationCredentialSchema = z.object({
+const ShipStationCredentialSchema = z.object({
   apiKey: nonEmpty,
   v1ApiKey: optionalNonEmpty,
   v1ApiSecret: optionalNonEmpty,
@@ -27,30 +27,30 @@ export const ShipStationCredentialSchema = z.object({
   webhookSecret: optionalNonEmpty,
 });
 
-export const UpsCredentialSchema = z.object({
+const UpsCredentialSchema = z.object({
   clientId: nonEmpty,
   clientSecret: nonEmpty,
   webhookSecret: optionalNonEmpty,
 });
 
-export const FedexCredentialSchema = z.object({
+const FedexCredentialSchema = z.object({
   clientId: nonEmpty,
   clientSecret: nonEmpty,
   env: z.enum(['production', 'sandbox']),
 });
 
-export const UspsCredentialSchema = z.object({
+const UspsCredentialSchema = z.object({
   consumerKey: nonEmpty,
   consumerSecret: nonEmpty,
 });
 
-export const GoogleSheetsCredentialSchema = z.object({
+const GoogleSheetsCredentialSchema = z.object({
   clientEmail: nonEmpty,
   privateKey: nonEmpty,
   defaultSpreadsheetId: optionalNonEmpty,
 });
 
-export const NextivaCredentialSchema = z.object({
+const NextivaCredentialSchema = z.object({
   apiKey: optionalNonEmpty,
   refreshToken: optionalNonEmpty,
   accessToken: optionalNonEmpty,
@@ -64,7 +64,7 @@ export const NextivaCredentialSchema = z.object({
   message: 'Provide an API key or OAuth refresh token',
 });
 
-export const OllamaCredentialSchema = z.object({
+const OllamaCredentialSchema = z.object({
   baseUrl: z.string().url(),
   tunnelUrl: z.string().url().optional(),
   model: nonEmpty,
@@ -72,34 +72,34 @@ export const OllamaCredentialSchema = z.object({
   apiKey: optionalNonEmpty,
 });
 
-export const AiGatewayCredentialSchema = z.object({
+const AiGatewayCredentialSchema = z.object({
   apiKey: nonEmpty,
   chatModel: optionalNonEmpty,
   embedModel: optionalNonEmpty,
 });
 
-export const OpenAiCredentialSchema = z.object({
+const OpenAiCredentialSchema = z.object({
   apiKey: nonEmpty,
   chatModel: optionalNonEmpty,
   embedModel: optionalNonEmpty,
 });
 
-export const AnthropicCredentialSchema = z.object({
+const AnthropicCredentialSchema = z.object({
   apiKey: nonEmpty,
   chatModel: optionalNonEmpty,
 });
 
-export const StripeCredentialSchema = z.object({
+const StripeCredentialSchema = z.object({
   secretKey: nonEmpty,
   publishableKey: nonEmpty,
   webhookSecret: nonEmpty,
 });
 
-export const AblyCredentialSchema = z.object({
+const AblyCredentialSchema = z.object({
   apiKey: nonEmpty,
 });
 
-export const NangoMarkerSchema = z.object({
+const NangoMarkerSchema = z.object({
   __nango: z.literal(true),
   connectionId: nonEmpty,
   providerConfigKey: nonEmpty,
@@ -124,9 +124,9 @@ export const VAULT_UPSERT_PROVIDERS = [
   'square',
 ] as const satisfies readonly IntegrationProvider[];
 
-export type VaultUpsertProvider = (typeof VAULT_UPSERT_PROVIDERS)[number];
+type VaultUpsertProvider = (typeof VAULT_UPSERT_PROVIDERS)[number];
 
-export const INTEGRATION_PAYLOAD_SCHEMAS = {
+const INTEGRATION_PAYLOAD_SCHEMAS = {
   zendesk: ZendeskCredentialSchema,
   ecwid: EcwidCredentialSchema,
   shipstation: ShipStationCredentialSchema,
@@ -145,7 +145,7 @@ export const INTEGRATION_PAYLOAD_SCHEMAS = {
 } as const satisfies Partial<Record<IntegrationProvider, z.ZodType>>;
 
 /** Fields treated as secrets — blank on update means "keep existing". */
-export const CREDENTIAL_SECRET_KEYS: Partial<Record<IntegrationProvider, readonly string[]>> = {
+const CREDENTIAL_SECRET_KEYS: Partial<Record<IntegrationProvider, readonly string[]>> = {
   zendesk: ['apiToken'],
   ecwid: ['apiToken'],
   shipstation: ['apiKey', 'v1ApiKey', 'v1ApiSecret', 'webhookSecret'],
@@ -162,7 +162,7 @@ export const CREDENTIAL_SECRET_KEYS: Partial<Record<IntegrationProvider, readonl
   ably: ['apiKey'],
 };
 
-export function getCredentialSchema(provider: IntegrationProvider): z.ZodType | undefined {
+function getCredentialSchema(provider: IntegrationProvider): z.ZodType | undefined {
   return INTEGRATION_PAYLOAD_SCHEMAS[provider as keyof typeof INTEGRATION_PAYLOAD_SCHEMAS];
 }
 
@@ -174,12 +174,12 @@ export function isVaultUpsertProvider(provider: string): provider is VaultUpsert
   return (VAULT_UPSERT_PROVIDERS as readonly string[]).includes(provider);
 }
 
-export interface ParsePayloadResult {
+interface ParsePayloadResult {
   ok: true;
   payload: Record<string, unknown>;
 }
 
-export interface ParsePayloadError {
+interface ParsePayloadError {
   ok: false;
   error: string;
   fieldErrors?: Record<string, string>;

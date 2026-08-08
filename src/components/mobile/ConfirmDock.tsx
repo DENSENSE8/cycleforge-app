@@ -8,7 +8,8 @@
  *   │            secondary text-link            │  optional, 32px tall
  *   └───────────────────────────────────────────┘
  *
- * Slots into MobileShell's `bottomDock` slot. Caller is responsible for
+ * Mounted by the route as a flex sibling that anchors to the viewport bottom
+ * (see `app/m/(shell)/pick/[orderId]/page.tsx`). Caller is responsible for
  * choosing the dock variant ('inset' for a separated white strip, 'overlay'
  * when content scrolls beneath).
  *

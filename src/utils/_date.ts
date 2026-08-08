@@ -4,18 +4,6 @@
  */
 
 /**
- * Formats a date as a human-readable string using Intl.DateTimeFormat.
- * @example formatDate(new Date()) → 'March 18, 2026'
- */
-export function formatDate(
-  date: Date | string | number,
-  options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' },
-  locale = 'en-US',
-): string {
-  return new Intl.DateTimeFormat(locale, options).format(new Date(date));
-}
-
-/**
  * Formats a date as "Jan 18, 2026" (short month, numeric day, numeric year).
  * Returns the fallback string for null/invalid input.
  */
@@ -30,25 +18,6 @@ export function formatMediumDate(
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(date);
-}
-
-/**
- * Formats a date as "Jan 18, 1:45 PM" (short month, numeric day, time).
- * Returns the fallback string for null/invalid input.
- */
-export function formatMediumDateTime(
-  value: string | null | undefined,
-  fallback = '—',
-): string {
-  if (!value) return fallback;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return fallback;
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
   }).format(date);
 }
 
@@ -73,43 +42,3 @@ export function timeAgo(date: Date | string | number): string {
   return 'just now';
 }
 
-/**
- * Returns an ISO date string (YYYY-MM-DD) for a given date.
- */
-export function toISODate(date: Date | string | number): string {
-  return new Date(date).toISOString().split('T')[0];
-}
-
-/**
- * Returns true if the given date falls on today (UTC).
- */
-export function isToday(date: Date | string | number): boolean {
-  return toISODate(date) === toISODate(Date.now());
-}
-
-/**
- * Adds a number of days to a date and returns the new Date.
- */
-export function addDays(date: Date | string | number, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-/**
- * Returns the start of the day (00:00:00.000) for a given date.
- */
-export function startOfDay(date: Date | string | number): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-/**
- * Returns the end of the day (23:59:59.999) for a given date.
- */
-export function endOfDay(date: Date | string | number): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}

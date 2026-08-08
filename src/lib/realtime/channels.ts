@@ -15,18 +15,18 @@
  * rather than crashing the render.
  */
 
-export const DEFAULT_ORDERS_CHANNEL = 'orders:changes';
-export const DEFAULT_REPAIRS_CHANNEL = 'repair:changes';
-export const DEFAULT_AI_ASSIST_CHANNEL = 'ai:assist';
-export const DEFAULT_STATION_CHANNEL = 'station:changes';
-export const DEFAULT_STAFF_CHANNEL = 'staff:changes';
-export const DEFAULT_DB_CHANNEL_PREFIX = 'db';
-export const DEFAULT_FBA_CHANNEL = 'fba:changes';
-export const DEFAULT_DASHBOARD_CHANNEL = 'dashboard:operations';
-export const DEFAULT_OPS_PLANS_CHANNEL = 'ops_plans:changes';
-export const DEFAULT_WALKIN_CHANNEL = 'walkin:changes';
-export const DEFAULT_MASTER_PLAN_CHANNEL = 'forge:master-plan';
-export const DEFAULT_FORGE_RUNS_CHANNEL = 'forge:runs';
+const DEFAULT_ORDERS_CHANNEL = 'orders:changes';
+const DEFAULT_REPAIRS_CHANNEL = 'repair:changes';
+const DEFAULT_AI_ASSIST_CHANNEL = 'ai:assist';
+const DEFAULT_STATION_CHANNEL = 'station:changes';
+const DEFAULT_STAFF_CHANNEL = 'staff:changes';
+const DEFAULT_DB_CHANNEL_PREFIX = 'db';
+const DEFAULT_FBA_CHANNEL = 'fba:changes';
+const DEFAULT_DASHBOARD_CHANNEL = 'dashboard:operations';
+const DEFAULT_OPS_PLANS_CHANNEL = 'ops_plans:changes';
+const DEFAULT_WALKIN_CHANNEL = 'walkin:changes';
+const DEFAULT_MASTER_PLAN_CHANNEL = 'forge:master-plan';
+const DEFAULT_FORGE_RUNS_CHANNEL = 'forge:runs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

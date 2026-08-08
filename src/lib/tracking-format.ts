@@ -43,7 +43,7 @@ export function normalizeTrackingKey(value: string | null | undefined): string {
  *   420XXXXX + 20-22 digit tracking  (28-30 chars total — 5-digit ZIP)
  *   420XXXXXXXXX + 20-22 digit tracking (32-34 chars total — ZIP+4)
  */
-export function stripUspsRoutingPrefix(input: string): string {
+function stripUspsRoutingPrefix(input: string): string {
   const clean = normalizeTrackingCanonical(input);
   if (!clean.startsWith('420') || clean.length < 28) return clean;
 
@@ -73,7 +73,7 @@ export function stripUspsRoutingPrefix(input: string): string {
  * left untouched. The 12-char minimum unit makes a coincidental match between
  * a real tracking number and a perfect repetition effectively impossible.
  */
-export function collapseRepeatedTracking(input: string): string {
+function collapseRepeatedTracking(input: string): string {
   const clean = normalizeTrackingCanonical(input);
   const len = clean.length;
   if (len < 24) return clean; // shortest doubled tracking is 2 × 12 chars
@@ -164,16 +164,11 @@ export function extractCanonicalTracking(input: string): string {
   return stripFedexConcatPrefix(normalizeTrackingNumber(input));
 }
 
-/** Alias for FBA FNSKU normalization — identical to normalizeTrackingCanonical. */
-export const normalizeFnsku = normalizeTrackingCanonical;
-
 export function normalizeTrackingKey18(input: string): string {
   const normalized = normalizeTrackingCanonical(input);
   if (!normalized) return '';
   return normalized.length > 18 ? normalized.slice(-18) : normalized;
 }
-
-export const key18FromStoredTracking = normalizeTrackingKey18;
 
 export function normalizeTrackingLast8(input: string): string {
   const trimmed = input.trim();
@@ -211,27 +206,6 @@ export function orderTrackingMatchKeys(rawScan: string): {
 export function last8FromStoredTracking(input: string): string {
   const digitsOnly = String(input || '').replace(/\D/g, '');
   return digitsOnly.slice(-8);
-}
-
-/** Clean and normalize tracking number (remove non-alphanumeric, uppercase). */
-export const cleanTrackingNumber = normalizeTrackingCanonical;
-
-/** Last 8 characters for display. */
-export function formatTrackingNumber(tracking: string): string {
-  if (!tracking) return '';
-  return tracking.length > 8 ? tracking.slice(-8) : tracking;
-}
-
-/** Last 8 characters, lowercased. */
-export function getLastEightDigits(str: string): string {
-  if (!str) return '';
-  return String(str).trim().slice(-8).toLowerCase();
-}
-
-/** True if string contains at least one digit. */
-export function hasNumbers(str: string): boolean {
-  if (!str) return false;
-  return /\d/.test(String(str));
 }
 
 // ─── Carrier detection ──────────────────────────────────────────────────────

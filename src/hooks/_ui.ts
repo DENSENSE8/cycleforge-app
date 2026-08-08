@@ -38,7 +38,7 @@ const OVERRIDE_KEY = 'cf-device-mode';
 /**
  * Phones only — same intent as `MOBILE_UA_RE` in `src/proxy.ts`.
  * Exclude iPad / Android tablets so they keep the desktop shell (no
- * MobileShell `safe-area-padding` bottom band). Android phones include
+ * mobile-shell `safe-area-padding` bottom band). Android phones include
  * "Mobile"; tablets omit it. Bare `iPad` must not force mobile mode.
  */
 const MOBILE_UA_RE = /iPhone|iPod|Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
