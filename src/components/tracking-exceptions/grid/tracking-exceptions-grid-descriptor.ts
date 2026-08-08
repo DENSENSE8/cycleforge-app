@@ -2,7 +2,7 @@
  * Tracking Exceptions grid surface descriptor — lifts
  * {@link TRACKING_EXCEPTIONS_GRID_COLUMNS} into the TanStack defs
  * `LedgerGridSurface` mounts. Row ORDER stays with the house comparator in
- * {@link TrackingExceptionsGridView} (state math only).
+ * `TrackingExceptionsTable` (state math only).
  */
 
 import {

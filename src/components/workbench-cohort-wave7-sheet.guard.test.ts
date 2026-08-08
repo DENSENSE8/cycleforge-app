@@ -135,7 +135,7 @@ const RESIDUAL_GRID_PINS: { label: string; gridView: string; definition?: TableD
   },
   {
     label: 'Tracking exceptions',
-    gridView: 'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+    gridView: 'src/components/tracking-exceptions/TrackingExceptionsTable.tsx',
     definition: TRACKING_EXCEPTIONS_TABLE_DEFINITION,
   },
 ];
