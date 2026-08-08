@@ -529,6 +529,8 @@ export const workEntityTypeEnum = pgEnum('work_entity_type_enum', [
   'FBA_SHIPMENT',
   'RECEIVING',
   'SKU_STOCK',
+  /** Local support_tickets.id — never a bare remote Zendesk id (2026-08-08a). */
+  'SUPPORT_TICKET',
 ]);
 
 export const workTypeEnum = pgEnum('work_type_enum', [
@@ -538,6 +540,14 @@ export const workTypeEnum = pgEnum('work_type_enum', [
   'QA',
   'RECEIVE',
   'STOCK_REPLENISH',
+  /**
+   * The ad-hoc *throwable task* (2026-08-08a) — "please look at this", handed
+   * between operators. Deliberately not a station: the six above name a bench
+   * an entity is run through, and ad-hoc work has none. Exempt from
+   * `ux_work_assignments_active_entity` so two people can be handed the same
+   * record for different reasons.
+   */
+  'FOLLOW_UP',
 ]);
 
 export const assignmentStatusEnum = pgEnum('assignment_status_enum', [
@@ -1888,24 +1898,66 @@ export const inboundPurchaseMergeLog = pgTable('inbound_purchase_merge_log', {
 /**
  * work_assignments — unified assignment queue for orders, receiving, repairs, FBA.
  *
+ * Also the row behind a *throwable task* since 2026-08-08 (work_type
+ * 'FOLLOW_UP') — see `assigneeStaffId` and the uniqueness note below.
+ *
  * Join integrity (entity_type + entity_id):
  *   PostgreSQL does not support polymorphic FKs, so integrity is enforced by:
- *   1. BEFORE DELETE triggers on orders and receiving that auto-CANCEL any
- *      active assignment whose entity_id matches the deleted row's id.
- *      (fn_cancel_work_assignments_on_entity_delete)
+ *   1. BEFORE DELETE triggers that auto-CANCEL any active assignment whose
+ *      entity_id matches the deleted row's id
+ *      (fn_cancel_work_assignments_on_entity_delete, dispatching on TG_ARGV[0]).
+ *      Arms: ORDER, RECEIVING, REPAIR, FBA_SHIPMENT, SKU_STOCK, and
+ *      SUPPORT_TICKET (2026-08-08b). Since 2026-08-08b it cancels 'OPEN' too —
+ *      that status was added after the function was written, so an OPEN row on
+ *      a deleted parent used to leak forever.
+ *      CAVEAT: the RECEIVING arm was created ON `receiving`, the table that has
+ *      since become `receiving_carton`, so it is likely orphaned. Verify before
+ *      relying on it.
  *   2. Partial composite indexes for fast lateral joins:
  *        idx_wa_order_entity_active    — WHERE entity_type='ORDER'
  *        idx_wa_receiving_entity_active — WHERE entity_type='RECEIVING'
- *   3. ux_work_assignments_active_entity — unique constraint so only one
- *      ASSIGNED/IN_PROGRESS row exists per (entity_type, entity_id, work_type).
+ *   3. ux_work_assignments_active_entity — unique so only one OPEN/ASSIGNED/
+ *      IN_PROGRESS row exists per (organization_id, entity_type, entity_id,
+ *      work_type). Org-led since 2026-08-08b, and 'FOLLOW_UP' is EXEMPT: one
+ *      active row per bench is right for a station and wrong for ad-hoc work,
+ *      where two people must be able to be handed the same record for
+ *      different reasons.
  */
 export const workAssignments = pgTable('work_assignments', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
   entityType: workEntityTypeEnum('entity_type').notNull(),
-  /** id of the referenced orders, receiving, repair_service, etc. row */
-  entityId: integer('entity_id').notNull(),
+  /**
+   * id of the referenced orders, receiving_carton, repair_service, … row.
+   * BIGINT since 2026-08-08b — support_tickets.id is BIGSERIAL, and
+   * polymorphic-tables.md wants BIGINT by default so a future non-INTEGER
+   * parent never forces a second rewrite.
+   */
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
   workType: workTypeEnum('work_type').notNull(),
+  /**
+   * Canonical single assignee (2026-08-08b) — restores the name this table was
+   * born with, before 2026-03-05 renamed it to `assigned_tech_id` and added a
+   * packer slot beside it.
+   *
+   * EXPAND phase: for station rows this is DERIVED from the two slots below by
+   * `fn_sync_work_assignment_assignee()`, which mirrors them exactly (including
+   * NULL). For `FOLLOW_UP` rows it is authoritative and the slots stay null.
+   * Read this; write the slots for station work until the contract migration
+   * drops them.
+   */
+  assigneeStaffId: integer('assignee_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  /**
+   * Who handed this work over (2026-08-08d). NULL = not recorded — every row
+   * created before that date, deliberately never backfilled.
+   *
+   * The only non-recipient staff column on the table. Without it "what did I
+   * hand off" is unwritable: every other read here filters by assignee, and the
+   * two places the thrower survived (the audit row, and
+   * `staff_inbox_items.actor_staff_id`) are respectively append-only and lossy
+   * — the inbox row is skipped for entity kinds that are not inbox-anchorable.
+   */
+  assignedByStaffId: integer('assigned_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   /** Tech assignee (TEST, QA, REPAIR, RECEIVE work types) */
   assignedTechId: integer('assigned_tech_id').references(() => staff.id, { onDelete: 'set null' }),
   /** Packer assignee (PACK work type) */

@@ -66,6 +66,13 @@ const ClipboardHistoryHost = dynamic(
   () => import('@/components/quick-access/ClipboardHistoryHost').then((m) => m.ClipboardHistoryHost),
   { ssr: false },
 );
+// Owns the ⌘⇧U chord + the single throw-a-task panel mount, here for the same
+// reason as the clipboard host: the spine ⋯ row that also opens it does not
+// exist until the operator has opened the spine at least once.
+const ThrowTaskHost = dynamic(
+  () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
+  { ssr: false },
+);
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
   { ssr: false },
@@ -403,6 +410,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
 
         <CommandBar />
         <ClipboardHistoryHost />
+        <ThrowTaskHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
         </Suspense>

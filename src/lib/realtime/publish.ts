@@ -552,6 +552,56 @@ export async function publishStaffMessage(payload: StaffMessagePayload) {
   });
 }
 
+type InboxItemPayload = {
+  organizationId: string;
+  recipientId: number;
+  /** staff_inbox_items.id — the durable row this push mirrors. */
+  itemId: number;
+  entityType: string;
+  entityId: number;
+  eventKey: string;
+  actorStaffId: number;
+  actorName?: string | null;
+  note?: string | null;
+  urgent?: boolean;
+};
+
+/**
+ * Push a durable `staff_inbox_items` row to its recipient's inbox channel.
+ *
+ * This is the leg the notification pipeline has been missing since it was
+ * built: `2026-07-28d`'s header diagrams `→ Ably org:{org}:inbox:{staff}` and
+ * `useHomeInbox.ts` claims realtime invalidation, but nothing ever published —
+ * the Home Inbox has only ever refreshed on window focus. A bench handoff
+ * cannot wait for a focus event, so the throw path publishes here.
+ *
+ * Rides the SAME channel as `staff_message` / `priority_unbox` /
+ * `warranty_claim` under its own event name. Ably dispatches per event name, so
+ * the four coexist; a subscriber opts into exactly the ones it renders.
+ *
+ * The push is a MIRROR, never the source of truth — the row is already in
+ * `staff_inbox_items` before this is called, so a dropped message costs
+ * latency, not the task. No-op on a bad recipient id.
+ */
+export async function publishInboxItem(payload: InboxItemPayload) {
+  const recipientId = Number(payload.recipientId);
+  if (!Number.isFinite(recipientId) || recipientId <= 0) return;
+
+  await publishEvent(getInboxChannelName(payload.organizationId, recipientId), 'inbox_item', {
+    type: 'inbox_item',
+    recipientId,
+    itemId: payload.itemId,
+    entityType: payload.entityType,
+    entityId: payload.entityId,
+    eventKey: payload.eventKey,
+    actorStaffId: payload.actorStaffId,
+    actorName: payload.actorName ?? null,
+    note: payload.note ?? null,
+    urgent: payload.urgent ?? false,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
 export type WarrantyClaimNotificationPayload = {
   organizationId: string;
   /** Recipient staff inbox channels to push to. */

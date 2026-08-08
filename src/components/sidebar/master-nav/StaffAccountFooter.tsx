@@ -9,9 +9,11 @@ import {
   Monitor,
   MoreHorizontal,
   Power,
+  Send,
   Settings,
   Smartphone,
 } from '@/components/Icons';
+import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
   SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
@@ -30,6 +32,10 @@ import {
   CLIPBOARD_HISTORY_HOTKEY_LABEL,
   openClipboardHistory,
 } from '@/components/quick-access/ClipboardHistoryHost';
+import {
+  THROW_TASK_HOTKEY_LABEL,
+  openThrowTask,
+} from '@/components/quick-access/ThrowTaskHost';
 import { PhoneSignInQrDialog } from '@/components/quick-access/PhoneSignInQrButton';
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,6 +76,11 @@ type OpenMenu = 'none' | 'more' | 'history' | 'feedback' | 'phone-qr';
  * wider/chunkier twin of the spine. Org name in the menu header is
  * load-bearing. The avatar is a separate click target
  * ({@link StaffAvatarEditor}) for colour + photo — Settings is not required.
+ *
+ * Floor band = {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-8` · full spine
+ * width · shared hairline with context-rail filters / Displays `→|`). Identity
+ * is one truncated name line; role stays in the ⋯ menu — a two-line stack
+ * cannot share the station floor height.
  */
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -93,25 +104,15 @@ export function StaffAccountFooter({ className }: { className?: string }) {
   const moreOpen = menu === 'more';
 
   return (
-    <div
-      className={cn('border-t border-border-soft px-0 py-0', className)}
-      data-staff-account-footer
-    >
-      <div ref={rowRef} className="flex h-9 min-w-0 items-center gap-1 px-2">
+    <div className={cn('w-full shrink-0', className)} data-staff-account-footer>
+      <div
+        ref={rowRef}
+        className={cn(STATION_COLUMN_FOOTER_BAND_FACE, 'gap-1 px-2')}
+      >
         {/* Click the mark to change colour / photo — not Settings. */}
         <StaffAvatarEditor markSize="xs" />
-        <div className="min-w-0 flex-1 leading-none">
-          {/* Shares the spine's `role-nav` / 500 ladder — at 12px/600 this
-              name was the heaviest ink in a column that now tops out at 500,
-              so it read as a different system bolted to the bottom. The row
-              keeps `h-9`: it stacks name over role, and 28px would crush a
-              two-line identity that is not a nav row. */}
-          <div className="truncate text-role-nav font-medium leading-tight text-text-default">
-            {staffName || `Staff #${user.staffId}`}
-          </div>
-          <div className="truncate text-role-micro font-medium uppercase leading-tight tracking-[0.12em] text-text-soft">
-            {user.role.replace(/_/g, ' ')}
-          </div>
+        <div className="min-w-0 flex-1 truncate text-role-nav font-medium leading-none text-text-default">
+          {staffName || `Staff #${user.staffId}`}
         </div>
         <HoverTooltip label="Account details" asChild>
           <IconButton
@@ -175,6 +176,26 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                 </span>
               </button>
             ) : null}
+            {/* Throwing a task is the discovery half of the ⌘⇧U chord — the
+                menu-bar entry that teaches it exists, exactly as clipboard
+                history does below. Not a sixth header icon: the actions cluster
+                is capped at five, and a handoff is a few times a shift. */}
+            <button
+              type="button"
+              onClick={() => {
+                setMenu('none');
+                openThrowTask();
+              }}
+              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+            >
+              <Send className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={cn(SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS, 'min-w-0 flex-1 truncate')}>
+                Throw a task
+              </span>
+              <kbd className="shrink-0 rounded border border-border-soft bg-surface-canvas px-1 py-0.5 font-mono text-role-micro font-semibold text-text-soft">
+                {THROW_TASK_HOTKEY_LABEL}
+              </kbd>
+            </button>
             {/* The panel itself is owned by `ClipboardHistoryHost` — this row
                 only asks it to open. The host is mounted app-wide, so the chord
                 still works on a page where this footer does not exist (the spine

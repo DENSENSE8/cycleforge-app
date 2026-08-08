@@ -32,7 +32,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `pending-grid` | 3100 | `photo` | 3110 |
 | `tokens` | 3120 | `nav-ia` | 3130 |
 | `note-grain` | 3140 | `tables` | 3150 |
-| | | switcher panel | 3099 |
+| `tasks` | 3160 | switcher panel | 3099 |
 
 ## Lanes (target registry)
 
@@ -52,6 +52,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `nav-ia` | `topic/nav-ia` | WS-NAV-IA | **Lane-based master nav** — collapse the flat 15-row nav into ~6 lanes (Inbound · Outbound · Workspace · Front Desk · Dashboard · Admin). Phase 4 of the page-consolidation plan; Phases 1–3 (orphan purge, monitor merges, dashboard strip) stay in `main`. `unlockParked` so the post-parking nav can be designed with Operations / Sourcing / Home / Studio visible. Brief: `docs/todo/page-consolidation-station-first-GEMINI-RESEARCH-BRIEFING.md` |
 | `note-grain` | `topic/note-grain` | WS-NOTE-GRAIN | Receiving **note vs printed-label grain** (`receiving_line.notes` = operator item note, never printed; `label_note` = the printed face) plus the receive-side note-integrity guards. Exists mainly as a **clean checkout to verify and push from**: `main`'s tree carries several lanes' uncommitted work, so its pre-push `verify` cannot vouch for committed state — a red gate there says nothing about the commits being pushed. Law: `.claude/rules/source-of-truth.md` → Note vs label grain |
 | `tokens` | `topic/tokens` | WS-TOKENS | Design-token emitter consolidation — collapse the 4 competing `:root` emitters onto the theme registry, retire `tokens/css-variables.ts` + `styles/tokens.ts`, drift-check Tailwind. **Developed in `main`** (it touches `globals.css` / `layout.tsx` / `tailwind.config.ts`, which every lane shares — a worktree would fork the very files being unified). Plan: `docs/todo/token-system-consolidation-plan.md` |
+| `tasks` | `topic/tasks` | WS-TASKS | **Throwable task handoff** — replace the paper-and-text assignment loop ("someone writes a tracking number down and texts it") with assignment through the inbox. Three layers, one SoT each: **urgency** (`src/lib/urgency/` — one binary rung over order · carton · ticket, replacing four unreconciled mechanisms); **the task** (`work_assignments` modernized into a real issue row — single assignee, ad-hoc work type, ticket entity, a create path); **triage** (`staff_inbox_items` gains its manual `reason: 'assigned'` writer plus the Ably leg that `2026-07-28d` diagrams but never built). Send surface is a ⌘⇧U overlay, not a 6th header icon — the clipboard-history placement ruling (D5) already settled that shape. Law: `.claude/rules/source-of-truth.md` → Cross-entity urgency · Inbox surfaces |
 | `tables` | `topic/tables` | WS-TABLES | **Nonlinear data-table engine** — decouple `LedgerGrid` from page routes: every Workbench spreadsheet mounts via the table-definition registry + `NonlinearTableHost` over a Zod-validated `TableDefinition`, never a page-local `*GridView` twin. 16 definitions registered; Orders + Review catalog-link migrated (waves 4–5). Handoff: `docs/todo/nonlinear-data-table-engine-HANDOFF.md`. Law: `.claude/rules/source-of-truth.md` → Table definition registry |
 
 ## Create another lane

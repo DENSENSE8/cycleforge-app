@@ -13,7 +13,7 @@ import type { QueryResult, QueryResultRow } from 'pg';
 import {
   ENTITY_VIEW_PERMISSION,
   NOTIFIABLE_ENTITY_TYPES,
-  notifiableEvent,
+  eventLabelFor,
   type NotifiableEntityType,
 } from './event-vocabulary';
 import { notificationHref } from './notification-href';
@@ -200,7 +200,10 @@ function toItemDto(row: InboxRow): InboxItemDto {
     entityId,
     eventKey: row.event_key,
     // Resolved at READ time from the vocabulary — never a stored, stale string.
-    eventLabel: notifiableEvent(row.event_key)?.label ?? row.event_key,
+    // `eventLabelFor` covers both registries (subscription-fanned domain events
+    // and directly-addressed acts like a thrown task), so the read path never
+    // has to know which one owns the key.
+    eventLabel: eventLabelFor(row.event_key),
     reason: row.reason as InboxItemDto['reason'],
     state: row.state as InboxState,
     collapseCount: row.collapse_count,

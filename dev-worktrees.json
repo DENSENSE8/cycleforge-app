@@ -21,20 +21,12 @@
       "note": "WS · topic/ai-chat · :3010"
     },
     {
-      "id": "cf-land-tables",
-      "label": "cf-land-tables · detached",
-      "path": "../cf-land-tables",
+      "id": "app",
+      "label": "app · main",
+      "path": "../cycleforge-app",
       "appPort": 3000,
       "unlockParked": true,
-      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
-    },
-    {
-      "id": "cf-push-main",
-      "label": "cf-push-main · detached",
-      "path": "../cf-push-main",
-      "appPort": 3000,
-      "unlockParked": true,
-      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · main · docs/portfolio/WORKTREE-LANES.md"
     },
     {
       "id": "fba",
@@ -134,19 +126,19 @@
     },
     {
       "id": "tables",
-      "label": "tables · topic/tables",
+      "label": "Nonlinear data-table engine",
       "path": "../cycleforge-tables",
-      "appPort": 3000,
+      "appPort": 3150,
       "unlockParked": true,
-      "note": "WS · topic/tables · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS-TABLES · topic/tables · :3150 · registry-driven table engine — every Workbench spreadsheet mounts via the table-definition registry + NonlinearTableHost, never a page-local *GridView twin. Handoff: docs/todo/nonlinear-data-table-engine-HANDOFF.md"
     },
     {
       "id": "tasks",
-      "label": "tasks · topic/tasks",
+      "label": "Throwable tasks",
       "path": "../cycleforge-tasks",
-      "appPort": 3000,
+      "appPort": 3160,
       "unlockParked": true,
-      "note": "WS · topic/tasks · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS-TASKS · topic/tasks · :3160 · throwable task handoff — replace the paper-and-text assignment loop with assignment via the inbox. Three layers: the cross-entity urgency SoT (src/lib/urgency), work_assignments modernized into a real issue row, and staff_inbox_items gaining its manual writer + the never-built Ably leg. Law: .claude/rules/source-of-truth.md → Cross-entity urgency · Inbox surfaces"
     },
     {
       "id": "tokens",

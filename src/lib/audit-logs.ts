@@ -167,6 +167,9 @@ export const AUDIT_ENTITY = {
   USER_ISSUE: 'user_issue',
   // Pick-face (bin-to-bin) replenishment task (replenishment_tasks)
   REPLENISHMENT_TASK: 'replenishment_task',
+  // A work_assignments row. Covers both bench assignments and the ad-hoc
+  // FOLLOW_UP task one operator throws at another (WS-TASKS, 2026-08-08).
+  WORK_ASSIGNMENT: 'work_assignment',
 } as const;
 
 export const AUDIT_ACTION = {
@@ -334,6 +337,10 @@ export const AUDIT_ACTION = {
   OPS_PLAN_TASK_COMPLETE:  'ops_plan_task.complete',
   OPS_PLAN_TASK_CANCEL:    'ops_plan_task.cancel',
   OPS_PLAN_TASK_LINK:      'ops_plan_task.link',
+  // Throwable task — one operator hands a record to another (WS-TASKS).
+  // Distinct from OPS_PLAN_TASK_* (planning) and from the bench assignment
+  // paths: this is the ad-hoc FOLLOW_UP handoff that replaced paper + texts.
+  WORK_TASK_THROW:         'work_task.throw',
   // Agentic-loop master plan (plan-agent mutations via /api/forge/chat)
   MASTER_PLAN_TICKET_STATUS: 'master_plan.ticket_status',
   // In-app issue → fix → toast loop

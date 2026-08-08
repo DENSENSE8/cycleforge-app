@@ -19,9 +19,11 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Platform accent hex → ink / soft fill | `src/lib/color-contrast.ts` (`platformPaintFromHex`) — `platforms.color_hex` only |
 | Carrier brand → mark / native hex | `src/lib/carrier-brand.ts` (+ `CarrierMark`) — **never** tenant-overridable; marketplace platforms stay in `source-platform.ts` |
 | Receiving type → label / tone / icon | `src/lib/receiving/receiving-type-meta.ts` |
+| **Cross-entity urgency** ("make *this* urgent") | `src/lib/urgency/` — vocabulary `urgency-targets.ts` (client-safe) · routing `promote-urgency-core.ts` (pure) · entry `promoteUrgency()` (`promote-urgency.ts`). Binary rung `urgent \| normal` over order · carton · ticket; richer per-record scales stay in their own modules. **Never** a fifth single-purpose urgency writer. See **Cross-entity urgency** below. Guard: `urgency-sot.guard.test.ts` |
 | Typed identifiers (serial, FNSKU, tracking, …) | `CopyChip` family + `src/lib/copy-chip-format.ts` |
 | **Stacked row identity** (title → keys) | `StackedRowIdentity` (`src/components/ui/StackedRowIdentity.tsx`) — long title / subject on row 1; typed `CopyChip` keys (ticket # · order # · PO · tracking) on row 2. Ticket pick lists compose thin `TicketPickRow` on top. Golden: Move photos targets · Orders import sync rows · Support ticket subject · `TicketPicker` / `TicketLinkPopover` / Warranty / zendesk ClaimTicketPicker. **Never** park a short durable key trailing (or leading as mono `#{id}`) on the title row. See **Stacked row identity** below |
-| **Compact activity row** (ops feed face) | `CompactActivityRow` (`src/components/ui/CompactActivityRow.tsx`) + `RailRowBody` — status mark · title · **one** fact · short age (`formatLaneAgeCompact` → `4h` / `30m` / `3d`). Golden: station recent rails (`RailRow`). Portable: GlobalHeader inbox (`ActivityInboxPopover`). **Never** a large kind glyph, prose `4 hrs ago`, or tone-pill parade on this face. Inbox tech-queue carve-out: ready/return meta = `Check` + `OrderIdChip` + `TrackingChip` (last-8), not mono `Ready · id`. See **Compact activity row** below |
+| **Compact activity row** (ops feed face) | `CompactActivityRow` (`src/components/ui/CompactActivityRow.tsx`) + `RailRowBody` — status mark · title · **one** fact · short age (`formatLaneAgeCompact` → `4h` / `30m` / `3d`). Golden: station recent rails (`RailRow`). Portable: GlobalHeader inbox (`ActivityInboxPopover`). **Never** a large kind glyph, prose `4 hrs ago`, or chip/pill parade on this face — that job is StackedRowIdentity / detail. See **Compact activity row** below |
+| **Inbox surface by job** | Header bell (`ActivityInboxPopover`, ephemeral + dismissible) · Home → Inbox (`HomeInboxMode` over `staff_inbox_items`, durable `unread/read/done/snoozed`) · Home → Tasks (`/api/ops-plans/inbox`). `staff_inbox_items` = the system ledger; `staff_messages` = the human DM store — **sibling tables, never merged**. See **Inbox surfaces** below |
 | Staff / org identity mark (avatar circle) | `@/components/identity` — `StaffAvatar` (photo → colour+initials) / `IdentityMark`; initials from `staffInitials` |
 | Capability / provider nouns | `src/lib/integrations/capability-labels.ts` (+ server connections) |
 | Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
@@ -54,25 +56,25 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Grid ROW anatomy (dot · chip · stamp) | **A fact belongs to its own COLUMN, not a neighbour's cell.** No status dot in an identity cell (`ui-design-system.md` → One row anatomy); the status track is a dot **inside** the house chip via `GridStatusCellValue` (`@/components/ui/grid-cells`), tone from the lifecycle registry (pastel badges only — `workflow-stages.ts` / `ui-design-system.md` → Eyebrow headers + chips; Unbox History is the golden consumer); a civil day and its stamp share ONE column, never two. Full set with reasons: [`display/workbench-ops-queue.md`](display/workbench-ops-queue.md) → Row anatomy |
 | Grid frozen-pane sticky offset | `gridFrozenLeft(columns, key)` in `@/design-system/components/grid/grid-column-geometry` — takes the SURFACE's own columns, and its width fallback is the track's rem FLOOR. Never re-hand-roll it; never fall back to `col.width` (a `minmax()` string), which is illegal in `calc()` and silently computes `left: auto`. Guard: `grid-frozen-left.guard.test.ts` |
 | Grid identity columns (freeze · lock · never in-cell edit) | Column model `frozen: true` → `gridFrozenKeys(columns)` (per surface); house default + editability floor: `GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` — see **Grid identity pane** below |
-| Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields`; operator entry = `GridColumnGutter` → `GridColumnDetailsPanel`. **PORTAL OR NOTHING — two hosts (2026-08-08):** (1) the pushing inspector's **View** cluster — Unbox (every tab) · To-ship; (2) the **Band-3 controls slot** — every other table with a `WorkbenchTriageBand`, passing it as `columnTriggerPortalTarget` so `▦` sits with staff / filter / week / sort. **A surface with neither paints no `▦` at all.** The card-corner hover-reveal float and its `triggerPortalOnly` opt-out are **deleted** — the float overlapped the first column header, and an operator who does not know the control exists cannot hover a corner to discover it. Consequence: do not mark a column `tier: 'optional'` on a grid with no host, and never re-add a float to "fix" a dark surface — give it a host. Surfaces knowingly left dark are a shrink-only ledger (`NO_COLUMN_DISPLAY_HOST` in `workbench-trailing-cluster.guard.test.ts`). *A View-cluster host must publish a **null** portal target while hidden or parked — never mount `▦` into an inert node; while Unbox's inspector is parked there is no `▦`, and the Band-3 Show-inspector toggle is the recovery.* See **Grid column visibility + sort** below |
+| Grid column visibility (per-staff) | `@/design-system/components/grid` `useGridColumnVisibility` / `useGridFields`; operator entry = `GridColumnGutter` → `GridColumnDetailsPanel`. **Band-3 portal is the norm (2026-08-06):** every table with a `WorkbenchTriageBand` passes its controls slot as `columnTriggerPortalTarget` so the `▦` sits with staff / filter / week / sort; card-corner hover-reveal is the fallback for tables with no Band-3. One door either way — see **Grid column visibility + sort** below |
 | Grid column WIDTH (per-staff drag-resize + Columns Display) | `ColumnResizeHandle` + `useGridColumnWidths` → `staff_preferences.tableColumns[t].widths`; staff min/max via `widthBounds` (`useGridColumnWidthBounds`); applied as `--cf-col-*` via `LedgerGrid` `columnVars`. Exact Width · Min · Max also in `GridColumnDetailsPanel`. Which columns carry a grip: `isGridColumnResizable` — see **Grid column visibility + sort** below |
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
 | Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
 | Workbench branch (Layer C recipe) | `SURFACE_REGISTRY.workbenchBranch` + `WORKBENCH_BRANCH_IDS` in `src/lib/stations/surface-keys.ts` — `ops-queue` · `master-detail` · `board` · `fact-stack` · `service-workspace`; null on Station/Monitor/Canvas. Law: `display/workbench.md` + child recipe files |
 | **Scan-station primary work surface** | **Main Unbox (dogfood):** PO-line ledger + label (`POUnboxingSection` + `UnboxLabelPreview`) under carton context; capture in `UnboxDockHost` — see **Unbox centre (main)** below. Centre **Procedure focus deck** stays parked; law retained under **Scan-station procedure focus deck** for any future opt-in. |
-| **Scan-station centre lines display** | The centre is **ops-flow only** — that station's exact triage / I/O: the carton's **lines** (PO **items** or **unfound** lines via `LinePoItemsSection` / `UnmatchedItemsSection`) under identity, dock below, plus station-owned ops content (Unbox label preview · Arrival Classify/Staging). That is the work surface. The centre PO line is a **pure ledger row** (title · meta · serials preview) — the per-unit editor list is **not** a centre `activeRowSlot`. **Never centre advisory** banners, “needs attention” strips, ticket history, claim wizards, or dossier summaries — those are **contextual detail** and open as right-edge **Displays** leaves beside the middle (`StationDisplaysPushStack` / `StationDisplaysPushColumn`: Ticket · Pairing/Linkage · Photos · Timeline · …) — never a centre `SectionTabsSlider` strip and never a `RightRailHost` occupant. **QC (Testing):** on line open, linked ticket / fail→claim auto-opens Ticket Displays (`resolveTestingTicketContextOpen` + `TicketDisplayHost`); middle stays PO lines + Pass · Print. The **per-unit verdict** (serial · condition · pass/test-again/fail) is the right-edge **Units Action Display** (`TestingUnitsDisplay` — composes `TestingLineSlot` → `ActiveLineTestingSerial` → `UnitSlotList`, the same waist Unbox's Units display uses; verdict semantics only), opened from the PO line serials cell (`onViewAllUnits` → `openDisplays('units')`, drilling by `receiving_line_id`) — never a centre per-unit list. Unbox's grade-only Units display is the golden; Testing is its verdict sibling. Guard: `testing-flush-display.guard.test.ts`. **Arrival carve-out (2026-08-06):** centre = one white door-flow plane (`DISPLAYS_FLUSH_HOST` + `appSurfaceFillClass('chrome')`) = items **without units chrome** (no condition · serial · Units) + **Classify** + **Staging** stacked; Displays = **Pairing** only. **Labels** keeps Print · Documents · Timeline as centre tabs on a flush `StationPanelRoot` (Unbox pad grammar — not Displays push). Unbox (`LineEditPanel`) is the golden; Arrival · Testing · Pack · Shipping · Packer review compose Displays; Labels composes the flush column shell. Operator copy: **Open displays** / **Hide right panel** (`StationDisplaysEdgeToggle`) — not “inspector” / “details editor”. Law: [`display/station-workbench.md`](display/station-workbench.md). Guard: `station-centre-ops-flow.guard.test.ts` + `arrival-displays-push.guard.test.ts` + `pack-displays-push.guard.test.ts` + `phase-f-displays-push.guard.test.ts` + `unbox-right-edge-chrome.guard.test.ts` + `testing-ticket-displays.guard.test.ts`. |
-| **Station PO line row (work)** | `PoLineRow` + `PoLineMetaGrid`: nested CSS grid `48px_1fr` (flush thumb \| content — thumb keeps structural `border-r`); title **wraps**; boxed meta `auto×3 + 1fr serials + auto price` with `border-t` + **`gap-x-3` whitespace** (no meta `divide-x` / vertical column hairlines — inline PO meta favors horizontal alignment + gap so the eye can sweep the row). Serials cell = truncated recent last-8 preview (click → Units Displays, `openDisplays('units')`). Structural vertical `divide-x` stays only on joined scan instruments (`SerialCard` / Units). Identity classify pills use flush `STATION_IDENTITY_GROUP_CLASS` (`gap-0`), same abut grammar as Photos · Claim — flat faces (`shadow-none`), never soft drop shadows or `gap-1.5` air between urgency · platform · type. **Condition + serial editors interleave under every editable SKU** (`activeRowSlot` mounts per line; qty>1 → N unit slots under that line) — not a single pooled body under the active row alone; mutations bind to that line's `receiving_line_id`. Selection marks focus / scan-default. **The title band carries NO trailing controls except a conditional `···` `PoLineTitleMenu` (Unlink on unmatched/Testing only — renders null otherwise), so matched Unbox lines show a bare title (2026-08-08).** No collapse chevron and no per-line `🔗` serial-link/combine (`renderTitleActions` deleted): capture lives in the bottom dock, so bodies stay expanded. **Item-description "more details" editing lives ONLY in the right-edge Inventory Display (`InventoryDisplayHost` → `onSaveDescription`), never inline on the PO line** (the accordion's `usePoLineItemDescriptionEditor` + `itemDescHandoff` were removed). Per-serial deep edit also lives in Units Displays — not a chip map on the collapsed meta. Guard: `po-line-flat-chrome.guard.test.ts` + `po-lines-accordion-meta-order.test.ts` + `carton-context-density.guard.test.ts` + `per-unit-no-serial-ui.guard.test.ts`. |
+| **Scan-station centre lines display** | The centre is **ops-flow only** — that station's exact triage / I/O: the carton's **lines** (PO **items** or **unfound** lines via `LinePoItemsSection` / `UnmatchedItemsSection`) under identity, dock below, plus station-owned ops content (Unbox label preview · Arrival Classify/Staging · Testing verdict slots). That is the work surface. **Never centre advisory** banners, “needs attention” strips, ticket history, claim wizards, or dossier summaries — those are **contextual detail** and open as right-edge **Displays** leaves beside the middle (`StationDisplaysPushStack` / `StationDisplaysPushColumn`: Ticket · Pairing/Linkage · Photos · Timeline · …) — never a centre `SectionTabsSlider` strip and never a `RightRailHost` occupant. **QC (Testing):** on line open, linked ticket / fail→claim auto-opens Ticket Displays (`resolveTestingTicketContextOpen` + `TicketDisplayHost`); middle stays PO lines + Pass · Print. **Arrival carve-out (2026-08-06):** centre = one white door-flow plane (`DISPLAYS_FLUSH_HOST` + `appSurfaceFillClass('chrome')`) = items **without units chrome** (no condition · serial · Units) + **Classify** + **Staging** stacked; Displays = **Pairing** only. **Labels** keeps Print · Documents · Timeline as centre tabs on a flush `StationPanelRoot` (Unbox pad grammar — not Displays push). Unbox (`LineEditPanel`) is the golden; Arrival · Testing · Pack · Shipping · Packer review compose Displays; Labels composes the flush column shell. Operator copy: **Open displays** / **Hide right panel** (`StationDisplaysEdgeToggle`) — not “inspector” / “details editor”. Law: [`display/station-workbench.md`](display/station-workbench.md). Guard: `station-centre-ops-flow.guard.test.ts` + `arrival-displays-push.guard.test.ts` + `pack-displays-push.guard.test.ts` + `phase-f-displays-push.guard.test.ts` + `unbox-right-edge-chrome.guard.test.ts` + `testing-ticket-displays.guard.test.ts`. |
+| **Station PO line row (work)** | `PoLineRow` + `PoLineMetaGrid`: nested CSS grid `48px_1fr` (flush thumb \| content — thumb keeps structural `border-r`); title **wraps**; boxed meta `auto×3 + 1fr serials + auto price` with `border-t` + **`gap-x-3` whitespace** (no meta `divide-x` / vertical column hairlines — inline PO meta favors horizontal alignment + gap so the eye can sweep the row). Serials cell = truncated recent last-8 preview + **View All** as a **gap-separated** peer (no `border-l`) → Units Displays (`openDisplays('units')`). Structural vertical `divide-x` stays only on joined scan instruments (`SerialCard` / Units). Identity classify pills use flush `STATION_IDENTITY_GROUP_CLASS` (`gap-0`), same abut grammar as Photos · Claim — flat faces (`shadow-none`), never soft drop shadows or `gap-1.5` air between urgency · platform · type. **Condition + serial editors interleave under every editable SKU** (`activeRowSlot` mounts per line; qty>1 → N unit slots under that line) — not a single pooled body under the active row alone; mutations bind to that line's `receiving_line_id`. Selection still marks focus / scan-default; the active line may collapse its body via the title chevron. Per-serial deep edit also lives in Units Displays — not a chip map on the collapsed meta. Guard: `po-line-flat-chrome.guard.test.ts` + `po-lines-accordion-meta-order.test.ts` + `carton-context-density.guard.test.ts` + `per-unit-no-serial-ui.guard.test.ts`. |
 | Collection map keep-alive | Prefer `display:none` over unmount when focus overlays the map — reference `ReceivingRightPane`. Service-workspace forbids unmounting the queue on ticket open — `display/workbench-service.md` |
 | Return-to-scan chrome CTA | **Every** scan-station hybrid page (Unbox · Testing · Pack · …): solid primary in `WorkbenchTrailingCluster.actions` — top-right of the workbench context bar (`WorkbenchChromeHeader` trailing), **at or above any KPI display, never below it** — on **every** strip tab. **It RESUMES** (ruled 2026-08-03, superseding close-overlay-first): resolve the station's MRU record → land the bench tab **without clearing the pick** (`clearLine: false` — `setUnboxView` clears by default) → **open** that record → focus the scan bar. The button sits in the station's own chrome, so "go here" is not something it can mean; the operator is already here, and what they want is the carton they left. Landing a bare table instead read as a no-op: the MRU comes from `view=unbox_opened` while Recent is `view=viewed` (different memberships), and `useReceivingRowSelection` nulls a highlight absent from its rows — so the row pulse frequently could not fire at all. On a rail that takes a selected id, ONE `receiving-select-line` opens the record **and** marks the left sidebar — never a second parked-cursor field beside it. A failed/empty MRU lookup leaves any open record alone. Reference: Unbox `UnboxWorkspaceHeader` (“Unbox”). Law: `display/workbench.md` → Multi-region pages (+ `display/station.md` § hybrid). **Porting this to Testing · Triage · Pack · Shipping · Labels: `docs/todo/return-to-scan-PORTS.md`** — the per-surface registry, the copy-this handler recipe, and the traps (feed mismatch · `clearLine`) live there, not here |
-| Workbench chrome flush (ops CTA / tab radius) | Ops chrome is flush-square — solid trailing CTAs (Unbox / Import / Add / Check), tab bands and the Unbox History week calendar compose `cornerClass('flush')` (`rounded-none`). `WORKBENCH_CHROME_PILL_CLASS` (`workbench-shell.tsx`) is now `cornerClass('flush')`; soft radius and horizontal pill bands are debt. Band-1 host is `WORKBENCH_CHROME_BAND_FACE` (`gap-0 p-0`) — leading boxed cubes (Unbox pin-list) **abut** the tab rail; never host `gap-2` / `p-0.5` air. See **Workbench chrome flush** below |
+| Workbench chrome flush (ops CTA / tab radius) | Ops chrome is flush-square — solid trailing CTAs (Unbox / Import / Add / Check), tab bands and the Unbox History week calendar compose `cornerClass('flush')` (`rounded-none`). `WORKBENCH_CHROME_PILL_CLASS` (`workbench-shell.tsx`) is now `cornerClass('flush')`; soft radius and horizontal pill bands are debt. See **Workbench chrome flush** below |
 | Host vs content pad (column = the card) | Outer hosts are flush (`p-0` / named sheet·rail tokens) — never decorative column `p-*` / outer `m-*` islands. Content pad lives on the row via `inset-field` / `inset-cozy` / `SIDEBAR_SCAN_DOCK_LEADING_ROW`. Desk golden: To-ship (`DashboardOrdersView` + `OutboundWorkspaceHeader`). See **Host vs content pad** below |
 | Chrome-pinned inline KPI readout (`WorkbenchChromeHeader` `middle` slot) | Additive, optional prop on `WorkbenchChromeHeaderProps` (`workbench-shell.tsx`) — a single-line stat cluster between `tabs` and the right cluster, `undefined` for every consumer but Unbox (`UnboxChromeKpiCluster.tsx`). Never `OpsKpiBand`/`KpiTile` here — those are body/rollup card sizing. Paired with the Unbox-local **data-table triage band** (`UnboxTriageBand` — search left, refine + week filter right) as row 2 of the same pinned `chrome` slot. Detail: `display/workbench-ops-queue.md` → Sticky docking, Scoped exception |
 | Workbench KPI Band 2 snap-collapse | `WorkbenchKpiBand` + `WorkbenchKpiCollapseToggle` + `WORKBENCH_KPI_SURFACE` (`workbench-kpi-collapse.tsx`); triage `kpiToggle` hosts the toggle in the **right view-toggle zone** (immediately left of History `trailing` inspector when present — never left of search, never over the select gutter); prefs `staff_preferences.kpiCollapsed[surface]` via `useWorkbenchKpiCollapsed`. Unbox Band 2 body = `UnboxKpiCanvas` compact Usage strip (`text-role-micro` quiet `?urange=` · `KpiChartCard density="compact"` spark-only; `?ukpi=` filters the table; no LedgerGrid / viz switch / gauge). Data: `GET /api/receiving/unbox-kpi`. Binary snap — not continuous resize. Golden: Unbox History. Detail: `display/workbench-ops-queue.md` → Sticky docking, Scoped exception |
 | Procedure step ACTION (the button that advances a step) | The bottom dock's LEADING zone — `UNBOX_STEP_DOCK_CONTROLS` (`line-edit/steps/dock/`) rendered by `UnboxStepDock`, keyed on the active step. **A step CARD never carries an action button**: the body renders the step's CONTENT (photos taken, label face, line list, grade on record) and nothing clickable. A step with no action declares that in `UNBOX_STEPS_WITHOUT_DOCK_ACTION` *with a reason* — neither map, or both, fails CI. The TRAILING terminal stays carton-scoped (Print · Receive) and never re-labels. Law: `display/station-workbench.md` → *The dock's LEADING zone is the step's ACTION surface*. Guard: `procedure-step-dock.guard.test.ts` |
 | Station column shell / wash | `@/components/station/workbench` (`StationWorkbench`, `StationPanelRoot` + `StationAmbientWash`, `STATION_WORKBENCH_*`) — **Station region** shell, not Workbench contract. Rule: `display/station-workbench.md` |
 | Procedure step vocabulary (`done`/`active`/`pending`/`skipped`) | `@/design-system/components/procedure` `ProcedureStepRow` — `skipped` is a waiver, never a check. Law: `display/instrument-panel.md` |
-| Procedure views (centre deck · edge checklist) | `@/design-system/components/procedure` — **`ProcedureDeck`** (centre, primary) + `ProcedureChecklist` (right-edge reference). ONE derivation (`useUnboxProcedureSteps` on Unbox). Geometry: **flat 28px faces** (matches `PRIMARY_CHROME_ROW_FACE`); selection = outline ring only; evidence mounts under the list. No peek/covered/layout motion. Checklist is secondary navigation; the deck is the work. Law: **Scan-station procedure focus deck** below |
-| Scan progress chrome (procedure completion) | Shared `ScanStationProgressControl` + `ScanStationProgressRing` for stations that still mount a strip ring. **Unbox:** the compact procedure-% ring sits **under the dock (Band 2 right — `UnboxScanProgressControl` in `UnboxDockHost.progress`)**, always mounted, and opens the Checklist Displays leaf; the checklist body stays a Displays leaf (a Root Index row). Never on a Displays `rightSlot` (guard-banned). Closed Displays opens via `←|`; **never `GoalRing`**, which is daily-goal pace in GlobalHeader |
+| Procedure views (centre deck · edge checklist) | `@/design-system/components/procedure` — **`ProcedureDeck`** (centre, primary) + `ProcedureChecklist` (right-edge reference). ONE derivation (`useUnboxProcedureSteps` on Unbox). Geometry: **flat 40px faces**; selection = outline ring only; evidence mounts under the list. No peek/covered/layout motion. Checklist is secondary navigation; the deck is the work. Law: **Scan-station procedure focus deck** below |
+| Scan progress chrome (procedure completion) | `ScanStationProgressControl` + `ScanStationProgressRing` — bare 16px, no numeral; Displays column top-band **`rightSlot`** (Unbox: `StationDisplaysPushStack`); closed Displays opens via `←|`; **never `GoalRing`**, which is daily-goal pace in GlobalHeader |
 | Right-rail inspector body facts | `OrderFactList` / `OrderFactRow` (`@/components/order-record`) — label + value, mono on retypable ids. Law: `display/right-rail-inspector.md` → Body |
 | Order surface by job | Durable edit/notes = desk tabbed `ShippedDetailsPanel` @ `/shipping/orders?openOrderId=` · Search feedback = `SearchOrderFeedback` @ `/search?sel=order:…` (`searchOrderFeedbackHref` / `searchHitHref('ORDER')`) · Non-desk right-rail open = `CompactOrderPeek`. `/o/[id]` is retired (permanent redirect → search feedback). Never route search feedback through `ShippedDetailsPanel`. Guard: `search-order-feedback.guard.test.ts` |
 | Search order feedback identity | Disposition + facts paint durable IDs via `OrderIdChip` / `PlatformMark` / `TrackingChip` / `SerialChip` / `SkuScanRefChip` (+ `useOrderChannelLabel` → `sourcePlatformMetaFromLabel` / `usePlatformMeta`). Never `Order #…` prose, yellow platform status pills, or bare `OrderFactRow mono` for marketplace ids. Section chrome = `FlushSection`. See **Search order feedback identity** below |
@@ -99,16 +101,14 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | ⌘K / Ctrl+K ownership | `src/components/CommandBar.tsx` — the ONLY binder. No other surface may bind it (a suppressor inside a focus trap is the one exception) or advertise it. Guard: `cmdk-owner.guard.test.ts` |
 | Keyboard ownership (Escape / ambient hotkeys) | `src/lib/overlay-stack/store.ts` (+ `useRegisterOverlay` / `useAnyOverlayOpen`) — see **Escape ownership** below |
 | Station Displays toggle (⌘/Ctrl+]) | `src/components/station/displays/displays-toggle-hotkey.ts` + `StationDisplaysEdgeToggle` — same action as `←|` / `→|`; stands down for open overlays; desk inspector keeps ⌘\ + bare `]`. Guard: `station-displays-toggle-hotkey.guard.test.ts` |
-| Left context-rail toggle (⌘/Ctrl+B) | `src/components/sidebar/context-panel-toggle-hotkey.ts` + `ContextPanelLayout` — parks/restores `CONTEXT_PANEL_COLLAPSE`; click hosts advertise the chord; stands down for open overlays. **MasterNav spine stays click-only** (not ⌘[ — too close to Displays ⌘]). Guard: `context-panel-toggle-hotkey.guard.test.ts` |
-| Nav keys (leader-armed selection keyboard, ⌘;) | `src/lib/keyboard/nav-keys/` — `⌘;` → region key (Left `l` · Middle `m` · Right `r`) → stable single **letter** jumps + commits an **actionable** target (never a bare digit, never a display metric / telemetry). `nav-leader-store` = single owner; `useNavRegion` = per-region opt-in; `resolveNavKeymap` = keymap. Wedge-safe. Guards: `nav-leader-owner` · `nav-key-uniqueness`. See **Nav keys** below |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Workbench chrome scoped search | `@/components/sidebar/tech/TechRailSearchBar` — always-open Search glyph **inside** the field + **hover-reveal paste** (leftmost trailing control). `variant="rail"` for MasterNav / station footers; `variant="chrome"` for `WorkbenchChromeHeader` / Unbox triage (flush sunken plane — no rounded bubble; edge-to-edge with the triage row). **Trailing grammar:** paste (hover) → in-field filters via `trailingSuffix` → age-column collapse via auto `RailFilterCollapseButton` when under `ContextPanelCollapseProvider` (or explicit `trailingAction` for LedgerDrill / Incoming list-paste). Never seat a field-density filter in `trailingPrefix` (that slot is for non-filter CTAs that must lead paste). **Recent-rail facet SoT:** every recent dock mounts a field-density filter in `trailingSuffix` — `ReceivingRecentRailFilters` (Priority·Type·Platform) on Unbox/Triage/Testing; `StationHistoryRailFilters` (Platform) on Pack/Scan-out/Outbound Labels; `LabelPrintRailFilters` on Products Labels Printed; `SupportRecentRailFilters` on Support Tickets. Guard: `rail-search-trailing.guard.test.ts`. Composes `SearchBar` → `SearchField`. The icon-first `ToolbarSearchToggle` was deleted 2026-08-03. **Entry-path bare fields:** `/ops/photos` (always-open chrome `SearchField`); `/search` (centered `GlobalFindCombobox` stage in `SearchFindStage`; global header launcher stays mounted and defers focus when no `?sel=`). Rationale in `ui-design-system.md` → Scoped search chrome. |
 | Support reply drafting | ONE waist — `useSupportSuggestion` → `POST /api/support/suggest` → `lib/support/suggest-reply.ts`. The draft bridges into the composer via `ThreadComposerBridge.setDraft` and **never sends**; it never clobbers operator text (the overwrite rule is `seedComposerDraft` in `src/lib/threads/composer-draft.ts` — explicit confirm, one home, two composers). Tenant framing resolves from org settings (`buildSupportSystemPrompt`), never a hardcoded vendor brand. The orchestration is PURE in `suggest-reply-core.ts` (the `analyze-core.ts` split) so the lane gating and the confidence rules unit-test with zero network; `suggest-reply.ts` is the server binding. `sources` are TYPED (`thread` · `ocr` · `catalog` · `rag`) — a bare string could not say whether a draft stood on a document or on a matched row. Surface: the rail's `Assist` display — `display/workbench-service.md` |
 | Image understanding (support vision loop) | ONE provider resolution — `resolvePhotoAnalyzeProvider` (org → env → `local-vision`). Deterministic OCR / labels / damage run **local-first** and persist to `photo_analysis` through `analyzePhoto`, the same writer the upload job uses — never a second persistence path, and never a re-run of a photo that already has a row. Whether a customer's image may reach a cloud model is a **safety classification with no default**: `resolveSupportVisionLane` (org `settings.support.visionLane` → `SUPPORT_VISION_LANE` → `local-only`), and `cloud-multimodal` is a REQUEST — it falls back to `local-only` when no gateway is configured, because reporting a lane that did not run tells the operator a photo left the building when it did not. **A model is never handed an app route**: `/api/photos/[id]/content` 302s behind the session gate, so `/api/support/suggest` resolves a signed storage URL itself (`resolvePhotoAccessUrl`) and the client only ever holds photo IDs |
 | Decode → our-data cross-reference | `collectPhotoEvidence` (`src/lib/support/photo-evidence.ts`) — OCR tokens pipe through `routeScan` (the ONE decoder, which NORMALIZES a printed URL to its handle) then `hybridSearch` (the ONE search engine). **Never a second matching engine, and never a synthesized hit**: a token that decoded but matched no row is reported as unmatched, because a fabricated title on a customer-facing draft is worse than an honest absence. The assistant reasons over `SearchHit` data, not raw image text — that is the difference between recognising a unit and describing a photo |
 | Support requester profile ("who is asking") | `GET /api/support/requester` → `resolveRequesterProfile` (pure core + `requester-profile-deps.ts`). Name/email from the ticket's `via.source.from`, falling back to the helpdesk user roster; our `customers` row by email; order count from `orders.customer_id`; prior-ticket count from the helpdesk search. Every fact degrades to `null` INDEPENDENTLY and renders `—` — **there is no LTV and no return rate, and a fabricated `0` is worse than a missing number.** Linkage comes from the `SupportContextBundle` the thread already fetches, never a second query |
-| Omnichannel / chat-style composer dock | `@/design-system/primitives` `OmnichannelComposerDock` (was `StationComposerDock` until 2026-08-01) — **ticket replies** use this shell inline under the thread (`SupportChatComposer`) on station Ticket Displays **or** as `variant="station-dock"` via `SupportTicketComposerDock` when the ticket *is* the work entity (`SupportTicketFocus`). Same elevated white shell + auto-grow height; ticket footer = VisibilityToggle · Library (`+`) · Attach (paperclip) · Send (or `trailingAction` as `<StationTerminalDock embedded>` — Send suppressed, Enter still commits). On station Ticket Displays the floating composer sits in `DISPLAYS_BODY_INSET` (`px-4` + `py-2` breath) — never a full-bleed `bg-surface-canvas` plane, never pad the Displays host. Placement SoT for floating docks: `slicedActionDockWrapperClass()`. **Unbox carton item notes** are NOT this shell — they escalate on the flush floor via `UnboxDockNotesEntry` + `DenseComposeFields`. Never hand-roll a second sticky/amber ticket composer beside this shell, and never replace carton notes with ticket reply on a scan station. |
-| **Ticket vs Timeline (station Displays)** | **Ticket** = helpdesk messages only (`SupportTicketDetail` `mergeFloorTimeline={false}` → `MergedRecordStream` without `events`) with **`streamVariant="bubble"`** (read + reply; `/support` stays `ledger`). **Timeline** = warehouse/carrier spine on the peer Displays tab (`WorkspaceTimelineTab` / `EventTimeline`). Same `TimelineItem` waist; never interleave floor scans into station Ticket; never fork a third chat renderer. Stream rows + composer own `DISPLAYS_BODY_INSET`; Displays host stays flush. Support service workspace may opt into `mergeFloorTimeline` until a Floor toggle ships. Law: [`display/workbench-service.md`](display/workbench-service.md) · [`display/reference-timeline.md`](display/reference-timeline.md) · [`ui-design-system.md`](ui-design-system.md) § Conversation. Guard: `ticket-timeline-split.guard.test.ts` · `support-chat-hierarchy.guard.test.ts` · `ticket-chat-displays-gutter.guard.test.ts`. |
+| Omnichannel / chat-style composer dock | `@/design-system/primitives` `OmnichannelComposerDock` (was `StationComposerDock` until 2026-08-01 — a birthplace name on a shared shell, corrected when Support became Workbench branch `service-workspace`; the dock is not Station-contract property) — **two jobs, two placements:** (1) Unbox/Arrival/Testing **carton item notes** (`receiving_line.notes` via `WorkspaceNotesCard`) float as the middle dock with carton terminal trailing; (2) **ticket replies** use the same shell inline under the thread (`SupportChatComposer`) on station Ticket Displays (Unbox + Testing — never swap the carton-notes dock) **or** as `variant="station-dock"` via `SupportTicketComposerDock` when the ticket *is* the work entity (`SupportTicketFocus`). Same elevated white shell + auto-grow height; ticket footer = VisibilityToggle · Library (`+`) · Attach (paperclip) · Send (or `trailingAction` as `<StationTerminalDock embedded>` — Send suppressed, Enter still commits). Placement SoT for floating docks: `slicedActionDockWrapperClass()`. Never hand-roll a second sticky/amber ticket composer beside this shell, and never replace carton notes with ticket reply on a scan station. |
+| **Ticket vs Timeline (station Displays)** | **Ticket** = helpdesk messages only (`SupportTicketDetail` `mergeFloorTimeline={false}` → `MergedRecordStream` without `events`). **Timeline** = warehouse/carrier spine on the peer Displays tab (`WorkspaceTimelineTab` / `EventTimeline`). Same `TimelineItem` waist; never interleave floor scans into station Ticket. Support service workspace may opt into `mergeFloorTimeline` until a Floor toggle ships. Law: [`display/workbench-service.md`](display/workbench-service.md) · [`display/reference-timeline.md`](display/reference-timeline.md). Guard: `ticket-timeline-split.guard.test.ts`. |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) — Labels Print, Testing manuals |
 | Horizontal pane edge resize grip | `@/design-system/components/HorizontalEdgeResizeHandle` (+ `useHorizontalEdgeResize`) — context rails (`ContextPanelLayout`) + non-modal detail inspectors (`RightRailHost`); wide hit sash + hover-reveal **4px** (`w-1`) full-height hairline **on the panel seam** (`placement="inset"`); never hand-roll a second grip for the same job. **RightRailHost / Displays / left context:** paint is the panel's own edge seam (display hairline), not an outset overhang into the work surface. Drag-only — never a sash-top collapse chevron. Left context parks via filter trailing + drag-past-min; RightRailHost / Displays park via `→|` + Band 3. |
 | Recent-rail scrollport / more-below lip | `@/components/sidebar/rail-shell/SidebarRailScrollport` (+ `useMoreBelow` / `SCROLL_MORE_BELOW_CLASS` in `tokens/scroll-edge.ts`) — station + SidebarShell-hosted recent feeds **and** LedgerDrill parent maps; never hand-roll a second bottom fade. `SidebarRailShell` is content-sized and does **not** own vertical scroll |
@@ -121,22 +121,24 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `STATION_GLYPH_KEYS` |
 | **Navigation header height** | `TOP_CHROME_ROW_FACE` (`h-10 shrink-0` / 40px; `TOP_CHROME_ROW_PX`) in `src/components/layout/header-shell.ts` — GlobalHeader + MasterNav spine top band (`SpineTopPins`). `TOP_CHROME_BAND_FACE` = atom + `border-b border-border-soft` so both bottom hairlines meet at one Y. Assistant dock offset uses `TOP_CHROME_ROW_PX`. **Never** alias this to the denser station row below. Guard: `header-mode.guard.test.ts` |
+| **Station column footer seam** (scan-station floor Y) | `STATION_COLUMN_FOOTER_SEAM_CLASS` (`border-t border-border-hairline`) + `STATION_COLUMN_FOOTER_BAND_FACE` (`h-8` + seam) in `src/components/layout/header-shell.ts` — Context filter / recent receiving · utility `←|` · Displays `→|` · Unbox dock Band 2 · spine sign-in. Twin of `TOP_CHROME_BAND_FACE` for the floor. Never fork `border-t border-border` or `border-border-soft` on these footers. Guard: `header-mode.guard.test.ts` · `unbox-dock-one-shell.guard.test.ts` |
 | **Primary chrome row height** (scan-station first seam + ops bands) | `PRIMARY_CHROME_ROW_FACE` (`h-7 shrink-0` / 28px; `PRIMARY_CHROME_ROW_PX`) in `src/components/layout/header-shell.ts` — seam **under** GlobalHeader: MasterNav L1 + Scan Stations drill-back · scan bar · carton identity **row 1** · Displays · workbench tab/triage bands · grid column headers · PaneHeader. `STATION_CHROME_ROW_FACE` aliases it. Children **fill** that row (`h-full` / `self-stretch` / `aspect-square`) — never restate `h-7` on Exit · Photos · classify · lead cells. Nested spine children stay the same `h-7` box (or denser only when documented). Secondary eyebrow stays `STATION_SECONDARY_BAND_FACE` (`h-6`). Guard: `header-mode.guard.test.ts` · `main-nav-groups.guard.test.ts` · `carton-context-density.guard.test.ts` |
 | Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader Mode / Recents / WO / goal) — native SVG stroke only; do not layer `navIconStrokeClass` on header chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
-| Page switcher + Recents (a page's children + cross-page MRU) | `HeaderPageSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` (+ `APP_SIDEBAR_NAV` fallback) / `useSidebarChildNav` / `useRecentPages`. **The page face is icon + display name on EVERY page** — modeful opens a child menu, modeless renders the same face as a static chip (one `PAGE_FACE_CLASS`); station peers come from `stationSubgroupMembers`, never legacy `receiving.children`. Never a sidebar pill-band twin; no MRU chips in the spine org band. **Persistent action faces (goal · WO)** paint idle through first fetch — never null-while-loading. See **GlobalHeader zones** below. |
+| Page switcher + Recents (a page's children + cross-page MRU) | `HeaderPageSwitcher` + `HeaderRecentsSwitcher` in `GlobalHeader` — data = `SIDEBAR_PAGE_NAV` (+ `APP_SIDEBAR_NAV` fallback) / `useSidebarChildNav` / `useRecentPages`. **The page face is icon + display name on EVERY page** — modeful opens a child menu, modeless renders the same face as a static chip (one `PAGE_FACE_CLASS`); station peers come from `stationSubgroupMembers`, never legacy `receiving.children`. Never a sidebar pill-band twin; no MRU chips in the spine org band. See **GlobalHeader zones** below. |
 | Header chrome menu (Page · Recents · Pins panels) | `HeaderChromeMenu` + `HeaderChromeMenuItem` in `src/components/layout/header-chrome-menu.tsx` — rounded card, `min-w-[11rem]`, icon + label rows, active = sunken + trailing `Check`. Every header dropdown composes it; never re-declare the panel/row classes in a switcher. See **GlobalHeader zones** below. |
-| Header pin stations (Quick Access pins) | `HeaderPinsSwitcher` in `GlobalHeader` nav cluster (after toggle, before Recents · page; one icon → sortable menu rows + pin-this-page; **no divider or padded wrapper**; list order **is** `⌘/Ctrl+1–9` via `pin-hotkeys.ts`, capped by `MAX_PIN_HOTKEY_SLOTS`. The icon strip + `MAX_HEADER_PIN_ICONS` overflow are deleted — see **GlobalHeader zones** below) — data = `useQuickAccess` / `cf.quickAccess` cache; durable SoT = `staff_preferences.prefs.quickAccess` via `<QuickAccessSync/>`. Never remount a pin list in a Quick Access / staff menu. The desktop `GlobalHeaderActions` rail is **search · goal · work order · inbox · AI (far-right)**; Sparkles opens the assistant right-rail occupant at the edge it owns; no staff avatar on desktop. **A persistent top-right icon is earned by FREQUENCY, not by existence** — clipboard history, the phone sign-in QR and the kiosk preview moved to the spine account overflow 2026-08-01 (they were reached once a shift, and six unranked peers read as a toolbar). A fourth icon displaces one of the three or names a new kind. Mobile keeps its own clipboard + phone-QR cluster: it has no spine, so it has no overflow to move them into. |
+| Header pin stations (Quick Access pins) | `HeaderPinsSwitcher` in `GlobalHeader` nav cluster (after toggle, before Recents · page; one icon → sortable menu rows + pin-this-page; **no divider or padded wrapper**; list order **is** `⌘/Ctrl+1–9` via `pin-hotkeys.ts`, capped by `MAX_PIN_HOTKEY_SLOTS`. The icon strip + `MAX_HEADER_PIN_ICONS` overflow are deleted — see **GlobalHeader zones** below) — data = `useQuickAccess` / `cf.quickAccess` cache; durable SoT = `staff_preferences.prefs.quickAccess` via `<QuickAccessSync/>`. Never remount a pin list in a Quick Access / staff menu. The desktop `GlobalHeaderActions` rail is **search · inbox · AI (far-right)** (goal sits in the nav cluster; the work-order chip moved into the Inbox popover 2026-08-08 — see **GlobalHeader zones**); Sparkles opens the assistant right-rail occupant at the edge it owns; no staff avatar on desktop. **A persistent top-right icon is earned by FREQUENCY, not by existence** — clipboard history, the phone sign-in QR and the kiosk preview moved to the spine account overflow 2026-08-01 (they were reached once a shift, and six unranked peers read as a toolbar). A fourth icon displaces one of the three or names a new kind. Mobile keeps its own clipboard + phone-QR cluster: it has no spine, so it has no overflow to move them into. |
 | Per-staff queue depths ("where is my work") | `InboxQueueLinks` at the top of `ActivityInboxPopover` — `MyDayFeed.queueCards` (Orders · Arrival · Packing · Testing · FBA prep · Support), permission-filtered, zero-work queues already dropped. **Not the MasterNav spine** (ruled 2026-08-02, reversing the chrome-altitude brief's D8; **re-argued 2026-08-03 — see below**) and **not the header badge** — that counts dismissible `ActivityInboxItem`s, and a queue depth is not a thing you dismiss. Shares `useMyDayFeed`'s `['my-day']` key and mounts only when the popover opens, so it costs nothing at rest. **The ruling now rests on ONE leg, and it is the load-bearing one:** `nav-search.ts` re-ranks the whole registry on every keystroke, and that is safe *only* because the registry does no I/O — a live depth on a nav row makes navigation depend on a query. Two of the original three legs are gone and saying so is the point: "a page badge is invisible until you drill" died with the drill (2026-08-02), and "the spine's trailing count already means structural cardinality" died when that count was **deleted** (2026-08-03 — a right-aligned numeral read as a notification, which is exactly what a queue depth would legitimately be). **So the spine is now MORE hospitable to a depth badge than when this was first ruled, not less** — the slot is empty and the shape is free. Do not read that as an opening: the empty slot is the *reward* for deleting a badge that was pulling attention it could not repay, and re-filling it with live data would buy back the I/O cost as well. A future ruling may overturn this; it must overturn it on the I/O argument, not by noticing the vacancy. |
 | Identity mark (org + staff circle) | `@/components/identity` — `IdentityMark` (circle · ring · image-or-initials · `xs`…`2xl`) and `StaffAvatar` (photo → colour+initials, resolved by staff id). **Never hand-roll a `rounded-full` + initials span**, and never fork a local `initials()` — the SoT is `staffInitials` (`StaffBadge.tsx`). See **Staff profile photo** below |
 | Org / workspace switch | **DELETED from the spine 2026-08-03** — single-org is the norm for small business, so a permanent 40px row naming it restated something that never changes. Identity now reads from the `StaffAccountFooter` ⋯ menu header (`organizationName`); switching lives in Settings → Organization (`WorkspaceSwitcher`). The 40px band STAYS but is empty — the spine is a flex sibling of the header, so that face is what holds both bottom hairlines on one Y. Historic: `OrgWorkspaceControl` in the MasterNav 40px top band — current `organizationName` on a **circle `IdentityMark`** (same `sm` density as the staff footer) + an **always-mounted dropdown trigger**, single-org included. Switch path = `useSwitchOrg` / `requestSwitchOrg`. **No “Current” label in the menu** — the open chevron is enough. **Menu is a child of the trigger** — `AnchoredLayer` `bottom-stretch` + dense `SIDEBAR_SPINE_MENU_*` chrome. Guard: `header-mode.guard.test.ts`. |
 | Clipboard history (chord + panel) | `ClipboardHistoryHost` (mounted by `ResponsiveLayout`) owns **⌘⇧V** and the single desktop mount of `ClipboardHistoryPopover`; the spine ⋯ row is a trigger that calls `openClipboardHistory()`. See **Clipboard history placement** below. Guard: `clipboard-hotkey-owner.guard.test.ts` |
-| Staff account (spine footer) | `StaffAccountFooter` below Settings/Admin — `StaffAvatarEditor` (click mark → colour + photo, self-service, no Settings trip) · name · role · more · sign-out. **The ⋯ menu IS the desktop account overflow**: phone history · clipboard history · open-on-your-phone QR · kiosk shell preview · report an issue · Quick Access settings. Mobile keeps a compact account avatar in `GlobalHeaderActions`. When the spine is collapsed (0 width), org + staff are unreachable — same as Admin/Settings; open via header toggle / edge peek. **⋯ menu is a child of the footer row** — `AnchoredLayer` `top-stretch` + dense `SIDEBAR_SPINE_MENU_*` chrome; **org name in the menu header is load-bearing** (`SIDEBAR_SPINE_MENU_ORG_CLASS`, never eyebrow). Guard: `header-mode.guard.test.ts`. |
+| Throw a task (chord + panel) | `ThrowTaskHost` (mounted by `ResponsiveLayout`) owns **⌘⇧U** and the single desktop mount of `ThrowTaskPanel`; the spine ⋯ row is a trigger that calls `openThrowTask()`. Same placement ruling as clipboard history (D5) — a chord + a ⋯ row, **never a sixth `GlobalHeaderActions` icon** (that cluster is capped at five, and a persistent icon is earned by frequency). Scan/paste resolves through `POST /api/scan/resolve` — client `routeScan` has **no tracking vocabulary**, so a local parse silently fails on the commonest input — and the answer is read back by `resolveThrowTargets` (`src/lib/tasks/throw-targets.ts`), the one place that knows `/m/rs/{id}` is a repair id and not a carton. Guard: `throw-task-hotkey-owner.guard.test.ts` |
+| Staff account (spine footer) | `StaffAccountFooter` below Settings/Admin — `StaffAvatarEditor` (click mark → colour + photo, self-service, no Settings trip) · name · role · more · sign-out. **The ⋯ menu IS the desktop account overflow**: phone history · **throw a task** · clipboard history · open-on-your-phone QR · kiosk shell preview · report an issue · Quick Access settings. Mobile keeps a compact account avatar in `GlobalHeaderActions`. When the spine is collapsed (0 width), org + staff are unreachable — same as Admin/Settings; open via header toggle / edge peek. **⋯ menu is a child of the footer row** — `AnchoredLayer` `top-stretch` + dense `SIDEBAR_SPINE_MENU_*` chrome; **org name in the menu header is load-bearing** (`SIDEBAR_SPINE_MENU_ORG_CLASS`, never eyebrow). Guard: `header-mode.guard.test.ts`. |
 | Staff profile photo | `staff.avatar_photo_id` → the photos platform (`STAFF` entity type). Read it with `<StaffAvatar>`, never a per-surface photo join — see **Staff profile photo** below |
 | Scan Stations (spine section) | `STATION_GROUPS` (+ `icon`) + required `stationGroup: 'floor'` on `kind: 'station'` rows in `sidebar-navigation.ts`; membership via `SPINE_SECTIONS` / `spineSectionIdForPage`. **`floor` is the only station group** — the `desk` twin died 2026-08-01 (see the domain row below). Members, in pipeline order: Receiving subgroup (Arrival / Unbox / Local Pickup / Repair Service) + Testing / Packing / Scan out. Subgroup header from `STATION_SUBGROUPS`. **Never move a scan bench into a domain group** — an operator at the dock answers to their input model, not to the domain of the records they touch. Footer-pinned `TechRailSearchBar` above Settings/Admin (+ `StaffAccountFooter` below) swaps the flat map for ranked destinations. Guard: `station-nav-groups.guard.test.ts` + `main-nav-groups.guard.test.ts`. |
 | Main Operations (spine section) | `MAIN_GROUPS` (+ `icon`) + required `mainGroup` on `kind: 'main'` rows. **Operations** (was `Live Ops` / `Analytics Monitor`) = Operations only (Live / TV) — it is the only `main` group. Home / Search / Media / Chat top-pinned. Guard: `main-nav-groups.guard.test.ts`. Law: `display/workbench-master-detail.md` (spine context). |
-| Workflow Studio (footer pin, **not** a section) | `kind: 'bottom'` row above **Admin** in `APP_SIDEBAR_NAV` (footer renders in array order: **Workflow Studio · Admin · Settings**). Left `MAIN_GROUPS` / `SPINE_SECTIONS` 2026-08-02: defining the operation is a standing-back act, not one of the places browsed through in a shift. **A pinned row never draws children** (`showChildren = !pinned && …`), so `/studio/catalog` is an L2 **mode** of `studio` in `SIDEBAR_PAGE_NAV` — named by ⌘K, the spine's flat search and the GlobalHeader Mode switcher, but no longer a spine row. Footer pins wear the same treatment every spine row now wears (`SPINE_ACCENT` — the per-section hue map died for good 2026-08-08, see the spine-treatment row below). Guard: `main-nav-groups.guard.test.ts`. |
+| Workflow Studio (footer pin, **not** a section) | `kind: 'bottom'` row above **Admin** in `APP_SIDEBAR_NAV` (footer renders in array order: **Workflow Studio · Admin · Settings**). Left `MAIN_GROUPS` / `SPINE_SECTIONS` 2026-08-02: defining the operation is a standing-back act, not one of the places browsed through in a shift. **A pinned row never draws children** (`showChildren = !pinned && …`), so `/studio/catalog` is an L2 **mode** of `studio` in `SIDEBAR_PAGE_NAV` — named by ⌘K, the spine's flat search and the GlobalHeader Mode switcher, but no longer a spine row. Footer pins wear the same neutral treatment every spine row now wears (`SPINE_NEUTRAL_ACCENT` — the per-section hue map died 2026-08-02, see the accent row below). Guard: `main-nav-groups.guard.test.ts`. |
 | MasterNav spine type ladder | Org band `OrgWorkspaceControl` trigger = `text-role-body`; **identity menus** (org switch + staff ⋯) = dense child — names + actions `text-role-caption`, meta `text-role-micro`, marks `xs`; **a DESTINATION is `text-role-body` semibold (14px)** — L1 page rows, subgroup headers, search-result labels (the section-button and drill-title rows that also carried it are deleted, 2026-08-02); **L2 modes stay `text-role-caption` medium** (12px) so they read as the nested tier; counts = `text-role-micro`; staff footer name = `text-role-caption`. Bumped from an all-12px spine 2026-08-02: pages and modes differed only by WEIGHT — the thinnest signal in the system — and 12px sat under every peer navigator (VS Code 13 · Linear 13 · Notion 14 · Slack 15 · Vercel 14). Density-aware, so `--cf-density` + the Settings text-size control still scale it. Never bare `text-sm` on these surfaces; never sentence-case `text-role-eyebrow` for destinations. Idle page labels use default ink (icons stay muted); idle modes stay default ink. Law: `display/workbench-master-detail.md`. Guard: `main-nav-groups.guard.test.ts` + `header-mode.guard.test.ts`. |
-| MasterNav spine treatment (**MONOCHROME — hue deleted 2026-08-08**) | `SPINE_ACCENT` / `spineAccentFor` in `src/lib/nav/spine-section-accent.ts` — **one treatment, every row, every altitude, both consumers (spine + ⌘K)**. The nine-hue `SPINE_SECTION_ACCENTS` map and `REPAIR_ICON_TINT` are **deleted**; so is the `sectionActive*` / `sectionIdle*` half of the type. Born 2026-08-01, deleted 2026-08-02, restored 2026-08-07, extended to idle rows hours later, gone for good 2026-08-08 — every round argued about *volume*, and every round the answer got quieter, which is the shape of an idea that does not work rather than one that needs tuning. **What settled it:** with a section drilled open every row in it carried the section tint, so the tint marked nothing, and the one genuinely selected row became a slightly different shade of the same colour as its four siblings — the change made "where am I" HARDER to answer, which was the only question the colour existed to help with. Section identity is now **grouping + order**: a `border-t border-border-soft` hairline at each boundary (a gap was rejected on measured geometry — 8px × 8 boundaries against a map already running 732px into a 685px port). **This does not touch colour that marks a THING rather than a door** — `receiving-type-meta.ts` / `TicketChip` / the functional-hue table still agree repair is orange, and `workflowStageDot` still tones a lifecycle; a nav row is a doorway, not a record. **The ladder** (all existing tokens, no new colour): child idle `text-text-soft` · parent idle `text-text-muted` · hover one ink step up + `bg-surface-hover` · **current page `text-text-default` + `bg-surface-card`**. The fill **ascends** because the spine itself sits one plane below the work surface (`appCanvasClass` on `SidebarNavColumn`), so the current row rises to meet the surface it opens — same direction Linear uses, inverted only because this theme is light. **Icon ink === label ink at every state** (a glyph a step lighter makes a row read as two objects). **The fill means "you are here" and nothing else** — an expanded-but-not-current parent gets NOTHING; its chevron and revealed children already say "open". Geometry: uniform **28px** rows (`h-7`) and one **13px `role-nav`** type size at every altitude, weight carrying STATE (400 idle child / 500 parent + current), 16px glyphs. No ring, no shadow, no bevel — depth is the plane step. **The fill is exactly one row** — never an ancestor (`active: isPageActive && !hasChildren`; a subgroup header never fills), with the Scan Stations enter row the one sanctioned proxy because its destination lives behind a list-replace drill and is not rendered on the map. **Motion: there is NONE.** `SidebarNavList` imports no motion barrel — map mount, row selection, nest open, chevron rotate, and the body swap (map ⇄ Scan Stations drill ⇄ ranked results) are all instant. Four treatments were tried and each lost: `spineActiveWash` (imperceptible against a few-percent fill), `spineRowStagger*` (a five-row nest reads as a wave travelling down-and-right), `collapseHeight` (no sweep, same delay), and `spineBodySwap` (`mode="wait"` meant ~240ms round trip with an empty column between two lists, on the app's most-repeated navigation). `spineActiveWash` + `spineBodySwap` are deleted presets-and-all; `spineRowStagger*` survives for ⌘K only. Detail: `display/motion-crossfade.md` → *RESOLVED — the MasterNav spine has NO motion*. Guard: `main-nav-groups.guard.test.ts` + `station-nav-groups.guard.test.ts`. |
+| MasterNav spine accent (**one hue per section, reinstated 2026-08-07**) | `spineAccentFor` / `SPINE_SECTION_ACCENTS` / `SPINE_NEUTRAL_ACCENT` / `REPAIR_ICON_TINT` in `src/lib/nav/spine-section-accent.ts`. **The eight section hues (deleted 2026-08-02) are back** — sky (Operations) · amber (Scan Stations) · teal (Inbound) · emerald (Products) · cyan (Inventory) · indigo (Shipping) · green (Sales) · orange (Support) · **violet (Sourcing, new)**. The 2026-08-02 deletion argued colour restated a fact the row already carried; the reversal is that this stopped being true the moment three registries assigned "repair" a colour and two of them disagreed (violet in `receiving-type-meta.ts` vs. orange in the functional-hue table / `TicketChip`) — a neutral spine could not be *right* about a colour it opted out of having. `SPINE_SECTION_ACCENTS` is a **total** `Record<SpineSectionId, …>`; a new section with no hue is a type error. **Repair is a station, not a section, and gets its OWN tint** — `REPAIR_ICON_TINT` (`text-orange-600`, matching `functional.repair`) overrides only the Repair row's icon inside Scan Stations' amber Receiving nest; its wash/fill stay the section's. **Contrast still governs shade, not symmetry:** amber/teal/green/orange/cyan sit at 700 (600 fails AA 4.5:1 on white 12px text for those five), sky/emerald/indigo/violet clear AA at 600. **The neutral ladder is unchanged for non-sections** (top pins, footer, unmapped) — `SPINE_NEUTRAL_ACCENT` still uses the 2026-08-03 two-soft-rungs treatment (hover = `bg-surface-hover`, selected/expanded = one shared `bg-surface-sunken` wash, no ring); that ruling was never about section identity and this reinstatement does not reopen it. Guard: `main-nav-groups.guard.test.ts` asserts every section resolves a distinct hue, no two collide, `SPINE_NEUTRAL_ACCENT` stays hue-free, and Repair's tint is wired. |
 | MasterNav row hover/press travel | **There is none — nothing in the spine moves** (2026-08-02). `SPINE_ICON_LIFT_CLASS` is deleted: a structural anchor in a 20-row column should not travel under the pointer, and the neutral wash that landed with the de-chroming answers hover on its own — two answers to one question is one too many. *(The 2px `motion-safe:` lift it replaced was correctly built — the framer `MotionConfig` floor cannot see a Tailwind transform, so the gate was doing real work. It was removed on placement, not on a reduced-motion defect; do not repeat that as the reason.)* The older bans stand unchanged because they are about **cost**: **never** a framer `whileHover` on a spine row (a re-render per mousemove across 20 rows for travel the compositor gives free), **never** a row-level `scale` (breaks the baseline dense siblings align to), **never** a hover/active `font-*` shift (reflows text mid-pointer). Hover is `transition-colors` and nothing else. Guard: `main-nav-groups.guard.test.ts`. |
 | MasterNav spine flush chrome | **Column = the card** (2026-08-05) — peer of GlobalHeader (`HEADER_INSET_X` / `HeaderChromeMenu`) and scan-dock rails (`SIDEBAR_RAIL_INSET_X`). Scrollport + footer-pin hosts are `p-0`; L1 / nested / search / drill-back rows are `rounded-none` with internal `px-2` only (content pad, not an island gutter). Identity menus use `SIDEBAR_SPINE_MENU_*` with `rounded-none` + `p-0` action host — never soft `rounded-lg` chips. Depth is the `bg-surface-sunken` wash, not outer margin. Guard: `main-nav-groups.guard.test.ts` + `header-mode.guard.test.ts`. |
 | Spine row membership (the TWO registries are one declaration) | `APP_SIDEBAR_NAV` (flat rows) + `SIDEBAR_PAGE_NAV` (child-page registry) — `MasterNav`'s `toPageNav` merges them as `{ ...page, icon, label }`, so for any page owning a `SIDEBAR_PAGE_NAV` entry the child registry **wins** every membership field (`kind` · `mainGroup` · `stationGroup` · `stationSubgroup` · `domainGroup` · `href` · `requires`) and the flat row's copy is inert. A disagreement does not error and does not double-render — it silently ships one answer while the other reads as documentation. Declare membership in both **identically**. Guard: `main-nav-groups.guard.test.ts` → "agree on every shared membership field". |
@@ -221,37 +223,16 @@ Two invariants live here because they are single-source mappings, not recipes:
 
 ## Unbox centre (main)
 
-### Unbox Station Architecture
-
-**Main dogfood ships a PO-line ledger centre** with a polymorphic flush floor
-dock (2026-08-08): carton context sticky → `POUnboxingSection` (PO meta is the
+**Main dogfood ships a PO-line ledger centre** with a bottom Action Dock
+(2026-08-07): carton context sticky → `POUnboxingSection` (PO meta is the
 condition · serial **ledger** — click focuses the matching dock step; no
 under-row `ActiveLineConditionSerial` editor) → `UnboxLabelPreview` →
-`UnboxDockHost`.
-
-*   **Active Capture Dock (two bands):** Band 1 = the step CTA + the
-    edge-to-edge keyboard wedge. Band 2 (always mounted) = the flush under-row
-    pager (left) + a compact procedure-% control (right — `UnboxScanProgressControl`
-    in `UnboxDockHost.progress`, opens the Checklist Displays leaf). That control
-    is the floor's ONLY metric; no other hardcoded dashboard / vanity KPI metrics
-    (% dashboards, aggregate counts) are permitted in the floor band.
-*   **Resolution Terminal:** `StationTerminalDock` (Print·Receive) mounts in
-    trailing **only** when `activeKey === null` && `!isReceived`. When
-    received, the dock swaps to Procedure Complete / Move to Labels — never a
-    mid-procedure "Print label" collapse face.
-*   **Manual Entry Escalation:** Any non-wedge step requiring free text (e.g. a
-    ticket / claim note) escalates using `DenseComposeFields` (sunken body,
-    edge-to-edge) — never a nested `OmnichannelComposerDock` raised shell inside
-    the procedure floor. **Item notes are OFF the Unbox floor** (the notes toggle
-    was removed 2026-08-08 for the full-width two-band Band 1); the carton
-    label-center note is edited via the label editor, and `itemNote` still
-    live-drives the sticker preview (`label-note-grain` / `unbox-label-collapse`).
-
-Minimal floor pad. Capture order for the item trio is
+`UnboxDockHost` (step CTA · FileText notes · Print · Receive) with scan-progress
+ring in the under-dock `progress` row (right-aligned under the terminal — **not**
+Displays `rightSlot`). Capture order for the item trio is
 **Serial → Condition → Photos** (`FOUND_CAPTURE` / `RETURN_CAPTURE`). Displays
-push column unchanged (Pairing · Classify · Checklist · …). Checklist is a
-Displays leaf (procedure status / back-nav) — a Root Index row, also opened by
-the under-dock procedure-% control (click) — not a centre deck twin.
+push column unchanged (Pairing · Classify · …). Ring-only `checklist` is
+procedure status / back-nav, not a centre deck twin.
 
 **Return match evidence (Option B, 2026-08-06):** centre stays **lines** — do not
 reshape into an order dossier. After a genuine return serial match,
@@ -347,7 +328,7 @@ Handoff: `docs/todo/unbox-procedure-flows-HANDOFF.md`.
   hover-reveal is the fallback** only for a surface with no Band-3. Still one door either way (open
   state + rail stay on the gutter). Neither `LedgerGridColumnHeader` nor `OrdersQueueColumnHeader`
   may take `onOpenColumnDetails` — the guard bans the prop, the marker and `pr-9` in both, and the
-  E2E asserts the trigger is RESIDENT and visible in its published host; a grid with no host renders no trigger node at all.
+  E2E asserts invisible-and-inert at rest on any surface still using the card-corner fallback.
 - **Width is a drag, and there is ONE handle** — `ColumnResizeHandle`. It mutates only the surface's
   `--cf-col-<key>` var, so header, rows, summaries **and the frozen pane's sticky-left `calc()`**
   reflow together with no React render; the width commits once on drop via `useGridColumnWidths` to
@@ -631,7 +612,7 @@ elevation**); gutters between spine · context · center · right are not a dept
 
 | Column | Role | Width SoT |
 |---|---|---|
-| **MasterNav spine** | App navigator push | `SidebarNavColumn` — operator open/close (**click-only** — no hotkey; context rail owns ⌘B); **never auto-closed** by the right rail |
+| **MasterNav spine** | App navigator push | `SidebarNavColumn` — operator open/close; **never auto-closed** by the right rail |
 | **Context panel** | Route left rail (scan + recents / picker) | `CONTEXT_PANEL_RESIZE` — min **300**, default **360**, `maxWidthPadPx` **760** |
 | **Center** | Sunken work surface (station deck · grid · master detail) | Desk: `flex-1` floor = `MIN_WORK_SURFACE_PX` (**784**). Scan stations (**Flex-Grow Sandwich** via `StationScanPaneHost`): `[middle LOCK 720 shrink-0][Displays flex-1 trailing]` — middle is the permanent anchor (`min-w`/`max-w`/`w` **720**); Displays **always fills leftover** to the pane right edge (never `ml-auto` detach / host `gap-*` / `justify-between` / gutter div / leading spacer); **open context rail + Displays are inverse-coupled on sash drag** (`station-dual-rail.ts` — `left + 720 + displays = frame`); content uses `STATION_WORKBENCH_COLUMN` (`w-full min-w-0` — edge-to-edge of center; identity + notes dock share one measure; no `max-w`/`mx-auto` gutters); PhotoPeek pins `absolute right-0` on the center; **station push center floor = `STATION_WORKBENCH_LOCK_PX` (720)**; Displays-closed center is `flex-1` with the same min floor; Displays drag min = `STATION_DISPLAYS_MIN_WIDTH_PX` (**280**); `RIGHT_RAIL_GUTTER_PX = 0` |
 | **Right edge** | **One** details column | `DETAIL_STACK_RESIZE` — min **360**, default **420**, `maxWidthPadPx` **960** · occupants via `RightRailHost` / `RIGHT_RAIL_PRIORITY` |
@@ -709,19 +690,19 @@ Three different right-edge jobs. Do not rename one with another's noun:
 
 | Noun | Region | Opens | Operator copy |
 |---|---|---|---|
-| **Displays** (plural) | Station scan (`LineEditPanel`) | `StationDisplaysPushColumn` / `StationDisplaysPushStack` (`src/components/station/displays/` — Listings · Classify · Pairing · Inventory · Units · Photos · Ticket) | **Open displays** · close **Hide right panel** (`StationDisplaysEdgeToggle`) |
+| **Displays** (plural) | Station scan (`LineEditPanel`) | `StationDisplaysPushColumn` / `StationDisplaysPushStack` (`src/components/station/displays/` — Ticket · Photos · Linkage · Inventory · Classify · Units) | **Open displays** · close **Hide right panel** (`StationDisplaysEdgeToggle`) |
 | **Inspector** | Desk / History table | `RightRailHost` peek (`detail:history`, …) | Band 3 **Show / Hide inspector** (select-a-row when empty); panel chrome park is `→|` |
 | **LineEdit / carton work** | Station centre | Already open when scanning | Never label the Displays edge toggle “details editor” — the editor *is* `LineEditPanel` |
 
 **Always**
 
 - Station pane `←|` opens **Displays**; History Band 3 ▦ parks/reopens the **inspector**.
-- **Chord split (layout vs inspector):** Station Displays toggle = **⌘/Ctrl+]** on `StationDisplaysEdgeToggle` (open index / close column — same as `←|` / `→|`; browser Forward is intentionally stolen on the bench). Left context rail = **⌘/Ctrl+B** on `ContextPanelLayout` (park/restore — same as filter `←|` / parked strip; browser Bold stolen). Desk History / To-ship inspector park = **⌘\** + bare **]** on the workbench header — never bind ⌘] for inspector or ⌘\ for Displays. **MasterNav spine has no chord** (click / header toggle only — ⌘[ was rejected as too close to Displays ⌘]). Owners: `displays-toggle-hotkey.ts` · `context-panel-toggle-hotkey.ts`.
+- **Chord split (Displays ≠ inspector):** Station Displays toggle = **⌘/Ctrl+]** on `StationDisplaysEdgeToggle` (open index / close column — same as `←|` / `→|`; browser Forward is intentionally stolen on the bench). Desk History / To-ship inspector park = **⌘\** + bare **]** on the workbench header — never bind ⌘] for inspector or ⌘\ for Displays. Owner module: `displays-toggle-hotkey.ts`.
 - Carton `↑ ↓` beside Station `←|` are the **carton cursor**, not inspector prev/next.
-- History peek topics (`history-inspector-topics.ts`) are **Display | Edit | View** — Display = labelled `PaneHeaderTabs` (exclusive body section); Edit = one identity primary CTA + More (not an icon strip); View = sheet layout behind a View toggle (paint · Drill · compare · zoom · ▦ — **no KPI**, that is the Band 3 `kpiToggle`; staff · week are query facets in the find field). Reachable from every Unbox **sheet** tab (Queue · Recent · All · History) since 2026-08-08, not History alone. Desk Orders twin: `order-inspector-topics.ts` + Unbox Displays plate (`SectionTabsSlider` density=icon via `buildOrderInspectorDisplays`) — locked Order · Documents · Timeline · Conversation; Order nests Shipping · Product; order updates (Assign · urgent · notes · …) + flush Delete on `OrderUpdateDock` → `InspectorActionFloor` under Order (never a fifth topic / popover); plate ⋮ = handoffs; no ORDER # identity row on `detail:order`; sheet View lives on `detail:orders-view` only. Singular “Display topic” ≠ Station **Displays** column. Prefer “Display topic” vs “Displays column” in prose. Detail: [`display/right-rail-inspector.md`](display/right-rail-inspector.md).
+- History peek topics (`history-inspector-topics.ts`) are **Display | Edit | View** — Display = labelled `PaneHeaderTabs` (exclusive body section); Edit = one identity primary CTA + More (not an icon strip); View = sheet layout / refine behind a View toggle (paint · Drill · compare · staff · week · ▦ · KPI). Desk Orders twin: `order-inspector-topics.ts` + Unbox Displays plate (`SectionTabsSlider` density=icon via `buildOrderInspectorDisplays`) — locked Order · Documents · Timeline · Conversation; Order nests Shipping · Product; order updates (Assign · urgent · notes · …) + flush Delete on `OrderUpdateDock` → `InspectorActionFloor` under Order (never a fifth topic / popover); plate ⋮ = handoffs; no ORDER # identity row on `detail:order`; sheet View lives on `detail:orders-view` only. Singular “Display topic” ≠ Station **Displays** column. Prefer “Display topic” vs “Displays column” in prose. Detail: [`display/right-rail-inspector.md`](display/right-rail-inspector.md).
 - **Inspector action floor** (`InspectorActionFloor`) mounts only on desk triage record peeks when the open row has Macro commit / delete — never on Station Displays, never as `RightRailHost` host chrome, never on empty select-a-row / History identity-primary.
 - **Incoming desk Pairing** is an inspector **topic** on `detail:incoming` (composes `CartonMatchHub`); Arrival / Unbox / Testing keep Pairing on Station **Displays** push. Never mount Pairing as a second Displays column on Incoming.
-- **Station Displays navigation (Unbox golden, 2026-08-07; SoT host 2026-08-07):** Root-to-Leaf drill-down lives in **`StationDisplaysPushStack`** (`src/components/station/displays/`) — the shared right-edge triage wrapper for Unbox · Arrival · Testing · Pack · Shipping · Review. `?display=index` Root Index = grouped status rows (`StationDisplayIndexList` + `DisplayIndexRow`; Unbox enrichment via domain `buildUnboxDisplayIndexRows`) → leaf body with sticky history ← → + **current title** (+ optional leaf-wide trailing via `setLeafTrailing`) (`StationDisplayLeafHeader` — top-left prev/next chevrons + current segment title; no ancestor jump crumbs; trail depth via Back/Esc/ArrowLeft·ArrowRight only; never a path-as-title Back row; verifiable **24px** `STATION_SECONDARY_BAND_FACE` eyebrow band, the same seam as the index group eyebrows / left-rail eyebrow / carton commerce row 2; never a primary `h-7` / `PRIMARY_CHROME_ROW_FACE` chrome band). Visit past/future lives in `displays-visit-history.ts` (Unbox passes `visitFrame` nest for Photos·Linkage·Units·Ticket); Inventory nested Forward uses `setOnNestedRestore`. Index Left closes the column; Esc never Forward. Not carton ↑↓ / procedure ←→. Index stage/device/density · eyebrow trailing · character-select ↑↓ wrap cursor · armed content nudge + traveling marker (`useArmedCursorList` + `armed-cursor-face.ts`); **arm = instant hard-cut highlight (no layoutId) / commit = `motionRole.feedback.hitMarker` + SYNC chip** (≤100ms; no UI audio; scan-band success stays on `cf:scan-band-flash`): [`display/station-workbench.md`](display/station-workbench.md) → Displays Root Index. **ONE Root-to-Leaf grammar — there is no `navMode` prop** (deleted 2026-08-07). Every station drills index → leaf; Esc pops leaf → index → close; Back → index; the `←|` edge toggle lands the **index** on any station declaring 2+ displays, while a contextual `openDisplays(<leaf>)` skips it (Arrival · Pairing is the one-display case). A `navMode="leaf"` variant existed for one day: it rendered a single leaf and **no switcher at all** (`onTabChange` had no caller inside the column), so Pack (4 displays) · Shipping (2) · Review (3) shipped with every display but the one the edge toggle guessed unreachable from anywhere in the app. It was removed rather than kept for a hypothetical one-display station — an untested branch in a shared waist is where the next regression hides. **A gated-away leaf resolves to the INDEX, never `displayTabs[0]`** — silently swapping in an unrelated display is the failure the index exists to prevent. Guard: `station-displays-reachability.guard.test.ts` (asserts the operator contract — every declared display is reachable — not the mode string; the mode-string guards were green through the whole regression). `←|` Open displays seats in the scan utility-rail **bottom** footer (`STATION_UTILITY_RAIL_FOOTER_CLASS` / `UnboxDisplaysUtilityRailBody` — left-dock expand twin) and opens index on index-nav stations; contextual `openDisplays(<leaf>)` skips index. **Footer is stage-owned (visibility, not only function):** Root Index pins `TechRailSearchBar` (`Filter displays…`) with `→|` Hide right panel as `trailingAction` (left-rail filter-collapse twin) — filters `StationDisplayIndexList` / `filterDisplayIndexRows` only. Leaf triage/action mounts `StationDisplaysDismissFooter` (`→|` dismiss band only) — never list-filter chrome on a leaf, never eject-from-leaf-by-typing as a Back substitute. Checklist is a Root Index leaf (`buildUnboxDisplayIndexRows` emits it, last) and — on Unbox — is **also** opened by the under-dock procedure-% control (`UnboxScanProgressControl`, Band 2 right); never a Displays `rightSlot` / column top-band ring. Horizontal `SectionTabsSlider` `density="icon"` topic plate is **retired** as Station Displays primary nav (Desk Orders twin may still use an icon plate). **Nested-leaf grammar (locked 2026-08-08; armed-row verbs 2026-08-08):** Root Index is the only **subject** lateral layer. Inside a leaf, leaf-level **action verbs** use an **armed-row list + URL drill-down** (Photos golden: `PhotosActionsArmedList` / `useArmedCursorList` → `?photoAction=` bodies; trail via `useDisplaysLeafChrome`; Esc/Back pops drill → Actions → index → close) — **never** a nested parent `TabDisplay` underline strip for the same job. The other legal leaf shape is a **secondary vertical index** for reference sections (Inventory) — **never both** armed-row and secondary vertical, never a second `StationDisplayLeafHeader`. Child perspectives **within** a drill tool (Move To·From · Prebox mode · Support Team·Activity) use `TabDisplay appearance="segment"` only — never soft `TabSwitch` / `rounded-full` pills. **Leaf-wide** Claim **New ticket · Link existing** is the same `segment` component, but on Displays chrome it mounts in **`StationDisplayLeafHeader` trailing** via `useDisplaysLeafChrome` `setLeafTrailing` (same 24px band opposite ← → + title) — never a second sticky row or a body strip under the header; modal Claim keeps the body strip. **Photos** (golden): default **Actions**; absent / legacy `browse` → Actions; identity Photos pill stays send-to-phone; URL drills Move·Send·Compare per `UNBOX_PHOTO_ACTION_ORDER` (tools then evidence trailing); Move To·From = child segment. **Debt allowlist (shrink-only — parent underline survivors):** `LinkageDisplayHost` (Link·Note) · `UnitsDisplayHost` (Units·Prebox; Prebox One master·One per unit = child segment) — migrate to armed rows like Photos; nothing may join this list. **Nested verb altitude:** bench first (default when nest URL param absent) → tools → evidence/reference — never land a trailing verb on open (`UNBOX_PHOTO_ACTION_ORDER`; Pairing `link`; Units `units`). **Secondary vertical:** Inventory (Information · Lines · PO notes · Activity) reports trail via `useDisplaysLeafChrome` — ONE sticky Back. Esc / Back pop one breadcrumb level (nested → leaf root → index → close). Inventory reconnect → Settings → Integrations; Change PO → Linkage. **Ticket is presence-exclusive** (no Chat·Claim tabs): no linked ticket → Claim; linked → Chat. Claim **New · Link** = leaf-header trailing child segment on Displays (short labels + always-visible `⌥1`/`⌥2` via `segmentChordHint` + `useSegmentChords`; index unlinked subtitle is quiet **No ticket** / `neutral` — never amber “Claim needed”). Support Team·Activity (when shown) = in-body child segment via `SupportContextSegments`. **Footer stages (owned by `StationDisplaysPushStack`, 2026-08-08):** `index-filter` = Root Index `TechRailSearchBar` (`Filter displays…`) + `→|`; `leaf-dismiss` = default leaf `StationDisplaysDismissFooter` (`→|` only); `leaf-command` = opt-in when the active leaf registers `DisplaysFooterCommand[]` via `useDisplaysLeafChrome` `setLeafCommands` — mounts `StationDisplaysCommandFooter` (`/` dense flush palette · `Command…` typeahead · `→|`; Esc closes palette first; wedge-safe: refuse-in-input · scan-burst · overlay yield · no bare digit binds; commands compose existing leaf / terminal / print owners — never page-local fetchers). Golden opt-in: Unbox Inventory sub-leaves (`/change po` · `/refresh` · `/save notes`). Never remount index filter on a leaf; never eject-from-leaf-by-typing. Contextual leaf search (Phase B) and Alt+1/2 segment chords (Phase C) stay **deferred**. Guards: `station-displays-footer-stage.guard.test.ts` · `station-displays-nested-grammar.guard.test.ts` · `tab-display-displays-hosts.guard.test.ts` · `photos-actions-armed.guard.test.ts`.
+- **Station Displays navigation (Unbox golden, 2026-08-07; SoT host 2026-08-07):** Root-to-Leaf drill-down lives in **`StationDisplaysPushStack`** (`src/components/station/displays/`) — the shared right-edge triage wrapper for Unbox · Arrival · Testing · Pack · Shipping · Review. `?display=index` Root Index = grouped status rows (`StationDisplayIndexList` + `DisplayIndexRow`; Unbox enrichment via domain `buildUnboxDisplayIndexRows`) → leaf body with sticky Back (`StationDisplayLeafHeader`). Index stage/device/density · eyebrow trailing · character-select ↑↓ wrap cursor · layout-stable armed marker: [`display/station-workbench.md`](display/station-workbench.md) → Displays Root Index. **ONE Root-to-Leaf grammar — there is no `navMode` prop** (deleted 2026-08-07). Every station drills index → leaf; Esc pops leaf → index → close; Back → index; the `←|` edge toggle lands the **index** on any station declaring 2+ displays, while a contextual `openDisplays(<leaf>)` skips it (Arrival · Pairing is the one-display case). A `navMode="leaf"` variant existed for one day: it rendered a single leaf and **no switcher at all** (`onTabChange` had no caller inside the column), so Pack (4 displays) · Shipping (2) · Review (3) shipped with every display but the one the edge toggle guessed unreachable from anywhere in the app. It was removed rather than kept for a hypothetical one-display station — an untested branch in a shared waist is where the next regression hides. **A gated-away leaf resolves to the INDEX, never `displayTabs[0]`** — silently swapping in an unrelated display is the failure the index exists to prevent. Guard: `station-displays-reachability.guard.test.ts` (asserts the operator contract — every declared display is reachable — not the mode string; the mode-string guards were green through the whole regression). `←|` Open displays seats in the scan utility-rail **bottom** footer (`STATION_UTILITY_RAIL_FOOTER_CLASS` / `UnboxDisplaysUtilityRailBody` — left-dock expand twin) and opens index on index-nav stations; contextual `openDisplays(<leaf>)` skips index. **Footer filter:** Displays column pins `TechRailSearchBar` (`Filter displays…`) with `→|` Hide right panel as `trailingAction` (left-rail filter-collapse twin) — filters Root Index rows; typing on a leaf pops to the filtered index when `navMode="index"`. Checklist stays ring-only (column top-band progress chrome — never an index row). Horizontal `SectionTabsSlider` `density="icon"` topic plate is **retired** as Station Displays primary nav (Desk Orders twin may still use an icon plate). Nested verb switchers stay **inside leaves**: Photos nests Move·Send as industrial `TabDisplay` `appearance="underline"` (default **Move**; absent / legacy `browse` → Move; carton gallery browse stays on identity peek / lightbox — not a Photos Displays body); Linkage Link·Note and Units Units·Prebox use the same underline parent — never soft `TabSwitch` `solid` pills and never a second inverse fill stacked under them. **Inventory is one stacked dossier** (PO · lines · notes · activity) — no nested Items·Notes·Activity tabs and no second Back; only Displays leaf Back → Index. Inventory reconnect stays Settings → Integrations; Change PO opens Linkage. **Ticket is presence-exclusive** (no Chat·Claim tabs): no linked ticket → Claim; linked ticket → Chat. Claim **New ticket · Link existing** is the claim-only child layer: `TabDisplay` `appearance="segment"`.
 **Never**
 
 - Rename Station edge copy to “Open inspector” or “Open details editor.”
@@ -730,10 +711,8 @@ Three different right-edge jobs. Do not rename one with another's noun:
 - Park exact triage detail (full IDs · qty dossiers · lineage · exception routing · diagnostics)
   under carton identity / the middle work plane as a **"Show details"** / Level-1 collapse —
   that opens in **Displays** only (`carton-context-details-in-displays.guard.test.ts`).
-- Nest a parent `TabDisplay` `appearance="underline"` under a Displays leaf for leaf-level action verbs — use armed rows + URL drills (Photos golden). Child `segment` stays legal **inside** a tool. Parent-underline survivors are the shrink-only debt allowlist (`LinkageDisplayHost` · `UnitsDisplayHost`) named by `station-displays-nested-grammar.guard.test.ts`.
-- Mount `TechRailSearchBar` (`Filter displays…`) on a Displays leaf footer, fuse list-filter into Action leaf chrome, or eject-from-leaf-by-typing as a Back substitute — footer list-filter is Root Index only (`index-filter`). Leaf opt-in `/` commands use `StationDisplaysCommandFooter` + `setLeafCommands`, never the index filter (`station-displays-footer-stage.guard.test.ts`).
 
-Guards: `unbox-right-edge-chrome.guard.test.ts` · `station-displays-footer-stage.guard.test.ts` · History Band 3 inspector strings in `receiving-grid-sheet.guard.test.ts` / `history-carton-triage.guard.test.ts` · `carton-context-details-in-displays.guard.test.ts`.
+Guards: `unbox-right-edge-chrome.guard.test.ts` · History Band 3 inspector strings in `receiving-grid-sheet.guard.test.ts` / `history-carton-triage.guard.test.ts` · `carton-context-details-in-displays.guard.test.ts`.
 
 ## Station Action vs Context planes (ruled 2026-08-07)
 
@@ -756,27 +735,7 @@ sources of truth.
   Densify / keyboard primitives live in `src/components/station/displays/`
   (`StationDenseFactStrip` · `StationActionDossierShell` · `StationActionKeyLegend`);
   station builders only register leaves — never fork a page-local Action shell.
-  Unbox Inventory (`InventoryDisplayHost`) is the first leaf golden. Testing's
-  **per-unit verdict** (serial · condition · pass/test-again/fail) is an Action
-  leaf too — the **Units Display** (`TestingUnitsDisplay`), never a centre
-  `activeRowSlot`; the keyboard/wedge per-unit mutation is Action-plane by
-  definition, which is what resolves the apparent tension with "centre = PO
-  lines + Pass · Print" (the centre keeps the ledger + terminal; the per-unit
-  editor is the right-edge Action Display).
-  **Inventory Information** (and every Displays Action fact band) paints
-  `StationDenseFactStrip layout="rows"` — one horizontal label|value row per
-  fact (WMS muscle memory). Information is **facts-only**: no trust strip, no
-  Action floor / Change PO · Refresh CTAs (those stay on Lines · Notes ·
-  Activity). Status uses `ZohoReceiptChip` (same face as Incoming / Unbox
-  `zoho` column) — never raw `po.status` prose. Read facts sit **transparent
-  on the Displays `bg-surface-card` host** (hairline dividers only) — never a
-  `bg-surface-canvas` / `bg-surface-sunken` fact-list wash. Trust/eyebrow
-  strips and dossier expand detail follow the same rule. **Sunken
-  depth-indent** (`bg-surface-sunken` via `DenseComposeBodyBand`) is exclusive
-  to operated compose bodies: notes · ticket/claim create/edit. Never a
-  multi-column label-above-value grid (`grid-cols-*` / `layout="strip"`)
-  inside a Displays leaf; strip layout is desk Incoming only. Guard:
-  `station-action-dossier.guard.test.ts` · `unbox-displays-drilldown.guard.test.ts`.
+  Unbox Inventory (`InventoryDisplayHost`) is the first leaf golden.
 - Action key legends mount on Displays leaves — **not** `InspectorActionFloor`
   (desk Macro only).
 - **Context Plane** = LedgerGrid identity / status / aggregate metrics / sync
@@ -800,11 +759,6 @@ sources of truth.
 - Per-station private Action densify forks when a shared `station/displays`
   primitive exists.
 - Put the full Inventory dossier into the History data table as primary cells.
-- Paint Displays Action facts as a multi-column label-above-value grid
-  (`grid-cols-*` / `StationDenseFactStrip layout="strip"`) — rows only.
-- Paint a `bg-surface-canvas` / `bg-surface-sunken` wash behind read fact bands,
-  trust strips, or dossier expand detail — sunken indent is compose-entry only
-  (`DenseComposeBodyBand`).
 
 Guards: `station-action-dossier.guard.test.ts` · `unbox-displays-drilldown.guard.test.ts`.
 
@@ -923,9 +877,10 @@ Guards: `station-action-dossier.guard.test.ts` · `unbox-displays-drilldown.guar
     host is Unbox pane-only). Recipe: [`display/right-rail-inspector.md`](display/right-rail-inspector.md).
   - **A pane-anchored utility row carries only what the PANE owns** — the Unbox
     pane cluster is carton `↑ ↓` only, and there is **no dismiss and no progress
-    ring in it**. Unbox checklist is a Displays leaf (open via `←|` → Root Index
-    → Checklist, or the under-dock procedure-% control) — that ring lives under
-    the dock (Band 2 right), never in this pane utility row, and is not a jump target.
+    ring in it**. The scan-progress ring lives on the Displays column top band
+    (`UnboxPushColumn` `headerRightSlot` via Displays `rightSlot`) — checklist
+    entry while Displays is open; closed Displays opens via `←|` → Root Index.
+    Do not remount a second ring under the dock or in the pane utility corner.
     - **`↑` is PREVIOUS, `↓` is NEXT** (aligned with left sidebar +
       `DeskRailChromeRow`, 2026-08-06). ArrowUp / ChevronUp steps **prev**
       (toward the top of the list); ArrowDown / ChevronDown steps **next**.
@@ -936,7 +891,7 @@ Guards: `station-action-dossier.guard.test.ts` · `unbox-displays-drilldown.guar
     amending 2026-08-02 top-left). `ReceivingDisplaysPushStack` seats `→|` as
     `TechRailSearchBar` `trailingAction` (left-rail collapse twin); closed
     `←|` seats in the utility-rail bottom footer. Top band is
-    `[fullscreen] ……… [↑ ↓]` while Displays is open (no procedure % ring).
+    `[fullscreen] ……… [ring] [↑ ↓]` while Displays is open.
     - **What went wrong the first time:** the `→|` lived in the pane cluster and
       closed the whole **carton**, while its glyph (park to the right edge), its
       corner (the open column's) and its `railOpen` gating all said *collapse
@@ -1070,12 +1025,11 @@ Guards: `station-action-dossier.guard.test.ts` · `unbox-displays-drilldown.guar
   **The live checklist that replaced it is a DISPLAY, which is the whole point.**
   As of 2026-08-02 the Unbox procedure has two views: the work **focus deck** in
   the workbench centre (`UnboxProcedureDeck`) — **the primary, most prominent
-  surface on the bench** — and the live **checklist** as a Displays
-  body (`UnboxProcedureChecklist`). The deck owns visual weight (flat 28px faces
+  surface on the bench** — and the live **checklist** as a ring-only Displays
+  body (`UnboxProcedureChecklist`). The deck owns visual weight (flat 40px faces
   + outline selection); the checklist is secondary navigation. Checklist opens from the
-  under-dock procedure-% control (`UnboxScanProgressControl`, `UnboxDockHost.progress`
-  Band 2 right — not a Displays `rightSlot`, not a Lucide strip cell) and is also a
-  Root Index leaf; it shows a **selected face**
+  Displays strip progress ring (`rightSlot`, right of ⋮ — not a Lucide strip cell)
+  and shows a **selected face**
   while live. It is always-visible *because the operator opened that display*
   persisted* — it is not a region pinned beside the picker, it does not outrank
   it, and it is mutually exclusive with Ticket / Claim / tool like every other
@@ -1148,13 +1102,12 @@ Guards: `station-action-dossier.guard.test.ts` · `unbox-displays-drilldown.guar
   `detail:receiving` are mutually exclusive — opening any one clears/suspends
   the others; do not nest them as peers. Displays is **lowest precedence**: an
   exception surface (Claim / Ticket) or a just-launched tool outranks reference
-  reading. Displays opens/closes from the pane `←|` / Displays footer `→|`
-  (not `GoalRing`). Unbox mounts its compact procedure-% ring **under the dock**
-  (`UnboxDockHost.progress`, Band 2 right — `UnboxScanProgressControl`), **not** on
-  a Displays `rightSlot` (guard-banned). The checklist body is a Displays leaf (a
-  Root Index row); it stays `stripHidden` — **no Checklist Lucide strip cell**. Closed
-  Displays opens via `←|`; that under-dock ring is the floor's one metric — never a
-  second ring on a Displays `rightSlot`. The old
+  reading.   Displays opens/closes from the scan progress SoT
+  (`ScanStationProgressControl` / `ScanStationProgressRing` — not `GoalRing`;
+  Unbox adapts via `UnboxScanProgressControl`). The ring is the Displays strip
+  **`rightSlot`** (same row, right of ⋮ — Unbox: `ReceivingDisplaysPushStack`);
+  checklist stays `stripHidden` — **no Checklist Lucide strip cell**. Closed
+  Displays opens via `←|`; do not remount a second ring under the dock. The old
   pairing-pencil `rightSlot` stays gone (Package Pairing is the `pairing`
   display itself — 2026-08-02; a tab's selected-ness IS its open state —
   `display/station-workbench.md`). Hover peek is off while Displays is open
@@ -1375,7 +1328,7 @@ splits three zones left → right in `GlobalHeader`:
 |---|---|---|
 | **Nav** | `HEADER_ICON_CLUSTER` `data-header-zone="nav"` | toggle · Pins · Recents · **page** |
 | **Context** | flex mid | page `panelContent` (may be empty) |
-| **Actions** | `GlobalHeaderActions` `data-header-zone="actions"` | search · goal · work order · inbox · **assistant** |
+| **Actions** | `GlobalHeaderActions` `data-header-zone="actions"` | search · inbox · **assistant** |
 
 ### Nav cluster
 
@@ -1398,28 +1351,60 @@ assistant in this cluster.**
 | # | Slot | Module | Face |
 |---|---|---|---|
 | 1 | Find | `GlobalHeaderSearch` | search field / icon |
-| 2 | Pace | `HeaderGoalChip` | `GoalRing` → checklist (absent when none) |
-| 3 | Next | `HeaderTopWorkOrderChip` | icon → popover (absent when none) |
-| 4 | Be told | inbox `IconButton` | notifications badge |
-| 5 | Ask | `GlobalHeaderAssistantButton` | Sparkles — **always far-right** |
+| 2 | Be told | inbox `IconButton` | notifications badge |
+| 3 | Ask | `GlobalHeaderAssistantButton` | Sparkles — **always far-right** |
 
-Conditional goal / WO chips sit in the actions cluster (not nav) so a missing
-chip cannot gap the nav row. Assistant stays last — it opens the right-rail
-edge it owns. Clipboard / phone QR / kiosk stay in spine ⋯ (frequency, not
-existence). Mobile keeps goal on `MobileTopBar` and does not remount goal / WO
-inside the mobile `GlobalHeaderActions` variant.
+**Corrected 2026-08-08 — this table described a layout the code never had.**
+`GlobalHeaderActions` mounts neither `HeaderGoalChip` nor the work-order chip;
+both were in the **left nav cluster** of `GlobalHeader.tsx`, which the same rule
+above says must never hold them. `header-mode.guard.test.ts` pins that cluster's
+order, so the executable guard encoded the violation while the prose described a
+different arrangement. The guard was reality; this text was not.
 
-- **Persistent chrome faces paint through pending; they do not pop in after
-  fetch.** Goal (`HeaderGoalChip`) and work order (`HeaderTopWorkOrderChip`)
-  mount an idle / disabled face while auth or the first client fetch settles
-  (`goalsLoading` / query `isPending` before first data), then hide only when
-  settled empty (no stations / no WO / already on the WO source path). Never
-  `return null` for “still loading” — that empties the actions cluster on first
-  paint and flickers the slot in when the response lands. Refreshes after the
-  first settle must not flip back to the idle placeholder. Inbox / search /
-  Recents already reserve their slots; page identity never nulls (below).
-  Content cards (e.g. quiet onboarding) may still null while loading — this law
-  is for **persistent GlobalHeader / MobileTopBar chrome**, not optional bands.
+**Where "your next work order" went — the chip was deleted 2026-08-08, and its
+ROW has had two homes since.** First the Inbox popover (`InboxNextWorkOrder`,
+above `InboxQueueLinks`); then, later the same day, the panel of the header's
+**pace-and-next** button, where it lives now. What has not changed across either
+move is the thing the deletion was *for*: it is a **queue depth of one**, so it
+does not earn a chrome slot of its own (see **Per-staff queue depths** above),
+and it rendered *nothing at all* whenever the operator was already on the
+record — a permanent slot spent to be conditionally invisible.
+
+**`HeaderGoalChip` is now one button for two questions** — "how is today going"
+(the ring on its face) and "what is next" (the work-order row leading its
+panel). They are adjacent questions an operator asks in the same breath, and
+each control was thin alone: a bare ring with its counts in a tooltip, and an
+icon with no count. **The header's slot count is unchanged by the merge.**
+
+- **The closed face tells the truth about what is behind it**: the ring when a
+  goal exists; a clipboard glyph when there is no goal but a work order; nothing
+  once both settle empty. A 0% ring on a day with no goal set would be chrome
+  inventing a second story.
+- **One corner mark, with precedence** — recurring-due (rose ping) outranks the
+  work-order dot. Two marks on a 32px button is the same noise argument that
+  rejected two rings in the header. The panel always shows both.
+
+**The ring did NOT absorb the work order, and that ruling is unchanged.** A ring
+encodes progress toward a target — a bounded fraction with a denominator. A work
+order is a queue item and has none, so a ring would have to invent one.
+`GoalRing` still means exactly one thing: this staffer's pace at one station
+(today's scans vs the admin daily quota, or checklist ticks). **Sharing a button
+is not sharing a metric** — the row sits beside the ring, never inside its arc.
+Do not widen it. Same reason the scan-station progress ring is a separate
+component — that conflation is already the most-repeated mistake on this surface.
+
+**The panel is flush-square** (`GOAL_PANEL_SHELL_CLASS`), and so is its chrome —
+mode toggle, interval toggle, station rows, tone chip, progress bar. It was the
+last soft `rounded-2xl` surface hanging off the top beam, and ops chrome is
+zero-radius industrial (`kinetic-ledger.md`). `rounded-full` survives only on the
+recurring-due status dot.
+
+**`HeaderGoalChip` is still the one non-nav occupant of the nav cluster.** Left
+in place deliberately: moving it is a layout change with its own guard churn.
+
+Assistant stays last — it opens the right-rail edge it owns. Clipboard / phone
+QR / kiosk stay in spine ⋯ (frequency, not existence). Mobile keeps goal on
+`MobileTopBar`.
 
 - **The page face NEVER returns null.** `HeaderPageSwitcher` resolves identity
   from `SIDEBAR_PAGE_NAV` and falls back to `APP_SIDEBAR_NAV` for rows with no
@@ -1588,8 +1573,20 @@ The one game-like keyboard-navigation waist — `src/lib/keyboard/nav-keys/`. Sp
 - **Pointer claims keyboard region (focus feedback).** Click / pointerdown inside Station Displays arms **Right** (`keyboard-region-owner.ts` + `data-keyboard-region` / `data-keyboard-region-active`); the column paints an inset accent ring. While Right owns: **← → = Displays history** (Back/Forward on `StationDisplayLeafHeader`), and Unbox middle procedure ← → **yields**. Pointer into the scan middle (`StationScanPaneHost`) reclaims **Middle**. Opening Displays seeds Right; closing returns Middle. Complements `list-key-scope` (↑↓ yield while column *open*) — open ≠ focused for horizontal keys.
 - **Opt-in per region.** A consumer calls `useNavRegion({ id, targets, onCommit })` (nullable id =
   inert). Shipped consumers: **Right** (`StationDisplayIndexList`), **Left** (receiving recent rail
-  via `SidebarRailShell` `navRegionId="left"`). Middle + a second armed layer (a row's secondary
-  actions) are the remaining phases. Never fork a page-local selection-keyboard twin.
+  via `SidebarRailShell` `navRegionId="left"`), **Middle** (Unbox Band 3 via `UnboxWorkspaceHeader`
+  `navRegionId` — `f` find · `r` refine, declared in `UNBOX_BAND3_NAV_KEY`). A second armed layer (a
+  row's secondary actions) is the remaining phase. Never fork a page-local selection-keyboard twin.
+- **Filtering is a nav TARGET, not a new chord (ruled 2026-08-08).** `⌘;` → `m` → `f` focuses the
+  dominant find field; `r` opens the in-field Refine funnel. **`⌘F` and bare `/` were both
+  rejected:** `/` because a printed Digital Link (`https://{slug}…/m/r/{id}`) makes a **wedge type
+  it** mid-scan, and a second global binder because every chord here has exactly one owner — the
+  ⌘K three-claimant incident is the precedent. `⌘K` stays the palette; GlobalHeader search is its
+  own field. KPI collapse gets no key (display metric), and the inspector toggle gets none (it
+  already owns ⌘\ + bare `]` — a third door onto one control is the duplication this registry
+  exists to prevent). Guard: `band3-find-only.guard.test.ts` bans a page-local ⌘F / bare `/`.
+- **`registerNavRegion` keys by region id**, so two live registrations of one region silently fight
+  over the same letters. A host that shares a region passes `id: null` while the other owns it —
+  Unbox Band 3 opts out while a carton covers the browse (it stays mounted, `visibility: hidden`).
 
 ## Typefaces + the weight cap
 
@@ -1708,20 +1705,12 @@ URL stays the durable SoT; UI value = pending until `useSearchParams` matches.
 |---|---|
 | Pure resolve / clear / live seed | `src/lib/routing/optimistic-url-param.ts` |
 | Scalar write lifecycle hook | `src/hooks/useOptimisticUrlParam.ts` |
-| Compound (multi-key) write lifecycle | `useOptimisticUrlParams` in the same hook module — `resolveOptimisticParams` / `shouldClearOptimisticParams` |
-| Consumers | Unbox Displays (`useUnboxDisplayView` domain snapshot + SoT resolve) · Outbound `open`/`new` · Search `sel` (`useSearchSelParam`) · Inventory `sidebar.open` · My Day `{ taskId, watchOpen }` (plural) |
+| Consumers | Unbox Displays (`useUnboxDisplayView` domain snapshot + SoT resolve) · Outbound `open`/`new` · Search `sel` (`useSearchSelParam`) · Inventory `sidebar.open` |
 
-**Paint-pending** (this row): UI = `resolveOptimisticParam(url, pending)` (scalar) or
-`resolveOptimisticParams(url, pending)` (compound).  
+**Paint-pending** (this row): UI = `resolveOptimisticParam(url, pending)`.  
 **Sync-guard** (different job — do **not** unify): UI is already local entity
 state; refs suppress URL→entity reconcile (`useDashboardSelectedOrder`,
 `useReceivingWorkspacePane`).
-
-**Row preview (ephemeral):** identity chrome may paint from the clicked list row
-before the detail fetch returns (Signals browse pilot). Keep the URL SoT
-**id-typed**; preview is consumer-owned local state — never durable, drop when
-the open key clears or the fetch supersedes. Do not stuff preview into the
-pending id channel.
 
 Param **isolation** (construct/parse ownership) stays in `route-params.ts` —
 orthogonal to paint. Guard: `optimistic-url-param.guard.test.ts`.
@@ -1745,10 +1734,7 @@ orthogonal to paint. Guard: `optimistic-url-param.guard.test.ts`.
   `appCanvasClass` / `CONTEXT_PANEL_HOST` — not decorative outer `m-*` islands
   between MasterNav · context · center · right. Outer gutters as a substitute for
   elevation is **floating card soup** / document whitespace and is banned (see
-  Kinetic Ledger · **Frame column budget**). Inside a Displays / inspector card,
-  **read fact bands stay coplanar** (no canvas/sunken wash); `sunken` as a
-  full-bleed indent is reserved for `DenseComposeBodyBand` compose entry
-  (notes · claim) — see **Station Action vs Context planes**.
+  Kinetic Ledger · **Frame column budget**).
 - Depth needs a ground plane: `background-canvas` / `CONTEXT_PANEL_HOST` sits a
   real step below card white (light `#eef2f7` vs `#ffffff`). At the old ~2% delta
   the shadow had nothing to cast onto and every surface merged into one sheet.
@@ -1805,15 +1791,8 @@ what changed is who supplies the recipe.
   the host is in `grid-view-plumbing`'s `DS_OWN`.
 - **Documented exceptions:** `StationListTable` / `FbaBoardTable` (no column
   model of their own) keep a declared capability bag without a definition.
-- **Forest freeze (Phase-3 ratchet):** the `*GridView.tsx` wrapper set is
-  **shrink-only** — a new queue ships without a new GridView file; it binds
-  `<NonlinearTableHost binding={…}>` in the page + a registry entry. Adding a
-  new `*GridView.tsx` fails CI (deleting one shrinks the frozen list). This is
-  the second clause of the plan's Phase-3 ratchet; the first — a mount outside
-  the allowlist — is the capabilities discovery walk.
   Guards: `table-definition-registry.guard.test.ts` (parse + deep-equal + unique
-  ids) · `grid-surface-capabilities.guard.test.ts` (every mount names a bag; the
-  `*GridView.tsx` forest is frozen shrink-only).
+  ids) · `grid-surface-capabilities.guard.test.ts` (every mount names a bag).
 
 ## Ops table / spreadsheet surface shell
 
@@ -1869,90 +1848,18 @@ for ops collection tables. Compose the hosts above — do not invent a twin.
    `border-r` only; the sheet keeps `border-t`. A triage `border-b` + sheet
    `border-t` would double the joint. Incoming: KPI band owns `border-b`; sheet
    keeps `border-t`.
-   **Find-only Band 3 — EVERY desk band, not just the goldens (generalized
-   2026-08-08; Unbox golden, To-ship twin 2026-08-05):**
-
-   **Unbox is the LEAN row, and it is the shape to copy (ruled 2026-08-08).**
-   Exactly four things, on every receiving-sheet tab (Queue · Recent · All ·
-   History):
-
-   ```text
-   [ 🔍 find ………………………………… ▽ refine ]        [ ^ KPI ] [ ▥ inspector ]
-   ```
-
-   find · refine **inside** the find field · KPI collapse · inspector park.
-   **No `right` slot and no controls portal.** Everything that used to sit
-   there — compare panes, spreadsheet zoom, `▦` column display, the week pill —
-   moved onto the inspector's View cluster, which the trailing toggle opens; the
-   query facets moved into the field. Pinned **Inbound** renders no band at all
-   (no search, no KPI, no peek — honest absence beats a bare hairline).
-   *Why the row keeps KPI rather than the panel: Band 3 is on screen while the
-   inspector is parked, so a View-cluster twin would be unreachable exactly when
-   it is wanted.* Four amendments are load-bearing and were each a real defect
-   in review: the View cluster must publish a **null** `▦` portal target while
-   hidden or parked; the zoom chords (⌘+ / ⌘- / ⌘0) belong to the chrome
-   **provider**, not to a component that unmounts with the rail; the View-only
-   shell must **not** suppress the multi-select batch rail (it owns no row); and
-   it must clear when a carton opens, or it is a second right column.
-
-   1. **Dominant find** — `TechRailSearchBar` `variant="chrome"` at
-      `min-w-0 flex-1`. A compact `w-N shrink-0 lg:w-N` box beside an empty row
-      is debt; the band's own `search` slot is already `min-w-0 flex-1`, so the
-      width class was fighting it.
-   2. **Refine rides IN the field** — `trailingSuffix` with
-      `WorkbenchFilterPopover density="field"` / `StaffFilterButton
-      density="field"` — or on the pushing inspector's **View** topic cluster.
-      The right zone is **view toggles only**: pagination, display sort, the ▦
-      portal, `kpiToggle`, then `trailing` — and **grid LAYOUT chrome is never a
-      Band-3 resident** (compare panes / spreadsheet zoom left it on 2026-08-08;
-      zero consumers remain on any band). Query ≠ display is the
-      test — a facet that narrows the ROWS goes in-field; a control that changes
-      how the same rows are LAID OUT stays right. Compound clusters that are not
-      a single field-density glyph stay in the right zone until they grow one —
-      `OutboundExactFilters`' Urgent + Filters pair, and My Day's due-horizon
-      chips (live counts per horizon; `trailingSuffix` is a one-glyph slot).
-      **A raw `<select>` is never the answer** — that is a second filter grammar
-      beside `WorkbenchFilterPopover` *and* soft radius on ops chrome; Locations'
-      room facet shipped one in `right` until 2026-08-08 and now rides in-field.
-   3. **Far-right `trailing` = Show / Hide inspector** on every surface whose
-      grid opens a desk `RightRailHost` peek — **`WorkbenchInspectorToggle`
-      (`components/dashboard/workbench-inspector-toggle.tsx`), one
-      implementation.** Both goldens hand-rolled it until 2026-08-08; a third
-      copy is a fork. It parks through `DETAIL_STACK_COLLAPSE` and never clears
-      the occupant target. Hotkeys ⌘\ + bare `]` (the bare key stands down in an
-      editable target — it sits beside a find field); **never ⌘]**, which is
-      Station Displays. Open-state comes from the surface's own signal, or from
-      `useRightRailOccupantOpen` (`components/right-rail/useRightRailOccupant.ts`)
-      — one answer read off the rail store, never a boolean plumbed up from the
-      row that opened the peek.
-   4. **Honest absence** — a band with no desk peek behind it passes no
-      `trailing` at all (station benches open `LineEditPanel` / Displays;
-      catalog + pickup rows navigate). Never mount a dead toggle for symmetry.
-      Each absence **states its reason** in the guard, because "no peek" is a
-      claim about a surface and a bare string list cannot be wrong out loud.
-      **Testing (incl. Returns) is the ruled case (2026-08-08):** its rows claim
-      the bench (`TestingPanel` covers the browse, so Band 3 is off screen the
-      moment one opens), and the only reusable peek `HistoryCartonTriagePanel`
-      is welded to Unbox History's sheet View cluster — so a Testing peek means
-      a NEW occupant + panel + a changed selection semantic on a live floor
-      queue. Product decision, not a wiring line; the empty right edge is the
-      correct render until it is made.
-   5. **Operator copy is inspector copy.** Station `Open displays` /
-      `Hide right panel` never appears on a desk Band 3.
-   Guard: `band3-find-only.guard.test.ts` — walks every `<WorkbenchTriageBand`
-   on disk (a hand-list cannot see the next page-local twin) and holds three
-   shrink-only lists: surfaces that own the toggle, surfaces with no peek (each
-   with its stated reason), and the right-zone facet residents. It also pins
-   dominant find, in-field staff refine, no raw `<select>`, and inspector copy.
+   **Find-only Band 3 (Unbox History golden; To-ship twin 2026-08-05):**
+   Dominant `TechRailSearchBar` (`min-w-0 flex-1`) + far-right Show/Hide
+   inspector. Sheet refine / layout / KPI hide live on the pushing right
+   inspector **View** topic cluster — never a Band 3 refine icon row.
    Detail: [`display/workbench-ops-queue.md`](display/workbench-ops-queue.md).
-5. **Column header band = `PRIMARY_CHROME_ROW_FACE`** — `LedgerGridColumnHeader`
-   row / select / fact cells match Unbox chrome bands (`PRIMARY_CHROME_ROW_FACE` via the
-   atom). Receiving leaf + summary rows share the same face so the frozen
-   select header and the first body cells read as one rhythm. **Orders is the
-   permanent allowlisted header-capability fork** (`OrdersQueueColumnHeader` —
-   resize + viewport force-hide; **gridSkin height is already `h-10`**, not a
-   `min-h-11` height fork). Guards: `receiving-grid-sheet.guard.test.ts` ·
-   `incoming-grid-sheet.guard.test.ts` · `dashboard-orders-sheet.guard.test.ts`.
+5. **Column header band = `h-10`** — `LedgerGridColumnHeader` row / select /
+   fact cells match Unbox chrome bands (`h-10` / 40px). Receiving leaf +
+   summary rows share the same `h-10` so the frozen select header and the
+   first body cells read as one rhythm. **Orders is the permanent allowlisted
+   fork** (`OrdersQueueColumnHeader` `min-h-11`) — do not force it onto `h-10`.
+   Guards: `receiving-grid-sheet.guard.test.ts` · `incoming-grid-sheet.guard.test.ts` ·
+   `dashboard-orders-sheet.guard.test.ts`.
 6. **Freeze** — Unbox Sheets golden freezes **`select · order`** (`date` /
    `title` scroll). Incoming stays select-only. Operator-editable freeze (pin
    any column) is future. Full per-surface table: **Grid identity pane** above.
@@ -2080,12 +1987,9 @@ Two families, one shell. **Pick by whether the surface is an ops queue**, not by
   (`ActivityInboxPopover`). Age is always compact (`4h` / `30m` / `3d`) — never
   `formatDistanceToNow` / `4 hrs ago`. Leading mark is a status **dot**, never a
   large kind glyph (truck / wrench). Meta is one scannable fact, never a
-  tone-pill parade. **Inbox carve-out:** tech-queue ready/return rows paint
-  house identity on meta — emerald `Check` (ready) + `OrderIdChip` +
-  `TrackingChip` (`displayWidth="last8"`) — never mono `Ready · ${id}` prose;
-  other inbox kinds stay one prose fact. Ephemeral actions (dismiss · undo) may
-  overlay the age column on hover — they must not invent a second permanent
-  right column.
+  `CopyChip` / tone-pill parade (that is StackedRowIdentity or a detail
+  popover). Ephemeral actions (dismiss · undo) may overlay the age column on
+  hover — they must not invent a second permanent right column.
   Guard: `compact-activity-row.guard.test.ts`.
 - **Platform-aware order / PO identity tooltip:** when source platform is known,
   the hover value is `formatPlatformTooltipLabel(fullId, resolvedMeta.label)` —
@@ -2095,14 +1999,6 @@ Two families, one shell. **Pick by whether the surface is an ops queue**, not by
   last-8 and copy writes the **bare full identifier**, never the prefixed label.
   Unknown / unbound platform keeps the bare identifier and neutral icon. Never
   concatenate a raw platform slug or reproduce this formatter in a view.
-  **Recent-rail hover peeks** compose the same contract via
-  `RailPeekIdentityFacts` (`platformValue` → `usePlatformMeta` +
-  `platformMetaIconTone` on order/PO; `carrierHint` on `TrackingChip`) — hosts
-  pass raw fields only; never fork painted chips in a rail popover.
-  Peek layout is paired rows (`order·trk` / `sku·sn` / ticket) with
-  `justify-between` air — never tracking `ml-auto`. Empty policy: serial
-  **omits**; order `keepEmpty` paints the catalog **platform label** on the
-  face (same string as the order-chip hover prefix), not a quiet `—` / slug.
 - **Brand identity dots (dense Sheets):** when Unbox History / receiving grid
   omits the leading `#` / MapPin (`plain` / `omitCellIcon`), a leading
   `BrandIdentityDot` (`h-1.5`) carries platform / carrier paint via
@@ -2140,7 +2036,7 @@ the two that live closest together were one column until 2026-07-31.
 
 | Field | Grain | Printed? | Written by |
 |---|---|---|---|
-| `receiving_line.notes` | **line item** | Unbox overview live center (preview + settle-state Print · Receive); still the Zoho/receive note | `UnboxDockNotesEntry` → `DenseComposeFields` on the flush floor — patches `notes` only |
+| `receiving_line.notes` | **line item** | Unbox overview live center (preview + Print · Receive); still the Zoho/receive note | notes dock (`LineNotesCard` → `OmnichannelComposerDock`) — patches `notes` only |
 | `receiving_line.label_note` | **line item** | yes — durable face center (Testing reprint, LabelEditPopover) | label editor (`LabelEditPopover`, As Listed); also stamped from dock text on Unbox carton print |
 | `receiving_line.zoho_notes` | line item | no | zoho sync (read-only import) |
 | `receiving.zoho_notes` / `.support_notes` | PO header / carton | no | PO sync / carton ops |
@@ -2232,6 +2128,123 @@ Same English word, two jobs. Floor unit count is not inventory confirmation.
 - Guards: `src/lib/receiving/rail/rail-received-qty.guard.test.ts` (Received
   meter) · `src/lib/receiving/unboxed-ne-received-surfaces.guard.test.ts`
   (Qty tip · Scanned vs Progress · status-dot).
+
+## Cross-entity urgency (one entry point, binary rung)
+
+"Urgent" was **four** unrelated mechanisms wearing one word, with four write
+paths and nothing reconciling them — and two of them are still called
+*priority* while meaning different things:
+
+| Record | Storage | Its own scale |
+|---|---|---|
+| Order | `orders.is_urgent` | — (a genuine boolean) |
+| Carton | `receiving_carton.priority_tier` (0) **+** `.is_priority` | 4 manual tiers — `receiving/priority-override.ts` |
+| Support ticket | helpdesk `priority` | `low \| normal \| high \| urgent` |
+| Order **row tint** | `order_flags.flag = 'priority'` | **not urgency** — see below |
+
+`src/lib/urgency/` is the one entry point for the **cross-entity intent**: a
+caller holding an `(entityType, entityId)` it did not choose — a resolved scan,
+a thrown task, a bulk triage action — that wants the record urgent without
+knowing which storage that means. `promoteUrgency(orgId, { entityType, entityId, level? })`.
+
+- **The shared rung is BINARY (`urgent | normal`) and stays binary.** It is the
+  only level all three storages genuinely share. Widening to four is the
+  obvious next idea and the wrong one: `orders.is_urgent` has two states, so
+  three of four values would be a lie on every order, and a cross-entity caller
+  would need to know which types honour which level — exactly the knowledge
+  this module exists to hold for them. A record needing its full scale reaches
+  for its own module.
+- **Every write is COMPARE-AND-SET**, for two reasons. Idempotency: callers fan
+  out a notification on `changed`, so a re-promotion must report `changed:
+  false` rather than throwing a second *"this is urgent now"* at the same
+  operator. And it must **not clobber a richer scale it did not set** — a
+  carton at manual tier 1 (High) or a ticket at `high` is already `normal` by
+  this vocabulary, so clearing writes nothing; a naive `SET priority_tier =
+  NULL` would silently demote a deliberate High to Auto.
+- **Carton columns move in lockstep** (`is_priority ⇔ tier === 0`) or a
+  promoted carton is invisible to the queues still reading only the boolean.
+- **`order_flags.flag = 'priority'` is NOT urgency.** It is a shared row *tint*
+  for queue triage, disjoint from `is_urgent` by construction — nothing syncs
+  them, and an order may carry either, both, or neither. Folding it in would
+  make one action write two columns with different meanings and audiences.
+  Vocabulary + writes stay in `orders/order-row-flags.ts` / `order-flags.ts`.
+- **A receiving LINE never paired to a carton is honestly un-promotable** —
+  there is no `receiving` row to carry the tier. The domain returns
+  `no_anchor`/`unsupported_entity` rather than writing nothing and reporting
+  success; the UI already refuses it ("Link a PO first to set priority"). That
+  is a real product gap, not a bug to route around.
+- **The three multi-field PATCH routes are frozen exceptions, not a backlog.**
+  `/api/orders/assign`, `PATCH /api/receiving-logs` and
+  `PATCH /api/zendesk/tickets/[id]` each write urgency as **one column inside a
+  wider dynamic UPDATE**; routing that field back out would split one atomic
+  write into two that can half-fail. Ditto `receiving/lookup-po` (an automatic
+  domain rule at scan time) and `feed-membership-projection.ts` (a projection
+  that copies an already-decided tier). What the guard prevents is a **fifth**
+  single-purpose writer — which is how the first four diverged.
+- Guard: `src/lib/urgency/urgency-sot.guard.test.ts` — exact-set equality on the
+  writer allowlist, so it cannot drift in either direction; finishing a
+  migration **removes** a line.
+
+## Inbox surfaces — the bell vs Home → Inbox (documented 2026-08-08)
+
+**Three surfaces wear the word "inbox" and answer three different questions.**
+Until now no rule text acknowledged the split, which is how two of them grew
+two stores and two row grammars for adjacent jobs.
+
+| Surface | Store | Answers | State model |
+|---|---|---|---|
+| **Header bell** — `ActivityInboxPopover` | `ActivityInboxContext` (in-memory, ≤20) + `staff_messages` | *what just happened to me* | dismiss / undo — **ephemeral** |
+| **Home → Inbox** — `HomeInboxMode` (`?mode=inbox`) | `staff_inbox_items` via `GET /api/inbox` | *what I follow / was assigned* | `unread · read · done · snoozed` — **durable**, org-flagged |
+| **Home → Tasks** — `HomeTasksMode` | `/api/ops-plans/inbox` | *what I should do next* | plan-task ranking |
+
+**Always**
+
+- The **bell keeps the compact activity face** (`CompactActivityRow` +
+  `RailRowBody`, `formatLaneAgeCompact`) — pinned by
+  `compact-activity-row.guard.test.ts`.
+- The **header badge counts dismissible `ActivityInboxItem`s only.** A queue
+  *depth* is not a thing you dismiss and must not enter it (that ruling is at
+  **Per-staff queue depths** above, and it is unchanged). An **assigned task
+  is** a discrete event you clear by acting on it, so it is the badge's own
+  shape and belongs there.
+- `staff_inbox_items` is the durable ledger; `staff_messages` is the human DM
+  store. **Two genuinely different jobs, two sibling tables** — the migration
+  header of `2026-07-28d` states why (a system notification has no sender; a
+  prerendered body goes stale; no entity anchor makes collapse unindexable; no
+  dedupe key double-delivers under an at-least-once worker). Do not merge them.
+- **Render at READ time** from the structured reference
+  (`entity_type`/`entity_id`/`event_key`/`actor`). Never prerender a message
+  body at write time.
+
+**The three gaps this section opened with are CLOSED (WS-TASKS, 2026-08-08).**
+They are kept here as history because each one was documented as existing while
+it did not, and the sentence that replaced it is the thing to check against the
+code next time:
+
+- **The Ably leg exists** — `publishInboxItem()` (`src/lib/realtime/publish.ts`)
+  emits `inbox_item` on the `org:{org}:inbox:{staff}` channel that
+  `2026-07-28d`'s header had only ever diagrammed.
+- **`staff_inbox_items` has a create path** —
+  `src/lib/notifications/assign-inbox-item.ts` is the writer `reason:'assigned'`
+  had been missing since the CHECK was written. It **bypasses the outbox on
+  purpose**: the cron worker exists to *derive* recipients from
+  `staff_subscriptions`, and a thrown task already names one, so routing it
+  through the outbox would deliver to the wrong people and add cron latency to a
+  bench handoff.
+- `isHomeInbox` is `rollout` in `FLAG_LIFECYCLE` (plannedRemoval 2026-10-26) and
+  seeded ON for the dogfood org.
+
+**The send surface is `ThrowTaskHost` (⌘⇧U) — see the registry row above.** One
+store, two displays, two jobs: an assigned task writes `staff_inbox_items`, the
+publish makes the bell its live face, and Home → Inbox stays the durable
+backlog. Do **not** grow a third store for task assignment.
+
+**Amplifiers are reported, never hidden.** `POST /api/tasks` returns `urgency`
+and `notified` beside the task, and the throw surface says which one it got. A
+thrown-but-nobody-notified handoff looks identical to a delivered one — the
+`support_ticket` case is exactly that today (`notified: 'skipped_entity'`,
+because no role holds a `support.*` permission, so an inbox row would be visible
+to nobody), so a flat success toast would be a lie an operator acts on.
 
 ## Order note grain (one writable home)
 
@@ -2346,11 +2359,10 @@ Warehouse / desk triage is muscle memory: operators find a fact by **where it si
 scanning a reshuffling layout. Industry-standard dense B2B (WMS · packing · support desks)
 locks fact clusters in place and paints honest emptiness inside the box.
 
-- **Station Action Displays** fact bands (`StationDenseFactStrip layout="rows"` /
-  `StationActionDossierShell` rows) lock **row** positions the same way —
-  empty values paint honest `—` in bounds; never progressive-hide primary triage
-  fields; never a multi-column label-above-value grid on a Displays leaf.
-  Law: **Station Action vs Context planes**.
+- **Station Action Displays** fact bands (`StationDenseFactStrip` /
+  `StationActionDossierShell` rows) lock column positions the same way —
+  empty cells paint honest `—` in bounds; never progressive-hide primary triage
+  fields. Law: **Station Action vs Context planes**.
 - **Always mount** fixed pipeline milestone rows (`PipelineStageRow` under a
   `LinearWorkflowStepper`) — Tested · Packed · Scanned Out on orders;
   Scanned · Unboxed · Received on cartons. Unstamped stages keep
@@ -2428,13 +2440,6 @@ Guards: `FlushTerminalFooter.guard.test.ts` · `inspector-action-floor.guard.tes
 `units-explosion.guard.test.ts`.
 ## Workbench chrome flush
 
-**Band-1 host pad/gap is zero.** `WorkbenchChromeHeader density="band"` composes
-`WORKBENCH_CHROME_BAND_FACE` (`PRIMARY_CHROME_ROW_FACE` + `gap-0 p-0`). A leading
-boxed cube (Unbox pin-list — `STATION_CONTEXT_BOXED_CUBE_CLASS`, same face as
-carton Exit) **abuts** the first tab — never `gap-2` or `p-0.5` host air between
-them. TabSwitch may pad its own track; the band host does not. Detail + guard:
-`display/workbench-ops-queue.md` → Chrome face density · `workbench-chrome-band.guard.test.ts`.
-
 **Ops chrome is flush-square (`cornerClass('flush')` → `rounded-none`).** Solid CTAs, tab bands,
 selects and toggle rows sit square on their hairline — no soft radius, no horizontal pill bands.
 `WORKBENCH_CHROME_PILL_CLASS` is now `cornerClass('flush')`; the former soft-concentric pill
@@ -2511,26 +2516,11 @@ DOT   = cornerClass('pill') — status dots · avatars · Switch tracks only
   pad** (`px-1.5`); Photos keeps `justify-between` so camera · count/+ sit off
   the border. Condition grade active faces stay flat (`shadow-none` in
   `condition-tone.ts`). Guard: `carton-context-density.guard.test.ts`.
-- **Station chrome seam (2026-08-07; densified 2026-08-08):** left scan bar ·
-  carton identity **row 1** · Displays push top band share
-  **`PRIMARY_CHROME_ROW_FACE`** (station alias **`STATION_CHROME_ROW_FACE`** —
-  `h-7` / 28px — same as MasterNav Scan Stations / L1). This is the first ops
-  row **under** GlobalHeader — **not** the nav header itself
-  (`TOP_CHROME_ROW_FACE` / 40px). Classify · Exit · Photos flush-fill that row.
-  **Secondary band** under that seam is
-  **`STATION_SECONDARY_BAND_FACE` (`h-6`)** across left-rail eyebrow
-  (Recent · pencil) · carton commerce row 2 · Displays group eyebrows
-  (VERIFICATION). Commerce row leads with a locked **`w-14` status pill**
-  (`STATION_CONTEXT_STATUS_PILL_CLASS` + `getReceivingStatusPillClass`) then
-  order# · tracking · Claim (`h-6`). Stacked overlay clearance = `pt-[52px]`
-  (28 + 24). Guard: `carton-context-density.guard.test.ts` ·
-  `unbox-right-edge-chrome.guard.test.ts` · `station-display-index.guard.test.ts` ·
-  `header-mode.guard.test.ts`.
 - **Identity chrome:** mount identity inside `StationContextBar`. **Unbox** uses
   `placement="flow"` (in-flow shrink-0 band via `stationContextBarFlowHostClass`)
   above `StationWorkbench` with `reserveIdentityClearance={false}` + `bodyGap="none"`
   so the identity hairline **abuts PO lines with zero air** — no absolute float +
-  guessed `pt-20` clearance. Other hosts may still use absolute overlay
+  guessed `pt-16` clearance. Other hosts may still use absolute overlay
   (`stationContextBarHostClass`) + `reserveIdentityClearance="stacked"`.
   **Top padding SoT (overlay path):** `STATION_IDENTITY_INSET_TOP` (`top-0`) pins
   identity flush under GlobalHeader. Band face: `stationIdentityPanelClass`
@@ -2599,6 +2589,4 @@ DOT   = cornerClass('pill') — status dots · avatars · Switch tracks only
   truth and are **never removed** (plan non-goal); legacy query libs survive as typed tools.
 - **`/search` pending chrome**: header `SearchPendingBar` (via `setGlobalSearchPending`) is the
   only resolve/retrieve pulse — browse/feedback bodies must not paint “Opening…” / idle-teach
-  placeholders while `idPending` or resolve is loading. With no `?q=` the browse body is **blank**
-  (Amazon-like: the auto-focused header field is the search surface; no “Search everything” empty
-  state). Guard: `search-find-stage.guard.test.ts`.
+  placeholders while `idPending` or resolve is loading. Guard: `search-find-stage.guard.test.ts`.

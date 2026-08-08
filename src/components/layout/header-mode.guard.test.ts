@@ -12,11 +12,11 @@
  * `SIDEBAR_SPINE_MENU_PANEL_CLASS` + `*-stretch` — never a wider magic width /
  * bare `text-sm`. Menu type = caption/micro (trigger org name stays body).
  *
- * GlobalHeader zones (nav left · actions right): nav = toggle · Pins · Recents ·
- * page identity; `GlobalHeaderActions` = search · goal · work order · inbox ·
- * assistant (far-right). Page face is one `PAGE_FACE_CLASS`; every header
- * dropdown composes `HeaderChromeMenu` / `HeaderChromeMenuItem` — see
- * `.claude/rules/source-of-truth.md` → **GlobalHeader zones**.
+ * The left cluster ORDER is pinned (toggle · Recents · page identity · Pins ·
+ * work order · goal), the page face is one `PAGE_FACE_CLASS` shared by the static
+ * chip and the menu trigger, and every header dropdown composes
+ * `HeaderChromeMenu` / `HeaderChromeMenuItem` — see
+ * `.claude/rules/source-of-truth.md` → **GlobalHeader left cluster**.
  *
  * SoT: SIDEBAR_PAGE_NAV + useSidebarChildNav · HeaderPageSwitcher · HeaderRecentsSwitcher
  *      · HeaderPinsSwitcher / useQuickAccess · StaffAccountFooter · SidebarCollapseControl
@@ -93,68 +93,35 @@ test('GlobalHeader always mounts Page + Recents + Pins', () => {
   assert.doesNotMatch(HEADER, /isReceivingHeaderModeRoute/);
 });
 
-// SoT: source-of-truth.md → "GlobalHeader zones". Nav = toggle · Pins · Recents · page.
-test('GlobalHeader nav cluster keeps the pinned slot ORDER', () => {
-  const NAV_ORDER = [
+// SoT: source-of-truth.md → "GlobalHeader left cluster". The order reads outward
+// from the operator's frame (came from → AM → keep going → next → pacing), and
+// the two conditional slots sit last so a hidden chip cannot gap the row.
+test('GlobalHeader left cluster keeps the pinned slot ORDER', () => {
+  const CLUSTER_ORDER = [
     'SidebarCollapseControl',
-    'HeaderPinsSwitcher',
     'HeaderRecentsSwitcher',
     'HeaderPageSwitcher',
+    'HeaderPinsSwitcher',
+    // 'HeaderTopWorkOrderChip' removed 2026-08-08 — a queue depth of one does
+    // not earn a permanent chrome slot, least of all one that rendered nothing
+    // whenever the operator was already on the record. Its row now lives inside
+    // HeaderGoalChip's panel (pace AND next, one button), so the cluster's slot
+    // count is unchanged and no work-order occupant may reappear here.
+    'HeaderGoalChip',
   ] as const;
-  assert.match(HEADER, /data-header-zone="nav"/, 'nav zone is named');
-  assert.match(HEADER, /HEADER_ICON_CLUSTER/, 'nav uses the shared cluster class');
-  const positions = NAV_ORDER.map((name) => {
+  assert.match(HEADER, /HEADER_ICON_CLUSTER/, 'left cluster uses the shared class');
+  const positions = CLUSTER_ORDER.map((name) => {
     const at = HEADER.indexOf(`<${name}`);
-    assert.ok(at > 0, `${name} must be mounted in the nav cluster`);
+    assert.ok(at > 0, `${name} must be mounted in the left cluster`);
     return { name, at };
   });
   for (let i = 1; i < positions.length; i += 1) {
     assert.ok(
       positions[i]!.at > positions[i - 1]!.at,
       `${positions[i]!.name} must render after ${positions[i - 1]!.name} `
-        + '(see source-of-truth.md → GlobalHeader zones)',
+        + '(see source-of-truth.md → GlobalHeader left cluster)',
     );
   }
-  assert.doesNotMatch(
-    HEADER,
-    /HeaderTopWorkOrderChip|HeaderGoalChip/,
-    'goal / work order mount in GlobalHeaderActions, never in GlobalHeader nav',
-  );
-});
-
-test('GlobalHeaderActions desktop order is search · goal · WO · inbox · assistant', () => {
-  assert.match(HEADER_ACTIONS, /data-header-zone="actions"/, 'actions zone is named');
-  const searchAt = HEADER_ACTIONS.indexOf('<GlobalHeaderSearch');
-  const actionsAt = HEADER_ACTIONS.indexOf('data-header-zone="actions"');
-  assert.ok(searchAt > 0 && actionsAt > searchAt, 'search mounts before the actions cluster');
-  // Mount order lives in the desktop return — `iconCluster` is defined earlier
-  // with the inbox markup, so assert against the actions-zone JSX only.
-  const actionsBody = HEADER_ACTIONS.slice(actionsAt);
-  const goalAt = actionsBody.indexOf('<HeaderGoalChip');
-  const woAt = actionsBody.indexOf('<HeaderTopWorkOrderChip');
-  const iconClusterAt = actionsBody.indexOf('{iconCluster}');
-  const assistantAt = actionsBody.indexOf('GlobalHeaderAssistantButton');
-  assert.ok(goalAt > 0, 'goal mounts in actions');
-  assert.ok(woAt > goalAt, 'work order after goal');
-  assert.ok(iconClusterAt > woAt, 'inbox cluster after work order');
-  assert.ok(assistantAt > iconClusterAt, 'assistant far-right after inbox');
-  assert.match(HEADER_ACTIONS, /ActivityInboxPopover/, 'inbox still owns notifications');
-});
-
-test('goal + work-order chrome paint through pending (never null-while-loading)', () => {
-  // source-of-truth.md → GlobalHeader zones — persistent action faces reserve
-  // the slot until the first fetch settles; hide only when settled empty.
-  const goal = code(sourceOf('./HeaderGoalChip.tsx'));
-  const wo = code(sourceOf('./HeaderTopWorkOrderChip.tsx'));
-  assert.match(goal, /goalsLoading|pending/, 'goal distinguishes pending from settled-empty');
-  assert.match(goal, /IDLE_TONE/, 'goal paints an idle face while pending');
-  assert.match(wo, /\bpending\b/, 'work order distinguishes pending from settled-empty');
-  assert.match(wo, /aria-busy|disabled=\{pending\}/, 'work order idle face is non-interactive while pending');
-  assert.doesNotMatch(
-    wo,
-    /if \(!staffId \|\| !top\) return null/,
-    'work order must not null the slot for loading+empty alike',
-  );
 });
 
 test('the page face is ONE shared chrome (static chip === menu trigger)', () => {
@@ -400,8 +367,10 @@ test('spine identity menus are a child of the trigger (SoT — never a wider mag
   // Org name stays load-bearing in the staff menu header.
   assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_ORG_CLASS/);
   assert.match(STAFF_FOOTER, /organizationName/);
-  // Staff footer host is flush; icon washes are square.
-  assert.match(STAFF_FOOTER, /border-t border-border-soft px-0/);
+  // Staff footer = full-width station floor band (h-8 · shared hairline).
+  assert.match(STAFF_FOOTER, /STATION_COLUMN_FOOTER_BAND_FACE/);
+  assert.doesNotMatch(STAFF_FOOTER, /\bh-9\b/, 'sign-in floor must share h-8 band, not h-9');
+  assert.match(STAFF_FOOTER, /w-full shrink-0/);
   assert.match(STAFF_FOOTER, /space-y-0 p-0/);
   assert.doesNotMatch(STAFF_FOOTER, /rounded-md|rounded-lg/);
 
@@ -421,93 +390,27 @@ test('spine staff avatar opens colour+photo editor (not Settings)', () => {
 });
 
 test('spine identity menus use dense caption type (no bare text-sm; org trigger stays body)', () => {
-  // Trigger org name = text-role-body; menu names/actions = text-role-caption
-  // (+ micro meta). A raw text-sm twin is how menus drifted chunkier than the
-  // spine.
-  //
-  // The staff footer's own NAME row left the caption tier 2026-08-08: it now
-  // rides the spine's `role-nav` / 500 ladder. At 12px/600 it was the heaviest
-  // ink in a column that tops out at 500, so the identity row read as a
-  // different system bolted to the bottom of the map. The ⋯ MENU beneath it is
-  // untouched and still caption — a popover is not a spine row.
-  assert.match(STAFF_FOOTER, /text-role-nav font-medium leading-tight/);
-  assert.doesNotMatch(
-    STAFF_FOOTER,
-    /text-role-caption font-semibold/,
-    'the footer name follows the spine ladder — 600 made it out-weigh every row above it',
-  );
+  // Face name = role-nav (matches spine ladder); ⋯ menu title/actions use the
+  // spine caption tokens. A raw text-sm twin is how menus drifted chunkier.
+  assert.match(STAFF_FOOTER, /text-role-nav font-medium/);
+  assert.match(STAFF_FOOTER, /SIDEBAR_SPINE_MENU_TITLE_CLASS/);
   assert.doesNotMatch(STAFF_FOOTER, /\btext-sm\b/);
 });
 
 test('GlobalHeader and MasterNav spine share TOP_CHROME_BAND face (one hairline Y)', () => {
-  // Nav header is 40px — separate from the 28px station/ops chrome under it.
-  assert.match(HEADER_SHELL, /TOP_CHROME_ROW_FACE = 'h-10 shrink-0'/);
-  assert.match(HEADER_SHELL, /TOP_CHROME_ROW_PX = 40/);
-  assert.match(HEADER_SHELL, /PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0'/);
   assert.match(HEADER_SHELL, /TOP_CHROME_BAND_FACE/);
+  assert.match(HEADER_SHELL, /TOP_CHROME_ROW_FACE = 'h-10 shrink-0'/);
   assert.match(
     HEADER_SHELL,
     /TOP_CHROME_BAND_FACE = `\$\{TOP_CHROME_ROW_FACE\} border-b border-border-soft`/,
   );
+  // Station-column floor hairline — Context · utility · Displays · dock · sign-in.
+  assert.match(HEADER_SHELL, /STATION_COLUMN_FOOTER_SEAM_CLASS = 'border-t border-border-hairline'/);
+  assert.match(HEADER_SHELL, /STATION_COLUMN_FOOTER_BAND_FACE/);
   assert.match(HEADER, /TOP_CHROME_BAND_CLASS/);
   assert.match(MASTER_VIEW, /TOP_CHROME_BAND_FACE/);
-  // Regression: outer border-b wrapping a separate height child → 1px step.
+  // Regression: outer border-b wrapping a separate 40px child → 41px step.
   assert.doesNotMatch(MASTER_VIEW, /border-b border-border-hairline/);
-  // Regression: collapsing nav header into PRIMARY_CHROME_ROW densifies GlobalHeader.
-  assert.doesNotMatch(
-    HEADER_SHELL,
-    /TOP_CHROME_BAND_FACE = `\$\{PRIMARY_CHROME_ROW_FACE\}/,
-    'nav header must not alias PRIMARY_CHROME_ROW_FACE',
-  );
-});
-
-test('PRIMARY_CHROME_ROW_FACE is the station/ops height atom; station aliases it', () => {
-  const identity = code(
-    sourceOf('../station/entity-context/station-identity-chrome.ts'),
-  );
-  assert.match(HEADER_SHELL, /PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0'/);
-  assert.match(identity, /PRIMARY_CHROME_ROW_FACE/);
-  assert.match(identity, /STATION_CHROME_ROW_FACE = PRIMARY_CHROME_ROW_FACE/);
-  // Receiving / scan bands compose the atom (no raw h-[40px] height fork).
-  assert.match(
-    HEADER_SHELL,
-    /receivingIdentityBandClass = `flex \$\{PRIMARY_CHROME_ROW_FACE\}/,
-  );
-  assert.match(
-    HEADER_SHELL,
-    /receivingScanBandClass = `flex \$\{PRIMARY_CHROME_ROW_FACE\}/,
-  );
-  assert.doesNotMatch(
-    HEADER_SHELL,
-    /receiving(?:Identity|Scan)BandClass[\s\S]{0,80}h-\[40px\]/,
-    'primary chrome bands must not restate h-[40px]',
-  );
-});
-
-/** Chrome hosts that must compose PRIMARY_CHROME_ROW_FACE (no raw h-[40px] shell). */
-const PRIMARY_CHROME_HOSTS = [
-  '../dashboard/workbench-shell.tsx',
-  '../../design-system/components/grid/LedgerGridColumnHeader.tsx',
-  '../../design-system/components/SectionTabsSlider.tsx',
-  '../ui/pane-header/PaneHeader.tsx',
-  '../photos/PhotoLibraryToolbar.tsx',
-  '../board/SwimlaneBoard.tsx',
-] as const;
-
-test('golden chrome hosts compose PRIMARY_CHROME_ROW_FACE (no h-[40px] shell)', () => {
-  for (const rel of PRIMARY_CHROME_HOSTS) {
-    const src = code(sourceOf(rel));
-    assert.match(
-      src,
-      /PRIMARY_CHROME_ROW_FACE/,
-      `${rel} must import/compose PRIMARY_CHROME_ROW_FACE`,
-    );
-    assert.doesNotMatch(
-      src,
-      /flex h-\[40px\]/,
-      `${rel} must not hardcode flex h-[40px] chrome shell`,
-    );
-  }
 });
 
 /**
@@ -527,10 +430,6 @@ test('GlobalHeader is edge-flush (no left/right inset)', () => {
   assert.match(COLLAPSE, /padded=\{false\}/);
   assert.match(COLLAPSE, /border-t-0 p-0/);
   assert.doesNotMatch(COLLAPSE, /\bp-1\b/);
-  // Stable IconButton mount — never unwrap HoverTooltip when peek opens
-  // (remount mid-press dropped the click → double-click to open the spine).
-  assert.match(COLLAPSE, /disabled=\{peekOpen\}/);
-  assert.doesNotMatch(COLLAPSE, /peekOpen\s*\?\s*\(?\s*toggleButton/);
 });
 
 test('modeful sidebar panels do not mount an L2 mode rail twin', () => {

@@ -65,7 +65,11 @@ const SCAN_ROOTS = [join(REPO_ROOT, 'src', 'app', 'api'), join(REPO_ROOT, 'src',
 const KNOWN_UNRESOLVED_COLUMNS = new Set([
   'age_band', 'candidate', 'default_station', 'duration', 'eid',
   'embedding_text', 'etype', 'has_scan', 'header', 'id_num', 'line_po',
-  'nasbackup', 'on_hand', 'ord', 'packed_at', 'pid', 'relforcerowsecurity',
+  // 'relforcerowsecurity' removed 2026-08-08 — the allowlist only shrinks, and
+  // the guard reported it as now-resolving once 2026-08-08b referenced it in
+  // its qualified `pg_class.relforcerowsecurity` form (the two earlier
+  // references, in 2026-07-28_order_notes and 2026-07-31_order_flags, were not).
+  'nasbackup', 'on_hand', 'ord', 'packed_at', 'pid',
   'scan', 'serial_count', 'session_key',
   'sku_summary', 'suggestion_count', 'top_confidence', 'tracking_number_key18',
 ]);
