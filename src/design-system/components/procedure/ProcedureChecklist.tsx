@@ -18,9 +18,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, ChevronRight, GripVertical } from '@/components/Icons';
+import { GripVertical } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
-import type { ProcedureStepRow, ProcedureStepState } from './types';
+import { StepStateBadge } from './StepStateBadge';
+import type { ProcedureStepRow } from './types';
 
 /**
  * Procedure checklist — the station's steps, all of them, at a glance.
@@ -60,38 +61,6 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
  * selection is background + ring only — never a size shift.
  */
 
-function StepMarker({ state, position }: { state: ProcedureStepState; position: number }) {
-  if (state === 'done') {
-    return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-        <Check className="h-2.5 w-2.5" />
-      </span>
-    );
-  }
-  // Never a check. A waiver is a decision to move past, not evidence of work,
-  // and this glyph is the only thing carrying that difference in the row.
-  if (state === 'skipped') {
-    return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-strong text-text-soft ring-1 ring-inset ring-border-soft">
-        <ChevronRight className="h-2.5 w-2.5" />
-      </span>
-    );
-  }
-  if (state === 'active') {
-    return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-card text-role-micro font-semibold text-blue-700 ring-2 ring-blue-500">
-        {position}
-      </span>
-    );
-  }
-  return (
-    <span
-      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-strong ring-1 ring-inset ring-border-soft"
-      aria-hidden
-    />
-  );
-}
-
 /**
  * Cozy-row height for preview viewport math: `inset-cozy` (py-1.5) + 16px
  * marker ≈ 40px. Module-private — the only consumer is this file's own
@@ -109,7 +78,7 @@ function StepRowContent({ step }: { step: ProcedureStepRow }) {
       : step.summary;
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      <StepMarker state={step.state} position={step.position} />
+      <StepStateBadge state={step.state} position={step.position} />
       <span
         className={cn(
           'truncate text-role-caption font-semibold',
