@@ -10,9 +10,48 @@
 
 **For:** the next Claude Code / Cursor session
 **From:** Cycle Forge engineering
-**Status:** in progress — 8 batches landed, next tier identified in §4
+**Status:** in progress — 10 batches landed, next tier identified in §4
 **Lane:** current checkout, `main`. Attach to `:3050`. User owns commits.
 **Date:** 2026-08-08
+
+---
+
+## Why this matters (the short version)
+
+Dead code is not neutral. It costs something every day it stays:
+
+1. **It lies to the next person.** An exported function looks like a supported way to do
+   something. Someone finds `getPackingKpisForPeriod`, assumes it is the house way to get packing
+   KPIs, and builds on a function nobody calls and nobody maintains. Every dead export is a
+   wrong turn left on the map — and this codebase's whole discipline is *compose from the named
+   SoT*, which only works if the named thing is the real one.
+
+2. **Duplicates hide inside it.** Half the deletions here were not merely unused — they were
+   **second copies of something that already had one home**: a `SOURCE_PLATFORM_LABELS` beside
+   the real one in `source-platform.ts`, a `ClaimSeverity` beside `receiving-claim-type.ts`, a
+   `canTransition` beside the warranty state machine, `CONDITION_GRADES` declared three times.
+   Those are the ones that actually bite: two copies drift, and then the same fact reads two ways
+   on two screens. You cannot see them until you go looking for the dead ones.
+
+3. **Barrels hide corpses.** A dead `export *` line keeps a whole retired component family
+   "reachable", so no tool reports it. That is exactly how the pre-flush-square DS shell family
+   (10 files) stayed in the tree long after `RedesignedMobileShell` replaced it — and how
+   `DESIGN_SYSTEM.md` came to document components nobody could use.
+
+4. **Every dead export widens the public surface you must not break.** Narrowing a module to
+   what it actually offers is what makes the next refactor cheap. A module with 21 exports and
+   3 real consumers is 18 imaginary contracts.
+
+5. **It is the only cleanup that is provably safe.** Removing code with zero callers cannot
+   change behavior — `tsc` and the test suite prove it in minutes. Compare that to the DS ratchet
+   baselines (1,677 parked call sites), which are real UI migrations with real blast radius.
+   This work buys clarity at near-zero risk, which is why it is worth doing steadily rather than
+   in one heroic sweep.
+
+**The honest counter-argument, so you can weigh it:** un-exporting a symbol that is genuinely
+useful-but-unused makes it slightly harder to pick up later. That is why §2 has three buckets
+instead of two, and why §6 exists — anything with a stated future, an external consumer, or a
+docblock naming a plan is left alone and reported rather than deleted.
 
 ---
 
@@ -20,14 +59,15 @@
 
 | | |
 |---|---|
-| knip baseline | **2795 → 2478** (317 findings cleaned) |
-| Commits | `b73a49b53` · `4ada59977` · `831669c18` · `e4d5ec79c` · `45edfdcc3` · `c80acda75` · `058b1eccf` |
+| knip baseline | **2795 → 2429** (366 findings cleaned) |
+| Commits | 11, `b73a49b53`..`9a1f2b0c7` (`git log --oneline b73a49b53~1..HEAD`) |
 | Files deleted | 12 |
+| Also removed | 26 unused locals eslint found that knip structurally cannot see (§3.9) |
 | Prior tier | `853e71315` (39 whole dead files, 2877 → 2791) |
 
 **Two numbers that matter more than the total:**
 
-- **~947 dead value exports remain** — the real remaining surface.
+- **~780 dead value exports remain** — the real remaining surface.
 - **~1,085 "dead types" in 647 files are NOT dead.** They are `Input`/`Result` types for live
   functions, used inside their own file. knip flags them because no *other* module imports the
   name. Un-exporting them is knip-appeasement that degrades the module's API for zero benefit.
@@ -155,12 +195,15 @@ Barrels needing per-symbol analysis (each re-exports things imported directly fr
 | File | Dead value exports |
 |---|---|
 | `src/lib/workflow/index.ts` | 7 — every symbol has external refs; a barrel, needs care |
-| `src/lib/stations/index.ts` | 6 — deliberate omissions documented in its docblock, read it |
-| `src/components/support/context/index.ts` | 6 |
-| `src/components/station/workbench/index.ts` | 6 |
-| `src/components/po-triage/types.ts` | 6 |
+| `src/components/station/workbench/index.ts` | 6 — in the other session's active zone, wait for it |
+| `src/lib/receiving/facts/registry.ts` | 5 |
+| `src/lib/shipping/repository.ts` | 5 |
 
-Then the long tail: ~900 value exports across ~400 files, mostly 1–4 each.
+`src/lib/stations/index.ts`, `src/components/support/context/index.ts` and
+`src/components/po-triage/types.ts` are **done** (commit `6fb705618`).
+
+Then the long tail: ~780 value exports across ~380 files, mostly 1–4 each. Nothing in it is
+individually interesting; work it by file, batch of 3–5, verifying each batch.
 
 ---
 
@@ -190,6 +233,7 @@ This can only remove. **Always diff the before/after and assert `added === 0`** 
 | `src/lib/pipeline/config.ts` (5) | `scripts/jetson/trainer.py` + `setup.sh` read the same env vars; `.env.example` and `context/PIPELINE*.md` document them. TS side of a cross-language contract. |
 | `src/lib/station/table-url-params.ts` (5) | `route-params.ts` **and** `param-ownership.guard.test.ts` both cite `SCOPE_PARAM`/`parseScope` *being baselined dead* as the precondition for a routing-safety argument, and the file's `*_PARAM` consts feed that guard's source regex. |
 | `src/lib/settings/accessors.ts` (9) | All 9 have registry UI. **5 have zero readers anywhere** (`autoTicket`, `autoPrintLabel`, the 3 `vision.*`) — admin knobs that do nothing. Deleting the accessor hides a product bug instead of fixing it. |
+| `allocateNextUnitId` in `src/lib/inventory/unit-id.ts` | Zero code callers, but `docs/todo/serial-label-pairing-split-combine-plan.md` names it as the unit-UID mint step of an in-flight plan. |
 | The 647 type-only files | See §0. |
 
 ---
