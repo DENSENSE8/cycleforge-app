@@ -16,15 +16,15 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { LedgerGridSurface } from '@/design-system/components/grid';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
 import {
-  makeCatalogLinkGridDescriptor,
-  makeImportExceptionGridDescriptor,
-} from './catalog-link-grid-descriptor';
+  CATALOG_LINK_TABLE_BINDING,
+  IMPORT_EXCEPTION_TABLE_BINDING,
+} from './catalog-link-table-definition';
 import {
   CatalogLinkGridColumnHeader,
   ImportExceptionGridColumnHeader,
@@ -32,16 +32,12 @@ import {
 import { CatalogLinkGridRow, catalogLinkChoreLabel } from './CatalogLinkGridRow';
 import { ImportExceptionGridRow, importExceptionLabel } from './ImportExceptionGridRow';
 import {
-  CATALOG_LINK_GRID_COLUMNS,
-  CATALOG_LINK_TABLE_ID,
   defaultDirForCatalogLinkGridSort,
   isCatalogLinkGridSortable,
   type CatalogLinkGridColumn,
   type CatalogLinkGridColumnKey,
 } from './catalog-link-grid-layout';
 import {
-  IMPORT_EXCEPTION_GRID_COLUMNS,
-  IMPORT_EXCEPTION_TABLE_ID,
   defaultDirForImportExceptionGridSort,
   isImportExceptionGridSortable,
   type ImportExceptionGridColumn,
@@ -115,14 +111,14 @@ export function CatalogLinkChoresGrid({
   rows,
   selectedChoreId,
   onOpenChore,
-  columns = CATALOG_LINK_GRID_COLUMNS,
+  columns,
   columnTriggerPortalTarget,
   ...shared
 }: SharedGridProps & {
   rows: CatalogLinkChoreRow[];
   selectedChoreId: number | null;
   onOpenChore: (id: number) => void;
-  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
+  /** FULL canonical column list — the host resolves visibility. */
   columns?: readonly CatalogLinkGridColumn[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -159,11 +155,9 @@ export function CatalogLinkChoresGrid({
   );
 
   return (
-    <LedgerGridSurface<CatalogLinkChoreRow, CatalogLinkGridColumnKey, CatalogLinkGridColumn>
-      ariaLabel="Listings needing a catalog link"
-      surface="sheet"
+    <NonlinearTableHost<CatalogLinkChoreRow, CatalogLinkGridColumnKey, CatalogLinkGridColumn>
+      binding={CATALOG_LINK_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeCatalogLinkGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -175,8 +169,6 @@ export function CatalogLinkChoresGrid({
       searchEmptyMessage={shared.searchEmptyMessage}
       isSearching={shared.isSearching}
       scrollRef={scrollRef}
-      testId="catalog-link-grid-body"
-      tableId={CATALOG_LINK_TABLE_ID}
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <CatalogLinkGridColumnHeader
@@ -239,7 +231,7 @@ export function ImportExceptionsGrid({
   rows,
   selectedExceptionId,
   onOpenException,
-  columns = IMPORT_EXCEPTION_GRID_COLUMNS,
+  columns,
   columnTriggerPortalTarget,
   ...shared
 }: SharedGridProps & {
@@ -280,11 +272,9 @@ export function ImportExceptionsGrid({
   );
 
   return (
-    <LedgerGridSurface<ImportExceptionRow, ImportExceptionGridColumnKey, ImportExceptionGridColumn>
-      ariaLabel="Sheet rows missing an item number"
-      surface="sheet"
+    <NonlinearTableHost<ImportExceptionRow, ImportExceptionGridColumnKey, ImportExceptionGridColumn>
+      binding={IMPORT_EXCEPTION_TABLE_BINDING}
       columns={columns}
-      makeDescriptor={makeImportExceptionGridDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => String(r.id)}
@@ -296,8 +286,6 @@ export function ImportExceptionsGrid({
       searchEmptyMessage={shared.searchEmptyMessage}
       isSearching={shared.isSearching}
       scrollRef={scrollRef}
-      testId="import-exception-grid-body"
-      tableId={IMPORT_EXCEPTION_TABLE_ID}
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
       renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
         <ImportExceptionGridColumnHeader

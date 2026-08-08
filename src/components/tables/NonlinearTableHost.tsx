@@ -55,6 +55,13 @@ interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridCol
   tableId?: TableId;
   /** Outer shell testid. Defaults to the definition's. */
   testId?: string;
+  /**
+   * Accessible table name. Defaults to the definition's. A genuine per-mount
+   * override for a SHARED parametric grid whose lanes name themselves (Orders:
+   * "Packed orders" / "Labels queue" / …) — this is instance identity, not the
+   * shell recipe, so unlike `surface` it is overridable.
+   */
+  ariaLabel?: string;
   /** Sticky day bands. Defaults to the definition's. */
   showDayHeaders?: boolean;
   /**
@@ -96,6 +103,19 @@ interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridCol
     rowIndex?: number,
   ) => ReactNode;
 
+  // ── Grid geometry passthrough (real LedgerGridSurface features) ─────────────
+  /**
+   * Ephemeral viewport priority-collapse, keyed by column key — never persisted,
+   * always beats staff intent. Orders drives this via `useViewportForcedHidden`.
+   * A grid feature, not a page leak: the surface's own docblock names Orders as
+   * its consumer.
+   */
+  forceHidden?: ReadonlySet<string>;
+  /** Outer-shell ref (Orders observes viewport force-hide against it). */
+  shellRef?: RefObject<HTMLDivElement | null>;
+  /** Page scroll ancestor — grid virtualizes against it (Pending / To-ship). */
+  scrollParentRef?: RefObject<HTMLElement | null>;
+
   // ── Page chrome passthrough ────────────────────────────────────────────────
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
@@ -107,6 +127,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   binding,
   tableId,
   testId,
+  ariaLabel,
   showDayHeaders,
   columns,
   orderGroupsByDate,
@@ -124,6 +145,9 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   renderColumnHeader,
   renderGroup,
   renderRow,
+  forceHidden,
+  shellRef,
+  scrollParentRef,
   scrollRef,
   className,
   columnTriggerPortalTarget = null,
@@ -133,7 +157,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
 
   return (
     <LedgerGridSurface<Row, K, C>
-      ariaLabel={definition.ariaLabel}
+      ariaLabel={ariaLabel ?? definition.ariaLabel}
       columns={columns ?? binding.columns}
       makeDescriptor={binding.makeDescriptor}
       orderGroupsByDate={orderGroupsByDate}
@@ -149,6 +173,9 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
       searchEmptyState={searchEmptyState}
       isSearching={isSearching}
       showDayHeaders={showDayHeaders ?? definition.showDayHeaders}
+      forceHidden={forceHidden}
+      shellRef={shellRef}
+      scrollParentRef={scrollParentRef}
       scrollRef={scrollRef}
       className={className}
       testId={testId ?? definition.testId}

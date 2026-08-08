@@ -33,6 +33,14 @@ import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-defini
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
 import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
+import {
+  CATALOG_LINK_TABLE_BINDING,
+  IMPORT_EXCEPTION_TABLE_BINDING,
+} from '@/features/review/catalog-link/grid/catalog-link-table-definition';
+import {
+  ORDERS_DEFAULT_TABLE_BINDING,
+  ORDERS_TESTED_TABLE_BINDING,
+} from '@/components/dashboard/orders-queue/orders-table-definition';
 import type { TableDefinition } from '@/lib/tables/table-definition';
 
 /**
@@ -59,7 +67,12 @@ const REGISTERED_DEFINITIONS: readonly TableDefinition[] = [
   CATALOG_TABLE_BINDING.definition,
   REPAIR_TABLE_BINDING.definition,
   BINS_TABLE_BINDING.definition,
-  // Still to migrate: ReviewCatalogLink (two defs, one bag) · Orders (last).
+  // Wave 4 — Review · Catalog-link: two definitions, one shared capabilities bag.
+  CATALOG_LINK_TABLE_BINDING.definition,
+  IMPORT_EXCEPTION_TABLE_BINDING.definition,
+  // Wave 5 — Orders: two column-mode definitions for the shared parametric grid.
+  ORDERS_DEFAULT_TABLE_BINDING.definition,
+  ORDERS_TESTED_TABLE_BINDING.definition,
 ];
 
 export const TABLE_DEFINITIONS: Readonly<Record<string, TableDefinition>> = Object.freeze(

@@ -36,6 +36,14 @@ import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-gri
 import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
 import {
+  CATALOG_LINK_TABLE_BINDING,
+  IMPORT_EXCEPTION_TABLE_BINDING,
+} from '@/features/review/catalog-link/grid/catalog-link-table-definition';
+import {
+  ORDERS_DEFAULT_TABLE_BINDING,
+  ORDERS_TESTED_TABLE_BINDING,
+} from '@/components/dashboard/orders-queue/orders-table-definition';
+import {
   MAX_DEFAULT_VISIBLE_TRACKS,
   defaultVisibleTrackKeys,
   tableDefinitionSchema,
@@ -63,6 +71,10 @@ const BINDINGS = [
   CATALOG_TABLE_BINDING,
   REPAIR_TABLE_BINDING,
   BINS_TABLE_BINDING,
+  CATALOG_LINK_TABLE_BINDING,
+  IMPORT_EXCEPTION_TABLE_BINDING,
+  ORDERS_DEFAULT_TABLE_BINDING,
+  ORDERS_TESTED_TABLE_BINDING,
 ] as const;
 
 describe('table definition registry', () => {
