@@ -304,7 +304,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/outbound/ready/ReadyQueueTable.tsx': 'ready',
   'src/components/tracking-exceptions/TrackingExceptionsTable.tsx': 'tracking-exceptions',
   'src/components/receiving/unfound/UnfoundQueueTable.tsx': 'unfound',
-  'src/components/warehouse/bins-grid/BinsGridView.tsx': 'bins',
+  'src/components/warehouse/BinsTable.tsx': 'bins',
   'src/features/my-day/MyDayWorkspace.tsx': 'my-day',
   'src/components/tech/all/TechAllTriageTable.tsx': 'tech-all',
   // Both Review · Catalog-link tabs mount from ONE file under ONE bag.
@@ -417,7 +417,6 @@ const GRID_VIEW_FOREST: string[] = [
   'src/components/repair/repair-grid/RepairGridView.tsx',
   'src/components/station/incoming-grid/IncomingGridView.tsx',
   'src/components/station/receiving-grid/ReceivingGridView.tsx',
-  'src/components/warehouse/bins-grid/BinsGridView.tsx',
   'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
 ];
 
