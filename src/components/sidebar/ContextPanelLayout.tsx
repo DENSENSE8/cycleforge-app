@@ -29,6 +29,7 @@ import {
 } from '@/design-system/hooks';
 import {
   contextRailCostPx,
+  getRightRailFrameWidthPx,
   getStationPushActive,
   getStationPushDesiredWidthPx,
   setRightRailContextRail,
@@ -39,6 +40,7 @@ import {
   getServerStationCoupled,
   getStationCoupled,
   isStationDualRailCouplingActive,
+  stationLadderMaxContextPx,
   subscribeStationCoupled,
 } from '@/lib/right-rail/station-dual-rail';
 import { useLocalStorage } from '@/hooks';
@@ -112,6 +114,16 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     () => false,
   );
 
+  // While coupling with an open Displays column, cap the context sash at the
+  // yield-ladder max (`frame − 720 − 280`, Displays at its hardMin), NOT the
+  // loose "fill to the viewport" pad. The tight cap is what the coupling would
+  // otherwise have to clamp back to on every sash pixel — the context-side edge
+  // jitter. Off a coupling the sash keeps its normal viewport-pad reach.
+  const contextCouplingMaxPx =
+    stationSurface && stationPushActive && !collapsed
+      ? stationLadderMaxContextPx(getRightRailFrameWidthPx())
+      : undefined;
+
   // Every mounted context rail shares Unbox's resize + collapse grammar.
   // Hooks must run unconditionally (hasPanel flips on navigation).
   const { width, setWidth, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
@@ -121,6 +133,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     maxWidthPad: stationSurface
       ? CONTEXT_PANEL_RESIZE.stationMaxWidthPadPx
       : CONTEXT_PANEL_RESIZE.maxWidthPadPx,
+    maxWidth: contextCouplingMaxPx,
     enabled: hasPanel,
     edge: 'trailing',
     label: 'Resize sidebar',
@@ -197,6 +210,27 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     width,
     setWidth,
   ]);
+
+  // Paint the context rail from the LIVE coupled value during a Displays-sourced
+  // drag, not from the local `width` the coupled-sync effect above updates. That
+  // effect runs a render AFTER the store publish, so painting from `width`
+  // lagged the context edge ~2 frames behind the Displays sash — the reported
+  // "painted width diverges from the drag target". Reading the coupled snapshot
+  // directly closes the hop; `width` still catches up via the effect, and
+  // post-settle `coupled.leftPx === width` (the coupling persists both to one
+  // key), so this is a no-op except during the live drag transient. Guarded to
+  // the exact scenario — never a non-station route, never an operator-parked or
+  // Displays-closed rail, never this rail's OWN drag.
+  const liveCoupledLeftPx =
+    coupled &&
+    coupled.source === 'displays' &&
+    stationSurface &&
+    stationPushActive &&
+    !collapsed &&
+    !isDragging
+      ? coupled.leftPx
+      : null;
+  const paintWidthPx = liveCoupledLeftPx ?? width;
 
   // Collapse is operator-owned only. Opening a right-edge panel must NOT mask
   // this rail — both stay open and the center hugs `MIN_WORK_SURFACE_PX` /
@@ -281,7 +315,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           data-context-panel
           data-collapsed={isCollapsed ? 'true' : 'false'}
           initial={false}
-          animate={{ width: isCollapsed ? 0 : width }}
+          animate={{ width: isCollapsed ? 0 : paintWidthPx }}
           transition={widthTransition}
           onAnimationComplete={() => {
             if (!isCollapsed) setCollapseSettled(true);

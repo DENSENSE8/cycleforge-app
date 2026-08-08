@@ -17,6 +17,7 @@
 
 import { CONTEXT_PANEL_RESIZE } from '@/components/sidebar/context-panel-column';
 import {
+  STATION_COLUMN_BUDGET,
   STATION_DISPLAYS_MIN_WIDTH_PX,
   STATION_WORKBENCH_LOCK_PX,
 } from '@/components/station/workbench/workbench-layout';
@@ -26,6 +27,7 @@ import {
   getRightRailFrameWidthPx,
   getStationPushActive,
   getStationPushDesiredWidthPx,
+  resolveStationDisplaysCollapse,
   setRightRailContextRail,
   setStationPushDemand,
 } from '@/lib/right-rail/frame';
@@ -56,8 +58,12 @@ function clamp(n: number, min: number, max: number): number {
 /**
  * Pure inverse-delta math with a hard middle lock.
  *
- * After applying Δ to the primary column, re-pin so
- * `left + middleLock + displays === frame` (within peer mins).
+ * Applies Δ to the primary column and re-pins so
+ * `left + middleLock + displays === frame` (within peer mins). It expresses the
+ * drag as the operator's intended LEFT — a displays-primary drag is its inverse,
+ * because the middle is locked — and hands it to {@link resolveStationYieldLadder}.
+ * ONE distributor serves both the coupling and the invariant sweep, so the drag
+ * cannot disagree with the proved budget.
  */
 export function resolveStationDualRailDelta(
   input: StationDualRailInput,
@@ -69,37 +75,162 @@ export function resolveStationDualRailDelta(
     ? Math.max(0, input.frameWidthPx)
     : 0;
 
-  const leftMax = Math.max(leftMin, frame - middleLock - displaysMin);
-  const displaysMax = Math.max(displaysMin, frame - middleLock - leftMin);
+  if (frame <= 0) {
+    return { leftPx: leftMin, displaysPx: displaysMin };
+  }
 
-  const left0 = clamp(input.leftPx, leftMin, leftMax);
-  const displays0 = clamp(input.displaysPx, displaysMin, displaysMax);
   const delta = Number.isFinite(input.deltaPx) ? input.deltaPx : 0;
+  // Zero delta re-pins without changing intent (keep left, displays = residual).
+  const leftPreferredPx =
+    delta === 0
+      ? input.leftPx
+      : input.primary === 'displays'
+        ? frame - middleLock - (input.displaysPx + delta)
+        : input.leftPx + delta;
+
+  const r = resolveStationYieldLadder({
+    frameWidthPx: frame,
+    leftPreferredPx,
+    // The coupling runs only while Displays is an OPEN in-flow column (a parked
+    // or collapsed rail turns coupling off), so this resolves the OPEN,
+    // exact-fill arm of the ladder.
+    wasDisplaysCollapsed: false,
+    minLeftPx: leftMin,
+    leftHardMinPx: leftMin,
+    displaysHardMinPx: displaysMin,
+    middleLockPx: middleLock,
+  });
+  return { leftPx: r.leftPx, displaysPx: r.displaysPx };
+}
+
+// ── The yield ladder (the provable frame budget) ────────────────────────────
+
+interface StationYieldLadderInput {
+  /** Content-row width (context rail + locked middle + Displays). */
+  frameWidthPx: number;
+  /** Operator's context-rail width preference (where they dragged the sash). */
+  leftPreferredPx: number;
+  /** Prior collapse state — the hysteresis latch. */
+  wasDisplaysCollapsed: boolean;
+  /** Left cost the rail rests at when it can yield no further (300 open · strip parked · 0 none). */
+  minLeftPx?: number;
+  /** Context hardMin wall. */
+  leftHardMinPx?: number;
+  /** Displays hardMin wall. */
+  displaysHardMinPx?: number;
+  /** The locked middle. */
+  middleLockPx?: number;
+}
+
+interface StationYieldLadderResult {
+  leftPx: number;
+  middlePx: number;
+  displaysPx: number;
+  displaysState: 'OPEN' | 'CLOSED';
+}
+
+/**
+ * The pure distributor. Given a frame and the operator's preferences, resolve
+ * the three column widths by the {@link STATION_COLUMN_BUDGET} yield ladder,
+ * never violating a hardMin wall (Fiori / M3 collapse hierarchy). Every worked
+ * number in the invariant sweep comes from here — provable before a browser
+ * opens.
+ *
+ * Invariants held (see `station-yield-ladder.guard.test.ts`):
+ *  - I2 `middlePx >= middleLock` — the 720 lock is `shrinkPriority: 0`, never crushed.
+ *  - I3 `displaysPx >= displaysHardMin || displaysState === 'CLOSED'`.
+ *  - I4 `leftPx + middlePx + displaysPx <= frame`.
+ *  - I5 (OPEN) `leftPx + middleLock + displaysPx === frame` — exact fill.
+ *  - I6 a shrinkable pane never computes `< hardMin`; if it would, it CLOSES.
+ *  - I1 `leftPx >= leftHardMin` (context never closes here — it yields toward its wall).
+ */
+export function resolveStationYieldLadder(
+  input: StationYieldLadderInput,
+): StationYieldLadderResult {
+  const leftHardMin = input.leftHardMinPx ?? STATION_COLUMN_BUDGET.context.hardMinPx;
+  const displaysMin = input.displaysHardMinPx ?? STATION_COLUMN_BUDGET.displays.hardMinPx;
+  const middleLock = input.middleLockPx ?? STATION_COLUMN_BUDGET.primary.hardMinPx;
+  const minLeft = input.minLeftPx ?? leftHardMin;
+  const frame = Number.isFinite(input.frameWidthPx) ? Math.max(0, input.frameWidthPx) : 0;
+
+  const collapsed = resolveStationDisplaysCollapse({
+    frameWidthPx: frame,
+    minLeftPx: minLeft,
+    wasCollapsed: input.wasDisplaysCollapsed,
+  });
 
   if (frame <= 0) {
-    return { leftPx: left0, displaysPx: displays0 };
+    // Unmeasured — echo prefs at the walls; do not decide geometry.
+    return {
+      leftPx: Math.max(leftHardMin, input.leftPreferredPx),
+      middlePx: middleLock,
+      displaysPx: collapsed ? 0 : displaysMin,
+      displaysState: collapsed ? 'CLOSED' : 'OPEN',
+    };
   }
 
-  // Prefer exact fill: displays residual after left + middle lock.
-  const pinDisplays = (left: number) =>
-    clamp(frame - middleLock - left, displaysMin, displaysMax);
-  const pinLeft = (displays: number) =>
-    clamp(frame - middleLock - displays, leftMin, leftMax);
-
-  if (delta === 0) {
-    // Re-pin to the equation without changing preference intent.
-    const left = left0;
-    return { leftPx: left, displaysPx: pinDisplays(left) };
+  if (collapsed) {
+    // Displays floats (out of flow); the center FILLS the leftover (flex-1).
+    const left = clamp(
+      input.leftPreferredPx,
+      leftHardMin,
+      Math.max(leftHardMin, frame - middleLock),
+    );
+    return {
+      leftPx: left,
+      middlePx: Math.max(middleLock, frame - left),
+      displaysPx: 0,
+      displaysState: 'CLOSED',
+    };
   }
 
-  if (input.primary === 'displays') {
-    const displays1 = clamp(displays0 + delta, displaysMin, displaysMax);
-    const left1 = pinLeft(displays1);
-    return { leftPx: left1, displaysPx: pinDisplays(left1) };
-  }
+  // OPEN — exact fill: left + middleLock + displays = frame.
+  // Displays yields FIRST (it is the leftover-filler), so it absorbs the frame
+  // change while the operator's left is preserved; context yields SECOND, only
+  // when displays would otherwise drop below its hardMin. OPEN ⟹ frame ≥ the
+  // close threshold ⟹ displays ≥ its hardMin (I6 keeps the close edge hard).
+  const leftCeilForDisplaysMin = frame - middleLock - displaysMin;
+  const left = clamp(
+    input.leftPreferredPx,
+    leftHardMin,
+    Math.max(leftHardMin, leftCeilForDisplaysMin),
+  );
+  return {
+    leftPx: left,
+    middlePx: middleLock,
+    displaysPx: frame - middleLock - left,
+    displaysState: 'OPEN',
+  };
+}
 
-  const left1 = clamp(left0 + delta, leftMin, leftMax);
-  return { leftPx: left1, displaysPx: pinDisplays(left1) };
+/**
+ * The widest Displays the ladder allows at this frame — context yielded to its
+ * hardMin (its 720 softMax is advisory, never a wall). Feeds the Displays sash
+ * `maxWidth` while coupling so the sash traverses the whole valid range without
+ * the coupling clamping it back (the source of the old edge jitter).
+ */
+export function stationLadderMaxDisplaysPx(
+  frameWidthPx: number,
+  leftHardMinPx = STATION_COLUMN_BUDGET.context.hardMinPx,
+  middleLockPx = STATION_COLUMN_BUDGET.primary.hardMinPx,
+  displaysMinPx = STATION_COLUMN_BUDGET.displays.hardMinPx,
+): number {
+  const frame = Number.isFinite(frameWidthPx) ? Math.max(0, frameWidthPx) : 0;
+  return Math.max(displaysMinPx, frame - middleLockPx - leftHardMinPx);
+}
+
+/**
+ * The widest context rail the ladder allows at this frame — Displays yielded to
+ * its hardMin. Feeds the context sash `maxWidth` while coupling.
+ */
+export function stationLadderMaxContextPx(
+  frameWidthPx: number,
+  leftHardMinPx = STATION_COLUMN_BUDGET.context.hardMinPx,
+  middleLockPx = STATION_COLUMN_BUDGET.primary.hardMinPx,
+  displaysMinPx = STATION_COLUMN_BUDGET.displays.hardMinPx,
+): number {
+  const frame = Number.isFinite(frameWidthPx) ? Math.max(0, frameWidthPx) : 0;
+  return Math.max(leftHardMinPx, frame - middleLockPx - displaysMinPx);
 }
 
 // ── Coupling bus (writers notify the peer rail to setWidth) ─────────────────
