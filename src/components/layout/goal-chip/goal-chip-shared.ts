@@ -14,13 +14,24 @@ export type StationGoal = {
   scanCount: number;
 };
 
+/**
+ * The panel shell for the header's pace-and-next button.
+ *
+ * **Flush-square, not a rounded card.** Ops chrome is zero-radius industrial
+ * (`kinetic-ledger.md`), and this panel is the last soft `rounded-2xl` surface
+ * hanging off the top beam. Declared once because two things render it: the
+ * goal panel, and the work-order-only panel shown on a day with no goal set.
+ */
+export const GOAL_PANEL_SHELL_CLASS =
+  'w-[290px] origin-top-left overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-[0_12px_40px_rgba(20,30,55,0.16)]';
+
 export const STATIONS: StationKey[] = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'];
 export const STATION_LABEL: Record<StationKey, string> = {
-  TECH: 'Testing',
+  TECH: 'Tech',
   PACK: 'Packing',
   UNBOX: 'Unboxing',
   SALES: 'Sales',
-  FBA: 'Amazon Prep',
+  FBA: 'FBA',
 };
 
 const HOUR_MS = 60 * 60_000;

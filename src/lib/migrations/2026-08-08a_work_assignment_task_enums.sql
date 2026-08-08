@@ -1,0 +1,65 @@
+-- ============================================================================
+-- 2026-08-08a_work_assignment_task_enums.sql
+--
+-- WHAT
+--   Two new enum labels on work_assignments' vocabularies:
+--     • work_type_enum        += 'FOLLOW_UP'
+--     • work_entity_type_enum += 'SUPPORT_TICKET'
+--
+-- WHY
+--   WS-TASKS turns work_assignments into the row behind a *throwable task* —
+--   the thing an operator hands a colleague instead of writing a tracking
+--   number on paper and texting it.
+--
+--   'FOLLOW_UP' is that ad-hoc task. The five existing work types (TEST, PACK,
+--   REPAIR, QA, RECEIVE, STOCK_REPLENISH) are all STATIONS — "who runs this
+--   entity through that bench". A thrown task is not a bench; it is "please
+--   look at this", and reusing a station type would put ad-hoc work into the
+--   queue metrics for a bench nobody ran it through.
+--
+--   'SUPPORT_TICKET' closes the entity gap: a ticket was one of the two things
+--   named as throwable, and the enum could not express it. It keys on the LOCAL
+--   support_tickets.id (BIGSERIAL, org-scoped, provider+external_ticket_id
+--   unique) — never a bare Zendesk id, which is a remote identifier this schema
+--   does not own and cannot enforce a foreign key against.
+--
+-- WHY THIS IS ITS OWN FILE (do not merge it into 2026-08-08b)
+--   scripts/run-pending-migrations.mjs wraps EVERY migration in BEGIN/COMMIT.
+--   PostgreSQL permits ALTER TYPE ... ADD VALUE inside a transaction block, but
+--   it does NOT permit *using* the new label in that same transaction — an
+--   index predicate or comparison referencing it fails with "unsafe use of new
+--   value". 2026-08-08b both indexes on and compares against 'FOLLOW_UP', so
+--   the labels must be committed first. The letter suffix is the ordering
+--   dependency, exactly as the naming convention intends.
+--
+-- SAFETY / GATING
+--   Purely additive. No existing row changes, no column changes, no code path
+--   reads these labels yet (the readers land in 2026-08-08b + the task module).
+--   ADD VALUE IF NOT EXISTS makes it idempotent on a re-run and safe against a
+--   fresh DB where a future baseline already includes the labels.
+--
+-- ROLLBACK — NONE. THIS IS ONE-WAY.
+--   PostgreSQL cannot DROP a value from an enum. Undoing it means recreating
+--   both types and every column that uses them, which is a table rewrite of
+--   work_assignments and not a rollback in any useful sense. The mitigation is
+--   that unused labels are inert: nothing selects, defaults to, or CHECKs
+--   against them, so an abandoned initiative leaves two dead labels and no
+--   behavioural residue. Accepted deliberately.
+--
+-- VERIFY
+--   SELECT unnest(enum_range(NULL::work_type_enum));
+--     -- expect: TEST, PACK, REPAIR, QA, RECEIVE, STOCK_REPLENISH, FOLLOW_UP
+--   SELECT unnest(enum_range(NULL::work_entity_type_enum));
+--     -- expect: ORDER, REPAIR, FBA_SHIPMENT, RECEIVING, SKU_STOCK, SUPPORT_TICKET
+--
+-- Law: .claude/rules/source-of-truth.md → Cross-entity urgency · Inbox surfaces
+--      .claude/rules/polymorphic-tables.md → discriminator vocabularies
+-- ============================================================================
+
+-- The ad-hoc thrown task. Deliberately NOT a station type.
+ALTER TYPE work_type_enum ADD VALUE IF NOT EXISTS 'FOLLOW_UP';
+
+-- Anchors a task to a local support_tickets row. Its delete trigger lands in
+-- 2026-08-08b — polymorphic-tables.md requires the trigger in the SAME change
+-- as the discriminator value, and "the same change" is this pair of files.
+ALTER TYPE work_entity_type_enum ADD VALUE IF NOT EXISTS 'SUPPORT_TICKET';

@@ -3,28 +3,43 @@ import { Bell, Check, Clock, RotateCcw, Barcode } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
-import { RECUR_INTERVALS, STATION_LABEL, toneFor } from './goal-chip-shared';
+import { GOAL_PANEL_SHELL_CLASS, RECUR_INTERVALS, STATION_LABEL, toneFor } from './goal-chip-shared';
 import { GoalRing } from './GoalRing';
 import { TaskList } from './TaskList';
+import { NextWorkOrderRow } from './NextWorkOrderRow';
+import type { NextWorkOrder } from './useNextWorkOrder';
 import type { HeaderGoalChipController } from './useHeaderGoalChip';
 
 interface View { target: number; scanCount: number; done: number; total: number; percent: number }
 type Tone = ReturnType<typeof toneFor>;
 interface ChipCount { value: number; total: number; unit: string }
 
-/** The goal-chip popover body: header + station switcher + the 3 mode panels. */
+/**
+ * The pace-and-next panel: next work order → goal header → station switcher →
+ * the 3 mode panels.
+ *
+ * **The work order leads.** It is the one row here that is a *thing to do next*;
+ * everything under it is *how today is going*. An operator opening this button
+ * mid-shift is answering the first question far more often than the second, and
+ * the goal header directly beneath keeps the pacing a glance away.
+ */
 export function GoalPopover({
   g,
   view,
   tone,
   chipCount,
   hasSwitch,
+  workOrder,
+  onNavigate,
 }: {
   g: HeaderGoalChipController;
   view: View;
   tone: Tone;
   chipCount: ChipCount;
   hasSwitch: boolean;
+  /** Absent when there is none, or when the operator is already on its record. */
+  workOrder?: NextWorkOrder | null;
+  onNavigate?: () => void;
 }) {
   const active = g.active!;
   const goals = g.goals!;
@@ -34,8 +49,10 @@ export function GoalPopover({
       initial={{ opacity: 0, y: -6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-      className="w-[290px] origin-top-left overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-[0_12px_40px_rgba(20,30,55,0.16)]"
+      className={GOAL_PANEL_SHELL_CLASS}
     >
+      {workOrder ? <NextWorkOrderRow top={workOrder} onNavigate={onNavigate} /> : null}
+
       {/* header: title + Switch (only when there are secondary stations) */}
       <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-3.5 py-3">
         <div className="flex items-center gap-2.5">
@@ -47,7 +64,7 @@ export function GoalPopover({
                 <AnimatedStat value={chipCount.value} speed="fast" className="inline" /> /{' '}
                 <AnimatedStat value={chipCount.total} speed="fast" className="inline" />
               </span>
-              <span className={cn('rounded-full px-1.5 py-px text-role-micro uppercase ring-1', tone.chip)}>
+              <span className={cn('rounded-none px-1.5 py-px text-role-micro uppercase ring-1', tone.chip)}>
                 {tone.label}
               </span>
             </p>
@@ -87,7 +104,7 @@ export function GoalPopover({
                   key={gg.station}
                   type="button"
                   onClick={() => g.onSelectStation(gg.station)}
-                  className={cn('flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors', on ? 'bg-blue-50/70' : 'hover:bg-surface-hover')}
+                  className={cn('flex w-full items-center gap-2.5 rounded-none px-2 py-2 text-left transition-colors', on ? 'bg-blue-50/70' : 'hover:bg-surface-hover')}
                 >
                   <GoalRing percent={pct} color={gt.ring} size={30} />
                   <span className="min-w-0 flex-1">
@@ -112,7 +129,7 @@ export function GoalPopover({
           >
             {/* mode toggle: Scans · Auto / Recurring / To-do */}
             <div className="px-3 pt-3">
-              <div className="flex w-full items-center gap-0.5 rounded-xl bg-surface-sunken p-0.5 ring-1 ring-border-soft">
+              <div className="flex w-full items-center gap-0.5 rounded-none bg-surface-sunken p-0.5 ring-1 ring-border-soft">
                 {(['scans', 'recurring', 'todo'] as const).map((m) => (
                   // ds-raw-button — segmented mode toggle
                   <button
@@ -120,7 +137,7 @@ export function GoalPopover({
                     type="button"
                     onClick={() => g.changeMode(m)}
                     className={cn(
-                      'relative flex-1 rounded-lg px-1.5 py-1.5 text-role-micro transition-colors',
+                      'relative flex-1 rounded-none px-1.5 py-1.5 text-role-micro transition-colors',
                       g.mode === m ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft' : 'text-text-soft hover:text-text-default',
                     )}
                   >
@@ -141,9 +158,9 @@ export function GoalPopover({
                     of <AnimatedStat value={view.target} className="inline" />
                   </span>
                 </div>
-                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-surface-sunken ring-1 ring-border-soft">
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-none bg-surface-sunken ring-1 ring-border-soft">
                   <motion.div
-                    className="h-full rounded-full"
+                    className="h-full"
                     style={{ backgroundColor: tone.ring }}
                     animate={{ width: `${Math.min(100, view.percent)}%` }}
                     transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -164,7 +181,7 @@ export function GoalPopover({
                   <span className="flex items-center gap-1 text-role-eyebrow uppercase tracking-wider text-text-faint">
                     <Clock className="h-3 w-3" /> Resets every
                   </span>
-                  <div className="flex gap-0.5 rounded-lg bg-surface-sunken p-0.5 ring-1 ring-border-soft">
+                  <div className="flex gap-0.5 rounded-none bg-surface-sunken p-0.5 ring-1 ring-border-soft">
                     {RECUR_INTERVALS.map((opt) => (
                       // ds-raw-button — segmented interval toggle
                       <button
@@ -172,7 +189,7 @@ export function GoalPopover({
                         type="button"
                         onClick={() => g.changeInterval(opt.ms)}
                         className={cn(
-                          'rounded-md px-1.5 py-0.5 text-role-micro transition-colors',
+                          'rounded-none px-1.5 py-0.5 text-role-micro transition-colors',
                           g.intervalMs === opt.ms ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft' : 'text-text-soft hover:text-text-default',
                         )}
                       >

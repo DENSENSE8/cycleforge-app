@@ -247,6 +247,10 @@ export const FLAG_LIFECYCLE: Readonly<Record<string, FlagLifecycle>> = {
     env: 'HOME_INBOX',
     bornAt: '2026-07-28',
     area: 'home',
-    disposition: { kind: 'undecided' },
+    // Decided 2026-08-08 (WS-TASKS): the Home Inbox is the triage surface for
+    // a thrown task, so it stops being hypothetical. Seeded ON for the dogfood
+    // org by 2026-08-08c; every other tenant stays OFF until it has proven out.
+    // Remove the flag (and its 404 branches) once it has.
+    disposition: { kind: 'rollout', plannedRemoval: '2026-10-26' },
   },
 };

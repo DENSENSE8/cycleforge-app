@@ -1,28 +1,36 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
+import { formatDistanceToNowStrict } from 'date-fns';
 import {
   Copy,
   Check,
   X,
   Inbox,
+  Wrench,
+  Zap,
+  ShieldCheck,
   RotateCcw,
+  Truck,
+  MessageSquare,
+  Phone,
+  ChevronRight,
+  ClipboardList,
   Loader2,
 } from '@/components/Icons';
 import { copyToClipboard } from '@/utils/_dom';
+// Compose the inbox's own deep-link resolver rather than re-deriving routes —
+// a second href map is the drift the notification waist exists to prevent.
+import { notificationHref } from '@/lib/notifications/notification-href';
 import {
   useActivityInbox,
   type ActivityInboxItem,
   type ActivityInboxItemKind,
 } from '@/contexts/ActivityInboxContext';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CompactActivityRow } from '@/components/ui/CompactActivityRow';
-import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
+import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { Button, IconButton } from '@/design-system/primitives';
-import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
-import { usePlatformMeta } from '@/hooks/useCatalog';
-import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import { InboxQueueLinks } from './InboxQueueLinks';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
@@ -31,29 +39,39 @@ interface ActivityInboxPopoverProps {
   onClose: () => void;
 }
 
-/**
- * Kind → leading status-dot class. Compact activity face uses a lifecycle-style
- * mark, never a large kind glyph (truck / wrench) as the left edge.
- */
-const KIND_DOT: Record<ActivityInboxItemKind, string> = {
-  repair_status: 'bg-amber-500',
-  priority_unbox: 'bg-violet-500',
-  warranty_claim: 'bg-emerald-500',
-  return_pending_test: 'bg-rose-500',
-  order_ready_ship: 'bg-emerald-500',
-  support_followup: 'bg-violet-500',
-  staff_message: 'bg-blue-500',
+type Tone = 'blue' | 'amber' | 'emerald' | 'rose' | 'violet' | 'gray';
+type Glyph = ComponentType<{ className?: string }>;
+
+const PILL_TONE: Record<Tone, string> = {
+  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
+  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
+  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  rose: 'bg-rose-50 text-rose-700 ring-rose-200',
+  violet: 'bg-violet-50 text-violet-700 ring-violet-200',
+  gray: 'bg-surface-sunken text-text-muted ring-border-soft',
 };
 
-const KIND_LABEL: Record<ActivityInboxItemKind, string> = {
-  repair_status: 'Repair',
-  priority_unbox: 'Priority',
-  warranty_claim: 'Warranty',
-  return_pending_test: 'Tech',
-  order_ready_ship: 'Ready to ship',
-  support_followup: 'Support',
-  staff_message: 'Message',
+const KIND_META: Record<ActivityInboxItemKind, { label: string; Icon: Glyph; tone: Tone }> = {
+  repair_status: { label: 'Repair', Icon: Wrench, tone: 'amber' },
+  priority_unbox: { label: 'Priority', Icon: Zap, tone: 'violet' },
+  warranty_claim: { label: 'Warranty', Icon: ShieldCheck, tone: 'emerald' },
+  return_pending_test: { label: 'Tech', Icon: RotateCcw, tone: 'rose' },
+  order_ready_ship: { label: 'Tech', Icon: Truck, tone: 'blue' },
+  support_followup: { label: 'Support', Icon: Phone, tone: 'violet' },
+  staff_message: { label: 'Message', Icon: MessageSquare, tone: 'blue' },
+  // Same glyph HeaderTopWorkOrderChip uses for work orders — a thrown task IS
+  // a work_assignment row, so one concept keeps one mark. Amber because it is
+  // addressed to you and waiting, not because it is an error.
+  work_task: { label: 'Task', Icon: ClipboardList, tone: 'amber' },
 };
+
+function inboxRelativeTime(ms: number): string {
+  return formatDistanceToNowStrict(new Date(ms), { addSuffix: true })
+    .replace(/\bhours ago\b/, 'hrs ago')
+    .replace(/\bhour ago\b/, 'hr ago')
+    .replace(/\bminutes ago\b/, 'mins ago')
+    .replace(/\bminute ago\b/, 'min ago');
+}
 
 function afterSep(title: string): string {
   const i = title.indexOf(' · ');
@@ -70,6 +88,10 @@ function primaryFor(it: ActivityInboxItem): string {
       return it.ticketSubject?.trim() || (it.ticketId ? `Ticket #${it.ticketId}` : 'Support follow-up');
     case 'priority_unbox':
       return 'Unbox this first';
+    case 'work_task':
+      // The title already carries who handed it over (and "Urgent ·" when it
+      // jumps the queue); strip the prefix so the row leads with the substance.
+      return afterSep(it.title) || 'Handed to you';
     case 'warranty_claim':
       return it.claimNumber || afterSep(it.title);
     case 'repair_status':
@@ -79,165 +101,21 @@ function primaryFor(it: ActivityInboxItem): string {
   }
 }
 
-/**
- * Identity keys for tech-queue rows — typed CopyChips (last-8 face), never
- * mono prose. OrderIdChip gets the catalog platform label + glyph tone
- * (`usePlatformMeta` / `platformMetaIconTone`) — same contract as rail peeks.
- * Parent row is `pointer-events-none` under the navigate Link, so chips
- * re-enable pointer events (`z-raised`) so copy still works.
- *
- * When there is nothing to paint, renders `emptyFallback` (or null).
- */
-function IdentityKeys({
-  orderNumber,
-  trackingNumber,
-  sourcePlatform,
-  leading,
-  emptyFallback = null,
-}: {
-  orderNumber?: string | null;
-  trackingNumber?: string | null;
-  sourcePlatform?: string | null;
-  leading?: ReactNode;
-  emptyFallback?: ReactNode;
-}) {
-  const resolvePlatformMeta = usePlatformMeta();
-  const order = orderNumber?.trim() || '';
-  const tracking = trackingNumber?.trim() || '';
-  const platformRaw = (sourcePlatform ?? '').trim();
-  const platformMeta = platformRaw ? resolvePlatformMeta(platformRaw) : null;
-  const platformLabel = platformRaw && platformMeta ? platformMeta.label : null;
-  const platformIconTone = platformMeta ? platformMetaIconTone(platformMeta) : null;
-
-  if (!leading && !order && !tracking) return <>{emptyFallback}</>;
-
-  return (
-    <span className="pointer-events-auto relative z-raised flex min-w-0 items-center gap-1.5">
-      {leading}
-      {order ? (
-        <OrderIdChip
-          value={order}
-          display={getLast8(order)}
-          dense
-          displayWidth="last8"
-          platformLabel={platformLabel}
-          iconClass={platformIconTone?.className}
-          iconStyle={platformIconTone?.style}
-        />
-      ) : null}
-      {tracking ? <TrackingChip value={tracking} dense displayWidth="last8" /> : null}
-    </span>
-  );
-}
-
-/**
- * Meta under the title. Tech-queue ready/return rows: Check (ready) +
- * OrderIdChip + TrackingChip (house identity SoT). Other kinds stay one prose
- * fact — not a tone-pill / chip parade.
- */
-function metaFor(it: ActivityInboxItem): ReactNode {
-  switch (it.kind) {
-    case 'order_ready_ship':
-      return (
-        <IdentityKeys
-          orderNumber={it.orderNumber}
-          trackingNumber={it.trackingNumber}
-          sourcePlatform={it.sourcePlatform}
-          leading={
-            <Check
-              className="h-3.5 w-3.5 shrink-0 text-emerald-600"
-              aria-label="Ready to ship"
-            />
-          }
-          emptyFallback={
-            <span className="truncate font-semibold uppercase tracking-widest text-emerald-600">
-              Ready
-            </span>
-          }
-        />
-      );
-    case 'return_pending_test':
-      return (
-        <IdentityKeys
-          orderNumber={it.orderNumber}
-          trackingNumber={it.trackingNumber}
-          sourcePlatform={it.sourcePlatform}
-          emptyFallback={
-            <span className="truncate font-semibold uppercase tracking-widest text-rose-600">
-              Needs test
-            </span>
-          }
-        />
-      );
-    case 'support_followup':
-      return (
-        <span className="truncate font-semibold uppercase tracking-widest text-violet-600">
-          {it.ticketId ? `Follow up · #${it.ticketId}` : 'Follow up'}
-        </span>
-      );
-    case 'repair_status': {
-      if (it.undone) {
-        return (
-          <span className="truncate font-semibold uppercase tracking-widest text-text-faint">
-            Reverted
-          </span>
-        );
-      }
-      if (it.undoFailed) {
-        return (
-          <span className="truncate font-semibold uppercase tracking-widest text-rose-600">
-            Undo failed
-          </span>
-        );
-      }
-      const next = (it.nextStatus || '').trim();
-      const prev = (it.previousStatus || '').trim();
-      const text =
-        prev && next ? `${prev} → ${next}` : next || 'Repair update';
-      return (
-        <span
-          className={cn(
-            'truncate font-semibold uppercase tracking-widest',
-            next || prev ? 'text-amber-700' : 'text-text-soft',
-          )}
-        >
-          {text}
-        </span>
-      );
-    }
-    case 'warranty_claim':
-      return (
-        <span className="truncate font-semibold uppercase tracking-widest text-emerald-600">
-          {(it.claimStatus || 'Claim').trim()}
-        </span>
-      );
-    case 'priority_unbox':
-      return (
-        <IdentityKeys
-          trackingNumber={it.trackingNumber}
-          emptyFallback={
-            <span className="truncate font-semibold uppercase tracking-widest text-violet-600">
-              {(it.sku || 'Priority').trim()}
-            </span>
-          }
-        />
-      );
-    case 'staff_message':
-      return (
-        <span className="truncate font-semibold uppercase tracking-widest text-blue-600">
-          {(it.senderName || 'Message').trim()}
-        </span>
-      );
-    default:
-      return (
-        <span className="truncate font-semibold uppercase tracking-widest text-text-soft">
-          {KIND_LABEL[it.kind]}
-        </span>
-      );
-  }
+function statusTone(status: string): Tone {
+  const v = status.toLowerCase();
+  if (/(approv|repaired|repair_logged|closed|done|complete|received|ready|ship)/.test(v)) return 'emerald';
+  if (/(deni|expire|fail|error|block|reject|cancel)/.test(v)) return 'rose';
+  if (/(submit|pending|progress|in_repair|await|test|open)/.test(v)) return 'blue';
+  return 'gray';
 }
 
 function hrefFor(it: ActivityInboxItem): string | null {
+  // A thrown task opens the record it points at, through the same resolver the
+  // Home Inbox uses — so the bell and the inbox never disagree about where a
+  // row goes.
+  if (it.kind === 'work_task' && it.entityType && it.entityId) {
+    return notificationHref(it.entityType, it.entityId);
+  }
   if (it.kind === 'support_followup' && it.ticketId) {
     return `/support?ticket=${it.ticketId}`;
   }
@@ -255,6 +133,19 @@ function hrefFor(it: ActivityInboxItem): string | null {
   if (it.kind === 'return_pending_test') return '/test';
   if (it.kind === 'order_ready_ship') return '/dashboard';
   return null;
+}
+
+function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+        PILL_TONE[tone],
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
 export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
@@ -297,6 +188,11 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       {/* "Where my work is", above "what just happened". The strip answers a
           different question from the feed below it and has its own source, so
           it renders in both the empty and the populated branch. */}
+      {/* "Your next work order" left this popover 2026-08-08 for the header's
+          pace-and-next button (`HeaderGoalChip`), where it shares one control
+          with the goal ring. It is still not a header occupant of its own — the
+          slot count is unchanged — but "what is next" now sits with "how is
+          today going" instead of two clicks into the notification channel. */}
       <InboxQueueLinks onNavigate={onClose} />
 
       {items.length === 0 ? (
@@ -313,11 +209,11 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       ) : (
         <ul className="divide-y divide-border-hairline">
           {items.map((it) => {
+            const meta = KIND_META[it.kind];
+            const Icon = meta.Icon;
             const href = hrefFor(it);
             const navigable = href != null;
             const primary = primaryFor(it);
-            const meta = metaFor(it);
-            const kindLabel = KIND_LABEL[it.kind];
 
             const undoable =
               it.kind === 'repair_status' &&
@@ -333,82 +229,160 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                   <Link
                     href={href}
                     onClick={onClose}
-                    aria-label={`${kindLabel}: ${primary}`}
+                    aria-label={`${meta.label}: ${primary}`}
                     className="absolute inset-0 z-0"
                   />
                 ) : null}
                 <div
                   className={cn(
-                    'relative py-1 transition-colors group-hover:bg-surface-hover',
+                    'relative flex items-start gap-2.5 px-3 py-2 transition-colors group-hover:bg-surface-hover',
                     navigable && 'pointer-events-none',
                   )}
                 >
-                  <CompactActivityRow
-                    leading={
-                      <span
-                        className={cn('h-2 w-2 shrink-0 rounded-full', KIND_DOT[it.kind])}
-                        aria-label={kindLabel}
-                      />
-                    }
-                    activityAt={it.createdAt}
-                    actions={
-                      <>
-                        {undoable ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => void undoItem(it.id)}
-                            disabled={undoing}
-                            className="h-7 px-1.5 text-role-micro font-semibold text-text-soft"
-                          >
-                            {undoing ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <RotateCcw className="h-3 w-3" />
-                            )}
-                            Undo
-                          </Button>
-                        ) : null}
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center text-text-muted">
+                    <Icon className="h-5 w-5" />
+                  </span>
 
-                        {it.kind === 'staff_message' && it.body ? (
-                          <HoverTooltip label="Copy message" asChild>
-                            <IconButton
-                              ariaLabel="Copy message"
-                              onClick={() => {
-                                if (!it.body) return;
-                                void handleCopyBack(it.body, it.id);
-                              }}
-                              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-sunken"
-                              icon={
-                                copiedId === it.id ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                ) : (
-                                  <Copy className="h-3.5 w-3.5 text-text-faint" />
-                                )
-                              }
-                            />
-                          </HoverTooltip>
-                        ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        'truncate text-role-caption font-semibold text-text-default',
+                        navigable && 'group-hover:text-blue-700',
+                      )}
+                    >
+                      {primary}
+                    </p>
 
-                        <HoverTooltip label="Dismiss" asChild>
-                          <IconButton
-                            ariaLabel="Dismiss"
-                            onClick={() => dismissItem(it.id)}
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-                            icon={<X className="h-3.5 w-3.5" />}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                        {inboxRelativeTime(it.createdAt)}
+                      </span>
+
+                      {(it.kind === 'order_ready_ship' || it.kind === 'return_pending_test') && (
+                        it.kind === 'order_ready_ship' ? (
+                          <span className="pointer-events-auto relative z-10 inline-flex shrink-0">
+                            <HoverTooltip label="Ready to ship" asChild focusable={false}>
+                              <span className="inline-flex items-center text-emerald-600">
+                                <Check className="h-4 w-4" aria-hidden />
+                              </span>
+                            </HoverTooltip>
+                          </span>
+                        ) : (
+                          <Pill tone="rose">Needs testing</Pill>
+                        )
+                      )}
+
+                      {it.kind === 'support_followup' && (
+                        <>
+                          <Pill tone="violet">Follow up</Pill>
+                          {it.ticketId ? <Pill tone="gray">#{it.ticketId}</Pill> : null}
+                        </>
+                      )}
+
+                      {it.orderNumber ? (
+                        <span className="pointer-events-auto relative z-10 inline-flex max-w-full">
+                          <OrderIdChip
+                            value={it.orderNumber}
+                            display={getLast8(it.orderNumber)}
+                            dense
                           />
-                        </HoverTooltip>
-                      </>
-                    }
-                  >
-                    <RailRowBody
-                      vm={{
-                        title: primary,
-                        titleAttr: primary,
-                        meta,
-                      }}
-                    />
-                  </CompactActivityRow>
+                        </span>
+                      ) : null}
+
+                      {it.trackingNumber ? (
+                        <span className="pointer-events-auto relative z-10 inline-flex max-w-full">
+                          <TrackingChip
+                            value={it.trackingNumber}
+                            display={getLast8(it.trackingNumber)}
+                            dense
+                          />
+                        </span>
+                      ) : null}
+
+                      {it.kind === 'repair_status' && (it.previousStatus || it.nextStatus) ? (
+                        <>
+                          {it.previousStatus ? <Pill tone="gray">{it.previousStatus}</Pill> : null}
+                          <ChevronRight className="h-3 w-3 shrink-0 text-text-faint" />
+                          {it.nextStatus ? (
+                            <Pill tone={statusTone(it.nextStatus)}>{it.nextStatus}</Pill>
+                          ) : null}
+                        </>
+                      ) : null}
+
+                      {it.kind === 'warranty_claim' && it.claimStatus ? (
+                        <Pill tone={statusTone(it.claimStatus)}>{it.claimStatus}</Pill>
+                      ) : null}
+
+                      {it.kind === 'priority_unbox' && it.sku ? (
+                        <Pill tone="violet">{it.sku}</Pill>
+                      ) : null}
+                    </div>
+
+                    {it.kind === 'staff_message' && it.body ? (
+                      <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-role-caption text-text-soft">
+                        {it.body}
+                      </p>
+                    ) : null}
+
+                    {it.kind === 'repair_status' && (it.undone || it.undoFailed) ? (
+                      <p
+                        className={cn(
+                          'mt-1 text-role-eyebrow font-semibold uppercase tracking-widest',
+                          it.undoFailed ? 'text-rose-600' : 'text-text-faint',
+                        )}
+                      >
+                        {it.undoFailed ? 'Undo failed' : 'Reverted'}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="pointer-events-auto relative z-10 flex shrink-0 items-center gap-0.5">
+                    {undoable ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void undoItem(it.id)}
+                        disabled={undoing}
+                        className="h-7 px-1.5 text-role-micro font-semibold text-text-soft"
+                      >
+                        {undoing ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-3 w-3" />
+                        )}
+                        Undo
+                      </Button>
+                    ) : null}
+
+                    {it.kind === 'staff_message' && it.body ? (
+                      <HoverTooltip label="Copy message" asChild>
+                        <IconButton
+                          ariaLabel="Copy message"
+                          onClick={() => {
+                            if (!it.body) return;
+                            void handleCopyBack(it.body, it.id);
+                          }}
+                          className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-sunken"
+                          icon={
+                            copiedId === it.id ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5 text-text-faint" />
+                            )
+                          }
+                        />
+                      </HoverTooltip>
+                    ) : null}
+
+                    <HoverTooltip label="Dismiss" asChild>
+                      <IconButton
+                        ariaLabel="Dismiss"
+                        onClick={() => dismissItem(it.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-text-faint opacity-0 hover:bg-surface-sunken hover:text-text-muted focus-visible:opacity-100 group-hover:opacity-100"
+                        icon={<X className="h-3.5 w-3.5" />}
+                      />
+                    </HoverTooltip>
+                  </div>
                 </div>
               </li>
             );

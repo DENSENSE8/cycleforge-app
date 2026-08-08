@@ -34,7 +34,9 @@ export type ActivityInboxItemKind =
   | 'return_pending_test'
   | 'order_ready_ship'
   | 'support_followup'
-  | 'staff_message';
+  | 'staff_message'
+  /** A colleague handed you a record (WS-TASKS). Mirrors staff_inbox_items. */
+  | 'work_task';
 
 export interface ActivityInboxItem {
   id: string;
@@ -55,9 +57,13 @@ export interface ActivityInboxItem {
   // tech-queue (return_pending_test / order_ready_ship) deep-link + detail
   lineId?: number;
   orderNumber?: string;
-  /** Raw platform key for OrderIdChip hover + glyph tone. */
-  sourcePlatform?: string;
   productTitle?: string;
+  // work_task — the durable row lives in staff_inbox_items; this is its mirror,
+  // so `inboxItemId` is what a triage verb would act on.
+  inboxItemId?: number;
+  entityType?: string;
+  entityId?: number;
+  urgent?: boolean;
   // warranty_claim
   claimId?: number;
   claimNumber?: string;
@@ -98,6 +104,16 @@ type PushPriorityUnboxArgs = {
   skus: string[];
   trackingNumber?: string | null;
   receivingId?: number | null;
+};
+
+type PushWorkTaskArgs = {
+  /** staff_inbox_items.id — the durable row this mirrors, and the dedupe key. */
+  inboxItemId: number;
+  entityType: string;
+  entityId: number;
+  note?: string | null;
+  urgent?: boolean;
+  actorName?: string | null;
 };
 
 type PushWarrantyClaimArgs = {
@@ -188,7 +204,6 @@ export function ActivityInboxProvider({
           lineId: number | null;
           trackingNumber: string | null;
           orderNumber: string | null;
-          sourcePlatform: string | null;
           productTitle: string | null;
           unboxedAt: string | null;
         }>;
@@ -211,7 +226,6 @@ export function ActivityInboxProvider({
           lineId: it.lineId ?? undefined,
           trackingNumber: it.trackingNumber ?? undefined,
           orderNumber: it.orderNumber ?? undefined,
-          sourcePlatform: it.sourcePlatform ?? undefined,
           productTitle: it.productTitle ?? undefined,
         };
       });
@@ -403,6 +417,48 @@ export function ActivityInboxProvider({
     [user],
   );
 
+  /**
+   * A colleague handed you a record.
+   *
+   * The durable row is already in `staff_inbox_items` before this fires — this
+   * is the live mirror, so a dropped Ably message costs latency and nothing
+   * else (the row still arrives on the next Home Inbox fetch). Deduped on
+   * `inboxItemId` because the same push can arrive on two tabs, and this list
+   * is per-session client state with no unique index behind it.
+   */
+  const pushWorkTask = useCallback(
+    ({ inboxItemId, entityType, entityId, note, urgent, actorName }: PushWorkTaskArgs) => {
+      if (!user) return;
+      if (!Number.isFinite(inboxItemId) || inboxItemId <= 0) return;
+
+      const now = Date.now();
+      const who = actorName ? truncateLabel(actorName, 24) : 'A teammate';
+      const item: ActivityInboxItem = {
+        id: newId(),
+        kind: 'work_task',
+        // Urgency leads the title — at a bench this row is read at a glance and
+        // the operator's first question is whether it jumps the queue.
+        title: urgent ? `Urgent · ${who} handed you this` : `${who} handed you this`,
+        // ONE fact, per the compact activity row contract: the note when there
+        // is one, else the record it points at.
+        subtitle: note ? truncateLabel(note, 60) : entityLabelFor(entityType, entityId),
+        createdAt: now,
+        undoUntil: now, // a handoff is not reversible by the recipient
+        inboxItemId,
+        entityType,
+        entityId,
+        urgent,
+      };
+
+      setItems((prevItems) =>
+        prevItems.some((p) => p.inboxItemId === inboxItemId)
+          ? prevItems
+          : [item, ...prevItems].slice(0, MAX_ITEMS),
+      );
+    },
+    [user],
+  );
+
   const pushWarrantyClaim = useCallback(
     ({ claimId, claimNumber, status, event, title }: PushWarrantyClaimArgs) => {
       if (!user) return;
@@ -443,6 +499,46 @@ export function ActivityInboxProvider({
         skus: Array.isArray(d.skus) ? (d.skus as string[]) : [],
         trackingNumber: typeof d.trackingNumber === 'string' ? d.trackingNumber : null,
         receivingId: typeof d.receivingId === 'number' ? d.receivingId : null,
+      });
+    },
+    inboxEnabled,
+  );
+
+  // A colleague handed this staffer a record (WS-TASKS). The durable row is
+  // already in staff_inbox_items — this is the live mirror that makes a bench
+  // handoff land now instead of on the next window focus.
+  useAblyChannel(
+    inboxChannel,
+    'inbox_item',
+    (msg: {
+      data?: {
+        itemId?: unknown;
+        entityType?: unknown;
+        entityId?: unknown;
+        eventKey?: unknown;
+        note?: unknown;
+        urgent?: unknown;
+        actorName?: unknown;
+      };
+    }) => {
+      const d = msg?.data ?? {};
+      // The channel carries every inbox push; render only the assignment kind
+      // here. A future event on this name must opt in explicitly rather than
+      // inherit this row's copy.
+      if (d.eventKey !== 'work_task.assigned') return;
+
+      inboxSuppressedRef.current = false;
+      const itemId = Number(d.itemId);
+      const entityId = Number(d.entityId);
+      if (!Number.isFinite(itemId) || !Number.isFinite(entityId)) return;
+
+      pushWorkTask({
+        inboxItemId: itemId,
+        entityType: typeof d.entityType === 'string' ? d.entityType : 'other',
+        entityId,
+        note: typeof d.note === 'string' ? d.note : null,
+        urgent: d.urgent === true,
+        actorName: typeof d.actorName === 'string' ? d.actorName : null,
       });
     },
     inboxEnabled,
@@ -640,6 +736,22 @@ export function ActivityInboxProvider({
       <InboxTTLWatcher items={items} />
     </ActivityInboxContext.Provider>
   );
+}
+
+/**
+ * The one scannable fact for a handed-over record when the thrower left no
+ * note. Deliberately a short noun + id rather than a chip parade — this face is
+ * the compact activity row (`CompactActivityRow` + `RailRowBody`), which allows
+ * exactly one meta fact.
+ */
+const WORK_TASK_ENTITY_NOUN: Record<string, string> = {
+  order: 'Order',
+  receiving: 'Carton',
+  support_ticket: 'Ticket',
+};
+
+function entityLabelFor(entityType: string, entityId: number): string {
+  return `${WORK_TASK_ENTITY_NOUN[entityType] ?? 'Record'} ${entityId}`;
 }
 
 function truncateLabel(s: string, max = 52): string {

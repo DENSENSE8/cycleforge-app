@@ -147,6 +147,51 @@ function isNotifiableEventKey(v: unknown): v is NotifiableEventKey {
   return typeof v === 'string' && Object.hasOwn(NOTIFIABLE_EVENTS, v);
 }
 
+/**
+ * Directly-addressed acts — deliberately a SEPARATE registry from
+ * `NOTIFIABLE_EVENTS`, not a row in it.
+ *
+ * Everything in `NOTIFIABLE_EVENTS` is a domain event that flows
+ * ops_events → outbox → worker, where recipients are DERIVED from
+ * `staff_subscriptions`. Its shape encodes that: one `entityType` per key, and
+ * `expandEventPattern` advertises every key as subscribable by a rule.
+ *
+ * An assignment is the opposite on both counts. The recipient is explicit — a
+ * colleague chose them — so it never goes through the outbox, and it is not
+ * subscribable: you cannot follow "tasks thrown at other people". It also
+ * attaches to ANY notifiable entity type, so it has no single `entityType` to
+ * declare. Adding it to NOTIFIABLE_EVENTS would mean writing a nominal entity
+ * type that nothing reads (the worker uses the ROW's type, never the def's) and
+ * advertising a rule subscription that can never fire.
+ *
+ * Two registries, two genuinely different jobs — but ONE label resolution
+ * point, `eventLabelFor`, so the read path never has to know which it is.
+ */
+const ASSIGNMENT_EVENTS = {
+  'work_task.assigned': {
+    key: 'work_task.assigned',
+    label: 'Handed to you',
+  },
+} as const;
+
+type AssignmentEventKey = keyof typeof ASSIGNMENT_EVENTS;
+
+/** The event key a thrown task writes onto its inbox row. */
+export const WORK_TASK_ASSIGNED: AssignmentEventKey = 'work_task.assigned';
+
+/**
+ * Label for any inbox row, from whichever registry owns its key.
+ *
+ * Resolved at READ time — never a stored string, which would go stale the
+ * moment a label is reworded. Falls back to the raw key so an unknown event
+ * degrades to something identifiable rather than blank.
+ */
+export function eventLabelFor(key: string): string {
+  const assigned = (ASSIGNMENT_EVENTS as Record<string, { label: string }>)[key];
+  if (assigned) return assigned.label;
+  return notifiableEvent(key)?.label ?? key;
+}
+
 export function notifiableEvent(key: string): NotifiableEvent | null {
   return isNotifiableEventKey(key) ? NOTIFIABLE_EVENTS[key] : null;
 }

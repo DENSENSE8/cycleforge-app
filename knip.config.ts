@@ -85,6 +85,7 @@ const config: KnipConfig = {
     'src/design-system/motion/ActionFlash.tsx',
     'src/design-system/motion/DenseList.tsx',
     'src/design-system/motion/DenseRowReveal.tsx',
+
   ],
 
   ignoreDependencies: [
