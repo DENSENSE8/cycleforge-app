@@ -76,48 +76,48 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/station/incoming-grid/IncomingGridColumnHeader.tsx',
-    'src/components/station/incoming-grid/IncomingGridView.tsx',
+    'src/components/station/ReceivingLinesTable.tsx',
   ],
   [
     'src/components/receiving/pickup/grid/PickupGridColumnHeader.tsx',
-    'src/components/receiving/pickup/grid/PickupGridView.tsx',
+    'src/components/receiving/pickup/PickupWorkspace.tsx',
   ],
   [
     'src/components/products/catalog/catalog-grid/CatalogGridColumnHeader.tsx',
-    'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+    'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
   ],
   [
     'src/components/repair/repair-grid/RepairGridColumnHeader.tsx',
-    'src/components/repair/repair-grid/RepairGridView.tsx',
+    'src/components/repair/RepairTable.tsx',
   ],
   [
     'src/components/outbound/ready/grid/ReadyGridColumnHeader.tsx',
-    'src/components/outbound/ready/grid/ReadyGridView.tsx',
+    'src/components/outbound/ready/ReadyQueueTable.tsx',
   ],
   [
     'src/components/warranty/grid/WarrantyGridColumnHeader.tsx',
-    'src/components/warranty/grid/WarrantyGridView.tsx',
+    'src/components/warranty/WarrantyClaimsTable.tsx',
   ],
   [
     'src/components/receiving/unfound/grid/UnfoundGridColumnHeader.tsx',
-    'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+    'src/components/receiving/unfound/UnfoundQueueTable.tsx',
   ],
   [
     'src/components/warehouse/bins-grid/BinsGridColumnHeader.tsx',
-    'src/components/warehouse/bins-grid/BinsGridView.tsx',
+    'src/components/warehouse/BinsTable.tsx',
   ],
   [
     'src/components/tracking-exceptions/grid/TrackingExceptionsGridColumnHeader.tsx',
-    'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+    'src/components/tracking-exceptions/TrackingExceptionsTable.tsx',
   ],
   [
     'src/features/review/catalog-link/grid/CatalogLinkGridColumnHeader.tsx',
-    'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
+    'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx',
   ],
   // The two that chrome Fields used to serve exclusively.
   [
     'src/features/my-day/grid/MyDayGridColumnHeader.tsx',
-    'src/features/my-day/grid/MyDayGridView.tsx',
+    'src/features/my-day/MyDayWorkspace.tsx',
   ],
   [
     'src/components/dashboard/orders-queue/OrdersQueueColumnHeader.tsx',

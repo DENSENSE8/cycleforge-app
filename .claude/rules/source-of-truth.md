@@ -1805,8 +1805,15 @@ what changed is who supplies the recipe.
   the host is in `grid-view-plumbing`'s `DS_OWN`.
 - **Documented exceptions:** `StationListTable` / `FbaBoardTable` (no column
   model of their own) keep a declared capability bag without a definition.
+- **Forest freeze (Phase-3 ratchet):** the `*GridView.tsx` wrapper set is
+  **shrink-only** — a new queue ships without a new GridView file; it binds
+  `<NonlinearTableHost binding={…}>` in the page + a registry entry. Adding a
+  new `*GridView.tsx` fails CI (deleting one shrinks the frozen list). This is
+  the second clause of the plan's Phase-3 ratchet; the first — a mount outside
+  the allowlist — is the capabilities discovery walk.
   Guards: `table-definition-registry.guard.test.ts` (parse + deep-equal + unique
-  ids) · `grid-surface-capabilities.guard.test.ts` (every mount names a bag).
+  ids) · `grid-surface-capabilities.guard.test.ts` (every mount names a bag; the
+  `*GridView.tsx` forest is frozen shrink-only).
 
 ## Ops table / spreadsheet surface shell
 

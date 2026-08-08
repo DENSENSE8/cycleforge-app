@@ -78,7 +78,7 @@ describe('Review family Sheets flush chrome', () => {
     // now mounts NonlinearTableHost twice, once per binding.
     assert.equal(CATALOG_LINK_TABLE_DEFINITION.surface, 'sheet');
     assert.equal(IMPORT_EXCEPTION_TABLE_DEFINITION.surface, 'sheet');
-    const src = read('src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx');
+    const src = read('src/features/review/catalog-link/ReviewCatalogLinkTable.tsx');
     const mounts = src.match(/<NonlinearTableHost[\s\S]*?binding=\{/g) ?? [];
     assert.equal(mounts.length, 2, 'both catalog-link grids must mount NonlinearTableHost');
     assert.doesNotMatch(src, /<LedgerGridSurface/, 'must not reach past the host to the engine');

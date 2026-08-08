@@ -1,7 +1,7 @@
 /**
  * Today Sheets recipe — pin flush surface + host SoT (Unbox golden port).
  *
- * `MyDayWorkspace` mounts `WORKBENCH_SHEET_*` hosts; `MyDayGridView` passes
+ * `MyDayWorkspace` mounts `WORKBENCH_SHEET_*` hosts and the registry host; it passes
  * `surface="sheet"` so the grid uses `TABLE_SURFACE_SHEET_CLASS` (no framed
  * gutters / rounded-xl island).
  */
@@ -23,15 +23,15 @@ function stripBlockComments(src: string): string {
 }
 
 describe('My Day Sheets recipe', () => {
-  it('MyDayGridView mounts the registry host on a sheet-surface definition', () => {
+  it('MyDayWorkspace mounts the registry host on a sheet-surface definition', () => {
     assert.equal(MY_DAY_TABLE_DEFINITION.surface, 'sheet');
     // Strip block comments first — a docstring may legitimately mention
     // `surface="sheet"` while the mount no longer carries the literal.
-    const src = stripBlockComments(read('src/features/my-day/grid/MyDayGridView.tsx'));
+    const src = stripBlockComments(read('src/features/my-day/MyDayWorkspace.tsx'));
     assert.match(
       src,
       /<NonlinearTableHost[\s\S]*?binding=\{MY_DAY_TABLE_BINDING\}/,
-      'MyDayGridView must mount NonlinearTableHost with the My Day binding',
+      'MyDayWorkspace must mount NonlinearTableHost with the My Day binding',
     );
     assert.doesNotMatch(src, /<LedgerGridSurface/, 'must not reach past the host to the engine');
     assert.doesNotMatch(src, /surface="(sheet|framed)"/, 'shell recipe belongs to the definition');
