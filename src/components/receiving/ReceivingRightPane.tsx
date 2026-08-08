@@ -62,6 +62,7 @@ function IncomingDetailsMount({
       inboundSourceOrderId={target.inboundSourceOrderId}
       focusReceivingId={target.receivingId}
       focusReceivingLineId={target.receivingLineId}
+      seedRow={target.seedRow}
       onClose={onClose}
     />
   );
@@ -158,7 +159,13 @@ function UnboxHistoryHostInner({
   onCloseHistoryTriage: () => void;
 }) {
   const { viewShellOpen } = useHistoryViewChrome();
-  const historyOpen = Boolean(historyTriage) || viewShellOpen;
+  // TWO states, deliberately not one. `recordInspectOpen` gates the multi-select
+  // batch rail — only a PICKED carton may take that slot, or opening the
+  // View-only shell to reach ▦ would silently kill print / claim / copy on the
+  // rows an operator had selected. `inspectorOpen` is the Band 3 toggle's own
+  // open face, which must go pressed for either.
+  const recordInspectOpen = Boolean(historyTriage);
+  const inspectorOpen = recordInspectOpen || viewShellOpen;
   return (
     <>
       <UnboxLineWorkspace
@@ -169,7 +176,8 @@ function UnboxHistoryHostInner({
         lookupReceipt={lookupReceipt}
         onClearLookupReceipt={onClearLookupReceipt}
         onCloseWorkspace={onCloseWorkspace}
-        historyTriageOpen={historyOpen}
+        recordInspectOpen={recordInspectOpen}
+        inspectorOpen={inspectorOpen}
       />
       <IncomingDetailsMount target={incomingDetails} onClose={onCloseIncoming} />
       <HistoryTriageMount target={historyTriage} onClose={onCloseHistoryTriage} />

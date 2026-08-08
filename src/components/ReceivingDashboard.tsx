@@ -16,7 +16,7 @@
  *   - useReceivingLineRailSelection  publish + claim for History/Incoming
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +30,8 @@ import { useReceivingWorkspacePane } from '@/components/receiving/useReceivingWo
 import { useReceivingDetailOverlays } from '@/components/receiving/useReceivingDetailOverlays';
 import { ReceivingRightPane } from '@/components/receiving/ReceivingRightPane';
 import { ReceivingDashboardOverlays } from '@/components/receiving/ReceivingDashboardOverlays';
+import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
+import { toast } from '@/lib/toast';
 
 /** Copy line for a receiving carton/line: PO • SKU • tracking. */
 function formatReceivingCopyRow(r: ReceivingLineRow): string {
@@ -84,12 +86,45 @@ export default function ReceivingDashboard() {
     formatCopyRow: formatReceivingCopyRow,
   });
 
-  // Incoming 2+ yields the inspect panel to the batch shell (R3 / R5).
+  // Incoming check → inspector occupancy:
+  //   1 check → open `detail:incoming` (same target as dblclick / Enter)
+  //   0 checks → clear inspect
+  //   2+ checks → yield inspect to the batch shell (R3 / R5)
+  const blockedInspectToastRowIdRef = useRef<number | null>(null);
   useEffect(() => {
-    if (isIncomingMode && selectedRows.length >= 2 && incomingDetails) {
-      setIncomingDetails(null);
+    if (!isIncomingMode) return;
+    if (selectedRows.length === 0) {
+      blockedInspectToastRowIdRef.current = null;
+      if (incomingDetails) setIncomingDetails(null);
+      return;
     }
-  }, [isIncomingMode, selectedRows.length, incomingDetails, setIncomingDetails]);
+    if (selectedRows.length >= 2) {
+      blockedInspectToastRowIdRef.current = null;
+      if (incomingDetails) setIncomingDetails(null);
+      return;
+    }
+    const row = selectedRows[0];
+    if (!row) return;
+    const resolved = incomingDetailsTargetFromRow(row);
+    if (!resolved.ok) {
+      if (blockedInspectToastRowIdRef.current !== row.id) {
+        blockedInspectToastRowIdRef.current = row.id;
+        toast.info(resolved.toast);
+      }
+      if (incomingDetails) setIncomingDetails(null);
+      return;
+    }
+    blockedInspectToastRowIdRef.current = null;
+    const next = resolved.target;
+    const same =
+      incomingDetails &&
+      incomingDetails.poId === next.poId &&
+      incomingDetails.shipmentId === next.shipmentId &&
+      incomingDetails.receivingId === next.receivingId &&
+      incomingDetails.receivingLineId === next.receivingLineId &&
+      incomingDetails.inboundSourceOrderId === next.inboundSourceOrderId;
+    if (!same) setIncomingDetails(next);
+  }, [isIncomingMode, selectedRows, incomingDetails, setIncomingDetails]);
 
   // History triage (1-row inspect) yields to the batch shell at 2+ checks.
   useEffect(() => {

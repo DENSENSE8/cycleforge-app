@@ -25,6 +25,8 @@ interface ReceivingGridGroupRowProps {
   handleToggleRow?: (row: ReceivingLineRow) => void;
   activityAxis?: ReceivingActivityAxis;
   isHistory?: boolean;
+  /** Unbox / Receiving History → `'coarse'`; Testing stays `'fine'`. */
+  statusVocabulary?: 'fine' | 'coarse';
   /** Connected inventory provider label for History UNBOXED tips. */
   inventoryProviderLabel?: string;
   columns?: readonly ReceivingGridColumn[];
@@ -63,6 +65,7 @@ export function ReceivingGridGroupRow({
   handleToggleRow,
   activityAxis = 'unboxed',
   isHistory = false,
+  statusVocabulary = 'fine',
   inventoryProviderLabel = 'Inventory',
   columns,
   columnDisplay,
@@ -107,6 +110,7 @@ export function ReceivingGridGroupRow({
         onCrosshairHover={onCrosshairHover}
         activityAxis={activityAxis}
         isHistory={isHistory}
+        statusVocabulary={statusVocabulary}
         inventoryProviderLabel={inventoryProviderLabel}
         columns={columns}
         columnDisplay={columnDisplay}

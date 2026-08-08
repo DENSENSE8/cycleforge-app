@@ -126,7 +126,7 @@ test.describe('Incoming · bulk tracking paste', () => {
     // Scoped search is always-open TechRailSearchBar (retired ToolbarSearchToggle).
     // The bulk-tracking paste action is a trailingAction sibling — it must stay
     // reachable without a hover/expand gesture on the filter field.
-    const search = page.getByRole('textbox', { name: /Filter PO #/i });
+    const search = page.getByRole('textbox', { name: /Filter purchase order #/i });
     await expect(search).toBeVisible();
 
     await expect(pasteEntry(page)).toBeVisible();

@@ -1,6 +1,7 @@
 /**
  * History status-chip tooltip: DONE (Received) is bare; UNBOXED names the
- * inventory provider via the shared sync tip SoT; other stages keep the stage tip.
+ * inventory provider via the shared sync tip SoT; other stages keep the stage tip
+ * on fine vocabulary. Coarse vocabulary never surfaces testing stage tips.
  */
 
 import test from 'node:test';
@@ -48,5 +49,41 @@ test('other stages with empty tip → null', () => {
       stageTip: '',
     }),
     null,
+  );
+});
+
+test('coarse — FAILED drops stage tip (Received is bare)', () => {
+  assert.equal(
+    receivingHistoryStatusTooltip({
+      workflowStatus: 'FAILED',
+      inventoryProviderLabel: 'Zoho Inventory',
+      stageTip: 'Failed Jul 31 by Alice',
+      statusVocabulary: 'coarse',
+    }),
+    null,
+  );
+});
+
+test('coarse — AWAITING_TEST drops stage tip', () => {
+  assert.equal(
+    receivingHistoryStatusTooltip({
+      workflowStatus: 'AWAITING_TEST',
+      inventoryProviderLabel: 'Zoho Inventory',
+      stageTip: 'Awaiting test Jul 31',
+      statusVocabulary: 'coarse',
+    }),
+    null,
+  );
+});
+
+test('coarse — UNBOXED keeps sync tip', () => {
+  assert.equal(
+    receivingHistoryStatusTooltip({
+      workflowStatus: 'UNBOXED',
+      inventoryProviderLabel: 'Zoho Inventory',
+      stageTip: 'Unboxed Jul 31 by Alice',
+      statusVocabulary: 'coarse',
+    }),
+    'Awaiting confirmation in Zoho Inventory',
   );
 });

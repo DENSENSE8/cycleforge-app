@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, motionRole } from '@/design-system/motion';
-import { ChevronDown, Check, Barcode } from '@/components/Icons';
+import { Barcode } from '@/components/Icons';
 import {
   framerPresence,
-  framerTransition,
   motionBezier,
 } from '@/design-system/foundations/motion-framer';
 import {
@@ -21,8 +20,6 @@ import {
   getLast8,
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton, TextField } from '@/design-system/primitives';
-import { META_COL } from '@/components/ui/RowMetaColumns';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
@@ -33,6 +30,7 @@ import {
 } from '@/components/receiving/workspace/PoLineTitleMenu';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   NoSerialControl,
   type SerialAbsentState,
@@ -78,32 +76,12 @@ const PO_LINE_BODY_COLLAPSE = {
 /** Max last-8 serials shown in the collapsed meta preview. */
 const SERIAL_PREVIEW_CAP = 2;
 
-/** Inline item-description editor surface handed down from the accordion shell. */
-export interface PoLineDescProps {
-  shownId: number | null;
-  draft: string;
-  savingLineId: number | null;
-  inputRef: React.RefObject<HTMLInputElement>;
-  toggle: (line: ReceivingLineRow) => void;
-  setDraft: (value: string) => void;
-  save: (lineId: number) => void;
-}
-
 interface Props {
   line: ReceivingLineRow;
   isActive: boolean;
   readOnly: boolean;
   /** Serial-hydration fetch in flight — show the serial-slot skeleton until it lands. */
   serialsLoading?: boolean;
-  activeCollapsed: boolean;
-  onToggleCollapsed: () => void;
-  /**
-   * When false, inactive rows keep a trailing chevron track for alignment but
-   * omit the decorative glyph (Pending group headers use the same
-   * `showChevron={false}` discipline — don't advertise expand that only
-   * switches focus).
-   */
-  showInactiveChevron?: boolean;
   activeConditionOverride?: string | null;
   /**
    * Kept for accordion API parity — per-serial edit/delete lives in the expanded
@@ -111,10 +89,8 @@ interface Props {
    */
   activeSerialActions?: PoLineSerialActions;
   activeRowSlot?: ActiveRowSlot;
-  renderTitleActions?: (line: ReceivingLineRow) => React.ReactNode;
   /** Unmatched-carton serial split (Testing UNLINK) — offered from the title ⋮ menu. */
   serialSplit?: PoLineSerialSplitContext;
-  desc: PoLineDescProps;
   /**
    * Change (clear / re-reason) an already-committed no-serial waiver from the
    * collapsed meta row. Activating a new waiver happens in the expanded editor
@@ -134,6 +110,18 @@ interface Props {
    * first when inactive. Omit on surfaces without a Displays host.
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /**
+   * Unbox Action Dock: condition / serial meta click → focus that step in the
+   * dock (PO meta is the ledger — no under-row editor). When serial handler is
+   * set it outranks {@link onViewAllUnits} for the serials cell.
+   */
+  onEditConditionInDock?: (line: ReceivingLineRow) => void;
+  onEditSerialInDock?: (line: ReceivingLineRow) => void;
+  /**
+   * When false, meta collapses to qty | SKU | price (Arrival door flow — no
+   * condition · serial / Units chrome). Defaults true.
+   */
+  unitsChrome?: boolean;
 }
 
 /**
@@ -149,37 +137,29 @@ export function PoLineRow({
   isActive,
   readOnly,
   serialsLoading = false,
-  activeCollapsed,
-  onToggleCollapsed,
-  showInactiveChevron = false,
   activeConditionOverride,
   activeRowSlot,
-  renderTitleActions,
   serialSplit,
-  desc,
   onSerialAbsentChange,
   animateLayout = true,
   onViewAllUnits,
+  onEditConditionInDock,
+  onEditSerialInDock,
+  unitsChrome = true,
 }: Props) {
   const rowBodyCollapse = useMotionPresence(framerPresence.collapseHeight);
   const rowBodyTransition = useMotionTransition(PO_LINE_BODY_COLLAPSE);
   const rowLayoutTransition = useMotionTransition(PO_LINE_LAYOUT_SPRING);
   const pulseTransition = useMotionTransition(motionRole.feedback.pulse.transition);
   const lineTitle = receivingWorkspaceLineTitle(line);
-  const chevronTransition = useMotionTransition(framerTransition.stationChevron);
-
-  const descShown = desc.shownId === line.id;
 
   /**
    * Is this row's editor body on screen? When true, the green-check no-serial
    * offer lives there — suppress the meta-row committed token so the two never
    * stack. Mirrors the body's own render gate below. Bodies mount under every
-   * editable line; only the active line may collapse its body via the chevron.
+   * editable line.
    */
-  const editorBodyVisible =
-    !readOnly &&
-    !!activeRowSlot &&
-    !(isActive && activeCollapsed);
+  const editorBodyVisible = unitsChrome && !readOnly && !!activeRowSlot;
 
   const serialNumbers = (Array.isArray(line.serials) ? line.serials : [])
     .map((s) => (s.serial_number || '').trim())
@@ -189,6 +169,7 @@ export function PoLineRow({
     !!onViewAllUnits &&
     !readOnly &&
     (serialNumbers.length > 0 || expectedQty > 1 || (line.units?.length ?? 0) > 0);
+  const canEditSerialInDock = !!onEditSerialInDock && !readOnly;
 
   // Transient match acknowledgement — inset emerald ring, never a persistent
   // green card border. Fired by {@link pulseScanLine} after a successful scan.
@@ -275,57 +256,21 @@ export function PoLineRow({
         >
           <PoLineHeaderThumb imageUrl={line.image_url} />
           <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
-            {/* Title band — wraps; ⋮ + expand chevron stay on the first line,
-                trailing right (chevron after line actions). */}
+            {/* Title band — wraps; the conditional line ⋮ (Unlink) / Testing
+                serial-link controls trail right. No collapse chevron: capture
+                and item detail live in the bottom dock + right-edge Displays,
+                so the line row is a pure ledger with no top-right controls on
+                the Unbox/Arrival path. */}
             <div className="flex min-w-0 items-start gap-0 px-2 py-1">
               <p className="min-w-0 flex-1 text-role-caption font-semibold leading-tight text-text-default">
                 {lineTitle}
               </p>
               {!readOnly ? (
-                <PoLineTitleMenu
-                  line={line}
-                  descShown={descShown}
-                  onToggleDesc={() => desc.toggle(line)}
-                  serialSplit={serialSplit}
-                />
-              ) : null}
-              {!readOnly ? renderTitleActions?.(line) : null}
-              {!readOnly ? (
-                <span
-                  className={cn(
-                    'flex shrink-0 items-center justify-center self-center',
-                    META_COL.dotTrackWide,
-                  )}
-                >
-                  {isActive ? (
-                    <motion.button
-                      type="button"
-                      aria-expanded={!activeCollapsed}
-                      aria-label={
-                        activeCollapsed ? 'Expand item details' : 'Collapse item details'
-                      }
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleCollapsed();
-                      }}
-                      animate={{ rotate: activeCollapsed ? -90 : 0 }}
-                      transition={chevronTransition}
-                      className="ds-raw-button flex items-center justify-center rounded-md p-0.5 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-muted"
-                    >
-                      <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-                    </motion.button>
-                  ) : showInactiveChevron ? (
-                    <ChevronDown
-                      className="h-3.5 w-3.5 -rotate-90 text-text-faint transition-transform"
-                      aria-hidden
-                    />
-                  ) : (
-                    <span className="h-3.5 w-3.5" aria-hidden />
-                  )}
-                </span>
+                <PoLineTitleMenu line={line} serialSplit={serialSplit} />
               ) : null}
             </div>
             <PoLineMetaGrid
+              unitsChrome={unitsChrome}
               qty={
                 readOnly ? (
                   <ScannedBadge expected={line.quantity_expected} />
@@ -348,17 +293,46 @@ export function PoLineRow({
                 )
               }
               condition={
-                <ConditionGradeChip
-                  grade={
-                    isActive && activeConditionOverride
-                      ? activeConditionOverride
-                      : line.condition_grade
-                  }
-                  dense
-                />
+                unitsChrome ? (
+                  onEditConditionInDock && !readOnly ? (
+                    <HoverTooltip label="Edit condition in dock" asChild>
+                      <button
+                        type="button"
+                        aria-label="Edit condition in dock"
+                        className={cn(
+                          'ds-raw-button flex h-full min-w-0 items-center',
+                          focusRing('control', 'neutral'),
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isActive) dispatchSelectLine(line);
+                          onEditConditionInDock(line);
+                        }}
+                      >
+                        <ConditionGradeChip
+                          grade={
+                            isActive && activeConditionOverride
+                              ? activeConditionOverride
+                              : line.condition_grade
+                          }
+                          dense
+                        />
+                      </button>
+                    </HoverTooltip>
+                  ) : (
+                    <ConditionGradeChip
+                      grade={
+                        isActive && activeConditionOverride
+                          ? activeConditionOverride
+                          : line.condition_grade
+                      }
+                      dense
+                    />
+                  )
+                ) : undefined
               }
               serial={
-                serialsLoading ? (
+                !unitsChrome ? undefined : serialsLoading ? (
                   <SerialChipSkeleton width="w-fit max-w-full" dense />
                 ) : !readOnly &&
                   onSerialAbsentChange &&
@@ -370,22 +344,28 @@ export function PoLineRow({
                     reason={line.serial_absent_reason ?? null}
                     onChange={(next) => onSerialAbsentChange(line.id, next)}
                   />
-                ) : serialNumbers.length > 0 || canOpenUnits ? (
-                  onViewAllUnits && !readOnly ? (
-                    <HoverTooltip label="Edit units" asChild>
-                      {/* ds-raw-button: meta-row serial preview → open Units display */}
+                ) : serialNumbers.length > 0 || canOpenUnits || canEditSerialInDock ? (
+                  (canEditSerialInDock || onViewAllUnits) && !readOnly ? (
+                    <HoverTooltip
+                      label={onEditSerialInDock ? 'Edit serial in dock' : 'Edit units'}
+                      asChild
+                    >
+                      {/* ds-raw-button: meta-row serial preview → dock step or Units */}
                       <button
                         type="button"
-                        aria-label="Edit units"
+                        aria-label={
+                          onEditSerialInDock ? 'Edit serial in dock' : 'Edit units'
+                        }
                         className={cn(
-                          'flex h-full min-w-0 w-full items-center gap-0.5 overflow-hidden px-2 py-1 text-left transition-colors',
+                          'ds-raw-button flex h-full min-w-0 w-full items-center gap-0.5 overflow-hidden px-2 py-1 text-left transition-colors',
                           cornerClass('flush'),
                           'text-text-muted hover:bg-surface-hover hover:text-text-default',
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!isActive) dispatchSelectLine(line);
-                          onViewAllUnits(line);
+                          if (onEditSerialInDock) onEditSerialInDock(line);
+                          else onViewAllUnits?.(line);
                         }}
                       >
                         <Barcode
@@ -425,51 +405,20 @@ export function PoLineRow({
           </div>
         </div>
       </div>
-      {/* Condition/serial body under every editable SKU (interleaved). The
-          active line may collapse its body via the title chevron; inactive
-          lines stay expanded so qty×unit slots sit under their own header. */}
-      {!readOnly &&
-      ((activeRowSlot && !(isActive && activeCollapsed)) || descShown) ? (
+      {/* Condition/serial body under every editable SKU (interleaved). Bodies
+          stay expanded — capture lives in the bottom dock, so there is no
+          title-band collapse chevron. Arrival (`unitsChrome={false}`) never
+          mounts unit editors. */}
+      {unitsChrome && !readOnly && activeRowSlot ? (
         <motion.div
           initial={false}
           layout={animateLayout ? 'position' : false}
-          animate={
-            isActive && activeCollapsed
-              ? rowBodyCollapse.exit
-              : rowBodyCollapse.animate
-          }
+          animate={rowBodyCollapse.animate}
           transition={rowBodyTransition}
           className="min-w-0 overflow-hidden border-t border-border-hairline bg-surface-card"
-          aria-hidden={isActive && activeCollapsed}
         >
           <div className="min-w-0 bg-surface-card px-0 py-0">
-            {descShown ? (
-              <div className="flex items-center gap-2">
-                <TextField
-                  ref={desc.inputRef}
-                  label="Item description"
-                  value={desc.draft}
-                  onChange={desc.setDraft}
-                  tone="neutral"
-                  className="min-w-0 flex-1"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') desc.save(line.id);
-                  }}
-                />
-                <HoverTooltip label="Save item description" asChild>
-                  <IconButton
-                    ariaLabel="Save item description"
-                    onClick={() => desc.save(line.id)}
-                    disabled={desc.savingLineId === line.id}
-                    className={cn(
-                      'inline-flex h-11 w-11 shrink-0 items-center justify-center bg-emerald-600 text-white ring-1 ring-inset ring-emerald-700 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40',
-                      cornerClass('flush'),
-                    )}
-                    icon={<Check className="h-4 w-4" aria-hidden />}
-                  />
-                </HoverTooltip>
-              </div>
-            ) : typeof activeRowSlot === 'function'
+            {typeof activeRowSlot === 'function'
               ? activeRowSlot({
                   line,
                   serials: line.serials ?? [],

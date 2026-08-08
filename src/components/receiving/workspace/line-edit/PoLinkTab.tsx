@@ -105,8 +105,8 @@ export function PoLinkTab({
       const ok = await requestConfirm({
         title: 'Merge purchase order?',
         description: existingLabel
-          ? `This carton already has a store/marketplace identity${existingLabel ? ` (${existingLabel})` : ''}. Merge Zoho PO ${poLabel} alongside it?`
-          : `Merge Zoho PO ${poLabel} onto this carton? The marketplace identity stays; the PO is added for accounting.`,
+          ? `This carton already has a store/marketplace identity${existingLabel ? ` (${existingLabel})` : ''}. Merge purchase order ${poLabel} alongside it?`
+          : `Merge purchase order ${poLabel} onto this carton? The marketplace identity stays; the PO is added for accounting.`,
         confirmLabel: 'Merge',
         tone: 'primary',
       });
@@ -147,7 +147,7 @@ export function PoLinkTab({
           toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
           return;
         }
-        toast.success(body.merged ? `Merged into PO ${poLabel}` : `Linked PO ${poLabel}`);
+        toast.success(body.merged ? `Merged into purchase order ${poLabel}` : `Linked purchase order ${poLabel}`);
         // eBay stays the badge; the row now also carries the Zoho PO.
         dispatchLineUpdated({
           id: row.id,
@@ -200,15 +200,15 @@ export function PoLinkTab({
       toast.success(
         pairedOntoBusyShell
           ? photosMoved > 0
-            ? `Paired onto carton #${winnerId} · PO ${poLabel} · ${photosMoved} photo${photosMoved === 1 ? '' : 's'} kept`
-            : `Paired onto carton #${winnerId} · PO ${poLabel}`
+            ? `Paired onto carton #${winnerId} · purchase order ${poLabel} · ${photosMoved} photo${photosMoved === 1 ? '' : 's'} kept`
+            : `Paired onto carton #${winnerId} · purchase order ${poLabel}`
           : existingLabel
             ? linesImported > 0
-              ? `Replaced with PO ${poLabel} · ${linesImported} line${linesImported === 1 ? '' : 's'}`
-              : `Replaced with PO ${poLabel}`
+              ? `Replaced with purchase order ${poLabel} · ${linesImported} line${linesImported === 1 ? '' : 's'}`
+              : `Replaced with purchase order ${poLabel}`
             : linesImported > 0
-              ? `Linked PO ${poLabel} · ${linesImported} line${linesImported === 1 ? '' : 's'}`
-              : `Linked PO ${poLabel}`,
+              ? `Linked purchase order ${poLabel} · ${linesImported} line${linesImported === 1 ? '' : 's'}`
+              : `Linked purchase order ${poLabel}`,
       );
 
       if (pairedOntoBusyShell && winnerId != null) {
@@ -247,7 +247,7 @@ export function PoLinkTab({
             'border border-blue-200 bg-blue-50 inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700',
           )}
         >
-          {`${(row.inbound_source_type || 'eBay')} order · pick its Zoho PO to merge`}
+          {`${(row.inbound_source_type || 'eBay')} order · pick its purchase order to merge`}
         </p>
       ) : null}
 
@@ -255,7 +255,7 @@ export function PoLinkTab({
       <SearchBar
         value={query}
         onChange={setQuery}
-        placeholder="Search PO # / reference / vendor…"
+        placeholder="Search purchase order # / reference / vendor…"
         isSearching={isFetching}
         variant="blue"
         size="compact"

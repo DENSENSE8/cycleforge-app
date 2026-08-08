@@ -111,8 +111,10 @@ interface CaptureStepDef {
   /** The aspect SET this step is evidenced by — `item_photos`. */
   aspectSet?: readonly PhotoAspect[];
   /**
-   * Step repeats per unit on a multi-qty line, so the row carries `n of N`.
-   * The loop itself is Phase 3; Phase 2 only reports progress.
+   * Declared for multi-qty lines so the row can carry `n of N` progress.
+   * Phase 2 (main Unbox dock): fill every expected serial (or waive), then
+   * **one** line-level condition + item-photos — not Serial→Condition→Photos×N.
+   * A true per-unit trio loop remains Phase 3.
    */
   perUnit?: boolean;
 }

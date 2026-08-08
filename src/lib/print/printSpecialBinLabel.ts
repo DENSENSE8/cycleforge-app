@@ -170,18 +170,3 @@ export function returnsBinPayloadToFace(payload: {
   });
 }
 
-export function printReturnsBinLabel(payload: {
-  barcode?: string | null;
-  room?: string | null;
-  notes?: string | null;
-  badge?: string | null;
-} = {}): void {
-  const face = returnsBinPayloadToFace(payload);
-  printSpecialBinLabel({
-    barcode: face.matrix.value,
-    topLeft: face.topLeft,
-    badge: face.topRight,
-    notes: face.center,
-    room: face.bottomLeft,
-  });
-}

@@ -14,10 +14,15 @@
  *
  * `?task=` and `?watch=1` share the detail-priority right rail — opening one
  * clears the other so only one occupant seats.
+ *
+ * Paint-pending: compound `{ taskId, watchOpen }` via `useOptimisticUrlParams`
+ * so the mutual-exclusion swap paints in the click commit.
  */
 
-import { useCallback } from 'react';
+import { startTransition, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParams } from '@/hooks/useOptimisticUrlParam';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { buildRouteUrl } from '@/lib/routing/route-params';
 import { routeParamsFor } from '@/lib/routing/registry';
 import {
@@ -30,6 +35,12 @@ import {
   type MyDayDueHorizon,
   type MyDayLaneFilter,
 } from '@/lib/my-day/my-day-tasks';
+
+type DetailSnap = { taskId: string | null; watchOpen: boolean };
+
+function detailEquals(a: DetailSnap, b: DetailSnap): boolean {
+  return a.taskId === b.taskId && a.watchOpen === b.watchOpen;
+}
 
 export interface MyDayViewState {
   lane: MyDayLaneFilter;
@@ -55,11 +66,59 @@ export function useMyDayView(): MyDayViewState {
   const searchParams = useSearchParams();
 
   const lane = parseMyDayLane(searchParams.get('scope'));
-  const taskId = searchParams.get('task');
+  const urlTaskId = searchParams.get('task');
   const query = searchParams.get('q') ?? '';
   const horizon = parseMyDayDueHorizon(searchParams.get('filter'));
   const watchRaw = searchParams.get('watch');
-  const watchOpen = watchRaw === '1' || watchRaw === 'true';
+  const urlWatchOpen = watchRaw === '1' || watchRaw === 'true';
+
+  const urlDetail = useMemo<DetailSnap>(
+    () => ({ taskId: urlTaskId, watchOpen: urlWatchOpen }),
+    [urlTaskId, urlWatchOpen],
+  );
+
+  const replaceDetail = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = readLiveSearchParams(searchParams.toString());
+      mutate(params);
+      const spec = routeParamsFor('/')!;
+      router.replace(
+        buildRouteUrl(spec, {
+          filter: horizon,
+          scope: lane === 'all' ? null : lane,
+          task: params.get('task'),
+          q: query ? query : null,
+          watch: params.get('watch'),
+          staff: searchParams.get('staff') ?? searchParams.get('staffId'),
+          [GRID_COLUMN_SORT_PARAM]: searchParams.get(GRID_COLUMN_SORT_PARAM),
+          [GRID_COLUMN_DIR_PARAM]: searchParams.get(GRID_COLUMN_DIR_PARAM),
+        }),
+        { scroll: false },
+      );
+    },
+    [router, searchParams, lane, query, horizon],
+  );
+
+  const writeDetail = useCallback((params: URLSearchParams, next: DetailSnap) => {
+    if (next.taskId) params.set('task', next.taskId);
+    else params.delete('task');
+    if (next.watchOpen) params.set('watch', '1');
+    else params.delete('watch');
+  }, []);
+
+  const {
+    value: detail,
+    setValue: setDetail,
+    paint: paintDetail,
+  } = useOptimisticUrlParams<DetailSnap>({
+    urlValues: urlDetail,
+    equals: detailEquals,
+    replace: replaceDetail,
+    write: writeDetail,
+  });
+
+  const taskId = detail.taskId;
+  const watchOpen = detail.watchOpen;
 
   const push = useCallback(
     (next: {
@@ -69,7 +128,6 @@ export function useMyDayView(): MyDayViewState {
       filter?: MyDayDueHorizon | null;
       watch?: boolean | null;
     }) => {
-      const spec = routeParamsFor('/')!;
       const nextLane = next.scope === undefined ? lane : next.scope;
       const nextQuery = next.q === undefined ? query : next.q;
       const nextHorizon = next.filter === undefined ? horizon : next.filter;
@@ -81,25 +139,47 @@ export function useMyDayView(): MyDayViewState {
         nextWatch = false;
       }
 
-      router.replace(
-        buildRouteUrl(spec, {
-          filter: nextHorizon,
-          // `today` is the default mode and `all` is the default lane — both
-          // drop out of the URL rather than being restated on every write.
-          scope: nextLane === 'all' ? null : nextLane,
-          task: nextTask,
-          // Empty search drops out too, so a cleared field leaves a clean URL
-          // (and `hasActiveFilters` on a saved view stops counting `q=`).
-          q: nextQuery ? nextQuery : null,
-          watch: nextWatch ? '1' : null,
-          staff: searchParams.get('staff') ?? searchParams.get('staffId'),
-          [GRID_COLUMN_SORT_PARAM]: searchParams.get(GRID_COLUMN_SORT_PARAM),
-          [GRID_COLUMN_DIR_PARAM]: searchParams.get(GRID_COLUMN_DIR_PARAM),
-        }),
-        { scroll: false },
-      );
+      const snap: DetailSnap = { taskId: nextTask, watchOpen: nextWatch };
+      const onlyDetail =
+        next.scope === undefined &&
+        next.q === undefined &&
+        next.filter === undefined;
+
+      if (onlyDetail) {
+        setDetail(snap);
+        return;
+      }
+
+      // Multi-field construct: paint detail, then one replace for the full URL.
+      paintDetail(snap);
+      const spec = routeParamsFor('/')!;
+      startTransition(() => {
+        router.replace(
+          buildRouteUrl(spec, {
+            filter: nextHorizon,
+            scope: nextLane === 'all' ? null : nextLane,
+            task: nextTask,
+            q: nextQuery ? nextQuery : null,
+            watch: nextWatch ? '1' : null,
+            staff: searchParams.get('staff') ?? searchParams.get('staffId'),
+            [GRID_COLUMN_SORT_PARAM]: searchParams.get(GRID_COLUMN_SORT_PARAM),
+            [GRID_COLUMN_DIR_PARAM]: searchParams.get(GRID_COLUMN_DIR_PARAM),
+          }),
+          { scroll: false },
+        );
+      });
     },
-    [router, searchParams, lane, taskId, query, horizon, watchOpen],
+    [
+      router,
+      searchParams,
+      lane,
+      taskId,
+      query,
+      horizon,
+      watchOpen,
+      setDetail,
+      paintDetail,
+    ],
   );
 
   const setLane = useCallback(

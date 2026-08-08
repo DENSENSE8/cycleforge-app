@@ -5,9 +5,13 @@ import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
 import { DashboardManagementPanel } from '@/components/sidebar/DashboardManagementPanel';
 import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
 import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
+import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
-import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
+import {
+  getDashboardDomainFromSearch,
+  isDashboardRepairsMode,
+} from '@/lib/dashboard/dashboard-domains';
 
 /**
  * The Dashboard route's context panel — the stable sidebar picker/scope
@@ -16,7 +20,9 @@ import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains'
  * Three domains (`getDashboardDomainFromSearch`), each with a picker:
  *   • outbound — the order feed (UnshippedSidebar / management panel)
  *   • inbound  — recents (`DashboardRecentsPanel`)
- *   • sales    — station hand-offs (`WalkInHistorySidebar`)
+ *   • sales    — station hand-offs (`WalkInHistorySidebar`); Repairs L2
+ *     (`?mode=repairs`) uses {@link RepairSidebarPanel} — never the Sales
+ *     transaction-history rail (same favorites/intake rail as `/repair`).
  *
  * Inbound used to `return null` here, so `/dashboard?mode=inbound` reserved a
  * 360px column and painted nothing in it; that void is the bug Phase 1.1 of
@@ -41,6 +47,11 @@ export function DashboardOrdersContextPanel() {
   }
 
   if (domain === 'sales') {
+    // Repairs history desk ≠ Sales transaction board — don't paint
+    // WalkInHistorySidebar ("New sale" / "Local pickup") over RepairTable.
+    if (isDashboardRepairsMode(searchParams)) {
+      return <RepairSidebarPanel embedded hideSectionHeader />;
+    }
     return <WalkInHistorySidebar />;
   }
 

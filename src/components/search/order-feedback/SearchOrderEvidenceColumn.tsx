@@ -2,8 +2,11 @@
 
 /**
  * SearchOrderEvidenceColumn — flush right stack (no padded wrappers):
- * outbound stamps when present · warranty summary · station activity when present.
+ * locked packout milestones · warranty summary · station activity when present.
  * Photos live in the disposition bar band (carton twin), not here.
+ *
+ * Milestone rows always mount (Tested → Packed → Scanned Out) — same spatial
+ * predictability law as `OrderPipelineSection` / `ReceivingCartonPipeline`.
  */
 
 import { OrderWarrantySummary } from '@/components/order-record/OrderWarrantySummary';
@@ -13,41 +16,38 @@ import {
   deriveShippingDisplayMeta,
   serialNumberRowsFromShipped,
 } from '@/components/shipped/details-panel/shipping-information/helpers';
+import { orderStampOrNull } from '@/components/shipped/details-panel/shipped-details-logic';
 import type { TimelineItem } from '@/lib/timeline';
 import type { ShippedOrder } from '@/types/orders';
 
 function OutboundMilestones({ order }: { order: ShippedOrder }) {
   const serials = serialNumberRowsFromShipped(order);
   const meta = deriveShippingDisplayMeta(order, serials);
-  const showScanned = meta.isScannedOut;
-  const showPacked = Boolean(meta.packedAtSource);
-  if (!showScanned && !showPacked) return null;
+  const scannedOutAt = orderStampOrNull(order.ship_confirmed_at);
 
   return (
     <div
-      className="divide-y divide-border-hairline border-b border-border-hairline"
+      className="divide-y divide-border-hairline border-b border-border-hairline px-3"
       data-testid="search-order-outbound-milestones"
     >
-      {showScanned ? (
-        <div className="px-3">
-          <PipelineStageRow
-            label="Scanned out"
-            at={order.ship_confirmed_at}
-            staffName={meta.scannedOutByDisplay ?? ''}
-            emptyFallback="Not scanned out"
-          />
-        </div>
-      ) : null}
-      {showPacked ? (
-        <div className="px-3">
-          <PipelineStageRow
-            label="Packed"
-            at={meta.packedAtSource}
-            staffName={meta.packerNameDisplay}
-            emptyFallback="Not packed"
-          />
-        </div>
-      ) : null}
+      <PipelineStageRow
+        label="Tested"
+        at={meta.testedAtSource}
+        staffName={meta.techNameDisplay}
+        emptyFallback="Not tested"
+      />
+      <PipelineStageRow
+        label="Packed"
+        at={meta.packedAtSource}
+        staffName={meta.packerNameDisplay}
+        emptyFallback="Pending pack"
+      />
+      <PipelineStageRow
+        label="Scanned Out"
+        at={scannedOutAt}
+        staffName={meta.scannedOutByDisplay ?? ''}
+        emptyFallback="Pending scan-out"
+      />
     </div>
   );
 }

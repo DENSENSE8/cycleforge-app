@@ -100,4 +100,26 @@ test.describe('⌘K palette', () => {
     // dialog labelled "Quick access"; nothing but the palette may appear.
     await expect(page.locator('[role="dialog"][aria-label="Quick access"]')).toHaveCount(0);
   });
+
+  test('identifier-shaped query switches to find mode (no spine page titles)', async ({
+    page,
+  }) => {
+    await boot(page);
+    await page.keyboard.press('Meta+k');
+    const root = page.locator(CMDK_ROOT).first();
+    await expect(root).toBeVisible();
+
+    // Empty / word mode shows spine bands (e.g. Receiving). Identifier mode
+    // must hide those and lead with Find triage instead.
+    const input = root.locator('[cmdk-input]');
+    await input.fill('1Z999AA10123456784');
+    await expect(root.getByText('Find', { exact: true }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      root.getByText('See all results for', { exact: false }).first(),
+    ).toBeVisible();
+    // Spine section headings should not compete with identifier triage.
+    await expect(root.getByText('Child pages', { exact: true })).toHaveCount(0);
+  });
 });

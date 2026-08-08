@@ -45,8 +45,8 @@ function TeachEmpty({
   body: string;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-canvas p-8">
-      <div className="max-w-sm rounded-xl border border-dashed border-border-soft bg-surface-canvas px-6 py-10 text-center">
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card p-8">
+      <div className="max-w-sm rounded-xl border border-dashed border-border-soft bg-surface-card px-6 py-10 text-center">
         <Search className="mx-auto mb-3 h-8 w-8 text-text-faint" />
         <p className="text-role-caption font-semibold text-text-default">{title}</p>
         <p className="mt-1 text-role-caption text-text-muted">{body}</p>
@@ -57,7 +57,7 @@ function TeachEmpty({
 
 function LoadingShell() {
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-canvas">
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card">
       <span className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading…
       </span>
@@ -96,7 +96,7 @@ function EntityPreviewCard({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-surface-canvas p-8">
+    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-surface-card p-8">
       <div className="w-full max-w-md rounded-xl border border-border-soft bg-surface-card p-6 shadow-sm">
         <div className="flex items-start gap-3">
           <span
@@ -309,7 +309,7 @@ export function SearchDetailWorkspace({
         break;
       default:
         body = (
-          <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-canvas p-8">
+          <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card p-8">
             <div className="max-w-sm rounded-xl border border-dashed border-border-soft px-6 py-10 text-center">
               <Package className="mx-auto mb-3 h-8 w-8 text-text-faint" />
               <p className="text-role-caption font-semibold text-text-muted">
@@ -324,7 +324,7 @@ export function SearchDetailWorkspace({
   const key = sel ? `${sel.entityType}:${sel.id}` : hasQuery ? 'pick' : 'empty';
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={key}

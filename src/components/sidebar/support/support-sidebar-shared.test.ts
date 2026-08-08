@@ -4,6 +4,7 @@ import {
   dashboardOrderHref,
   DEFAULT_TICKET_STATUS,
   parseSupportMode,
+  parseSupportModeWire,
   parseTicketStatus,
   supportCreateTicketHref,
   supportOrdersHref,
@@ -23,6 +24,14 @@ describe('parseSupportMode', () => {
     assert.equal(parseSupportMode('warranty'), 'warranty');
     assert.equal(parseSupportMode('issues'), 'issues');
     assert.equal(parseSupportMode('orders'), 'orders');
+  });
+});
+
+describe('parseSupportModeWire', () => {
+  it('keeps tickets (default deep-link) and rejects garbage', () => {
+    assert.equal(parseSupportModeWire('tickets'), 'tickets');
+    assert.equal(parseSupportModeWire('voicemail'), 'voicemail');
+    assert.equal(parseSupportModeWire('nope'), null);
   });
 });
 

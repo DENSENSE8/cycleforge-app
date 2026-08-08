@@ -26,7 +26,12 @@ import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoS
 import { UserIssueResolvedToaster } from "../components/providers/UserIssueResolvedToaster";
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { isKioskHost } from "@/lib/tenancy/kiosk-host";
+import {
+  ACTIVATION_REDIRECT_HREF,
+  isActivationBlocked,
+} from "@/lib/onboarding/activation-gate";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
@@ -51,7 +56,17 @@ export default async function RootLayout({
     // device is authed via withKioskAuth, not a cookie. Resolved server-side
     // from the real Host header so client providers agree with SSR on first
     // paint (no window-based host sniff, no hydration mismatch).
-    const kioskHost = isKioskHost((await headers()).get('host'));
+    const h = await headers();
+    const kioskHost = isKioskHost(h.get('host'));
+
+    // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
+    // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
+    if (initialUser && !kioskHost) {
+      const path = h.get('x-pathname') || '/';
+      if (await isActivationBlocked(initialUser.organizationId, path)) {
+        redirect(ACTIVATION_REDIRECT_HREF);
+      }
+    }
 
     // suppressHydrationWarning on <html>: THEME_BOOT_SCRIPT (in <head> below)
     // stamps data-theme / data-color-scheme on <html> before hydration to avoid a

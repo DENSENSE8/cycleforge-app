@@ -43,7 +43,7 @@ describe('Shipping Displays push — Phase F', () => {
   const host = read('src/components/tech/ActiveOrderWorkspace.tsx');
   const tabs = read('src/components/tech/shipping/ShippingScanWorkspace.tsx');
 
-  it('host mounts Displays for Condition · Timeline; centre keeps Ship · Units only', () => {
+  it('host mounts Displays for Condition · Timeline · Listings; centre keeps Ship · Units only', () => {
     assert.match(host, /StationScanPaneHost/);
     assert.match(host, /StationDisplaysPushStack/);
     assert.doesNotMatch(host, /navMode/, 'navMode was deleted — one Root-to-Leaf grammar');
@@ -51,6 +51,9 @@ describe('Shipping Displays push — Phase F', () => {
     assert.match(host, /StationDisplaysEdgeToggle variant=["']pane-open["'] onClick=\{openDisplaysIndex\}/);
     assert.match(host, /id:\s*['"]condition['"]/);
     assert.match(host, /id:\s*['"]timeline['"]/);
+    assert.match(host, /id:\s*['"]listings['"]/);
+    assert.match(host, /ListingLinksTab/);
+    assert.match(host, /indexRows=\{displayIndexRows\}/);
     // CTA always when Displays closed — not gated on timeline data.
     assert.match(
       host,
@@ -65,6 +68,7 @@ describe('Shipping Displays push — Phase F', () => {
     assert.ok(!tabs.includes("'timeline'"), 'timeline tab must leave ShippingScanWorkspace');
     assert.ok(!tabs.includes('"timeline"'), 'timeline tab must leave ShippingScanWorkspace');
     assert.ok(!tabs.includes("'condition'"), 'condition clarifies on Displays, not centre strip');
+    assert.ok(!tabs.includes("'listings'"), 'listings clarifies on Displays, not centre strip');
   });
 
   it('Ship centre is flush — no WorkspaceCard / Condition editor islands', () => {

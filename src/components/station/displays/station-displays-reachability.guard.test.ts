@@ -73,6 +73,11 @@ const STATIONS: { name: string; file: string; union: string }[] = [
     file: 'src/features/review/packer/PackerReviewMode.tsx',
     union: 'src/features/review/packer/PackerReviewMode.tsx',
   },
+  {
+    name: 'Support orders',
+    file: 'src/components/support/orders/SupportOrdersFocusHost.tsx',
+    union: 'src/components/support/orders/SupportOrdersFocusHost.tsx',
+  },
 ];
 
 /** Count the string literals in the station's `…DisplayTab` / `…SideTab` union. */

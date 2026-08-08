@@ -53,7 +53,7 @@ export interface WorkflowStageMeta {
  */
 export const WORKFLOW_STAGES: Record<string, WorkflowStageMeta> = {
   EXPECTED: {
-    status: 'EXPECTED', order: 0, phase: 'INBOUND', label: 'Incoming',
+    status: 'EXPECTED', order: 0, phase: 'INBOUND', label: 'Inbound',
     dot: 'bg-surface-strong', badge: 'bg-surface-sunken text-text-soft',
     description: 'On a PO, vendor issued it — not yet scanned at the dock.',
   },

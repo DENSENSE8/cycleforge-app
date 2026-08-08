@@ -4,6 +4,7 @@ import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { moveSerialToLine } from '@/lib/receiving/serial-move';
+import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 
 /**
  * POST /api/receiving/serial-move
@@ -65,6 +66,13 @@ export const POST = withAuth(
       }
 
       const moved = result;
+      // Both lines' denorm chips — from loses the serial, to gains it.
+      await refreshLineSerialProjectionSafe(
+        ctx.organizationId,
+        [moved.from_receiving_line_id, moved.to_receiving_line_id].filter(
+          (n): n is number => typeof n === 'number' && n > 0,
+        ),
+      );
       after(async () => {
         try {
           await invalidateReceivingViews(ctx.organizationId);

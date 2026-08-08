@@ -57,7 +57,7 @@ import {
  * Shared face chrome — interactive Button and static chip stay pixel-matched.
  * Mute tone is owned by {@link HEADER_ICON_BTN_CLASS} (`text-text-muted`) —
  * same DS token as Recents / Pins / WO. Never re-declare `text-text-default`
- * here; that forked the page face from the rest of the left cluster.
+ * here; that forked the page face from the rest of the nav cluster.
  */
 const PAGE_FACE_CLASS = cn(
   HEADER_ICON_BTN_CLASS,

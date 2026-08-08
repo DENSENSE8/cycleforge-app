@@ -22,20 +22,33 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
+import { warmSpineChunk } from '@/components/sidebar/preload-spine';
 
 // The sidebar is its own chunk: desktop mounts it immediately (the whole shell
 // is client-gated behind `mounted`, so there is no SSR paint to preserve),
 // while mobile routes never download it unless the drawer opens. The fixed-
 // width placeholder keeps the desktop frame from shifting while the chunk
 // lands.
-const DashboardSidebar = dynamic(() => import('@/components/DashboardSidebar'), {
-  ssr: false,
-  // The spine owns no width — its host (the desktop push column or the mobile
-  // drawer) does — so the placeholder just fills that host while the chunk
-  // lands. The frame cannot jump, because the host's width never depended on
-  // the chunk.
-  loading: () => <div className="h-full w-full" aria-hidden />,
-});
+//
+// Named `.then` (same pattern as `SidebarNavColumn`) so knip sees the export
+// as live. Warm still goes through `warmSpineChunk` (bundler dedupes the chunk).
+const DashboardSidebar = dynamic(
+  () => import('@/components/DashboardSidebar').then((m) => m.DashboardSidebar),
+  {
+    ssr: false,
+    // The spine owns no width — its host (the desktop push column or the mobile
+    // drawer) does — so the placeholder just fills that host while the chunk
+    // lands. The frame cannot jump, because the host's width never depended on
+    // the chunk.
+    //
+    // This placeholder is INVISIBLE on purpose, and that is only defensible
+    // because the chunk is warmed before the operator can see it (measured: a
+    // cold first open showed 306ms of fully-formed empty column; warm shows
+    // rows before the width even moves). See `preload-spine.ts` — the fix is to
+    // fetch earlier, not to draw fake rows over the wait.
+    loading: () => <div className="h-full w-full" aria-hidden />,
+  },
+);
 const SidebarNavColumn = dynamic(
   () => import('@/components/sidebar/SidebarNavColumn').then((m) => m.SidebarNavColumn),
   { ssr: false },
@@ -199,6 +212,34 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  /**
+   * Warm the spine chunk during the first idle window — the backstop tier of
+   * the prefetch (`preload-spine.ts`). Hover/focus on the toggle covers the
+   * pointer path; this covers the operator who taps, or Tabs straight to it,
+   * or clicks faster than the fetch.
+   *
+   * It FETCHES, it does not mount: the column still starts collapsed and the
+   * nav graph still does not render, so `SidebarNavColumn`'s bundle-altitude
+   * rule holds. `requestIdleCallback` (with a fallback timer for Safari) keeps
+   * it strictly behind paint and hydration.
+   *
+   * Desktop only, chromeful only — a mobile route uses the drawer and a
+   * kiosk/public path has no spine to open, so warming there is pure waste.
+   */
+  useEffect(() => {
+    if (!mounted || isMobile || onMobileRoute || chromeless) return;
+    const ric = (window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    }).requestIdleCallback;
+    if (ric) {
+      const id = ric(() => warmSpineChunk(), { timeout: 2_000 });
+      return () => window.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(warmSpineChunk, 1_000);
+    return () => window.clearTimeout(t);
+  }, [mounted, isMobile, onMobileRoute, chromeless]);
 
   // Publish the content row's width to the right-rail frame store. `useEffect`
   // (not layout) is fine: a resident desktop inspector stays in-flow before

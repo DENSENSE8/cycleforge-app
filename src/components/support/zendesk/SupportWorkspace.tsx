@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/design-system/primitives';
 import { Voicemail } from '@/components/Icons';
@@ -14,6 +14,7 @@ import { VoicemailDetail } from '@/components/support/voice/VoicemailDetail';
 import { CallLogView } from '@/components/support/voice/CallLogView';
 import { IssuesWorkspace } from '@/components/support/issues/IssuesWorkspace';
 import { SupportOrdersWorkspace } from '@/components/support/orders/SupportOrdersWorkspace';
+import { useSupportVmParam } from '@/hooks/useSupportVmParam';
 import { SupportTicketsWorkspace } from './SupportTicketsWorkspace';
 
 const WarrantyWorkspace = dynamic(
@@ -43,10 +44,9 @@ const WarrantyWorkspace = dynamic(
  */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const mode = parseSupportMode(searchParams.get('mode'));
-  const vmId = Number(searchParams.get('vm')) || null;
+  const { vmId, setVm } = useSupportVmParam();
 
   const canTickets = !isLoaded || has('integrations.zendesk');
   const canOrders = !isLoaded || has('orders.view');
@@ -67,13 +67,6 @@ export function SupportWorkspace() {
       </div>
     );
   }
-
-  const clearParam = (key: 'vm') => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.delete(key);
-    const qs = sp.toString();
-    router.push(qs ? `/support?${qs}` : '/support');
-  };
 
   // ── Orders — Dashboard To Ship board + Station order focus ─────────────────
   if (mode === 'orders') {
@@ -163,7 +156,7 @@ export function SupportWorkspace() {
                 exit={paneMotion.exit}
                 transition={paneTransition}
               >
-                <VoicemailDetail voicemailId={vmId} onBack={() => clearParam('vm')} />
+                <VoicemailDetail voicemailId={vmId} onBack={() => setVm(null)} />
               </motion.div>
             ) : (
               <motion.div

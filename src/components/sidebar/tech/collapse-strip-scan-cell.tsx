@@ -19,6 +19,7 @@ import {
   type MouseEvent,
 } from 'react';
 import { Plus } from '@/components/Icons';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { CollapseStripScan } from '@/components/sidebar/context-panel-collapse-context';
 import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
@@ -30,7 +31,7 @@ import { cn } from '@/utils/_cn';
 const SCAN_CELL_ICON_CLASS = 'h-3.5 w-3.5';
 
 /** Open-rail scan band / StationContextBar top row — never a shorter pin twin. */
-const SCAN_CELL_HEIGHT_CLASS = 'h-10';
+const SCAN_CELL_HEIGHT_CLASS = PRIMARY_CHROME_ROW_FACE;
 
 export function CollapseStripScanCell({ scan }: { scan: CollapseStripScan }) {
   const inputRef = useRef<HTMLInputElement | null>(null);

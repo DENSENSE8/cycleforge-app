@@ -43,6 +43,8 @@
  */
 
 import { useMemo, useState } from 'react';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
@@ -92,6 +94,7 @@ export function MyDayWorkspace() {
   } = useMyDayView();
 
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  const taskInspectorOpen = useRightRailOccupantOpen('detail:my-day');
 
   const tasks = useMemo(() => myDayTasksFromFeed(data), [data]);
   const counts = useMemo(() => myDayLaneCounts(tasks), [tasks]);
@@ -157,11 +160,18 @@ export function MyDayWorkspace() {
           }
         />
         {/*
-          Band 3 — data-table triage: find LEFT (always-open TechRailSearchBar —
-          filter+paste, not icon-first expand), refine RIGHT (the due-horizon
-          chips narrow the rows below — `display/workbench-ops-queue.md` →
-          "Filters / refine stay in `right`; query ≠ display"). Search + refine
-          live here, off Band 1, per the five-row Sheets SoT.
+          Band 3 — find-only command row: dominant find LEFT (always-open
+          TechRailSearchBar — filter+paste, not icon-first expand), inspector
+          park far-right.
+
+          The due-horizon chips DO narrow the rows, so the 2026-08-08 find-only
+          rule would normally move them in-field. They stay in `right` as a
+          documented resident: they are a compound cluster carrying live counts
+          per horizon, not a single field-density glyph, and `trailingSuffix`
+          is a one-glyph slot (`display/workbench-ops-queue.md` → Find-only
+          Band 3: "Compound clusters that are not a single field-density glyph
+          stay in the right zone until they grow one"). Same standing as
+          `OutboundExactFilters` on Shipping / Pack / Labels.
         */}
         <WorkbenchTriageBand
           search={
@@ -170,7 +180,7 @@ export function MyDayWorkspace() {
               value={query}
               onChange={(v) => setQuery(v.trim())}
               placeholder="Filter tasks…"
-              className="w-40 shrink-0 lg:w-56"
+              className="min-w-0 flex-1"
             />
           }
           right={
@@ -182,6 +192,9 @@ export function MyDayWorkspace() {
                 onToggle={toggleHorizon}
               />
             ) : null
+          }
+          trailing={
+            <WorkbenchInspectorToggle open={taskInspectorOpen} testId="my-day-inspector-toggle" />
           }
           controlsSlotRef={setControlsEl}
         />

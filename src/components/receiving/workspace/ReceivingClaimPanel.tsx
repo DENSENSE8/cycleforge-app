@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 
+import { useOptionalDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
 import {
   claimSectionDomId,
   claimWizardStepsForMode,
@@ -27,6 +28,10 @@ import { cn } from '@/utils/_cn';
  * Ticket is editable fields only (no duplicate review preview). Backup note
  * sits on the sticky File footer (leading), not a scroll section. Dismiss via
  * header X / Displays →| (no Cancel).
+ *
+ * Displays chrome (`chrome="display"`): New·Link mounts in
+ * {@link StationDisplayLeafHeader} trailing via leaf chrome — not a body strip.
+ * Modal keeps the body {@link ClaimWizardNav} strip.
  */
 export function ReceivingClaimPanel({
   className,
@@ -39,6 +44,18 @@ export function ReceivingClaimPanel({
 }) {
   const c = useReceivingClaimController(props);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const leafChrome = useOptionalDisplaysLeafChrome();
+  const setLeafTrailing = leafChrome?.setLeafTrailing;
+
+  // Displays: park Claim New·Link on the sticky leaf header (essay layout).
+  // Depend on `c.mode` only — `handleModeChange` is recreated each render and
+  // would loop setLeafTrailing → parent setState → remount.
+  useEffect(() => {
+    if (chrome !== 'display' || !setLeafTrailing) return;
+    setLeafTrailing(<ClaimWizardNav c={c} placement="leaf-header" />);
+    return () => setLeafTrailing(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable setters + mode face
+  }, [chrome, setLeafTrailing, c.mode]);
 
   const mountedSteps = useMemo(
     () => claimMountedSteps(c),
@@ -92,7 +109,7 @@ export function ReceivingClaimPanel({
         onClose={c.onClose}
       />
 
-      <ClaimWizardNav c={c} />
+      {chrome === 'modal' ? <ClaimWizardNav c={c} placement="strip" /> : null}
 
       <div
         ref={scrollRef}

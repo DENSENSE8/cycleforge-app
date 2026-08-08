@@ -39,6 +39,17 @@ export const RECEIVING_PHOTO_STAGES = ['arrival_package', 'unbox_carton', 'unbox
 export type ReceivingPhotoStage = (typeof RECEIVING_PHOTO_STAGES)[number];
 
 /**
+ * Auto-push stage for a tracking scan on a given intake surface.
+ * Unbox → per-scan carton spam capture; Arrival/triage → guided door package.
+ * Never invent a third stage here — item capture is line-driven, not scan-bar.
+ */
+export function photoStageForScanIntakeSurface(
+  surface: 'unbox' | 'triage' | null | undefined,
+): Extract<ReceivingPhotoStage, 'unbox_carton' | 'arrival_package'> {
+  return surface === 'unbox' ? 'unbox_carton' : 'arrival_package';
+}
+
+/**
  * List-filter intent for receiving photo queries (`all` = no stage filter).
  * `carton` = every RECEIVING-entity photo regardless of sub-stage — see
  * {@link RECEIVING_PHOTO_LIST_INTENT_CARTON}.

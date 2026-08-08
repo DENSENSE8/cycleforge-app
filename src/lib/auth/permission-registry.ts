@@ -36,7 +36,7 @@ export const PERMISSION_CATEGORY_DEFS = [
   { id: 'packing',      label: 'Packing' },
   { id: 'tech',         label: 'Tech & Repair' },
   { id: 'shipping',     label: 'Shipping & Orders' },
-  { id: 'fba',          label: 'FBA' },
+  { id: 'fba',          label: 'Amazon Prep' },
   { id: 'inventory',    label: 'Inventory' },
   { id: 'sourcing',     label: 'Sourcing' },
   { id: 'ops',          label: 'Operations & Reports' },

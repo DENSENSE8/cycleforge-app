@@ -25,6 +25,7 @@ import {
   STATION_WORKBENCH_HEADER_COLUMN,
   STATION_WORKBENCH_IDENTITY_COLUMN,
 } from '@/components/station/workbench/workbench-layout';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   stationIdentityGapClass,
   stationIdentityPadClass,
@@ -78,7 +79,8 @@ function IdentityTabsHeader() {
             stationIdentityPanelClass,
             stationIdentityPadClass,
             STATION_WORKBENCH_COLUMN,
-            'flex min-h-10 items-center overflow-hidden',
+            'flex min-h-9 items-center overflow-hidden',
+            PRIMARY_CHROME_ROW_FACE,
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 px-0.5">
@@ -105,7 +107,8 @@ function IdentityTabsHeader() {
             stationUtilityPanelClass,
             stationIdentityPadClass,
             stationIdentityGapClass,
-            'flex min-h-10 shrink-0 items-center',
+            'flex min-h-9 items-center',
+            PRIMARY_CHROME_ROW_FACE,
           )}
         >
           <SkeletonBase width="56px" height="24px" className="rounded-full" />
@@ -241,7 +244,12 @@ export function StationWorkspaceSkeleton({
       {showIdentityTabs ? <IdentityTabsHeader /> : null}
 
       {showToolbar ? (
-        <div className="flex h-10 shrink-0 items-center border-b border-border-hairline bg-surface-card">
+        <div
+          className={cn(
+            'flex items-center border-b border-border-hairline bg-surface-card',
+            PRIMARY_CHROME_ROW_FACE,
+          )}
+        >
           <div className={cn(headerColumnClassName, 'flex items-center justify-between')}>
             <SkeletonBase width="120px" height="24px" className="rounded-full" />
             <div className="flex items-center gap-2">

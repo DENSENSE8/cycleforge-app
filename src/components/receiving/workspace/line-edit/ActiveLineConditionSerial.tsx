@@ -32,9 +32,10 @@ type SerialLookupView = Pick<
  * handlers. The `requestConfirm` guards on delete are gated by the
  * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
  *
- * Main Unbox paints condition · serial only on this card. Optional
+ * Main Unbox omits this card when the Action Dock owns capture (PO meta is the
+ * ledger). Testing / unmatched keep the interactive card. Optional
  * `itemPhotoSlot` remains for lanes that still want a labeled item-evidence
- * row (procedure dock / future per-unit photos); omit it and the row is absent.
+ * row; omit it and the row is absent.
  */
 export function ActiveLineConditionSerial({
   serials,
@@ -46,6 +47,7 @@ export function ActiveLineConditionSerial({
   editingSerial,
   serialLookup,
   onFileReturnClaim,
+  onOpenReturnHistory,
   onSubmitSerial,
   onDeleteSerialUnit,
   onReplaceSerialUnit,
@@ -130,11 +132,13 @@ export function ActiveLineConditionSerial({
   forceUnitRows?: boolean;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
+  /** RETURN match — open Displays Timeline for full serial genealogy. */
+  onOpenReturnHistory?: () => void;
   /** Programmatic focus target for the dock Add serial handoff. */
   serialInputRef?: RefObject<HTMLInputElement | null>;
   /**
-   * Optional item-evidence control. Main Unbox omits this (condition · serial
-   * only). When provided, renders the labeled Item photos row above the body.
+   * Optional item-evidence control. Main Unbox omits this (dock owns photos).
+   * When provided, renders the labeled Item photos row above the body.
    */
   itemPhotoSlot?: ReactNode;
   onSubmitSerial: (
@@ -175,6 +179,7 @@ export function ActiveLineConditionSerial({
         serial={serialLookup.serial}
         matchedOrder={serialLookup.matchedOrder}
         onFileClaim={onFileReturnClaim}
+        onOpenHistory={onOpenReturnHistory}
       />
     ) : undefined;
   const lookupBusy = serialLookup.state === "searching";

@@ -7,13 +7,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  UNBOX_DISPLAY_INDEX,
+  UNBOX_PHOTO_ACTION_ORDER,
   UNBOX_SIDE_TAB_ORDER,
   UNBOX_STRIP_TAB_ORDER,
   canonicalizeUnboxSideTab,
   isUnboxSideTabVisible,
+  parseUnboxDisplayNav,
   parseUnboxLinkageAction,
   parseUnboxPhotoAction,
+  parseUnboxPhotoActionWire,
   parseUnboxUnitsAction,
+  resolveUnboxDisplayNav,
   resolveUnboxSideTab,
   resolveUnboxTicketAction,
   type UnboxSideTabGates,
@@ -22,6 +27,7 @@ import {
 const MATCHED: UnboxSideTabGates = {
   hasClassifyTab: true,
   hasLinkageTab: true,
+  hasInventoryTab: true,
   hasListingsTab: true,
   hasUnits: true,
   hasPoNoteTab: true,
@@ -33,6 +39,7 @@ const MATCHED: UnboxSideTabGates = {
 const SPARSE: UnboxSideTabGates = {
   hasClassifyTab: true,
   hasLinkageTab: true,
+  hasInventoryTab: true,
   hasListingsTab: false,
   hasUnits: false,
   hasPoNoteTab: false,
@@ -51,16 +58,18 @@ test('a visible request is returned unchanged', () => {
   }
 });
 
-test('a request gated off falls back to Ticket (leftmost strip survivor)', () => {
-  assert.equal(resolveUnboxSideTab('units', SPARSE), 'ticket');
-  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'ticket');
-  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'ticket');
+test('a request gated off falls back to first visible strip leaf', () => {
+  // SPARSE: listings gated → Classify is the leftmost survivor.
+  assert.equal(resolveUnboxSideTab('units', SPARSE), 'classify');
+  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'classify');
+  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'classify');
 });
 
 test('ticket · photos · checklist · support survive every gate', () => {
   const nothing: UnboxSideTabGates = {
     hasClassifyTab: false,
     hasLinkageTab: false,
+    hasInventoryTab: false,
     hasListingsTab: false,
     hasUnits: false,
     hasPoNoteTab: false,
@@ -72,21 +81,22 @@ test('ticket · photos · checklist · support survive every gate', () => {
   assert.equal(isUnboxSideTabVisible('checklist', nothing), true);
   assert.equal(isUnboxSideTabVisible('support', nothing), true);
   assert.equal(resolveUnboxSideTab('checklist', nothing), 'checklist');
-  assert.equal(resolveUnboxSideTab('units', nothing), 'ticket');
+  assert.equal(resolveUnboxSideTab('units', nothing), 'photos');
 });
 
-test('checklist is ring-only — not on the strip order', () => {
-  assert.equal(UNBOX_STRIP_TAB_ORDER.includes('checklist'), false);
-  assert.equal(UNBOX_STRIP_TAB_ORDER[0], 'ticket');
+test('checklist is a Displays leaf — on the strip / index order', () => {
+  assert.equal(UNBOX_STRIP_TAB_ORDER.includes('checklist'), true);
+  assert.equal(UNBOX_STRIP_TAB_ORDER.at(-1), 'checklist');
   assert.equal(UNBOX_SIDE_TAB_ORDER.includes('checklist'), true);
 });
 
-test('strip order is Ticket · Photos · Linkage · Classify · … — no Claim cell', () => {
-  assert.deepEqual(UNBOX_STRIP_TAB_ORDER.slice(0, 4), [
-    'ticket',
-    'photos',
-    'linkage',
+test('strip order is Listings · Classify · Pairing · Inventory · Units · … — no Claim cell', () => {
+  assert.deepEqual(UNBOX_STRIP_TAB_ORDER.slice(0, 5), [
+    'listings',
     'classify',
+    'linkage',
+    'inventory',
+    'units',
   ]);
   assert.equal(
     UNBOX_SIDE_TAB_ORDER.includes('claim' as never),
@@ -103,6 +113,14 @@ test('linkage is gated on having a carton to pair', () => {
   );
 });
 
+test('inventory is gated on having a carton (same door as Linkage)', () => {
+  assert.equal(isUnboxSideTabVisible('inventory', MATCHED), true);
+  assert.equal(
+    isUnboxSideTabVisible('inventory', { ...MATCHED, hasInventoryTab: false }),
+    false,
+  );
+});
+
 test('legacy pairing / po-note / claim canonicalize', () => {
   assert.equal(canonicalizeUnboxSideTab('pairing'), 'linkage');
   assert.equal(canonicalizeUnboxSideTab('po-note'), 'linkage');
@@ -112,13 +130,26 @@ test('legacy pairing / po-note / claim canonicalize', () => {
 });
 
 test('photo / linkage / ticket / units nested action parsers', () => {
-  // absent / legacy browse = gallery default (no Browse tab)
-  assert.equal(parseUnboxPhotoAction(null), 'browse');
-  assert.equal(parseUnboxPhotoAction('browse'), 'browse');
+  // absent / legacy browse = Actions (in-column hover-strip selections)
+  assert.equal(parseUnboxPhotoAction(null), 'actions');
+  assert.equal(parseUnboxPhotoAction('browse'), 'actions');
+  assert.equal(parseUnboxPhotoAction('actions'), 'actions');
   assert.equal(parseUnboxPhotoAction('move'), 'move');
-  assert.equal(parseUnboxPhotoAction('bogus'), 'browse');
+  assert.equal(parseUnboxPhotoAction('send'), 'send');
+  assert.equal(parseUnboxPhotoAction('compare'), 'compare');
+  assert.equal(parseUnboxPhotoAction('bogus'), 'actions');
+  // Nested altitude: nest order + absent URL lands bench verb.
+  assert.deepEqual(
+    [...UNBOX_PHOTO_ACTION_ORDER],
+    ['actions', 'move', 'send', 'compare'],
+  );
+  assert.equal(parseUnboxPhotoAction(null), UNBOX_PHOTO_ACTION_ORDER[0]);
+  assert.equal(parseUnboxPhotoActionWire('compare'), 'compare');
+  assert.equal(parseUnboxPhotoActionWire('browse'), 'browse');
+  assert.equal(parseUnboxPhotoActionWire('bogus'), null);
   assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: true }), 'note');
   assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: false }), 'link');
+  assert.equal(parseUnboxLinkageAction(null, { hasPoNoteTab: true }), 'link');
   // Presence-only: linked ticket → chat; no ticket → claim (URL verb ignored).
   assert.equal(resolveUnboxTicketAction(true), 'chat');
   assert.equal(resolveUnboxTicketAction(false), 'claim');
@@ -133,4 +164,16 @@ test('overview is NOT a side tab — the carton owns the centre', () => {
     false,
     'moving overview into the Displays column would empty the workbench body',
   );
+});
+
+test('display=index opens Root Index with no leaf', () => {
+  assert.equal(parseUnboxDisplayNav('index'), UNBOX_DISPLAY_INDEX);
+  assert.equal(canonicalizeUnboxSideTab('index'), null, 'index is nav, not a leaf id');
+  assert.deepEqual(resolveUnboxDisplayNav(UNBOX_DISPLAY_INDEX, MATCHED), {
+    open: true,
+    leaf: null,
+  });
+  assert.deepEqual(resolveUnboxDisplayNav(null, MATCHED), { open: false, leaf: null });
+  assert.deepEqual(resolveUnboxDisplayNav('units', MATCHED), { open: true, leaf: 'units' });
+  assert.deepEqual(resolveUnboxDisplayNav('units', SPARSE), { open: true, leaf: 'classify' });
 });

@@ -46,6 +46,7 @@ import {
   QA_FIXTURE_PO_ID,
   QA_FIXTURE_PO_NUMBER,
   QA_FIXTURE_SKUS,
+  QA_FIXTURE_ZOHO_ITEM,
   QA_FIXTURE_SUPPORT,
   QA_FIXTURE_TESTED_LINE,
   QA_FIXTURE_TESTING_LINE,
@@ -318,6 +319,27 @@ async function seedSkus(client: PoolClient, orgId: string) {
   }
 
   log('SKU catalog', `${skus.length} fixtures`);
+}
+
+/**
+ * One active Zoho `items` mirror row whose `sku` matches a seeded `sku_catalog`
+ * fixture, so the Add-inbound Product picker (`searchField=zoho_catalog`, an
+ * INNER JOIN of `items` ⋈ `sku_catalog`) returns a pairable row on the QA org.
+ * Idempotent on the globally-unique `zoho_item_id`.
+ */
+async function seedZohoItems(client: PoolClient, orgId: string) {
+  await client.query(
+    `INSERT INTO items (organization_id, zoho_item_id, name, sku, status)
+     VALUES ($1, $2, $3, $4, 'active')
+     ON CONFLICT (zoho_item_id) DO UPDATE SET
+       organization_id = EXCLUDED.organization_id,
+       name = EXCLUDED.name,
+       sku = EXCLUDED.sku,
+       status = 'active',
+       updated_at = NOW()`,
+    [orgId, QA_FIXTURE_ZOHO_ITEM.zohoItemId, QA_FIXTURE_ZOHO_ITEM.title, QA_FIXTURE_ZOHO_ITEM.sku],
+  );
+  log('Zoho items', `1 fixture (${QA_FIXTURE_ZOHO_ITEM.sku})`);
 }
 
 async function seedReceivingFixture(client: PoolClient, orgId: string, adminStaffId: number) {
@@ -924,6 +946,7 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
     await client.query('BEGIN');
     await setOrgGuc(client, orgId);
     await seedSkus(client, orgId);
+    await seedZohoItems(client, orgId);
     await seedReceivingFixture(client, orgId, adminStaffId);
     await seedIncomingFixture(client, orgId);
     const orderRowIds = await seedOrderFixtures(client, orgId);

@@ -19,11 +19,29 @@ ingestion, a local PO **mirror**, and a delta/full cron schedule. Fully built an
   env only when no vault row exists.
 - `GET|POST /api/zoho/refresh-token` → refresh the short-lived access token (GET kicks
   off a fresh authorize flow; POST refreshes from the stored refresh token).
+  POST does **not** mint a new refresh token — Zoho keeps the same refresh grant;
+  only a full OAuth reconnect replaces it.
 - `GET /api/zoho/health` → circuit-breaker state + rate-limit budget.
 
 `src/lib/zoho/core.ts` owns `getAccessToken()` (refresh-on-demand),
 `getInventoryBaseUrl()` (region-aware: `.com/.eu/.in/.com.au/.ca/.jp` from
 `ZOHO_DOMAIN`), and `invalidateAccessToken()`.
+
+### Connection health / reconnect
+
+- Access tokens expire in ~1 hour; that is normal and does **not** disconnect the
+  integration. Only a dead refresh grant (or mismatched client id/secret) flips
+  the vault to `status='error'`.
+- On auth failure during sync, `markIntegrationError` stores Zoho's reason in
+  `last_error` (e.g. `invalid_code` / `invalid_client_secret`) and the Settings →
+  Integrations card shows **Needs attention**. Reconnect via
+  `/api/zoho/oauth/authorize` (OAuth on the Zoho card).
+- Vault is the SoT. Do not rely on `ZOHO_REFRESH_TOKEN` env once a vault row
+  exists — env bootstrap is ignored while the vault row is `error`/`revoked`.
+- Avoid: revoking Cycle Forge under Zoho Connected Apps; regenerating the API
+  console client secret without reconnecting the same day; minting extra refresh
+  tokens in Postman/scripts (Zoho caps ~20 refresh tokens per user — older ones
+  get dropped).
 
 ## HTTP client — `src/lib/zoho/httpClient.ts`
 
@@ -109,5 +127,16 @@ marks delivered (when tracking confirms) → creates an invoice. **Dry-run by de
   No `sync` fn in the connector — Zoho's sync runs through its own dedicated crons, not
   the generic orders orchestrator.
 - Settings card: `connect: 'oauth'`, `managePermission` → `integrations.zoho`.
-- Read-side note: `zoho_po_mirror.raw` is **header-only**; line resolution falls back to
-  the live API / local mirror (see the unbox local-first memory).
+- **Inventory Displays trust view** (`InventoryDisplayHost`): paints from
+  `GET /api/receiving-lines/incoming/details` — prefer fat `zoho_po_mirror.raw.line_items`,
+  fall back to `receiving_line` + `receiving_line_zoho` siblings (list/delta sync often
+  stores header-only `raw`). Line descriptions prefer `rz.zoho_notes` (post-receive
+  `SN: … · {condition}` text).
+- **Cmd+S block-if-stale:** PO notes (`PATCH /api/receiving/[id]` + `push_to_zoho`) and
+  line notes (`…/inventory-note`) accept `base_last_modified_zoho` from the last trusted
+  pull; if live Zoho `last_modified_time` differs → **409**, draft kept, operator Refresh.
+  Helper: `src/lib/receiving/zoho-po-stamp.ts`. Never silent last-write-wins.
+- **Inbound write surface (honest):** header notes + line description PUT exist.
+  Rate/qty/line add-remove are not Displays writes yet. Bill / close / void / delete /
+  attachments have **no** operator routes (OAuth is mostly READ + PO UPDATE +
+  purchasereceive CREATE) — do not ship dead buttons.

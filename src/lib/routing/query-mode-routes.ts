@@ -19,11 +19,31 @@ import {
 } from '@/components/products/catalog/catalog-url-state';
 import { PAIRING_SORTS } from '@/components/products/pairing/types';
 import { parseProductsView } from '@/components/products/products-view';
-import { parseSourcingAnalyticsRange } from '@/components/sourcing/sourcing-shared';
-import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
-import { parsePickupTab, parseRepairTab, parseSalesTab } from '@/lib/walk-in/history-modes';
+import {
+  parseSourcingAnalyticsRange,
+  parseSourcingModeWire,
+} from '@/components/sourcing/sourcing-shared';
+import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
+import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
+import { parseHomeModeWire, parseForgeViewWire } from '@/features/home/home-modes';
+import { parseReviewModeWire } from '@/features/review/review-mode';
+import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
+import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
+import {
+  RECEIVING_HISTORY_URL_PARAMS,
+  parseReceivingHistorySearchFieldWire,
+  parseReceivingHistorySearchScopeWire,
+} from '@/lib/receiving-history-search';
+import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
+import { parseSearchEtypeWire } from '@/lib/search/search-refine';
+import {
+  parsePickupTab,
+  parseRepairTab,
+  parseSalesTab,
+  parseWalkInHistoryModeWire,
+} from '@/lib/walk-in/history-modes';
 import { parseReviewPackingTab } from '@/lib/packing/review-packing-tabs';
-import { parsePackWorkspaceTab } from '@/utils/pack-workspace-state';
+import { parsePackScanModeWire, parsePackWorkspaceTab } from '@/utils/pack-workspace-state';
 import { parseShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 import { parseTestingWorkspaceTab } from '@/utils/testing-workspace-state';
 import {
@@ -51,7 +71,12 @@ const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'lay
 const SUPPORT_ROUTE_PARAMS = defineRouteParams({
   route: '/support',
   owns: {
-    mode: paramEnum(['orders', 'voicemail', 'calls', 'warranty', 'issues'] as const),
+    /**
+     * Mode on the WIRE — includes default `tickets` (usually omitted, but
+     * deep links like VoicemailDetail still write it). Never a hand-copied
+     * enum that forgets the default token.
+     */
+    mode: paramRoundTrip(parseSupportModeWire),
     /** Focused record, per mode. */
     ticket: paramText,
     vm: paramText,
@@ -92,22 +117,16 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
   route: '/dashboard',
   owns: {
     /**
-     * Domain axis: `sales` / `pickup` (front-desk history) · legacy `inbound` /
-     * `receiving` / `search` / `outbound` (redirected). Bare outbound 308s to
-     * `/shipping/orders`; inbound → `/incoming?lane=docked`.
+     * Domain axis: `sales` / `pickup` / `repairs` (front-desk history) · legacy
+     * `inbound` / `receiving` / `search` / `outbound` (redirected). Bare outbound
+     * 308s to `/shipping/orders`; inbound → `/incoming?lane=docked`.
+     * Round-trip {@link parseDashboardModeWire} — never a hand-copied twin.
      */
-    mode: paramEnum([
-      'search',
-      'receiving',
-      'inbound',
-      'outbound',
-      'sales',
-      'pickup',
-    ] as const),
+    mode: paramRoundTrip(parseDashboardModeWire),
     /**
      * Sales-domain history tabs (`WalkInHistoryHub`) — Pickup Draft/Completed,
-     * Sales Today/All. Same round-trip as `/walk-in` so a redirected bookmark
-     * keeps its tab after `retiredWalkInHistoryTarget`.
+     * Sales Today/All, Repairs Active/Done. Same round-trip as `/walk-in` so a
+     * redirected bookmark keeps its tab after `retiredWalkInHistoryTarget`.
      */
     tab: paramRoundTrip((raw) =>
       parsePickupTab(raw) === raw || parseSalesTab(raw) === raw || parseRepairTab(raw) === raw
@@ -130,23 +149,24 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     open: paramText,
     wstatus: paramText,
     wexp: paramText,
-    /** Support warranty deep-link: filter search string. */
+    /**
+     * Shared search key — Support warranty filter, and RepairTable queue search
+     * when `mode=repairs` (same param name as `/repair`).
+     */
     search: paramText,
+    /** RepairTable display sort on Sales → Repairs (`?mode=repairs`). */
+    sort: paramRoundTrip((raw) => (raw === 'newest' || isRepairColumnSort(raw) ? raw : null)),
+    dir: paramEnum(['asc', 'desc'] as const),
+    /** RepairTable deep-link (Sales history may open a row; intake stays on `/repair`). */
+    openRepair: paramPositiveInt,
     dq: paramText,
     /**
      * Legacy inbound domain params — kept so `/dashboard?mode=inbound` bookmarks
      * survive SurfaceParamHygiene until the proxy 308 to `/incoming?lane=docked`.
      */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
-    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
-      'all',
-      'po',
-      'tracking',
-      'sku',
-      'product',
-      'serial',
-    ] as const),
-    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.field]: paramRoundTrip(parseReceivingHistorySearchFieldWire),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramRoundTrip(parseReceivingHistorySearchScopeWire),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -160,11 +180,11 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
   owns: {
-    mode: paramEnum(['inbox', 'tasks', 'collab', 'forge', 'brief'] as const),
+    mode: paramRoundTrip(parseHomeModeWire),
     task: paramText,
     plan: paramText,
     /** Forge Plans Live: `live`|`agent` (agent-primary) · `doc` (MDX-primary). */
-    view: paramEnum(['live', 'agent', 'doc'] as const),
+    view: paramRoundTrip(parseForgeViewWire),
     /** Selected master-plan `<TicketStatus ticketId>` on forge. */
     ticket: paramText,
     q: paramText,
@@ -188,7 +208,7 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
 const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/operations',
   owns: {
-    mode: paramEnum(['analytics', 'insights', 'history', 'signals', 'plans', 'reconciliation'] as const),
+    mode: paramRoundTrip(parseOperationsModeWire),
     /** Shared filter band. */
     q: paramText,
     open: paramPositiveInt,
@@ -284,21 +304,11 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
   route: '/sourcing',
   owns: {
     /**
-     * Queue is the default and rides the bare URL, so it is deliberately absent.
-     * `lookup` / `alerts` are legacy spellings `resolveSourcingMode` still
-     * aliases (→ scout / → queue); they stay declared so an old bookmark
-     * survives the boundary parse and reaches that resolver rather than being
-     * dropped here and silently landing on Queue.
+     * Queue is the default (usually omitted). `lookup` / `alerts` are legacy
+     * spellings {@link resolveSourcingMode} still aliases. Round-trip
+     * {@link parseSourcingModeWire} so `queue` + aliases survive hygiene.
      */
-    mode: paramEnum([
-      'scout',
-      'watchlist',
-      'searches',
-      'suppliers',
-      'analytics',
-      'lookup',
-      'alerts',
-    ] as const),
+    mode: paramRoundTrip(parseSourcingModeWire),
     /** Sidebar filter box — Scout's model/serial query and Suppliers' name filter. */
     q: paramText,
     /** Which field Scout's query searches. The key no clear list remembered. */
@@ -351,34 +361,29 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
 
 /**
  * `/walk-in` — retired Sales-history front door (redirects to
- * `/dashboard?mode=sales|pickup`). Spec kept so legacy deep-link keys survive
- * boundary parse until `useWalkInTaskRedirect` / `retiredWalkInHistoryTarget`
- * consume them.
+ * `/dashboard?mode=sales|pickup|repairs`). Spec kept so legacy deep-link keys
+ * survive boundary parse until `useWalkInTaskRedirect` /
+ * `retiredWalkInHistoryTarget` / proxy repair redirects consume them.
  *
  * The nav targets nulled `tab` and `category` by hand. `category` is NOT declared
  * here on purpose: it is a dead legacy key that only `proxy.ts`
  * (`resolveWalkInRepairModeRedirect`) still reads, server-side and before this
- * spec ever applies, to send `?category=repair` to `/repair` — after which it
- * deletes the key itself. Nothing on the client reads it, so declaring it would
- * preserve a param with no reader.
+ * spec ever applies — browse → Sales `?mode=repairs`, task keys → `/repair` —
+ * after which it deletes the key itself. Nothing on the client reads it, so
+ * declaring it would preserve a param with no reader.
  */
 export const WALK_IN_ROUTE_PARAMS = defineRouteParams({
   route: '/walk-in',
   owns: {
-    /** Sales is the surface identity and rides the bare URL, so only Pickup is listed. */
-    mode: paramEnum(['pickup'] as const),
     /**
-     * Sub-tab, with a vocabulary **per mode** — Pickup (`draft`/`completed`) and
-     * Sales (`today`/`all`), chosen by `WalkInHistoryHub` from the active mode.
-     *
-     * The Repair vocabulary (`incoming`/`active`/`done`) is in the union because
-     * `useWalkInTaskRedirect` FORWARDS `?tab=done|incoming` on to
-     * `/pickup?job=repair` — not because anything on this page renders a repair
-     * tab. (`WalkInStationPane`, the one component that would, is only reachable
-     * through `WalkInSurfacePage`, a dead file in `knip-baseline.json`.)
-     *
-     * Accept the union by round-tripping each existing parser rather than
-     * re-listing seven values that live in three SoTs.
+     * Pickup + repairs listed; Sales is the surface identity on the bare URL.
+     * Proxy also accepts legacy singular `repair` before this spec applies.
+     */
+    mode: paramRoundTrip(parseWalkInHistoryModeWire),
+    /**
+     * Sub-tab, with a vocabulary **per mode** — Pickup (`draft`/`completed`),
+     * Sales (`today`/`all`), Repairs (`incoming`/`active`/`done`). Accept the
+     * union by round-tripping each existing parser rather than re-listing.
      */
     tab: paramRoundTrip((raw) =>
       parsePickupTab(raw) === raw || parseSalesTab(raw) === raw || parseRepairTab(raw) === raw
@@ -386,13 +391,11 @@ export const WALK_IN_ROUTE_PARAMS = defineRouteParams({
         : null,
     ),
     /**
-     * Legacy task deep-links, read by `useWalkInTaskRedirect` and forwarded to
-     * `/pickup?job=repair`. **They must be declared even though this page never
+     * Legacy task deep-links, read by `useWalkInTaskRedirect` / proxy and
+     * forwarded to `/repair`. **They must be declared even though this page never
      * renders them** — the redirect reads them from the URL, so dropping them at
      * the boundary would silently turn a `?new=true` link into a plain history
-     * page. The read guard above cannot catch this: `/repair` already declares all
-     * three, so nothing looked undeclared (its documented "some spec, not the
-     * reading route's spec" limit).
+     * page.
      */
     openRepair: paramPositiveInt,
     new: paramEnum(['true'] as const),
@@ -464,7 +467,7 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/locations',
   owns: {
     /** Bin Tags is the default and rides the bare URL. */
-    tab: paramEnum(['racks', 'rooms', 'bins', 'map'] as const),
+    tab: paramRoundTrip(parseLocationsTabWire),
     room: paramText,
     code: paramText,
     q: paramText,
@@ -492,7 +495,7 @@ const REVIEW_ROUTE_PARAMS = defineRouteParams({
   route: '/review',
   owns: {
     /** Packing is the default and rides the bare URL, so only the other two. */
-    mode: paramEnum(['pairing', 'catalog-link'] as const),
+    mode: paramRoundTrip(parseReviewModeWire),
     /** Packing table tab — composes the tab SoT rather than re-listing it. */
     rtab: paramRoundTrip(parseReviewPackingTab),
     /** Focused record, one per mode; all three are `Number(...)`-parsed ids. */
@@ -530,7 +533,7 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
     /** Workbench tab — composes the tab SoT. */
     packview: paramRoundTrip(parsePackWorkspaceTab),
     /** Pack mode; `standard` is the default and is omitted from the URL. */
-    packMode: paramEnum(['fragile', 'multi'] as const),
+    packMode: paramRoundTrip(parsePackScanModeWire),
     /** Unit-status facet on the pack queue. */
     ustatus: paramText,
   },
@@ -547,7 +550,7 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
 export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
   route: '/warehouse',
   owns: {
-    tab: paramEnum(['racks', 'rooms', 'bins', 'map'] as const),
+    tab: paramRoundTrip(parseLocationsTabWire),
     room: paramText,
     code: paramText,
     q: paramText,
@@ -587,7 +590,7 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
      * UI vocabulary (order | unit | receiving | sku | repair | fba).
      * Deliberately NOT `type` — `/support` already owns that key.
      */
-    etype: paramEnum(['order', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const),
+    etype: paramRoundTrip(parseSearchEtypeWire),
     /**
      * Client status refine against `facets.status`.
      * Deliberately NOT `status` — `/support` (and others) already own that key.

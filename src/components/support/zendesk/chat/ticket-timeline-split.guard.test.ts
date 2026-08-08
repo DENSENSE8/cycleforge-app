@@ -38,10 +38,17 @@ describe('Ticket vs Timeline Displays split', () => {
     );
   });
 
-  it('Unbox · Testing · Pack Ticket Displays pin mergeFloorTimeline false', () => {
+  it('Unbox · Testing Ticket Displays pin mergeFloorTimeline false', () => {
     assert.match(unboxTicket, /mergeFloorTimeline=\{false\}/);
-    assert.match(testingDisplays, /mergeFloorTimeline=\{false\}/);
-    assert.match(pack, /mergeFloorTimeline=\{false\}/);
+    // Testing reuses TicketDisplayHost (Unbox grain) — same messages-only pin.
+    assert.match(testingDisplays, /TicketDisplayHost/);
+    // Pack Displays are Photos · Timeline · Listings only (no Ticket leaf) —
+    // see pack-display-index.ts. Do not require mergeFloorTimeline on Pack.
+    assert.doesNotMatch(
+      pack,
+      /SupportTicketDetail|TicketDisplayHost/,
+      'Pack must not mount a Ticket Displays leaf',
+    );
   });
 
   it('Support Ticket focus may opt into floor merge (no peer Timeline Displays yet)', () => {

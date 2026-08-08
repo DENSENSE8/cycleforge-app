@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { hydrateTimeFormat, setTimeFormatPersister } from '@/lib/time-format/store';
 
@@ -9,14 +9,17 @@ import { hydrateTimeFormat, setTimeFormatPersister } from '@/lib/time-format/sto
  * time-format store. Mount once inside the authenticated tree (next to
  * <ScanHotkeySync/> / <ThemeSync/>).
  *
- *   • Hydrates the store from the server value when it loads (server is the
- *     durable cross-device SoT; the store stayed instant from localStorage).
+ *   • Hydrates the store from the server value once prefs settle (server is
+ *     the durable cross-device SoT; the store stayed instant from localStorage).
+ *     One-shot — never re-apply on later prefs writes; absent server value
+ *     leaves the localStorage cache alone (null must not snap back to 12h).
  *   • Registers the persister so every change PUTs back to the server.
  *
  * Renders nothing.
  */
 export function TimeFormatSync() {
   const { prefs, update } = useStaffPreferences();
+  const hydratedRef = useRef(false);
 
   // Persist changes to the server. update is stable (useCallback).
   useEffect(() => {
@@ -24,10 +27,12 @@ export function TimeFormatSync() {
     return () => setTimeFormatPersister(null);
   }, [update]);
 
-  // Adopt the server value once it arrives.
+  // Adopt the server value once — only when the server sent an explicit format.
   useEffect(() => {
-    hydrateTimeFormat(prefs?.timeFormat ?? null);
-  }, [prefs?.timeFormat]);
+    if (!prefs || hydratedRef.current) return;
+    hydratedRef.current = true;
+    if (prefs.timeFormat) hydrateTimeFormat(prefs.timeFormat);
+  }, [prefs]);
 
   return null;
 }

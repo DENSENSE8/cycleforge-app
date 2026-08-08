@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { TOP_CHROME_ROW_PX } from '@/components/layout/header-shell';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
@@ -7,8 +8,8 @@ export const DETAIL_STACK_LAYOUT = {
   widthPx: 420,
   /** Uniform floating gap from the viewport edges on all four sides. */
   insetPx: 12,
-  /** Matches global header band (`z-header` / `top-[40px]`). */
-  headerOffsetPx: 40,
+  /** Matches GlobalHeader band — compose {@link TOP_CHROME_ROW_PX}. */
+  headerOffsetPx: TOP_CHROME_ROW_PX,
 } as const;
 
 /**

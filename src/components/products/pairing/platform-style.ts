@@ -10,7 +10,7 @@ export interface PlatformStyle {
 const STYLE: Record<string, PlatformStyle> = {
   zoho:    { label: 'Zoho',    chip: 'border-red-200    bg-red-50    text-red-700',    ring: 'border-l-red-400' },
   amazon:  { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400' },
-  fba:     { label: 'FBA',     chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400' },
+  fba:     { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700', ring: 'border-l-orange-400' },
   ecwid:   { label: 'Ecwid',   chip: 'border-blue-200   bg-blue-50   text-blue-700',   ring: 'border-l-blue-400' },
   ebay:    { label: 'eBay',    chip: 'border-yellow-200 bg-yellow-50 text-yellow-800', ring: 'border-l-yellow-400' },
   walmart: { label: 'Walmart', chip: 'border-amber-200  bg-amber-50  text-amber-800',  ring: 'border-l-amber-400' },

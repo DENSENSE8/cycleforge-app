@@ -26,6 +26,7 @@ const CUSTOM_FONT_SIZES = [
   'role-title',
   'role-body',
   'role-data',
+  'role-nav',
   'role-caption',
   'role-eyebrow',
   'role-micro',

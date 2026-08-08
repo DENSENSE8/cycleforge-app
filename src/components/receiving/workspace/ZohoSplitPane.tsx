@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { PaneHeaderLabel } from '@/components/ui/pane-header';
+import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 
 type OpenPaneDetail = { poId?: string; poNumber?: string };
 
-function buildZohoUrl(detail: OpenPaneDetail): string {
+function buildProviderPoUrl(detail: OpenPaneDetail): string {
   const poId = (detail.poId || '').trim();
   const poNumber = (detail.poNumber || '').trim();
+  // Dogfood inventory provider deep link (Zoho Inventory). Kept as an escape
+  // hatch for desk contexts — Unbox order-chip Details opens Displays → Inventory.
   if (poId) {
     return `https://inventory.zoho.com/app#/purchaseorders/${encodeURIComponent(poId)}`;
   }
@@ -20,28 +23,20 @@ function buildZohoUrl(detail: OpenPaneDetail): string {
 }
 
 /**
- * Right-side reference pane for opening a Zoho Inventory purchase order. Zoho
- * blocks iframe embedding (X-Frame-Options), so the pane surfaces an "Open in
- * Zoho" deep link. Hidden by default; the flow-header action dispatches
- * `open-zoho-pane` with the PO id / number.
+ * Right-side escape hatch for opening the connected inventory provider's PO
+ * page in a new tab. Provider apps block iframe embedding, so this pane only
+ * surfaces an external link.
  *
- * **It was a private `fixed right-0 top-0 z-40` aside until 2026-08-01** — the
- * literal shape `lib/right-rail/store.ts`'s docblock names as the bug it exists
- * to prevent, plus a raw `z-40` outside the z-index scale and a hand-rolled rgba
- * shadow. It also hand-rolled its own resize grip and width persistence, all of
- * which `RightRailHost` already owns.
+ * **Unbox station:** prefer Displays → Inventory (`openDisplays('inventory')`)
+ * for dossier CRUD — do not dispatch `open-zoho-pane` from Unbox LineEdit.
+ * This occupant remains for desk/history flows that still fire the event.
  *
- * Now a non-modal rail occupant, so it PUSHES the receiving work surface rather
- * than covering the PO rows the operator opened it from. Width, the resize grip,
- * the collapse strip and Escape all come from the host.
- *
- * The occupant id is stable across POs on purpose: this is one singleton viewer
- * that re-targets, not a queue being walked, so a per-PO id would play
- * exit → empty → enter every time the header action fires again.
+ * Non-modal rail occupant on `RightRailHost` (pushes; never floats).
  */
 export function ZohoSplitPane() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
+  const providerLabel = providerCatalogLabel('zoho');
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -50,7 +45,7 @@ export function ZohoSplitPane() {
       // inside the pane instead.
       e.preventDefault();
       const detail = ((e as CustomEvent).detail || {}) as OpenPaneDetail;
-      setUrl(buildZohoUrl(detail));
+      setUrl(buildProviderPoUrl(detail));
       setOpen(true);
     };
     window.addEventListener('open-zoho-pane', handler);
@@ -74,14 +69,15 @@ export function ZohoSplitPane() {
             closeTitle="Close purchase order viewer"
           />
           <div className="px-2 pb-2 pt-1">
-            <PaneHeaderLabel eyebrow="Purchase order" value="Zoho" />
+            <PaneHeaderLabel eyebrow="Purchase order" value={providerLabel} />
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-role-caption text-text-soft">
             <p className="leading-snug">
-              Purchase orders open in the inventory provider. Use the link below to view the PO.
+              On Unbox, open Displays → Inventory for the full dossier. Use the
+              link below only when you need the provider web app.
             </p>
             {/* Deep link into the vendor web app — one of the sanctioned places a
                 brand name is allowed in operator copy. */}
@@ -91,7 +87,7 @@ export function ZohoSplitPane() {
               rel="noreferrer"
               className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-semibold uppercase tracking-[0.16em] text-white hover:bg-blue-700"
             >
-              Open in Zoho
+              Open in {providerLabel}
             </a>
           </div>
         </div>

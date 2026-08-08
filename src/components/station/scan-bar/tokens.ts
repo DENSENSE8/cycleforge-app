@@ -1,4 +1,6 @@
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import type { StationTheme } from '@/utils/staff-colors';
+import { cn } from '@/utils/_cn';
 
 /**
  * Canonical geometry + chrome for every station scan bar. Change padding,
@@ -10,8 +12,12 @@ import type { StationTheme } from '@/utils/staff-colors';
  * canvas. Submit confirm is a center→edges scaleX flash on the bottom rule.
  * Work canvas elevation is border-only — no competing drop shadows at the join.
  *
- * Stacking (low → high): input @ z-base → icon @ z-raised → submit trace @
- * z-raised → right rail @ z-dropdown → armed mode segment @ z-dropdown.
+ * Layout: input is full-bleed; the mode / paste / spinner rail is an absolute
+ * frosted veil over the trailing edge (`backdrop-blur` + translucent card) so
+ * long placeholder / typed text can soft-peek under the glyphs. Clearance is
+ * measured (`ResizeObserver` → padding-inline-end), never magic per-station
+ * `pr-*`. Stacking (low → high): input @ z-base → icon @ z-raised → submit
+ * trace @ z-raised → frosted rail @ z-dropdown → armed mode @ z-dropdown.
  *
  * Left column has two modes ({@link StationScanBarProps.leadingColumn}):
  *   • `masternav` (default) — icon under the MasterNav mode glyph
@@ -40,8 +46,10 @@ export const STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS = 'pl-[2.9375rem]';
  * through. Armed mode segments sit on solid `surface-card` against that glow.
  * Staff bottom-rule applied separately; work canvas owns elevation (border).
  */
-export const STATION_SCAN_BAR_INPUT_CLASS =
-  'box-border h-10 w-full rounded-none bg-transparent text-xs font-semibold leading-normal text-text-default outline-none transition-[border-color] py-2 placeholder:text-text-faint';
+export const STATION_SCAN_BAR_INPUT_CLASS = cn(
+  'box-border w-full rounded-none bg-transparent text-xs font-semibold leading-normal text-text-default outline-none transition-[border-color] py-2 placeholder:text-text-faint',
+  PRIMARY_CHROME_ROW_FACE,
+);
 
 /** Unthemed fallback bottom rule (ThemedStationScanBar replaces via staff map). */
 export const STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS =
@@ -67,14 +75,28 @@ export const STATION_SCAN_BAR_BOTTOM_RULE_CLASS: Record<StationTheme, string> = 
 };
 
 /**
- * Full-height right rail — flush to the band edge (no frosted glass chip).
- * Mode / spinner / paste share equal-width cells so glyphs stack on one grid.
+ * Absolute frosted mode rail — sits above full-bleed input text. Translucent
+ * card + light blur keep glyphs readable while long placeholders soft-peek
+ * underneath. Never an opaque white wall; never magic `pr-*` clearance.
  */
 export const STATION_SCAN_BAR_RIGHT_SLOT_CLASS =
-  'absolute inset-y-0 right-0 z-dropdown isolate flex items-stretch gap-0';
+  'absolute inset-y-0 right-0 z-dropdown isolate flex items-stretch gap-0 bg-surface-card/70 backdrop-blur-sm';
 
-/** Narrower right inset when mode rails / spinners sit inside the bar. */
-export const STATION_SCAN_BAR_RIGHT_CONTENT_CLASS = 'right-0 gap-0';
+/**
+ * Soft dissolve from field ink into the frosted rail — paints just left of the
+ * rail so truncation is a fade, not a hard clip against the first glyph.
+ */
+export const STATION_SCAN_BAR_RIGHT_FADE_CLASS =
+  'pointer-events-none absolute inset-y-0 right-full w-4 bg-gradient-to-r from-transparent to-surface-card/70';
+
+/**
+ * How many px of input ink intentionally peek under the frosted rail. Keeps
+ * "Purchase order" readable at the edge without parking the caret under icons.
+ */
+export const STATION_SCAN_BAR_RAIL_PEEK_PX = 14;
+
+/** Fallback pad while the rail is measuring (avoids a one-frame text flash). */
+export const STATION_SCAN_BAR_RAIL_PAD_FALLBACK_PX = 72;
 
 /**
  * Optical glyph box for every right-rail icon (mode / paste / spinner).

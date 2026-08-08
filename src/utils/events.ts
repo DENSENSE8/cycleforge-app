@@ -302,6 +302,29 @@ export function dispatchAssistantDockOpen(): void {
   window.dispatchEvent(new CustomEvent(ASSISTANT_DOCK_OPEN_EVENT));
 }
 
+/**
+ * Close desk/station Add inbound (`IncomingAddInboundOverlay` on RightRailHost).
+ * Dispatched when Station Displays open so Add and Displays never both push the
+ * right edge (source-of-truth → Right-rail modality · one wrapper).
+ */
+export const INCOMING_ADD_INBOUND_CLOSE_EVENT = 'incoming-add-inbound-close';
+
+export function dispatchIncomingAddInboundClose(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(INCOMING_ADD_INBOUND_CLOSE_EVENT));
+}
+
+/**
+ * Close Arrival (and any station) Displays push that is React-state owned, not
+ * URL `?display=`. Add inbound dispatches this before claiming RightRailHost.
+ */
+export const STATION_DISPLAYS_CLOSE_EVENT = 'station-displays-close';
+
+export function dispatchStationDisplaysClose(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(STATION_DISPLAYS_CLOSE_EVENT));
+}
+
 // ── Dashboard shipped search ─────────────────────────────────────────────────
 
 /** When `=1`, embedded Shipped sidebar focuses search, then strips this param from the URL. */

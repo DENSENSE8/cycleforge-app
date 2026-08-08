@@ -1,6 +1,10 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { resolveActiveStep, resolveNextStepAfter } from './procedure-pointer';
+import {
+  resolveActiveStep,
+  resolveNextStepAfter,
+  shouldReleaseFocusAfterEvidence,
+} from './procedure-pointer';
 
 const steps = [
   { key: 'arrival_check', done: true },
@@ -66,4 +70,42 @@ test('the peek names the next UNSETTLED step, not the next array element', () =>
 test('the peek is null when skipping this step settles the carton', () => {
   assert.equal(resolveNextStepAfter(steps, 'contents'), null);
   assert.equal(resolveNextStepAfter(steps, 'nope'), null);
+});
+
+test('evidence on a focused pending step releases focus so the pointer advances', () => {
+  const afterShot = [
+    { key: 'arrival_check', done: true },
+    { key: 'shipping_label_photo', done: true },
+    { key: 'box_photo', done: false },
+  ];
+  assert.equal(
+    shouldReleaseFocusAfterEvidence({
+      focusedKey: 'shipping_label_photo',
+      steps: afterShot,
+      wasDoneAtFocus: false,
+    }),
+    true,
+  );
+});
+
+test('reopening an already-done step does not release focus on the next tick', () => {
+  assert.equal(
+    shouldReleaseFocusAfterEvidence({
+      focusedKey: 'arrival_check',
+      steps,
+      wasDoneAtFocus: true,
+    }),
+    false,
+  );
+});
+
+test('focus on a still-pending step does not release', () => {
+  assert.equal(
+    shouldReleaseFocusAfterEvidence({
+      focusedKey: 'shipping_label_photo',
+      steps,
+      wasDoneAtFocus: false,
+    }),
+    false,
+  );
 });

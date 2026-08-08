@@ -186,7 +186,7 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
             loading={markingReceived}
             onClick={handleSearchAndLink}
           >
-            Search Zoho PO
+            Search purchase order
           </Button>
           {markResult === 'err' && (
             <p className="text-role-eyebrow text-red-500">Search failed — try again</p>

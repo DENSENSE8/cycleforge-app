@@ -76,7 +76,7 @@ const NAV_ITEMS: NavItem[] = [
       { kind: 'leaf', id: 'unboxing', label: 'Unbox', icon: PackageOpen, href: '/m/unbox' },
       { kind: 'leaf', id: 'photos', label: 'Photo feed', icon: PackageOpen, href: '/m/receiving' },
       { kind: 'leaf', id: 'local-pickup', label: 'Walk-In', icon: MapPin, href: '/m/receiving?mode=local-pickup' },
-      { kind: 'leaf', id: 'repair', label: 'Repair Service', icon: ReceivingModeRepair, href: '/m/receiving?mode=repair' },
+      { kind: 'leaf', id: 'repair', label: 'Repair', icon: ReceivingModeRepair, href: '/m/receiving?mode=repair' },
     ],
   },
   { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },

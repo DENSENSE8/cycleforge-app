@@ -55,6 +55,8 @@ export interface ActivityInboxItem {
   // tech-queue (return_pending_test / order_ready_ship) deep-link + detail
   lineId?: number;
   orderNumber?: string;
+  /** Raw platform key for OrderIdChip hover + glyph tone. */
+  sourcePlatform?: string;
   productTitle?: string;
   // warranty_claim
   claimId?: number;
@@ -186,6 +188,7 @@ export function ActivityInboxProvider({
           lineId: number | null;
           trackingNumber: string | null;
           orderNumber: string | null;
+          sourcePlatform: string | null;
           productTitle: string | null;
           unboxedAt: string | null;
         }>;
@@ -208,6 +211,7 @@ export function ActivityInboxProvider({
           lineId: it.lineId ?? undefined,
           trackingNumber: it.trackingNumber ?? undefined,
           orderNumber: it.orderNumber ?? undefined,
+          sourcePlatform: it.sourcePlatform ?? undefined,
           productTitle: it.productTitle ?? undefined,
         };
       });

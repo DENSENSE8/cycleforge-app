@@ -33,7 +33,17 @@ function directionLabel(direction: string | null | undefined): string {
   }
 }
 
-export function OrderReturnsCard({ orderId }: { orderId: number }) {
+export function OrderReturnsCard({
+  orderId,
+  chrome = 'panel',
+}: {
+  orderId: number;
+  /**
+   * `panel` (default) — soft `OrderRecordCard` for desk rails.
+   * `flush` — search-feedback sibling of `FlushSection` (eyebrow + dense body).
+   */
+  chrome?: 'panel' | 'flush';
+}) {
   const { data, isLoading } = useQuery({
     queryKey: ['order-timeline', orderId],
     queryFn: async () => {
@@ -51,38 +61,51 @@ export function OrderReturnsCard({ orderId }: { orderId: number }) {
   // rather than a permanent empty "no returns" panel on every record.
   if (isLoading || rmas.length === 0) return null;
 
-  return (
-    <OrderRecordCard title="Returns">
-      <ul className="divide-y divide-border-hairline">
-        {rmas.map((r) => {
-          const open = OPEN_STATUSES.has((r.status || '').toUpperCase());
-          return (
-            <li key={r.id} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
-              <div className="min-w-0">
-                <p className="truncate text-role-caption font-semibold text-text-default">
-                  {directionLabel(r.direction)}
+  const list = (
+    <ul className="divide-y divide-border-hairline">
+      {rmas.map((r) => {
+        const open = OPEN_STATUSES.has((r.status || '').toUpperCase());
+        return (
+          <li key={r.id} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
+            <div className="min-w-0">
+              <p className="truncate text-role-caption font-semibold text-text-default">
+                {directionLabel(r.direction)}
+              </p>
+              <p className="truncate font-mono text-role-micro text-text-muted">{r.rma_number}</p>
+              {r.authorized_at ? (
+                <p className="text-role-micro font-medium text-text-faint">
+                  {formatDateTimePST(r.authorized_at)}
                 </p>
-                <p className="truncate font-mono text-role-micro text-text-muted">{r.rma_number}</p>
-                {r.authorized_at ? (
-                  <p className="text-role-micro font-medium text-text-faint">
-                    {formatDateTimePST(r.authorized_at)}
-                  </p>
-                ) : null}
-              </div>
-              <span
-                className={cn(
-                  'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-widest ring-1 ring-inset',
-                  open
-                    ? 'bg-amber-50 text-text-warning ring-amber-200'
-                    : 'bg-surface-sunken text-text-muted ring-border-soft',
-                )}
-              >
-                {(r.status || 'unknown').replace(/[_-]+/g, ' ').toLowerCase()}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </OrderRecordCard>
+              ) : null}
+            </div>
+            <span
+              className={cn(
+                'shrink-0 rounded-none px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-widest ring-1 ring-inset',
+                open
+                  ? 'bg-amber-50 text-text-warning ring-amber-200'
+                  : 'bg-surface-sunken text-text-muted ring-border-soft',
+              )}
+            >
+              {(r.status || 'unknown').replace(/[_-]+/g, ' ').toLowerCase()}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
+
+  if (chrome === 'flush') {
+    return (
+      <section className="bg-surface-card" data-testid="order-returns-flush">
+        <header className="border-b border-border-hairline px-3 py-1.5">
+          <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+            Returns
+          </h3>
+        </header>
+        <div className="px-3 py-2">{list}</div>
+      </section>
+    );
+  }
+
+  return <OrderRecordCard title="Returns">{list}</OrderRecordCard>;
 }

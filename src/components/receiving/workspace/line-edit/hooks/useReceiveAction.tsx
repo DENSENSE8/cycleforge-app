@@ -191,6 +191,26 @@ export function useReceiveAction(
         setResponseExpanded(false);
         return;
       }
+      // Unfound dock walk: never stamp empty local_receive (unfound_no_po) —
+      // identify/create the unmatched line first (contents step / classify).
+      if (receiveIntent === 'local_receive' && row.id <= 0) {
+        setReceiveResult({
+          kind: 'diagnostic',
+          intent: receiveIntent,
+          response: {
+            at: Date.now(),
+            durationMs: 0,
+            httpStatus: 0,
+            ok: false,
+            body: {
+              error:
+                'Identify the item first — add an unmatched line (contents step) before receiving into inventory.',
+            },
+          },
+        });
+        setResponseExpanded(false);
+        return;
+      }
       receiveInFlightRef.current = true;
       const startedAt = Date.now();
       setReceiving({ startedAt, intent: receiveIntent });

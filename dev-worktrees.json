@@ -21,6 +21,22 @@
       "note": "WS · topic/ai-chat · :3010"
     },
     {
+      "id": "cf-land-tables",
+      "label": "cf-land-tables · detached",
+      "path": "../cf-land-tables",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "cf-push-main",
+      "label": "cf-push-main · detached",
+      "path": "../cf-push-main",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "fba",
       "label": "FBA prep",
       "path": "../cycleforge-fba",
@@ -61,22 +77,6 @@
       "note": "WS · topic/journey-hops · docs/portfolio/WORKTREE-LANES.md"
     },
     {
-      "id": "pending-grid",
-      "label": "Pending full grid",
-      "path": "../cycleforge-pending-grid",
-      "appPort": 3100,
-      "unlockParked": true,
-      "note": "WS-PENDING-GRID · topic/pending-grid · :3100 · bookkeeping — To-Ship Pending full-grid refactor developed in main until the predecessor base is committed; no physical worktree yet"
-    },
-    {
-      "id": "photo",
-      "label": "Photo evidence",
-      "path": "../cycleforge-photo",
-      "appPort": 3110,
-      "unlockParked": true,
-      "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
-    },
-    {
       "id": "nav-ia",
       "label": "Nav IA · lanes",
       "path": "../cycleforge-nav-ia",
@@ -93,12 +93,20 @@
       "note": "WS-NOTE-GRAIN · topic/note-grain · :3140 · receiving note vs printed-label grain + the receive-side note-integrity guards. Exists mainly as a CLEAN checkout: main's tree carries several lanes' uncommitted work, so its pre-push verify cannot vouch for committed state. Law: .claude/rules/source-of-truth.md → Note vs label grain"
     },
     {
-      "id": "tokens",
-      "label": "Token consolidation",
-      "path": "../cycleforge-tokens",
-      "appPort": 3120,
+      "id": "pending-grid",
+      "label": "Pending full grid",
+      "path": "../cycleforge-pending-grid",
+      "appPort": 3100,
       "unlockParked": true,
-      "note": "WS-TOKENS · topic/tokens · :3120 · bookkeeping — design-token emitter consolidation developed in main (touches globals.css + layout.tsx, which every lane shares); no physical worktree. Plan: docs/todo/token-system-consolidation-plan.md"
+      "note": "WS-PENDING-GRID · topic/pending-grid · :3100 · bookkeeping — To-Ship Pending full-grid refactor developed in main until the predecessor base is committed; no physical worktree yet"
+    },
+    {
+      "id": "photo",
+      "label": "Photo evidence",
+      "path": "../cycleforge-photo",
+      "appPort": 3110,
+      "unlockParked": true,
+      "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
     },
     {
       "id": "review",
@@ -125,6 +133,30 @@
       "note": "WS-STUDIO · :3070"
     },
     {
+      "id": "tables",
+      "label": "tables · topic/tables",
+      "path": "../cycleforge-tables",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/tables · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "tasks",
+      "label": "tasks · topic/tasks",
+      "path": "../cycleforge-tasks",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/tasks · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "tokens",
+      "label": "Token consolidation",
+      "path": "../cycleforge-tokens",
+      "appPort": 3120,
+      "unlockParked": true,
+      "note": "WS-TOKENS · topic/tokens · :3120 · bookkeeping — design-token emitter consolidation developed in main (touches globals.css + layout.tsx, which every lane shares); no physical worktree. Plan: docs/todo/token-system-consolidation-plan.md"
+    },
+    {
       "id": "unbox",
       "label": "unbox · unbox-work",
       "path": "../cycleforge-unbox",
@@ -139,14 +171,6 @@
       "appPort": 3090,
       "unlockParked": true,
       "note": "WS · topic/warehouse · :3090"
-    },
-    {
-      "id": "tables",
-      "label": "Nonlinear data-table engine",
-      "path": "../cycleforge-tables",
-      "appPort": 3150,
-      "unlockParked": true,
-      "note": "WS-TABLES · topic/tables · :3150 · registry-driven table engine — every Workbench spreadsheet mounts via the table-definition registry + NonlinearTableHost, never a page-local *GridView twin. Handoff: docs/todo/nonlinear-data-table-engine-HANDOFF.md"
     }
   ]
 }

@@ -10,6 +10,25 @@ export const STAFF_PREFERENCES_QUERY_KEY = ['staff-preferences'] as const;
 const QUERY_KEY = STAFF_PREFERENCES_QUERY_KEY;
 
 /**
+ * Apply only the keys present in `patch`, reading confirmed values from the
+ * server `prefs` response. A full `setQueryData(serverPrefs)` clobbers nested
+ * maps (kpiCollapsed · tableColumns · …) that a concurrent writer already
+ * painted optimistically — that was the Unbox Hide/Show metrics flash.
+ */
+function mergePatchedPrefs(
+  current: StaffPreferences | undefined,
+  patch: StaffPreferencesPutBody,
+  serverPrefs: StaffPreferences,
+): StaffPreferences {
+  const next: StaffPreferences = { ...(current ?? {}) };
+  for (const key of Object.keys(patch) as Array<keyof StaffPreferencesPutBody>) {
+    if (patch[key] === undefined) continue;
+    (next as Record<string, unknown>)[key as string] = serverPrefs[key as keyof StaffPreferences];
+  }
+  return next;
+}
+
+/**
  * The logged-in staffer's UI preferences (server-backed, cross-device).
  *
  * Gated on an authenticated session so it never fires on public pages. The
@@ -44,7 +63,11 @@ export function useStaffPreferences() {
       const data = (await res.json()) as { prefs: StaffPreferences };
       return data.prefs ?? {};
     },
-    onSuccess: (prefs) => queryClient.setQueryData(QUERY_KEY, prefs),
+    onSuccess: (serverPrefs, patch) => {
+      queryClient.setQueryData<StaffPreferences>(QUERY_KEY, (current) =>
+        mergePatchedPrefs(current, patch, serverPrefs),
+      );
+    },
   });
 
   const update = useCallback(

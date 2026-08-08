@@ -125,9 +125,9 @@ export const STATIONS: OpsStation[] = [
   },
   {
     key: 'FBA',
-    label: 'FBA prep',
+    label: 'Amazon Prep',
     color: '#f59e0b',
-    blurb: 'Amazon FBA prep. Scans FNSKUs and builds the inbound-to-Amazon FBA shipment.',
+    blurb: 'Amazon prep. Scans FNSKUs and builds the inbound-to-Amazon shipment.',
     activityTypes: ['FBA_READY', 'WS_FBA_SCAN', 'FNSKU_SCANNED'],
     handles: ['fnsku', 'fbaShipmentId', 'sku', 'shippingTracking'],
     states: ['SHIPPED'],
@@ -336,7 +336,7 @@ export const FLOWS: OpsFlow[] = [
     source: 'inbound_workflow_status_enum · src/lib/receiving/workflow-stages.ts',
     code: ['src/lib/receiving/workflow-stages.ts', '/api/receiving/match', 'src/lib/receiving/receive-line.ts', '/api/serial-units/[id]/test'],
     steps: [
-      { stage: 'Incoming', key: 'EXPECTED', station: 'RECEIVING', note: 'On an issued PO — not yet scanned at the dock', signal: 'PO sync' },
+      { stage: 'Inbound', key: 'EXPECTED', station: 'RECEIVING', note: 'On an issued PO — not yet scanned at the dock', signal: 'PO sync' },
       { stage: 'Scanned', key: 'ARRIVED', station: 'RECEIVING', note: 'Carton scanned in, not yet matched to a PO', signal: 'TRACKING_SCANNED' },
       { stage: 'Matched', key: 'MATCHED', station: 'RECEIVING', note: 'Line linked to a PO/order (shows as “Scanned” in tables)', signal: 'WS_RECEIVING_CHANGED', by: '/api/receiving/match' },
       { stage: 'Unboxed', key: 'UNBOXED', station: 'RECEIVING', note: 'First scan on the Unbox surface — carton opened/unboxed', signal: 'UNBOX_SCAN_OPENED', by: 'recordUnboxScanOpened' },

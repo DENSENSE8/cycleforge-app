@@ -17,7 +17,7 @@
  *
  * ## `density="icon"` — SpaceX Displays topic plate
  *
- * Edge-to-edge **h-10** instrument plate at the top of a Displays push column —
+ * Edge-to-edge **PRIMARY_CHROME_ROW_FACE** instrument plate at the top of a Displays push column —
  * a four-edge **`border-border-default`** frame (readable chrome 1px rule — not
  * near-invisible `border-hairline`, which is for internal row dividers only).
  * Primary cells **share the rail equally** (`flex-1`, icon centered) with a
@@ -42,6 +42,7 @@
 
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { MoreHorizontal, MoreVertical } from '@/components/Icons';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Popover } from '@/design-system/primitives/Popover';
 import {
@@ -60,17 +61,20 @@ import { TabDisplay } from './TabDisplay';
 const FLUSH = cornerClass('flush');
 
 /**
- * SpaceX topic-plate cell face (`density="icon"`). Always `h-10` — the Displays
- * mode plate must outrank nested verb underlines below. Primary cells share the
- * rail equally (`flex-1`); icons stay centered in each share.
+ * SpaceX topic-plate cell face (`density="icon"`). Always
+ * {@link PRIMARY_CHROME_ROW_FACE} — the Displays mode plate must outrank nested
+ * verb underlines below. Primary cells share the rail equally (`flex-1`); icons
+ * stay centered in each share.
  */
 const ICON_CELL_CLASS = cn(
-  'relative flex h-10 min-w-10 flex-1 items-center justify-center transition-colors',
+  'relative flex min-w-0 flex-1 items-center justify-center transition-colors',
+  PRIMARY_CHROME_ROW_FACE,
   FLUSH,
 );
-/** Overflow ⋮ / strip `rightSlot` peer — fixed width, same plate height. */
+/** Overflow ⋮ / strip `rightSlot` peer — square cell, height from primary face. */
 export const SECTION_TAB_ICON_OVERFLOW_CELL_CLASS = cn(
-  'relative flex h-10 w-10 shrink-0 items-center justify-center transition-colors',
+  'relative flex aspect-square items-center justify-center transition-colors',
+  PRIMARY_CHROME_ROW_FACE,
   FLUSH,
 );
 export const SECTION_TAB_ICON_CELL_IDLE_CLASS =
@@ -103,7 +107,7 @@ export interface SectionTab {
    * there is no global "investigation" bucket.
    */
   priority?: SectionTabPriority;
-  /** Body-only tab — no strip cell (e.g. Unbox checklist via scan-progress ring). */
+  /** Body-only tab — no strip cell (legacy; Unbox checklist is a Displays leaf). */
   stripHidden?: boolean;
 }
 
@@ -164,12 +168,12 @@ export function SectionTabsSlider({
   showActiveLabel?: boolean;
   /**
    * `inline` (default) — labeled industrial `TabDisplay` underline segments.
-   * `icon` — SpaceX h-10 edge-to-edge topic plate; selected expands to icon + label.
+   * `icon` — SpaceX primary-height edge-to-edge topic plate; selected expands to icon + label.
    * Opt-in (Unbox Displays first); do not flip the default without a second adopter.
    */
   density?: 'inline' | 'icon';
   /**
-   * Icon plate only: tighter horizontal padding. Never shortens the h-10 face —
+   * Icon plate only: tighter horizontal padding. Never shortens the primary face —
    * a short strip above nested verb rows / claim mode — inverted hierarchy.
    */
   compact?: boolean;
@@ -190,9 +194,9 @@ export function SectionTabsSlider({
   const { transition: plateLayoutTransition } = useMotionRole(motionRole.push.rail);
   const whileTap = useMotionPressRole(motionRole.gesture.press);
   const iconSizeClass = 'h-4 w-4';
-  const headerRowMinClass = iconRail ? 'h-10 min-h-10' : 'min-h-9';
+  const headerRowMinClass = PRIMARY_CHROME_ROW_FACE;
   const headerRowAlignClass = 'items-stretch';
-  const rightClusterMinClass = iconRail ? 'h-10' : 'min-h-8';
+  const rightClusterMinClass = iconRail ? PRIMARY_CHROME_ROW_FACE : 'min-h-8';
   const bodyGapClass = iconRail ? 'space-y-0' : 'space-y-4';
   const stripTabs = tabs.filter((t) => !t.stripHidden);
   const activeId = resolveActiveTabId(
@@ -395,7 +399,7 @@ export function SectionTabsSlider({
                           <AnimatePresence initial={false} mode="popLayout">
                             {selected ? (
                               // No `leading-none` — `overflow:hidden` + line-height 1
-                              // shears descenders. Plate cells are fixed `h-10`.
+                              // shears descenders. Plate cells use PRIMARY_CHROME_ROW_FACE.
                               <motion.span
                                 key={`${tab.id}-label`}
                                 initial={{ opacity: 0, width: 0 }}

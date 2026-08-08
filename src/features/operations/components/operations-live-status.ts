@@ -8,7 +8,7 @@
  */
 import type { RealtimeLinkHealth } from '@/lib/realtime/connection-health';
 
-export type LiveFeedAblyStatus = 'connected' | 'connecting' | 'disconnected';
+type LiveFeedAblyStatus = 'connected' | 'connecting' | 'disconnected';
 
 /**
  * `degraded` is the debounced "held past grace" signal; `health` is the raw

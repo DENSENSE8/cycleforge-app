@@ -659,3 +659,6 @@
 - `2026-08-04T05:39:47.773Z` · **main** · main · agent · P1+P2 page-mode condensation: /shipping/orders desk + Support Inquiries alias — done
 - `2026-08-05T18:17:40.295Z` · **main** · main · agent · Product header T→Product (flex-label rule + 8rem min/720 max); KPI collapse toggle → To-ship + Incoming; All-tab ▦ portal (Testing/Shipping/Unbox) — ok
 - `2026-08-06T20:12:47.655Z` · **main** · main · agent · Photos Displays: drop Browse tab — gallery default + Move·Send only; view-mode picker — ok
+- `2026-08-08T18:29:16.086Z` · **main** · main · agent · Unbox Displays history ← →: visit stack + nested Forward (Inventory); leaf header Left/Right; Unbox visitFrame nest — ok
+- `2026-08-08T18:40:40.465Z` · **main** · main · agent · Inventory Information: WMS horizontal fact rows (ban multi-col grid); StationDenseFactStrip layout=rows SoT + guard — ok
+- `2026-08-08T21:32:14.646Z` · **main** · main · agent · staff identity popover: fixed name type-scale (role-display→role-title, avatar lg→md); diagnosed anchoring complaint live (no AnchoredLayer bug — top-start matches sibling Account-details menu, no viewport clipping 600-900px) — user confirmed current behavior is correct, no code change needed — done

@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * Repair workbench chrome — Sheets flush stack for `/repair` (and Walk-In
- * station `?job=repair`). Sibling of `OutboundWorkspaceHeader` /
- * `IncomingWorkspaceHeader`.
+ * Repair workbench chrome — Sheets flush stack for dual-door RepairTable:
+ * Scan Stations `/repair` (task/intake) and Sales `?mode=repairs` (history).
+ * Sibling of `OutboundWorkspaceHeader` / `IncomingWorkspaceHeader`.
  *
- *   Band 1 — Active / Done lifecycle tabs (`?tab=`) + Add (`?new=true`).
+ *   Band 1 — Active / Done lifecycle tabs (`?tab=`) + Add.
  *   Band 3 — [⌕ search] over `?search=` · icon sort (`RepairTriageBand`).
+ *
+ * Add on the Sales desk hands off to `/repair?new=true` (intake form mounts in
+ * `RepairSidebarPanel` on the station only). Station Add sets `?new=true` in place.
  *
  * No KPI band (no metrics — honest absence). Favorites stay in
  * `RepairSidebarPanel`; queue chrome no longer lives there.
@@ -20,11 +23,15 @@ import {
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useRepairDisplaySort } from '@/hooks/useRepairDisplaySort';
+import { useRepairNewParam } from '@/hooks/useRepairNewParam';
 import { REPAIR_DISPLAY_SORT_OPTIONS } from '@/lib/repair/repair-display-sort';
 import {
-  DEFAULT_REPAIR_TAB,
+  defaultRepairTabForSurface,
+  isSalesRepairsDesk,
   parseRepairTab,
 } from '@/lib/walk-in/history-modes';
 import type { RepairTab } from '@/lib/neon/repair-service-queries';
@@ -48,14 +55,17 @@ function useRepairChromeParams() {
     },
     [pathname, router, searchParams],
   );
-  return { searchParams, replaceParams };
+  return { router, pathname, searchParams, replaceParams };
 }
 
 /** Band 1 — Active / Done lifecycle tabs + Add. Find / sort live on {@link RepairTriageBand}. */
 export function RepairWorkspaceHeader({ className }: { className?: string }) {
-  const { searchParams, replaceParams } = useRepairChromeParams();
+  const { router, pathname, searchParams, replaceParams } = useRepairChromeParams();
+  const { openNew } = useRepairNewParam();
+  const surfaceDefault = defaultRepairTabForSurface(pathname, searchParams);
+  const onSalesDesk = isSalesRepairsDesk(pathname, searchParams);
 
-  const activeTab = parseRepairTab(searchParams.get('tab'));
+  const activeTab = parseRepairTab(searchParams.get('tab'), surfaceDefault);
   // Incoming graduated off this queue — treat as Active for chrome selection.
   const chromeTab: Exclude<RepairTab, 'incoming'> =
     activeTab === 'done' ? 'done' : 'active';
@@ -63,18 +73,21 @@ export function RepairWorkspaceHeader({ className }: { className?: string }) {
   const setTab = useCallback(
     (id: string) => {
       replaceParams((params) => {
-        if (id === DEFAULT_REPAIR_TAB || id === 'active') params.delete('tab');
+        if (id === surfaceDefault) params.delete('tab');
         else params.set('tab', id);
       });
     },
-    [replaceParams],
+    [replaceParams, surfaceDefault],
   );
 
   const openNewRepair = useCallback(() => {
-    replaceParams((params) => {
-      params.set('new', 'true');
-    });
-  }, [replaceParams]);
+    // Intake form only mounts on the station rail — Sales hands off.
+    if (onSalesDesk) {
+      router.push('/repair?new=true');
+      return;
+    }
+    openNew();
+  }, [onSalesDesk, openNew, router]);
 
   return (
     <WorkbenchChromeHeader
@@ -104,6 +117,7 @@ export function RepairTriageBand({
   const { searchParams, replaceParams } = useRepairChromeParams();
   const { sort, setSort } = useRepairDisplaySort();
   const urlSearch = searchParams.get('search') ?? '';
+  const repairInspectorOpen = useRightRailOccupantOpen('detail:repair');
 
   const setRepairSearch = useCallback(
     (next: string) => {
@@ -126,8 +140,11 @@ export function RepairTriageBand({
           value={urlSearch}
           onChange={setRepairSearch}
           placeholder="Filter repairs, tickets, SKU…"
-          className="w-40 shrink-0 lg:w-56"
+          className="min-w-0 flex-1"
         />
+      }
+      trailing={
+        <WorkbenchInspectorToggle open={repairInspectorOpen} testId="repair-inspector-toggle" />
       }
       right={
         <QueueSortSwitch

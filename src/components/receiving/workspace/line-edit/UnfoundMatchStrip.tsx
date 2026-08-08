@@ -18,6 +18,8 @@
  *     The search icon runs the read-only serial compare instead (for
  *     verifying before linking) — a confirmed match then logs the serial /
  *     files a support ticket inline. Back returns to the action row.
+ *   • **Store** (ShoppingCart) — when `onLinkRepair` is set, opens the shared
+ *     {@link RepairServiceIdentify} host (Pairing Store avenue). No third search.
  *   • **Zoho** (RefreshCw) — FETCH: re-run the Zoho PO tracking search.
  *   • **Amazon return** (PackageCheck) — FETCH: reverse-tracking SP-API lookup.
  */
@@ -44,6 +46,7 @@ import {
   ExternalLink,
   Send,
   Database,
+  ShoppingCart,
 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -99,6 +102,11 @@ interface UnfoundMatchStripProps {
    * Ticket display (Arrival) omit the cell.
    */
   onFindTicket?: () => void;
+  /**
+   * Open the shared Store / repair identify host (CartonMatchHub Store avenue).
+   * Never mounts a third Ecwid search in this strip — host owns the control.
+   */
+  onLinkRepair?: () => void;
   /** When false, omit top divider (e.g. first block in a pairing-only card). */
   showTopRule?: boolean;
 }
@@ -113,6 +121,7 @@ export function UnfoundMatchStrip({
   ticketUrl = null,
   onTicketChanged,
   onFindTicket,
+  onLinkRepair,
   showTopRule = true,
 }: UnfoundMatchStripProps) {
   const { zoho, amazon, busy, checkZoho, checkAmazon } = useUnfoundRefetchActions(
@@ -191,10 +200,19 @@ export function UnfoundMatchStrip({
               disabled={noReceiving}
               onClick={() => setLane('order')}
             />
+            {typeof onLinkRepair === 'function' ? (
+              <StripButton
+                icon={ShoppingCart}
+                label="Store"
+                tooltip="Link a repair / store order — opens the Store identify host"
+                disabled={noReceiving}
+                onClick={onLinkRepair}
+              />
+            ) : null}
             <StripButton
               icon={RefreshCw}
               label="Zoho"
-              tooltip="Fetch from platform — re-run the Zoho PO tracking search"
+              tooltip="Fetch from platform — re-run the purchase order tracking search"
               state={zoho}
               disabled={noReceiving || busy}
               onClick={() => void checkZoho()}
@@ -827,12 +845,12 @@ function SupportTicketPopover({
               </span>
             </div>
             {hasTicket && ticketUrl ? (
-              <HoverTooltip label="Open in Zendesk" asChild>
+              <HoverTooltip label="Open in helpdesk" asChild>
                 <a
                   href={ticketUrl}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label="Open in Zendesk"
+                  aria-label="Open in helpdesk"
                   className="rounded-none p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />

@@ -125,6 +125,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         gmail: [],
         delivered_emails: [],
         zoho_activity: [],
+        po_notes: null,
         notes: recv?.support_notes ?? null,
       });
     }
@@ -197,10 +198,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         status: string | null; payment_status: string | null;
         tracking_number: string | null; carrier_code: string | null;
         po_date: string | null; expected_delivery_date: string | null;
+        raw_payload: Record<string, unknown> | null;
       }>(
         orgId,
         `SELECT order_number, vendor_or_seller_name, status, payment_status,
-                tracking_number, carrier_code, po_date::text, expected_delivery_date::text
+                tracking_number, carrier_code, po_date::text, expected_delivery_date::text,
+                raw_payload
            FROM inbound_purchase_order_mirror
           WHERE organization_id = $1 AND source_type = $2 AND source_order_id = $3
           LIMIT 1`,
@@ -254,7 +257,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           seller_name: mirror?.vendor_or_seller_name ?? (facts?.sellerUsername as string | null) ?? null,
           status: mirror?.status ?? (facts?.purchaseOrderStatus as string | null) ?? null,
           payment_status: mirror?.payment_status ?? (facts?.paymentStatus as string | null) ?? null,
-          listing_url: (facts?.listingUrl as string | null) ?? null,
+          listing_url:
+            (facts?.listingUrl as string | null)
+            ?? (typeof mirror?.raw_payload?.listingUrl === 'string'
+              ? mirror.raw_payload.listingUrl
+              : null),
+          tracking_number: mirror?.tracking_number ?? null,
           account_label: accountLabel,
           receiving_line_id: primaryLine.id,
           zoho_purchaseorder_id: zohoLink?.source_order_id ?? primaryLine.zoho_purchaseorder_id ?? null,
@@ -308,13 +316,243 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         gmail: [],
         delivered_emails: [],
         zoho_activity: [],
+        po_notes: null,
         notes: null,
+      });
+    }
+
+    // ── Carton-anchored unpaired (no PO / shipment param / inbound) ─────────
+    // Dash-Order Incoming rows that already have a receiving carton (door-scanned
+    // unfound) open the inspector for Package Pairing. Key on receiving_id alone.
+    if (!poId && focusReceivingId) {
+      const cartonRes = await tenantQuery<{
+        id: number;
+        shipment_id: number | null;
+        support_notes: string | null;
+        received_at: string | null;
+        zoho_purchaseorder_id: string | null;
+        zoho_purchaseorder_number: string | null;
+      }>(
+        orgId,
+        `SELECT r.id, r.shipment_id, r.support_notes,
+                rt.door_received_at::text AS received_at,
+                r.zoho_purchaseorder_id, r.zoho_purchaseorder_number
+           FROM receiving_carton r
+           LEFT JOIN receiving_triage rt
+             ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+          WHERE r.id = $1
+            AND r.organization_id = $2
+          LIMIT 1`,
+        [focusReceivingId, orgId],
+      );
+      const carton = cartonRes.rows[0] ?? null;
+      if (!carton) {
+        return NextResponse.json({ success: false, error: 'carton not found' }, { status: 404 });
+      }
+
+      const cartonPoId = (carton.zoho_purchaseorder_id || '').trim();
+
+      let shipment: {
+        shipment_id: number;
+        tracking_number: string | null;
+        carrier: string | null;
+        latest_status_category: string | null;
+        is_delivered: boolean | null;
+        delivered_at: string | null;
+        last_checked_at: string | null;
+        out_for_delivery_at: string | null;
+        events: unknown[];
+      } | null = null;
+
+      if (carton.shipment_id != null) {
+        const sid = carton.shipment_id;
+        const stnRes = await tenantQuery<{
+          id: number;
+          tracking_number_raw: string | null;
+          carrier: string | null;
+          latest_status_category: string | null;
+          is_delivered: boolean | null;
+          delivered_at: string | null;
+          last_checked_at: string | null;
+          out_for_delivery_at: string | null;
+        }>(
+          orgId,
+          `SELECT id, tracking_number_raw, carrier, latest_status_category, is_delivered,
+                  delivered_at::text, last_checked_at::text, out_for_delivery_at::text
+             FROM shipping_tracking_numbers
+            WHERE id = $1
+            LIMIT 1`,
+          [sid],
+        );
+        const stn = stnRes.rows[0] ?? null;
+        const ev = stn
+          ? await tenantQuery(
+              orgId,
+              `SELECT id, event_occurred_at::text, normalized_status_category,
+                      external_status_label, external_status_description,
+                      event_city, event_state, exception_description, signed_by
+                 FROM shipment_tracking_events
+                WHERE shipment_id = $1
+                ORDER BY event_occurred_at DESC NULLS LAST, id DESC
+                LIMIT 25`,
+              [sid],
+            )
+          : { rows: [] as unknown[] };
+        if (stn) {
+          shipment = {
+            shipment_id: sid,
+            tracking_number: stn.tracking_number_raw,
+            carrier: stn.carrier,
+            latest_status_category: stn.latest_status_category,
+            is_delivered: stn.is_delivered,
+            delivered_at: stn.delivered_at,
+            last_checked_at: stn.last_checked_at,
+            out_for_delivery_at: stn.out_for_delivery_at,
+            events: ev.rows,
+          };
+        }
+      }
+
+      const linesRes = await tenantQuery<{
+        id: number;
+        sku: string | null;
+        item_name: string | null;
+        quantity_expected: number;
+        quantity_received: number;
+        workflow_status: string | null;
+        zoho_line_item_id: string | null;
+        zoho_item_id: string | null;
+        rate: number | null;
+      }>(
+        orgId,
+        `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
+                rl.workflow_status::text AS workflow_status,
+                rz.zoho_line_item_id, rz.zoho_item_id, rz.rate
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+          WHERE rl.receiving_id = $1
+            AND rl.organization_id = $2
+          ORDER BY rl.id
+          LIMIT 200`,
+        [focusReceivingId, orgId],
+      );
+
+      // Carton already has a PO — return PO header when present so Pairing can
+      // collapse after a successful link without a second open.
+      let po: {
+        zoho_purchaseorder_id: string;
+        zoho_purchaseorder_number: string;
+        vendor_id: string | null;
+        vendor_name: string | null;
+        status: string | null;
+        po_date: string | null;
+        expected_delivery_date: string | null;
+        reference_number: string | null;
+        total: string | null;
+        currency: string | null;
+        last_modified_zoho: string | null;
+        last_synced_at: string;
+        raw?: Record<string, unknown>;
+      } | null = null;
+      if (cartonPoId) {
+        const mirrorRes = await tenantQuery<{
+          zoho_purchaseorder_id: string;
+          zoho_purchaseorder_number: string;
+          vendor_id: string | null;
+          vendor_name: string | null;
+          status: string | null;
+          po_date: string | null;
+          expected_delivery_date: string | null;
+          reference_number: string | null;
+          total: string | null;
+          currency: string | null;
+          raw: Record<string, unknown>;
+          last_modified_zoho: string | null;
+          last_synced_at: string;
+        }>(
+          orgId,
+          `SELECT zoho_purchaseorder_id, zoho_purchaseorder_number, vendor_id, vendor_name,
+                  status, po_date::text, expected_delivery_date::text, reference_number, total, currency,
+                  raw, last_modified_zoho::text, last_synced_at::text
+             FROM zoho_po_mirror
+            WHERE zoho_purchaseorder_id = $1
+            LIMIT 1`,
+          [cartonPoId],
+        );
+        const mirror = mirrorRes.rows[0] ?? null;
+        if (mirror) {
+          po = {
+            zoho_purchaseorder_id: mirror.zoho_purchaseorder_id,
+            zoho_purchaseorder_number: mirror.zoho_purchaseorder_number,
+            vendor_id: mirror.vendor_id,
+            vendor_name: mirror.vendor_name,
+            status: mirror.status,
+            po_date: mirror.po_date,
+            expected_delivery_date: mirror.expected_delivery_date,
+            reference_number: mirror.reference_number,
+            total: mirror.total,
+            currency: mirror.currency,
+            last_modified_zoho: mirror.last_modified_zoho,
+            last_synced_at: mirror.last_synced_at,
+            raw: mirror.raw,
+          };
+        } else {
+          po = {
+            zoho_purchaseorder_id: cartonPoId,
+            zoho_purchaseorder_number: carton.zoho_purchaseorder_number || cartonPoId,
+            vendor_id: null,
+            vendor_name: null,
+            status: null,
+            po_date: null,
+            expected_delivery_date: null,
+            reference_number: null,
+            total: null,
+            currency: null,
+            last_modified_zoho: null,
+            last_synced_at: '',
+          };
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        po,
+        receiving: {
+          id: carton.id,
+          shipment_id: carton.shipment_id,
+          received_at: carton.received_at,
+        },
+        line_items: linesRes.rows.map((l) => ({
+          line_item_id: l.zoho_line_item_id,
+          item_id: l.zoho_item_id,
+          sku: l.sku,
+          name: l.item_name,
+          description: null,
+          quantity_expected: l.quantity_expected,
+          quantity_received: l.quantity_received,
+          workflow_status: l.workflow_status,
+          receiving_line_id: l.id,
+          rate: l.rate,
+          item_total: null,
+        })),
+        shipment,
+        receive_events: [],
+        gmail: [],
+        delivered_emails: [],
+        zoho_activity: [],
+        po_notes: null,
+        notes: carton.support_notes ?? null,
       });
     }
 
     if (!poId) {
       return NextResponse.json(
-        { success: false, error: 'po_id, shipment_id, or inbound_source+inbound_order_id is required' },
+        {
+          success: false,
+          error:
+            'po_id, shipment_id, inbound_source+inbound_order_id, or receiving_id is required',
+        },
         { status: 400 },
       );
     }
@@ -367,7 +605,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       id: number;
       shipment_id: number | null;
       support_notes: string | null;
+      zoho_notes: string | null;
       received_at: string | null;
+      zoho_purchase_receive_id: string | null;
+      inventory_received_at: string | null;
       shipment_tracking_number_raw: string | null;
       shipment_carrier: string | null;
       shipment_status_category: string | null;
@@ -381,7 +622,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ? `SELECT r.id,
                   r.shipment_id,
                   r.support_notes,
+                  r.zoho_notes,
                   rt.door_received_at::text       AS received_at,
+                  r.zoho_purchase_receive_id,
+                  (
+                    SELECT MAX(rl.received_done_at)::text
+                      FROM receiving_line rl
+                     WHERE rl.receiving_id = r.id
+                       AND rl.organization_id = r.organization_id
+                  ) AS inventory_received_at,
                   stn.tracking_number_raw         AS shipment_tracking_number_raw,
                   stn.carrier                     AS shipment_carrier,
                   stn.latest_status_category      AS shipment_status_category,
@@ -400,9 +649,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         : `SELECT r.id,
                   r.shipment_id,
                   r.support_notes,
+                  r.zoho_notes,
                   -- Wave-2 reader cutover: door-received stamp from receiving_triage
                   -- (1:1 street table); alias keeps the response key received_at.
                   rt.door_received_at::text       AS received_at,
+                  r.zoho_purchase_receive_id,
+                  (
+                    SELECT MAX(rl.received_done_at)::text
+                      FROM receiving_line rl
+                     WHERE rl.receiving_id = r.id
+                       AND rl.organization_id = r.organization_id
+                  ) AS inventory_received_at,
                   stn.tracking_number_raw         AS shipment_tracking_number_raw,
                   stn.carrier                     AS shipment_carrier,
                   stn.latest_status_category      AS shipment_status_category,
@@ -427,7 +684,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         `SELECT r.id,
                 r.shipment_id,
                 r.support_notes,
+                r.zoho_notes,
                 rt.door_received_at::text       AS received_at,
+                r.zoho_purchase_receive_id,
+                (
+                  SELECT MAX(rl.received_done_at)::text
+                    FROM receiving_line rl
+                   WHERE rl.receiving_id = r.id
+                     AND rl.organization_id = r.organization_id
+                ) AS inventory_received_at,
                 stn.tracking_number_raw         AS shipment_tracking_number_raw,
                 stn.carrier                     AS shipment_carrier,
                 stn.latest_status_category      AS shipment_status_category,
@@ -439,8 +704,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
           WHERE r.source = 'zoho_po'
-            AND r.zoho_purchaseorder_id = $1
-            AND r.organization_id = $2
+              AND r.zoho_purchaseorder_id = $1
+              AND r.organization_id = $2
           LIMIT 1`,
         [poId, orgId],
       );
@@ -483,7 +748,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       shipmentEvents = ev.rows as typeof shipmentEvents;
     }
 
-    // ── Line items: from zoho_po_mirror.raw + per-line received qty ────────
+    // ── Line items: prefer fat mirror raw; fall back to carton spine ─────
+    // List/delta sync often stores header-only `raw` (no line_items). Trust
+    // view must still paint sibling receiving_line + receiving_line_zoho rows
+    // (descriptions / SN·condition text live on rz.zoho_notes after receive).
     type RawLine = {
       line_item_id?: string;
       item_id?: string;
@@ -494,56 +762,109 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       rate?: number;
       item_total?: number;
     };
+    type LocalLine = {
+      id: number;
+      zoho_line_item_id: string | null;
+      zoho_item_id: string | null;
+      zoho_notes: string | null;
+      unit_price: string | null;
+      quantity_received: number;
+      quantity_expected: number | null;
+      workflow_status: string | null;
+      sku: string | null;
+      item_name: string | null;
+    };
     const rawLineItems: RawLine[] = (() => {
       const raw = mirror?.raw as { line_items?: RawLine[] } | undefined;
       return Array.isArray(raw?.line_items) ? (raw!.line_items as RawLine[]) : [];
     })();
 
-    let receivedByLineItemId = new Map<string, { quantity_received: number; workflow_status: string | null; line_id: number }>();
-    if (rawLineItems.length > 0) {
-      const linesRes = await tenantQuery<{
-        id: number;
-        zoho_line_item_id: string | null;
-        quantity_received: number;
-        workflow_status: string | null;
-      }>(
-        orgId,
-        // Wave-2 reader cutover: keyed + read through receiving_line_zoho rz
-        // (every line with ANY zoho field has an rz row, so joining rz first
-        // and reaching rl via its PK is exactly the old spine filter).
-        `SELECT rl.id, rz.zoho_line_item_id, rl.quantity_received, rl.workflow_status::text
-           FROM receiving_line_zoho rz
-           JOIN receiving_line rl ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
-          WHERE rz.zoho_purchaseorder_id = $1
-            AND rz.organization_id = $2
-          LIMIT 500`,
-        [poId, orgId],
-      );
-      for (const row of linesRes.rows) {
-        if (!row.zoho_line_item_id) continue;
-        receivedByLineItemId.set(row.zoho_line_item_id, {
-          quantity_received: Number(row.quantity_received ?? 0),
-          workflow_status: row.workflow_status ?? null,
-          line_id: Number(row.id),
-        });
+    const localLinesRes = await tenantQuery<LocalLine>(
+      orgId,
+      `SELECT rl.id,
+              rz.zoho_line_item_id,
+              rz.zoho_item_id,
+              rz.zoho_notes,
+              rz.unit_price::text,
+              rl.quantity_received,
+              rl.quantity_expected,
+              rl.workflow_status::text,
+              rl.sku,
+              rl.item_name
+         FROM receiving_line_zoho rz
+         JOIN receiving_line rl
+           ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
+        WHERE rz.zoho_purchaseorder_id = $1
+          AND rz.organization_id = $2
+        ORDER BY rl.id
+        LIMIT 500`,
+      [poId, orgId],
+    );
+    const localByLineItemId = new Map<
+      string,
+      LocalLine
+    >();
+    const localBySku = new Map<string, LocalLine>();
+    for (const row of localLinesRes.rows) {
+      if (row.zoho_line_item_id) {
+        localByLineItemId.set(row.zoho_line_item_id, row);
+      }
+      const skuKey = (row.sku || '').trim().toLowerCase();
+      if (skuKey && !localBySku.has(skuKey)) {
+        localBySku.set(skuKey, row);
       }
     }
-    const line_items = rawLineItems.map((l) => {
-      const match = l.line_item_id ? receivedByLineItemId.get(l.line_item_id) ?? null : null;
-      return {
-        line_item_id: l.line_item_id ?? null,
-        item_id: l.item_id ?? null,
-        sku: l.sku ?? null,
-        name: l.name ?? null,
-        description: l.description ?? null,
-        quantity_expected: Number(l.quantity ?? 0),
-        quantity_received: match?.quantity_received ?? 0,
-        workflow_status: match?.workflow_status ?? null,
-        receiving_line_id: match?.line_id ?? null,
-        rate: l.rate ?? null,
-        item_total: l.item_total ?? null,
-      };
-    });
+
+    const line_items =
+      rawLineItems.length > 0
+        ? rawLineItems.map((l) => {
+            const skuKey = (l.sku || '').trim().toLowerCase();
+            const match =
+              (l.line_item_id ? localByLineItemId.get(l.line_item_id) : null) ??
+              (skuKey ? localBySku.get(skuKey) ?? null : null);
+            // Prefer satellite notes (post-receive SN·condition text) over stale
+            // mirror description when present.
+            const description =
+              (match?.zoho_notes ?? '').trim() || (l.description ?? null);
+            const rateFromLocal =
+              match?.unit_price != null && match.unit_price !== ''
+                ? Number(match.unit_price)
+                : null;
+            return {
+              line_item_id: l.line_item_id ?? null,
+              item_id: l.item_id ?? match?.zoho_item_id ?? null,
+              sku: l.sku ?? match?.sku ?? null,
+              name: l.name ?? match?.item_name ?? null,
+              description,
+              quantity_expected: Number(l.quantity ?? match?.quantity_expected ?? 0),
+              quantity_received: match?.quantity_received ?? 0,
+              workflow_status: match?.workflow_status ?? null,
+              receiving_line_id: match?.id ?? null,
+              rate: l.rate ?? rateFromLocal,
+              item_total: l.item_total ?? null,
+            };
+          })
+        : localLinesRes.rows.map((l) => {
+            const rate =
+              l.unit_price != null && l.unit_price !== '' ? Number(l.unit_price) : null;
+            const expected = Number(l.quantity_expected ?? 0);
+            return {
+              line_item_id: l.zoho_line_item_id,
+              item_id: l.zoho_item_id,
+              sku: l.sku,
+              name: l.item_name,
+              description: l.zoho_notes,
+              quantity_expected: expected,
+              quantity_received: Number(l.quantity_received ?? 0),
+              workflow_status: l.workflow_status,
+              receiving_line_id: l.id,
+              rate: Number.isFinite(rate as number) ? rate : null,
+              item_total:
+                rate != null && Number.isFinite(rate) && expected > 0
+                  ? rate * expected
+                  : null,
+            };
+          });
 
     // ── Receive / line lifecycle history (inventory_events) ─────────────────
     // Anchor on the PO's receiving_line_ids ("line under PO") AND the carton, so
@@ -671,9 +992,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       return candidates;
     })();
 
+    // Carton zoho_notes (synced PO header) wins; else mirror raw.notes from last fat pull.
+    const mirrorRawNotes = (() => {
+      const raw = (mirror?.raw ?? {}) as Record<string, unknown>;
+      const n = raw.notes;
+      return typeof n === 'string' && n.trim() ? n : null;
+    })();
+    const po_notes =
+      (recv?.zoho_notes ?? '').trim() || mirrorRawNotes || null;
+
     return {
       po: mirror,
       receiving: recv,
+      po_notes,
       line_items,
       shipment: recv?.shipment_id
         ? {

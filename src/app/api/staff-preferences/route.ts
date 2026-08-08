@@ -20,6 +20,14 @@ import {
   getStaffPreferences,
   updateStaffPreferences,
 } from '@/lib/neon/staff-preferences-queries';
+import { getOrganization } from '@/lib/tenancy/organizations';
+import type { OrgId } from '@/lib/tenancy/constants';
+import type { OrgSettings } from '@/lib/tenancy/settings';
+import { resolveUnboxPinnedTabs } from '@/lib/receiving/unbox-default-pins';
+import {
+  getReceivingUnboxDefaultPins,
+  getReceivingUnboxRoleDefaultPins,
+} from '@/lib/settings/accessors';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
@@ -28,8 +36,20 @@ export const runtime = 'nodejs';
 const AUDIT_SOURCE = 'staff-preferences-api';
 
 export const GET = withAuth(async (_req, ctx) => {
-  const prefs = await getStaffPreferences(ctx.staffId, ctx.organizationId);
-  return NextResponse.json({ prefs });
+  const [prefs, org] = await Promise.all([
+    getStaffPreferences(ctx.staffId, ctx.organizationId),
+    getOrganization(ctx.organizationId as OrgId),
+  ]);
+  // Effective NON-STAFF default for the Unbox Band-1 Inbound pin: role → org →
+  // []. The chrome layers the staff override on top (staff → this → []) so a
+  // fresh staffer inherits the org/role template without a personal pin click.
+  // See resolveUnboxPinnedTabs + useUnboxDefaultPins (Gemini D9).
+  const orgSettings = (org?.settings ?? {}) as OrgSettings;
+  const unboxDefaultPins = resolveUnboxPinnedTabs({
+    roleDefault: getReceivingUnboxRoleDefaultPins(orgSettings, ctx.role),
+    orgDefault: getReceivingUnboxDefaultPins(orgSettings),
+  });
+  return NextResponse.json({ prefs, unboxDefaultPins });
 });
 
 export const PUT = withAuth(async (req: NextRequest, ctx) => {

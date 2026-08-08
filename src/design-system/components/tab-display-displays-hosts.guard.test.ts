@@ -1,11 +1,11 @@
 /**
  * Displays nested verb switchers must use industrial TabDisplay — never soft
- * TabSwitch pills (Photos Move·Send, Link·Note, Units·Prebox). Ticket is
+ * TabSwitch pills. Photos is armed rows only (no parent strip). Ticket is
  * presence-exclusive (no Chat·Claim nested underline).
  *
- * Parent verbs use `appearance="underline"` (Photos · Linkage · Units). Claim
- * child mode (New·Link) uses `appearance="segment"` in ClaimWizardNav — never
- * a second inverse fill.
+ * Debt allowlist (shrink-only): Linkage · Units still use parent
+ * `appearance="underline"`. Claim child mode (New·Link) uses
+ * `appearance="segment"` in ClaimWizardNav — never a second inverse fill.
  */
 
 import assert from 'node:assert/strict';
@@ -21,17 +21,17 @@ function stripComments(src: string): string {
 
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
-/** Hosts that nest underline parent verbs (Photos · Linkage · Units). */
+/** Hosts that nest underline parent verbs (Linkage · Units). Photos is rows-only. */
 const UNDERLINE_VERB_HOSTS = [
-  'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
 ] as const;
 
-/** Hosts that still nest verb switchers (Ticket does not). */
+/** Hosts that still nest verb switchers (Ticket · Photos do not). */
 const NESTED_VERB_HOSTS = [...UNDERLINE_VERB_HOSTS] as const;
 
 const FLUSH_STACK_HOSTS = [
+  'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   ...NESTED_VERB_HOSTS,
   'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
 ] as const;
@@ -67,16 +67,25 @@ describe('Displays nested verbs use TabDisplay', () => {
     });
   }
 
-  it('PhotosDisplayHost is Move · Send only — gallery default, no Browse tab', () => {
+  it('PhotosDisplayHost is armed rows only — no nested TabDisplay strip', () => {
     const src = read(
       'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
     );
-    assert.match(src, /icon:\s*ArrowLeftRight/);
-    assert.match(src, /icon:\s*Send/);
+    assert.match(src, /PhotosActionsArmedList/);
     assert.doesNotMatch(
       src,
-      /id:\s*'browse'|label:\s*'Browse'/,
-      'gallery is default body — no Browse tab',
+      /\bTabDisplay\b/,
+      'Photos dropped Actions·Compare·Move·Send underline tabs',
+    );
+    assert.doesNotMatch(
+      src,
+      /launcherLayout="toolbar"|CopyChipHoverMenuPanel/,
+      'Actions is keyboard-armed — not hover-toolbar chrome',
+    );
+    assert.doesNotMatch(
+      src,
+      /PhotosGalleryBody|mode="view"/,
+      'no legacy PhotosGalleryBody under Photos Displays',
     );
   });
 
@@ -99,7 +108,7 @@ describe('Displays nested verbs use TabDisplay', () => {
     );
   });
 
-  it('SectionTabsSlider icon strip is SpaceX h-10 plate (flush, ⋮ peer)', () => {
+  it('SectionTabsSlider icon strip is SpaceX primary plate (flush, ⋮ peer)', () => {
     const src = read('src/design-system/components/SectionTabsSlider.tsx');
     assert.match(src, /from '\.\/TabDisplay'/, 'inline density composes TabDisplay');
     assert.doesNotMatch(
@@ -119,8 +128,8 @@ describe('Displays nested verbs use TabDisplay', () => {
     );
     assert.match(
       src,
-      /ICON_CELL_CLASS[\s\S]*h-10/,
-      'topic plate cells are h-10 SpaceX face',
+      /ICON_CELL_CLASS[\s\S]*PRIMARY_CHROME_ROW_FACE/,
+      'topic plate cells are PRIMARY_CHROME_ROW_FACE SpaceX face',
     );
     assert.match(
       src,
@@ -155,8 +164,8 @@ describe('Displays nested verbs use TabDisplay', () => {
     assert.match(src, /MoreVertical/, 'overflow ⋮ stays on the topic plate row');
     assert.match(
       src,
-      /ICON_OVERFLOW_CELL_CLASS[\s\S]*h-10/,
-      '⋮ peer shares the h-10 plate height',
+      /ICON_OVERFLOW_CELL_CLASS[\s\S]*PRIMARY_CHROME_ROW_FACE/,
+      '⋮ peer shares the PRIMARY_CHROME_ROW_FACE plate height',
     );
     assert.match(
       src,
@@ -190,17 +199,27 @@ describe('Displays nested verbs use TabDisplay', () => {
     );
   });
 
-  it('Unbox Displays strip sits edge-to-edge on DISPLAYS_FLUSH_HOST', () => {
-    const src = read('src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx');
+  it('Unbox Displays drill-down sits on DISPLAYS_FLUSH_HOST (no icon plate)', () => {
+    const src = read('src/components/station/displays/StationDisplaysPushStack.tsx');
     assert.match(
       src,
       /DISPLAYS_FLUSH_HOST/,
       'Displays body uses flush host SoT (px-0)',
     );
+    assert.match(
+      src,
+      /StationDisplayIndexList/,
+      'Root Index is the Displays navigator',
+    );
+    assert.doesNotMatch(
+      src,
+      /UnboxSectionTabs|density=["']icon["']/,
+      'horizontal icon topic plate is retired as Displays primary nav',
+    );
     assert.doesNotMatch(
       src,
       /DISPLAYS_STRIP_HEADER_CLASS\s*=\s*'-mx-4'/,
-      'no -mx-4 cancel — flush host makes the topic plate edge-to-edge',
+      'no -mx-4 cancel — flush host owns edge-to-edge',
     );
   });
 
@@ -232,11 +251,10 @@ describe('Displays nested verbs use TabDisplay', () => {
       /WorkspaceCard/,
       'StagingSection mounts as a Displays body — flush, no glass card',
     );
-    assert.match(
-      src,
-      /DISPLAYS_BODY_INSET/,
-      'flush body re-owns its readable gutter via DISPLAYS_BODY_INSET',
-    );
+    // Arrival door-flow: host is px-0; content rows own inset-cozy (see
+    // arrival-displays-push.guard — not DISPLAYS_BODY_INSET on the host).
+    assert.doesNotMatch(src, /DISPLAYS_BODY_INSET/);
+    assert.match(src, /inset-cozy/);
   });
 
   it('ClaimWizardNav child mode uses TabDisplay segment, not PaneHeaderTabs', () => {
@@ -245,8 +263,9 @@ describe('Displays nested verbs use TabDisplay', () => {
     assert.match(
       src,
       /appearance="segment"/,
-      'New ticket · Link existing is the child segment layer',
+      'New · Link is the child segment layer',
     );
+    assert.match(src, /hint:/, 'Claim segment paints always-visible chord hints');
     assert.doesNotMatch(
       src,
       /\bPaneHeaderTabs\b/,
@@ -261,12 +280,31 @@ describe('Displays nested verbs use TabDisplay', () => {
     assert.match(
       src,
       /flex-col gap-0/,
-      'Cybertruck stack — no vertical air on the mode row',
+      'Cybertruck strip stack — no vertical air on the modal mode row',
+    );
+    assert.match(
+      src,
+      /leaf-header/,
+      'Displays placement compresses New·Link into the leaf-header trailing slot',
     );
     assert.doesNotMatch(
       src,
       /\b(?:pt|pb|py|space-y)-\d+\b/,
       'ClaimWizardNav must not pad vertically between tab rows',
     );
+  });
+
+  it('SupportContextSegments is TabDisplay segment — no soft rounded-full pills', () => {
+    const src = read('src/components/support/context/SupportContextSegments.tsx');
+    assert.match(src, /TabDisplay/);
+    assert.match(src, /appearance="segment"/);
+    assert.doesNotMatch(src, /rounded-full/);
+    assert.doesNotMatch(src, /\bTabSwitch\b/);
+  });
+
+  it('PreboxWizard mode is child segment under Units·Prebox', () => {
+    const src = read('src/components/receiving/PreboxWizard.tsx');
+    assert.match(src, /appearance="segment"/);
+    assert.doesNotMatch(src, /appearance="underline"/);
   });
 });

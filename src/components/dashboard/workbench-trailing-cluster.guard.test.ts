@@ -224,55 +224,80 @@ describe('WorkbenchTrailingCluster SoT', () => {
     });
   }
 
-  it('card-corner hover is the no-Band-3 fallback; Band-3 / View portal is the paint host', () => {
+  it('▦ is portal-or-nothing — the card-corner float stays deleted', () => {
     const src = readFileSync(join(ROOT, TRIGGER), 'utf8');
     const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     assert.match(code, /export function GridColumnGutter/);
-    // Fallback: floats over the card — reserving neither a column track nor a page lane.
-    assert.match(code, /absolute right-1\.5 top-1\.5/, 'must float over the card corner by default');
-    assert.doesNotMatch(code, /\bgap-2\b/, 'a reserved gutter is the shape this replaced');
-    // Hidden at rest, revealed by pointer OR keyboard, pinned while open. All
-    // three matter: hover alone is keyboard-unreachable, and a trigger that left
-    // with the pointer would strand the rail it opened with no visible owner.
-    assert.match(code, /opacity-0 group-hover\/grid-card:opacity-100/, 'pointer reveal');
-    assert.match(code, /group-focus-within\/grid-card:opacity-100/, 'keyboard reveal');
-    assert.match(code, /open && 'opacity-100'/, 'stays painted while its rail is open');
-    // An invisible box over the header's right end would eat last-column clicks.
-    assert.match(code, /pointer-events-none absolute/, 'inert while hidden');
-    assert.match(code, /pointer-events-auto/, 'clickable while shown');
-    // CSS opacity only — a framer whileHover here binds a re-render to mousemove
-    // across the whole card.
-    assert.doesNotMatch(code, /whileHover/, 'never a framer hover on a grid card');
-    // Band-3 / View topics portal rehosts paint — open state + rail stay on GridColumnGutter.
-    assert.match(code, /triggerPortalTarget/, 'Band-3 / View topics portal');
-    assert.match(code, /triggerPortalOnly/, 'View-topics desks suppress corner while host absent');
-    assert.match(code, /createPortal/, 'portal rehosts paint, not ownership');
 
-    // The surface mounts the card INSIDE the wrapper.
+    // THE invariant. Two hosts (Band-3 controls slot · inspector View cluster);
+    // no host paints nothing. Deleted 2026-08-08 because the float overlapped
+    // the first column header, and an operator who does not know the control
+    // exists cannot hover a corner to discover it.
+    assert.match(
+      code,
+      /triggerPortalTarget\s*\?\s*createPortal/,
+      'paint is portal-or-nothing — no fallback branch',
+    );
+
+    // The corner cannot get a third life. Each of these IS the float.
+    for (const [pattern, what] of [
+      [/absolute right-1\.5 top-1\.5/, 'the card-corner float box'],
+      [/group-hover\/grid-card/, 'the pointer hover-reveal'],
+      [/group-focus-within\/grid-card/, 'the focus hover-reveal'],
+      [/triggerPortalOnly/, 'the opt-out prop (nothing left to opt out of)'],
+    ] as const) {
+      assert.doesNotMatch(code, pattern, `${what} is deleted — do not reintroduce it`);
+    }
+
+    assert.doesNotMatch(code, /\bgap-2\b/, 'a reserved gutter is the shape this replaced');
+    // CSS only — a framer whileHover on a grid card binds a re-render to mousemove.
+    assert.doesNotMatch(code, /whileHover/, 'never a framer hover on a grid card');
+
+    // The surface mounts the card INSIDE the wrapper, and no longer forwards an
+    // opt-out it cannot honour.
     const surface = readFileSync(
       join(ROOT, 'src/design-system/components/grid/LedgerGridSurface.tsx'),
       'utf8',
     );
     assert.match(surface, /<GridColumnGutter[\s\S]{0,400}data-table-surface/);
-    assert.match(surface, /columnTriggerPortalOnly/);
-    assert.match(surface, /triggerPortalOnly=\{columnTriggerPortalOnly\}/);
+    assert.doesNotMatch(surface, /columnTriggerPortalOnly/);
+  });
 
-    // To Ship Orders grid is portal-only — never the card-corner hover twin.
-    const orders = readFileSync(
-      join(ROOT, 'src/components/dashboard/orders-queue/OrdersGridView.tsx'),
-      'utf8',
-    );
-    assert.match(
-      orders,
-      /columnTriggerPortalOnly/,
-      'To Ship must suppress card-corner ▦ — paint lives on inspector View topics',
-    );
+  /**
+   * Surfaces that reach a LedgerGrid with NO ▦ host, so column display is
+   * unreachable there. This is a LOSS LEDGER, not an exemption: each row is a
+   * surface owing a Band-3 controls slot (or an inspector View cluster).
+   *
+   * It exists because `COLUMN_DISPLAY_SURFACES` below proves PLUMBING, never
+   * PAINT — it stays green through a total loss of the control.
+   *
+   * **Shrink-only.** Wiring a host removes a line; nothing may add one.
+   */
+  const NO_COLUMN_DISPLAY_HOST: Readonly<Record<string, string>> = {
+    'src/components/warranty/WarrantyClaimsTable.tsx':
+      'WarrantyWorkspace has no WorkbenchTriageBand and the view wires no columnMenu',
+    'src/components/receiving/unfound/UnfoundQueueTable.tsx':
+      'PoMailboxAdminSection (/admin) has no Band-3 and the view wires no columnMenu',
+    'src/components/tracking-exceptions/TrackingExceptionsTable.tsx':
+      'bespoke FilterBar instead of WorkbenchTriageBand — host chrome not yet migrated',
+    'src/components/scan-out/ScanOutWorkspace.tsx':
+      'StagedQueueTable threads the target but the workspace passes none — already dark before 2026-08-08',
+  };
+
+  it('every no-host surface is recorded with its reason', () => {
+    for (const [rel, why] of Object.entries(NO_COLUMN_DISPLAY_HOST)) {
+      assert.ok(
+        why.trim().length >= 20,
+        `${rel}: say WHY column display is unreachable — this list is a debt ledger`,
+      );
+    }
   });
 
   /**
    * Band-3 + fieldsMenu surfaces must wire the portal end-to-end (norm 2026-08-06).
-   * Card-corner-only surfaces (Scan-out / Warranty / Unfound / Tracking-exceptions)
-   * are deliberately absent from this list.
+   * Surfaces with no host at all are absent from this list and recorded in
+   * NO_COLUMN_DISPLAY_HOST above — they lost the control when the card-corner
+   * float was deleted (2026-08-08) and owe a host.
    */
   it('Band-3 fieldsMenu desks portal ▦ into the triage controls slot', () => {
     const cases: { file: string; pattern: RegExp; why: string }[] = [

@@ -23,20 +23,35 @@ import {
   TRIAGE_SURFACE_ROUTE,
   UNBOX_SURFACE_ROUTE,
 } from '@/lib/receiving/surface-path';
-import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
+import {
+  RECEIVING_HISTORY_URL_PARAMS,
+  parseReceivingHistorySearchFieldWire,
+  parseReceivingHistorySearchScopeWire,
+} from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';
 import { parseInboundDeskSort } from '@/lib/receiving/inbound-lane';
+import { parseIncomingViewWire } from '@/lib/receiving/incoming-view';
+import { parseIncomingDeliveryStateWire } from '@/lib/receiving/incoming-delivery-state-face';
+import { parseUnboxKpiFilterWire } from '@/lib/receiving/unbox-metrics';
+import { parseTriageLaneWire } from '@/lib/receiving/triage-lane-policy';
+import { parsePickupStatusTabWire } from '@/lib/local-pickup/order-status';
 import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
+import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 // Dependency-free vocabulary module (no React, no imports) — safe at this altitude.
-import { canonicalizeUnboxSideTab } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
+import {
+  parseUnboxDisplayNav,
+  parseUnboxLinkageActionWire,
+  parseUnboxPhotoActionWire,
+  parseUnboxTicketActionWire,
+  parseUnboxUnitsActionWire,
+} from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
 import {
   defineRouteParams,
   paramDateKey,
   paramEnum,
-  paramEnumUpper,
   paramFlag,
   paramPositiveInt,
   paramRoundTrip,
@@ -80,23 +95,33 @@ const historySortParam = () =>
   );
 
 /**
- * `?display=` — round-tripped via {@link canonicalizeUnboxSideTab} (includes
- * legacy `pairing` / `po-note` → `linkage`). Never a hand-copied enum.
+ * `?display=` — round-tripped via {@link parseUnboxDisplayNav} (Root Index
+ * `index` + leaves; legacy `pairing` / `po-note` → `linkage`). Never a
+ * hand-copied enum.
  */
-const unboxDisplayParam = () => paramRoundTrip((raw) => canonicalizeUnboxSideTab(raw));
+const unboxDisplayParam = () => paramRoundTrip((raw) => parseUnboxDisplayNav(raw));
+
+/**
+ * `?unboxview=` — round-tripped via {@link parseUnboxViewWire}. Queue omits the
+ * param; History / Inbound / Recent (`viewed`) / All / urgent-migration write
+ * explicit wires. A hand-copied enum here drifted when History got its own wire
+ * (2026-08-08) and hygiene bounced History → Queue.
+ */
+const unboxViewParam = () => paramRoundTrip(parseUnboxViewWire);
+
+const historySearchFieldParam = () => paramRoundTrip(parseReceivingHistorySearchFieldWire);
+const historySearchScopeParam = () => paramRoundTrip(parseReceivingHistorySearchScopeWire);
 
 /** `/unbox` — the Unbox workspace. */
 export const UNBOX_ROUTE_PARAMS = defineRouteParams({
   route: UNBOX_SURFACE_ROUTE,
   owns: {
     /**
-     * Workbench tab, on the WIRE. History is the default and omits the param;
-     * `viewed` carries the Recent tab (the server-side name for that feed — see
-     * `utils/unbox-workspace-state.ts` on the two vocabularies). `recent` is the
-     * pre-2026-08-01 wire value for History, kept in the enum so an old link is
-     * tolerated rather than stripped; the parser maps it back to History.
+     * Workbench tab, on the WIRE. Queue is the default and omits the param;
+     * `history` / `incoming` / `viewed` (Recent) / `all` write explicit values
+     * — see `utils/unbox-workspace-state.ts`. Never a hand-copied enum.
      */
-    unboxview: paramEnum(['recent', 'queue', 'viewed'] as const),
+    unboxview: unboxViewParam(),
     /**
      * Compat — rewritten to `display=ticket` by useUnboxDisplayView. Kept so
      * surface hygiene does not strip mid-redirect.
@@ -112,14 +137,23 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * under Photos. NOT `unboxview` (queue/viewed BROWSE tab on this route).
      */
     display: unboxDisplayParam(),
-    /** Nested Photos topic action when `display=photos`. */
-    photoAction: paramEnum(['browse', 'move', 'send'] as const),
+    /**
+     * Nested Photos topic action when `display=photos`. Round-trip the SoT wire
+     * (`actions|move|send|compare` + legacy `browse`) — a hand-copied enum
+     * stripped `compare` and bounced Compare → Actions.
+     */
+    photoAction: paramRoundTrip(parseUnboxPhotoActionWire),
     /** Nested Linkage topic action when `display=linkage`. */
-    linkageAction: paramEnum(['link', 'note'] as const),
+    linkageAction: paramRoundTrip(parseUnboxLinkageActionWire),
+    /**
+     * Legacy — Inventory no longer nests Items·Notes·Activity. Cleared on
+     * Displays open; kept so stale deep links do not 404 the param registry.
+     */
+    inventoryAction: paramEnum(['items', 'notes', 'activity'] as const),
     /** Nested Ticket topic action when `display=ticket`. */
-    ticketAction: paramEnum(['chat', 'claim'] as const),
+    ticketAction: paramRoundTrip(parseUnboxTicketActionWire),
     /** Nested Units topic action when `display=units`. */
-    unitsAction: paramEnum(['units', 'prebox'] as const),
+    unitsAction: paramRoundTrip(parseUnboxUnitsActionWire),
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */
@@ -131,7 +165,7 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      */
     ustage: paramEnum(['staged', 'unstaged'] as const),
     /** Queue priority-lane facet — triage lane values. Omitted = all lanes. */
-    ulane: paramEnumUpper(['PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD'] as const),
+    ulane: paramRoundTrip(parseTriageLaneWire),
     /**
      * Unbox Urgent tab (`?unboxview=urgent`) — narrows the door queue to
      * explicit priority cartons. Written by `normalizeUnboxViewParams`;
@@ -143,14 +177,7 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * Values match filterable metric ids in `unbox-metrics.ts` — informational
      * tiles (`queue-depth`, `oldest-wait`) never write this param.
      */
-    ukpi: paramEnum([
-      'opened-today',
-      'awaiting-test',
-      'stuck',
-      'priority',
-      'viewed-today',
-      'unfinished',
-    ] as const),
+    ukpi: paramRoundTrip(parseUnboxKpiFilterWire),
     /** Band 2 KPI canvas time window (`UnboxKpiCanvas`). Default 7d when omitted. */
     urange: paramEnum(['24h', '7d', '30d', '90d'] as const),
     /** Band 2 KPI canvas viz mode — tiles · bars · pie · line. Default pie. */
@@ -179,15 +206,8 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * on the next commit (filter flashes then resets).
      */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
-    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
-      'all',
-      'po',
-      'tracking',
-      'sku',
-      'product',
-      'serial',
-    ] as const),
-    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
   },
   carries: SCAN_SURFACE_CARRIES,
 });
@@ -217,7 +237,7 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     /** Desk lane (`pipeline` default, omitted | `docked`). */
     lane: paramEnum(['pipeline', 'docked'] as const),
     /** Right-pane sub-view (`pos` default | `email` | `removed`) — Pipeline only. */
-    incview: paramEnum(['pos', 'email', 'removed'] as const),
+    incview: paramRoundTrip(parseIncomingViewWire),
     /**
      * Bulk tracking paste filter — canonical keys, comma-joined. Names specific
      * rows, so it deliberately relaxes the lane's own predicate; written only by
@@ -225,20 +245,11 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
      */
     tracking_in: paramText,
     /** Delivery-state tile filter. */
-    state: paramEnumUpper([
-      'DELIVERED_UNOPENED',
-      'DELIVERED_NOT_UNBOXED',
-      'ARRIVING_TODAY',
-      'STALLED',
-      'IN_TRANSIT',
-      'TRACKING_UNAVAILABLE',
-      'PENDING_CARRIER',
-      'CARRIER_MISMATCH',
-      'AWAITING_TRACKING',
-      'WRONG_DESTINATION',
-    ] as const),
-    /** Source tab (`all` default | `zoho` | `ebay`) — Pipeline only. */
-    inbound: paramEnum(['all', 'zoho', 'ebay'] as const),
+    state: paramRoundTrip(parseIncomingDeliveryStateWire),
+    /** Source filter (`all` default | `zoho` | `ebay` | `amazon` | `manual`) — Pipeline. */
+    inbound: paramEnum(['all', 'zoho', 'ebay', 'amazon', 'manual'] as const),
+    /** Intake kind filter (`all` omitted | `purchase` | `return`) — Pipeline. */
+    inkind: paramEnum(['all', 'purchase', 'return'] as const),
     /**
      * Server ORDER BY — Pipeline ∪ Docked union so hygiene does not strip the
      * other lane’s sort on a deep link. Lane switch clears the incompatible id
@@ -253,15 +264,8 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     /** Shared receiving search box. */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
     /** Docked (history) search field / carton-source scope. */
-    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
-      'all',
-      'po',
-      'tracking',
-      'sku',
-      'product',
-      'serial',
-    ] as const),
-    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
   },
   carries: BROWSE_SURFACE_CARRIES,
 });
@@ -273,7 +277,7 @@ const PICKUP_ROUTE_PARAMS = defineRouteParams({
     /** Selected local-pickup order id. */
     lcpu: paramPositiveInt,
     /** Status tab over the pickup lines. */
-    status: paramEnum(['all', 'process', 'draft', 'done'] as const),
+    status: paramRoundTrip(parsePickupStatusTabWire),
     /** Pickup's own list filter (distinct from History's namespaced `rh_q`). */
     q: paramText,
   },
@@ -308,15 +312,8 @@ export const HISTORY_ROUTE_PARAMS = defineRouteParams({
     dir: paramEnum(['asc', 'desc'] as const),
     /** History's own namespaced search triple (`rh_*`). */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
-    [RECEIVING_HISTORY_URL_PARAMS.field]: paramEnum([
-      'all',
-      'po',
-      'tracking',
-      'sku',
-      'product',
-      'serial',
-    ] as const),
-    [RECEIVING_HISTORY_URL_PARAMS.scope]: paramEnum(['all', 'zoho_po', 'unmatched'] as const),
+    [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
+    [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
     /** 1-based page. */
     page: paramPositiveInt,
   },

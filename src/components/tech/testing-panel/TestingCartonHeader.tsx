@@ -9,6 +9,7 @@ import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
   getReceivingStatusDotTip,
+  getReceivingStatusPillClass,
 } from '@/lib/receiving/rail/status';
 import { useCartonPoTotal } from '@/components/receiving/workspace/line-edit/hooks/useCartonPoTotal';
 import type { TestingController } from './testing-panel-types';
@@ -69,6 +70,7 @@ export function TestingCartonHeader({
       poEditOpen={poEditOpen}
       lifecycle={{
         dotClass: getReceivingStatusDot(row),
+        pillClass: getReceivingStatusPillClass(row),
         label: getReceivingStatusDotLabel(row),
         tip: getReceivingStatusDotTip(row, inventoryProviderLabel),
       }}

@@ -3,12 +3,13 @@
 /**
  * Live pack workspace overlay — Unbox-family Tier A:
  * StationScanPaneHost + StationPanelRoot; checklist (or UNIT peek) owns the
- * locked 720 centre; Ticket · Photos · Support · Timeline live on
- * StationDisplaysPushStack. Sibling to LineEditPanel / TriagePanel; binds
- * PackActiveOrderPane, not ReceivingLineRow. No sticky terminal dock (Tier C).
+ * locked 720 centre; Photos · Timeline · Listings (scan/pack only — no Ticket ·
+ * Support) live on StationDisplaysPushStack. Sibling to LineEditPanel /
+ * TriagePanel; binds PackActiveOrderPane, not ReceivingLineRow. No sticky
+ * terminal dock (Tier C).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
@@ -20,12 +21,7 @@ import {
   staggerRevealRiseItem,
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
-import {
-  Camera,
-  History,
-  MessageSquare,
-  Ticket,
-} from '@/components/Icons';
+import { Camera, ExternalLink, History } from '@/components/Icons';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import {
   buildSectionTabs,
@@ -35,7 +31,7 @@ import {
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
 import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
-import { SupportContextHub } from '@/components/support/context';
+import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
 import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
@@ -51,11 +47,14 @@ import {
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
 } from '@/components/station/displays';
+import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-index';
+import { packListingIdentity } from '@/components/packer/pack-listing-identity';
 import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-type PackDisplayTab = 'ticket' | 'photos' | 'support' | 'timeline';
+/** Scan/pack Displays only — no Ticket · Support hubs. */
+type PackDisplayTab = 'photos' | 'timeline' | 'listings';
 
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 type PackDisplayNav = typeof STATION_DISPLAY_INDEX | PackDisplayTab;
@@ -90,6 +89,13 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
 
   const [activeSideTab, setActiveSideTab] = useState<PackDisplayNav | null>(null);
 
+  const listingKey = String(activeOrder.sku || activeOrder.orderId || '').trim();
+  const listingIdentity = useMemo(() => packListingIdentity(listingKey), [listingKey]);
+  const [listingLink, setListingLink] = useState(listingIdentity.listingLink);
+  useEffect(() => {
+    setListingLink(listingIdentity.listingLink);
+  }, [listingIdentity.listingLink, listingKey]);
+
   const resetKey = activeOrder.serialUnitId
     ? `unit-${activeOrder.serialUnitId}`
     : activeOrder.orderRowId
@@ -120,34 +126,13 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
    * `←|` Open displays → the Root Index, never a guessed leaf.
    *
    * This used to open `photos` or `ticket` and, with no switcher in the column,
-   * that guess WAS the whole surface: Pack declares four displays and the
-   * operator could reach exactly one of them.
+   * that guess WAS the whole surface — the index makes every leaf reachable.
    */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
 
   const displayTabs = useMemo(
     () =>
       buildSectionTabs([
-        {
-          id: 'ticket',
-          label: 'Ticket',
-          icon: Ticket,
-          content: (
-            <div className="space-y-3">
-              <SupportContextHub
-                anchor={{
-                  order: activeOrder.orderId || undefined,
-                  tracking: activeOrder.tracking || undefined,
-                }}
-                variant="station"
-                onlySegment="customer"
-                hideLinkage
-                // Messages only — Pack Timeline Displays owns the floor spine.
-                mergeFloorTimeline={false}
-              />
-            </div>
-          ),
-        },
         {
           id: 'photos',
           label: 'Photos',
@@ -167,29 +152,9 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
           ),
         },
         {
-          id: 'support',
-          label: 'Support',
-          icon: MessageSquare,
-          content: (
-            <div className="space-y-3">
-              <SupportContextHub
-                anchor={{
-                  order: activeOrder.orderId || undefined,
-                  tracking: activeOrder.tracking || undefined,
-                }}
-                variant="station"
-                defaultSegment="team"
-                hideCustomerSegment
-                hideLinkage
-              />
-            </div>
-          ),
-        },
-        {
           id: 'timeline',
           label: 'Timeline',
           icon: History,
-          priority: 'overflow',
           visible: hasTimelineTab,
           content: (
             <WorkspaceTimelineTab
@@ -199,16 +164,29 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
             />
           ),
         },
+        {
+          id: 'listings',
+          label: 'Listings',
+          icon: ExternalLink,
+          // Trailing upgrade slot — always on the index for storefront peek.
+          content: (
+            <ListingLinksTab
+              listingLinks={listingIdentity.listingLinks}
+              listingLink={listingLink}
+              setListingLink={setListingLink}
+            />
+          ),
+        },
       ]),
     [
-      activeOrder.orderId,
-      activeOrder.tracking,
       activeOrder.serialUnitId,
       hasTimelineTab,
       orderId,
       photosInDisplays,
       timelineSerials,
       tracking,
+      listingIdentity.listingLinks,
+      listingLink,
     ],
   );
 
@@ -225,6 +203,24 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
   const packedCount = checklist?.progress.packedLines ?? 0;
   const totalCount = checklist?.progress.total ?? 0;
   const rollupComplete = packedCount >= totalCount && totalCount > 0;
+
+  const displayIndexRows = useMemo(
+    () =>
+      buildPackDisplayIndexRows({
+        photosVisible: photosInDisplays,
+        hasTimeline: hasTimelineTab,
+        packedCount,
+        totalCount,
+        hasListing: Boolean(listingIdentity.listingOpenHref),
+      }),
+    [
+      photosInDisplays,
+      hasTimelineTab,
+      packedCount,
+      totalCount,
+      listingIdentity.listingOpenHref,
+    ],
+  );
 
   const paneUtilityRow = (
     <div className="flex flex-col items-center gap-0 pt-0">
@@ -359,6 +355,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
               testId="pack-displays-push"
               resizeTestId="pack-displays-push-resize"
               tabs={displayTabs}
+              indexRows={displayIndexRows}
               activeTab={resolvedSideTab}
               onTabChange={(id) => setActiveSideTab(id as PackDisplayNav)}
               onClose={closeDisplays}

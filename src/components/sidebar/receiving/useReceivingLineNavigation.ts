@@ -22,6 +22,7 @@
 
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { focusWithinListKeyOwner, isListKeyRegionOpen } from '@/lib/keyboard/list-key-scope';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import {
@@ -186,6 +187,12 @@ export function useReceivingLineNavigation({
       if (!selectedLine) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // A focused list (e.g. the Station Displays index) owns ↑/↓ — don't step
+      // the carton table + pop its peek out from under it.
+      if (focusWithinListKeyOwner(event.target)) return;
+      // …and while an open Displays push column is up, the table behind it stands
+      // down regardless of focus (the `←|` toggle keeps focus out in the pane).
+      if (isListKeyRegionOpen()) return;
       event.preventDefault();
       window.dispatchEvent(
         new CustomEvent('receiving-navigate-table', {

@@ -1,6 +1,6 @@
 /**
  * Unbox/Triage order-chip: Edit always wired (even when a Zoho PO is linked);
- * Details opens Incoming connection panel via shared event.
+ * Unbox Details opens Displays → Inventory; Triage still uses Incoming event.
  *
  * Run: `tsx --test src/components/receiving/workspace/order-chip-edit-details.guard.test.ts`
  */
@@ -33,9 +33,13 @@ test('LineEditPanel always wires onEditPo to openPoPairing (not gated on hasReal
   );
   assert.match(PANEL, /poEditOpen=\{activeSideTab === 'linkage' && linkageAction === 'link'\}/);
   assert.match(PANEL, /onOrderDetails=\{openOrderConnectionDetails\}/);
-  assert.match(PANEL, /dispatchReceivingOpenIncomingDetails/);
-  assert.match(PANEL, /receivingId: row\.receiving_id/);
-  assert.match(PANEL, /receivingLineId: row\.id/);
+  // Unbox Details → Displays Inventory (not Incoming RightRailHost).
+  assert.match(PANEL, /openDisplays\('inventory'/);
+  assert.doesNotMatch(
+    PANEL,
+    /dispatchReceivingOpenIncomingDetails/,
+    'Unbox must not bounce Details to Incoming inspector',
+  );
 });
 
 test('TriagePanel always wires onEditPo + onOrderDetails', () => {

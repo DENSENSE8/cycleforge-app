@@ -63,7 +63,7 @@ import type { ProcedureStepRow, ProcedureStepState } from './types';
 function StepMarker({ state, position }: { state: ProcedureStepState; position: number }) {
   if (state === 'done') {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-blue-600 text-white">
         <Check className="h-2.5 w-2.5" />
       </span>
     );
@@ -72,21 +72,21 @@ function StepMarker({ state, position }: { state: ProcedureStepState; position: 
   // and this glyph is the only thing carrying that difference in the row.
   if (state === 'skipped') {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-strong text-text-soft ring-1 ring-inset ring-border-soft">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-surface-strong text-text-soft ring-1 ring-inset ring-border-soft">
         <ChevronRight className="h-2.5 w-2.5" />
       </span>
     );
   }
   if (state === 'active') {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-card text-role-micro font-semibold text-blue-700 ring-2 ring-blue-500">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-surface-card text-role-micro font-semibold text-blue-700 ring-2 ring-blue-500">
         {position}
       </span>
     );
   }
   return (
     <span
-      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-strong ring-1 ring-inset ring-border-soft"
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-surface-strong ring-1 ring-inset ring-border-soft"
       aria-hidden
     />
   );
@@ -131,29 +131,33 @@ function StepRowContent({ step }: { step: ProcedureStepRow }) {
 
 function ChecklistRowShell({
   step,
+  selected,
   onSelectStep,
   dragHandle,
   setNodeRef,
   style,
 }: {
   step: ProcedureStepRow;
+  /** Pointer selection — when set by the caller, wins over derived `state`. */
+  selected?: boolean;
   onSelectStep?: (key: string) => void;
   dragHandle?: ReactNode;
   setNodeRef?: (node: HTMLElement | null) => void;
   style?: CSSProperties;
 }) {
-  const isActive = step.state === 'active';
+  const isSelected = selected ?? step.state === 'active';
   return (
     <li
       ref={setNodeRef}
       style={style}
       data-procedure-step={step.key}
       data-procedure-state={step.state}
+      data-procedure-selected={isSelected ? 'true' : undefined}
       // Selection never size-shifts: fill + inset ring only, constant py.
       // Fixed min-height keeps the hover-peek viewport honest at N rows.
       className={cn(
         'inset-cozy min-h-10 box-border',
-        isActive && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
+        isSelected && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
@@ -176,9 +180,11 @@ function ChecklistRowShell({
 
 function SortableChecklistRow({
   step,
+  selected,
   onSelectStep,
 }: {
   step: ProcedureStepRow;
+  selected?: boolean;
   onSelectStep?: (key: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -187,6 +193,7 @@ function SortableChecklistRow({
   return (
     <ChecklistRowShell
       step={step}
+      selected={selected}
       onSelectStep={onSelectStep}
       setNodeRef={setNodeRef}
       style={{
@@ -216,6 +223,7 @@ function SortableChecklistRow({
 export function ProcedureChecklist({
   steps,
   title,
+  activeKey,
   onSelectStep,
   onReorderSteps,
   className,
@@ -224,6 +232,12 @@ export function ProcedureChecklist({
   steps: ReadonlyArray<ProcedureStepRow>;
   /** Eyebrow above the list — the station's name for its procedure. */
   title?: string;
+  /**
+   * Shared procedure pointer (focus override + natural first-incomplete).
+   * When set, row selection paint follows this key — not derived `state`
+   * alone — so reopen / pager / checklist stay one face with the dock.
+   */
+  activeKey?: string | null;
   /** Optional: jump to a step. Omit for a read-only checklist. */
   onSelectStep?: (key: string) => void;
   /**
@@ -273,13 +287,27 @@ export function ProcedureChecklist({
       )}
       style={listMaxHeight != null ? { maxHeight: listMaxHeight } : undefined}
     >
-      {steps.map((step) =>
-        sortable ? (
-          <SortableChecklistRow key={step.key} step={step} onSelectStep={onSelectStep} />
+      {steps.map((step) => {
+        const selected =
+          activeKey != null && activeKey !== ''
+            ? step.key === activeKey
+            : undefined;
+        return sortable ? (
+          <SortableChecklistRow
+            key={step.key}
+            step={step}
+            selected={selected}
+            onSelectStep={onSelectStep}
+          />
         ) : (
-          <ChecklistRowShell key={step.key} step={step} onSelectStep={onSelectStep} />
-        ),
-      )}
+          <ChecklistRowShell
+            key={step.key}
+            step={step}
+            selected={selected}
+            onSelectStep={onSelectStep}
+          />
+        );
+      })}
     </ol>
   );
 

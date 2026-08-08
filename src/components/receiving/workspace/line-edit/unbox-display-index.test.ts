@@ -33,28 +33,32 @@ const BASE_SIGNALS: UnboxDisplayIndexSignals = {
   isReturnIntake: false,
 };
 
-test('checklist never appears on the Root Index', () => {
+test('checklist appears on the Root Index (floor % ring deleted)', () => {
   const rows = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
   assert.equal(
     rows.some((r) => r.id === 'checklist'),
-    false,
+    true,
   );
+  assert.equal(rows.at(-1)?.id, 'checklist');
 });
 
-test('matched carton emits Ticket · Photos · Linkage · Inventory · Classify first', () => {
+test('matched carton emits Listings · Classify · Pairing · Inventory · Units first', () => {
   const rows = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
   assert.deepEqual(
     rows.slice(0, 5).map((r) => r.id),
-    ['ticket', 'photos', 'linkage', 'inventory', 'classify'],
+    ['listings', 'classify', 'linkage', 'inventory', 'units'],
   );
 });
 
-test('Unbox rows carry fixed Verification · Assets · Context groups', () => {
+test('Unbox rows carry PO-identity · stock · context groups', () => {
   const rows = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
-  assert.equal(rows.find((r) => r.id === 'ticket')?.group, 'verification');
+  assert.equal(rows.find((r) => r.id === 'listings')?.group, 'verification');
   assert.equal(rows.find((r) => r.id === 'classify')?.group, 'verification');
+  assert.equal(rows.find((r) => r.id === 'linkage')?.group, 'verification');
   assert.equal(rows.find((r) => r.id === 'inventory')?.group, 'assets');
+  assert.equal(rows.find((r) => r.id === 'photos')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'units')?.group, 'assets');
+  assert.equal(rows.find((r) => r.id === 'ticket')?.group, 'context');
   assert.equal(rows.find((r) => r.id === 'timeline')?.group, 'context');
 });
 
@@ -81,8 +85,8 @@ test('sparse gates hide units · listings · tracking · timeline', () => {
 
 test('ticket / photos / linkage / classify subtitles + tones', () => {
   const action = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
-  assert.equal(action.find((r) => r.id === 'ticket')?.subtitle, 'Claim needed');
-  assert.equal(action.find((r) => r.id === 'ticket')?.tone, 'action');
+  assert.equal(action.find((r) => r.id === 'ticket')?.subtitle, 'No ticket');
+  assert.equal(action.find((r) => r.id === 'ticket')?.tone, 'neutral');
   assert.equal(action.find((r) => r.id === 'photos')?.subtitle, 'None');
   assert.equal(action.find((r) => r.id === 'classify')?.tone, 'action');
 
@@ -155,7 +159,7 @@ test('filterDisplayIndexRows matches label · subtitle · id on Unbox rows', () 
   const photo = filterDisplayIndexRows(rows, 'photo');
   assert.equal(photo.length, 1);
   assert.equal(photo[0]?.id, 'photos');
-  const claim = filterDisplayIndexRows(rows, 'claim needed');
-  assert.ok(claim.some((r) => r.id === 'ticket'));
+  const noTicket = filterDisplayIndexRows(rows, 'no ticket');
+  assert.ok(noTicket.some((r) => r.id === 'ticket'));
   assert.ok(filterDisplayIndexRows(rows, 'timeline').some((r) => r.id === 'timeline'));
 });

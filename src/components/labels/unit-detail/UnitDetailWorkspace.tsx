@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronRight, MessageSquare } from '@/components/Icons';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
+import { useLabelsHistoryIdParam } from '@/hooks/useLabelsHistoryIdParam';
 import { useSerialUnitDetail } from './types';
 import { UnitDetailHeader } from './UnitDetailHeader';
 import { UnitQualityPanel } from './UnitQualityPanel';
@@ -31,7 +32,8 @@ import {
  */
 export function UnitDetailWorkspace() {
   const searchParams = useSearchParams();
-  const historyId = searchParams.get('historyId') || '';
+  const { historyId: historyIdRaw } = useLabelsHistoryIdParam();
+  const historyId = historyIdRaw || '';
   const fromRecent = searchParams.get('labelsView') === 'recent';
 
   const { data, isLoading, isError, error, refetch } = useSerialUnitDetail(historyId);

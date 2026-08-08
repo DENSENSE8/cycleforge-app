@@ -8,6 +8,8 @@ export type TechQueueItem = {
   lineId: number | null;
   trackingNumber: string | null;
   orderNumber: string | null;
+  /** Raw platform key for OrderIdChip (`source_platform` / pill / inbound). */
+  sourcePlatform: string | null;
   productTitle: string | null;
   unboxedAt: string | null;
 };
@@ -16,6 +18,8 @@ const REP_LINE_LATERAL = `
   LEFT JOIN LATERAL (
     SELECT rl.id AS line_id,
            rl.source_order_id,
+           rl.source_platform_pill,
+           rl.inbound_source_type,
            rz.zoho_purchaseorder_number AS line_po,
            COALESCE(zi.name, rl.item_name, rl.sku) AS product_title
       FROM receiving_line rl
@@ -28,6 +32,14 @@ const REP_LINE_LATERAL = `
      ORDER BY rl.id ASC
      LIMIT 1
   ) rep ON true`;
+
+/** Same ladder as receiving rail peeks: pill → carton platform → inbound type. */
+const SOURCE_PLATFORM_SQL = `NULLIF(TRIM(COALESCE(
+  NULLIF(rep.source_platform_pill, ''),
+  NULLIF(r.source_platform, ''),
+  NULLIF(rep.inbound_source_type, '')
+)), '')`;
+
 
 /** Tech-station backlog for primary tech staff; empty for everyone else. */
 export async function listTechQueueItemsForStaff(
@@ -42,6 +54,7 @@ export async function listTechQueueItemsForStaff(
     line_id: number | null;
     tracking: string | null;
     order_number: string | null;
+    source_platform: string | null;
     product_title: string | null;
     unboxed_at: string | null;
   }>(
@@ -50,6 +63,7 @@ export async function listTechQueueItemsForStaff(
             rep.line_id,
             stn.tracking_number_raw AS tracking,
             rep.source_order_id AS order_number,
+            ${SOURCE_PLATFORM_SQL} AS source_platform,
             rep.product_title,
             ru.unboxed_at::text AS unboxed_at
        FROM receiving_carton r
@@ -79,6 +93,7 @@ export async function listTechQueueItemsForStaff(
     line_id: number | null;
     tracking: string | null;
     order_number: string | null;
+    source_platform: string | null;
     product_title: string | null;
     unboxed_at: string | null;
   }>(
@@ -87,6 +102,7 @@ export async function listTechQueueItemsForStaff(
             rep.line_id,
             stn.tracking_number_raw AS tracking,
             COALESCE(rep.source_order_id, rep.line_po, r.zoho_purchaseorder_number) AS order_number,
+            ${SOURCE_PLATFORM_SQL} AS source_platform,
             rep.product_title,
             ru.unboxed_at::text AS unboxed_at
        FROM receiving_carton r
@@ -112,6 +128,7 @@ export async function listTechQueueItemsForStaff(
       lineId: row.line_id != null ? Number(row.line_id) : null,
       trackingNumber: row.tracking ?? null,
       orderNumber: row.order_number ?? null,
+      sourcePlatform: row.source_platform ?? null,
       productTitle: row.product_title ?? null,
       unboxedAt: row.unboxed_at ?? null,
     })),
@@ -121,6 +138,7 @@ export async function listTechQueueItemsForStaff(
       lineId: row.line_id != null ? Number(row.line_id) : null,
       trackingNumber: row.tracking ?? null,
       orderNumber: row.order_number ?? null,
+      sourcePlatform: row.source_platform ?? null,
       productTitle: row.product_title ?? null,
       unboxedAt: row.unboxed_at ?? null,
     })),

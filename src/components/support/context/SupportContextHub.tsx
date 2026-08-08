@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * SupportContextHub — unified linkage + segmented Customer | Team | Activity
- * surface for ticket↔STN context. Composed on Support console, Unbox, and
- * packing (rollup) — one SoT, density variants only.
+ * SupportContextHub — unified linkage + Customer | Team | Activity perspectives
+ * (industrial TabDisplay segment via SupportContextSegments) for ticket↔STN
+ * context. Composed on Support console, Unbox, and packing (rollup) — one SoT,
+ * density variants only.
  */
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/design-system/primitives';
@@ -184,8 +185,9 @@ export function SupportContextHub({
       {showSegmentPills ? (
         <div
           className={cn(
-            'flex shrink-0 items-center justify-between gap-2 border-b border-border-hairline',
-            dense ? 'px-3 py-2' : 'px-4 py-2.5',
+            'flex shrink-0 flex-col border-b border-border-hairline',
+            // Flush Displays: segment is the full-width child strip (no pill inset).
+            flush ? 'px-0 py-0' : dense ? 'px-3 py-2' : 'px-4 py-2.5',
           )}
         >
           <SupportContextSegments

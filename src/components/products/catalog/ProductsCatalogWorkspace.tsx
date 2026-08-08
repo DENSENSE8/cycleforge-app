@@ -252,7 +252,9 @@ export function ProductsCatalogWorkspace() {
                 />
               }
             />
-            {/* Band 3 — find left; catalog refine right. No KPI band (no metrics). */}
+            {/* Band 3 — find-only: dominant find with catalog refine in-field.
+                No KPI band (no metrics), no desk peek (honest absence of the
+                inspector toggle — catalog rows navigate to the SKU page). */}
             <WorkbenchTriageBand
               controlsSlotRef={setCatalogControlsEl}
               search={
@@ -262,15 +264,14 @@ export function ProductsCatalogWorkspace() {
                   onChange={setCatalogSearch}
                   placeholder="Filter SKU, title, inventory id…"
                   isSearching={loading && Boolean(q.trim())}
-                  className="w-40 shrink-0 lg:w-56"
-                />
-              }
-              right={
+                  className="min-w-0 flex-1"
+                  trailingSuffix={
                 <WorkbenchFilterPopover
                   open={filterOpen}
                   onOpenChange={setFilterOpen}
                   hot={refineHot}
                   label="Filter catalog"
+                  density="field"
                 >
                   <WorkbenchFilterGroupLabel>Inventory link</WorkbenchFilterGroupLabel>
                   <WorkbenchFilterMenuRow
@@ -323,6 +324,8 @@ export function ProductsCatalogWorkspace() {
                     </>
                   ) : null}
                 </WorkbenchFilterPopover>
+                  }
+                />
               }
             />
           </div>

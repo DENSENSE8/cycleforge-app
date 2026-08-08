@@ -12,6 +12,7 @@ import { Package, Search } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
 import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
+import { GridDegradedBox } from '@/design-system/components/grid';
 import { PendingOrderRow } from '@/components/mobile/feed/rows/PendingOrderRow';
 import { fetchPendingOrdersData } from '@/lib/dashboard-table-data';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -36,7 +37,7 @@ export function MobileChecklistOrderQueue({
     { searchQuery: submittedQ, packedBy: undefined, testedBy: undefined },
   ] as const;
 
-  const { data, isLoading } = useCaptureStackQuery<ShippedOrder>({
+  const { data, isLoading, isError, refetch } = useCaptureStackQuery<ShippedOrder>({
     queryKey,
     queryFn: () => fetchPendingOrdersData({ searchQuery: submittedQ }),
     realtime: { invalidation: { dashboard: true }, refreshDomains: ['orders.outbound'] },
@@ -103,36 +104,47 @@ export function MobileChecklistOrderQueue({
       </div>
 
       <div className="min-h-0 flex-1">
-        <CaptureStack<ShippedOrder>
-          rows={rows}
-          isLoading={isLoading}
-          scrollRef={scrollRef}
-          expandLast={false}
-          getId={(row) => row.id}
-          className="pt-2 pb-3"
-          empty={
-            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-              <Package className="mb-1 h-10 w-10 text-blue-200" />
-              <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
-                {submittedQ ? 'No matches' : 'Nothing pending'}
-              </p>
-              <p className="max-w-[260px] text-xs font-medium text-blue-700/50">
-                {submittedQ
-                  ? 'Try a different product title or item number.'
-                  : 'No orders are waiting to be packed right now.'}
-              </p>
-            </div>
-          }
-          renderRow={(order, { variant, fresh }) => (
-            <PendingOrderRow
-              row={order}
-              variant={variant}
-              fresh={fresh}
-              showItemNumber
-              onTap={() => openOrder(order)}
+        {isError && rows.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center">
+            <GridDegradedBox
+              message="Couldn't load the checklist queue."
+              onRetry={() => {
+                void refetch();
+              }}
             />
-          )}
-        />
+          </div>
+        ) : (
+          <CaptureStack<ShippedOrder>
+            rows={rows}
+            isLoading={isLoading}
+            scrollRef={scrollRef}
+            expandLast={false}
+            getId={(row) => row.id}
+            className="pt-2 pb-3"
+            empty={
+              <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+                <Package className="mb-1 h-10 w-10 text-blue-200" />
+                <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
+                  {submittedQ ? 'No matches' : 'Nothing pending'}
+                </p>
+                <p className="max-w-[260px] text-xs font-medium text-blue-700/50">
+                  {submittedQ
+                    ? 'Try a different product title or item number.'
+                    : 'No orders are waiting to be packed right now.'}
+                </p>
+              </div>
+            }
+            renderRow={(order, { variant, fresh }) => (
+              <PendingOrderRow
+                row={order}
+                variant={variant}
+                fresh={fresh}
+                showItemNumber
+                onTap={() => openOrder(order)}
+              />
+            )}
+          />
+        )}
       </div>
     </div>
   );

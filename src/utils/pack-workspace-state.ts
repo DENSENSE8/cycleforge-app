@@ -1,9 +1,21 @@
 /**
  * Pack workbench tabs on `/pack` — URL SoT via `?packview=`.
  * Absent param defaults to Queue (ready-to-pack / TESTED board).
+ *
+ * Pack *scan* sub-modes (`?packMode=`) live here too — Standard is the default
+ * and is usually omitted; fragile / multi are legacy deep-links.
  */
 
 export type PackWorkspaceTab = 'queue' | 'history';
+
+/** Pack scan sub-mode on `/pack` (`?packMode=`). Standard = omit. */
+export type PackScanMode = 'standard' | 'fragile' | 'multi';
+
+export const PACK_SCAN_MODES = [
+  'standard',
+  'fragile',
+  'multi',
+] as const satisfies readonly PackScanMode[];
 
 const PACK_WORKSPACE_TAB_PARAM = 'packview';
 
@@ -23,6 +35,21 @@ const VALID: ReadonlySet<string> = new Set(['queue', 'history']);
 export function parsePackWorkspaceTab(raw: string | null): PackWorkspaceTab {
   const value = String(raw || '').trim().toLowerCase();
   return VALID.has(value) ? (value as PackWorkspaceTab) : 'queue';
+}
+
+/**
+ * Wire tokens `?packMode=` may carry (route-param hygiene). Includes default
+ * `standard` so a deep link is not stripped mid-flight.
+ */
+export function parsePackScanModeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (PACK_SCAN_MODES as readonly string[]).includes(v) ? v : null;
+}
+
+export function parsePackScanMode(raw: string | null | undefined): PackScanMode {
+  const v = String(raw || '').trim().toLowerCase();
+  if (v === 'fragile' || v === 'multi') return v;
+  return 'standard';
 }
 
 export function getPackWorkspaceTabFromSearch(

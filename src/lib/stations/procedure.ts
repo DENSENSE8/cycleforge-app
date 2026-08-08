@@ -591,15 +591,16 @@ const UNBOX_CATALOG_ORDER = [
   'receive',
 ] as const;
 
+/** Found: serial anchors the unit before grade + evidence (same trio as return). */
 const FOUND_CAPTURE = [
   'arrival_check',
   'shipping_label_photo',
   'box_photo',
   'packing_material',
   'contents',
+  'serial',
   'condition',
   'item_photos',
-  'serial',
   'label',
 ] as const;
 

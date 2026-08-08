@@ -13,7 +13,6 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
   useMemo,
   useState,
@@ -38,12 +37,8 @@ const OrdersViewChromeContext = createContext<OrdersViewChromeValue | null>(null
 export function OrdersViewChromeProvider({ children }: { children: ReactNode }) {
   const [controlsEl, setControlsEl] = useState<HTMLElement | null>(null);
   const [viewShellOpen, setViewShellOpen] = useState(false);
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } =
+  const { collapsed: kpiCollapsed, toggleCollapsed: onToggleKpi } =
     useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.outbound);
-
-  const onToggleKpi = useCallback(() => {
-    setKpiCollapsed(!kpiCollapsed);
-  }, [kpiCollapsed, setKpiCollapsed]);
 
   const value = useMemo(
     () => ({

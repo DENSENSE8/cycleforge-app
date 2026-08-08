@@ -45,13 +45,14 @@ import {
 import { recentRerunHref, type SearchRecentEntry } from '@/lib/search/search-recents';
 import { searchRerunHref } from '@/lib/search/search-page-recents';
 import {
-  globalSearchHandoffHref,
   journeyHandoffHref,
   looksLikeIdentifier,
   orderRecordHref,
 } from '@/lib/search/search-hit';
-import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
-import { setSearchOrderResolveCache } from '@/lib/search/search-order-resolve-query';
+import {
+  commitIdentifierFind,
+  hrefForPreviewHit,
+} from '@/lib/search/commit-identifier-find';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
@@ -127,11 +128,6 @@ interface GlobalFindComboboxProps {
    */
   pending?: boolean;
   className?: string;
-}
-
-function hrefForPreviewHit(hit: AiSearchHit): string {
-  if (hit.entityType === 'order') return orderRecordHref(hit.id);
-  return hit.href;
 }
 
 function navigateSearchHref(
@@ -211,12 +207,14 @@ export function GlobalFindCombobox({
 
   const trimmedQuery = query.trim();
   const hasValue = trimmedQuery.length > 0;
+  // Identifiers (serials, tracking, order #) get the same preview dropdown as
+  // NL — hits or “No matches…”. Enter still prefers resolveSearchOrder for
+  // order/tracking fast-open; miss re-focuses so this dropdown stays open.
   const showPreview =
     !suppressPreview &&
     (isStage || expanded) &&
     focused &&
-    trimmedQuery.length >= 2 &&
-    !looksLikeIdentifier(trimmedQuery);
+    trimmedQuery.length >= 2;
 
   const aiQuickJump = useAiQuickJump(trimmedQuery, {
     pageContext: pathname,
@@ -413,49 +411,14 @@ export function GlobalFindCombobox({
   const previewGroups = useMemo(() => groupHitsForPreview(previewHits), [previewHits]);
   const flatPreviewHits = useMemo(() => flattenPreviewGroups(previewGroups), [previewGroups]);
 
-  const openSearchPage = useCallback(() => {
-    if (!trimmedQuery) return;
-    setFocused(false);
+  const keepPreviewOpen = useCallback(() => {
+    window.clearTimeout(blurTimerRef.current);
+    if (!isStage) setExpanded(true);
+    setFocused(true);
+    inputRef.current?.focus();
+  }, [isStage]);
 
-    if (onBrowseQuery) {
-      onBrowseQuery(trimmedQuery);
-      return;
-    }
-
-    if (!looksLikeIdentifier(trimmedQuery)) {
-      const handoff = globalSearchHandoffHref(trimmedQuery, previewHits);
-      navigateSearchHref(router, handoff, pathname);
-      return;
-    }
-
-    void (async () => {
-      setResolvePending(true);
-      try {
-        const resolved = await resolveSearchOrder(trimmedQuery);
-        setSearchOrderResolveCache(queryClient, trimmedQuery, resolved);
-        if (resolved.status === 'ok') {
-          if (onSelectOrderId) {
-            onSelectOrderId(resolved.order.id, trimmedQuery);
-            return;
-          }
-          navigateSearchHref(router, orderRecordHref(resolved.order.id), pathname);
-          return;
-        }
-        // Miss / FBA: stay on the current page — header pulse only.
-      } finally {
-        setResolvePending(false);
-      }
-    })();
-  }, [
-    router,
-    trimmedQuery,
-    previewHits,
-    pathname,
-    onBrowseQuery,
-    onSelectOrderId,
-    queryClient,
-  ]);
-
+  /** Maximize glyph — open `/search` (with current query when present). */
   const openSearchWorkbench = useCallback(() => {
     setFocused(false);
     navigateSearchHref(
@@ -487,7 +450,7 @@ export function GlobalFindCombobox({
     dropdownState === 'recents'
       ? recents.length
       : dropdownState === 'preview'
-        ? flatPreviewHits.length + 1
+        ? flatPreviewHits.length
         : 0;
 
   const navRef = useRef({ dropdownOpen, dropdownState, optionCount, recents, flatPreviewHits });
@@ -524,17 +487,13 @@ export function GlobalFindCombobox({
       return true;
     }
     if (st === 'preview') {
-      if (activeIndex === 0) {
-        openSearchPage();
-        return true;
-      }
-      const hit = hits[activeIndex - 1];
+      const hit = hits[activeIndex];
       if (!hit) return false;
       commitHit(hit);
       return true;
     }
     return false;
-  }, [activeIndex, router, openSearchPage, pathname, onBrowseQuery, setQuery, commitHit]);
+  }, [activeIndex, router, pathname, onBrowseQuery, setQuery, commitHit]);
 
   useEffect(() => {
     if (!fieldOpen) return;
@@ -555,8 +514,8 @@ export function GlobalFindCombobox({
       }
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         const { dropdownOpen: open, dropdownState: st, flatPreviewHits: hits } = navRef.current;
-        if (!open || st !== 'preview' || activeIndex < 1) return;
-        const hit = hits[activeIndex - 1];
+        if (!open || st !== 'preview' || activeIndex < 0) return;
+        const hit = hits[activeIndex];
         const journey = hit ? journeyHandoffHref(hit) : null;
         if (!journey) return;
         e.preventDefault();
@@ -590,25 +549,23 @@ export function GlobalFindCombobox({
         void (async () => {
           setResolvePending(true);
           try {
-            const resolved = await resolveSearchOrder(trimmed);
-            setSearchOrderResolveCache(queryClient, trimmed, resolved);
-            if (resolved.status === 'ok') {
-              const href = orderRecordHref(resolved.order.id);
+            const result = await commitIdentifierFind(queryClient, trimmed);
+            if (result.kind === 'navigate') {
               onPushRecent?.({
                 query: trimmed,
                 scope: isStage ? 'dashboard' : 'global',
                 scopeHref: searchRerunHref(trimmed),
                 topHit: {
-                  title: resolved.order.product_title || resolved.order.order_id || trimmed,
-                  href,
+                  title: result.order.product_title || result.order.order_id || trimmed,
+                  href: result.href,
                   entityType: 'order',
                 },
               });
               if (onSelectOrderId) {
-                onSelectOrderId(resolved.order.id, trimmed);
+                onSelectOrderId(result.orderId, trimmed);
                 return;
               }
-              navigateSearchHref(router, href, pathname);
+              navigateSearchHref(router, result.href, pathname);
               return;
             }
             onPushRecent?.({
@@ -620,7 +577,8 @@ export function GlobalFindCombobox({
               onBrowseQuery(trimmed);
               return;
             }
-            // Miss / FBA: stay put — do not open /search?q= gray shell.
+            // Miss / FBA: stay put — show preview/empty dropdown (no /search?q=).
+            keepPreviewOpen();
           } finally {
             setResolvePending(false);
           }
@@ -629,39 +587,61 @@ export function GlobalFindCombobox({
       }
 
       const preview = navRef.current.flatPreviewHits;
-      const href = globalSearchHandoffHref(trimmed, preview);
-      const top = preview.find((h) => h.entityType === 'order');
+      // Zero preview hits → stay put (red empty dropdown); never a list page.
+      if (preview.length === 0) {
+        onPushRecent?.({
+          query: trimmed,
+          scope: isStage ? 'dashboard' : 'global',
+          scopeHref: searchRerunHref(trimmed),
+        });
+        if (onBrowseQuery) {
+          onBrowseQuery(trimmed);
+          return;
+        }
+        keepPreviewOpen();
+        return;
+      }
+      const top = preview.find((h) => h.entityType === 'order') ?? preview[0];
       onPushRecent?.({
         query: trimmed,
         scope: isStage ? 'dashboard' : 'global',
-        scopeHref: href.startsWith('/search') ? href : searchRerunHref(trimmed),
-        topHit: top
-          ? { title: top.title, href: orderRecordHref(top.id), entityType: 'order' }
-          : undefined,
+        scopeHref: searchRerunHref(trimmed),
+        topHit:
+          top && top.entityType === 'order'
+            ? { title: top.title, href: orderRecordHref(top.id), entityType: 'order' }
+            : undefined,
       });
 
       if (onBrowseQuery) {
-        // Sole preview order → open in-page; else browse list under the bar.
-        if (top && preview.filter((h) => h.entityType === 'order').length === 1 && preview.length === 1 && onSelectHit) {
+        // Stage legacy: sole order → open in-page; else browse list under the bar.
+        if (top && top.entityType === 'order' && preview.filter((h) => h.entityType === 'order').length === 1 && preview.length === 1 && onSelectHit) {
           onSelectHit(top);
           return;
         }
         onBrowseQuery(trimmed);
         return;
       }
-      navigateSearchHref(router, href, pathname);
+      // Header: the dropdown IS the results list — open the best hit directly
+      // (no `/search?q=` list page).
+      if (top) {
+        commitHit(top);
+        return;
+      }
+      keepPreviewOpen();
     },
     [
       router,
+      pathname,
       onPushRecent,
       activeIndex,
       navigateActive,
-      pathname,
       isStage,
       onSelectOrderId,
       onBrowseQuery,
       onSelectHit,
       queryClient,
+      keepPreviewOpen,
+      commitHit,
     ],
   );
 
@@ -780,7 +760,6 @@ export function GlobalFindCombobox({
           releaseHoverSoon();
           scheduleCollapse();
         }}
-        onSeeAll={openSearchPage}
         onSelectRecent={(entry) => {
           handleChange(entry.query);
           setFocused(false);

@@ -12,11 +12,11 @@
  * different literals and neither was wrong. The catalog stays — it is the
  * implementation — but new surfaces pick a role.
  *
- * FIVE roles became six when procedure stack layout earned its own job
- * (2026-08-03). A seventh role is a claim that a new JOB exists. Wanting a
- * different duration for an existing job is the drift this layer exists to
- * stop; change the preset (and every surface with that job) instead of adding a
- * role.
+ * Six roles became seven when Displays leaf-commit earned `feedback.hitMarker`
+ * (2026-08-07) — a different JOB from `feedback.pulse` (generic mounted ack /
+ * copy flash). Wanting a different duration for an existing job is still the
+ * drift this layer exists to stop; change the preset (and every surface with
+ * that job) instead of adding a role.
  *
  * PURE VALUE MODULE — no React, no hooks, no `'use client'`. Hosts consume
  * `presence` through `useMotionPresence` and `transition` through
@@ -124,10 +124,26 @@ export const motionRole = {
    *
    * Per `motion-crossfade.md` D12: a live grid cell update flashes — it never
    * slides or layout-shifts.
+   *
+   * **Not** scan-middle selection depth — that is {@link feedback.hitMarker}
+   * / `selectionPulse` on the procedure pager. Do not retarget `pulse` for
+   * that juice. Displays right-rail open must never wait on either.
    */
   feedback: {
     pulse: {
       transition: framerTransition.chipCopyFeedback,
+      regions: ['station', 'workbench'] as const satisfies readonly MotionRegion[],
+    },
+    /**
+     * Confirm / selection depth on a surface that **stays mounted** (scan-station
+     * middle procedure pager, future MasterNav twin). Transition only.
+     *
+     * **Never** gate Station Displays leaf/verb mount behind this role — right
+     * rail paints DOM in the same turn as click (`commitArmed` sync). Physics =
+     * `framerTransition.hitMarker` (100ms easeOut, ≤150ms). Audio stays off.
+     */
+    hitMarker: {
+      transition: framerTransition.hitMarker,
       regions: ['station', 'workbench'] as const satisfies readonly MotionRegion[],
     },
   },

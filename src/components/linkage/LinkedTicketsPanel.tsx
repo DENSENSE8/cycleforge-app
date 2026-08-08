@@ -138,13 +138,13 @@ export function LinkedTicketsPanel({
     },
   });
 
-  // Flush Connections: keep the Linkage eyebrow + plain empty caption when
+  // Flush Connections: keep the Pairing eyebrow + plain empty caption when
   // nothing is linked yet. Card embeds stay silent until an identifier lands.
   if (!enabled) {
     if (!flush || hideWhenEmpty || ticketsOnly) return null;
     return (
-      <section className={className || undefined} aria-label="Linkage">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Linkage</p>
+      <section className={className || undefined} aria-label="Pairing">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Pairing</p>
         <p className="mt-1.5 text-role-caption text-text-faint">
           No linked order or tracking yet.
         </p>
@@ -256,7 +256,7 @@ export function LinkedTicketsPanel({
 
   return (
     <section className={`space-y-2 ${className}`}>
-      <p className={headerCls}>Linkage</p>
+      <p className={headerCls}>Pairing</p>
 
       {isLoading && (
         <div className="text-role-caption text-text-faint">Resolving links…</div>

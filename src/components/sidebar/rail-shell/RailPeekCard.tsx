@@ -8,52 +8,22 @@
  * progress + condition badges); every other feed composes THIS card so a parked
  * collapse-strip pin peeks the same anatomy and the same copy affordances
  * instead of a text-only tooltip. One card, one grammar — never a per-rail twin.
+ *
+ * Pad / seam SoT: {@link rail-peek-chrome}. Identity chips:
+ * {@link RailPeekIdentityFacts}.
  */
 
 import { Button } from '@/design-system/primitives';
 import {
-  BinChip,
-  OrderIdChip,
-  PoChip,
-  SerialChip,
-  SkuScanRefChip,
-  TicketChip,
-  TrackingChip,
-  getLast8,
-} from '@/components/ui/CopyChip';
+  RailPeekIdentityFacts,
+  type RailPeekFact,
+} from '@/components/sidebar/rail-shell/RailPeekIdentityFacts';
+import {
+  RAIL_PEEK_PAD_CLASS,
+  RAIL_PEEK_SECTION_CLASS,
+} from '@/components/sidebar/rail-shell/rail-peek-chrome';
 
-/** Typed identity fact — tone picks the SoT chip (icon + copy history kind). */
-export type RailPeekFact = {
-  tone: 'order' | 'po' | 'sku' | 'tracking' | 'serial' | 'ticket' | 'bin';
-  value: string;
-  /** Face override; defaults to the house last-8 preview for the tone. */
-  display?: string;
-};
-
-function RailPeekFactChip({ fact }: { fact: RailPeekFact }) {
-  const value = fact.value.trim();
-  switch (fact.tone) {
-    case 'order':
-      return <OrderIdChip value={value} display={fact.display ?? getLast8(value)} />;
-    case 'po':
-      return <PoChip value={value} display={fact.display} />;
-    case 'sku':
-      return <SkuScanRefChip value={value} display={fact.display ?? getLast8(value)} />;
-    case 'tracking':
-      return <TrackingChip value={value} />;
-    case 'serial':
-      return <SerialChip value={value} display={fact.display} width="w-fit shrink-0" />;
-    case 'ticket':
-      return (
-        <TicketChip
-          value={value.replace(/^#/, '')}
-          display={fact.display ?? value.replace(/^#/, '')}
-        />
-      );
-    case 'bin':
-      return <BinChip value={value} display={fact.display} />;
-  }
-}
+export type { RailPeekFact };
 
 export function RailPeekCard({
   title,
@@ -77,10 +47,10 @@ export function RailPeekCard({
   age?: string;
   onOpen: () => void;
 }) {
-  const chips = facts.filter((f) => f.value.trim().length > 0);
+  const chips = facts.filter((f) => Boolean(f.keepEmpty) || f.value.trim().length > 0);
 
   return (
-    <div className="space-y-3 p-3.5">
+    <div className={RAIL_PEEK_PAD_CLASS}>
       <div>
         <p className="text-sm font-semibold leading-snug text-text-default">{title}</p>
         {statusLabel ? (
@@ -94,18 +64,14 @@ export function RailPeekCard({
       </div>
 
       {chips.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 border-t border-border-hairline pt-3 [&>*]:shrink-0">
-          {chips.map((fact) => (
-            <RailPeekFactChip key={`${fact.tone}:${fact.value}`} fact={fact} />
-          ))}
-        </div>
+        <RailPeekIdentityFacts facts={facts} />
       ) : meta ? (
-        <p className="truncate border-t border-border-hairline pt-3 text-role-caption font-medium text-text-soft">
+        <p className={`truncate ${RAIL_PEEK_SECTION_CLASS} text-role-caption font-medium text-text-soft`}>
           {meta}
         </p>
       ) : null}
 
-      <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
+      <div className={`flex items-center justify-between ${RAIL_PEEK_SECTION_CLASS}`}>
         <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {age ? (/\bago\b/i.test(age) ? age : `${age} ago`) : '—'}
         </span>

@@ -39,6 +39,13 @@ import {
   type ScanIntakeSurface,
 } from '@/lib/receiving/scan';
 import {
+  cartonNeedsSerials,
+  classifyUnboxScan,
+  shouldConfirmCartonSwitch,
+} from '@/lib/receiving/classify-unbox-scan';
+import { classifyInput } from '@/lib/scan-resolver';
+import { normalizeTrackingKey } from '@/lib/tracking-format';
+import {
   applyMatchedCarton,
   applyUnboxCartonOpened,
   applyUnmatchedCarton,
@@ -76,6 +83,7 @@ import { useSetting } from '@/hooks/useSettings';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { stageReturnCartonToReturnsTestBin } from '@/lib/receiving/stage-return-to-returns-bin';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
+import { photoStageForScanIntakeSurface } from '@/lib/receiving/photo-intent';
 
 // `TrackingScanResult` now lives in `scan-types` (shared with scan-apply);
 // re-exported here for the existing import surface (ReceivingSidebarPanel, …).
@@ -100,6 +108,8 @@ interface UseTrackingScanArgs {
   publishPhotoRequestFor: PhotoRequestPublisher;
   serialInputRef: React.RefObject<HTMLInputElement | null>;
   // Selection cells (useReceivingSelection)
+  selectedLine: ReceivingLineRow | null;
+  scanMatchedRows: ReceivingLineRow[];
   setSelectedLine: React.Dispatch<React.SetStateAction<ReceivingLineRow | null>>;
   setScanMatchedRows: React.Dispatch<React.SetStateAction<ReceivingLineRow[]>>;
   setLineAccordionBootstrap: React.Dispatch<React.SetStateAction<'default' | 'all'>>;
@@ -132,8 +142,31 @@ export interface TrackingScanState {
        * Arrival batch-sort accumulation.
        */
       resolveOnly?: boolean;
+      /**
+       * Skip the mid-carton known-carrier switch hold (after the operator
+       * confirms Switch on the incomplete-carton toast).
+       */
+      skipCartonSwitchConfirm?: boolean;
     },
   ) => void;
+}
+
+/** Toast id so a second mid-carton scan replaces the prior Stay/Switch hold. */
+const CARTON_SWITCH_TOAST_ID = 'unbox-carton-switch-confirm';
+
+/**
+ * True when the open Unbox carton (real `receiving_id`) still owes serials on
+ * any sibling line. Pending/optimistic stubs never interrupt.
+ */
+function activeUnboxCartonNeedsSerials(
+  selectedLine: ReceivingLineRow | null,
+  scanMatchedRows: ReceivingLineRow[],
+): boolean {
+  const receivingId = selectedLine?.receiving_id;
+  if (receivingId == null || receivingId <= 0) return false;
+  const siblings = scanMatchedRows.filter((r) => r.receiving_id === receivingId);
+  const lines = siblings.length > 0 ? siblings : [selectedLine!];
+  return cartonNeedsSerials(lines);
 }
 
 /**
@@ -177,6 +210,8 @@ export function useTrackingScan({
   queryClient,
   publishPhotoRequestFor,
   serialInputRef,
+  selectedLine,
+  scanMatchedRows,
   setSelectedLine,
   setScanMatchedRows,
   setLineAccordionBootstrap,
@@ -193,6 +228,13 @@ export function useTrackingScan({
   useEffect(() => {
     intakeSurfaceRef.current = receivingMode === 'receive' ? 'unbox' : 'triage';
   }, [receivingMode]);
+
+  // Selection snapshots for the mid-carton switch gate — kept in refs so
+  // submitTrackingScan identity stays stable (no dep churn on every row paint).
+  const selectedLineRef = useRef(selectedLine);
+  const scanMatchedRowsRef = useRef(scanMatchedRows);
+  useEffect(() => { selectedLineRef.current = selectedLine; }, [selectedLine]);
+  useEffect(() => { scanMatchedRowsRef.current = scanMatchedRows; }, [scanMatchedRows]);
 
   // Settings Registry — gate the on-resolve auto-actions. Read into refs so the
   // submitTrackingScan callback identity stays stable (no dep churn / stale
@@ -234,6 +276,9 @@ export function useTrackingScan({
     return () => window.removeEventListener('receiving-clear-line', bump);
   }, []);
 
+  // Latest submit for the Switch toast action (avoids a stale self-call closure).
+  const submitTrackingScanRef = useRef<TrackingScanState['submitTrackingScan']>(() => {});
+
   const submitTrackingScan = useCallback(
     (
       rawTracking?: string,
@@ -241,6 +286,7 @@ export function useTrackingScan({
         mode?: ScanResolutionMode;
         onResult?: (result: TrackingScanResult) => void;
         resolveOnly?: boolean;
+        skipCartonSwitchConfirm?: boolean;
       },
     ) => {
       const trackingNumber = (rawTracking ?? bulkTracking).trim();
@@ -251,6 +297,7 @@ export function useTrackingScan({
       // any carton (no more dash-heuristic misrouting a PO# to Unfound).
       const lookupMode: ScanResolutionMode = opts?.mode ?? 'auto';
       const resolveOnly = opts?.resolveOnly === true;
+      const skipCartonSwitchConfirm = opts?.skipCartonSwitchConfirm === true;
 
       // Capture the page-mode generation at submit. `isCurrent()` is checked at
       // every OPEN/SELECT commit below; when false the carton still flows into the
@@ -259,11 +306,69 @@ export function useTrackingScan({
       const isCurrent = () => scanGenerationRef.current === launchGeneration;
       const shouldOpen = () => isCurrent() && !resolveOnly;
 
-      setBulkTracking('');
-      const scanStartedAt = Date.now();
       // Capture the surface at submit so the loader is tagged to the mode the
       // scan launched in, even if the operator switches modes mid-lookup.
       const scanSurface = intakeSurfaceRef.current;
+
+      // Mid-carton known-carrier interrupt (Unbox only): hold before painting the
+      // optimistic stub so Stay keeps the current carton + serial focus intact.
+      // Toast only — native dialogs steal keyboard-wedge focus on the bench.
+      if (
+        scanSurface === 'unbox' &&
+        !resolveOnly &&
+        !skipCartonSwitchConfirm &&
+        lookupMode !== 'order' &&
+        lookupMode !== 'ticket'
+      ) {
+        const activeLine = selectedLineRef.current;
+        const matched = scanMatchedRowsRef.current;
+        const needsSerials = activeUnboxCartonNeedsSerials(activeLine, matched);
+        if (needsSerials) {
+          const activeTracking = normalizeTrackingKey(activeLine?.tracking_number);
+          const nextTracking = normalizeTrackingKey(trackingNumber);
+          const sameCarton =
+            activeTracking.length > 0 && activeTracking === nextTracking;
+          if (!sameCarton) {
+            const knownCarrier = classifyInput(trackingNumber).carrier != null;
+            const { intent } = classifyUnboxScan(trackingNumber, {
+              surface: 'unbox',
+              activeCartonNeedsSerials: true,
+              knownCarrier,
+            });
+            if (shouldConfirmCartonSwitch({ intent, knownCarrier, activeCartonNeedsSerials: true })) {
+              setBulkTracking('');
+              playScanFeedbackRef.current('reject');
+              toast.warning('Incomplete carton — finish serials or switch?', {
+                id: CARTON_SWITCH_TOAST_ID,
+                duration: 12_000,
+                // Stay (default / safer): dismiss only — current carton stays open.
+                cancel: {
+                  label: 'Stay',
+                  onClick: () => {
+                    toast.dismiss(CARTON_SWITCH_TOAST_ID);
+                    emitReceiving('receiving-focus-scan');
+                  },
+                },
+                action: {
+                  label: 'Switch',
+                  onClick: () => {
+                    toast.dismiss(CARTON_SWITCH_TOAST_ID);
+                    submitTrackingScanRef.current(trackingNumber, {
+                      mode: lookupMode,
+                      onResult: opts?.onResult,
+                      skipCartonSwitchConfirm: true,
+                    });
+                  },
+                },
+              });
+              return;
+            }
+          }
+        }
+      }
+
+      setBulkTracking('');
+      const scanStartedAt = Date.now();
       setTrackingLookupInFlight((n) => n + 1);
       if (scanSurface === 'triage' && !resolveOnly) {
         onTriageScanStart?.(trackingNumber);
@@ -556,7 +661,13 @@ export function useTrackingScan({
               setSelectedLine(local.pick);
               setScanDriven(true);
               maybeStageReturnCarton(local.receivingId, local.pick);
-              if (autoPushCameraRef.current) void publishPhotoRequestFor(local.receivingId, trackingNumber);
+              if (autoPushCameraRef.current) {
+                void publishPhotoRequestFor(
+                  local.receivingId,
+                  trackingNumber,
+                  photoStageForScanIntakeSurface(intakeSurfaceRef.current),
+                );
+              }
               refocusScanInput({
                 intakeSurface: intakeSurfaceRef.current,
                 autoFocusSerialRef,
@@ -708,6 +819,8 @@ export function useTrackingScan({
       onTriageScanStart,
     ],
   );
+
+  submitTrackingScanRef.current = submitTrackingScan;
 
   return {
     bulkTracking,

@@ -3,15 +3,11 @@
 /**
  * Unbox adapter for {@link ScanStationProgressControl}.
  *
- * Derives procedure % from {@link useUnboxProcedureSteps}. Mounted as the
- * Displays icon-plate `rightSlot` (same row, right of ⋮) via
- * {@link ReceivingDisplaysPushStack} with `variant="strip"` — centered h-10
- * cell, selected underline when checklist is live. Click opens/switches to
- * the `stripHidden` checklist body (does not close Displays; `→|` does).
- *
- * Closed Displays opens via `←|`, then the ring. Checklist is ring-only —
- * never a strip Lucide cell. Other stations compose the shared control with
- * their own derivation — do not fork a second ring.
+ * Derives procedure % from {@link useUnboxProcedureSteps}. Mounted under the
+ * Unbox dock (`UnboxDockHost` `progress` slot, bottom-right) with compact
+ * `variant="default"` — status-bar density beside the active step pager
+ * (bottom-left). Click opens the Checklist Displays leaf in-station — never a
+ * route hop.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -49,7 +45,7 @@ export function UnboxScanProgressControl({
 
   return (
     <ScanStationProgressControl
-      variant="strip"
+      variant="default"
       percent={percent}
       done={done}
       total={total}
@@ -61,7 +57,7 @@ export function UnboxScanProgressControl({
       testId="unbox-displays-expand-button"
       previewAriaLabel="Unbox procedure checklist preview"
       previewPlacement="top-end"
-      previewRailActionLabel="Open in Displays"
+      previewRailActionLabel="Open displays"
       preview={<UnboxProcedureChecklist row={row} />}
     />
   );

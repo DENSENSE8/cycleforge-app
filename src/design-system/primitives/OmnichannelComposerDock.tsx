@@ -132,7 +132,12 @@ interface OmnichannelComposerDockProps {
    * raised dock band.
    */
   chrome?: 'raised' | 'bare';
-  /** Auto-grow between min/max. Default true. */
+  /**
+   * `default` — stacked textarea over footer (chat / notes).
+   * `compact` — one short row: field + trailing action inline (paste docks).
+   */
+  density?: 'default' | 'compact';
+  /** Auto-grow between min/max. Default true. Ignored when `density="compact"`. */
   autoGrow?: boolean;
   className?: string;
   /** Skip mount entrance (e.g. when already in a presence tree). */
@@ -161,6 +166,7 @@ export const OmnichannelComposerDock = forwardRef<
     footerEnd,
     trailingAction,
     chrome = 'raised',
+    density = 'default',
     autoGrow = true,
     className,
     animateMount = true,
@@ -171,6 +177,8 @@ export const OmnichannelComposerDock = forwardRef<
   ref,
 ) {
   const localRef = useRef<HTMLTextAreaElement | null>(null);
+  const compact = density === 'compact';
+  const growEnabled = autoGrow && !compact;
   useImperativeHandle(ref, () => ({
     focus: () => localRef.current?.focus(),
     blur: () => localRef.current?.blur(),
@@ -191,9 +199,9 @@ export const OmnichannelComposerDock = forwardRef<
   );
 
   const grow = useCallback(() => {
-    if (!autoGrow) return;
+    if (!growEnabled) return;
     resizeComposerTextarea(localRef.current);
-  }, [autoGrow]);
+  }, [growEnabled]);
 
   useEffect(() => {
     grow();
@@ -207,15 +215,42 @@ export const OmnichannelComposerDock = forwardRef<
 
   const bare = chrome === 'bare';
 
+  const trailing = (
+    <div className="flex shrink-0 items-center gap-1.5">
+      {footerEnd}
+      {composerShowsCommit({
+        hideCommitButton,
+        hasTrailingAction: trailingAction != null,
+      }) ? (
+        <HoverTooltip label={commitTooltip} focusable={false}>
+          <Button
+            variant="primary"
+            size="sm"
+            type="button"
+            ariaLabel={commitAriaLabel}
+            disabled={disabled || !canCommit}
+            onClick={() => onCommit()}
+            className="h-7 w-7 p-0"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+        </HoverTooltip>
+      ) : null}
+      {trailingAction ? <div className="pl-0.5">{trailingAction}</div> : null}
+    </div>
+  );
+
   const shell = (
     <div
       className={cn(
-        'flex w-full flex-col transition-[border-color,box-shadow] duration-150',
+        'flex min-w-0 w-full transition-[border-color,box-shadow] duration-150',
+        compact ? 'flex-row items-center gap-1.5' : 'flex-col',
         bare
           ? 'bg-transparent'
           : cn(
-              'rounded-2xl border border-border-soft bg-surface-card',
-              elevationClass('raised'),
+              compact
+                ? 'rounded-none border border-border-soft bg-surface-card'
+                : cn('rounded-2xl border border-border-soft bg-surface-card', elevationClass('raised')),
               focusRing('wrapper', 'accent'),
               'focus-within:ring-2 focus-within:ring-blue-500/20',
             ),
@@ -224,6 +259,7 @@ export const OmnichannelComposerDock = forwardRef<
       )}
       data-testid="omnichannel-composer-dock"
       data-composer-chrome={chrome}
+      data-composer-density={density}
     >
       <textarea
         ref={setTextareaRef}
@@ -243,36 +279,27 @@ export const OmnichannelComposerDock = forwardRef<
           });
         }}
         className={cn(
-          'block w-full resize-none bg-transparent px-3.5 pt-3 pb-1.5 text-role-caption leading-5 text-text-default placeholder:text-text-faint',
+          'block w-full resize-none bg-transparent text-role-caption leading-5 text-text-default placeholder:text-text-faint',
           'focus:outline-none',
-          autoGrow ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
+          compact
+            ? 'h-8 min-h-8 max-h-8 flex-1 overflow-y-auto px-2.5 py-1.5 leading-5'
+            : cn(
+                'px-3.5 pt-3 pb-1.5',
+                growEnabled ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
+              ),
         )}
       />
-      <div className="flex items-center gap-2 px-2 pb-2 pt-0.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1">{footerStart}</div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {footerEnd}
-          {composerShowsCommit({
-            hideCommitButton,
-            hasTrailingAction: trailingAction != null,
-          }) ? (
-            <HoverTooltip label={commitTooltip} focusable={false}>
-              <Button
-                variant="primary"
-                size="sm"
-                type="button"
-                ariaLabel={commitAriaLabel}
-                disabled={disabled || !canCommit}
-                onClick={() => onCommit()}
-                className="h-7 w-7 p-0"
-              >
-                <Send className="h-3.5 w-3.5" />
-              </Button>
-            </HoverTooltip>
-          ) : null}
-          {trailingAction ? <div className="pl-0.5">{trailingAction}</div> : null}
+      {compact ? (
+        <div className="flex shrink-0 items-center gap-1 pr-1.5">
+          {footerStart ? <div className="flex items-center gap-1">{footerStart}</div> : null}
+          {trailing}
         </div>
-      </div>
+      ) : (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 px-2 pb-2 pt-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1">{footerStart}</div>
+          {trailing}
+        </div>
+      )}
     </div>
   );
 

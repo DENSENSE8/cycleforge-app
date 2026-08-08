@@ -519,7 +519,7 @@ test('tracking_in RELAXES the Incoming lane — a vendor-received row must come 
   assert.ok(!universal.list.sql.includes(NOT_ZOHO_RECEIVED));
   assert.ok(
     universal.list.sql.includes(`rz.zoho_purchaseorder_id IS NOT NULL`)
-      && universal.list.sql.includes(`rl.inbound_source_type = 'ebay'`),
+      && universal.list.sql.includes(`rl.inbound_source_type IN ('ebay', 'amazon', 'manual')`),
     'both source arms survive the relaxation',
   );
 });

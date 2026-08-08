@@ -214,7 +214,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
                   value={query}
                   onChange={(v) => setParam('q', v.trim() ? v : null)}
                   placeholder="Filter pickup items…"
-                  className="w-40 shrink-0 lg:w-56"
+                  className="min-w-0 flex-1"
                 />
               }
             />

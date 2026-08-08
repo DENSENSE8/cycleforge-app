@@ -24,9 +24,10 @@ import {
  *   found:   boolean,
  *   is_return: boolean,
  *   unit: {
- *     serial_number, sku, current_status, condition_grade,
+ *     id, serial_number, sku, current_status, condition_grade,
  *     current_location, updated_at, is_return
  *   } | null,
+ *   // id is serial_units.id when a v2 row exists; null for TSN-only matches.
  *   matched_order: {
  *     order_id, item_number, account_source, product_title, sku, condition,
  *     tracking_number, allocation_state
@@ -87,6 +88,7 @@ export const GET = withAuth(async (request, ctx) => {
     // from the shipped-order match so the UI band still renders the facts.
     const unit = row
       ? {
+          id: row.id,
           serial_number: row.serial_number,
           sku: row.sku,
           current_status: row.current_status,
@@ -96,6 +98,7 @@ export const GET = withAuth(async (request, ctx) => {
           is_return: isReturn,
         }
       : {
+          id: null,
           serial_number: matched?.serial_number ?? trimmed.toUpperCase(),
           sku: matched?.sku ?? null,
           current_status: 'SHIPPED',

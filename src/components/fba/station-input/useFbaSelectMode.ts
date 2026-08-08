@@ -12,7 +12,7 @@ import { fbaPaths } from '@/lib/fba/api-paths';
 import { FBA_BOARD_INJECT_ITEM, FBA_SELECTION_ADJUSTED } from '@/lib/fba/events';
 import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
 import { useFbaBoardSelection } from '@/components/fba/hooks/useFbaBoardSelection';
-import { normalizeFnsku } from '@/lib/tracking-format';
+import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 
 export interface FnskuSelectResult {
   fnsku: string;
@@ -88,7 +88,7 @@ export function useFbaSelectMode({
 
   const handleFnskuSelectFlow = useCallback(
     (raw: string) => {
-      const fnsku = normalizeFnsku(raw);
+      const fnsku = normalizeTrackingCanonical(raw);
       if (!fnsku) return;
       setFbaError(null);
       setPlanHint(null);
@@ -105,12 +105,12 @@ export function useFbaSelectMode({
       const res = await fetch('/api/fba/board', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
       const pending = Array.isArray(data?.pending) ? (data.pending as FbaBoardItem[]) : [];
-      const key = normalizeFnsku(fnsku);
+      const key = normalizeTrackingCanonical(fnsku);
       if (!key) return [];
       // Match by FNSKU or ASIN — a B0 ASIN scan should find items with that ASIN.
       return pending.filter(
-        (row) => normalizeFnsku(String(row.fnsku || '')) === key
-          || (row.asin && normalizeFnsku(String(row.asin)) === key),
+        (row) => normalizeTrackingCanonical(String(row.fnsku || '')) === key
+          || (row.asin && normalizeTrackingCanonical(String(row.asin)) === key),
       );
     } catch {
       return [];

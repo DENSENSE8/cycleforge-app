@@ -178,10 +178,14 @@ describe('To-ship Sheets flush chrome', () => {
       /w-56 shrink-0/,
       'Do not pin To-ship search to a fixed width',
     );
-    assert.match(triage, /Show inspector/);
-    assert.match(triage, /Hide inspector/);
+    assert.match(triage, /WorkbenchInspectorToggle/);
     assert.match(triage, /orders-inspector-toggle/);
     assert.match(triage, /trailing=\{inspectorToggle\}/);
+    const inspectorToggle = stripBlockComments(
+      read('src/components/dashboard/workbench-inspector-toggle.tsx'),
+    );
+    assert.match(inspectorToggle, /Show inspector/);
+    assert.match(inspectorToggle, /Hide inspector/);
 
     // Refine / layout chrome must NOT live on Band 3.
     assert.doesNotMatch(triage, /OrdersRowPaintChrome/);

@@ -10,6 +10,7 @@ import {
   SIDEBAR_RAIL_INSET_X,
   SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
   SIDEBAR_SCAN_DOCK_LEADING_ROW,
+  STATION_SECONDARY_BAND_FACE,
 } from '@/components/layout/header-shell';
 import { CONTEXT_PANEL_COLLAPSE } from '@/components/sidebar/context-panel-column';
 import {
@@ -17,6 +18,7 @@ import {
   type CollapseStripPeekCtx,
 } from '@/components/sidebar/context-panel-collapse-context';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { useNavRegion } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
 import {
   STAGGER_REVEAL_STEP,
@@ -82,7 +84,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     getCollapsePinMeta,
     getCollapsePinFacts,
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
-    renderRowMain, renderPopover,
+    renderRowMain, renderPopover, navRegionId,
   } = props;
   // Durable render key (see SidebarRailShellProps.getReconcileId): keeps an
   // optimistic stub and its resolved row as the SAME element so the swap is an
@@ -94,6 +96,19 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     collapsedGroups, toggleGroup, listRef, focusIndex, setFocusIndex,
     handleKeyDown, handleEditClick, getRowDisabled,
   } = useSidebarRail(props);
+
+  // Nav-keys (opt-in). Recent rows carry no stable identity letter, so the
+  // resolver assigns them deterministically in visible order. Inert unless the
+  // rail passed `navRegionId`. Commit runs the same `onSelect` a click would.
+  const navTargets = useMemo(() => rows.map((r) => ({ id: String(getId(r)) })), [rows, getId]);
+  const { armed: navArmed, keymap: navKeymap } = useNavRegion({
+    id: navRegionId,
+    targets: navTargets,
+    onCommit: (targetId) => {
+      const row = rows.find((r) => String(getId(r)) === targetId);
+      if (row && !(getRowDisabled?.(row) ?? false)) onSelect(row);
+    },
+  });
 
   useEffect(() => {
     if (contentPaintSurface && !showSkeleton) markSurfacePainted(contentPaintSurface);
@@ -200,9 +215,8 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   // `show` — it is never disarmed. Rows inherit `show` and rest there; a scan-in
   // row entering the same AnimatePresence slides in from `hidden`, and a dismiss
   // exits via the variant `exit`. Nothing swaps the row's contract mid-mount, so
-  // there is no settle-time flicker. (Stagger rows also carry no `layout` prop —
-  // toggling `layout` on mid-reveal made framer re-project every row and flashed
-  // them to opacity 0 for a frame; see RailRow.)
+  // there is no settle-time flicker. Rows never carry Framer `layout` —
+  // projection rubber-bands the feed on every context-column resize (see RailRow).
   const staggerActive = staggerReveal && rows.length > 0 && !showSkeleton && !alreadyRevealed;
 
   const reduceMotion = useReducedMotion();
@@ -235,7 +249,13 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   return (
     <section className={cn('min-w-0 border-t border-border-hairline', appSurfaceFillClass('chrome'))}>
       {!hideEyebrow ? (
-        <div className={cn('flex items-center justify-between py-1', eyebrowOuterX)}>
+        <div
+          className={cn(
+            'flex items-center justify-between',
+            STATION_SECONDARY_BAND_FACE,
+            eyebrowOuterX,
+          )}
+        >
           {/* Nested gutter + leading track — same content column as RailRow. */}
           <div className={cn(railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_LEFT : null, 'min-w-0')}>
             <div className={SIDEBAR_SCAN_DOCK_LEADING_ROW}>
@@ -296,8 +316,9 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           >
             {/* `initial` enabled only for the reveal so the first-load cascade plays;
                 otherwise AnimatePresence suppresses the initial mount animation.
-                popLayout lets siblings reflow while a dismissed row slides out. */}
-            <AnimatePresence initial={staggerActive} mode="popLayout">
+                `sync` (not popLayout) — popLayout runs layout projection and
+                rubber-bands the feed when the column width changes mid-session. */}
+            <AnimatePresence initial={staggerActive} mode="sync">
               {rows.flatMap((row, idx) => {
                 const g = grouped[idx];
                 const isCollapsed = g.groupId != null && collapsedGroups.has(g.groupId);
@@ -325,6 +346,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                     groupIndex={g.groupIndex}
                     isCollapsed={isCollapsed}
                     showInlinePkgChip={isLeaderOfMulti && isCollapsed}
+                    navKey={navArmed ? navKeymap.get(String(getId(row))) : undefined}
                     onToggleGroup={isLeaderOfMulti ? () => toggleGroup(g.groupId as number) : undefined}
                     getStatusDot={getStatusDot}
                     getStatusDotLabel={getStatusDotLabel}

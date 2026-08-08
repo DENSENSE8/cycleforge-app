@@ -7,7 +7,7 @@ import { getLast8, PoTotalChip, resolveChipDisplay } from '@/components/ui/CopyC
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
@@ -33,12 +33,13 @@ import {
 } from '@/lib/receiving/listing-links';
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
-import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import {
   STATION_CONTEXT_CLAIM_PILL_CLASS,
   STATION_CONTEXT_EXIT_PILL_CLASS,
+  STATION_CONTEXT_STATUS_PILL_CLASS,
 } from './station-context-action-pill';
 import {
+  STATION_IDENTITY_COMMERCE_ROW_CLASS,
   STATION_IDENTITY_GROUP_CLASS,
   STATION_IDENTITY_LEAD_COL_CLASS,
   STATION_IDENTITY_ROW_CLASS,
@@ -64,8 +65,14 @@ import {
  *
  *   Row 1 — *"what kind of work is this"* — urgency · platform · type; Photos
  *           pinned trailing.
- *   Row 2 — *"which record"* — lifecycle · order#/PO# · tracking (left);
- *           price · listing · Claim/ticket on the SAME flush bottom row (gap-0).
+ *   Row 2 — *"which record"* — locked status pill · order#/PO# · tracking
+ *           (left); price · listing · Claim/ticket on the SAME flush bottom
+ *           row (`h-6` secondary band, gap-0).
+ *
+ * Secondary / exact triage detail (qty rollups, extra boxes, lineage,
+ * exception routing, diagnostics) lives in right-edge **Displays** — never a
+ * "Show details" expander under this identity band (guard:
+ * `carton-context-details-in-displays.guard.test.ts`).
  *
  * CSS grid locks both rows — commerce never drops into a third band under
  * Photos. The exit chevron opens row 1 so it and the order chip share the
@@ -147,6 +154,7 @@ export function CartonContextCard({
   qty = null,
   onSendToTicket,
   onOpenMovePhotosExternal,
+  suppressPhotoHoverGallery = false,
 }: {
   receivingId: number | null;
   staffId: string;
@@ -165,17 +173,24 @@ export function CartonContextCard({
    */
   showPoTotal?: boolean;
   /**
-   * Resolved lifecycle status dot for row 2's leading position — the SAME dot
+   * Resolved lifecycle status for row 2's leading pill — the SAME coarse stage
    * the operator just clicked in the sidebar rail. Resolve via the receiving
-   * rail SoT (`getReceivingStatusDot` / `getReceivingStatusDotLabel`,
-   * `src/lib/receiving/rail/status.ts`); this card never maps a status itself.
-   * Omit to hide.
+   * rail SoT (`getReceivingStatusDot` / `getReceivingStatusPillClass` /
+   * `getReceivingStatusDotLabel`, `src/lib/receiving/rail/status.ts`); this
+   * card never maps a status itself. Omit to hide.
    */
-  lifecycle?: { dotClass: string; label: string; tip?: string | null } | null;
+  lifecycle?: {
+    dotClass: string;
+    pillClass: string;
+    label: string;
+    tip?: string | null;
+  } | null;
   /**
    * Carton-wide received / expected counts, resolved via `cartonQtyRollup`
    * (`src/lib/receiving/po-total.ts`) so this shares the PO total's carton
    * grain — never a per-line count beside a carton-wide total. Omit to hide.
+   * Prefer Displays / PO lines for exact triage qty — this slot is a compact
+   * face only when an adapter opts in.
    */
   qty?: { received: number; expected: number | null } | null;
   /**
@@ -306,6 +321,11 @@ export function CartonContextCard({
    * Unbox: open Move photos in the station tool push instead of a center overlay.
    */
   onOpenMovePhotosExternal?: () => void;
+  /**
+   * Unbox: suppress Photos hover toolbar (multi-verbs in Displays Actions).
+   * Pill click stays send-to-phone. Omit on Arrival so hover strip remains.
+   */
+  suppressPhotoHoverGallery?: boolean;
 }) {
   // Pills always visible when showClassifyControls — no hide/show toggle.
   // One picker open at a time. Opening any pill unrenders the trailing chip
@@ -404,19 +424,21 @@ export function CartonContextCard({
   });
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
-  // Exit chevron — boxed h-8 flush face matching Claim · Photos · classify.
-  // Lead column is {@link STATION_IDENTITY_LEAD_COL_CLASS} (`h-8 w-8`) so the
-  // chevron and lifecycle dot centre on one x.
+  // Exit chevron — boxed flush face filling chrome row (h-full square).
+  // Lead column is {@link STATION_IDENTITY_LEAD_COL_CLASS} so the
+  // chevron and lifecycle dot centre on one x and fill the chrome row.
   const exitControl = onExitToList ? (
     <HoverTooltip label={exitLabel} asChild>
-      <IconButton
+      {/* Boxed flush cube — own carton-context face (not scan-bar mode chrome). */}
+      <button
         type="button"
-        size="md"
         onClick={onExitToList}
-        ariaLabel={exitLabel}
-        icon={<ChevronLeft className={TOP_CHROME_ICON_GLYPH} />}
+        aria-label={exitLabel}
         className={STATION_CONTEXT_EXIT_PILL_CLASS}
-      />
+        data-testid="carton-context-exit"
+      >
+        <ChevronLeft className="block h-3.5 w-3.5 shrink-0" aria-hidden />
+      </button>
     </HoverTooltip>
   ) : null;
 
@@ -569,7 +591,7 @@ export function CartonContextCard({
      lifecycle · order# · tracking — never a third stacked band under Photos. */
   const commerceUnderPhotos =
     showPoTotal || listingChip || claimUnderPhotos ? (
-      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'justify-end')}>
+      <div className={cn(STATION_IDENTITY_COMMERCE_ROW_CLASS, 'justify-end')}>
         {showPoTotal ? <PoTotalChip amount={poTotal} /> : null}
         {listingChip}
         {claimUnderPhotos}
@@ -583,11 +605,12 @@ export function CartonContextCard({
         staffId={Number(staffId) || 0}
         poRef={effectiveOrder || null}
         photoStage={photoStage}
-        // Open beside the pill — not under it — so Claim / ticket on row 2
-        // stays clear for a straight click.
-        galleryPlacement="right"
+        // Open left of the pill when hover strip remains (Arrival). Unbox
+        // suppresses the strip — pill click stays send-to-phone.
+        galleryPlacement="left"
         onSendToTicket={onSendToTicket}
         onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+        suppressHoverGallery={suppressPhotoHoverGallery}
       />
     ) : null;
 
@@ -603,7 +626,7 @@ export function CartonContextCard({
   const orderChip = showOrderIdentity ? (
     <IdentityLinkChip
       openHref={orderCopyOnly ? undefined : poOpenHref}
-      openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
+      openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
       value={effectiveOrder}
       display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
       tone="id"
@@ -622,7 +645,7 @@ export function CartonContextCard({
             : 'Link PO'
       }
       onDetails={onOrderDetails}
-      detailsLabel="Details"
+      detailsLabel="Show inspector"
       actionsInMenu
     />
   ) : null;
@@ -672,8 +695,20 @@ export function CartonContextCard({
   //
   // Never mix the two: no identifier on row 1, no classification on row 2.
   // Never stack commerce under Photos in a third visual band.
-  const hasLeadCol = !!exitControl || !!lifecycle;
+  const hasExitLead = !!exitControl;
   const trailingCol = photosClaimColumn;
+
+  const statusPill = lifecycle ? (
+    <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
+      <span
+        className={cn(STATION_CONTEXT_STATUS_PILL_CLASS, lifecycle.pillClass)}
+        data-testid="carton-context-lifecycle-pill"
+        aria-label={lifecycle.label}
+      >
+        <span className="truncate">{lifecycle.label}</span>
+      </span>
+    </HoverTooltip>
+  ) : null;
 
   const stackedLayout = (
     <div
@@ -687,35 +722,18 @@ export function CartonContextCard({
     >
       {/* Row 1 left — what kind of work is this. */}
       <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
-        {hasLeadCol ? (
+        {hasExitLead ? (
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
         {classifyCluster}
       </div>
-      {/* Row 1 right — Photos */}
+      {/* Row 1 right — Photos; same PRIMARY face as classify · Exit (never taller). */}
       {trailingCol ? (
-        <div className="flex items-center justify-end self-center">{photosCell}</div>
+        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'justify-end')}>{photosCell}</div>
       ) : null}
-      {/* Row 2 left — order status · order# · tracking (identifiers only). */}
-      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
-        {hasLeadCol ? (
-          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>
-            {/* House status-indicator anatomy (2-unit dot + HoverTooltip label,
-                never a standalone text badge). `asChild` + `inline-block` per
-                the `StatusChip` reference: the default HoverTooltip wrapper is
-                an inline <span>, and an inline box drops `h-2 w-2` on the floor
-                — the dot renders 0×0. */}
-            {lifecycle ? (
-              <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
-                <span
-                  className={cn('inline-block h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
-                  data-testid="carton-context-lifecycle-dot"
-                  aria-label={lifecycle.label}
-                />
-              </HoverTooltip>
-            ) : null}
-          </div>
-        ) : null}
+      {/* Row 2 left — locked status pill · order# · tracking (identifiers). */}
+      <div className={cn(STATION_IDENTITY_COMMERCE_ROW_CLASS, 'min-w-0')}>
+        {statusPill}
         {orderChip}
         {trackingSlot}
         {qty ? (
@@ -724,7 +742,7 @@ export function CartonContextCard({
       </div>
       {/* Row 2 right — price · listing · Claim flush on the same bottom row. */}
       {trailingCol ? (
-        <div className="flex items-center justify-end self-center">
+        <div className="flex items-stretch justify-end self-stretch">
           {commerceUnderPhotos}
         </div>
       ) : null}
@@ -815,6 +833,6 @@ export function CartonContextCard({
   );
 
   // Width comes from StationContextBar's identity measure
-  // ({@link STATION_WORKBENCH_COLUMN} — white face + chips share the 720 lock).
+  // ({@link STATION_WORKBENCH_COLUMN} — white face + chips share the edge-to-edge measure).
   return <div className="w-full min-w-0 overflow-visible">{body}</div>;
 }

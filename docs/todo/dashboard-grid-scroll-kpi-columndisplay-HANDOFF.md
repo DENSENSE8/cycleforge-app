@@ -29,7 +29,17 @@ The work sits on top of the completed Unbox-History five-row Sheets re-sweep
    `source-of-truth.md`).
 
 3. **Column-display (▦) → Band-3 triage row, on all tables with a Band-3.** Generalized the Unbox
-   exception to the norm. Mechanism: `LedgerGridSurface` prop `columnTriggerPortalTarget` (→
+   exception to the norm.
+
+   > **Reversed for Unbox on 2026-08-08** — do not re-wire its Band-3 portal from this log.
+   > `/unbox` moved ▦ onto the inspector **View** cluster (the To-ship precedent) when its Band 3
+   > went lean (find · in-field refine · KPI · inspector). The page holds **no** local
+   > `useState` portal host and its band takes **no** `controlsSlotRef`; the target is published
+   > by the view-chrome context — and **as `null` while that cluster is hidden or parked**, so
+   > `GridColumnDetailsTrigger`'s card-corner fallback takes over instead of the ▦ vanishing into
+   > an inert node. The Band-3 portal remains the norm for every other table.
+
+   Mechanism: `LedgerGridSurface` prop `columnTriggerPortalTarget` (→
    `GridColumnGutter` `triggerPortalTarget`) portals the ▦ into the Band-3 `WorkbenchTriageBand`
    controls slot. **Wired:** To-ship ×3 lanes (`OrdersGridView` gained the prop), Labels, Review
    Packing/Pairing/Catalog-link, Catalog, My Day, Repair, Ready (FBA), **Incoming**. Unbox embedded

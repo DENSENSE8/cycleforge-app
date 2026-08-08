@@ -32,8 +32,45 @@ const STATUS_BADGES: Record<string, string> = {
 
 const BADGE_FALLBACK = 'bg-surface-sunken text-text-muted';
 
+/**
+ * Status-dot fill classes — the finer lifecycle vocabulary that leads the chip
+ * INSIDE {@link GridStatusCellValue}. Solid `-500` fills matched to the pastel
+ * badge family above; unknown/empty → neutral. This is the dot half of the same
+ * registry, so a grid status cell resolves both the chip tone and its dot here
+ * (never a local per-surface map).
+ */
+const STATUS_DOTS: Record<string, string> = {
+    UNKNOWN: 'bg-text-faint',
+    RECEIVED: 'bg-blue-500',
+    TRIAGED: 'bg-blue-500',
+    IN_TEST: 'bg-indigo-500',
+    IN_REPAIR: 'bg-amber-500',
+    REPAIR_DONE: 'bg-amber-500',
+    TESTED: 'bg-emerald-500',
+    GRADED: 'bg-emerald-500',
+    STOCKED: 'bg-green-500',
+    ALLOCATED: 'bg-purple-500',
+    PICKED: 'bg-purple-500',
+    PACKED: 'bg-purple-500',
+    LABELED: 'bg-purple-500',
+    STAGED: 'bg-purple-500',
+    SHIPPED: 'bg-text-faint',
+    RETURNED: 'bg-orange-500',
+    RMA: 'bg-orange-500',
+    ON_HOLD: 'bg-red-500',
+    SCRAPPED: 'bg-red-600',
+};
+
+const DOT_FALLBACK = 'bg-text-faint';
+
 /** Plain badge classes (bg + text). Unknown/empty → neutral gray. */
 export function unitStatusBadgeClass(status: string | null | undefined): string {
     if (!status) return BADGE_FALLBACK;
     return STATUS_BADGES[status] ?? BADGE_FALLBACK;
+}
+
+/** Status-dot fill class (bg only) — leads the chip inside a grid status cell. */
+export function unitStatusDotClass(status: string | null | undefined): string {
+    if (!status) return DOT_FALLBACK;
+    return STATUS_DOTS[status] ?? DOT_FALLBACK;
 }

@@ -10,19 +10,29 @@
  * Workbench half of Operations ▸ Signals: searchable list (master) + selected
  * signal detail (crossfading right pane, keyed on `?signalId=`). Search lives
  * in the global header; filters/selection are URL-driven.
+ *
+ * Row preview: identity chrome paints from the clicked list row (or the list
+ * row matching `?signalId=`) before the detail fetch returns. Preview is
+ * ephemeral — never durable SoT; drops when the URL clears or fetch supersedes.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { operationsHistoryTraceHref } from '@/lib/operations/history-links';
 import { SIGNAL_KINDS, SURFACE_ENTITY_TYPES } from '@/lib/surfaces/registry';
 import type { EntitySignalTimelineRow } from '@/lib/timeline';
 import type { EntitySignalDetail } from '@/lib/surfaces/entity-signals-read';
+import { useSignalIdParam } from '@/hooks/useSignalIdParam';
 import { cn } from '@/utils/_cn';
-import { replaceOperationsSignalsUrl } from './signals-url';
+
+/** Identity fields available on the list row — enough to paint chrome before detail fetch. */
+type SignalRowPreview = Pick<
+  EntitySignalTimelineRow,
+  'id' | 'signal_kind' | 'entity_type' | 'entity_id' | 'reason_code' | 'occurred_at'
+>;
 
 function kindLabel(kind: string): string {
   return (SIGNAL_KINDS as Record<string, { label: string } | undefined>)[kind]?.label ?? kind;
@@ -36,22 +46,37 @@ function shortTime(at: string | null): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function toPreview(row: EntitySignalTimelineRow): SignalRowPreview {
+  return {
+    id: row.id,
+    signal_kind: row.signal_kind,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    reason_code: row.reason_code,
+    occurred_at: row.occurred_at,
+  };
+}
+
 export function SignalsBrowseWorkspace() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const signalId = Number(searchParams.get('signalId')) || null;
+  const { signalId, setSignalId } = useSignalIdParam();
   const q = searchParams.get('q') ?? '';
+
+  // Ephemeral row preview — consumer-owned; SoT stays id-typed (`useSignalIdParam`).
+  const [rowPreview, setRowPreview] = useState<SignalRowPreview | null>(null);
 
   // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
   // one pair so the presence can never drift onto another job's timing.
   const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
-  const select = (id: number | null) => {
-    replaceOperationsSignalsUrl(router, searchParams, (sp) => {
-      sp.set('signalsView', 'browse');
-      if (id) sp.set('signalId', String(id));
-      else sp.delete('signalId');
-    });
+  const select = (id: number | null, row?: EntitySignalTimelineRow) => {
+    if (id == null) {
+      setRowPreview(null);
+      setSignalId(null);
+      return;
+    }
+    setRowPreview(row ? toPreview(row) : null);
+    setSignalId(id);
   };
 
   const { data: rows, isLoading: listLoading } = useQuery<EntitySignalTimelineRow[]>({
@@ -81,6 +106,34 @@ export function SignalsBrowseWorkspace() {
 
   const list = useMemo(() => rows ?? [], [rows]);
 
+  // Deep-link / refresh: seed chrome from the list row once it lands.
+  const listPreview = useMemo((): SignalRowPreview | null => {
+    if (signalId == null) return null;
+    const row = list.find((s) => s.id === signalId);
+    return row ? toPreview(row) : null;
+  }, [list, signalId]);
+
+  const preview =
+    rowPreview?.id === signalId ? rowPreview : listPreview?.id === signalId ? listPreview : null;
+
+  // Drop stale click-preview when URL clears or selection moves.
+  useEffect(() => {
+    if (signalId == null) {
+      setRowPreview(null);
+      return;
+    }
+    if (rowPreview != null && rowPreview.id !== signalId) {
+      setRowPreview(null);
+    }
+  }, [signalId, rowPreview]);
+
+  // Fetch supersedes preview once durable detail matches the open id.
+  useEffect(() => {
+    if (detail != null && rowPreview != null && detail.id === rowPreview.id) {
+      setRowPreview(null);
+    }
+  }, [detail, rowPreview]);
+
   return (
     <div className="flex h-full min-h-0 w-full">
       {/* Master list */}
@@ -96,7 +149,7 @@ export function SignalsBrowseWorkspace() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => select(s.id)}
+                onClick={() => select(s.id, s)}
                 className={cn(
                   'flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left transition-colors',
                   signalId === s.id ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover',
@@ -145,48 +198,31 @@ export function SignalsBrowseWorkspace() {
                 >
                   ← Back
                 </button>
-                {detailLoading ? (
+                {detail ? (
+                  <SignalDetailBody detail={detail} />
+                ) : preview ? (
+                  <>
+                    <SignalIdentityChrome
+                      signalKind={preview.signal_kind}
+                      entityType={preview.entity_type}
+                      entityId={preview.entity_id}
+                      reasonCode={preview.reason_code}
+                      occurredAt={preview.occurred_at}
+                    />
+                    {detailLoading ? (
+                      <p className="text-role-caption text-text-faint">Loading…</p>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
+                        Signal not found.
+                      </div>
+                    )}
+                  </>
+                ) : detailLoading ? (
                   <p className="text-role-caption text-text-faint">Loading…</p>
-                ) : !detail ? (
+                ) : (
                   <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
                     Signal not found.
                   </div>
-                ) : (
-                  <>
-                <div className="space-y-1">
-                  <p className="text-lg font-semibold tracking-tight text-text-default">{kindLabel(detail.signal_kind)}</p>
-                  <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                    {entityLabel(detail.entity_type)} #{detail.entity_id}
-                  </p>
-                </div>
-                <Field label="Occurred">{fmt(detail.occurred_at)}</Field>
-                {detail.reason_code ? <Field label="Reason code">{detail.reason_code}</Field> : null}
-                {detail.severity != null ? <Field label="Severity">{String(detail.severity)}</Field> : null}
-                {detail.notes ? <Field label="Notes">{detail.notes}</Field> : null}
-                {detail.node_id ? <Field label="Node">{detail.node_id}</Field> : null}
-                {detail.source_ref ? <Field label="Source ref">{detail.source_ref}</Field> : null}
-                {detail.meta && Object.keys(detail.meta).length > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Meta</p>
-                    <pre className="overflow-x-auto rounded-md bg-surface-canvas p-2 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
-                      {JSON.stringify(detail.meta, null, 2)}
-                    </pre>
-                  </div>
-                ) : null}
-                {detail.entity_dim && detail.entity_ref ? (
-                  <div className="border-t border-border-hairline pt-3">
-                    <Link
-                      href={operationsHistoryTraceHref({
-                        dim: detail.entity_dim,
-                        value: detail.entity_ref,
-                      })}
-                      className="inline-flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-blue-600 transition hover:text-blue-700"
-                    >
-                      Full event trace →
-                    </Link>
-                  </div>
-                ) : null}
-                  </>
                 )}
               </div>
             )}
@@ -194,6 +230,76 @@ export function SignalsBrowseWorkspace() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+function SignalIdentityChrome({
+  signalKind,
+  entityType,
+  entityId,
+  reasonCode,
+  occurredAt,
+}: {
+  signalKind: string;
+  entityType: string;
+  entityId: number;
+  reasonCode: string | null;
+  occurredAt: string | null;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-lg font-semibold tracking-tight text-text-default">{kindLabel(signalKind)}</p>
+      <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+        {entityLabel(entityType)} #{entityId}
+        {shortTime(occurredAt) ? ` · ${shortTime(occurredAt)}` : ''}
+      </p>
+      {reasonCode ? (
+        <span className="inline-block rounded bg-surface-canvas px-1.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+          {reasonCode}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function SignalDetailBody({ detail }: { detail: EntitySignalDetail }) {
+  return (
+    <>
+      <SignalIdentityChrome
+        signalKind={detail.signal_kind}
+        entityType={detail.entity_type}
+        entityId={detail.entity_id}
+        reasonCode={null}
+        occurredAt={null}
+      />
+      <Field label="Occurred">{fmt(detail.occurred_at)}</Field>
+      {detail.reason_code ? <Field label="Reason code">{detail.reason_code}</Field> : null}
+      {detail.severity != null ? <Field label="Severity">{String(detail.severity)}</Field> : null}
+      {detail.notes ? <Field label="Notes">{detail.notes}</Field> : null}
+      {detail.node_id ? <Field label="Node">{detail.node_id}</Field> : null}
+      {detail.source_ref ? <Field label="Source ref">{detail.source_ref}</Field> : null}
+      {detail.meta && Object.keys(detail.meta).length > 0 ? (
+        <div className="space-y-1">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Meta</p>
+          <pre className="overflow-x-auto rounded-md bg-surface-canvas p-2 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
+            {JSON.stringify(detail.meta, null, 2)}
+          </pre>
+        </div>
+      ) : null}
+      {detail.entity_dim && detail.entity_ref ? (
+        <div className="border-t border-border-hairline pt-3">
+          <Link
+            href={operationsHistoryTraceHref({
+              dim: detail.entity_dim,
+              value: detail.entity_ref,
+            })}
+            className="inline-flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-blue-600 transition hover:text-blue-700"
+          >
+            Full event trace →
+          </Link>
+        </div>
+      ) : null}
+    </>
   );
 }
 

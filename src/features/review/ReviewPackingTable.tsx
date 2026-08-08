@@ -190,10 +190,10 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
                   value={searchQuery}
                   onChange={setSearch}
                   placeholder="Filter order #, SKU, tracking…"
-                  className="w-40 shrink-0 lg:w-56"
+                  className="min-w-0 flex-1"
+                  trailingSuffix={<StaffFilterButton density="field" align="end" />}
                 />
               }
-              right={<StaffFilterButton iconOnly align="end" />}
               controlsSlotRef={setControlsEl}
             />
           </div>

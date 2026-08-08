@@ -120,7 +120,6 @@ interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridCol
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
   columnTriggerPortalTarget?: HTMLElement | null;
-  columnTriggerPortalOnly?: boolean;
 }
 
 export function NonlinearTableHost<Row, K extends string, C extends LedgerGridColumnModel>({
@@ -151,7 +150,6 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   scrollRef,
   className,
   columnTriggerPortalTarget = null,
-  columnTriggerPortalOnly = false,
 }: NonlinearTableHostProps<Row, K, C>) {
   const { definition } = binding;
 
@@ -182,7 +180,6 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
       tableId={tableId ?? definition.tableId}
       surface={definition.surface}
       columnTriggerPortalTarget={columnTriggerPortalTarget}
-      columnTriggerPortalOnly={columnTriggerPortalOnly}
       renderColumnHeader={renderColumnHeader}
       renderGroup={renderGroup}
       renderRow={renderRow}

@@ -62,6 +62,8 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/beta\//,                     // public marketing beta waitlist + spots counter (no auth)
   /^\/api\/health(?:$|\/)/,
   /^\/api\/ready(?:$|\/)/,
+  // TEMP Cursor debug session 251bbb — remove with /api/agent-debug-log
+  /^\/api\/agent-debug-log(?:$|\/)/,
   /^\/api\/cron\//,                     // Vercel-cron-fired routes (auth via CRON_SECRET inside handler)
   /^\/api\/webhooks\//,                 // carrier + Stripe + integration callbacks
   /^\/api\/billing\/webhook(?:$|\/)/,   // Stripe webhook needs raw body, no cookie
@@ -246,7 +248,8 @@ function resolveMobileUaRewrite(pathname: string, ua: string | null): string | n
  *   `?mode=history` → `/incoming?lane=docked` (Inbound desk Docked lane)
  * The rest of the matrix:
  *   `/pickup?job=…`  → `resolveWalkInJobRedirect` below
- *   `/walk-in?mode=repair` / `?category=repairs` → `/repair`
+ *   `/walk-in?mode=repair|repairs` browse → `/dashboard?mode=repairs`
+ *   `/walk-in?mode=repair` + `new`/`openRepair` → `/repair` (task door)
  *   `/walk-in?mode=sales` / other `?category=` → in-page (`useWalkInTaskRedirect`)
  */
 function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
@@ -304,7 +307,7 @@ function resolveDashboardInboundRedirect(url: NextRequest['nextUrl']): NextReque
 /**
  * Dashboard bare outbound → Shipping · To-ship desk.
  * `/dashboard` (and outbound lifecycle bookmarks) → `/shipping/orders`.
- * Sales (`?mode=sales|pickup`) and retired front doors stay elsewhere.
+ * Sales (`?mode=sales|pickup|repairs`) and retired front doors stay elsewhere.
  */
 function resolveDashboardOutboundRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/dashboard' && url.pathname !== '/dashboard/') return null;
@@ -312,6 +315,7 @@ function resolveDashboardOutboundRedirect(url: NextRequest['nextUrl']): NextRequ
   if (
     mode === 'sales' ||
     mode === 'pickup' ||
+    mode === 'repairs' ||
     mode === 'inbound' ||
     mode === 'receiving' ||
     mode === 'search'
@@ -359,9 +363,11 @@ function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nex
 }
 
 /**
- * Sales-hub Repair mode redirect. Repair left `/walk-in` for Receiving
- * `/repair` (RepairTable → LedgerGrid). Preserve queue deep-link params
- * (`tab`, `search`, `openRepair`, `new`); drop `mode` / legacy `category`.
+ * Sales-hub Repair mode redirect (dual-door RepairTable).
+ *
+ * Browse bookmarks (`mode`/`category` = repair|repairs, no task keys) → Sales
+ * history desk `/dashboard?mode=repairs`. Task deep-links (`new`, `openRepair`)
+ * → station `/repair`. Preserve queue params (`tab`, `search`, `sort`, `dir`).
  */
 function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/walk-in' && url.pathname !== '/walk-in/') return null;
@@ -370,10 +376,17 @@ function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextReque
   const isRepair =
     mode === 'repair' || mode === 'repairs' || category === 'repair' || category === 'repairs';
   if (!isRepair) return null;
+  const hasTaskKey =
+    url.searchParams.has('new') || url.searchParams.has('openRepair');
   const next = url.clone();
-  next.pathname = '/repair';
   next.searchParams.delete('mode');
   next.searchParams.delete('category');
+  if (hasTaskKey) {
+    next.pathname = '/repair';
+    return next;
+  }
+  next.pathname = '/dashboard';
+  next.searchParams.set('mode', 'repairs');
   return next;
 }
 

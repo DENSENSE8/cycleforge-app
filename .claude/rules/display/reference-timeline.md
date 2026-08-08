@@ -136,7 +136,7 @@ never the thing the user navigates by as a collection map, and never a parallel 
 
 **`MergedRecordStream` (`src/components/support/zendesk/chat/MergedRecordStream.tsx`) is a second renderer over the
 same `TimelineItem` waist**, and — unlike `AuditTimeline`, which forked the data shape too — it shares everything
-except the row body. It renders helpdesk messages (block markdown + attachments). Warehouse / carrier events may be
+except the row **shell**. It renders helpdesk messages (block markdown + attachments). Warehouse / carrier events may be
 **optionally interleaved** when the host passes a collapsed `events` spine (`SupportTicketDetail`
 `mergeFloorTimeline`).
 
@@ -146,15 +146,23 @@ Zendesk” and burns scroll before claim/reply work. Guard: `ticket-timeline-spl
 
 Support service workspace may still set `mergeFloorTimeline` until an explicit Floor toggle ships.
 
+**Read vs select (two shells, one waist):**
+
+- **`variant="ledger"` (default)** — flat rows on one shared left reading edge. Correct when the stream is
+  **scanned / selected** (dense triage — `/support`). Direction is the leading mark, never a fill.
+- **`variant="bubble"`** — conversation bubbles for the **station Ticket read + reply** surface
+  (`TicketDisplayHost` → `SupportTicketDetail` `streamVariant="bubble"`). Same adapters, day bands, markdown,
+  attachments, ascending order — only the message shell changes. Do **not** resurrect `SupportChatThread`.
+
 **Why it is not `EventTimeline`, stated rather than assumed:**
 
 - **`TimelineItem`'s display model cannot hold a message body.** That model is one line (`title`) plus a muted second
   line (`subtitle`). A support message is *block markdown* — headings, lists, blockquotes — followed by an attachment
   grid. Widening `EventTimeline` to accept a body renderer would put a markdown + attachment concern inside the
   primitive that every unit journey and carrier trail composes.
-- **The anatomy is deliberately the house one-row anatomy, not the fading rail.** 40px leading mark, `divide-y
-  divide-border-hairline`, and day bands through the shared `DateGroupHeader` — the SoT `EventTimeline` does *not*
-  compose (it formats its own day header inline).
+- **Ledger anatomy is the house one-row anatomy, not the fading rail.** 40px leading mark, `divide-y
+  divide-border-hairline`, and day bands through the shared `DateGroupHeader`. Bubble keeps the day bands and waist;
+  it drops the shared left edge because the job is reading a conversation, not selecting a ledger row.
 - **Reading direction is ascending.** Every `EventTimeline` consumer reads newest-first; a conversation whose composer
   is docked at the bottom cannot.
 

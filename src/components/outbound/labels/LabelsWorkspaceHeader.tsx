@@ -140,7 +140,7 @@ export function LabelsTriageBand({
           value={search}
           onChange={onSearch}
           placeholder="Filter order #, SKU, title…"
-          className="w-40 shrink-0 lg:w-56"
+          className="min-w-0 flex-1"
         />
       }
       right={

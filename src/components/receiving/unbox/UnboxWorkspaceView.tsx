@@ -1,20 +1,26 @@
 'use client';
 
 /**
- * Unbox browse workbench — pinned two-row chrome (row 1: tabs · KPI cluster ·
- * return-to-scan CTA; row 2: search · refine/week filters — the data-table
- * triage band) over `ReceivingLinesTable` or TradingView-like compare host.
+ * Unbox browse workbench — pinned three-band chrome over `ReceivingLinesTable`
+ * or the TradingView-like compare host:
  *
- * History tab: Band 3 is find + Refine funnel (staff · scope · field · week) +
- * inspector park; View topics own layout chrome only
- * ({@link HistoryViewTopicsCluster}).
+ *   Band 1  tabs · Check · return-to-scan CTA
+ *   Band 2  KPI canvas (snap-collapsible)
+ *   Band 3  the LEAN row — find (refine in-field) · KPI collapse · inspector
+ *
+ * **Band 3 hosts no `right` slot and no controls portal** (ruled 2026-08-08).
+ * Layout chrome — compare panes, spreadsheet zoom, ▦ column display, row paint,
+ * Drill|List — lives on the inspector View cluster
+ * ({@link HistoryViewTopicsCluster}) on EVERY tab, not just History, which is
+ * why `controlsEl` and `zoom` are read unconditionally from the view-chrome
+ * context below rather than from a tab-dependent local.
  *
  * Multi-select opens `ReceivingLineRailShell` on RightRailHost (no bottom
  * capsule). When the line workspace overlays browse, publishing + the shell
  * are suppressed so Ticket/Claim/tool stacks keep the right edge.
  */
 
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
@@ -29,12 +35,11 @@ import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspac
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
-import { UnboxCompareChrome } from '@/components/receiving/unbox/compare/UnboxCompareChrome';
 import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import {
+  GRID_ZOOM_DEFAULT,
   gridZoomStyle,
-  type GridZoomPercent,
 } from '@/design-system/components/grid/grid-zoom';
 import {
   parseUnboxCompareLayout,
@@ -43,6 +48,8 @@ import {
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
+import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
+import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
 import { toast } from '@/lib/toast';
 
 const ReceivingLinesTable = dynamic(
@@ -63,31 +70,37 @@ function formatReceivingCopyRow(r: ReceivingLineRow): string {
 export function UnboxWorkspaceView(props: {
   /** Non-null while UnboxLineWorkspace overlays browse — suppress the selection rail. */
   selectedLine: ReceivingLineRow | null;
-  /** History triage inspect open — keep batch shell off for a single-row inspect. */
-  historyTriageOpen?: boolean;
+  /**
+   * A carton is picked in the `detail:history` inspector — keep the batch shell
+   * off for a single-row inspect. **The View-only shell is deliberately NOT
+   * folded in here:** it owns no row selection, so suppressing multi-select
+   * bulk actions for it would cost print / claim / copy to reach the ▦.
+   */
+  recordInspectOpen?: boolean;
+  /** Either inspector state — drives the Band 3 toggle's open face. */
+  inspectorOpen?: boolean;
 }) {
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
   const historyViewChrome = useHistoryViewChromeOptional();
-  const isHistory = unboxView === 'history';
-  const [band3ControlsEl, setBand3ControlsEl] = useState<HTMLDivElement | null>(null);
-  const [localZoom, setLocalZoom] = useState<GridZoomPercent>(100);
+  const isIncoming = unboxView === 'incoming';
   const searchParams = useSearchParams();
   const compareLayout = parseUnboxCompareLayout(
     searchParams.get(UNBOX_COMPARE_LAYOUT_PARAM),
   );
-  const isCompare = compareLayout !== 'single';
+  const isCompare = compareLayout !== 'single' && !isIncoming;
   const lineWorkspaceOpen = props.selectedLine != null;
-  const historyTriageOpen = Boolean(props.historyTriageOpen);
+  const recordInspectOpen = Boolean(props.recordInspectOpen);
 
-  // History: week/▦ portal + zoom live on the inspector View cluster.
-  const controlsEl = isHistory
-    ? (historyViewChrome?.controlsEl ?? null)
-    : band3ControlsEl;
-  const zoom = isHistory ? (historyViewChrome?.zoom ?? localZoom) : localZoom;
+  // The ▦ portal host and the zoom value live on the inspector View cluster on
+  // EVERY tab now — Band 3 hosts neither. The provider wraps the whole Unbox
+  // subtree (ReceivingRightPane → UnboxHistoryHost), so the optional read is
+  // never null on /unbox; the fallbacks are for a stray mount elsewhere.
+  const controlsEl = historyViewChrome?.controlsEl ?? null;
+  const zoom = historyViewChrome?.zoom ?? GRID_ZOOM_DEFAULT;
 
   useSurfacePaintMark('unbox:chrome', true);
 
-  const { selectMode, claimRow, setClaimRow, exitSelectMode } =
+  const { selectMode, selectedRows, claimRow, setClaimRow, exitSelectMode } =
     useReceivingLineRailSelection({
       scope: RECEIVING_SELECTION_SCOPE,
       active: true,
@@ -96,9 +109,39 @@ export function UnboxWorkspaceView(props: {
       publish: !lineWorkspaceOpen,
     });
 
-  const onZoomChange = useCallback((percent: GridZoomPercent) => {
-    setLocalZoom(percent);
-  }, []);
+  // Inbound tab: 1-check → Incoming details (same occupancy as `/incoming`).
+  const blockedIncomingToastRowIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isIncoming) {
+      blockedIncomingToastRowIdRef.current = null;
+      return;
+    }
+    if (selectedRows.length !== 1) {
+      blockedIncomingToastRowIdRef.current = null;
+      return;
+    }
+    const row = selectedRows[0];
+    if (!row) return;
+    const resolved = incomingDetailsTargetFromRow(row);
+    if (!resolved.ok) {
+      if (blockedIncomingToastRowIdRef.current !== row.id) {
+        blockedIncomingToastRowIdRef.current = row.id;
+        toast.info(resolved.toast);
+      }
+      return;
+    }
+    blockedIncomingToastRowIdRef.current = null;
+    const t = resolved.target;
+    dispatchReceivingOpenIncomingDetails({
+      poId: t.poId,
+      poNumber: t.poNumber,
+      shipmentId: t.shipmentId,
+      inboundSourceType: t.inboundSourceType,
+      inboundSourceOrderId: t.inboundSourceOrderId,
+      receivingId: t.receivingId,
+      receivingLineId: t.receivingLineId,
+    });
+  }, [isIncoming, selectedRows]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
@@ -111,13 +154,7 @@ export function UnboxWorkspaceView(props: {
             <UnboxWorkspaceHeader
               tab={unboxView}
               onSelectTab={setUnboxView}
-              controlsSlotRef={isHistory ? undefined : setBand3ControlsEl}
-              historyTriageOpen={historyTriageOpen}
-              compareChrome={
-                isHistory ? undefined : (
-                  <UnboxCompareChrome onZoomChange={onZoomChange} />
-                )
-              }
+              inspectorOpen={Boolean(props.inspectorOpen)}
             />
           </div>
         }
@@ -145,9 +182,12 @@ export function UnboxWorkspaceView(props: {
       </DashboardScrollShell>
 
       <ReceivingLineRailShell
-        surface="lines"
+        surface={isIncoming ? 'incoming' : 'lines'}
         enabled={!lineWorkspaceOpen}
-        inspectOpen={historyTriageOpen}
+        // Only a PICKED carton claims the slot. The View-only shell owns no row
+        // selection, so folding it in here would silently cost print / claim /
+        // copy on selected rows the moment an operator opened it to reach ▦.
+        inspectOpen={recordInspectOpen}
       />
 
       {claimRow ? (

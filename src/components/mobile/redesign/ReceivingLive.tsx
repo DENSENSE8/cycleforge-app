@@ -49,7 +49,7 @@ export default function RedesignedMobileReceivingLive({ mode }: { mode?: string 
     body = (
       <ModeStarter
         Icon={Wrench}
-        title="Repair Service"
+        title="Repair"
         blurb="Repair intakes will show here. Log a repair from the desktop walk-in station."
       />
     );

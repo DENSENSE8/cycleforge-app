@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Clock } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { routeScan } from '@/lib/barcode-routing';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { useLabelsHistoryIdParam } from '@/hooks/useLabelsHistoryIdParam';
 
 const RECENTS_KEY = 'labels:history-recents:v1';
 const MAX_RECENTS = 10;
@@ -88,9 +88,8 @@ function writeRecents(next: RecentEntry[]) {
  * component resolves. USB DataMatrix scanners type + Enter, same as paste/type.
  */
 export function UnitHistoryFinder() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentId = searchParams.get('historyId') || '';
+  const { historyId, setHistoryId: setHistoryIdParam } = useLabelsHistoryIdParam();
+  const currentId = historyId || '';
 
   const [error, setError] = useState<string | null>(null);
   const [recents, setRecents] = useState<RecentEntry[]>([]);
@@ -100,16 +99,8 @@ export function UnitHistoryFinder() {
   }, []);
 
   const setHistoryId = useCallback(
-    (key: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('view', 'labels');
-      params.set('labelsView', 'history');
-      if (key) params.set('historyId', key);
-      else params.delete('historyId');
-      const qs = params.toString();
-      router.replace(qs ? `/products?${qs}` : '/products?view=labels');
-    },
-    [router, searchParams],
+    (key: string | null) => setHistoryIdParam(key, 'history'),
+    [setHistoryIdParam],
   );
 
   const submit = useCallback(

@@ -1,24 +1,20 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { LayoutGroup, useInView } from '@/design-system/motion';
-import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';
 import { markReceivingSerialAbsent } from './receiving-label-helpers';
 import { usePoLinesData } from './hooks/usePoLinesData';
-import { usePoLineItemDescriptionEditor } from './hooks/usePoLineItemDescriptionEditor';
 import type { PoLineSerialSplitContext } from './PoLineTitleMenu';
 import type {
   ActiveRowSlot,
   PoLineSerialActions,
 } from './po-lines-accordion-types';
 
-// Re-exported for existing consumers (UnmatchedItemsSection imports ProgressBadge;
-// ActiveLineConditionSerial imports the ActiveRowSerial type from here).
-export { ProgressBadge, ScannedBadge } from './PoLineBadges';
+// Type re-exports — ActiveLineConditionSerial / Units hosts import from here.
 export type {
   ActiveRowSerial,
   PoLineSerialActions,
@@ -59,10 +55,6 @@ interface Props {
    * always kept visible. Off in the unbox workspace, where every line matters.
    */
   hideNoTestLines?: boolean;
-  /** Success/error feedback renders below the label preview in LineEditPanel. */
-  onItemDescFeedback?: (feedback: InlineActionFeedbackPayload | null) => void;
-  /** Called after a successful local + Zoho item-description save. */
-  onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   /**
    * The already-known active line (the row the workspace opened on). Used as the
    * query `placeholderData` so the clicked line paints INSTANTLY on a cold open
@@ -86,16 +78,12 @@ interface Props {
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
   /**
-   * Carton-open snapshot of `receiving.accordionExpand`. `'all'` keeps the
-   * active line body expanded and suppresses inactive decorative chevrons.
+   * Carton-open snapshot of `receiving.accordionExpand`. Currently inert — the
+   * per-line collapse chevron was removed (capture lives in the bottom dock),
+   * so bodies are always expanded. Kept on the API for caller compatibility and
+   * in case expand-all-on-open returns.
    */
   accordionBootstrap?: 'default' | 'all';
-  /**
-   * Opt-in: extra controls rendered in each line's title row, immediately after
-   * the ⋮ menu (e.g. the testing page's serial LINK combine control).
-   * Omitted callers (unbox) render nothing here — unchanged.
-   */
-  renderTitleActions?: (line: ReceivingLineRow) => React.ReactNode;
   /**
    * Opt-in: enables Unlink in the title ⋮ for unmatched cartons with a serial
    * (Testing UNLINK / wrong physical item → split onto its own row).
@@ -106,6 +94,14 @@ interface Props {
    * Omit on surfaces without a Displays host (Shipping, read-only triage).
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Unbox Action Dock — PO meta condition/serial → focus dock step. */
+  onEditConditionInDock?: (line: ReceivingLineRow) => void;
+  onEditSerialInDock?: (line: ReceivingLineRow) => void;
+  /**
+   * When false, meta collapses to qty | SKU | price and unit editors stay off
+   * (Arrival door flow). Defaults true (Unbox / Testing).
+   */
+  unitsChrome?: boolean;
 }
 
 /**
@@ -114,9 +110,8 @@ interface Props {
  * line is highlighted for focus / scan-default; clicking a sibling still
  * dispatches `receiving-select-line` to re-seed the workspace controller.
  *
- * A thin shell over three collaborators (per the god-component cleanup):
+ * A thin shell over two collaborators (per the god-component cleanup):
  * - {@link usePoLinesData} — sibling query + cache-coordination bus.
- * - {@link usePoLineItemDescriptionEditor} — inline Zoho item-description CRUD.
  * - {@link PoLineRow} — the presentational row leaf.
  *
  * Single-line cartons should not mount this component (the parent guards).
@@ -129,42 +124,22 @@ export function PoLinesAccordion({
   activeSerialActions,
   readOnly = false,
   hideNoTestLines = false,
-  onItemDescFeedback,
-  onItemDescSaved,
-  renderTitleActions,
   serialSplit,
   placeholderActiveRow,
   embedded = false,
   headerRight,
   suppressHeader = false,
-  accordionBootstrap = 'default',
   onViewAllUnits,
+  onEditConditionInDock,
+  onEditSerialInDock,
+  unitsChrome = true,
 }: Props) {
-  const { queryKey, allRows, rows, cartonUnitIds, serialsLoading } = usePoLinesData({
+  const { rows, cartonUnitIds, serialsLoading } = usePoLinesData({
     receivingId,
     activeLineId,
     hideNoTestLines,
     placeholderActiveRow,
   });
-
-  // Active row collapse — the chevron toggles the active line's body (slot)
-  // closed so a high-qty line (x100 unit rows) doesn't lock the workspace to
-  // a wall of rows. Re-expands whenever the active line changes (sync during
-  // render so the first paint of the new line isn't collapsed for a frame).
-  // `accordionBootstrap === 'all'` forces expanded on open + on line switch.
-  const expandAll = accordionBootstrap === 'all';
-  const [activeCollapsed, setActiveCollapsed] = useState(false);
-  const [collapseForLineId, setCollapseForLineId] = useState(activeLineId);
-  if (activeLineId !== collapseForLineId) {
-    setCollapseForLineId(activeLineId);
-    setActiveCollapsed(false);
-  }
-  const expandActiveRow = useCallback(() => setActiveCollapsed(false), []);
-  const effectiveCollapsed = expandAll ? false : activeCollapsed;
-  const toggleCollapsed = useCallback(() => {
-    if (expandAll) return;
-    setActiveCollapsed((v) => !v);
-  }, [expandAll]);
 
   // Tab-panel visibility gate for framer `layout`. When this accordion sits in a
   // hidden tab (`display:none`, e.g. the Units display is active), its rows
@@ -176,20 +151,23 @@ export function PoLinesAccordion({
   const listRef = useRef<HTMLUListElement>(null);
   const layoutActive = useInView(listRef, { margin: '600px' });
 
-  const desc = usePoLineItemDescriptionEditor({
-    queryKey,
-    activeLineId,
-    allRows,
-    placeholderActiveRow,
-    onItemDescFeedback,
-    onItemDescSaved,
-    expandActiveRow,
-  });
-
   // Always render — even for single-line POs the row layout (title, qty,
   // sku, price, condition, serial chip) is the canonical context display the
-  // workspace expects above the body.
-  if (rows.length === 0) return null;
+  // workspace expects above the body. Never blank while we still have a
+  // known active row (cold siblings key / in-flight fetch).
+  if (
+    rows.length === 0 &&
+    !(placeholderActiveRow && placeholderActiveRow.id > 0)
+  ) {
+    return null;
+  }
+  const paintRows =
+    rows.length > 0
+      ? rows
+      : placeholderActiveRow && placeholderActiveRow.id > 0
+        ? [placeholderActiveRow]
+        : [];
+  if (paintRows.length === 0) return null;
 
   // Embedded → bare wrapper (parent supplies layout). Standalone (testing /
   // other callers) stays a flush plane too — flat hairline list, not a raised
@@ -200,7 +178,7 @@ export function PoLinesAccordion({
       {suppressHeader ? null : (
         <div className="mb-0 flex items-center justify-between">
           <h3 className={WORKSPACE_SECTION_TITLE_CLASS}>
-            PO items · {rows.length}
+            PO items · {paintRows.length}
           </h3>
           {embedded ? (
             headerRight ?? null
@@ -211,7 +189,7 @@ export function PoLinesAccordion({
       )}
       <LayoutGroup id={`po-lines-${receivingId}`}>
         <ul ref={listRef} className="flex min-w-0 flex-col gap-0">
-          {rows.map((line) => (
+          {paintRows.map((line) => (
             <PoLineRow
               key={line.id}
               line={line}
@@ -219,37 +197,31 @@ export function PoLinesAccordion({
               readOnly={readOnly}
               animateLayout={layoutActive}
               serialsLoading={serialsLoading}
-              activeCollapsed={effectiveCollapsed}
-              onToggleCollapsed={toggleCollapsed}
-              showInactiveChevron={false}
-              activeConditionOverride={activeConditionOverride}
-              activeSerialActions={activeSerialActions}
-              activeRowSlot={activeRowSlot}
-              renderTitleActions={renderTitleActions}
+              activeConditionOverride={unitsChrome ? activeConditionOverride : undefined}
+              activeSerialActions={unitsChrome ? activeSerialActions : undefined}
+              activeRowSlot={unitsChrome ? activeRowSlot : undefined}
               // The shell owns the mutation; the row stays presentational.
               // `markReceivingSerialAbsent` is the single choke point — it fires
               // the optimistic `receiving-line-updated` patch AND the durable
               // POST, so a waiver set from a collapsed row and one set from the
               // active editor are the same write and the stepper cannot disagree
-              // with either.
-              onSerialAbsentChange={(lineId, next) =>
-                markReceivingSerialAbsent(lineId, next)
+              // with either. Arrival (`unitsChrome={false}`) never stamps serials.
+              onSerialAbsentChange={
+                unitsChrome
+                  ? (lineId, next) => markReceivingSerialAbsent(lineId, next)
+                  : undefined
               }
               serialSplit={
-                serialSplit
+                unitsChrome && serialSplit
                   ? { ...serialSplit, receivingId }
                   : undefined
               }
-              onViewAllUnits={onViewAllUnits}
-              desc={{
-                shownId: desc.shownId,
-                draft: desc.draft,
-                savingLineId: desc.savingLineId,
-                inputRef: desc.inputRef,
-                toggle: desc.toggle,
-                setDraft: desc.setDraft,
-                save: desc.save,
-              }}
+              onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
+              onEditConditionInDock={
+                unitsChrome ? onEditConditionInDock : undefined
+              }
+              onEditSerialInDock={unitsChrome ? onEditSerialInDock : undefined}
+              unitsChrome={unitsChrome}
             />
           ))}
         </ul>

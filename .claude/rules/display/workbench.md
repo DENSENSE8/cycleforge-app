@@ -89,8 +89,8 @@ different row. Detail: [`workbench-ops-queue.md`](workbench-ops-queue.md) → St
 └───────────────────────────────────────────────────────────────┘
 ┌─ Band 3 triage ─ find · filter · week ────────────[▦]──┐ ← column display
 ┌─ Data table / collection map ────────────────────────────┐   portals into Band-3
-│  column header band                                      │   (card-corner hover
-├──────────────────────────────────────────────────────────┤   only if no Band-3)
+│  column header band                                      │   or View cluster;
+├──────────────────────────────────────────────────────────┤   no host ⇒ no ▦)
 ```
 
 **Column display belongs to the GRID** (2026-08-02; Band-3 portal norm 2026-08-06).
@@ -101,8 +101,12 @@ not belong on page chrome floating above that card. It does not get a permanent
 **Norm:** every table with a `WorkbenchTriageBand` portals ▦ into the band's
 `controlsSlotRef` (`columnTriggerPortalTarget` → `GridColumnGutter`
 `triggerPortalTarget`) so it sits resident beside filter / staff / week / sort.
-**Fallback** (no Band-3): hover-revealed over the card's top-right corner, with
-`focus-within` for keyboard and `open` pinning while its rail shows.
+**No host ⇒ no ▦ (2026-08-08).** A table with neither a Band-3 controls slot nor
+an inspector View cluster paints no trigger at all, and its columns stay at the
+descriptor default. The card-corner hover-reveal float that used to cover this
+case is **deleted** — give the surface a host rather than re-adding a float.
+Surfaces knowingly left dark are recorded in the shrink-only
+`NO_COLUMN_DISPLAY_HOST` ledger (`workbench-trailing-cluster.guard.test.ts`).
 
 ### Return-to-scan contract (every scan station)
 

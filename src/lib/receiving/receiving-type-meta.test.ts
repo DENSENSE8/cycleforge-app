@@ -20,7 +20,7 @@ test('receivingTypeMeta is case-insensitive', () => {
 
 test('receivingLabelTypeDisplay mirrors the meta label', () => {
   assert.equal(receivingLabelTypeDisplay('REPAIR'), 'Repair');
-  assert.equal(receivingLabelTypeDisplay('PO'), 'PO');
+  assert.equal(receivingLabelTypeDisplay('PO'), 'Purchase order');
   assert.equal(receivingLabelTypeDisplay(''), '');
 });
 

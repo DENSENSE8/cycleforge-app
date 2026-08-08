@@ -38,7 +38,9 @@ export function GoalRing({
           fill="none"
           strokeLinecap="round"
           strokeDasharray={c}
-          initial={{ strokeDashoffset: c }}
+          // Paint the current percent immediately on mount (idle placeholder +
+          // first real value). Animate only on later percent changes.
+          initial={false}
           animate={{ strokeDashoffset: c * (1 - clamped / 100) }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         />

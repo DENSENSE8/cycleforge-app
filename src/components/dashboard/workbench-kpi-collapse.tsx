@@ -14,12 +14,13 @@
 
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system';
 import { ChevronDown, ChevronUp } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -151,6 +152,10 @@ function KpiSnapHandle({
 /**
  * Band 2 shell — open: KPI chrome + snap-drag hairline; closed: thin residual
  * grab strip so drag-down can expand (Band 3 toggle remains the primary door).
+ *
+ * Children stay mounted while closed (height/opacity only) so KPI queries and
+ * layout don't remount on every Hide→Show — that remount was a flash twin of
+ * the prefs snap-back race.
  */
 export function WorkbenchKpiBand({
   open,
@@ -166,37 +171,46 @@ export function WorkbenchKpiBand({
   className?: string;
 }) {
   const [bodySettled, setBodySettled] = useState(open);
+  const openRef = useRef(open);
+  openRef.current = open;
+
+  // Clip immediately on collapse so a rapid Hide→Show can't leave
+  // overflow-visible mid-exit (content flash under Band 3).
+  useEffect(() => {
+    if (!open) setBodySettled(false);
+  }, [open]);
 
   return (
     <div className="relative shrink-0" data-workbench-kpi-band="" data-open={open ? '' : undefined}>
-      <AnimatePresence
+      <motion.div
         initial={false}
-        onExitComplete={() => setBodySettled(false)}
+        animate={open ? framerPresence.collapseHeight.animate : framerPresence.collapseHeight.exit}
+        transition={framerTransition.sidebarNavColumnMount}
+        onAnimationComplete={() => {
+          if (openRef.current) setBodySettled(true);
+        }}
+        className={cn(
+          bodySettled && open ? 'overflow-visible' : 'overflow-hidden',
+          !open && 'pointer-events-none',
+        )}
+        aria-hidden={!open}
       >
-        {open ? (
-          <motion.div
-            key="kpi-body"
-            {...framerPresence.collapseHeight}
-            transition={framerTransition.sidebarNavColumnMount}
-            onAnimationComplete={() => setBodySettled(true)}
-            className={cn(bodySettled ? 'overflow-visible' : 'overflow-hidden')}
-          >
-            <div
-              className={cn(
-                'relative border-b border-r border-border-soft bg-surface-card px-3 py-2',
-                className,
-              )}
-            >
-              {children}
-              <KpiSnapHandle
-                open
-                onSnapCollapse={onSnapCollapse}
-                onSnapExpand={onSnapExpand}
-              />
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+        <div
+          className={cn(
+            'relative border-b border-r border-border-soft bg-surface-card px-3 py-2',
+            className,
+          )}
+        >
+          {children}
+          {open ? (
+            <KpiSnapHandle
+              open
+              onSnapCollapse={onSnapCollapse}
+              onSnapExpand={onSnapExpand}
+            />
+          ) : null}
+        </div>
+      </motion.div>
       {!open ? (
         <div
           className="relative h-0 border-b border-r border-border-soft"

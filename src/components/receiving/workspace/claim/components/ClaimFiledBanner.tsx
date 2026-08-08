@@ -47,7 +47,7 @@ export function ClaimFiledBanner({ filedTicket, mode, linkCommitted, unlinking, 
           rel="noopener noreferrer"
           className="inline-block text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
         >
-          Open in Zendesk ↗
+          Open in helpdesk ↗
         </a>
       ) : null}
     </section>

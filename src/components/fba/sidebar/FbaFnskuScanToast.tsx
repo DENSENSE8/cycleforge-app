@@ -107,7 +107,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
             <Package className="mt-0.5 h-4 w-4 shrink-0 text-purple-600" />
             <div className="min-w-0 flex-1">
               <p className="text-role-micro uppercase tracking-[0.14em] text-purple-800">
-                Station FNSKU scan
+                Station Amazon SKU scan
               </p>
               <p className="mt-0.5 truncate font-mono text-role-caption font-semibold text-text-default">
                 {detail.fnsku}

@@ -30,17 +30,36 @@ const GLOW = code(sourceOf('../../station/scan-bar/ScanBandGlowHost.tsx'));
 const SCAN_FEEDBACK = code(sourceOf('../../../lib/scan-feedback/useScanFeedback.ts'));
 const VISUAL = code(sourceOf('../../../lib/scan-feedback/visual.ts'));
 
-test('PoLineRow expand chevron trails the title ⋮ (found + unfound accordion rows)', () => {
-  // Title band order: title → PoLineTitleMenu → expand chevron (rightmost).
-  // Matched and unfound lines share PoLineRow via PoLinesAccordion.
-  const titleBand = PO_LINE_ROW.match(
-    /lineTitle[\s\S]*?Expand item details[\s\S]*?<\/div>/,
-  )?.[0];
-  assert.ok(titleBand, 'title band must mount lineTitle + trailing controls');
-  const menuAt = titleBand.indexOf('PoLineTitleMenu');
-  const expandAt = titleBand.indexOf('Expand item details');
-  assert.ok(menuAt >= 0, '⋮ menu must stay on the title band');
-  assert.ok(expandAt > menuAt, 'expand chevron must sit after the ⋮ menu');
+test('PoLineRow title band carries no collapse chevron (capture is in the bottom dock)', () => {
+  // The per-line collapse chevron was removed 2026-08-08: capture and item
+  // detail moved to the bottom dock + right-edge Displays, so the PO line row
+  // is a pure ledger with no top-right collapse control on the title band.
+  assert.doesNotMatch(
+    PO_LINE_ROW,
+    /Expand item details|Collapse item details|ChevronDown/,
+    'title band must not mount a collapse chevron',
+  );
+  // The conditional line ⋮ (Unlink on unmatched/Testing) still mounts here; it
+  // renders null when the line has no action, so matched Unbox lines show no ⋮.
+  assert.match(
+    PO_LINE_ROW,
+    /<PoLineTitleMenu/,
+    '⋮ line-actions menu still mounts on the title band (renders null when empty)',
+  );
+  // The per-line title-action slot (Testing serial 🔗 link/combine) is removed
+  // as dead code — the row is a pure ledger. Item-description "more details"
+  // editing lives ONLY in the right-edge Inventory Display (InventoryDisplayHost),
+  // never inline on the PO line item.
+  assert.doesNotMatch(
+    PO_LINE_ROW,
+    /renderTitleActions/,
+    'no per-line title-action slot (🔗 serial-link removed) on the PO line row',
+  );
+  assert.doesNotMatch(
+    PO_LINE_ROW,
+    /Item description|zoho_notes|usePoLineItemDescriptionEditor/,
+    'item-description editing moved to the Inventory Display — not the PO line row',
+  );
 });
 
 test('ReturnScanCard title chevron is trailing (empty unfound stub parity)', () => {
@@ -138,12 +157,19 @@ test('PoLineRow meta is a bordered boxed sub-grid (gap-x whitespace, no divide-x
     /grid-cols-\[auto_auto_auto_minmax\(2\.5rem,1fr\)_auto\]/,
     'meta tracks: qty|SKU|cond|serials 1fr|price auto',
   );
+  assert.match(
+    META,
+    /unitsChrome[\s\S]{0,80}?grid-cols-\[auto_auto_auto\]/,
+    'Arrival unitsChrome=false collapses meta to qty|SKU|price',
+  );
+  assert.match(META, /data-units-chrome/);
   assert.match(PO_LINE_ROW, /onViewAllUnits/);
+  assert.match(PO_LINE_ROW, /onEditSerialInDock/);
   assert.match(PO_LINE_ROW, /Barcode/);
   assert.match(
     PO_LINE_ROW,
-    /aria-label="Edit units"/,
-    'serial preview is the sole open-Units control (View All removed)',
+    /aria-label=\{[\s\S]*Edit serial in dock[\s\S]*Edit units/,
+    'serial preview opens Units or focuses the Unbox dock step (View All removed)',
   );
   assert.doesNotMatch(
     PO_LINE_ROW,
@@ -270,13 +296,13 @@ test('identity pad is horizontal-only (zero vertical pad)', () => {
   assert.match(IDENTITY, /STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0'/);
   assert.match(
     IDENTITY,
-    /STATION_IDENTITY_ROW_CLASS = 'flex items-center gap-0'/,
-    'identity chip row must be gap-0 (no row-gap air)',
+    /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0`/,
+    'identity chip row must be gap-0 and stretch flush on the primary chrome face',
   );
   assert.match(
     IDENTITY,
-    /STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-0'/,
-    'classify group must be gap-0 flush pills (same abut as Photos · Claim)',
+    /STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0'/,
+    'classify group must be gap-0 flush pills filling the chrome row',
   );
 });
 

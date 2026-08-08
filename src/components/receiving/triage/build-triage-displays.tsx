@@ -2,7 +2,7 @@
 
 /**
  * Arrival (triage) Displays — Pairing/Linkage on the right-edge push column
- * ({@link ReceivingDisplaysPushStack}), never a centre tab strip.
+ * ({@link StationDisplaysPushStack}), never a centre tab strip.
  *
  * Sibling of Unbox's {@link buildUnboxSideTabs}: Arrival's centre owns the door
  * flow — items (`POUnboxingSection`) + Classify + Staging stacked under them.

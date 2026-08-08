@@ -12,7 +12,35 @@
 
 import { z } from 'zod';
 import { parsePhotoAspectList } from '@/lib/photos/photo-aspects';
+import { ALL_ROLES } from '@/lib/auth/permissions-shared';
 import type { SettingDef, SettingPage } from './types';
+
+/**
+ * Per-role override of the Unbox Inbound pin default (Gemini D9). One `select`
+ * per canonical role — three states: `inherit` (default → fall through to the
+ * org toggle), `on`, `off`. A boolean can't express "inherit", so this is a
+ * three-value select, not a switch. Generated (not hand-typed 8×) but still a
+ * flat set of first-class registry rows, so storage/UI/write/audit/permission
+ * all come from the framework — no ad-hoc control or route (registry law). The
+ * server folds these role→org via `getReceivingUnboxRoleDefaultPins`. Marked
+ * `advanced` so the main panel shows just the org toggle.
+ */
+const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) => ({
+  key: `receiving.unboxDefaultPinnedByRole.${role}`,
+  page: 'receiving' as const,
+  group: 'Unbox strip',
+  scope: 'org' as const,
+  advanced: true,
+  label: `Pin Inbound for ${role.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())}`,
+  control: 'select' as const,
+  schema: z.enum(['inherit', 'on', 'off']).default('inherit'),
+  options: [
+    { value: 'inherit', label: 'Inherit org default' },
+    { value: 'on', label: 'Pinned' },
+    { value: 'off', label: 'Not pinned' },
+  ],
+  permission: 'admin.manage_features',
+}));
 
 export const SETTING_PAGES = [
   { id: 'receiving', label: 'Receiving', description: 'Unboxing & intake behavior' },
@@ -203,6 +231,28 @@ export const SETTINGS: readonly SettingDef[] = [
     permission: 'admin.manage_features',
   },
 
+  // ─── Organization · Unbox strip ─────────────────────────────────────────
+  {
+    key: 'receiving.unboxDefaultPinnedExtraTabs',
+    page: 'receiving',
+    group: 'Unbox strip',
+    scope: 'org',
+    label: 'Pin Inbound on the Unbox strip by default',
+    description:
+      'New staff see the Inbound (incoming POs) list pinned on the Unbox strip until they change it. Anyone can still pin or unpin their own strip.',
+    // v1 the pin catalog is Inbound-only, so the org default is a single toggle
+    // (SettingValue is a primitive). A per-role override lives in the optional
+    // `receiving.unboxDefaultPinnedByRole` org-settings map (resolver-ready; the
+    // per-role admin control is a fast-follow). Resolve order + storage:
+    // src/lib/receiving/unbox-default-pins.ts (Gemini D9).
+    control: 'toggle',
+    schema: z.boolean().default(false),
+    permission: 'admin.manage_features',
+  },
+  // Per-role overrides (Inherit · Pinned · Not pinned) — one advanced `select`
+  // per role. Set by admins; folded role→org server-side (D9).
+  ...UNBOX_ROLE_DEFAULT_SETTINGS,
+
   // ─── Organization · Vision (advanced, plan-gated) ───────────────────────
   {
     key: 'receiving.vision.consensusNeeded',
@@ -341,8 +391,8 @@ export const SETTINGS: readonly SettingDef[] = [
     schema: z.enum(['receive', 'incoming', 'triage', 'pickup', 'history']).default('receive'),
     options: [
       { value: 'receive', label: 'Unbox' },
-      { value: 'incoming', label: 'Incoming' },
-      { value: 'triage', label: 'Triage' },
+      { value: 'incoming', label: 'Inbound' },
+      { value: 'triage', label: 'Arrival' },
       { value: 'pickup', label: 'Local pickup' },
       { value: 'history', label: 'History' },
     ],

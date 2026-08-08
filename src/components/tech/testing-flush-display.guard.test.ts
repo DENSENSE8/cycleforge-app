@@ -39,10 +39,11 @@ describe('Testing flush Unbox display SoT', () => {
   it('notes sit in the floating dock with Pass · Print trailing', () => {
     assert.match(panel, /slicedActionDockWrapperClass\(\{ docked: false \}\)/);
     assert.match(panel, /WorkspaceNotesCard/);
+    assert.match(panel, /TestingDockHost/, 'QC dock host owns the CTA band');
     assert.match(
       panel,
-      /trailingAction=\{[\s\S]*?<StationTerminalDock[\s\S]*?embedded/,
-      'Pass · Print rides as dock trailing action beside the note',
+      /TestingDockHost[\s\S]*?<StationTerminalDock[\s\S]*?embedded/,
+      'Pass · Print rides as TestingDockHost trailing (carton terminal)',
     );
     assert.doesNotMatch(
       panel,
@@ -51,11 +52,17 @@ describe('Testing flush Unbox display SoT', () => {
     );
   });
 
-  it('Ticket Displays keep the reply composer inline (not host-owned dock)', () => {
+  it('Ticket Displays use TicketDisplayHost (Unbox grain — no modal / no dock hijack)', () => {
     const displays = read('src/components/tech/testing-panel/build-testing-displays.tsx');
-    assert.match(displays, /hostComposer=\{false\}/);
-    assert.match(displays, /mergeFloorTimeline=\{false\}/);
-    assert.doesNotMatch(displays, /hostComposer=\{claimTicketId/);
+    assert.match(displays, /TicketDisplayHost/);
+    assert.match(displays, /dynamic\(/);
+    assert.doesNotMatch(
+      displays,
+      /import\s+\{\s*TicketDisplayHost\s*\}\s+from/,
+      'TicketDisplayHost must stay dynamic (P3)',
+    );
+    assert.doesNotMatch(displays, /SupportContextHub/);
+    assert.doesNotMatch(displays, /ReceivingClaimModal/);
   });
 
   it('host knobs match Unbox — flow identity + bodyGap none', () => {
@@ -64,9 +71,9 @@ describe('Testing flush Unbox display SoT', () => {
     assert.match(panel, /bodyGap=["']none["']/);
   });
 
-  it('reference tools live on ReceivingDisplaysPushStack', () => {
-    assert.match(panel, /ReceivingDisplaysPushStack/);
-    assert.match(panel, /UnboxDisplaysEdgeToggle variant=["']pane-open["']/);
+  it('reference tools live on StationDisplaysPushStack', () => {
+    assert.match(panel, /StationDisplaysPushStack/);
+    assert.match(panel, /UnboxDisplaysUtilityRailBody/);
     assert.match(panel, /buildTestingDisplayTabs/);
     assert.doesNotMatch(
       panel,
@@ -75,11 +82,40 @@ describe('Testing flush Unbox display SoT', () => {
     );
     const displays = read('src/components/tech/testing-panel/build-testing-displays.tsx');
     assert.match(displays, /id:\s*['"]ticket['"]/);
+    assert.match(displays, /id:\s*['"]units['"]/);
     assert.match(displays, /id:\s*['"]pairing['"]/);
     assert.match(displays, /id:\s*['"]checklist['"]/);
     assert.match(displays, /id:\s*['"]manuals['"]/);
     assert.match(displays, /id:\s*['"]timeline['"]/);
     assert.match(displays, /id:\s*['"]linkage['"]/);
+  });
+
+  it('per-unit verdict is a right-edge Units Action Display, not a centre activeRowSlot', () => {
+    // docs/todo/testing-units-to-right-rail-display-HANDOFF.md — the per-unit
+    // list (serial · condition · pass/test-again/fail) lives in the Units
+    // Display; the centre stays PO lines + Pass · Print (ops-flow only).
+    const displays = read('src/components/tech/testing-panel/build-testing-displays.tsx');
+    const unitsDisplay = read('src/components/tech/testing-panel/TestingUnitsDisplay.tsx');
+    const items = read('src/components/tech/testing-panel/TestingPoItemsSection.tsx');
+
+    // Units tab hosts the verdict surface via the shared waist (TestingLineSlot
+    // → ActiveLineTestingSerial → UnitSlotList) — not a second units renderer.
+    assert.match(displays, /<TestingUnitsDisplay/);
+    assert.match(unitsDisplay, /TestingLineSlot/);
+    assert.match(unitsDisplay, /data-testid="testing-units-display"/);
+    // Flush plane — fills the column, edge-to-edge, no glass island / body inset.
+    assert.match(unitsDisplay, /flex h-full min-h-0 flex-col/);
+    assert.match(unitsDisplay, /px-0/);
+    assert.doesNotMatch(unitsDisplay, /DISPLAYS_BODY_INSET/);
+    assert.doesNotMatch(unitsDisplay, /WorkspaceCard/);
+
+    // Centre carries no verdict list — the serials cell opens the Display.
+    assert.doesNotMatch(items, /activeRowSlot=\{testingActiveRowSlot\}/);
+    assert.doesNotMatch(items, /const testingActiveRowSlot\b/);
+    assert.match(items, /onViewAllUnits=\{onViewAllUnits\}/);
+    // TestingPanel selects the line then opens the Units leaf.
+    assert.match(panel, /openDisplays\('units'\)/);
+    assert.match(panel, /onViewAllUnits=\{openUnits\}/);
   });
 
   it('controller exposes itemNote + Unbox-shaped label bag for UnboxLabelPreview', () => {
@@ -91,6 +127,20 @@ describe('Testing flush Unbox display SoT', () => {
       controller,
       /notes:\s*itemNote/,
       'live carton face center must be driven by the dock draft',
+    );
+  });
+
+  it('UnboxLabelPreview gates As Listed editor on buildAsListedPayload (Testing omits it)', () => {
+    const preview = read('src/components/receiving/workspace/line-edit/UnboxLabelPreview.tsx');
+    assert.match(
+      preview,
+      /typeof c\.buildAsListedPayload === ['"]function['"]/,
+      'AsListedEditPopover must not mount without a builder — Testing has no as_listed kind',
+    );
+    assert.doesNotMatch(
+      controller,
+      /buildAsListedPayload/,
+      'Testing stays unit+carton only; do not silently fork As Listed onto QC',
     );
   });
 });

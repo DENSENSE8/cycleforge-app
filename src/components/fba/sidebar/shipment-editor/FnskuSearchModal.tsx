@@ -56,10 +56,10 @@ export function FnskuSearchModal({
         <DialogHeader className="space-y-0 border-b border-border-soft px-4 py-3 text-left">
           <div className="mb-2 flex items-center justify-between">
             <div>
-              <p className="text-role-micro uppercase tracking-[0.16em] text-purple-600">Add FNSKU</p>
+              <p className="text-role-micro uppercase tracking-[0.16em] text-purple-600">Add Amazon SKU</p>
               <DialogTitle className="mt-0.5 text-sm font-semibold">Search shipment catalog</DialogTitle>
               <DialogDescription className="sr-only">
-                Search the shipment catalog by FNSKU, ASIN, SKU, or product title.
+                Search the shipment catalog by Amazon SKU (FNSKU), ASIN, SKU, or product title.
               </DialogDescription>
             </div>
             <IconButton
@@ -77,7 +77,7 @@ export function FnskuSearchModal({
               type="text"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              placeholder="Search FNSKU, ASIN, SKU, or product title..."
+              placeholder="Search Amazon SKU, ASIN, SKU, or product title..."
               className="w-full rounded-xl border border-border-soft bg-surface-card py-2.5 pl-10 pr-3 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30"
             />
           </div>
@@ -98,7 +98,7 @@ export function FnskuSearchModal({
             </div>
           ) : results.length === 0 ? (
             <div className="py-16 text-center">
-              <p className="text-xs font-semibold text-text-faint">No matching FNSKUs found</p>
+              <p className="text-xs font-semibold text-text-faint">No matching Amazon SKUs found</p>
               <p className="mt-1 text-role-micro text-text-faint">Try a different search term</p>
             </div>
           ) : (

@@ -25,7 +25,15 @@ import {
 } from './receiving-routes';
 import { PRODUCTS_ROUTE_PARAMS } from './query-mode-routes';
 import { routeParamsFor } from './registry';
-import { UNBOX_SIDE_TAB_ORDER } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
+import {
+  UNBOX_PHOTO_ACTION_ORDER,
+  UNBOX_SIDE_TAB_ORDER,
+} from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
+import {
+  normalizeUnboxWorkspaceTabParams,
+  type UnboxWorkspaceTab,
+} from '@/utils/unbox-workspace-state';
+import { SUPPORT_MODES } from '@/components/sidebar/support/support-sidebar-shared';
 
 const DEMO = defineRouteParams({
   route: '/demo',
@@ -122,9 +130,165 @@ test('EVERY Unbox display survives surface hygiene', () => {
     const next = parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams(`display=${tab}`));
     assert.equal(next.get('display'), tab, `?display=${tab} must survive /unbox hygiene`);
   }
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('display=index')).get('display'),
+    'index',
+    '?display=index (Root Index) must survive /unbox hygiene',
+  );
   // …and the vocabulary is still closed.
   assert.equal(
     parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('display=nonsense')).get('display'),
+    null,
+  );
+});
+
+test('EVERY Unbox workbench tab wire survives surface hygiene', () => {
+  // Same drift class as `?display=` above: when History got an explicit wire
+  // (`?unboxview=history`, 2026-08-08) the route enum still only listed
+  // `recent|queue|viewed`. Hygiene stripped History on the next pass and the
+  // strip bounced back to Queue (the bare-/unbox default). Round-trip the SoT
+  // writer so a new tab cannot land without surviving hygiene.
+  const tabs: UnboxWorkspaceTab[] = ['incoming', 'queue', 'recent', 'history', 'all'];
+  for (const tab of tabs) {
+    const written = new URLSearchParams();
+    normalizeUnboxWorkspaceTabParams(written, tab);
+    const wire = written.get('unboxview');
+    if (wire == null) {
+      // Queue omits the param — nothing for hygiene to keep or drop.
+      assert.equal(tab, 'queue');
+      continue;
+    }
+    const next = parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams(`unboxview=${wire}`));
+    assert.equal(
+      next.get('unboxview'),
+      wire,
+      `?unboxview=${wire} (${tab}) must survive /unbox hygiene`,
+    );
+  }
+  // Migrations / legacy tokens kept so old links are not deleted mid-flight.
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('unboxview=urgent')).get('unboxview'),
+    'urgent',
+  );
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('unboxview=recent')).get('unboxview'),
+    'recent',
+  );
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('unboxview=nonsense')).get(
+      'unboxview',
+    ),
+    null,
+  );
+});
+
+test('EVERY Unbox Photos nested action wire survives surface hygiene', () => {
+  // Same drift class: `compare` joined UNBOX_PHOTO_ACTION_ORDER but the route
+  // enum stayed `browse|actions|move|send` — hygiene stripped Compare and the
+  // leaf bounced to Actions.
+  for (const action of UNBOX_PHOTO_ACTION_ORDER) {
+    const next = parseRouteParams(
+      UNBOX_ROUTE_PARAMS,
+      new URLSearchParams(`photoAction=${action}`),
+    );
+    assert.equal(
+      next.get('photoAction'),
+      action,
+      `?photoAction=${action} must survive /unbox hygiene`,
+    );
+  }
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('photoAction=browse')).get(
+      'photoAction',
+    ),
+    'browse',
+  );
+  assert.equal(
+    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('photoAction=nonsense')).get(
+      'photoAction',
+    ),
+    null,
+  );
+});
+
+test('Support mode=tickets survives the route registry (default deep-link wire)', () => {
+  // VoicemailDetail writes `?mode=tickets`; the hand-copied enum omitted the
+  // default token. Round-trip SUPPORT_MODES so a deep link is not stripped.
+  const spec = routeParamsFor('/support');
+  assert.ok(spec);
+  for (const mode of SUPPORT_MODES) {
+    assert.equal(
+      parseRouteParams(spec, new URLSearchParams(`mode=${mode}`)).get('mode'),
+      mode,
+      `?mode=${mode} must survive /support registry`,
+    );
+  }
+  assert.equal(parseRouteParams(spec, new URLSearchParams('mode=nonsense')).get('mode'), null);
+});
+
+test('default-omit mode wires survive hygiene (review/pack/locations/sourcing/home/ops)', () => {
+  // Same class as support `tickets`: defaults usually omitted from the URL, but
+  // deep links / assistant copy write them. Hand-copied enums that forgot the
+  // default token stripped them on the next hygiene pass.
+  const cases: Array<{ path: string; key: string; wire: string }> = [
+    { path: '/review', key: 'mode', wire: 'packer' },
+    { path: '/pack', key: 'packMode', wire: 'standard' },
+    { path: '/inventory/locations', key: 'tab', wire: 'labels' },
+    { path: '/warehouse', key: 'tab', wire: 'labels' },
+    { path: '/sourcing', key: 'mode', wire: 'queue' },
+    { path: '/', key: 'mode', wire: 'today' },
+    { path: '/operations', key: 'mode', wire: 'live' },
+    { path: '/walk-in', key: 'mode', wire: 'sales' },
+    { path: '/dashboard', key: 'mode', wire: 'outbound' },
+  ];
+  for (const { path, key, wire } of cases) {
+    const spec = routeParamsFor(path);
+    assert.ok(spec, `${path} must resolve a route spec`);
+    assert.equal(
+      parseRouteParams(spec!, new URLSearchParams(`${key}=${wire}`)).get(key),
+      wire,
+      `${path}?${key}=${wire} must survive hygiene`,
+    );
+  }
+});
+
+test('closed outbound vocabularies survive hygiene (fbaMode / ltab / rtab / etype)', () => {
+  const fba = routeParamsFor('/shipping/fba');
+  assert.ok(fba);
+  for (const mode of ['ready', 'plan', 'combine', 'shipped']) {
+    assert.equal(
+      parseRouteParams(fba!, new URLSearchParams(`fbaMode=${mode}`)).get('fbaMode'),
+      mode,
+    );
+  }
+  assert.equal(
+    parseRouteParams(fba!, new URLSearchParams('rtab=prebox')).get('rtab'),
+    'prebox',
+  );
+  assert.equal(
+    parseRouteParams(fba!, new URLSearchParams('fbaMode=nonsense')).get('fbaMode'),
+    null,
+  );
+
+  const labels = routeParamsFor('/shipping/labels');
+  assert.ok(labels);
+  assert.equal(
+    parseRouteParams(labels!, new URLSearchParams('ltab=recent')).get('ltab'),
+    'recent',
+  );
+  assert.equal(
+    parseRouteParams(labels!, new URLSearchParams('ltab=nonsense')).get('ltab'),
+    null,
+  );
+
+  const search = routeParamsFor('/search');
+  assert.ok(search);
+  assert.equal(
+    parseRouteParams(search!, new URLSearchParams('etype=order')).get('etype'),
+    'order',
+  );
+  assert.equal(
+    parseRouteParams(search!, new URLSearchParams('etype=nonsense')).get('etype'),
     null,
   );
 });
@@ -327,9 +491,12 @@ test('/walk-in keeps the legacy deep-link keys its redirect reads', () => {
   assert.equal(parse('tab=draft'), 'tab=draft');
   assert.equal(parse('tab=today'), 'tab=today');
   assert.equal(parse('tab=bogus'), '');
-  // Sales is the default mode and is dropped from the URL.
-  assert.equal(parse('mode=sales'), '');
+  // Sales is the default and writers usually omit it — but a deep link that
+  // writes `?mode=sales` must survive hygiene (same class as support `tickets`).
+  assert.equal(parse('mode=sales'), 'mode=sales');
   assert.equal(parse('mode=pickup'), 'mode=pickup');
+  assert.equal(parse('mode=repairs'), 'mode=repairs');
+  assert.equal(parse('mode=repair'), 'mode=repair');
   // Legacy `?category=` is proxy-only (server-side, before this parse) and has
   // no client reader, so it is deliberately NOT declared.
   assert.equal(parse('category=repairs'), '');

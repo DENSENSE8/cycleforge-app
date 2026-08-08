@@ -59,25 +59,25 @@ export const INLINE_PILL_LEADING = {
   type: <Tag className={TOP_CHROME_ICON_GLYPH} />,
 } as const;
 
-/** Carton-context flush face — square corners; inset pad keeps label off the border. */
+/** Carton-context flush face — square corners; fills station chrome row (h-full). */
 const PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-1.5 text-role-micro uppercase tracking-wide transition-colors shadow-none';
+  'inline-flex box-border h-full shrink-0 items-center whitespace-nowrap rounded-none border px-1.5 text-role-micro font-semibold uppercase leading-none tracking-wide transition-colors shadow-none';
 /**
- * Locked equal width for icon-only faces — same hit box as
- * {@link HEADER_ICON_WRAP} (`h-8 w-8`).
+ * Locked equal-width icon-only faces — square peer of carton exit
+ * ({@link STATION_CONTEXT_EXIT_PILL_CLASS}); height from the chrome row.
  */
-export const INLINE_PILL_ICON_FACE =
-  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-none border transition-colors shadow-none';
+const INLINE_PILL_ICON_FACE =
+  'inline-flex box-border h-full aspect-square shrink-0 items-center justify-center rounded-none border transition-colors shadow-none';
 /** Icon + full name — expanded option pads / default collapsed. */
 const INLINE_PILL_ICON_LABEL =
-  'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase tracking-wide transition-colors shadow-none';
+  'inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase leading-none tracking-wide transition-colors shadow-none';
 /**
  * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
  * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
- * (`High` / `Med` / `Trade` truncated).
+ * (`High` / `Med` / `Trade` truncated). Height fills station chrome row.
  */
 const INLINE_PILL_ICON_LABEL_BOOKMARK =
-  'inline-flex h-8 w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 text-role-micro font-medium uppercase tracking-wide transition-colors shadow-none box-border';
+  'inline-flex box-border h-full w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 text-role-micro font-medium uppercase leading-none tracking-wide transition-colors shadow-none';
 
 const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-none';
 const DEFAULT_INACTIVE =
@@ -253,9 +253,14 @@ export function InlinePillPicker({
   return (
     <div
       ref={ref}
-      className={`flex items-center ${showOpen ? 'min-w-0 flex-1' : 'shrink-0'} ${
-        disabled ? 'pointer-events-none opacity-50' : ''
-      }`}
+      data-inline-pill=""
+      className={cn(
+        // Collapsed: stretch to chrome row so `h-full` on the face is real
+        // (a content-sized wrap made urgency · platform · type shorter than Exit).
+        'flex',
+        showOpen ? 'min-w-0 flex-1 items-center' : 'h-full shrink-0 self-stretch items-stretch',
+        disabled && 'pointer-events-none opacity-50',
+      )}
     >
       {/* sync (not wait): overlapping opacity avoids an empty-frame jump */}
       <AnimatePresence initial={false}>

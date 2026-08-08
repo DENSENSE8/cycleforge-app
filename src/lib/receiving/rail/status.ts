@@ -52,6 +52,18 @@ const COARSE_DOT: Record<ReceivingLineStatus, string> = {
   RECEIVED: 'bg-emerald-500',
 };
 
+/**
+ * Coarse status → carton-identity status pill tone (border · wash · ink).
+ * Same 3-state map as {@link COARSE_DOT}; face geometry lives on
+ * `STATION_CONTEXT_STATUS_PILL_CLASS`.
+ */
+const COARSE_PILL: Record<ReceivingLineStatus, string> = {
+  INCOMING: 'border-amber-200 bg-amber-50 text-amber-700',
+  SCANNED: 'border-blue-200 bg-blue-50 text-blue-700',
+  UNBOXED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+  RECEIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+};
+
 const COARSE_LABEL: Record<ReceivingLineStatus, string> = {
   INCOMING: 'Incoming',
   SCANNED: 'Scanned',
@@ -59,8 +71,36 @@ const COARSE_LABEL: Record<ReceivingLineStatus, string> = {
   RECEIVED: 'Received',
 };
 
+/**
+ * Coarse status → grid status-chip tone (wash + ink, no border).
+ * Matches `workflowStageBadge` / `GridStatusCellValue` — the chip owns its own
+ * ring. Distinct from {@link COARSE_PILL} (carton-identity locked pill).
+ */
+const COARSE_BADGE: Record<ReceivingLineStatus, string> = {
+  INCOMING: 'bg-amber-50 text-amber-700',
+  SCANNED: 'bg-blue-50 text-blue-700',
+  UNBOXED: 'bg-indigo-50 text-indigo-700',
+  RECEIVED: 'bg-emerald-50 text-emerald-700',
+};
+
 export function getReceivingStatusDot(row: ReceivingLineRow): string {
   return COARSE_DOT[railCoarseStatus(row)];
+}
+
+/**
+ * Locked carton-identity status pill tone for row 2 — same coarse stage as
+ * {@link getReceivingStatusDot}. Compose with `STATION_CONTEXT_STATUS_PILL_CLASS`.
+ */
+export function getReceivingStatusPillClass(row: ReceivingLineRow): string {
+  return COARSE_PILL[railCoarseStatus(row)];
+}
+
+/**
+ * Grid status-chip tone for coarse lifecycle paint (Unbox / Receiving History).
+ * Same stage as {@link getReceivingStatusDot}; no border (chip ring is inset).
+ */
+export function getReceivingStatusBadgeClass(row: ReceivingLineRow): string {
+  return COARSE_BADGE[railCoarseStatus(row)];
 }
 
 /**
@@ -85,6 +125,19 @@ export function getReceivingStatusDotTip(
     coarse: railCoarseStatus(row),
     inventoryProviderLabel,
   });
+}
+
+/** One-shot coarse paint for Unbox / Receiving History status cells. */
+export function receivingCoarseStatusPaint(
+  row: ReceivingLineRow,
+  inventoryProviderLabel: string,
+): { label: string; badge: string; dot: string; tip: string | null } {
+  return {
+    label: getReceivingStatusDotLabel(row),
+    badge: getReceivingStatusBadgeClass(row),
+    dot: getReceivingStatusDot(row),
+    tip: getReceivingStatusDotTip(row, inventoryProviderLabel),
+  };
 }
 
 /**

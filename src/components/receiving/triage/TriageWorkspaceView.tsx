@@ -45,9 +45,8 @@ export function TriageWorkspaceView({
   const { triageView, setTriageView } = useTriageWorkspaceTab();
   const searchParams = useSearchParams();
   const filterText = searchParams.get('triq') ?? '';
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.triage,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.triage);
 
   const selectedLineId = selectedLine?.id ?? null;
   const selectedRow =
@@ -101,7 +100,7 @@ export function TriageWorkspaceView({
               </WorkbenchKpiBand>
               <TriageTriageBand
                 kpiOpen={!kpiCollapsed}
-                onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
+                onToggleKpi={toggleKpiCollapsed}
               />
             </div>
           }

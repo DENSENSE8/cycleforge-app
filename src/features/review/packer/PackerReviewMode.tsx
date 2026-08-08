@@ -47,6 +47,7 @@ import {
 import { StationTerminalDock } from '@/components/station/terminal';
 import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
 import { StationDisplaysEdgeToggle } from '@/components/station/displays';
+import { buildReviewDisplayIndexRows } from '@/features/review/packer/review-display-index';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -277,6 +278,16 @@ export function PackerReviewMode({
     ],
   );
 
+  const displayIndexRows = useMemo(
+    () =>
+      buildReviewDisplayIndexRows({
+        photoCount: photos.length,
+        trackingPresent: tracking.length > 0,
+        hasTimeline: hasTimelineTab,
+      }),
+    [photos.length, tracking, hasTimelineTab],
+  );
+
   const resolvedSideTab: ReviewDisplayNav | null = useMemo(() => {
     if (!activeSideTab) return null;
     if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
@@ -422,6 +433,7 @@ export function PackerReviewMode({
               testId="pack-review-displays-push"
               resizeTestId="pack-review-displays-push-resize"
               tabs={displayTabs}
+              indexRows={displayIndexRows}
               activeTab={resolvedSideTab}
               onTabChange={(id) => setActiveSideTab(id as ReviewDisplayNav)}
               onClose={closeDisplays}

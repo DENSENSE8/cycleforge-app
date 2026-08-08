@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
+import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
 import { sourcePlatformMark } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 
@@ -8,6 +8,16 @@ test('urgency bookmark shorts stay ≤4 chars', () => {
   for (const t of PRIORITY_OVERRIDE_TIERS) {
     assert.ok(t.short.length <= 4, `${t.label} short="${t.short}"`);
   }
+});
+
+test('urgency picker escalates Low → Priority under Auto (platform first)', () => {
+  const picker = priorityOverrideTiersForPicker();
+  assert.deepEqual(
+    picker.map((t) => t.label),
+    ['Low', 'Medium', 'High', 'Priority'],
+  );
+  // Storage / facet order stays most-urgent-first.
+  assert.equal(PRIORITY_OVERRIDE_TIERS[0].label, 'Priority');
 });
 
 test('platform marks stay ≤2 chars for equal-width bookmark', () => {

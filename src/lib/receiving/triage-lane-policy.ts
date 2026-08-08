@@ -29,8 +29,8 @@ export const TRIAGE_LANE_CATEGORY = 'triage-lane';
  * open sub-question under D3).
  */
 export const TRIAGE_LANE_OPTS = [
-  { value: 'PO_STOCKOUT', label: 'PO — Stock-out' },
-  { value: 'PO_STANDARD', label: 'PO — Standard' },
+  { value: 'PO_STOCKOUT', label: 'Purchase order — Stock-out' },
+  { value: 'PO_STANDARD', label: 'Purchase order — Standard' },
   { value: 'RETURN', label: 'Return' },
   { value: 'HOLD', label: 'Hold / exception' },
 ] as const;
@@ -39,6 +39,12 @@ export type TriageLane = (typeof TRIAGE_LANE_OPTS)[number]['value'];
 
 export function isTriageLane(v: unknown): v is TriageLane {
   return typeof v === 'string' && TRIAGE_LANE_OPTS.some((o) => o.value === v);
+}
+
+/** Wire tokens `?ulane=` may carry (route-param hygiene). Uppercases first. */
+export function parseTriageLaneWire(raw: string): string | null {
+  const v = raw.trim().toUpperCase();
+  return isTriageLane(v) ? v : null;
 }
 
 export function triageLaneLabel(lane: string | null | undefined): string {

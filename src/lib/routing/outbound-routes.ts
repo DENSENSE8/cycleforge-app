@@ -15,7 +15,11 @@ import {
   OUTBOUND_MODE_PATHS,
   type OutboundMode,
 } from '@/components/outbound/outbound-sidebar-shared';
+import { parseFbaModeWire } from '@/lib/fba/fba-modes';
 import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
+import { parseLabelsWorkspaceTabWire } from '@/utils/labels-workspace-state';
+import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
 import {
   defineRouteParams,
   paramDateKey,
@@ -23,6 +27,7 @@ import {
   paramFlag,
   paramPositiveInt,
   paramPresence,
+  paramRoundTrip,
   paramText,
   type RouteParamsSpec,
 } from './route-params';
@@ -71,14 +76,7 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     late: paramFlag,
     new: paramEnum(['true'] as const),
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
-    shippedSearchField: paramEnum([
-      'all',
-      'order_id',
-      'tracking',
-      'product_title',
-      'sku',
-      'serial_number',
-    ] as const),
+    shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
     shippedWeekOffset: paramPositiveInt,
     ostatus: paramText,
     exceptions: paramFlag,
@@ -111,7 +109,7 @@ const LABELS_ROUTE_PARAMS = defineRouteParams({
     /** New-order intake slide-over. */
     new: paramEnum(['true'] as const),
     /** Queue vs Recent tab. */
-    ltab: paramText,
+    ltab: paramRoundTrip(parseLabelsWorkspaceTabWire),
     rtab: paramText,
   },
   carries: SHIPPING_CARRIES,
@@ -123,9 +121,9 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
   owns: {
     ...SHIPPING_COMMON,
     /** Lifecycle stage tab. */
-    fbaMode: paramText,
+    fbaMode: paramRoundTrip(parseFbaModeWire),
     /** Ready-stage disposition facet (all / fba / prebox / hold). */
-    rtab: paramText,
+    rtab: paramRoundTrip(parseReadyWorkspaceTabWire),
     openShipmentId: paramPositiveInt,
     plan: paramText,
     draft: paramText,

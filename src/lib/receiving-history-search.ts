@@ -56,11 +56,11 @@ export const RECEIVING_HISTORY_SEARCH_FIELDS: ReceivingHistoryFieldConfig[] = [
   {
     id: 'all',
     label: 'All',
-    placeholder: 'Search PO #, tracking, SKU, title, or serial #',
+    placeholder: 'Search purchase order #, tracking, SKU, title, or serial #',
   },
   {
     id: 'po',
-    label: 'PO #',
+    label: 'Purchase order #',
     placeholder: 'Search purchase order #',
   },
   {
@@ -103,6 +103,15 @@ export function normalizeReceivingHistorySearchField(
   return FIELD_IDS.has(v) ? v : 'all';
 }
 
+/**
+ * Wire tokens `?rh_field=` may carry (route-param hygiene).
+ * Do not round-trip {@link normalizeReceivingHistorySearchField} — it coerces to `all`.
+ */
+export function parseReceivingHistorySearchFieldWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return FIELD_IDS.has(v as ReceivingHistorySearchField) ? v : null;
+}
+
 export function normalizeReceivingHistorySearchScope(
   raw: string | null | undefined,
 ): ReceivingHistorySearchScope {
@@ -110,6 +119,17 @@ export function normalizeReceivingHistorySearchScope(
   if (v === 'unmatched' || v === 'unfound') return 'unmatched';
   // PO-only scope removed from History UI — legacy bookmarks read as All.
   return 'all';
+}
+
+/**
+ * Wire tokens `?rh_scope=` may carry (route-param hygiene), including legacy
+ * `unfound` → reader maps to unmatched. Do not round-trip
+ * {@link normalizeReceivingHistorySearchScope} — it folds `zoho_po` to `all`.
+ */
+export function parseReceivingHistorySearchScopeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  if (v === 'all' || v === 'zoho_po' || v === 'unmatched' || v === 'unfound') return v;
+  return null;
 }
 
 export function getReceivingHistoryPlaceholder(field: ReceivingHistorySearchField): string {

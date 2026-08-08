@@ -1,8 +1,8 @@
 /**
  * Source guard: Scan Stations is the ONLY station group, and it stays
  * scan-first. Every `kind: 'station'` row is `stationGroup: 'floor'`, pipeline-
- * ordered (Receiving subgroup → Testing → Packing → Scan out), and the Receiving
- * page-style header comes from STATION_SUBGROUPS.
+ * ordered (Receiving · Walk-In subgroups → Testing → Packing → Scan out), and
+ * subgroup page-style headers come from STATION_SUBGROUPS.
  *
  * The retired `desk` group is the point of this file now. "Everything
  * pointer-driven" is not a place, so it accumulated Incoming, Review, Support,
@@ -53,7 +53,8 @@ const FLOOR_PIPELINE = [
   'packer',
   'scan-out',
 ] as const;
-const RECEIVING_SUBGROUP = ['triage', 'receive', 'pickup', 'repair'] as const;
+const RECEIVING_SUBGROUP = ['triage', 'receive'] as const;
+const WALK_IN_SUBGROUP = ['pickup', 'repair'] as const;
 const ALLOWED: ReadonlySet<StationGroupId> = new Set(['floor']);
 
 const LIST_SRC = code(sourceOf('./SidebarNavList.tsx'));
@@ -111,7 +112,7 @@ test('Scan Stations appear in pipeline order in APP_SIDEBAR_NAV', () => {
 });
 
 /**
- * D-rulings: Arrival / Unbox / Local Pickup / Repair Service / Testing / Packing
+ * D-rulings: Arrival / Unbox / Local Pickup / Repair / Testing / Packing
  * / Scan out stay on the floor. Moving any of them under Inbound or Fulfillment
  * is an instant fail — a scanner bench answers to its input model, not to the
  * domain of the records it happens to touch.
@@ -135,13 +136,15 @@ test('no scan bench leaks into a domain drill', () => {
   assert.equal(spineSectionIdForPage(outbound), 'fulfillment');
 });
 
-test('Receiving subgroup covers Arrival → Unbox → Local Pickup → Repair Service', () => {
+test('Receiving subgroup is carton flow; Walk-In is front-desk counter', () => {
   assert.deepEqual(
     STATION_SUBGROUPS.map((g) => g.id),
-    ['receiving'],
+    ['receiving', 'walk-in'],
   );
   assert.equal(STATION_SUBGROUPS[0]?.label, 'Receiving');
+  assert.equal(STATION_SUBGROUPS[1]?.label, 'Walk-In');
   assert.equal(typeof STATION_SUBGROUPS[0]?.icon, 'function');
+  assert.equal(typeof STATION_SUBGROUPS[1]?.icon, 'function');
   for (const id of RECEIVING_SUBGROUP) {
     const app = APP_SIDEBAR_NAV.find((i) => i.id === id);
     assert.ok(app && app.kind === 'station');
@@ -150,26 +153,45 @@ test('Receiving subgroup covers Arrival → Unbox → Local Pickup → Repair Se
     assert.ok(page && page.kind === 'station');
     assert.equal(page.stationSubgroup, 'receiving', `${id} PAGE missing stationSubgroup`);
   }
+  for (const id of WALK_IN_SUBGROUP) {
+    const app = APP_SIDEBAR_NAV.find((i) => i.id === id);
+    assert.ok(app && app.kind === 'station');
+    assert.equal(app.stationSubgroup, 'walk-in', `${id} missing walk-in stationSubgroup`);
+    const page = SIDEBAR_PAGE_NAV.find((p) => p.id === id);
+    assert.ok(page && page.kind === 'station');
+    assert.equal(page.stationSubgroup, 'walk-in', `${id} PAGE missing walk-in stationSubgroup`);
+  }
   const repair = APP_SIDEBAR_NAV.find((i) => i.id === 'repair');
-  assert.equal(repair?.label, 'Repair Service');
+  assert.equal(repair?.label, 'Repair');
 });
 
-test('stationSubgroupMembers is the Receiving display SoT (excludes Incoming + legacy family)', () => {
-  const members = stationSubgroupMembers('receiving');
+test('stationSubgroupMembers splits Receiving vs Walk-In (excludes Incoming + legacy family)', () => {
+  const receiving = stationSubgroupMembers('receiving');
   assert.deepEqual(
-    members.map((m) => m.id),
+    receiving.map((m) => m.id),
     [...RECEIVING_SUBGROUP],
-    'Receiving peers must be first-class APP stations only',
+    'Receiving peers must be Arrival · Unbox only',
+  );
+  const walkIn = stationSubgroupMembers('walk-in');
+  assert.deepEqual(
+    walkIn.map((m) => m.id),
+    [...WALK_IN_SUBGROUP],
+    'Walk-In peers must be Local Pickup · Repair',
   );
   assert.equal(
-    members.some((m) => m.id === 'incoming'),
+    receiving.some((m) => m.id === 'incoming'),
     false,
     'Incoming is Inbound domain — not a Receiving station peer',
   );
   assert.equal(
-    members.some((m) => m.id === 'receiving'),
+    receiving.some((m) => m.id === 'receiving'),
     false,
     'legacy receiving family entry must not appear as a display member',
+  );
+  assert.equal(
+    walkIn.some((m) => m.id === 'triage' || m.id === 'receive'),
+    false,
+    'carton benches must not appear under Walk-In',
   );
   const incoming = getSidebarPageNav('incoming');
   assert.ok(incoming && incoming.kind === 'domain');
@@ -212,9 +234,9 @@ test('SidebarNavList imports SPINE_SECTIONS and does not twin section labels', (
   assert.match(LIST_SRC, /role=["']group["']/);
 });
 
-test('The flat map reads stationSubgroupMembers — Receiving header comes from SoT only', () => {
-  // Free-form uppercase eyebrow twins remain banned; Receiving page-style header
-  // reads getStationSubgroupDef (label + icon; no hardcoded "Receiving" string).
+test('The flat map reads stationSubgroupMembers — subgroup headers come from SoT only', () => {
+  // Free-form uppercase eyebrow twins remain banned; subgroup page-style headers
+  // read getStationSubgroupDef (label + icon; no hardcoded family string).
   assert.doesNotMatch(LIST_SRC, /text-role-micro uppercase tracking-widest text-text-faint/);
   assert.doesNotMatch(LIST_SRC, /text-role-micro font-semibold text-text-faint/);
   // Eyebrow voice is gone from the list entirely (2026-08-03 polish): Scan
@@ -229,6 +251,7 @@ test('The flat map reads stationSubgroupMembers — Receiving header comes from 
   assert.match(LIST_SRC, /renderStationsEnterRow|renderStationsDrill/);
   assert.match(LIST_SRC, /\{section\.label\}/);
   assert.doesNotMatch(LIST_SRC, /['"]Receiving['"]/);
+  assert.doesNotMatch(LIST_SRC, /['"]Walk-In['"]/);
   assert.doesNotMatch(LIST_SRC, /['"]Scan Stations['"]/);
   assert.match(LIST_SRC, /getStationSubgroupDef/);
   assert.match(LIST_SRC, /stationSubgroupMembers/);
@@ -239,7 +262,7 @@ test('The flat map reads stationSubgroupMembers — Receiving header comes from 
     'local subgroupDef twin is retired — use getStationSubgroupDef',
   );
   assert.match(LIST_SRC, /renderPageHeader/);
-  // Receiving discloses inside the Scan Stations drill — accordion open.
+  // Subgroups disclose inside the Scan Stations drill — accordion open.
   assert.match(LIST_SRC, /openSubgroup/);
   assert.match(LIST_SRC, /closeSubgroup/);
   assert.match(LIST_SRC, /expandedSubgroups/);
@@ -250,24 +273,40 @@ test('The flat map reads stationSubgroupMembers — Receiving header comes from 
 });
 
 /**
- * The flatten INVERTED this one, and the reason is worth keeping.
+ * Section boundaries are HAIRLINES; rows are still box to box.
  *
+ * This assertion has now inverted three times, and the sequence is the point.
  * Inside a drill only one section was ever on screen, so a rule between its
- * nests was noise — that is what the old assertion banned. Flat, spacing
- * between SECTIONS is the only thing left saying the root axis is deliberately
- * mixed (Scan Stations is an INPUT MODEL among business DOMAINS), because the
- * section labels that used to say it are gone. Horizontal hairlines between
- * those blocks were retired 2026-08-03 — soft `mt-1` only, below the top pins.
+ * nests was noise — the original ban. Once the map went flat, a soft `mt-1`
+ * gap stood in for the section labels that were gone. Box-to-box (2026-08-03)
+ * removed that gap to match the app's flush-square chrome, leaving per-section
+ * HUE as the only boundary marker.
+ *
+ * The monochrome pass (2026-08-08) deleted the hue, which left nothing at all
+ * — twenty identical rows with no breaks, hiding the fact that the root axis
+ * is deliberately mixed (Scan Stations is an INPUT MODEL sitting among
+ * business DOMAINS). So the hairline arrives, and it is the right shape rather
+ * than a compromise: it costs zero vertical space, which is the one currency
+ * this column is short of (the map already runs 732px into a 685px port on the
+ * widest page), and it survives greyscale, which the hue never did.
+ *
+ * What is still banned is the GAP — whitespace at 8px × 8 boundaries would
+ * push rows below the fold — and any hairline BETWEEN peer rows or inside a
+ * nest, which would break the nesting rail into horizontal ticks.
  */
-test('the flat map spaces sections without horizontal hairlines', () => {
-  assert.match(LIST_SRC, /index > 0 && 'mt-1'/);
-  assert.doesNotMatch(LIST_SRC, /index > 0 && 'mt-1 border-t border-border-soft/);
-  // Peer L1 rows may take a soft gap; subgroup children must stay flush so the
-  // nesting rail does not break into horizontal ticks.
+test('the flat map separates sections with a hairline, never a gap — rows stay box to box', () => {
+  assert.doesNotMatch(LIST_SRC, /index > 0 \? 'mt-1/);
+  assert.doesNotMatch(LIST_SRC, /index > 0 && 'mt-1/);
+  // Peer L1 rows and subgroup children both stay flush so the nesting rail
+  // does not break into horizontal ticks.
   assert.doesNotMatch(LIST_SRC, /expanded && 'space-y-/);
-  // Footer search / staff chrome may keep a top rule — the map itself must not.
-  assert.doesNotMatch(
-    LIST_SRC.match(/const renderMap[\s\S]*?\n {2}\};\n/)?.[0] ?? '',
-    /border-t border-border-soft/,
+  // The boundary rule lives on the SECTION <li> and nowhere else — one
+  // hairline per boundary, never one per row.
+  const map = LIST_SRC.match(/const renderMap[\s\S]*?\n {2}\};\n/)?.[0] ?? '';
+  assert.match(map, /index > 0 \? 'border-t border-border-soft'/);
+  assert.equal(
+    (map.match(/border-t border-border-soft/g) ?? []).length,
+    1,
+    'exactly one hairline expression — a per-row rule would tick the whole map',
   );
 });

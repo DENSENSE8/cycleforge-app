@@ -271,6 +271,7 @@ export function useLineSerials({
             is_return: true,
             unit: su
               ? {
+                  id: typeof su.id === 'number' ? su.id : null,
                   serial_number: String(su.serial_number ?? serial),
                   sku: su.sku ?? null,
                   current_status: String(su.current_status ?? 'RETURNED'),

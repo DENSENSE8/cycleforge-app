@@ -111,7 +111,7 @@ Legend: ☐ = to do · 🔑 needs credentials/external account · 🧠 needs you
 
 ### A5 — ShipStation + eBay buyer purchase sync (new July wave)  ·  `shipstation-outbound.md`, Incoming universal purchase orders
 - ☐ 🔑 Obtain ShipStation API keys (or Nango connect) + webhook secrets; set `SHIPSTATION_*` (or equivalent) in Vercel; wire rate shopping + label purchase/void in prod.
-- ☐ 🔑 eBay buyer-side (purchase) OAuth/app permissions + refresh tokens for universal incoming POs sync (separate from seller listings); test cron + polymorphic feed ingest.
+- ☐ 🔑 eBay buyer-side (purchase) OAuth soak: Settings → eBay → **Add purchasing** (not Connect/selling); after return use Incoming → **Marketplace** refresh; confirm cron `/api/cron/ebay/purchase-sync` + refresh-tokens keep buyer tokens alive. In-app next-step copy shipped; remaining = live dogfood consent + row appear on Incoming.
 - ☐ Smoke the new facts/perm extensions + credential connector for both (see recent permission manifest + integrations updates).
 - ☐ Verify non-destructive feed unlinks (if `feed_links` impl lands) + label lifecycle audit.
 

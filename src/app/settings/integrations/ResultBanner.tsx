@@ -11,11 +11,28 @@ import { AlertTriangle, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { IntegrationConnectSuccess } from './IntegrationConnectSuccess';
 
-const SUCCESS: Record<string, string> = {
-  amazon_connected: 'Amazon connected.',
-  ebay_connected: 'eBay account linked successfully.',
-  zoho_connected: 'Zoho connected.',
-  google_drive_connected: 'Google Drive connected — photo backups will start automatically.',
+type SuccessSpec = {
+  message: string;
+  href?: string;
+  linkLabel?: string;
+};
+
+const SUCCESS: Record<string, SuccessSpec> = {
+  amazon_connected: { message: 'Amazon connected.' },
+  ebay_connected: { message: 'eBay account linked successfully.' },
+  ebay_buyer_connected: {
+    message:
+      'Purchasing account linked — open Incoming and run Marketplace refresh to pull buyer orders.',
+    href: '/incoming',
+    linkLabel: 'Open Incoming →',
+  },
+  ebay_seller_connected: {
+    message: 'Selling account linked — storefront orders and tracking sync from this account.',
+  },
+  zoho_connected: { message: 'Zoho connected.' },
+  google_drive_connected: {
+    message: 'Google Drive connected — photo backups will start automatically.',
+  },
 };
 
 const ERRORS: Record<string, string> = {
@@ -75,7 +92,10 @@ export function ResultBanner({
   ebayOauthError?: string;
 }) {
   const [dismissed, setDismissed] = useState(false);
-  const successMsg = success ? SUCCESS[success] ?? 'Connected.' : null;
+  const successSpec = success
+    ? (SUCCESS[success] ?? { message: 'Connected.' })
+    : null;
+  const successMsg = successSpec?.message ?? null;
   const errorMsg = error
     ? error === 'ebay_token_exchange_failed'
       ? resolveEbayTokenExchangeMessage(ebayOauthError)
@@ -96,10 +116,14 @@ export function ResultBanner({
 
   if (dismissed || (!successMsg && !errorMsg)) return null;
 
-  if (successMsg) {
+  if (successMsg && successSpec) {
     return (
       <div className="relative">
-        <IntegrationConnectSuccess message={successMsg} />
+        <IntegrationConnectSuccess
+          message={successMsg}
+          href={successSpec.href}
+          linkLabel={successSpec.linkLabel}
+        />
         <IconButton
           icon={<X className="h-3.5 w-3.5" />}
           ariaLabel="Dismiss"

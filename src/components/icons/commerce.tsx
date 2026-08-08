@@ -4,6 +4,7 @@
 
 import {
   Box as LucideBox,
+  PackageCheck as LucidePackageCheck,
   Receipt as LucideReceipt,
 } from 'lucide-react';
 
@@ -52,10 +53,9 @@ export const ShoppingCart = ({ className = "w-6 h-6" }: { className?: string }) 
     </svg>
 );
 
+/** Closed package + check — pack-cleared / Ready to Pack / received·delivered chips. */
 export const PackageCheck = ({ className = "w-6 h-6" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-    </svg>
+    <LucidePackageCheck className={className} />
 );
 
 // 3D cube — standard box glyph from Lucide. Used by Packing and other box
@@ -65,8 +65,8 @@ export const Box = ({ className = "w-6 h-6" }: { className?: string }) => (
 );
 
 /** 3D package — physical unbox / prepacked-product scans (not the Products master-nav CMS icon). */
-// Lidded storage box — warehouse Bins tab (lucide archive). Not used for Packing;
-// that station uses the dedicated {@link Packer} glyph.
+// Lidded storage box — warehouse Bins tab (lucide archive). Not Packing —
+// Packing uses {@link Box} via StationPacking / PackingModeStandard.
 export const Archive = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <rect width="20" height="5" x="2" y="3" rx="1" />

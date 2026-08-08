@@ -13,7 +13,6 @@ import {
   PICKUP_SURFACE_ROUTE,
   TRIAGE_SURFACE_ROUTE,
   UNBOX_SURFACE_ROUTE,
-  receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
 import { DASHBOARD_INBOUND_MODE } from '@/lib/dashboard/dashboard-domains';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';

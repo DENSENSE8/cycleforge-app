@@ -28,7 +28,7 @@ export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
  * without a pager must not pay dead canvas for one that has one. Same shape as
  * `reserveIdentityClearance`'s `'stacked'`.
  *
- * Main Unbox: procedure progress ring lives on the Displays strip `rightSlot`
+ * Main Unbox: Print·Receive mounts in UnboxDockHost trailing on settle only
  * (not an under-dock row). This clearance still over-reserves for the notes
  * composer when expanded — the safe direction.
  */

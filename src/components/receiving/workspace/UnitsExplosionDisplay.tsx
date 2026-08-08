@@ -81,6 +81,7 @@ interface UnitsExplosionController {
   commitSerialAbsent: (next: { absent: boolean; reason: string | null }) => void;
   serialRef?: RefObject<HTMLInputElement | null>;
   handleFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
+  handleOpenReturnHistory?: () => void;
   serialLookup?: ReturnType<typeof useSerialLookup>;
 }
 
@@ -249,6 +250,7 @@ function ActiveLineExplosion({
           editingSerial={c.headerSerialEdit}
           serialLookup={serialLookup}
           onFileReturnClaim={c.handleFileReturnClaim}
+          onOpenReturnHistory={c.handleOpenReturnHistory}
           onSubmitSerial={(sn, grade) => c.enqueueSerial(sn, grade)}
           onDeleteSerialUnit={async (id) => {
             if (

@@ -1,12 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { workflowStage, workflowStageDot } from '@/lib/receiving/workflow-stages';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
 import { filterReceivingRailRows } from '@/components/sidebar/tech/filter-receiving-rail-rows';
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import type { RefreshDomain } from '@/lib/refresh/domains';
+import { useHydrateVisibleSerials } from './useHydrateVisibleSerials';
 
 /**
  * Color logic for the left status dot in Testing view. Colors come straight
@@ -116,6 +118,17 @@ export function TestingRecentRail({
     const receiving_lines = filterReceivingRailRows(data.receiving_lines ?? [], trimmedFilter);
     return { ...data, receiving_lines, total: receiving_lines.length };
   };
+
+  // Tier A serial pre-seed — same observer pattern as ReceivingFeedRail so click
+  // opens with warm siblings chips (never wait on cold include=serials).
+  const queryClient = useQueryClient();
+  const railRows = useQuery<ReceivingLineRow[]>({
+    queryKey,
+    queryFn: async () => (await fetchFn()).receiving_lines ?? [],
+    enabled: false,
+    notifyOnChangeProps: ['data'],
+  }).data;
+  useHydrateVisibleSerials(queryClient, railRows, queryKey);
 
   return (
     <RecentActivityRailBase

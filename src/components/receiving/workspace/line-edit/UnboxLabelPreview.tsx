@@ -159,7 +159,7 @@ export function UnboxLabelPreview({
                 Hide
               </button>
             </div>
-            {c.labelPayload ? (
+            {c.labelPayload && typeof c.buildLabelPayload === 'function' ? (
               <LabelEditPopover
                 open={showCarton && cartonEditorOpen}
                 defaults={c.labelDraftDefaults}
@@ -168,13 +168,18 @@ export function UnboxLabelPreview({
                 onClose={() => setCartonEditorOpen(false)}
               />
             ) : null}
-            <AsListedEditPopover
-              open={showAsListed && asListedEditorOpen}
-              defaults={c.asListedDraftDefaults}
-              buildPayload={c.buildAsListedPayload}
-              onApplyAndPrint={c.applyAsListedAndPrint}
-              onClose={() => setAsListedEditorOpen(false)}
-            />
+            {/* Testing (and any station without As Listed) omits the builders —
+                AsListedEditPopover always calls buildPayload in useMemo, so
+                mounting without it throws "buildPayload is not a function". */}
+            {typeof c.buildAsListedPayload === 'function' && c.asListedDraftDefaults ? (
+              <AsListedEditPopover
+                open={showAsListed && asListedEditorOpen}
+                defaults={c.asListedDraftDefaults}
+                buildPayload={c.buildAsListedPayload}
+                onApplyAndPrint={c.applyAsListedAndPrint}
+                onClose={() => setAsListedEditorOpen(false)}
+              />
+            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>

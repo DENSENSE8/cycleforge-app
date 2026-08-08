@@ -34,7 +34,7 @@ type CommandBarNavPageRow = {
   label: string;
   href: string;
   icon: SidebarIconComponent;
-  /** True for Receiving subgroup members under Scan Stations. */
+  /** True for Receiving / Walk-In subgroup members under Scan Stations. */
   indented?: boolean;
 };
 
@@ -67,7 +67,7 @@ function toPageRow(item: SidebarNavItem, indented = false): CommandBarNavPageRow
   };
 }
 
-/** Scan Stations: Receiving subgroup chrome + members, then other floor pages. */
+/** Scan Stations: Receiving · Walk-In subgroup chrome + members, then other floor pages. */
 function buildFloorRows(items: readonly SidebarNavItem[]): CommandBarNavRow[] {
   const rows: CommandBarNavRow[] = [];
   const consumed = new Set<string>();

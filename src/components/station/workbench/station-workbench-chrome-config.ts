@@ -24,7 +24,7 @@
  * never a centre `SectionTabsSlider` strip. Arrival carve-out: Classify · Staging
  * stack under items in the centre; Displays = Pairing only.
  *
- *   - Unbox   (`LineEditPanel`)  — DONE (golden). `ReceivingDisplaysPushStack`.
+ *   - Unbox   (`LineEditPanel`)  — DONE (golden). `StationDisplaysPushStack`.
  *   - Arrival (`TriagePanel`)    — DONE (carve-out 2026-08-06): centre = items
  *                                  (`POUnboxingSection`, Unbox-parity) + Classify
  *                                  + Staging stacked under items; Pairing only
@@ -41,19 +41,30 @@
    *                                  Open displays. Guard:
    *                                  `testing-flush-display.guard.test.ts`.
  *   - Pack    (`PackOrderPanel`) — DONE (2026-08-06): centre = checklist /
- *                                  UNIT peek; Ticket · Photos · Support ·
- *                                  Timeline on `pack-displays-push`. Guard:
- *                                  `packer/pack-displays-push.guard.test.ts`.
+ *                                  UNIT peek; Photos · Timeline · Listings
+ *                                  (no Ticket · Support) on `pack-displays-push`.
+ *                                  Guard: `packer/pack-displays-push.guard.test.ts`.
  *                                  Still terminal-exempt (no sticky dock).
  *   - Labels  (`LabelsOrderWorkspace`) — StationPanelRoot + flush centre tabs
  *                                  (Print · Documents · Timeline stay mid-canvas;
  *                                  not Displays push). Guard: phase-f Labels
  *                                  flush assert.
  *   - Shipping (`ActiveOrderWorkspace`) — DONE (Phase F): centre = Ship · Units;
- *                                  Timeline on `shipping-displays-push`.
+ *                                  Condition · Timeline · Listings (trailing)
+ *                                  on `shipping-displays-push`.
  *   - Packer review (`PackerReviewMode`) — DONE (Phase F): centre = Note;
  *                                  Photos · Tracking · Timeline on
  *                                  `pack-review-displays-push`.
+ *   - Support orders (`SupportOrdersFocusHost`) — DONE (2026-08-08): centre =
+ *                                  Order (the order's own editable fields);
+ *                                  Ticket · Support on
+ *                                  `support-orders-displays-push`. Was a
+ *                                  centre `SectionTabsSlider` (Order · Ticket ·
+ *                                  Support) — the exact Hard Never #3 shape
+ *                                  (`docs/todo/unbox-displays-right-panel-SOT-
+ *                                  CLAUDE-CODE-PROMPT.md`) — because this
+ *                                  station-family panel was never added to the
+ *                                  census here, so no guard caught the drift.
  *
  * These are the census members whose panels compose the shared Displays host; the
  * width / ambient-wash / panel-root / terminal ratchets below are orthogonal and
@@ -225,3 +236,51 @@ export const IDENTITY_FORK_ALLOWLIST = [] as const;
  * (Unbox-family nav + terminal slice) or here.
  */
 export const TERMINAL_MODES_WITHOUT_HEADER_CHROME = ['shipping', 'repair', 'pickup'] as const;
+
+// ── Guard I — scan-station edge-to-edge middle measure (Unbox golden) ─────────
+/**
+ * Same-line (or line-above) marker for a genuine non-measure `max-w-[720px]` /
+ * `mx-auto` use inside a scan-station panel (icon centering, empty-state glyph,
+ * etc.). Never use this to keep a centered content column — that is debt.
+ */
+export const STATION_EDGE_MEASURE_ESCAPE = 'ds-station-edge-measure-exempt';
+
+/**
+ * Scan-station right panes watched by the edge-to-edge middle-measure ratchet
+ * (`station-edge-measure.guard.test.ts`). Golden: Unbox `LineEditPanel`
+ * (`STATION_WORKBENCH_COLUMN` = `w-full min-w-0`; identity + notes dock share
+ * one measure). Siblings that skip the token or reintroduce `max-w-[720px]` /
+ * `mx-auto` gutters are debt.
+ *
+ * Continuous-improvement loop: CI fails when missing-token or local-720 counts
+ * grow; Claude Code prompt
+ * `docs/todo/scan-station-edge-measure-CI-LOOP-PROMPT.md` ports each offender
+ * and shrinks the baselines.
+ */
+export const SCAN_STATION_EDGE_MEASURE_PANELS = [
+  'components/receiving/workspace/LineEditPanel.tsx',
+  'components/receiving/triage/TriagePanel.tsx',
+  'components/tech/TestingPanel.tsx',
+  'components/tech/ActiveOrderWorkspace.tsx',
+  'components/packer/PackOrderPanel.tsx',
+  'features/review/packer/PackerReviewMode.tsx',
+  'components/outbound/labels/LabelsOrderWorkspace.tsx',
+] as const;
+
+/**
+ * Panels in {@link SCAN_STATION_EDGE_MEASURE_PANELS} that do **not** yet compose
+ * `STATION_WORKBENCH_COLUMN`. Shrink-only (port → remove from missing set).
+ * Never raise — that hides a regression on a golden station.
+ *
+ * Census 2026-08-07: Shipping · Pack · Packer review · Labels still on local
+ * column recipes; Unbox · Arrival · Testing already edge-to-edge.
+ */
+export const SCAN_STATION_EDGE_MEASURE_MISSING_BASELINE = 4;
+
+/**
+ * Remaining local `max-w-[720px]` hits in {@link SCAN_STATION_EDGE_MEASURE_PANELS}
+ * that are not yet migrated (e.g. terminal `maxWidth` VM fields). Shrink-only —
+ * never raise. Prefer composing `STATION_WORKBENCH_COLUMN` and dropping the
+ * dock's own max-w so notes + identity stay one measure.
+ */
+export const SCAN_STATION_LOCAL_720_MAX_BASELINE = 1;

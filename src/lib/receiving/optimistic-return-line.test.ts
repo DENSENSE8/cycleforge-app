@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildOptimisticReturnLine,
+  mergeUnfoundLinesWithPreserve,
   mintOptimisticLineId,
   remapOptimisticLineId,
   rollbackOptimisticReturnLine,
@@ -83,5 +84,61 @@ describe('optimistic-return-line', () => {
     );
     assert.equal(shouldPreserveCachedSerials([], undefined), false);
     assert.equal(shouldPreserveCachedSerials([], []), false);
+  });
+
+  it('mergeUnfoundLinesWithPreserve keeps prev on empty incoming (mid-create race)', () => {
+    const temp = buildOptimisticReturnLine({
+      receivingId: 1,
+      serial: 'SN-KEEP',
+      condition: 'USED_A',
+      tempLineId: -11,
+      tempSerialId: -22,
+    });
+    assert.deepEqual(mergeUnfoundLinesWithPreserve([temp], []), [temp]);
+  });
+
+  it('mergeUnfoundLinesWithPreserve preserves serials when server row has []', () => {
+    const prev = [
+      {
+        id: 500,
+        serials: [{ id: -2, serial_number: 'ABC', _optimistic: 'adding' as const }],
+      },
+    ];
+    const incoming = [{ id: 500, serials: [] as typeof prev[0]['serials'] }];
+    const next = mergeUnfoundLinesWithPreserve(prev, incoming);
+    assert.equal(next.length, 1);
+    assert.deepEqual(next[0].serials, prev[0].serials);
+  });
+
+  it('mergeUnfoundLinesWithPreserve folds orphan temp serials onto new real id', () => {
+    const temp = buildOptimisticReturnLine({
+      receivingId: 1,
+      serial: 'FOLDME',
+      condition: 'L-NEW',
+      tempLineId: -1,
+      tempSerialId: -2,
+    });
+    const real = {
+      id: 900,
+      serials: [] as typeof temp.serials,
+    };
+    const next = mergeUnfoundLinesWithPreserve([temp], [real]);
+    assert.equal(next.length, 1);
+    assert.equal(next[0].id, 900);
+    assert.deepEqual(next[0].serials, temp.serials);
+  });
+
+  it('mergeUnfoundLinesWithPreserve accepts authoritative non-empty serials', () => {
+    const prev = [
+      {
+        id: 500,
+        serials: [{ id: -2, serial_number: 'OLD', _optimistic: 'adding' as const }],
+      },
+    ];
+    const incoming = [
+      { id: 500, serials: [{ id: 77, serial_number: 'CONFIRMED' }] },
+    ];
+    const next = mergeUnfoundLinesWithPreserve(prev, incoming);
+    assert.deepEqual(next[0].serials, incoming[0].serials);
   });
 });

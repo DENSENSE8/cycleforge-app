@@ -32,6 +32,16 @@ describe('Station Displays Root Index chrome', () => {
       /zero-whitespace|delete.*eyebrow/i,
       'eyebrows must stay — density is row pad, not header deletion',
     );
+    assert.match(
+      list,
+      /STATION_SECONDARY_BAND_FACE/,
+      'group eyebrows share the h-6 secondary band with left-rail · commerce row 2',
+    );
+    assert.match(
+      list,
+      /first:pt-0/,
+      'first group is flush under the Displays top band (aligns with commerce row 2)',
+    );
   });
 
   it('reserves a layout-stable armed marker + activeId glow', () => {
@@ -39,34 +49,142 @@ describe('Station Displays Root Index chrome', () => {
     assert.match(list, /data-display-index-armed-marker/);
     assert.match(list, /activeId/);
     assert.match(list, /data-active/);
-    assert.match(list, /border-l-accent-bg/);
+    // Armed face = `>` + bottom track — never left rail / shaded wash stack.
+    assert.match(list, /data-display-index-armed-chevron/);
+    assert.match(list, /ARMED_CURSOR_CHEVRON_CLASS/);
+    assert.match(list, /ChevronRight/);
+    // Idle peers stay flush leftmost — no empty reserved chevron gutter.
+    assert.doesNotMatch(
+      list,
+      /ARMED_CURSOR_CHEVRON_SLOT|CHEVRON_SLOT_CLASS/,
+      'never reserve an idle chevron column that shifts every icon',
+    );
+    assert.match(
+      list,
+      /isArmed \? \(\s*<span data-display-index-armed-chevron/,
+      '`>` mounts only when armed — not an always-on empty slot',
+    );
+    assert.doesNotMatch(list, /border-l-accent-bg/);
+    assert.doesNotMatch(list, /isArmed && ['"]border-l|isArmed && [`'].*bg-accent-bg\/10/);
+    // Armed rows suppress focusRing (blue ring-offset bands ≠ selection face).
+    // Source keeps a `ds-allow-focus` comment for the focus-ring ratchet (stripped here).
+    assert.match(list, /isArmed\s*\?\s*['"]outline-none['"]/);
     // Must not use margin tricks that reflow on focus.
     assert.doesNotMatch(list, /focus-visible:ml-|focus:ml-|hover:ml-/);
   });
 
-  it('character-select: absolute cursor wrap + one-shot pulse, no Tab/digit/nudge', () => {
+  it('character-select: wrap cursor + accent track pulse + sync commit', () => {
     const list = read(LIST);
+    const hook = read('src/components/station/displays/useArmedCursorList.ts');
+    const face = read('src/components/station/displays/armed-cursor-face.ts');
     // Cursor owns armed paint; activeId only seeds (last opened leaf).
-    assert.match(list, /cursorId/);
+    assert.match(list, /useArmedCursorList/);
     assert.match(list, /data-display-index-cursor/);
-    assert.match(list, /seedCursorId/);
+    assert.match(list, /regionActive:\s*rightOwnsKeyboard/);
+    assert.match(hook, /function seedCursorId/);
+    assert.match(hook, /regionActive/);
+    assert.match(hook, /addEventListener\(\s*['"]keydown['"]/);
     // ↑↓ wrap modulo the flattened absolute order (not edge clamp).
-    assert.match(list, /\(idx \+ 1\) % orderedIds\.length/);
+    assert.match(hook, /\(idx \+ 1\) % orderedIds\.length/);
     assert.match(
-      list,
+      hook,
       /\(idx - 1 \+ orderedIds\.length\) % orderedIds\.length/,
     );
-    // One-shot settle via feedback.pulse — never a looping full-row glow.
-    assert.match(list, /motionRole\.feedback\.pulse/);
-    assert.match(list, /data-display-index-cursor-pulse/);
+    // Filter-box path — ↑↓ without stealing input focus; Enter/Esc in the list host.
+    assert.match(hook, /handleFilterNavKeyDown/);
+    assert.match(hook, /focus:\s*false/);
+    assert.match(list, /onFilterKeyDown/);
+    assert.match(list, /useImperativeHandle/);
+    assert.match(list, /StationDisplayIndexFilterKeys/);
+    const stack = read(STACK);
+    assert.match(
+      stack,
+      /onKeyDown=\{\(e\) => indexFilterKeysRef\.current\?\.onFilterKeyDown\(e\)\}/,
+      'index-filter TechRailSearchBar must drive the list from the box',
+    );
+    assert.match(stack, /ref=\{indexFilterKeysRef\}/);
+    // Face tokens — selection ink = operator accent + bare animate-pulse.
+    assert.match(face, /ARMED_CURSOR_TRACK_CLASS/);
+    assert.match(face, /ARMED_CURSOR_MARKER_PULSE_CLASS/);
+    assert.match(face, /bg-accent-bg/);
+    assert.match(face, /text-accent-bg/);
+    assert.match(face, /ARMED_CURSOR_MARKER_PULSE_CLASS\s*=\s*['"]animate-pulse['"]/);
+    assert.doesNotMatch(
+      face,
+      /motion-safe:animate-pulse/,
+      'motion-safe: silently no-ops under OS Reduce Motion — use JS useReducedMotion',
+    );
+    assert.match(list, /ARMED_CURSOR_TRACK_CLASS/);
+    assert.match(list, /ARMED_CURSOR_MARKER_PULSE_CLASS/);
+    assert.match(list, /data-display-index-content-nudge/);
+    assert.match(list, /data-display-index-tone-chip/);
+    assert.match(list, /data-display-index-armed-track/);
+    // Never a local amber selection track (amber = attention chips only).
+    assert.doesNotMatch(list, /bg-amber-400/);
+    assert.doesNotMatch(face, /bg-amber-400/);
+    // Lead cluster (flush) closes before trailing chip.
+    assert.match(
+      list,
+      /data-display-index-content-nudge[\s\S]*?<\/span>\s*\{showChip \?/,
+      'tone chip must mount after the lead cluster closes',
+    );
+    // Arm highlight is an INSTANT hard cut — no layoutId travel / spring track.
+    assert.doesNotMatch(
+      list,
+      /layoutId/,
+      'Displays index arm must not FLIP the track — remount paints instantly',
+    );
+    assert.doesNotMatch(
+      list,
+      /LayoutGroup/,
+      'no LayoutGroup on the Displays index — arm is not shared-element travel',
+    );
+    assert.doesNotMatch(
+      list,
+      /framerTransition\.armedTrack|motionRole\.push\.rail/,
+      'arm must not use armedTrack spring or push.rail',
+    );
+    assert.doesNotMatch(
+      list,
+      /stiffness\s*:/,
+      'no inline spring physics on the Displays index',
+    );
+    // Right-rail commit is sync — never a hit-marker timer before leaf paint.
+    assert.match(hook, /commitArmed/);
+    assert.match(
+      hook,
+      /onCommit\(id\);/,
+      'commitArmed must call onCommit in the same turn',
+    );
+    assert.doesNotMatch(
+      hook,
+      /setTimeout[\s\S]{0,120}onCommit/,
+      'never withhold Displays DOM behind a commit timer',
+    );
+    assert.doesNotMatch(list, /motionRole\.feedback\.hitMarker/);
+    assert.doesNotMatch(list, /data-display-index-commit/);
+    assert.doesNotMatch(list, /data-display-index-selection-pulse/);
+    assert.doesNotMatch(list, /ARMED_CURSOR_SYNC_LABEL/);
+    // No full-row Infinity / focus-margin reflow / content translate.
+    assert.doesNotMatch(list, /data-display-index-cursor-pulse/);
     assert.doesNotMatch(list, /repeat:\s*Infinity/);
-    // No content nudge — icon+label stay flush (armed marker is overlay).
-    assert.doesNotMatch(list, /contentVariants|x:\s*24|translate-x-/);
+    assert.doesNotMatch(hook, /repeat:\s*Infinity/);
+    assert.doesNotMatch(hook, /stiffness\s*:/);
+    assert.doesNotMatch(list, /focus-visible:ml-|focus:ml-|hover:ml-/);
+    assert.doesNotMatch(list, /translate-x-/);
     // Wedge-safe: no Tab trap, no bare digits, no raw motion/react import.
     assert.doesNotMatch(list, /e\.key === ['"]Tab['"]|key === ['"]Tab['"]/);
     assert.doesNotMatch(list, /addEventListener\(\s*['"]keydown['"]/);
     assert.doesNotMatch(list, /from ['"]motion\/react['"]/);
     assert.doesNotMatch(list, /from ['"]framer-motion['"]/);
+    assert.doesNotMatch(hook, /from ['"]motion\/react['"]/);
+    // No UI audio on this surface — hardware wedge owns the beep.
+    assert.doesNotMatch(list, /AudioContext|HTMLAudioElement|new Audio\(|playScanTone/);
+    assert.doesNotMatch(hook, /AudioContext|HTMLAudioElement|new Audio\(|playScanTone/);
+    assert.doesNotMatch(list, /Loader2|animate-spin|Spinner/);
+    assert.doesNotMatch(list, /text-\[\d+px\]/);
+    assert.match(list, /text-role-caption/);
+    assert.match(list, /text-role-micro|ARMED_CURSOR_CHIP_FACE_CLASS/);
   });
 
   it('row hit height uses py-3 (~44–48px), left-clustered icon+label', () => {
@@ -74,6 +192,12 @@ describe('Station Displays Root Index chrome', () => {
     assert.match(list, /py-3/);
     assert.match(list, /gap-2/);
     assert.match(list, /min-w-0 flex-1 truncate/);
+    // Hit floor stays py-3 — density is type roles + binary-cut arm, not pad shrink.
+    assert.doesNotMatch(
+      list,
+      /\bpy-1\.5\b|\bpy-2\b|\bpy-2\.5\b/,
+      'do not silently shrink below the measured ~44px hit floor',
+    );
   });
 
   it('eyebrow trailing uses summarizeDisplayIndexGroup + wired hotkey map', () => {
@@ -136,5 +260,73 @@ describe('Station Displays Root Index chrome', () => {
     const stack = read(STACK);
     assert.match(stack, /lastLeafId/);
     assert.match(stack, /activeId=\{lastLeafId\}/);
+  });
+
+  it('leaf header is top-left ← → + current title only (no ancestor jump crumbs)', () => {
+    const header = read('src/components/station/displays/StationDisplayLeafHeader.tsx');
+    assert.match(header, /data-testid="station-displays-history-back"/);
+    assert.match(header, /data-testid="station-displays-history-forward"/);
+    assert.match(header, /data-station-displays-leaf-title/);
+    assert.match(header, /data-breadcrumb-kind="current"/);
+    assert.match(header, /ArrowLeft/);
+    assert.match(header, /ArrowRight/);
+    assert.match(header, /aria-current="page"/);
+    assert.equal(
+      (header.match(/<button/g) ?? []).length,
+      2,
+      'leaf header: exactly history back · history forward (title is not a button)',
+    );
+    assert.doesNotMatch(
+      header,
+      /IconButton/,
+      'history chevrons are plain buttons — never IconButton beside a dead title',
+    );
+    assert.doesNotMatch(
+      header,
+      /data-breadcrumb-kind="ancestor"|onJumpToSegment/,
+      'ancestor jump crumbs are retired — depth is ← → / Esc only',
+    );
+    // Verifiable 24px height — shared STATION_SECONDARY_BAND_FACE (h-6) eyebrow.
+    assert.match(header, /STATION_SECONDARY_BAND_FACE/);
+    assert.doesNotMatch(
+      header,
+      /\bh-10\b/,
+      'leaf header must be the 24px eyebrow band, not a 40px chrome band',
+    );
+    // Resize sash is z-sticky; leaf nav must sit below it on the left edge.
+    assert.match(header, /z-base/);
+    assert.doesNotMatch(
+      header,
+      /z-raised|z-sticky|z-header/,
+      'leaf ← → eyebrow must not steal the inset resize sash hit (sash = z-sticky)',
+    );
+    // Must not dump the whole path as the only title control.
+    assert.doesNotMatch(
+      header,
+      /data-testid="station-displays-back"/,
+      'path-as-title Back row is retired — title is current segment only',
+    );
+  });
+
+  it('push stack owns leaf trail + visit history + chrome provider', () => {
+    const stack = read(STACK);
+    const chrome = read('src/components/station/displays/displays-leaf-chrome.tsx');
+    const history = read('src/components/station/displays/displays-visit-history.ts');
+    assert.match(stack, /leafTrail/);
+    assert.match(stack, /DisplaysLeafChromeProvider/);
+    assert.match(stack, /popOne/);
+    assert.match(stack, /setTrail/);
+    assert.match(stack, /setOnNestedPop/);
+    assert.match(stack, /setOnNestedRestore/);
+    assert.doesNotMatch(stack, /setOnNestedJump|jumpToSegment|onJumpToSegment/);
+    assert.match(stack, /goVisitBack|goForward/);
+    assert.match(stack, /visitFrame/);
+    assert.match(stack, /onVisitNavigate/);
+    assert.match(history, /pushVisitFrame/);
+    assert.match(history, /goVisitForward/);
+    assert.match(chrome, /useDisplaysLeafChrome/);
+    assert.match(chrome, /DisplaysBreadcrumbSegment/);
+    assert.match(chrome, /setOnNestedRestore/);
+    assert.doesNotMatch(chrome, /setOnNestedJump/);
   });
 });

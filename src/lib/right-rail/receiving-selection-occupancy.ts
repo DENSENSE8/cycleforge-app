@@ -43,10 +43,13 @@ type ReceivingRailOccupancy =
  * | either    | 0        | none |
  * | incoming  | 1        | inspect (`detail:incoming`) |
  * | incoming  | 2+       | attention (batch shell) |
- * | lines     | 1        | none for checkbox alone — History left-click opens
- * |           |          | `detail:history` outside this helper; 1 check can
- * |           |          | still claim the batch shell when inspect is closed |
+ * | lines     | 1        | attention (batch shell when History inspect closed;
+ * |           |          | History left-click opens `detail:history` outside
+ * |           |          | this helper) |
  * | lines     | 2+       | attention (batch shell) |
+ *
+ * Incoming 1-check must open `detail:incoming` (ReceivingDashboard wires
+ * selectedRows → setIncomingDetails); the batch shell never claims Incoming 1.
  */
 export function resolveReceivingRailOccupancy(
   ids: readonly (number | string | null | undefined)[],

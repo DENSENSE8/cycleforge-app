@@ -32,8 +32,8 @@ const STAFF_VIEW_OPTIONS = [
 
 const ROLE_OPTIONS = [
   { value: 'all' as StaffViewMode, label: 'All roles' },
-  { value: 'technician' as StaffViewMode, label: 'Tech' },
-  { value: 'packer' as StaffViewMode, label: 'Pack' },
+  { value: 'technician' as StaffViewMode, label: 'Testing' },
+  { value: 'packer' as StaffViewMode, label: 'Packing' },
 ] as const;
 
 function initials(name: string): string {

@@ -76,11 +76,11 @@ export const STATUS_OPTIONS = ['active', 'invited', 'suspended', 'disabled'] as 
 export const STATION_OPTIONS = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'] as const;
 export type StationKey = (typeof STATION_OPTIONS)[number];
 export const STATION_LABELS: Record<StationKey, string> = {
-  TECH: 'Tech',
+  TECH: 'Testing',
   PACK: 'Packing',
   UNBOX: 'Unboxing',
   SALES: 'Sales',
-  FBA: 'FBA',
+  FBA: 'Amazon Prep',
 };
 
 export interface StationAssignment {

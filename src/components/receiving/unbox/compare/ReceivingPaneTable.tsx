@@ -223,6 +223,7 @@ export function ReceivingPaneTable({
           handleToggleRow={handleToggleRow}
           activityAxis={modeState.historyAxis}
           isHistory={modeState.isHistoryMode}
+          statusVocabulary={modeState.isHistoryMode ? 'coarse' : 'fine'}
           selectionScope={selectionScope}
           tableId="receiving"
           enableColumnMenu

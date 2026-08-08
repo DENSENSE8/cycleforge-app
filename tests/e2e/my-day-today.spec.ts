@@ -227,15 +227,11 @@ test.describe('Home → Today workbench', () => {
   }) => {
     await openToday(page);
 
-    // Retargeted 2026-08-02: column display moved from the chrome trailing
-    // cluster to the grid's own header, and `GridFieldsMenu` is deleted. This
-    // test drove `getByRole('button', { name: /^Fields/ })` and so was asserting
-    // against a control that no longer exists — the failure was the migration,
-    // not flake. Locators follow `grid-column-fields-columns-hover`.
-    //
-    // The control reserves no layout: it is `opacity-0` + `pointer-events-none`
-    // until the header band is hovered, so this must hover before it clicks.
-    const band = page.locator('[data-grid-col-header]').first();
+    // Retargeted 2026-08-02 (chrome Fields deleted), then again 2026-08-08:
+    // the card-corner hover-reveal float is DELETED codebase-wide. ▦ is now
+    // portal-or-nothing, and My Day portals it into its Band-3 controls slot
+    // (`MyDayWorkspace` controlsSlotRef → columnTriggerPortalTarget), so the
+    // control is RESIDENT — there is nothing to hover.
     const triggerHost = page.locator('[data-grid-column-details-trigger]');
     const lip = triggerHost.getByRole('button', { name: 'Column display' });
     const rail = page.getByRole('region', { name: 'Column display' });
@@ -249,12 +245,10 @@ test.describe('Home → Today workbench', () => {
     // cleanup apparatus to avoid poisoning Today's other tests. What is
     // Today-specific — and what this pass changed — is which door exists.
     await expect(page.getByRole('button', { name: /^Fields/ })).toHaveCount(0);
-    // Hidden at rest — the whole reason the lip became an overlay.
+    // Resident, not revealed: visible with the pointer parked off the grid.
     await page.mouse.move(0, 0);
-    await expect(triggerHost).toHaveCSS('opacity', '0');
+    await expect(triggerHost).toBeVisible();
 
-    await band.hover();
-    await expect(triggerHost).toHaveCSS('opacity', '1');
     await lip.click();
     await expect(rail).toBeVisible();
     // The rail knows it is Today's grid, not some other surface's.

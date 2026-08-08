@@ -303,6 +303,26 @@ function isUnboxKpiFilterable(metricId: string, mode: UnboxWorkspaceTab): boolea
   return unboxKpiRowFilter(metricId, mode) != null;
 }
 
+/**
+ * Metric ids that ever write `?ukpi=` (clickable tiles). Informational tiles
+ * (`queue-depth`, `oldest-wait`) never write the param — keep them out of the
+ * hygiene allowlist so a hand-typed id cannot stick.
+ */
+const UNBOX_KPI_FILTER_WIRE_IDS = [
+  'opened-today',
+  'awaiting-test',
+  'stuck',
+  'priority',
+  'viewed-today',
+  'unfinished',
+] as const;
+
+/** Wire tokens `?ukpi=` may carry (route-param hygiene). */
+export function parseUnboxKpiFilterWire(raw: string): string | null {
+  const key = raw.trim().toLowerCase();
+  return (UNBOX_KPI_FILTER_WIRE_IDS as readonly string[]).includes(key) ? key : null;
+}
+
 const UNBOX_METRICS: UnboxMetricDef[] = [
   {
     id: 'opened-today',

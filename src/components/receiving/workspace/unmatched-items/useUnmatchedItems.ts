@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import type { AssignedBox } from '@/components/receiving/workspace/CartonAddPopover';
@@ -21,6 +21,7 @@ import {
 } from '@/lib/receiving/intake-classification';
 import {
   buildOptimisticReturnLine,
+  mergeUnfoundLinesWithPreserve,
   mintOptimisticLineId,
   remapOptimisticLineId,
   rollbackOptimisticReturnLine,
@@ -42,6 +43,7 @@ import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unb
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { addUnmatchedLine } from '@/lib/receiving/add-unmatched-line-client';
 
 /**
  * Owns an unmatched (no-Zoho-PO) carton's items section: fetching the carton's
@@ -79,6 +81,12 @@ export function useUnmatchedItems({
   // attach the serial; when there is no order match we still record the serial
   // (create line → scan-serial → log-serial) and flag RETURN_NO_ORDER for triage.
   const [returnScanBusy, setReturnScanBusy] = useState(false);
+  // Ref so refreshLines can skip destructive clears without re-subscribing the
+  // mount effect every time a return scan starts/finishes.
+  const returnScanBusyRef = useRef(false);
+  useEffect(() => {
+    returnScanBusyRef.current = returnScanBusy;
+  }, [returnScanBusy]);
   // Condition for the carton-level serial scan, shown via the same ConditionPills
   // a regular unbox serial card uses. Applied to the line the scan creates.
   const [cartonScanCondition, setCartonScanCondition] = useState('USED_A');
@@ -102,13 +110,19 @@ export function useUnmatchedItems({
       const body = (await res.json().catch(() => null)) as CartonResponse | null;
       if (!res.ok || !body?.success) {
         // Carton not visible yet — an optimistic/just-promoted open, a mid-create
-        // race, or a stale unfound-queue stub. Degrade silently to an empty card;
-        // the reconciling feed refresh re-runs this once the row lands. NEVER
-        // toast a raw "Package not found" at the operator (degrade-not-fail).
-        setLines([]);
+        // race, or a stale unfound-queue stub. Degrade silently; NEVER toast a
+        // raw "Package not found". Do not wipe local lines while a return scan
+        // is in flight or we already have rows (optimistic chip SoT for Testing).
+        setLines((prev) =>
+          returnScanBusyRef.current || prev.length > 0 ? prev : [],
+        );
         return;
       }
-      setLines(body.lines ?? []);
+      // Merge + preserve: empty / serial-less snapshots must not wipe the
+      // optimistic chip (Testing paints from local `lines`, not siblings cache).
+      // `mergeUnfoundLinesWithPreserve` keeps prev on empty incoming — same
+      // effect as skipping apply while returnScanBusy during mid-create.
+      setLines((prev) => mergeUnfoundLinesWithPreserve(prev, body.lines ?? []));
       if (body.receiving) {
         setCartonHeader({
           source: body.receiving.source ?? null,
@@ -126,9 +140,11 @@ export function useUnmatchedItems({
         );
       }
     } catch {
-      // Network/parse failure on a background auto-load — degrade to an empty
-      // card, no toast. A real refresh re-runs on the next feed event.
-      setLines([]);
+      // Network/parse failure on a background auto-load — no toast. Keep any
+      // local optimistic / already-loaded lines; only clear when truly empty.
+      setLines((prev) =>
+        returnScanBusyRef.current || prev.length > 0 ? prev : [],
+      );
     }
   }, [receivingId]);
 
@@ -175,13 +191,16 @@ export function useUnmatchedItems({
   );
 
   // Load the carton's lines on mount and whenever the carton changes
-  // (`refreshLines` is keyed on `receivingId`). Do NOT depend on
-  // `onActiveConditionChange` here: the parent passes it as a fresh inline arrow
-  // every render, so listing it re-fired this full `GET /api/receiving/:id`
-  // refetch + `setLines` on EVERY render — a refetch storm that re-rendered the
-  // whole active row (and reset the serial input) on each serial add. Carton
-  // reconciliation still flows through the `app-refresh-data` / feed paths.
+  // (`refreshLines` is keyed on `receivingId`). Clear foreign carton rows
+  // FIRST so the previous selection never paints as "last lines" during the
+  // GET. Do NOT depend on `onActiveConditionChange` here: the parent passes
+  // it as a fresh inline arrow every render, so listing it re-fired this full
+  // `GET /api/receiving/:id` refetch + `setLines` on EVERY render — a refetch
+  // storm that re-rendered the whole active row (and reset the serial input)
+  // on each serial add. Carton reconciliation still flows through the
+  // `app-refresh-data` / feed paths.
   useEffect(() => {
+    setLines([]);
     void refreshLines();
   }, [refreshLines]);
 
@@ -511,118 +530,34 @@ export function useUnmatchedItems({
       },
       opts?: { allowOffPo?: boolean },
     ) => {
-      const clientEventId = `add-line-${receivingId}-${Date.now()}`;
-      // For repair-service links we prefer the Ecwid product URL as the
-      // line's listing URL so the operator can click straight to the
-      // product page. Otherwise fall back to the carton-wide hint.
-      const effectiveListingUrl =
-        (selection.is_repair_service ? selection.ecwid_product_url : null) ||
-        listingUrlHint ||
-        undefined;
-      // Repair-service lines get source_platform_pill='ecwid' so downstream
-      // filters can identify them; ordinary Ecwid picks fall through to
-      // whatever pill the operator set on the carton.
-      const effectiveSourcePlatformPill = selection.is_repair_service
-        ? 'ecwid'
-        : sourcePlatformHint || undefined;
-
-      const res = await fetch('/api/receiving/add-unmatched-line', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': clientEventId,
-        },
-        body: JSON.stringify({
-          receiving_id: receivingId,
-          ...(opts?.allowOffPo ? { allow_off_po: true } : {}),
-          // Only send a POSITIVE platform-row id — an Ecwid line with no catalog
-          // platform row carries 0, which the server rejects ("must be a positive
-          // integer"). Omit it (→ null) instead so the add still succeeds.
-          ...(selection.sku_platform_id_row != null && selection.sku_platform_id_row > 0
-            ? { sku_platform_id_row: selection.sku_platform_id_row }
-            : {}),
-          sku_catalog_id: selection.sku_catalog_id,
-          sku: selection.sku || undefined,
-          item_name: selection.item_name,
-          source_platform_pill: effectiveSourcePlatformPill,
-          intake_type: receivingTypeHint.toLowerCase(),
-          listing_url: effectiveListingUrl,
-          // Per-line source-order linkage — the server persists these on the
-          // line (source_order_id / is_repair_service) and re-derives the
-          // carton's representative PO# from its lines, so a box can hold
-          // returns + repairs from different orders, each acknowledged per line.
-          is_repair_service: selection.is_repair_service || undefined,
-          ecwid_order_id: selection.ecwid_order_id || undefined,
-          client_event_id: clientEventId,
-        }),
+      const line = await addUnmatchedLine({
+        receivingId,
+        selection,
+        opts,
+        listingUrlHint,
+        sourcePlatformHint,
+        receivingTypeHint,
+        // Accordion surface wraps onLinked with writeReceivingSiblingLine — avoid
+        // a double write when queryClient is also passed here.
+        onLinked,
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || !body.success) {
-        toast.error(body.error ?? `add line failed (${res.status})`);
-        return;
-      }
+      if (!line) return;
       setLines((prev) => [
         ...prev,
-        { ...body.line, image_url: selection.image_url },
+        {
+          id: line.id,
+          sku: line.sku,
+          item_name: line.item_name,
+          quantity_expected: line.quantity_expected,
+          quantity_received: line.quantity_received,
+          condition_grade: line.condition_grade ?? 'USED_A',
+          workflow_status: null,
+          listing_reference: null,
+          location_code: null,
+          image_url: line.image_url ?? selection.image_url,
+        },
       ]);
       setAddOpen(false);
-
-      // The server (add-unmatched-line → recomputeCartonSourceLink) now OWNS the
-      // carton's source linkage: a per-line source order flips an unmatched
-      // carton to zoho_po (off the Unfound queue) + source_platform='ecwid',
-      // with the carton PO# as a first-linked DISPLAY representative. We just
-      // mirror the returned carton state into the UI — no client PATCH, so a
-      // multi-order box's representative isn't clobbered by the latest add.
-      if (selection.is_repair_service || selection.ecwid_order_id) {
-        const carton = body.carton as
-          | { zoho_purchaseorder_number: string | null; source: string | null; source_platform: string | null }
-          | null
-          | undefined;
-        refreshDomains(REFRESH_BUNDLES.receivingWrite);
-        window.dispatchEvent(
-          new CustomEvent('receiving-package-updated', {
-            detail: {
-              receiving_id: receivingId,
-              source_platform: carton?.source_platform ?? 'ecwid',
-              zoho_purchaseorder_number: carton?.zoho_purchaseorder_number ?? null,
-            },
-          }),
-        );
-        const repId = carton?.zoho_purchaseorder_number || selection.ecwid_order_id;
-        // Update the open LineEditPanel immediately from the server's returned
-        // row — carton header + the full new line (so the host can re-select the
-        // real line off an unfound stub instead of waiting for the refetch).
-        onLinked?.({
-          carton: {
-            zoho_purchaseorder_number: carton?.zoho_purchaseorder_number ?? repId ?? null,
-            source: carton?.source ?? 'zoho_po',
-            source_platform: carton?.source_platform ?? 'ecwid',
-          },
-          line: body.line ?? null,
-        });
-        toast.success(repId ? `Linked Ecwid order #${repId}` : 'Repair service linked');
-      } else {
-        const label = selection.item_name || selection.sku || 'item';
-        toast.success(
-          opts?.allowOffPo ? `Added off-PO · ${label}` : `Acknowledged · ${label}`,
-        );
-        refreshDomains(REFRESH_BUNDLES.receivingWrite);
-        // Upgrade an unfound stub / refresh the open panel — carton stays unmatched
-        // unless the server promoted it (no source_order_id on catalog-only adds).
-        onLinked?.({
-          carton: {
-            zoho_purchaseorder_number:
-              (body.carton as { zoho_purchaseorder_number?: string | null } | null)
-                ?.zoho_purchaseorder_number ?? null,
-            source:
-              (body.carton as { source?: string | null } | null)?.source ?? 'unmatched',
-            source_platform:
-              (body.carton as { source_platform?: string | null } | null)?.source_platform ??
-              null,
-          },
-          line: body.line ?? null,
-        });
-      }
     },
     [listingUrlHint, onLinked, receivingId, receivingTypeHint, sourcePlatformHint],
   );

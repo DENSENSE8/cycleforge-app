@@ -2,16 +2,15 @@
  * PATCH /api/receiving/lines/[id]/inventory-note
  *
  * Save the per-line inventory-provider **item description**
- * (`receiving_lines.zoho_notes`) and push the same text to the linked Zoho PO
- * line item's `description` field. Edited inline in the PO-items row (the
- * notes-icon toggle).
+ * (`receiving_line_zoho.zoho_notes`) and push the same text to the linked Zoho PO
+ * line item's `description` field. Edited inline in Inventory Displays.
  *
  * `zoho_notes` stays the request/response body key — it is an API contract,
  * not renamed here (see the source-of-truth rules on stable response shapes).
  *
- * Provider-agnostic path (B3) — moved from
- * /api/receiving/lines/[id]/zoho-note, which now re-exports this handler as a
- * legacy alias.
+ * Wave-3: zoho_* facts live on `receiving_line_zoho` (spine column dropped
+ * 2026-07-11e). Provider-agnostic path (B3) — legacy alias
+ * /api/receiving/lines/[id]/zoho-note re-exports this handler.
  */
 import { NextRequest, NextResponse, after } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
@@ -25,10 +24,10 @@ import { withZohoOrg } from '@/lib/zoho/tenant-context';
 
 type LineRow = {
   id: number;
-  zoho_purchaseorder_id: string | null;
-  zoho_line_item_id: string | null;
   sku: string | null;
   item_name: string | null;
+  zoho_purchaseorder_id: string | null;
+  zoho_line_item_id: string | null;
 };
 
 function savedLabelForZoho(
@@ -68,13 +67,27 @@ export async function PATCH(
     }
     const raw = body.zoho_notes;
     const next = raw == null || raw === '' ? null : String(raw).trim() || null;
+    const baseLastModifiedZoho = Object.prototype.hasOwnProperty.call(
+      body,
+      'base_last_modified_zoho',
+    )
+      ? body.base_last_modified_zoho == null || body.base_last_modified_zoho === ''
+        ? null
+        : String(body.base_last_modified_zoho).trim() || null
+      : undefined;
     const orgId = ctx.organizationId;
 
     const lineRes = await tenantQuery<LineRow>(
       orgId,
-      `SELECT id, zoho_purchaseorder_id, zoho_line_item_id, sku, item_name
-         FROM receiving_line
-        WHERE id = $1 AND organization_id = $2
+      `SELECT rl.id,
+              rl.sku,
+              rl.item_name,
+              rz.zoho_purchaseorder_id,
+              rz.zoho_line_item_id
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+        WHERE rl.id = $1 AND rl.organization_id = $2
         LIMIT 1`,
       [lineId, orgId],
     );
@@ -83,15 +96,16 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: `receiving_line ${lineId} not found` }, { status: 404 });
     }
 
-    const updateRes = await tenantQuery<{ id: number }>(
+    // Ensure the 1:1 zoho satellite exists, then write description there.
+    await tenantQuery(
       orgId,
-      `UPDATE receiving_line SET zoho_notes = $1, updated_at = NOW()
-         WHERE id = $2 AND organization_id = $3 RETURNING id`,
-      [next, lineId, orgId],
+      `INSERT INTO receiving_line_zoho (receiving_line_id, organization_id, zoho_notes, updated_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (receiving_line_id) DO UPDATE
+         SET zoho_notes = EXCLUDED.zoho_notes,
+             updated_at = NOW()`,
+      [lineId, orgId, next],
     );
-    if (updateRes.rows.length === 0) {
-      return NextResponse.json({ success: false, error: `receiving_line ${lineId} not found` }, { status: 404 });
-    }
 
     // Bind the authenticated tenant so the Zoho client resolves THIS org's creds.
     const zoho = await withZohoOrg(orgId, () =>
@@ -101,14 +115,16 @@ export async function PATCH(
         sku: line.sku,
         itemName: line.item_name,
         description: next,
+        baseLastModifiedZoho,
       }),
     );
 
     if (zoho.resolved_line_item_id && zoho.resolved_line_item_id !== line.zoho_line_item_id) {
       await tenantQuery(
         orgId,
-        `UPDATE receiving_line SET zoho_line_item_id = $1, updated_at = NOW()
-           WHERE id = $2 AND organization_id = $3`,
+        `UPDATE receiving_line_zoho
+            SET zoho_line_item_id = $1, updated_at = NOW()
+          WHERE receiving_line_id = $2 AND organization_id = $3`,
         [zoho.resolved_line_item_id, lineId, orgId],
       );
     }
@@ -116,6 +132,21 @@ export async function PATCH(
     after(async () => {
       try { await invalidateReceivingViews(orgId); } catch { /* best-effort */ }
     });
+
+    if (zoho.skipped === 'stale') {
+      return NextResponse.json(
+        {
+          success: false,
+          stale: true,
+          error: zoho.error || 'Inventory changed — Refresh',
+          line_id: lineId,
+          zoho_notes: next,
+          live_last_modified_zoho: zoho.live_last_modified_zoho ?? null,
+          zoho,
+        },
+        { status: 409 },
+      );
+    }
 
     if (!zoho.ok && !zoho.skipped) {
       return NextResponse.json(
@@ -135,6 +166,7 @@ export async function PATCH(
       line_id: lineId,
       zoho_notes: next,
       zoho,
+      live_last_modified_zoho: zoho.live_last_modified_zoho ?? null,
       saved_label: savedLabelForZoho(next, zoho),
     });
   } catch (error) {

@@ -60,7 +60,7 @@ export const RECEIVING_NAV_ICONS = {
   repair: ReceivingModeRepair,
 } as const satisfies Record<string, NavIconComponent>;
 
-/** Testing's child pages (`TechSidebarTopMode`; the switcher lives in GlobalHeader). */
+/** Testing station child pages — Quality Control + Ready to Pack (`TechSidebarTopMode` in GlobalHeader). */
 export const TECH_NAV_ICONS = {
   testing: TechModeTesting,
   shipping: TechModeShippingQueue,
@@ -91,7 +91,7 @@ export const PACKING_MODE_ICONS = {
 
 /**
  * Underlying primitive name for every floor-station L2 mode.
- * Uniqueness is the hard law — Arrival Truck ≠ Tech Shipping Send, etc.
+ * Uniqueness is the hard law — Arrival Truck ≠ Tech Ready-to-Pack PackageCheck, etc.
  * Pages may reuse a glyph with their default mode (data only — chrome renders modes).
  */
 export const STATION_GLYPH_KEYS = {
@@ -101,7 +101,7 @@ export const STATION_GLYPH_KEYS = {
   'receiving.pickup': 'ShoppingCart',
   'receiving.repair': 'Wrench',
   'tech.testing': 'ShieldCheck',
-  'tech.shipping': 'Send',
+  'tech.shipping': 'PackageCheck',
   'shipping.labels': 'Printer',
   'shipping.ready': 'ClipboardList',
   'shipping.fba': 'Boxes',

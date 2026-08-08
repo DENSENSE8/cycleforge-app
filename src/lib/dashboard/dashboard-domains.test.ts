@@ -29,6 +29,7 @@ test('domain: outbound | inbound | sales, with aliases', () => {
   assert.equal(getDashboardDomainFromSearch(sp('mode=INBOUND')), 'inbound');
   assert.equal(getDashboardDomainFromSearch(sp('mode=sales')), 'sales');
   assert.equal(getDashboardDomainFromSearch(sp('mode=pickup')), 'sales');
+  assert.equal(getDashboardDomainFromSearch(sp('mode=repairs')), 'sales');
   // A retired / unknown mode is not a fourth domain — it falls to the default.
   assert.equal(getDashboardDomainFromSearch(sp('mode=search')), 'outbound');
   assert.equal(getDashboardDomainFromSearch(sp('mode=nonsense')), 'outbound');
@@ -84,14 +85,19 @@ test('a retired ?fba bookmark redirects to FBA\'s real home, not the Pending tab
   assert.ok(!retiredFbaViewTarget().includes('?'));
 });
 
-test('retiredWalkInHistoryTarget: Sales / Local Pickup land on the dashboard domain', () => {
+test('retiredWalkInHistoryTarget: Sales / Local Pickup / Repairs land on the dashboard domain', () => {
   assert.equal(retiredWalkInHistoryTarget(sp('')), '/dashboard?mode=sales');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=sales')), '/dashboard?mode=sales');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup')), '/dashboard?mode=pickup');
   assert.equal(retiredWalkInHistoryTarget(sp('category=pickups')), '/dashboard?mode=pickup');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs')), '/dashboard?mode=repairs');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=repair')), '/dashboard?mode=repairs');
+  assert.equal(retiredWalkInHistoryTarget(sp('category=repairs')), '/dashboard?mode=repairs');
   // Non-default tabs survive; defaults drop.
   assert.equal(retiredWalkInHistoryTarget(sp('mode=sales&tab=all')), '/dashboard?mode=sales&tab=all');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=sales&tab=today')), '/dashboard?mode=sales');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup&tab=draft')), '/dashboard?mode=pickup&tab=draft');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup&tab=completed')), '/dashboard?mode=pickup');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs&tab=active')), '/dashboard?mode=repairs&tab=active');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs&tab=done')), '/dashboard?mode=repairs');
 });

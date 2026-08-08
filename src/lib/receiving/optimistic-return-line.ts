@@ -109,3 +109,56 @@ export function shouldPreserveCachedSerials(
   if (incoming.length === 0) return true;
   return false;
 }
+
+type LineWithSerials = { id: number; serials?: LineSerial[] | null };
+
+/**
+ * Merge a `GET /api/receiving/:id` lines snapshot into local unfound state
+ * without wiping in-flight optimistic serial chips (Testing paints from this
+ * local array — unlike Unbox, which reads the siblings cache).
+ *
+ * - Empty `incoming` is never authoritative over a non-empty `prev` (mid-create
+ *   race / degrade-not-fail 404). Intentional clears use `setLines` directly.
+ * - Per-id: keep `prev.serials` when {@link shouldPreserveCachedSerials} says so.
+ * - Orphan temp (negative-id) lines: if the server already returned real rows,
+ *   fold their serials onto the first empty-serial incoming line; otherwise
+ *   they survive via the empty-incoming keep-prev path above.
+ */
+export function mergeUnfoundLinesWithPreserve<L extends LineWithSerials>(
+  prev: L[],
+  incoming: L[],
+): L[] {
+  if (incoming.length === 0) {
+    return prev;
+  }
+
+  const prevById = new Map(prev.map((l) => [l.id, l]));
+
+  let merged: L[] = incoming.map((inc) => {
+    const cached = prevById.get(inc.id);
+    if (
+      cached &&
+      shouldPreserveCachedSerials(inc.serials ?? null, cached.serials ?? undefined)
+    ) {
+      return { ...inc, serials: cached.serials };
+    }
+    return { ...inc };
+  });
+
+  const orphanTemps = prev.filter(
+    (l) => l.id < 0 && !incoming.some((i) => i.id === l.id),
+  );
+  for (const temp of orphanTemps) {
+    const tempSerials = temp.serials;
+    if (!tempSerials?.length) continue;
+    const idx = merged.findIndex((l) =>
+      shouldPreserveCachedSerials(l.serials ?? null, tempSerials),
+    );
+    if (idx >= 0) {
+      merged = merged.slice();
+      merged[idx] = { ...merged[idx], serials: tempSerials };
+    }
+  }
+
+  return merged;
+}

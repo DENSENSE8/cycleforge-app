@@ -50,7 +50,7 @@ export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
   { value: 'po_mailbox',   label: 'PO Mailbox',   description: 'Triage emailed POs not in inventory, unmatched cartons, and exceptions', group: 'Operations', icon: Mail, requires: 'receiving.view' },
   { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to',          group: 'Operations', icon: Camera },
 
-  { value: 'fba',          label: 'FBA',          description: 'FNSKU catalog rows and CSV imports',                           group: 'Data & catalogs', icon: Package },
+  { value: 'fba',          label: 'Amazon Prep',  description: 'FNSKU catalog rows and CSV imports',                           group: 'Data & catalogs', icon: Package },
   { value: 'locations',    label: 'Locations',    description: 'Edit bin name, barcode, type, and capacity',                   group: 'Data & catalogs', icon: MapPin,       requires: 'sku_stock.manage' },
   { value: 'repair_issues',label: 'Repair Issues',description: 'Global repair issue checklist templates',                       group: 'Data & catalogs', icon: Wrench,       requires: 'repair.intake' },
   { value: 'favorites',    label: 'Favorites',    description: 'Quick-pick SKU shortcuts per workspace',                       group: 'Data & catalogs', icon: Star,         requires: 'sku_stock.manage' },

@@ -345,7 +345,7 @@ export function ReceivingRowTriageContextMenu({
         {unfound ? (
           <>
             <ContextMenuItem onSelect={openPairing}>
-              Resolve Unfound PO
+              Resolve unmatched carton
             </ContextMenuItem>
             <ContextMenuItem onSelect={openWorkspace}>
               Assign holding location

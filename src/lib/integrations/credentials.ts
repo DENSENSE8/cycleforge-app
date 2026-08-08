@@ -22,6 +22,8 @@ import pool from '@/lib/db';
 import { parseIntegrationPayload, serializeIntegrationPayload } from './crypto';
 import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 import { getValidatedAblyApiKey } from '@/lib/realtime/ably-key';
+import { captureError } from '@/lib/observability/errors';
+import { zohoVaultBlocksEnvFallback } from '@/lib/zoho/token-refresh-error';
 
 // ─── Provider payload shapes ───────────────────────────────────────────────
 // One discriminated union so callers get type-checked credentials back.
@@ -447,7 +449,7 @@ async function legacyZohoFromEnv(): Promise<ZohoCredentials | null> {
 }
 
 /** USAV transitional Zoho creds from env + legacy ZOHO_MAIN row (no vault). */
-export async function resolveUsavLegacyZohoCredentials(): Promise<ZohoCredentials | null> {
+async function resolveUsavLegacyZohoCredentials(): Promise<ZohoCredentials | null> {
   return legacyZohoFromEnv();
 }
 
@@ -492,6 +494,33 @@ export async function getIntegrationCredentials<T = unknown>(
     console.warn(`[integrations] credentials lookup failed for ${orgId}/${provider}:`, err instanceof Error ? err.message : err);
   }
 
+  // Zoho: if a vault row exists but is error/revoked, do NOT fall through to
+  // ZOHO_REFRESH_TOKEN env — that would mask Integrations "Needs attention".
+  // Env bootstrap remains only when no vault row exists.
+  if (provider === 'zoho' && orgId === DOGFOOD_ORG_ID) {
+    try {
+      const statusRow = await pool.query<{ status: string }>(
+        `SELECT status
+           FROM organization_integrations
+          WHERE organization_id = $1
+            AND provider = 'zoho'
+            AND COALESCE(scope, '') = COALESCE($2, '')
+          LIMIT 1`,
+        [orgId, scope],
+      );
+      const vaultStatus = statusRow.rows[0]?.status ?? null;
+      if (zohoVaultBlocksEnvFallback(vaultStatus)) {
+        credCache.set(key, { value: null, expiresAt: Date.now() + CACHE_TTL_MS });
+        return null;
+      }
+    } catch (err) {
+      console.warn(
+        `[integrations] zoho vault-status probe failed for ${orgId}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   // Transitional env-var fallback, USAV only.
   if (orgId === DOGFOOD_ORG_ID) {
     const fallback = envFallback(provider) as T | null;
@@ -499,9 +528,9 @@ export async function getIntegrationCredentials<T = unknown>(
       credCache.set(key, { value: fallback, expiresAt: Date.now() + CACHE_TTL_MS });
       return fallback;
     }
-    // Zoho env bridge for USAV when vault row is absent (refresh token in env or vault).
+    // Zoho env bridge for USAV when vault row is absent (refresh token in env).
     if (provider === 'zoho') {
-      const legacy = (await legacyZohoFromEnv()) as T | null;
+      const legacy = (await resolveUsavLegacyZohoCredentials()) as T | null;
       if (legacy) {
         credCache.set(key, { value: legacy, expiresAt: Date.now() + CACHE_TTL_MS });
         return legacy;
@@ -557,14 +586,26 @@ export async function markIntegrationError(
   error: string,
   scope: string | null = null,
 ): Promise<void> {
+  const lastError = error.slice(0, 1000);
   await pool.query(
     `UPDATE organization_integrations
         SET status = 'error', last_error = $1, updated_at = now()
       WHERE organization_id = $2 AND provider = $3
         AND COALESCE(scope, '') = COALESCE($4, '')`,
-    [error.slice(0, 1000), orgId, provider, scope],
+    [lastError, orgId, provider, scope],
   );
   invalidateCredentialCache(orgId, provider);
+  // Ops signal — Sentry when SENTRY_DSN is set; never throw from mark.
+  try {
+    captureError(new Error(`integration_mark_error:${provider}`), {
+      orgId,
+      provider,
+      scope,
+      lastError: lastError.slice(0, 500),
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function deleteIntegrationCredentials(

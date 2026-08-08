@@ -59,7 +59,7 @@ test.describe('shipping mode segments', () => {
     // this run has not already.
     const spine = page.locator('[data-sidebar-nav-column][data-open="true"]');
     if ((await spine.count()) === 0) {
-      await page.getByRole('button', { name: 'Show sidebar' }).click();
+      await page.getByRole('button', { name: 'Show navigation' }).click();
       await page.waitForTimeout(800);
     }
     await page.locator('aside').getByRole('button', { name: 'FBA', exact: true }).first().click();

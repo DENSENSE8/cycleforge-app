@@ -47,14 +47,39 @@ export function EbayConnectPopover({
     window.location.href = `${oauthStartPath}?accountName=${encodeURIComponent(trimmed)}${roleParam}`;
   };
 
+  const isBuyer = role === 'buyer';
+
   return (
-    <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" className="w-80" role="dialog" aria-label={`Connect eBay ${kind} account`}>
+    <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" className={isBuyer ? 'w-96' : 'w-80'} role="dialog" aria-label={`Connect eBay ${kind} account`}>
       <div className="space-y-3 p-1">
         <div>
           <p className="text-role-body font-semibold text-text-default">Connect {kind} account</p>
-          <p className="mt-0.5 text-role-caption text-text-soft">
-            Pick a workspace label — shown on cards and in sync tools. eBay username appears after authorization.
-          </p>
+          {isBuyer ? (
+            <div className="mt-1 space-y-1.5 text-role-caption text-text-soft">
+              <p>
+                Links an eBay <span className="font-medium text-text-default">buyer</span> account so purchases
+                appear on <span className="font-medium text-text-default">Incoming</span> as purchase orders.
+              </p>
+              <p>
+                On eBay, grant access for this purchasing account — their screen may say “view your data”;
+                that is eBay’s wording, not a Cycle Forge setting.
+              </p>
+              <p>
+                After you return: open Incoming and use <span className="font-medium text-text-default">Marketplace</span> to
+                pull purchases (or wait for the ~30m sync).
+              </p>
+              <p className="text-text-muted">
+                Pick a workspace label for cards and sync tools. eBay username appears after authorization.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-0.5 text-role-caption text-text-soft">
+              Links a storefront account for selling orders and tracking. Pick a workspace label — shown on
+              cards and in sync tools. eBay username appears after authorization. Use{' '}
+              <span className="font-medium text-text-default">Add purchasing</span> instead if you need buyer
+              purchases on Incoming.
+            </p>
+          )}
         </div>
         <label className="block">
           <span className="text-role-caption font-semibold text-text-default">Account label</span>

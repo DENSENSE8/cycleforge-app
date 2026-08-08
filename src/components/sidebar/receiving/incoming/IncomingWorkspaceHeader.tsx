@@ -24,6 +24,11 @@ import {
   type InboundLane,
 } from '@/lib/receiving/inbound-lane';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster, WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
+import { INCOMING_DETAILS_RAIL_ID } from '@/components/sidebar/receiving/incoming-details/IncomingDetailsHeader';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
+import { cn } from '@/utils/_cn';
 import {
   WorkbenchKpiBand,
   WorkbenchKpiCollapseToggle,
@@ -70,7 +75,8 @@ import { useIncomingSummary } from './useIncomingSummary';
 import { useIncomingFilters } from './useIncomingFilters';
 import { useIncomingSyncActions } from './useIncomingSyncActions';
 import { IncomingChromeActions } from './IncomingChromeActions';
-import { IncomingImportEbayOverlay } from './IncomingImportEbayOverlay';
+import { IncomingAddInboundOverlay } from './IncomingAddInboundOverlay';
+import { IncomingImportCsvOverlay } from './IncomingImportCsvOverlay';
 import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
 import { IncomingKpiStrip } from './IncomingKpiStrip';
 import { IncomingLaneNote } from './IncomingLaneNote';
@@ -79,6 +85,11 @@ import {
   IncomingSourceHotChip,
   type IncomingSource,
 } from './IncomingSourceFilters';
+import {
+  IncomingKindFilters,
+  IncomingKindHotChip,
+  type IncomingKind,
+} from './IncomingKindFilters';
 import { TILES, TONE } from './incoming-tiles';
 
 const LANE_TABS = [
@@ -128,17 +139,19 @@ export function IncomingWorkspaceHeader({
   const filters = useIncomingFilters();
   const sync = useIncomingSyncActions();
   const { has } = useAuth();
-  const canAddEbay = has('integrations.ebay');
+  const canImportEbay = has('integrations.ebay');
   const universalIncoming = summary?.universal_incoming ?? false;
 
   const lane: InboundLane = parseInboundLane(searchParams.get('lane'));
   const isPipeline = lane === 'pipeline';
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.incoming,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.incoming);
+  const incomingDetailOpen = useRightRailOccupantOpen(INCOMING_DETAILS_RAIL_ID);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addOrderId, setAddOrderId] = useState('');
+  const [addPlatform, setAddPlatform] = useState('amazon');
+  const [csvOpen, setCsvOpen] = useState(false);
   const [pasteAction, setPasteAction] = useState<'filter' | 'check' | null>(null);
 
   useEffect(() => {
@@ -146,6 +159,7 @@ export function IncomingWorkspaceHeader({
       const detail = (event as CustomEvent<{ orderId?: string; order_id?: string }>).detail;
       const prefill = (detail?.orderId || detail?.order_id || '').trim();
       setAddOrderId(prefill);
+      setAddPlatform('ebay');
       setAddOpen(true);
     };
     window.addEventListener('station:import-ebay-order', onStationImport);
@@ -170,7 +184,13 @@ export function IncomingWorkspaceHeader({
 
   const activeSource: IncomingSource = (() => {
     const raw = (searchParams.get('inbound') || '').trim().toLowerCase();
-    return raw === 'ebay' ? 'ebay' : raw === 'zoho' ? 'zoho' : 'all';
+    if (raw === 'ebay' || raw === 'zoho' || raw === 'amazon' || raw === 'manual') return raw;
+    return 'all';
+  })();
+
+  const activeKind: IncomingKind = (() => {
+    const raw = (searchParams.get('inkind') || '').trim().toLowerCase();
+    return raw === 'purchase' || raw === 'return' ? raw : 'all';
   })();
 
   const dockedTab: DashboardReceivingTab = dashboardReceivingTabFromSort(searchParams.get('sort'));
@@ -201,6 +221,17 @@ export function IncomingWorkspaceHeader({
       const params = new URLSearchParams(searchParams.toString());
       if (id === 'all') params.delete('inbound');
       else params.set('inbound', id);
+      params.delete('page');
+      replaceParams(params);
+    },
+    [replaceParams, searchParams],
+  );
+
+  const setKind = useCallback(
+    (id: IncomingKind) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (id === 'all') params.delete('inkind');
+      else params.set('inkind', id);
       params.delete('page');
       replaceParams(params);
     },
@@ -253,6 +284,140 @@ export function IncomingWorkspaceHeader({
     [],
   );
 
+  /*
+   * In-field refine (find-only Band 3) — Pipeline attention/date filters and
+   * Docked carton-source / search-field pickers ride in the search bar
+   * `trailingSuffix`, beside the source filter. The right zone keeps view
+   * toggles only (pagination · sort · ▦ · KPI · inspector).
+   */
+  const incomingInFieldFilter = isPipeline ? (
+            <WorkbenchFilterPopover
+              open={filterOpen}
+              onOpenChange={setFilterOpen}
+              hot={filterHot}
+              label="Filters"
+              density="field"
+              contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
+            >
+              <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
+              <div className="px-2 pb-2">
+                <DateRangePickerField
+                  value={filters.dateRange}
+                  onChange={filters.setDateRange}
+                  placeholder="Any date"
+                />
+                <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
+                  Date in header is when the PO was created
+                </p>
+              </div>
+
+              <WorkbenchFilterDivider />
+
+              <WorkbenchFilterGroupLabel>Attention</WorkbenchFilterGroupLabel>
+              {TILES.map((tile) => {
+                const id = tile.state ?? 'all_issued';
+                const count = summary ? (summary[tile.key] as number | undefined) : undefined;
+                const active =
+                  tile.state == null ? filters.state === null : filters.state === tile.state;
+                return (
+                  <WorkbenchFilterMenuRow
+                    key={id}
+                    label={tile.label}
+                    count={typeof count === 'number' ? count : undefined}
+                    active={active}
+                    leading={
+                      <tile.icon
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          active ? 'text-blue-600' : TONE[tile.tone].iconInactive
+                        }`}
+                      />
+                    }
+                    onClick={() => {
+                      if (tile.state == null) {
+                        filters.setState(null);
+                      } else {
+                        filters.setState(filters.state === tile.state ? null : tile.state);
+                      }
+                      setFilterOpen(false);
+                    }}
+                  />
+                );
+              })}
+
+              {filterHot ? (
+                <>
+                  <WorkbenchFilterDivider />
+                  <WorkbenchFilterMenuRow
+                    label="Clear filters"
+                    active={false}
+                    onClick={() => {
+                      clearWorkbenchFilters();
+                      setFilterOpen(false);
+                    }}
+                  />
+                </>
+              ) : null}
+            </WorkbenchFilterPopover>
+          ) : (
+            <WorkbenchFilterPopover
+              open={filterOpen}
+              onOpenChange={setFilterOpen}
+              hot={filterHot}
+              label={dockedTab === 'triage' ? 'Carton source / search field' : 'Search field'}
+              density="field"
+            >
+              {dockedTab === 'triage' ? (
+                <>
+                  <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
+                  {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
+                    <WorkbenchFilterMenuRow
+                      key={id}
+                      label={label}
+                      active={searchScope === id}
+                      leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
+                      onClick={() => {
+                        replaceParams(
+                          setReceivingHistoryUrlParams(searchParams, {
+                            scope: id,
+                          }),
+                        );
+                        setFilterOpen(false);
+                      }}
+                    />
+                  ))}
+                  <WorkbenchFilterDivider />
+                </>
+              ) : null}
+              <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
+              {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
+                <WorkbenchFilterMenuRow
+                  key={field.id}
+                  label={field.label}
+                  active={searchField === field.id}
+                  onClick={() => {
+                    replaceParams(
+                      setReceivingHistoryUrlParams(searchParams, { field: field.id }),
+                    );
+                    setFilterOpen(false);
+                  }}
+                />
+              ))}
+              {filterHot ? (
+                <>
+                  <WorkbenchFilterDivider />
+                  <WorkbenchFilterMenuRow
+                    label="Clear filters"
+                    active={false}
+                    onClick={() => {
+                      clearWorkbenchFilters();
+                      setFilterOpen(false);
+                    }}
+                  />
+                </>
+              ) : null}
+            </WorkbenchFilterPopover>
+  );
+
   return (
     <>
       {/*
@@ -282,16 +447,19 @@ export function IncomingWorkspaceHeader({
                   onImportEbay={() => {
                     void sync.refreshMarketplace();
                   }}
+                  onImportCsv={() => setCsvOpen(true)}
                   onAdd={() => {
                     setAddOrderId('');
+                    setAddPlatform('amazon');
                     setAddOpen(true);
                   }}
                   importingZoho={sync.zohoRefreshing}
                   importingEbay={sync.marketplaceRefreshing}
                   canCheckZoho
                   canImportZoho
-                  canImportEbay={universalIncoming && canAddEbay}
-                  canAdd={canAddEbay}
+                  canImportEbay={universalIncoming && canImportEbay}
+                  canImportCsv
+                  canAdd
                 />
               }
             />
@@ -302,7 +470,12 @@ export function IncomingWorkspaceHeader({
       {/* Docked sub-tabs — Triage / Unbox between Band 1 and KPI. Pipeline has
           no facet strip; purchasing source lives in the Band-3 search filter. */}
       {!isPipeline ? (
-        <div className="flex h-10 shrink-0 items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5">
+        <div
+          className={cn(
+            'flex items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5',
+            PRIMARY_CHROME_ROW_FACE,
+          )}
+        >
           <TabSwitch
             tabs={dockedSubTabs}
             activeTab={dockedTab}
@@ -331,31 +504,44 @@ export function IncomingWorkspaceHeader({
         ) : null}
       </WorkbenchKpiBand>
 
-      {/* Band 3 — data-table triage (Unbox History SoT). Search flush left;
-          KPI collapse in the right view-toggle zone. */}
+      {/* Band 3 — find-only command row (Unbox History SoT). Dominant find with
+          in-field refine (source · attention · search field); the right zone is
+          view toggles only — pagination · sort · ▦ · KPI · inspector park. */}
       <WorkbenchTriageBand
         controlsSlotRef={controlsSlotRef}
+        trailing={
+          <WorkbenchInspectorToggle
+            open={incomingDetailOpen}
+            testId="incoming-inspector-toggle"
+          />
+        }
         kpiToggle={
           <WorkbenchKpiCollapseToggle
             open={!kpiCollapsed}
-            onToggle={() => setKpiCollapsed(!kpiCollapsed)}
+            onToggle={toggleKpiCollapsed}
           />
         }
         search={
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <TechRailSearchBar
               variant="chrome"
               value={urlQRaw}
               onChange={setWorkbenchSearch}
               placeholder={
                 isPipeline
-                  ? 'Filter PO #, tracking, SKU…'
+                  ? 'Filter purchase order #, tracking, SKU…'
                   : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
               }
               trailingSuffix={
-                isPipeline && universalIncoming ? (
-                  <IncomingSourceFilters source={activeSource} onChange={setSource} />
-                ) : undefined
+                <>
+                  {isPipeline ? (
+                    <>
+                      <IncomingSourceFilters source={activeSource} onChange={setSource} />
+                      <IncomingKindFilters kind={activeKind} onChange={setKind} />
+                    </>
+                  ) : null}
+                  {incomingInFieldFilter}
+                </>
               }
               trailingAction={
                 isPipeline ? (
@@ -370,143 +556,21 @@ export function IncomingWorkspaceHeader({
                   </HoverTooltip>
                 ) : undefined
               }
-              className="w-52 shrink-0 lg:w-64"
+              className="min-w-0 flex-1"
             />
-            {isPipeline && universalIncoming ? (
-              <IncomingSourceHotChip
-                source={activeSource}
-                onClear={() => setSource('all')}
-              />
+            {isPipeline ? (
+              <>
+                <IncomingSourceHotChip
+                  source={activeSource}
+                  onClear={() => setSource('all')}
+                />
+                <IncomingKindHotChip kind={activeKind} onClear={() => setKind('all')} />
+              </>
             ) : null}
           </div>
         }
         right={
           <>
-            {isPipeline ? (
-              <WorkbenchFilterPopover
-                open={filterOpen}
-                onOpenChange={setFilterOpen}
-                hot={filterHot}
-                label="Filters"
-                contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
-              >
-                <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
-                <div className="px-2 pb-2">
-                  <DateRangePickerField
-                    value={filters.dateRange}
-                    onChange={filters.setDateRange}
-                    placeholder="Any date"
-                  />
-                  <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
-                    Date in header is when the PO was created
-                  </p>
-                </div>
-
-                <WorkbenchFilterDivider />
-
-                <WorkbenchFilterGroupLabel>Attention</WorkbenchFilterGroupLabel>
-                {TILES.map((tile) => {
-                  const id = tile.state ?? 'all_issued';
-                  const count = summary ? (summary[tile.key] as number | undefined) : undefined;
-                  const active =
-                    tile.state == null ? filters.state === null : filters.state === tile.state;
-                  return (
-                    <WorkbenchFilterMenuRow
-                      key={id}
-                      label={tile.label}
-                      count={typeof count === 'number' ? count : undefined}
-                      active={active}
-                      leading={
-                        <tile.icon
-                          className={`h-3.5 w-3.5 shrink-0 ${
-                            active ? 'text-blue-600' : TONE[tile.tone].iconInactive
-                          }`}
-                        />
-                      }
-                      onClick={() => {
-                        if (tile.state == null) {
-                          filters.setState(null);
-                        } else {
-                          filters.setState(filters.state === tile.state ? null : tile.state);
-                        }
-                        setFilterOpen(false);
-                      }}
-                    />
-                  );
-                })}
-
-                {filterHot ? (
-                  <>
-                    <WorkbenchFilterDivider />
-                    <WorkbenchFilterMenuRow
-                      label="Clear filters"
-                      active={false}
-                      onClick={() => {
-                        clearWorkbenchFilters();
-                        setFilterOpen(false);
-                      }}
-                    />
-                  </>
-                ) : null}
-              </WorkbenchFilterPopover>
-            ) : (
-              <WorkbenchFilterPopover
-                open={filterOpen}
-                onOpenChange={setFilterOpen}
-                hot={filterHot}
-                label={dockedTab === 'triage' ? 'Carton source / search field' : 'Search field'}
-              >
-                {dockedTab === 'triage' ? (
-                  <>
-                    <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
-                    {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
-                      <WorkbenchFilterMenuRow
-                        key={id}
-                        label={label}
-                        active={searchScope === id}
-                        leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
-                        onClick={() => {
-                          replaceParams(
-                            setReceivingHistoryUrlParams(searchParams, {
-                              scope: id,
-                            }),
-                          );
-                          setFilterOpen(false);
-                        }}
-                      />
-                    ))}
-                    <WorkbenchFilterDivider />
-                  </>
-                ) : null}
-                <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
-                {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
-                  <WorkbenchFilterMenuRow
-                    key={field.id}
-                    label={field.label}
-                    active={searchField === field.id}
-                    onClick={() => {
-                      replaceParams(
-                        setReceivingHistoryUrlParams(searchParams, { field: field.id }),
-                      );
-                      setFilterOpen(false);
-                    }}
-                  />
-                ))}
-                {filterHot ? (
-                  <>
-                    <WorkbenchFilterDivider />
-                    <WorkbenchFilterMenuRow
-                      label="Clear filters"
-                      active={false}
-                      onClick={() => {
-                        clearWorkbenchFilters();
-                        setFilterOpen(false);
-                      }}
-                    />
-                  </>
-                ) : null}
-              </WorkbenchFilterPopover>
-            )}
             {isPipeline ? (
               <>
                 <PaneHeaderPagination
@@ -538,13 +602,21 @@ export function IncomingWorkspaceHeader({
             onClose={() => setPasteAction(null)}
           />
 
-          <IncomingImportEbayOverlay
+          <IncomingAddInboundOverlay
             open={addOpen}
             onClose={() => {
               setAddOpen(false);
               setAddOrderId('');
+              setAddPlatform('amazon');
             }}
             initialOrderId={addOrderId}
+            initialPlatform={addPlatform}
+            initialType="PO"
+          />
+
+          <IncomingImportCsvOverlay
+            open={csvOpen}
+            onClose={() => setCsvOpen(false)}
           />
 
           <IncomingSyncDialog

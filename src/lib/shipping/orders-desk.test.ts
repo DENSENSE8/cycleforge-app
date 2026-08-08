@@ -54,6 +54,10 @@ describe('orders-desk', () => {
       false,
     );
     assert.equal(
+      isDashboardOutboundOrdersUrl('/dashboard', new URLSearchParams('mode=repairs')),
+      false,
+    );
+    assert.equal(
       isDashboardOutboundOrdersUrl('/dashboard', new URLSearchParams('warranty')),
       false,
     );

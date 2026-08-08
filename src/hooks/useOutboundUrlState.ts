@@ -11,9 +11,16 @@ import {
   type OutboundMode,
   type OutboundSort,
 } from '@/components/outbound/outbound-sidebar-shared';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { OUTBOUND_MODE_ROUTE_PARAMS } from '@/lib/routing/outbound-routes';
 import { buildRouteUrl, parseRouteParams } from '@/lib/routing/route-params';
 import { routeParamsFor } from '@/lib/routing/registry';
+
+function parseOutboundOpen(raw: string | null): number | null {
+  if (!raw || !/^\d+$/.test(raw)) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
 
 export function useOutboundUrlState() {
   const router = useRouter();
@@ -28,19 +35,15 @@ export function useOutboundUrlState() {
     [pathname, searchParams],
   );
   const q = useMemo(() => String(searchParams.get('q') || '').trim(), [searchParams]);
-  const open = useMemo(() => {
-    const raw = searchParams.get('open');
-    if (!raw || !/^\d+$/.test(raw)) return null;
-    const id = Number(raw);
-    return Number.isFinite(id) && id > 0 ? id : null;
-  }, [searchParams]);
+  const urlOpen = useMemo(
+    () => parseOutboundOpen(searchParams.get('open')),
+    [searchParams],
+  );
   const sort = useMemo(
     () => parseOutboundSort(searchParams.get('sort')),
     [searchParams],
   );
-  // New-order entry (`?new=true`) — opens the ShippedIntakeForm as a focused
-  // slide-over over the labels workspace (moved off the dashboard sidebar).
-  const newOpen = useMemo(
+  const urlNewOpen = useMemo(
     () => searchParams.get('new') === 'true',
     [searchParams],
   );
@@ -62,6 +65,28 @@ export function useOutboundUrlState() {
     },
     [basePath, router, searchParams],
   );
+
+  const writeOpen = useCallback((params: URLSearchParams, next: number | null) => {
+    if (next != null && next > 0) params.set('open', String(next));
+    else params.delete('open');
+  }, []);
+
+  const { value: open, setValue: setOpen } = useOptimisticUrlParam<number | null>({
+    urlValue: urlOpen,
+    replace: replaceParams,
+    write: writeOpen,
+  });
+
+  const writeNewOpen = useCallback((params: URLSearchParams, next: boolean) => {
+    if (next) params.set('new', 'true');
+    else params.delete('new');
+  }, []);
+
+  const { value: newOpen, setValue: setNewOpen } = useOptimisticUrlParam<boolean>({
+    urlValue: urlNewOpen,
+    replace: replaceParams,
+    write: writeNewOpen,
+  });
 
   const updateMode = useCallback(
     (next: OutboundMode) => {
@@ -87,16 +112,6 @@ export function useOutboundUrlState() {
     [replaceParams],
   );
 
-  const setOpen = useCallback(
-    (orderId: number | null) => {
-      replaceParams((params) => {
-        if (orderId != null && orderId > 0) params.set('open', String(orderId));
-        else params.delete('open');
-      });
-    },
-    [replaceParams],
-  );
-
   const setSort = useCallback(
     (next: OutboundSort) => {
       replaceParams((params) => {
@@ -108,12 +123,12 @@ export function useOutboundUrlState() {
   );
 
   const openNew = useCallback(() => {
-    replaceParams((params) => params.set('new', 'true'));
-  }, [replaceParams]);
+    setNewOpen(true);
+  }, [setNewOpen]);
 
   const closeNew = useCallback(() => {
-    replaceParams((params) => params.delete('new'));
-  }, [replaceParams]);
+    setNewOpen(false);
+  }, [setNewOpen]);
 
   return {
     mode,

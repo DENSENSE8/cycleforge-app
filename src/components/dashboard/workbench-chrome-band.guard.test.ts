@@ -1,8 +1,9 @@
 /**
  * Source guard: WorkbenchChromeHeader density="band" stays a single-surface
- * 40px face (h-10 + p-0.5 inset, flat TabSwitch rail — no nested border/shadow
- * card). TabSwitch size="sm" uses concentric nestedCorner + nav caption type.
- * Cascade: every lifecycle WorkbenchChromeHeader consumer uses density="band".
+ * primary face (`WORKBENCH_CHROME_BAND_FACE` = PRIMARY + gap-0 p-0) so leading
+ * cubes abut the tab rail — never host `gap-2` / `p-0.5` air. Flat TabSwitch
+ * rail (no nested border/shadow card). Cascade: every lifecycle consumer uses
+ * density="band".
  *
  * Run: node --test --import tsx \
  *        src/components/dashboard/workbench-chrome-band.guard.test.ts
@@ -50,8 +51,23 @@ function code(s: string): string {
 describe('WorkbenchChromeHeader density="band"', () => {
   const shell = code(src('src/components/dashboard/workbench-shell.tsx'));
 
-  it('outer face is h-10 with 2px inset (p-0.5)', () => {
-    assert.match(shell, /band\s*\?\s*'h-10 items-stretch p-0\.5'/);
+  it('band face is WORKBENCH_CHROME_BAND_FACE (PRIMARY + gap-0 p-0 — cubes abut tabs)', () => {
+    assert.match(shell, /WORKBENCH_CHROME_BAND_FACE/);
+    assert.match(
+      shell,
+      /WORKBENCH_CHROME_BAND_FACE[\s\S]*?PRIMARY_CHROME_ROW_FACE[\s\S]*?items-stretch gap-0 p-0/,
+      'band face token = PRIMARY height + zero pad/gap',
+    );
+    assert.match(
+      shell,
+      /band \? WORKBENCH_CHROME_BAND_FACE/,
+      'band host must compose WORKBENCH_CHROME_BAND_FACE — never restate gap/pad',
+    );
+    assert.doesNotMatch(
+      shell,
+      /items-stretch p-0\.5/,
+      'band must not reintroduce p-0.5 host inset (air between pin and tabs)',
+    );
   });
 
   it('band rail is flat flush — no nested border / shadow-sm / stadium pill', () => {

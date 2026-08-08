@@ -15,6 +15,11 @@
 @source '../features/**/*.{js,ts,jsx,tsx,mdx}';
 @source '../utils/**/*.{js,ts,jsx,tsx,mdx}';
 @source '../lib/**/*.{js,ts,jsx,tsx,mdx}';
+/* Docs / briefs / Claude rules often paste truncated arbitrary classes that
+   Lightning CSS then rejects. Keep auto-detect for hooks/contexts, but never
+   scan markdown plans or rule docs as utility sources. */
+@source not '../../docs';
+@source not '../../.claude';
 /* Ship-before-adoption roles + spacing intents (were safelist in v3). */
 @source inline("text-role-display text-role-title text-role-body text-role-data text-role-caption text-role-eyebrow text-role-micro inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
 

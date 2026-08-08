@@ -13,7 +13,7 @@ import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { platformPaintFromHex } from '@/lib/color-contrast';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
-import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
+import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
 import type { InlinePillOption } from './InlinePillPicker';
 
 const FACE_GLYPH = TOP_CHROME_ICON_GLYPH;
@@ -63,6 +63,7 @@ export function urgencyClassifyOptions(args: {
   autoActiveClass: string;
 }): InlinePillOption[] {
   const { derivedLabel, derivedTierEquivalent, autoActiveClass } = args;
+  // Auto (platform / org unbox policy) first; manual pins escalate Low → Priority.
   return [
     {
       value: 'auto',
@@ -74,7 +75,7 @@ export function urgencyClassifyOptions(args: {
       inactiveClass:
         'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
     },
-    ...PRIORITY_OVERRIDE_TIERS.map((t) => ({
+    ...priorityOverrideTiersForPicker().map((t) => ({
       value: String(t.value),
       label: t.label,
       shortLabel: t.short,
@@ -100,7 +101,7 @@ export function platformClassifyOptions(args: {
           value: '',
           label: 'Unfound',
           shortLabel: '?',
-          title: 'No Zoho PO matched this carton',
+          title: 'No purchase order matched this carton',
           face: <PlatformMark empty />,
           activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-none',
           inactiveClass:

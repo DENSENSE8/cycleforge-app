@@ -71,14 +71,19 @@ export function resolveReceivingTableMode(raw: string | null | undefined): Recei
  * feed is `receiving_line_views`. `viewed` stays the server-side name; `Recent`
  * is what the operator reads (`utils/unbox-workspace-state.ts`).
  *
- * `urgent` reuses the Queue descriptor + `?priority_only=1` (owned by
- * `normalizeUnboxWorkspaceTabParams`). `all` mounts `TechAllTriageTable` and
- * does not use this table — fall through to queue so accidental callers stay typed.
+ * `urgent` is no longer a tab (2026-08-08) — it was this same Queue descriptor
+ * plus `?priority_only=1`, and urgency is a flag a carton carries at any stage
+ * rather than a stage it sits in. Urgent cartons pin to the top of the queue
+ * rows instead, so the descriptor it used to borrow is simply `queue` now.
+ * `all` mounts `TechAllTriageTable` and does not use this table — fall through
+ * to queue so accidental callers stay typed. `incoming` mounts the Incoming
+ * Pipeline feed, now the first system tab rather than a pinned extra.
  */
 export function resolveUnboxReceivingTableMode(
   tab: UnboxWorkspaceTab,
 ): ReceivingTableMode {
-  if (tab === 'queue' || tab === 'urgent' || tab === 'all') return 'unbox_queue';
+  if (tab === 'incoming') return 'incoming';
+  if (tab === 'queue' || tab === 'all') return 'unbox_queue';
   if (tab === 'recent') return 'unbox_viewed';
   return 'history';
 }

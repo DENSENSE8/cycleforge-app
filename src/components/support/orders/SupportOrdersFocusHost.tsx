@@ -7,7 +7,7 @@
  * can alias the Fulfillment desk without a second orders board.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import {
@@ -20,17 +20,23 @@ import {
 } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState, IconButton, Spinner } from '@/design-system/primitives';
-import { SectionTabsSlider } from '@/design-system/components';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 import {
   buildSectionTabs,
+  StationScanPaneHost,
   StationWorkbench,
 } from '@/components/station/workbench';
 import {
   StationContextBar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
+import {
+  StationDisplaysEdgeToggle,
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+} from '@/components/station/displays';
+import { buildSupportOrdersDisplayIndexRows } from '@/components/support/orders/support-orders-display-index';
 import { SupportContextHub } from '@/components/support/context';
 import { ShippedDetailsPanelContent } from '@/components/shipped/ShippedDetailsPanelContent';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
@@ -51,7 +57,15 @@ import {
 } from './useSupportOrderDetail';
 import type { ShippedOrder } from '@/types/orders';
 
-type OrdersView = 'order' | 'ticket' | 'support';
+/**
+ * Reference-tool leaves live on the right-edge Displays push, never a centre
+ * `SectionTabsSlider` — `.claude/rules/display/station-workbench.md` Hard
+ * Nevers. Centre stays Order only (ops-flow: the order's own editable
+ * fields); Ticket / Support are Unbox-style leaves.
+ */
+type SupportOrdersDisplayTab = 'ticket' | 'support';
+/** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
+type SupportOrdersDisplayNav = typeof STATION_DISPLAY_INDEX | SupportOrdersDisplayTab;
 
 function SupportOrderFocus({
   order,
@@ -70,8 +84,16 @@ function SupportOrderFocus({
   const claim = useSupportTicketClaimHost();
   const openCreateTicket = claim.openCreate;
   const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
-  const [view, setView] = useState<OrdersView>('order');
+  const [activeSideTab, setActiveSideTab] = useState<SupportOrdersDisplayNav | null>(null);
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
+
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  /**
+   * `←|` Open displays → the Root Index, never a guessed leaf — with 2
+   * displays declared, landing on a guess IS the whole surface
+   * (station-displays-reachability.guard.test.ts).
+   */
+  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
 
   const {
     shipped,
@@ -116,50 +138,82 @@ function SupportOrderFocus({
     [shipped.id, shipped.order_id, shipped.shipping_tracking_number],
   );
 
-  const tabs = useMemo(
+  /** Centre stays ops-flow only — the order's own editable fields, never a tab strip. */
+  const orderContent = useMemo(
+    () => (
+      <div className="space-y-3 pb-4">
+        <ShippedDetailsPanelContent
+          shipped={shipped}
+          durationData={{}}
+          copiedAll={copiedAll}
+          onCopyAll={handleCopyAll}
+          onUpdate={onReload}
+          showPackingPhotos
+          showSerialNumber
+          onReportIssue={
+            canCreateTicket
+              ? () => openCreateTicket({ type: 'order', orderId: Number(shipped.id) })
+              : undefined
+          }
+          editableShippingFields={{
+            orderNumber,
+            itemNumber,
+            trackingNumber: shippingTrackingNumber,
+            shipByDate,
+            isSaving: isSavingInlineFields,
+            isSavingShipByDate,
+            onOrderNumberChange: setOrderNumber,
+            onItemNumberChange: setItemNumber,
+            onTrackingNumberChange: setShippingTrackingNumber,
+            onShipByDateChange: setShipByDate,
+            onBlur: () => {
+              void saveInlineFields();
+            },
+            onShipByDateBlur: () => {
+              void saveShipByDate(shipByDate);
+            },
+          }}
+        />
+      </div>
+    ),
+    [
+      shipped,
+      copiedAll,
+      handleCopyAll,
+      onReload,
+      orderNumber,
+      itemNumber,
+      shippingTrackingNumber,
+      shipByDate,
+      isSavingInlineFields,
+      isSavingShipByDate,
+      setOrderNumber,
+      setItemNumber,
+      setShippingTrackingNumber,
+      setShipByDate,
+      saveInlineFields,
+      saveShipByDate,
+      canCreateTicket,
+      openCreateTicket,
+    ],
+  );
+
+  /**
+   * Reference-tool leaves — the Displays Root Index catalog for this order.
+   * Ticket / Support used to be centre tabs; that put reference content in
+   * the ops-flow slot the Unbox SoT reserves for the order's own work.
+   */
+  const displayIndexRows = useMemo(
+    () =>
+      buildSupportOrdersDisplayIndexRows({
+        hasTicketHint: Boolean(String(meta.orderIdDisplay ?? '').trim()),
+      }),
+    [meta.orderIdDisplay],
+  );
+
+  const displayTabs = useMemo(
     () =>
       buildSectionTabs([
-        {
-          id: 'order',
-          label: 'Order',
-          icon: Package,
-          content: (
-            <div className="space-y-3 pb-4">
-              <ShippedDetailsPanelContent
-                shipped={shipped}
-                durationData={{}}
-                copiedAll={copiedAll}
-                onCopyAll={handleCopyAll}
-                onUpdate={onReload}
-                showPackingPhotos
-                showSerialNumber
-                onReportIssue={
-                  canCreateTicket
-                    ? () => openCreateTicket({ type: 'order', orderId: Number(shipped.id) })
-                    : undefined
-                }
-                editableShippingFields={{
-                  orderNumber,
-                  itemNumber,
-                  trackingNumber: shippingTrackingNumber,
-                  shipByDate,
-                  isSaving: isSavingInlineFields,
-                  isSavingShipByDate,
-                  onOrderNumberChange: setOrderNumber,
-                  onItemNumberChange: setItemNumber,
-                  onTrackingNumberChange: setShippingTrackingNumber,
-                  onShipByDateChange: setShipByDate,
-                  onBlur: () => {
-                    void saveInlineFields();
-                  },
-                  onShipByDateBlur: () => {
-                    void saveShipByDate(shipByDate);
-                  },
-                }}
-              />
-            </div>
-          ),
-        },
         {
           id: 'ticket',
           label: 'Ticket',
@@ -194,30 +248,26 @@ function SupportOrderFocus({
           ),
         },
       ]),
-    [
-      shipped,
-      copiedAll,
-      handleCopyAll,
-      onReload,
-      orderNumber,
-      itemNumber,
-      shippingTrackingNumber,
-      shipByDate,
-      isSavingInlineFields,
-      isSavingShipByDate,
-      setOrderNumber,
-      setItemNumber,
-      setShippingTrackingNumber,
-      setShipByDate,
-      saveInlineFields,
-      saveShipByDate,
-      orderAnchor,
-      canCreateTicket,
-      openCreateTicket,
-    ],
+    [orderAnchor],
   );
 
-  const activeView: OrdersView = tabs.some((t) => t.id === view) ? view : 'order';
+  const resolvedSideTab: SupportOrdersDisplayNav | null = useMemo(() => {
+    if (!activeSideTab) return null;
+    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
+    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
+    // A requested leaf that gated away falls back to the INDEX, never to
+    // `displayTabs[0]` — silently swapping in an unrelated display is the
+    // failure the index exists to prevent.
+    return STATION_DISPLAY_INDEX;
+  }, [activeSideTab, displayTabs]);
+
+  const paneUtilityRow = (
+    <div className="flex flex-col items-center gap-0 pt-0">
+      {!activeSideTab ? (
+        <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
+      ) : null}
+    </div>
+  );
 
   return (
     <motion.div
@@ -228,93 +278,113 @@ function SupportOrderFocus({
       exit={paneMotion.exit}
       transition={paneTransition}
     >
-      <StationContextBar
-        identity={<SupportOrderIdentity order={shipped} />}
-        moreDetails={
-          <StationMoreDetails>
-            <HoverTooltip label="Notes">
-              <IconButton
-                size="sm"
-                icon={<FileText className="h-3.5 w-3.5" />}
-                ariaLabel="Edit notes"
-                aria-pressed={activeInput === 'notes'}
-                onClick={() =>
-                  setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes'))
-                }
-                className={
-                  activeInput === 'notes' ? 'rounded-md bg-surface-sunken text-text-default' : undefined
-                }
-              />
-            </HoverTooltip>
-            <HoverTooltip label="Out of stock">
-              <IconButton
-                size="sm"
-                icon={<AlertTriangle className="h-3.5 w-3.5" />}
-                ariaLabel="Toggle out of stock"
-                aria-pressed={activeInput === 'out_of_stock'}
-                onClick={() =>
-                  setActiveInput((prev) =>
-                    prev === 'out_of_stock' ? 'none' : 'out_of_stock',
-                  )
-                }
-                className={
-                  activeInput === 'out_of_stock'
-                    ? 'rounded-md bg-surface-sunken text-text-default'
-                    : undefined
-                }
-              />
-            </HoverTooltip>
-            <HoverTooltip label="Open on To ship">
-              <IconButton
-                size="sm"
-                icon={<ExternalLink className="h-3.5 w-3.5" />}
-                ariaLabel="Open on To ship"
-                onClick={() =>
-                  router.push(shippingOrdersHref({ openOrderId: Number(shipped.id) }))
-                }
-              />
-            </HoverTooltip>
-            <PaneHeaderCloseButton
-              onClick={onClose}
-              ariaLabel="Back to orders queue"
-              title="Back to orders queue"
+      <StationScanPaneHost
+        displaysOpen={Boolean(resolvedSideTab)}
+        centerTestId="support-orders-station-center"
+        utilityRail={!activeSideTab ? paneUtilityRow : null}
+        center={
+          <div className="relative flex h-full min-h-0 w-full flex-col">
+            <StationContextBar
+              identity={<SupportOrderIdentity order={shipped} />}
+              moreDetails={
+                <StationMoreDetails>
+                  <HoverTooltip label="Notes">
+                    <IconButton
+                      size="sm"
+                      icon={<FileText className="h-3.5 w-3.5" />}
+                      ariaLabel="Edit notes"
+                      aria-pressed={activeInput === 'notes'}
+                      onClick={() =>
+                        setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes'))
+                      }
+                      className={
+                        activeInput === 'notes'
+                          ? 'rounded-md bg-surface-sunken text-text-default'
+                          : undefined
+                      }
+                    />
+                  </HoverTooltip>
+                  <HoverTooltip label="Out of stock">
+                    <IconButton
+                      size="sm"
+                      icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                      ariaLabel="Toggle out of stock"
+                      aria-pressed={activeInput === 'out_of_stock'}
+                      onClick={() =>
+                        setActiveInput((prev) =>
+                          prev === 'out_of_stock' ? 'none' : 'out_of_stock',
+                        )
+                      }
+                      className={
+                        activeInput === 'out_of_stock'
+                          ? 'rounded-md bg-surface-sunken text-text-default'
+                          : undefined
+                      }
+                    />
+                  </HoverTooltip>
+                  <HoverTooltip label="Open on To ship">
+                    <IconButton
+                      size="sm"
+                      icon={<ExternalLink className="h-3.5 w-3.5" />}
+                      ariaLabel="Open on To ship"
+                      onClick={() =>
+                        router.push(shippingOrdersHref({ openOrderId: Number(shipped.id) }))
+                      }
+                    />
+                  </HoverTooltip>
+                  <PaneHeaderCloseButton
+                    onClick={onClose}
+                    ariaLabel="Back to orders queue"
+                    title="Back to orders queue"
+                  />
+                </StationMoreDetails>
+              }
             />
-          </StationMoreDetails>
-        }
-      />
 
-      <StationWorkbench
-        className="min-h-0 flex-1"
-        reserveScrollClearance={false}
-        reserveIdentityClearance="stacked"
-        scrollClassName="pb-28"
-        tabs={
-          <SectionTabsSlider
-            tabs={tabs}
-            value={activeView}
-            onChange={(id) => setView(id as OrdersView)}
-            ariaLabel="Order displays"
-          />
+            <StationWorkbench
+              className="min-h-0 flex-1"
+              reserveScrollClearance={false}
+              reserveIdentityClearance="stacked"
+              scrollClassName="pb-28"
+              footer={
+                <ShippedPanelEditorDock
+                  shipped={shipped}
+                  activeInput={activeInput}
+                  setActiveInput={setActiveInput}
+                  showMarkAsShipped={false}
+                  showOutOfStock
+                  showNotes
+                  isOutOfStock={isOutOfStock}
+                  isSavingOutOfStock={isSavingOutOfStock}
+                  onSaveOutOfStock={(checked) => {
+                    void handleSaveOutOfStock(checked, () => setActiveInput('none'));
+                  }}
+                  shippingTrackingNumber={shippingTrackingNumber}
+                  onMarkShippedSuccess={() => {
+                    setActiveInput('none');
+                    onReload();
+                  }}
+                />
+              }
+            >
+              {orderContent}
+            </StationWorkbench>
+          </div>
         }
-        footer={
-          <ShippedPanelEditorDock
-            shipped={shipped}
-            activeInput={activeInput}
-            setActiveInput={setActiveInput}
-            showMarkAsShipped={false}
-            showOutOfStock
-            showNotes
-            isOutOfStock={isOutOfStock}
-            isSavingOutOfStock={isSavingOutOfStock}
-            onSaveOutOfStock={(checked) => {
-              void handleSaveOutOfStock(checked, () => setActiveInput('none'));
-            }}
-            shippingTrackingNumber={shippingTrackingNumber}
-            onMarkShippedSuccess={() => {
-              setActiveInput('none');
-              onReload();
-            }}
-          />
+        displays={
+          resolvedSideTab ? (
+            <StationDisplaysPushStack
+              ariaLabel="Support order displays"
+              storageKey="support-orders-displays-push-width"
+              testId="support-orders-displays-push"
+              resizeTestId="support-orders-displays-push-resize"
+              tabs={displayTabs}
+              indexRows={displayIndexRows}
+              activeTab={resolvedSideTab}
+              onTabChange={(id) => setActiveSideTab(id as SupportOrdersDisplayNav)}
+              onClose={closeDisplays}
+            />
+          ) : null
         }
       />
 
@@ -339,22 +409,18 @@ function SupportOrderFocus({
   );
 }
 
-export function SupportOrdersFocusHost({ openOrderId }: { openOrderId: number }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function SupportOrdersFocusHost({
+  openOrderId,
+  onClear,
+}: {
+  openOrderId: number;
+  /** Paint-pending clear owned by the desk parent (`useSupportOrderOpenParam`). */
+  onClear: () => void;
+}) {
   const invalidate = useInvalidateSupportOrderCaches();
   const { data: order, isLoading, isError, refetch } = useSupportOrderDetail(openOrderId);
 
-  const clearOpenOrder = () => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.delete('openOrderId');
-    sp.delete('createTicket');
-    sp.set('context', 'support');
-    const qs = sp.toString();
-    router.replace(qs ? `${SHIPPING_ORDERS_PATH}?${qs}` : shippingOrdersHref({ context: 'support' }), {
-      scroll: false,
-    });
-  };
+  const clearOpenOrder = onClear;
 
   if (isLoading) {
     return (

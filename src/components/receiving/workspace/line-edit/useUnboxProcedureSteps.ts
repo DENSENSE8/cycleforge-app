@@ -28,14 +28,18 @@
  * nothing can be ticked falsely.
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   captureStepVocabulary,
   deriveProcedureSteps,
   type DeriveCaptureStepStatesInput,
 } from '../derive-capture-step-states';
-import { resolveActiveStep, resolveNextStepAfter } from '@/lib/receiving/procedure-pointer';
+import {
+  resolveActiveStep,
+  resolveNextStepAfter,
+  shouldReleaseFocusAfterEvidence,
+} from '@/lib/receiving/procedure-pointer';
 import {
   clearFocusForOtherCarton,
   setFocusedStep,
@@ -104,20 +108,27 @@ function stepSummary(
     cartonAspect: Partial<Record<PhotoAspect, number>>;
     item: number;
     serialCount: number;
+    /** Waived empty slots that still count toward the serial gate. */
+    perUnitAbsentCount: number;
     quantityExpected: number;
     conditionGrade: string | null;
+    /** Gate stamp — never treat a default grade as "graded". */
+    conditionGraded: boolean;
     classified: boolean;
     labelPreviewed: boolean;
     aspect?: PhotoAspect;
   },
 ): string | undefined {
   const shots = (n: number) => (n === 1 ? '1 photo' : `${n} photos`);
+  const multiQty = ctx.quantityExpected > 1;
 
   switch (key) {
     case 'classify':
-      return ctx.classified ? 'Classified' : undefined;
+      // Dock mounts TriageClassifySection (Band 1 grows) — › still advances.
+      return ctx.classified ? 'Classified' : 'Use › when ready';
     case 'arrival_check':
-      return ctx.arrival > 0 ? shots(ctx.arrival) : undefined;
+      // Actionless in the dock — summary is the advance cue (door evidence).
+      return ctx.arrival > 0 ? shots(ctx.arrival) : 'Use › when ready';
     // The three bench carton shots share a stage and are told apart by aspect —
     // a stage count would let one photo report itself on all three cards.
     case 'shipping_label_photo':
@@ -126,17 +137,29 @@ function stepSummary(
       const n = ctx.aspect ? (ctx.cartonAspect[ctx.aspect] ?? 0) : 0;
       return n > 0 ? shots(n) : undefined;
     }
-    case 'item_photos':
+    case 'item_photos': {
+      // Phase 2: one item-photo set for the line after all serials fill.
+      if (multiQty) {
+        return ctx.item > 0 ? `Line · ${shots(ctx.item)}` : 'Once for line';
+      }
       return ctx.item > 0 ? shots(ctx.item) : undefined;
-    case 'condition':
-      return conditionLabel(ctx.conditionGrade ?? '', 'compact');
-    case 'serial':
-      // Multi-qty is a loop, not a step — say how much of the loop is done.
-      return ctx.quantityExpected > 1
-        ? `${ctx.serialCount} of ${ctx.quantityExpected}`
-        : ctx.serialCount > 0
-          ? 'Captured'
-          : undefined;
+    }
+    case 'condition': {
+      // `condition_grade` is NOT NULL with a default — only the stamp means graded.
+      if (!ctx.conditionGraded) {
+        return multiQty ? 'Once for line' : undefined;
+      }
+      const grade = conditionLabel(ctx.conditionGrade ?? '', 'compact');
+      return multiQty ? `Line · ${grade}` : grade || undefined;
+    }
+    case 'serial': {
+      // Qualitative only — never "N of M" vanity counts on the action floor.
+      const filled = ctx.serialCount + ctx.perUnitAbsentCount;
+      if (multiQty) {
+        return filled >= ctx.quantityExpected ? 'All units captured' : 'Scan each unit';
+      }
+      return filled > 0 ? 'Captured' : undefined;
+    }
     case 'label':
       // "Checked", not the label KIND: the kind lives on the station controller,
       // and a summary that needed it would make this hook depend on that god
@@ -224,10 +247,13 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   // would render two answers on one screen.
   const cartonId = row.receiving_id ?? null;
   const focusedKey = useFocusedStep(cartonId);
+  // Snapshot done-ness at the moment focus is set — see release effect below.
+  const focusWasDoneRef = useRef<{ key: string; wasDone: boolean } | null>(null);
   // A focus belonging to a previous carton must never open the new one parked
   // on it — same class of bug as a selection bleeding across modes.
   useEffect(() => {
     clearFocusForOtherCarton(cartonId);
+    focusWasDoneRef.current = null;
   }, [cartonId]);
 
   const serialCount = Array.isArray(row.serials) ? row.serials.length : 0;
@@ -347,8 +373,10 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       cartonAspect: counts.cartonAspect,
       item: counts.item,
       serialCount,
+      perUnitAbsentCount,
       quantityExpected,
       conditionGrade: row.condition_grade ?? null,
+      conditionGraded: !!row.condition_graded_at,
       classified,
       labelPreviewed: !!row.label_previewed_at,
     };
@@ -370,8 +398,10 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     derived,
     counts,
     serialCount,
+    perUnitAbsentCount,
     quantityExpected,
     row.condition_grade,
+    row.condition_graded_at,
     row.label_previewed_at,
     classified,
     aspectByKey,
@@ -384,16 +414,49 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     () => derived.map((step) => ({ key: step.key, done: step.state === 'done' })),
     [derived],
   );
+
+  // Evidence that settles a step which was pending at focus time must release
+  // the override — otherwise › onto shipping_label → shoot → dock stays on a
+  // done step forever. Reopen (focus an already-done step) keeps the override.
+  const focusStep = useCallback(
+    (key: string | null) => {
+      if (key == null) {
+        focusWasDoneRef.current = null;
+      } else {
+        const wasDone = pointerSteps.find((s) => s.key === key)?.done ?? false;
+        focusWasDoneRef.current = { key, wasDone };
+      }
+      setFocusedStep(cartonId, key);
+    },
+    [cartonId, pointerSteps],
+  );
+
+  useEffect(() => {
+    if (
+      !shouldReleaseFocusAfterEvidence({
+        focusedKey,
+        steps: pointerSteps,
+        wasDoneAtFocus:
+          focusedKey && focusWasDoneRef.current?.key === focusedKey
+            ? focusWasDoneRef.current.wasDone
+            : null,
+      })
+    ) {
+      return;
+    }
+    focusWasDoneRef.current = null;
+    setFocusedStep(cartonId, null);
+  }, [focusedKey, pointerSteps, cartonId]);
+
   const activeKey = resolveActiveStep(pointerSteps, { focusedKey });
   const skipTargetKey = activeKey ? resolveNextStepAfter(pointerSteps, activeKey) : null;
   const nextStep = skipTargetKey
     ? (steps.find((step) => step.key === skipTargetKey) ?? null)
     : null;
 
-  // Positional neighbours, for the pager pinned above the composer. They were
-  // cut on 2026-08-02 when the chips rendered as a trailer after the deck and
-  // landed mid-document; they came back the same day as pinned bottom chrome,
-  // which is where a pager belongs — beside the input, not after the content.
+  // Positional neighbours, for the under-dock step context (bottom-left). They
+  // were cut on 2026-08-02 when chips trailed the deck mid-document; they live
+  // under the flush floor as the step prompt — beside the input, not above it.
   //
   // Vocabulary order, NOT `skipTargetKey`. That distinction is the whole reason
   // these are separate values.
@@ -401,11 +464,6 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   const prevStep = activeIndex > 0 ? steps[activeIndex - 1] : null;
   const nextNeighbour =
     activeIndex >= 0 && activeIndex < steps.length - 1 ? steps[activeIndex + 1] : null;
-
-  const focusStep = useCallback(
-    (key: string | null) => setFocusedStep(cartonId, key),
-    [cartonId],
-  );
 
   const reorderCaptureSteps = useCallback(
     (orderedKeys: string[]) => {

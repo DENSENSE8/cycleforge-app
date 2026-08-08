@@ -2,21 +2,26 @@
 
 /**
  * URL SoT for new-order entry (`?new=true`) on the current workbench path.
- * Shared by Labels / Pack / `/test` Shipping overlays; Dashboard wires the
- * same param via {@link useDashboardSearchController}.
+ * Shared by Pack / `/test` Shipping overlays; Labels uses
+ * {@link useOutboundUrlState}.newOpen (same SoT hook shape). Dashboard wires
+ * the same param via {@link useDashboardSearchController}.
  */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 
 export function useNewOrderParam() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const newOpen = useMemo(() => searchParams.get('new') === 'true', [searchParams]);
+  const urlNewOpen = useMemo(
+    () => searchParams.get('new') === 'true',
+    [searchParams],
+  );
 
-  const replaceParams = useCallback(
+  const replace = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
       const params = new URLSearchParams(searchParams.toString());
       mutate(params);
@@ -27,13 +32,19 @@ export function useNewOrderParam() {
     [pathname, router, searchParams],
   );
 
-  const openNew = useCallback(() => {
-    replaceParams((params) => params.set('new', 'true'));
-  }, [replaceParams]);
+  const write = useCallback((params: URLSearchParams, next: boolean) => {
+    if (next) params.set('new', 'true');
+    else params.delete('new');
+  }, []);
 
-  const closeNew = useCallback(() => {
-    replaceParams((params) => params.delete('new'));
-  }, [replaceParams]);
+  const { value: newOpen, setValue: setNewOpen } = useOptimisticUrlParam<boolean>({
+    urlValue: urlNewOpen,
+    replace,
+    write,
+  });
+
+  const openNew = useCallback(() => setNewOpen(true), [setNewOpen]);
+  const closeNew = useCallback(() => setNewOpen(false), [setNewOpen]);
 
   return { newOpen, openNew, closeNew };
 }

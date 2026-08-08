@@ -52,36 +52,75 @@ interface DisplayIndexGroupSummary {
  */
 export function defaultDisplayIndexGroup(id: string): DisplayIndexGroup {
   switch (id) {
-    case 'ticket':
-    case 'photos':
+    case 'listings':
+    case 'listing':
+    case 'classify':
     case 'linkage':
     case 'pairing':
-    case 'classify':
       return 'verification';
     case 'inventory':
     case 'units':
-    case 'listings':
+    case 'photos':
     case 'condition':
+    case 'checklist':
+    case 'manuals':
       return 'assets';
     default:
+      // ticket · tracking · timeline · support · unknown → context
       return 'context';
   }
 }
 
 /**
+ * Declared stable nav-key per Displays leaf id — the co-located key map the
+ * leader-armed selection keyboard reveals on the Right region (nav-keys P0;
+ * spec: `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`). Identity-stable:
+ * a leaf's letter holds across sessions so muscle memory forms ('p' = Photos,
+ * 't' = Ticket). `resolveNavKeymap` honors these when free and falls back
+ * deterministically for any unlisted leaf, so a station showing a subset never
+ * loses a hint. A P4 uniqueness guard asserts these letters never collide
+ * across the full leaf vocabulary — keep them distinct.
+ */
+export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
+  ticket: 't',
+  photos: 'p',
+  linkage: 'k',
+  pairing: 'g',
+  classify: 'c',
+  inventory: 'i',
+  units: 'u',
+  listings: 'l',
+  condition: 'd',
+  support: 's',
+  tracking: 'r',
+  timeline: 'm',
+};
+
+/**
  * Build neutral Root Index rows from visible section tabs.
- * Checklist + `stripHidden` never appear (ring-only / body-only).
+ * `stripHidden` never appear (Unbox checklist is ring-only via stripHidden).
+ * A visible `checklist` leaf (Testing SKU checklist) stays on the index.
+ * When `count` is set, subtitle paints the count so thin stations are not blank.
  */
 export function deriveDisplayIndexRowsFromTabs(tabs: readonly SectionTab[]): DisplayIndexRow[] {
   return tabs
-    .filter((t) => !t.stripHidden && t.id !== 'checklist')
-    .map((t) => ({
-      id: t.id,
-      label: t.label,
-      subtitle: '',
-      tone: 'neutral' as const,
-      group: defaultDisplayIndexGroup(t.id),
-    }));
+    .filter((t) => !t.stripHidden)
+    .map((t) => {
+      const count = typeof t.count === 'number' ? t.count : null;
+      const subtitle =
+        count != null && count > 0
+          ? count === 1
+            ? '1 item'
+            : `${count} items`
+          : '';
+      return {
+        id: t.id,
+        label: t.label,
+        subtitle,
+        tone: 'neutral' as const,
+        group: defaultDisplayIndexGroup(t.id),
+      };
+    });
 }
 
 /**

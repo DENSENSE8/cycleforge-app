@@ -10,14 +10,19 @@ import { Camera, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { conditionGradeTableLabel, workflowStatusTableLabel, WORKFLOW_BADGE } from '@/components/station/receiving-constants';
-import {
-  OrderIdChip, TrackingChip, SkuScanRefChip, SerialChip, TicketChip, getLast8,
-} from '@/components/ui/CopyChip';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { railRelativeTime, type SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
+import {
+  RailPeekIdentityFacts,
+  type RailPeekFact,
+} from '@/components/sidebar/rail-shell/RailPeekIdentityFacts';
+import {
+  RAIL_PEEK_PAD_CLASS,
+  RAIL_PEEK_SECTION_CLASS,
+} from '@/components/sidebar/rail-shell/rail-peek-chrome';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
@@ -304,6 +309,7 @@ export function RecentActivityRailBase({
       getId={getRowId}
       getReconcileId={getRowReconcileId}
       getGroupId={getRowGroupId}
+      navRegionId="left"
       getActivityAt={getActivityAt}
       onSelect={selectRow}
       getStatusDot={getStatusDot}
@@ -400,6 +406,7 @@ function ReceivingPopoverContent({
   actionsSlot?: ReactNode;
 }) {
   const { current: qtyCurrent, total: qtyTotal } = getQty(row);
+  // getPreviewQty already zeros current while Unboxed (inventory pending).
   const isComplete = qtyTotal != null && qtyTotal > 0 && qtyCurrent >= qtyTotal;
   const progressPct =
     qtyTotal != null && qtyTotal > 0 ? Math.min(100, Math.round((qtyCurrent / qtyTotal) * 100)) : qtyCurrent > 0 ? 100 : 0;
@@ -430,7 +437,7 @@ function ReceivingPopoverContent({
   const ticketDigits = ticket ? ticket.replace(/^#/, '') : null;
 
   return (
-    <div className="space-y-3 p-3.5">
+    <div className={RAIL_PEEK_PAD_CLASS}>
       <div>
         <div className="flex items-start gap-2">
           <p className="flex-1 text-sm font-semibold leading-snug text-text-default">{title}</p>
@@ -483,9 +490,9 @@ function ReceivingPopoverContent({
         </div>
       </div>
 
-      {contextSlot ? <div>{contextSlot}</div> : null}
+      {contextSlot ? <div className="mt-2.5">{contextSlot}</div> : null}
 
-      <div>
+      <div className="mt-2.5">
         <div className="flex items-baseline justify-between">
           <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{qtyLabel}</span>
           <span className={`text-role-caption font-semibold tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
@@ -497,32 +504,36 @@ function ReceivingPopoverContent({
         </div>
       </div>
 
-      {/* Wrap (not scroll): the ticket chip makes this a 5-chip row that can't
-          fit the 360px popover on one line. flex-wrap keeps every chip full-size
-          and drops the overflow chip to a second line; justify-between still
-          spreads the common 4-chip row edge-to-edge (PO left · serial right). */}
-      <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2 border-t border-border-hairline pt-3 [&>*]:shrink-0">
-        <OrderIdChip value={poValue} display={getLast8(poValue)} />
-        <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} />
-        {isPickup ? (
-          <FulfillmentPickupPill />
-        ) : (
-          <TrackingChip value={displayTrk ?? ''} display={getLast8(displayTrk ?? '')} />
-        )}
-        {/* Always render the serial chip — even with no serial it shows the
-            `----` placeholder (resolveSerialDisplay) so the column stays put and
-            lines up across rows. Content-fit width (not the default w-[120px])
-            so the value hugs the right edge of this justify-end row instead of
-            leaving dead space to its right. */}
-        <SerialChip value={serialsCsv} width="w-fit shrink-0" />
-        {/* Filed claim/ticket id — the ticket lives in the copy-chip row (orange
-            `TicketChip`, hash icon), not as a status-row badge. Only present when
-            the line has a ticket. The tone's `#` glyph supplies the hash, so the
-            display drops the leading `#`. */}
-        {ticketDigits ? <TicketChip value={ticketDigits} display={ticketDigits} /> : null}
-      </div>
+      {/* Identity: order · tracking header + stacked sku / serial / ticket.
+          Shared SoT with RailPeekCard — never a local flex-wrap twin. */}
+      <RailPeekIdentityFacts
+        facts={([
+          {
+            tone: 'order',
+            // Unfound / unmatched cartons have no PO — keep the top-row order
+            // slot with a quiet placeholder so tracking stays justify-between end.
+            value: poValue,
+            keepEmpty: true,
+            platformValue: row.source_platform_pill || row.source_platform,
+          },
+          ...(isPickup
+            ? []
+            : [{
+                tone: 'tracking' as const,
+                value: displayTrk ?? '',
+                carrierHint: row.carrier,
+              }]),
+          { tone: 'sku', value: skuValue },
+          // Omit empty serial — no `----` placeholder row in the peek.
+          { tone: 'serial', value: serialsCsv },
+          ...(ticketDigits
+            ? [{ tone: 'ticket' as const, value: ticketDigits, display: ticketDigits }]
+            : []),
+        ] satisfies RailPeekFact[])}
+        headerRight={isPickup ? <FulfillmentPickupPill /> : undefined}
+      />
 
-      <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
+      <div className={`flex items-center justify-between ${RAIL_PEEK_SECTION_CLASS}`}>
         <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {activityAt
             ? `${railRelativeTime(activityAt)} ago`

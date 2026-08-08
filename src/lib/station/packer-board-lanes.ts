@@ -39,7 +39,7 @@ export interface PackerLaneMeta {
 export const PACKER_HISTORY_STATE_META: Record<PackerHistoryLane, PackerLaneMeta> = {
   TODAY: { label: 'Today', description: 'Packed today (PST).', tone: 'blue', dot: TONE_CLASSES.blue.dot },
   THIS_WEEK: { label: 'This week', description: 'Packed earlier this week.', tone: 'indigo', dot: TONE_CLASSES.indigo.dot },
-  FBA: { label: 'FBA', description: 'FBA / FNSKU pack scans.', tone: 'orange', dot: TONE_CLASSES.orange.dot },
+  FBA: { label: 'Amazon Prep', description: 'Amazon Prep / FNSKU pack scans.', tone: 'orange', dot: TONE_CLASSES.orange.dot },
   EXCEPTION: { label: 'Exception', description: 'Packed against an unmatched exception.', tone: 'rose', dot: TONE_CLASSES.rose.dot },
 };
 

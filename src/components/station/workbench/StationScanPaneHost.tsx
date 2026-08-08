@@ -16,7 +16,9 @@
  * push top band).
  */
 
-import { useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useSyncExternalStore, type ReactNode } from 'react';
+import { KEYBOARD_REGION_ATTR } from '@/lib/keyboard/keyboard-region-owner';
+import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
 import {
   getStationDisplaysCollapsed,
   subscribeRightRailFrame,
@@ -68,6 +70,11 @@ export function StationScanPaneHost({
     () => false,
   );
   const centerLocked = displaysOpen && !displaysCollapsed;
+  // Pointer into the locked middle reclaims keyboard ownership from Displays.
+  const { claim: claimKeyboardRegion } = useKeyboardRegionOwner();
+  const claimMiddle = useCallback(() => {
+    claimKeyboardRegion('middle');
+  }, [claimKeyboardRegion]);
   return (
     <div
       className={cn(STATION_SCAN_PANE_HOST_CLASS, hostPadClass)}
@@ -79,6 +86,8 @@ export function StationScanPaneHost({
           centerLocked ? STATION_CENTER_COLUMN_CLASS : STATION_CENTER_COLUMN_OPEN_CLASS
         }
         data-testid={centerTestId}
+        {...{ [KEYBOARD_REGION_ATTR]: 'middle' }}
+        onPointerDownCapture={claimMiddle}
       >
         {center}
       </div>

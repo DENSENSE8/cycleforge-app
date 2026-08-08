@@ -1,10 +1,14 @@
 /**
- * Station flush planes + identity clearance — Unbox golden.
+ * Station flush planes + Flex-Grow Sandwich (Unbox golden).
  *
- * SoT (ruled 2026-08-03):
+ * SoT (ruled 2026-08-03 · sandwich 2026-08-07):
  *   - Context rail + Unbox push are **flush** coplanar columns (no outer `m-*`
  *     islands). Depth = surface steps on `CONTEXT_PANEL_HOST` ground.
  *   - Center = `bg-surface-sunken` via `StationPanelRoot`.
+ *   - Displays invader = `flex-1` (always fills leftover — never `ml-auto`
+ *     detach band from sticky painted width).
+ *   - No host `justify-between` / host `gap-*` / gutter div / leading spacer.
+ *     `RIGHT_RAIL_GUTTER_PX = 0`.
  *   - `STATION_IDENTITY_INSET_TOP` (`top-0`) = identity flush under
  *     GlobalHeader — same flush-planes ruling as the retired rail `m-2`.
  *   - Narrow push overlay may float (exception) with the same top inset.
@@ -28,7 +32,8 @@ import {
   stationMoreDetailsPaneHostClass,
 } from '@/components/station/entity-context';
 import { DETAIL_STACK_PUSH_COLUMN_CLASS } from '@/design-system/shells/detail-stack';
-import { TICKET_PUSH_HOST_PAD_CLASS } from './UnboxPushColumn';
+import { RIGHT_RAIL_GUTTER_PX } from '@/lib/right-rail/frame';
+import { STATION_DISPLAYS_HOST_PAD_CLASS } from '@/components/station/displays';
 
 const ROOT = resolve(import.meta.dirname, '../../../..');
 
@@ -76,16 +81,16 @@ describe('Station flush planes — Unbox golden', () => {
   });
 
   it('host pad is empty (flush) and never py-*', () => {
-    assert.equal(TICKET_PUSH_HOST_PAD_CLASS, '');
+    assert.equal(STATION_DISPLAYS_HOST_PAD_CLASS, '');
     assert.equal(
-      /\bpy-/.test(TICKET_PUSH_HOST_PAD_CLASS),
+      /\bpy-/.test(STATION_DISPLAYS_HOST_PAD_CLASS),
       false,
       'vertical host pad stacks under StationContextBar top-0',
     );
   });
 
-  it('UnboxPushColumn is flush wide; narrow overlay keeps identity top inset', () => {
-    const src = code('src/components/receiving/workspace/UnboxPushColumn.tsx');
+  it('StationDisplaysPushColumn is flush wide; narrow overlay keeps identity top inset', () => {
+    const src = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.equal(
       src.includes('CONTEXT_PANEL_OUTER_MARGIN_Y'),
       false,
@@ -115,7 +120,7 @@ describe('Station flush planes — Unbox golden', () => {
   });
 
   it('fullscreen expand is square and edge-to-edge', () => {
-    const src = code('src/components/receiving/workspace/UnboxPushColumn.tsx');
+    const src = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.ok(
       src.includes("'absolute inset-0'"),
       'expanded fullscreen must use absolute inset-0',
@@ -214,10 +219,15 @@ describe('Station flush planes — Unbox golden', () => {
     );
     assert.match(
       layout,
+      /STATION_WORKBENCH_COLUMN\s*=\s*'w-full min-w-0'/,
+      'middle content must be edge-to-edge (no max-w / mx-auto gutters)',
+    );
+    assert.match(
+      layout,
       new RegExp(
-        `STATION_WORKBENCH_COLUMN\\s*=\\s*'[^']*max-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
+        `STATION_CENTER_COLUMN_OPEN_CLASS\\s*=\\s*'[^']*min-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
       ),
-      'middle content must max-w at STATION_WORKBENCH_LOCK_PX',
+      'Displays-closed center must min-w at STATION_WORKBENCH_LOCK_PX (floor)',
     );
     for (const panel of [
       'src/components/receiving/triage/TriagePanel.tsx',
@@ -248,50 +258,63 @@ describe('Station flush planes — Unbox golden', () => {
     );
   });
 
-  it('middle wrapper caps at 720; Displays flex-1 pins trailing; PhotoPeek hugs Displays', () => {
+  it('middle wrapper edge-to-edge; Displays flex-1 always fills leftover; PhotoPeek on center', () => {
     assert.equal(
       STATION_WORKBENCH_BODY_PAD_X,
       '',
       'body pad must be empty — readable air lives inside rows, not against rails',
     );
-    assert.ok(
-      STATION_WORKBENCH_COLUMN.includes(`max-w-[${STATION_WORKBENCH_LOCK_PX}px]`),
-      'middle wrapper must max-w at the station lock (720)',
-    );
-    assert.ok(
-      /\bmx-auto\b/.test(STATION_WORKBENCH_COLUMN),
-      'middle wrapper mx-auto centres when Displays is closed',
+    assert.equal(
+      STATION_WORKBENCH_COLUMN,
+      'w-full min-w-0',
+      'middle wrapper is edge-to-edge of the center column (no max-w / mx-auto gutters)',
     );
     assert.equal(
-      /min-w-\[\d+px\]/.test(STATION_WORKBENCH_COLUMN),
+      /max-w-\[/.test(STATION_WORKBENCH_COLUMN),
       false,
-      'middle wrapper must not ship min-w-[Npx]',
+      'middle wrapper must not ship max-w-[Npx] gutters',
+    );
+    assert.equal(
+      /\bmx-auto\b/.test(STATION_WORKBENCH_COLUMN),
+      false,
+      'middle wrapper must not mx-auto (that parks sunken gutters beside identity + dock)',
     );
     assert.equal(
       STATION_WORKBENCH_IDENTITY_COLUMN,
       'w-full min-w-0',
-      'identity host must be full-bleed for layout (white face on the ≤720 measure)',
+      'identity host must be full-bleed for layout (white face on the edge-to-edge measure)',
     );
     assert.equal(STATION_DISPLAYS_MIN_WIDTH_PX, 280);
-    const push = code('src/components/receiving/workspace/UnboxPushColumn.tsx');
+    assert.equal(RIGHT_RAIL_GUTTER_PX, 0, 'layout chrome must not invent inter-column gutter px');
+    const push = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.ok(
       push.includes('STATION_DISPLAYS_MIN_WIDTH_PX'),
       'Displays resize must use the station min (280), not desk DETAIL_STACK 360',
     );
     assert.ok(
-      push.includes("'min-w-0 flex-1 self-stretch'") ||
-        /'min-w-0 flex-1 self-stretch'/.test(push),
-      'in-flow Displays must be flex-1 so it fills from the middle to the pane right',
+      /'min-w-0 flex-1 self-stretch'/.test(push) ||
+        push.includes("'min-w-0 flex-1 self-stretch'"),
+      'in-flow Displays must be flex-1 (always fills leftover)',
     );
     assert.equal(
-      /'shrink-0 self-stretch'/.test(push) &&
-        !/overlay[\s\S]{0,400}'shrink-0 self-stretch'/.test(push),
+      /'ml-auto shrink-0 self-stretch'/.test(push),
       false,
-      'in-flow Displays must not be unconditional shrink-0 (overlay may still shrink-0)',
+      'in-flow Displays must NOT use ml-auto detach (that parks a gray band)',
     );
     assert.ok(
       push.includes('applyStationDisplaysDelta') || push.includes('station-dual-rail'),
       'Displays sash must wire station dual-rail coupling',
+    );
+    const host = code('src/components/station/workbench/StationScanPaneHost.tsx');
+    assert.equal(
+      /\bgap-/.test(host),
+      false,
+      'StationScanPaneHost must not hard-code gap-* layout gutters',
+    );
+    assert.equal(
+      /justify-between|justify-around/.test(host),
+      false,
+      'StationScanPaneHost must not justify-between (permanent gray band)',
     );
     const peek = code('src/components/receiving/workspace/line-edit/PhotoPeekFan.tsx');
     assert.ok(
@@ -300,10 +323,11 @@ describe('Station flush planes — Unbox golden', () => {
     );
   });
 
-  it('identity measure matches the 720 max; rows justify-between', () => {
-    assert.ok(
-      STATION_WORKBENCH_COLUMN.includes(`max-w-[${STATION_WORKBENCH_LOCK_PX}px]`),
-      'identity chips share the workbench max',
+  it('identity + notes dock share edge-to-edge measure; rows justify-between', () => {
+    assert.equal(
+      STATION_WORKBENCH_COLUMN,
+      'w-full min-w-0',
+      'identity + notes dock share the edge-to-edge workbench measure',
     );
     const bar = code('src/components/station/entity-context/StationContextBar.tsx');
     assert.ok(
@@ -331,27 +355,27 @@ describe('Station flush planes — Unbox golden', () => {
   });
 
   it('Displays push does not ship a parked expand strip', () => {
-    const src = code('src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx');
+    const src = code('src/components/station/displays/StationDisplaysPushStack.tsx');
     assert.equal(src.includes('ReceivingTicketExpandStrip'), false);
     assert.equal(src.includes('ReceivingPushExpandStrip'), false);
   });
 
-  it('Displays push fills leftover (flex-1); no per-surface taste ceiling', () => {
-    const stack = code('src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx');
+  it('Displays push always fills leftover (flex-1); no per-surface taste ceiling', () => {
+    const stack = code('src/components/station/displays/StationDisplaysPushStack.tsx');
     assert.equal(
       /DISPLAYS_PUSH_MAX_WIDTH_PX/.test(stack),
       false,
-      'ReceivingDisplaysPushStack must not ship a hard maxWidth constant',
+      'StationDisplaysPushStack must not ship a hard maxWidth constant',
     );
     assert.equal(
       /maxWidthPx=\{/.test(stack),
       false,
-      'ReceivingDisplaysPushStack must not pass maxWidthPx into UnboxPushColumn',
+      'StationDisplaysPushStack must not pass maxWidthPx into StationDisplaysPushColumn',
     );
-    const push = code('src/components/receiving/workspace/UnboxPushColumn.tsx');
+    const push = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.ok(
       /maxWidthPx\?:/.test(push) || /maxWidthPx\?\s*:/.test(push),
-      'UnboxPushColumn.maxWidthPx must be optional',
+      'StationDisplaysPushColumn.maxWidthPx must be optional',
     );
     assert.ok(
       /min-w-0 flex-1 self-stretch/.test(push),

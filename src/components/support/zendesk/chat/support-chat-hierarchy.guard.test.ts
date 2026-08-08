@@ -1,11 +1,11 @@
 /**
- * Carton / embedded ticket stream: readable body, quiet chrome, flat rows.
+ * Carton / embedded ticket stream: readable body, quiet chrome, shared waist.
  *
  * Migrated 2026-08-02 when `SupportChatThread` was deleted and the conversation
- * became the `MergedRecordStream` ledger. The assertions were re-pointed and
- * re-expressed, never dropped — the compact variant once shrank the message body
- * to `text-role-micro` at a 360px station push, which is the regression the
- * first two cases exist to catch, and it is just as reachable in a ledger row.
+ * became the `MergedRecordStream` ledger. Re-pointed 2026-08-08 when station
+ * Ticket Displays opted into `variant="bubble"` (read vs select) — the type
+ * hierarchy + scroll-ownership pins stay; the absolute bubble ban became a
+ * two-shell contract over one waist.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -64,13 +64,18 @@ describe('support chat type hierarchy (embedded)', () => {
     assert.match(stream, /renderBlockMarkdown\(msg\.body, \{ onOpenPhoto \}\)/);
   });
 
-  it('bubbles are banned — flat rows on one shared left reading edge', () => {
-    // Direction is the leading mark, never a fill. These are the exact classes
-    // the deleted bubble thread used.
-    assert.doesNotMatch(stream, /bg-blue-600 text-white/);
-    assert.doesNotMatch(stream, /rounded-bl-md/);
-    assert.doesNotMatch(stream, /max-w-\[78%\]/);
-    assert.match(stream, /divide-y divide-border-hairline/);
+  it('two shells over one waist — ledger default + bubble opt-in; no third renderer', () => {
+    // Read vs select: ledger keeps the shared left edge; bubble is the station
+    // Ticket read surface. Deleted-thread look stays banned; SupportChatThread
+    // stays deleted.
+    assert.match(stream, /MergedRecordStreamVariant = 'ledger' \| 'bubble'/);
+    assert.match(stream, /variant = 'ledger'/);
+    assert.match(streamCode, /divide-y divide-border-hairline/);
+    assert.match(streamCode, /data-stream-shell="bubble"/);
+    assert.match(stream, /DateGroupHeader/);
+    assert.match(stream, /zendeskCommentsToTimeline/);
+    assert.doesNotMatch(streamCode, /bg-blue-600 text-white/);
+    assert.doesNotMatch(streamCode, /SupportChatThread/);
   });
 
   it('the Zendesk field band is gone from the chat header', () => {

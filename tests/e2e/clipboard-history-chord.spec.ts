@@ -74,8 +74,8 @@ test.describe('Clipboard history chord', () => {
   test('the spine ⋯ row opens the SAME panel and advertises the chord', async ({ page }) => {
     await page.goto('/');
     // Open the spine, then the account overflow. The spine starts collapsed,
-    // so the toggle reads "Show sidebar" (it flips to "Hide sidebar" once open).
-    await page.getByRole('button', { name: 'Show sidebar' }).click();
+    // so the toggle reads "Show navigation" (flips to "Hide navigation" once open).
+    await page.getByRole('button', { name: 'Show navigation' }).click();
     await page.getByRole('button', { name: 'Account details' }).click();
 
     const row = page.getByRole('button', { name: /Clipboard history/ });

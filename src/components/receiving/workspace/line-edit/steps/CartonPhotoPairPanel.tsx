@@ -99,10 +99,13 @@ function pairingRank(aspect: PhotoAspect | null, stepAspect: PhotoAspect | null)
 export function CartonPhotoPairPanel({
   receivingId,
   aspect: stepAspect,
+  onPaired,
 }: {
   receivingId: number;
   /** The step's declared aspect — the one-click forward target. */
   aspect: PhotoAspect | null;
+  /** Close the host popover after a successful forward pair (step aspect set). */
+  onPaired?: () => void;
 }) {
   const queryClient = useQueryClient();
 
@@ -164,6 +167,11 @@ export function CartonPhotoPairPanel({
         // re-derives the deck AND the right-edge checklist. The server publishes
         // the same change on the carton's realtime channel for the phone.
         refreshReceivingPhotos(queryClient, receivingId);
+        // Forward pair (this step's aspect) settles the step — close the dock
+        // popover so the pointer advance is visible in the band.
+        if (next != null && stepAspect != null && next === stepAspect) {
+          onPaired?.();
+        }
       } catch (err) {
         // Teach, don't swallow: the 400 that matters here says the aspect is
         // illegal for the photo's stage, and the operator needs to read it.
@@ -173,7 +181,7 @@ export function CartonPhotoPairPanel({
         setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
       }
     },
-    [mutateAsync, queryClient, receivingId],
+    [mutateAsync, queryClient, receivingId, stepAspect, onPaired],
   );
 
   return (

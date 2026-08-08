@@ -1,9 +1,10 @@
 /**
- * Manual paste → Zoho received check for Incoming.
+ * Manual paste → Zoho received check for Incoming / Unbox.
  *
- * Operators paste tracking numbers; we resolve each against Zoho PO
- * `reference_number` (mirror-first, live Zoho fallback) and split into
- * received-in-Zoho vs not-received-in-Zoho. Read-only — no writes.
+ * Operators paste tracking numbers **or** order/PO numbers; we resolve each
+ * against Zoho PO `reference_number` or `purchaseorder_number` (mirror-first,
+ * live Zoho fallback) and split into received-in-Zoho vs not-received-in-Zoho.
+ * Read-only — no writes.
  *
  * Server deps (`tenantQuery`, Zoho client) load lazily so pure helpers stay
  * unit-testable without `server-only`.
@@ -29,6 +30,7 @@ import {
   resolveWatchState,
   type CheckZohoReceivedWatchState,
 } from '@/lib/receiving/watch-state';
+import { resolveCheckRowCarrierTracking } from '@/lib/receiving/check-zoho-received-carrier';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
@@ -39,6 +41,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
  */
 export { resolveWatchState };
 export type { CheckZohoReceivedWatchState };
+
+/** Carrier-tracking display helper — leaf SoT; re-exported for server callers. */
+export { resolveCheckRowCarrierTracking };
 
 /**
  * Paste vocabulary — re-exported from the leaf SoT so this module's existing
@@ -120,9 +125,20 @@ export interface CheckZohoReceivedLocal {
 }
 
 export interface CheckZohoReceivedRow {
+  /**
+   * The paste key that produced this row — tracking **or** order/PO number.
+   * Prefer {@link resolveCheckRowCarrierTracking} for the carrier TrackingChip;
+   * do not paint this as tracking when it is a PO#.
+   */
   tracking: string;
   po_number: string | null;
+  /**
+   * Zoho PO `reference_number` — in this org that IS the inbound tracking.
+   * Never label it "ref" in the UI; show it with {@link TrackingChip}.
+   */
   reference_number: string | null;
+  /** Vendor display name — the PO "title" under the PO#. */
+  vendor_name: string | null;
   status: string | null;
   reason: CheckZohoReceivedReason;
   source: 'mirror' | 'zoho' | null;
@@ -164,6 +180,7 @@ interface CheckZohoPoHit {
   purchaseorder_id: string;
   purchaseorder_number?: string | null;
   reference_number?: string | null;
+  vendor_name?: string | null;
   status?: string | null;
 }
 
@@ -177,8 +194,11 @@ interface MirrorHit {
   zoho_purchaseorder_id: string;
   zoho_purchaseorder_number: string | null;
   reference_number: string | null;
+  vendor_name: string | null;
   status: string | null;
   ref_canon: string | null;
+  /** Upper-alnum PO# — same shape as {@link canonicalizeTrackingKey}. */
+  po_canon: string | null;
   last_synced_at: string | null;
 }
 
@@ -204,8 +224,8 @@ export interface CheckZohoReceivedDeps {
 }
 
 /**
- * Batch mirror lookup: exact Reference# first, unique last-8 suffix fallback.
- * Returns a map keyed by canonicalizeTrackingKey(tracking).
+ * Batch mirror lookup: exact Reference# or PO# first, unique last-8 Reference#
+ * suffix fallback. Returns a map keyed by canonicalizeTrackingKey(key).
  */
 async function lookupMirrorByTrackings(
   orgId: OrgId,
@@ -234,22 +254,30 @@ async function lookupMirrorByTrackings(
     `SELECT zoho_purchaseorder_id,
             zoho_purchaseorder_number,
             reference_number,
+            vendor_name,
             status,
             last_synced_at::text AS last_synced_at,
             NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '')
-              AS ref_canon
+              AS ref_canon,
+            zoho_purchaseorder_number_norm AS po_canon
        FROM zoho_po_mirror
-      WHERE COALESCE(reference_number, '') <> ''
-        AND (
-          NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '')
-            = ANY($1::text[])
-          OR (
-            cardinality($2::text[]) > 0
-            AND right(
-              NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), ''),
-              8
-            ) = ANY($2::text[])
+      WHERE (
+          COALESCE(reference_number, '') <> ''
+          AND (
+            NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '')
+              = ANY($1::text[])
+            OR (
+              cardinality($2::text[]) > 0
+              AND right(
+                NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), ''),
+                8
+              ) = ANY($2::text[])
+            )
           )
+        )
+         OR (
+          zoho_purchaseorder_number_norm IS NOT NULL
+          AND zoho_purchaseorder_number_norm = ANY($1::text[])
         )
       ORDER BY last_synced_at DESC NULLS LAST
       LIMIT 500`,
@@ -259,7 +287,8 @@ async function lookupMirrorByTrackings(
   for (const tracking of trackings) {
     const canon = canonicalizeTrackingKey(tracking);
     const last8 = last8Digits(tracking);
-    const exactPoIds: string[] = [];
+    const exactRefPoIds: string[] = [];
+    const exactNumberPoIds: string[] = [];
     const suffixPoIds: string[] = [];
     const byId = new Map<string, MirrorHit>();
 
@@ -268,10 +297,15 @@ async function lookupMirrorByTrackings(
       if (!id) continue;
       byId.set(id, row);
       const ref = String(row.ref_canon || '');
-      if (canon && ref === canon) exactPoIds.push(id);
+      const poCanon = String(row.po_canon || '');
+      if (canon && ref === canon) exactRefPoIds.push(id);
+      else if (canon && poCanon === canon) exactNumberPoIds.push(id);
       else if (last8 && ref.length >= 8 && ref.slice(-8) === last8) suffixPoIds.push(id);
     }
 
+    // Exact Reference# wins, then exact PO#, then unique last-8 Reference#.
+    const exactPoIds =
+      exactRefPoIds.length > 0 ? exactRefPoIds : exactNumberPoIds;
     const picked = pickMirrorPoIdFromCandidates({ exactPoIds, suffixPoIds });
     if (!picked) {
       const exactUnique = [...new Set(exactPoIds)];
@@ -308,6 +342,9 @@ async function lookupMirrorByTrackings(
  * rather than restates. What the operator pastes IS the canonical stored form,
  * so an `OR right(...) = last8` arm here would buy nothing and cost the index:
  * measured, it planned as a nested-loop seq scan at ~357k cost for a SINGLE key.
+ *
+ * Keys that are order/PO numbers (not trackings) resolve via cartons linked to
+ * `zoho_po_mirror.zoho_purchaseorder_number_norm` — same canon vocabulary.
  */
 async function lookupLocalByTrackings(
   orgId: OrgId,
@@ -328,6 +365,23 @@ async function lookupLocalByTrackings(
     delivered_at: string | null;
     scanned: boolean;
     unboxed: boolean;
+  };
+
+  const putRow = (row: LocalRow) => {
+    if (out.has(row.canon)) return;
+    out.set(row.canon, {
+      known: true,
+      delivered: Boolean(row.delivered),
+      delivered_at: row.delivered_at ?? null,
+      scanned: Boolean(row.scanned),
+      unboxed: Boolean(row.unboxed),
+      watch: resolveWatchState({
+        known: true,
+        delivered: Boolean(row.delivered),
+        scanned: Boolean(row.scanned),
+        unboxed: Boolean(row.unboxed),
+      }),
+    });
   };
 
   const { rows } = await tenantQuery<LocalRow>(
@@ -373,21 +427,57 @@ async function lookupLocalByTrackings(
     [canons, orgId],
   );
 
-  for (const row of rows) {
-    out.set(row.canon, {
-      known: true,
-      delivered: Boolean(row.delivered),
-      delivered_at: row.delivered_at ?? null,
-      scanned: Boolean(row.scanned),
-      unboxed: Boolean(row.unboxed),
-      watch: resolveWatchState({
-        known: true,
-        delivered: Boolean(row.delivered),
-        scanned: Boolean(row.scanned),
-        unboxed: Boolean(row.unboxed),
-      }),
-    });
-  }
+  for (const row of rows) putRow(row);
+
+  const missingPoCanons = canons.filter((c) => !out.has(c));
+  if (missingPoCanons.length === 0) return out;
+
+  const { rows: poRows } = await tenantQuery<LocalRow>(
+    orgId,
+    `WITH keys AS (SELECT DISTINCT unnest($1::text[]) AS canon),
+          linked AS (
+            SELECT k.canon,
+                   r.id AS receiving_id,
+                   stn.is_delivered,
+                   stn.delivered_at
+              FROM keys k
+              JOIN zoho_po_mirror m
+                ON m.zoho_purchaseorder_number_norm = k.canon
+              JOIN receiving_carton r
+                ON r.zoho_purchaseorder_id = m.zoho_purchaseorder_id
+               AND r.organization_id = $2
+              LEFT JOIN shipping_tracking_numbers stn
+                ON stn.id = r.shipment_id
+          )
+     SELECT l.canon,
+            COALESCE(bool_or(l.is_delivered), false)             AS delivered,
+            MAX(l.delivered_at)::text                            AS delivered_at,
+            bool_or(EXISTS (
+              SELECT 1 FROM receiving_scans rs
+               WHERE rs.organization_id = $2
+                 AND rs.receiving_id = l.receiving_id
+            ))                                                   AS scanned,
+            bool_or(
+              EXISTS (
+                SELECT 1 FROM receiving_unbox ru
+                 WHERE ru.receiving_id = l.receiving_id
+                   AND ru.organization_id = $2
+                   AND ru.unboxed_at IS NOT NULL
+              )
+              OR EXISTS (
+                SELECT 1 FROM receiving_line rl
+                 WHERE rl.receiving_id = l.receiving_id
+                   AND rl.organization_id = $2
+                   AND COALESCE(rl.quantity_received, 0) > 0
+              )
+            )                                                    AS unboxed
+       FROM linked l
+      GROUP BY l.canon`,
+    [missingPoCanons, orgId],
+  );
+
+  for (const row of poRows) putRow(row);
+
   return out;
 }
 
@@ -441,6 +531,7 @@ function rowFromMirror(tracking: string, hit: MirrorHit): CheckZohoReceivedRow {
     tracking,
     po_number: hit.zoho_purchaseorder_number?.trim() || null,
     reference_number: hit.reference_number?.trim() || null,
+    vendor_name: hit.vendor_name?.trim() || null,
     status: hit.status?.trim() || null,
     reason: 'matched',
     source: 'mirror',
@@ -456,11 +547,17 @@ function pickZohoPo(
 ): { po: CheckZohoPoHit | null; reason: CheckZohoReceivedReason } {
   if (pos.length === 0) return { po: null, reason: 'no_match' };
   const canon = canonicalizeTrackingKey(tracking);
-  const exact = pos.filter(
-    (p) => canonicalizeTrackingKey(p.reference_number) === canon && canon.length > 0,
+  if (!canon) return { po: null, reason: 'no_match' };
+  const exactRef = pos.filter(
+    (p) => canonicalizeTrackingKey(p.reference_number) === canon,
   );
-  if (exact.length === 1) return { po: exact[0]!, reason: 'matched' };
-  if (exact.length > 1) return { po: null, reason: 'ambiguous' };
+  if (exactRef.length === 1) return { po: exactRef[0]!, reason: 'matched' };
+  if (exactRef.length > 1) return { po: null, reason: 'ambiguous' };
+  const exactPo = pos.filter(
+    (p) => canonicalizeTrackingKey(p.purchaseorder_number) === canon,
+  );
+  if (exactPo.length === 1) return { po: exactPo[0]!, reason: 'matched' };
+  if (exactPo.length > 1) return { po: null, reason: 'ambiguous' };
   if (pos.length === 1) return { po: pos[0]!, reason: 'matched' };
   return { po: null, reason: 'ambiguous' };
 }
@@ -470,6 +567,7 @@ function rowFromZoho(tracking: string, po: CheckZohoPoHit): CheckZohoReceivedRow
     tracking,
     po_number: po.purchaseorder_number?.trim() || null,
     reference_number: po.reference_number?.trim() || null,
+    vendor_name: po.vendor_name?.trim() || null,
     status: po.status?.trim() || null,
     reason: 'matched',
     source: 'zoho',
@@ -490,6 +588,7 @@ function unresolvedRow(
     tracking,
     po_number: null,
     reference_number: null,
+    vendor_name: null,
     status: null,
     reason,
     source,
@@ -519,9 +618,17 @@ async function mapPool<T, R>(
 }
 
 async function defaultSearchZoho(orgId: OrgId, tracking: string): Promise<CheckZohoPoHit[]> {
-  const { searchPurchaseOrdersByTracking } = await import('@/lib/zoho');
+  const { findPurchaseOrderByNumber, searchPurchaseOrdersByTracking } = await import(
+    '@/lib/zoho'
+  );
   const { withZohoOrg } = await import('@/lib/zoho/tenant-context');
-  return withZohoOrg(orgId, () => searchPurchaseOrdersByTracking(tracking));
+  return withZohoOrg(orgId, async () => {
+    // Exact PO# / order number first — never let a fuzzy tracking search adopt
+    // a near-miss PO when the operator pasted a purchase-order number.
+    const byNumber = await findPurchaseOrderByNumber(tracking);
+    if (byNumber) return [byNumber];
+    return searchPurchaseOrdersByTracking(tracking);
+  });
 }
 
 /**
@@ -607,9 +714,16 @@ export async function checkZohoReceived(
   let warehouse_ahead = 0;
 
   for (const row of rows) {
-    row.local = localMap
-      ? (localMap.get(canonicalizeTrackingKey(row.tracking)) ?? UNKNOWN_LOCAL)
-      : null;
+    if (localMap) {
+      const byKey = localMap.get(canonicalizeTrackingKey(row.tracking));
+      const byPo = row.po_number
+        ? localMap.get(canonicalizeTrackingKey(row.po_number))
+        : undefined;
+      // Prefer a tracking hit; fall back to PO# local when the paste was an order number.
+      row.local = byKey ?? byPo ?? UNKNOWN_LOCAL;
+    } else {
+      row.local = null;
+    }
     row.verdict = resolveVerdict({ reason: row.reason, status: row.status, local: row.local });
     if (row.verdict === 'erp_ahead') erp_ahead += 1;
     if (row.verdict === 'warehouse_ahead') warehouse_ahead += 1;

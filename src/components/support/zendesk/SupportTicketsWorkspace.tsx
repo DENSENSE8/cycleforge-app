@@ -23,7 +23,6 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { SupportTicketFocus } from '@/components/support/service-workspace/SupportTicketFocus';
 import {
   ServiceWorkspaceShell,
@@ -32,22 +31,13 @@ import {
 import { SupportContextDetailPanel } from '@/components/support/context';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { useSupportContext } from '@/hooks/useSupportContext';
+import { useSupportTicketParam } from '@/hooks/useSupportTicketParam';
 import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { SupportTicketsBoard } from './SupportTicketsBoard';
 
 export function SupportTicketsWorkspace() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const ticketId = Number(searchParams.get('ticket')) || null;
-
-  const clearTicket = () => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.delete('ticket');
-    // Tickets is the default mode — drop stale mode= if present.
-    sp.delete('mode');
-    const qs = sp.toString();
-    router.replace(qs ? `/support?${qs}` : '/support', { scroll: false });
-  };
+  const { ticketId, setTicket } = useSupportTicketParam();
+  const clearTicket = () => setTicket(null);
 
   const anchor = useMemo(
     () => (ticketId ? { ticket: String(ticketId) } : null),

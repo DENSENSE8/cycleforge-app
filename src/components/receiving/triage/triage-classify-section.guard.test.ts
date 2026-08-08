@@ -1,6 +1,6 @@
 /**
  * Classify Displays body — flush plane (no WorkspaceCard glass island).
- * Mirrors Package Pairing bare chrome / PAIRING_FLUSH_HOST_CLASS.
+ * Dimensions compose {@link SearchableSelectField} `appearance="flush"`.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -34,25 +34,24 @@ describe('TriageClassifySection flush Displays', () => {
     assert.match(src, /CLASSIFY_FLUSH_HOST_CLASS/);
     assert.match(src, /cornerClass\('flush'\)/);
     assert.match(src, /className=\{CLASSIFY_FLUSH_HOST_CLASS\}/);
-    assert.doesNotMatch(src, /from ['"]@\/design-system\/components['"]/);
+    assert.match(src, /SearchableSelectField/);
+    assert.match(src, /appearance="flush"/);
     assert.doesNotMatch(src, /<WorkspaceCard/);
     assert.doesNotMatch(src, /variant="glass"/);
     assert.doesNotMatch(src, /rounded-(?:3xl|2xl|xl|lg|md)\b/);
   });
 
-  it('option rows and dimension icon wells use flush corners', () => {
-    // Option radio rows — flush, not rounded-lg.
-    assert.match(
-      src,
-      /flex w-full items-center gap-2\.5 px-2\.5 py-2[\s\S]{0,80}?cornerClass\('flush'\)/,
-    );
-    // Dimension icon well.
+  it('dimensions are flush SearchableSelectField + repair identify well', () => {
+    assert.match(src, /<SearchableSelectField/);
+    assert.match(src, /appearance="flush"/);
+    assert.match(src, /ariaLabel="Urgency"/);
+    assert.match(src, /ariaLabel="Platform"/);
+    assert.match(src, /ariaLabel="Type"/);
+    // Repair identify icon well stays flush.
     assert.match(
       src,
       /grid h-5 w-5 shrink-0 place-items-center[\s\S]{0,80}?cornerClass\('flush'\)/,
     );
-    // Identity face stays pill (INLINE_PILL_ICON_FACE) — not stripped.
-    assert.match(src, /INLINE_PILL_ICON_FACE/);
   });
 
   it('Arrival centre + Unbox Displays mount TriageClassifySection', () => {

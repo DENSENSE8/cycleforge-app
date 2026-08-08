@@ -46,16 +46,21 @@ import {
   buildTestingDisplayTabs,
   type TestingDisplayTab,
 } from './testing-panel/build-testing-displays';
+import { buildTestingDisplayIndexRows } from './testing-panel/testing-display-index';
+import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
+import { TestingDockHost } from './testing-panel/TestingDockHost';
+import { WorksAsListedDockControl } from './testing-panel/WorksAsListedDockControl';
+import { buildNotAsListedIssue } from '@/lib/receiving/seller-claimed-condition';
+import { TESTING_QC_STEP_LABEL } from '@/lib/stations/testing-procedure';
+import { useSellerClaimedCondition } from './testing-panel/useSellerClaimedCondition';
 
 /**
  * Right-pane TESTING display — Unbox SoT anatomy.
  *
  * Centre = ops-flow only: flush PO lines + {@link UnboxLabelPreview} + dock
- * (notes + Pass · Print). Never centre advisory banners — ticket history /
- * claim / exact contextual detail open as Ticket Displays beside the middle
- * ({@link TicketDisplayHost}). Reference tools (Ticket · Pairing · Checklist ·
- * Manuals · Timeline · Linkage) live on Displays push. Operator copy: Open
- * displays / Hide right panel.
+ * ({@link TestingDockHost}: works-as-listed · notes · Pass · Print). Never
+ * centre advisory banners — ticket history / claim / listing verify open as
+ * Displays beside the middle. Operator copy: Open displays / Hide right panel.
  */
 
 export function TestingPanel({
@@ -76,6 +81,7 @@ export function TestingPanel({
     TestingDisplayTab | typeof STATION_DISPLAY_INDEX | null
   >(null);
   const [claimMode, setClaimMode] = useState<ClaimModalMode>('create');
+  const [claimPrefill, setClaimPrefill] = useState<string | null>(null);
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
     requestId: number;
@@ -83,6 +89,20 @@ export function TestingPanel({
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
   const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
+
+  /**
+   * PO line serials-cell / edit click → open the right-edge Units Display
+   * (per-unit verdict — the Action plane), selecting the line first so the
+   * display drills by `receiving_line_id`. Unbox parity (`LineEditPanel`
+   * `onViewAllUnits`). A contextual leaf open — skips the Root Index.
+   */
+  const openUnits = useCallback(
+    (line: ReceivingLineRow) => {
+      if (line.id !== row.id) dispatchSelectLine(line);
+      openDisplays('units');
+    },
+    [row.id, openDisplays],
+  );
   const onOpenClaim = useCallback((mode: ClaimModalMode = 'create') => {
     setClaimMode(mode);
     setActiveSideTab('ticket');
@@ -91,6 +111,11 @@ export function TestingPanel({
   const c = useTestingLineController(row, staffId, { onOpenClaim });
   const { primaryDisabled, primaryLabel, primaryTitle } = useTestingPrimaryAction(c, row);
   const claimTicketId = c.providerTicketId ?? null;
+  const sellerClaimed = useSellerClaimedCondition(row, c.activeSerial);
+
+  useEffect(() => {
+    setClaimPrefill(null);
+  }, [row.id]);
 
   const hasSkuTabs = Boolean(row.sku && row.id != null);
   const skuTestingData = useSkuTestingData(
@@ -167,14 +192,14 @@ export function TestingPanel({
     invalidateReceivingFeeds(qc);
   }, [c, qc, row.id, row.notes, row.receiving_id]);
 
-  // Contextual ticket detail → Displays on line open (history when linked;
-  // claim when already failed). Fail-while-testing uses onOpenClaim. Never a
+  // Line open → Listing reference for works-as-listed, unless Ticket context
+  // wins (linked ticket / already-failed unit — detail outranks). Never a
   // centre "needs attention" strip — SoT: centre = ops-flow only.
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveTestingTicketContextOpen(row, hasTicket);
     setClaimMode(ctx.claimMode);
-    setActiveSideTab(ctx.open ? 'ticket' : null);
+    setActiveSideTab(ctx.open ? 'ticket' : 'listing');
     // Only on carton/line open — do not fight a manual Displays close.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- row.id gate
   }, [row.id]);
@@ -200,6 +225,8 @@ export function TestingPanel({
         trackingForTimeline,
         pairingFocus,
         claimMode,
+        sellerClaimed,
+        claimPrefill,
         onCloseClaim: closeDisplays,
         onCloseTicket: closeDisplays,
         onClaimTicketCreated,
@@ -219,10 +246,36 @@ export function TestingPanel({
       trackingForTimeline,
       pairingFocus,
       claimMode,
+      sellerClaimed,
+      claimPrefill,
       closeDisplays,
       onClaimTicketCreated,
       onClaimTicketUnlinked,
       openFindTicketDisplay,
+    ],
+  );
+
+  const displayIndexRows = useMemo(
+    () =>
+      buildTestingDisplayIndexRows(
+        displayTabs.map((t) => t.id as TestingDisplayTab),
+        {
+          hasTicketId: claimTicketId != null,
+          hasSkuPairing: row.sku_catalog_id != null,
+          hasSkuTabs,
+          hasTimeline: hasTimelineTab,
+          linkagePaired: Boolean(String(row.zoho_purchaseorder_id ?? '').trim()),
+          isUnfound: shouldUseUnmatchedItemsSurface(row),
+          listingLabel: sellerClaimed.label || null,
+        },
+      ),
+    [
+      displayTabs,
+      claimTicketId,
+      row,
+      hasSkuTabs,
+      hasTimelineTab,
+      sellerClaimed.label,
     ],
   );
 
@@ -267,8 +320,31 @@ export function TestingPanel({
     else dispatchSelectLine(null);
   }, [onBackToBrowse]);
 
+  const onAsListed = useCallback(() => {
+    openDisplays('listing');
+    toast.success('Marked as listed — Pass · Print when ready');
+  }, [openDisplays]);
+
+  const onNotAsListed = useCallback(() => {
+    const issue = buildNotAsListedIssue({
+      claimed: sellerClaimed,
+      issueDetail: c.itemNote || c.notes || null,
+    });
+    setClaimPrefill(issue);
+    // Ticket owns claim + seller-message — Listing is reference only.
+    const serial = c.activeSerial;
+    if (serial && row.id > 0) {
+      void c.handleSlotVerdict(row.id, serial, 'TESTING_FAILED');
+    } else {
+      onOpenClaim('create');
+    }
+  }, [sellerClaimed, c, row.id, onOpenClaim]);
+
   const dock = (
-    <div className={slicedActionDockWrapperClass({ docked: false })}>
+    <div
+      className={slicedActionDockWrapperClass({ docked: false })}
+      data-testing-dock-float
+    >
       <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
         {terminalVm?.disabled && terminalVm.disabledReason ? (
           <p
@@ -278,17 +354,42 @@ export function TestingPanel({
             {terminalVm.disabledReason}
           </p>
         ) : null}
-        <WorkspaceNotesCard
-          row={row}
-          c={c}
-          onActionFeedback={() => {}}
-          onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
-          primaryActionDisabled={Boolean(terminalVm?.disabled)}
-          trailingAction={
+        <TestingDockHost
+          leading={
+            <WorksAsListedDockControl
+              onAsListed={onAsListed}
+              onNotAsListed={onNotAsListed}
+              busy={c.isMutating}
+            />
+          }
+          trailing={
             <StationTerminalDock
               embedded
               vm={terminalVm}
               assignedTechId={row.assigned_tech_id}
+            />
+          }
+          stepContext={
+            <span
+              className="inline-flex min-w-0 max-w-[14rem] items-center text-role-micro uppercase leading-none tracking-widest text-text-soft"
+              data-testing-dock-step
+            >
+              {TESTING_QC_STEP_LABEL.works_as_listed}
+              {sellerClaimed.label ? (
+                <span className="ml-1 normal-case tracking-normal text-text-faint">
+                  · sold as {sellerClaimed.label}
+                </span>
+              ) : null}
+            </span>
+          }
+          notes={
+            <WorkspaceNotesCard
+              row={row}
+              c={c}
+              onActionFeedback={() => {}}
+              chrome="bare"
+              onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
+              primaryActionDisabled={Boolean(terminalVm?.disabled)}
             />
           }
         />
@@ -342,6 +443,7 @@ export function TestingPanel({
                     row={row}
                     staffId={staffId}
                     suppressItemsHeader
+                    onViewAllUnits={openUnits}
                   />
                   <UnboxLabelPreview row={row} c={c} />
                 </div>
@@ -365,6 +467,7 @@ export function TestingPanel({
               testId="testing-displays-push"
               resizeTestId="testing-displays-push-resize"
               tabs={displayTabs}
+              indexRows={displayIndexRows}
               activeTab={resolvedSideTab}
               onTabChange={(id) => {
                 if (id === STATION_DISPLAY_INDEX) {

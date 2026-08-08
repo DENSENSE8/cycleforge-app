@@ -1,18 +1,12 @@
 'use client';
 
 /**
- * Pipeline purchasing-source filter — All / Zoho / eBay.
+ * Pipeline purchasing-source filter — All / Zoho / eBay / Amazon / Manual.
  *
  * Lives in the Band-3 search field trailing cluster (`trailingSuffix`, after
- * paste) via {@link WorkbenchFilterPopover} `density="field"`. Replaces the
- * old All / Zoho / eBay TabSwitch facet strip under Pipeline | Docked.
+ * paste) via {@link WorkbenchFilterPopover} `density="field"`.
  *
- * Default is All (`?inbound=` omitted). Zoho / eBay write `?inbound=zoho|ebay`.
- * Only mounts when universal Incoming is on (eBay purchasing wired) — otherwise
- * the org is Zoho-only and a source menu would be empty noise.
- *
- * When source ≠ `all`, callers also render {@link IncomingSourceHotChip}
- * beside the SearchField (floor glanceability).
+ * Default is All (`?inbound=` omitted). Sources write `?inbound=<slug>`.
  */
 
 import { useState } from 'react';
@@ -23,7 +17,7 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 
-export type IncomingSource = 'all' | 'zoho' | 'ebay';
+export type IncomingSource = 'all' | 'zoho' | 'ebay' | 'amazon' | 'manual';
 
 const SOURCE_OPTIONS: Array<{
   id: IncomingSource;
@@ -34,6 +28,8 @@ const SOURCE_OPTIONS: Array<{
   { id: 'all', label: 'All sources' },
   { id: 'zoho', label: 'Zoho' },
   { id: 'ebay', label: 'eBay', platform: 'ebay' },
+  { id: 'amazon', label: 'Amazon', platform: 'amazon' },
+  { id: 'manual', label: 'Manual' },
 ];
 
 function sourceLabel(source: IncomingSource): string {
@@ -91,7 +87,7 @@ export function IncomingSourceFilters({
   );
 }
 
-/** Clearable Zoho / eBay chip beside the Pipeline SearchField when hot. */
+/** Clearable source chip beside the Pipeline SearchField when hot. */
 export function IncomingSourceHotChip({
   source,
   onClear,
@@ -100,7 +96,5 @@ export function IncomingSourceHotChip({
   onClear: () => void;
 }) {
   if (source === 'all') return null;
-  return (
-    <WorkbenchFilterHotChip label={sourceLabel(source)} onClear={onClear} />
-  );
+  return <WorkbenchFilterHotChip label={sourceLabel(source)} onClear={onClear} />;
 }

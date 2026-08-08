@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 /**
  * Inbound desk · Docked lane (former Dashboard inbound / Receiving Board).
  *
- * Docked lives at `/incoming?lane=docked`: Triage · Unbox facets over the
+ * Docked lives at `/incoming?lane=docked`: Arrival · Unbox facets over the
  * receiving activity trail. Load-bearing guarantee: inbound cartons never
  * intermix with outbound order tables. Legacy `/dashboard?mode=inbound`
  * redirects here.
@@ -19,9 +19,9 @@ test.describe('inbound desk docked lane', () => {
 
     await page.goto('/incoming?lane=docked');
 
-    // Lane + Docked secondary: Pipeline | Docked, then Triage | Unbox.
+    // Lane + Docked secondary: Pipeline | Docked, then Arrival | Unbox.
     await expect(page.getByRole('button', { name: 'Docked', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Triage', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Arrival', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Unbox', exact: true })).toBeVisible();
 
     await expect(page.getByPlaceholder(/^Filter /)).toBeVisible();
@@ -37,7 +37,7 @@ test.describe('inbound desk docked lane', () => {
   test('switching a facet writes the sort axis and keeps the default clean', async ({ page }) => {
     await page.goto('/incoming?lane=docked');
 
-    await page.getByRole('button', { name: 'Triage', exact: true }).click();
+    await page.getByRole('button', { name: 'Arrival', exact: true }).click();
     await expect(page).toHaveURL(/sort=scanned_newest/);
     await expect(page).toHaveURL(/lane=docked/);
 
@@ -57,6 +57,6 @@ test.describe('inbound desk docked lane', () => {
   test('outbound domain is unaffected', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('button', { name: 'Packed', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Triage', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Arrival', exact: true })).toHaveCount(0);
   });
 });

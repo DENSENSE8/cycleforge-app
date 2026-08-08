@@ -120,6 +120,19 @@ test.describe('eBay connect — Settings UI', () => {
     await expect(page.getByText('eBay account linked successfully.').first()).toBeVisible();
   });
 
+  test('?success=ebay_buyer_connected shows Incoming next-step CTA', async ({ page }) => {
+    await page.goto('/settings/integrations?success=ebay_buyer_connected');
+    await expect(
+      page.getByText(/Purchasing account linked — open Incoming and run Marketplace refresh/i).first(),
+    ).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Incoming/i }).first()).toBeVisible();
+  });
+
+  test('?success=ebay_seller_connected shows storefront success copy', async ({ page }) => {
+    await page.goto('/settings/integrations?success=ebay_seller_connected');
+    await expect(page.getByText(/Selling account linked — storefront orders/i).first()).toBeVisible();
+  });
+
   test('?error=ebay_oauth_state_expired shows the error banner', async ({ page }) => {
     await page.goto('/settings/integrations?error=ebay_oauth_state_expired');
     await expect(page.getByText('The eBay connection link expired — please retry.').first()).toBeVisible();

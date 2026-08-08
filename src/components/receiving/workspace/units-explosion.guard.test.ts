@@ -98,9 +98,11 @@ test('Units explosion body does not mount Prebox overlay', () => {
   assert.match(PREBOX, /data-prebox-wizard=\{embedded \? ['"]embedded['"]/);
 });
 
-test('Embedded Prebox uses TabDisplay underline + Macro FlushTerminalFooter', () => {
+test('Embedded Prebox uses TabDisplay child segment + Macro FlushTerminalFooter', () => {
   assert.match(PREBOX, /TabDisplay/);
-  assert.match(PREBOX, /appearance="underline"/);
+  // Child mode (One master · One per unit) under Units · Prebox parent —
+  // nested grammar: segment, never underline (parent owns underline).
+  assert.match(PREBOX, /appearance="segment"/);
   assert.match(PREBOX, /One master label/);
   assert.match(PREBOX, /One label per unit/);
   assert.doesNotMatch(
@@ -108,7 +110,7 @@ test('Embedded Prebox uses TabDisplay underline + Macro FlushTerminalFooter', ()
     /ds-raw-button[\s\S]{0,200}One master label/,
     'prebox mode must not be hand-rolled ds-raw-button pills',
   );
-  assert.doesNotMatch(PREBOX, /appearance="segment"/);
+  assert.doesNotMatch(PREBOX, /appearance="underline"/);
   // Embedded path skips the "Create prebox label" header (Units · Prebox names it).
   assert.match(PREBOX, /!embedded \? \(/);
   assert.match(PREBOX, /Create prebox label/);

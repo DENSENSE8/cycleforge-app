@@ -316,7 +316,7 @@ export function IncomingAttachTrackingPopover({
                   <SearchBar
                     value={query}
                     onChange={setQuery}
-                    placeholder="Search PO #, vendor, SKU…"
+                    placeholder="Search purchase order #, vendor, SKU…"
                     variant="blue"
                     size="compact"
                     autoFocus

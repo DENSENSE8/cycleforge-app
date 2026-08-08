@@ -32,7 +32,7 @@ const COPY: Record<Exclude<SendToDeviceState, 'idle'>, string> = {
   peer_active: 'Open on your phone',
   // Names the fix, not just the fault: the overwhelmingly common cause is a
   // phone that is locked, backgrounded, or signed into a different account.
-  timed_out: 'Phone unreachable — open the app and retry',
+  timed_out: 'Phone unreachable',
 };
 
 const TONE: Record<Exclude<SendToDeviceState, 'idle'>, string> = {

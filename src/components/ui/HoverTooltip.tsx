@@ -41,6 +41,7 @@ export function HoverTooltip({
   asChild = false,
   placement = 'auto',
   openDelayMs = 0,
+  disabled = false,
 }: {
   label: ReactNode;
   children: ReactNode;
@@ -66,6 +67,12 @@ export function HoverTooltip({
    * shows immediately — keyboard users are not crossing the trigger.
    */
   openDelayMs?: number;
+  /**
+   * Suppress the bubble without remounting the trigger. Use when a sibling
+   * surface (e.g. a hover peek) owns the hover face — swapping the tooltip
+   * wrapper in/out remounts the child and can drop an in-flight click.
+   */
+  disabled?: boolean;
 }) {
   const triggerRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLSpanElement | null>(null);
@@ -85,6 +92,7 @@ export function HoverTooltip({
   }, []);
 
   const show = useCallback(() => {
+    if (disabled) return;
     // Ignore hidden / detached / off-viewport rects — otherwise the portal can
     // clamp to the viewport's top-left corner and look like a stray label
     // (e.g. SKU chip).
@@ -93,7 +101,7 @@ export function HoverTooltip({
       setAnchor(r);
       setPos(null);
     }
-  }, []);
+  }, [disabled]);
 
   const hide = useCallback(() => {
     clearOpenTimer();
@@ -102,6 +110,7 @@ export function HoverTooltip({
   }, [clearOpenTimer]);
 
   const scheduleShow = useCallback(() => {
+    if (disabled) return;
     clearOpenTimer();
     if (openDelayMs <= 0) {
       show();
@@ -111,7 +120,13 @@ export function HoverTooltip({
       openTimerRef.current = null;
       show();
     }, openDelayMs);
-  }, [clearOpenTimer, openDelayMs, show]);
+  }, [clearOpenTimer, disabled, openDelayMs, show]);
+
+  // Tear down immediately when a sibling surface takes the hover face — do not
+  // wait for mouseleave (the pointer often stays on the still-mounted trigger).
+  useEffect(() => {
+    if (disabled) hide();
+  }, [disabled, hide]);
 
   useLayoutEffect(() => {
     if (!anchor || !bubbleRef.current) return;

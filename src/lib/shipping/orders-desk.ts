@@ -81,7 +81,7 @@ export function shippingOrdersHref(opts?: {
 
 /**
  * True when `/dashboard` should 308 to the To-ship desk.
- * Sales (`?mode=sales|pickup`) and inbound redirects stay on other doors.
+ * Sales (`?mode=sales|pickup|repairs`) and inbound redirects stay on other doors.
  */
 export function isDashboardOutboundOrdersUrl(
   pathname: string,
@@ -94,6 +94,7 @@ export function isDashboardOutboundOrdersUrl(
   if (
     mode === 'sales' ||
     mode === 'pickup' ||
+    mode === 'repairs' ||
     mode === 'inbound' ||
     mode === 'receiving' ||
     mode === 'search'

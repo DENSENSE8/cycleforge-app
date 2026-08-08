@@ -28,7 +28,9 @@
  * grid owns its own Y scroll (`display/workbench.md` → Sticky docking).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -40,6 +42,10 @@ import {
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { cn } from '@/utils/_cn';
+import {
+  resolveOptimisticParam,
+  shouldClearOptimisticParam,
+} from '@/lib/routing/optimistic-url-param';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 import { CatalogLinkFormRail, ImportExceptionFormRail } from './CatalogLinkFormRail';
 import type { RailQueuePosition } from './CatalogLinkFormRail';
@@ -50,6 +56,17 @@ import {
 } from './grid/import-exception-grid-layout';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
+
+type CatalogSel = { choreId: number | null; exceptionId: number | null };
+
+function catalogSelEquals(a: CatalogSel, b: CatalogSel): boolean {
+  return a.choreId === b.choreId && a.exceptionId === b.exceptionId;
+}
+
+function parsePositiveId(raw: string | null): number | null {
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
 
 type CatalogLinkSection = 'catalog-link' | 'missing-item-number';
 
@@ -87,9 +104,28 @@ export function ReviewCatalogLinkTable() {
   const queryClient = useQueryClient();
   const searchQuery = String(searchParams.get('search') || '').trim();
   const section = parseSection(searchParams.get('section'));
-  const selectedChoreId = Number(searchParams.get('choreId')) || null;
-  const selectedExceptionId = Number(searchParams.get('exceptionId')) || null;
+  const urlSel = useMemo<CatalogSel>(
+    () => ({
+      choreId: parsePositiveId(searchParams.get('choreId')),
+      exceptionId: parsePositiveId(searchParams.get('exceptionId')),
+    }),
+    [searchParams],
+  );
+  const [pendingSel, setPendingSel] = useState<CatalogSel | undefined>(undefined);
+  useEffect(() => {
+    if (shouldClearOptimisticParam(urlSel, pendingSel, catalogSelEquals)) {
+      setPendingSel(undefined);
+    }
+  }, [urlSel, pendingSel]);
+  const sel = resolveOptimisticParam(urlSel, pendingSel);
+  const selectedChoreId = sel.choreId;
+  const selectedExceptionId = sel.exceptionId;
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  // Listing-match / import-exception rows both open a desk peek on the right
+  // edge — Band 3's Show / Hide inspector parks whichever is showing.
+  const linkFormOpen = useRightRailOccupantOpen('detail:catalog-link');
+  const importExceptionOpen = useRightRailOccupantOpen('detail:import-exception');
+  const linkInspectorOpen = linkFormOpen || importExceptionOpen;
 
   const choresQuery = useQuery({
     queryKey: ['review-catalog-link', searchQuery],
@@ -112,18 +148,21 @@ export function ReviewCatalogLinkTable() {
   const selectedException = exceptionIndex >= 0 ? exceptionItems[exceptionIndex] : null;
 
   const setParam = useCallback(
-    (mutate: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
-      mutate(params);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    (nextSel: CatalogSel | null, mutate: (params: URLSearchParams) => void) => {
+      if (nextSel) setPendingSel(nextSel);
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        mutate(params);
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      });
     },
     [pathname, router, searchParams],
   );
 
   const setSection = useCallback(
     (next: string) => {
-      setParam((params) => {
+      setParam({ choreId: null, exceptionId: null }, (params) => {
         if (next === 'catalog-link') params.delete('section');
         else params.set('section', next);
         params.delete('choreId');
@@ -141,7 +180,7 @@ export function ReviewCatalogLinkTable() {
 
   const openChore = useCallback(
     (id: number) =>
-      setParam((params) => {
+      setParam({ choreId: id, exceptionId: null }, (params) => {
         params.set('choreId', String(id));
         params.delete('exceptionId');
       }),
@@ -150,7 +189,7 @@ export function ReviewCatalogLinkTable() {
 
   const openException = useCallback(
     (id: number) =>
-      setParam((params) => {
+      setParam({ choreId: null, exceptionId: id }, (params) => {
         params.set('exceptionId', String(id));
         params.delete('choreId');
       }),
@@ -159,7 +198,7 @@ export function ReviewCatalogLinkTable() {
 
   const clearSelection = useCallback(
     () =>
-      setParam((params) => {
+      setParam({ choreId: null, exceptionId: null }, (params) => {
         params.delete('choreId');
         params.delete('exceptionId');
       }),
@@ -168,7 +207,7 @@ export function ReviewCatalogLinkTable() {
 
   const setSearch = useCallback(
     (next: string) =>
-      setParam((params) => {
+      setParam({ choreId: null, exceptionId: null }, (params) => {
         const trimmed = next.trim();
         if (trimmed) params.set('search', trimmed);
         else params.delete('search');
@@ -250,7 +289,13 @@ export function ReviewCatalogLinkTable() {
                   value={searchQuery}
                   onChange={setSearch}
                   placeholder={isChoreTab ? 'Filter listings…' : 'Filter orders…'}
-                  className="w-40 shrink-0 lg:w-56"
+                  className="min-w-0 flex-1"
+                />
+              }
+              trailing={
+                <WorkbenchInspectorToggle
+                  open={linkInspectorOpen}
+                  testId="catalog-link-inspector-toggle"
                 />
               }
             />

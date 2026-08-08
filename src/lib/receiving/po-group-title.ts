@@ -6,6 +6,11 @@
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
+/** DB / wire sentinel for an unmatched carton line — never paint this raw. */
+export const UNFOUND_PO_SENTINEL = 'Unfound PO';
+/** Operator face for {@link UNFOUND_PO_SENTINEL}. */
+export const UNFOUND_PO_DISPLAY = 'Unfound order';
+
 export interface ReceivingPoIdentityParts {
   poValue: string;
   idPrefix: 'PO' | 'Order';
@@ -25,16 +30,23 @@ export function getReceivingPoIdentityParts(
   resolvePlatformLabel: (raw: string) => string,
 ): ReceivingPoIdentityParts {
   const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
+  const platformRaw = (row.source_platform || inboundSource || '').trim().toLowerCase();
   const isMarketplacePurchase = inboundSource !== '' && inboundSource !== 'zoho';
+  // Ecwid repair-service / store pairing writes the order # into
+  // zoho_purchaseorder_number with source_platform='ecwid' and no Zoho PO id —
+  // that must read as Order, not PO (repair-service identify display contract).
+  const isEcwidOrderIdentity =
+    platformRaw === 'ecwid' && !(row.zoho_purchaseorder_id || '').trim();
   const poValue = (
     row.zoho_purchaseorder_number ||
     row.zoho_purchaseorder_id ||
-    (isMarketplacePurchase ? row.source_order_id : '') ||
+    (isMarketplacePurchase || isEcwidOrderIdentity ? row.source_order_id : '') ||
     ''
   ).trim();
   const idPrefix: 'PO' | 'Order' =
-    !row.zoho_purchaseorder_id && isMarketplacePurchase ? 'Order' : 'PO';
-  const platformRaw = (row.source_platform || inboundSource || '').trim().toLowerCase();
+    !row.zoho_purchaseorder_id && (isMarketplacePurchase || isEcwidOrderIdentity)
+      ? 'Order'
+      : 'PO';
   const platformLabel = platformRaw ? resolvePlatformLabel(platformRaw) : '';
   const accountLabel = (row.platform_account_label || '').trim();
   return { poValue, idPrefix, platformLabel, accountLabel };
@@ -59,7 +71,7 @@ export function getReceivingPoGroupTitle(
 /** True when the row should read as a matched PO/order identity, not a product line. */
 export function isReceivingPoGroupTitleRow(row: ReceivingLineRow): boolean {
   if (row.receiving_source === 'unmatched') return false;
-  if ((row.item_name || '').trim() === 'Unfound PO') return false;
+  if ((row.item_name || '').trim() === UNFOUND_PO_SENTINEL) return false;
   const { poValue } = getReceivingPoIdentityParts(row, () => '');
   return poValue.length > 0;
 }
@@ -160,14 +172,14 @@ export function stampCartonRailTitleContext(
 
 /** Operator-recognition product title — aligned with mobile `unitTitle`. */
 export function receivingProductTitle(row: ReceivingLineRow): string {
-  return (
+  const raw =
     row.catalog_product_title ||
     row.zoho_item_title ||
     row.item_name ||
     row.sku ||
     row.zoho_item_id ||
-    `Line #${row.id}`
-  );
+    `Line #${row.id}`;
+  return raw === UNFOUND_PO_SENTINEL ? UNFOUND_PO_DISPLAY : raw;
 }
 
 /**
@@ -236,5 +248,7 @@ export function receivingRailRowTitle(
   if (rowTitleMode === 'line') {
     return receivingProductTitle(row);
   }
-  return row.item_name || row.sku || row.zoho_item_id || `Line #${row.id}`;
+  // Unmatched / thin rows fall through here — still paint the operator face,
+  // never the raw DB sentinel.
+  return receivingProductTitle(row);
 }

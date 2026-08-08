@@ -77,7 +77,7 @@ function MobileArrivalStationInner() {
 
   return (
     <div className={`relative flex h-full min-h-0 flex-col ${TOKENS.colors.background}`}>
-      <div className="min-h-0 flex-1 pb-10">
+      <div className="min-h-0 flex-1 pb-9">
         <MobileReceivingList limit={25} surface="triage" />
       </div>
 

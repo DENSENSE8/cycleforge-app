@@ -5,10 +5,14 @@ import { test, expect, type Page } from '@playwright/test';
  * from the **Band-3 resident column-display (▦) trigger** beside filter / week
  * on workbench desks that have a `WorkbenchTriageBand`.
  *
- * Placement (2026-08-06): Band-3 portal is the norm for every table with a
- * triage band. Card-corner hover-reveal remains only for surfaces with no
- * Band-3 (Scan-out, Warranty, Unfound, Tracking-exceptions). This spec drives
- * standalone `/receiving/history`, which portals ▦ into `HistoryTriageBand`.
+ * Placement (2026-08-06, tightened 2026-08-08): ▦ is **portal-or-nothing**.
+ * Two hosts — the Band-3 controls slot (the norm) and the inspector View
+ * cluster (Unbox · To-ship). A surface with neither paints no trigger: the
+ * card-corner hover-reveal float is DELETED, so Scan-out / Warranty / Unfound /
+ * Tracking-exceptions now owe a host (tracked in the shrink-only
+ * NO_COLUMN_DISPLAY_HOST ledger in `workbench-trailing-cluster.guard.test.ts`).
+ * This spec drives standalone `/receiving/history`, which portals ▦ into
+ * `HistoryTriageBand`.
  *
  * It is the SOLE entry as of 2026-08-02: the chrome `GridFieldsMenu` that used
  * to open a second door onto this same rail was deleted, because Fields mutates
@@ -130,13 +134,14 @@ test.describe('Grid column fields — Band-3 resident column display', () => {
   });
 
   /**
-   * Band-3 portal norm: ▦ is resident beside refine icons — no card-corner
-   * hover, no opacity-0 at rest. HistoryTriageBand owns the paint host.
+   * Band-3 portal norm: ▦ is resident beside refine icons. The card-corner
+   * float it replaced was deleted outright on 2026-08-08, so there is no
+   * hover-revealed variant left anywhere. HistoryTriageBand owns the paint host.
    */
   test('column display is resident in Band-3 without hovering the card', async ({ page }) => {
     await page.mouse.move(0, 0);
     await expect(trigger(page)).toBeVisible();
-    // Not the retired card-corner float (absolute + opacity-0 until hover).
+    // Not the deleted card-corner float (absolute + opacity-0 until hover).
     const host = page.locator('[data-grid-column-details-trigger]');
     await expect(host).not.toHaveCSS('opacity', '0');
   });

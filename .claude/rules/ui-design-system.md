@@ -104,9 +104,13 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
       1. **`/ops/photos` (Media Library)** — always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket).
       2. **`/search`** — cross-entity find; **`GlobalHeaderSearch`** is the sole
          entry field (synced to `?q=`). Typing / resolving here *is* the job —
-         the header paints `SearchPendingBar` while resolve/retrieve runs.
-         Multi-hit browse is full-bleed `SearchBrowseShell` under the header
-         (no locked-width stage field, no context rail).
+         the header `SearchPendingBar` is the **only** pending chrome while
+         resolve/retrieve runs. The body must not invent “Opening…” / idle-teach
+         placeholders — with no `?q=` the body is **blank** (Amazon-like; the
+         auto-focused header field is the search surface), and it never paints a
+         “Search everything” empty state. Multi-hit browse is full-bleed
+         `SearchBrowseShell` under the header (no locked-width stage field, no
+         context rail).
   - **Display sort chrome:** quiet trailing dropdown (current value + caret), **left of Import** when present — never a solid `TabSwitch` beside search. SoT: `QueueSortSwitch` / Labels trailing sort. Rule: `.cursor/rules/workbench-sort-chrome.mdc`.
 - **Monitor (`rollup`):** vertical scroll shell + **named rollup zones** may use responsive CSS grid (`KpiStrip`, tri-panel of `SectionCard`s). Compose `@/design-system/components/monitor` — see [display/monitor-rollup-blocks.md](display/monitor-rollup-blocks.md).
 - **Canvas (`studio`):** spatial graph layout; inspector is secondary detail, not a second graph.
@@ -204,6 +208,11 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
   - Title: `truncate text-role-caption font-semibold text-text-default`.
   - Meta: `truncate text-role-eyebrow uppercase tracking-widest text-text-soft` (the role bakes 600 + condensed).
   - Title vs meta separate by **color and case**, not by weight — both sit at 600 (see the weight cap below).
+- **Ops activity feeds** (station recent rails · GlobalHeader inbox) compose the compact
+  activity face — `CompactActivityRow` + `RailRowBody`: status **dot** · title · **one** fact
+  (qty / state) · short age (`formatLaneAgeCompact` → `4h`). Never a chat-notification twin
+  (large kind glyph · `4 hrs ago` · chip/pill parade). Distinct from `StackedRowIdentity`
+  (title → typed `CopyChip` keys). Detail + guard: `source-of-truth.md` → Compact activity row.
 - **Queue/station left edge — list & accordion rows only** (`QUEUE_ROW` in
   `src/components/ui/queue-row-chrome.ts` + `META_COL` in `RowMetaColumns.tsx`):
   - Stack: `QUEUE_ROW.px` → optional select gutter (`QUEUE_ROW.selectGutter`) → `META_COL` dot track → title.
@@ -232,19 +241,24 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
 
 ## Conversation & message rows
 
-There was no house law for a message row until 2026-08-02, and that vacuum is
-exactly why a chat template filled it (the support ticket thread shipped bubbles).
+**Discriminator: read vs select.** The row shell follows the job, not a single
+universal ban. Both shells share one waist (`MergedRecordStream` over
+`TimelineItem` adapters + `DateGroupHeader` + `renderBlockMarkdown`) — never a
+third chat renderer (`SupportChatThread` stays deleted).
 
-- **Tone is information, never decoration.** Direction (inbound / outbound) is the
-  leading mark's identity — an avatar, a station glyph — not a bubble fill. A
-  surface where twenty messages share one accent fill is spending its only free
-  signalling channel on saying "this is a chat".
-- **Backgrounds default to transparent.** Internal / not-emailed notes may tint
-  with `bg-surface-sunken`, paired with a label **in the row**, so the state
-  survives for a colour-blind operator.
-- **One shared left reading edge.** Ragged variable-width blobs are banned; they
-  destroy the scan speed a dense list exists to buy. Prove it by measuring —
-  every row's `getBoundingClientRect().left` must resolve to ONE value.
+- **Select / scan (ledger)** — dense triage queues and selectable streams
+  (`variant="ledger"`, default, including `/support`). Flat rows on **one shared
+  left reading edge** (`divide-y divide-border-hairline`). Direction (inbound /
+  outbound) is the leading mark's identity — an avatar, a station glyph — **not**
+  a bubble fill. Backgrounds default to transparent; internal notes may tint with
+  `bg-surface-sunken` **and** say so in words on the row. Prove the shared edge by
+  measuring — every row's `getBoundingClientRect().left` must resolve to ONE value.
+- **Read + reply (bubble)** — station Ticket Displays (`streamVariant="bubble"` /
+  `variant="bubble"`). The job is prose top-to-bottom then answer; inbound vs
+  outbound is distinguished by the bubble shell (house tokens — soft fill/border,
+  capped width — never the deleted-thread `bg-blue-600 text-white` look). Internal
+  still labels in words. Composer + stream share `DISPLAYS_BODY_INSET` (`px-4`);
+  the Displays host stays flush.
 - **Day banding is required** for any thread spanning >24h — compose
   `DateGroupHeader`, never a second one.
 - **No per-row redundancy.** A chip repeated on every row (`PUBLIC`, the author on

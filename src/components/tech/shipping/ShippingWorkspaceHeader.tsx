@@ -123,10 +123,13 @@ export function ShippingTriageBand({
               ? 'Search all triage…'
               : 'Filter orders…'
         }
-        className="w-40 shrink-0 lg:w-56"
+        className="min-w-0 flex-1"
       />
     ) : null;
 
+  // Queue lane toggles stay in the right zone — a compound Urgent + Filters
+  // cluster, not a single field-density glyph. History has no find field at all
+  // (honest absence), so its staff facet has no in-field slot to move into.
   const right =
     queueTab ? (
       <OutboundExactFilters mode="unshipped" />

@@ -8,7 +8,7 @@
  * Catalog link: `?choreId=`. Missing item number: `?section=missing-item-number&exceptionId=`.
  */
 
-import { useCallback, useMemo } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -29,59 +29,108 @@ import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
 import { parseReviewMode } from '@/features/review/review-mode';
 import type { ShippedOrder } from '@/types/orders';
 import { useQuery } from '@tanstack/react-query';
+import {
+  resolveOptimisticParam,
+  shouldClearOptimisticParam,
+} from '@/lib/routing/optimistic-url-param';
+
+type ReviewOpenSnap = {
+  packerLogId: number | null;
+  orderId: number | null;
+};
+
+function reviewOpenEquals(a: ReviewOpenSnap, b: ReviewOpenSnap): boolean {
+  return a.packerLogId === b.packerLogId && a.orderId === b.orderId;
+}
+
+function parsePositiveId(raw: string | null): number | null {
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
 
 export function ReviewWorkspace() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const mode = parseReviewMode(searchParams.get('mode'));
-  const packerLogId = Number(searchParams.get('packerLogId')) || null;
-  const orderId = Number(searchParams.get('orderId')) || null;
+  const urlOpen = useMemo<ReviewOpenSnap>(
+    () => ({
+      packerLogId: parsePositiveId(searchParams.get('packerLogId')),
+      orderId: parsePositiveId(searchParams.get('orderId')),
+    }),
+    [searchParams],
+  );
+
+  const [pendingOpen, setPendingOpen] = useState<ReviewOpenSnap | undefined>(undefined);
+  useEffect(() => {
+    if (shouldClearOptimisticParam(urlOpen, pendingOpen, reviewOpenEquals)) {
+      setPendingOpen(undefined);
+    }
+  }, [urlOpen, pendingOpen]);
+
+  const openSnap = resolveOptimisticParam(urlOpen, pendingOpen);
+  const packerLogId = openSnap.packerLogId;
+  const orderId = openSnap.orderId;
 
   const paneMotionProps = {
     ...useMotionPresence(framerPresence.workbenchPaneSettle),
     transition: useMotionTransition(framerTransition.workbenchPaneSettle),
   };
 
-  const clearSelection = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('packerLogId');
-    params.delete('orderId');
-    params.delete('choreId');
-    params.delete('exceptionId');
-    params.delete('section');
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [pathname, router, searchParams]);
-
-  const openPackingRow = useCallback(
-    (order: ReviewTableOrder) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const pl = Number(order.packer_log_id);
-      if (Number.isFinite(pl) && pl > 0) params.set('packerLogId', String(pl));
-      else params.delete('packerLogId');
-      const oid = Number(order.id);
-      if (Number.isFinite(oid) && oid > 0) params.set('orderId', String(oid));
-      else params.delete('orderId');
-      params.delete('choreId');
-      params.delete('exceptionId');
-      params.delete('section');
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  const replaceWithPaint = useCallback(
+    (next: ReviewOpenSnap, mutate: (params: URLSearchParams) => void) => {
+      setPendingOpen(next);
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        mutate(params);
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      });
     },
     [pathname, router, searchParams],
   );
 
-  const openPairingOrder = useCallback(
-    (order: ShippedOrder) => {
-      const params = new URLSearchParams(searchParams.toString());
+  const clearSelection = useCallback(() => {
+    replaceWithPaint({ packerLogId: null, orderId: null }, (params) => {
       params.delete('packerLogId');
+      params.delete('orderId');
       params.delete('choreId');
       params.delete('exceptionId');
       params.delete('section');
-      params.set('orderId', String(order.id));
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }, [replaceWithPaint]);
+
+  const openPackingRow = useCallback(
+    (order: ReviewTableOrder) => {
+      const pl = Number(order.packer_log_id);
+      const nextPl = Number.isFinite(pl) && pl > 0 ? pl : null;
+      const oid = Number(order.id);
+      const nextOid = Number.isFinite(oid) && oid > 0 ? oid : null;
+      replaceWithPaint({ packerLogId: nextPl, orderId: nextOid }, (params) => {
+        if (nextPl != null) params.set('packerLogId', String(nextPl));
+        else params.delete('packerLogId');
+        if (nextOid != null) params.set('orderId', String(nextOid));
+        else params.delete('orderId');
+        params.delete('choreId');
+        params.delete('exceptionId');
+        params.delete('section');
+      });
     },
-    [pathname, router, searchParams],
+    [replaceWithPaint],
+  );
+
+  const openPairingOrder = useCallback(
+    (order: ShippedOrder) => {
+      const nextOid = Number(order.id);
+      replaceWithPaint({ packerLogId: null, orderId: nextOid }, (params) => {
+        params.delete('packerLogId');
+        params.delete('choreId');
+        params.delete('exceptionId');
+        params.delete('section');
+        params.set('orderId', String(order.id));
+      });
+    },
+    [replaceWithPaint],
   );
 
   const packingOpen = mode === 'packer' && (packerLogId != null || orderId != null);

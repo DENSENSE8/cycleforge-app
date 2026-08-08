@@ -21,6 +21,10 @@ import {
   NOTE_UNIT_PRICE_BTN,
   parseZendeskTicketId,
 } from '../note-composer-helpers';
+import type {
+  SaveOverallNoteOptions,
+  SaveOverallNoteResult,
+} from './hooks/useSyncedPoNote';
 
 /**
  * Item-note composer — the operator's durable note on this line
@@ -80,7 +84,10 @@ export function LineNotesCard({
   /** Persist the note to `receiving_line.notes`. Returns true if it saved. */
   onSaveNotes: () => boolean;
   /** Append the note into the carton's synced PO note (external push). */
-  onSaveOverallNote: (text: string) => void | Promise<void>;
+  onSaveOverallNote: (
+    text: string,
+    opts?: SaveOverallNoteOptions,
+  ) => void | Promise<void | SaveOverallNoteResult>;
   /** Show the push-to-PO button — matched cartons only (unfound has no PO). */
   showSyncToPo?: boolean;
   /** Pass-through to OmnichannelComposerDock mount motion. */

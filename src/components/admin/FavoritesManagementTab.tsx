@@ -20,7 +20,7 @@ import { cn } from '@/utils/_cn';
 const WORKSPACES = [
   { key: 'repair', label: 'Repair' },
   { key: 'sku-stock', label: 'SKU Stock' },
-  { key: 'fba', label: 'FBA' },
+  { key: 'fba', label: 'Amazon Prep' },
 ] as const;
 
 type WorkspaceKey = (typeof WORKSPACES)[number]['key'];

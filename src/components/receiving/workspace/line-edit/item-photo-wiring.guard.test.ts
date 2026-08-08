@@ -110,6 +110,18 @@ test('photoStage is required at the component, never defaulted', () => {
   );
 });
 
+test('gallery peek disables HoverTooltip — never unwraps the pill mid-press', () => {
+  const source = readFileSync(
+    fileURLToPath(new URL('./ReceivingPhotoButton.tsx', import.meta.url)),
+    'utf8',
+  );
+  const src = code(source);
+  // Same remount class as SidebarCollapseControl: branching HoverTooltip on
+  // showGalleryPeek remounted the pill between mousedown and mouseup.
+  assert.match(src, /disabled=\{showGalleryPeek\}/);
+  assert.doesNotMatch(src, /showGalleryPeek\s*\?\s*\(?\s*pillButton/);
+});
+
 test('every mount threads the stage explicitly', () => {
   for (const m of MOUNTS) {
     assert.ok(has(m, 'photoStage'), `${m.file}: mount must pass photoStage explicitly`);

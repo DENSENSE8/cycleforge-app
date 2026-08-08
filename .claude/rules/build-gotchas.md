@@ -34,6 +34,11 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
 - Prefer already-generated shades. If you must add a class in a new path, update `@source`
   in `src/app/globals.css` (keep `content` in `tailwind.config.ts` in parity) and
   **restart the dev server**.
+- **v4 auto-detect still scans the repo** (except gitignored paths). Truncated Tailwind
+  arbitrary classes in markdown (ellipsis placeholders inside `pb-[max(…)]`-style fences)
+  get emitted as invalid CSS and Lightning CSS fails the build. `globals.css` excludes
+  `docs/` and `.claude/` via `@source not`; never paste ellipsis placeholders inside
+  backtick class fences in those trees.
 
 ## Motion stack: one package, one import path
 

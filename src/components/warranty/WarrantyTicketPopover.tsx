@@ -188,12 +188,12 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
             </span>
           )}
           {ticketQuery.data?.ticketUrl && (
-            <HoverTooltip label="Open in Zendesk" asChild>
+            <HoverTooltip label="Open in helpdesk" asChild>
               <a
                 href={ticketQuery.data.ticketUrl}
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Open in Zendesk"
+                aria-label="Open in helpdesk"
                 className="rounded-md p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
               >
                 <ExternalLink className="h-3.5 w-3.5" />

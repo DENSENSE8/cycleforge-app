@@ -1,17 +1,17 @@
 'use client';
 
 /**
- * Sales hub — front-desk history surface: Local Pickup · Sales (dashboard L2
- * modes `?mode=pickup|sales`, per-mode tabs that swap between genuinely separate
- * tables). Mounted by {@link DashboardSalesView} on `/dashboard`; `/walk-in`
- * redirects there. Repair graduated to Receiving `/repair`.
+ * Sales hub — front-desk history surface: Local Pickup · Sales · Repairs
+ * (dashboard L2 modes `?mode=pickup|sales|repairs`). Mounted by
+ * {@link DashboardSalesView} on `/dashboard`; `/walk-in` redirects there.
  *
  * Region contracts (contextual-display.md): Pickup/Sales are **Monitor** (read
- * feeds). Repair Workbench lives on `/repair`, not here.
+ * feeds). Repairs composes the shared {@link RepairTable} workbench as the
+ * **history door** — Scan Stations `/repair` remains the intake/task door.
  *
- * Layout is the Sheets flush stack (workbench-shell.tsx): pinned flush
- * `WalkInDeskHeader` (Band 1 tabs) above the mode feed, which mounts flush in
- * `WORKBENCH_SHEET_HOST` (Band 2 KPI + feed live in `WalkInFeedPane`).
+ * Layout for Sales/Pickup is the Sheets flush stack: pinned flush
+ * `WalkInDeskHeader` (Band 1 tabs) above the mode feed. Repairs skips that
+ * header — `RepairTable` owns `RepairWorkspaceHeader` / triage.
  */
 
 import { useCallback } from 'react';
@@ -22,10 +22,12 @@ import { WORKBENCH_SHEET_CHROME } from '@/components/dashboard/workbench-shell';
 import { WalkInDeskHeader } from '@/components/walk-in/WalkInDeskHeader';
 import { SalesHistoryTable } from '@/components/walk-in/SalesHistoryTable';
 import {
+  DEFAULT_SALES_REPAIR_TAB,
   PICKUP_TAB_ITEMS,
   SALES_TAB_ITEMS,
   defaultTabForMode,
   parsePickupTab,
+  parseRepairTab,
   parseSalesTab,
   parseWalkInHistoryMode,
   type WalkInHistoryMode,
@@ -43,13 +45,18 @@ const PickupOrdersTable = dynamic(
   { ssr: false, loading: TableFallback },
 );
 
+const RepairTable = dynamic(
+  () => import('@/components/repair/RepairTable').then((m) => m.RepairTable),
+  { ssr: false, loading: TableFallback },
+);
+
 function tabItemsForMode(mode: WalkInHistoryMode): WalkInModeTab[] {
   if (mode === 'pickup') return PICKUP_TAB_ITEMS;
   return SALES_TAB_ITEMS;
 }
 
-/** The station job to open from the header for the active mode. */
-const MODE_JOB: Record<WalkInHistoryMode, WalkInJob> = {
+/** The station job to open from the header for Sales / Pickup modes. */
+const MODE_JOB: Record<'pickup' | 'sales', WalkInJob> = {
   pickup: 'pickup',
   sales: 'sales',
 };
@@ -61,27 +68,35 @@ export function WalkInHistoryHub() {
 
   const mode = parseWalkInHistoryMode(searchParams.get('mode'));
   const tabRaw = searchParams.get('tab');
-  const tabItems = tabItemsForMode(mode);
-
-  // The active tab, validated per mode (default falls through to the mode default).
+  const isRepairs = mode === 'repairs';
+  const feedMode: 'pickup' | 'sales' = mode === 'pickup' ? 'pickup' : 'sales';
+  const tabItems = tabItemsForMode(feedMode);
   const activeTab =
-    mode === 'pickup' ? parsePickupTab(tabRaw) : parseSalesTab(tabRaw);
+    feedMode === 'pickup' ? parsePickupTab(tabRaw) : parseSalesTab(tabRaw);
 
   const setTab = useCallback(
     (next: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (next === defaultTabForMode(mode)) params.delete('tab');
+      if (next === defaultTabForMode(feedMode)) params.delete('tab');
       else params.set('tab', next);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
-    [mode, pathname, router, searchParams],
+    [feedMode, pathname, router, searchParams],
   );
 
   const openStation = useCallback(() => {
-    const job = MODE_JOB[mode];
-    router.push(walkInStationHref(job));
-  }, [mode, router]);
+    router.push(walkInStationHref(MODE_JOB[feedMode]));
+  }, [feedMode, router]);
+
+  // Repairs: RepairTable owns its chrome — no WalkInDeskHeader double band.
+  if (isRepairs) {
+    return (
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+        <RepairTable filter={parseRepairTab(tabRaw, DEFAULT_SALES_REPAIR_TAB)} />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
@@ -98,7 +113,7 @@ export function WalkInHistoryHub() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {mode === 'pickup' ? (
+        {feedMode === 'pickup' ? (
           <PickupOrdersTable tab={parsePickupTab(tabRaw)} />
         ) : (
           <SalesHistoryTable tab={parseSalesTab(tabRaw)} />

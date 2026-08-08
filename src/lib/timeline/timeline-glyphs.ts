@@ -48,13 +48,13 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
   THREAD_MESSAGE: { id: 'thread-message', tooltip: 'Message' },
 
   // SAL / packing / shipping
-  FNSKU_SCANNED: { id: 'tracking-scan', tooltip: 'FNSKU scan' },
+  FNSKU_SCANNED: { id: 'tracking-scan', tooltip: 'Amazon SKU scan' },
   SERIAL_ADDED: { id: 'receiving', tooltip: 'Receiving' },
   PACK_COMPLETED: { id: 'packing', tooltip: 'Packing' },
   PACK_SCAN: { id: 'packing', tooltip: 'Packing' },
   PACK_SHIPPED: { id: 'shipping', tooltip: 'Shipping' },
   SHIP_CONFIRM: { id: 'shipping', tooltip: 'Shipping' },
-  FBA_READY: { id: 'fba', tooltip: 'FBA' },
+  FBA_READY: { id: 'fba', tooltip: 'Amazon Prep' },
   LABEL_PRINTED: { id: 'labeling', tooltip: 'Labels' },
   'orders.label.printed': { id: 'labeling', tooltip: 'Labels' },
   'orders.tracking.added': { id: 'tracking-scan', tooltip: 'Tracking scan' },

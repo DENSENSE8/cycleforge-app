@@ -4,14 +4,14 @@
  * `pattern-evolution.md` Always #6: a rules file cannot fail, so the law lands
  * with a guard, not only prose.
  *
- * Arrival carve-out (2026-08-06): the CENTRE is the door flow — identity +
- * Unbox-parity PO / unfound items (`POUnboxingSection`) + Classify + Staging
- * stacked under items + dock. Pairing/Linkage is the right-edge **Displays**
- * push (`ReceivingDisplaysPushStack` / `UnboxPushColumn`), never a centre
- * `SectionTabsSlider` strip and never a `RightRailHost` occupant. Unbox
- * (`LineEditPanel`) remains the golden for the host; Classify stays on Unbox
- * Displays. See `.claude/rules/source-of-truth.md` → Scan-station centre lines
- * display.
+ * Arrival carve-out (2026-08-06): the CENTRE is one white door-flow plane
+ * (`DISPLAYS_FLUSH_HOST` + chrome) — identity + PO / unfound items **without
+ * units chrome** + Classify + Staging stacked + dock. Pairing/Linkage is the
+ * right-edge **Displays** push (`ReceivingDisplaysPushStack` /
+ * `UnboxPushColumn`), never a centre `SectionTabsSlider` strip and never a
+ * `RightRailHost` occupant. Unbox (`LineEditPanel`) remains the golden for
+ * the host; Classify stays on Unbox Displays. See
+ * `.claude/rules/source-of-truth.md` → Scan-station centre lines display.
  *
  * The `# ----` PO chip opens the Linkage display and hands the PO avenue over
  * as DATA (`setPairingFocus`), like Unbox.
@@ -69,6 +69,11 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
       /DisplaysPushStack/,
       'Arrival must mount the shared Displays push stack (ReceivingDisplaysPushStack / the Phase B host), never a RightRailHost `detail:*` occupant',
     );
+    assert.doesNotMatch(
+      panel,
+      /StationActionDossierShell/,
+      'Action densify lives in station/displays leaf hosts — Arrival panel must not fork it',
+    );
   });
 
   it('the CENTRE mounts the PO / unfound line surface', () => {
@@ -103,23 +108,48 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
     assert.doesNotMatch(displays, /StagingSection/);
   });
 
-  it('items use Unbox-parity editLines + serialScan (interactive unfound surface)', () => {
+  it('items keep editLines but hide units chrome (no condition · serial / Units)', () => {
     assert.match(panel, /\beditLines\b/);
-    assert.match(panel, /\bserialScan\b/);
     assert.doesNotMatch(
       panel,
       /editLines=\{false\}/,
-      'Arrival must not keep a read-only items floor — unfound needs UnmatchedAccordionSurface parity with Unbox',
+      'Arrival keeps interactive unfound lines — unit capture is what stays off',
     );
-    assert.doesNotMatch(
+    assert.match(
       panel,
       /serialScan=\{false\}/,
-      'Arrival must not hide ReturnScanCard / active-row editors on unfound',
+      'Arrival must not mount the SERIAL editor / ReturnScanCard — units stay Unbox',
+    );
+    assert.match(
+      panel,
+      /unitsChrome=\{false\}/,
+      'Arrival meta collapses to qty | SKU | price (no condition · serial columns)',
     );
     assert.doesNotMatch(
       panel,
       /UnfoundTodoStrip/,
       'amber UnfoundTodoStrip is retired — the interactive unfound surface is the teaching UI',
+    );
+  });
+
+  it('door flow sits on one white DISPLAYS_FLUSH_HOST + chrome plane', () => {
+    assert.match(panel, /DISPLAYS_FLUSH_HOST/);
+    assert.match(panel, /appSurfaceFillClass\(\s*['"]chrome['"]\s*\)/);
+    assert.match(panel, /data-testid="arrival-door-flow"/);
+  });
+
+  it('Classify · Staging hosts are edge-to-edge (no DISPLAYS_BODY_INSET pad)', () => {
+    const classify = read('src/components/receiving/triage/TriageClassifySection.tsx');
+    const staging = read('src/components/receiving/triage/StagingSection.tsx');
+    assert.doesNotMatch(
+      classify,
+      /DISPLAYS_BODY_INSET/,
+      'Classify host must be px-0 — dimension rows own inset-cozy so hairlines span the column',
+    );
+    assert.doesNotMatch(
+      staging,
+      /DISPLAYS_BODY_INSET/,
+      'Staging host must be px-0 — content rows own inset-cozy',
     );
   });
 
@@ -187,8 +217,8 @@ describe('Phase E — Testing Displays push', () => {
     assert.match(testing, /utilityRail=\{utilityRailBody\}/);
     assert.match(
       testing,
-      /UnboxDisplaysEdgeToggle variant="pane-open"/,
-      'the `←|` expand toggle mounts while Displays is closed',
+      /UnboxDisplaysUtilityRailBody/,
+      'the `←|` expand toggle mounts in the bottom footer while Displays is closed',
     );
     assert.doesNotMatch(
       testing,
@@ -235,8 +265,8 @@ describe('Arrival pane controls — expand · cursor · dock note', () => {
     );
     assert.match(
       panel,
-      /!activeSideTab \?[\s\S]{0,160}UnboxDisplaysEdgeToggle variant="pane-open"/,
-      'the `←|` expand toggle mounts only while the Displays column is closed (the `→|` close lives on the open column)',
+      /!activeSideTab \?[\s\S]{0,200}UnboxDisplaysUtilityRailBody/,
+      'the `←|` expand toggle mounts only while the Displays column is closed (the `→|` close lives on the open column footer)',
     );
   });
 

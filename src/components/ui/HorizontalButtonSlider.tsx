@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from '@/design-system/motion';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { appCanvasClass, appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -234,7 +235,10 @@ export function HorizontalButtonSlider({
             if (variant === 'segmented') {
               const Icon = item.icon;
               const segTabClass = segmentedFlush
-                ? 'relative flex h-full min-h-[40px] flex-1 items-center justify-center rounded-none'
+                ? cn(
+                    'relative flex h-full flex-1 items-center justify-center rounded-none',
+                    PRIMARY_CHROME_ROW_FACE,
+                  )
                 : 'relative flex h-8 flex-1 items-center justify-center rounded-none';
               const segIndicatorClass = segmentedFlush
                 ? 'absolute inset-0 rounded-none bg-blue-600'

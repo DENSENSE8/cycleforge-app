@@ -61,10 +61,11 @@ describe('order inspector Display topics + View rail split', () => {
     assert.doesNotMatch(body, /DeleteOrderControl/);
   });
 
-  it('OrderUpdateDock puts Delete as flush trailing icon', () => {
+  it('OrderUpdateDock puts Delete as flush trailing icon via InspectorActionFloor', () => {
     const dock = code(read('src/components/shipped/details-panel/OrderUpdateDock.tsx'));
+    assert.match(dock, /InspectorActionFloor/);
+    assert.match(dock, /InspectorFlushDelete/);
     assert.match(dock, /order-update-delete/);
-    assert.match(dock, /bg-transparent/);
     assert.match(dock, /OrderAssignDisplayHost/);
     assert.doesNotMatch(dock, /WorkOrderAssignmentCard/);
   });
@@ -73,5 +74,21 @@ describe('order inspector Display topics + View rail split', () => {
     const rail = code(read('src/components/outbound/orders/OrdersViewControlsRail.tsx'));
     assert.match(rail, /detail:orders-view/);
     assert.match(rail, /OrdersViewTopicsCluster/);
+  });
+
+  it('OrderPipelineSection always mounts Tested · Packed · Scanned Out (no progressive hide)', () => {
+    const pipeline = code(
+      read('src/components/shipped/details-panel/OrderPipelineSection.tsx'),
+    );
+    assert.match(pipeline, /label=["']Tested["']/);
+    assert.match(pipeline, /label=["']Packed["']/);
+    assert.match(pipeline, /label=["']Scanned Out["']/);
+    assert.match(pipeline, /emptyFallback=["']Not tested["']/);
+    assert.match(pipeline, /emptyFallback=["']Pending pack["']/);
+    assert.match(pipeline, /emptyFallback=["']Pending scan-out["']/);
+    // Spatial predictability — never gate rows on stamp presence.
+    assert.doesNotMatch(pipeline, /testedAt\s*\?\s*\(/);
+    assert.doesNotMatch(pipeline, /testedAt\s*\|\|\s*packedAt/);
+    assert.doesNotMatch(pipeline, /progressive disclosure/i);
   });
 });

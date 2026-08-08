@@ -35,7 +35,29 @@ export function notInboundMirrorTerminalPredicate(source: InboundSourceType): st
   )`;
 }
 
-export interface MirrorDeps {
+/**
+ * Same terminal guard as {@link notInboundMirrorTerminalPredicate}, but keyed
+ * off `rl.inbound_source_type` so marketplace / manual arms share one fragment
+ * (ebay · amazon · manual).
+ */
+export function notLineInboundMirrorTerminalPredicate(): string {
+  const list = MIRROR_TERMINAL_STATUSES.map((s) => `'${s}'`).join(', ');
+  return `NOT EXISTS (
+    SELECT 1 FROM inbound_purchase_order_mirror ipm
+     WHERE ipm.organization_id = rl.organization_id
+       AND ipm.source_type = rl.inbound_source_type
+       AND ipm.source_order_id = rl.source_order_id
+       AND lower(COALESCE(ipm.status, '')) IN (${list})
+  )`;
+}
+
+/** Soft-join arm: pre-arrival cartons for marketplace / manual inbound orders. */
+export const INBOUND_MARKETPLACE_CARTON_SOURCES_SQL = `r.source IN ('ebay', 'amazon', 'manual')`;
+
+/** Line membership for non-Zoho Universal Incoming rows. */
+export const INBOUND_MARKETPLACE_LINE_SOURCES_SQL = `rl.inbound_source_type IN ('ebay', 'amazon', 'manual')`;
+
+interface MirrorDeps {
   query: typeof tenantQuery;
 }
 

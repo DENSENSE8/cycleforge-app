@@ -122,7 +122,6 @@ export function TestingScanBar({
         autoFocus
         // Align the scan icon/text to the recent rail's dot/title column below.
         leadingColumn="rail"
-        rightPadClass="pr-36"
         isResolving={isResolving}
         icon={
           <StationScanLeadingIcon

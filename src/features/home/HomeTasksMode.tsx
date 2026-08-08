@@ -12,7 +12,7 @@
  * new list engine, no new search waist.
  */
 
-import { useCallback, useMemo } from 'react';
+import { startTransition, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ClipboardList } from '@/components/Icons';
@@ -22,6 +22,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { TASK_STATUS_DOT } from '@/components/sidebar/operations/plans-shared';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { cn } from '@/utils/_cn';
 import {
   useHomeTasks,
@@ -172,7 +173,29 @@ export function HomeTasksMode() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const scope = parseScope(searchParams.get('scope'));
-  const selectedId = searchParams.get('task');
+  const urlTaskId = searchParams.get('task');
+
+  const replaceTask = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      mutate(params);
+      const qs = params.toString();
+      router.replace(qs ? `/?${qs}` : '/');
+    },
+    [router, searchParams],
+  );
+
+  const writeTask = useCallback((params: URLSearchParams, next: string | null) => {
+    if (next) params.set('task', next);
+    else params.delete('task');
+  }, []);
+
+  const { value: selectedId, setValue: setTaskId, paint: paintTask } =
+    useOptimisticUrlParam<string | null>({
+      urlValue: urlTaskId,
+      replace: replaceTask,
+      write: writeTask,
+    });
 
   const { data, isLoading, isError } = useHomeTasks(scope);
   const items = data?.items ?? [];
@@ -183,14 +206,19 @@ export function HomeTasksMode() {
 
   const setParams = useCallback(
     (patch: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      for (const [k, v] of Object.entries(patch)) {
-        if (v == null) params.delete(k);
-        else params.set(k, v);
+      if (Object.prototype.hasOwnProperty.call(patch, 'task')) {
+        paintTask(patch.task);
       }
-      router.replace(`/?${params.toString()}`);
+      startTransition(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        for (const [k, v] of Object.entries(patch)) {
+          if (v == null) params.delete(k);
+          else params.set(k, v);
+        }
+        router.replace(`/?${params.toString()}`);
+      });
     },
-    [router, searchParams],
+    [router, searchParams, paintTask],
   );
 
   return (
@@ -232,7 +260,7 @@ export function HomeTasksMode() {
                 key={item.id}
                 item={item}
                 selected={item.id === selectedId}
-                onSelect={() => setParams({ task: item.id })}
+                onSelect={() => setTaskId(item.id)}
               />
             ))
           )}

@@ -3,6 +3,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { syncTsnToSerialUnit } from '@/lib/neon/serial-units-queries';
+import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
@@ -156,6 +157,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       receiving_line_id: tsnRow.receiving_line_id,
     }, undefined, ctx.organizationId);
 
+    // Best-effort denorm so list chips match the TSN just logged (never fail POST).
+    await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
+
     return NextResponse.json(
       { success: true, serial: normalizeRow(inserted.rows[0]) },
       { status: 201 },
@@ -216,6 +220,11 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         { success: false, error: 'Receiving serial not found' },
         { status: 404 },
       );
+    }
+
+    const deletedLineId = deleted.rows[0]?.receiving_line_id;
+    if (deletedLineId != null) {
+      await refreshLineSerialProjectionSafe(ctx.organizationId, deletedLineId);
     }
 
     await invalidateReceivingViews(ctx.organizationId);

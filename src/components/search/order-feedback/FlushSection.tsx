@@ -23,12 +23,12 @@ export function FlushSection({
 }) {
   return (
     <section data-testid={testId} className={cn('bg-surface-card', className)}>
-      <header className="border-b border-border-hairline px-3 py-2">
+      <header className="border-b border-border-hairline px-3 py-1.5">
         <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
           {title}
         </h3>
       </header>
-      <div className={cn('px-3 py-3', bodyClassName)}>{children}</div>
+      <div className={cn('px-3 py-2', bodyClassName)}>{children}</div>
     </section>
   );
 }

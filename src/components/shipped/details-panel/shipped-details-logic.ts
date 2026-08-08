@@ -196,12 +196,12 @@ export function orderStampOrNull(value: string | null | undefined): string | nul
 
 /**
  * Which lifecycle phase the panel body should present for. The panel keeps ONE
- * skeleton (stepper + facts) but shifts emphasis by phase — an empty order is
- * short and action-first; a shipped order is provenance + carrier tracking.
- *   - `pending`     — nothing done yet; no milestone rows, just a next-step line.
- *   - `in_progress` — 1–2 milestones stamped; show only the stamped rows.
+ * skeleton (stepper + **all** milestone rows + next-step callout); phase shifts
+ * emphasis only — never which rows mount (spatial predictability).
+ *   - `pending`     — nothing stamped; next-step callout leads; empty rows stay.
+ *   - `in_progress` — 1–2 milestones stamped; unstamped rows keep emptyFallback.
  *   - `shipped`     — left the warehouse (scan-out or carrier custody); carrier
- *                     status becomes a first-class fact.
+ *                     status becomes a first-class fact under the locked rows.
  */
 export type OrderPipelinePhase = 'pending' | 'in_progress' | 'shipped';
 
@@ -229,6 +229,7 @@ export interface OrderPipelineInput {
  * next-step callout, and post-dock — from the order's stamps + carrier signals.
  * The single SoT the panel body reads (mirrors `deriveCartonReadiness` for the
  * receiving carton pipeline); pure, no Date.now, safe on client and server.
+ * Callers always mount all milestone rows; phase/nextStep never gate row presence.
  */
 export function deriveOrderPipeline(input: OrderPipelineInput): OrderPipeline {
   const states = deriveOrderPipelineStates(input);

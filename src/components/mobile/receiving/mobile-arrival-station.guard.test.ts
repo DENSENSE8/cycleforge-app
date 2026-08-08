@@ -59,8 +59,8 @@ describe('MobileArrivalStation contract', () => {
   });
 
   it('arrival dock is edge-to-edge integrated scan band with clearance', () => {
-    // `pb-10` matches the canonical station scan bar's `h-10`.
-    assert.match(station, /pb-10/);
+    // `pb-9` matches the canonical station scan bar's PRIMARY_CHROME_ROW_FACE.
+    assert.match(station, /pb-9/);
     assert.match(station, /pb-\[max\(0\.5rem,env\(safe-area-inset-bottom\)\)\]/);
     assert.doesNotMatch(station, /rounded-2xl border border-border-soft/);
     assert.doesNotMatch(station, /\bpy-1\.5\b/);

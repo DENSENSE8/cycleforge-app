@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { Loader2 } from '@/components/Icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -18,6 +18,7 @@ import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { useBodyScrollLock } from '@/design-system/hooks';
+import { useRepairNewParam } from '@/hooks/useRepairNewParam';
 import { toast } from '@/lib/toast';
 import {
   RepairIntakeForm,
@@ -41,9 +42,8 @@ interface RepairSidebarPanelProps {
 const REPAIR_SUBMIT_TIMEOUT_MS = 60_000;
 
 export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false }: RepairSidebarPanelProps) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { newPulse, clearPulse } = useRepairNewParam();
   const [showIntakeForm, setShowIntakeForm] = useState(false);
   const [isFetchingFavorite, setIsFetchingFavorite] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -60,17 +60,14 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
     setIsMounted(true);
   }, []);
 
+  // One-shot: paint intake from optimistic/URL pulse, then strip `?new=`.
   useEffect(() => {
-    if (searchParams.get('new') === 'true') {
-      setIntakeDraft(undefined);
-      setSelectedFavoriteId(null);
-      setShowIntakeForm(true);
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete('new');
-      const nextSearch = nextParams.toString();
-      router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname || '/repair');
-    }
-  }, [pathname, router, searchParams]);
+    if (!newPulse) return;
+    setIntakeDraft(undefined);
+    setSelectedFavoriteId(null);
+    setShowIntakeForm(true);
+    clearPulse();
+  }, [newPulse, clearPulse]);
 
   useBodyScrollLock(isMounted && showIntakeForm);
 
@@ -167,7 +164,7 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
       headerAbove={
         !hideSectionHeader ? (
           <div className={`border-b border-border-hairline ${SIDEBAR_GUTTER} pt-4 pb-3`}>
-            <p className={`${sectionLabel} text-orange-500`}>Repair Service</p>
+            <p className={`${sectionLabel} text-orange-500`}>Repair</p>
             <h2 className={`mt-1 ${cardTitle}`}>Repairs</h2>
           </div>
         ) : null

@@ -38,9 +38,8 @@ export function TestingWorkspaceView({
 }) {
   const { testTab, setTestTab } = useTestingWorkspaceTab();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.testing,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.testing);
   const parsedTechId = Number(techId);
 
   return (
@@ -67,7 +66,7 @@ export function TestingWorkspaceView({
             tab={testTab}
             controlsSlotRef={setControlsEl}
             kpiOpen={!kpiCollapsed}
-            onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
+            onToggleKpi={toggleKpiCollapsed}
           />
         </div>
       }

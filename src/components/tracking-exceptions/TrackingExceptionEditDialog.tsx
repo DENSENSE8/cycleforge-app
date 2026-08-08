@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import type { TrackingExceptionRow } from './types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 interface EditDialogProps {
   row: TrackingExceptionRow;
@@ -91,7 +93,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
               type="text"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-mono text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className={cn("mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-mono text-text-default", focusRing("field", "accent"))}
             />
           </label>
           <label className="block">
@@ -102,7 +104,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className={cn("mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
             />
           </label>
           <label className="block">
@@ -112,7 +114,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TrackingExceptionRow['status'])}
-              className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className={cn("mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
             >
               <option value="open">Open</option>
               <option value="resolved">Resolved</option>
@@ -127,7 +129,7 @@ export function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: 
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className={cn("mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
             />
           </label>
 

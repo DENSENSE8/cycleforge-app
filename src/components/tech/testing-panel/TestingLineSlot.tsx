@@ -3,7 +3,7 @@ import { ActiveLineTestingSerial, type UnitSlotSerial } from './ActiveLineTestin
 import type { TestingController } from './testing-panel-types';
 
 /** Shared confirm before removing a serial. */
-export async function confirmDeleteSerial(serialNumber: string): Promise<boolean> {
+async function confirmDeleteSerial(serialNumber: string): Promise<boolean> {
   return requestConfirm({
     description: `Remove serial ${serialNumber}?`,
     tone: 'danger',
@@ -12,10 +12,10 @@ export async function confirmDeleteSerial(serialNumber: string): Promise<boolean
 }
 
 /**
- * The verdict/serial slot for one testing line. Used by BOTH the unmatched
- * (`renderLineActions`) and the PO accordion (`activeRowSlot`) paths — the only
- * differences are the line id, expected count, disabled state, selected index,
- * and the PO-only header-serial editing affordances, all passed in.
+ * The verdict/serial slot for one testing line. Used by matched and unfound
+ * accordion paths via `activeRowSlot` — the only differences are the line id,
+ * expected count, disabled state, selected index, and header-serial editing
+ * affordances, all passed in.
  */
 export function TestingLineSlot({
   c,
@@ -28,6 +28,8 @@ export function TestingLineSlot({
   showSavedChips,
   editingSerial,
   onEditingSerialChange,
+  forceUnitRows,
+  flush,
 }: {
   c: TestingController;
   lineId: number;
@@ -39,6 +41,9 @@ export function TestingLineSlot({
   showSavedChips?: boolean;
   editingSerial?: UnitSlotSerial | null;
   onEditingSerialChange?: (s: UnitSlotSerial | null) => void;
+  /** Flush per-unit rows even for qty 1 — Unbox Units display parity. */
+  forceUnitRows?: boolean;
+  flush?: boolean;
 }) {
   return (
     <ActiveLineTestingSerial
@@ -52,6 +57,8 @@ export function TestingLineSlot({
       showSavedChips={showSavedChips}
       editingSerial={editingSerial}
       onEditingSerialChange={onEditingSerialChange}
+      forceUnitRows={forceUnitRows}
+      flush={flush}
       selectedIndex={selectedIndex}
       onSelectIndex={(i) => c.setActiveSlotByLine((m) => ({ ...m, [lineId]: i }))}
       onSetVerdict={(next) => void c.applyLineVerdict(lineId, serials, next)}

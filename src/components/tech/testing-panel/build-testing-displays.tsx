@@ -15,11 +15,21 @@
  */
 
 import dynamic from 'next/dynamic';
-import { Barcode, ClipboardList, Download, History, Link2, Ticket } from '@/components/Icons';
+import {
+  Barcode,
+  Boxes,
+  ClipboardList,
+  Download,
+  ExternalLink,
+  History,
+  Link2,
+  Ticket,
+} from '@/components/Icons';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';
+import { TestingUnitsDisplay } from './TestingUnitsDisplay';
 import {
   TestingSkuChecklistPanel,
   TestingSkuManualsPanel,
@@ -31,6 +41,8 @@ import type { UseSkuTestingData } from '@/components/tech/sku-testing/useSkuTest
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 import type { TestingController } from './testing-panel-types';
+import { TestingListingVerifyHost } from './TestingListingVerifyHost';
+import type { SellerClaimedCondition } from '@/lib/receiving/seller-claimed-condition';
 
 const TicketDisplayHost = dynamic(
   () =>
@@ -48,6 +60,8 @@ const WorkspaceTimelineTab = dynamic(
 /** Testing Displays vocabulary — strip order (Ticket first for expand). */
 export type TestingDisplayTab =
   | 'ticket'
+  | 'units'
+  | 'listing'
   | 'pairing'
   | 'checklist'
   | 'manuals'
@@ -69,6 +83,10 @@ interface BuildTestingDisplaysInput {
   pairingFocus: { tab: 'zoho_po' | null; requestId: number } | null;
   /** Claim create/link mode while Ticket has no linked id. */
   claimMode: ClaimModalMode;
+  /** Seller-claimed condition for the Listing verify leaf. */
+  sellerClaimed: SellerClaimedCondition;
+  /** Not-as-listed issue text → claim reason prefill. */
+  claimPrefill?: string | null;
   onCloseClaim: () => void;
   onCloseTicket: () => void;
   onClaimTicketCreated: (ticketNumber: string) => void;
@@ -90,6 +108,8 @@ export function buildTestingDisplayTabs({
   trackingForTimeline,
   pairingFocus,
   claimMode,
+  sellerClaimed,
+  claimPrefill = null,
   onCloseClaim,
   onCloseTicket,
   onClaimTicketCreated,
@@ -114,8 +134,27 @@ export function buildTestingDisplayTabs({
             onCloseTicket={onCloseTicket}
             onClaimTicketCreated={onClaimTicketCreated}
             onClaimTicketUnlinked={onClaimTicketUnlinked}
+            returnClaimPrefill={claimPrefill}
           />
         ) : null,
+    },
+    {
+      id: 'units',
+      // Per-unit verdict (serial · condition · pass/test-again/fail) — the
+      // Action Display. Centre keeps PO lines + Pass · Print (ops-flow only).
+      label: 'Units',
+      icon: Boxes,
+      // A line exists to test its units — show whenever we have one.
+      visible: row.id != null,
+      content: <TestingUnitsDisplay row={row} c={c} />,
+    },
+    {
+      id: 'listing',
+      label: 'Listing',
+      icon: ExternalLink,
+      content: (
+        <TestingListingVerifyHost row={row} claimed={sellerClaimed} />
+      ),
     },
     {
       id: 'pairing',

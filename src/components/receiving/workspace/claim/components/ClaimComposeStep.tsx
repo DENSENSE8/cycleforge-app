@@ -42,6 +42,14 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
           ariaLabel="Claim type"
         />
       </div>
+      {c.reason.trim() ? (
+        <div className="space-y-1 border-b border-border-subtle px-3 pb-3" data-claim-issue>
+          <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
+            Issue
+          </p>
+          <p className="text-role-caption text-text-default">{c.reason}</p>
+        </div>
+      ) : null}
       <ClaimTemplateEditor template={c.template} row={c.row} />
       <ClaimRecipientsField
         notePublic={c.notePublic}

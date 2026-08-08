@@ -37,6 +37,25 @@ test('StaffPreferencesPutBody accepts Insert and rejects printable keys', () => 
   ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Pause' }).success);
 });
 
+test('unboxPinnedExtraTabs is bounded — a third pin does not persist (D2 · D14)', () => {
+  ok(StaffPreferencesPutBody.safeParse({ unboxPinnedExtraTabs: [] }).success);
+  ok(StaffPreferencesPutBody.safeParse({ unboxPinnedExtraTabs: ['incoming'] }).success);
+  ok(StaffPreferencesPutBody.safeParse({ unboxPinnedExtraTabs: null }).success);
+  // ≤ cap (2) passes; a 3-element array is rejected at the write boundary.
+  ok(StaffPreferencesPutBody.safeParse({ unboxPinnedExtraTabs: ['incoming', 'incoming'] }).success);
+  ok(
+    !StaffPreferencesPutBody.safeParse({
+      unboxPinnedExtraTabs: ['incoming', 'incoming', 'incoming'],
+    }).success,
+    'a third pinned extra must be rejected',
+  );
+  // Only the closed catalog id is accepted — no freeform / custom-table pins.
+  ok(
+    !StaffPreferencesPutBody.safeParse({ unboxPinnedExtraTabs: ['bogus'] }).success,
+    'unknown pin id must be rejected',
+  );
+});
+
 test('StaffPreferencesPutBody accepts quickAccess pins with label + exact href', () => {
   const pin = {
     id: 'p1',

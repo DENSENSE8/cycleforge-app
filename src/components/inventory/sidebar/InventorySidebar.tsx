@@ -45,7 +45,7 @@ const TAB_LABEL: Record<InventoryTab, string> = {
     units: 'Units',
     alerts: 'Alerts',
     counts: 'Counts',
-    triage: 'Triage',
+    triage: 'Tracking Exceptions',
     pulse: 'Pulse',
 };
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type SyntheticEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -17,6 +17,36 @@ import type { PhotoGalleryController } from './usePhotoGallery';
 
 const TOOLBAR_ICON_BTN =
   'rounded-full border border-glass/20 bg-glass/10 p-3 text-white backdrop-blur-md transition-all hover:scale-110 hover:border-glass/30 hover:bg-glass/20 disabled:opacity-50 disabled:hover:scale-100';
+
+// #region agent log
+/** Debug ingest — same-origin API (browser cannot reliably reach 127.0.0.1:7336). */
+function dbg251(location: string, message: string, data: Record<string, unknown>, hypothesisId: string) {
+  const payload = {
+    sessionId: '251bbb',
+    runId: 'pre-fix',
+    hypothesisId,
+    location,
+    message,
+    data,
+    timestamp: Date.now(),
+  };
+  try {
+    const w = window as unknown as { __dbg251?: unknown[] };
+    w.__dbg251 = w.__dbg251 ?? [];
+    w.__dbg251.push(payload);
+  } catch { /* ignore */ }
+  const body = JSON.stringify(payload);
+  try {
+    navigator.sendBeacon?.('/api/agent-debug-log', new Blob([body], { type: 'text/plain' }));
+  } catch { /* ignore */ }
+  fetch('/api/agent-debug-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
+    keepalive: true,
+  }).catch(() => {});
+}
+// #endregion
 
 /** Fullscreen lightbox: zoomable image, nav arrows, thumbnail strip, toolbar. */
 export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
@@ -93,14 +123,84 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const isHeroFrame = !reduceMotion && !heroSpentRef.current && currentIndex === heroIndexRef.current;
   const heroLayoutId = isHeroFrame ? photoHeroLayoutId(photoItems[currentIndex]?.id) : undefined;
 
-  // Click-off to close: only a click whose target is the backdrop region itself
-  // (scrim / empty stage around the photo) dismisses — image, toolbar, arrows,
-  // thumbs, and the details drawer stopPropagation so they never reach here.
+  // Click-off to close: only the outer scrim dismisses, and only when the click
+  // lands on the scrim itself. Stage chrome is pointer-events-none so empty
+  // padding falls through; image / thumbs / toolbar / arrows / details re-enable
+  // hits and stopPropagation so they never reach here.
   const handleBackdropClick = (e: ReactMouseEvent) => {
-    if (e.target !== e.currentTarget) return;
+    const willClose = e.target === e.currentTarget;
+    // #region agent log
+    {
+      const t = e.target as HTMLElement | null;
+      const top = typeof document !== 'undefined' ? document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null : null;
+      const cs = top ? getComputedStyle(top) : null;
+      dbg251('PhotoViewerModal.tsx:handleBackdropClick', 'backdrop click', {
+        willClose,
+        targetTag: t?.tagName,
+        targetClass: (t?.className || '').toString().slice(0, 120),
+        topTag: top?.tagName,
+        topClass: (top?.className || '').toString().slice(0, 160),
+        topZ: cs?.zIndex,
+        topPe: cs?.pointerEvents,
+        x: e.clientX,
+        y: e.clientY,
+      }, 'A,C');
+    }
+    // #endregion
+    if (!willClose) return;
     e.stopPropagation();
     g.closeViewer();
   };
+
+  const stopBubble = (e: SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  // #region agent log
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const top = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      const cs = top ? getComputedStyle(top) : null;
+      let el: HTMLElement | null = top;
+      let overflowAncestor: string | null = null;
+      for (let i = 0; el && i < 8; i++) {
+        const s = getComputedStyle(el);
+        if (s.overflow !== 'visible' || s.overflowX !== 'visible' || s.overflowY !== 'visible') {
+          overflowAncestor = `${el.tagName}.${(el.className||'').toString().slice(0,80)} overflow=${s.overflow}/${s.overflowX}/${s.overflowY}`;
+          break;
+        }
+        el = el.parentElement;
+      }
+      const inFilm = !!top?.closest('[data-testid="photo-filmstrip"]');
+      const inLightbox = !!top?.closest('[data-testid="photo-lightbox"]');
+      const film = document.querySelector('[data-testid="photo-filmstrip"]') as HTMLElement | null;
+      const filmRect = film?.getBoundingClientRect();
+      const filmCs = film ? getComputedStyle(film) : null;
+      dbg251('PhotoViewerModal.tsx:capturePointerDown', 'hit-test under cursor', {
+        x: e.clientX,
+        y: e.clientY,
+        topTag: top?.tagName,
+        topClass: (top?.className || '').toString().slice(0, 160),
+        topZ: cs?.zIndex,
+        topPe: cs?.pointerEvents,
+        topPos: cs?.position,
+        inFilm,
+        inLightbox,
+        overflowAncestor,
+        filmZ: filmCs?.zIndex,
+        filmPe: filmCs?.pointerEvents,
+        filmRect: filmRect
+          ? { top: filmRect.top, bottom: filmRect.bottom, left: filmRect.left, right: filmRect.right, w: filmRect.width, h: filmRect.height }
+          : null,
+        overFilmRect: filmRect
+          ? e.clientX >= filmRect.left && e.clientX <= filmRect.right && e.clientY >= filmRect.top && e.clientY <= filmRect.bottom
+          : false,
+      }, 'A,B,E');
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    return () => window.removeEventListener('pointerdown', onPointerDown, true);
+  }, []);
+  // #endregion
 
   // Portal lives in PhotoViewerPortal — Layer only applies the modal z-token.
   // `pointer-events-none` on the shell so a fading/exiting scrim cannot leave a
@@ -146,8 +246,9 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
 
       {/* Stage — image lane. flex-1 yields width to the details drawer; the
           drawer animates its own width, so this lane reflows live via flexbox
-          (no `layout` projection needed) in both open and close. */}
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden" onClick={handleBackdropClick}>
+          (no `layout` projection needed) in both open and close.
+          pointer-events-none so empty padding falls through to the scrim. */}
+      <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top bar — counter (left) + zoom/rotate pill + action buttons (right).
           Pinned to the image lane, not the full viewport, so controls stay left
           of the details column when it opens. */}
@@ -429,11 +530,13 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         </div>
       </motion.div>
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden" onClick={handleBackdropClick}>
+      <div className="pointer-events-none relative flex flex-1 items-center justify-center overflow-hidden">
       {g.deleteError && (
         <div
-          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
+          className="pointer-events-auto absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
           role="alert"
+          onClick={stopBubble}
+          onPointerDown={stopBubble}
         >
           {g.deleteError}
         </div>
@@ -441,8 +544,10 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
 
       {g.uploading && (
         <div
-          className="absolute top-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-glass/20 bg-scrim/80 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
+          className="pointer-events-auto absolute top-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-glass/20 bg-scrim/80 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
           role="status"
+          onClick={stopBubble}
+          onPointerDown={stopBubble}
         >
           <Loader2 className="h-4 w-4 animate-spin" />
           Uploading…
@@ -451,28 +556,24 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
 
       {g.uploadError && !g.uploading && (
         <div
-          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
+          className="pointer-events-auto absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md"
           role="alert"
+          onClick={stopBubble}
+          onPointerDown={stopBubble}
         >
           {g.uploadError}
         </div>
       )}
 
-      {/* Main Photo */}
+      {/* Main Photo — host is hit-transparent so empty padding dismisses via
+          the scrim; the image (and placeholders) re-enable pointer events. */}
       <motion.div
         key={currentIndex}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={framerTransition.dropdownOpen}
-        className="relative flex h-full w-full items-center justify-center p-4 sm:py-16 sm:pl-16 sm:pr-16"
-        onClick={handleBackdropClick}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={g.onMouseDown}
-        onMouseMove={g.onMouseMove}
-        onMouseUp={g.onMouseUp}
-        onMouseLeave={g.onMouseUp}
-        style={{ cursor: zoomLevel > 1 ? (g.isDragging ? 'grabbing' : 'grab') : 'default' }}
+        className="pointer-events-none relative flex h-full w-full items-center justify-center p-4 sm:py-16 sm:pl-16 sm:pr-16"
       >
         {photoItems[currentIndex]?.status === 'loaded' ? (
           <motion.img
@@ -480,12 +581,28 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             alt={`Photo ${currentIndex + 1}`}
             layoutId={heroLayoutId}
             transition={heroLayoutId ? heroTransition : undefined}
-            className="max-h-[78vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none sm:max-h-[65vh] sm:max-w-[48vw]"
-            style={{ scale: zoomLevel, rotate: g.rotation, x: g.imagePosition.x, y: g.imagePosition.y }}
+            className="pointer-events-auto max-h-[78vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none sm:max-h-[65vh] sm:max-w-[48vw]"
+            style={{
+              scale: zoomLevel,
+              rotate: g.rotation,
+              x: g.imagePosition.x,
+              y: g.imagePosition.y,
+              cursor: zoomLevel > 1 ? (g.isDragging ? 'grabbing' : 'grab') : 'default',
+            }}
             draggable={false}
+            onClick={stopBubble}
+            onPointerDown={stopBubble}
+            onMouseDown={g.onMouseDown}
+            onMouseMove={g.onMouseMove}
+            onMouseUp={g.onMouseUp}
+            onMouseLeave={g.onMouseUp}
           />
         ) : photoItems[currentIndex]?.status === 'error' ? (
-          <div className="flex h-96 w-full max-w-2xl flex-col items-center justify-center rounded-2xl border-2 border-red-500/30 bg-red-900/20">
+          <div
+            className="pointer-events-auto flex h-96 w-full max-w-2xl flex-col items-center justify-center rounded-2xl border-2 border-red-500/30 bg-red-900/20"
+            onClick={stopBubble}
+            onPointerDown={stopBubble}
+          >
             <AlertCircle className="mb-4 h-16 w-16 text-red-400" />
             <p className="text-lg font-semibold text-red-300">Failed to load image</p>
           </div>
@@ -499,11 +616,24 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             alt={`Photo ${currentIndex + 1}`}
             layoutId={heroLayoutId}
             transition={heroLayoutId ? heroTransition : undefined}
-            className="max-h-[78vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none blur-[1px] sm:max-h-[65vh] sm:max-w-[48vw]"
+            className="pointer-events-auto max-h-[78vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl select-none blur-[1px] sm:max-h-[65vh] sm:max-w-[48vw]"
+            style={{
+              cursor: zoomLevel > 1 ? (g.isDragging ? 'grabbing' : 'grab') : 'default',
+            }}
             draggable={false}
+            onClick={stopBubble}
+            onPointerDown={stopBubble}
+            onMouseDown={g.onMouseDown}
+            onMouseMove={g.onMouseMove}
+            onMouseUp={g.onMouseUp}
+            onMouseLeave={g.onMouseUp}
           />
         ) : (
-          <div className="flex h-96 w-full max-w-2xl items-center justify-center rounded-2xl bg-stage-raised/50">
+          <div
+            className="pointer-events-auto flex h-96 w-full max-w-2xl items-center justify-center rounded-2xl bg-stage-raised/50"
+            onClick={stopBubble}
+            onPointerDown={stopBubble}
+          >
             <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-400/30 border-t-blue-400" />
           </div>
         )}
@@ -515,7 +645,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           <HoverTooltip label="Previous (←)" asChild>
             <IconButton
               onClick={(e) => { e.stopPropagation(); g.handlePrevious(); }}
-              className="absolute left-8 top-1/2 z-10 -translate-y-1/2 rounded-full border border-glass/20 bg-glass/10 p-4 text-white backdrop-blur-md transition-all hover:scale-110 hover:border-glass/30 hover:bg-glass/20"
+              className="pointer-events-auto absolute left-8 top-1/2 z-10 -translate-y-1/2 rounded-full border border-glass/20 bg-glass/10 p-4 text-white backdrop-blur-md transition-all hover:scale-110 hover:border-glass/30 hover:bg-glass/20"
               ariaLabel="Previous photo"
               icon={<ChevronLeft className="h-6 w-6 text-white" />}
             />
@@ -523,7 +653,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           <HoverTooltip label="Next (→)" asChild>
             <IconButton
               onClick={(e) => { e.stopPropagation(); g.handleNext(); }}
-              className="absolute right-8 top-1/2 z-10 -translate-y-1/2 rounded-full border border-glass/20 bg-glass/10 p-4 text-white backdrop-blur-md transition-all hover:scale-110 hover:border-glass/30 hover:bg-glass/20"
+              className="pointer-events-auto absolute right-8 top-1/2 z-10 -translate-y-1/2 rounded-full border border-glass/20 bg-glass/10 p-4 text-white backdrop-blur-md transition-all hover:scale-110 hover:border-glass/30 hover:bg-glass/20"
               ariaLabel="Next photo"
               icon={<ChevronRight className="h-6 w-6 text-white" />}
             />
@@ -535,14 +665,37 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           mx-auto`, so it shrinks to its thumbs and stays centered when they fit,
           and scrolls internally once they exceed the available width. */}
       {photoItems.length > 1 && (
-        <div className="absolute bottom-8 left-1/2 z-10 w-full max-w-4xl -translate-x-1/2 px-8">
+        <div
+          data-testid="photo-filmstrip"
+          className="pointer-events-auto absolute bottom-8 left-1/2 z-10 w-full max-w-4xl -translate-x-1/2 px-8"
+          onClick={(e) => {
+            // #region agent log
+            dbg251('PhotoViewerModal.tsx:filmstripClick', 'filmstrip root click', {
+              targetTag: (e.target as HTMLElement)?.tagName,
+            }, 'A,C');
+            // #endregion
+            stopBubble(e);
+          }}
+          onPointerDown={stopBubble}
+        >
           <div className="no-scrollbar mx-auto w-fit max-w-full overflow-x-auto rounded-2xl border border-glass/20 bg-scrim/50 p-3 backdrop-blur-md">
             <div className="flex items-center gap-2">
               {photoItems.map((photo, index) => (
                 // ds-raw-button: image thumbnail tile (selectable), not an icon/label button
                 <button
                   key={index}
-                  onClick={(e) => { e.stopPropagation(); g.setCurrentIndex(index); g.resetZoom(); }}
+                  type="button"
+                  onClick={(e) => {
+                    // #region agent log
+                    dbg251('PhotoViewerModal.tsx:thumbClick', 'thumbnail button click', {
+                      index,
+                      currentIndex,
+                    }, 'A,D');
+                    // #endregion
+                    e.stopPropagation();
+                    g.setCurrentIndex(index);
+                    g.resetZoom();
+                  }}
                   className={`relative h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg transition-all ${
                     index === currentIndex ? 'scale-105 shadow-xl ring-3 ring-white' : 'opacity-60 hover:scale-105 hover:opacity-100'
                   }`}

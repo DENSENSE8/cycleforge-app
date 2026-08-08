@@ -57,9 +57,8 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.shipping,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.shipping);
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
   // Pending / Urgent reuse the dashboard To Ship selection scope + rail actions.
@@ -97,7 +96,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
               tab={shipTab}
               controlsSlotRef={setControlsEl}
               kpiOpen={!kpiCollapsed}
-              onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
+              onToggleKpi={toggleKpiCollapsed}
             />
           </div>
         }

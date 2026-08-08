@@ -1,4 +1,4 @@
-import { normalizeFnsku } from '@/lib/tracking-format';
+import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ export function todayShipmentQtyByFnskuFromJson(data: unknown): Record<string, n
   const items = (data as { shipment?: { items?: { fnsku?: string; expected_qty?: number }[] } })?.shipment?.items;
   if (!Array.isArray(items)) return map;
   for (const i of items) {
-    const f = normalizeFnsku(String(i?.fnsku || ''));
+    const f = normalizeTrackingCanonical(String(i?.fnsku || ''));
     if (f) map[f] = Math.max(0, Number(i?.expected_qty) || 0);
   }
   return map;
@@ -69,7 +69,7 @@ export function todayShipmentSnapshotFromJson(data: unknown): {
   }
   const itemByFnsku: Record<string, TodayItemSnapshot> = {};
   for (const it of shipment.items || []) {
-    const f = normalizeFnsku(String(it?.fnsku || ''));
+    const f = normalizeTrackingCanonical(String(it?.fnsku || ''));
     if (!f) continue;
     itemByFnsku[f] = {
       id: Number(it.id),

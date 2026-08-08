@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Package, PackageOpen, Check, ChevronRight } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useProductsSkuIdParam } from '@/hooks/useProductsSkuIdParam';
 import { useSkuKitParts } from '@/hooks/useSkuKitParts';
 import { useSkuQcChecks } from '@/hooks/useSkuQcChecks';
 import { KitPartsSection } from '@/components/products/KitPartsSection';
@@ -17,11 +17,8 @@ import { KitPartsSection } from '@/components/products/KitPartsSection';
  * of QcChecklistWorkspace — same anchor (sku_catalog.id), same shape.
  */
 export function KitPartsWorkspace() {
-  const searchParams = useSearchParams();
-  const rawSkuId = searchParams.get('skuId');
-  const skuId = rawSkuId ? Number(rawSkuId) : null;
+  const { skuId, setSkuId } = useProductsSkuIdParam();
 
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useSkuKitParts(skuId);
   // Sibling per-SKU surface — both anchor on the same sku_catalog.id, so we
@@ -108,7 +105,7 @@ export function KitPartsWorkspace() {
             size="sm"
             icon={<Check />}
             iconRight={<ChevronRight />}
-            onClick={() => router.replace(`/products?view=qc&skuId=${catalog.id}`)}
+            onClick={() => setSkuId(catalog.id, 'qc')}
             ariaLabel="View this product's QC checklist"
             className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-role-micro uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
           >

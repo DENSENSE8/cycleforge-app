@@ -30,6 +30,9 @@ export function OperationsDashboard() {
   // Honest realtime — derive the Live pill from the shared connection store,
   // never a hardcoded literal (H1 Phase A). Same source as the Ops TV pill.
   const realtimeLink = useRealtimeLink();
+  // Incoming pattern: degraded replaces empty — do not paint zero KPI tiles that
+  // read as a quiet warehouse under a failed snapshot with no cache.
+  const snapshotEmpty = isError && !data;
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-surface-canvas text-text-default">
@@ -51,21 +54,23 @@ export function OperationsDashboard() {
         ) : null}
 
         {/* ── TOP: the current goal (P3-ADM-01 acceptance A — goal-first) ── */}
-        <OperationsGoalHero staffProgress={data?.staffProgress} isLoading={isLoading} />
+        <OperationsGoalHero staffProgress={data?.staffProgress} isLoading={isLoading && !snapshotEmpty} />
 
         {/* ── KPIs: today's snapshot ── */}
-        <section>
-          <SectionHeader
-            eyebrow="Today’s snapshot"
-            title="Numbers at a glance"
-            meta="Live · refreshes every minute"
-          />
-          <PrimaryKpiGrid summary={data?.summary} onOpen={setOpenKpi} activeKind={openKpi} />
+        {!snapshotEmpty ? (
+          <section>
+            <SectionHeader
+              eyebrow="Today’s snapshot"
+              title="Numbers at a glance"
+              meta="Live · refreshes every minute"
+            />
+            <PrimaryKpiGrid summary={data?.summary} onOpen={setOpenKpi} activeKind={openKpi} />
 
-          <div className="mt-3">
-            <SecondaryKPITiles summary={data?.summary} />
-          </div>
-        </section>
+            <div className="mt-3">
+              <SecondaryKPITiles summary={data?.summary} />
+            </div>
+          </section>
+        ) : null}
 
         {/* ── Exceptions: what needs attention ── */}
         <section>
@@ -78,13 +83,15 @@ export function OperationsDashboard() {
         </section>
 
         {/* ── Feed: the live activity stream ── */}
-        <section>
-          <LiveFeedCard
-            feed={data?.activityFeed}
-            isLoading={isLoading}
-            ablyStatus={realtimeLinkToAblyStatus(realtimeLink)}
-          />
-        </section>
+        {!snapshotEmpty ? (
+          <section>
+            <LiveFeedCard
+              feed={data?.activityFeed}
+              isLoading={isLoading}
+              ablyStatus={realtimeLinkToAblyStatus(realtimeLink)}
+            />
+          </section>
+        ) : null}
       </main>
 
       <KpiDetailsModal

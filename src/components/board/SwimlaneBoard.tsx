@@ -42,6 +42,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowUpDown, Check, ChevronDown, ChevronUp, ColumnsOne, ColumnsThree, ColumnsTwo, GripVertical } from '@/components/Icons';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarSegmentGroup, type ToolbarSegmentItem } from '@/components/ui/ToolbarButton';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
@@ -51,6 +52,7 @@ import { zIndex } from '@/design-system/tokens/z-index';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import type { BoardLanePref, BoardPrefs, BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 import type { StaffPreferencesPutBody } from '@/lib/schemas/staff-preferences';
+import { cn } from '@/utils/_cn';
 
 /** One lane in the board. `dot` is a Tailwind bg class; `icon` is paired with the label. */
 export interface SwimlaneLaneDef<LaneId extends string> {
@@ -753,7 +755,12 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
         ? createPortal(portaledToolbar, toolbarPortalTarget)
         : null}
       {!toolbarPortalTarget ? (
-        <div className="flex h-[40px] shrink-0 items-center border-b border-border-default bg-surface-card/90 px-4 backdrop-blur-md">
+        <div
+          className={cn(
+            'flex items-center border-b border-border-default bg-surface-card/90 px-4 backdrop-blur-md',
+            PRIMARY_CHROME_ROW_FACE,
+          )}
+        >
           {isGrid && headerGridClass ? (
             <div className={headerGridClass}>
               <div className="flex min-w-0 items-center gap-3">{headerStartSlot}</div>

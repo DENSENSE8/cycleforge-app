@@ -10,7 +10,7 @@
  * Sidebar owns the recently-selected dock only — not this list.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, startTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -40,6 +40,7 @@ import {
   type TicketListParams,
 } from '@/hooks/useZendeskQueries';
 import { useRecentTickets } from '@/hooks/useRecentTickets';
+import { useSupportTicketParam } from '@/hooks/useSupportTicketParam';
 import { SupportCreateTicketModal } from '@/components/support/service-workspace/SupportCreateTicketModal';
 import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { cn } from '@/utils/_cn';
@@ -74,6 +75,7 @@ const TAB_COLOR: Record<TicketStatusFilter, 'blue' | 'orange' | 'purple' | 'emer
 function useSupportTicketsUrl() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setTicket, paintTicket } = useSupportTicketParam();
 
   const replaceParams = useCallback(
     (mutator: (params: URLSearchParams) => void) => {
@@ -93,47 +95,51 @@ function useSupportTicketsUrl() {
   const setStatus = useCallback(
     (next: TicketStatusFilter) => {
       if (next === status) return;
-      replaceParams((params) => {
-        if (next === DEFAULT_TICKET_STATUS) params.delete('tstatus');
-        else params.set('tstatus', next);
-        params.delete('ticket');
+      paintTicket(null);
+      startTransition(() => {
+        replaceParams((params) => {
+          if (next === DEFAULT_TICKET_STATUS) params.delete('tstatus');
+          else params.set('tstatus', next);
+          params.delete('ticket');
+        });
       });
     },
-    [replaceParams, status],
+    [replaceParams, status, paintTicket],
   );
 
   const setSearch = useCallback(
     (nextValue: string) => {
       const trimmed = nextValue.trim();
       if (trimmed === searchQuery) return;
-      replaceParams((params) => {
-        if (trimmed) params.set('tq', trimmed);
-        else params.delete('tq');
-        params.delete('ticket');
+      paintTicket(null);
+      startTransition(() => {
+        replaceParams((params) => {
+          if (trimmed) params.set('tq', trimmed);
+          else params.delete('tq');
+          params.delete('ticket');
+        });
       });
     },
-    [replaceParams, searchQuery],
+    [replaceParams, searchQuery, paintTicket],
   );
 
   const openTicket = useCallback(
     (t: { id: number; subject: string | null; status: string; priority: string | null }) => {
-      replaceParams((params) => {
-        params.set('ticket', String(t.id));
-      });
+      setTicket(t.id);
     },
-    [replaceParams],
+    [setTicket],
   );
 
-  return { status, setStatus, searchQuery, setSearch, openTicket };
+  return { status, setStatus, searchQuery, setSearch, openTicket, setTicket };
 }
 
 export function SupportTicketsBoard() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { has, isLoaded } = useAuth();
   const canCreateTicket = !isLoaded || has('integrations.zendesk');
   const claim = useSupportTicketClaimHost();
-  const { status, setStatus, searchQuery, setSearch, openTicket } = useSupportTicketsUrl();
+  const { status, setStatus, searchQuery, setSearch, openTicket, setTicket } =
+    useSupportTicketsUrl();
   const { push } = useRecentTickets();
 
   const [sort, setSort] = useState<SortKey>('recent');
@@ -209,7 +215,7 @@ export function SupportTicketsBoard() {
                 value={searchQuery}
                 onChange={setSearch}
                 placeholder="Search tickets…"
-                className="w-40 shrink-0 lg:w-56"
+                className="min-w-0 flex-1"
               />
             }
             right={
@@ -342,8 +348,7 @@ export function SupportTicketsBoard() {
           claim.createTicket.mutate(
             { subject, note, linkages },
             {
-              onSuccess: (data) =>
-                router.push(`/support?mode=tickets&ticket=${data.providerTicketId}`),
+              onSuccess: (data) => setTicket(data.providerTicketId),
             },
           )
         }

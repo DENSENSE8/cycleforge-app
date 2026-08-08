@@ -47,14 +47,23 @@ describe('Station Displays keyboard ownership', () => {
 
   it('the Displays index owns Arrow/Home/End and marks itself a list-key owner', () => {
     const list = read(INDEX_LIST);
+    const cursor = read(
+      'src/components/station/displays/useArmedCursorList.ts',
+    );
     assert.match(list, /LIST_KEY_OWNER_ATTR/, 'root stamps the owner marker');
+    assert.match(list, /useArmedCursorList/, 'nav math lives in the armed-cursor waist');
+    assert.match(list, /handleNavKeyDown/, 'rows delegate Arrow/Home/End to the waist');
     // Roving nav consumes the keys and stops them reaching the window listeners.
-    assert.match(list, /ArrowDown/);
-    assert.match(list, /ArrowUp/);
-    assert.match(list, /'Home'/);
-    assert.match(list, /'End'/);
-    assert.match(list, /\.stopPropagation\(\)/, 'roving nav stops propagation');
-    assert.match(list, /rowRefs\.current\.get\([\s\S]*?\)\?\.focus\(\)/, 'moves focus between rows');
+    assert.match(cursor, /ArrowDown/);
+    assert.match(cursor, /ArrowUp/);
+    assert.match(cursor, /'Home'/);
+    assert.match(cursor, /'End'/);
+    assert.match(cursor, /\.stopPropagation\(\)/, 'roving nav stops propagation');
+    assert.match(
+      cursor,
+      /rowRefs\.current\?\.get\([\s\S]*?\)\?\.focus\(\)/,
+      'moves focus between rows',
+    );
   });
 
   it('the open push column carries the region-open presence marker', () => {

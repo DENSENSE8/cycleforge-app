@@ -75,12 +75,14 @@ export function setTimeFormat(value: TimeFormat): void {
   emit();
 }
 
-/** Adopt a server value WITHOUT writing it back (hydration only). Null → default. */
+/** Adopt a server value WITHOUT writing it back (hydration only). Null /
+ * garbage leave the localStorage-backed value alone — same contract as
+ * {@link hydrateHotkey}. Sync bridges must be one-shot; a missing field on a
+ * concurrent prefs write must never snap the clock back to 12h. */
 export function hydrateTimeFormat(value: string | null | undefined): void {
-  const next: TimeFormat = isTimeFormat(value) ? value : DEFAULT_TIME_FORMAT;
-  if (next === format) return;
-  format = next;
-  writeStored(next);
+  if (!isTimeFormat(value) || value === format) return;
+  format = value;
+  writeStored(value);
   emit();
 }
 

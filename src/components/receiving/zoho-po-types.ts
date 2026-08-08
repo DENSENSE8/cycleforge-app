@@ -4,35 +4,6 @@ import {
   conditionOptions,
 } from '@/lib/conditions';
 
-interface ZohoPOLine {
-  line_item_id: string;
-  item_id: string;
-  name?: string;
-  sku?: string;
-  description?: string;
-  quantity?: number;
-  quantity_received?: number;
-  rate?: number;
-  total?: number;
-  unit?: string;
-}
-
-  purchaseorder_number?: string;
-  vendor_name?: string;
-  status?: string;
-  date?: string;
-  delivery_date?: string;
-  expected_delivery_date?: string;
-  total?: number;
-  currency_code?: string;
-  warehouse_id?: string;
-  warehouse_name?: string;
-  line_items?: ZohoPOLine[];
-  reference_number?: string;
-}
-
-type POStatus = 'issued' | 'partially_received' | 'open' | 'received' | 'draft' | 'cancelled' | 'all';
-
 // All 7 grades from the shared source of truth (was a 5-grade subset).
 export const CONDITION_OPTIONS = conditionOptions('full');
 

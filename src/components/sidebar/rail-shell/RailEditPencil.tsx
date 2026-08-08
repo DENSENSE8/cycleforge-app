@@ -11,9 +11,8 @@ import { IconButton } from '@/design-system/primitives';
  * relative-time (`5h`). Hover-hiding it leaves that edge empty at rest and
  * breaks the rail's title↔time hierarchy.
  *
- * `-my-1.5` bleeds the 20px hit box out of the row's height math (same trick
- * as the Sync Zoho pill) so every rail eyebrow keeps the identical compact
- * text-governed height whether its right slot is a suffix, an action, or this.
+ * Centers in {@link STATION_SECONDARY_BAND_FACE} (`h-6`) — the shared seam with
+ * carton commerce row 2 and Displays VERIFICATION eyebrows.
  */
 export function RailEditPencil({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
@@ -22,7 +21,7 @@ export function RailEditPencil({ active, onToggle }: { active: boolean; onToggle
         onClick={onToggle}
         aria-pressed={active}
         ariaLabel={active ? 'Done — exit select mode' : 'Select rows for bulk actions'}
-        className={`group -my-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+        className={`group flex h-5 w-5 shrink-0 items-center justify-center rounded ${
           active ? 'bg-blue-600 shadow-sm hover:bg-blue-700' : 'hover:bg-surface-sunken'
         }`}
         icon={

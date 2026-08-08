@@ -23,6 +23,12 @@ export function getReadyWorkspaceTabFromSearch(
   return VALID.has(raw) ? (raw as ReadyWorkspaceTab) : 'all';
 }
 
+/** Wire tokens `?rtab=` may carry on FBA Ready (route-param hygiene). */
+export function parseReadyWorkspaceTabWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return VALID.has(v) ? v : null;
+}
+
 export function normalizeReadyWorkspaceTabParams(
   params: URLSearchParams,
   preferredTab?: ReadyWorkspaceTab,

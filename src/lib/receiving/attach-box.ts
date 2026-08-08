@@ -228,7 +228,7 @@ export async function ensureReceivingForPo(params: {
  * so the order remains in Incoming. Soft-join via source_order_id (or a later
  * receiving_id stamp from ingestPurchase) surfaces carrier status.
  */
-export async function ensureReceivingForEbayOrder(params: {
+async function ensureReceivingForEbayOrder(params: {
   sourceOrderId: string;
   shipmentId?: number | null;
   organizationId: string;
@@ -252,4 +252,59 @@ export async function ensureReceivingForEbayOrder(params: {
     [sourceOrderId, params.shipmentId ?? null, params.organizationId],
   );
   return Number(result.rows[0].id);
+}
+
+/**
+ * Get-or-create a pre-arrival carton for an inbound marketplace / manual order
+ * so tracking can soft-join on Incoming before the door scan. eBay keeps its
+ * partial unique index; amazon / manual use select-then-insert (no dedicated
+ * unique index yet).
+ */
+export async function ensureReceivingForInboundOrder(params: {
+  sourceType: 'ebay' | 'amazon' | 'manual';
+  sourceOrderId: string;
+  shipmentId?: number | null;
+  organizationId: string;
+}): Promise<number> {
+  if (params.sourceType === 'ebay') {
+    return ensureReceivingForEbayOrder(params);
+  }
+
+  const sourceOrderId = String(params.sourceOrderId ?? '').trim();
+  if (!sourceOrderId) {
+    throw new Error('ensureReceivingForInboundOrder: sourceOrderId is required');
+  }
+  const source = params.sourceType;
+
+  const existing = await pool.query<{ id: number }>(
+    `SELECT id FROM receiving_carton
+      WHERE organization_id = $1::uuid
+        AND source = $2
+        AND source_order_id = $3
+      ORDER BY id
+      LIMIT 1`,
+    [params.organizationId, source, sourceOrderId],
+  );
+  if (existing.rows[0]) {
+    const id = Number(existing.rows[0].id);
+    if (params.shipmentId != null) {
+      await pool.query(
+        `UPDATE receiving_carton
+            SET shipment_id = COALESCE(shipment_id, $2),
+                updated_at = NOW()
+          WHERE id = $1 AND organization_id = $3::uuid`,
+        [id, params.shipmentId, params.organizationId],
+      );
+    }
+    return id;
+  }
+
+  const inserted = await pool.query<{ id: number }>(
+    `INSERT INTO receiving_carton
+       (source, source_order_id, shipment_id, qa_status, needs_test, updated_at, organization_id)
+     VALUES ($1, $2, $3, 'PENDING', true, NOW(), $4::uuid)
+     RETURNING id`,
+    [source, sourceOrderId, params.shipmentId ?? null, params.organizationId],
+  );
+  return Number(inserted.rows[0].id);
 }

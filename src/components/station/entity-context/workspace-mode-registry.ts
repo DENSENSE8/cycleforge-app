@@ -54,7 +54,7 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
     hasSectionTabs: true,
   },
   testing: {
-    label: 'Testing',
+    label: 'Quality Control',
     navChannel: 'testing-navigate-rail',
     terminalSlice: 'testing',
     hasSectionTabs: false,

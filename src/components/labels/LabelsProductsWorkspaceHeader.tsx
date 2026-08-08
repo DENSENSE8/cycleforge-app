@@ -73,7 +73,7 @@ export function LabelsProductsWorkspaceHeader({
       placeholder="Scan or paste a DataMatrix…"
       tone="blue"
       size="compact"
-      className="w-48 shrink-0 lg:w-64"
+      className="min-w-0 flex-1"
     />
   ) : isProducts ? (
     <TechRailSearchBar
@@ -81,7 +81,7 @@ export function LabelsProductsWorkspaceHeader({
       value={search}
       onChange={onSearch}
       placeholder="Filter SKU, title…"
-      className="w-40 shrink-0 lg:w-56"
+      className="min-w-0 flex-1"
     />
   ) : null;
 

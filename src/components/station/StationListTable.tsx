@@ -17,6 +17,7 @@ import {
 } from '@/design-system/components/grid';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
 import type { RowGroup } from '@/lib/group-rows';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -199,7 +200,7 @@ export function StationListTable<TRecord>({
         {hideHeader ? null : bannerTitle ? (
           <QueueTableBanner title={bannerTitle} subtitle={bannerSubtitle} compact={bannerCompact} />
         ) : (
-          <div className="h-10 bg-surface-card border-b border-border-hairline flex items-center px-4">
+          <div className={cn(PRIMARY_CHROME_ROW_FACE, 'flex items-center border-b border-border-hairline bg-surface-card px-4')}>
             <div className="h-4 w-32 bg-surface-sunken rounded animate-pulse" />
           </div>
         )}

@@ -21,6 +21,7 @@ import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { attachSerialToLine } from '@/lib/receiving/serial-attach';
+import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import {
   claimOrReplay,
@@ -612,6 +613,10 @@ export const POST = withAuth(async (request, ctx) => {
               serialUnitId: attached.serial_unit.id,
               receivingLineId: lineRow.id,
             });
+          }
+          // Keep list-row serial chips warm (rlt.serial_projection).
+          if (attached) {
+            await refreshLineSerialProjectionSafe(ctx.organizationId, lineRow.id);
           }
         } catch (err) {
           console.warn('mark-received-po: attachSerialToLine failed (non-fatal)', err);

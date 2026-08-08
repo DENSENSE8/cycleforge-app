@@ -6,7 +6,7 @@
  * One-row anatomy: title → reporter · page · relative-date → status dot + type chip.
  */
 
-import { useMemo } from 'react';
+import { startTransition, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageSquare } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -15,6 +15,7 @@ import { SearchBar } from '@/components/ui/SearchBar';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { EmptyState, Button } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
+import { useSupportIssueParam } from '@/hooks/useSupportIssueParam';
 import { cn } from '@/utils/_cn';
 import { timeAgo } from '@/utils/_date';
 import { USER_ISSUE_STATUSES, USER_ISSUE_TYPES, type UserIssueStatus, type UserIssueType } from '@/lib/user-issues/issues';
@@ -46,8 +47,8 @@ function parseType(raw: string | null): UserIssueType | null {
 export function IssuesQueue() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { issueId, setIssueId, paintIssue } = useSupportIssueParam();
 
-  const issueId = Number(searchParams.get('issueId')) || null;
   const q = searchParams.get('q') ?? '';
   const status = parseStatus(searchParams.get('status'));
   const type = parseType(searchParams.get('type'));
@@ -61,18 +62,22 @@ export function IssuesQueue() {
   const issues = data?.issues ?? [];
 
   const replaceParams = (patch: Record<string, string | null>) => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.set('mode', 'issues');
-    for (const [key, value] of Object.entries(patch)) {
-      if (value == null || value === '') sp.delete(key);
-      else sp.set(key, value);
-    }
-    router.replace(`/support?${sp.toString()}`, { scroll: false });
+    const clearsIssue = Object.prototype.hasOwnProperty.call(patch, 'issueId')
+      ? patch.issueId == null || patch.issueId === ''
+      : false;
+    if (clearsIssue) paintIssue(null);
+    startTransition(() => {
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set('mode', 'issues');
+      for (const [key, value] of Object.entries(patch)) {
+        if (value == null || value === '') sp.delete(key);
+        else sp.set(key, value);
+      }
+      router.replace(`/support?${sp.toString()}`, { scroll: false });
+    });
   };
 
-  const select = (id: number) => {
-    replaceParams({ issueId: String(id) });
-  };
+  const select = (id: number) => setIssueId(id);
 
   const refinements = useMemo(() => {
     const out: Array<{ id: string; label: string; onRemove: () => void }> = [];

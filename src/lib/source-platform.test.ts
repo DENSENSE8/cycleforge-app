@@ -100,5 +100,7 @@ test('formatPlatformTooltipLabel prefixes the platform display name', () => {
   );
   assert.equal(formatPlatformTooltipLabel('86-32124', null), '86-32124');
   assert.equal(formatPlatformTooltipLabel('86-32124', 'Unknown'), '86-32124');
-  assert.equal(formatPlatformTooltipLabel('', 'eBay'), '');
+  assert.equal(formatPlatformTooltipLabel('', 'eBay'), 'eBay');
+  assert.equal(formatPlatformTooltipLabel('', 'Unknown'), '');
+  assert.equal(formatPlatformTooltipLabel('', null), '');
 });

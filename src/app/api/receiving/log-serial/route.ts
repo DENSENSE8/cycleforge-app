@@ -4,6 +4,7 @@ import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { logUnmatchedReturnSerial } from '@/lib/receiving/returned-serial-link';
 import type { SerialCompareOutcome } from '@/lib/receiving/returned-serial-link';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
+import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 
 const SERIAL_MATCH_VALUES: readonly SerialCompareOutcome[] = [
   'match',
@@ -77,6 +78,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     }
 
     after(async () => {
+      // Warm list chips when this log attached to a line (Tier B2 projection).
+      if (receivingLineId != null) {
+        await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
+      }
       try {
         await invalidateReceivingViews(ctx.organizationId);
       } catch (err) {

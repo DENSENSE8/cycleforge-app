@@ -55,6 +55,21 @@ test('an empty or junk paste yields an empty selection, never a throw', () => {
   }
 });
 
+test('short order/PO numbers survive the splitter', () => {
+  const parsed = parseTrackingPaste('PO-99\n12-14721-26664');
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.trackings, ['PO-99', '12-14721-26664']);
+  assert.deepEqual(parseTrackingKeys('PO-99\n12-14721-26664').keys, ['PO99', '121472126664']);
+});
+
+test('empty paste error names tracking or order numbers', () => {
+  const empty = parseTrackingPaste('  , \n');
+  assert.equal(empty.ok, false);
+  if (empty.ok) return;
+  assert.match(empty.error, /tracking or order number/i);
+});
+
 test('the URL param round-trips', () => {
   const sel = parseTrackingKeys('1Z999AA101, 9400111899223344556677');
   const param = serializeTrackingIn(sel.keys);

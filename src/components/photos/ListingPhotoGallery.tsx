@@ -12,11 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
-import { useListingGallery, type ListingGalleryTarget } from '@/hooks/useListingGallery';
+import { useListingGallery } from '@/hooks/useListingGallery';
 import { PhotoThumb } from './PhotoThumb';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import type { LibraryPhoto } from './photo-library-types';
+
+type ListingGalleryTarget = { kind: 'sku' | 'unit'; id: number };
 
 /**
  * ListingPhotoGallery — the marketplace gallery composer (Workbench detail pane).

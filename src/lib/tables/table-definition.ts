@@ -103,6 +103,7 @@ const TABLE_ENTITY_FAMILIES = [
   'catalog-link',
   'station-history',
   'fba',
+  'units',
 ] as const;
 
 /**

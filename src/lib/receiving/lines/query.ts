@@ -91,6 +91,11 @@ export const receivingLinesQuerySchema = z.object({
   /** Universal-Incoming facet params (trimmed + lowercased raw strings). */
   inboundSourceParam: z.string(),
   incomingLinkParam: z.string(),
+  /**
+   * `?inkind=` — Incoming intake kind filter: `purchase` | `return`.
+   * Empty = all. Invalid values degrade to empty.
+   */
+  inboundKindParam: z.enum(['', 'purchase', 'return']),
   /** `?staff=` — raw trimmed string + its raw Number twin. */
   staffFilterRaw: z.string(),
   staffFilterId: numberish,
@@ -248,6 +253,9 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   // Universal Incoming facets (flag-gated, plan §6).
   const inboundSourceParam = String(searchParams.get('inbound') || '').trim().toLowerCase();
   const incomingLinkParam = String(searchParams.get('link') || '').trim().toLowerCase();
+  const inkindRaw = String(searchParams.get('inkind') || '').trim().toLowerCase();
+  const inboundKindParam =
+    inkindRaw === 'purchase' || inkindRaw === 'return' ? inkindRaw : '';
   // Universal staff filter (P1-WORK-02): narrow the carton list to one staff —
   // who received, unboxed, or first-scanned it. Absent = ALL staff (default).
   const staffFilterRaw = String(searchParams.get('staff') || '').trim();
@@ -301,6 +309,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     phase,
     inboundSourceParam,
     incomingLinkParam,
+    inboundKindParam,
     staffFilterRaw,
     staffFilterId,
     unboxQueueStage,

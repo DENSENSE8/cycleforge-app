@@ -13,12 +13,13 @@
  * Every declared step has a body — a card with nothing in it is a blank card at
  * a bench, so that registry is total and the guard requires it. Not every step
  * has an ACTION. `arrival_check` reads what the door already shot and
- * deliberately offers no camera; `classify` mounts a composite editing surface
- * whose every control is the editing itself, not a button that commits the
- * step. A registry that demanded an entry for those would be answered with a
- * placeholder button, which is worse than an honest absence: it would teach the
- * operator that the dock always has their next action in it, and then sometimes
- * lie.
+ * deliberately offers no camera. A registry that demanded an entry for that
+ * would be answered with a placeholder button, which is worse than an honest
+ * absence.
+ *
+ * `classify` *does* have a dock control: it mounts the shared
+ * `TriageClassifySection` via `classifySlot` so an unfound carton can be
+ * identified without leaving the dock (Band 1 grows for that step only).
  *
  * So the dock band renders **nothing** for a step with no entry, and
  * `procedure-step-dock.guard.test.ts` pins exactly which steps that is —
@@ -26,6 +27,7 @@
  */
 
 import { CartonPhotoDockControl } from './CartonPhotoDockControl';
+import { ClassifyDockControl } from './ClassifyDockControl';
 import { ContentsDockControl, LabelDockControl } from './AcknowledgeDockControl';
 import {
   ConditionDockControl,
@@ -37,6 +39,7 @@ import type { UnboxStepDock } from './types';
 export type { UnboxStepDockContext } from './types';
 
 export const UNBOX_STEP_DOCK_CONTROLS: Partial<Record<string, UnboxStepDock>> = {
+  classify: ClassifyDockControl,
   // The three bench carton shots differ in one value — which aspect they
   // capture — so they share one control, parameterised by the step's declared
   // aspect. Same call as the body sibling.
@@ -61,7 +64,4 @@ export const UNBOX_STEPS_WITHOUT_DOCK_ACTION: Readonly<Record<string, string>> =
   arrival_check:
     'reads the door’s arrival_package evidence and must not offer a camera — a bench ' +
     'capture there would void the require_one receive gate',
-  classify:
-    'its body IS the editor (TriageClassifySection); every control is the editing, not a ' +
-    'button that commits the step',
 };

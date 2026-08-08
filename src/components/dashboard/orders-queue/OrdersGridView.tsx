@@ -340,7 +340,6 @@ export function OrdersGridView({
       shellRef={shellRef}
       scrollParentRef={scrollParentRef}
       columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
-      columnTriggerPortalOnly
       className={className}
       testId={dataTestId}
       tableId={tableId}

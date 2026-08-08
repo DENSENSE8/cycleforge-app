@@ -33,6 +33,7 @@ import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-defini
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
 import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
+import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-table-definition';
 import {
   CATALOG_LINK_TABLE_BINDING,
   IMPORT_EXCEPTION_TABLE_BINDING,
@@ -67,6 +68,8 @@ const REGISTERED_DEFINITIONS: readonly TableDefinition[] = [
   CATALOG_TABLE_BINDING.definition,
   REPAIR_TABLE_BINDING.definition,
   BINS_TABLE_BINDING.definition,
+  // Wave 0 (SoT page-violation migrate) — Inventory units browse collection.
+  UNITS_TABLE_BINDING.definition,
   // Wave 4 — Review · Catalog-link: two definitions, one shared capabilities bag.
   CATALOG_LINK_TABLE_BINDING.definition,
   IMPORT_EXCEPTION_TABLE_BINDING.definition,

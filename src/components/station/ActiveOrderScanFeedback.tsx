@@ -129,7 +129,7 @@ const VARIANTS: Record<
   },
   fba: {
     Icon: Package,
-    label: 'FBA',
+    label: 'Amazon Prep',
     tint: 'text-purple-600',
     border: 'border-purple-200/70',
     bar: 'bg-purple-500',

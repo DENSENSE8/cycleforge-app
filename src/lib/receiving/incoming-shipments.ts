@@ -1,6 +1,10 @@
 import pool from '@/lib/db';
 import { NOT_ZOHO_RECEIVED_PREDICATE } from '@/lib/receiving/delivered-unscanned';
-import { notInboundMirrorTerminalPredicate } from '@/lib/inbound/mirror';
+import {
+  INBOUND_MARKETPLACE_CARTON_SOURCES_SQL,
+  INBOUND_MARKETPLACE_LINE_SOURCES_SQL,
+  notLineInboundMirrorTerminalPredicate,
+} from '@/lib/inbound/mirror';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isIncomingUniversal } from '@/lib/feature-flags';
@@ -20,7 +24,7 @@ const RECEIVING_SOFT_JOIN = `
                      AND r.source = 'zoho_po'
                      AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                  OR (rl.receiving_id IS NULL
-                     AND r.source = 'ebay'
+                     AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                      AND r.source_order_id = rl.source_order_id
                      AND r.organization_id = rl.organization_id))
 `;
@@ -62,16 +66,16 @@ export async function selectIncomingShipmentIds(
             (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
             OR
             (rz.zoho_purchaseorder_id IS NULL
-             AND rl.inbound_source_type = 'ebay'
+             AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
              AND rl.source_order_id IS NOT NULL
-             AND ${notInboundMirrorTerminalPredicate('ebay')})
+             AND ${notLineInboundMirrorTerminalPredicate()})
           )`
       : `(
             (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
             OR
-            (rl.inbound_source_type = 'ebay'
+            (${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
              AND rl.source_order_id IS NOT NULL
-             AND r.source = 'ebay')
+             AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL})
           )`;
 
     const { rows } = await tenantQuery<IncomingShipmentRef>(
@@ -162,7 +166,7 @@ export async function selectIncomingShipmentIds(
           AND (
             (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
             OR
-            (rl.inbound_source_type = 'ebay'
+            (${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
              AND rl.source_order_id IS NOT NULL)
           )
           AND stn.carrier IN ('UPS','USPS','FEDEX')

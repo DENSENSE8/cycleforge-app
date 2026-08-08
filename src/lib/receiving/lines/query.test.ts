@@ -48,6 +48,7 @@ test('defaults: empty search params', () => {
   assert.equal(q.phase, 'full');
   assert.equal(q.inboundSourceParam, '');
   assert.equal(q.incomingLinkParam, '');
+  assert.equal(q.inboundKindParam, '');
   assert.equal(q.staffFilterRaw, '');
   assert.equal(q.staffFilterId, 0);
   assert.equal(q.unboxQueueStage, '');

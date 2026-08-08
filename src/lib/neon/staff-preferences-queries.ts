@@ -165,6 +165,13 @@ export interface StaffPreferences {
    * `true` = collapsed. Shallow JSONB merge — writers send the whole map.
    */
   kpiCollapsed?: Record<string, boolean> | null;
+  /**
+   * Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog:
+   * `unbox-extra-tabs`), capped at {@link UNBOX_PINNED_EXTRA_TABS_MAX}.
+   * Absent / `null` = inherit the org/role default (see `unbox-default-pins.ts`);
+   * `[]` = the staffer explicitly cleared their strip (never re-inherits).
+   */
+  unboxPinnedExtraTabs?: Array<'incoming'> | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

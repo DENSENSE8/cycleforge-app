@@ -189,6 +189,15 @@ export function incomingDeliveryStateFace(
   return INCOMING_DELIVERY_STATE_FACE[state as IncomingDeliveryState];
 }
 
+/**
+ * Wire tokens `?state=` may carry on `/incoming` (route-param hygiene).
+ * Round-trip {@link INCOMING_HUNT_TILE_ORDER} — never a hand-copied twin.
+ */
+export function parseIncomingDeliveryStateWire(raw: string): string | null {
+  const v = raw.trim().toUpperCase();
+  return (INCOMING_HUNT_TILE_ORDER as readonly string[]).includes(v) ? v : null;
+}
+
 /** "All issued" tile — not a delivery_state facet. */
 export const INCOMING_ALL_ISSUED_TILE = {
   state: null as null,

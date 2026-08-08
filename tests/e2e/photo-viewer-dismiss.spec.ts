@@ -16,7 +16,8 @@ import { test, expect, type Page } from '@playwright/test';
  *     modal (or the `Layer` shell) can keep blocking clicks on the page controls
  *     underneath (grid-density toggles, Filter PO) during/after the exit.
  *  4. Click-off: clicking the dark backdrop around the photo closes the viewer
- *     (standard lightbox affordance); clicking the image itself does not.
+ *     (standard lightbox affordance); clicking the image itself or a bottom
+ *     filmstrip thumbnail does not.
  *
  * Driven through the photo library (`/ops/photos`), which mounts the same shared
  * `PhotoViewerModal`. Defensive: skips when no photos are seeded.
@@ -148,6 +149,20 @@ test.describe('photo viewer · dismissal', () => {
     await page.getByTestId('photo-lightbox').locator('img').first().click();
     await page.waitForTimeout(300);
     await expect(page.getByTestId('photo-lightbox')).toBeVisible();
+  });
+
+  test('clicking a filmstrip thumbnail does NOT close the viewer and changes the photo', async ({ page }) => {
+    await openLightbox(page);
+    const lightbox = page.getByTestId('photo-lightbox');
+    // Filmstrip only mounts when the opened entity has 2+ photos.
+    const otherThumb = lightbox.getByRole('button', { name: /thumbnail 2/i });
+    if (!(await otherThumb.count())) {
+      test.skip(true, 'opened photo has no filmstrip (need 2+ photos on the entity)');
+    }
+    await expect(lightbox.getByText('1 /')).toBeVisible();
+    await otherThumb.click();
+    await expect(lightbox).toBeVisible();
+    await expect(lightbox.getByText(/^2\s*\/\s*\d+$/)).toBeVisible();
   });
 
   test('hovering a toolbar tooltip then pressing Escape leaves no tooltip leak and the page clickable', async ({ page }) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { Panel } from '@/design-system/primitives';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
@@ -30,7 +31,12 @@ export function PhotoLibraryHeader({ breadcrumb, metaLine, controls }: PhotoLibr
       elevation="sm"
       className="sticky top-0 z-header mb-3"
     >
-      <div className="flex h-10 items-center justify-between gap-4 px-3">
+      <div
+        className={cn(
+          'flex items-center justify-between gap-4 px-3',
+          PRIMARY_CHROME_ROW_FACE,
+        )}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="min-w-0 flex-1">{breadcrumb}</div>
           <span className={cn(microBadge, 'hidden shrink-0 truncate text-text-soft md:inline')}>

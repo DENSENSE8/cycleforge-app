@@ -158,13 +158,15 @@ function ClaimPhaseActions({
       );
       return (
         <ActionsRow sticky={sticky} leading={backupLeading}>
-          {c.composeComplete ? (
-            fileButton
-          ) : (
-            <HoverTooltip label="Add a subject and body first" asChild>
-              {fileButton}
-            </HoverTooltip>
-          )}
+          {/* Stable mount — completeness disables the tip instead of unwrapping
+              the CTA (unwrap remounted the button when compose flipped). */}
+          <HoverTooltip
+            label="Add a subject and body first"
+            asChild
+            disabled={c.composeComplete}
+          >
+            {fileButton}
+          </HoverTooltip>
         </ActionsRow>
       );
     }
@@ -192,22 +194,13 @@ function ClaimPhaseActions({
     );
     return (
       <ActionsRow sticky={sticky} leading={backupLeading}>
-        {c.composeComplete ? (
-          updateButton
-        ) : (
-          <HoverTooltip label="Add a subject and body first" asChild>
-            <Button
-              type="button"
-              variant="danger"
-              size="md"
-              onClick={c.submitLinkUpdate}
-              disabled
-              icon={<Link2 className="h-3.5 w-3.5" />}
-            >
-              Update ticket →
-            </Button>
-          </HoverTooltip>
-        )}
+        <HoverTooltip
+          label="Add a subject and body first"
+          asChild
+          disabled={c.composeComplete}
+        >
+          {updateButton}
+        </HoverTooltip>
       </ActionsRow>
     );
   }

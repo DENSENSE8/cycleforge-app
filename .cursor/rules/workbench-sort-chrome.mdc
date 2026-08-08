@@ -13,7 +13,7 @@ Display sort (`Priority` / `Newest` / `Deadline`, etc.) is a **quiet preference*
 - Render sort as a compact **dropdown** (`ToolbarButton` + `Popover` / listbox) — current value on the trigger.
 - Place it in the workbench chrome **trailing** cluster via `WorkbenchTrailingCluster` (`sort` slot), **left of Import / Add** when those exist.
 - Reuse `QueueSortSwitch` for Pending / Testing queue sort; Labels’ ghost sort toggle stays in the same trailing slot.
-- Reach column visibility/display from `GridColumnGutter` → `GridColumnDetailsPanel` (one door). **Norm:** portal ▦ into the Band-3 `WorkbenchTriageBand` controls slot (`columnTriggerPortalTarget` / `triggerPortalTarget`) beside filter / staff / week / sort. **Fallback** (no Band-3): hover-revealed on the table card corner. Paint host only; open state + rail stay on the gutter. There is no chrome `fields` slot and no second mount. Detail: `.claude/rules/display/workbench-ops-queue.md` → Trailing Display & Actions.
+- Reach column visibility/display from `GridColumnGutter` → `GridColumnDetailsPanel` (one door). **Norm:** portal ▦ into the Band-3 `WorkbenchTriageBand` controls slot (`columnTriggerPortalTarget` / `triggerPortalTarget`) beside filter / staff / week / sort. **No host ⇒ no ▦** (the card-corner hover-reveal was deleted 2026-08-08). Paint host only; open state + rail stay on the gutter. There is no chrome `fields` slot and no second mount. Detail: `.claude/rules/display/workbench-ops-queue.md` → Trailing Display & Actions.
 
 ## Don’t
 
@@ -29,4 +29,4 @@ Display sort (`Priority` / `Newest` / `Deadline`, etc.) is a **quiet preference*
 
 When `WorkbenchTrailingCluster` draws its leading hairline (default when `actions` are present), solid CTAs and the quiet control immediately left of the rule use `WORKBENCH_CHROME_PILL_CLASS` (band History tab radius) on all sides — never square-flat. Detail: `.claude/rules/source-of-truth.md` → Workbench chrome pill.
 
-Column display is not a `WorkbenchTrailingCluster` slot — Band-3 hosts it in the triage controls portal; only surfaces without a Band-3 keep the card-corner hover reveal.
+Column display is not a `WorkbenchTrailingCluster` slot — Band-3 (or the inspector View cluster) hosts it in a controls portal. No host ⇒ no ▦; the card-corner hover reveal is deleted (2026-08-08).

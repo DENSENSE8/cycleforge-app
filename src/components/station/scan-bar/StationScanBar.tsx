@@ -2,8 +2,10 @@
 
 import {
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type ReactNode,
   type Ref,
@@ -17,6 +19,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
 import {
+  PRIMARY_CHROME_ROW_FACE,
   SIDEBAR_RAIL_DOT_TRACK,
   SIDEBAR_RAIL_INSET_LEFT,
   SIDEBAR_SCAN_DOCK_LEADING_ROW,
@@ -38,7 +41,10 @@ import {
   STATION_SCAN_BAR_MODE_GLYPH_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS,
+  STATION_SCAN_BAR_RAIL_PAD_FALLBACK_PX,
+  STATION_SCAN_BAR_RAIL_PEEK_PX,
   STATION_SCAN_BAR_RIGHT_CELL,
+  STATION_SCAN_BAR_RIGHT_FADE_CLASS,
   STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
   STATION_SCAN_BAR_SUBMIT_TRACE_CLASS,
 } from './tokens';
@@ -108,14 +114,18 @@ function assignRef<T>(node: T, forwarded: Ref<T> | undefined): void {
 
 /**
  * Core scan input — icon slot, hotkey gear, bottom-rule chrome, center-out
- * submit trace, optional right rail. Prefer {@link ThemedStationScanBar}.
+ * submit trace, frosted absolute right rail. Prefer {@link ThemedStationScanBar}.
+ *
+ * The mode rail overlays the trailing edge with a frosted veil so long
+ * placeholder / typed text soft-peeks under the glyphs. Clearance is measured
+ * from the rail — never magic per-station `pr-*`.
  */
 export function StationScanBar({
   value,
   onChange,
   onSubmit,
   inputRef,
-  placeholder = 'Tracking, FNSKU, RS ID, SN',
+  placeholder = 'Tracking, Amazon SKU, Repair, Serial',
   autoFocus = false,
   icon,
   iconClassName = 'text-text-muted',
@@ -140,9 +150,11 @@ export function StationScanBar({
   hotkey = true,
 }: StationScanBarProps) {
   const [scanKey, setScanKey] = useState(0);
+  const [railWidthPx, setRailWidthPx] = useState(0);
   const shouldReduceMotion = useReducedMotion();
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
   const setInputRef = useCallback(
     (node: HTMLInputElement | null) => {
       internalInputRef.current = node;
@@ -194,8 +206,24 @@ export function StationScanBar({
   const modeButtonCount = showModeButtons ? visibleModes.length : 0;
   const hasActiveRightContent = hasRightContent && rightContent != null;
   const showRight = hasActiveRightContent || showPaste || modeButtonCount > 0;
-  const rightChipCount =
-    modeButtonCount + (showPaste ? 1 : 0) + (hasActiveRightContent ? 1 : 0);
+
+  // Measure the frosted rail so padding-inline-end tracks real glyph width
+  // (3 compact modes ≠ 1 spinner ≠ paste reveal) — never a magic pr-32 twin.
+  useLayoutEffect(() => {
+    if (!showRight) {
+      setRailWidthPx(0);
+      return;
+    }
+    const el = railRef.current;
+    if (!el) return;
+    const measure = () => {
+      setRailWidthPx(Math.ceil(el.getBoundingClientRect().width));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showRight, modeButtonCount, hasActiveRightContent, showPaste, rightContent]);
 
   // `rail` = structural share of SIDEBAR_SCAN_DOCK_LEADING_ROW (icon in the
   // status-dot track, text on the row title); `masternav` = deep inset under
@@ -206,14 +234,18 @@ export function StationScanBar({
     : leadingIcon
       ? STATION_SCAN_BAR_PAD_LEFT_CLASS
       : STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS;
-  const padRight = !showRight
-    ? 'pr-4'
-    : rightChipCount >= 3
-      ? 'pr-44'
-      : rightChipCount >= 2
-        ? 'pr-36'
-        : 'pr-24';
   const modeBtnShell = modeButtonCount >= 2 ? STATION_SCAN_BAR_MODE_BTN_COMPACT : STATION_SCAN_BAR_MODE_BTN;
+
+  // Peek under the frost so "Purchase order" soft-reads past the first glyph;
+  // caret stays mostly clear of the icons.
+  const padEndPx = showRight
+    ? Math.max(
+        8,
+        (railWidthPx > 0 ? railWidthPx : STATION_SCAN_BAR_RAIL_PAD_FALLBACK_PX) -
+          STATION_SCAN_BAR_RAIL_PEEK_PX,
+      )
+    : 16;
+  const inputPadStyle: CSSProperties = { paddingInlineEnd: padEndPx };
 
   const traceClass =
     submitTraceClassName
@@ -239,20 +271,90 @@ export function StationScanBar({
       placeholder={placeholder}
       autoFocus={autoFocus}
       disabled={disabled}
+      style={inputPadStyle}
       className={cn(
         STATION_SCAN_BAR_INPUT_CLASS,
-        'relative z-base',
-        dense ? 'min-w-0 w-auto flex-1 border-0' : null,
+        // Full-bleed under the frosted rail; border lives on the outer shell.
+        'relative z-base min-w-0 flex-1 border-0',
         padLeft,
-        padRight,
-        // Dense: bottom rule lives on the leading-row shell so it spans the
-        // icon track + input. MasterNav: rule stays on the full-bleed input.
         // Hotkey gear cross-fades in the fixed icon slot — never bump pl on hover.
-        dense ? null : bottomRule,
         inputClassName,
       )}
     />
   );
+
+  const rightRail = showRight ? (
+    <div
+      ref={railRef}
+      className={cn(STATION_SCAN_BAR_RIGHT_SLOT_CLASS, rightContentClassName)}
+    >
+      <span className={STATION_SCAN_BAR_RIGHT_FADE_CLASS} aria-hidden />
+      {modeButtonCount > 0 ? (
+        <div className="flex h-full shrink-0 items-stretch gap-0" role="group" aria-label="Scan mode">
+          {visibleModes.includes('plan') ? (
+            <HoverTooltip label="Plan mode" asChild>
+              <button
+                type="button"
+                onClick={onPlanMode}
+                aria-pressed={activeMode === 'plan'}
+                aria-label={activeMode === 'plan' ? 'Plan mode active' : 'Switch to plan mode'}
+                className={cn(
+                  'ds-raw-button',
+                  modeBtnShell,
+                  activeMode === 'plan'
+                    ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-purple-700')
+                    : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                )}
+              >
+                <ClipboardList className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              </button>
+            </HoverTooltip>
+          ) : null}
+          {visibleModes.includes('select') ? (
+            <HoverTooltip label="Select mode" asChild>
+              <button
+                type="button"
+                onClick={onSelectMode}
+                aria-pressed={activeMode === 'select'}
+                aria-label={activeMode === 'select' ? 'Select mode active' : 'Switch to select mode'}
+                className={cn(
+                  'ds-raw-button',
+                  modeBtnShell,
+                  activeMode === 'select'
+                    ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-blue-700')
+                    : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                )}
+              >
+                <Pencil className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              </button>
+            </HoverTooltip>
+          ) : null}
+        </div>
+      ) : null}
+      {hasActiveRightContent ? (
+        <div className="flex h-full shrink-0 items-stretch">{rightContent}</div>
+      ) : null}
+      {showPaste ? (
+        <IconButton
+          onClick={() => void handlePasteClick()}
+          className={cn(
+            'ds-allow-control-size rounded-none',
+            STATION_SCAN_BAR_RIGHT_CELL,
+            STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+            // Secondary affordance — quiet at rest; reveal only on THIS
+            // scan bar hover/focus, never the whole rail.
+            'pointer-events-none opacity-0 transition-opacity duration-100',
+            'group-hover:pointer-events-auto group-hover:opacity-100',
+            'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+            'focus-visible:pointer-events-auto focus-visible:opacity-100',
+          )}
+          title="Paste from clipboard"
+          ariaLabel="Paste from clipboard"
+          icon={<Clipboard className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />}
+        />
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <motion.form
@@ -262,20 +364,18 @@ export function StationScanBar({
       onSubmit={handleInternalSubmit}
       className={cn('group relative', className)}
     >
-      <div className="relative isolate">
+      <div
+        className={cn(
+          'relative isolate flex w-full items-stretch',
+          PRIMARY_CHROME_ROW_FACE,
+          bottomRule,
+          // Focus brightens the shell rule (input is border-0).
+          theme ? `focus-within:border-b-${theme}-600` : null,
+        )}
+      >
         {dense ? (
-          <div
-            className={cn(
-              // Gutter matches scan-dock list/eyebrow; leading row then shares
-              // the title column with UNBOXED / rail rows.
-              SIDEBAR_RAIL_INSET_LEFT,
-              'h-10 w-full',
-              bottomRule,
-              // Focus brightens the shell rule (input is border-0 in dense mode).
-              theme ? `focus-within:border-b-${theme}-600` : null,
-            )}
-          >
-            <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'h-full w-full')}>
+          <div className={cn(SIDEBAR_RAIL_INSET_LEFT, 'flex min-w-0 flex-1 items-stretch')}>
+            <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'h-full min-w-0 w-full')}>
               {leadingIcon ? (
                 <span
                   className={cn(
@@ -293,15 +393,17 @@ export function StationScanBar({
             </div>
           </div>
         ) : (
-          <>
+          <div className="relative min-w-0 flex-1">
             {leadingIcon ? (
               <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
                 {leadingGlyph}
               </div>
             ) : null}
             {inputEl}
-          </>
+          </div>
         )}
+
+        {rightRail}
 
         {/* Center→edges submit confirm on the bottom rule (same hue family). */}
         <div
@@ -329,77 +431,6 @@ export function StationScanBar({
             ) : null}
           </AnimatePresence>
         </div>
-
-        {showRight ? (
-          <div
-            className={cn(STATION_SCAN_BAR_RIGHT_SLOT_CLASS, rightContentClassName)}
-          >
-            {modeButtonCount > 0 ? (
-              <div className="flex h-full shrink-0 items-stretch gap-0" role="group" aria-label="Scan mode">
-                {visibleModes.includes('plan') ? (
-                  <HoverTooltip label="Plan mode" asChild>
-                    <button
-                      type="button"
-                      onClick={onPlanMode}
-                      aria-pressed={activeMode === 'plan'}
-                      aria-label={activeMode === 'plan' ? 'Plan mode active' : 'Switch to plan mode'}
-                      className={cn(
-                        'ds-raw-button',
-                        modeBtnShell,
-                        activeMode === 'plan'
-                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-purple-700')
-                          : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                      )}
-                    >
-                      <ClipboardList className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
-                    </button>
-                  </HoverTooltip>
-                ) : null}
-                {visibleModes.includes('select') ? (
-                  <HoverTooltip label="Select mode" asChild>
-                    <button
-                      type="button"
-                      onClick={onSelectMode}
-                      aria-pressed={activeMode === 'select'}
-                      aria-label={activeMode === 'select' ? 'Select mode active' : 'Switch to select mode'}
-                      className={cn(
-                        'ds-raw-button',
-                        modeBtnShell,
-                        activeMode === 'select'
-                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-blue-700')
-                          : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                      )}
-                    >
-                      <Pencil className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
-                    </button>
-                  </HoverTooltip>
-                ) : null}
-              </div>
-            ) : null}
-            {hasActiveRightContent ? (
-              <div className="flex h-full shrink-0 items-stretch">{rightContent}</div>
-            ) : null}
-            {showPaste ? (
-              <IconButton
-                onClick={() => void handlePasteClick()}
-                className={cn(
-                  'ds-allow-control-size rounded-none',
-                  STATION_SCAN_BAR_RIGHT_CELL,
-                  STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                  // Secondary affordance — quiet at rest; reveal only on THIS
-                  // scan bar hover/focus, never the whole rail.
-                  'pointer-events-none opacity-0 transition-opacity duration-100',
-                  'group-hover:pointer-events-auto group-hover:opacity-100',
-                  'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
-                  'focus-visible:pointer-events-auto focus-visible:opacity-100',
-                )}
-                title="Paste from clipboard"
-                ariaLabel="Paste from clipboard"
-                icon={<Clipboard className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />}
-              />
-            ) : null}
-          </div>
-        ) : null}
       </div>
     </motion.form>
   );

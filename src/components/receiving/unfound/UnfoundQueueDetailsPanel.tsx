@@ -24,11 +24,13 @@
  * presentational components under `./details-panel/`.
  */
 
-import { ExternalLink, Trash2 } from '@/components/Icons';
+import { ExternalLink } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import {
   PaneHeaderIconBadge,
   PaneHeaderLabel,
@@ -133,56 +135,52 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
           ) : null}
         </div>
 
-        {/* Footer — actions row + sticky destructive */}
-        <div className="border-t border-border-hairline px-6 py-3">
-          <div className="mb-2 flex flex-wrap gap-2">
-            {c.externalUrl && c.externalLabel && (
-              <a
-                href={c.externalUrl}
-                target={row.kind === 'email_po' ? '_blank' : undefined}
-                rel={row.kind === 'email_po' ? 'noreferrer' : undefined}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border-soft px-2.5 py-1 text-role-micro uppercase tracking-wider text-text-muted hover:bg-surface-hover"
+        <InspectorActionFloor
+          above={
+            c.canHardDelete ? undefined : (
+              <p className="px-3 py-3 text-center text-role-micro text-text-soft">
+                Unmatched receiving rows can have attached lines. Use the{' '}
+                <span className="font-semibold text-text-muted">Check</span> toggle
+                to clear from the queue, or open the workspace to delete carefully.
+              </p>
+            )
+          }
+          leading={
+            <div className="flex items-stretch divide-x divide-border-hairline">
+              {c.externalUrl && c.externalLabel ? (
+                <a
+                  href={c.externalUrl}
+                  target={row.kind === 'email_po' ? '_blank' : undefined}
+                  rel={row.kind === 'email_po' ? 'noreferrer' : undefined}
+                  className="inline-flex h-10 items-center gap-1.5 px-2.5 text-role-micro uppercase tracking-wider text-text-muted hover:bg-surface-hover"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  {c.externalLabel}
+                </a>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void c.handleCopyAll()}
+                className="h-10 rounded-none px-2.5 text-role-micro uppercase tracking-wider text-text-muted"
               >
-                <ExternalLink className="h-3 w-3" />
-                {c.externalLabel}
-              </a>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void c.handleCopyAll()}
-              className="rounded-md border border-border-soft px-2.5 py-1 text-role-micro uppercase tracking-wider text-text-muted hover:bg-surface-hover"
-            >
-              Copy details
-            </Button>
-          </div>
-          {c.canHardDelete ? (
-            <Button
-              variant="danger"
-              size="lg"
-              icon={<Trash2 />}
-              loading={c.deleting}
-              onClick={() => void c.handleDelete()}
-              className={`w-full rounded-xl text-role-micro uppercase tracking-wider text-white ${
-                c.confirmingDelete
-                  ? 'bg-red-700 hover:bg-red-800'
-                  : 'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              {c.deleting
-                ? 'Deleting…'
-                : c.confirmingDelete
-                  ? 'Click again to confirm delete'
-                  : 'Delete Row'}
-            </Button>
-          ) : (
-            <p className="rounded-xl bg-surface-canvas px-3 py-3 text-center text-role-micro text-text-soft">
-              Unmatched receiving rows can have attached lines. Use the{' '}
-              <span className="font-semibold text-text-muted">Check</span> toggle
-              to clear from the queue, or open the workspace to delete carefully.
-            </p>
-          )}
-        </div>
+                Copy details
+              </Button>
+            </div>
+          }
+          delete={
+            c.canHardDelete ? (
+              <InspectorFlushDelete
+                isArmed={c.confirmingDelete}
+                isDeleting={c.deleting}
+                onClick={() => void c.handleDelete()}
+                label="Delete row"
+                confirmLabel="Click again to confirm delete"
+                data-testid="unfound-details-delete"
+              />
+            ) : undefined
+          }
+        />
       </div>
     </DetailStackRailRegistrar>
   );

@@ -38,7 +38,7 @@ export function IdentityLinkChip({
   editLabel,
   editInMenu = true,
   onDetails,
-  detailsLabel = 'Details',
+  detailsLabel = 'Show inspector',
   grow = false,
   lockLast8Width = false,
   actionsInMenu = false,
@@ -272,7 +272,7 @@ export function IdentityLinkChip({
             // Carton tracking may tint the MapPin via CarrierMark (showCarrierBrand).
             icon={
               carrierBrandPaint && carrierBrand ? (
-                <CarrierMark meta={carrierBrand} />
+                <CarrierMark meta={carrierBrand} footprint="chip" />
               ) : tone ? (
                 undefined
               ) : showExternalIcon ? (
@@ -281,7 +281,7 @@ export function IdentityLinkChip({
             }
             iconClass={
               carrierBrandPaint
-                ? 'inline-flex items-center justify-center'
+                ? 'text-inherit'
                 : iconClass
             }
             iconStyle={carrierBrandPaint ? undefined : iconStyle}

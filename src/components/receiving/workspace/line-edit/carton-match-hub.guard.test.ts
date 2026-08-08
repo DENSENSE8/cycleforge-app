@@ -148,8 +148,10 @@ describe('CartonMatchHub (P1)', () => {
       join(process.cwd(), 'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx'),
       'utf8',
     );
-    assert.match(claimNav, /New ticket/);
-    assert.match(claimNav, /Link existing/);
+    assert.match(claimNav, /label: 'New'/);
+    assert.match(claimNav, /label: 'Link'/);
+    assert.match(claimNav, /useSegmentChords/);
+    assert.match(claimNav, /segmentChordHint/);
   });
 
   it('opens PO tab on receiving-open-pairing-po (carton # ---- → Link PO)', () => {

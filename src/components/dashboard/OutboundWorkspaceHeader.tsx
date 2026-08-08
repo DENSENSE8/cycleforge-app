@@ -8,7 +8,7 @@
  *   Band 3 — find-only command row + Show/Hide inspector (View topics on rail)
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -30,16 +30,7 @@ import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { fulfillmentCountsFromCombos } from '@/lib/unshipped-state';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
-import { ColumnsTwo } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
-import {
-  DETAIL_INSPECTOR_COLLAPSE_EVENT,
-  getDetailInspectorCollapsed,
-  setDetailInspectorCollapsed,
-  toggleDetailInspectorCollapsed,
-  type DetailInspectorCollapseDetail,
-} from '@/design-system/shells/detail-stack';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 
 const LIFECYCLE_VIEWS = ['unshipped', 'tested', 'packed', 'shipped'] as const;
 type LifecycleView = (typeof LIFECYCLE_VIEWS)[number];
@@ -128,74 +119,16 @@ export function OutboundTriageBand({
   const inspectorOpen =
     Boolean(openOrderId) || rows.length > 0 || viewShellOpen;
 
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(() =>
-    getDetailInspectorCollapsed(),
-  );
-
   useToShipFilterHotkeys(isPrePackOrderView(active));
 
-  useEffect(() => {
-    const onCollapse = (event: Event) => {
-      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
-      if (!detail || typeof detail.collapsed !== 'boolean') return;
-      setInspectorCollapsed(detail.collapsed);
-    };
-    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
-    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
-  }, []);
-
-  const toggleOrdersInspector = useCallback(() => {
-    if (!inspectorOpen) {
-      setViewShellOpen(true);
-      setDetailInspectorCollapsed(false);
-      setInspectorCollapsed(false);
-      return;
-    }
-    toggleDetailInspectorCollapsed();
-    setInspectorCollapsed(getDetailInspectorCollapsed());
-  }, [inspectorOpen, setViewShellOpen]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      const isCmdBackslash =
-        (e.metaKey || e.ctrlKey) && (e.key === '\\' || e.code === 'Backslash');
-      const isBracket = !e.metaKey && !e.ctrlKey && !e.altKey && e.key === ']';
-      if (!isCmdBackslash && !isBracket) return;
-      e.preventDefault();
-      toggleOrdersInspector();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [toggleOrdersInspector]);
+  const openViewShell = useCallback(() => setViewShellOpen(true), [setViewShellOpen]);
 
   const inspectorToggle = (
-    <HoverTooltip
-      label={
-        !inspectorOpen
-          ? 'Show inspector'
-          : inspectorCollapsed
-            ? 'Show inspector'
-            : 'Hide inspector'
-      }
-      asChild
-    >
-      <IconButton
-        size="sm"
-        tone="neutral"
-        ariaLabel={
-          !inspectorOpen
-            ? 'Show inspector'
-            : inspectorCollapsed
-              ? 'Show inspector'
-              : 'Hide inspector'
-        }
-        aria-pressed={inspectorOpen && !inspectorCollapsed}
-        icon={<ColumnsTwo className="h-4 w-4" />}
-        onClick={toggleOrdersInspector}
-        data-testid="orders-inspector-toggle"
-      />
-    </HoverTooltip>
+    <WorkbenchInspectorToggle
+      open={inspectorOpen}
+      onOpenEmpty={openViewShell}
+      testId="orders-inspector-toggle"
+    />
   );
 
   return (

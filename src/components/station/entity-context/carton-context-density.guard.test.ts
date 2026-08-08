@@ -10,7 +10,7 @@
  * @see .claude/rules/source-of-truth.md → Station entity-context header
  */
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -69,8 +69,18 @@ describe('carton-context-density', () => {
     );
     assert.match(
       src,
-      /STATION_IDENTITY_ROW_CLASS, 'justify-end'\)[\s\S]{0,120}PoTotalChip[\s\S]{0,80}\{listingChip\}[\s\S]{0,40}\{claimUnderPhotos\}/,
-      'row 2 trailing must be end-aligned price · listing · Claim (gap-0 via STATION_IDENTITY_ROW_CLASS)',
+      /STATION_IDENTITY_COMMERCE_ROW_CLASS, 'justify-end'\)[\s\S]{0,120}PoTotalChip[\s\S]{0,80}\{listingChip\}[\s\S]{0,40}\{claimUnderPhotos\}/,
+      'row 2 trailing must be end-aligned price · listing · Claim (gap-0 via STATION_IDENTITY_COMMERCE_ROW_CLASS)',
+    );
+    assert.match(
+      src,
+      /carton-context-lifecycle-pill/,
+      'row 2 leading status must be a locked pill, not a bare status dot',
+    );
+    assert.doesNotMatch(
+      src,
+      /carton-context-lifecycle-dot/,
+      'bare lifecycle status dot is retired on carton identity',
     );
     assert.doesNotMatch(
       src,
@@ -124,13 +134,43 @@ describe('carton-context-density', () => {
     );
     assert.match(
       identity,
-      /STATION_IDENTITY_ROW_CLASS = 'flex items-center gap-0'/,
-      'identity row chips must abut (gap-0)',
+      /PRIMARY_CHROME_ROW_FACE/,
+      'station chrome must import PRIMARY_CHROME_ROW_FACE',
     );
     assert.match(
       identity,
-      /STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-0'/,
-      'classify group chips abut (gap-0), same flush grammar as Photos · Claim',
+      /STATION_CHROME_ROW_FACE = PRIMARY_CHROME_ROW_FACE/,
+      'station chrome seam aliases PRIMARY_CHROME_ROW_FACE (scan · identity · Displays)',
+    );
+    assert.match(
+      identity,
+      /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0`/,
+      'identity row chips must abut (gap-0) and stretch flush to the primary chrome face',
+    );
+    assert.match(
+      identity,
+      /STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE/,
+      'commerce row 2 must share STATION_SECONDARY_BAND_FACE with left eyebrow / VERIFICATION',
+    );
+    assert.match(
+      readFileSync(join(process.cwd(), 'src/components/layout/header-shell.ts'), 'utf8'),
+      /STATION_SECONDARY_BAND_FACE = 'h-6 shrink-0'/,
+      'secondary band SoT stays h-6 (left eyebrow · commerce · VERIFICATION)',
+    );
+    assert.match(
+      identity,
+      /STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-\[52px\]'/,
+      'stacked clearance must be chrome h-7 + secondary h-6 (52px)',
+    );
+    assert.match(
+      identity,
+      /STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-7'/,
+      'one-row clearance must match primary chrome h-7 (28px)',
+    );
+    assert.match(
+      identity,
+      /STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0'/,
+      'classify group chips abut (gap-0) and fill the chrome row height',
     );
     assert.doesNotMatch(
       identity,
@@ -157,13 +197,28 @@ describe('carton-context-density', () => {
     );
     assert.match(
       actionPillCode,
-      /STATION_CONTEXT_EXIT_PILL_CLASS\s*=\s*`[^`]*h-8 w-8/,
-      'Exit / back must be an h-8 boxed flush face (not a bare chevron)',
+      /STATION_CONTEXT_BOXED_CUBE_CLASS[\s\S]*?border border-border-soft/,
+      'Boxed cube (Exit · Unbox pin-list) paints border + card',
     );
     assert.match(
       actionPillCode,
-      /STATION_CONTEXT_EXIT_PILL_CLASS\s*=\s*`[^`]*border border-border-soft/,
-      'Exit box must paint a border so it matches Claim · Photos · classify',
+      /STATION_CONTEXT_EXIT_PILL_CLASS = `\$\{STATION_CONTEXT_BOXED_CUBE_CLASS\} h-full w-full`/,
+      'Exit / back fills the lead column flush — height owned by PRIMARY_CHROME_ROW_FACE',
+    );
+    assert.match(
+      actionPillCode,
+      /STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full /,
+      'Photos face fills chrome row 1 (h-full — never Button size height)',
+    );
+    assert.match(
+      actionPillCode,
+      /STATION_CONTEXT_CLAIM_PILL_CLASS = `h-6 /,
+      'Claim face fills secondary band row 2 (h-6)',
+    );
+    assert.match(
+      actionPillCode,
+      /STATION_CONTEXT_STATUS_PILL_CLASS = `[^`]*h-6 w-14/,
+      'Status pill is locked w-14 on the h-6 secondary band',
     );
     assert.match(
       actionPillCode,
@@ -205,6 +260,16 @@ describe('carton-context-density', () => {
     );
     assert.match(
       pillsCode,
+      /h-full shrink-0 self-stretch items-stretch/,
+      'Collapsed urgency · platform · type hosts stretch to the chrome row (not content height)',
+    );
+    assert.match(
+      pillsCode,
+      /leading-none/,
+      'Classify faces use leading-none so tone copy cannot change pill height',
+    );
+    assert.match(
+      pillsCode,
       /DEFAULT_ACTIVE\s*=\s*['"][^'"]*shadow-none/,
       'Classify default active face must stay flat (shadow-none), matching Photos · Claim',
     );
@@ -228,14 +293,44 @@ describe('carton-context-density', () => {
       /STATION_CONTEXT_EXIT_PILL_CLASS/,
       'CartonContextCard back control must use the boxed exit face',
     );
+    assert.doesNotMatch(
+      card,
+      /\bIconButton\b/,
+      'Exit must be a ds-raw-button boxed cube, not IconButton',
+    );
+    assert.doesNotMatch(
+      card,
+      /STATION_SCAN_BAR_MODE_/,
+      'Exit must not import scan-bar mode chrome (carton-context owns the boxed face)',
+    );
+    assert.match(
+      actionPillCode,
+      /ds-raw-button/,
+      'Exit face is ds-raw-button (boxed lead cube)',
+    );
+    assert.doesNotMatch(
+      actionPillCode,
+      /STATION_SCAN_BAR_MODE_/,
+      'Exit pill must not compose scan-bar mode tokens',
+    );
+    assert.match(
+      card,
+      /STATION_IDENTITY_ROW_CLASS,\s*'justify-end'\)/,
+      'Photos cell shares STATION_IDENTITY_ROW_CLASS with classify · Exit (same PRIMARY face)',
+    );
+    assert.match(
+      card,
+      /STATION_IDENTITY_COMMERCE_ROW_CLASS/,
+      'Row 2 commerce stays on STATION_IDENTITY_COMMERCE_ROW_CLASS (h-6) — not PRIMARY',
+    );
     const leadChrome = readFileSync(
       join(SRC, 'components/station/entity-context/station-identity-chrome.ts'),
       'utf8',
     );
     assert.match(
       leadChrome,
-      /STATION_IDENTITY_LEAD_COL_CLASS\s*=\s*['"][^'"]*h-8 w-8/,
-      'Lead column must match the boxed exit hit box (h-8 w-8)',
+      /STATION_IDENTITY_LEAD_COL_CLASS\s*=\s*['"][^'"]*h-full aspect-square[^'"]*items-stretch/,
+      'Lead column is a square track; exit child stretches flush',
     );
   });
 
@@ -315,8 +410,8 @@ describe('carton-context-density', () => {
     );
     assert.match(
       src,
-      /<CarrierMark meta=\{carrierBrand\} \/>/,
-      'Known carriers must tint the CopyChip leading MapPin via CarrierMark',
+      /<CarrierMark meta=\{carrierBrand\} footprint="chip" \/>/,
+      'Known carriers must tint the CopyChip leading MapPin via chip-sized CarrierMark',
     );
     assert.doesNotMatch(
       src,
@@ -325,7 +420,7 @@ describe('carton-context-density', () => {
     );
   });
 
-  it('Photos hover strip portals above Displays (AnchoredLayer panelPopover)', () => {
+  it('Unbox Photos suppresses hover strip; pill click stays send-to-phone', () => {
     const card = readFileSync(
       join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
       'utf8',
@@ -334,8 +429,30 @@ describe('carton-context-density', () => {
       .replace(/\/\/.*$/gm, '');
     assert.match(
       card,
-      /galleryPlacement\s*=\s*["']right["']/,
-      'Carton context opens the photos strip beside the pill (not over Claim)',
+      /suppressHoverGallery=\{suppressPhotoHoverGallery\}/,
+      'Carton context threads hover-strip suppress for Unbox',
+    );
+    assert.match(
+      card,
+      /galleryPlacement\s*=\s*["']left["']/,
+      'Arrival hover strip (when not suppressed) opens left of the pill',
+    );
+
+    const panel = readFileSync(
+      join(SRC, 'components/receiving/workspace/LineEditPanel.tsx'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    assert.match(
+      panel,
+      /suppressPhotoHoverGallery/,
+      'Unbox identity suppresses Photos hover strip',
+    );
+    assert.doesNotMatch(
+      panel,
+      /onOpenPhotosDisplay/,
+      'pill click must not open Displays — send-to-phone stays the click action',
     );
 
     const pill = readFileSync(
@@ -344,7 +461,18 @@ describe('carton-context-density', () => {
     )
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
-    assert.match(pill, /AnchoredLayer/, 'hover strip must portal via AnchoredLayer');
+    assert.match(pill, /suppressHoverGallery/, 'pill can suppress hover strip');
+    assert.match(
+      pill,
+      /void handleRequestOnPhone\(\)/,
+      'pill click always send-to-phone',
+    );
+    assert.doesNotMatch(
+      pill,
+      /onOpenPhotosDisplay/,
+      'pill must not route click to Displays',
+    );
+    assert.match(pill, /AnchoredLayer/, 'non-suppressed paths still portal via AnchoredLayer');
     assert.match(
       pill,
       /level\s*=\s*["']panelPopover["']/,
@@ -376,6 +504,27 @@ describe('carton-context-density', () => {
       offenders,
       [],
       `Retired CartonContextCard density props still referenced:\n${offenders.join('\n')}`,
+    );
+  });
+
+  it('identity never reintroduces a middle Show-details / Level-1 strip', () => {
+    const card = readFileSync(
+      join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^[ \t]*\/\/.*$/gm, '');
+    assert.doesNotMatch(
+      card,
+      /CartonContextLevel1|carton-context-level1|Show details/i,
+      'secondary triage detail belongs in Displays — see carton-context-details-in-displays.guard.test.ts',
+    );
+    assert.equal(
+      existsSync(
+        join(SRC, 'components/station/entity-context/CartonContextLevel1.tsx'),
+      ),
+      false,
+      'CartonContextLevel1 must stay deleted',
     );
   });
 });

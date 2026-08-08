@@ -6,18 +6,29 @@
  * Find lives only in {@link GlobalHeaderSearch}. This shell never mounts a
  * locked-width stage field. While an identifier resolves or retrieve runs it
  * publishes pending via {@link setGlobalSearchPending} so the header paints
- * {@link SearchPendingBar}. Sole hits set `?sel=`; multi-hit browse is
- * full-bleed under the header.
+ * {@link SearchPendingBar} — the body never invents “Opening…” / gray overlay
+ * holds. Sole hits set `?sel=`; multi-hit browse is full-bleed under the header.
+ *
+ * No idle teach / empty placeholder (Amazon-like): with no `?q=` the body is
+ * blank and the auto-focused header find field is the only search surface.
+ * A typed query keeps prior results or mounts the results surface as soon as
+ * retrieve is armed; warm resolve cache opens `?sel=` synchronously.
  */
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchRefineControls } from '@/components/search/SearchRefineControls';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
-import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
-import { setSearchOrderResolveCache } from '@/lib/search/search-order-resolve-query';
+import {
+  resolveSearchOrder,
+  type ResolvedSearchOrder,
+} from '@/lib/search/resolve-search-order';
+import {
+  searchOrderResolveQueryKey,
+  setSearchOrderResolveCache,
+} from '@/lib/search/search-order-resolve-query';
 import {
   SEARCH_ETYPE_PARAM,
   SEARCH_HSTAT_PARAM,
@@ -28,8 +39,9 @@ import {
 } from '@/lib/search/search-refine';
 import {
   SEARCH_SEL_PARAM,
-  formatSearchSel,
+  parseSearchSel,
   soleHitSel,
+  type SearchSelection,
 } from '@/lib/search/search-selection';
 import { isUiEntityType, looksLikeIdentifier } from '@/lib/search/search-hit';
 import {
@@ -38,12 +50,15 @@ import {
 } from '@/lib/global-search-pending';
 import { dispatchGlobalSearchFocus } from '@/lib/global-search-focus';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
-import { cn } from '@/utils/_cn';
 
-export function SearchBrowseShell() {
+export function SearchBrowseShell({
+  setSel,
+}: {
+  /** Paint-pending sel from the page hook — browse→detail in the click commit. */
+  setSel: (next: SearchSelection | null) => void;
+}) {
   useSurfacePaintMark('search:chrome', true);
   useSurfacePaintMark('search:primary', true);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const q = (searchParams.get('q') ?? '').trim();
@@ -65,25 +80,14 @@ export function SearchBrowseShell() {
   const [needRetrieve, setNeedRetrieve] = useState(false);
   const [retrieveLoading, setRetrieveLoading] = useState(false);
   const [retrieveSettled, setRetrieveSettled] = useState(false);
-
-  const replaceParams = useCallback(
-    (mutator: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
-      mutator(params);
-      const qs = params.toString();
-      router.replace(qs ? `/search?${qs}` : '/search', { scroll: false });
-    },
-    [router, searchParams],
-  );
+  /** Deep-link `/search?q=` with zero hits — hand feedback to header dropdown. */
+  const [zeroHits, setZeroHits] = useState(false);
 
   const selectOrderId = useCallback(
-    (orderId: number, queryText: string) => {
-      replaceParams((params) => {
-        if (queryText.trim()) params.set('q', queryText.trim());
-        params.set(SEARCH_SEL_PARAM, formatSearchSel('order', orderId));
-      });
+    (orderId: number, _queryText: string) => {
+      setSel({ entityType: 'order', id: orderId });
     },
-    [replaceParams],
+    [setSel],
   );
 
   // Empty land → arm header find (no page-local field).
@@ -92,22 +96,35 @@ export function SearchBrowseShell() {
     dispatchGlobalSearchFocus();
   }, [q]);
 
-  // Quiet resolve / retrieve when URL has a query — header pulse only; no gray
-  // searching chrome while an identifier is in flight.
+  // Quiet resolve / retrieve when URL has a query — header pulse only.
   useEffect(() => {
     if (!q || q.length < 2) {
       setIdPending(false);
       setNeedRetrieve(false);
       setRetrieveLoading(false);
       setRetrieveSettled(false);
+      setZeroHits(false);
       return;
     }
 
     if (looksLikeIdentifier(q)) {
+      // Warm cache (header already resolved) → skip pending paint; open sel now.
+      const cached = queryClient.getQueryData<ResolvedSearchOrder>(
+        searchOrderResolveQueryKey(q),
+      );
+      if (cached?.status === 'ok') {
+        setIdPending(false);
+        setNeedRetrieve(false);
+        setZeroHits(false);
+        selectOrderId(cached.order.id, q);
+        return;
+      }
+
       let cancelled = false;
       setIdPending(true);
       setNeedRetrieve(false);
       setRetrieveSettled(false);
+      setZeroHits(false);
       void resolveSearchOrder(q).then((resolved) => {
         if (cancelled) return;
         setSearchOrderResolveCache(queryClient, q, resolved);
@@ -126,11 +143,13 @@ export function SearchBrowseShell() {
     setIdPending(false);
     setNeedRetrieve(true);
     setRetrieveSettled(false);
+    setZeroHits(false);
   }, [q, selectOrderId, queryClient]);
 
   const showPending = idPending || (needRetrieve && retrieveLoading);
   const mountRetrieve = needRetrieve && !idPending;
-  const showResultsShell = mountRetrieve && retrieveSettled && !retrieveLoading;
+  const showRefineChrome =
+    mountRetrieve && retrieveSettled && !retrieveLoading && !zeroHits;
 
   useEffect(() => {
     setGlobalSearchPending(showPending);
@@ -143,39 +162,53 @@ export function SearchBrowseShell() {
     (hit: AiSearchHit) => {
       const { entityType, id } = hit;
       if (!isUiEntityType(entityType)) return;
-      replaceParams((params) => {
-        params.set(SEARCH_SEL_PARAM, formatSearchSel(entityType, id));
-      });
+      setSel({ entityType, id });
     },
-    [replaceParams],
+    [setSel],
   );
 
   const handleResults = useCallback(
     (hits: AiSearchHit[]) => {
       if (!q) return;
+      if (hits.length === 0) {
+        // Absolute miss — header dropdown owns red feedback.
+        setZeroHits(true);
+        setRetrieveSettled(true);
+        dispatchGlobalSearchFocus();
+        return;
+      }
+      setZeroHits(false);
       const nextSel = soleHitSel(hits);
       if (nextSel) {
-        const current = searchParams.get(SEARCH_SEL_PARAM);
-        if (current === nextSel) return;
+        const parsed = parseSearchSel(nextSel);
+        if (!parsed) return;
+        const current = parseSearchSel(searchParams.get(SEARCH_SEL_PARAM));
+        if (
+          current &&
+          current.entityType === parsed.entityType &&
+          current.id === parsed.id
+        ) {
+          return;
+        }
         const stillInList =
           current &&
           hits.some((h) => {
             const { entityType, id } = h;
             if (!isUiEntityType(entityType)) return false;
-            return formatSearchSel(entityType, id) === current;
+            return (
+              current.entityType === entityType && current.id === id
+            );
           });
         if (stillInList && hits.length > 1) {
           setRetrieveSettled(true);
           return;
         }
-        replaceParams((params) => {
-          params.set(SEARCH_SEL_PARAM, nextSel);
-        });
+        setSel(parsed);
         return;
       }
       setRetrieveSettled(true);
     },
-    [q, replaceParams, searchParams],
+    [q, searchParams, setSel],
   );
 
   const handleSelectHit = useCallback(
@@ -198,25 +231,21 @@ export function SearchBrowseShell() {
   const hasQuery = q.length > 0;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
-      {idPending ? (
-        // Identifier resolve in flight — empty hold; header owns the pulse.
-        <div className="flex-1" aria-busy />
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card">
+      {!hasQuery ? (
+        // Amazon-like: no idle teach / empty placeholder. The header find field
+        // (auto-focused) is the search surface; the body stays blank until a
+        // query resolves. Loading lives only in the header SearchPendingBar.
+        <div className="min-h-0 flex-1" />
       ) : mountRetrieve ? (
-        <div
-          className={cn(
-            'flex min-h-0 w-full flex-1 flex-col',
-            showResultsShell ? 'overflow-hidden' : 'sr-only',
-          )}
-          aria-hidden={!showResultsShell}
-        >
-          {showResultsShell && hasQuery ? (
+        <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          {showRefineChrome ? (
             <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-hairline bg-surface-card px-3 py-1.5">
               <SearchRefineControls statusOptions={statusOptions} />
             </div>
           ) : null}
           <SearchResultsSurface
-            className={showResultsShell ? 'min-h-0 flex-1 overflow-y-auto' : undefined}
+            className="min-h-0 flex-1 overflow-y-auto"
             scope="global"
             query={q}
             etype={etype}
@@ -232,16 +261,10 @@ export function SearchBrowseShell() {
             onStatusOptions={setStatusOptions}
           />
         </div>
-      ) : !hasQuery ? (
-        <div className="flex flex-1 flex-col items-center justify-center px-4 pb-16">
-          <p className="text-center text-role-caption font-semibold text-text-muted">
-            Search everything
-          </p>
-          <p className="mt-2 max-w-sm text-center text-role-micro text-text-faint">
-            Use the header find field — order #, PO, tracking, serial, SKU, or customer.
-          </p>
-        </div>
-      ) : null}
+      ) : (
+        // Identifier resolve in flight — header SearchPendingBar only; no body hold.
+        <div className="min-h-0 flex-1" aria-busy={idPending || undefined} />
+      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
 } from '../foundations/motion-framer';
 import { reducePresenceShape } from '../foundations/motion-framer-hooks';
 import { motionRole } from './roles';
-import { fadeInstant, springSnappy } from './tokens';
+import { fadeInstant, springArmedTrack, springSnappy } from './tokens';
 
 /**
  * The role layer must stay an INDEXING layer over the preset catalog — never a
@@ -32,6 +32,7 @@ test('every role resolves to the exact catalog object — no copied physics', ()
 
   assert.equal(motionRole.gesture.press.whileTap, framerGesture.tapPress);
   assert.equal(motionRole.feedback.pulse.transition, framerTransition.chipCopyFeedback);
+  assert.equal(motionRole.feedback.hitMarker.transition, framerTransition.hitMarker);
   assert.equal(motionRole.procedure.advance.transition, framerTransition.procedureStackLayout);
 });
 
@@ -46,6 +47,27 @@ test('named spring / fade presets resolve to the house physics tokens — no cop
   assert.equal(framerTransition.chipCopyFeedback, fadeInstant);
   assert.equal(framerTransition.overlayScrim, fadeInstant);
   assert.equal(motionRole.feedback.pulse.transition, fadeInstant);
+  assert.equal(motionRole.feedback.hitMarker.transition, framerTransition.hitMarker);
+  assert.equal(
+    (framerTransition.hitMarker as { duration: number }).duration,
+    0.1,
+    'hitMarker stays ≤150ms (catalog 100ms)',
+  );
+  assert.equal(
+    (framerTransition.armedSnap as { duration: number }).duration,
+    0,
+    'armedSnap remains available as binary-cut preset',
+  );
+  assert.equal(
+    framerTransition.armedTrack,
+    springArmedTrack,
+    'armedTrack FLIP uses springArmedTrack (no copied physics)',
+  );
+  assert.equal(
+    (framerTransition.selectionPulse as { duration: number }).duration,
+    0.35,
+    'selectionPulse is the boxed overlay recipe (opacity + scale)',
+  );
 });
 
 test('routeHistory rises on appear — desk tables never wipe left→right', () => {
@@ -59,13 +81,15 @@ test('routeHistory rises on appear — desk tables never wipe left→right', () 
   assert.equal((animate as { y?: number }).y, 0);
 });
 
-test('there are exactly six roles', () => {
+test('there are exactly seven roles', () => {
   const leaves = Object.values(motionRole).flatMap((group) => Object.keys(group));
   assert.equal(
     leaves.length,
-    6,
-    `Roles: ${leaves.join(', ')}. A seventh role is a claim that a new JOB exists — ` +
-      'wanting a different duration for an existing job is the drift this layer prevents.',
+    7,
+    `Roles: ${leaves.join(', ')}. An eighth role is a claim that a new JOB exists — ` +
+      'wanting a different duration for an existing job is the drift this layer prevents. ' +
+      '`feedback.hitMarker` (2026-08-07) is the seventh: middle confirm depth ≠ pulse ack ' +
+      '(Displays open must not withhold DOM behind it).',
   );
 });
 

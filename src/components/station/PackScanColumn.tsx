@@ -410,7 +410,7 @@ export default function PackScanColumn({
             onSubmit={handleSubmit}
             inputRef={inputRef}
             staffId={staffId}
-            placeholder="Tracking, unit QR, FNSKU, FBA, SKU"
+            placeholder="Tracking · QR · SKU · Prep"
             icon={<Barcode className="h-[17px] w-[17px]" />}
             iconClassName={activeColor.text}
             // Align icon/text to SIDEBAR_SCAN_DOCK_LEADING_ROW (Unbox/Testing SoT) — not MasterNav deep inset.

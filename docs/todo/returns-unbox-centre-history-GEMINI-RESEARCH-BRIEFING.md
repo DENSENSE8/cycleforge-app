@@ -267,3 +267,23 @@ Return **five separate answers**:
 ## 11. One-sentence success criterion
 
 A correct answer tells an engineer **exactly** where the first packer photo appears after a return serial match — centre, Displays, or another route — and which existing surfaces **lose** that job so we do not grow a twin.
+
+---
+
+## 12. Verdict (implemented 2026-08-06)
+
+| Claim | Score | Decision |
+|---|---|---|
+| **H1 Content** | **True** | Packer/tech evidence is primary at grade time — must be visible without Displays overflow clicks. |
+| **H2 Placement** | **False** | Do **not** replace Unbox centre with an order dossier. |
+
+**Winner: Option B** — grow `SerialMatchResult` with `ReturnOutboundEvidenceStrip` (testing + packing thumbs via `unitTimelinePhotosQuery`) + **Full history** → `openDisplays('timeline')`. On return intake, Timeline promotes from overflow to the strip.
+
+| Surface | Job after this change |
+|---|---|
+| Centre match band | First packer/tech thumbs after match |
+| Displays → Timeline → Units | Full serial genealogy (keeps the job) |
+| Photos Displays | Inbound receiving only (unchanged) |
+| SearchOrderFeedback | Desk deep-dive (unchanged; not mounted in Unbox) |
+
+Killed: C (return centre dossier), F (second rail), E as primary path. Guard: `src/components/receiving/workspace/return-match-evidence.guard.test.ts`.

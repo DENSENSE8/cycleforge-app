@@ -4,6 +4,7 @@
  * Docked (`/incoming?lane=docked`, former Receiving Board) shows the
  * receiving-lines activity trail under two tabs:
  *   • Triage — rows in the order they were **scanned** (`scanned_newest`).
+ *     Operator face: **Arrival** (matches the Arrival station; wire id stays `triage`).
  *   • Unbox  — rows in the order they were **unboxed** (`unboxed_newest`, the
  *     history default).
  *
@@ -11,7 +12,7 @@
  * (`HISTORY_SORT_WIRE_IDS` in `receiving-modes.ts`), so the tab strip, the
  * table's day-band axis, and the server ORDER BY can never disagree — the tab
  * literally *is* the sort. Unbox History's Sort-by menu does not expose
- * `scanned_newest` (triage / arrival language).
+ * `scanned_newest` (arrival language).
  *
  * Pure data + functions (no React) so chrome and the KPI strip share one contract.
  */
@@ -26,9 +27,9 @@ const DASHBOARD_RECEIVING_TAB_SORT: Record<DashboardReceivingTab, string> = {
   unbox: 'unboxed_newest',
 };
 
-/** Tab order (left → right): Triage first (the pre-unbox scan/identify step). */
+/** Tab order (left → right): Arrival first (the pre-unbox scan/identify step). */
 export const DASHBOARD_RECEIVING_TABS: ReadonlyArray<{ id: DashboardReceivingTab; label: string }> = [
-  { id: 'triage', label: 'Triage' },
+  { id: 'triage', label: 'Arrival' },
   { id: 'unbox', label: 'Unbox' },
 ];
 

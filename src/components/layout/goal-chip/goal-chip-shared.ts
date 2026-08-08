@@ -16,11 +16,11 @@ export type StationGoal = {
 
 export const STATIONS: StationKey[] = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'];
 export const STATION_LABEL: Record<StationKey, string> = {
-  TECH: 'Tech',
+  TECH: 'Testing',
   PACK: 'Packing',
   UNBOX: 'Unboxing',
   SALES: 'Sales',
-  FBA: 'FBA',
+  FBA: 'Amazon Prep',
 };
 
 const HOUR_MS = 60 * 60_000;

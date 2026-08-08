@@ -60,15 +60,22 @@ test("PoLineRow mounts condition/serial bodies under every editable line", () =>
   );
   assert.match(
     PO_LINE_ROW,
-    /activeRowSlot && !\(isActive && activeCollapsed\)/,
-    "every editable line mounts its body; only the active line may collapse",
+    /unitsChrome && !readOnly && activeRowSlot \?/,
+    "every editable line mounts its body (no single-active / collapse gate)",
+  );
+  assert.doesNotMatch(
+    PO_LINE_ROW,
+    /activeCollapsed/,
+    "the per-line collapse chevron is removed — bodies stay expanded (capture is in the bottom dock)",
   );
 });
 
 test("LinePoItemsSection feeds ActiveLineConditionSerial from slot line + units, not panel row", () => {
+  // Slot may be gated (`unitsChrome && serialScan ? (…) : undefined`) — match
+  // the destructure wherever it sits inside the activeRowSlot expression.
   assert.match(
     LINE_PO_ITEMS,
-    /activeRowSlot=\{\(\{\s*serials,\s*units,\s*line\s*\}\)/,
+    /activeRowSlot=\{[\s\S]*?\(\{\s*serials,\s*units,\s*line\s*\}\)/,
   );
   assert.match(LINE_PO_ITEMS, /units=\{units\}/);
   assert.match(LINE_PO_ITEMS, /lineId=\{line\.id\}/);
@@ -83,7 +90,7 @@ test("LinePoItemsSection feeds ActiveLineConditionSerial from slot line + units,
 test("UnmatchedAccordionSurface also passes slot line + units into ActiveLineConditionSerial", () => {
   assert.match(
     UNMATCHED,
-    /activeRowSlot=\{\(\{\s*serials,\s*units,\s*line\s*\}\)/,
+    /activeRowSlot=\{[\s\S]*?\(\{\s*serials,\s*units,\s*line\s*\}\)/,
   );
   assert.match(UNMATCHED, /units=\{units\}/);
   assert.match(UNMATCHED, /lineId=\{line\.id\}/);

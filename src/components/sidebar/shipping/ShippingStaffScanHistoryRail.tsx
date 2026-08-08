@@ -154,8 +154,15 @@ export function ShippingStaffScanHistoryRail({
         return sku || null;
       }}
       getCollapsePinFacts={(row) => [
-        { tone: 'order', value: String(row.order_id || '') },
-        { tone: 'tracking', value: String(row.shipping_tracking_number || '') },
+        {
+          tone: 'order',
+          value: String(row.order_id || ''),
+          platformValue: row.account_source ?? null,
+        },
+        {
+          tone: 'tracking',
+          value: String(row.shipping_tracking_number || ''),
+        },
         { tone: 'sku', value: String(row.sku || '') },
       ]}
       renderRowMain={(row, ctx) => <HistoryRowMain row={row} ctx={ctx} />}

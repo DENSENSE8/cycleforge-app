@@ -61,4 +61,33 @@ describe('search order feedback shell', () => {
       }
     }
   });
+
+  it('disposition + facts use typed ID chips — never Order # prose or getAccountSourceLabel', () => {
+    const bar = readFileSync(
+      path.join(ROOT, FEEDBACK_DIR, 'SearchOrderDispositionBar.tsx'),
+      'utf8',
+    );
+    const facts = readFileSync(
+      path.join(ROOT, FEEDBACK_DIR, 'SearchOrderFactsColumn.tsx'),
+      'utf8',
+    );
+
+    assert.match(bar, /OrderIdChip/);
+    assert.match(bar, /PlatformMark/);
+    assert.match(bar, /useOrderChannelLabel/);
+    assert.doesNotMatch(bar, /Order\s*#\{/);
+    assert.doesNotMatch(bar, /getAccountSourceLabel/);
+    assert.doesNotMatch(bar, /tone=["']yellow["']/);
+
+    assert.match(facts, /OrderIdChip/);
+    assert.match(facts, /TrackingChip/);
+    assert.match(facts, /StackedRowIdentity/);
+    assert.match(facts, /PlatformMark/);
+    assert.doesNotMatch(facts, /getAccountSourceLabel/);
+    assert.doesNotMatch(facts, /TrackingNumberRow/);
+    // Packout stamps live on evidence milestones — not omit-when-empty facts.
+    assert.doesNotMatch(facts, /label=["']Tested["']/);
+    assert.doesNotMatch(facts, /label=["']Packed["']/);
+    assert.doesNotMatch(facts, /label=["']Scanned out["']/);
+  });
 });

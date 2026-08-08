@@ -45,9 +45,8 @@ interface LabelsWorkspaceViewProps {
 export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewProps) {
   const { labelsTab, setLabelsTab } = useLabelsWorkspaceTab();
   const { q, sort, setQ, setSort, openNew } = useOutboundUrlState();
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.labels,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.labels);
   // Recent (staged) detail is local — it must not touch the Queue tab's `?open=`
   // label-print flow.
   const [recentOpenId, setRecentOpenId] = useState<number | null>(null);
@@ -90,7 +89,7 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
               sort={sort}
               onToggleSort={toggleSort}
               kpiOpen={!kpiCollapsed}
-              onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
+              onToggleKpi={toggleKpiCollapsed}
               controlsSlotRef={setLabelsControlsEl}
             />
           </div>

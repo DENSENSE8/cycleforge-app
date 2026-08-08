@@ -13,23 +13,32 @@
  *   searching  → null here — the scan row's trailing check cell owns the spinner
  *   found      → success notice + the unit's status / SKU / grade / bin pills.
  *                A unit whose prior status is SHIPPED is a genuine return — we
- *                badge it "Returned item".
+ *                badge it "Returned item", pin testing/packing thumbs
+ *                ({@link ReturnOutboundEvidenceStrip}), and offer Full history
+ *                → Displays Timeline.
  *   not-found  → warning notice (title + serial chip only; dismissible).
  *
  * Presentational only: state + data are owned by the caller (see
- * {@link useSerialLookup} for the fetch side).
+ * {@link useSerialLookup} for the fetch side). Outbound photo fetch lives in
+ * the evidence strip (shared unit-timeline cache).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check } from '@/components/Icons';
+import { AlertTriangle, Check, History } from '@/components/Icons';
 import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { ListingUrlChip, SerialChip } from '@/components/ui/CopyChip';
+import { ReturnOutboundEvidenceStrip } from '@/components/receiving/workspace/ReturnOutboundEvidenceStrip';
 import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 
 export type SerialMatchState = 'idle' | 'searching' | 'found' | 'not-found';
 
 export interface SerialMatchUnit {
+  /**
+   * `serial_units.id` when a v2 row exists. Null for TSN-only synthesized
+   * matches (no unit-timeline photo spine until a real row exists).
+   */
+  id?: number | null;
   serial_number: string;
   sku: string | null;
   current_status: string;
@@ -87,6 +96,7 @@ export function SerialMatchResult({
   serial,
   matchedOrder,
   onFileClaim,
+  onOpenHistory,
   className,
 }: {
   state: SerialMatchState;
@@ -102,6 +112,11 @@ export function SerialMatchResult({
    * prefilled claim modal.
    */
   onFileClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
+  /**
+   * Opens Displays → Timeline (Units spine) for the full serial genealogy.
+   * Centre keeps lines; this is the deep-link, not a second history surface.
+   */
+  onOpenHistory?: () => void;
   className?: string;
 }) {
   // Operator can dismiss the band without clearing the lookup — reappears when
@@ -209,17 +224,35 @@ export function SerialMatchResult({
               <MetaPill label="Bin" value={unit.current_location} />
             ) : null}
           </div>
-          {/* Return CTA — pairs the order with the carton + opens a prefilled
-              claim for the operator to review. Only for genuine returns. */}
-          {isReturn && onFileClaim ? (
-            <Button
-              size="sm"
-              onClick={() => onFileClaim(matchedOrder ?? null)}
-              iconRight={<span aria-hidden>→</span>}
-              className="bg-emerald-600 text-role-micro uppercase tracking-wider text-white hover:bg-emerald-700 active:bg-emerald-700"
-            >
-              File return claim
-            </Button>
+          {isReturn ? (
+            <ReturnOutboundEvidenceStrip serialUnitId={unit.id ?? null} />
+          ) : null}
+          {/* Return CTAs — claim pairs the order; Full history opens Displays
+              Timeline (Units). Only for genuine returns. */}
+          {isReturn && (onFileClaim || onOpenHistory) ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {onFileClaim ? (
+                <Button
+                  size="sm"
+                  onClick={() => onFileClaim(matchedOrder ?? null)}
+                  iconRight={<span aria-hidden>→</span>}
+                  className="bg-emerald-600 text-role-micro uppercase tracking-wider text-white hover:bg-emerald-700 active:bg-emerald-700"
+                >
+                  File return claim
+                </Button>
+              ) : null}
+              {onOpenHistory ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={onOpenHistory}
+                  icon={<History aria-hidden />}
+                  className="text-role-micro uppercase tracking-wider"
+                >
+                  Full history
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : (

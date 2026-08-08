@@ -234,10 +234,9 @@ test.describe('Dashboard order inspector — non-modal', () => {
       0,
     );
 
-    // Collapse parks the aside; expand strip restores it (same grammar as the
-    // left context rail — host-owned, not page-local).
-    const collapseBtn = page.getByTestId('edge-resize-collapse');
-    await handle.hover();
+    // Collapse parks via header `→|` (sash is drag-only — never a sash-top
+    // chevron). Expand strip restores it (host-owned, not page-local).
+    const collapseBtn = inspector.getByRole('button', { name: 'Hide right panel' });
     await expect(collapseBtn).toBeVisible();
     await collapseBtn.click();
     await expect(page.getByTestId('detail-inspector-expand')).toBeVisible();

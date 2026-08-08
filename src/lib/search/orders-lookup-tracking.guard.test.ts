@@ -27,11 +27,14 @@ describe('orders lookup tracking resolve', () => {
     assert.match(src, /loadOrderDetailById/);
   });
 
-  it('header paste commits via onSearch → resolveSearchOrder + cache seed', () => {
+  it('header paste commits via onSearch → commitIdentifierFind', () => {
     assert.match(field, /flushValue\(trimmed, Boolean\(onSearch\)\)/);
     assert.match(find, /onSearch=\{handleSearchSubmit\}/);
-    assert.match(find, /resolveSearchOrder\(trimmed\)/);
-    assert.match(find, /setSearchOrderResolveCache/);
-    assert.match(find, /orderRecordHref\(resolved\.order\.id\)/);
+    assert.match(find, /commitIdentifierFind\(queryClient,\s*trimmed\)/);
+    // Shared SoT still resolves + seeds cache — never a twin path in the host.
+    const commit = readRepo('src/lib/search/commit-identifier-find.ts');
+    assert.match(commit, /resolveSearchOrder/);
+    assert.match(commit, /setSearchOrderResolveCache/);
+    assert.match(commit, /orderRecordHref\(resolved\.order\.id\)/);
   });
 });

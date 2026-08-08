@@ -26,6 +26,9 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
+import { RECEIVING_RAIL_OCCUPANT_ID } from '@/lib/right-rail/receiving-selection-occupancy';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import {
@@ -111,7 +114,11 @@ interface HistoryTriageBandProps {
   controlsSlotRef?: Ref<HTMLDivElement>;
 }
 
-/** Band 3 — search left; refine (sort / field) + week pill + ▦ right. */
+/**
+ * Band 3 — find-only command row (Unbox History golden). Dominant find carries
+ * the whole row with refine (sort · search field · week) in-field; the right
+ * zone is view toggles only (▦ portal · inspector park).
+ */
 export function HistoryTriageBand({
   weekRange,
   weekOffset,
@@ -172,8 +179,75 @@ export function HistoryTriageBand({
 
   const [filterOpen, setFilterOpen] = useState(false);
   const filterHot = searchField !== 'all' || historySort !== HISTORY_DEFAULT_SORT;
+  const historyInspectorOpen = useRightRailOccupantOpen(
+    RECEIVING_RAIL_OCCUPANT_ID.historyInspect,
+  );
 
   const placeholder = getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter');
+
+  const inFieldRefine = (
+    <>
+      <WorkbenchFilterPopover
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        hot={filterHot}
+        label="Refine"
+        density="field"
+      >
+        {HISTORY_SORT_OPTIONS.length > 1 ? (
+          <>
+            <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
+            {HISTORY_SORT_OPTIONS.map((option) => (
+              <WorkbenchFilterMenuRow
+                key={option.id}
+                label={option.label}
+                active={historySort === option.id}
+                onClick={() => {
+                  setSort(option.id);
+                  setFilterOpen(false);
+                }}
+              />
+            ))}
+            <WorkbenchFilterDivider />
+          </>
+        ) : null}
+        <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
+        {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
+          <WorkbenchFilterMenuRow
+            key={field.id}
+            label={field.label}
+            active={searchField === field.id}
+            onClick={() => {
+              setField(field.id);
+              setFilterOpen(false);
+            }}
+          />
+        ))}
+        <WorkbenchFilterDivider />
+        <WorkbenchFilterGroupLabel>Week</WorkbenchFilterGroupLabel>
+        <div className="px-1 pb-1">
+          <DateRangePickerPill
+            label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+            count={weekCount}
+            weekNav={{ weekOffset, onPrev: onPrevWeek, onNext: onNextWeek }}
+          />
+        </div>
+        {filterHot ? (
+          <>
+            <WorkbenchFilterDivider />
+            <WorkbenchFilterMenuRow
+              label="Clear filters"
+              active={false}
+              onClick={() => {
+                clearFilters();
+                setFilterOpen(false);
+              }}
+            />
+          </>
+        ) : null}
+      </WorkbenchFilterPopover>
+    </>
+  );
 
   return (
     <WorkbenchTriageBand
@@ -185,71 +259,15 @@ export function HistoryTriageBand({
           value={urlQRaw}
           onChange={setHistorySearch}
           placeholder={placeholder}
-          className="w-52 shrink-0 lg:w-64"
+          className="min-w-0 flex-1"
+          trailingSuffix={inFieldRefine}
         />
       }
-      right={
-        <>
-          <WorkbenchFilterPopover
-            open={filterOpen}
-            onOpenChange={setFilterOpen}
-            hot={filterHot}
-            label="Filters"
-          >
-            {HISTORY_SORT_OPTIONS.length > 1 ? (
-              <>
-                <WorkbenchFilterGroupLabel>Sort by</WorkbenchFilterGroupLabel>
-                {HISTORY_SORT_OPTIONS.map((option) => (
-                  <WorkbenchFilterMenuRow
-                    key={option.id}
-                    label={option.label}
-                    active={historySort === option.id}
-                    onClick={() => {
-                      setSort(option.id);
-                      setFilterOpen(false);
-                    }}
-                  />
-                ))}
-                <WorkbenchFilterDivider />
-              </>
-            ) : null}
-            <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
-            {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (
-              <WorkbenchFilterMenuRow
-                key={field.id}
-                label={field.label}
-                active={searchField === field.id}
-                onClick={() => {
-                  setField(field.id);
-                  setFilterOpen(false);
-                }}
-              />
-            ))}
-            {filterHot ? (
-              <>
-                <WorkbenchFilterDivider />
-                <WorkbenchFilterMenuRow
-                  label="Clear filters"
-                  active={false}
-                  onClick={() => {
-                    clearFilters();
-                    setFilterOpen(false);
-                  }}
-                />
-              </>
-            ) : null}
-          </WorkbenchFilterPopover>
-
-          <DateRangePickerPill
-            label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
-            count={weekCount}
-            weekNav={{
-              weekOffset,
-              onPrev: onPrevWeek,
-              onNext: onNextWeek,
-            }}
-          />
-        </>
+      trailing={
+        <WorkbenchInspectorToggle
+          open={historyInspectorOpen}
+          testId="history-inspector-toggle"
+        />
       }
     />
   );

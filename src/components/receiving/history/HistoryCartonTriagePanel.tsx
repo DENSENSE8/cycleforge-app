@@ -31,6 +31,11 @@ import {
 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  DETAIL_INSPECTOR_COLLAPSE_EVENT,
+  getDetailInspectorCollapsed,
+  type DetailInspectorCollapseDetail,
+} from '@/design-system/shells/detail-stack';
 import { OrderFactList, OrderFactRow } from '@/components/order-record/order-record-card';
 import {
   PaneHeaderIconBadge,
@@ -411,6 +416,21 @@ export function HistoryCartonTriagePanel({
   };
 
   const viewStripOpen = viewOnly || viewTopicsOpen;
+  // Parked (Band 3 `Hide inspector` / ⌘\) keeps this panel MOUNTED but inert at
+  // zero width, so `viewStripOpen` alone cannot tell the cluster whether it is
+  // reachable. Read the collapse SoT the toggle writes.
+  const [inspectorParked, setInspectorParked] = useState(() =>
+    getDetailInspectorCollapsed(),
+  );
+  useEffect(() => {
+    const onCollapse = (event: Event) => {
+      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
+      if (!detail || typeof detail.collapsed !== 'boolean') return;
+      setInspectorParked(detail.collapsed);
+    };
+    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
+    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
+  }, []);
 
   return (
     <DetailStackRailRegistrar
@@ -423,7 +443,7 @@ export function HistoryCartonTriagePanel({
       collapsedStrip={false}
       ariaLabel={
         viewOnly
-          ? 'History view controls'
+          ? 'Unbox view controls'
           : poNumber
             ? `History triage for PO ${poNumber}`
             : `History triage for receiving ${target!.receivingId}`
@@ -492,7 +512,16 @@ export function HistoryCartonTriagePanel({
             />
           )}
 
-          {/* Always mount portal host so week / ▦ do not detach when collapsed. */}
+          {/*
+            The host stays mounted so the strip does not remount on every
+            toggle, but the cluster only PUBLISHES its ▦ portal target while it
+            is visibly interactive (`active`). Band 3 stopped hosting the column
+            trigger on 2026-08-08, so this is its only portal host: a target
+            published from a hidden or parked rail would swallow ▦ into an inert
+            node and suppress the card-corner fallback. The old comment here
+            ("Always mount portal host so week / ▦ do not detach when
+            collapsed") was the premise that broke.
+          */}
           <div
             className={cn(
               'border-t border-border-soft px-2 py-1',
@@ -501,7 +530,10 @@ export function HistoryCartonTriagePanel({
             data-testid="history-triage-view-strip"
           >
             <HistoryViewChromeBridge value={viewChrome}>
-              <HistoryViewTopicsCluster hidePaint={viewOnly} />
+              <HistoryViewTopicsCluster
+                hidePaint={viewOnly}
+                active={viewStripOpen && !inspectorParked}
+              />
             </HistoryViewChromeBridge>
           </div>
 
@@ -521,9 +553,9 @@ export function HistoryCartonTriagePanel({
                     <PaneHeaderStatusPill tone="neutral">{statusLabel}</PaneHeaderStatusPill>
                   ) : null}
                   <PaneHeaderLabel
-                    eyebrow={poNumber ? 'PO #' : 'Receiving'}
+                    eyebrow={poNumber ? 'Purchase order #' : 'Carton'}
                     value={poNumber ?? `#${target!.receivingId}`}
-                    valueTitle={poNumber ?? `Receiving #${target!.receivingId}`}
+                    valueTitle={poNumber ?? `Carton #${target!.receivingId}`}
                   />
                 </div>
               </div>

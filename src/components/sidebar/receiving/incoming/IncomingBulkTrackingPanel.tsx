@@ -92,6 +92,7 @@ import {
 } from '@/lib/receiving/tracking-paste';
 import { formatDateTimePST } from '@/utils/date';
 import { toast } from '@/lib/toast';
+import { resolveCheckRowCarrierTracking } from '@/lib/receiving/check-zoho-received-carrier';
 import type {
   CheckZohoReceivedRow,
   CheckZohoReceivedStats,
@@ -194,37 +195,44 @@ const CHIP_CLASS =
   'inset-chip rounded text-role-micro uppercase tracking-widest ring-1 ring-inset';
 
 /**
- * A residual row's identity: **PO on top, tracking under it**, both as typed
- * `CopyChip`s.
+ * A residual / check row's identity: **PO title + full PO# on top, carrier
+ * tracking under it** (when known).
  *
- * Two rulings, one block. The identifiers were raw `font-mono` text, so an
- * operator could read a tracking number but not copy one without selecting it
- * by hand — `source-of-truth.md` → *Typed identifiers use the semantic CopyChip
- * family*, and this surface exists precisely to be pasted out of.
+ * Zoho's `reference_number` IS the inbound tracking — never a third "ref …"
+ * line. When the paste key was a PO/order number, that key must not also wear
+ * a TrackingChip (that was the double order-number bug).
  *
- * The PO leads because it is what the operator navigates by. The row is KEYED
- * by a tracking number, but a tracking number is a carrier's handle on a box;
- * the PO is the handle on the pick list, the carton label and the vendor email,
- * and it is what the reason chip beneath now names ("PO cancelled"). Same
- * reasoning that freezes `order` into the leading identity pane on every
- * order-anchored grid.
- *
- * **Both chips wear one face: `dense`, last-8, mono.** They are the same KIND
- * of thing — an identifier this row is keyed by — so a size or truncation
- * difference between them reads as a hierarchy that is not there. The first
- * cut shipped a full-length, non-dense PO stacked on a dense last-8 tracking,
- * and the PO visibly out-ranked the number the row is actually keyed by.
- * Last-8 is the display SoT for every typed id chip (`copy-chip-format.ts`);
- * both chips now take it from the primitive rather than the call site.
- *
- * A row with no PO renders the tracking alone rather than a placeholder:
- * honest absence, never an invented face.
+ * Filter residuals still key by tracking and use the compact chip stack.
+ * Check rows pass `vendorName` + full PO display so the PO reads as a title.
  */
-function RowIdentity({ poNumber, tracking }: { poNumber: string | null; tracking: string }) {
+function RowIdentity({
+  poNumber,
+  tracking,
+  vendorName,
+  poAsTitle = false,
+}: {
+  poNumber: string | null;
+  /** Carrier tracking — omit when unknown (honest absence). */
+  tracking: string | null;
+  vendorName?: string | null;
+  /** Check rows: full PO# face + vendor title, not last-8-only stack. */
+  poAsTitle?: boolean;
+}) {
   return (
     <div className="flex min-w-0 flex-col items-start gap-1">
-      {poNumber ? <PoChip value={poNumber} dense /> : null}
-      <TrackingChip value={tracking} dense />
+      {poNumber ? (
+        poAsTitle ? (
+          <div className="min-w-0">
+            <PoChip value={poNumber} display={poNumber} dense />
+            {vendorName ? (
+              <p className="mt-0.5 truncate text-role-micro text-text-muted">{vendorName}</p>
+            ) : null}
+          </div>
+        ) : (
+          <PoChip value={poNumber} dense />
+        )
+      ) : null}
+      {tracking ? <TrackingChip value={tracking} dense /> : null}
     </div>
   );
 }
@@ -244,8 +252,10 @@ async function copyLines(label: string, lines: string[]) {
 
 function checkCopyBlock(rows: CheckZohoReceivedRow[]): string[] {
   return rows.map((r) => {
-    const bits = [r.tracking];
+    const carrier = resolveCheckRowCarrierTracking(r);
+    const bits = [carrier ?? r.tracking];
     if (r.po_number) bits.push(`PO ${r.po_number}`);
+    if (r.vendor_name) bits.push(r.vendor_name);
     if (r.status) bits.push(r.status);
     if (r.reason !== 'matched') bits.push(reasonLabel(r.reason));
     if (r.local) bits.push(WATCH_LABEL[r.local.watch]);
@@ -301,12 +311,9 @@ function CheckResultRow({
   onFocusTracking: (tracking: string) => void;
 }) {
   const verdict = VERDICT_CHIP[row.verdict];
-  // The PO left this line when it became a chip above — restating it here
-  // would pay for the same fact twice on every row.
+  const carrierTracking = resolveCheckRowCarrierTracking(row);
+  // Status / reason only — never "ref …" (reference_number is the tracking chip).
   const meta = [
-    row.reference_number && row.reference_number !== row.tracking
-      ? `ref ${row.reference_number}`
-      : null,
     row.status ?? null,
     row.reason === 'matched' ? null : reasonLabel(row.reason),
   ].filter(Boolean);
@@ -314,39 +321,48 @@ function CheckResultRow({
   return (
     <li className="rounded-none bg-surface-card px-2 py-1.5 ring-1 ring-inset ring-border-soft">
       <div className="flex items-start justify-between gap-1.5">
-        <RowIdentity poNumber={row.po_number} tracking={row.tracking} />
-        <HoverTooltip label="Show only this tracking" focusable={false}>
-          <IconButton
-            size="xs"
-            ariaLabel={`Show ${row.tracking} in Incoming`}
-            icon={<Search className="h-3 w-3" />}
-            onClick={() => onFocusTracking(row.tracking)}
-          />
-        </HoverTooltip>
+        <RowIdentity
+          poNumber={row.po_number}
+          tracking={carrierTracking}
+          vendorName={row.vendor_name}
+          poAsTitle
+        />
+        {carrierTracking ? (
+          <HoverTooltip label="Show only this tracking" focusable={false}>
+            <IconButton
+              size="xs"
+              ariaLabel={`Show ${carrierTracking} in Incoming`}
+              icon={<Search className="h-3 w-3" />}
+              onClick={() => onFocusTracking(carrierTracking)}
+            />
+          </HoverTooltip>
+        ) : null}
       </div>
       {meta.length > 0 ? (
         <p className="mt-1 text-role-micro text-text-muted">{meta.join(' · ')}</p>
       ) : null}
-      <div className="mt-1 flex flex-wrap items-center gap-1">
-        {row.local ? (
-          <span
-            className={`${CHIP_CLASS} bg-surface-canvas text-text-muted ring-border-soft`}
-          >
-            {WATCH_LABEL[row.local.watch]}
-          </span>
-        ) : null}
-        {verdict ? (
-          <HoverTooltip label={verdict.title} focusable={false}>
-            <span className={`${CHIP_CLASS} ${verdict.className}`}>{verdict.label}</span>
-          </HoverTooltip>
-        ) : null}
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
+          {row.local ? (
+            <span
+              className={`${CHIP_CLASS} bg-surface-canvas text-text-muted ring-border-soft`}
+            >
+              {WATCH_LABEL[row.local.watch]}
+            </span>
+          ) : null}
+          {verdict ? (
+            <HoverTooltip label={verdict.title} focusable={false}>
+              <span className={`${CHIP_CLASS} ${verdict.className}`}>{verdict.label}</span>
+            </HoverTooltip>
+          ) : null}
+        </div>
         {row.synced_at ? (
           <HoverTooltip
             label="Answered from the cached PO mirror, not a live lookup."
             focusable={false}
           >
-            <span className="text-role-micro text-text-faint">
-              as of {formatDateTimePST(row.synced_at)}
+            <span className="shrink-0 text-right text-role-micro text-text-faint">
+              {formatDateTimePST(row.synced_at)}
             </span>
           </HoverTooltip>
         ) : null}
@@ -409,10 +425,16 @@ export function IncomingBulkTrackingPanel({
   onClose,
   /** Which action the entry point pre-armed. The chrome Check CTA opens on `check`. */
   initialAction = 'filter',
+  /**
+   * Unbox (and any check-only host): hide Filter / `?tracking_in=` chrome.
+   * Check is the only question; the title is always "Checking unreceived orders".
+   */
+  checkOnly = false,
 }: {
   open: boolean;
   onClose: () => void;
   initialAction?: PasteAction;
+  checkOnly?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -422,12 +444,14 @@ export function IncomingBulkTrackingPanel({
   const [paste, setPaste] = useState('');
   const [busy, setBusy] = useState<PasteAction | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [action, setAction] = useState<PasteAction>(initialAction);
+  const [action, setAction] = useState<PasteAction>(checkOnly ? 'check' : initialAction);
   const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
   const [filterResult, setFilterResult] = useState<TrackingRemovalStatusResult | null>(null);
   const [activeTab, setActiveTab] = useState<ResultTabId>('off-list');
 
-  const activeFilter = (searchParams.get(TRACKING_IN_PARAM) || '').trim();
+  const activeFilter = checkOnly ? '' : (searchParams.get(TRACKING_IN_PARAM) || '').trim();
+  const panelTitle =
+    checkOnly || action === 'check' ? 'Checking unreceived orders' : 'Tracking list';
 
   useEffect(() => {
     if (!open) return;
@@ -436,11 +460,11 @@ export function IncomingBulkTrackingPanel({
     setCheckResult(null);
     setFilterResult(null);
     setBusy(null);
-    setAction(initialAction);
+    setAction(checkOnly ? 'check' : initialAction);
     // The operator opened this to paste — put the caret where their hands are.
     const id = window.setTimeout(() => dockRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
-  }, [open, initialAction]);
+  }, [open, initialAction, checkOnly]);
 
   /** The split, done once, client-side — same parser the server re-runs. */
   const selection = useMemo(() => parseTrackingKeys(paste), [paste]);
@@ -713,7 +737,7 @@ export function IncomingBulkTrackingPanel({
       id="detail:incoming-bulk-tracking"
       onClose={onClose}
       modal={false}
-      ariaLabel="Tracking list"
+      ariaLabel={panelTitle}
     >
       <div className="flex h-full min-h-0 flex-col bg-surface-card">
         {/* The panel's own visible dismiss — a non-modal push column has no
@@ -722,11 +746,11 @@ export function IncomingBulkTrackingPanel({
         <div className={TOP_BAND_CLASS}>
           <PaneHeaderCloseButton
             onClick={onClose}
-            ariaLabel="Hide tracking list"
-            title="Hide tracking list"
+            ariaLabel={`Hide ${panelTitle.toLowerCase()}`}
+            title={`Hide ${panelTitle.toLowerCase()}`}
           />
           <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-            Tracking list
+            {panelTitle}
           </p>
         </div>
 
@@ -738,10 +762,19 @@ export function IncomingBulkTrackingPanel({
             </p>
           ) : tabs.length === 0 ? (
             <p className="text-role-caption text-text-faint">
-              One per line (or comma-separated). <strong>Filter</strong> narrows the list to
-              these rows — including ones the lane normally hides.{' '}
-              <strong>Check receipts</strong> asks the purchasing source whether they are
-              received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
+              {checkOnly ? (
+                <>
+                  Paste tracking or order numbers, one per line (or comma-separated). Asks the
+                  purchasing source whether each is received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
+                </>
+              ) : (
+                <>
+                  One per line (or comma-separated). Tracking or order numbers work.{' '}
+                  <strong>Filter</strong> narrows the list to these rows — including ones the lane
+                  normally hides. <strong>Check receipts</strong> asks the purchasing source
+                  whether they are received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
+                </>
+              )}
             </p>
           ) : null}
 
@@ -751,7 +784,7 @@ export function IncomingBulkTrackingPanel({
             </p>
           ) : null}
 
-          {activeFilter ? (
+          {!checkOnly && activeFilter ? (
             <div className="flex items-center justify-between gap-2 rounded-none bg-blue-50 px-2 py-1.5 ring-1 ring-inset ring-blue-200">
               <p className="text-role-caption text-blue-800">
                 {(() => {
@@ -765,7 +798,7 @@ export function IncomingBulkTrackingPanel({
             </div>
           ) : null}
 
-          {action === 'filter' && filterStats ? (
+          {!checkOnly && action === 'filter' && filterStats ? (
             /* "tracking numbers" is load-bearing: these counts are per KEY,
                while the table below counts LINES, and one PO can carry several.
                Measured on real data a 42-tracking paste resolved to 46 rows —
@@ -805,7 +838,9 @@ export function IncomingBulkTrackingPanel({
               tabs={tabs}
               value={activeTab}
               onChange={(id) => setActiveTab(id as ResultTabId)}
-              ariaLabel="Tracking results"
+              ariaLabel={
+                action === 'check' ? 'Unreceived order check results' : 'Tracking results'
+              }
               headerClassName={STRIP_HEADER_CLASS}
               // Quiet icon row: idle cells are icon-only (the label is both the
               // tooltip and the accessible name) and the selected cell expands
@@ -817,7 +852,7 @@ export function IncomingBulkTrackingPanel({
           ) : null}
         </div>
 
-        <div className="shrink-0 border-t border-border-soft bg-surface-card p-4">
+        <div className="shrink-0 border-t border-border-soft bg-surface-card px-3 py-2">
           <OmnichannelComposerDock
             ref={dockRef}
             value={paste}
@@ -825,29 +860,44 @@ export function IncomingBulkTrackingPanel({
             // Enter commits the PRIMARY — the same control the trailing button
             // is, per the dock's contract. Shift+Enter newlines, which is what
             // a multi-line paste needs.
-            onCommit={() => void runFilter()}
-            placeholder="Paste tracking numbers, one per line…"
-            ariaLabel="Tracking numbers"
+            onCommit={() => void (checkOnly ? runCheck() : runFilter())}
+            placeholder="Paste tracking or order numbers…"
+            ariaLabel="Tracking or order numbers"
             hideCommitButton
+            density="compact"
+            animateMount={false}
             disabled={busy != null}
             trailingAction={
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void runCheck()}
-                  disabled={!canSubmit}
-                >
-                  {busy === 'check' ? 'Checking…' : 'Check receipts'}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void runFilter()}
-                  disabled={!canSubmit}
-                >
-                  {busy === 'filter' ? 'Filtering…' : 'Filter'}
-                </Button>
+                {checkOnly ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void runCheck()}
+                    disabled={!canSubmit}
+                  >
+                    {busy === 'check' ? 'Checking…' : 'Check'}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void runCheck()}
+                      disabled={!canSubmit}
+                    >
+                      {busy === 'check' ? 'Checking…' : 'Check receipts'}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void runFilter()}
+                      disabled={!canSubmit}
+                    >
+                      {busy === 'filter' ? 'Filtering…' : 'Filter'}
+                    </Button>
+                  </>
+                )}
               </div>
             }
           />

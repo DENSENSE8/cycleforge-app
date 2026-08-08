@@ -43,6 +43,7 @@ export function useZohoSync(
   },
 ) {
   const [zohoSyncing, setZohoSyncing] = useState(false);
+  const [inventoryRefreshing, setInventoryRefreshing] = useState(false);
 
   /**
    * Pull-from-Zoho for the whole carton: re-imports the linked PO so
@@ -59,22 +60,63 @@ export function useZohoSync(
         headers: { 'Content-Type': 'application/json' },
       });
       const data = (await res.json().catch(() => null)) as { zoho_notes?: string | null } | null;
+      const syncedNotes =
+        data && 'zoho_notes' in data ? ((data.zoho_notes ?? null) as string | null) : undefined;
 
       // Re-fetch the line so the sidebar/table/panel pick up price + notes.
+      // Always patch receiving_zoho_notes from the sync response so PO-notes
+      // draft dirty-state reseeds (false "Unsaved" after a clean pull).
       try {
         const lineRes = await fetch(`/api/receiving-lines?id=${row.id}`);
         const lineData = await lineRes.json();
         if (lineData?.success && lineData.receiving_line) {
-          dispatchLine(lineData.receiving_line as ReceivingLineRow);
+          const next = lineData.receiving_line as ReceivingLineRow;
+          dispatchLine(
+            syncedNotes !== undefined
+              ? { ...next, receiving_zoho_notes: syncedNotes }
+              : next,
+          );
+        } else if (syncedNotes !== undefined) {
+          dispatchLine({ id: row.id, receiving_zoho_notes: syncedNotes });
         }
-      } catch { /* line refetch best-effort */ }
+      } catch {
+        if (syncedNotes !== undefined) {
+          dispatchLine({ id: row.id, receiving_zoho_notes: syncedNotes });
+        }
+      }
       refreshDomains(REFRESH_BUNDLES.receivingWrite);
 
-      return (data?.zoho_notes ?? null) as string | null;
+      return syncedNotes !== undefined ? syncedNotes : null;
     } catch {
       return null;
     }
   }, [row.receiving_id, row.id, dispatchLine]);
+
+  /**
+   * Inventory Displays Refresh — refresh the Zoho PO mirror (header · line_items ·
+   * activity) then pull carton notes/prices. Incoming desk Sync's twin.
+   */
+  const refreshInventoryDossier = useCallback(async (): Promise<string | null> => {
+    if (inventoryRefreshing) return null;
+    setInventoryRefreshing(true);
+    try {
+      const poId = (row.zoho_purchaseorder_id || '').trim();
+      if (poId) {
+        try {
+          await fetch('/api/receiving-lines/incoming/sync-one', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ po_id: poId }),
+          });
+        } catch {
+          /* mirror pull best-effort — carton pull still runs */
+        }
+      }
+      return await syncCartonFromZoho();
+    } finally {
+      setInventoryRefreshing(false);
+    }
+  }, [inventoryRefreshing, row.zoho_purchaseorder_id, syncCartonFromZoho]);
 
   const syncWithZoho = useCallback(async () => {
     if (zohoSyncing) return;
@@ -219,5 +261,11 @@ export function useZohoSync(
     return () => window.removeEventListener('receiving-workspace-refresh-line', handler);
   }, [syncWithZoho]);
 
-  return { zohoSyncing, syncWithZoho, syncCartonFromZoho };
+  return {
+    zohoSyncing,
+    inventoryRefreshing,
+    syncWithZoho,
+    syncCartonFromZoho,
+    refreshInventoryDossier,
+  };
 }

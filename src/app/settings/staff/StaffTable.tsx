@@ -22,6 +22,7 @@ import { DataTable, type DataTableColumn } from '@/design-system/components/Data
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 
 interface StaffRow {
   id: number;
@@ -223,7 +224,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter by name, role, or status…"
-          className="w-full max-w-xs rounded-xl border border-border-soft bg-surface-card px-3 py-1.5 text-role-data focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+          className={cn("w-full max-w-xs rounded-xl border border-border-soft bg-surface-card px-3 py-1.5 text-role-data", focusRing("field", "neutral"))}
         />
         <Button variant="brand" onClick={() => setInviteOpen(true)}>
           Invite teammate
@@ -284,7 +285,7 @@ function AuthPolicyCell({
           value={row.auth_method === 'password' ? 'password' : 'pin'}
           disabled={disabled}
           onChange={(e) => onChange(row.id, { authMethod: e.target.value as 'pin' | 'password' })}
-          className="rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-muted focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft disabled:opacity-50"
+          className={cn("rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-muted disabled:opacity-50", focusRing("field", "neutral"))}
         >
           <option value="pin">PIN</option>
           <option value="password">Password</option>
@@ -297,7 +298,7 @@ function AuthPolicyCell({
             checked={row.requires_sensitive_stepup}
             disabled={disabled}
             onChange={(e) => onChange(row.id, { requiresSensitiveStepUp: e.target.checked })}
-            className="h-3.5 w-3.5 rounded border-border-default text-text-muted focus:ring-border-soft disabled:opacity-50"
+            className={cn("h-3.5 w-3.5 rounded border-border-default text-text-muted disabled:opacity-50", focusRing("control", "neutral"))}
           />
           Wall
         </label>
@@ -401,7 +402,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Sam Rivera"
-                className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+                className={cn("block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data", focusRing("field", "neutral"))}
                 autoFocus
               />
             </label>
@@ -410,7 +411,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
               <select
                 value={form.role}
                 onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+                className={cn("block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data", focusRing("field", "neutral"))}
               >
                 {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -422,7 +423,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder="sam@acme.com"
                 type="email"
-                className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+                className={cn("block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data", focusRing("field", "neutral"))}
               />
             </label>
             {error && (

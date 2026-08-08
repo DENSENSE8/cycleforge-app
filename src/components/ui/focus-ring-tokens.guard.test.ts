@@ -26,7 +26,9 @@ const SRC_ROOT = join(process.cwd(), 'src');
 // Shrink-only baseline. LOWER as call sites adopt focusRing(); never raise.
 // 2026-07-15: armed at 1075 (non-design-system raw focus-recipe occurrences,
 // at land — concurrent commits nudged it from the 1073 first-measured).
-const RAW_FOCUS_BASELINE = 1075;
+// 2026-08-08: H1 premium-parity Phase D batch (StaffTable, TrackingException,
+// AuditLogFilterStrip, AddOrPairSkuModal, SettingControl) → 831.
+const RAW_FOCUS_BASELINE = 831;
 
 const ESCAPE_MARKER = 'ds-allow-focus';
 const LIST = process.env.FOCUS_LIST === '1';

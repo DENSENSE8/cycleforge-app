@@ -65,8 +65,7 @@ test('RightRailHost syncs same-tab collapse via DETAIL_INSPECTOR_COLLAPSE_EVENT'
 
 test('hairline is the panel seam — inset, no sash onCollapse twin of →|', () => {
   // Display hairline = panel border-l; hit sash inside the card (inset).
-  // No outset overhang into the work surface; no onCollapse chevron twin of →|.
-  // Handle may still expose `onCollapse` for the LEFT context rail.
+  // No outset overhang into the work surface; sash is drag-only (park = →|).
   assert.match(HOST_SRC, /HorizontalEdgeResizeHandle/);
   assert.match(HOST_SRC, /useHorizontalEdgeResize/);
   assert.match(HOST_SRC, /placement="inset"/);
@@ -86,23 +85,24 @@ test('hairline is the panel seam — inset, no sash onCollapse twin of →|', ()
     'RightRailHost must not pass collapseLabel (chevron twin of →|)',
   );
   // Inset hit is full-height on the panel seam (no top-8 cutoff — that
-  // shortened the display hairline under the header). Chrome owns `→|` via
-  // `relative z-raised` mounting after the sash.
+  // shortened the display hairline under the header). Sash is z-sticky
+  // (above body z-raised hairlines); chrome owns `→|` at z-header.
+  assert.match(HANDLE_SRC, /z-sticky/);
   assert.match(HANDLE_SRC, /left-0 justify-start/);
   assert.equal(
     /INSET_CHROME_CLEARANCE|top-8 bottom-0/.test(HANDLE_SRC),
     false,
     'inset hairline must be flush top→bottom; never top-8 chrome clearance on the paint',
   );
-  assert.match(HANDLE_SRC, /onCollapse\?:/);
-  assert.match(HANDLE_SRC, /edge-resize-collapse/);
+  assert.doesNotMatch(HANDLE_SRC, /onCollapse/);
+  assert.doesNotMatch(HANDLE_SRC, /edge-resize-collapse/);
 });
 
-test('Incoming details opts out of host park (edgeCollapse=false)', () => {
+test('Incoming details opts out of host park strip (collapsedStrip=false)', () => {
   const panel = code(
     sourceOf('../sidebar/receiving/IncomingDetailsPanel.tsx'),
   );
-  assert.match(panel, /edgeCollapse=\{false\}/);
+  assert.match(panel, /collapsedStrip=\{false\}/);
 });
 
 test('push column width tweens only on open/close — not live resize', () => {

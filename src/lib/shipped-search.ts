@@ -92,6 +92,15 @@ export function normalizeShippedSearchField(raw: string | null | undefined): Shi
   );
 }
 
+/**
+ * Wire tokens `?shippedSearchField=` may carry (route-param hygiene).
+ * Do not round-trip {@link normalizeShippedSearchField} — it coerces to `all`.
+ */
+export function parseShippedSearchFieldWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return SHIPPED_SEARCH_FIELDS.some((option) => option.id === v) ? v : null;
+}
+
 export function getShippedSearchFieldConfig(field: ShippedSearchField): ShippedSearchFieldConfig {
   return SHIPPED_SEARCH_FIELD_CONFIG_MAP[field] ?? SHIPPED_SEARCH_FIELD_CONFIG_MAP.all;
 }

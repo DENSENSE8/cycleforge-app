@@ -35,7 +35,7 @@ import {
   makeOrdersGridDescriptorTested,
 } from './orders-queue-descriptor';
 
-export const ORDERS_DEFAULT_TABLE_DEFINITION = parseTableDefinition({
+const ORDERS_DEFAULT_TABLE_DEFINITION = parseTableDefinition({
   id: 'fulfillment.default',
   tableId: 'orders',
   entityFamily: 'orders',
@@ -50,7 +50,7 @@ export const ORDERS_DEFAULT_TABLE_DEFINITION = parseTableDefinition({
   columns: ORDERS_QUEUE_COLUMNS,
 });
 
-export const ORDERS_TESTED_TABLE_DEFINITION = parseTableDefinition({
+const ORDERS_TESTED_TABLE_DEFINITION = parseTableDefinition({
   id: 'fulfillment.tested',
   tableId: 'orders',
   entityFamily: 'orders',

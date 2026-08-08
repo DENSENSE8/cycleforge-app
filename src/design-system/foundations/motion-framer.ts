@@ -1,5 +1,5 @@
 import type { Transition, Variants } from '../motion/framer';
-import { fadeInstant, springSnappy } from '../motion/tokens';
+import { fadeInstant, springArmedTrack, springSnappy } from '../motion/tokens';
 
 /**
  * Cubic-bezier tuples for Framer Motion `ease`.
@@ -19,7 +19,6 @@ export const framerDuration = {
   stationCardMount: 0.26,
   /** Up Next list row mount */
   upNextRowMount: 0.18,
-  stationChevron: 0.28,
   upNextChevron: 0.2,
   stationCollapseHeight: 0.32,
   stationCollapseOpacity: 0.26,
@@ -37,17 +36,20 @@ export const framerDuration = {
   captureStackFreshPulse: 1.8,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
-  /**
-   * Master-nav body swap (the map ⇄ ranked search results) — opacity-only,
-   * ≤150ms. Horizontal slide on a 240px push spine is too heavy for repetitive
-   * enterprise jumps. Pair with `framerPresence.spineBodySwap`.
+  /*
+   * `spineBodySwap` (0.12) is DELETED (2026-08-08) with its presence +
+   * transition twins. It crossfaded the MasterNav body between the map, the
+   * Scan Stations drill, and ranked search results.
    *
-   * Was `spineDrill` until 2026-08-02, when the section drill was deleted; the
-   * body still swaps between two KINDS of list, which is the same altitude
-   * change at the same physics. Renamed rather than deleted-and-recreated —
-   * a preset named for a surface that no longer exists is a comment that lies.
+   * It was opacity-only and cheap, and it still lost: it ran under
+   * `AnimatePresence mode="wait"`, so the outgoing list had to finish fading
+   * before the incoming one mounted — ~240ms round trip with an EMPTY column
+   * visible in between. On a bench navigator that sits directly between a
+   * click and the destination being reached for.
+   *
+   * `SidebarNavList` now imports NO motion at all. Do not re-add a preset for
+   * it; see the ruling in that file's docblock.
    */
-  spineBodySwap: 0.12,
   /**
    * Master-nav row cascade step — ONE ladder for drill page rows AND mode rows.
    * 15ms × index: an 8-row section finishes its last row's 120ms mount at
@@ -58,8 +60,24 @@ export const framerDuration = {
   spineRowStagger: 0.015,
   /** Master-nav row mount (paired with {@link spineRowStagger}). */
   spineRowMount: 0.12,
-  /** Master-nav active page wash settle. */
-  spineActiveWash: 0.15,
+  /*
+   * `spineActiveWash` (0.15) is DELETED (2026-08-08). It was a one-shot
+   * opacity settle on the master-nav's selected row, audited and deliberately
+   * kept the day before — on the assumption the row underneath it filled with
+   * a saturated section hue, where a settle has something to settle.
+   *
+   * The monochrome pass removed that fill: a selected row is now a plane step
+   * of a few percent, and a 150ms fade between two nearly-identical neutrals
+   * is imperceptible. It was paying a React render and an AnimatePresence
+   * branch for something no operator can see, which is the opposite of the
+   * craft it was defending. Selection is instant.
+   *
+   * The spine's ONE surviving motion is `spineRowStagger*` on nest expand,
+   * where rows genuinely mount and an instant five-row insert under the
+   * cursor is a jarring frame. Do not reintroduce a selection settle without
+   * a fill loud enough to justify one — and re-read the monochrome ruling in
+   * `src/lib/nav/spine-section-accent.ts` before proposing that fill.
+   */
   /** Table row enter/exit */
   tableRowMount: 0.22,
   /** Sidebar rail CRUD enter/exit — small left slide (scan in / dismiss out) */
@@ -95,6 +113,20 @@ export const framerDuration = {
   overlaySearchIn: 0.2,
   /** Copy-to-clipboard feedback flash */
   chipCopyFeedback: 0.15,
+  /**
+   * Armed-list leaf-commit hit-marker — opacity / inset-rail / micro-scale
+   * acknowledge. Snappier than {@link chipCopyFeedback} (150ms); stays ≤150ms
+   * hard cap. Pair with `framerTransition.hitMarker` /
+   * `motionRole.feedback.hitMarker`.
+   */
+  hitMarker: 0.1,
+  /**
+   * Armed-list ↑↓ selection geometry — binary cut (one frame). Pair with
+   * `framerTransition.armedSnap`. Not a motionRole: arm snap ≠ `push.rail`
+   * (column width) and ≠ `feedback.hitMarker` (commit juice). Displays Root
+   * Index golden; next armed-list cohort composes the same preset.
+   */
+  armedSnap: 0,
   /** Station scan-band glow — idle ⇄ focused fade */
   scanBandGlow: 0.2,
   /** Station scan-band glow — submit / click pulse flash */
@@ -160,17 +192,9 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Master-nav body swap (map ⇄ results) — pair with `framerPresence.spineBodySwap` */
-  spineBodySwap: {
-    duration: framerDuration.spineBodySwap,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
+  /* `spineBodySwap` deleted 2026-08-08 — see `framerDuration`. */
 
-  /** Master-nav active page wash — pair with `framerPresence.spineActiveWash` */
-  spineActiveWash: {
-    duration: framerDuration.spineActiveWash,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
+  /* `spineActiveWash` deleted 2026-08-08 — see `framerDuration`. */
 
   /** Photo viewer details drawer — one symmetric width toggle (open == close
    *  reversed); consumed by `PhotoContextPanel` via `useMotionTransition` */
@@ -245,12 +269,6 @@ export const framerTransition = {
 
   upNextRowMount: {
     duration: framerDuration.upNextRowMount,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
-
-  stationChevron: {
-    type: 'tween' as const,
-    duration: framerDuration.stationChevron,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -368,6 +386,46 @@ export const framerTransition = {
 
   /** Copy feedback flash — opacity-only `fadeInstant` */
   chipCopyFeedback: fadeInstant,
+
+  /**
+   * Armed-list leaf-commit hit-marker — tween, not spring. Host drives opacity
+   * / rail ink / optional lead micro-scale; this owns the decay curve only.
+   * Pair with `motionRole.feedback.hitMarker`. Never inline stiffness here.
+   */
+  hitMarker: {
+    duration: framerDuration.hitMarker,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Armed-list ↑↓ geometry snap — lead nudge `x` + traveling `layoutId` marker.
+   * `duration: 0` (binary cut). Prefer {@link armedTrack} for the sliding
+   * underline FLIP (WMS research — high-stiffness spring on transform only).
+   * Keep this preset for reduced-motion / hard-cut cohorts. Never inline
+   * `{ duration: 0 }` at call sites.
+   */
+  armedSnap: {
+    type: 'tween' as const,
+    duration: framerDuration.armedSnap,
+  } satisfies Transition,
+
+  /**
+   * Armed-list traveling track / underline — Shared Layout FLIP via `layoutId`.
+   * Physics = {@link springArmedTrack} (GPU transform only; selection state
+   * updates sync in React). Pair with absolute inset track — never animate
+   * border-width / padding / row height.
+   */
+  armedTrack: springArmedTrack,
+
+  /**
+   * Boxed-off selection pulse — absolute inset border overlay that scales +
+   * fades on opacity/transform only (no layout reflow). One-shot on arm /
+   * commit; remount via `key`. Never animate the row's own border.
+   */
+  selectionPulse: {
+    duration: 0.35,
+    ease: [0, 0, 0.2, 1] as const,
+  } satisfies Transition,
 
   /**
    * Station scan-band glow — idle ⇄ focused opacity. Pair with
@@ -675,30 +733,8 @@ export const framerPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 8 },
   },
-  /**
-   * Master-nav body swap — the flat destination map ⇄ the ranked search
-   * results. PURE opacity: no x/y on a 240px push spine (fast crossfade or
-   * instant; a horizontal slide feels heavy for repetitive ops jumps). Pair
-   * with `framerTransition.spineBodySwap`; consume via `useMotionPresence` /
-   * `useMotionTransition`.
-   *
-   * Keyed on the KIND of body, never on the query — typing must update the
-   * list in place rather than replay the crossfade on every keystroke.
-   */
-  spineBodySwap: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0 },
-  },
-  /**
-   * Master-nav active page wash — soft opacity settle instead of a hard pop.
-   * Pair with `framerTransition.spineActiveWash` + `useMotionPresence`.
-   */
-  spineActiveWash: {
-    initial: { opacity: 0.72 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0.72 },
-  },
+  /* `spineBodySwap` deleted 2026-08-08 — see `framerDuration`. */
+  /* `spineActiveWash` deleted 2026-08-08 — see `framerDuration`. */
   /**
    * Global detail-stack overlay — floating card near the top-right edge.
    * Slides IN from the right (translating left into view) and OUT back to the

@@ -37,7 +37,7 @@ function scrollQueueRowIntoView(id: number | string) {
   });
 }
 
-export interface OrdersQueuePlaneArgs {
+interface OrdersQueuePlaneArgs {
   /** Sorted, visible rows (the grid's own feed output). */
   displayedRecords: ShippedOrder[];
   /** Grouped order for the record cursor's next/prev walk. */
@@ -53,7 +53,7 @@ export interface OrdersQueuePlaneArgs {
   tableId: TableId;
 }
 
-export interface OrdersQueuePlane {
+interface OrdersQueuePlane {
   selectedIds: ReadonlySet<number>;
   selectedRecord: ShippedOrder | null;
   singleSelectedId: number | null;

@@ -149,7 +149,7 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
         share(history.todayTotal, Math.max(history.weekTotal, history.todayTotal)),
         'neutral',
         0,
-        { tooltip: `Tech scan-outs today (${history.todayTotal}).` },
+        { tooltip: `Testing scan-outs today (${history.todayTotal}).` },
       );
     },
   },
@@ -166,7 +166,7 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
         1,
         'neutral',
         0,
-        { tooltip: `Tech scan-outs in the loaded week (${history.weekTotal}).` },
+        { tooltip: `Testing scan-outs in the loaded week (${history.weekTotal}).` },
       );
     },
   },

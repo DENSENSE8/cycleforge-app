@@ -57,6 +57,8 @@ import {
   orderIdFromHit,
   unitSerialFromHit,
 } from '@/lib/search/search-result-identity';
+import { useOrderChannelLabel } from '@/hooks/useCatalog';
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 
 export type SearchRowDensity = 'compact' | 'comfortable' | 'dropdown';
 
@@ -223,11 +225,24 @@ function ComfortableAlignedRow({
   showJourneyAction,
 }: SearchResultRowProps) {
   const density: SearchRowDensity = 'comfortable';
+  const orderChannelLabel = useOrderChannelLabel();
   const facets = hit.facets ?? {};
   const tracking = facets.tracking_number?.trim() || null;
   const serial = unitSerialFromHit(hit);
   const orderId = orderIdFromHit(hit);
   const identityKind = identityKindFor(hit, orderId, serial, tracking);
+  const accountSource = facets.source_platform?.trim() || null;
+  const channelLabel =
+    identityKind === 'order' && orderId
+      ? orderChannelLabel(orderId, accountSource)
+      : '';
+  const channelMeta = sourcePlatformMetaFromLabel(channelLabel);
+  const platformLabel =
+    identityKind === 'order' && orderId
+      ? channelMeta.value
+        ? channelMeta.label
+        : channelLabel || null
+      : null;
   const whenSource = packout?.timeAt ?? facets.happened_at ?? null;
   const when = whenSource ? formatRelativeTime(whenSource) : null;
   const whenLabel = packout?.timeAt ? packout.timeLabel : null;
@@ -256,13 +271,14 @@ function ComfortableAlignedRow({
         </HoverTooltip>
       </span>
 
-      {/* 2. Id — order/PO last-8 (never tracking) */}
+      {/* 2. Id — order/PO last-8 (never tracking); platform via chip tooltip */}
       <span className="flex min-w-0 items-center justify-start">
         {identityKind === 'order' ? (
           <OrderIdChip
             value={orderId}
             display={getLast8(orderId)}
             dense
+            platformLabel={platformLabel}
             truncateDisplay={false}
             fitDisplayWidth
           />

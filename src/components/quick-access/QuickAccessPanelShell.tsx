@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 interface QuickAccessPanelShellProps {
@@ -52,7 +53,10 @@ export function QuickAccessPanelShell({
       role="dialog"
       aria-label={ariaLabel ?? title}
       className={cn(
-        'flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-xl',
+        // Flush square — matches header Popover / Kinetic Ledger ops chrome
+        // (`cornerClass('flush')`), never soft `rounded-2xl` card islands.
+        'flex flex-col overflow-hidden border border-border-soft bg-surface-card shadow-xl',
+        cornerClass('flush'),
         maxHeightClass,
         widthClass,
       )}

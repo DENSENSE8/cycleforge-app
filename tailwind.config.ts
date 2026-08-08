@@ -42,6 +42,7 @@ const config = {
         'text-role-title',
         'text-role-body',
         'text-role-data',
+        'text-role-nav',
         'text-role-caption',
         'text-role-eyebrow',
         'text-role-micro',
@@ -189,6 +190,22 @@ const config = {
                 'role-title': ['calc(1.125rem * var(--cf-density, 1))', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
                 'role-body': ['calc(0.875rem * var(--cf-density, 1))', { lineHeight: '1.45', letterSpacing: '0', fontWeight: '400' }],
                 'role-data': ['calc(0.8125rem * var(--cf-density, 1))', { lineHeight: '1.4', letterSpacing: '0.01em', fontWeight: '500' }],
+                // Navigator label — the MasterNav spine + ⌘K palette rows.
+                //
+                // 13px, the same optical size as `role-data`, but a DIFFERENT
+                // role because the two jobs disagree on numerals: `role-data`
+                // binds `tabular-nums` (a qty column must not shimmy row to
+                // row), and a nav label is prose that should kern normally.
+                // Reusing `role-data` here would have been the cheap move and
+                // would have quietly put tabular figures on every page name.
+                //
+                // ONE size for every altitude of the spine (2026-08-08): L1,
+                // subgroup header and child row all render at this role, so
+                // hierarchy is carried by indent, the nesting rail and INK —
+                // never by a second size. Weight is set per state at the call
+                // site (400 idle child · 500 parent/active) rather than baked,
+                // because this role is the only one whose weight is a state.
+                'role-nav': ['calc(0.8125rem * var(--cf-density, 1))', { lineHeight: '1.4', letterSpacing: '0' }],
                 'role-caption': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.35', letterSpacing: '0.01em', fontWeight: '500' }],
                 'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.08em', fontWeight: '600' }],
                 'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.04em', fontWeight: '600' }],

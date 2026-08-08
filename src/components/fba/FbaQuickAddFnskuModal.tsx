@@ -7,7 +7,7 @@ import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { FormField } from '@/design-system/components';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
-import { normalizeFnsku } from '@/lib/tracking-format';
+import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import { FBA_OPEN_QUICK_ADD_FNSKU, FBA_FNSKU_SAVED } from '@/lib/fba/events';
 
 /** @deprecated Use FBA_OPEN_QUICK_ADD_FNSKU from events.ts */
@@ -64,7 +64,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
   useEffect(() => {
     const handleOpen = (event: Event) => {
       const detail = (event as CustomEvent<OpenQuickAddFnskuDetail>).detail || {};
-      setFnsku(normalizeFnsku(String(detail.fnsku || '')));
+      setFnsku(normalizeTrackingCanonical(String(detail.fnsku || '')));
       setProductTitle(String(detail.product_title || '').trim());
       setAsin(String(detail.asin || '').trim());
       setSku(String(detail.sku || '').trim());
@@ -76,7 +76,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
     return () => window.removeEventListener(FBA_OPEN_QUICK_ADD_FNSKU_EVENT, handleOpen as EventListener);
   }, []);
 
-  const canSubmit = useMemo(() => Boolean(normalizeFnsku(fnsku)), [fnsku]);
+  const canSubmit = useMemo(() => Boolean(normalizeTrackingCanonical(fnsku)), [fnsku]);
 
   if (!open) return null;
 
@@ -96,13 +96,13 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
             <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>Quick add</p>
-            <h2 className="mt-1 text-sm font-semibold text-text-default">Add FNSKU details</h2>
+            <h2 className="mt-1 text-sm font-semibold text-text-default">Add Amazon SKU details</h2>
           </div>
           <IconButton
             type="button"
             onClick={() => setOpen(false)}
             disabled={saving}
-            ariaLabel="Close quick add FNSKU popup"
+            ariaLabel="Close quick add Amazon SKU popup"
             icon={<X className="h-4 w-4" />}
             className="rounded-full border border-border-soft bg-surface-card p-2 text-text-soft hover:border-border-default hover:bg-surface-hover hover:text-text-default disabled:opacity-40"
           />
@@ -135,7 +135,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             <TextField
               label="FNSKU"
               value={fnsku}
-              onChange={(next) => setFnsku(normalizeFnsku(next))}
+              onChange={(next) => setFnsku(normalizeTrackingCanonical(next))}
               required
               mono
               tone="neutral"
@@ -178,7 +178,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             type="button"
             disabled={saving || !canSubmit}
             onClick={async () => {
-              const normalizedFnsku = normalizeFnsku(fnsku);
+              const normalizedFnsku = normalizeTrackingCanonical(fnsku);
               if (!normalizedFnsku) {
                 setError('FNSKU is required.');
                 return;
@@ -204,7 +204,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
                 }
                 const saved = json?.fnsku || {};
                 emitSavedQuickAddFnsku({
-                  fnsku: normalizeFnsku(String(saved.fnsku || normalizedFnsku)),
+                  fnsku: normalizeTrackingCanonical(String(saved.fnsku || normalizedFnsku)),
                   product_title: saved.product_title ?? (productTitle.trim() || null),
                   asin: saved.asin ?? null,
                   sku: saved.sku ?? null,

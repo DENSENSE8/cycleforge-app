@@ -14,19 +14,16 @@
  * Region contract: Workbench. No context rail.
  */
 
-import { Suspense, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from '@/components/Icons';
 import { SearchBrowseShell } from '@/components/search/SearchBrowseShell';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
-import {
-  SEARCH_SEL_PARAM,
-  parseSearchSel,
-} from '@/lib/search/search-selection';
+import { useSearchSelParam } from '@/hooks/useSearchSelParam';
 
 function SearchPageFallback() {
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-canvas">
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card">
       <span className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading search…
       </span>
@@ -35,15 +32,23 @@ function SearchPageFallback() {
 }
 
 function SearchPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? '').trim();
-  const sel = useMemo(
-    () => parseSearchSel(searchParams.get(SEARCH_SEL_PARAM)),
-    [searchParams],
-  );
+  const { sel, setSel } = useSearchSelParam();
+
+  // There is no standalone `/search` landing: the header find dropdown is the
+  // results list, and picking a result opens `?sel=` detail. With neither a
+  // selection nor a query, bounce to the desk so no blank white page ever
+  // paints. `?q=` deep-links still open the browse list (back-compat only —
+  // nothing in the UI routes there anymore).
+  useEffect(() => {
+    if (!sel && !q) router.replace('/dashboard');
+  }, [sel, q, router]);
 
   if (!sel) {
-    return <SearchBrowseShell />;
+    if (!q) return null; // redirecting — never a blank body
+    return <SearchBrowseShell setSel={setSel} />;
   }
 
   return <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} />;

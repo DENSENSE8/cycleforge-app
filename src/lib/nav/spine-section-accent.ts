@@ -1,88 +1,97 @@
 /**
- * MasterNav spine accent — ONE neutral treatment for every row, at every
- * altitude. Compose from house surface/text tokens only; never a page-local hex
- * and never a chromatic Tailwind hue.
+ * MasterNav spine + ⌘K palette row treatment — **monochrome, one ladder**.
  *
  * Consumers: `SidebarNavList`, `CommandBar`. Guard: `main-nav-groups.guard.test.ts`.
  *
- * ## The eight section hues are DELETED (2026-08-02)
+ * ## Per-section hue is deleted (2026-08-08) — the third and final ruling
  *
- * From 2026-08-01 this module carried `SPINE_SECTION_ACCENTS`, a total
- * `Record<SpineSectionId, …>` of 8 sections × 14 fields — sky / amber / teal /
- * emerald / cyan / indigo / green / orange. Every one of those hues was picked
- * for contrast and defended on the merits, and the map still lost:
+ * The nine-hue map was born 2026-08-01, deleted 2026-08-02, restored
+ * 2026-08-07, and is now deleted again with the reasoning that closes it.
+ * Each round argued about *volume* — how saturated, how many rows, which
+ * shade — and every round the answer got quieter, which is the shape of an
+ * idea that does not work rather than one that needs tuning.
  *
- * - **Hue was never the thing being read.** A section's identity is its label
- *   and its position in {@link SPINE_SECTIONS}; the colour restated a fact the
- *   row already carried, and only once you had learned the mapping.
- * - **It cost the spine its calm.** Eight saturated fills in one 240px column
- *   is a paint chart, not chrome — the single loudest reason the spine read as
- *   "generated" rather than designed.
- * - **Its stated job was already done elsewhere.** The ⌘K palette groups by
- *   labelled section bands (`CommandBarNavGroup.label` + `sectionIcon`), and
- *   `nav-destinations.ts` carries a parent `context` string on every flat
- *   search row. Neither needed a colour to say which section a row belongs to.
+ * What settled it was seeing it: with a section drilled open, EVERY row in
+ * that section carries the section's tint, so the tint marks nothing. Worse,
+ * it actively cost legibility — the one genuinely selected row became a
+ * slightly different shade of the same colour as its four siblings, so the
+ * change made "where am I" *harder* to answer, which was the only question
+ * the colour was there to help with. A channel that is on for every row in
+ * view carries zero bits.
  *
- * Do not re-introduce a per-section hue. If a section ever genuinely needs to
- * be distinguished at a glance, the answer is its glyph and its grouping — the
- * two channels that survive greyscale, glare, and colour-blindness.
+ * Two more things it got wrong, both structural rather than tunable:
  *
- * ## The ladder (2026-08-03): one soft selected wash, Cloudflare-quiet
+ *  - **A section header became a solid saturated bar** — the shape every
+ *    product on the operator's screen uses for a warning banner.
+ *  - **Colored body text at nav size** reads as unfinished software. Ink is
+ *    the channel this column uses for hierarchy (idle vs current); spending
+ *    it on identity left nothing for state.
  *
- * A neutral spine answers two questions with one grey ramp on a white
- * (`bg-surface-card`) column:
+ * Section identity now comes from **grouping and order** (a hairline at each
+ * boundary, `SPINE_SECTIONS` order) — which is what a label was already
+ * doing, and is why the redundancy objection kept coming back.
  *
- * | Rung | State | Treatment |
- * |---|---|---|
- * | 1 | hover — "the pointer is here" | `bg-surface-hover` wash |
- * | 2 | selected / expanded — "this is open or where you are" | `bg-surface-sunken`, default ink, **no ring** |
+ * **This does not touch colour where colour marks a THING rather than a
+ * door.** `receiving-type-meta.ts` / `TicketChip` / the functional-hue table
+ * still agree that repair is orange; `workflowStageDot` still tones a
+ * lifecycle. Those paint records. A nav row is not a record — it is the
+ * doorway to one, and doorways in this app are now uniformly quiet.
+ * `REPAIR_ICON_TINT` is deleted from nav for exactly that reason.
  *
- * **Active pages, owning sections, and expanded section headers share rung 2.**
- * The earlier solid `bg-surface-inverse` chip, then the `surface-strong` + inset
- * hairline seated chip, both read too loud next to Cloudflare's soft Account-
- * home wash. Operator call: a ton softer — sunken grey, no ring, same wash at
- * every altitude.
+ * ## The ladder — ink does the work, fill only says "this row is a target"
  *
- * Hover stays on `surface-hover` (lighter than sunken) so the pointer wash does
- * not collide with the selected wash.
+ * Three ink steps and three planes, every one an existing house token; this
+ * pass introduced no new colour values.
+ *
+ * | State           | Ink                          | Plane                        |
+ * |-----------------|------------------------------|------------------------------|
+ * | child idle      | `text-text-soft`   `#64748b` | none (the spine's own ground)|
+ * | parent idle     | `text-text-muted`  `#475569` | none                         |
+ * | hover           | one ink step up              | `bg-surface-hover`  `#f8fafc`|
+ * | **current page**| `text-text-default` `#0f172a`| `bg-surface-card`   `#ffffff`|
+ *
+ * **The fill ASCENDS toward white, and that is deliberate.** The spine sits
+ * one plane below the work surface (`bg-surface-canvas` `#eef2f7`), so the
+ * row you are standing on rises to meet the surface it opens rather than
+ * pressing into the column. Darkening instead would need `surface-strong`,
+ * which at this size reads as a pressed button. Same direction Linear uses
+ * (its dark sidebar selects LIGHTER); inverted here only because the theme
+ * is light. Dark themes flip automatically — every value is a token.
+ *
+ * **The icon shares its label's ink exactly, at every state.** A glyph one
+ * step lighter than its own label makes a row read as two objects; sharing
+ * the value makes it read as one mark. Never re-tint a glyph here.
+ *
+ * ## Bans
+ *
+ * - **No hue, anywhere in this module.** A chromatic class here is the bug
+ *   this file now exists to prevent, and the guard fails on the class regex —
+ *   not on a hardcoded list, so a new hue cannot sneak in under a new name.
+ * - **No ring, no shadow, no bevel.** Ops chrome is flush-square and flat;
+ *   "depth" is the plane step, never an inset highlight.
+ * - **No second fill for `expanded`.** A parent that is merely open gets
+ *   NOTHING — its chevron and its revealed children already say so, and
+ *   giving it a wash makes an expanded sibling compete with the page you are
+ *   actually on. The fill means "you are here" and nothing else.
  */
 
-import type { SpineSectionId } from '@/lib/sidebar-navigation';
-
 export type SpineAccentClasses = {
-  /** Active L1 page fill (selected chip). */
+  /** The page you are ON — the only row that fills. */
   activePage: string;
-  /** Inactive L1 page / section row (hover wash included). */
+  /** Every other L1 / section row. */
   idlePage: string;
-  /** Active L1 icon on the selected chip. */
+  /** Active L1 icon — SAME ink value as its label. */
   activePageIcon: string;
-  /** Idle L1 icon. */
+  /** Idle L1 icon — SAME ink value as its label. */
   idlePageIcon: string;
-  /** Active mode / subgroup child wash. */
+  /** Active child (page mode / station in a subgroup). */
   childActive: string;
-  /** Idle mode row. */
+  /** Idle child row — one ink step quieter than an idle parent. */
   childIdle: string;
-  /** Active mode / subgroup child icon (on the selected chip). */
+  /** Active child icon — SAME ink value as its label. */
   childActiveIcon: string;
-  /** Idle mode icon — spine child rows and the ⌘K palette's row glyphs. */
+  /** Idle child icon — SAME ink value as its label. */
   childIdleIcon: string;
-  /** Root section row when expanded (or owning the active page). */
-  sectionActive: string;
-  /** Root section idle / collapsed. */
-  sectionIdle: string;
-  /**
-   * Root section icon when expanded — and the ⌘K band-heading glyph, which is
-   * the same field's second job.
-   *
-   * It matches {@link SpineAccentClasses.sectionIdleIcon} on purpose: a section
-   * row's state is carried by its soft fill, so tinting the glyph would say the
-   * same thing twice. It also has to survive the ⌘K band heading, whose label
-   * is `text-text-faint` — default ink there would put a near-black glyph
-   * beside deliberately quiet uppercase micro text.
-   */
-  sectionActiveIcon: string;
-  /** Root section icon idle. */
-  sectionIdleIcon: string;
   /**
    * ⌘K palette selected-row wash — full `data-[selected=true]:*` tokens so
    * Tailwind scans them (never string-prefix at the consumer).
@@ -92,40 +101,47 @@ export type SpineAccentClasses = {
   cmdkSelectedIcon: string;
 };
 
-/** Shared selected / expanded wash — soft sunken grey, no ring (Cloudflare-quiet). */
-const SELECTED_CHIP = 'bg-surface-sunken text-text-default';
+/**
+ * Current page: rises to the work surface's own white, ink to full contrast.
+ * No ring — the plane step against the spine's canvas ground is the edge.
+ */
+const CURRENT_PAGE = 'bg-surface-card text-text-default';
 
 /**
- * The one spine treatment. Named `NEUTRAL` because that is the ruling, not
- * because there is a chromatic sibling to contrast it with — there is not.
+ * THE treatment. One object, every row, every altitude, both consumers.
+ *
+ * It is still called an "accent" because ~40 call sites and one guard read it
+ * by that name, and renaming a module the same week its contents were
+ * replaced would make the git history harder to follow than the name is
+ * confusing. There is exactly one of these now; `spineAccentFor` survives so
+ * consumers keep a single resolution point if a treatment ever varies again.
  */
-export const SPINE_NEUTRAL_ACCENT: SpineAccentClasses = {
-  activePage: SELECTED_CHIP,
-  idlePage: 'text-text-default hover:bg-surface-hover',
+export const SPINE_ACCENT: SpineAccentClasses = {
+  activePage: CURRENT_PAGE,
+  idlePage: 'text-text-muted hover:bg-surface-hover hover:text-text-default',
   activePageIcon: 'text-text-default',
-  idlePageIcon: 'text-text-muted',
-  childActive: SELECTED_CHIP,
-  childIdle: 'text-text-default hover:bg-surface-hover',
+  idlePageIcon: 'text-text-muted group-hover:text-text-default',
+  childActive: CURRENT_PAGE,
+  childIdle: 'text-text-soft hover:bg-surface-hover hover:text-text-muted',
   childActiveIcon: 'text-text-default',
-  childIdleIcon: 'text-text-muted',
-  sectionActive: SELECTED_CHIP,
-  sectionIdle: 'text-text-default hover:bg-surface-hover',
-  sectionActiveIcon: 'text-text-muted',
-  sectionIdleIcon: 'text-text-muted',
-  cmdkSelected: 'data-[selected=true]:bg-surface-sunken data-[selected=true]:text-text-default',
+  childIdleIcon: 'text-text-soft group-hover:text-text-muted',
+  cmdkSelected: 'data-[selected=true]:bg-surface-card data-[selected=true]:text-text-default',
   cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-text-default',
 };
 
-/**
- * Resolve the accent for a spine row.
- *
- * The parameter is retained deliberately: every call site still knows which
- * section a row belongs to, and keeping the seam means a future per-section
- * *non-colour* distinction (a divider, a glyph rule) has somewhere to live
- * without re-threading four components. It has exactly one answer today.
+/*
+ * `SPINE_NEUTRAL_ACCENT` is deleted, not aliased. It named the treatment for
+ * rows that were NOT sections (top pins, footer, unmapped) back when sections
+ * had hues and chrome did not — so with the hue gone there is nothing left to
+ * split, and an alias pointing at `SPINE_ACCENT` would be a second name for
+ * one object plus a knip finding. Callers use `spineAccentFor(null)`.
  */
-export function spineAccentFor(
-  _sectionId?: SpineSectionId | null,
-): SpineAccentClasses {
-  return SPINE_NEUTRAL_ACCENT;
+
+/**
+ * Resolve a row's treatment. Takes the section id purely so call sites keep
+ * one resolution point; the answer is the same for every section, which is
+ * the entire ruling.
+ */
+export function spineAccentFor(_sectionId?: string | null): SpineAccentClasses {
+  return SPINE_ACCENT;
 }

@@ -17,7 +17,6 @@ import {
 } from '../../receiving-label-helpers';
 import { useSerialLookup, type SerialMatchedOrder } from '../../SerialMatchResult';
 import { takeSerialEditHandoff } from '../../serialEditHandoff';
-import { hasItemDescHandoff } from '../../itemDescHandoff';
 import { printProductLabel } from '@/lib/print/printProductLabel';
 import { printAsListedLabel } from '@/lib/print/printAsListedLabel';
 import { printTicketLabel } from '@/lib/print/printTicketLabel';
@@ -231,14 +230,13 @@ export function useUnboxLineController(
   // Sibling PO-line clicks keep the workspace mounted (carton-keyed remount only).
   // Re-focus the serial scan field on every line switch so the operator can keep
   // scanning without clicking into the input. Skip the carton's first paint
-  // (SerialCard / stepper owns that) and item-description handoffs (notes icon).
+  // (SerialCard / stepper owns that).
   const skipSerialFocusOnMountRef = useRef(true);
   useEffect(() => {
     if (skipSerialFocusOnMountRef.current) {
       skipSerialFocusOnMountRef.current = false;
       return;
     }
-    if (hasItemDescHandoff(row.id)) return;
     const focus = () => {
       const el = serialRef.current;
       if (!el || el.disabled) return;
@@ -924,8 +922,8 @@ export function useUnboxLineController(
             });
             toast.success(
               imported > 0
-                ? `Linked PO ${poLabel} · ${imported} line${imported === 1 ? '' : 's'}`
-                : `Linked PO ${poLabel}`,
+                ? `Linked purchase order ${poLabel} · ${imported} line${imported === 1 ? '' : 's'}`
+                : `Linked purchase order ${poLabel}`,
             );
             refreshDomains(REFRESH_BUNDLES.receivingWrite);
             const winnerId =

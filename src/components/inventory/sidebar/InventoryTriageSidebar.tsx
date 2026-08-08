@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { motion } from '@/design-system/motion';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -12,6 +11,7 @@ import { cn } from '@/utils/_cn';
 import { triageStatusChipClass } from '@/lib/inventory-triage-status';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { useInventoryUrlState } from '@/components/inventory/useInventoryUrlState';
 
 /** Subset of the `tracking_exceptions` row the triage queue needs. */
 export interface TriageRow {
@@ -70,10 +70,8 @@ export function useTriageList(q: string, status: TriageStatus) {
  * which `TriageWorkspace` reads to load the full record into the right pane.
  */
 export function InventoryTriageSidebar() {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const openId = searchParams.get('open');
+    const { sidebar, setSidebarUrl } = useInventoryUrlState();
+    const openId = sidebar.open;
 
     const [status, setStatus] = useState<TriageStatus>('open');
     const [inputValue, setInputValue] = useState('');
@@ -83,11 +81,9 @@ export function InventoryTriageSidebar() {
 
     const select = useCallback(
         (id: number) => {
-            const sp = new URLSearchParams(searchParams.toString());
-            sp.set('open', String(id));
-            router.replace(`${pathname}?${sp.toString()}`);
+            setSidebarUrl({ open: String(id) });
         },
-        [router, pathname, searchParams],
+        [setSidebarUrl],
     );
 
     const containerVariants = useMemo(

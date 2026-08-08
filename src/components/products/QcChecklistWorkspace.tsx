@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Package, PackageOpen, ChevronRight } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { useProductsSkuIdParam } from '@/hooks/useProductsSkuIdParam';
 import { useSkuQcChecks } from '@/hooks/useSkuQcChecks';
 import { useSkuKitParts } from '@/hooks/useSkuKitParts';
 import { QcChecklistSection } from '@/components/manuals/sections/QcChecklistSection';
@@ -18,11 +18,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
  * Shows a centered empty state until a product is picked.
  */
 export function QcChecklistWorkspace() {
-  const searchParams = useSearchParams();
-  const rawSkuId = searchParams.get('skuId');
-  const skuId = rawSkuId ? Number(rawSkuId) : null;
+  const { skuId, setSkuId } = useProductsSkuIdParam();
 
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useSkuQcChecks(skuId);
   // Sibling per-SKU surface — same sku_catalog.id anchor; surface the kit-parts
@@ -110,7 +107,7 @@ export function QcChecklistWorkspace() {
             size="sm"
             icon={<PackageOpen />}
             iconRight={<ChevronRight />}
-            onClick={() => router.replace(`/products?view=kit&skuId=${catalog.id}`)}
+            onClick={() => setSkuId(catalog.id, 'kit')}
             ariaLabel="View what's in this product's box"
             className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-role-micro uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
           >

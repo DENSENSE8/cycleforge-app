@@ -4,14 +4,14 @@
  * Order-tab bottom update dock — labelled update CTAs + flush trailing Delete.
  *
  * Expands Assign / Notes / Out of stock / Mark shipped above the bar (same job
- * as the old More-menu toggles). Delete is icon-only, no padded surface.
+ * as the old More-menu toggles). Composes Workbench `InspectorActionFloor`
+ * (Macro `FlushTerminalFooter` shell) + `InspectorFlushDelete`.
  */
 
-import { Trash2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { OrderAssignDisplayHost } from '@/components/shipped/details-panel/OrderAssignDisplayHost';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
@@ -70,40 +70,40 @@ export function OrderUpdateDock({
     return false;
   };
 
+  const above =
+    activeInput === 'assign' || showEditorDock ? (
+      <>
+        {activeInput === 'assign' ? (
+          <div className="border-b border-border-hairline">
+            <OrderAssignDisplayHost shipped={shipped} onAssigned={onAssigned} />
+          </div>
+        ) : null}
+        {showEditorDock ? (
+          <ShippedPanelEditorDock
+            shipped={shipped}
+            activeInput={editorInput}
+            setActiveInput={setActiveInput}
+            showMarkAsShipped
+            showOutOfStock
+            showNotes
+            embedded
+            isOutOfStock={isOutOfStock}
+            isSavingOutOfStock={isSavingOutOfStock}
+            onSaveOutOfStock={onSaveOutOfStock}
+            shippingTrackingNumber={shippingTrackingNumber}
+            onMarkShippedSuccess={onMarkShippedSuccess}
+          />
+        ) : null}
+      </>
+    ) : undefined;
+
   return (
-    <div
-      className="shrink-0 border-t border-border-soft bg-surface-card/95 backdrop-blur-md"
+    <InspectorActionFloor
       data-testid="order-update-dock"
-    >
-      {activeInput === 'assign' ? (
-        <div className="border-b border-border-hairline">
-          <OrderAssignDisplayHost shipped={shipped} onAssigned={onAssigned} />
-        </div>
-      ) : null}
-
-      {showEditorDock ? (
-        <ShippedPanelEditorDock
-          shipped={shipped}
-          activeInput={editorInput}
-          setActiveInput={setActiveInput}
-          showMarkAsShipped
-          showOutOfStock
-          showNotes
-          embedded
-          isOutOfStock={isOutOfStock}
-          isSavingOutOfStock={isSavingOutOfStock}
-          onSaveOutOfStock={onSaveOutOfStock}
-          shippingTrackingNumber={shippingTrackingNumber}
-          onMarkShippedSuccess={onMarkShippedSuccess}
-        />
-      ) : null}
-
-      {showBar ? (
-        <div
-          className={cn('flex items-stretch gap-0', FLUSH)}
-          data-testid="order-update-actions"
-        >
-          <div className="flex min-w-0 flex-1 items-stretch divide-x divide-border-hairline overflow-x-auto no-scrollbar">
+      above={above}
+      actions={
+        actions.length > 0 ? (
+          <>
             {actions.map((action) => (
               <Button
                 key={action.key}
@@ -120,43 +120,21 @@ export function OrderUpdateDock({
                 <span className="truncate">{action.label}</span>
               </Button>
             ))}
-          </div>
-
-          {showDelete ? (
-            <HoverTooltip
-              asChild
-              label={
-                isDeleting
-                  ? 'Deleting…'
-                  : isDeleteArmed
-                    ? 'Click again to confirm delete'
-                    : 'Delete order'
-              }
-            >
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={isDeleting}
-                aria-label={
-                  isDeleteArmed ? 'Confirm delete order' : 'Delete order'
-                }
-                data-testid="order-update-delete"
-                className={cn(
-                  FLUSH,
-                  focusRing('control', 'danger'),
-                  'flex h-10 w-10 shrink-0 items-center justify-center border-l border-border-hairline bg-transparent p-0',
-                  isDeleteArmed
-                    ? 'text-red-700 hover:text-red-800'
-                    : 'text-red-600 hover:text-red-700',
-                  'disabled:opacity-40',
-                )}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </HoverTooltip>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+          </>
+        ) : undefined
+      }
+      delete={
+        showDelete ? (
+          <InspectorFlushDelete
+            isArmed={isDeleteArmed}
+            isDeleting={isDeleting}
+            onClick={onDelete}
+            label="Delete order"
+            confirmLabel="Click again to confirm delete"
+            data-testid="order-update-delete"
+          />
+        ) : undefined
+      }
+    />
   );
 }

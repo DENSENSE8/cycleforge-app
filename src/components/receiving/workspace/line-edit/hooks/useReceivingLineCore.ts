@@ -452,7 +452,13 @@ export function useReceivingLineCore(
     ],
   );
 
-  const { zohoSyncing, syncWithZoho, syncCartonFromZoho } = useZohoSync(row, {
+  const {
+    zohoSyncing,
+    inventoryRefreshing,
+    syncWithZoho,
+    syncCartonFromZoho,
+    refreshInventoryDossier,
+  } = useZohoSync(row, {
     staffId,
     listingLink,
     zendesk,
@@ -634,7 +640,7 @@ export function useReceivingLineCore(
     poEditorOpen, setPoEditorOpen, poNumberEdit, setPoNumberEdit, persistPoNumber,
     sourcePlatform, setSourcePlatform, platformSaving, savePlatform,
     receivingType, setReceivingType, saveType,
-    zohoSyncing, syncWithZoho, syncCartonFromZoho,
+    zohoSyncing, inventoryRefreshing, syncWithZoho, syncCartonFromZoho, refreshInventoryDossier,
     // line patch
     patch, saving,
     // actions

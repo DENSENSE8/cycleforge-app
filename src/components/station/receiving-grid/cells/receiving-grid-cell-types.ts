@@ -43,6 +43,13 @@ export type ReceivingGridCellCtx = {
   onToggle?: () => void;
   activityAxis: ReceivingActivityAxis;
   isHistory: boolean;
+  /**
+   * Unbox / Receiving History → `'coarse'` (Scanned / Unboxed / Received).
+   * Testing History stays `'fine'` so FAILED / PASSED remain visible.
+   */
+  statusVocabulary: 'fine' | 'coarse';
+  /** Chip wash+ink for the status cell — fine workflow or coarse lifecycle. */
+  statusBadgeClass: string;
   productTitle: string;
   conditionLabel: string;
   condGrade: string;

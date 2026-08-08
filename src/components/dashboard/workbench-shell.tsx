@@ -23,6 +23,7 @@
  */
 
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -74,7 +75,6 @@ export function WorkbenchTriageBand({
   trailing,
   controlsSlotRef,
   controlsSlotProps,
-  controlsSlotClassName,
   className,
 }: {
   search: ReactNode;
@@ -94,19 +94,13 @@ export function WorkbenchTriageBand({
   trailing?: ReactNode;
   controlsSlotRef?: Ref<HTMLDivElement>;
   controlsSlotProps?: HTMLAttributes<HTMLDivElement> & Partial<Record<`data-${string}`, string>>;
-  /**
-   * Class on the toolbar-portal host. Default is a `flex gap-2` cluster; pass
-   * `"contents"` when the portaled controls (week pill + column trigger) must be
-   * flat peers of `right` under the row's single `gap-2` (Unbox), rather than a
-   * nested flex seam.
-   */
-  controlsSlotClassName?: string;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        'flex h-10 min-w-0 shrink-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card pl-0 pr-0.5 shadow-sm',
+        'flex min-w-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card pl-0 pr-0.5 shadow-sm',
+        PRIMARY_CHROME_ROW_FACE,
         className,
       )}
     >
@@ -116,7 +110,7 @@ export function WorkbenchTriageBand({
         {controlsSlotRef !== undefined || controlsSlotProps ? (
           <div
             ref={controlsSlotRef}
-            className={controlsSlotClassName ?? 'flex shrink-0 items-center gap-2'}
+            className="flex shrink-0 items-center gap-2"
             {...controlsSlotProps}
           />
         ) : null}
@@ -193,6 +187,18 @@ export function withScopeDivider<T extends { id: string }>(
  */
 export const WORKBENCH_CHROME_PILL_CLASS = cornerClass('flush');
 
+/**
+ * Band-1 host face — primary row height, **zero pad / zero gap**. Leading boxed
+ * cubes (Unbox pin-list · same face as carton Exit) abut the tab rail flush;
+ * never `gap-2` or `p-0.5` air between pin and first tab. TabSwitch solid/sm
+ * owns any active-pill inset on its own track — not the band host.
+ * Law: `display/workbench-ops-queue.md` → Chrome face density.
+ */
+const WORKBENCH_CHROME_BAND_FACE = cn(
+  PRIMARY_CHROME_ROW_FACE,
+  'items-stretch gap-0 p-0',
+);
+
 interface WorkbenchTrailingClusterProps {
   /** Escapes that precede display prefs (e.g. Incoming pagination). */
   before?: ReactNode;
@@ -245,6 +251,11 @@ export function WorkbenchTrailingCluster({
 
 export interface WorkbenchChromeHeaderProps {
   /**
+   * Optional control before the tab rail (e.g. Unbox Plus → pin list).
+   * Stays shrink-0; tabs remain the scrollable yield surface.
+   */
+  leading?: ReactNode;
+  /**
    * Lifecycle tab rail. Optional: a surface whose facets live in its resident
    * sidebar rail (Media Library) has no tabs to render here, and an empty
    * `TabSwitch` would leave a bare pill track floating in the band.
@@ -288,12 +299,12 @@ export interface WorkbenchChromeHeaderProps {
    */
   tabsFit?: 'fill' | 'hug';
   /**
-   * Face density. `default` — content-driven card (`p-1.5` + md solid-hug tabs
-   * with their own bordered rail). `band` — **single-surface 40px scan-grid
-   * face** (`h-10 p-0.5` + `TabSwitch size="sm"` on a flat rail — 2px inset
-   * so the active pill nests concentrically inside the card shell; no nested
-   * pill card). Compose `band` when this chrome sits beside a station scan
-   * dock (Unbox + Triage).
+   * Face density. `default` — content-driven card (`gap-2 p-1.5` + md solid-hug
+   * tabs with their own bordered rail). `band` — **single-surface primary face**
+   * ({@link WORKBENCH_CHROME_BAND_FACE}: `gap-0 p-0` + `TabSwitch size="sm"` on
+   * a flat rail). Leading cubes abut the tab rail — never host inset air.
+   * Compose `band` when this chrome sits beside a station scan dock
+   * (Unbox + Triage).
    */
   density?: 'default' | 'band';
   /** Ref for the table-toolbar portal target (tables `createPortal` into it). */
@@ -311,6 +322,7 @@ export interface WorkbenchChromeHeaderProps {
  * `rounded-none` to fight a soft SoT.
  */
 export function WorkbenchChromeHeader({
+  leading,
   tabs,
   activeTab,
   onTabChange,
@@ -328,17 +340,27 @@ export function WorkbenchChromeHeader({
   return (
     <div
       className={cn(
-        // default: p-1.5 matches the solid TabSwitch rail’s own p-1 so left
-        // tabs and right h-8 icon controls share one outer inset.
-        // band: h-10 p-0.5 — 2px content rhythm inside the flush face
-        // (not an outer gutter). items-stretch so TabSwitch fills the inset;
-        // the right cluster re-centers its own h-8 icons.
-        'flex min-w-0 shrink-0 gap-2 border border-border-soft bg-surface-card shadow-sm',
-        band ? 'h-10 items-stretch p-0.5' : 'items-center p-1.5',
+        // default: gap-2 + p-1.5 — content-driven card with air between zones.
+        // band: WORKBENCH_CHROME_BAND_FACE — zero pad/gap so leading cubes
+        // abut the tab rail (Unbox pin | Inbound). Trailing keeps its own gap-2.
+        'flex min-w-0 border border-border-soft bg-surface-card shadow-sm',
+        band ? WORKBENCH_CHROME_BAND_FACE : 'shrink-0 items-center gap-2 p-1.5',
         cornerClass('flush'),
         className,
       )}
     >
+      {leading ? (
+        <div
+          className={cn(
+            'flex shrink-0 items-center',
+            // Band: stretch so boxed cubes fill PRIMARY height and share the
+            // seam with the first tab — never centered air / host gap.
+            band ? 'self-stretch items-stretch' : null,
+          )}
+        >
+          {leading}
+        </div>
+      ) : null}
       {/*
         The tab rail may SHRINK and scroll; the controls block may not.
 

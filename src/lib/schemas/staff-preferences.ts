@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
 import { MAX_PINS } from '@/lib/quick-access/types';
+import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
 
 /**
  * Bindable focus-scan hotkey. The listener is GLOBAL, so printable letters /
@@ -256,6 +257,18 @@ export const StaffPreferencesPutBody = z
      * Absent / false = open. Shallow JSONB merge: writers send the whole map.
      */
     kpiCollapsed: z.record(z.string().max(64), z.boolean()).nullable().optional(),
+    /**
+     * Extra Unbox Band-1 tabs pinned via the Pin-list composer
+     * (`unbox-extra-tabs` catalog). v1: `incoming` only. Bounded at
+     * {@link UNBOX_PINNED_EXTRA_TABS_MAX} so a third pin never persists — the
+     * Band-1 vocabulary stays 5 system + ≤2 pinned (Gemini D2 · D14).
+     * `null` / absent = inherit the org/role default; `[]` = staff cleared.
+     */
+    unboxPinnedExtraTabs: z
+      .array(z.literal('incoming'))
+      .max(UNBOX_PINNED_EXTRA_TABS_MAX)
+      .nullable()
+      .optional(),
   })
   .strict();
 

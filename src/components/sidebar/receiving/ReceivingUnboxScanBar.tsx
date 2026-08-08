@@ -24,7 +24,7 @@ interface UnboxScanModeMeta {
 export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
   {
     mode: 'ticket',
-    label: 'Ticket #',
+    label: 'Ticket',
     Icon: TicketHelp,
     // Match carton-context / CHIP_TONES.ticket (orange) — not staff-rule emerald.
     armedClass: 'text-orange-600',
@@ -32,19 +32,28 @@ export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
   },
   {
     mode: 'tracking',
-    label: 'Tracking #',
+    label: 'Tracking',
     Icon: MapPin,
     armedClass: 'text-blue-700',
     iconClass: 'text-blue-600',
   },
   {
     mode: 'order',
+    // Dense scan-bar mark — full "Purchase order" lives on page/section faces
+    // and mode HoverTooltip via UNBOX_SCAN_MODE_FULL_LABEL.
     label: 'PO #',
     Icon: Hash,
     armedClass: 'text-text-muted', // ds-allow-raw-neutral: identity/tone hue — PO-mode slate among orange/blue mode tints
     iconClass: 'text-text-soft',
   },
 ] as const;
+
+/** Full operator name for tooltips — short `label` stays on the dense face. */
+const UNBOX_SCAN_MODE_FULL_LABEL: Record<UnboxScanMode, string> = {
+  ticket: 'Ticket #',
+  tracking: 'Tracking #',
+  order: 'Purchase order #',
+};
 
 function modeMeta(mode: UnboxScanMode): UnboxScanModeMeta {
   return UNBOX_SCAN_MODES.find((m) => m.mode === mode) ?? UNBOX_SCAN_MODES[1];
@@ -109,7 +118,6 @@ export function ReceivingUnboxScanBar({
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
-      rightPadClass="pr-32"
       isResolving={isResolving}
       icon={
         <StationScanLeadingIcon
@@ -118,12 +126,12 @@ export function ReceivingUnboxScanBar({
           ariaLabel={
             armedMode
               ? `Armed: ${active.label}`
-              : 'Auto — looks up Ticket #, PO #, and Tracking #'
+              : 'Auto — looks up Ticket, PO #, and Tracking'
           }
           title={
             armedMode
               ? `Next scan forced to ${active.label}. Click the icon again to auto-detect.`
-              : 'Auto — looks the scan up as a Ticket #, PO #, and Tracking # before creating a carton'
+              : 'Auto — looks the scan up as a Ticket, PO #, and Tracking before creating a carton'
           }
         />
       }
@@ -133,16 +141,18 @@ export function ReceivingUnboxScanBar({
           armedMode={armedMode}
           onToggleMode={onToggleMode}
           size="compact"
-          getAriaLabel={(mode, armed) =>
-            armed
-              ? `${mode.label} armed for next scan. Click again to auto-detect.`
-              : `Arm ${mode.label}: force the next scan to search ${mode.label}.`
-          }
-          getTitle={(mode, armed) =>
-            armed
-              ? `${mode.label} armed — next scan. Click again to auto-detect.`
-              : `Search by ${mode.label}`
-          }
+          getAriaLabel={(mode, armed) => {
+            const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
+            return armed
+              ? `${full} armed for next scan. Click again to auto-detect.`
+              : `Arm ${full}: force the next scan to search ${full}.`;
+          }}
+          getTitle={(mode, armed) => {
+            const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
+            return armed
+              ? `${full} armed — next scan. Click again to auto-detect.`
+              : `Search by ${full}`;
+          }}
         />
       }
     />

@@ -13,12 +13,12 @@
 //
 // Stroke weight (nav-weight.tsx): page lighter; mode heavier.
 
-import { Send } from './actions';
 import {
   Barcode,
   Box,
   Boxes,
   Package,
+  PackageCheck,
   PackageOpen,
   Receipt,
   ShoppingCart,
@@ -26,7 +26,7 @@ import {
 } from './commerce';
 import { ClipboardList, Inbox, Printer } from './media';
 import { AlertTriangle, ShieldCheck } from './status';
-import { Packer, Wrench } from './nav';
+import { DoorOpen, Wrench } from './nav';
 import { withNavIconModeStroke, withNavIconPageStroke } from './nav-weight';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
@@ -36,14 +36,20 @@ type IconComponent = (props: { className?: string }) => JSX.Element;
 /** Receiving station — default surface `/unbox`. Not rendered in MasterNav L1. */
 export const StationReceiving: IconComponent = withNavIconPageStroke(PackageOpen);
 
+/**
+ * Walk-In station subgroup — Local Pickup · Repair (front-desk counter).
+ * DoorOpen ≠ ShoppingCart (pickup leaf) ≠ Wrench (repair leaf / Testing page).
+ */
+export const StationWalkIn: IconComponent = withNavIconPageStroke(DoorOpen);
+
 /** Testing / QC station — `/test`. Bench repair/tooling (Wrench), not warranty shield. */
 export const StationTesting: IconComponent = withNavIconPageStroke(Wrench);
 
 /** Outbound Shipping station — `/shipping`. Truck = leave-the-building carrier. */
 export const StationShipping: IconComponent = withNavIconPageStroke(Truck);
 
-/** Packing station — `/pack`. Dedicated Packer glyph (not generic Box). */
-export const StationPacking: IconComponent = withNavIconPageStroke(Packer);
+/** Packing station — `/pack`. Plain Box (same family as PackingModeStandard). */
+export const StationPacking: IconComponent = withNavIconPageStroke(Box);
 
 // ── Sales mode mark ──────────────────────────────────────────────────────────
 
@@ -57,29 +63,29 @@ export const ReceivingModeIncoming: IconComponent = withNavIconModeStroke(Inbox)
 
 /**
  * Dock tracking scan (Arrival / triage).
- * Truck = inbound carrier only — never reuse for outbound / tech shipping queue.
+ * Truck = inbound carrier only — never reuse for outbound / Ready to Pack.
  */
 export const ReceivingModeArrival: IconComponent = withNavIconModeStroke(Truck);
 
 /** Unbox workspace — carton opened, serial intake. */
 export const ReceivingModeUnbox: IconComponent = withNavIconModeStroke(PackageOpen);
 
-/** Front-desk local pickup job on the receiving rail. */
+/** Front-desk local pickup job on the Walk-In rail. */
 export const ReceivingModePickup: IconComponent = withNavIconModeStroke(ShoppingCart);
 
-/** Repair intake on the receiving rail — Wrench reserved for repair, not Testing. */
+/** Repair intake on the Walk-In rail — Wrench reserved for repair, not Testing. */
 export const ReceivingModeRepair: IconComponent = withNavIconModeStroke(Wrench);
 
 // ── Testing L2 modes (tech sidebar top row) ─────────────────────────────────
 
-/** QC bench — unit test verdicts. Heavier stroke than the Testing page data icon. */
+/** QC mode — unit test verdicts. Heavier stroke than the Testing page data icon. */
 export const TechModeTesting: IconComponent = withNavIconModeStroke(ShieldCheck);
 
 /**
- * Tech-side outbound queue (Pending · FBA).
- * Send = dispatch / leave the bench — distinct from Arrival Truck (inbound).
+ * Tech Ready to Pack queue (Pending · FBA) — package cleared for packers.
+ * PackageCheck ≠ Packing Box, ≠ Arrival Truck, ≠ Shipping ClipboardList.
  */
-export const TechModeShippingQueue: IconComponent = withNavIconModeStroke(Send);
+export const TechModeShippingQueue: IconComponent = withNavIconModeStroke(PackageCheck);
 
 // ── Shipping station L2 modes ────────────────────────────────────────────────
 
@@ -89,7 +95,7 @@ export const ShippingModeLabels: IconComponent = withNavIconModeStroke(Printer);
 /** Ready-to-ship checklist queue. */
 export const ShippingModeReady: IconComponent = withNavIconModeStroke(ClipboardList);
 
-/** FBA prep under Shipping — multi-box Amazon prep. */
+/** Amazon Prep under Shipping — multi-box Amazon prep. */
 export const ShippingModeFba: IconComponent = withNavIconModeStroke(Boxes);
 
 /** Scan-out / carrier handoff confirm. */

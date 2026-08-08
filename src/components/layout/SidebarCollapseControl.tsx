@@ -10,6 +10,10 @@
  *
  * When the spine is **open**, this is a plain Hide control — pins already live
  * in the spine's 40px band (`SpineTopPins`).
+ *
+ * The IconButton mount stays stable across peek open/close. Branching the
+ * HoverTooltip wrapper on `peekOpen` remounted the button mid-press (180ms
+ * openDelay) and dropped the click — first press only revealed the peek.
  */
 
 import { useCallback, useRef, type FocusEvent } from 'react';
@@ -17,6 +21,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, Popover } from '@/design-system/primitives';
 import { useRailHoverPreview } from '@/components/sidebar/rail-shell/useRailHoverPreview';
 import { TopDestinationPins } from '@/components/sidebar/master-nav/SpineTopPins';
+import { warmSpineChunk } from '@/components/sidebar/preload-spine';
 import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
@@ -66,9 +71,27 @@ export function SidebarCollapseControl({
     onToggleSidebar();
   }, [dismiss, onToggleSidebar]);
 
+  /**
+   * Warm the spine chunk the moment the pointer or focus reaches this button —
+   * the precise tier of the prefetch (`preload-spine.ts`).
+   *
+   * The travel from "decides to open the nav" to "clicks" is usually the
+   * ~300ms the fetch needs, so this alone makes most first opens land warm.
+   * It is memoized and fire-and-forget, so crossing the button repeatedly
+   * costs one fetch. `ResponsiveLayout`'s idle backstop covers the taps and
+   * fast clicks that never generate a hover.
+   *
+   * Deliberately NOT gated on `peekEnabled`: that flag means "the spine is
+   * currently collapsed", and while it happens to be true in the case we care
+   * about, warming has nothing to do with the peek and should not inherit its
+   * condition.
+   */
+  const onPointerEnter = useCallback(() => warmSpineChunk(), []);
+
   // Focus opens the peek for keyboard users; blur closes only when focus left
   // both the toggle and the popover (relatedTarget check).
   const onFocus = useCallback(() => {
+    warmSpineChunk();
     if (peekEnabled) scheduleOpen();
   }, [peekEnabled, scheduleOpen]);
 
@@ -90,22 +113,9 @@ export function SidebarCollapseControl({
     [scheduleClose],
   );
 
-  const label = sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar';
-
-  const toggleButton = (
-    <IconButton
-      size="md"
-      onClick={onToggle}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      ariaLabel={label}
-      aria-pressed={!sidebarCollapsed}
-      aria-expanded={peekOpen || !sidebarCollapsed}
-      aria-haspopup={peekEnabled ? 'dialog' : undefined}
-      className={HEADER_ICON_BTN_CLASS}
-      icon={SidebarGlyph}
-    />
-  );
+  // Noun = navigation (MasterNav spine) — not the context-rail "sidebar" that
+  // owns ⌘B. Spine stays click-only; never advertise a layout chord here.
+  const label = sidebarCollapsed ? 'Show navigation' : 'Hide navigation';
 
   return (
     <div
@@ -114,15 +124,23 @@ export function SidebarCollapseControl({
       {...(peekEnabled ? hoverProps : {})}
       data-testid="sidebar-collapse-control"
     >
-      {/* Peek owns the hover face when open — skip the Show-sidebar tooltip so
-          it does not stack under the pin row. */}
-      {peekOpen ? (
-        toggleButton
-      ) : (
-        <HoverTooltip label={label} asChild>
-          {toggleButton}
-        </HoverTooltip>
-      )}
+      {/* Stable mount — peek disables the tooltip instead of unwrapping the
+          button (unwrap remounted the trigger and ate mid-press clicks). */}
+      <HoverTooltip label={label} asChild disabled={peekOpen}>
+        <IconButton
+          size="md"
+          onClick={onToggle}
+          onPointerEnter={onPointerEnter}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          ariaLabel={label}
+          aria-pressed={!sidebarCollapsed}
+          aria-expanded={peekOpen || !sidebarCollapsed}
+          aria-haspopup={peekEnabled ? 'dialog' : undefined}
+          className={HEADER_ICON_BTN_CLASS}
+          icon={SidebarGlyph}
+        />
+      </HoverTooltip>
 
       {peekEnabled ? (
         <Popover
