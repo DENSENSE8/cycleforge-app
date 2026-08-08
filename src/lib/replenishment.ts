@@ -123,7 +123,7 @@ async function getOrderItemContext(orderId: number, client: DbClient, orgId: Org
   return result.rows[0] ?? null;
 }
 
-export async function getItemStock(zohoItemId: string, orgId: OrgId): Promise<{
+async function getItemStock(zohoItemId: string, orgId: OrgId): Promise<{
   zohoItemId: string;
   name: string;
   quantityAvailable: number;
@@ -143,7 +143,7 @@ export async function getItemStock(zohoItemId: string, orgId: OrgId): Promise<{
   };
 }
 
-export async function getIncomingQuantityForItem(zohoItemId: string, orgId: OrgId): Promise<{ incomingQty: number; openPoIds: string[] }> {
+async function getIncomingQuantityForItem(zohoItemId: string, orgId: OrgId): Promise<{ incomingQty: number; openPoIds: string[] }> {
   const statuses = ['open', 'confirmed'];
   let incomingQty = 0;
   const openPoIds = new Set<string>();
@@ -240,7 +240,7 @@ async function refreshStockCacheForItemBody(zohoItemId: string, exec: DbClient, 
   }
 }
 
-export async function refreshStockCacheForItem(zohoItemId: string, client: DbClient, orgId: OrgId) {
+async function refreshStockCacheForItem(zohoItemId: string, client: DbClient, orgId: OrgId) {
   // Caller already supplied a (GUC-scoped / transaction) client → use it in place.
   if (client !== pool) return refreshStockCacheForItemBody(zohoItemId, client, orgId);
   // Default pool sentinel → run inside a fresh GUC-scoped transaction.
@@ -260,7 +260,7 @@ async function getOrRefreshStockCacheBody(zohoItemId: string, exec: DbClient, or
   return refreshStockCacheForItem(zohoItemId, exec, orgId);
 }
 
-export async function getOrRefreshStockCache(zohoItemId: string, client: DbClient, orgId: OrgId) {
+async function getOrRefreshStockCache(zohoItemId: string, client: DbClient, orgId: OrgId) {
   if (client !== pool) return getOrRefreshStockCacheBody(zohoItemId, client, orgId);
   return withTenantConnection(orgId, (c) => getOrRefreshStockCacheBody(zohoItemId, c, orgId));
 }
@@ -279,7 +279,7 @@ async function findActiveRequestForItemBody(zohoItemId: string, exec: DbClient, 
   return (result.rows[0] as ReplenishmentRequestRow | undefined) ?? null;
 }
 
-export async function findActiveRequestForItem(zohoItemId: string, client: DbClient, orgId: OrgId): Promise<ReplenishmentRequestRow | null> {
+async function findActiveRequestForItem(zohoItemId: string, client: DbClient, orgId: OrgId): Promise<ReplenishmentRequestRow | null> {
   if (client !== pool) return findActiveRequestForItemBody(zohoItemId, client, orgId);
   return withTenantConnection(orgId, (c) => findActiveRequestForItemBody(zohoItemId, c, orgId));
 }
@@ -788,7 +788,7 @@ export async function createDraftPurchaseOrders(
   return createdPos;
 }
 
-export async function reconcilePOStatus(request: ReplenishmentRequestRow, orgId: OrgId) {
+async function reconcilePOStatus(request: ReplenishmentRequestRow, orgId: OrgId) {
   if (!request.zoho_po_id) return;
 
   const po = await withZohoOrg(orgId, () => getPurchaseOrderById(request.zoho_po_id!));
@@ -875,36 +875,3 @@ export async function runReplenishmentSync(orgId: OrgId) {
   }
 }
 
-export async function backfillLegacyOutOfStockOrders(orgId: OrgId) {
-  const rows = await withTenantConnection(orgId, (c) => c.query(
-    `SELECT id
-     FROM orders
-     WHERE is_out_of_stock = true
-       AND organization_id = $1
-     ORDER BY created_at ASC, id ASC`,
-    [orgId]
-  ));
-
-  const migrated: number[] = [];
-  const skipped: Array<{ orderId: number; reason: string }> = [];
-
-  for (const row of rows.rows) {
-    try {
-      const result = await ensureReplenishmentForOrder({
-        orderId: Number(row.id),
-        changedBy: 'migration',
-        forceFullQuantity: true,
-      }, orgId);
-
-      if (result.requestId) migrated.push(Number(row.id));
-      else skipped.push({ orderId: Number(row.id), reason: result.skipped || 'unknown' });
-    } catch (error) {
-      skipped.push({
-        orderId: Number(row.id),
-        reason: error instanceof Error ? error.message : 'unknown error',
-      });
-    }
-  }
-
-  return { migrated, skipped };
-}

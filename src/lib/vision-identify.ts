@@ -16,11 +16,7 @@
 // setNasBaseUrl). No trailing slash.
 let runtimeBase = (process.env.NEXT_PUBLIC_VISION_BASE_URL || '').replace(/\/+$/, '');
 
-export function setVisionBaseUrl(url: string | null | undefined): void {
-  runtimeBase = (url || '').replace(/\/+$/, '');
-}
-
-export function getVisionBaseUrl(): string {
+function getVisionBaseUrl(): string {
   return runtimeBase;
 }
 
@@ -29,7 +25,7 @@ export function visionConfigured(): boolean {
 }
 
 /** Raw candidate from the vision box. */
-export interface VisionCandidate {
+interface VisionCandidate {
   sku: string;
   score: number;
 }
@@ -43,7 +39,7 @@ export interface EnrichedCandidate extends VisionCandidate {
   resolved: boolean;
 }
 
-export interface IdentifyResult {
+interface IdentifyResult {
   ok: boolean;
   candidates: VisionCandidate[];
   error?: string;
@@ -54,7 +50,7 @@ export interface IdentifyResult {
  * Cloudflare Access cookie ride along, exactly like the NAS PUT. The box must answer
  * the CORS preflight for the app origin.
  */
-export async function identifyFromVisionBox(blob: Blob): Promise<IdentifyResult> {
+async function identifyFromVisionBox(blob: Blob): Promise<IdentifyResult> {
   const base = getVisionBaseUrl();
   if (!base) return { ok: false, candidates: [], error: 'Vision service is not configured.' };
 
@@ -89,7 +85,7 @@ export async function identifyFromVisionBox(blob: Blob): Promise<IdentifyResult>
  * Enrich raw vision candidates against sku_catalog (server-side, auth-guarded) so
  * the UI can show titles/images and pair the chosen one.
  */
-export async function enrichCandidates(
+async function enrichCandidates(
   candidates: VisionCandidate[],
   receivingId: number,
 ): Promise<EnrichedCandidate[]> {
@@ -104,19 +100,6 @@ export async function enrichCandidates(
   return Array.isArray(data?.candidates) ? data!.candidates : [];
 }
 
-/**
- * One-shot convenience: frame → vision box → enriched candidates.
- */
-export async function identifyAndEnrich(
-  blob: Blob,
-  receivingId: number,
-): Promise<{ ok: boolean; candidates: EnrichedCandidate[]; error?: string }> {
-  const result = await identifyFromVisionBox(blob);
-  if (!result.ok) return { ok: false, candidates: [], error: result.error };
-  const enriched = await enrichCandidates(result.candidates, receivingId);
-  return { ok: true, candidates: enriched };
-}
-
 // ─── Label OCR identify (the reliable "photograph the bottom label" path) ──────
 //
 // Bose product labels print the model; OCR reads it far more reliably than visual
@@ -125,7 +108,7 @@ export async function identifyAndEnrich(
 // then resolves it to a catalog product server-side (auth-guarded DB read).
 
 /** Raw OCR result from the vision box. `model` null = no confident label read. */
-export interface LabelIdentifyResult {
+interface LabelIdentifyResult {
   ok: boolean;
   model: string | null;
   loose_model: string | null;
@@ -195,7 +178,7 @@ export async function identifyLabelFromVisionBox(
 }
 
 /** Resolve OCR model string(s) to catalog products (server-side, auth-guarded). */
-export async function resolveLabelModels(
+async function resolveLabelModels(
   models: string[],
   signal?: AbortSignal,
 ): Promise<LabelCandidate[]> {
