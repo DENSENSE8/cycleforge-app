@@ -107,13 +107,15 @@ const CALL_SITES = [
   // The per-unit test verdict's TSN write lives in the extracted lib
   // (recordTestVerdict), not the thin HTTP route which only delegates to it.
   '../tech/recordTestVerdict.ts',
-  '../tech/insertTechSerialForTracking.ts',
   '../tech/insertTechSerialForSalContext.ts',
   '../../app/api/post-multi-sn/route.ts',
   // The legacy Google-Sheets tech importer (/api/sync-sheets) was also on this
   // list until it was DELETED 2026-07-29 — it had zero callers left after the
   // order-ingest consolidation. Its sibling sheet syncs (execute-script /
   // receiving/serials) stay raw by design; see the relational-reuse plan §2.3.
+  // `../tech/insertTechSerialForTracking.ts` was DELETED 2026-08-07 — the
+  // Unified Engine strangler write for tech serial inserts never got plugged
+  // into the live tech-scan route (zero real callers besides its own test).
 ];
 
 for (const rel of CALL_SITES) {
