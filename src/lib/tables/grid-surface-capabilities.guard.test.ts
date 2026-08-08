@@ -381,3 +381,89 @@ describe('ledger grid mounts', () => {
     assert.deepEqual(orphans, [], `Declared but never mounted: ${orphans.join(', ')}`);
   });
 });
+
+// ── Forest freeze: the `*GridView.tsx` wrapper set is shrink-only ───────────────
+
+/**
+ * The `*GridView.tsx` wrapper forest, frozen.
+ *
+ * Phase 3 of the table-definition-registry migration collapsed every Workbench
+ * spreadsheet onto `NonlinearTableHost`, and its exit criterion is a policy, not
+ * merely a state reached once: **"a new queue ships without a new GridView file
+ * — only a registry entry + a page binding."** A page that needs a grid binds
+ * `<NonlinearTableHost binding={…}>` where it renders; it does not grow a new
+ * wrapper component to hold the mount.
+ *
+ * This list makes that policy enforceable. It is **shrink-only**: deleting a
+ * wrapper (the strangler's endgame) removes a line here; adding one fails. This
+ * is the second half of the plan's Phase-3 ratchet — the discovery guard above
+ * already fails a mount with no bag ("a page outside the allowlist mounts the
+ * grid"); this fails the other clause ("or adds a new `*GridView.tsx`").
+ *
+ * ## Why this is filename-based, right next to a guard that bans that
+ *
+ * The mount guard above discovers by CONTENT on purpose: "is this a grid
+ * surface" must survive someone renaming `FooGridView` to `FooTable`, or the
+ * capability-bag requirement is dodged by a rename. This freeze answers a
+ * DIFFERENT question — "did the wrapper NAMING PATTERN regrow" — and the
+ * `*GridView.tsx` suffix *is* that pattern, so the filename is the signal here,
+ * not a leak. The two are orthogonal and both live: content-discovery pins the
+ * invariant (every mount names a bag); this pins the shape the plan retired (no
+ * new wrapper file). A `FooTable.tsx` that mounts the host still answers to the
+ * content guard — it is simply not a member of the forest this list freezes.
+ */
+const GRID_VIEW_FOREST: string[] = [
+  'src/components/dashboard/orders-queue/OrdersGridView.tsx',
+  'src/components/outbound/ready/grid/ReadyGridView.tsx',
+  'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+  'src/components/receiving/pickup/grid/PickupGridView.tsx',
+  'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+  'src/components/repair/repair-grid/RepairGridView.tsx',
+  'src/components/station/incoming-grid/IncomingGridView.tsx',
+  'src/components/station/receiving-grid/ReceivingGridView.tsx',
+  'src/components/tech/all/TechAllGridView.tsx',
+  'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+  'src/components/warehouse/bins-grid/BinsGridView.tsx',
+  'src/components/warranty/grid/WarrantyGridView.tsx',
+  'src/features/my-day/grid/MyDayGridView.tsx',
+  'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
+];
+
+/** Every `*GridView.tsx` wrapper on disk, off the same walk the mounts use. */
+function discoverGridViewForest(): string[] {
+  return sourceFiles('src')
+    .filter((rel) => /GridView\.tsx$/.test(rel))
+    .sort();
+}
+
+describe('grid view forest (shrink-only)', () => {
+  it('no new *GridView.tsx wrapper — bind a new queue via the registry, not a wrapper file', () => {
+    const found = discoverGridViewForest();
+    const frozen = [...GRID_VIEW_FOREST].sort();
+    const added = found.filter((rel) => !frozen.includes(rel));
+    const removed = frozen.filter((rel) => !found.includes(rel));
+
+    assert.deepEqual(
+      found,
+      frozen,
+      [
+        added.length
+          ? 'A new `*GridView.tsx` wrapper appeared:\n  ' +
+            added.join('\n  ') +
+            '\nThe wrapper forest is frozen (table-registry plan, Phase-3 exit: "a new\n' +
+            'queue ships without a new GridView file"). Bind the queue where it renders —\n' +
+            '`<NonlinearTableHost binding={makeXBinding(...)}>` + a table-definition-registry\n' +
+            'entry — instead of a new wrapper component. If a wrapper is genuinely warranted,\n' +
+            'that is a reviewed decision: add it to GRID_VIEW_FOREST with a reason.'
+          : '',
+        removed.length
+          ? 'A frozen wrapper is gone (a migration deleted it — good):\n  ' +
+            removed.join('\n  ') +
+            '\nRemove it from GRID_VIEW_FOREST. The list shrinks with the forest, never grows.'
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+    );
+  });
+});
