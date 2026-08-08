@@ -18,8 +18,7 @@ import { z } from 'zod';
 
 // ── Vocabulary (mirrors beta_applications CHECK constraints) ────────────────
 
-export const BETA_APPLICATION_TIERS = ['waitlist', 'application'] as const;
-export type BetaApplicationTier = (typeof BETA_APPLICATION_TIERS)[number];
+const BETA_APPLICATION_TIERS = ['waitlist', 'application'] as const;
 
 export const BETA_APPLICATION_STATUSES = [
   'RECEIVED',
@@ -28,7 +27,7 @@ export const BETA_APPLICATION_STATUSES = [
   'REFUNDED',
   'REJECTED',
 ] as const;
-export type BetaApplicationStatus = (typeof BETA_APPLICATION_STATUSES)[number];
+type BetaApplicationStatus = (typeof BETA_APPLICATION_STATUSES)[number];
 
 export function isBetaApplicationStatus(s: string): s is BetaApplicationStatus {
   return (BETA_APPLICATION_STATUSES as readonly string[]).includes(s);
@@ -36,20 +35,20 @@ export function isBetaApplicationStatus(s: string): s is BetaApplicationStatus {
 
 // ── Ontology enums (plan §4 — one id per pick option) ───────────────────────
 
-export const BUSINESS_TYPES = ['ebay_store', 'fba_heavy', 'liquidation', 'repair_resale', 'mixed'] as const;
-export const VOLUME_BANDS = ['under_100', '100_500', '500_2000', 'over_2000'] as const;
-export const FLOOR_STATIONS = ['receiving', 'testing_qc', 'repair', 'listing', 'packing', 'fba_prep', 'returns_support'] as const;
-export const TEST_FAIL_PATHS = ['fix', 'part_out', 'sell_as_is', 'trash'] as const;
-export const SALES_CHANNELS = ['ebay', 'amazon_fbm', 'amazon_fba', 'own_site', 'local_walk_in', 'wholesale', 'other'] as const;
-export const CURRENT_TOOLS = ['spreadsheets', 'zoho', 'skulabs', 'vendoo_listperfectly', 'other', 'none'] as const;
-export const SCAN_TARGETS = ['tracking', 'serials', 'skus', 'nothing'] as const;
-export const TEAM_SIZE_BANDS = ['solo', '2_5', '6_15', 'over_15'] as const;
-export const GRADING_METHODS = ['no_grading', 'ad_hoc', 'defined_scale'] as const;
+const BUSINESS_TYPES = ['ebay_store', 'fba_heavy', 'liquidation', 'repair_resale', 'mixed'] as const;
+const VOLUME_BANDS = ['under_100', '100_500', '500_2000', 'over_2000'] as const;
+const FLOOR_STATIONS = ['receiving', 'testing_qc', 'repair', 'listing', 'packing', 'fba_prep', 'returns_support'] as const;
+const TEST_FAIL_PATHS = ['fix', 'part_out', 'sell_as_is', 'trash'] as const;
+const SALES_CHANNELS = ['ebay', 'amazon_fbm', 'amazon_fba', 'own_site', 'local_walk_in', 'wholesale', 'other'] as const;
+const CURRENT_TOOLS = ['spreadsheets', 'zoho', 'skulabs', 'vendoo_listperfectly', 'other', 'none'] as const;
+const SCAN_TARGETS = ['tracking', 'serials', 'skus', 'nothing'] as const;
+const TEAM_SIZE_BANDS = ['solo', '2_5', '6_15', 'over_15'] as const;
+const GRADING_METHODS = ['no_grading', 'ad_hoc', 'defined_scale'] as const;
 
 const freeText = (max: number) => z.string().trim().max(max);
 
 /** Full application-tier answer set (Q1–Q12; Q10/Q11 required, Q12 optional). */
-export const ApplicationAnswersSchema = z.object({
+const ApplicationAnswersSchema = z.object({
   businessType: z.enum(BUSINESS_TYPES),                                   // Q1 → segment
   monthlyVolume: z.enum(VOLUME_BANDS),                                    // Q2 → sizing
   stations: z.array(z.enum(FLOOR_STATIONS)).min(1).max(FLOOR_STATIONS.length), // Q3 → graph nodes
@@ -66,15 +65,13 @@ export const ApplicationAnswersSchema = z.object({
   noBrainer: freeText(2000).min(1),                                       // Q11 → objection mining
   unusual: freeText(2000).optional(),                                     // Q12 → edge cases
 });
-export type ApplicationAnswers = z.infer<typeof ApplicationAnswersSchema>;
 
 /** Waitlist tier asks only: business type, volume band, top pain (plan §4). */
-export const WaitlistAnswersSchema = z.object({
+const WaitlistAnswersSchema = z.object({
   businessType: z.enum(BUSINESS_TYPES),
   monthlyVolume: z.enum(VOLUME_BANDS),
   topPain: freeText(500).min(1),
 });
-export type WaitlistAnswers = z.infer<typeof WaitlistAnswersSchema>;
 
 // ── Envelope ─────────────────────────────────────────────────────────────────
 
