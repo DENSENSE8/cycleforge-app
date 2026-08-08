@@ -27,18 +27,15 @@ import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sid
 const DASHBOARD_SURFACE_ROUTE = '/dashboard';
 
 /** Canonical Testing station route (`/test`). */
-export const TESTING_SURFACE_ROUTE = '/test';
+const TESTING_SURFACE_ROUTE = '/test';
 
 /** Legacy alias — proxy normalizes `/tech` → `/test`. */
-export const TESTING_SURFACE_LEGACY_ROUTE = '/tech';
-
-/** Query params owned exclusively by the Testing surface. */
-export const TESTING_SCOPED_PARAMS = ['view', 'testTab'] as const;
+const TESTING_SURFACE_LEGACY_ROUTE = '/tech';
 
 /** API `view=` values that belong on `/api/testing/receiving-lines` only. */
-export const TESTING_API_VIEWS = ['testing', 'needs-test'] as const;
+const TESTING_API_VIEWS = ['testing', 'needs-test'] as const;
 
-export type TestingApiView = (typeof TESTING_API_VIEWS)[number];
+type TestingApiView = (typeof TESTING_API_VIEWS)[number];
 
 export function isTestingApiView(view: string | null | undefined): view is TestingApiView {
   const v = String(view ?? '').trim().toLowerCase();
@@ -53,14 +50,6 @@ export function isTestingSurfacePath(pathname: string | null | undefined): boole
     pathname === TESTING_SURFACE_LEGACY_ROUTE ||
     pathname.startsWith(`${TESTING_SURFACE_LEGACY_ROUTE}/`)
   );
-}
-
-export function isReceivingSurfacePath(pathname: string | null | undefined): boolean {
-  if (!pathname) return false;
-  if (isTestingSurfacePath(pathname)) return false;
-  const base = receivingSurfaceBasePath(pathname);
-  if (base !== '/receiving') return true;
-  return pathname === '/receiving' || pathname.startsWith('/receiving/');
 }
 
 /**
