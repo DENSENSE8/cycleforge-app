@@ -42,7 +42,7 @@ export interface Location {
   zone_letter: string | null;
 }
 
-export interface BinContent {
+interface BinContent {
   id: number;
   location_id: number;
   sku: string;
@@ -61,7 +61,7 @@ export interface BinContent {
   product_title?: string;
 }
 
-export interface LocationTransfer {
+interface LocationTransfer {
   id: number;
   entity_type: string;
   entity_id: number;
@@ -97,20 +97,6 @@ export async function getRooms(orgId?: OrgId): Promise<Location[]> {
   const result = orgId
     ? await tenantQuery<Location>(orgId, sql, [orgId])
     : await pool.query<Location>(sql);
-  return result.rows;
-}
-
-/** Get bins (with row/col) under a specific room. */
-export async function getBinsByRoom(room: string, orgId?: OrgId): Promise<Location[]> {
-  const sql = `SELECT id, name, room, description, barcode, is_active, sort_order,
-            row_label, col_label, bin_type, capacity, parent_id, zone_letter
-     FROM locations
-     WHERE is_active = true AND room = $1 AND row_label IS NOT NULL${orgId ? ' AND organization_id = $2' : ''}
-     ORDER BY row_label, col_label`;
-  const params = orgId ? [room.trim(), orgId] : [room.trim()];
-  const result = orgId
-    ? await tenantQuery<Location>(orgId, sql, params)
-    : await pool.query<Location>(sql, params);
   return result.rows;
 }
 
@@ -411,30 +397,6 @@ export async function getBinsOverview(filter?: {
   };
 
   return { rows, counts };
-}
-
-/** Get distinct rows for a room (for cascading picker). */
-export async function getRowsForRoom(room: string, orgId?: OrgId): Promise<string[]> {
-  const sql = `SELECT DISTINCT row_label FROM locations
-     WHERE is_active = true AND room = $1 AND row_label IS NOT NULL${orgId ? ' AND organization_id = $2' : ''}
-     ORDER BY row_label`;
-  const params = orgId ? [room.trim(), orgId] : [room.trim()];
-  const result = orgId
-    ? await tenantQuery(orgId, sql, params)
-    : await pool.query(sql, params);
-  return result.rows.map((r: any) => r.row_label);
-}
-
-/** Get distinct cols for a room+row (for cascading picker). */
-export async function getColsForRoomRow(room: string, row: string, orgId?: OrgId): Promise<string[]> {
-  const sql = `SELECT DISTINCT col_label FROM locations
-     WHERE is_active = true AND room = $1 AND row_label = $2 AND col_label IS NOT NULL${orgId ? ' AND organization_id = $3' : ''}
-     ORDER BY col_label`;
-  const params = orgId ? [room.trim(), row.trim(), orgId] : [room.trim(), row.trim()];
-  const result = orgId
-    ? await tenantQuery(orgId, sql, params)
-    : await pool.query(sql, params);
-  return result.rows.map((r: any) => r.col_label);
 }
 
 export async function getLocationByBarcode(barcode: string, orgId?: OrgId): Promise<Location | null> {
@@ -1026,7 +988,7 @@ export async function getTransfersForSku(sku: string, limit = 25, orgId: OrgId):
 // ─── Bin Contents ───────────────────────────────────────────────────────────
 
 /** Get all SKUs stored in a specific bin (by location_id). */
-export async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinContent[]> {
+async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinContent[]> {
   // The locations join is on a globally-unique integer PK (safe bare). The
   // sku_stock join is on the `sku` string (collides across tenants) so it is
   // org-aligned, and the bin_contents rows themselves are org-filtered, when

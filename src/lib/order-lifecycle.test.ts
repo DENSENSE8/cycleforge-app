@@ -48,7 +48,7 @@ function* allSignals(): Generator<OrderLifecycleSignals> {
           yield { shipmentId, hasTechScan, packedAt, outOfStock };
 }
 
-test('resolveOrderLifecycleStage matches the legacy deriveUnshippedState for every signal combo', () => {
+test('resolveOrderLifecycleStage matches the legacy unshipped-state derivation for every signal combo', () => {
   for (const s of allSignals()) {
     assert.equal(resolveOrderLifecycleStage(s), legacyUnshipped(s), JSON.stringify(s));
   }

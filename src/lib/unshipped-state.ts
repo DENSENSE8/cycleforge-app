@@ -25,7 +25,6 @@
 
 import { buildStateMeta } from '@/lib/labels/resolve';
 import {
-  resolveOrderLifecycleStage,
   resolveFulfillmentLane,
   type OrderLifecycleStage,
   type FulfillmentLane,
@@ -39,55 +38,23 @@ import {
  * `*_STATE_META` color maps below keep their stable import path. Color/label
  * presentation stays in this module.
  */
-export type UnshippedState = OrderLifecycleStage;
+type UnshippedState = OrderLifecycleStage;
 /** Pre-pack fulfillment lanes shown on Dashboard · Unshipped (excludes label + dock). */
 export type FulfillmentState = FulfillmentLane;
-export type UnshippedStateInput = OrderLifecycleSignals;
-
-/**
- * Derive the pre‑dock pipeline state — thin alias over the canonical projection
- * (`resolveOrderLifecycleStage`). Kept for import‑path stability.
- */
-export function deriveUnshippedState(input: UnshippedStateInput): UnshippedState {
-  return resolveOrderLifecycleStage(input);
-}
+type UnshippedStateInput = OrderLifecycleSignals;
 
 /** Derive fulfillment-queue lane for orders that already have a label/tracking. */
 export function deriveFulfillmentState(input: UnshippedStateInput): FulfillmentState {
   return resolveFulfillmentLane(input);
 }
 
-export type FulfillmentCounts = Record<FulfillmentState, number>;
+type FulfillmentCounts = Record<FulfillmentState, number>;
 
 export const ZERO_FULFILLMENT_COUNTS: FulfillmentCounts = {
   PENDING: 0,
   TESTED: 0,
   BLOCKED: 0,
 };
-
-/** Bucket fulfillment-queue rows for the Unshipped status legend. */
-export function countFulfillmentStates(
-  rows: ReadonlyArray<{
-    shipment_id?: number | string | null;
-    has_tech_scan?: boolean | null;
-    out_of_stock?: string | null;
-    is_out_of_stock?: boolean;
-  }>,
-): FulfillmentCounts {
-  const counts: FulfillmentCounts = { ...ZERO_FULFILLMENT_COUNTS };
-  for (const r of rows) {
-    const state = deriveFulfillmentState({
-      shipmentId: r.shipment_id,
-      hasTechScan: Boolean(r.has_tech_scan),
-      // Prefer new boolean field, fallback to legacy string logic
-      isOutOfStock: 'is_out_of_stock' in r && r.is_out_of_stock !== undefined 
-        ? r.is_out_of_stock 
-        : Boolean(String(r.out_of_stock || '').trim()),
-    });
-    counts[state] += 1;
-  }
-  return counts;
-}
 
 /**
  * Map `/api/orders/queue-counts` raw combos → PENDING/TESTED/BLOCKED tallies.
@@ -108,24 +75,7 @@ export function fulfillmentCountsFromCombos(
   return counts;
 }
 
-/** True when the deadline has passed. Overlay flag (the days‑late chip), not a dot. */
-export function isUnshippedLate(deadlineAt: string | null | undefined, now: Date): boolean {
-  if (!deadlineAt) return false;
-  const t = new Date(deadlineAt).getTime();
-  return Number.isFinite(t) && t < now.getTime();
-}
-
-export type UnshippedCounts = Record<UnshippedState, number>;
-
-export const ZERO_UNSHIPPED_COUNTS: UnshippedCounts = {
-  AWAITING_LABEL: 0,
-  PENDING: 0,
-  TESTED: 0,
-  PACKED_STAGED: 0,
-  BLOCKED: 0,
-};
-
-export interface UnshippedStateMeta {
+interface UnshippedStateMeta {
   label: string;
   /** One‑line plain‑English meaning — surfaced as the hover tooltip on dots + legend chips. */
   description: string;
