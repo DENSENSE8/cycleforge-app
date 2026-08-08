@@ -1652,6 +1652,46 @@ orthogonal to paint. Guard: `optimistic-url-param.guard.test.ts`.
 - Never hand-roll `shadow-* shadow-scrim/*` for these jobs; dial ink/spread only in the SoT.
 - z-index remains separate (`tokens/z-index.ts`) — same elevation style can stack at different orders.
 
+## Table definition registry (mount waist)
+
+A Workbench spreadsheet mounts through the **table definition registry**, not a
+page-local `*GridView` hand-wiring `LedgerGridSurface`. The engine
+(`LedgerGridSurface` → `LedgerGrid`) is unchanged and remains the shell SoT;
+what changed is who supplies the recipe.
+
+| Concern | Source |
+|---|---|
+| Definition schema (Zod: columns · capabilities · shell recipe · prefs bucket · id) | `src/lib/tables/table-definition.ts` (`parseTableDefinition`; `superRefine` = frozen contiguous prefix · frozen ≠ hideable · ≤1 flex track · `MAX_DEFAULT_VISIBLE_TRACKS` = 10) |
+| Definition + typed columns + `makeDescriptor` ref | `TableSurfaceBinding` (`src/components/tables/table-surface-binding.ts`) |
+| The mount host | `NonlinearTableHost` (`src/components/tables/NonlinearTableHost.tsx`) |
+| The registry (id → definition; `<family>.<view>`) | `src/components/tables/table-definition-registry.ts` |
+| Per-family definition | `*-table-definition.ts` beside each descriptor |
+
+- **Pages are bindings.** A page supplies feed + intents + the family's
+  renderers; the shell recipe (`surface`), prefs bucket, aria name and column
+  model resolve from the definition. Never a page-local `*GridView` twin for the
+  same job.
+- **The host takes a BINDING, not an id** — an id-keyed typed lookup would need a
+  cast that guarantees nothing about `Row`. Ids are the enumeration/lookup key.
+- **The definition owns the shell recipe;** `ariaLabel` / `testId` / `tableId`
+  are host overrides for a shared parametric grid's per-mount *instance identity*
+  (Testing History reuses `receiving.browse`; Orders' lanes each name
+  themselves). `surface` is **not** overridable.
+- **`parseTableDefinition` clones** — `definition.columns` is a validated
+  snapshot, not an alias; the registry guard's deep-equal tests catch drift.
+- **Domain cells stay per `entityFamily`** (`receiving-grid/cells/*`, …) — the
+  registry never carries JSX. **AI may author Zod definitions only** — never cell
+  JSX, DDL, or a new terminal status.
+- **Guard-migration:** a guard asserting the retired mount literal
+  (`<LedgerGridSurface … surface="sheet"`) re-points at `definition.surface` +
+  a `<NonlinearTableHost binding={…}` assertion. Discovery regexes
+  (`grid-surface-capabilities`, `grid-view-plumbing`) count `<NonlinearTableHost`;
+  the host is in `grid-view-plumbing`'s `DS_OWN`.
+- **Documented exceptions:** `StationListTable` / `FbaBoardTable` (no column
+  model of their own) keep a declared capability bag without a definition.
+  Guards: `table-definition-registry.guard.test.ts` (parse + deep-equal + unique
+  ids) · `grid-surface-capabilities.guard.test.ts` (every mount names a bag).
+
 ## Ops table / spreadsheet surface shell
 
 Two recipes, one module. **Pick CLIP vs SHEET by whether the grid is a raised
