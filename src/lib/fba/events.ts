@@ -45,16 +45,10 @@ export const FBA_SEND_SHIPMENT_TO_PAIRED_REVIEW = 'fba-send-shipment-to-paired-r
 export const FBA_PAIRED_REVIEW_TOGGLE = 'fba-paired-review-toggle' as const;
 
 // ── Plan lifecycle ──────────────────────────────────────────────────────────
-/** After a new plan is created (POST /api/fba/shipments) */
-export const FBA_PLAN_CREATED = 'fba-plan-created' as const;
-/** Focus a plan card in the sidebar */
-export const FBA_PRINT_FOCUS_PLAN = 'fba-print-focus-plan' as const;
 /** Print queue items changed — reload sidebar plan list */
 export const FBA_PRINT_QUEUE_REFRESH = 'fba-print-queue-refresh' as const;
 /** Tracking attached → move items to shipped / refresh board */
 export const FBA_PRINT_SHIPPED = 'fba-print-shipped' as const;
-/** Sidebar tracking readiness map updated */
-export const FBA_PRINT_SIDEBAR_READY = 'fba-print-sidebar-ready' as const;
 /** Tracking field patched inline (detail: { planId, shipmentId?, amazon?, ups? }) */
 export const FBA_TRACKING_PATCH = 'fba-print-tracking-patch' as const;
 /** Open the shipment editor form (detail: ActiveShipment) */
@@ -69,9 +63,6 @@ export const FBA_OPEN_QUICK_ADD_FNSKU = 'fba-open-quick-add-fnsku' as const;
 export const FBA_FNSKU_SAVED = 'fba-fnsku-saved' as const;
 
 // ── Admin catalog ───────────────────────────────────────────────────────────
-export const ADMIN_FBA_OPEN_ADD = 'admin-fba-open-add' as const;
-export const ADMIN_FBA_OPEN_UPLOAD = 'admin-fba-open-upload' as const;
-
 // ── Sidebar scan / status ──────────────────────────────────────────────────
 /** Scan status feedback toast (detail: string message) */
 export const FBA_SCAN_STATUS = 'fba-scan-status' as const;

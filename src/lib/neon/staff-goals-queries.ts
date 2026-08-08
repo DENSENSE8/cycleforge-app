@@ -2,7 +2,7 @@ import pool from '../db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export interface StaffGoal {
+interface StaffGoal {
   id: number;
   staff_id: number;
   station: string;
@@ -10,7 +10,7 @@ export interface StaffGoal {
   updated_at: string | null;
 }
 
-export interface StaffGoalWithStats {
+interface StaffGoalWithStats {
   staff_id: number;
   staff_name: string;
   employee_id: string | null;
@@ -21,7 +21,7 @@ export interface StaffGoalWithStats {
   avg_daily_last_7d: number;
 }
 
-export interface StaffGoalHistoryRow {
+interface StaffGoalHistoryRow {
   id: number;
   staff_id: number;
   station: string;
@@ -166,7 +166,7 @@ export async function snapshotStaffGoalHistoryForDate(
   return result.rows;
 }
 
-export async function snapshotSingleStaffGoalHistory(
+async function snapshotSingleStaffGoalHistory(
   staffId: number,
   station: string,
   loggedDate: string = getPacificDateStamp(),
@@ -264,100 +264,6 @@ export async function getAllStaffGoalsWithStats(orgId?: OrgId): Promise<StaffGoa
   return result.rows;
 }
 
-/**
- * Get a single staff member's goal for a specific station.
- */
-export async function getGoalByStaffId(staffId: number, station?: string, orgId?: OrgId): Promise<StaffGoal | null> {
-  // staff_goals has no own organization_id — scope via the parent staff row
-  // with a subquery. Byte-identical when orgId is omitted.
-  if (station) {
-    if (orgId) {
-      const result = await tenantQuery<StaffGoal>(
-        orgId,
-        `SELECT * FROM staff_goals
-          WHERE staff_id = $1 AND station = $2
-            AND staff_id IN (SELECT id FROM staff WHERE organization_id = $3)`,
-        [staffId, station, orgId],
-      );
-      return result.rows[0] ?? null;
-    }
-    const result = await pool.query(
-      'SELECT * FROM staff_goals WHERE staff_id = $1 AND station = $2',
-      [staffId, station],
-    );
-    return result.rows[0] ?? null;
-  }
-  if (orgId) {
-    const result = await tenantQuery<StaffGoal>(
-      orgId,
-      `SELECT * FROM staff_goals
-        WHERE staff_id = $1
-          AND staff_id IN (SELECT id FROM staff WHERE organization_id = $2)
-        ORDER BY station LIMIT 1`,
-      [staffId, orgId],
-    );
-    return result.rows[0] ?? null;
-  }
-  const result = await pool.query(
-    'SELECT * FROM staff_goals WHERE staff_id = $1 ORDER BY station LIMIT 1',
-    [staffId],
-  );
-  return result.rows[0] ?? null;
-}
-
-/**
- * Get daily_goal value for a staff member + station (returns default 50 if not set).
- */
-export async function getDailyGoal(staffId: number, station: string = 'TECH', orgId?: OrgId): Promise<number> {
-  // staff_goals has no own organization_id — scope via the parent staff row.
-  if (orgId) {
-    const result = await tenantQuery(
-      orgId,
-      `SELECT daily_goal FROM staff_goals
-        WHERE staff_id = $1 AND station = $2
-          AND staff_id IN (SELECT id FROM staff WHERE organization_id = $3)`,
-      [staffId, station, orgId],
-    );
-    return result.rows[0]?.daily_goal ?? 50;
-  }
-  const result = await pool.query(
-    'SELECT daily_goal FROM staff_goals WHERE staff_id = $1 AND station = $2',
-    [staffId, station],
-  );
-  return result.rows[0]?.daily_goal ?? 50;
-}
-
-/**
- * Upsert a staff goal for a specific station.
- */
-export async function upsertStaffGoal(staffId: number, dailyGoal: number, station: string = 'TECH', orgId?: OrgId): Promise<StaffGoal> {
-  // staff_goals has no own organization_id — scope the write via the parent
-  // staff row so a goal can only be written for a staff member in this org.
-  // Byte-identical when orgId is omitted.
-  if (orgId) {
-    const result = await tenantQuery<StaffGoal>(
-      orgId,
-      `INSERT INTO staff_goals (staff_id, daily_goal, station, updated_at)
-       SELECT $1, $2, $3, NOW()
-       WHERE EXISTS (SELECT 1 FROM staff WHERE id = $1 AND organization_id = $4)
-       ON CONFLICT (staff_id, station)
-       DO UPDATE SET daily_goal = EXCLUDED.daily_goal, updated_at = NOW()
-       RETURNING *`,
-      [staffId, dailyGoal, station, orgId],
-    );
-    return result.rows[0];
-  }
-  const result = await pool.query(
-    `INSERT INTO staff_goals (staff_id, daily_goal, station, updated_at)
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (staff_id, station)
-     DO UPDATE SET daily_goal = EXCLUDED.daily_goal, updated_at = NOW()
-     RETURNING *`,
-    [staffId, dailyGoal, station],
-  );
-  return result.rows[0];
-}
-
 export async function upsertStaffGoalWithHistory(
   staffId: number,
   dailyGoal: number,
@@ -410,36 +316,3 @@ export async function upsertStaffGoalWithHistory(
   }
 }
 
-/**
- * Delete a staff goal for a specific station.
- */
-export async function deleteStaffGoal(staffId: number, station?: string, orgId?: OrgId): Promise<boolean> {
-  // staff_goals has no own organization_id — scope the delete via the parent
-  // staff row. Byte-identical when orgId is omitted.
-  if (station) {
-    if (orgId) {
-      const result = await tenantQuery(
-        orgId,
-        `DELETE FROM staff_goals
-          WHERE staff_id = $1 AND station = $2
-            AND staff_id IN (SELECT id FROM staff WHERE organization_id = $3)`,
-        [staffId, station, orgId],
-      );
-      return (result.rowCount ?? 0) > 0;
-    }
-    const result = await pool.query('DELETE FROM staff_goals WHERE staff_id = $1 AND station = $2', [staffId, station]);
-    return (result.rowCount ?? 0) > 0;
-  }
-  if (orgId) {
-    const result = await tenantQuery(
-      orgId,
-      `DELETE FROM staff_goals
-        WHERE staff_id = $1
-          AND staff_id IN (SELECT id FROM staff WHERE organization_id = $2)`,
-      [staffId, orgId],
-    );
-    return (result.rowCount ?? 0) > 0;
-  }
-  const result = await pool.query('DELETE FROM staff_goals WHERE staff_id = $1', [staffId]);
-  return (result.rowCount ?? 0) > 0;
-}
