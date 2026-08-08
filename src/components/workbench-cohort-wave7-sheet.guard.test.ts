@@ -92,7 +92,7 @@ const GRID_SURFACES: {
     label: 'Pickup',
     view: 'src/components/receiving/pickup/PickupWorkspace.tsx',
     triageFiles: ['src/components/receiving/pickup/PickupWorkspace.tsx'],
-    gridView: 'src/components/receiving/pickup/grid/PickupGridView.tsx',
+    gridView: 'src/components/receiving/pickup/PickupWorkspace.tsx',
     definition: PICKUP_TABLE_DEFINITION,
   },
   {
