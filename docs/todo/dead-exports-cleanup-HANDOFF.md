@@ -10,7 +10,7 @@
 
 **For:** the next Claude Code / Cursor session
 **From:** Cycle Forge engineering
-**Status:** in progress — 10 batches landed, next tier identified in §4
+**Status:** in progress — 13 batches landed, next tier identified in §4
 **Lane:** current checkout, `main`. Attach to `:3050`. User owns commits.
 **Date:** 2026-08-08
 
@@ -59,15 +59,15 @@ docblock naming a plan is left alone and reported rather than deleted.
 
 | | |
 |---|---|
-| knip baseline | **2795 → 2429** (366 findings cleaned) |
-| Commits | 11, `b73a49b53`..`9a1f2b0c7` (`git log --oneline b73a49b53~1..HEAD`) |
+| knip baseline | **2795 → 2387** (408 findings cleaned) |
+| Commits | 14, `b73a49b53`..`d453252f7` (`git log --oneline b73a49b53~1..HEAD`) |
 | Files deleted | 12 |
 | Also removed | 26 unused locals eslint found that knip structurally cannot see (§3.9) |
 | Prior tier | `853e71315` (39 whole dead files, 2877 → 2791) |
 
 **Two numbers that matter more than the total:**
 
-- **~780 dead value exports remain** — the real remaining surface.
+- **~740 dead value exports remain** — the real remaining surface.
 - **~1,085 "dead types" in 647 files are NOT dead.** They are `Input`/`Result` types for live
   functions, used inside their own file. knip flags them because no *other* module imports the
   name. Un-exporting them is knip-appeasement that degrades the module's API for zero benefit.
@@ -194,13 +194,11 @@ Barrels needing per-symbol analysis (each re-exports things imported directly fr
 
 | File | Dead value exports |
 |---|---|
-| `src/lib/workflow/index.ts` | 7 — every symbol has external refs; a barrel, needs care |
 | `src/components/station/workbench/index.ts` | 6 — in the other session's active zone, wait for it |
-| `src/lib/receiving/facts/registry.ts` | 5 |
-| `src/lib/shipping/repository.ts` | 5 |
 
-`src/lib/stations/index.ts`, `src/components/support/context/index.ts` and
-`src/components/po-triage/types.ts` are **done** (commit `6fb705618`).
+**Done:** `stations/index.ts`, `support/context/index.ts`, `po-triage/types.ts` (`6fb705618`);
+`workflow/index.ts`, `receiving/facts/registry.ts` (`16d13846e`); `hooks/_ui.ts`,
+`hooks/_lifecycle.ts`, `nas-photos.ts` (`d453252f7`).
 
 Then the long tail: ~780 value exports across ~380 files, mostly 1–4 each. Nothing in it is
 individually interesting; work it by file, batch of 3–5, verifying each batch.
@@ -233,6 +231,7 @@ This can only remove. **Always diff the before/after and assert `added === 0`** 
 | `src/lib/pipeline/config.ts` (5) | `scripts/jetson/trainer.py` + `setup.sh` read the same env vars; `.env.example` and `context/PIPELINE*.md` document them. TS side of a cross-language contract. |
 | `src/lib/station/table-url-params.ts` (5) | `route-params.ts` **and** `param-ownership.guard.test.ts` both cite `SCOPE_PARAM`/`parseScope` *being baselined dead* as the precondition for a routing-safety argument, and the file's `*_PARAM` consts feed that guard's source regex. |
 | `src/lib/settings/accessors.ts` (9) | All 9 have registry UI. **5 have zero readers anywhere** (`autoTicket`, `autoPrintLabel`, the 3 `vision.*`) — admin knobs that do nothing. Deleting the accessor hides a product bug instead of fixing it. |
+| `src/lib/shipping/repository.ts` (5) | Carrier **webhook subscription** helpers. Migration `2026-06-02_carrier_webhook_subscription.sql` ships the `webhook_subscription_status` column they read, but no route or cron calls them — an unplugged feature, not dead code. Deleting strands the column. |
 | `allocateNextUnitId` in `src/lib/inventory/unit-id.ts` | Zero code callers, but `docs/todo/serial-label-pairing-split-combine-plan.md` names it as the unit-UID mint step of an in-flight plan. |
 | The 647 type-only files | See §0. |
 
@@ -254,8 +253,9 @@ Another session + GitButler actively own this tree. Observed, repeatedly:
 - **Edits reverted four times** — `hooks/_ui.ts`, `hooks/_lifecycle.ts`, `nas-photos.ts`, and the
   DS shell family once *after* deletion (leaving files on disk with the barrel already removed).
   **A deletion only stuck once staged in the index** (`git rm`, not plain `rm`).
-- **20 confirmed-dead exports are still uncut** in those three files. They are re-baselined as
-  dead and ready; they will land in minutes once that session releases them.
+- **Resolved on the fifth attempt** (`d453252f7`) after ~40 minutes of quiet in that part of the
+  tree. The pattern that worked: cut, then `git add` in the *same* command, before any
+  verification. A staged deletion survived; an unstaged one did not.
 - **Never `git checkout --` on a shared tree.** It is the same class of destructive operation as
   `git stash`, which `workflow-safety.md` bans. Revert your own bad edit by re-editing.
 - **Stage only your own files.** `git add -A` will sweep a concurrent session's work into your
