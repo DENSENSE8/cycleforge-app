@@ -100,7 +100,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/receiving/unfound/grid/UnfoundGridColumnHeader.tsx',
-    'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+    'src/components/receiving/unfound/UnfoundQueueTable.tsx',
   ],
   [
     'src/components/warehouse/bins-grid/BinsGridColumnHeader.tsx',

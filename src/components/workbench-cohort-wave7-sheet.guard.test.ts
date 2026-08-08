@@ -130,7 +130,7 @@ const RESIDUAL_GRID_PINS: { label: string; gridView: string; definition?: TableD
   },
   {
     label: 'Unfound',
-    gridView: 'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+    gridView: 'src/components/receiving/unfound/UnfoundQueueTable.tsx',
     definition: UNFOUND_TABLE_DEFINITION,
   },
   {
