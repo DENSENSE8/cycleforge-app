@@ -108,7 +108,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/tracking-exceptions/grid/TrackingExceptionsGridColumnHeader.tsx',
-    'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+    'src/components/tracking-exceptions/TrackingExceptionsTable.tsx',
   ],
   [
     'src/features/review/catalog-link/grid/CatalogLinkGridColumnHeader.tsx',

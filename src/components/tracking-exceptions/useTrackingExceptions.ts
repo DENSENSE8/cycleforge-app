@@ -10,7 +10,7 @@ import type {
  * Data + mutations for the Tracking Exceptions ops queue.
  *
  * The grid is a display map only — fetch / refresh / PATCH / DELETE live here
- * so {@link TrackingExceptionsGridView} stays free of side effects.
+ * so the grid mount stays free of side effects.
  */
 export function useTrackingExceptions(status: TrackingExceptionStatusFilter, search: string) {
   const [rows, setRows] = useState<TrackingExceptionRow[]>([]);
