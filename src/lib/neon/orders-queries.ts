@@ -16,7 +16,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { ShippedOrder } from '@/types/orders';
 export type { ShippedOrder };
 
-export interface ActiveOrder {
+interface ActiveOrder {
   id: number;
   shipment_id: number | null;
   order_id: string;
@@ -54,22 +54,6 @@ export interface ActiveOrder {
   packed_by: number | null;
   packed_at: string | null;        // packer_logs.created_at (scan timestamp)
   serial_number: string | null;
-}
-
-export interface CreateOrderParams {
-  /** Phase 3b: tenant scope for both the orders and work_assignments inserts. */
-  organizationId: string;
-  orderId: string;
-  productTitle: string;
-  sku?: string | null;
-  accountSource?: string | null;
-  condition?: string;
-  quantity?: string | null;
-  itemNumber?: string | null;
-  shipByDate?: string | null;
-  notes?: string | null;
-  saleAmount?: number | null;
-  currency?: string | null;
 }
 
 // ─── Shared CTE fragments ─────────────────────────────────────────────────────
@@ -360,7 +344,7 @@ const ORDER_SERIALS_CTE_ALL = ORDER_SERIALS_CTE.replace(
  */
 export type ShippedFilterMode = 'all' | 'orders' | 'sku' | 'fba';
 
-export interface GetAllShippedOrdersOptions {
+interface GetAllShippedOrdersOptions {
   limit?: number;
   offset?: number;
   weekStart?: string;
@@ -804,7 +788,7 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
   }
 }
 
-export interface ShippedSearchDebug {
+interface ShippedSearchDebug {
   variantCount: number;
   resultCount: number;
   topScore: number;
@@ -813,7 +797,7 @@ export interface ShippedSearchDebug {
   limit: number;
 }
 
-export interface ShippedSearchResult {
+interface ShippedSearchResult {
   rows: ShippedOrder[];
   debug: ShippedSearchDebug;
 }
@@ -1257,192 +1241,7 @@ export async function getShippedOrderByTracking(tracking: string, orgId?: OrgId)
   }
 }
 
-/**
- * Get count of shipped orders
- */
-export async function getShippedOrdersCount(orgId?: OrgId): Promise<number> {
-  try {
-    // When orgId is threaded, scope the count to the tenant via orders.organization_id.
-    // The carrier-status group is wrapped in parens so the org predicate ANDs cleanly.
-    const orgClause = orgId ? `AND o.organization_id = $1` : '';
-    const sql =
-      `SELECT COUNT(DISTINCT o.id) AS count
-       FROM orders o
-       JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-       WHERE (stn.is_carrier_accepted OR stn.is_in_transit
-          OR stn.is_out_for_delivery OR stn.is_delivered)
-       ${orgClause}`;
-    const result = orgId
-      ? await tenantQuery(orgId, sql, [orgId])
-      : await pool.query(sql);
-    return parseInt(result.rows[0].count);
-  } catch (error) {
-    console.error('Error counting shipped orders:', error);
-    throw new Error('Failed to count shipped orders');
-  }
-}
-
 // ─── Active Orders (Read) ─────────────────────────────────────────────────────
-
-/**
- * Get active (non-shipped) orders with assignment info
- */
-export async function getActiveOrders(options?: {
-  status?: string;
-  assignedTechId?: number;
-  assignedPackerId?: number;
-  weekStart?: string;
-  weekEnd?: string;
-  missingShipmentOnly?: boolean;
-  pendingOnly?: boolean;
-  limit?: number;
-  offset?: number;
-}, orgId?: OrgId): Promise<ActiveOrder[]> {
-  const conditions: string[] = [
-    `NOT COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
-       OR stn.is_out_for_delivery OR stn.is_delivered, false)`,
-  ];
-  const params: any[] = [];
-  let idx = 1;
-
-  // Tenant scope: orders carries organization_id, so when orgId is threaded we
-  // add an explicit predicate. Pushed first so it claims $1 before the other
-  // positional conditions advance idx.
-  if (orgId) {
-    conditions.push(`o.organization_id = $${idx++}`);
-    params.push(orgId);
-  }
-
-  if (options?.missingShipmentOnly) {
-    conditions.push(`o.shipment_id IS NULL`);
-  }
-  if (options?.weekStart) { conditions.push(`wa_deadline.deadline_at >= $${idx++}`); params.push(options.weekStart); }
-  if (options?.weekEnd) { conditions.push(`wa_deadline.deadline_at <= $${idx++}`); params.push(options.weekEnd); }
-  if (options?.assignedTechId != null) {
-    conditions.push(`wa_t.assigned_tech_id = $${idx++}`);
-    params.push(options.assignedTechId);
-  }
-  if (options?.assignedPackerId != null) {
-    conditions.push(`wa_p.assigned_packer_id = $${idx++}`);
-    params.push(options.assignedPackerId);
-  }
-  if (options?.pendingOnly) {
-    conditions.push(`(wa_t.assigned_tech_id IS NULL OR wa_p.assigned_packer_id IS NULL)`);
-  }
-
-  const limit = options?.limit ?? 200;
-  const offset = options?.offset ?? 0;
-  params.push(limit, offset);
-
-  const sql =
-    `SELECT
-       o.id,
-       o.shipment_id,
-       o.order_id,
-       o.product_title,
-       o.quantity,
-       o.item_number,
-       o.condition,
-       stn.tracking_number_raw AS tracking_number,
-       o.sku,
-       o.account_source,
-       o.notes,
-       /*
-        * Same projection as ORDER_SERIALS_CTE -- this queue is a SEPARATE query
-        * with an explicit column list, so a fact added there does not reach the
-        * Pending grid unless it is added here too. Scalar subqueries on o.id
-        * (already grouped) keep the GROUP BY untouched.
-        */
-       (
-         SELECT jsonb_build_object(
-                  'flag', f.flag,
-                  'by',   fs.name,
-                  'at',   f.updated_at
-                )
-           FROM order_flags f
-           LEFT JOIN staff fs ON fs.id = f.set_by_staff_id
-          WHERE f.order_id = o.id
-       ) AS row_flag,
-       (
-         SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
-       ) AS note_count,
-       o.is_urgent,
-       o.sale_amount,
-       o.currency,
-       o.status_history,
-       COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
-         OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
-       stn.latest_status_category AS shipment_status,
-       stn.carrier,
-       to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
-       o.is_out_of_stock,
-       to_char(o.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
-       wa_t.assigned_tech_id   AS tester_id,
-       wa_p.assigned_packer_id AS packer_id,
-       pl.packed_by,
-       to_char(pl.packed_at, 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
-       COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
-       MIN(tsn.tested_by)::int AS tested_by
-     FROM orders o
-     LEFT JOIN LATERAL (
-       SELECT wa.deadline_at FROM work_assignments wa
-       WHERE wa.entity_type = 'ORDER' AND wa.entity_id = o.id AND wa.work_type = 'TEST'
-       ORDER BY CASE wa.status WHEN 'IN_PROGRESS' THEN 1 WHEN 'ASSIGNED' THEN 2 WHEN 'OPEN' THEN 3 WHEN 'DONE' THEN 4 ELSE 5 END,
-                wa.updated_at DESC, wa.id DESC LIMIT 1
-     ) wa_deadline ON TRUE
-     LEFT JOIN LATERAL (
-       SELECT assigned_tech_id FROM work_assignments
-       WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'TEST'
-         AND status IN ('ASSIGNED', 'IN_PROGRESS')
-       ORDER BY created_at DESC LIMIT 1
-     ) wa_t ON true
-     LEFT JOIN LATERAL (
-       SELECT assigned_packer_id FROM work_assignments
-       WHERE entity_type = 'ORDER' AND entity_id = o.id AND work_type = 'PACK'
-         AND status IN ('ASSIGNED', 'IN_PROGRESS')
-       ORDER BY created_at DESC LIMIT 1
-     ) wa_p ON true
-     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-     LEFT JOIN LATERAL (
-       SELECT packed_by, created_at AS packed_at FROM packer_logs pl
-       WHERE pl.shipment_id IS NOT NULL
-         AND pl.shipment_id = o.shipment_id
-         AND pl.tracking_type = 'ORDERS'
-       ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC LIMIT 1
-     ) pl ON true
-     LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
-      tsn.organization_id = o.organization_id
-      AND (
-        tsn.order_id = o.id
-        OR (
-          tsn.order_id IS NULL
-          AND o.shipment_id IS NOT NULL
-          AND tsn.shipment_id = o.shipment_id
-          AND NOT EXISTS (
-            SELECT 1 FROM orders o2
-            WHERE o2.shipment_id = o.shipment_id
-              AND o2.organization_id = o.organization_id
-              AND o2.id <> o.id
-          )
-        )
-      )
-    )
-     WHERE ${conditions.join(' AND ')}
-     GROUP BY o.id, o.shipment_id, wa_deadline.deadline_at, o.order_id, o.product_title, o.quantity,
-              o.condition, o.item_number, stn.tracking_number_raw, o.sku, o.is_out_of_stock,
-              o.is_urgent,
-              o.account_source, o.notes, o.sale_amount, o.currency, o.status_history,
-              stn.is_carrier_accepted, stn.is_in_transit, stn.is_out_for_delivery, stn.is_delivered,
-              stn.latest_status_category, stn.carrier,
-              wa_t.assigned_tech_id, wa_p.assigned_packer_id,
-              pl.packed_by, pl.packed_at
-     ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC
-     LIMIT $${idx++} OFFSET $${idx}`;
-  const result = orgId
-    ? await tenantQuery(orgId, sql, params)
-    : await pool.query(sql, params);
-  return result.rows;
-}
 
 // ─── Orders (Write) ───────────────────────────────────────────────────────────
 
@@ -1481,101 +1280,6 @@ export async function updateShippedOrderField(id: number, field: string, value: 
     console.error('Error updating shipped order field:', error);
     throw new Error('Failed to update shipped order field');
   }
-}
-
-/**
- * Create a new order
- */
-export async function createOrder(params: CreateOrderParams, orgId?: OrgId): Promise<ActiveOrder> {
-  // The order + its canonical deadline work_assignment are both org-stamped from
-  // params.organizationId (already required). When orgId is threaded the whole
-  // transaction runs through withTenantTransaction so the app.current_org GUC is
-  // set for the inserts; otherwise the legacy raw-pool transaction is used
-  // byte-identically. Both paths execute the same statements.
-  const runWrites = async (client: import('pg').PoolClient): Promise<ActiveOrder> => {
-    const skuCatalogId = await resolveOrCreateSkuCatalogId({
-      sku: params.sku,
-      itemNumber: params.itemNumber,
-      productTitle: params.productTitle,
-      accountSource: params.accountSource,
-      orderId: params.orderId,
-    }, params.organizationId);
-
-    const result = await client.query(
-      `INSERT INTO orders
-         (organization_id, order_id, product_title, sku, account_source,
-          condition, quantity, item_number, notes, sale_amount, currency, sku_catalog_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING *`,
-      [
-        params.organizationId,
-        params.orderId,
-        params.productTitle,
-        params.sku ?? null,
-        params.accountSource ?? 'Manual',
-        params.condition ?? 'Good',
-        params.quantity ?? null,
-        params.itemNumber ?? null,
-        params.notes ?? null,
-        params.saleAmount ?? null,
-        params.currency ?? 'USD',
-        skuCatalogId,
-      ],
-    );
-
-    const order = result.rows[0];
-    await client.query(
-      `INSERT INTO work_assignments
-         (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at, notes, assigned_at, created_at, updated_at)
-       VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3, 'Canonical deadline row from createOrder', NOW(), NOW(), NOW())
-       ON CONFLICT DO NOTHING`,
-      [params.organizationId, order.id, params.shipByDate ?? null],
-    );
-
-    return {
-      ...order,
-      ship_by_date: params.shipByDate ?? null,
-    };
-  };
-
-  if (orgId) {
-    return withTenantTransaction(orgId, runWrites);
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const out = await runWrites(client);
-    await client.query('COMMIT');
-    return out;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-/**
- * Check if a tracking number already exists (last-8 match via shipping_tracking_numbers)
- */
-export async function trackingNumberExists(trackingNumber: string, orgId?: OrgId): Promise<boolean> {
-  const last8 = trackingNumber.replace(/\D/g, '').slice(-8);
-  // Tracking is a STRING key that collides across tenants — when orgId is
-  // threaded, scope the existence check to this org via orders.organization_id ($2).
-  const orgClause = orgId ? `AND o.organization_id = $2` : '';
-  const sql =
-    `SELECT 1
-     FROM orders o
-     JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-     WHERE RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $1
-     ${orgClause}
-     LIMIT 1`;
-  const params = orgId ? [last8, orgId] : [last8];
-  const result = orgId
-    ? await tenantQuery(orgId, sql, params)
-    : await pool.query(sql, params);
-  return result.rowCount ? result.rowCount > 0 : false;
 }
 
 /**
@@ -1731,23 +1435,3 @@ export async function getOrderById(id: number, orgId?: OrgId): Promise<Record<st
   return result.rows[0] ?? null;
 }
 
-/**
- * Skip an order (mark with a skip status in status_history)
- */
-export async function skipOrder(id: number, reason?: string, orgId?: OrgId): Promise<boolean> {
-  const now = formatPSTTimestamp();
-  // When orgId is threaded, gate the UPDATE ($3) so another tenant's order is
-  // never mutated.
-  const orgClause = orgId ? `AND organization_id = $3` : '';
-  const sql =
-    `UPDATE orders
-     SET status_history = COALESCE(status_history, '[]'::jsonb) || $1::jsonb
-     WHERE id = $2
-     ${orgClause}`;
-  const payload = JSON.stringify([{ status: 'SKIPPED', timestamp: now, reason: reason ?? null }]);
-  const params = orgId ? [payload, id, orgId] : [payload, id];
-  const result = orgId
-    ? await tenantQuery(orgId, sql, params)
-    : await pool.query(sql, params);
-  return (result.rowCount ?? 0) > 0;
-}
