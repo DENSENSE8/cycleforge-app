@@ -92,7 +92,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/outbound/ready/grid/ReadyGridColumnHeader.tsx',
-    'src/components/outbound/ready/grid/ReadyGridView.tsx',
+    'src/components/outbound/ready/ReadyQueueTable.tsx',
   ],
   [
     'src/components/warranty/grid/WarrantyGridColumnHeader.tsx',

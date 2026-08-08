@@ -301,7 +301,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/repair/repair-grid/RepairGridView.tsx': 'repair',
   'src/components/receiving/pickup/grid/PickupGridView.tsx': 'pickup',
   'src/components/warranty/WarrantyClaimsTable.tsx': 'warranty',
-  'src/components/outbound/ready/grid/ReadyGridView.tsx': 'ready',
+  'src/components/outbound/ready/ReadyQueueTable.tsx': 'ready',
   'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx': 'tracking-exceptions',
   'src/components/receiving/unfound/grid/UnfoundGridView.tsx': 'unfound',
   'src/components/warehouse/bins-grid/BinsGridView.tsx': 'bins',
@@ -414,7 +414,6 @@ describe('ledger grid mounts', () => {
  */
 const GRID_VIEW_FOREST: string[] = [
   'src/components/dashboard/orders-queue/OrdersGridView.tsx',
-  'src/components/outbound/ready/grid/ReadyGridView.tsx',
   'src/components/receiving/pickup/grid/PickupGridView.tsx',
   'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
   'src/components/repair/repair-grid/RepairGridView.tsx',

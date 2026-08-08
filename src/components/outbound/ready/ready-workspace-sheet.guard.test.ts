@@ -1,7 +1,7 @@
 /**
  * Ready-stage Sheets recipe — the FBA `?fbaMode=ready` lane.
  *
- * `ReadyGridView` pins `surface="sheet"`; the disposition KPI tiles are pinned
+ * `ReadyQueueTable` pins `surface="sheet"`; the disposition KPI tiles are pinned
  * in chrome (Band 2, `ReadyKpiBand`) — never a scrolling body `mb-4` island.
  *
  * SoT: source-of-truth.md → Sheets flush mount recipe;
@@ -25,13 +25,13 @@ function stripBlockComments(src: string): string {
 }
 
 describe('Ready Sheets recipe', () => {
-  it('ReadyGridView mounts the registry host on a sheet-surface definition', () => {
+  it('ReadyQueueTable mounts the registry host on a sheet-surface definition', () => {
     assert.equal(READY_TABLE_DEFINITION.surface, 'sheet');
-    const src = read('src/components/outbound/ready/grid/ReadyGridView.tsx');
+    const src = read('src/components/outbound/ready/ReadyQueueTable.tsx');
     assert.match(
       src,
       /<NonlinearTableHost[\s\S]*?binding=\{READY_TABLE_BINDING\}/,
-      'ReadyGridView must mount NonlinearTableHost with the Ready binding',
+      'ReadyQueueTable must mount NonlinearTableHost with the Ready binding',
     );
     assert.doesNotMatch(src, /<LedgerGridSurface/, 'must not reach past the host to the engine');
     assert.doesNotMatch(src, /surface="(sheet|framed)"/, 'shell recipe belongs to the definition');

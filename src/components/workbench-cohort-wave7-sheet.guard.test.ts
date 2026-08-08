@@ -78,7 +78,7 @@ function assertNoGutters(src: string) {
 // Grid surfaces — full flush Sheets stack. `triageFiles` are where the
 // WorkbenchTriageBand actually mounts (view or its split header). `gridView`
 // is the inner adapter that must pin `surface="sheet"` (never the framed CLIP
-// default). FBA's Ledger grid is ReadyGridView — guarded in
+// default). FBA's Ledger grid is ReadyQueueTable — guarded in
 // ready-workspace-sheet.guard.test.ts (its board/shipped tables are non-Ledger).
 const GRID_SURFACES: {
   label: string;
