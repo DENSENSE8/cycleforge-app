@@ -61,18 +61,6 @@ export function totalBoxesPacked(counts: {
   return safeInt(counts.small_count) + safeInt(counts.medium_count) + safeInt(counts.large_count);
 }
 
-function addDaysToPstDateKey(day: string, delta: number): string {
-  const [year, month, dayNum] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, dayNum);
-  date.setDate(date.getDate() + delta);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function lastNPstDateKeys(endDay: string, count: number): string[] {
-  const n = Math.max(1, Math.floor(count));
-  return Array.from({ length: n }, (_, i) => addDaysToPstDateKey(endDay, -(n - 1 - i)));
-}
-
 export type PackerDailyCsvRow = {
   packer: string;
   boxes: number;

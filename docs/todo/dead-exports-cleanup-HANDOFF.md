@@ -45,6 +45,7 @@ npx knip --cache --reporter json > /tmp/knip.json
 
 # 3. verify, in this order, skipping none
 npx tsc --noEmit -p tsconfig.json                       # must be silent
+npx eslint <every file you touched>                     # REQUIRED — see §3.9
 node --test --require ./scripts/register-server-only-shim.cjs \
      --import tsx --test-reporter spec 'src/**/*.test.ts'  # plain `npx tsx --test` falsely fails on server-only
 node scripts/knip-gate.mjs                              # no NEW findings
@@ -123,6 +124,27 @@ that is the point, not a regression.
 **3.8 — Check relative import paths, not just the `@/` alias.** Grepping only
 `from '@/design-system/components/mobile'` missed `export * from './mobile'` one directory up.
 `tsc` caught it.
+
+**3.9 — `tsc` and knip BOTH miss what un-exporting leaves behind. Run eslint.**
+This is the biggest process gap found, and it cost a whole extra pass. Two compounding causes:
+
+- **The `in>1` heuristic over-counts.** It counts a symbol's own **docblock mentions** and
+  `{@link X}` references as internal usage, so a symbol with only a comment referring to it looks
+  "used internally" and gets un-exported when it should have been **deleted**.
+- **Nothing else catches the result.** `tsc` does not run `noUnusedLocals`; knip reports unused
+  *exports*, so the moment you un-export a symbol it **drops off knip's radar entirely** — the
+  dead code is now invisible to the very tool you are using to find dead code.
+
+A single pass over the files touched in this initiative surfaced **20** `unused-imports/no-unused-vars`
+warnings, cascading to **26 symbols** across two more rounds (deleting one orphans its types and
+its imports). Fix: **run `npx eslint <touched files>` after every batch and delete what it names,
+repeating until clean.** They are warnings, not errors, and `verify.mjs` runs eslint with
+`--max-warnings=10000` — so this will never fail a gate. It will just silently leave dead code
+behind, which is the one outcome this initiative exists to prevent.
+
+Leave alone the `'X' is assigned a value but only used as a type` warnings — those are `as const`
+arrays sourcing a union type (`TRIAGE_PILES`, `TESTING_API_VIEWS`). The code is correct; ESLint
+cannot see type-only usage of a value.
 
 ---
 

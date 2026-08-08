@@ -23,18 +23,6 @@
  * components/fba/shared/FbaStatusBadge.tsx, which sources labels + order here.
  */
 
-const FBA_STATUS = {
-  PLANNED: 'PLANNED',
-  TESTED: 'TESTED',
-  PACKED: 'PACKED',
-  LABEL_ASSIGNED: 'LABEL_ASSIGNED',
-  SHIPPED: 'SHIPPED',
-  OUT_OF_STOCK: 'OUT_OF_STOCK',
-  CLOSED: 'CLOSED',
-} as const;
-
-type FbaStatus = (typeof FBA_STATUS)[keyof typeof FBA_STATUS];
-
 /** Board sort order — lowest sorts first. Side states sit after the path. */
 export const FBA_STATUS_ORDER: Record<string, number> = {
   PACKED: 0, // combiner's queue surfaces first
@@ -76,15 +64,4 @@ const FBA_STATUS_PILL: Record<string, string> = {
 export function fbaStatusPillClass(status: string): string {
   return FBA_STATUS_PILL[status.toUpperCase()] ?? 'bg-surface-sunken text-text-muted';
 }
-
-/** Allowed forward + revert transitions. Used to guard status writes. */
-const FBA_ALLOWED_TRANSITIONS: Record<string, FbaStatus[]> = {
-  PLANNED: [FBA_STATUS.TESTED, FBA_STATUS.OUT_OF_STOCK],
-  TESTED: [FBA_STATUS.PACKED, FBA_STATUS.OUT_OF_STOCK, FBA_STATUS.PLANNED],
-  PACKED: [FBA_STATUS.LABEL_ASSIGNED, FBA_STATUS.TESTED],
-  LABEL_ASSIGNED: [FBA_STATUS.SHIPPED, FBA_STATUS.PACKED],
-  SHIPPED: [],
-  OUT_OF_STOCK: [FBA_STATUS.PLANNED, FBA_STATUS.TESTED],
-  CLOSED: [],
-};
 

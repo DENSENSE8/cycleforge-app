@@ -88,9 +88,6 @@ export const TESTING_RAIL_SEGMENT = 'tested' as const;
  */
 export const UNBOX_QUEUE_SEGMENT = 'unbox-queue' as const;
 
-/** Unbox-surface rails only — excludes Queue (triage bridge). */
-const UNBOX_SURFACE_SEGMENTS = new Set([UNBOX_RAIL_SEGMENT, 'viewed']);
-
 /** Triage sidebar rail segments — never refresh from an Unbox-surface scan. */
 export const TRIAGE_RAIL_SEGMENTS = new Set(['scanned', 'triage-combined', 'unfound']);
 
@@ -115,15 +112,6 @@ interface ReceivingLinesPrependedDetail {
 
 function isReceivingLinesTableKey(key: readonly unknown[]): boolean {
   return Array.isArray(key) && key[0] === 'receiving-lines-table';
-}
-
-function isUnboxReceivingQueryKey(key: readonly unknown[]): boolean {
-  if (!isReceivingLinesTableKey(key)) return false;
-  if (key[1] === 'rail') {
-    return typeof key[2] === 'string' && UNBOX_SURFACE_SEGMENTS.has(key[2]);
-  }
-  // History table (`view=activity`) — unfound cartons scanned in Unbox belong here.
-  return key[1] === 'activity' && key[2] === 'history';
 }
 
 function isUnboxQueueQueryKey(key: readonly unknown[]): boolean {
@@ -185,17 +173,6 @@ export function dispatchReceivingLinesPrepended(detail: ReceivingLinesPrependedD
 /** Triage-only refresh — Unbox rails must not listen. */
 export function dispatchReceivingTriageRefresh(): void {
   window.dispatchEvent(new CustomEvent('receiving-triage-refresh'));
-}
-
-/**
- * Invalidate Unbox-surface rails + History — use after Unbox-surface scans.
- * Does NOT touch the Unbox Queue (triage found-PO bridge).
- */
-function invalidateUnboxReceivingFeeds(queryClient: QueryClient): void {
-  lastLocalReceivingInvalidationAt = Date.now();
-  void queryClient.invalidateQueries({
-    predicate: (q) => isUnboxReceivingQueryKey(q.queryKey),
-  });
 }
 
 /** Invalidate only the Unbox Queue (triage found-PO bridge). */

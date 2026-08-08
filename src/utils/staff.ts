@@ -20,11 +20,6 @@ export const TECH_EMPLOYEE_IDS: Record<string, string> = {
   '4': 'TECH004',
 };
 
-/** Reverse lookup: staff name (lowercase) → staff ID. */
-const STAFF_ID_BY_NAME: Record<string, number> = Object.fromEntries(
-  Object.entries(STAFF_NAMES).map(([id, name]) => [name.toLowerCase(), Number(id)])
-);
-
 /**
  * Whether a staff member belongs to a role, by RBAC assignment (staff_roles)
  * with a fallback to the legacy primary-role string. Use this for all

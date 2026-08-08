@@ -39,67 +39,6 @@ export interface EnrichedCandidate extends VisionCandidate {
   resolved: boolean;
 }
 
-interface IdentifyResult {
-  ok: boolean;
-  candidates: VisionCandidate[];
-  error?: string;
-}
-
-/**
- * Post a captured frame straight to the vision box. `credentials: 'include'` lets a
- * Cloudflare Access cookie ride along, exactly like the NAS PUT. The box must answer
- * the CORS preflight for the app origin.
- */
-async function identifyFromVisionBox(blob: Blob): Promise<IdentifyResult> {
-  const base = getVisionBaseUrl();
-  if (!base) return { ok: false, candidates: [], error: 'Vision service is not configured.' };
-
-  const form = new FormData();
-  form.append('file', blob, 'capture.jpg');
-
-  let res: Response;
-  try {
-    res = await fetch(`${base}/identify`, {
-      method: 'POST',
-      body: form,
-      credentials: 'include',
-      cache: 'no-store',
-    });
-  } catch {
-    return {
-      ok: false,
-      candidates: [],
-      error:
-        "Can't reach the vision service. Check you're on the office network and the " +
-        'box is running (and served over HTTPS on the live site).',
-    };
-  }
-  if (!res.ok) {
-    return { ok: false, candidates: [], error: `Vision identify failed (HTTP ${res.status}).` };
-  }
-  const data = (await res.json().catch(() => null)) as { candidates?: VisionCandidate[] } | null;
-  return { ok: true, candidates: Array.isArray(data?.candidates) ? data!.candidates : [] };
-}
-
-/**
- * Enrich raw vision candidates against sku_catalog (server-side, auth-guarded) so
- * the UI can show titles/images and pair the chosen one.
- */
-async function enrichCandidates(
-  candidates: VisionCandidate[],
-  receivingId: number,
-): Promise<EnrichedCandidate[]> {
-  if (candidates.length === 0) return [];
-  const res = await fetch('/api/receiving/visual-identify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ receiving_id: receivingId, candidates }),
-  });
-  if (!res.ok) return candidates.map((c) => ({ ...c, sku_catalog_id: null, product_title: null, image_url: null, resolved: false }));
-  const data = (await res.json().catch(() => null)) as { candidates?: EnrichedCandidate[] } | null;
-  return Array.isArray(data?.candidates) ? data!.candidates : [];
-}
-
 // ─── Label OCR identify (the reliable "photograph the bottom label" path) ──────
 //
 // Bose product labels print the model; OCR reads it far more reliably than visual
