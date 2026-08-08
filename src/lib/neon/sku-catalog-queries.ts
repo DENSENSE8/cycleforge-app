@@ -35,7 +35,7 @@ export interface SkuCatalogRow {
 /** Catalog list filter segments (Products Catalog MDM). */
 export type SkuCatalogLinkFilter = 'active_linked' | 'unlinked_pending' | 'all';
 
-export interface SkuPlatformIdRow {
+interface SkuPlatformIdRow {
   id: number;
   sku_catalog_id: number | null;
   platform: string;
@@ -330,16 +330,6 @@ export async function softDeleteSkuCatalog(id: number, orgId?: OrgId): Promise<S
 
 // ─── Platform ID CRUD ────────────────────────────────────────────────────────
 
-export async function getSkuPlatformIds(skuCatalogId: number, orgId?: OrgId): Promise<SkuPlatformIdRow[]> {
-  const sql = `SELECT * FROM sku_platform_ids
-     WHERE sku_catalog_id = $1 AND is_active = true${orgId ? ' AND organization_id = $2' : ''}
-     ORDER BY platform, created_at`;
-  const result = orgId
-    ? await tenantQuery<SkuPlatformIdRow>(orgId, sql, [skuCatalogId, orgId])
-    : await pool.query<SkuPlatformIdRow>(sql, [skuCatalogId]);
-  return result.rows;
-}
-
 export async function upsertSkuPlatformId(params: {
   skuCatalogId: number;
   platform: string;
@@ -460,7 +450,7 @@ export interface SkuCatalogTitleMatch {
  * imports). Higher than {@link SKU_TITLE_GUARD_MIN} because there is no SKU
  * cross-check — we need a stronger title signal to avoid false positives.
  */
-export const SKU_TITLE_ONLY_MIN = 0.45;
+const SKU_TITLE_ONLY_MIN = 0.45;
 
 /**
  * Batch-resolve sku_catalog rows from product titles alone.
@@ -690,7 +680,7 @@ export async function batchPlatformItemIdsByCatalogIds(
  * resembles that product. Measured separation on live data: real collisions
  * score ~0.10, legitimate same-product matches score ≥0.25.
  */
-export const SKU_TITLE_GUARD_MIN = 0.25;
+const SKU_TITLE_GUARD_MIN = 0.25;
 
 /**
  * Resolve by direct SKU text match on sku_catalog.sku.
@@ -701,7 +691,7 @@ export const SKU_TITLE_GUARD_MIN = 0.25;
  * `null` rather than the wrong product: the caller falls back to the Zoho title
  * and the line carries no (wrong) catalog identity until it's paired for real.
  */
-export async function resolveSkuCatalogBySku(
+async function resolveSkuCatalogBySku(
   sku: string,
   expectedTitle?: string | null,
   orgId?: OrgId,
@@ -1074,22 +1064,6 @@ export async function getQcChecks(
 
 // ─── Tech Verifications ─────────────────────────────────────────────────────
 
-export async function getVerifications(
-  sourceKind: string,
-  sourceRowId: number,
-  orgId?: OrgId,
-): Promise<TechVerificationRow[]> {
-  // tech_verifications is tenant-owned. When orgId is provided we scope
-  // explicitly; when omitted behavior is byte-identical to before.
-  const sql = `SELECT * FROM tech_verifications
-     WHERE source_kind = $1 AND source_row_id = $2${orgId ? '\n       AND organization_id = $3' : ''}
-     ORDER BY verified_at`;
-  const result = orgId
-    ? await tenantQuery<TechVerificationRow>(orgId, sql, [sourceKind, sourceRowId, orgId])
-    : await pool.query<TechVerificationRow>(sql, [sourceKind, sourceRowId]);
-  return result.rows;
-}
-
 export async function upsertVerification(params: {
   sourceKind: string;
   sourceRowId: number;
@@ -1356,7 +1330,7 @@ export async function syncSkuCatalogFromItems(
 
 // ─── Unpaired Ecwid Products ────────────────────────────────────────────────
 
-export interface UnpairedEcwidProduct {
+interface UnpairedEcwidProduct {
   id: number;
   platform_sku: string | null;
   platform_item_id: string | null;
@@ -1455,7 +1429,7 @@ export async function pairEcwidToZoho(
 
 // ─── Paginated SKU Catalog List (with counts) ──────────────────────────────
 
-export interface SkuCatalogListRow {
+interface SkuCatalogListRow {
   id: number;
   sku: string;
   product_title: string;
@@ -1689,7 +1663,7 @@ export async function getSkuCatalogList(params: {
 
 // ─── SKU Catalog Detail (full) ─────────────────────────────────────────────
 
-export interface SkuCatalogDetailResult {
+interface SkuCatalogDetailResult {
   catalog: SkuCatalogRow;
   packProfile: { packTier: 'SMALL' | 'MEDIUM' | 'LARGE'; estimatedMinutes: number | null } | null;
   platformIds: SkuPlatformIdRow[];
@@ -1880,7 +1854,7 @@ export async function deleteManual(id: number, orgId?: OrgId): Promise<boolean> 
 
 // ─── QC Check Template CRUD (per catalog) ──────────────────────────────────
 
-export interface QcCheckValueConfig {
+interface QcCheckValueConfig {
   valueKind?: string | null;
   valueUnit?: string | null;
   valueEnum?: string[] | null;

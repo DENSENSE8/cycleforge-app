@@ -23,7 +23,7 @@ import type { SearchHit } from '@/lib/search/search-hit';
 // ── Tool schemas (OpenAI function.parameters shape) ─────────────────────────
 
 /** Deterministic fast path: exact id / serial / tracking lookup. */
-export const exactIdSerialSearchTool: HermesTool = {
+const exactIdSerialSearchTool: HermesTool = {
   name: 'exact_id_serial_search',
   description:
     'Look up entities by an exact identifier: order id, serial number, tracking number, ' +
@@ -39,7 +39,7 @@ export const exactIdSerialSearchTool: HermesTool = {
 };
 
 /** The primary NL tool: hybrid keyword+semantic retrieval with facet scoping. */
-export const hybridEntitySearchTool: HermesTool = {
+const hybridEntitySearchTool: HermesTool = {
   name: 'hybrid_entity_search',
   description:
     'Search warehouse entities (orders, serialized units, receiving cartons, SKU catalog, ' +
@@ -65,7 +65,7 @@ export const hybridEntitySearchTool: HermesTool = {
 };
 
 /** Typed wrapper: serialized-unit search (the densest operator ask). */
-export const searchUnitsTool: HermesTool = {
+const searchUnitsTool: HermesTool = {
   name: 'search_units',
   description:
     'Search serialized inventory units by serial, SKU, product name, condition, status, ' +
@@ -81,21 +81,7 @@ export const searchUnitsTool: HermesTool = {
   },
 };
 
-export const SEARCH_TOOLS: readonly HermesTool[] = [
-  exactIdSerialSearchTool,
-  hybridEntitySearchTool,
-  searchUnitsTool,
-];
-
 // ── Executors — every tool returns SearchHit[] only ─────────────────────────
-
-export async function runExactIdSerialSearch(
-  orgId: OrgId,
-  args: { query: string; limit?: number },
-): Promise<SearchHit[]> {
-  const results = await searchAllEntities(orgId, args.query, args.limit ?? 20);
-  return results.map((r, rank) => ({ ...r, score: 1000 - rank, chips: [] }));
-}
 
 export async function runHybridEntitySearch(
   orgId: OrgId,
@@ -117,13 +103,6 @@ export async function runHybridEntitySearch(
   });
 }
 
-export async function runSearchUnits(
-  orgId: OrgId,
-  args: { query: string; limit?: number },
-): Promise<HybridSearchResult> {
-  return hybridSearch(orgId, args.query, { entityTypes: ['SERIAL_UNIT'], limit: args.limit });
-}
-
 // ── Ask-AI orchestration ────────────────────────────────────────────────────
 
 const ASK_AI_SYSTEM_PROMPT =
@@ -134,7 +113,7 @@ const ASK_AI_SYSTEM_PROMPT =
   'receiving/cartons/POs → RECEIVING, catalog/SKUs → SKU, repairs/tickets → REPAIR, ' +
   'FBA/Amazon shipments → FBA_SHIPMENT.';
 
-export interface AskAiSearchResult extends HybridSearchResult {
+interface AskAiSearchResult extends HybridSearchResult {
   /** What the model distilled the question into (surfaced in the UI + audit). */
   toolArgs: { query: string; entityTypes?: string[]; limit?: number };
   model: string;
