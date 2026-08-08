@@ -10,7 +10,7 @@
 
 **For:** the next Claude Code / Cursor session
 **From:** Cycle Forge engineering
-**Status:** in progress — 13 batches landed, next tier identified in §4
+**Status:** in progress — 15 batches landed, next tier identified in §4
 **Lane:** current checkout, `main`. Attach to `:3050`. User owns commits.
 **Date:** 2026-08-08
 
@@ -59,15 +59,15 @@ docblock naming a plan is left alone and reported rather than deleted.
 
 | | |
 |---|---|
-| knip baseline | **2795 → 2387** (408 findings cleaned) |
-| Commits | 14, `b73a49b53`..`d453252f7` (`git log --oneline b73a49b53~1..HEAD`) |
-| Files deleted | 12 |
+| knip baseline | **2795 → 2331** (464 findings cleaned) |
+| Commits | 18, `b73a49b53`..`3c32cb00f` (`git log --oneline b73a49b53~1..HEAD`) |
+| Files deleted | 13 |
 | Also removed | 26 unused locals eslint found that knip structurally cannot see (§3.9) |
 | Prior tier | `853e71315` (39 whole dead files, 2877 → 2791) |
 
 **Two numbers that matter more than the total:**
 
-- **~740 dead value exports remain** — the real remaining surface.
+- **~700 dead value exports remain** — the real remaining surface.
 - **~1,085 "dead types" in 647 files are NOT dead.** They are `Input`/`Result` types for live
   functions, used inside their own file. knip flags them because no *other* module imports the
   name. Un-exporting them is knip-appeasement that degrades the module's API for zero benefit.
@@ -160,6 +160,18 @@ something nothing imports doesn't just widen the public surface — it hides the
 `knip` cannot see a fork whose doors are both imported, and neither can it see a component kept
 alive only by an unused barrel line. Removing a barrel line usually *reveals* new findings —
 that is the point, not a regression.
+
+**3.9 — Run `eslint`, not just `tsc` + knip.** This is the biggest process gap found here.
+Deleting a symbol orphans its imports and any helper only it used — and **neither other tool
+sees that**: knip reports unused *exports* (an un-exported dead local is invisible to it), and
+`tsc` does not run `noUnusedLocals`. One eslint pass surfaced 20 leftovers, cascading to 26 over
+three rounds, several of them `no-unused-imports` **errors**. It also caught an over-removal (a
+`PhotoScope` import that was still needed). eslint is step 2 of the loop for a reason.
+
+**3.10 — A failed `git add` can silently drop later paths.** Passing a path already staged by
+`git rm` makes `git add` abort with `fatal: pathspec ... did not match any files`, and everything
+after it in the argument list is never staged. That dropped `knip-baseline.json` from one commit.
+**Always `git diff --cached --name-only` and eyeball the list before committing.**
 
 **3.8 — Check relative import paths, not just the `@/` alias.** Grepping only
 `from '@/design-system/components/mobile'` missed `export * from './mobile'` one directory up.
