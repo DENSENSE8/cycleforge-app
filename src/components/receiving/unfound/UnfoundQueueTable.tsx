@@ -1,21 +1,37 @@
 'use client';
 
 /**
- * Unfound queue — thin data host over the Workbench spreadsheet SoT
- * ({@link UnfoundGridView} → `LedgerGridSurface`).
+ * Unfound queue — the data host that mounts the Workbench spreadsheet SoT
+ * (`NonlinearTableHost` + the unfound table definition) directly. Flat queue:
+ * no fold, no day band. In-cell edit is on (`LedgerCellEditor` for ticket +
+ * notes); selection highlights the open detail-plane row.
  *
  * Toolbar (filter pills, search, Refresh) lives in the sidebar via
  * UnfoundQueueSidebarToolbar. Filter state is URL-backed (`uf_kind` / `uf_q`)
  * so both share one source of truth. Data + mutations live in
  * {@link useUnfoundQueueTable}; in-cell edit PATCHes through `LedgerCellEditor`
- * inside the grid row.
+ * inside the grid row. Column sort is DURABLE on `?colsort=`/`?coldir=`.
  */
 
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence } from '@/design-system/motion';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { RowGroup } from '@/lib/group-rows';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { UnfoundQueueDetailsPanel } from './UnfoundQueueDetailsPanel';
-import { UnfoundGridView } from './grid/UnfoundGridView';
 import { useUnfoundQueueTable } from './queue-table/useUnfoundQueueTable';
+import type { QueueRow } from './queue-table/unfound-queue-shared';
+import { UNFOUND_TABLE_BINDING } from './grid/unfound-table-definition';
+import { UnfoundGridColumnHeader } from './grid/UnfoundGridColumnHeader';
+import { UnfoundGridRow, unfoundRowKey, unfoundRowTitle } from './grid/UnfoundGridRow';
+import {
+  defaultDirForUnfoundGridSort,
+  isUnfoundGridSortable,
+  type UnfoundGridColumn,
+  type UnfoundGridColumnKey,
+} from './grid/unfound-grid-layout';
 
 export {
   ENABLED_KINDS,
@@ -23,19 +39,97 @@ export {
   type QueueKind,
 } from './queue-table/unfound-queue-shared';
 
+function compareUnfoundRows(
+  a: QueueRow,
+  b: QueueRow,
+  key: UnfoundGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  switch (key) {
+    case 'title':
+      return sign * unfoundRowTitle(a).localeCompare(unfoundRowTitle(b));
+    case 'ticket':
+      return sign * (a.zendesk_ticket_id || '').localeCompare(b.zendesk_ticket_id || '');
+    case 'usaNote':
+      return sign * (a.usa_team_note || '').localeCompare(b.usa_team_note || '');
+    case 'vietnamNote':
+      return sign * (a.vietnam_team_note || '').localeCompare(b.vietnam_team_note || '');
+    case 'checked':
+      return sign * (Number(a.checked) - Number(b.checked));
+    default:
+      return 0;
+  }
+}
+
 export function UnfoundQueueTable() {
   const searchParams = useSearchParams();
   const {
-    rows, loading, error, pushing, savedKeys,
-    openRow, setOpenRow,
-    patchRow, pushToZendesk, openSource, handleDeleted, handlePushedToZendesk,
+    rows,
+    loading,
+    error,
+    pushing,
+    savedKeys,
+    openRow,
+    setOpenRow,
+    patchRow,
+    pushToZendesk,
+    openSource,
+    handleDeleted,
+    handlePushedToZendesk,
   } = useUnfoundQueueTable();
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<UnfoundGridColumnKey>({
+    isColumn: isUnfoundGridSortable,
+    defaultDir: defaultDirForUnfoundGridSort,
+  });
+
+  const [, settleTick] = useState(0);
+  const hasRows = rows.length > 0;
+  useEffect(() => {
+    if (loading || !hasRows) return;
+    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
+    return () => cancelAnimationFrame(raf);
+  }, [loading, hasRows]);
+
+  const openKey = openRow ? unfoundRowKey(openRow) : null;
+
+  const orderGroupsByDate = useMemo<[string, RowGroup<QueueRow>[]][]>(() => {
+    const ordered =
+      columnSort && sortDir
+        ? [...rows].sort((a, b) => compareUnfoundRows(a, b, columnSort, sortDir))
+        : rows;
+    return [['', ordered.map((row) => ({ key: `unfound:${unfoundRowKey(row)}`, rows: [row] }))]];
+  }, [rows, columnSort, sortDir]);
 
   // A filter is narrowing the list when search or a non-default kind tab is on —
   // that is what picks "no matches" over "nothing in the queue".
   const kind = searchParams.get('uf_kind');
   const search = (searchParams.get('uf_q') ?? '').trim();
   const isSearching = Boolean(search) || (Boolean(kind) && kind !== 'all');
+
+  const renderLeaf = (row: QueueRow, visible: readonly UnfoundGridColumn[]) => {
+    const key = unfoundRowKey(row);
+    return (
+      <UnfoundGridRow
+        key={key}
+        row={row}
+        isSelected={key === openKey}
+        onOpen={openSource}
+        onPatch={patchRow}
+        onPush={pushToZendesk}
+        pushing={pushing === key}
+        justSaved={savedKeys.has(key)}
+        columns={visible}
+      />
+    );
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -54,18 +148,33 @@ export function UnfoundQueueTable() {
           </div>
         )}
 
-        <UnfoundGridView
+        <NonlinearTableHost<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
+          binding={UNFOUND_TABLE_BINDING}
+          orderGroupsByDate={orderGroupsByDate}
           rows={rows}
+          getRowId={(r) => unfoundRowKey(r)}
+          sort={columnSort}
+          dir={sortDir}
+          onSortChange={setSort}
           loading={loading}
-          openRow={openRow}
-          onOpen={openSource}
-          onPatch={patchRow}
-          onPush={pushToZendesk}
-          pushingKey={pushing}
-          savedKeys={savedKeys}
           emptyMessage={error ? '—' : 'Nothing in the unfound queue. Nice.'}
           searchEmptyMessage="No unfound items match these filters."
           isSearching={isSearching && !error}
+          scrollRef={scrollRef}
+          renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+            <UnfoundGridColumnHeader
+              columns={visible}
+              activeSort={columnSort}
+              sortDir={sortDir}
+              onSortColumn={toggleColumnSort}
+              onResizeColumn={onResizeColumn}
+              onResetColumn={onResetColumn}
+            />
+          )}
+          renderGroup={(group, _stripe, { columns: visible }) => (
+            <>{group.rows.map((row) => renderLeaf(row, visible))}</>
+          )}
+          renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
         />
       </div>
 
