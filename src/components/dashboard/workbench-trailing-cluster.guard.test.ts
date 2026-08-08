@@ -76,7 +76,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/station/incoming-grid/IncomingGridColumnHeader.tsx',
-    'src/components/station/incoming-grid/IncomingGridView.tsx',
+    'src/components/station/ReceivingLinesTable.tsx',
   ],
   [
     'src/components/receiving/pickup/grid/PickupGridColumnHeader.tsx',

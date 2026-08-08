@@ -2,7 +2,7 @@
  * Incoming Sheets recipe — pin flush surface + host SoT (Unbox golden).
  *
  * `inbound.incoming` declares `surface: 'sheet'` so the Pipeline grid uses
- * `TABLE_SURFACE_SHEET_CLASS`; `IncomingGridView` mounts it through
+ * `TABLE_SURFACE_SHEET_CLASS`; the Incoming grid (in ReceivingLinesTable) mounts it through
  * `NonlinearTableHost` (plan Phase 1). Hosts wire `WORKBENCH_SHEET_HOST` /
  * `WORKBENCH_SHEET_CHROME` — never framed `WorkbenchTablePane` or body gutters
  * around the grid.
@@ -25,12 +25,12 @@ describe('Incoming grid Sheets recipe (Unbox golden)', () => {
     assert.equal(INCOMING_TABLE_DEFINITION.surface, 'sheet');
   });
 
-  it('IncomingGridView mounts the registry host, not the engine directly', () => {
-    const src = read('src/components/station/incoming-grid/IncomingGridView.tsx');
+  it('ReceivingLinesTable mounts the Incoming registry host, not the engine directly', () => {
+    const src = read('src/components/station/ReceivingLinesTable.tsx');
     assert.match(
       src,
       /<NonlinearTableHost[\s\S]*?binding=\{INCOMING_TABLE_BINDING\}/,
-      'IncomingGridView must mount NonlinearTableHost with the incoming binding',
+      'The Incoming grid must mount NonlinearTableHost with the incoming binding',
     );
     assert.doesNotMatch(
       src,
@@ -123,8 +123,8 @@ describe('Incoming grid Sheets recipe (Unbox golden)', () => {
     );
   });
 
-  it('IncomingGridView wires clickSelect + selectGutterChrome', () => {
-    const src = read('src/components/station/incoming-grid/IncomingGridView.tsx');
+  it('The Incoming grid wires clickSelect + selectGutterChrome', () => {
+    const src = read('src/components/station/ReceivingLinesTable.tsx');
     assert.match(src, /clickSelect/);
     assert.match(src, /selectGutterChrome/);
     const table = read('src/components/station/ReceivingLinesTable.tsx');
