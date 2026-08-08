@@ -11,16 +11,6 @@
  */
 
 import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
-import {
-  effectiveReceivingPhotoStage,
-  resolveReceivingPhotoTarget,
-} from '@/lib/receiving/photo-scope';
-import {
-  isSameOriginNasProxyUrl,
-  normalizePhotoDisplayUrl,
-} from '@/lib/nas-photo-url';
-
-export { normalizePhotoDisplayUrl, isSameOriginNasProxyUrl };
 
 // Base URL of the NAS file server, e.g. "https://nas.usav.local" or, for local
 // dev, "http://192.168.1.50:8088" / "/api/nas-dev". No trailing slash.
@@ -31,12 +21,6 @@ export { normalizePhotoDisplayUrl, isSameOriginNasProxyUrl };
 // GET /api/nas-config and is pushed in with `setNasBaseUrl()` (see
 // `useEnsureNasConfig`). The env var is kept only as an initial dev seed.
 let runtimeBase = (process.env.NEXT_PUBLIC_NAS_PHOTOS_BASE_URL || '').replace(/\/+$/, '');
-
-/** Same-origin proxy the browser should PUT/list through. */
-export function getClientNasProxyBase(): string {
-  if (process.env.NODE_ENV !== 'production') return '/api/nas-dev';
-  return getNasBaseUrl() || '/api/nas';
-}
 
 export function setNasBaseUrl(url: string | null | undefined): void {
   runtimeBase = (url || '').replace(/\/+$/, '');
@@ -161,60 +145,6 @@ export async function listNasDir(relDir: string): Promise<NasEntry[]> {
     });
 }
 
-export interface AttachResult {
-  url: string;
-  ok: boolean;
-  duplicate: boolean;
-  /** photos.id of the created/looked-up row, when the endpoint returned it. */
-  photoId?: number | null;
-  error?: string;
-}
-
-/**
- * Attach one NAS file to a receiving package / line by URL. Reuses the existing
- * photos endpoint, so the photo then flows through every normal path (gallery,
- * Zendesk claim, delete). A 409 means it was already attached — treated as a
- * benign no-op so re-selecting the same shot doesn't error.
- *
- * Deleting such a photo removes BOTH the DB row (DELETE /api/photos/[id]) and
- * the original NAS file (browser-direct {@link deleteNasPhoto}, mirroring the
- * capture PUT so the operator's Cloudflare Access cookie rides along).
- */
-export async function attachNasPhoto(scope: PhotoScope, photoUrl: string): Promise<AttachResult> {
-  // Stage → explicit photo_type stamp via the scope SoT. A stage-less legacy
-  // scope resolves to exactly the endpoint's old defaults (line → item, carton
-  // → package), so pre-stage callers attach identically; staged scopes make
-  // `receiving_unbox_carton` attachable.
-  const target = resolveReceivingPhotoTarget({
-    receivingId: scope.receivingId,
-    receivingLineId: scope.receivingLineId ?? null,
-    stage: effectiveReceivingPhotoStage(scope),
-  });
-  let res: Response;
-  try {
-    res = await fetch('/api/receiving-photos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        receivingId: scope.receivingId,
-        receivingLineId: scope.receivingLineId ?? null,
-        photoUrl,
-        photoType: target.photoType,
-      }),
-    });
-  } catch {
-    return { url: photoUrl, ok: false, duplicate: false, error: 'network error' };
-  }
-  if (res.status === 409) return { url: photoUrl, ok: true, duplicate: true };
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    return { url: photoUrl, ok: false, duplicate: false, error: data?.error || `HTTP ${res.status}` };
-  }
-  const data = await res.json().catch(() => null);
-  const photoId = Number(data?.photo?.id ?? data?.id ?? 0) || null;
-  return { url: photoUrl, ok: true, duplicate: false, photoId };
-}
-
 /**
  * Build the NAS destination URL for a freshly captured receiving photo. The PO
  * (and line) is encoded into the FILENAME, written flat into the operator's
@@ -292,7 +222,7 @@ export function buildNasLabelUrl(opts: {
   return `${baseUrl.replace(/\/+$/, '')}/${encoded}`;
 }
 
-export interface PutResult {
+interface PutResult {
   ok: boolean;
   /** Canonical URL the file now lives at — store this as the photoUrl. */
   url: string;
