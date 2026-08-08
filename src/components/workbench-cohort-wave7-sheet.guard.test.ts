@@ -106,7 +106,8 @@ const GRID_SURFACES: {
     label: 'Catalog',
     view: 'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
     triageFiles: ['src/components/products/catalog/ProductsCatalogWorkspace.tsx'],
-    gridView: 'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+    // The catalog grid mount now lives in the workspace (no wrapper file).
+    gridView: 'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
     definition: CATALOG_TABLE_DEFINITION,
   },
   {
