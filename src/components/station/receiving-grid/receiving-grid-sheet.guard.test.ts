@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { TABLE_SURFACE_SHEET_CLASS } from '@/design-system/tokens/table-surface';
+import { RECEIVING_BROWSE_DEFINITION } from '@/components/station/receiving-grid/receiving-table-definition';
 
 const ROOT = join(process.cwd());
 
@@ -19,17 +20,44 @@ function read(rel: string): string {
 }
 
 describe('Receiving grid Sheets recipe', () => {
-  it('ReceivingGridView mounts LedgerGridSurface with surface="sheet"', () => {
+  it('the receiving.browse DEFINITION declares surface: "sheet"', () => {
+    // The shell recipe moved from a literal on the mount to the table definition
+    // (plan Phase 1) — it is a property of `receiving.browse`, not of whichever
+    // page happens to be showing it, which is why the host takes no override.
+    assert.equal(RECEIVING_BROWSE_DEFINITION.surface, 'sheet');
+  });
+
+  it('ReceivingGridView mounts the registry host, not the engine directly', () => {
     const src = read('src/components/station/receiving-grid/ReceivingGridView.tsx');
     assert.match(
       src,
-      /<LedgerGridSurface[\s\S]*?surface="sheet"/,
-      'ReceivingGridView must pass surface="sheet" — the golden Sheets mount',
+      /<NonlinearTableHost[\s\S]*?binding=\{RECEIVING_TABLE_BINDING\}/,
+      'ReceivingGridView must mount NonlinearTableHost with the receiving binding',
+    );
+    assert.doesNotMatch(
+      src,
+      /<LedgerGridSurface/,
+      'The page binding must not reach past the host to the engine — geometry ' +
+        'and shell come from the definition',
+    );
+    assert.doesNotMatch(
+      src,
+      /surface="(sheet|framed)"/,
+      'The shell recipe belongs to the definition, never to the mount',
     );
     assert.doesNotMatch(
       src,
       /TABLE_SURFACE_CLIP_CLASS/,
-      'Receiving must not hand-compose the framed CLIP class — surface prop owns it',
+      'Receiving must not hand-compose the framed CLIP class — the surface owns it',
+    );
+  });
+
+  it('the host passes the definition surface through to the engine', () => {
+    const src = read('src/components/tables/NonlinearTableHost.tsx');
+    assert.match(
+      src,
+      /surface=\{definition\.surface\}/,
+      'NonlinearTableHost must resolve the shell recipe from the definition',
     );
   });
 
@@ -278,7 +306,7 @@ describe('Receiving grid Sheets recipe', () => {
     assert.doesNotMatch(
       header,
       /Open displays/,
-      'Open displays belongs on UnboxDisplaysEdgeToggle (LineEdit), not History Band 3',
+      'Open displays belongs on StationDisplaysEdgeToggle (LineEdit), not History Band 3',
     );
     // View cluster owns layout chrome only (no staff / week portal).
     assert.match(panel, /HistoryViewTopicsCluster/);

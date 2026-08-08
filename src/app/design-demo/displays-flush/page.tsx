@@ -2,28 +2,31 @@
 
 /**
  * Isolation harness for the **right-rail industrial flush** (Cybertruck / WMS)
- * Displays push column — renders `UnboxPushColumn` + `UnboxSectionTabs` with mock
- * tabs so the flush chrome can be eyeballed and Playwright-shot WITHOUT auth.
+ * Displays push column — renders `StationDisplaysPushStack` on the Root Index
+ * with mock rows so the index chrome can be eyeballed and Playwright-shot
+ * WITHOUT auth.
  *
  * Open http://localhost:3050/design-demo/displays-flush (dev / preview only —
  * the `/design-demo/*` layout 404s in production, so this never ships).
  *
  * What to verify (no login needed):
- *  1. Host has NO horizontal inset — the SpaceX topic plate abuts the column
- *     edge on all four sides (`DISPLAYS_FLUSH_HOST`, `px-0`).
- *  2. Nested verb strips (Photos Move · Send) sit `gap-0` flush under the plate.
- *  3. Body content is full-bleed / divide-y — NO glass `WorkspaceCard` islands.
- *  4. The ⋮ overflow menu is a SQUARE (`rounded-none`) edge-to-edge plate, not a
- *     floating `rounded-xl` card.
+ *  1. Top icon band carries a bottom hairline against the index below it.
+ *  2. Group eyebrow is LABEL ……… action count — no Collapse, no kbd chip.
+ *  3. Rows: 2px transparent accent rail → accent + pulsing chevron when armed;
+ *     the icon column never moves between states.
+ *  4. Clicking a row drills to its leaf (sticky Back); Esc pops back to index.
  */
 
 import { useState } from 'react';
-import { Barcode, FileText, Images, Link2, MessageSquare } from '@/components/Icons';
+import { Barcode, FileText, Images, Link2, MessageSquare, Package } from '@/components/Icons';
 import { TabDisplay } from '@/design-system/components';
 import type { SectionTab } from '@/design-system/components';
-import { DISPLAYS_BODY_INSET, DISPLAYS_FLUSH_HOST } from '@/design-system/shells/detail-stack';
-import { UnboxSectionTabs } from '@/components/receiving/workspace/line-edit/terminal/unbox-tabs';
-import { UnboxPushColumn } from '@/components/receiving/workspace/UnboxPushColumn';
+import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
+import {
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+  type DisplayIndexRow,
+} from '@/components/station/displays';
 import { PhotosDisplayHost } from '@/components/receiving/workspace/line-edit/PhotosDisplayHost';
 import type { UnboxPhotoAction } from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -85,8 +88,19 @@ function VerbBody({
   );
 }
 
+/** Mirrors a real matched carton so the Root Index reads like the bench. */
+const INDEX_ROWS: DisplayIndexRow[] = [
+  { id: 'ticket', label: 'Ticket', subtitle: 'Claim needed', tone: 'action', group: 'verification' },
+  { id: 'photos', label: 'Photos', subtitle: '10 photos', tone: 'ok', group: 'verification' },
+  { id: 'linkage', label: 'Pairing', subtitle: 'Paired', tone: 'ok', group: 'verification' },
+  { id: 'classify', label: 'Classify', subtitle: 'PO', tone: 'ok', group: 'verification' },
+  { id: 'inventory', label: 'Inventory', subtitle: '1/1 received', tone: 'ok', group: 'assets' },
+  { id: 'staging', label: 'Listings', subtitle: 'Listing links', tone: 'neutral', group: 'assets' },
+  { id: 'units', label: 'Units', subtitle: '1 serial', tone: 'ok', group: 'assets' },
+];
+
 export default function DisplaysFlushDemoPage() {
-  const [active, setActive] = useState('photos');
+  const [active, setActive] = useState<string>(STATION_DISPLAY_INDEX);
   const [photoAction, setPhotoAction] = useState<UnboxPhotoAction>('move');
 
   const tabs: SectionTab[] = [
@@ -118,7 +132,7 @@ export default function DisplaysFlushDemoPage() {
     },
     {
       id: 'linkage',
-      label: 'Linkage',
+      label: 'Pairing',
       icon: Link2,
       content: (
         <VerbBody
@@ -141,8 +155,18 @@ export default function DisplaysFlushDemoPage() {
       ),
     },
     {
+      id: 'inventory',
+      label: 'Inventory',
+      icon: Package,
+      content: (
+        <div className={cn('pt-3', DISPLAYS_BODY_INSET)}>
+          <FlushList rows={['PO-48213 · 1 of 1 received', 'Zoho note · synced']} />
+        </div>
+      ),
+    },
+    {
       id: 'staging',
-      label: 'Staging',
+      label: 'Listings',
       icon: Barcode,
       priority: 'overflow',
       content: (
@@ -172,25 +196,17 @@ export default function DisplaysFlushDemoPage() {
           center work surface — Displays push column abuts flush on the right →
         </p>
       </div>
-      <UnboxPushColumn
+      <StationDisplaysPushStack
         ariaLabel="Displays flush demo"
         testId="displays-flush-demo"
         storageKey="design-demo-displays-flush-width"
-        resizeLabel="Resize displays panel"
         resizeTestId="displays-flush-demo-resize"
-        resizeTooltip="Resize"
-        onClose={() => undefined}
-      >
-        <div className={DISPLAYS_FLUSH_HOST}>
-          <UnboxSectionTabs
-            tabs={tabs}
-            value={active}
-            onChange={setActive}
-            compact
-            fillHeight
-          />
-        </div>
-      </UnboxPushColumn>
+        tabs={tabs}
+        indexRows={INDEX_ROWS}
+        activeTab={active}
+        onTabChange={setActive}
+        onClose={() => setActive(STATION_DISPLAY_INDEX)}
+      />
     </div>
   );
 }

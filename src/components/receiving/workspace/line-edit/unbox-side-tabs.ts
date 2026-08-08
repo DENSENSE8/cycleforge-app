@@ -1,25 +1,42 @@
 /**
- * Unbox side displays — which tab the right-edge Displays push column shows.
+ * Unbox side displays — which surface the right-edge Displays push column shows.
  *
- * Pure: no React, no imports. The workbench body no longer hosts a tab strip
+ * Pure: no React. The workbench body no longer hosts a tab strip
  * (`overview` IS the centre), so this vocabulary covers only the surfaces
- * that live in {@link ReceivingDisplaysPushStack}.
+ * that live in {@link StationDisplaysPushStack}.
  *
- * Strip order (left → right): Ticket · Photos · Linkage · Classify · Units —
- * overflow Support / Tracking / Timeline. Ticket is presence-exclusive
- * (Claim create/link vs Chat — no nested Chat · Claim tabs).
- * Units nests Units · Prebox. `checklist` is ring-only.
+ * Navigation is Root-to-Leaf drill-down (not a horizontal icon plate):
+ *   - `?display=index` → Root Index (status rows)
+ *   - `?display=<leaf>` → full-height leaf body
+ *   - absence → column CLOSED
+ *
+ * Index / leaf order: Ticket · Photos · Linkage · Inventory · Classify · Units ·
+ * Listings · Support · Tracking · Timeline. Ticket is presence-exclusive
+ * (Claim vs Chat). Inventory is one stacked dossier (no nested tabs). Units nests
+ * Units · Prebox. `checklist` is ring-only (progress chrome — never an index row).
  *
  * Legacy aliases (one release): `pairing` / `po-note` → `linkage`;
  * `claim` → `ticket` (with `ticketAction=claim`).
- *
- * `null` means the Displays column is CLOSED — there is no separate open flag.
  */
+
+import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
+
+/**
+ * Sentinel URL value — Displays open on the Root Index (no leaf body).
+ *
+ * DERIVED from {@link STATION_DISPLAY_INDEX}, never re-typed: a hand-written
+ * `'index'` twin here would go on compiling if the station SoT ever moved, and
+ * Unbox would silently stop agreeing with the shared push stack about what
+ * "open on the index" means. Deep import (not the `station/displays` barrel) so
+ * this stays a pure module and cannot pull the push column's React graph in.
+ */
+export const UNBOX_DISPLAY_INDEX = STATION_DISPLAY_INDEX;
 
 export type UnboxSideTab =
   | 'ticket'
   | 'photos'
   | 'linkage'
+  | 'inventory'
   | 'classify'
   | 'listings'
   | 'units'
@@ -28,8 +45,14 @@ export type UnboxSideTab =
   | 'tracking'
   | 'timeline';
 
-/** Nested Photos topic actions (`?photoAction=`). Absent / `browse` = gallery. */
-export type UnboxPhotoAction = 'browse' | 'move' | 'send';
+/** URL / nav id: closed is `null`; open is index or a content leaf. */
+export type UnboxDisplayNav = typeof UNBOX_DISPLAY_INDEX | UnboxSideTab;
+
+/**
+ * Nested Photos topic actions (`?photoAction=`). Absent / legacy `browse` → Move
+ * (gallery browse lives on identity peek / lightbox, not this host).
+ */
+export type UnboxPhotoAction = 'move' | 'send';
 
 /** Nested Linkage topic actions (`?linkageAction=`). */
 export type UnboxLinkageAction = 'link' | 'note';
@@ -49,6 +72,7 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'ticket',
   'photos',
   'linkage',
+  'inventory',
   'classify',
   'listings',
   'units',
@@ -57,7 +81,10 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'timeline',
 ];
 
-/** Strip-visible tabs only — `checklist` opens from the strip progress ring (`rightSlot`). */
+/**
+ * Index-visible leaves — `checklist` opens from the progress ring chrome only
+ * (never a Root Index row).
+ */
 export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = UNBOX_SIDE_TAB_ORDER.filter(
   (tab) => tab !== 'checklist',
 );
@@ -71,11 +98,16 @@ export interface UnboxSideTabGates {
    * the hub can only teach, which is not worth a strip cell.
    */
   hasLinkageTab: boolean;
+  /**
+   * Inventory dossier (PO lines · notes · activity) — same carton gate as
+   * Linkage; unpaired cartons still get a Pair CTA inside the leaf.
+   */
+  hasInventoryTab: boolean;
   /** Matched cartons only (an unfound carton has no listing to link). */
   hasListingsTab: boolean;
   /** At least one serial scanned on the line. */
   hasUnits: boolean;
-  /** Matched + a real carton row — Zoho note nested under Linkage. */
+  /** Matched + a real carton row — Zoho note nested under Linkage / Inventory. */
   hasPoNoteTab: boolean;
   /** Hidden for local-pickup fulfilment (no carrier leg to track). */
   hasTrackingTab: boolean;
@@ -83,17 +115,44 @@ export interface UnboxSideTabGates {
   hasTimelineTab: boolean;
 }
 
-/** Map retired strip ids → current vocabulary (compat deep links). */
+/** Map retired strip ids → current vocabulary (compat deep links). Never `index`. */
 export function canonicalizeUnboxSideTab(raw: string): UnboxSideTab | null {
+  if (raw === UNBOX_DISPLAY_INDEX) return null;
   if (raw === 'pairing' || raw === 'po-note') return 'linkage';
   if (raw === 'claim') return 'ticket';
   return UNBOX_SIDE_TAB_ORDER.find((tab) => tab === raw) ?? null;
 }
 
+/**
+ * Parse `?display=` into nav. `index` opens the Root Index; leaf ids canonicalize;
+ * bogus → closed.
+ */
+export function parseUnboxDisplayNav(raw: string | null): UnboxDisplayNav | null {
+  if (!raw) return null;
+  if (raw === UNBOX_DISPLAY_INDEX) return UNBOX_DISPLAY_INDEX;
+  return canonicalizeUnboxSideTab(raw);
+}
+
+/**
+ * Resolve Displays open state + active leaf.
+ *
+ * - `null` → closed
+ * - `index` → open on Root Index (`leaf: null`)
+ * - leaf id → open on that leaf (gated-off falls back to first visible index leaf)
+ */
+export function resolveUnboxDisplayNav(
+  requested: UnboxDisplayNav | null,
+  gates: UnboxSideTabGates,
+): { open: boolean; leaf: UnboxSideTab | null } {
+  if (requested == null) return { open: false, leaf: null };
+  if (requested === UNBOX_DISPLAY_INDEX) return { open: true, leaf: null };
+  return { open: true, leaf: resolveUnboxSideTab(requested, gates) };
+}
+
 export function parseUnboxPhotoAction(raw: string | null): UnboxPhotoAction {
-  // `browse` kept as the gallery default (URL omits it; legacy deep-links still work).
-  if (raw === 'move' || raw === 'send' || raw === 'browse') return raw;
-  return 'browse';
+  // Legacy `browse` / absent → Move (default Photos verb).
+  if (raw === 'send') return 'send';
+  return 'move';
 }
 
 export function parseUnboxUnitsAction(
@@ -128,6 +187,8 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
       return gates.hasClassifyTab;
     case 'linkage':
       return gates.hasLinkageTab;
+    case 'inventory':
+      return gates.hasInventoryTab;
     case 'listings':
       return gates.hasListingsTab;
     case 'units':

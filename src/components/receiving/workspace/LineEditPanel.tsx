@@ -7,17 +7,17 @@
  * `useReceivingLineCore`); this file is pure composition.
  *
  * **The centre is the carton.** There is no tab strip in the workbench body:
- * `overview` (PO lines with condition + serial → label preview) IS the body, and
- * every other display — Ticket, Photos, Linkage, Claim included — lives in the
- * right-edge {@link ReceivingDisplaysPushStack}. Not a `RightRailHost` occupant
+ * `overview` (PO-line ledger → label preview) IS the body, and every other
+ * display — Ticket, Photos, Linkage, Inventory, Claim included — lives in the
+ * right-edge {@link StationDisplaysPushStack}. Not a `RightRailHost` occupant
  * (`detail:receiving` keeps the float host).
  *
- * The guided ProcedureDeck / step dock is parked on the `unbox-work` lane
- * (`../cycleforge-unbox`). Main dogfood ships this PO-line centre.
+ * Centre `ProcedureDeck` stays parked. Capture lives in {@link UnboxDockHost}
+ * (step CTA · notes · Print · Receive) with the progress ring under the Panel.
  *
- * The bottom dock is **carton-terminal**: notes + Print · Receive. It does not
- * change with the Displays selection — a right-panel click re-labelling the
- * bottom primary is cross-region action-at-a-distance.
+ * The bottom dock trailing is **carton-terminal**: Print · Receive never
+ * re-labels with the Displays selection — that would be cross-region
+ * action-at-a-distance.
  *
  * Triage (the identify-before-unbox pass) is its own lean panel
  * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
@@ -45,13 +45,12 @@ import {
   clearAllUnboxRightEdgeParams,
   yieldUnboxStationPushesOnAssistantOpen,
 } from './line-edit/unbox-right-edge';
-import { TICKET_PUSH_HOST_PAD_CLASS } from './UnboxPushColumn';
-import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
 import {
-  ASSISTANT_DOCK_OPEN_EVENT,
-  dispatchReceivingOpenIncomingDetails,
-} from '@/utils/events';
-import { ReceivingDisplaysPushStack } from './ReceivingDisplaysPushStack';
+  StationDisplaysPushStack,
+  STATION_DISPLAYS_HOST_PAD_CLASS,
+} from '@/components/station/displays';
+import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
+import { ASSISTANT_DOCK_OPEN_EVENT } from '@/utils/events';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
@@ -77,17 +76,28 @@ import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import {
   buildUnboxOverview,
   buildUnboxSideTabs,
+  buildUnboxStepDock,
 } from './line-edit/terminal/unbox-tabs';
-import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
+import { UnboxDockHost } from './line-edit/UnboxDockHost';
+import { UnboxDockNotesEntry } from './line-edit/UnboxDockNotesEntry';
+import { UnboxProcedurePager } from './line-edit/UnboxProcedurePager';
+import { useUnboxProcedureArrowKeys } from './line-edit/useUnboxProcedureArrowKeys';
+import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { UnboxScanProgressControl } from './UnboxScanProgressControl';
 import {
-  resolveUnboxSideTab,
+  UNBOX_DISPLAY_INDEX,
+  resolveUnboxDisplayNav,
+  type UnboxDisplayNav,
   type UnboxLinkageAction,
   type UnboxPhotoAction,
   type UnboxSideTab,
   type UnboxUnitsAction,
 } from './line-edit/unbox-side-tabs';
-import { UnboxDisplaysEdgeToggle } from './UnboxDisplaysEdgeToggle';
+import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
+import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
+import { effectiveIntakeKind } from '@/lib/receiving/kinds/registry';
+import { UnboxDisplaysUtilityRailBody } from './UnboxDisplaysUtilityRailBody';
 
 export function LineEditPanel({
   row,
@@ -139,7 +149,10 @@ export function LineEditPanel({
   );
   const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
   const { saveOverallNote } = useSyncedPoNote(row, setActionFeedback);
+  const { focusStep } = useUnboxProcedureSteps(row);
+  useUnboxProcedureArrowKeys(row);
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
   const latestRowSerial = String(rowSerials[rowSerials.length - 1]?.serial_number ?? '').trim();
@@ -167,28 +180,80 @@ export function LineEditPanel({
   const classifyOnStrip = c.isUnfound;
   const hasListingsTab = !c.isUnfound;
   const hasLinkageTab = row.receiving_id != null;
+  const hasInventoryTab = row.receiving_id != null;
   const sideGates = {
     hasClassifyTab,
     hasLinkageTab,
+    hasInventoryTab,
     hasListingsTab,
     hasUnits,
     hasPoNoteTab,
     hasTrackingTab,
     hasTimelineTab,
   };
-  const activeSideTab = resolveUnboxSideTab(requestedSideTab, sideGates);
+  const { open: showDisplays, leaf: activeSideTab } = resolveUnboxDisplayNav(
+    requestedSideTab,
+    sideGates,
+  );
   const linkageAction = resolveLinkageAction(sideGates);
   const hasTicketId = c.providerTicketId != null;
   const ticketAction = resolveTicketAction(hasTicketId);
   const hasPrebox = serialCount > 0;
   const unitsAction = resolveUnitsAction({ hasPrebox });
-  const showDisplays = activeSideTab != null;
   const ticketViewActive = activeSideTab === 'ticket';
   const claimViewActive = ticketViewActive && ticketAction === 'claim';
+  const returnIntake = isReturnIntake(row);
+  const linkagePaired =
+    Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) ||
+    Boolean(String(row.source_order_id ?? '').trim());
+  const classifyLabel = (() => {
+    const kind = effectiveIntakeKind(
+      row.intake_type || row.receiving_type,
+      row.carton_intake_type,
+    );
+    const bits: string[] = [];
+    if (row.is_priority) bits.push('Priority');
+    if (kind) bits.push(kind);
+    return bits.length > 0 ? bits.join(' · ') : null;
+  })();
+  const inventoryReceived =
+    typeof row.quantity_received === 'number' ? row.quantity_received : null;
+  const inventoryExpected =
+    typeof row.quantity_expected === 'number' ? row.quantity_expected : null;
+  const displayIndexRows = useMemo(
+    () =>
+      buildUnboxDisplayIndexRows(sideGates, {
+        hasTicketId,
+        photoCount: typeof row.photo_count === 'number' ? row.photo_count : null,
+        classifyLabel,
+        serialCount,
+        linkagePaired,
+        isUnfound: Boolean(c.isUnfound),
+        trackingPresent: trackingNumber.length > 0,
+        isReturnIntake: returnIntake,
+        inventoryReceived,
+        inventoryExpected,
+      }),
+    [
+      sideGates,
+      hasTicketId,
+      row.photo_count,
+      classifyLabel,
+      serialCount,
+      linkagePaired,
+      c.isUnfound,
+      trackingNumber,
+      returnIntake,
+      inventoryReceived,
+      inventoryExpected,
+    ],
+  );
 
   const poNote = usePoNoteTabState({
     overallZohoNotes: row.receiving_zoho_notes ?? null,
-    active: activeSideTab === 'linkage' && linkageAction === 'note',
+    active:
+      (activeSideTab === 'linkage' && linkageAction === 'note') ||
+      activeSideTab === 'inventory',
     onSaveOverallNote: saveOverallNote,
     onLoadZohoNotes: () => c.syncCartonFromZoho(),
   });
@@ -233,10 +298,16 @@ export function LineEditPanel({
   );
 
   const openDisplays = useCallback(
-    (tab: UnboxSideTab, opts?: Parameters<typeof setRequestedSideTab>[1]) => {
+    (tab: UnboxDisplayNav, opts?: Parameters<typeof setRequestedSideTab>[1]) => {
       setRequestedSideTab(tab, opts);
     },
     [setRequestedSideTab],
+  );
+
+  /** `←|` Open displays — Root Index (contextual jumps pass a leaf id). */
+  const openDisplaysIndex = useCallback(
+    () => openDisplays(UNBOX_DISPLAY_INDEX),
+    [openDisplays],
   );
 
   const onPhotoActionChange = useCallback(
@@ -383,45 +454,50 @@ export function LineEditPanel({
     setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
   }, [activeSideTab, linkageAction, openDisplays, closeDisplays]);
 
-  /** Order-chip Details → Incoming connection panel on RightRailHost. */
+  /**
+   * Order-chip Details → Unbox Displays Inventory dossier (not Incoming
+   * RightRailHost / external Zoho). Unpaired cartons still open Inventory so
+   * Pair inventory CTA is one click away.
+   */
   const openOrderConnectionDetails = useCallback(() => {
-    const poId = (row.zoho_purchaseorder_id || '').trim();
-    const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
-    const inboundOrderId = (row.source_order_id || '').trim();
-    const isInbound =
-      !poId && inboundSource !== '' && inboundSource !== 'zoho' && inboundOrderId !== '';
-    const shipmentId =
-      typeof row.shipment_ref === 'number' && Number.isFinite(row.shipment_ref) && row.shipment_ref > 0
-        ? row.shipment_ref
-        : null;
-    if (!poId && !isInbound && shipmentId == null) {
-      // No connection identity yet — fall through to Package Pairing to link one.
-      openPoPairing();
+    if (activeSideTab === 'inventory') {
+      closeDisplays();
       return;
     }
-    dispatchReceivingOpenIncomingDetails({
-      poId: poId || null,
-      poNumber: row.zoho_purchaseorder_number ?? null,
-      shipmentId: poId ? null : shipmentId,
-      inboundSourceType: isInbound ? inboundSource : null,
-      inboundSourceOrderId: isInbound ? inboundOrderId : null,
-      receivingId: row.receiving_id ?? null,
-      receivingLineId: row.id ?? null,
-    });
-  }, [
-    row.zoho_purchaseorder_id,
-    row.zoho_purchaseorder_number,
-    row.inbound_source_type,
-    row.source_order_id,
-    row.shipment_ref,
-    row.receiving_id,
-    row.id,
-    openPoPairing,
-  ]);
+    openDisplays('inventory');
+  }, [activeSideTab, closeDisplays, openDisplays]);
 
   useEffect(() => {
     setActionFeedback(null);
+    setNotesOpen(false);
   }, [row.id]);
+
+  const hasItemNote = Boolean((c.itemNote || row.notes || '').trim());
+
+  const embeddedTerminal = (
+    <StationTerminalDock
+      embedded
+      vm={terminalVm}
+      assignedTechId={row.assigned_tech_id}
+    />
+  );
+
+  const openNotes = useCallback(() => {
+    setNotesOpen(true);
+  }, []);
+
+  const closeNotes = useCallback(() => {
+    setNotesOpen(false);
+    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+  }, []);
+
+  const onFocusCaptureStep = useCallback(
+    (key: 'serial' | 'condition' | 'item_photos') => {
+      focusStep(key);
+      setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+    },
+    [focusStep],
+  );
 
   const handleItemDescFeedback = useCallback((feedback: InlineActionFeedbackPayload | null) => {
     setActionFeedback(feedback);
@@ -453,6 +529,7 @@ export function LineEditPanel({
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
         accordionBootstrap,
+        onFocusCaptureStep,
         onEditFilledSerial: (serial) => {
           openDisplays('units');
           c.setHeaderSerialEdit(serial);
@@ -463,8 +540,23 @@ export function LineEditPanel({
           }
           openDisplays('units');
         },
+        onOpenReturnHistory: () => openDisplays('timeline'),
       }),
-    [row, staffId, c, handleItemDescFeedback, handleItemDescSaved, accordionBootstrap, openDisplays],
+    [
+      row,
+      staffId,
+      c,
+      handleItemDescFeedback,
+      handleItemDescSaved,
+      accordionBootstrap,
+      onFocusCaptureStep,
+      openDisplays,
+    ],
+  );
+
+  const stepDock = useMemo(
+    () => buildUnboxStepDock({ row, staffId, c }),
+    [row, staffId, c],
   );
 
   const unboxSideTabs = useMemo(
@@ -482,6 +574,7 @@ export function LineEditPanel({
         hasClassifyTab,
         classifyOnStrip,
         hasLinkageTab,
+        hasInventoryTab,
         poIdForTracking,
         hasPoNoteTab,
         poNote,
@@ -489,6 +582,9 @@ export function LineEditPanel({
         onPhotoActionChange,
         linkageAction,
         onLinkageActionChange,
+        onInventoryChangePo: openPoPairing,
+        onInventorySync: () => void c.syncCartonFromZoho(),
+        inventorySyncing: Boolean(c.zohoSyncing),
         unitsAction,
         onUnitsActionChange,
         hasPrebox,
@@ -505,6 +601,7 @@ export function LineEditPanel({
         pairingFocusTab: pairingFocus?.tab ?? null,
         pairingFocusRequestId: pairingFocus?.requestId ?? 0,
         onFindTicket: openFindTicketDisplay,
+        onOpenReturnHistory: () => openDisplays('timeline'),
       }),
     [
       row,
@@ -519,6 +616,7 @@ export function LineEditPanel({
       hasClassifyTab,
       classifyOnStrip,
       hasLinkageTab,
+      hasInventoryTab,
       poIdForTracking,
       hasPoNoteTab,
       poNote,
@@ -526,6 +624,7 @@ export function LineEditPanel({
       onPhotoActionChange,
       linkageAction,
       onLinkageActionChange,
+      openPoPairing,
       unitsAction,
       onUnitsActionChange,
       hasPrebox,
@@ -540,6 +639,7 @@ export function LineEditPanel({
       classifyExpand,
       pairingFocus,
       openFindTicketDisplay,
+      openDisplays,
     ],
   );
 
@@ -551,14 +651,14 @@ export function LineEditPanel({
   );
 
   /**
-   * Ring mounts on the Displays strip (`rightSlot`) — only while Displays is
-   * open — so hover peek stays suppressed (`railOpen` always true at mount).
+   * Ring mounts under the Unbox dock Panel (`UnboxDockHost` progress slot).
+   * Peek when Displays is closed; suppress peek while Displays is open.
    */
   const scanProgressControl = (
     <UnboxScanProgressControl
       row={row}
-      railOpen
-      checklistActive={activeSideTab === 'checklist'}
+      railOpen={showDisplays}
+      checklistActive={showDisplays && activeSideTab === 'checklist'}
       onOpenChecklist={openChecklistDisplay}
       onCloseDisplays={closeDisplays}
     />
@@ -567,37 +667,34 @@ export function LineEditPanel({
   /**
    * Scan-station chrome for Displays `←|` + carton `↑ ↓`.
    *
-   * **Closed:** {@link ScanStationUtilityRail} — `←|` on top, then vertical `↑↓`.
+   * **Closed:** {@link ScanStationUtilityRail} — vertical `↑↓` top, `←|` in the
+   * bottom footer (left-dock expand twin).
    * **Open:** cursor on {@link UnboxPushColumn} top-right (`headerTrailing`);
-   * utility rail unmounts. `→|` lives on the column band.
+   * utility rail unmounts. `→|` lives on the Displays footer search trailing
+   * track (left-rail filter-collapse twin).
    *
    * Cursor mapping matches left sidebar / DeskRailChromeRow: ↑ prev · ↓ next.
    */
   const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
 
   const utilityRailBody = !showDisplays ? (
-    <div className="flex flex-col items-center gap-0 pt-0">
-      <UnboxDisplaysEdgeToggle
-        variant="pane-open"
-        onClick={() =>
-          openDisplays('ticket', {
-            ticketAction: hasTicketId ? 'chat' : 'claim',
-          })
-        }
-      />
-      {showCartonCursor ? (
-        <ScanStationCartonCursor
-          onPrev={onPrevCarton}
-          onNext={onNextCarton}
-          prevDisabled={prevCartonDisabled}
-          nextDisabled={nextCartonDisabled}
-          orientation="vertical"
-          prevTestId="unbox-carton-prev"
-          nextTestId="unbox-carton-next"
-          groupTestId="unbox-carton-cursor"
-        />
-      ) : null}
-    </div>
+    <UnboxDisplaysUtilityRailBody
+      onOpenDisplays={openDisplaysIndex}
+      cartonCursor={
+        showCartonCursor ? (
+          <ScanStationCartonCursor
+            onPrev={onPrevCarton}
+            onNext={onNextCarton}
+            prevDisabled={prevCartonDisabled}
+            nextDisabled={nextCartonDisabled}
+            orientation="vertical"
+            prevTestId="unbox-carton-prev"
+            nextTestId="unbox-carton-next"
+            groupTestId="unbox-carton-cursor"
+          />
+        ) : null
+      }
+    />
   ) : null;
 
   const displaysCartonCursor = showCartonCursor ? (
@@ -657,7 +754,7 @@ export function LineEditPanel({
     <>
       <StationScanPaneHost
         displaysOpen={showDisplays}
-        hostPadClass={showRightPushChrome ? TICKET_PUSH_HOST_PAD_CLASS : undefined}
+        hostPadClass={showRightPushChrome ? STATION_DISPLAYS_HOST_PAD_CLASS : undefined}
         hostDataAttrs={{ 'data-unbox-pane-host': true }}
         centerTestId="unbox-station-center"
         utilityRail={utilityRailBody}
@@ -687,11 +784,12 @@ export function LineEditPanel({
                   ) : null
                 }
                 // footer left null — ReceiveFeedbackRegion rides in the absolute
-                // dock float stack above the notes shell (an absolute dock would
+                // dock float stack above UnboxDockHost (an absolute dock would
                 // cover an in-flow footer).
                 dock={
-                  // ONE elevated shell floating over the canvas — notes + Print ·
-                  // Receive. Placement SoT = slicedActionDockWrapperClass({ docked: false }).
+                  // ONE elevated shell — step CTA · notes · Print · Receive, with
+                  // the progress ring under the Panel. Placement SoT =
+                  // slicedActionDockWrapperClass({ docked: false }).
                   <div className={slicedActionDockWrapperClass({ docked: false })}>
                     <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
                       {terminalVm?.disabled && terminalVm.disabledReason ? (
@@ -723,20 +821,29 @@ export function LineEditPanel({
                           />
                         </div>
                       ) : null}
-                      <WorkspaceNotesCard
-                        row={row}
-                        c={c}
-                        onActionFeedback={setActionFeedback}
-                        // Enter in the notes field = chat Send → print+receive.
-                        onPrimaryAction={
-                          terminalVm ? () => void terminalVm.onClick() : undefined
-                        }
-                        primaryActionDisabled={Boolean(terminalVm?.disabled)}
-                        trailingAction={
-                          <StationTerminalDock
-                            embedded
-                            vm={terminalVm}
-                            assignedTechId={row.assigned_tech_id}
+                      <UnboxDockHost
+                        mode={notesOpen ? 'notes' : 'entry'}
+                        onOpenNotes={openNotes}
+                        onCloseNotes={closeNotes}
+                        hasItemNote={hasItemNote}
+                        pager={<UnboxProcedurePager row={row} />}
+                        leading={stepDock}
+                        trailing={embeddedTerminal}
+                        progress={scanProgressControl}
+                        notesEntry={
+                          <UnboxDockNotesEntry
+                            value={c.itemNote}
+                            onChange={c.setItemNote}
+                            onSave={() => {
+                              const next = c.itemNote;
+                              if (next === (row.notes || '')) return false;
+                              void c.patch({ notes: next });
+                              return true;
+                            }}
+                            onPrimaryAction={
+                              terminalVm ? () => void terminalVm.onClick() : undefined
+                            }
+                            primaryActionDisabled={Boolean(terminalVm?.disabled)}
                           />
                         }
                       />
@@ -769,11 +876,16 @@ export function LineEditPanel({
           </StationPanelRoot>
         }
         displays={
-          activeSideTab ? (
-            <ReceivingDisplaysPushStack
+          showDisplays ? (
+            <StationDisplaysPushStack
               tabs={unboxSideTabs}
-              activeTab={activeSideTab}
+              activeTab={activeSideTab ?? UNBOX_DISPLAY_INDEX}
+              indexRows={displayIndexRows}
               onTabChange={(id) => {
+                if (id === UNBOX_DISPLAY_INDEX) {
+                  setRequestedSideTab(UNBOX_DISPLAY_INDEX);
+                  return;
+                }
                 const tab = id as UnboxSideTab;
                 if (tab === 'ticket') {
                   setRequestedSideTab('ticket', {
@@ -785,7 +897,6 @@ export function LineEditPanel({
               }}
               onClose={closeDisplays}
               headerTrailing={displaysCartonCursor}
-              rightSlot={scanProgressControl}
             />
           ) : null
         }

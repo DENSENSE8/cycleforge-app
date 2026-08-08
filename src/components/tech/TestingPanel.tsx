@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { resolveTestingLineTitle } from '@/lib/print/printProductLabel';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
@@ -9,8 +10,8 @@ import {
   StationScanPaneHost,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
-import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
+import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import { UnboxDisplaysUtilityRailBody } from '@/components/receiving/workspace/UnboxDisplaysUtilityRailBody';
 import { UnboxLabelPreview } from '@/components/receiving/workspace/line-edit/UnboxLabelPreview';
 import { WorkspaceNotesCard } from '@/components/receiving/workspace/line-edit/WorkspaceNotesCard';
 import { StationContextBar } from '@/components/station/entity-context';
@@ -18,9 +19,16 @@ import {
   TESTING_OPEN_SKU_PAIRING_EVENT,
   useSkuTestingData,
 } from '@/components/receiving/workspace/line-edit/LineTestingTabbedCard';
+import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { dispatchSelectLine, dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { useTestingLineController } from '@/components/tech/hooks/useTestingLineController';
+import { invalidateSupportContextCaches } from '@/hooks';
+import {
+  invalidateReceivingFeeds,
+  patchReceivingRailTicketByCarton,
+} from '@/lib/queries/receiving-queries';
+import { toast } from '@/lib/toast';
 import { resolveTestingTerminal } from './testing-panel/terminal/testing-terminal';
 import { useTestingPrimaryAction } from './testing-panel/useTestingPrimaryAction';
 import { TestingCartonHeader } from './testing-panel/TestingCartonHeader';
@@ -31,6 +39,7 @@ import {
 } from '@/lib/testing/testing-scan-session-bridge';
 import { TestingPoUnboxingSection } from './testing-panel/TestingPoUnboxingSection';
 import { TestingPanelModals } from './testing-panel/TestingPanelModals';
+import { resolveTestingTicketContextOpen } from './testing-panel/testing-ticket-context';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
 import {
@@ -41,13 +50,12 @@ import {
 /**
  * Right-pane TESTING display — Unbox SoT anatomy.
  *
- * Centre = flush PO lines + {@link UnboxLabelPreview}. Dock = **label / item
- * notes** (`receiving_line.notes` via {@link WorkspaceNotesCard}) + Pass ·
- * Print — always, never swapped for ticket reply. Ticket replies live in the
- * Ticket Displays body (inline composer), same grain split as Unbox.
- * Reference tools (Ticket · Pairing · Checklist · Manuals · Timeline ·
- * Linkage) live on Displays push. Operator copy: Open displays / Hide right
- * panel.
+ * Centre = ops-flow only: flush PO lines + {@link UnboxLabelPreview} + dock
+ * (notes + Pass · Print). Never centre advisory banners — ticket history /
+ * claim / exact contextual detail open as Ticket Displays beside the middle
+ * ({@link TicketDisplayHost}). Reference tools (Ticket · Pairing · Checklist ·
+ * Manuals · Timeline · Linkage) live on Displays push. Operator copy: Open
+ * displays / Hide right panel.
  */
 
 export function TestingPanel({
@@ -60,9 +68,27 @@ export function TestingPanel({
   /** Clear the open line and return to the tested-lines browse. */
   onBackToBrowse?: () => void;
 }) {
+  const qc = useQueryClient();
   const productTitle = resolveTestingLineTitle(row);
 
-  const c = useTestingLineController(row, staffId);
+  // Displays push — `null` IS closed; `index` is Root Index; leaf id is the body.
+  const [activeSideTab, setActiveSideTab] = useState<
+    TestingDisplayTab | typeof STATION_DISPLAY_INDEX | null
+  >(null);
+  const [claimMode, setClaimMode] = useState<ClaimModalMode>('create');
+  const [pairingFocus, setPairingFocus] = useState<{
+    tab: 'zoho_po' | null;
+    requestId: number;
+  } | null>(null);
+
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
+  const onOpenClaim = useCallback((mode: ClaimModalMode = 'create') => {
+    setClaimMode(mode);
+    setActiveSideTab('ticket');
+  }, []);
+
+  const c = useTestingLineController(row, staffId, { onOpenClaim });
   const { primaryDisabled, primaryLabel, primaryTitle } = useTestingPrimaryAction(c, row);
   const claimTicketId = c.providerTicketId ?? null;
 
@@ -88,15 +114,15 @@ export function TestingPanel({
     row.receiving_id != null ||
     timelineSerials.length > 0;
 
-  // Displays push — `null` IS closed (no separate open flag).
-  const [activeSideTab, setActiveSideTab] = useState<TestingDisplayTab | null>(null);
-  const [pairingFocus, setPairingFocus] = useState<{
-    tab: 'zoho_po' | null;
-    requestId: number;
-  } | null>(null);
-  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
-  const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
-  const openDisplaysForExpand = useCallback(() => openDisplays('ticket'), [openDisplays]);
+  /**
+   * `←|` Open displays → the Root Index, not `ticket`.
+   *
+   * Testing declares six displays; landing one of them from the edge toggle
+   * made the other five a Back-press away from an operator who had no reason to
+   * think there was anything behind Ticket. Contextual `openDisplays(<leaf>)`
+   * (claim · reply · SKU pairing) still skips the index — that IS the ask.
+   */
+  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const openPoPairing = useCallback(() => {
     setActiveSideTab('linkage');
     setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
@@ -106,18 +132,51 @@ export function TestingPanel({
     else openDisplays('ticket');
   }, [activeSideTab, closeDisplays, openDisplays]);
   const openClaimView = useCallback(() => {
-    openDisplays('ticket');
-    c.openClaimModal('create');
-  }, [openDisplays, c]);
+    if (activeSideTab === 'ticket' && claimTicketId == null) closeDisplays();
+    else onOpenClaim('create');
+  }, [activeSideTab, claimTicketId, closeDisplays, onOpenClaim]);
 
   /** Auto-match Find ticket → Ticket display (link existing). */
   const openFindTicketDisplay = useCallback(() => {
-    openDisplays('ticket');
-    c.openClaimModal('link');
-  }, [openDisplays, c]);
+    onOpenClaim('link');
+  }, [onOpenClaim]);
 
+  const onClaimTicketCreated = useCallback(
+    (ticketNumber: string) => {
+      toast.success(`Claim filed — ${ticketNumber}`);
+      void c.invalidateSupportTicket();
+      invalidateSupportContextCaches(qc);
+      if (row.receiving_id != null) {
+        patchReceivingRailTicketByCarton(qc, row.receiving_id, ticketNumber);
+      }
+      dispatchLineUpdated({ id: row.id, zendesk_ticket: ticketNumber, notes: row.notes });
+      invalidateReceivingFeeds(qc);
+      // Presence-only: linked ticket → Chat in TicketDisplayHost.
+      openDisplays('ticket');
+    },
+    [c, qc, row.id, row.notes, row.receiving_id, openDisplays],
+  );
+
+  const onClaimTicketUnlinked = useCallback(() => {
+    void c.invalidateSupportTicket();
+    invalidateSupportContextCaches(qc);
+    if (row.receiving_id != null) {
+      patchReceivingRailTicketByCarton(qc, row.receiving_id, null);
+    }
+    dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
+    invalidateReceivingFeeds(qc);
+  }, [c, qc, row.id, row.notes, row.receiving_id]);
+
+  // Contextual ticket detail → Displays on line open (history when linked;
+  // claim when already failed). Fail-while-testing uses onOpenClaim. Never a
+  // centre "needs attention" strip — SoT: centre = ops-flow only.
   useEffect(() => {
-    setActiveSideTab(null);
+    const hasTicket = c.providerTicketId != null;
+    const ctx = resolveTestingTicketContextOpen(row, hasTicket);
+    setClaimMode(ctx.claimMode);
+    setActiveSideTab(ctx.open ? 'ticket' : null);
+    // Only on carton/line open — do not fight a manual Displays close.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- row.id gate
   }, [row.id]);
 
   useEffect(() => {
@@ -140,6 +199,11 @@ export function TestingPanel({
         poIdForTimeline,
         trackingForTimeline,
         pairingFocus,
+        claimMode,
+        onCloseClaim: closeDisplays,
+        onCloseTicket: closeDisplays,
+        onClaimTicketCreated,
+        onClaimTicketUnlinked,
         onFindTicket: openFindTicketDisplay,
       }),
     [
@@ -154,14 +218,20 @@ export function TestingPanel({
       poIdForTimeline,
       trackingForTimeline,
       pairingFocus,
+      claimMode,
+      closeDisplays,
+      onClaimTicketCreated,
+      onClaimTicketUnlinked,
       openFindTicketDisplay,
     ],
   );
 
-  const resolvedSideTab: TestingDisplayTab | null = useMemo(() => {
+  const resolvedSideTab: TestingDisplayTab | typeof STATION_DISPLAY_INDEX | null = useMemo(() => {
     if (!activeSideTab) return null;
+    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
     if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    return (displayTabs[0]?.id as TestingDisplayTab | undefined) ?? null;
+    // Gated-away leaf → the index, never a silent swap to an unrelated display.
+    return STATION_DISPLAY_INDEX;
   }, [activeSideTab, displayTabs]);
 
   // Carton-terminal always — Ticket display keeps Reply local (inline). A
@@ -189,9 +259,7 @@ export function TestingPanel({
   const scanSessionForThisLine = sessionMatchesLine(scanSession, row);
 
   const utilityRailBody = !resolvedSideTab ? (
-    <div className="flex flex-col items-center gap-0 pt-0">
-      <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysForExpand} />
-    </div>
+    <UnboxDisplaysUtilityRailBody onOpenDisplays={openDisplaysIndex} />
   ) : null;
 
   const exitToList = useCallback(() => {
@@ -291,14 +359,20 @@ export function TestingPanel({
         }
         displays={
           resolvedSideTab ? (
-            <ReceivingDisplaysPushStack
+            <StationDisplaysPushStack
               ariaLabel="Testing displays"
               storageKey="testing-displays-push-width"
               testId="testing-displays-push"
               resizeTestId="testing-displays-push-resize"
               tabs={displayTabs}
               activeTab={resolvedSideTab}
-              onTabChange={(id) => setActiveSideTab(id as TestingDisplayTab)}
+              onTabChange={(id) => {
+                if (id === STATION_DISPLAY_INDEX) {
+                  setActiveSideTab(STATION_DISPLAY_INDEX);
+                  return;
+                }
+                setActiveSideTab(id as TestingDisplayTab);
+              }}
               onClose={closeDisplays}
             />
           ) : null

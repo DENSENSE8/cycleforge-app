@@ -1,22 +1,28 @@
 'use client';
 
 /**
- * Unbox right-edge **push** column — the shared shell for
- * {@link ReceivingDisplaysPushStack} (Ticket · Photos · Linkage · … — Ticket
- * presence-exclusive Claim vs Chat). LineEditPanel wires exclusion vs `detail:receiving` / AI
- * (see `unbox-right-edge.ts`).
+ * Station Displays right-edge **push** column — shared shell for
+ * {@link StationDisplaysPushStack} (Unbox golden · Arrival · Testing · Pack ·
+ * Shipping · Review). Not a `RightRailHost` occupant.
  *
- * These are **not** `RightRailHost` occupants: receiving More details keeps the
- * float host (`detail:receiving`). This column reuses detail-stack SURFACE
- * tokens — flush in-flow ({@link DETAIL_STACK_PUSH_COLUMN_CLASS}); elevated
+ * This column reuses detail-stack SURFACE tokens — flush in-flow
+ * ({@link DETAIL_STACK_PUSH_COLUMN_CLASS}); elevated
  * {@link DETAIL_STACK_ASIDE_SURFACE} only for the narrow-viewport overlay
  * exception.
+ *
+ * **Flex-Grow Sandwich invader (station):** in-flow Displays is `flex-1` so it
+ * **always fills leftover** beside the locked 720 middle (flush hairline — no
+ * emergent gray band). Resize desire from {@link useHorizontalEdgeResize}
+ * still drives dual-rail inverse trade with the context rail
+ * (`left + 720 + displays = frame`); the sash never invents a host gutter.
+ * Never host `gap-*` / `justify-between` / gutter divs / `ml-auto` detach.
  *
  * **Flush planes (ruled 2026-08-03):** wide push is a flush sibling of the
  * sunken center — no outer `my-2` / host `pr-2` islands. Narrow overlay may
  * float (true floater exception) with bookmark top inset.
  *
- * **The column owns its own visible dismiss** — see {@link UNBOX_PUSH_TOP_BAND}.
+ * **Dismiss + filter live in the footer** (left-rail twin) — hosts pass
+ * {@link footer}. Top band keeps fullscreen + optional ring / carton cursor.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
@@ -25,16 +31,17 @@ import { STATION_IDENTITY_INSET_TOP } from '@/components/station/entity-context'
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { useEscapeClose, useHorizontalEdgeResize } from '@/design-system/hooks';
+import { LIST_KEY_REGION_OPEN_ATTR } from '@/lib/keyboard/list-key-scope';
 import { IconButton } from '@/design-system/primitives';
 import {
   DETAIL_STACK_ASIDE_SURFACE,
   DETAIL_STACK_PUSH_COLUMN_CLASS,
-  DETAIL_STACK_RESIZE,
 } from '@/design-system/shells/detail-stack';
 import { STATION_DISPLAYS_MIN_WIDTH_PX } from '@/components/station/workbench/workbench-layout';
 import {
   getContextRailCostOpenPx,
   getRightRailFrame,
+  getRightRailFrameWidthPx,
   getServerRightRailFrame,
   setStationPushDemand,
   subscribeRightRailFrame,
@@ -46,12 +53,11 @@ import {
   getStationCoupled,
   isStationDualRailCouplingActive,
   registerStationDisplaysStorageKey,
+  stationLadderMaxDisplaysPx,
   subscribeStationCoupled,
 } from '@/lib/right-rail/station-dual-rail';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
-import { UnboxDisplaysEdgeToggle } from './UnboxDisplaysEdgeToggle';
-
 /**
  * Host trailing padding while a push column is mounted.
  *
@@ -59,33 +65,21 @@ import { UnboxDisplaysEdgeToggle } from './UnboxDisplaysEdgeToggle';
  * named export so LineEditPanel composes one host pad token (now a no-op).
  * Never `py-*`.
  */
-export const TICKET_PUSH_HOST_PAD_CLASS = '';
+/** Host trailing pad while a Displays push column is mounted (flush — no-op). */
+export const STATION_DISPLAYS_HOST_PAD_CLASS = '';
 
-/** Below this viewport width, the push column overlays instead of crushing Unbox. */
-const NARROW_PUSH_MQ = '(max-width: 1023px)';
+/**
+ * Default dual-rail / overlay desire when `storageKey` has no persisted width.
+ * In-flow visual fill is `flex-1` (always expanded); this value seeds resize
+ * coupling and narrow/fullscreen overlay painted width.
+ */
+const STATION_DISPLAYS_FILL_DEFAULT_WIDTH_PX = 10_000;
 
 /**
  * The column's own header band — a REAL row, not an absolute float.
  *
- * It holds the visible dismiss at the column's **top-left**, fullscreen beside
- * it, and the carton cursor (`↑ ↓`) at the **top-right** when the host passes
- * {@link headerTrailing}. One row: `[→|] [fullscreen] ……… [↑ ↓]`.
- *
- * **Why the shell and not each occupant.** Ruled 2026-08-02: the `→|` in the
- * pane utility row closed the whole CARTON while its glyph, its corner and its
- * rail-gating all said "collapse this panel" — an operator reaching for it lost
- * their carton. Dismiss for the column belongs to the column, so it lives in the
- * shell that already owns `onClose`, the Escape close and the collapse chevron.
- *
- * **Why a visible button when the edge grip already collapses.** That chevron is
- * `opacity-0 group-hover:opacity-100` — it does not exist until the pointer is
- * already on the 8px sash. A non-modal push column has no scrim to click off, so
- * a dismiss the operator cannot see is a dismiss they do not have.
- *
- * **Why in flow.** An absolute button would land on three of the four occupants'
- * headers (`SupportTicketDetail`, `ReceivingClaimPanel`, the tool bodies all
- * start their chrome at y 0) — only Displays reserved a band, and it reserved it
- * for the cluster on the *other* side. A real row cannot overlap by construction.
+ * One row: `[fullscreen] ……… [ring?] [↑ ↓]`. Column dismiss (`→|`) seats in the
+ * **footer** with the filter search (left-rail twin) — see {@link footer}.
  *
  * **Height is derived, not picked.** Carton cursor on this band uses `xs`
  * IconButtons. Flush push has no `my-2`, so `h-8` (32px) with controls
@@ -138,32 +132,17 @@ const NARROW_PUSH_MQ = '(max-width: 1023px)';
 /** `relative z-raised` keeps `→|` above the inset resize sash (same token).
  *  One horizontal row: `[→|] [fullscreen] ……… [↑ ↓]` — `items-center`, never a
  *  stacked trailing cluster. */
-const UNBOX_PUSH_TOP_BAND =
-  'relative z-raised flex h-8 shrink-0 items-center gap-0.5 pl-2 pr-2';
+const STATION_DISPLAYS_PUSH_TOP_BAND =
+  'relative z-raised flex h-8 shrink-0 items-center gap-0.5 border-b border-border-hairline pl-2 pr-2';
 
 /**
- * The band's dismiss names the REGION, not the occupant — "Hide right panel",
- * never "Hide displays" / "Hide ticket".
- *
- * This control belongs to the shell and closes whatever holds the edge, so its
- * copy has to be true for all four occupants at once. It is also what an
- * operator is actually thinking when they reach for it: *close this panel*.
- *
- * It is now the ONLY dismiss button on the column, which is why the per-occupant
- * `collapseLabel` prop is gone rather than kept for a second control. Exclusive
- * `layoutId` handoff with the pane open control: {@link UnboxDisplaysEdgeToggle}.
+ * Fullscreen toggle — names the REGION. "Expand panel" / "Collapse panel",
+ * never "Expand displays" — the control is mounted once in the shared shell.
  */
+const STATION_DISPLAYS_PUSH_EXPAND_LABEL = 'Expand panel';
+const STATION_DISPLAYS_PUSH_COLLAPSE_LABEL = 'Collapse panel';
 
-/**
- * Fullscreen toggle — names the REGION, same rule as the edge-toggle close label
- * (`Hide right panel`). "Expand panel" / "Collapse panel", never "Expand
- * displays" — the control is mounted once in the shared shell and must read
- * true for all four occupants.
- */
-const UNBOX_PUSH_EXPAND_LABEL = 'Expand panel';
-const UNBOX_PUSH_COLLAPSE_LABEL = 'Collapse panel';
-
-export function UnboxPushColumn({
+export function StationDisplaysPushColumn({
   ariaLabel,
   testId,
   dataTool,
@@ -173,7 +152,10 @@ export function UnboxPushColumn({
   resizeTestId,
   resizeTooltip,
   onClose,
+  onEscape,
   headerTrailing = null,
+  headerRightSlot = null,
+  footer = null,
   children,
 }: {
   ariaLabel: string;
@@ -184,9 +166,9 @@ export function UnboxPushColumn({
   storageKey: string;
   /**
    * Optional absolute ceiling for this surface. Omit for station Displays —
-   * in-flow the column is `flex-1` and fills leftover beside the locked 720
-   * middle (no painted width). Pass only when a demo / special surface needs
-   * a tighter taste cap (overlay still honors it).
+   * in-flow is `flex-1` (always fills leftover beside the locked 720 middle).
+   * Pass only when a demo / special surface needs a tighter taste cap
+   * (overlay still honors it).
    */
   maxWidthPx?: number;
   resizeLabel: string;
@@ -194,28 +176,53 @@ export function UnboxPushColumn({
   resizeTooltip: string;
   onClose: () => void;
   /**
+   * Esc handler — defaults to {@link onClose}. Drill-down hosts pass a pop
+   * (leaf → index) so Esc does not dismiss the whole column from a leaf.
+   */
+  onEscape?: () => void;
+  /**
    * Top-right of the details panel header band — carton `↑ ↓` cursor when
    * Displays is open. Hosts compose {@link ScanStationCartonCursor}; omit when
    * the station has no carton pager.
    */
   headerTrailing?: ReactNode;
+  /**
+   * Trailing peer before carton cursor — Unbox: procedure progress ring
+   * (was Displays icon-plate `rightSlot`).
+   */
+  headerRightSlot?: ReactNode;
+  /**
+   * Bottom band — filter search + `→|` Hide right panel (left-rail twin).
+   * Hosts compose {@link TechRailSearchBar} + Displays edge close toggle.
+   */
+  footer?: ReactNode;
   children: ReactNode;
 }) {
-  useEscapeClose(true, onClose);
+  useEscapeClose(true, onEscape ?? onClose);
 
-  // Frame `capPx` reserves the 720 middle lock; optional taste ceiling may
-  // tighten further. In-flow FILLS leftover (`flex-1`) — no painted width.
-  const { capPx } = useSyncExternalStore(
+  // Frame `capPx` = leftover beside the 720 middle lock; `stationDisplaysCollapsed`
+  // = has the frame yielded Displays to an overlay (Fiori/M3 collapse). In-flow
+  // is flex-1 (always fills leftover); resize desire feeds dual-rail coupling.
+  const { capPx, stationDisplaysCollapsed } = useSyncExternalStore(
     subscribeRightRailFrame,
     getRightRailFrame,
     getServerRightRailFrame,
   );
+  // While coupling with the context rail, the sash may grow Displays across the
+  // FULL yield range — the coupling shrinks the rail toward its 300 hardMin, so
+  // the ceiling is `frame − 720 − 300` (the ladder max), NOT `capPx` (which
+  // reserves the rail's *current* open cost, ~60px tighter). Feeding the tight
+  // cap is what forced the coupling to clamp the sash back every frame — the old
+  // edge jitter. Off a coupling, `capPx` (parked strip / no rail) is correct.
+  const resolvedMaxWidthPx = isStationDualRailCouplingActive()
+    ? stationLadderMaxDisplaysPx(getRightRailFrameWidthPx())
+    : capPx;
   const effectiveMaxWidthPx =
-    maxWidthPx != null ? Math.min(maxWidthPx, capPx) : capPx;
+    maxWidthPx != null ? Math.min(maxWidthPx, resolvedMaxWidthPx) : resolvedMaxWidthPx;
 
   const { width, setWidth, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey,
-    defaultWidth: DETAIL_STACK_RESIZE.defaultWidthPx,
+    defaultWidth: STATION_DISPLAYS_FILL_DEFAULT_WIDTH_PX,
     minWidth: STATION_DISPLAYS_MIN_WIDTH_PX,
     maxWidthPad: UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX,
     maxWidth: effectiveMaxWidthPx,
@@ -227,16 +234,6 @@ export function UnboxPushColumn({
 
   const layoutWidth = Math.min(width, effectiveMaxWidthPx);
 
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia(NARROW_PUSH_MQ);
-    const sync = () => setNarrow(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
-
   // Fullscreen is an operator TOGGLE, not a persisted width — it must not
   // write through `setWidth` (localStorage), or restoring from fullscreen
   // would leave the panel at whatever px the toggle happened to land on
@@ -245,13 +242,18 @@ export function UnboxPushColumn({
   // flag on this shell.
   const [expanded, setExpanded] = useState(false);
 
-  // Fullscreen reuses the narrow-viewport OVERLAY mechanism rather than a
-  // second one: a genuinely full-width push column would crush the center
-  // floor (MIN_WORK_SURFACE_PX, `src/lib/right-rail/frame.ts`), which the
-  // frame-budget law bans. An overlay does not reserve width — it floats
-  // over the canvas, exactly like the narrow branch already does below
-  // ~1024px — so "expand" and "narrow" collapse onto one `overlay` state.
-  const overlay = narrow || expanded;
+  // Overlay = float over the work canvas instead of pushing an in-flow column.
+  // Two triggers, ONE mechanism:
+  //  - `stationDisplaysCollapsed` — the frame budget yielded Displays first
+  //    (Fiori / M3 collapse). It floats rather than crushing the 720 middle or
+  //    clipping past the pane edge. This is the frame-derived, spine-aware,
+  //    hysteresis-latched replacement for the old fixed 1024px viewport MQ (a
+  //    viewport MQ ignored the spine and the context rail, so the crush zone
+  //    between ~1024 and 1300 clipped in-flow instead of collapsing cleanly).
+  //  - `expanded` — the operator's fullscreen toggle. A genuinely full-width
+  //    push column would crush the center floor (the frame-budget law bans it),
+  //    so fullscreen reuses the overlay mechanism.
+  const overlay = expanded || stationDisplaysCollapsed;
 
   // Per-surface key so a context-rail sash can persist the inverse Displays width.
   useEffect(() => registerStationDisplaysStorageKey(storageKey), [storageKey]);
@@ -312,13 +314,17 @@ export function UnboxPushColumn({
       role="region"
       aria-label={ariaLabel}
       data-testid={testId}
+      // While this column is open, the receiving table / record cursor behind it
+      // stands down for ↑/↓ (see `isListKeyRegionOpen`) — this is what stops an
+      // arrow press from stepping the map and popping a second sidebar.
+      {...{ [LIST_KEY_REGION_OPEN_ATTR]: '' }}
       {...(dataTool ? { 'data-tool': dataTool } : null)}
       className={cn(
         'relative min-h-0 overflow-visible',
         // Narrow overlay: float with identity top inset. Fullscreen expand:
         // edge-to-edge over the pane (square — no floating card radius).
-        // In-flow: `flex-1` fills from the locked 720 middle to the pane's
-        // right edge — no sticky painted width (that left a trailing gutter).
+        // In-flow: flex-1 always fills leftover beside the locked 720 middle
+        // (no ml-auto detach band).
         overlay
           ? expanded
             ? 'absolute inset-0'
@@ -327,7 +333,7 @@ export function UnboxPushColumn({
       )}
       style={{
         // Fullscreen fills its positioning context. Narrow overlay keeps a
-        // resized px width. In-flow: no `width` — flex-1 claims leftover.
+        // resized px width. In-flow: no painted width — flex-1 claims leftover.
         width: overlay ? (expanded ? '100%' : layoutWidth) : undefined,
         minWidth: overlay || expanded ? undefined : STATION_DISPLAYS_MIN_WIDTH_PX,
         ...(overlay ? { zIndex: zIndex.panel } : null),
@@ -350,19 +356,23 @@ export function UnboxPushColumn({
           placement="inset"
           tooltipLabel={resizeTooltip}
         />
-        <div className={UNBOX_PUSH_TOP_BAND}>
-          {/* Exclusive host of the Displays edge toggle when the column is up —
-              shared `layoutId` with the pane-open control. Never a second close
-              on the carton pane. */}
-          <UnboxDisplaysEdgeToggle variant="column-close" onClick={onClose} />
+        <div className={STATION_DISPLAYS_PUSH_TOP_BAND}>
           <HoverTooltip
-            label={expanded ? UNBOX_PUSH_COLLAPSE_LABEL : UNBOX_PUSH_EXPAND_LABEL}
+            label={
+              expanded
+                ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
+                : STATION_DISPLAYS_PUSH_EXPAND_LABEL
+            }
             asChild
           >
             <IconButton
               size="sm"
               tone="neutral"
-              ariaLabel={expanded ? UNBOX_PUSH_COLLAPSE_LABEL : UNBOX_PUSH_EXPAND_LABEL}
+              ariaLabel={
+                expanded
+                  ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
+                  : STATION_DISPLAYS_PUSH_EXPAND_LABEL
+              }
               icon={
                 expanded ? (
                   <Minimize2 className="h-3.5 w-3.5" />
@@ -375,12 +385,16 @@ export function UnboxPushColumn({
               data-testid="unbox-push-fullscreen"
             />
           </HoverTooltip>
-          {/* Carton ↑↓ — same row, top-right (SoT when Displays open). */}
-          {headerTrailing != null ? (
-            <div className="ml-auto flex shrink-0 items-center gap-0">{headerTrailing}</div>
+          {/* Progress ring (optional) + carton ↑↓ — top-right when Displays open. */}
+          {headerRightSlot != null || headerTrailing != null ? (
+            <div className="ml-auto flex shrink-0 items-center gap-0.5">
+              {headerRightSlot}
+              {headerTrailing}
+            </div>
           ) : null}
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {footer}
       </div>
     </aside>
   );
