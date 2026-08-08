@@ -2,7 +2,7 @@
  * Review · Catalog link grid surface descriptors — lifts the two house column
  * SoTs into the TanStack defs `LedgerGridSurface` mounts. Sorting stays inside
  * each tab's own vocabulary; row ORDER stays with the house comparators in
- * {@link ReviewCatalogLinkGridView} (TanStack owns state math only).
+ * `ReviewCatalogLinkTable` (TanStack owns state math only).
  *
  * **Two column models, ONE capabilities bag.** The tabs differ in what their
  * columns MEAN, not in what the surface may do: both are read maps that open a

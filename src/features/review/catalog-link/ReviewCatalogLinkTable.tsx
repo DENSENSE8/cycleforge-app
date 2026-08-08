@@ -11,8 +11,8 @@
  *               `density="band"` tabs; Band 3 `WorkbenchTriageBand` (always-open
  *               TechRailSearchBar). No KPI band (no metrics — honest absence).
  *               Column display is the GRID's own top-right header lip, not chrome.
- *   collection→ `LedgerGridSurface` + a `GridSurfaceDescriptor`, via
- *               `ReviewCatalogLinkGridView` — two column models, one bag
+ *   collection→ `NonlinearTableHost` mounted twice (once per binding) — two
+ *               column models, one capabilities bag, both on `surface: 'sheet'`
  *   record    → `RightRailHost` (non-modal) via `CatalogLinkFormRail` /
  *               `ImportExceptionFormRail`
  *
@@ -28,7 +28,7 @@
  * grid owns its own Y scroll (`display/workbench.md` → Sticky docking).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -43,10 +43,31 @@ import { cn } from '@/utils/_cn';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 import { CatalogLinkFormRail, ImportExceptionFormRail } from './CatalogLinkFormRail';
 import type { RailQueuePosition } from './CatalogLinkFormRail';
-import { CatalogLinkChoresGrid, ImportExceptionsGrid } from './grid/ReviewCatalogLinkGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { RowGroup } from '@/lib/group-rows';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import {
+  CATALOG_LINK_TABLE_BINDING,
+  IMPORT_EXCEPTION_TABLE_BINDING,
+} from './grid/catalog-link-table-definition';
+import {
+  CatalogLinkGridColumnHeader,
+  ImportExceptionGridColumnHeader,
+} from './grid/CatalogLinkGridColumnHeader';
+import { CatalogLinkGridRow, catalogLinkChoreLabel } from './grid/CatalogLinkGridRow';
+import { ImportExceptionGridRow, importExceptionLabel } from './grid/ImportExceptionGridRow';
+import {
+  defaultDirForCatalogLinkGridSort,
+  isCatalogLinkGridSortable,
+  type CatalogLinkGridColumn,
+  type CatalogLinkGridColumnKey,
 } from './grid/catalog-link-grid-layout';
 import {
+  defaultDirForImportExceptionGridSort,
+  isImportExceptionGridSortable,
+  type ImportExceptionGridColumn,
+  type ImportExceptionGridColumnKey,
 } from './grid/import-exception-grid-layout';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
@@ -78,6 +99,84 @@ async function fetchExceptions(q: string): Promise<{ items: ImportExceptionRow[]
   const body = await res.json().catch(() => ({}));
   if (!res.ok || !body.success) throw new Error(body.error || 'Failed to load import exceptions');
   return { items: body.items || [], total: Number(body.total || 0) };
+}
+
+/**
+ * One-shot "settle" re-render after the grid first has data — the virtualized
+ * LedgerGrid mounts its scroll element in the same commit the data arrives, and
+ * with no async churn in this subtree its re-measure can miss on first paint.
+ */
+function useGridSettleTick(loading: boolean, hasRows: boolean) {
+  const [, settleTick] = useState(0);
+  useEffect(() => {
+    if (loading || !hasRows) return;
+    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
+    return () => cancelAnimationFrame(raf);
+  }, [loading, hasRows]);
+}
+
+function compareChoreRows(
+  a: CatalogLinkChoreRow,
+  b: CatalogLinkChoreRow,
+  key: CatalogLinkGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  switch (key) {
+    case 'title':
+      return sign * (catalogLinkChoreLabel(a) || '').localeCompare(catalogLinkChoreLabel(b) || '');
+    case 'item':
+      return sign * a.itemNumber.localeCompare(b.itemNumber);
+    case 'source':
+      return sign * a.accountSource.localeCompare(b.accountSource);
+    case 'sku':
+      return sign * (a.sku || '').localeCompare(b.sku || '');
+    case 'orders':
+      return sign * (a.orderCount - b.orderCount);
+    case 'first':
+      return sign * a.firstSeenAt.localeCompare(b.firstSeenAt);
+    case 'last':
+      return sign * a.lastSeenAt.localeCompare(b.lastSeenAt);
+    default:
+      return 0;
+  }
+}
+
+function compareExceptionRows(
+  a: ImportExceptionRow,
+  b: ImportExceptionRow,
+  key: ImportExceptionGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  switch (key) {
+    case 'title':
+      return sign * (importExceptionLabel(a) || '').localeCompare(importExceptionLabel(b) || '');
+    case 'order':
+      return sign * a.accountOrderId.localeCompare(b.accountOrderId);
+    case 'source':
+      return sign * a.accountSource.localeCompare(b.accountSource);
+    case 'tracking':
+      return sign * (a.tracking || '').localeCompare(b.tracking || '');
+    case 'sheet': {
+      // A row with no sheet pointer is an UNKNOWN, not row 0 — park it last in
+      // both directions rather than at whichever end is being read.
+      const av = a.sheetRow;
+      const bv = b.sheetRow;
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return sign * (av - bv);
+    }
+    case 'seen':
+      return sign * (a.seenCount - b.seenCount);
+    case 'first':
+      return sign * a.firstSeenAt.localeCompare(b.firstSeenAt);
+    case 'last':
+      return sign * a.lastSeenAt.localeCompare(b.lastSeenAt);
+    default:
+      return 0;
+  }
 }
 
 export function ReviewCatalogLinkTable() {
@@ -220,6 +319,68 @@ export function ReviewCatalogLinkTable() {
   const isChoreTab = section === 'catalog-link';
   const isSearching = searchQuery.length > 0;
 
+  // Grid adapters (was `ReviewCatalogLinkGridView`): the table mounts the
+  // registry host directly, once per binding. The two tabs have DISJOINT sort
+  // vocabularies over one `?colsort=` param — each hook's `isColumn` guard
+  // resolves the other tab's key to `null`, and `setSection` clears the param on
+  // switch, so the inactive tab's hook never mis-reads a live sort.
+  const choreScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    sort: choreSort,
+    dir: choreDir,
+    setSort: setChoreSort,
+  } = useUrlColumnSort<CatalogLinkGridColumnKey>({
+    isColumn: isCatalogLinkGridSortable,
+    defaultDir: defaultDirForCatalogLinkGridSort,
+  });
+  useGridSettleTick(choresQuery.isLoading, choreItems.length > 0);
+  const choreGroups = useMemo<[string, RowGroup<CatalogLinkChoreRow>[]][]>(() => {
+    const ordered =
+      choreSort && choreDir
+        ? [...choreItems].sort((a, b) => compareChoreRows(a, b, choreSort, choreDir))
+        : choreItems;
+    return [['', ordered.map((chore) => ({ key: `chore:${chore.id}`, rows: [chore] }))]];
+  }, [choreItems, choreSort, choreDir]);
+  const renderChoreLeaf = (chore: CatalogLinkChoreRow, visible: readonly CatalogLinkGridColumn[]) => (
+    <CatalogLinkGridRow
+      key={chore.id}
+      chore={chore}
+      isSelected={chore.id === selectedChoreId}
+      onOpenChore={openChore}
+      columns={visible}
+    />
+  );
+
+  const exceptionScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    sort: exceptionSort,
+    dir: exceptionDir,
+    setSort: setExceptionSort,
+  } = useUrlColumnSort<ImportExceptionGridColumnKey>({
+    isColumn: isImportExceptionGridSortable,
+    defaultDir: defaultDirForImportExceptionGridSort,
+  });
+  useGridSettleTick(exceptionsQuery.isLoading, exceptionItems.length > 0);
+  const exceptionGroups = useMemo<[string, RowGroup<ImportExceptionRow>[]][]>(() => {
+    const ordered =
+      exceptionSort && exceptionDir
+        ? [...exceptionItems].sort((a, b) => compareExceptionRows(a, b, exceptionSort, exceptionDir))
+        : exceptionItems;
+    return [['', ordered.map((row) => ({ key: `exception:${row.id}`, rows: [row] }))]];
+  }, [exceptionItems, exceptionSort, exceptionDir]);
+  const renderExceptionLeaf = (
+    row: ImportExceptionRow,
+    visible: readonly ImportExceptionGridColumn[],
+  ) => (
+    <ImportExceptionGridRow
+      key={row.id}
+      row={row}
+      isSelected={row.id === selectedExceptionId}
+      onOpenException={openException}
+      columns={visible}
+    />
+  );
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
       <DashboardScrollShell
@@ -259,8 +420,14 @@ export function ReviewCatalogLinkTable() {
       >
         <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
           {isChoreTab ? (
-            <CatalogLinkChoresGrid
+            <NonlinearTableHost<CatalogLinkChoreRow, CatalogLinkGridColumnKey, CatalogLinkGridColumn>
+              binding={CATALOG_LINK_TABLE_BINDING}
+              orderGroupsByDate={choreGroups}
               rows={choreItems}
+              getRowId={(r) => String(r.id)}
+              sort={choreSort}
+              dir={choreDir}
+              onSortChange={setChoreSort}
               loading={choresQuery.isLoading}
               columnTriggerPortalTarget={controlsEl}
               // Settled-with-nothing is an ALL-CLEAR on this queue, not an
@@ -268,19 +435,51 @@ export function ReviewCatalogLinkTable() {
               emptyMessage="Nothing needs a catalog link right now."
               searchEmptyMessage={`No chore matches “${searchQuery}”. Clear the filter to see the rest.`}
               isSearching={isSearching}
-              selectedChoreId={selectedChoreId}
-              onOpenChore={openChore}
+              scrollRef={choreScrollRef}
+              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+                <CatalogLinkGridColumnHeader
+                  columns={visible}
+                  activeSort={choreSort}
+                  sortDir={choreDir}
+                  onSortColumn={toggleColumnSort}
+                  onResizeColumn={onResizeColumn}
+                  onResetColumn={onResetColumn}
+                />
+              )}
+              renderGroup={(group, _stripe, { columns: visible }) => (
+                <>{group.rows.map((chore) => renderChoreLeaf(chore, visible))}</>
+              )}
+              renderRow={(row, _stripe, { columns: visible }) => renderChoreLeaf(row, visible)}
             />
           ) : (
-            <ImportExceptionsGrid
+            <NonlinearTableHost<ImportExceptionRow, ImportExceptionGridColumnKey, ImportExceptionGridColumn>
+              binding={IMPORT_EXCEPTION_TABLE_BINDING}
+              orderGroupsByDate={exceptionGroups}
               rows={exceptionItems}
+              getRowId={(r) => String(r.id)}
+              sort={exceptionSort}
+              dir={exceptionDir}
+              onSortChange={setExceptionSort}
               loading={exceptionsQuery.isLoading}
               columnTriggerPortalTarget={controlsEl}
               emptyMessage="Every synced sheet row has an Item Number."
               searchEmptyMessage={`No row matches “${searchQuery}”. Clear the filter to see the rest.`}
               isSearching={isSearching}
-              selectedExceptionId={selectedExceptionId}
-              onOpenException={openException}
+              scrollRef={exceptionScrollRef}
+              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+                <ImportExceptionGridColumnHeader
+                  columns={visible}
+                  activeSort={exceptionSort}
+                  sortDir={exceptionDir}
+                  onSortColumn={toggleColumnSort}
+                  onResizeColumn={onResizeColumn}
+                  onResetColumn={onResetColumn}
+                />
+              )}
+              renderGroup={(group, _stripe, { columns: visible }) => (
+                <>{group.rows.map((row) => renderExceptionLeaf(row, visible))}</>
+              )}
+              renderRow={(row, _stripe, { columns: visible }) => renderExceptionLeaf(row, visible)}
             />
           )}
         </div>

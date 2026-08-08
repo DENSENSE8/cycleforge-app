@@ -308,7 +308,7 @@ const MOUNTS: Record<string, string> = {
   'src/features/my-day/MyDayWorkspace.tsx': 'my-day',
   'src/components/tech/all/TechAllTriageTable.tsx': 'tech-all',
   // Both Review · Catalog-link tabs mount from ONE file under ONE bag.
-  'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx': 'catalog-link',
+  'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx': 'catalog-link',
   'src/components/station/StationListTable.tsx': 'station-history',
   'src/components/fba/FbaBoardTable.tsx': 'fba',
 };
@@ -416,7 +416,6 @@ const GRID_VIEW_FOREST: string[] = [
   'src/components/dashboard/orders-queue/OrdersGridView.tsx',
   'src/components/station/incoming-grid/IncomingGridView.tsx',
   'src/components/station/receiving-grid/ReceivingGridView.tsx',
-  'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
 ];
 
 /** Every `*GridView.tsx` wrapper on disk, off the same walk the mounts use. */
