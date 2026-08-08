@@ -117,7 +117,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   // The two that chrome Fields used to serve exclusively.
   [
     'src/features/my-day/grid/MyDayGridColumnHeader.tsx',
-    'src/features/my-day/grid/MyDayGridView.tsx',
+    'src/features/my-day/MyDayWorkspace.tsx',
   ],
   [
     'src/components/dashboard/orders-queue/OrdersQueueColumnHeader.tsx',
