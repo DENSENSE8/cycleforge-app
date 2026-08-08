@@ -1,16 +1,5 @@
 export type StationTheme = 'green' | 'purple' | 'blue' | 'yellow' | 'black' | 'red' | 'lightblue' | 'pink';
-type TechStationTheme = 'green' | 'purple' | 'blue' | 'yellow';
 type PackerStationTheme = 'black' | 'red';
-
-/**
- * Soft 1px outline in the staff tech theme hue (e.g. up-next TabSwitch rail + pill).
- */
-const techStationLightChromeOutlineClass: Record<TechStationTheme, string> = {
-  green: 'border border-emerald-200',
-  blue: 'border border-blue-200',
-  purple: 'border border-purple-200',
-  yellow: 'border border-amber-200',
-};
 
 export interface StationThemeColors {
   bg: string;
@@ -411,11 +400,6 @@ export function getStaffColorHex(
     if (cached) return cached;
   }
   return DEFAULT_COLOR_HEX;
-}
-
-function getTechThemeById(techId: number | string | null | undefined): TechStationTheme {
-  const theme = getStaffThemeById(techId);
-  return (theme === 'green' || theme === 'blue' || theme === 'purple' || theme === 'yellow') ? theme : 'green';
 }
 
 function getPackerThemeById(packerId: number | string | null | undefined): PackerStationTheme {

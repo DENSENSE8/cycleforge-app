@@ -15,28 +15,10 @@ import { hermesToolCall, type HermesTool } from '@/lib/ai/hermes-tool-call';
 import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
 import { recordAiUsage } from '@/lib/ai/usage';
 import { hybridSearch, type HybridSearchResult } from '@/lib/search/hybrid-retrieval';
-import { searchAllEntities } from '@/lib/search/global-entity-search';
 import { SEARCH_ENTITY_TYPES, type SearchEntityType } from '@/lib/search/build-search-text';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { SearchHit } from '@/lib/search/search-hit';
 
 // ── Tool schemas (OpenAI function.parameters shape) ─────────────────────────
-
-/** Deterministic fast path: exact id / serial / tracking lookup. */
-const exactIdSerialSearchTool: HermesTool = {
-  name: 'exact_id_serial_search',
-  description:
-    'Look up entities by an exact identifier: order id, serial number, tracking number, ' +
-    'SKU code, repair ticket, or numeric record id. Use when the query IS an identifier.',
-  parameters: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'The identifier to look up, verbatim.' },
-    },
-    required: ['query'],
-    additionalProperties: false,
-  },
-};
 
 /** The primary NL tool: hybrid keyword+semantic retrieval with facet scoping. */
 const hybridEntitySearchTool: HermesTool = {
@@ -57,23 +39,6 @@ const hybridEntitySearchTool: HermesTool = {
         description: 'Restrict to these entity types when the question implies a scope.',
         items: { type: 'string', enum: [...SEARCH_ENTITY_TYPES] },
       },
-      limit: { type: 'integer', minimum: 1, maximum: 50 },
-    },
-    required: ['query'],
-    additionalProperties: false,
-  },
-};
-
-/** Typed wrapper: serialized-unit search (the densest operator ask). */
-const searchUnitsTool: HermesTool = {
-  name: 'search_units',
-  description:
-    'Search serialized inventory units by serial, SKU, product name, condition, status, ' +
-    'or location. Returns unit hits only.',
-  parameters: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Search phrase for the unit.' },
       limit: { type: 'integer', minimum: 1, maximum: 50 },
     },
     required: ['query'],

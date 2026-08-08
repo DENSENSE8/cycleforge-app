@@ -102,12 +102,6 @@ const LANE_RANK_ORDER: ReadonlyArray<string> = [
   'HOLD',
 ];
 
-function laneRank(lane: string | null | undefined): number {
-  if (!lane) return LANE_RANK_ORDER.length;
-  const idx = LANE_RANK_ORDER.indexOf(lane);
-  return idx === -1 ? LANE_RANK_ORDER.length : idx;
-}
-
 /** SQL CASE fragment for {@link laneRank}, keyed by the given `priority_lane` column/alias. */
 export function laneRankSql(laneCol: string): string {
   const whens = LANE_RANK_ORDER

@@ -18,8 +18,6 @@ import { z } from 'zod';
 
 // ── Vocabulary (mirrors beta_applications CHECK constraints) ────────────────
 
-const BETA_APPLICATION_TIERS = ['waitlist', 'application'] as const;
-
 export const BETA_APPLICATION_STATUSES = [
   'RECEIVED',
   'UNDER_REVIEW',

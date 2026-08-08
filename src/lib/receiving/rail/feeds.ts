@@ -202,12 +202,6 @@ async function fetchScannedRows(rt: RailFetchRuntime): Promise<ReceivingLineRow[
 // Unbox "Received" matched source — recently UNBOXED cartons (view=activity).
 // Merged with new door-scans + unfound in buildUnboxReceivedFetcher; the
 // per-source order is irrelevant since the union is re-sorted by received recency.
-const ACTIVITY_SOURCE: ReceivingLinesQuery = {
-  segment: 'activity',
-  view: 'activity',
-  sort: 'unboxed_newest',
-};
-
 // Unbox sidebar — cartons scanned on the Unbox surface (ops UNBOX_SCAN_OPENED).
 const UNBOX_OPENED_SOURCE: ReceivingLinesQuery = {
   segment: 'unbox-opened',

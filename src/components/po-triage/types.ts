@@ -21,21 +21,6 @@ export interface TriageRow {
   resolved_at: string | null;
 }
 
-interface TriagePileBucket {
-  items: TriageRow[];
-  count: number;
-  truncated: boolean;
-}
-
-type TriagePiles = Record<TriagePile, TriagePileBucket>;
-
-interface TriagePileMeta {
-  id: TriagePile;
-  label: string;
-  short: string;
-  helper: string;
-}
-
 export interface TriageDetailBody {
   text: string;
   /** DOMPurify-sanitized HTML. null when the source had no text/html part. */
@@ -101,27 +86,4 @@ export const LLM_FIELD_LABEL: Record<LlmFieldKey, string> = {
   line_items_count: 'Line items',
   ship_to:          'Ship to',
 };
-
-function getFieldState(
-  state: Record<string, unknown>,
-  field: string,
-): TriageFieldState | undefined {
-  const fields = state?.fields;
-  if (!fields || typeof fields !== 'object') return undefined;
-  const f = (fields as Record<string, unknown>)[field];
-  if (!f || typeof f !== 'object') return undefined;
-  return f as TriageFieldState;
-}
-
-/**
- * AI-suggested triage pile, written into triage_state.suggested_pile by the
- * extract endpoint. Advisory only — the operator confirms before the email
- * moves. The model never suggests the terminal `done` pile.
- */
-interface SuggestedPileState {
-  value: Exclude<TriagePile, 'done'>;
-  confidence: 'high' | 'medium' | 'low';
-  source: 'llm';
-  extracted_at: string;
-}
 
