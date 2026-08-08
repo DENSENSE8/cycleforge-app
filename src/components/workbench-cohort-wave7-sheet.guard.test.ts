@@ -99,7 +99,7 @@ const GRID_SURFACES: {
     label: 'Repair',
     view: 'src/components/repair/RepairTable.tsx',
     triageFiles: ['src/components/repair/RepairWorkspaceHeader.tsx'],
-    gridView: 'src/components/repair/repair-grid/RepairGridView.tsx',
+    gridView: 'src/components/repair/RepairTable.tsx',
     definition: REPAIR_TABLE_DEFINITION,
   },
   {

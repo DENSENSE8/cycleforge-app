@@ -48,7 +48,7 @@ export function makeRepairGridDescriptor(
 }
 
 // No pre-built canonical descriptor: the column set is now resolved per staffer
-// by `useGridColumnVisibility`, so `RepairGridView` always builds from the
+// by `useGridColumnVisibility`, so the repair grid mount always builds from the
 // RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
 // honest when a track is hidden). A module-level constant built from the full
 // column list would have been wrong for every staffer with a delta.

@@ -88,7 +88,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/repair/repair-grid/RepairGridColumnHeader.tsx',
-    'src/components/repair/repair-grid/RepairGridView.tsx',
+    'src/components/repair/RepairTable.tsx',
   ],
   [
     'src/components/outbound/ready/grid/ReadyGridColumnHeader.tsx',
