@@ -6,7 +6,7 @@
  *   chrome    → `WorkbenchChromeHeader` `density="band"` on `WORKBENCH_SHEET_CHROME`
  *               (Unbox flush — no side gutters) — lane tabs left, TechRailSearchBar,
  *               due-horizon refine in `right`, Add (watch ticket) in `trailing`
- *   collection→ `LedgerGridSurface` `surface="sheet"` via `MyDayGridView`
+ *   collection→ `LedgerGridSurface` `surface="sheet"` (mounted via NonlinearTableHost)
  *   record    → `RightRailHost` (non-modal) via `MyDayTaskInspectorRail`
  *               or `MyDayWatchRail` (`?watch=1` — ticket / tracking intake)
  *   rail      → `HomeContextPanel` (saved views), via the `home` route key
@@ -42,7 +42,7 @@
  * grid owns its own scroll (`display/workbench.md` → Sticky docking).
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
@@ -58,7 +58,19 @@ import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
 import { MyDayTaskInspectorRail } from './MyDayTaskInspector';
 import { MyDayWatchRail } from './MyDayWatchRail';
 import { MyDayWatchTicketAction } from './MyDayWatchTicketAction';
-import { MyDayGridView } from './grid/MyDayGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { RowGroup } from '@/lib/group-rows';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import {
+  defaultDirForMyDayGridSort,
+  isMyDayGridSortable,
+  type MyDayGridColumn,
+  type MyDayGridColumnKey,
+} from '@/lib/my-day/my-day-grid-layout';
+import { MY_DAY_TABLE_BINDING } from './grid/my-day-table-definition';
+import { MyDayGridColumnHeader } from './grid/MyDayGridColumnHeader';
+import { MyDayGridRow } from './grid/MyDayGridRow';
 import { useMyDayFeed } from './useMyDayFeed';
 import { useMyDayView } from './useMyDayView';
 import {
@@ -73,7 +85,39 @@ import {
   myDayTasksFromFeed,
   searchMyDayTasks,
   type MyDayLaneFilter,
+  type MyDayTask,
 } from '@/lib/my-day/my-day-tasks';
+
+function compareMyDayTasks(
+  a: MyDayTask,
+  b: MyDayTask,
+  key: MyDayGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  switch (key) {
+    case 'task':
+      return sign * a.title.localeCompare(b.title);
+    case 'lane':
+      return sign * a.lane.localeCompare(b.lane);
+    case 'queue':
+      return sign * a.queueLabel.localeCompare(b.queueLabel);
+    case 'record':
+      return sign * (a.recordLabel || '').localeCompare(b.recordLabel || '');
+    case 'due':
+      // Absent deadlines sort last in BOTH directions — a task with no due date
+      // is not "the most urgent thing today", which is what an empty-string
+      // compare would claim under `desc`.
+      if (!a.deadlineAt && !b.deadlineAt) return 0;
+      if (!a.deadlineAt) return 1;
+      if (!b.deadlineAt) return -1;
+      return sign * a.deadlineAt.localeCompare(b.deadlineAt);
+    case 'status':
+      return sign * (a.status || '').localeCompare(b.status || '');
+    default:
+      return 0;
+  }
+}
 
 export function MyDayWorkspace() {
   const { data, isLoading, isError } = useMyDayFeed();
@@ -136,6 +180,41 @@ export function MyDayWorkspace() {
       ),
     [counts],
   );
+
+  // Grid adapter (was `MyDayGridView`): the workspace mounts the registry host
+  // directly. Today is a flat list — no fold, no day bands. Column sort is
+  // URL-durable via `?colsort=`/`?coldir=`.
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<MyDayGridColumnKey>({
+    isColumn: isMyDayGridSortable,
+    defaultDir: defaultDirForMyDayGridSort,
+  });
+
+  // One-shot settle tick after first data — the virtualized grid can otherwise
+  // paint blank until the first interaction when nothing else re-renders.
+  const [, settleTick] = useState(0);
+  const hasGridRows = visibleTasks.length > 0;
+  useEffect(() => {
+    if (isLoading || !hasGridRows) return;
+    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
+    return () => cancelAnimationFrame(raf);
+  }, [isLoading, hasGridRows]);
+
+  const orderGroupsByDate = useMemo(() => {
+    const ordered =
+      columnSort && sortDir
+        ? [...visibleTasks].sort((a, b) => compareMyDayTasks(a, b, columnSort, sortDir))
+        : visibleTasks;
+    const groups: RowGroup<MyDayTask>[] = ordered.map((task) => ({
+      key: `task:${task.id}`,
+      rows: [task],
+    }));
+    return [['', groups]] as [string, RowGroup<MyDayTask>[]][];
+  }, [visibleTasks, columnSort, sortDir]);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas text-text-default">
@@ -205,8 +284,14 @@ export function MyDayWorkspace() {
             </p>
           </div>
         ) : (
-          <MyDayGridView
-            tasks={visibleTasks}
+          <NonlinearTableHost<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
+            binding={MY_DAY_TABLE_BINDING}
+            orderGroupsByDate={orderGroupsByDate}
+            rows={visibleTasks}
+            getRowId={(t) => t.id}
+            sort={columnSort}
+            dir={sortDir}
+            onSortChange={setSort}
             columnTriggerPortalTarget={controlsEl}
             loading={isLoading}
             // Settled-with-nothing on a "what needs me" queue is an ALL-CLEAR,
@@ -222,9 +307,35 @@ export function MyDayWorkspace() {
                   ? `No tasks match “${query.trim()}”. Clear the filter to see the rest.`
                   : `Nothing in ${myDayLaneLabel(lane)} right now — try All.`
             }
-            isFiltered={isFiltered}
-            selectedTaskId={taskId}
-            onSelectTask={(task) => setTaskId(task.id)}
+            isSearching={isFiltered}
+            scrollRef={gridScrollRef}
+            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+              <MyDayGridColumnHeader
+                columns={visible}
+                activeSort={columnSort}
+                sortDir={sortDir}
+                onSortColumn={toggleColumnSort}
+                onResizeColumn={onResizeColumn}
+                onResetColumn={onResetColumn}
+              />
+            )}
+            renderGroup={(group, _stripe, { columns: visible }) => (
+              <MyDayGridRow
+                key={group.rows[0].id}
+                task={group.rows[0]}
+                isSelected={group.rows[0].id === taskId}
+                onSelect={(task) => setTaskId(task.id)}
+                columns={visible}
+              />
+            )}
+            renderRow={(task, _stripe, { columns: visible }) => (
+              <MyDayGridRow
+                task={task}
+                isSelected={task.id === taskId}
+                onSelect={(t) => setTaskId(t.id)}
+                columns={visible}
+              />
+            )}
           />
         )}
       </div>
