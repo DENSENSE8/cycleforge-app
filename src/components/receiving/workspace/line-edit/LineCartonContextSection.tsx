@@ -27,6 +27,7 @@ import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
   getReceivingStatusDotTip,
+  getReceivingStatusPillClass,
 } from '@/lib/receiving/rail/status';
 import { useCartonPoTotal } from './hooks/useCartonPoTotal';
 import type { UnboxLineController } from './unbox-line-controller';
@@ -106,6 +107,11 @@ interface LineCartonContextSectionProps {
   onOpenMovePhotosExternal?: () => void;
   /** Unbox: open Photos → Send in Displays. */
   onSendToTicketExternal?: () => void;
+  /**
+   * Unbox: suppress Photos hover toolbar (multi-verbs in Displays Actions).
+   * Pill click stays send-to-phone.
+   */
+  suppressPhotoHoverGallery?: boolean;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -134,6 +140,7 @@ export function LineCartonContextSection({
   photoStage,
   onOpenMovePhotosExternal,
   onSendToTicketExternal,
+  suppressPhotoHoverGallery = false,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
 
@@ -158,12 +165,13 @@ export function LineCartonContextSection({
       // Keeping it here doubled the same fraction in two places with two grains
       // (active-line vs carton), which is how they drifted.
       qty={null}
-      // Same dot + label the operator just clicked in the sidebar rail — the
+      // Same coarse stage the operator just clicked in the sidebar rail — the
       // rail SoT owns the unmatched / Zoho-received special cases, so the band
       // and the rail can never disagree about a carton's stage. Tip adds the
       // inventory-sync sentence when coarse status is Unboxed.
       lifecycle={{
         dotClass: getReceivingStatusDot(row),
+        pillClass: getReceivingStatusPillClass(row),
         label: getReceivingStatusDotLabel(row),
         tip: getReceivingStatusDotTip(row, inventoryProviderLabel),
       }}
@@ -224,6 +232,7 @@ export function LineCartonContextSection({
         onSendToTicketExternal ?? (() => c.setPhotoNoteOpen(true))
       }
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+      suppressPhotoHoverGallery={suppressPhotoHoverGallery}
     />
   );
 }

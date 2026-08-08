@@ -1,4 +1,8 @@
 import type { SerialMatchedOrder } from '@/components/receiving/workspace/SerialMatchResult';
+import type {
+  ActiveRowSlot,
+  PoLineSerialActions,
+} from '@/components/receiving/workspace/po-lines-accordion-types';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export interface UnfoundLine {
@@ -21,14 +25,6 @@ export interface UnfoundLine {
   }>;
 }
 
-/** Helpers passed to a custom {@link UnmatchedItemsSectionProps.renderLineActions}. */
-export interface UnmatchedLineRenderHelpers {
-  /** Update condition_grade via /api/receiving/lines/[id]/condition. */
-  onConditionChange: (next: string) => void;
-  /** Optimistic-set + refresh trigger so the parent can know to refetch. */
-  refresh: () => void;
-}
-
 export interface UnmatchedItemsSectionProps {
   receivingId: number;
   /** Staff id for serial scans (POST /api/receiving/scan-serial). */
@@ -41,6 +37,8 @@ export interface UnmatchedItemsSectionProps {
    * the parent can pair the order with the carton + open a prefilled claim.
    */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null, serial: string) => void;
+  /** RETURN match → Displays Timeline (full serial genealogy). */
+  onOpenReturnHistory?: () => void;
   /**
    * Fired whenever a condition grade is picked on this carton (per-line pill or
    * the carton-level serial-scan card). LineEditPanel mirrors it into the panel
@@ -59,15 +57,38 @@ export interface UnmatchedItemsSectionProps {
   requireSerialConfirmation?: boolean;
   onSerialAbsentChange?: (next: { absent: boolean; reason: string | null }) => void;
   /**
-   * Optional render override for the per-line action area (replaces the
-   * default `ConditionPills` + serial card). Use this from the testing
-   * workspace to drop in `TestingStatusPills` + `InlineSerialAdder` per line so
-   * an unmatched carton's items can be tested without round-tripping through
-   * receiving. When omitted, the section keeps its default receiving behavior.
+   * Optional active-row leaf override (Testing verdict pills). When omitted,
+   * the surface uses {@link ActiveLineConditionSerial} — Unbox / Arrival default.
    */
-  renderLineActions?: (line: UnfoundLine, helpers: UnmatchedLineRenderHelpers) => React.ReactNode;
+  activeRowSlot?: ActiveRowSlot;
+  /**
+   * Cold-open seed for the accordion siblings key (never-blank). Testing /
+   * workspace hosts pass the known selected line so frame 1 paints before
+   * `GET /api/receiving/:id` returns.
+   */
+  placeholderActiveRow?: ReceivingLineRow;
+  /**
+   * Testing only: hide needs_test=false lines (matched accordion parity).
+   */
+  hideNoTestLines?: boolean;
+  /**
+   * Optional header serial chip actions. When omitted and unit chrome is on,
+   * the surface wires unfound scan-serial CRUD. Testing passes its controller.
+   */
+  activeSerialActions?: PoLineSerialActions;
   /** "Scan a serial number" card. Hidden in triage — serials are an unbox step. */
   showSerialScan?: boolean;
+  /**
+   * Accordion interactivity. Decoupled from {@link showSerialScan} so Arrival
+   * can keep editable unfound lines while unit capture stays off.
+   * Defaults to `!showSerialScan` when omitted (legacy callers).
+   */
+  readOnly?: boolean;
+  /**
+   * When false, meta collapses to qty | SKU | price (Arrival — no units chrome).
+   * Defaults true.
+   */
+  unitsChrome?: boolean;
   /**
    * Triage only: header CTA that re-opens this carton in unbox mode (deep
    * link `/receiving?recvId=…`). Omitted in the unbox workspace itself.

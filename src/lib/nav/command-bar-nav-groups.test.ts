@@ -65,17 +65,23 @@ test('pin contains Home Search Media Plans Chat; footer contains Studio Admin Se
   );
 });
 
-test('Scan Stations emits Receiving subgroup chrome before Arrival', () => {
+test('Scan Stations emits Receiving then Walk-In subgroup chrome before leaves', () => {
   const groups = buildCommandBarNavGroups();
   const floor = groups.find((g) => g.id === 'floor');
   assert.ok(floor);
 
-  const first = floor!.rows[0];
-  assert.ok(first);
-  assert.equal(first.type, 'subgroup');
-  if (first.type === 'subgroup') {
-    assert.equal(first.id, 'receiving');
-    assert.equal(first.label, 'Receiving');
+  const subgroupRows = floor!.rows.filter((r) => r.type === 'subgroup');
+  assert.deepEqual(
+    subgroupRows.map((r) => (r.type === 'subgroup' ? r.id : null)),
+    ['receiving', 'walk-in'],
+  );
+  assert.equal(subgroupRows[0]?.type, 'subgroup');
+  if (subgroupRows[0]?.type === 'subgroup') {
+    assert.equal(subgroupRows[0].label, 'Receiving');
+  }
+  assert.equal(subgroupRows[1]?.type, 'subgroup');
+  if (subgroupRows[1]?.type === 'subgroup') {
+    assert.equal(subgroupRows[1].label, 'Walk-In');
   }
 
   const arrival = floor!.rows.find(
@@ -85,6 +91,14 @@ test('Scan Stations emits Receiving subgroup chrome before Arrival', () => {
   assert.equal(arrival!.type, 'page');
   if (arrival!.type === 'page') {
     assert.equal(arrival.indented, true);
+  }
+
+  const pickup = floor!.rows.find(
+    (r) => r.type === 'page' && r.id === 'pickup',
+  );
+  assert.ok(pickup);
+  if (pickup!.type === 'page') {
+    assert.equal(pickup.indented, true);
   }
 
   const testing = floor!.rows.find(

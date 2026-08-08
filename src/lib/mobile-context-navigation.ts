@@ -44,7 +44,7 @@ const DASHBOARD_VIEW_OPTIONS: MobileContextOption[] = [
   { id: 'tested', label: 'Tested' },
   { id: 'packed', label: 'Packed' },
   { id: 'shipped', label: 'Shipped' },
-  { id: 'fba', label: 'FBA prep' },
+  { id: 'fba', label: 'Amazon Prep' },
 ];
 
 const RECEIVING_MODE_OPTIONS: MobileContextOption[] = [
@@ -55,7 +55,7 @@ const RECEIVING_MODE_OPTIONS: MobileContextOption[] = [
 ];
 
 const WALK_IN_MODE_OPTIONS: MobileContextOption[] = [
-  { id: 'repairs', label: 'Repairs' },
+  { id: 'repairs', label: 'Repair History' },
   { id: 'sales', label: 'Sales' },
   { id: 'pickups', label: 'Pickups' },
 ];

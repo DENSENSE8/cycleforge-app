@@ -15,9 +15,10 @@ import { createPortal } from 'react-dom';
 import { Clock, Pencil, PrinterAlt, Receipt } from '../Icons';
 import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import DeleteButton from '@/components/ui/DeleteButton';
 import {
   PaneHeader,
   PaneHeaderActionBar,
@@ -212,37 +213,39 @@ export function RepairDetailsPanel({
           {c.activeTab === 'links' ? <RepairLinkageSection c={c} /> : null}
         </div>
 
-        <div className="shrink-0 bg-surface-card pb-8">
-          {(c.isEditingNotes || hasSavedNotes) ? (
-            c.isEditingNotes ? (
-              <ShippedNotesComposer
-                value={c.notes}
-                onChange={c.setNotes}
-                onCancel={() => {
-                  c.setNotes(repair.notes || '');
-                  c.setIsEditingNotes(false);
-                }}
-                onSubmit={c.handleSaveNotes}
-                isSaving={c.isSaving}
-              />
-            ) : (
-              <ShippedNotesComposer
-                value={String(repair.notes || '')}
-                readOnly
-                onClick={() => c.setIsEditingNotes(true)}
-              />
-            )
-          ) : null}
-          <section className="mx-8 pt-2">
-            <DeleteButton
+        <InspectorActionFloor
+          above={
+            c.isEditingNotes || hasSavedNotes ? (
+              c.isEditingNotes ? (
+                <ShippedNotesComposer
+                  value={c.notes}
+                  onChange={c.setNotes}
+                  onCancel={() => {
+                    c.setNotes(repair.notes || '');
+                    c.setIsEditingNotes(false);
+                  }}
+                  onSubmit={c.handleSaveNotes}
+                  isSaving={c.isSaving}
+                />
+              ) : (
+                <ShippedNotesComposer
+                  value={String(repair.notes || '')}
+                  readOnly
+                  onClick={() => c.setIsEditingNotes(true)}
+                />
+              )
+            ) : undefined
+          }
+          delete={
+            <InspectorFlushDelete
               onConfirm={c.handleDelete}
               onDeleted={onClose}
-              label="Delete"
-              armedLabel="Click Again To Confirm"
-              className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 text-white text-role-micro uppercase tracking-wider transition hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              label="Delete repair"
+              confirmLabel="Click again to confirm delete"
+              data-testid="repair-details-delete"
             />
-          </section>
-        </div>
+          }
+        />
 
         {c.isMounted && c.showPickupFlow
           ? createPortal(

@@ -4,8 +4,8 @@
  * Layers (outer → inner):
  *   1. {@link ScanBandShell} — flush 40px sidebar band + {@link ScanBandGlowHost}
  *      (Framer glow).
- *   2. {@link ThemedStationScanBar} — staff theme border + focus ring + right inset
- *   3. {@link StationScanBar} — input, icon slot, hotkey gear, sweep
+ *   2. {@link ThemedStationScanBar} — staff theme border + focus + submit trace
+ *   3. {@link StationScanBar} — full-bleed input + frosted absolute mode rail
  *   4. {@link StationScanModeRail} — full-height flush mode segments (armed =
  *      solid surface-card, same plane as the work canvas)
  *   5. {@link ./tokens.ts} — padding, height, icon geometry (single knob)

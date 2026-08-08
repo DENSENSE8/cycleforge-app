@@ -63,6 +63,7 @@ import { useReceivingDeepLink } from '@/components/station/useReceivingDeepLink'
 import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { IncomingGridView } from '@/components/station/incoming-grid/IncomingGridView';
+import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import { ReceivingDrillHost } from '@/components/station/receiving-grid/ReceivingDrillHost';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -75,10 +76,12 @@ import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { toast } from '@/lib/toast';
 import {
   dispatchReceivingOpenHistoryTriage,
+  dispatchReceivingOpenIncomingDetails,
 } from '@/utils/events';
 import {
   historyTriageTargetFromRow,
 } from '@/lib/receiving/history-triage-row';
+import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
 import {
   dispatchSelectLine,
   poGroupAnchorMs,
@@ -274,7 +277,29 @@ export default function ReceivingLinesTable({
     dispatchSelectLine(row, { recordView: false });
   }, []);
 
-  const { data, isLoading, localRows } = useReceivingLinesData({
+  /**
+   * Unbox pinned Inbound tab — open Incoming details rail (same event as order-
+   * chip Details). Must not `dispatchSelectLine` (that opens LineEditPanel).
+   */
+  const openIncomingDetails = useCallback((row: ReceivingLineRow) => {
+    const resolved = incomingDetailsTargetFromRow(row);
+    if (!resolved.ok) {
+      toast.info(resolved.toast);
+      return;
+    }
+    const t = resolved.target;
+    dispatchReceivingOpenIncomingDetails({
+      poId: t.poId,
+      poNumber: t.poNumber,
+      shipmentId: t.shipmentId,
+      inboundSourceType: t.inboundSourceType,
+      inboundSourceOrderId: t.inboundSourceOrderId,
+      receivingId: t.receivingId,
+      receivingLineId: t.receivingLineId,
+    });
+  }, []);
+
+  const { data, isLoading, isError, refetch, localRows } = useReceivingLinesData({
     mode,
     modeContext,
     isIncomingMode,
@@ -293,7 +318,8 @@ export default function ReceivingLinesTable({
   const ukpiParam = searchParams.get(UNBOX_KPI_FILTER_PARAM);
   const unboxTabForFilter = getUnboxWorkspaceTabFromSearch(searchParams);
   const kpiFilteredRows = useMemo(() => {
-    if (!isUnboxWorkbench) return localRows;
+    // Inbound embed is a foreign collection — Unbox KPI predicates do not apply.
+    if (!isUnboxWorkbench || unboxTabForFilter === 'incoming') return localRows;
     const predicate = unboxKpiRowFilter(ukpiParam, unboxTabForFilter);
     return predicate ? localRows.filter(predicate) : localRows;
   }, [isUnboxWorkbench, localRows, ukpiParam, unboxTabForFilter]);
@@ -344,7 +370,9 @@ export default function ReceivingLinesTable({
       ? openHistoryTriage
       : isHistorySurface
         ? openHistoryCarton
-        : undefined,
+        : embedded && isIncomingMode
+          ? openIncomingDetails
+          : undefined,
     // A click on the Unbox FEED opens the carton but does NOT stamp the
     // operator's recents. Browsing a queue is navigation; Recent answers "which
     // cartons did I actually open", and if the map itself counted it would
@@ -438,6 +466,12 @@ export default function ReceivingLinesTable({
 
   const emptyMessage = mode.emptyMessage(modeContext);
 
+  // Fourth settled state (degraded): the authoritative list fetch failed AND we
+  // have nothing to paint. Show a retryable box instead of the skeleton-forever
+  // / silent-empty this surface used to fall into. Rows present (cache/seed) →
+  // keep showing them; a background refetch error must not blank the grid.
+  const incomingDegraded = isIncomingMode && isError && localRows.length === 0;
+
   // Pipeline (board) layout for Incoming / History (behind the boards flag). The
   // board buckets the flat rows by the receiving lane SoT and day-bands per lane;
   // it replaces the header + dense list (SwimlaneBoard supplies its own toolbar).
@@ -467,6 +501,7 @@ export default function ReceivingLinesTable({
         isMobile={isMobile}
         isIncoming={isIncomingMode}
         isHistory={isHistoryMode}
+        statusVocabulary={isHistoryMode ? 'coarse' : 'fine'}
         activityAxis={historyAxis}
         selectMode={selectMode}
         isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
@@ -474,7 +509,12 @@ export default function ReceivingLinesTable({
       />
     );
     return (
-      <TableColumnConfigProvider tableId={isIncomingMode ? 'incoming' : 'receiving'}>
+      // Board layout can fire inside the Unbox Inbound embed (`?layout=board`) —
+      // keep it on the same `incoming_embed` bucket as the embed sheet so the
+      // split from `/incoming` holds across both presentations (D13).
+      <TableColumnConfigProvider
+        tableId={isIncomingMode ? (embedded ? 'incoming_embed' : 'incoming') : 'receiving'}
+      >
         <div className="flex h-full min-w-0 overflow-hidden bg-surface-card">
           {isIncomingMode ? (
             <StationPipelineBoard<ReceivingLineRow, ReceivingIncomingLane>
@@ -543,6 +583,7 @@ export default function ReceivingLinesTable({
         }
         activityAxis={historyAxis}
         isHistory={isHistoryMode}
+        statusVocabulary={isHistoryMode ? 'coarse' : 'fine'}
         selectGutterChrome={selectGutterChrome}
         clickSelect={false}
         onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
@@ -567,6 +608,7 @@ export default function ReceivingLinesTable({
           }
           activityAxis={historyAxis}
           isHistory={isHistoryMode}
+          statusVocabulary={isHistoryMode ? 'coarse' : 'fine'}
           selectGutterChrome={selectGutterChrome}
           clickSelect={false}
           onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
@@ -605,7 +647,45 @@ export default function ReceivingLinesTable({
 
   // Unbox workbench embeds the table under UnboxWorkspaceHeader — week pill
   // (History only) portals into the top tabs bar controls slot.
+  // Pinned Inbound (`?unboxview=incoming`): IncomingGridView on its OWN
+  // `tableId="incoming_embed"` prefs bucket — hiding a heavy column here never
+  // touches the full `/incoming` desk density (Gemini D13). Triage/read only:
+  // it mounts the grid directly, never the Incoming desk header — so no
+  // Check/Import/Add CTA cluster on this tab (Unbox owns Band 1).
   if (embedded) {
+    if (isIncomingMode) {
+      return (
+        <TableColumnConfigProvider tableId="incoming_embed">
+          {incomingDegraded ? (
+            <div className="p-3">
+              <GridDegradedBox onRetry={refetch} />
+            </div>
+          ) : (
+            <IncomingGridView
+              tableId="incoming_embed"
+              columnTriggerPortalTarget={columnDisplayPortalTarget}
+              filteredGroupedRecords={filteredGroupedRecords}
+              serverSorted={mode.serverSorted}
+              loading={isLoading && localRows.length === 0}
+              emptyMessage={emptyMessage}
+              isMobile={isMobile}
+              selectMode={selectMode}
+              selectedId={selectedId}
+              selectedIds={selectedIds}
+              handleSelectRow={handleSelectRow}
+              handleToggleRow={handleToggleRow}
+              selectGutterChrome={selectGutterChrome}
+              clickSelect={incomingClickSelect}
+              columns={incomingGridColumnsFor({
+                trackingFiltered: modeContext.trackingIn.length > 0,
+                removedLane: mode.id === 'incoming_removed',
+              })}
+              scrollRef={scrollRef}
+            />
+          )}
+        </TableColumnConfigProvider>
+      );
+    }
     const portaledToolbar =
       toolbarPortalTarget != null && chromePill != null
         ? createPortal(chromePill, toolbarPortalTarget)
@@ -651,6 +731,11 @@ export default function ReceivingLinesTable({
           </div>
           {isIncomingMode ? (
             <div className={WORKBENCH_SHEET_HOST}>
+              {incomingDegraded ? (
+                <div className="p-3">
+                  <GridDegradedBox onRetry={refetch} />
+                </div>
+              ) : (
               <IncomingGridView
                 columnTriggerPortalTarget={incomingControlsEl}
                 filteredGroupedRecords={filteredGroupedRecords}
@@ -671,6 +756,7 @@ export default function ReceivingLinesTable({
                 })}
                 scrollRef={scrollRef}
               />
+              )}
             </div>
           ) : (
             <div className={WORKBENCH_SHEET_HOST}>{receivingGrid()}</div>

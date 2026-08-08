@@ -1,7 +1,8 @@
 # Unbox station — Displays resize + middle detach — HANDOFF
 
-**Status:** OPEN — operator still cannot meaningfully resize the right Displays
-panel; middle scan work stays glued to Displays (`flex-1` absorbs surplus).
+**Status:** SUPERSEDED (2026-08-07) — operator feedback: always-expanded
+Displays (`flex-1` fill leftover) beats detach/`ml-auto` gray band. SoT is
+now flush-always sandwich; see Frame column budget + `UnboxPushColumn`.
 
 **Dev server:** attach to `:3050` — never start / restart / kill.
 

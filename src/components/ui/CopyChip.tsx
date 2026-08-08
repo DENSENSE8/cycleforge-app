@@ -358,7 +358,11 @@ export function CopyChip({
       >
         {resolvedIcon ? (
           <span
-            className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${resolvedIconClass ?? ''}`}
+            className={`inline-flex shrink-0 items-center justify-center ${
+              dense
+                ? 'h-3 w-3 [&_svg]:h-3 [&_svg]:w-3'
+                : 'h-4 w-4 [&_svg]:h-4 [&_svg]:w-4'
+            } ${resolvedIconClass ?? ''}`}
             style={iconStyle}
           >
             {resolvedIcon}
@@ -391,6 +395,9 @@ export const OrderIdChip = ({
   dense,
   plain,
   platformLabel,
+  iconClass,
+  iconStyle,
+  displayWidth = 'content',
   truncateDisplay = true,
   fitDisplayWidth = false,
 }: {
@@ -401,6 +408,11 @@ export const OrderIdChip = ({
   plain?: boolean;
   /** Catalog-resolved platform name for the full-value hover label. */
   platformLabel?: string | null;
+  /** Platform accent on the `#` glyph (`platformMetaIconTone`). */
+  iconClass?: string;
+  iconStyle?: React.CSSProperties;
+  /** Fixed last-8 footprint for peek / identity headers. */
+  displayWidth?: 'content' | 'last8';
   /** Grid tracks: keep last-8 fully visible (no `33…` ellipsis). */
   truncateDisplay?: boolean;
   fitDisplayWidth?: boolean;
@@ -410,8 +422,11 @@ export const OrderIdChip = ({
     display={resolveChipDisplay(display)}
     tone="id"
     icon={plain ? null : undefined}
+    iconClass={plain ? undefined : iconClass}
+    iconStyle={plain ? undefined : iconStyle}
     dense={dense}
     platformLabel={platformLabel}
+    displayWidth={displayWidth}
     truncateDisplay={truncateDisplay}
     fitDisplayWidth={fitDisplayWidth}
     // Empty → quiet em dash (resolveChipDisplay / 2B); disable copy so the button
@@ -446,6 +461,10 @@ export const PoChip = ({
   display,
   dense,
   platformLabel,
+  iconClass,
+  iconStyle,
+  displayWidth = 'content',
+  fitDisplayWidth = false,
   disableCopy,
   width = 'w-fit max-w-full',
 }: {
@@ -458,6 +477,12 @@ export const PoChip = ({
   dense?: boolean;
   /** Catalog-resolved source-platform name for the full-value hover label. */
   platformLabel?: string | null;
+  /** Platform accent on the `#` glyph (`platformMetaIconTone`). */
+  iconClass?: string;
+  iconStyle?: React.CSSProperties;
+  /** Fixed last-8 footprint for peek / identity headers. */
+  displayWidth?: 'content' | 'last8';
+  fitDisplayWidth?: boolean;
   disableCopy?: boolean;
   width?: string;
 }) => (
@@ -471,8 +496,12 @@ export const PoChip = ({
     // one module; the explicit call sites keep passing an identical value.
     display={resolveChipDisplay(display ?? getLast8(value))}
     tone="id"
+    iconClass={iconClass}
+    iconStyle={iconStyle}
     dense={dense}
     platformLabel={platformLabel}
+    displayWidth={displayWidth}
+    fitDisplayWidth={fitDisplayWidth}
     width={width}
     disableCopy={disableCopy}
   />
@@ -500,6 +529,8 @@ export const TrackingChip = ({
    * sits in a wide grid/flex slot (e.g. FBA tracking bundle header beside “N SKUs · M units”).
    */
   fitDisplayWidth = true,
+  /** Fixed last-8 footprint — same as OrderIdChip / PoChip in peek headers. */
+  displayWidth = 'content',
   dense,
   disableTooltip = false,
 }: {
@@ -512,6 +543,7 @@ export const TrackingChip = ({
   showIcon?: boolean;
   carrierHint?: string | null;
   fitDisplayWidth?: boolean;
+  displayWidth?: 'content' | 'last8';
   dense?: boolean;
   /** Skip the site hover copy bubble — click still copies. */
   disableTooltip?: boolean;
@@ -526,14 +558,14 @@ export const TrackingChip = ({
       icon={
         showIcon
           ? brandPaint
-            ? <CarrierMark meta={brand} />
+            ? <CarrierMark meta={brand} footprint="chip" />
             : undefined
           : null
       }
       // Brand mark carries its own hex; don't force house blue on top.
       iconClass={
         showIcon && brandPaint
-          ? 'inline-flex items-center justify-center'
+          ? 'text-inherit'
           : undefined
       }
       width={width}
@@ -543,6 +575,7 @@ export const TrackingChip = ({
       disableTooltip={disableTooltip}
       outerPad={showIcon ? 'chip' : 'flush'}
       fitDisplayWidth={fitDisplayWidth}
+      displayWidth={displayWidth}
       dense={dense}
       carrierHint={carrierHint}
     />
@@ -600,11 +633,16 @@ export const SkuScanRefChip = ({
   display,
   onCopy,
   dense,
+  fitDisplayWidth = false,
+  displayWidth = 'content',
 }: {
   value: string;
   display: string;
   onCopy?: (value: string) => void;
   dense?: boolean;
+  /** Peek / dense stacks pass true so SKU shares the Order/Tracking face box. */
+  fitDisplayWidth?: boolean;
+  displayWidth?: 'content' | 'last8';
 }) => (
   <CopyChip
     value={value}
@@ -612,6 +650,8 @@ export const SkuScanRefChip = ({
     tone="sku"
     onCopy={onCopy}
     dense={dense}
+    fitDisplayWidth={fitDisplayWidth}
+    displayWidth={displayWidth}
   />
 );
 
@@ -835,6 +875,8 @@ export const SerialChip = ({
   disableTooltip = false,
   dense,
   pending,
+  displayWidth = 'content',
+  fitDisplayWidth = true,
 }: {
   value: string;
   /** Optional label override; normally derived from `value`. When set, used
@@ -849,6 +891,10 @@ export const SerialChip = ({
   dense?: boolean;
   /** Optimistic add/remove — mutes the chip while the server round-trip is in flight. */
   pending?: OptimisticSerialFlag;
+  /** Peek stacks pass `last8` so serial shares the Order/Tracking face box. */
+  displayWidth?: 'content' | 'last8';
+  /** Default true — peek spreads PEEK_FACE; keep shrink-wrap for tables. */
+  fitDisplayWidth?: boolean;
 }) => (
   <CopyChip
     value={value}
@@ -860,7 +906,8 @@ export const SerialChip = ({
     tone={pending === 'removing' ? 'id' : 'serial'}
     width={width}
     truncateDisplay={false}
-    fitDisplayWidth
+    fitDisplayWidth={fitDisplayWidth}
+    displayWidth={displayWidth}
     disableTooltip={disableTooltip}
     disableCopy={pending != null}
     dense={dense}

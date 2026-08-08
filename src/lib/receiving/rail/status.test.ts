@@ -2,11 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
+  getReceivingStatusBadgeClass,
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
   getReceivingStatusDotTip,
+  getReceivingStatusPillClass,
   getUnboxRecentStatusDot,
   getUnboxRecentStatusDotLabel,
+  receivingCoarseStatusPaint,
 } from './status';
 
 function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
@@ -46,6 +49,21 @@ test('getReceivingStatusDotLabel — door-scanned matched carton reads Scanned',
   const r = row({ workflow_status: 'MATCHED', quantity_received: 0 });
   assert.equal(getReceivingStatusDotLabel(r), 'Scanned');
   assert.ok(getReceivingStatusDot(r).includes('blue') || getReceivingStatusDot(r).includes('sky'));
+});
+
+test('getReceivingStatusPillClass — tracks the same coarse stage as the rail dot', () => {
+  assert.match(
+    getReceivingStatusPillClass(row({ workflow_status: 'MATCHED' })),
+    /border-blue-200/,
+  );
+  assert.match(
+    getReceivingStatusPillClass(row({ workflow_status: 'UNBOXED' })),
+    /border-indigo-200/,
+  );
+  assert.match(
+    getReceivingStatusPillClass(row({ workflow_status: 'DONE' })),
+    /border-emerald-200/,
+  );
 });
 
 test('getUnboxRecentStatusDot — matched-but-not-unboxed carton reads Scanned', () => {
@@ -90,4 +108,35 @@ test('getReceivingStatusDotTip — UNBOXED names inventory provider', () => {
 test('getReceivingStatusDotTip — DONE / MATCHED → null (short label stays)', () => {
   assert.equal(getReceivingStatusDotTip(row({ workflow_status: 'DONE' }), 'Zoho Inventory'), null);
   assert.equal(getReceivingStatusDotTip(row({ workflow_status: 'MATCHED' }), 'Zoho Inventory'), null);
+});
+
+test('getReceivingStatusBadgeClass — FAILED / AWAITING_TEST → Received emerald chip', () => {
+  for (const workflow_status of ['FAILED', 'AWAITING_TEST'] as const) {
+    const r = row({ workflow_status });
+    assert.equal(getReceivingStatusDotLabel(r), 'Received');
+    assert.equal(getReceivingStatusDot(r), 'bg-emerald-500');
+    assert.match(getReceivingStatusBadgeClass(r), /bg-emerald-50/);
+    assert.match(getReceivingStatusBadgeClass(r), /text-emerald-700/);
+  }
+});
+
+test('getReceivingStatusBadgeClass — UNBOXED stays Unboxed indigo (not Received)', () => {
+  const r = row({ workflow_status: 'UNBOXED', quantity_received: 1 });
+  assert.equal(getReceivingStatusDotLabel(r), 'Unboxed');
+  assert.equal(getReceivingStatusDot(r), 'bg-indigo-500');
+  assert.match(getReceivingStatusBadgeClass(r), /bg-indigo-50/);
+});
+
+test('receivingCoarseStatusPaint — testing terminals collapse; UNBOXED keeps sync tip', () => {
+  const failed = receivingCoarseStatusPaint(row({ workflow_status: 'FAILED' }), 'Zoho Inventory');
+  assert.equal(failed.label, 'Received');
+  assert.equal(failed.tip, null);
+  assert.match(failed.badge, /emerald/);
+
+  const unboxed = receivingCoarseStatusPaint(
+    row({ workflow_status: 'UNBOXED', quantity_received: 1 }),
+    'Zoho Inventory',
+  );
+  assert.equal(unboxed.label, 'Unboxed');
+  assert.equal(unboxed.tip, 'Awaiting confirmation in Zoho Inventory');
 });

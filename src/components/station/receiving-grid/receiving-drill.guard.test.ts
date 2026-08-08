@@ -51,9 +51,15 @@ describe('Receiving History drill (adapter)', () => {
 
   it('Unbox History chrome exposes Drill|List orthogonal to compare', () => {
     const view = src('src/components/receiving/unbox/UnboxWorkspaceView.tsx');
-    // Drill|List + paint live on the History inspector View cluster (not Band 3).
+    // Drill|List + paint + compare + zoom ALL live on the inspector View
+    // cluster now (2026-08-08) — Band 3 is find + KPI + inspector, so the view
+    // only reads the chrome CONTEXT; it no longer mounts UnboxCompareChrome.
     assert.match(view, /HistoryViewTopicsCluster|history-view-chrome/);
-    assert.match(view, /UnboxCompareChrome/);
+    assert.doesNotMatch(
+      view,
+      /<UnboxCompareChrome/,
+      'compare/zoom chrome belongs to the inspector View cluster, not the Unbox view',
+    );
     const topics = src(
       'src/components/receiving/history/HistoryViewTopicsCluster.tsx',
     );

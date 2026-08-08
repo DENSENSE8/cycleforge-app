@@ -1,12 +1,12 @@
 /**
  * Source guard: every context-panel rail collapses via the SoT storage key +
  * filter-bar `RailFilterCollapseButton` (primary) and DS edge-resize
- * `onCollapse` / `onCollapseBeyondMin` (secondary) — no page-local twin / raw
- * collapse button / restored ContextPanelCollapseCue; not gated to receiving
- * routes.
+ * `onCollapseBeyondMin` (secondary) — no sash-top chevron / page-local twin /
+ * raw collapse button / restored ContextPanelCollapseCue; not gated to
+ * receiving routes.
  *
  * SoT: context-panel-column.ts → CONTEXT_PANEL_COLLAPSE
- * Layout: ContextPanelLayout.tsx → HorizontalEdgeResizeHandle.onCollapse
+ * Layout: ContextPanelLayout.tsx → HorizontalEdgeResizeHandle (drag-only)
  *         + useHorizontalEdgeResize.onCollapseBeyondMin
  *         + ContextPanelCollapseProvider
  * Filter: TechRailSearchBar auto-seats RailFilterCollapseButton under
@@ -75,19 +75,23 @@ test('resize + collapse enable for every mounted context panel (not receiving-on
   assert.doesNotMatch(LAYOUT_SRC, /===\s*['"]receiving['"]/);
 });
 
-test('collapse lives on sash-top chevron + filter trailing + drag-past-min', () => {
+test('collapse lives on filter trailing + drag-past-min (sash is drag-only)', () => {
   assert.match(LAYOUT_SRC, /HorizontalEdgeResizeHandle/);
-  // Every mounted context rail (dashboard included) wires sash onCollapse.
-  assert.match(LAYOUT_SRC, /onCollapse=\{/);
-  assert.match(LAYOUT_SRC, /collapseLabel="Hide sidebar"/);
+  // Resize sash must not grow a sash-top collapse chevron.
+  assert.doesNotMatch(LAYOUT_SRC, /collapseLabel=/);
+  assert.doesNotMatch(
+    LAYOUT_SRC,
+    /HorizontalEdgeResizeHandle[\s\S]*?onCollapse=\{/,
+  );
   assert.match(
     LAYOUT_SRC,
     /placement="inset"/,
     'Context rail hairline must be inset on the panel border-r — not an outset twin to the right',
   );
   assert.doesNotMatch(LAYOUT_SRC, /ContextPanelCollapseCue/);
-  assert.match(HANDLE_SRC, /onCollapse\?:/);
-  assert.match(HANDLE_SRC, /edge-resize-collapse/);
+  assert.doesNotMatch(HANDLE_SRC, /onCollapse/);
+  assert.doesNotMatch(HANDLE_SRC, /edge-resize-collapse/);
+  assert.doesNotMatch(HANDLE_SRC, /ChevronLeft|ChevronRight/);
   assert.match(
     HANDLE_SRC,
     /w-1 self-stretch/,
@@ -105,17 +109,38 @@ test('drag-past-min collapse wires onCollapseBeyondMin into CONTEXT_PANEL_COLLAP
   assert.doesNotMatch(COLUMN_SRC, /ContextPanelCollapseCue/);
 });
 
-test('live drag does not tween width — push.rail is open/close only', () => {
-  assert.match(LAYOUT_SRC, /widthTransition/);
-  assert.match(LAYOUT_SRC, /isDragging \|\| \(!isCollapsed && collapseSettled\)/);
-  assert.match(LAYOUT_SRC, /duration:\s*0/);
+test('park/restore snaps — no push.rail width tween (Displays twin)', () => {
+  // Instant width via style — never motion.div / motionRole.push.rail.
+  assert.match(LAYOUT_SRC, /style=\{\{\s*width: isCollapsed \? 0 : paintWidthPx\s*\}\}/);
+  assert.doesNotMatch(LAYOUT_SRC, /motionRole\.push\.rail/);
+  assert.doesNotMatch(LAYOUT_SRC, /from '@\/design-system\/motion'/);
+  assert.doesNotMatch(LAYOUT_SRC, /widthTransition|collapseSettled/);
   // Mid-drag cost must not re-publish into the park ladder.
   assert.match(LAYOUT_SRC, /publishedCostRef/);
   assert.match(LAYOUT_SRC, /if \(!isDragging\)/);
 });
 
+test('recent rail: no Framer layout projection on column resize (Displays twin)', () => {
+  const railRow = code(sourceOf('./rail-shell/RailRow.tsx'));
+  const shell = code(sourceOf('./SidebarRailShell.tsx'));
+  // layout={…} FLIPs every row when context width changes — rubber-band.
+  assert.doesNotMatch(
+    railRow,
+    /\blayout=\{/,
+    'RailRow must not enable Framer layout — sash / dual-rail resize must snap',
+  );
+  assert.doesNotMatch(
+    shell,
+    /mode=["']popLayout["']/,
+    'popLayout projects sibling layout and lags column resize; use sync',
+  );
+  assert.match(shell, /mode=["']sync["']/);
+});
+
 test('primary filter-bar collapse: provider + TechRailSearchBar auto-wire', () => {
   assert.match(LAYOUT_SRC, /ContextPanelCollapseProvider/);
+  assert.match(LAYOUT_SRC, /expand=\{expand\}/);
+  assert.match(LAYOUT_SRC, /toggle=\{toggle\}/);
   const searchBar = code(sourceOf('./tech/TechRailSearchBar.tsx'));
   assert.match(searchBar, /useContextPanelCollapse/);
   assert.match(searchBar, /RailFilterCollapseButton/);
@@ -211,10 +236,13 @@ test('collapse MRU publish is shell default + Dashboard thin-wires', () => {
   assert.match(shell, /grouped\[i\]\?\.groupSize/);
   const peekCard = code(sourceOf('./rail-shell/RailPeekCard.tsx'));
   assert.match(peekCard, /export function RailPeekCard/);
-  assert.match(peekCard, /export type RailPeekFact/);
-  // Copy affordance is the point — typed CopyChip faces, not plain text.
+  assert.match(peekCard, /export type \{ RailPeekFact \}/);
+  assert.match(peekCard, /RailPeekIdentityFacts/);
+  // Copy affordance is the point — typed CopyChip faces live on the shared
+  // identity-facts SoT (header + stacked rows), not a card-local wrap strip.
+  const peekFacts = code(sourceOf('./rail-shell/RailPeekIdentityFacts.tsx'));
   for (const chip of ['OrderIdChip', 'PoChip', 'SkuScanRefChip', 'TrackingChip', 'SerialChip', 'TicketChip', 'BinChip']) {
-    assert.match(peekCard, new RegExp(chip), `RailPeekCard must render ${chip}`);
+    assert.match(peekFacts, new RegExp(chip), `RailPeekIdentityFacts must render ${chip}`);
   }
   // Every pin-publishing rail without its own popover supplies typed facts.
   for (const rail of [
@@ -277,7 +305,7 @@ test('parked strip mini scan: publish from StationScanBar + Plus idle cell', () 
   assert.match(cell, /data-collapse-strip-scan-idle/);
   assert.match(cell, /Plus/);
   // Full-bleed h-10 — same band as StationScanBar / StationContextBar top row.
-  assert.match(cell, /SCAN_CELL_HEIGHT_CLASS = 'h-10'/);
+  assert.match(cell, /SCAN_CELL_HEIGHT_CLASS = PRIMARY_CHROME_ROW_FACE/);
   assert.match(cell, /ds-allow-control-size/);
   assert.match(cell, /ds-raw-button/);
   assert.match(cell, /useRegisterScanTarget/);
@@ -307,8 +335,8 @@ test('collapse / expand affordances use IconButton (not raw buttons)', () => {
   // not an IconButton size token — must keep the ds-raw-button escape.
   const scanCell = code(sourceOf('./tech/collapse-strip-scan-cell.tsx'));
   assert.match(scanCell, /ds-raw-button/);
-  assert.match(HANDLE_SRC, /IconButton/);
-  assert.match(HANDLE_SRC, /ChevronLeft/);
+  // Resize sash is drag-only — no IconButton / chevron collapse twin.
+  assert.doesNotMatch(HANDLE_SRC, /IconButton/);
   assert.equal(
     (HANDLE_SRC.match(/<button\b/g) ?? []).length,
     0,

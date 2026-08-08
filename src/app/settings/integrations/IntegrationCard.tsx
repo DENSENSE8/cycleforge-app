@@ -338,10 +338,15 @@ export function IntegrationCard({
                   <Button variant="primary" size="sm" icon={<Link2 />} onClick={() => setAmazonOpen(true)}>Connect</Button>
                 )}
                 {def.connect === 'ebay' && (
-                  <>
-                    <Button ref={sellerConnectRef} variant="primary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('seller')}>Connect</Button>
-                    <Button ref={buyerConnectRef} variant="secondary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('buyer')}>Add purchasing</Button>
-                  </>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button ref={sellerConnectRef} variant="primary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('seller')}>Connect</Button>
+                      <Button ref={buyerConnectRef} variant="secondary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('buyer')}>Add purchasing</Button>
+                    </div>
+                    <p className="text-role-micro leading-snug text-text-faint">
+                      Add purchasing is required for eBay purchase orders on Incoming.
+                    </p>
+                  </div>
                 )}
                 {def.connect === 'oauth' && (
                   <Button variant="primary" size="sm" icon={<Link2 />} onClick={oauthConnect}>Connect</Button>

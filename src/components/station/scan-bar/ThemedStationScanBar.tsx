@@ -7,7 +7,6 @@ import { StationScanBar, type StationScanBarProps } from './StationScanBar';
 import {
   STATION_SCAN_BAR_MODE_GLYPH_CLASS,
   STATION_SCAN_BAR_RIGHT_CELL,
-  STATION_SCAN_BAR_RIGHT_CONTENT_CLASS,
   stationScanBarFocusInputClass,
 } from './tokens';
 
@@ -20,23 +19,23 @@ export interface ThemedStationScanBarProps extends Omit<StationScanBarProps, 'in
   submitTraceClassName?: string;
   /** Show a spinner in the right rail (lookup in flight). */
   isResolving?: boolean;
-  /** Extra right-padding class when mode rails reserve space (e.g. pr-32, pr-36). */
-  rightPadClass?: string;
 }
 
 /**
  * Master scan-bar shell: {@link StationScanBar} + staff bottom-rule chrome +
  * focus brighten + submit center-out trace. Domain wrappers should compose this
  * instead of re-wiring theme classes by hand.
+ *
+ * Right-rail clearance is a measured frosted overlay (ResizeObserver →
+ * padding-inline-end) — never a per-surface `pr-*` twin. Long placeholder ink
+ * soft-peeks under the mode glyphs through `backdrop-blur`.
  */
 export function ThemedStationScanBar({
   staffId,
   inputBorderClassName,
   inputClassName,
-  rightContentClassName,
   rightContent,
   isResolving = false,
-  rightPadClass,
   submitTraceClassName,
   ...props
 }: ThemedStationScanBarProps) {
@@ -62,8 +61,7 @@ export function ThemedStationScanBar({
       theme={theme}
       submitTraceClassName={submitTraceClassName}
       inputBorderClassName={inputBorderClassName ?? inputBorder}
-      inputClassName={cn(stationScanBarFocusInputClass(theme), rightPadClass, inputClassName)}
-      rightContentClassName={cn(STATION_SCAN_BAR_RIGHT_CONTENT_CLASS, rightContentClassName)}
+      inputClassName={cn(stationScanBarFocusInputClass(theme), inputClassName)}
       rightContent={resolvedRight}
       hasRightContent={props.hasRightContent ?? Boolean(resolvedRight)}
     />

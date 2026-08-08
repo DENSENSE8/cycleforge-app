@@ -71,21 +71,24 @@ test('resolveUnboxReceivingTableMode maps workbench tabs to table modes', () => 
 });
 
 test('Unbox tab labels follow the house vocabulary (Recent, not Viewed)', () => {
-  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.urgent, 'Urgent');
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.incoming, 'Inbound');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.recent, 'Recent');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.queue, 'Queue');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.all, 'All');
   assert.equal(UNBOX_WORKSPACE_TAB_LABEL.history, 'History');
 });
 
-test('Urgent leads the strip and History closes it', () => {
-  assert.deepEqual([...UNBOX_WORKSPACE_TABS], ['urgent', 'recent', 'queue', 'all', 'history']);
+test('Inbound leads the strip and History closes it', () => {
+  assert.deepEqual([...UNBOX_WORKSPACE_TABS], ['incoming', 'queue', 'recent', 'history']);
 });
 
-test('Urgent and All resolve to the queue table mode', () => {
-  assert.equal(resolveUnboxReceivingTableMode('urgent'), 'unbox_queue');
+test('Queue and All resolve to the queue table mode', () => {
   assert.equal(resolveUnboxReceivingTableMode('all'), 'unbox_queue');
   assert.equal(resolveUnboxReceivingTableMode('queue'), 'unbox_queue');
+});
+
+test('Inbound tab resolves to the incoming table mode', () => {
+  assert.equal(resolveUnboxReceivingTableMode('incoming'), 'incoming');
 });
 
 test('Unbox queue buildParams sets priority_only when Urgent', () => {

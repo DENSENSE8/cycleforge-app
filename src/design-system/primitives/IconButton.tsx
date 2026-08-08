@@ -82,6 +82,11 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       disabled={disabled}
       aria-label={ariaLabel}
       title={title}
+      // Marker for the scan-station floor-density control floor (globals.css →
+      // `[data-density='floor'] [data-cf-control]` lifts the box to 44px). Only
+      // SIZED buttons carry it — an unsized IconButton is a bare glyph with no
+      // box by design, and giving it one would change every legacy call site.
+      data-cf-control={size ? '' : undefined}
       className={cn(
         // Square hit wash — never a circular hover plate.
         'rounded-none transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',

@@ -7,10 +7,10 @@
  *     Shipped lifecycle tabs, bare presence params `?unshipped` / `?shipped`).
  *   • `inbound`  — receiving cartons arriving at the dock (Unboxed · Scanned
  *     history facets). Its rows are receiving lines, NOT orders.
- *   • `sales`    — front-desk transaction history (Sales · Local Pickup feeds).
- *     Wire values `?mode=sales` | `?mode=pickup` (pickup is the Local Pickup
- *     history sub-mode; both belong to this domain). Counter intake stays on
- *     `/pickup` + `/repair`.
+ *   • `sales`    — front-desk history (Sales · Local Pickup · Repairs).
+ *     Wire values `?mode=sales` | `?mode=pickup` | `?mode=repairs`. Pickup and
+ *     Sales are thin feeds; Repairs mounts the shared `RepairTable` (history
+ *     door). Counter intake stays on `/pickup` + `/repair` (station door).
  *
  * Inbound is a distinct `?mode=inbound` switch rather than a fourth outbound
  * lifecycle tab precisely so the two never intermix — see
@@ -53,10 +53,36 @@ export const DASHBOARD_INBOUND_MODE = 'inbound';
 
 /**
  * `?mode=` values that select the sales (front-desk history) domain.
- * `sales` is the default history feed; `pickup` is Local Pickup history —
- * both mount {@link DashboardSalesView} and never share a table with orders.
+ * `sales` is the default history feed; `pickup` is Local Pickup history;
+ * `repairs` is the RepairTable history door — all mount {@link DashboardSalesView}
+ * and never share a table with orders.
  */
-const DASHBOARD_SALES_MODES = ['sales', 'pickup'] as const;
+const DASHBOARD_SALES_MODES = ['sales', 'pickup', 'repairs'] as const;
+
+/**
+ * Wire tokens `?mode=` may carry on `/dashboard` (route-param hygiene).
+ * Includes default `outbound`, live domains, sales children, and retired /
+ * alias tokens (`search`, `receiving`) so deep links reach their readers
+ * rather than being stripped here.
+ */
+export const DASHBOARD_MODE_WIRE = [
+  'outbound',
+  'inbound',
+  'receiving',
+  'sales',
+  'pickup',
+  'repairs',
+  'search',
+] as const;
+
+/** Wire tokens for `/dashboard` hygiene. */
+export function parseDashboardModeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (DASHBOARD_MODE_WIRE as readonly string[]).includes(v) ? v : null;
+}
+
+/** Wire value for the Sales → Repairs L2 child (`RepairTable` history desk). */
+export const DASHBOARD_REPAIRS_MODE = 'repairs';
 
 /** Default wire value when opening the sales domain from nav. */
 export const DASHBOARD_SALES_MODE = 'sales';
@@ -67,7 +93,7 @@ export const DASHBOARD_SALES_PERMISSION = 'walk_in.view';
 /**
  * Resolve the active domain from the URL. `receiving` is accepted as a legacy
  * alias for `inbound` (the sidebar pill id leaked into some saved links).
- * `sales` | `pickup` select the front-desk history domain.
+ * `sales` | `pickup` | `repairs` select the front-desk history domain.
  */
 export function getDashboardDomainFromSearch(
   searchParams: Pick<URLSearchParams, 'get'>,
@@ -76,6 +102,16 @@ export function getDashboardDomainFromSearch(
   if (raw === DASHBOARD_INBOUND_MODE || raw === 'receiving') return 'inbound';
   if ((DASHBOARD_SALES_MODES as readonly string[]).includes(raw)) return 'sales';
   return 'outbound';
+}
+
+/** True when the dashboard URL is the Sales → Repairs history desk. */
+export function isDashboardRepairsMode(
+  searchParams: Pick<URLSearchParams, 'get'>,
+): boolean {
+  return (
+    String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase() ===
+    DASHBOARD_REPAIRS_MODE
+  );
 }
 
 /**

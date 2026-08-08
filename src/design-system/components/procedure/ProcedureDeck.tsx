@@ -37,8 +37,13 @@ import { cn } from '@/utils/_cn';
 import type { ProcedureStepRow, ProcedureStepState } from './types';
 import { PROCEDURE_STACK_GAP_REM } from './procedure-stack-layout';
 
-/** Every face — including selected — shares ONE height (40px). */
-export const PROCEDURE_STEP_FACE_HEIGHT = 'h-10';
+/**
+ * Every face — including selected — shares ONE height (28px).
+ * Same visual height as `PRIMARY_CHROME_ROW_FACE` (frame chrome atom in
+ * `header-shell.ts`); kept separate — procedure list faces are not frame
+ * chrome shells.
+ */
+export const PROCEDURE_STEP_FACE_HEIGHT = 'h-7';
 
 /** What one card wears — resolved by the domain, never chosen here. */
 interface ProcedureCardFace {
@@ -70,14 +75,14 @@ interface ProcedureDeckProps {
 function StepStateMark({ state }: { state: ProcedureStepState }) {
   if (state === 'done') {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-blue-600 text-white">
         <Check className="h-2.5 w-2.5" />
       </span>
     );
   }
   if (state === 'skipped') {
     return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface-strong text-text-soft ring-1 ring-inset ring-border-soft">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-surface-strong text-text-soft ring-1 ring-inset ring-border-soft">
         <ChevronRight className="h-2.5 w-2.5" />
       </span>
     );

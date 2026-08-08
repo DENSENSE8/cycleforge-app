@@ -49,6 +49,14 @@ export function parseSearchEtype(raw: string | null | undefined): SearchHitEntit
   return isUiEntityType(v) ? v : null;
 }
 
+/**
+ * Wire tokens `?etype=` may carry (route-param hygiene). Round-trip this — not a
+ * hand-copied enum twin of {@link SEARCH_ENTITY_TYPES}.
+ */
+export function parseSearchEtypeWire(raw: string): string | null {
+  return parseSearchEtype(raw);
+}
+
 export function parseSearchHstat(raw: string | null | undefined): string | null {
   const v = String(raw ?? '').trim();
   return v ? v : null;

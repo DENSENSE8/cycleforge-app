@@ -2,14 +2,11 @@
  * Station identity chrome — coplanar flush band under GlobalHeader.
  *
  * Identity sits **flush under GlobalHeader** on the sunken work plane: square
- * all sides, hairline bottom seam only, no elevation. The **720 measure**
- * {@link STATION_WORKBENCH_COLUMN} (≤720 max; Displays locks on its trailing
- * edge) paints an opaque **white card face**
-
- * (`bg-surface-card`) so carton context aligns with PO lines below; sunken
- * gutters show left · right when Displays is closed — never a full-bleed white
- * curtain across the center pane. Icon gap matches GlobalHeader via
- * {@link HEADER_ICON_GAP}.
+ * all sides, hairline bottom seam only, no elevation. {@link STATION_WORKBENCH_COLUMN}
+ * (edge-to-edge of the center column; Displays locks the column at 720 when
+ * open) paints an opaque **white card face** (`bg-surface-card`) so carton
+ * context, PO lines, and the notes dock share one measure — no `mx-auto`
+ * sunken gutters. Icon gap matches GlobalHeader via {@link HEADER_ICON_GAP}.
  *
  * ## Top inset SoT
  *
@@ -21,7 +18,11 @@
  * Mid-canvas right-edge jumps live on `StationRightEdgeAction` (sibling module)
  * — flush-right sliced tab, not the top identity strip.
  */
-import { HEADER_ICON_GAP } from '@/components/layout/header-shell';
+import {
+  HEADER_ICON_GAP,
+  PRIMARY_CHROME_ROW_FACE,
+  STATION_SECONDARY_BAND_FACE,
+} from '@/components/layout/header-shell';
 import { elevationClass } from '@/design-system/tokens/shadows';
 
 /** Flat plane — no lift on the identity band. */
@@ -73,30 +74,49 @@ export const stationIdentityPadClass = 'px-0';
 /* ── Two-row identity rhythm ──────────────────────────────────────────────── */
 
 /**
- * Chip-to-chip step inside a peer identity row — flush (zero gap). Classify
- * urgency·platform·type uses the same flush abut as Photos · Claim
- * ({@link STATION_IDENTITY_GROUP_CLASS}). Never reintroduce `row-gap` /
- * `row-tight` air tokens for identity chrome.
+ * Station chrome seam — alias of {@link PRIMARY_CHROME_ROW_FACE} (28px scan bar
+ * · carton identity row 1 · Displays push top). Identity rows + Displays
+ * header lock to this so the hairline reads as one continuous line across the
+ * station. **Not** the GlobalHeader / spine top band (`TOP_CHROME_ROW_FACE` /
+ * 40px) — that seam sits above this one.
  */
-export const STATION_IDENTITY_ROW_CLASS = 'flex items-center gap-0';
+export const STATION_CHROME_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
+
+/**
+ * Chip-to-chip step on chrome row 1 (classify · Photos) — flush (zero gap),
+ * locked to {@link STATION_CHROME_ROW_FACE}. Classify urgency·platform·type
+ * uses the same flush abut as Photos ({@link STATION_IDENTITY_GROUP_CLASS}).
+ * Never reintroduce `row-gap` / `row-tight` air tokens for identity chrome.
+ */
+export const STATION_IDENTITY_ROW_CLASS = `flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0`;
+
+/**
+ * Commerce row 2 face — same {@link STATION_SECONDARY_BAND_FACE} (`h-6`) as the
+ * left-rail eyebrow (pencil) and Displays VERIFICATION group header. Not the
+ * scan-bar chrome seam (that is row 1 / {@link STATION_CHROME_ROW_FACE}).
+ */
+const STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE;
+
+/** Chip-to-chip step on commerce row 2 — flush, locked to the commerce face. */
+export const STATION_IDENTITY_COMMERCE_ROW_CLASS = `flex ${STATION_IDENTITY_COMMERCE_ROW_FACE} items-stretch gap-0`;
 
 /**
  * Classify urgency·platform·type — flush abut (`gap-0`), same grammar as
  * Photos · Claim. Soft drop shadows live off these faces (`shadow-none` on
  * the tone SoTs); never reintroduce `gap-1.5` spacing between classify pills.
  */
-export const STATION_IDENTITY_GROUP_CLASS = 'flex items-center gap-0';
+export const STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0';
 
 /** Vertical step between the two rows — flush (zero gap). */
 export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
 
 /**
- * Leading 32px column shared by both rows — boxed exit chevron (row 1) /
- * lifecycle dot (row 2) so both rows’ first chip share one x. Matches
- * {@link STATION_CONTEXT_EXIT_PILL_CLASS} / `IconButton` md (`h-8 w-8`).
+ * Leading column on chrome row 1 — boxed exit chevron so classify pills
+ * share one x with the exit face. Square track on {@link STATION_CHROME_ROW_FACE};
+ * child fills flush (`h-full w-full`). Row 2 status is a locked `w-14` pill.
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
-  'flex h-8 w-8 shrink-0 items-center justify-center';
+  'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
 
 /** Gap between icons / chips — same integer as GlobalHeader. */
 export const stationIdentityGapClass = HEADER_ICON_GAP;
@@ -118,12 +138,13 @@ export const stationMoreDetailsPaneHostClass =
   `pointer-events-auto absolute ${STATION_IDENTITY_INSET_TOP} ${STATION_IDENTITY_INSET_RIGHT} z-panelPopover flex items-start`;
 
 /**
- * One-row identity clearance (~40px flush at `top-0`, zero Y-pad).
+ * One-row identity clearance (~28px flush at `top-0`, zero Y-pad).
  */
-export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-10';
+export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-7';
 
 /**
- * Two-row identity clearance (~64px with gap-0 + zero Y-pad). Opt in via
- * `StationWorkbench reserveIdentityClearance="stacked"`.
+ * Two-row identity clearance (~52px = chrome `h-7` + secondary `h-6`, gap-0 +
+ * zero Y-pad). Opt in via `StationWorkbench reserveIdentityClearance="stacked"`.
  */
-export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-16';
+// ds-allow-spacing: stacked identity overlay = PRIMARY h-7 + secondary h-6 (not a density step).
+export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[52px]'; // ds-allow-spacing

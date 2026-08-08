@@ -45,10 +45,18 @@ test('every param the legacy /fba redirect forwards is declared at its destinati
   // `/shipping/fba` boundary-parses, which would silently lose an old bookmark's
   // focused shipment or filters. Same defect class as `/walk-in`'s legacy
   // deep-links, caught there only after the fact.
+  //
+  // Probe with a value each schema accepts — `fbaMode` is a closed vocabulary
+  // (not paramText), so `=1` would fail the schema even though the key is owned.
   const spec = routeParamsFor(FBA_OUTBOUND_PATH)!;
-  const dropped = [FBA_MODE_PARAM, 'openShipmentId', ...FBA_LEGACY_REDIRECT_FORWARDED_PARAMS].filter(
-    (key) => !parseRouteParams(spec, new URLSearchParams(`${key}=1`)).has(key),
-  );
+  const probes: Record<string, string> = {
+    [FBA_MODE_PARAM]: 'plan',
+    openShipmentId: '1',
+    ...Object.fromEntries(FBA_LEGACY_REDIRECT_FORWARDED_PARAMS.map((k) => [k, '1'])),
+  };
+  const dropped = Object.entries(probes)
+    .filter(([key, value]) => !parseRouteParams(spec, new URLSearchParams(`${key}=${value}`)).has(key))
+    .map(([key]) => key);
   assert.deepEqual(
     dropped,
     [],

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Trash2, X } from '@/components/Icons';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
   resolveSelectionAction,
@@ -85,7 +86,12 @@ export function PhotoLibraryToolbar<T>({
   }, [count, deleteArmed, deleting, onDeleteSelected, rows]);
 
   return (
-    <div className="flex h-[40px] shrink-0 items-center gap-2 border-b border-border-soft bg-surface-canvas/80 px-4 backdrop-blur-sm lg:px-6">
+    <div
+      className={cn(
+        'flex items-center gap-2 border-b border-border-soft bg-surface-canvas/80 px-4 backdrop-blur-sm lg:px-6',
+        PRIMARY_CHROME_ROW_FACE,
+      )}
+    >
       <span className="shrink-0 text-xs font-semibold tabular-nums text-text-muted">
         {shownCount} selected
       </span>

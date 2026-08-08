@@ -255,15 +255,10 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   onColumnOrderChange?: OnChangeFn<ColumnOrderState>;
   /**
    * Host for the column-display trigger (Band-3 / inspector View topics). When
-   * set, the trigger portals there instead of floating on the card corner. See
-   * {@link GridColumnGutter}.
+   * set, the trigger portals there. With no host, no ▦ is painted at all — the
+   * card-corner float was deleted 2026-08-08. See {@link GridColumnGutter}.
    */
   columnTriggerPortalTarget?: HTMLElement | null;
-  /**
-   * Portal-only desks (To Ship · Unbox History View topics): never paint the
-   * card-corner hover ▦ while the host is absent.
-   */
-  columnTriggerPortalOnly?: boolean;
   /**
    * Reset to canonical order — caller owns persistence + toast. Only wired into
    * the header api while a custom order is active.
@@ -312,7 +307,6 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   onColumnOrderChange,
   onResetColumnOrder,
   columnTriggerPortalTarget = null,
-  columnTriggerPortalOnly = false,
 }: LedgerGridSurfaceProps<Row, K, C>) {
   // ONE visibility resolution: descriptor default tier + this staffer's delta
   // + optional ephemeral viewport collapse.
@@ -455,7 +449,6 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
         tableId={tableId}
         columns={columns}
         triggerPortalTarget={columnTriggerPortalTarget}
-        triggerPortalOnly={columnTriggerPortalOnly}
       >
         <div
           ref={shellRef as Ref<HTMLDivElement> | undefined}

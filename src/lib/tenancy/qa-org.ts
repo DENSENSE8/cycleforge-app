@@ -42,6 +42,18 @@ export const QA_FIXTURE_SKUS = {
 } as const;
 
 /**
+ * One active Zoho `items` mirror row — the pairing fixture for the Add-inbound
+ * Product picker. Its `sku` matches the `speaker` `sku_catalog` fixture so the
+ * picker's `searchField=zoho_catalog` INNER JOIN (`items` ⋈ `sku_catalog`)
+ * returns it. `title` is `items.name` (what the operator searches on).
+ */
+export const QA_FIXTURE_ZOHO_ITEM = {
+  zohoItemId: 'QA-MOCK-ZITEM-1',
+  sku: QA_FIXTURE_SKUS.speaker,
+  title: 'QA Bose SoundLink Mini II',
+} as const;
+
+/**
  * Extra catalog SKUs for demo-volume order titles — keeps outbound grids from
  * looking like five copies of the same two products. Not referenced by E2E.
  */

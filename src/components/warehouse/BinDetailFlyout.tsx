@@ -27,7 +27,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
 import { ExternalLink, Printer } from '@/components/Icons';
-import DeleteButton from '@/components/ui/DeleteButton';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { IconButton } from '@/design-system/primitives';
 import {
   isSpecialBinBarcode,
@@ -62,7 +63,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
     setDeleteError(null);
   }, [row?.barcode]);
 
-  // Throws on failure so the shared DeleteButton skips its onDeleted (close);
+  // Throws on failure so InspectorFlushDelete skips its onDeleted (close);
   // the 409 "bin not empty" message is shown inline.
   const handleDelete = async () => {
     if (!row?.barcode) return;
@@ -241,23 +242,29 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
           </div>
         </div>
 
-        {/* Footer — soft-delete this bin (endpoint refuses non-empty bins). */}
+        {/* Floor — soft-delete this bin (endpoint refuses non-empty bins). */}
         {row.barcode ? (
-          <div className="shrink-0 border-t border-border-soft bg-surface-card px-4 py-3">
-            {deleteError ? (
-              <p className="mb-2 text-role-caption font-semibold text-rose-600">{deleteError}</p>
-            ) : null}
-            <DeleteButton
-              onConfirm={handleDelete}
-              onDeleted={() => {
-                onDeleted?.();
-                onClose();
-              }}
-              label="Delete bin"
-              armedLabel="Click again to delete bin"
-              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-role-caption font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-            />
-          </div>
+          <InspectorActionFloor
+            above={
+              deleteError ? (
+                <p className="px-3 py-2 text-role-caption font-semibold text-rose-600">
+                  {deleteError}
+                </p>
+              ) : undefined
+            }
+            delete={
+              <InspectorFlushDelete
+                onConfirm={handleDelete}
+                onDeleted={() => {
+                  onDeleted?.();
+                  onClose();
+                }}
+                label="Delete bin"
+                confirmLabel="Click again to delete bin"
+                data-testid="bin-details-delete"
+              />
+            }
+          />
         ) : null}
       </div>
     </DetailStackRailRegistrar>

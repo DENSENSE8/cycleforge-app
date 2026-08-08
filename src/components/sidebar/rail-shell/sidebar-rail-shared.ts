@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { PaintSurface } from '@/lib/observability/paint-timing';
+import type { NavRegionId } from '@/lib/keyboard/nav-keys';
 
 import { formatLaneAgeCompact } from '@/utils/date';
 import type { RefreshDomain } from '@/lib/refresh/domains';
@@ -263,4 +264,11 @@ export interface SidebarRailShellProps<TRow> {
     row: TRow,
     ctx: { groupSize: number; openWorkspace: () => void; dismiss: () => void },
   ) => ReactNode;
+  /**
+   * Opt this rail into the leader-armed selection keyboard as a nav-keys region
+   * (typically `'left'`). Off by default — a rail without this prop registers no
+   * region and paints no keycaps. When set, `⌘; → <region key>` reveals a letter
+   * per visible row; pressing it runs the same `onSelect`.
+   */
+  navRegionId?: NavRegionId;
 }

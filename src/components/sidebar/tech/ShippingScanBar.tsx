@@ -28,7 +28,8 @@ const SHIPPING_SCAN_MODES: readonly ShippingScanModeMeta[] = [
   },
   {
     mode: 'fba',
-    label: 'FBA',
+    // Dense scan-bar mark — page / nav face stays "Amazon Prep".
+    label: 'Amz Prep',
     Icon: Package,
     armedClass: 'text-violet-700',
     iconClass: 'text-violet-600',
@@ -113,12 +114,11 @@ export function ShippingScanBar({
       onSubmit={onSubmit}
       inputRef={inputRef}
       staffId={staffId}
-      placeholder={armedMode ? `Scan ${active.label}` : 'Orders · FNSKU · RS · Serial'}
+      placeholder={armedMode ? `Scan ${active.label}` : 'Orders · Amz SKU · Repair · Serial'}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
-      rightPadClass="pr-40"
       isResolving={isResolving}
       icon={
         <StationScanLeadingIcon
@@ -142,6 +142,18 @@ export function ShippingScanBar({
           armedMode={armedMode}
           onToggleMode={onToggleMode}
           size="compact"
+          getTitle={(mode, armed) => {
+            const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
+            return armed
+              ? `${full} armed — next Enter/scan. Click again to cancel.`
+              : `${full} (next Enter/scan; or search now if the field has text)`;
+          }}
+          getAriaLabel={(mode, armed) => {
+            const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
+            return armed
+              ? `${full} armed for next scan. Click again to cancel.`
+              : `Arm ${full}: next Enter/scan searches ${full}.`;
+          }}
         />
       }
     />

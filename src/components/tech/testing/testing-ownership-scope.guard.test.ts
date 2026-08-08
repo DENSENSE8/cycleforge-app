@@ -40,7 +40,8 @@ describe('Testing triage ownership scope', () => {
     assert.match(triage, /meLabel=["']You["']/);
     // Queue branch only for Pending · Urgent · Returns (not All).
     assert.match(triage, /showStaff/);
-    assert.match(triage, /StaffFilterButton iconOnly allLabel/);
+    // Find-only Band 3 — Refine rides in the field (density=field), not iconOnly.
+    assert.match(triage, /StaffFilterButton[\s\S]*density=["']field["'][\s\S]*allLabel/);
   });
 
   it('body + KPI twin share testing-workspace-query helpers', () => {

@@ -76,9 +76,17 @@ export type TestingLabelDraft = {
 export function useTestingLineController(
   row: ReceivingLineRow,
   staffId: string,
-  opts?: { labelColor?: string },
+  opts?: {
+    labelColor?: string;
+    /**
+     * Prefer Displays Ticket leaf over a blocking claim modal (Unbox grain).
+     * When set, {@link openClaimModal} opens that surface instead of `claimOpen`.
+     */
+    onOpenClaim?: (mode: 'create' | 'link') => void;
+  },
 ) {
   const labelColor = opts?.labelColor ?? '';
+  const onOpenClaim = opts?.onOpenClaim;
   const core = useReceivingLineCore(row, staffId, { dispatchLine: dispatchTestingLineUpdated });
   const queryClient = useQueryClient();
   // Tenant slug for platform Digital Link minting. Testing is the one unit-label
@@ -107,10 +115,19 @@ export function useTestingLineController(
   const setNotes = setItemNote;
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimInitialMode, setClaimInitialMode] = useState<'create' | 'link'>('create');
-  const openClaimModal = useCallback((mode: 'create' | 'link' = 'create') => {
-    setClaimInitialMode(mode);
-    setClaimOpen(true);
-  }, []);
+  const openClaimModal = useCallback(
+    (mode: 'create' | 'link' = 'create') => {
+      // Station focused panel: Ticket Displays hosts create/link — never cover
+      // the middle triage surface with ReceivingClaimModal.
+      if (onOpenClaim) {
+        onOpenClaim(mode);
+        return;
+      }
+      setClaimInitialMode(mode);
+      setClaimOpen(true);
+    },
+    [onOpenClaim],
+  );
   const [activeSlotByLine, setActiveSlotByLine] = useState<Record<number, number>>({});
   const [previewBySerialUnit, setPreviewBySerialUnit] = useState<Record<number, AllocatedUnit>>({});
   const [isMutating, setIsMutating] = useState(false);

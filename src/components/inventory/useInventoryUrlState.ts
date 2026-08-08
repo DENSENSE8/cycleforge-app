@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { startTransition, useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import {
     inventoryTabFromPathname,
     normalizeBuckets,
@@ -91,7 +92,7 @@ export function useInventoryUrlState() {
         [searchParams],
     );
 
-    const sidebar = useMemo<InventorySidebarUrlState>(() => {
+    const sidebarBase = useMemo(() => {
         const rawMode = searchParams.get('mode');
         const section = searchParams.get('section');
         const pathTab = inventoryTabFromPathname(pathname);
@@ -114,9 +115,60 @@ export function useInventoryUrlState() {
             q: (searchParams.get('q') ?? '').trim(),
             field: normalizeSearchField(tab, rawField) as AnyInventorySearchField,
             buckets: normalizeBuckets(tab, rawBuckets) as AnyInventoryBucket[],
-            open: searchParams.get('open'),
+            urlOpen: searchParams.get('open'),
         };
     }, [pathname, searchParams]);
+
+    const replaceOpenParams = useCallback(
+        (mutate: (params: URLSearchParams) => void) => {
+            const sp = new URLSearchParams(searchParams.toString());
+            mutate(sp);
+            const qs = sp.toString();
+            // Open-only writes stay on the current inventory path. Triage/Pulse
+            // are mode routes (`/inventory/triage|pulse`) whose sidebar `tab` is
+            // forced to `activity` — retargeting via tabBasePath would bounce
+            // them to `/inventory/activity` and drop the mode.
+            const onModeRoute =
+                pathname?.startsWith(`${INVENTORY_PATH}/triage`) ||
+                pathname?.startsWith(`${INVENTORY_PATH}/pulse`);
+            const targetPath = onModeRoute
+                ? pathname
+                : pathname?.startsWith(INVENTORY_PATH)
+                  ? pathname
+                  : tabBasePath(sidebarBase.tab);
+            router.replace(qs ? `${targetPath}?${qs}` : targetPath);
+        },
+        [router, searchParams, pathname, sidebarBase.tab],
+    );
+
+    const writeOpen = useCallback((params: URLSearchParams, next: string | null) => {
+        if (next) params.set('open', next);
+        else params.delete('open');
+    }, []);
+
+    const {
+        value: open,
+        setValue: setOpen,
+        paint: paintOpen,
+    } = useOptimisticUrlParam<string | null>({
+        urlValue: sidebarBase.urlOpen,
+        replace: replaceOpenParams,
+        write: writeOpen,
+        // Sidebar panel + InventoryShell are separate trees — one pending.
+        shareKey: 'inventory:open',
+    });
+
+    const sidebar = useMemo<InventorySidebarUrlState>(
+        () => ({
+            mode: sidebarBase.mode,
+            tab: sidebarBase.tab,
+            q: sidebarBase.q,
+            field: sidebarBase.field,
+            buckets: sidebarBase.buckets,
+            open,
+        }),
+        [sidebarBase, open],
+    );
 
     const setUrl = useCallback(
         (next: UrlPatch) => {
@@ -156,6 +208,19 @@ export function useInventoryUrlState() {
 
     const setSidebarUrl = useCallback(
         (next: SidebarUrlPatch & { mode?: InventoryMode }) => {
+            // Open-only patches — paint-pending SoT (same commit as click).
+            if (
+                next.open !== undefined &&
+                next.tab === undefined &&
+                next.q === undefined &&
+                next.field === undefined &&
+                next.buckets === undefined &&
+                next.mode === undefined
+            ) {
+                setOpen(next.open);
+                return;
+            }
+
             const sp = new URLSearchParams(searchParams.toString());
 
             if (next.mode !== undefined) {
@@ -177,6 +242,7 @@ export function useInventoryUrlState() {
                     // `staff`, while this in-app switch carried the selection. Two
                     // shapes for one job is the fork the contract bans, so this
                     // side moves to match the nav — a mode switch opens clean.
+                    paintOpen(null);
                     const delta = new URLSearchParams();
                     const staff = sp.get('staff') ?? sp.get('staffId');
                     if (staff) delta.set('staff', staff);
@@ -188,7 +254,9 @@ export function useInventoryUrlState() {
                               ? `${INVENTORY_PATH}/pulse`
                               : INVENTORY_PATH;
                     const qs = parseRouteParams(INVENTORY_ROUTE_PARAMS, delta).toString();
-                    router.push(qs ? `${targetPath}?${qs}` : targetPath);
+                    startTransition(() => {
+                        router.push(qs ? `${targetPath}?${qs}` : targetPath);
+                    });
                     return;
                 }
             }
@@ -205,6 +273,7 @@ export function useInventoryUrlState() {
                 else sp.delete('filter');
             }
             if (next.open !== undefined) {
+                paintOpen(next.open);
                 if (next.open) sp.set('open', next.open);
                 else sp.delete('open');
             }
@@ -216,6 +285,7 @@ export function useInventoryUrlState() {
                 const validBuckets = normalizeBuckets(nextTab, sp.get('filter'));
                 if (validBuckets.length > 0) sp.set('filter', validBuckets.join(','));
                 else sp.delete('filter');
+                paintOpen(null);
                 sp.delete('open');
             }
 
@@ -223,10 +293,12 @@ export function useInventoryUrlState() {
             const targetPath = tabBasePath(nextTab);
             const url = qs ? `${targetPath}?${qs}` : targetPath;
 
-            if (next.tab && next.tab !== sidebar.tab) router.push(url);
-            else router.replace(url);
+            startTransition(() => {
+                if (next.tab && next.tab !== sidebar.tab) router.push(url);
+                else router.replace(url);
+            });
         },
-        [router, searchParams, sidebar.tab],
+        [router, searchParams, sidebar.mode, sidebar.tab, setOpen, paintOpen],
     );
 
     const clearAll = useCallback(

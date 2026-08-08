@@ -40,6 +40,10 @@ import { useClaimPhotos } from '../claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from '../claim/components/ClaimPhotoPicker';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
 import { photoMoveTargetLabel } from '@/lib/receiving/photo-move-targets-shared';
+import {
+  UNFOUND_PO_DISPLAY,
+  UNFOUND_PO_SENTINEL,
+} from '@/lib/receiving/po-group-title';
 import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
 
 /**
@@ -90,7 +94,10 @@ function PhotoMoveTargetFace({ row }: { row: PhotoMoveTargetRow }) {
     row.ticket_id != null && row.ticket_id > 0 ? String(row.ticket_id) : '';
   const ticketFace = (row.ticket_external_id || ticketDigits).trim();
   const title = String(row.title || '').trim() || label;
-  const isUnfoundPo = title === 'Unfound PO' || row.source === 'unmatched';
+  const isUnfoundPo =
+    title === UNFOUND_PO_SENTINEL ||
+    title === UNFOUND_PO_DISPLAY ||
+    row.source === 'unmatched';
   // Carton handle when there's no PO, or always for Unfound stubs
   // (ticket alone must not hide R-{id}).
   const showCartonHandle = !poValue || isUnfoundPo;
@@ -132,9 +139,10 @@ export function MovePhotosBetweenPoPanel({
   onClose,
   onMoved,
   /**
-   * `display` — Unbox Displays Photos→Move: strip + Move·Browse·Send tabs already
+   * `display` — Unbox Displays Photos→Move: strip + Move·Send tabs already
    * name the verb; omit icon+title band and X (column `→|` owns dismiss).
-   * `modal` — right-rail / overlay hosts keep the title + close.
+   * Success stays on Move and resets the form (does not call `onClose`).
+   * `modal` — right-rail / overlay hosts keep the title + close; success dismisses.
    */
   chrome = 'modal',
 }: {
@@ -292,12 +300,28 @@ export function MovePhotosBetweenPoPanel({
     photos.toggleSelectAll();
   }, [otherReceivingId, photos.photos.length, photos.selectedPhotoIds.size, photos.toggleSelectAll]);
 
+  /** After the success beat: modal dismisses; Displays chrome resets in place. */
+  const resetFormAfterSuccess = () => {
+    setSuccess(null);
+    setOtherRow(null);
+    setSearch('');
+    setTargetRows([]);
+    setMatchedExcludedSelf(false);
+    setBusy(false);
+    dismissedNeedleRef.current = null;
+    pendingSelectAllPhotosRef.current = false;
+  };
+
   const finishAndClose = (beat: SuccessBeat) => {
     setSuccess(beat);
     clearCloseTimer();
     closeTimer.current = setTimeout(
       () => {
         closeTimer.current = null;
+        if (chrome === 'display') {
+          resetFormAfterSuccess();
+          return;
+        }
         onClose();
       },
       reduceMotion ? SUCCESS_HOLD_REDUCED_MS : SUCCESS_HOLD_MS,
@@ -452,7 +476,7 @@ export function MovePhotosBetweenPoPanel({
                             setOtherRow(null);
                           }
                         }}
-                        placeholder="PO #, tracking #, ticket # / subject, or carton QR…"
+                        placeholder="Purchase order #, tracking #, ticket # / subject, or carton QR…"
                         autoFocus
                         className={search || otherRow ? 'pr-8' : undefined}
                       />

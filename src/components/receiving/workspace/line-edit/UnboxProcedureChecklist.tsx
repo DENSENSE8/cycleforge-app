@@ -3,11 +3,10 @@
 /**
  * The Unbox checklist — the live "where am I" display, on the right edge.
  *
- * Mounted as the `checklist` display in the right-edge Displays push column
- * ({@link ReceivingDisplaysPushStack}). Opened via the Displays strip progress
- * ring (`rightSlot`, right of ⋮ — {@link UnboxScanProgressControl}).
- * (ring-only — no strip Lucide cell). It is the station's live "where am I": the
- * operator's first question on every carton is what is left on it.
+ * Mounted as the `checklist` display in the right-edge Displays push column.
+ * Open from the Displays Root Index — never a floor % ring. It is the station's
+ * live "where am I": the operator's first question on every carton is what is
+ * left on it.
  *
  * ## It is a second VIEW, not a second derivation
  *
@@ -77,8 +76,15 @@ export function UnboxProcedureChecklist({
   row,
   maxVisibleRows,
 }: UnboxProcedureChecklistProps) {
-  const { steps, settled, stepCount, focusStep, flowLabel, reorderCaptureSteps } =
-    useUnboxProcedureSteps(row);
+  const {
+    steps,
+    settled,
+    stepCount,
+    activeKey,
+    focusStep,
+    flowLabel,
+    reorderCaptureSteps,
+  } = useUnboxProcedureSteps(row);
 
   const doneCount = steps.reduce((n, step) => n + (step.state === 'done' ? 1 : 0), 0);
   const allDone = steps.length > 0 && doneCount === steps.length;
@@ -111,6 +117,7 @@ export function UnboxProcedureChecklist({
         // stay on one resolver override.
         <ProcedureChecklist
           steps={steps}
+          activeKey={activeKey}
           onSelectStep={focusStep}
           onReorderSteps={reorderCaptureSteps}
           maxVisibleRows={maxVisibleRows}

@@ -218,7 +218,7 @@ describe('grid view plumbing', () => {
     );
     assert.match(
       code,
-      /<GridColumnGutter\s+tableId=\{tableId\}\s+columns=\{columns\}(?:\s+triggerPortalTarget=\{columnTriggerPortalTarget\})?(?:\s+triggerPortalOnly=\{columnTriggerPortalOnly\})?\s*>/,
+      /<GridColumnGutter\s+tableId=\{tableId\}\s+columns=\{columns\}(?:\s+triggerPortalTarget=\{columnTriggerPortalTarget\})?\s*>/,
       'mounts the control',
     );
 

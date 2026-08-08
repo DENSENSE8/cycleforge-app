@@ -321,6 +321,9 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
             <>
               <Button ref={sellerConnectRef} variant="primary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('seller')}>Add selling account</Button>
               <Button ref={buyerConnectRef} variant="secondary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('buyer')}>Add purchasing account</Button>
+              <p className="basis-full text-role-caption text-text-faint">
+                Add purchasing is required for eBay purchase orders on Incoming (selling alone will not pull buyer orders).
+              </p>
             </>
           )}
           {def.connect === 'oauth' && (

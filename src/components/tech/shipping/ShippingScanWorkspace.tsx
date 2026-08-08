@@ -13,8 +13,9 @@ import type { ShippingView } from './terminal/shipping-terminal';
 
 /**
  * Shipping centre work tabs — Ship · Units only.
- * Timeline is a Displays push body on {@link ActiveOrderWorkspace}
- * (scan-station Displays SoT — reference tools leave the mid-canvas strip).
+ * Timeline · Listings are Displays push bodies on {@link ActiveOrderWorkspace}
+ * (scan-station Displays SoT — reference tools leave the mid-canvas strip;
+ * Listings is the trailing upgrade slot).
  *
  * Mounts in the `tabs` slot of `ActiveOrderWorkspace`'s `StationWorkbench`.
  */
@@ -53,7 +54,7 @@ export function ShippingScanWorkspace({
       buildSectionTabs([
         {
           id: 'ship',
-          label: 'Ship',
+          label: 'Pack',
           icon: Barcode,
           content: (
             <ShippingSkuSerialRows activeOrder={orderForContext} />
@@ -86,7 +87,7 @@ export function ShippingScanWorkspace({
       tabs={tabs}
       value={view}
       onChange={(id) => setView(id as ShippingView)}
-      ariaLabel="Shipping work"
+      ariaLabel="Ready to Pack work"
       className="gap-0 space-y-0"
     />
   );

@@ -22,8 +22,8 @@ type CartonReadCopyInput = {
 export function buildCartonReadCopyText(log: CartonReadCopyInput): string {
   const poNumber = (log.zoho_purchaseorder_number || '').trim();
   return [
-    poNumber ? `PO #${poNumber}` : null,
-    `Receiving #${log.id}`,
+    poNumber ? `Purchase order #${poNumber}` : null,
+    `Carton #${log.id}`,
     log.tracking ? `Tracking: ${log.tracking}` : null,
     `Received: ${log.received_at ? formatDateTimePST(log.received_at) : '-'}`,
     log.zoho_purchase_receive_id ? `Zoho Receive: ${log.zoho_purchase_receive_id}` : null,

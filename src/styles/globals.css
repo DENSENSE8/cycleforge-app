@@ -54,6 +54,33 @@
   --cf-density: 0.92;
 }
 
+/* ─── Scan-station floor density ───────────────────────────────────────────
+   A MODE, not a step on the --cf-density scale: a bench needs MORE information
+   per screen AND LARGER things to hit, and one multiplier cannot move two axes
+   in opposite directions. So type does NOT shrink here (`compact`'s 0.92 is
+   wrong at ~3ft) while the control hit-box floor goes UP to the 44px tap floor.
+
+   Stamped by the station shell only (`StationPanelRoot density="floor"`), never
+   the page. The left context rail is a SIBLING of that root, not a child, so it
+   stays `ops` by construction — custom properties inherit, and putting the stamp
+   any higher would silently pull the rail in (ruled 2026-08-03).
+
+   Corner radius, elevation and motion are deliberately NOT here: `cornerClass()`
+   already returns `rounded-none` for every role, `elevationClass('flat')` owns
+   depth, and motion roles are JS objects Framer consumes — a CSS var could never
+   reach them. Draft + phasing: docs/todo/station-floor-density-DRAFT.md */
+[data-density='floor'] {
+  --cf-density: 1;
+  --cf-control-min: 2.75rem; /* 44px — WCAG 2.2 target size, gloved hands */
+}
+
+/* The one consumer. Scoped so it is inert outside a floor region, and matched
+   on the DS primitive's marker rather than a Tailwind arbitrary value. */
+[data-density='floor'] [data-cf-control] {
+  min-block-size: var(--cf-control-min);
+  min-inline-size: var(--cf-control-min);
+}
+
 /* ─── Elevation ladder (--ds-elev-*) ───────────────────────────────────────
    Role → box-shadow, consumed as the `shadow-elev-*` utilities through
    elevationClass() (src/design-system/tokens/shadows.ts). Each role is a

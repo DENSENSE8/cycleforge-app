@@ -67,7 +67,7 @@ describe('historyInspectorTopicActions', () => {
       ['print', 'unbox', 'link', 'flag', 'more'],
     );
     assert.equal(edit.find((t) => t.key === 'link')?.accent, true);
-    assert.equal(edit.find((t) => t.key === 'link')?.label, 'Link / Resolve Unfound PO');
+    assert.equal(edit.find((t) => t.key === 'link')?.label, 'Link / Resolve unmatched carton');
     assert.equal(edit.find((t) => t.key === 'print')?.disabled, true);
     assert.equal(edit.find((t) => t.key === 'print')?.accent, undefined);
   });
@@ -76,7 +76,7 @@ describe('historyInspectorTopicActions', () => {
     const { view } = historyInspectorTopicActions({ unfound: false });
     assert.deepEqual(
       view.map((t) => t.key),
-      ['paint', 'drill', 'compare', 'zoom', 'columns', 'kpi'],
+      ['paint', 'drill', 'compare', 'zoom', 'columns'],
     );
     assert.equal(view.every((t) => t.group === 'view'), true);
   });
@@ -88,7 +88,7 @@ describe('historyInspectorTopicActions', () => {
     });
     assert.deepEqual(display, []);
     assert.deepEqual(edit, []);
-    assert.equal(view.length, 6);
+    assert.equal(view.length, 5);
   });
 });
 

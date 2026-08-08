@@ -256,9 +256,9 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
       assert.equal(params.get('q'), null, `${page.id}/${mode.id} should clear q`);
     }
   }
-  // Sales Board + Local Pickup History (Orders moved to `/shipping/orders`;
-  // Inbound Board folded into `/incoming`).
-  assert.equal(checked, 2, `expected 2 dashboard-board modes, found ${checked}`);
+  // Sales Board + Local Pickup History + Repairs (Orders moved to
+  // `/shipping/orders`; Inbound Board folded into `/incoming`).
+  assert.equal(checked, 3, `expected 3 dashboard-board modes, found ${checked}`);
 });
 
 // A page's bare href must resolve to one of its declared modes (its default).
@@ -450,10 +450,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // Dashboard: Shipping (id `outbound`) is the default — `?shipped`,
   // `?unshipped`, legacy `?pending`, and bare all resolve to it. Receiving
   // rides `?mode=inbound` (canonical) or the `?mode=receiving` alias. Sales /
-  // Local Pickup are the front-desk history domain (`?mode=sales|pickup`).
-  // Warranty Logger moved to Support; Search graduated to `/search`.
-  // Dashboard dissolved (D5): the `?mode=` DOMAIN picks the owning domain page,
-  // and every board URL still resolves — only the nav identity moved.
+  // Local Pickup / Repairs are the front-desk history domain
+  // (`?mode=sales|pickup|repairs`). Warranty Logger moved to Support; Search
+  // graduated to `/search`. Dashboard dissolved (D5): the `?mode=` DOMAIN picks
+  // the owning domain page, and every board URL still resolves — only the nav
+  // identity moved.
   const dashPage = (search = '') =>
     getSidebarNavPageId('/dashboard', new URLSearchParams(search));
   assert.equal(dashPage(), 'outbound');
@@ -464,6 +465,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(dashPage('mode=receiving'), 'incoming');
   assert.equal(dashPage('mode=sales'), 'sales');
   assert.equal(dashPage('mode=pickup'), 'sales');
+  assert.equal(dashPage('mode=repairs'), 'sales');
   assert.equal(getSidebarNavPageId('/shipping/orders'), 'outbound');
   assert.equal(
     getSidebarNavPageId('/shipping/orders', new URLSearchParams('context=support')),
@@ -492,6 +494,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('incoming', at('/incoming')), null);
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
+  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'orders');
   // Support › Inquiries aliases the To-ship desk — Support owns the pin.
@@ -504,10 +507,10 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     null,
   );
   assert.equal(resolveSidebarChild('support', at('/support')), 'tickets');
-  // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
+  // Tech: top-mode switch only — view=testing flips to Quality Control (id `testing`), else Ready to Pack.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
   // param-based so it resolves identically on the canonical route + legacy alias.
-  // Legacy view=testing-history still resolves to Testing (history browse is inline).
+  // Legacy view=testing-history still resolves to QC (history browse is inline).
   assert.equal(resolveSidebarChild('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarChild('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarChild('tech', at('/tech', 'view=testing')), 'testing');

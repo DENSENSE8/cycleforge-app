@@ -13,6 +13,11 @@
  * Page destinations mirror the MasterNav spine contract (Pin →
  * SPINE_SECTIONS → Footer) via `buildCommandBarNavGroups` — never a twin map.
  *
+ * Query shape forks the job: word / empty → nav mode (spine + child pages +
+ * optional search). Identifier-shaped (`looksLikeIdentifier`) → find mode —
+ * nav titles hide; triage rows reuse `SearchResultRow` + `commitIdentifierFind`
+ * (same resolve path as header find). Chord ownership unchanged.
+ *
  * `shouldFilter={false}` because we mix two filtering sources:
  *  - static nav items (filtered manually below by query.includes)
  *  - server search results (already filtered server-side)
@@ -22,6 +27,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Command } from 'cmdk';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motion';
 import {
   framerPresence,
@@ -42,6 +48,8 @@ import {
   ChevronRight,
   MessageSquare,
 } from '@/components/Icons';
+import { SearchResultRow } from '@/components/search/SearchResultRow';
+import { groupHitsForPreview } from '@/components/search/search-tabs';
 import {
   APP_SIDEBAR_NAV,
   applyChildTarget,
@@ -57,13 +65,22 @@ import {
 } from '@/lib/nav/command-bar-nav-groups';
 import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
 import { looksLikeIdentifier, searchScopeHref, searchScopeLabel } from '@/lib/search/search-hit';
+import {
+  commitIdentifierFind,
+  hrefForPreviewHit,
+} from '@/lib/search/commit-identifier-find';
 import { isSearchEntityType } from '@/lib/search/build-search-text';
 // AI-search rollout flag probe + retrieve POST — shared client bridge
 // (src/lib/search/ai-search-client.ts) so CommandBar and the workbench
 // quick-jumps stay on one implementation.
-import { fetchAiSearchEnabled, postAiRetrieve } from '@/lib/search/ai-search-client';
+import {
+  fetchAiSearchEnabled,
+  postAiRetrieve,
+  type AiSearchHit,
+} from '@/lib/search/ai-search-client';
 import { COMMAND_BAR_OPEN_EVENT } from '@/lib/app-events';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/utils/_cn';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -209,6 +226,19 @@ function mergeSearchResults(
   return merged.slice(0, limit);
 }
 
+function toAiSearchHit(r: SearchResult): AiSearchHit {
+  return {
+    id: r.id,
+    entityType: r.entityType,
+    title: r.title,
+    subtitle: r.subtitle,
+    href: r.href,
+    matchField: 'title',
+    score: r.score ?? 0,
+    chips: r.chips,
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function CommandBar() {
@@ -217,6 +247,7 @@ export function CommandBar() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [resolvePending, setResolvePending] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [recents, setRecents] = useState<RecentItem[]>([]);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -232,6 +263,7 @@ export function CommandBar() {
 
   const router = useRouter();
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const { user: authUser, isLoaded: authLoaded } = useAuth();
 
   useEffect(() => {
@@ -386,6 +418,17 @@ export function CommandBar() {
     );
   }, [childPageItems, query]);
 
+  const trimmedQuery = query.trim();
+  const findMode = looksLikeIdentifier(trimmedQuery);
+
+  const findPreviewGroups = useMemo(() => {
+    if (!findMode) return [];
+    return groupHitsForPreview(searchResults.map(toAiSearchHit), {
+      perGroup: 4,
+      total: 12,
+    });
+  }, [findMode, searchResults]);
+
   const navigate = useCallback(
     (item: RecentItem) => {
       if (item.href) router.push(item.href);
@@ -394,6 +437,38 @@ export function CommandBar() {
     },
     [router],
   );
+
+  const navigateHit = useCallback(
+    (hit: AiSearchHit) => {
+      navigate({
+        id: `result:${hit.entityType}:${hit.id}`,
+        label: hit.title,
+        subtitle: hit.subtitle,
+        href: hrefForPreviewHit(hit),
+        entityType: hit.entityType,
+      });
+    },
+    [navigate],
+  );
+
+  const commitFindIdentifier = useCallback(async () => {
+    if (!trimmedQuery || resolvePending) return;
+    setResolvePending(true);
+    try {
+      const result = await commitIdentifierFind(queryClient, trimmedQuery);
+      if (result.kind === 'navigate') {
+        navigate({
+          id: `resolve:${result.orderId}`,
+          label: result.order.product_title || result.order.order_id || trimmedQuery,
+          href: result.href,
+          entityType: 'order',
+        });
+      }
+      // Miss / FBA: stay open — preview/empty already visible.
+    } finally {
+      setResolvePending(false);
+    }
+  }, [trimmedQuery, resolvePending, queryClient, navigate]);
 
   const navigateChild = useSidebarChildNav();
   const selectChildPage = useCallback(
@@ -469,9 +544,11 @@ export function CommandBar() {
 
   if (!mounted) return null;
 
-  const showAskAi = query.trim().length >= 2;
-  const showSearchGroup = Boolean(query.trim());
-  const showRecentGroup = !query.trim() && recents.length > 0;
+  const showAskAi = trimmedQuery.length >= 2;
+  const showSearchGroup = Boolean(trimmedQuery) && !findMode;
+  const showRecentGroup = !trimmedQuery && recents.length > 0;
+  const showNavGroups = !findMode;
+  const showFindTriage = findMode;
 
   const dialogInitial = shouldReduceMotion
     ? { opacity: 0 }
@@ -538,7 +615,11 @@ export function CommandBar() {
 
               <Command.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
                 <Command.Empty className="px-4 py-10 text-center text-sm text-text-soft">
-                  {searching ? 'Searching…' : query.trim() ? `No matches for "${query}"` : 'Type to search'}
+                  {searching || resolvePending
+                    ? 'Searching…'
+                    : trimmedQuery
+                      ? `No matches for "${trimmedQuery}"`
+                      : 'Type to search'}
                 </Command.Empty>
 
                 {showRecentGroup && (
@@ -561,23 +642,24 @@ export function CommandBar() {
                   </Command.Group>
                 )}
 
-                {filteredNavGroups.map((group) => (
-                  <SpineNavGroup
-                    key={group.id}
-                    group={group}
-                    stagger={staggerNavAppear}
-                    openKey={open}
-                    onSelectPage={(page) =>
-                      navigate({
-                        id: `nav:${page.id}`,
-                        label: page.label,
-                        href: page.href,
-                      })
-                    }
-                  />
-                ))}
+                {showNavGroups &&
+                  filteredNavGroups.map((group) => (
+                    <SpineNavGroup
+                      key={group.id}
+                      group={group}
+                      stagger={staggerNavAppear}
+                      openKey={open}
+                      onSelectPage={(page) =>
+                        navigate({
+                          id: `nav:${page.id}`,
+                          label: page.label,
+                          href: page.href,
+                        })
+                      }
+                    />
+                  ))}
 
-                {filteredChildPages.length > 0 && (
+                {showNavGroups && filteredChildPages.length > 0 && (
                   <Command.Group heading="Child pages" className={GROUP_HEADING_CLASS}>
                     {filteredChildPages.map((m) => {
                       const Icon = m.icon;
@@ -595,18 +677,71 @@ export function CommandBar() {
                   </Command.Group>
                 )}
 
+                {showFindTriage && (
+                  <>
+                    <Command.Group heading="Find" className={GROUP_HEADING_CLASS}>
+                      <CmdRow
+                        value={`find resolve ${trimmedQuery}`}
+                        icon={
+                          resolvePending ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
+                          ) : (
+                            <Search className="h-4 w-4 text-text-faint" />
+                          )
+                        }
+                        label={`See all results for "${trimmedQuery}"`}
+                        subLabel="Resolve order · tracking · serial"
+                        onSelect={() => {
+                          void commitFindIdentifier();
+                        }}
+                      />
+                    </Command.Group>
+                    {findPreviewGroups.map((group) => (
+                      <Command.Group
+                        key={`find:${group.label}`}
+                        heading={group.label}
+                        className={GROUP_HEADING_CLASS}
+                      >
+                        {group.hits.map((hit) => (
+                          <Command.Item
+                            key={`find-hit:${hit.entityType}:${hit.id}`}
+                            value={`find result ${hit.entityType} ${hit.id} ${hit.title}`}
+                            onSelect={() => navigateHit(hit)}
+                            className={cn(
+                              'mx-1 cursor-pointer rounded-lg p-0 text-left',
+                              'data-[selected=true]:bg-surface-sunken aria-selected:bg-surface-sunken',
+                            )}
+                          >
+                            {/*
+                              SearchResultRow is a Link; pointer-events-none keeps
+                              cmdk selection as the sole click/keyboard owner.
+                            */}
+                            <div className="pointer-events-none w-full">
+                              <SearchResultRow
+                                hit={hit}
+                                density="dropdown"
+                                showJourneyAction={false}
+                              />
+                            </div>
+                          </Command.Item>
+                        ))}
+                      </Command.Group>
+                    ))}
+                  </>
+                )}
+
                 {showSearchGroup && searchResults.length > 0 && (
                   <Command.Group heading="Search results" className={GROUP_HEADING_CLASS}>
                     <CmdRow
                       value={`search all results ${query}`}
                       icon={<Search className="h-4 w-4 text-text-faint" />}
-                      label={`See all matching orders for "${query.trim()}"`}
+                      label={`See all matching orders for "${trimmedQuery}"`}
                       subLabel="Open the orders board filtered by this search"
                       onSelect={() =>
                         navigate({
-                          id: `search-all:${query.trim()}`,
-                          label: `Search: ${query.trim()}`,
-                          href: `/shipping/orders?search=${encodeURIComponent(query.trim())}`,
+                          id: `search-all:${trimmedQuery}`,
+                          label: `Search: ${trimmedQuery}`,
+                          href: `/shipping/orders?search=${encodeURIComponent(trimmedQuery)}`,
                         })
                       }
                     />
@@ -729,11 +864,11 @@ export function CommandBar() {
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1">
                     <kbd className="rounded border border-border-soft bg-surface-card px-1 py-0.5 font-mono">↑↓</kbd>
-                    navigate
+                    {findMode ? 'results' : 'navigate'}
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <kbd className="rounded border border-border-soft bg-surface-card px-1 py-0.5 font-mono">↵</kbd>
-                    select
+                    {findMode ? 'open' : 'select'}
                   </span>
                   <span className="hidden sm:inline-flex items-center gap-1">
                     <kbd className="rounded border border-border-soft bg-surface-card px-1 py-0.5 font-mono">esc</kbd>
@@ -775,7 +910,9 @@ function SpineNavGroup({
   const heading = (
     <span className="inline-flex items-center gap-1.5">
       {SectionIcon ? (
-        <SectionIcon className={`h-3 w-3 ${group.accent.sectionActiveIcon}`} />
+        // Band glyph uses the same muted ink as an idle row — spine is
+        // monochrome; section identity is the labelled band, never a hue.
+        <SectionIcon className={`h-3 w-3 ${group.accent.idlePageIcon}`} />
       ) : null}
       {group.label}
     </span>

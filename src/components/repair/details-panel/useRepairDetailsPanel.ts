@@ -45,7 +45,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
   // Delete = soft-cancel (status → 'Cancelled'); the row stays for audit but
   // drops out of every queue tab. Repairs link to documents/history, so a hard
   // delete is intentionally not offered. Throws on failure so the shared
-  // DeleteButton skips its onDeleted (close).
+  // InspectorFlushDelete skips its onDeleted (close).
   const handleDelete = async () => {
     const res = await fetch(`/api/repair-service/${repair.id}`, { method: 'DELETE' });
     const body = await res.json().catch(() => null);

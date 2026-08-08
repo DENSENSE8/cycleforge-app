@@ -70,7 +70,7 @@ export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
     icon: PLATFORM_BRAND_ICON_PATHS.amazon,
     tileSrc: '/icons/platforms/amazon.png',
   },
-  { value: 'fba',        label: 'FBA',        mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', dot: 'bg-orange-600', icon: PLATFORM_BRAND_ICON_PATHS.fba },
+  { value: 'fba',        label: 'Amazon',     mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', dot: 'bg-orange-600', icon: PLATFORM_BRAND_ICON_PATHS.fba },
   { value: 'aliexpress', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500',    dot: 'bg-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
   { value: 'walmart',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700',  dot: 'bg-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
   { value: 'goodwill',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600',    dot: 'bg-sky-600', icon: PLATFORM_BRAND_ICON_PATHS.goodwill },
@@ -162,9 +162,12 @@ export function formatPlatformTooltipLabel(
   platformLabel?: string | null,
 ): string {
   const trimmed = String(orderId || '').trim();
-  if (!trimmed) return '';
   const label = String(platformLabel ?? '').trim();
-  if (!label || label === UNKNOWN_PLATFORM.label) return trimmed;
+  const known = Boolean(label) && label !== UNKNOWN_PLATFORM.label;
+  // Empty id (unfound / keepEmpty peek) — still surface the catalog platform
+  // name, same face the order-chip hover uses as its prefix.
+  if (!trimmed) return known ? label : '';
+  if (!known) return trimmed;
   return `${label} ${trimmed}`;
 }
 

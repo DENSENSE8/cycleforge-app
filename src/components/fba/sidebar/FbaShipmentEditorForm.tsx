@@ -196,7 +196,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
 
         {/* FNSKU search — popup trigger */}
         <Button type="button" variant="ghost" size="sm" onClick={() => c.setFnskuSearchOpen(true)} icon={<Search className="h-2.5 w-2.5" />} className="h-auto gap-1 px-0 text-role-eyebrow text-purple-600 hover:bg-transparent hover:text-purple-800">
-          Add FNSKU to shipment
+          Add Amazon SKU to shipment
         </Button>
       </div>
 

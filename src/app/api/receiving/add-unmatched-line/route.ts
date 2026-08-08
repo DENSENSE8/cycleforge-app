@@ -34,6 +34,7 @@ import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
+import { upsertEcwidIncomingRepair } from '@/lib/neon/repair-service-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 import { after } from 'next/server';
 import {
@@ -42,16 +43,25 @@ import {
   saveApiIdempotencyResponse,
 } from '@/lib/api-idempotency';
 import { isSalesOrderDerivedCarton } from '@/lib/receiving/intake-items-routing';
+import { publishRepairChanged } from '@/lib/realtime/publish';
 
 const IDEMPOTENCY_ROUTE = 'receiving.add-unmatched-line';
 
 const CONDITION_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 type ConditionGrade = (typeof CONDITION_GRADES)[number];
 
-const PLATFORM_PILLS = ['ebay', 'goodwill', 'amazon', 'aliexp', 'walmart', 'other'] as const;
+const PLATFORM_PILLS = [
+  'ebay',
+  'goodwill',
+  'amazon',
+  'aliexp',
+  'walmart',
+  'ecwid',
+  'other',
+] as const;
 type PlatformPill = (typeof PLATFORM_PILLS)[number];
 
-const INTAKE_TYPES = ['po', 'return', 'trade_in'] as const;
+const INTAKE_TYPES = ['po', 'return', 'trade_in', 'repair', 'pickup'] as const;
 type IntakeType = (typeof INTAKE_TYPES)[number];
 
 interface ReceivingRow {
@@ -159,16 +169,18 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     );
   }
 
+  // ─── Per-line source-order linkage flags (parsed early — force type REPAIR) ─
+  const isRepairServiceEarly = body.is_repair_service === true;
+
   const sourcePlatformPill: PlatformPill | null = normalizeEnum(
     body.source_platform_pill,
     PLATFORM_PILLS,
-    null,
+    isRepairServiceEarly ? 'ecwid' : null,
   );
-  const intakeType: IntakeType | null = normalizeEnum(
-    body.intake_type,
-    INTAKE_TYPES,
-    null,
-  );
+  // -RS identify forces intake_type=repair (atomic success); do not leave PO.
+  const intakeType: IntakeType | null = isRepairServiceEarly
+    ? 'repair'
+    : normalizeEnum(body.intake_type, INTAKE_TYPES, null);
   // A return is by definition not brand new — when the caller omits the grade
   // (e.g. the unfound serial-match auto-import), default return lines to
   // USED_A instead of the BRAND_NEW catch-all.
@@ -212,7 +224,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   // repair-service intake (distinct from a RETURN). source_order_id accepts an
   // explicit value or the ecwid_order_id the repair-link flow sends; source_system
   // defaults to 'ecwid' whenever either is present.
-  const isRepairService = body.is_repair_service === true;
+  const isRepairService = isRepairServiceEarly;
   const sourceOrderId =
     body.source_order_id != null
       ? String(body.source_order_id).trim() || null
@@ -338,6 +350,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // package — no pre-staging EXPECTED row to reconcile. organization_id is
     // passed explicitly (the column is loud-fail, not GUC-defaulted) and matches
     // the GUC set by withTenantTransaction.
+    // Line receiving_type is uppercase SoT (PO|RETURN|REPAIR|…); intake_type is
+    // the lowercase denormalized twin used by unmatched add paths.
+    const receivingTypeUpper = isRepairService
+      ? 'REPAIR'
+      : intakeType
+        ? intakeType.toUpperCase()
+        : 'PO';
+
     const insertResult = await client.query<InsertedLineRow>(
       `INSERT INTO receiving_line (
          receiving_id,
@@ -347,6 +367,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
          sku_platform_id_row,
          source_platform_pill,
          intake_type,
+         receiving_type,
          listing_url,
          listing_reference,
          location_code,
@@ -361,10 +382,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
          created_at,
          updated_at
        ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7,
-         $8, $9, $10, $11, 0,
+         $1, $2, $3, $4, $5, $6, $7, $8,
+         $9, $10, $11, $12, 0,
          'MATCHED'::inbound_workflow_status_enum,
-         $12, $13, $14, $15::uuid,
+         $13, $14, $15, $16::uuid,
          NOW(), NOW(), NOW()
        )
        RETURNING
@@ -383,6 +404,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         skuPlatformIdRow,
         sourcePlatformPill,
         intakeType,
+        receivingTypeUpper,
         listingUrl,
         listingReference,
         locationCode,
@@ -431,9 +453,21 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // recomputeCartonSourceLink takes the tenant client so its reads/writes stay
     // on the GUC path.
     let carton: { zoho_purchaseorder_number: string | null; source: string | null; source_platform: string | null } | null = null;
+    let repairTracking: string | null = null;
     if (sourceOrderId || isRepairService) {
       try {
         await recomputeCartonSourceLink(receivingId, client);
+        // Force carton intake type to repair when linking a -RS order.
+        if (isRepairService) {
+          await client.query(
+            `UPDATE receiving_carton
+                SET intake_type = 'repair',
+                    updated_at = NOW()
+              WHERE id = $1
+                AND organization_id = $2`,
+            [receivingId, ctx.organizationId],
+          );
+        }
         const cartonRes = await client.query<{
           zoho_purchaseorder_number: string | null;
           source: string | null;
@@ -452,10 +486,91 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
+    // Capture tracking for the post-tx repair upsert (upsertEcwidIncomingRepair
+    // opens its own tenant tx — never nest it inside this one).
+    if (isRepairService && sourceOrderId) {
+      try {
+        const trackingRes = await client.query<{ tracking_number: string | null }>(
+          `SELECT stn.tracking_number
+             FROM shipment_links sl
+             JOIN shipping_tracking_numbers stn ON stn.id = sl.shipment_id
+            WHERE sl.owner_type = 'RECEIVING'
+              AND sl.owner_id = $1
+              AND sl.organization_id = $2::uuid
+            ORDER BY sl.id ASC
+            LIMIT 1`,
+          [receivingId, ctx.organizationId],
+        );
+        repairTracking =
+          trackingRes.rows[0]?.tracking_number != null
+            ? String(trackingRes.rows[0].tracking_number).trim() || null
+            : null;
+      } catch (err) {
+        console.warn('add-unmatched-line: repair tracking lookup failed', err);
+      }
+    }
+
     // Envelope frozen: condition_grade used to ride the spine RETURNING; it now
     // lives on rlt, so compose it from the value we just wrote.
-    return respond({ success: true, line: { ...line, condition_grade: conditionGrade }, carton });
+    return {
+      ...(await respond({
+        success: true,
+        line: { ...line, condition_grade: conditionGrade },
+        carton,
+        repair_service_id: null,
+      })),
+      repairUpsert:
+        isRepairService && sourceOrderId
+          ? {
+              orderId: sourceOrderId,
+              tracking: repairTracking,
+              sku: resolvedSku,
+              productTitle: resolvedItemName,
+            }
+          : null,
+    };
   });
+
+  // Repair-service identify → idempotent repair_service upsert + received stamp.
+  // Soft-join by Ecwid order id (and tracking when known). Runs AFTER the
+  // receiving tx commits so upsertEcwidIncomingRepair's own tenant path cannot
+  // nest / deadlock against the line insert.
+  let repairTicketId: number | null =
+    typeof result.payload.repair_service_id === 'number'
+      ? result.payload.repair_service_id
+      : null;
+  const repairUpsert =
+    'repairUpsert' in result && result.repairUpsert ? result.repairUpsert : null;
+  if (!result.cached && result.payload.success === true && repairUpsert) {
+    const upsert = repairUpsert;
+    try {
+      const ticket = await upsertEcwidIncomingRepair(
+        {
+          orderId: upsert.orderId,
+          trackingNumber: upsert.tracking,
+          sku: upsert.sku,
+          productTitle: upsert.productTitle,
+          contactInfo: null,
+          notes: `Linked from receiving carton #${receivingId}`,
+        },
+        ctx.organizationId as OrgId,
+      );
+      repairTicketId = ticket.id;
+      await withTenantTransaction(ctx.organizationId, async (client) => {
+        await client.query(
+          `UPDATE repair_service
+              SET received_at = COALESCE(received_at, NOW()),
+                  updated_at = NOW()
+            WHERE id = $1
+              AND organization_id = $2::uuid`,
+          [ticket.id, ctx.organizationId],
+        );
+      });
+      result.payload.repair_service_id = repairTicketId;
+    } catch (err) {
+      console.warn('add-unmatched-line: repair_service upsert failed', err);
+    }
+  }
 
   // ─── Background: cache invalidation + realtime publish ────────────────────
   // Only on a real insert (success) — the cached/404/409/500 paths short-circuit
@@ -470,6 +585,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           rowId: String(receivingId),
           source: 'receiving.add-unmatched-line',
         });
+        if (typeof repairTicketId === 'number' && repairTicketId > 0) {
+          await publishRepairChanged({
+            organizationId: ctx.organizationId,
+            repairIds: [repairTicketId],
+            source: 'receiving.add-unmatched-line',
+          });
+        }
       } catch (err) {
         console.warn('add-unmatched-line: cache/realtime update failed', err);
       }

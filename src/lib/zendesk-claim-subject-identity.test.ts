@@ -18,14 +18,14 @@ test('empty platform + Return type + claim Return → Unknown - Return (not bare
   assert.notEqual(identity, 'Return');
 });
 
-test('source_platform=fba + type Return → FBA - Return when is_return lacks return_platform', () => {
+test('source_platform=fba + type Return → Amazon - Return when is_return lacks return_platform', () => {
   const identity = resolveClaimSubjectIdentity({
     sourcePlatform: 'fba',
     receivingType: 'RETURN',
     isReturn: false,
     claimTypeLabel: 'Return',
   });
-  assert.equal(identity, 'FBA - Return');
+  assert.equal(identity, 'Amazon - Return');
 });
 
 test('is_return + return_platform=FBA + claim Return → platform only (no duplicate Return)', () => {
@@ -36,12 +36,12 @@ test('is_return + return_platform=FBA + claim Return → platform only (no dupli
     returnPlatform: 'FBA',
     claimTypeLabel: 'Return',
   });
-  // Full subject would otherwise read "FBA Return // Return // TRK#…" — the
+  // Full subject would otherwise read "Amazon return // Return // TRK#…" — the
   // claim-type segment already says Return, so the identity segment drops it.
-  assert.equal(identity, 'FBA');
+  assert.equal(identity, 'Amazon');
 });
 
-test('is_return + source fba without return_platform → FBA Return via knownReturnClassification', () => {
+test('is_return + source fba without return_platform → Amazon return via knownReturnClassification', () => {
   assert.equal(
     knownReturnClassification({ isReturn: true, sourcePlatform: 'fba' }),
     'FBA_RETURN',
@@ -53,10 +53,10 @@ test('is_return + source fba without return_platform → FBA Return via knownRet
     returnPlatform: null,
     claimTypeLabel: 'Return',
   });
-  assert.equal(identity, 'FBA');
+  assert.equal(identity, 'Amazon');
 });
 
-test('is_return + return_platform=FBA + claim Damage → FBA Return (not a duplicate, still informative)', () => {
+test('is_return + return_platform=FBA + claim Damage → Amazon return (not a duplicate, still informative)', () => {
   const identity = resolveClaimSubjectIdentity({
     sourcePlatform: 'fba',
     receivingType: 'RETURN',
@@ -64,7 +64,7 @@ test('is_return + return_platform=FBA + claim Damage → FBA Return (not a dupli
     returnPlatform: 'FBA',
     claimTypeLabel: 'Damage',
   });
-  assert.equal(identity, 'FBA Return');
+  assert.equal(identity, 'Amazon return');
 });
 
 test('is_return + return_platform=EBAY_DRAGONH + claim Return → eBay (DH) only, sub-account kept', () => {
@@ -85,16 +85,17 @@ test('catalog platform label override wins over built-in eBay', () => {
     claimTypeLabel: 'Damage',
     catalogPlatformLabel: 'FBA return',
   });
-  assert.equal(identity, 'FBA return - PO');
+  assert.equal(identity, 'FBA return - Purchase order');
 });
 
-test('ebay + PO without catalog → eBay - PO', () => {
+test('ebay + PO without catalog → eBay - Purchase order', () => {
   const identity = resolveClaimSubjectIdentity({
     sourcePlatform: 'ebay',
     receivingType: 'PO',
     claimTypeLabel: 'Damage',
   });
-  assert.equal(identity, 'eBay - PO');
+  // receivingLabelTypeDisplay('PO') → full face "Purchase order" (short "PO" is chips).
+  assert.equal(identity, 'eBay - Purchase order');
 });
 
 test('is_return without any platform does not invent Amazon Return', () => {

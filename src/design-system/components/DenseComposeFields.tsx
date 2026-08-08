@@ -6,6 +6,12 @@
  * - Search = underline picker field on the same axis (rail/compose pickers)
  * - Body = full-bleed sunken compose band; textarea uses `inset-field` only
  *
+ * `DenseComposeBodyBand` (`bg-surface-sunken`) is the **only** full-bleed
+ * depth-indent gray for operated compose entry — notes · ticket/claim
+ * create/edit. Read fact bands (`StationDenseFactStrip`, trust strips,
+ * dossier detail) stay transparent on the card host; never reuse this sunken
+ * wash as a telemetry background.
+ *
  * Always-edit create forms (not click-to-edit). Do not wrap these in
  * `TextField`, `WORKSPACE_NESTED_FIELD`, or `rounded-lg border` boxes.
  */

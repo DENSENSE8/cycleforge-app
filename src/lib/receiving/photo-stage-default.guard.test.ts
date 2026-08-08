@@ -129,3 +129,45 @@ test('CartonContextCard: photoStage is required, no default', () => {
 test('LineCartonContextSection: photoStage is required, no default', () => {
   assertRequiredNoDefault(LINE_CARTON_CONTEXT_SECTION, 'LineCartonContextSection');
 });
+
+const PHOTO_REQUEST_PUBLISHER = code(
+  sourceOf('../../components/sidebar/receiving/usePhotoRequestPublisher.ts'),
+);
+const SCAN_APPLY = code(sourceOf('../../components/sidebar/receiving/scan-apply.ts'));
+const USE_TRACKING_SCAN = code(
+  sourceOf('../../components/sidebar/receiving/useTrackingScan.ts'),
+);
+
+test('usePhotoRequestPublisher: stage is a required call-site arg, never hardcoded arrival_package', () => {
+  // Regression: Unbox scan auto-push used to stamp stage: 'arrival_package'
+  // inside the publisher, so the phone opened Arrival's guided first-photo
+  // studio on every Unbox scan. Stage must come from the caller.
+  assert.match(
+    PHOTO_REQUEST_PUBLISHER,
+    /stage:\s*ReceivingPhotoStage/,
+    'PhotoRequestPublisher must take an explicit ReceivingPhotoStage parameter',
+  );
+  assert.equal(
+    /stage:\s*'arrival_package'/.test(PHOTO_REQUEST_PUBLISHER),
+    false,
+    "publisher must not hardcode stage: 'arrival_package' — Unbox scans need unbox_carton",
+  );
+});
+
+test('scan auto-push call sites: stage from photoStageForScanIntakeSurface', () => {
+  for (const [label, src] of [
+    ['scan-apply', SCAN_APPLY],
+    ['useTrackingScan', USE_TRACKING_SCAN],
+  ] as const) {
+    assert.match(
+      src,
+      /photoStageForScanIntakeSurface/,
+      `${label}: must derive auto-push stage from intake surface (Unbox → unbox_carton)`,
+    );
+    assert.match(
+      src,
+      /publishPhotoRequestFor\([\s\S]*?photoStageForScanIntakeSurface/,
+      `${label}: publishPhotoRequestFor must pass photoStageForScanIntakeSurface(...)`,
+    );
+  }
+});

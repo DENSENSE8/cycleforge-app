@@ -37,15 +37,15 @@ test('setTimeFormat flips the value + notifies subscribers', () => {
   unsub();
 });
 
-test('hydrateTimeFormat adopts a server value; null/garbage resets to default', () => {
+test('hydrateTimeFormat adopts a server value; null/garbage leave local alone', () => {
   hydrateTimeFormat('24h');
   assert.equal(getTimeFormat(), '24h');
 
   hydrateTimeFormat(null);
-  assert.equal(getTimeFormat(), '12h');
+  assert.equal(getTimeFormat(), '24h');
 
   hydrateTimeFormat('nonsense');
-  assert.equal(getTimeFormat(), '12h');
+  assert.equal(getTimeFormat(), '24h');
 
   // reset for isolation
   setTimeFormat('12h');

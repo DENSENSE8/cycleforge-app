@@ -10,7 +10,7 @@ export const SIDEBAR_TITLES: Record<string, string> = {
   operations: 'Operations',
   'ops-photos': 'Media',
   studio: 'Operations Studio',
-  fba: 'FBA prep',
+  fba: 'Amazon Prep',
   receiving: 'Receiving',
   repair: 'Repair',
   // The `/walk-in` main page is the front-desk transaction history — renamed

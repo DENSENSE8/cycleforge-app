@@ -98,3 +98,24 @@ export function resolveNextStepAfter(
     .find((step) => !step.done && !waived?.has(step.key));
   return next?.key ?? null;
 }
+
+/**
+ * Whether evidence just settled a focused step that was pending when focus was
+ * set — release the override so the natural pointer advances.
+ *
+ * Reopening an already-done step (`wasDoneAtFocus === true`) keeps the override;
+ * clearing it immediately would make checklist / meta reopen impossible.
+ * Paging › onto a pending step then capturing evidence must clear, or the dock
+ * stays parked on a green step forever.
+ */
+export function shouldReleaseFocusAfterEvidence(input: {
+  focusedKey: string | null | undefined;
+  steps: readonly PointerStep[];
+  /** Whether the focused step was already done when focus was set. */
+  wasDoneAtFocus: boolean | null | undefined;
+}): boolean {
+  const { focusedKey, steps, wasDoneAtFocus } = input;
+  if (!focusedKey || wasDoneAtFocus !== false) return false;
+  const step = steps.find((s) => s.key === focusedKey);
+  return !!step?.done;
+}

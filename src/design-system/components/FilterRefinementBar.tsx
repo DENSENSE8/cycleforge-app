@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from '@/design-system/motion';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Layer } from '@/design-system/primitives/Layer';
 import { Filter, X, ChevronDown } from '@/components/Icons';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 export interface FilterRefinement {
@@ -65,9 +66,11 @@ export function FilterRefinementBar({
   const isSidebar = variant === 'sidebar';
 
   const triggerClasses = isSidebar
-    ? `flex h-[40px] w-full items-center gap-2.5 bg-surface-card px-3 transition-colors hover:bg-surface-hover ${
-        isOpen || hasActive ? 'text-blue-600' : 'text-text-soft'
-      }`
+    ? cn(
+        'flex w-full items-center gap-2.5 bg-surface-card px-3 transition-colors hover:bg-surface-hover',
+        PRIMARY_CHROME_ROW_FACE,
+        isOpen || hasActive ? 'text-blue-600' : 'text-text-soft',
+      )
     : `flex w-full items-center gap-3 rounded-none border px-5 py-3 text-role-data font-semibold tracking-tight transition-all ${
         isOpen
           ? 'border-blue-500/50 bg-surface-card shadow-[0_0_20px_rgba(59,130,246,0.12)] ring-1 ring-blue-500/20'

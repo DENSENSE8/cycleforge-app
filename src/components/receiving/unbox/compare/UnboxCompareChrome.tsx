@@ -1,10 +1,17 @@
 'use client';
 
 /**
- * Unbox compare layout + spreadsheet zoom — icon menus in the triage band.
+ * Unbox compare layout + spreadsheet zoom — icon menus on the inspector **View**
+ * topic cluster (they left Band 3 on 2026-08-08; the row is find + KPI +
+ * inspector only).
+ *
+ * **Zoom state and the ⌘+ / ⌘- / ⌘0 chords live in `HistoryViewChromeProvider`,
+ * not here.** This component now mounts only inside the rail, so a listener
+ * bound here would die whenever the inspector is closed — and a local
+ * `useState` seeded from `readStoredGridZoom()` would re-hydrate and clobber
+ * the provider's value on every rail open.
  */
 
-import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ColumnsOne,
@@ -21,13 +28,10 @@ import {
   UNBOX_COMPARE_LAYOUT_PARAM,
 } from '@/lib/receiving/unbox-compare-layout';
 import {
-  GRID_ZOOM_DEFAULT,
   GRID_ZOOM_LEVELS,
-  readStoredGridZoom,
-  stepGridZoom,
-  writeStoredGridZoom,
   type GridZoomPercent,
 } from '@/design-system/components/grid/grid-zoom';
+import { useHistoryViewChrome } from '@/components/receiving/history/history-view-chrome-context';
 import { cn } from '@/utils/_cn';
 
 const LAYOUT_OPTS = [
@@ -46,6 +50,7 @@ export function UnboxCompareChrome({
   onZoomChange,
   className,
 }: {
+  /** Kept for call-site symmetry; the provider is the zoom SoT. */
   onZoomChange?: (percent: GridZoomPercent) => void;
   className?: string;
 }) {
@@ -56,14 +61,7 @@ export function UnboxCompareChrome({
     searchParams.get(UNBOX_COMPARE_LAYOUT_PARAM),
   );
 
-  const [zoom, setZoom] = useState<GridZoomPercent>(GRID_ZOOM_DEFAULT);
-
-  useEffect(() => {
-    const z = readStoredGridZoom();
-    setZoom(z);
-    onZoomChange?.(z);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once
-  }, []);
+  const { zoom, setZoom } = useHistoryViewChrome();
 
   const setLayout = (next: UnboxCompareLayout) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -72,32 +70,10 @@ export function UnboxCompareChrome({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  const applyZoom = useCallback(
-    (next: GridZoomPercent) => {
-      setZoom(next);
-      writeStoredGridZoom(next);
-      onZoomChange?.(next);
-    },
-    [onZoomChange],
-  );
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === '=' || e.key === '+') {
-        e.preventDefault();
-        applyZoom(stepGridZoom(zoom, 1));
-      } else if (e.key === '-') {
-        e.preventDefault();
-        applyZoom(stepGridZoom(zoom, -1));
-      } else if (e.key === '0') {
-        e.preventDefault();
-        applyZoom(GRID_ZOOM_DEFAULT);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [applyZoom, zoom]);
+  const applyZoom = (next: GridZoomPercent) => {
+    setZoom(next);
+    onZoomChange?.(next);
+  };
 
   return (
     <div

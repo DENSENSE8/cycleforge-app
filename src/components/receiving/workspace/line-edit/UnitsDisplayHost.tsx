@@ -58,6 +58,8 @@ interface UnitsDisplayController {
   commitSerialAbsent: (next: { absent: boolean; reason: string | null }) => void;
   serialRef?: RefObject<HTMLInputElement | null>;
   handleFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
+  /** RETURN match → Displays Timeline. */
+  handleOpenReturnHistory?: () => void;
   serialLookup?: ReturnType<typeof useSerialLookup>;
 }
 

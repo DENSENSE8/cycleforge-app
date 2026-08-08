@@ -69,6 +69,13 @@ export type TableId =
   | 'receiving'
   /** Incoming POS spreadsheet — distinct from Unbox/History `receiving`. */
   | 'incoming'
+  /**
+   * Unbox pinned-Inbound EMBED — its OWN prefs bucket so hiding a heavy column
+   * (e.g. Tracking) on the Unbox Inbound tab never touches the full `/incoming`
+   * desk density, and vice versa (Gemini D13). Same descriptor / column
+   * vocabulary as `incoming`; only the staff-prefs identity differs.
+   */
+  | 'incoming_embed'
   | 'orders'
   | 'shipped'
   | 'tech'
@@ -101,7 +108,9 @@ export type TableId =
   /** Ops › Tracking Exceptions spreadsheet (`TRACKING_EXCEPTIONS_GRID_COLUMNS`). */
   | 'tracking-exceptions'
   /** Support › Tickets spreadsheet (`SUPPORT_TICKETS_GRID_COLUMNS`). */
-  | 'support-tickets';
+  | 'support-tickets'
+  /** Inventory › Units browse spreadsheet (`UNITS_GRID_COLUMNS`). */
+  | 'inventory-units';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -167,6 +176,11 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // toggle on Incoming cannot silently hide tracks on History/Unbox (and vice
   // versa). Status uses meta `rest`; no serial on this surface.
   incoming: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
+  // Unbox pinned-Inbound embed — same column vocabulary as `incoming`, distinct
+  // staff-prefs bucket (D13). Wired via ReceivingLinesTable's embed branch, which
+  // passes `tableId="incoming_embed"` to the provider + IncomingGridView so its
+  // Fields deltas persist under this key, not `incoming`.
+  incoming_embed: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   orders: [META_STATUS, META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   shipped: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
@@ -234,6 +248,16 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('fill', 'Fill', 'text'),
     GRID_COL('last_counted', 'Counted', 'date'),
     GRID_COL('status', 'Status', 'tag'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/inventory/units-grid/units-grid-layout.ts`. `serial`
+  // (frozen identity) and `product` (flex title) are absent — structurally
+  // un-hideable / the reading track.
+  'inventory-units': [
+    GRID_COL('status', 'Status', 'tag'),
+    GRID_COL('condition', 'Condition', 'tag'),
+    GRID_COL('location', 'Location', 'location'),
+    GRID_COL('updated', 'Updated', 'date'),
   ],
   // Keys are the `hideKey`s in
   // `src/components/receiving/unfound/grid/unfound-grid-layout.ts`. The `action`

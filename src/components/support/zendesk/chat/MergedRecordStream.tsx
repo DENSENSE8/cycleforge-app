@@ -2,20 +2,25 @@
 
 /**
  * The ticket's MERGED RECORD STREAM — helpdesk messages, optionally interleaved
- * with warehouse / carrier events, as flat ledger rows on one shared left
- * reading edge.
+ * with warehouse / carrier events, over one shared `TimelineItem` waist.
+ *
+ * **Two row shells, one job discriminator (read vs select):**
+ *
+ * - `variant="ledger"` (default) — flat rows on one shared left reading edge
+ *   (`divide-y`, leading mark). Correct when the stream is **scanned / selected**
+ *   (dense triage — `/support` service workspace). Direction is the mark, never
+ *   a fill.
+ * - `variant="bubble"` — conversation bubbles (inbound vs outbound by shell).
+ *   Correct when the surface is **read + reply** — station Ticket Displays
+ *   (`TicketDisplayHost` → `SupportTicketDetail` `streamVariant="bubble"`).
+ *   Opted in there only; never derive from `embedded` alone (`/support` focus
+ *   is also embedded and stays ledger). Never a third renderer
+ *   (`SupportChatThread` stays deleted).
  *
  * **Station Ticket Displays omit `events`** (messages only). Floor spine lives
  * on the peer Timeline Displays tab (`EventTimeline` / `WorkspaceTimelineTab`).
  * Support service workspace may still pass a collapsed event spine via
  * `mergeFloorTimeline` until an explicit Floor toggle ships.
- *
- * It replaced `SupportChatThread` (deleted 2026-08-02), which drew a chat: blue
- * and amber bubbles, ragged variable widths, a `PUBLIC` chip on every outbound
- * row. The job on this surface is not "read a chat" — it is *reconstruct the
- * truth about one physical unit fast enough to answer confidently*, and a bubble
- * layout spends the surface's only free signalling channel (fill) on saying
- * "this is a chat" while destroying the scan speed a dense list exists to buy.
  *
  * ## It is a SIBLING of `EventTimeline`, not a fork of it — and not a third one
  *
@@ -27,17 +32,12 @@
  *    `zendeskCommentsToTimeline` for messages, the existing `*ToTimeline`
  *    adapters (via `bundle.timeline`) for events. Merge / sort / day-key logic is
  *    the house's. Nothing about a domain is re-derived here.
- *  - **Only the ROW BODY diverges, and it has to.** `TimelineItem`'s display
- *    model is one line plus a muted second line. A message body is *block
- *    markdown* — headings, lists, quotes — followed by an attachment grid. That
- *    does not fit `title` + `subtitle`, and widening `EventTimeline` to take a
- *    body renderer would put a markdown/attachment concern inside the primitive
- *    every unit journey and carrier trail composes.
- *  - **The anatomy is deliberately the house one-row anatomy**, not
- *    `EventTimeline`'s fading rail: a 40px leading mark, `divide-y
- *    divide-border-hairline`, and day bands through the shared
- *    {@link DateGroupHeader} — the SoT `EventTimeline` does *not* use (it formats
- *    its own day header inline).
+ *  - **Only the ROW SHELL diverges.** Ledger uses the house one-row anatomy
+ *    (40px leading mark, `divide-y`, day bands via {@link DateGroupHeader}).
+ *    Bubble keeps the same adapters / day bands / markdown / attachments — only
+ *    the message shell changes for a read surface.
+ *  - **Body still cannot live in `EventTimeline`.** A message is *block
+ *    markdown* + attachments; that does not fit `title` + `subtitle`.
  *
  * ## Reading direction is ASCENDING, and that is not the timeline default
  *
@@ -59,6 +59,12 @@
  * This is CONTENT. The host owns the port (`SupportTicketDetail`'s
  * `min-h-0 flex-1 overflow-y-auto`); the stream adds no `overflow-*`, no
  * `flex-1`, no height floor.
+ *
+ * ## Displays gutter
+ *
+ * On `variant="bubble"` the list owns {@link DISPLAYS_BODY_INSET} (`px-4`) so
+ * conversation rows share the readable gutter with the floating composer. The
+ * Displays column host stays flush (`DISPLAYS_FLUSH_HOST`).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -80,6 +86,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityMark, StaffAvatar } from '@/components/identity';
 import { staffInitials } from '@/design-system/components/StaffBadge';
 import { Button, Spinner } from '@/design-system/primitives';
+import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { Lock } from '@/components/Icons';
 import { formatDateTimePST, toPSTDateKey } from '@/utils/date';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
@@ -99,6 +106,8 @@ import { resolveAuthor } from './support-chat-utils';
  * that must be on screen) is always mounted.
  */
 const STREAM_PAGE = 60;
+
+type MergedRecordStreamVariant = 'ledger' | 'bubble';
 
 interface ZAttachmentWire {
   id: number;
@@ -144,16 +153,11 @@ function RowTime({ at }: { at: string | null }) {
 }
 
 /**
- * The 40px leading mark — the row's ONLY direction signal.
- *
- * A message wears its author's identity mark; a warehouse / carrier event wears
- * its station glyph. Direction is never a background fill.
+ * The leading mark — author's identity for a message, station glyph for an event.
  *
  * Messages use {@link IdentityMark} with the helpdesk roster photo rather than
  * {@link StaffAvatar}: a helpdesk comment carries an agent id, not a `staff.id`,
- * and an avatar is never guessed from a display name — two people share one and
- * the row would attribute the words to the wrong face. Event rows that DID
- * resolve a staff id get the real avatar.
+ * and an avatar is never guessed from a display name.
  */
 function RowMark({ item, compact }: { item: MergedRecordItem; compact: boolean }) {
   const size = compact ? 'xs' : 'sm';
@@ -235,78 +239,153 @@ function Attachments({
   );
 }
 
-function StreamRow({
+function MetaLine({
+  item,
+  msg,
+  internal,
+  compact,
+  alignEnd,
+}: {
+  item: MergedRecordItem;
+  msg: TicketMessageDetail | undefined;
+  internal: boolean;
+  compact: boolean;
+  alignEnd?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft',
+        alignEnd && 'flex-row-reverse',
+      )}
+    >
+      {internal ? (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1 py-px text-amber-700">
+          <Lock className="h-2.5 w-2.5" /> Internal
+        </span>
+      ) : null}
+      <span className="truncate text-text-muted">{msg ? msg.authorName : item.actor || ''}</span>
+      {msg?.authorEmail && msg.authorEmail !== msg.authorName && !compact ? (
+        <span className="min-w-0 truncate normal-case tracking-normal text-text-faint">
+          {msg.authorEmail}
+        </span>
+      ) : null}
+      <span aria-hidden className="text-text-faint">
+        ·
+      </span>
+      <RowTime at={item.at} />
+    </div>
+  );
+}
+
+function MessageBody({
+  msg,
   item,
   onOpenPhoto,
   compact,
 }: {
+  msg: TicketMessageDetail | undefined;
   item: MergedRecordItem;
   onOpenPhoto?: (url: string) => void;
   compact: boolean;
 }) {
+  const refs = item.refs?.length ? item.refs : item.ref ? [item.ref] : [];
+  return (
+    <>
+      {msg ? (
+        <div className="break-words text-role-data leading-relaxed text-text-default">
+          {renderBlockMarkdown(msg.body, { onOpenPhoto })}
+        </div>
+      ) : (
+        <div className="stack-tight">
+          <p className="text-role-data leading-relaxed text-text-default">{item.title}</p>
+          {item.subtitle ? (
+            <p className="text-role-caption text-text-soft">{item.subtitle}</p>
+          ) : null}
+        </div>
+      )}
+
+      {refs.length ? (
+        <div className="flex flex-wrap items-center gap-1">
+          {refs.map((r, i) => (
+            <TimelineRefChip key={`${r.kind}-${r.value}-${i}`} refItem={r} />
+          ))}
+        </div>
+      ) : null}
+
+      {msg?.attachments.length ? (
+        <Attachments atts={msg.attachments} onOpenPhoto={onOpenPhoto} compact={compact} />
+      ) : null}
+    </>
+  );
+}
+
+function StreamRow({
+  item,
+  onOpenPhoto,
+  compact,
+  variant,
+}: {
+  item: MergedRecordItem;
+  onOpenPhoto?: (url: string) => void;
+  compact: boolean;
+  variant: MergedRecordStreamVariant;
+}) {
   const msg: TicketMessageDetail | undefined = item.message;
   const internal = Boolean(msg?.internal);
-  const refs = item.refs?.length ? item.refs : item.ref ? [item.ref] : [];
+  const ours = Boolean(msg?.ours);
 
+  if (variant === 'bubble' && msg) {
+    return (
+      <div
+        data-stream-row="message"
+        data-stream-shell="bubble"
+        data-internal={internal ? 'true' : undefined}
+        data-ours={ours ? 'true' : undefined}
+        className={cn('flex min-w-0 gap-2 py-1.5', ours ? 'flex-row-reverse' : 'flex-row')}
+      >
+        <RowMark item={item} compact={compact} />
+        <div
+          className={cn(
+            'min-w-0 max-w-[min(100%,85%)] stack-tight rounded-2xl border px-3 py-2',
+            internal
+              ? 'border-amber-200/80 bg-amber-50'
+              : ours
+                ? 'border-blue-200/80 bg-blue-50'
+                : 'border-border-soft bg-surface-card',
+          )}
+        >
+          <MetaLine item={item} msg={msg} internal={internal} compact={compact} alignEnd={ours} />
+          <MessageBody msg={msg} item={item} onOpenPhoto={onOpenPhoto} compact={compact} />
+        </div>
+      </div>
+    );
+  }
+
+  // Ledger (default) — and non-message rows even when the stream is bubble.
   return (
     <div
       data-stream-row={msg ? 'message' : 'event'}
+      data-stream-shell="ledger"
       data-internal={internal ? 'true' : undefined}
       className={cn(
         'flex gap-2',
-        compact ? 'px-2.5 py-2' : 'px-4 py-3',
+        // Bubble list already owns DISPLAYS_BODY_INSET — vertical pad only.
+        variant === 'bubble'
+          ? 'py-1.5'
+          : compact
+            ? 'px-2.5 py-2'
+            : 'px-4 py-3',
         // A tint, never a bubble — and never the ONLY carrier of "internal":
         // the row also says so in words on the meta line.
-        internal ? 'bg-surface-sunken' : null,
+        internal && variant === 'ledger' ? 'bg-surface-sunken' : null,
       )}
     >
       <RowMark item={item} compact={compact} />
 
       <div className="min-w-0 flex-1 stack-tight">
-        {/* Meta line — who / what family, then when. */}
-        <div className="flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
-          {internal ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1 py-px text-amber-700">
-              <Lock className="h-2.5 w-2.5" /> Internal
-            </span>
-          ) : null}
-          <span className="truncate text-text-muted">{msg ? msg.authorName : item.actor || ''}</span>
-          {msg?.authorEmail && msg.authorEmail !== msg.authorName && !compact ? (
-            <span className="min-w-0 truncate normal-case tracking-normal text-text-faint">
-              {msg.authorEmail}
-            </span>
-          ) : null}
-          <span aria-hidden className="text-text-faint">
-            ·
-          </span>
-          <RowTime at={item.at} />
-        </div>
-
-        {/* Body — block markdown for a message, the event's own lines otherwise. */}
-        {msg ? (
-          <div className="break-words text-role-data leading-relaxed text-text-default">
-            {renderBlockMarkdown(msg.body, { onOpenPhoto })}
-          </div>
-        ) : (
-          <div className="stack-tight">
-            <p className="text-role-data leading-relaxed text-text-default">{item.title}</p>
-            {item.subtitle ? (
-              <p className="text-role-caption text-text-soft">{item.subtitle}</p>
-            ) : null}
-          </div>
-        )}
-
-        {refs.length ? (
-          <div className="flex flex-wrap items-center gap-1">
-            {refs.map((r, i) => (
-              <TimelineRefChip key={`${r.kind}-${r.value}-${i}`} refItem={r} />
-            ))}
-          </div>
-        ) : null}
-
-        {msg?.attachments.length ? (
-          <Attachments atts={msg.attachments} onOpenPhoto={onOpenPhoto} compact={compact} />
-        ) : null}
+        <MetaLine item={item} msg={msg} internal={internal} compact={compact} />
+        <MessageBody msg={msg} item={item} onOpenPhoto={onOpenPhoto} compact={compact} />
       </div>
     </div>
   );
@@ -320,6 +399,7 @@ export function MergedRecordStream({
   onOpenPhoto,
   events,
   compact = false,
+  variant = 'ledger',
 }: {
   ticketId: number;
   requesterId?: number;
@@ -334,7 +414,13 @@ export function MergedRecordStream({
   events?: TimelineItem[];
   /** Station / carton push — denser chrome; body stays readable (`text-role-data`). */
   compact?: boolean;
+  /**
+   * Row shell. `ledger` = flat selectable/scannable list (default, `/support`).
+   * `bubble` = read-a-conversation on station Ticket Displays.
+   */
+  variant?: MergedRecordStreamVariant;
 }) {
+  const bubble = variant === 'bubble';
   const { data, isLoading, error } = useTicketComments(ticketId);
   const { data: agents = [] } = useZendeskAgents();
   const agentsById = useMemo(
@@ -403,7 +489,12 @@ export function MergedRecordStream({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div
+        className={cn(
+          'flex items-center justify-center py-16',
+          bubble && DISPLAYS_BODY_INSET,
+        )}
+      >
         <Spinner />
       </div>
     );
@@ -413,7 +504,11 @@ export function MergedRecordStream({
       <p
         className={cn(
           'text-center text-rose-600',
-          compact ? 'px-3 py-4 text-role-micro' : 'px-5 py-6 text-role-caption',
+          bubble
+            ? cn(DISPLAYS_BODY_INSET, 'py-4 text-role-micro')
+            : compact
+              ? 'px-3 py-4 text-role-micro'
+              : 'px-5 py-6 text-role-caption',
         )}
       >
         Couldn’t load the conversation.
@@ -422,7 +517,16 @@ export function MergedRecordStream({
   }
   if (!rows.length) {
     return (
-      <div className={cn('text-center', compact ? 'px-3 py-10' : 'px-5 py-16')}>
+      <div
+        className={cn(
+          'text-center',
+          bubble
+            ? cn(DISPLAYS_BODY_INSET, 'py-10')
+            : compact
+              ? 'px-3 py-10'
+              : 'px-5 py-16',
+        )}
+      >
         <p className={cn('text-text-faint', compact ? 'text-role-micro' : 'text-role-caption')}>
           No messages yet — start the conversation below.
         </p>
@@ -441,9 +545,20 @@ export function MergedRecordStream({
   let lastDay: string | null = null;
 
   return (
-    <div data-testid="support-merged-stream" className="divide-y divide-border-hairline">
+    <div
+      data-testid="support-merged-stream"
+      data-stream-variant={variant}
+      className={cn(
+        bubble ? cn(DISPLAYS_BODY_INSET, 'stack-tight') : 'divide-y divide-border-hairline',
+      )}
+    >
       {hiddenCount > 0 ? (
-        <div className={cn('flex justify-center', compact ? 'px-2.5 py-2' : 'px-4 py-3')}>
+        <div
+          className={cn(
+            'flex justify-center',
+            bubble ? 'py-2' : compact ? 'px-2.5 py-2' : 'px-4 py-3',
+          )}
+        >
           <Button
             size="sm"
             variant="ghost"
@@ -461,9 +576,19 @@ export function MergedRecordStream({
         return (
           <div key={String(item.id)}>
             {showDay ? (
-              <DateGroupHeader date={dayKey} total={dayTotals.get(dayKey) ?? 0} />
+              <DateGroupHeader
+                date={dayKey}
+                total={dayTotals.get(dayKey) ?? 0}
+                // Bubble list already owns DISPLAYS_BODY_INSET — drop QUEUE_ROW.px.
+                className={bubble ? 'px-0' : undefined}
+              />
             ) : null}
-            <StreamRow item={item} onOpenPhoto={onOpenPhoto} compact={compact} />
+            <StreamRow
+              item={item}
+              onOpenPhoto={onOpenPhoto}
+              compact={compact}
+              variant={variant}
+            />
           </div>
         );
       })}

@@ -27,7 +27,7 @@ const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel
 
 const SLIDER = 'src/design-system/components/SectionTabsSlider.tsx';
 const UNBOX_TABS = 'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx';
-const DISPLAYS = 'src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx';
+const DISPLAYS = 'src/components/station/displays/StationDisplaysPushStack.tsx';
 const TICKET = 'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx';
 const PHOTOS = 'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx';
 const CLAIM = 'src/components/receiving/workspace/ReceivingClaimPanel.tsx';
@@ -71,18 +71,17 @@ describe('Unbox Displays claim fill + pinned footer', () => {
     );
   });
 
-  it('Unbox Displays enables fillHeight and drops outer-column scroll', () => {
+  it('Unbox Displays drill-down leaf fills height and drops outer-column scroll', () => {
     const displays = read(DISPLAYS);
-    const tabs = read(UNBOX_TABS);
     assert.match(
-      tabs,
-      /fillHeight=\{fillHeight\}/,
-      'UnboxSectionTabs must thread fillHeight into SectionTabsSlider',
+      displays,
+      /StationDisplayIndexList|station-displays-index/,
+      'Displays push uses Root Index drill-down (not a permanent icon plate)',
     );
     assert.match(
       displays,
-      /fillHeight/,
-      'Displays push must opt into fillHeight',
+      /flex h-full min-h-0 flex-col/,
+      'leaf host fills column height for pinned Ticket/Claim footers',
     );
     assert.match(
       displays,
@@ -91,8 +90,13 @@ describe('Unbox Displays claim fill + pinned footer', () => {
     );
     assert.doesNotMatch(
       displays,
-      /overflow-y-auto/,
-      'outer overflow-y-auto is what floated Cancel/Next above dead space',
+      /UnboxSectionTabs/,
+      'horizontal UnboxSectionTabs icon plate is retired as Displays primary nav',
+    );
+    assert.doesNotMatch(
+      displays,
+      /density=["']icon["']/,
+      'no SectionTabsSlider density=icon plate as Displays navigator',
     );
   });
 
@@ -214,6 +218,10 @@ describe('Unbox Displays claim fill + pinned footer', () => {
       /FlushTerminalFooter/,
       'sticky File footer composes FlushTerminalFooter Macro SoT',
     );
+    // Stable CTA mount — tip disables on composeComplete instead of unwrapping
+    // HoverTooltip (unwrap remounted File/Update mid-press).
+    assert.match(phase, /disabled=\{c\.composeComplete\}/);
+    assert.doesNotMatch(phase, /composeComplete\s*\?\s*\(?\s*(fileButton|updateButton)/);
     assert.match(
       phase,
       /layout="cluster"/,

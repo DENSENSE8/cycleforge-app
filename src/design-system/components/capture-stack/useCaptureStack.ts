@@ -157,18 +157,22 @@ export interface CaptureStackQueryOptions<T> {
 export interface CaptureStackQuery<T> {
   data: T[];
   isLoading: boolean;
+  /** Fourth settled state — consumers must paint Retry, never blank-as-empty. */
+  isError: boolean;
   refetch: () => void;
 }
 
 /**
  * Query-backed feed source: TanStack Query (cached, so back-navigation is
  * instant) plus the realtime fan-in each feed needs. Returns a plain array.
+ * Surfaces `isError` so a failed fetch is never painted as an honest empty
+ * queue (H1 premium-parity Phase B).
  */
 export function useCaptureStackQuery<T>(opts: CaptureStackQueryOptions<T>): CaptureStackQuery<T> {
   const { queryKey, queryFn, staleTime = 20_000, refetchOnMount, enabled = true, realtime } = opts;
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<T[]>({
+  const { data, isLoading, isError } = useQuery<T[]>({
     queryKey,
     queryFn,
     staleTime,
@@ -203,5 +207,5 @@ export function useCaptureStackQuery<T>(opts: CaptureStackQueryOptions<T>): Capt
 
   useRefreshSignal(realtime?.refreshDomains ?? EMPTY_DOMAINS, () => void refetch());
 
-  return { data: data ?? [], isLoading, refetch };
+  return { data: data ?? [], isLoading, isError, refetch };
 }

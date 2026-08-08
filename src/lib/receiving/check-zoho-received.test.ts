@@ -14,6 +14,7 @@ import {
   isUndeterminedReason,
   isZohoReceivedLikeStatus,
   parseTrackingPaste,
+  resolveCheckRowCarrierTracking,
   resolveVerdict,
   resolveWatchState,
   type CheckZohoReceivedDeps,
@@ -76,6 +77,29 @@ test('parseTrackingPaste accepts string[]', () => {
   assert.equal(parsed.unique_count, 2);
 });
 
+function mirrorHit(
+  over: {
+    zoho_purchaseorder_id: string;
+    zoho_purchaseorder_number: string | null;
+    reference_number: string | null;
+    status: string | null;
+    ref_canon: string | null;
+    po_canon?: string | null;
+    vendor_name?: string | null;
+    last_synced_at: string | null;
+  },
+) {
+  return {
+    ...over,
+    vendor_name: over.vendor_name ?? null,
+    po_canon:
+      over.po_canon ??
+      (over.zoho_purchaseorder_number
+        ? over.zoho_purchaseorder_number.toUpperCase().replace(/[^A-Z0-9]/g, '')
+        : null),
+  };
+}
+
 test('checkZohoReceived: mirror hit received vs issued; Zoho fallback; no_match', async () => {
   const deps: CheckZohoReceivedDeps = {
     ...NO_LOCAL,
@@ -83,25 +107,25 @@ test('checkZohoReceived: mirror hit received vs issued; Zoho fallback; no_match'
       new Map([
         [
           'RECV1',
-          {
+          mirrorHit({
             zoho_purchaseorder_id: 'po-1',
             zoho_purchaseorder_number: 'PO-1',
             reference_number: 'RECV1',
             status: 'received',
             ref_canon: 'RECV1',
             last_synced_at: '2026-08-01T00:00:00.000Z',
-          },
+          }),
         ],
         [
           'OPEN1',
-          {
+          mirrorHit({
             zoho_purchaseorder_id: 'po-2',
             zoho_purchaseorder_number: 'PO-2',
             reference_number: 'OPEN1',
             status: 'issued',
             ref_canon: 'OPEN1',
             last_synced_at: null,
-          },
+          }),
         ],
         ['MISS1', null],
         ['GARBAGE', null],
@@ -256,25 +280,25 @@ test('checkZohoReceived: local state joins onto rows and drives the verdict', as
       new Map([
         [
           'RECV1',
-          {
+          mirrorHit({
             zoho_purchaseorder_id: 'po-1',
             zoho_purchaseorder_number: 'PO-1',
             reference_number: 'RECV1',
             status: 'received',
             ref_canon: 'RECV1',
             last_synced_at: null,
-          },
+          }),
         ],
         [
           'RECV2',
-          {
+          mirrorHit({
             zoho_purchaseorder_id: 'po-2',
             zoho_purchaseorder_number: 'PO-2',
             reference_number: 'RECV2',
             status: 'received',
             ref_canon: 'RECV2',
             last_synced_at: null,
-          },
+          }),
         ],
       ]),
     lookupLocal: async () =>
@@ -304,14 +328,14 @@ test('a failing local lookup degrades to unknown — it never fails the check', 
       new Map([
         [
           'RECV1',
-          {
+          mirrorHit({
             zoho_purchaseorder_id: 'po-1',
             zoho_purchaseorder_number: 'PO-1',
             reference_number: 'RECV1',
             status: 'received',
             ref_canon: 'RECV1',
             last_synced_at: null,
-          },
+          }),
         ],
       ]),
     lookupLocal: async () => {
@@ -334,14 +358,14 @@ test('looked-up-and-absent DOES resolve — it is evidence, unlike a failed look
       new Map([
         [
           'RECV1',
-          {
+          mirrorHit({
             zoho_purchaseorder_id: 'po-1',
             zoho_purchaseorder_number: 'PO-1',
             reference_number: 'RECV1',
             status: 'received',
             ref_canon: 'RECV1',
             last_synced_at: null,
-          },
+          }),
         ],
       ]),
     // Lookup succeeded and returned nothing for this tracking.
@@ -352,4 +376,192 @@ test('looked-up-and-absent DOES resolve — it is evidence, unlike a failed look
   assert.equal(result.received_in_zoho[0]!.local?.known, false);
   assert.equal(result.received_in_zoho[0]!.verdict, 'erp_ahead');
   assert.equal(result.stats.erp_ahead, 1);
+});
+
+test('checkZohoReceived: order/PO numbers resolve via mirror by purchaseorder_number', async () => {
+  const result = await checkZohoReceived(ORG, 'PO-99\n12-14721-26664', {
+    ...NO_LOCAL,
+    lookupMirror: async () =>
+      new Map([
+        [
+          'PO99',
+          mirrorHit({
+            zoho_purchaseorder_id: 'po-99',
+            zoho_purchaseorder_number: 'PO-99',
+            reference_number: null,
+            status: 'received',
+            ref_canon: null,
+            po_canon: 'PO99',
+            last_synced_at: null,
+          }),
+        ],
+        [
+          '121472126664',
+          mirrorHit({
+            zoho_purchaseorder_id: 'po-12',
+            zoho_purchaseorder_number: '12-14721-26664',
+            reference_number: '1ZTRACKING',
+            status: 'issued',
+            ref_canon: '1ZTRACKING',
+            po_canon: '121472126664',
+            last_synced_at: null,
+          }),
+        ],
+      ]),
+    searchZoho: async () => [],
+  });
+  assert.ok(!('error' in result));
+  if ('error' in result) return;
+  assert.equal(result.stats.mirror_hits, 2);
+  assert.equal(result.received_in_zoho.map((r) => r.tracking).join(','), 'PO-99');
+  assert.equal(result.not_received_in_zoho.map((r) => r.tracking).join(','), '12-14721-26664');
+  assert.equal(result.received_in_zoho[0]!.po_number, 'PO-99');
+});
+
+test('checkZohoReceived: live Zoho matches exact purchaseorder_number', async () => {
+  const result = await checkZohoReceived(ORG, 'PO-LIVE', {
+    ...NO_LOCAL,
+    lookupMirror: async () => new Map([['POLIVE', null]]),
+    searchZoho: async (key) => {
+      if (key !== 'PO-LIVE') return [];
+      return [
+        {
+          purchaseorder_id: 'po-live',
+          purchaseorder_number: 'PO-LIVE',
+          reference_number: 'OTHER-REF',
+          status: 'billed',
+        },
+      ];
+    },
+  });
+  assert.ok(!('error' in result));
+  if ('error' in result) return;
+  assert.equal(result.received_in_zoho.length, 1);
+  assert.equal(result.received_in_zoho[0]!.po_number, 'PO-LIVE');
+  assert.equal(result.received_in_zoho[0]!.source, 'zoho');
+});
+
+test('checkZohoReceived: mixed paste — tracking + order number', async () => {
+  const result = await checkZohoReceived(ORG, '1ZTRACK\nPO-MIX', {
+    ...NO_LOCAL,
+    lookupMirror: async () =>
+      new Map([
+        [
+          '1ZTRACK',
+          mirrorHit({
+            zoho_purchaseorder_id: 'po-t',
+            zoho_purchaseorder_number: 'PO-T',
+            reference_number: '1ZTRACK',
+            status: 'issued',
+            ref_canon: '1ZTRACK',
+            last_synced_at: null,
+          }),
+        ],
+        [
+          'POMIX',
+          mirrorHit({
+            zoho_purchaseorder_id: 'po-m',
+            zoho_purchaseorder_number: 'PO-MIX',
+            reference_number: null,
+            status: 'received',
+            ref_canon: null,
+            po_canon: 'POMIX',
+            last_synced_at: null,
+          }),
+        ],
+      ]),
+    searchZoho: async () => [],
+  });
+  assert.ok(!('error' in result));
+  if ('error' in result) return;
+  assert.equal(result.stats.unique_count, 2);
+  assert.equal(result.received_in_zoho.length, 1);
+  assert.equal(result.not_received_in_zoho.length, 1);
+});
+
+test('resolveCheckRowCarrierTracking: reference_number is the tracking; PO paste is not', () => {
+  assert.equal(
+    resolveCheckRowCarrierTracking({
+      tracking: 'PO-99',
+      po_number: 'PO-99',
+      reference_number: 'TBA330784121201',
+    }),
+    'TBA330784121201',
+  );
+  assert.equal(
+    resolveCheckRowCarrierTracking({
+      tracking: '1ZTRACK',
+      po_number: 'PO-1',
+      reference_number: '1ZTRACK',
+    }),
+    '1ZTRACK',
+  );
+  assert.equal(
+    resolveCheckRowCarrierTracking({
+      tracking: 'PO-99',
+      po_number: 'PO-99',
+      reference_number: null,
+    }),
+    null,
+    'do not paint the PO# as a TrackingChip',
+  );
+});
+
+test('checkZohoReceived: mirror surfaces vendor_name as PO title', async () => {
+  const result = await checkZohoReceived(ORG, 'PO-TITLE', {
+    ...NO_LOCAL,
+    lookupMirror: async () =>
+      new Map([
+        [
+          'POTITLE',
+          mirrorHit({
+            zoho_purchaseorder_id: 'po-title',
+            zoho_purchaseorder_number: 'PO-TITLE',
+            reference_number: '1ZREFTRACK',
+            vendor_name: 'Acme Parts Co',
+            status: 'issued',
+            ref_canon: '1ZREFTRACK',
+            po_canon: 'POTITLE',
+            last_synced_at: null,
+          }),
+        ],
+      ]),
+    searchZoho: async () => [],
+  });
+  assert.ok(!('error' in result));
+  if ('error' in result) return;
+  assert.equal(result.not_received_in_zoho[0]!.vendor_name, 'Acme Parts Co');
+  assert.equal(
+    resolveCheckRowCarrierTracking(result.not_received_in_zoho[0]!),
+    '1ZREFTRACK',
+  );
+});
+
+test('checkZohoReceived: local state falls back to PO# key when paste was an order number', async () => {
+  const result = await checkZohoReceived(ORG, 'PO-LOCAL', {
+    lookupMirror: async () =>
+      new Map([
+        [
+          'POLOCAL',
+          mirrorHit({
+            zoho_purchaseorder_id: 'po-local',
+            zoho_purchaseorder_number: 'PO-LOCAL',
+            reference_number: null,
+            status: 'received',
+            ref_canon: null,
+            po_canon: 'POLOCAL',
+            last_synced_at: null,
+          }),
+        ],
+      ]),
+    lookupLocal: async () =>
+      new Map([
+        // Keyed by PO canon — what the warehouse arm returns for an order-number paste.
+        ['POLOCAL', local({ unboxed: true, delivered: true, scanned: true, watch: 'done' })],
+      ]),
+  });
+  assert.ok(!('error' in result));
+  if ('error' in result) return;
+  assert.equal(result.received_in_zoho[0]!.verdict, 'settled');
+  assert.equal(result.received_in_zoho[0]!.local?.unboxed, true);
 });

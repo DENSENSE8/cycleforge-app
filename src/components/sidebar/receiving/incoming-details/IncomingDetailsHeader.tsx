@@ -46,6 +46,7 @@ export function IncomingDetailsHeader({
   statusLabel,
   isShipmentOnly,
   isInboundOnly,
+  isCartonOnly = false,
   syncing,
   onSync,
   tabs,
@@ -62,6 +63,8 @@ export function IncomingDetailsHeader({
   statusLabel: string | null;
   isShipmentOnly: boolean;
   isInboundOnly: boolean;
+  /** Unpaired carton — no Zoho Sync yet. */
+  isCartonOnly?: boolean;
   syncing: boolean;
   onSync: () => void;
   tabs: Array<{ value: TabId; label: string }>;
@@ -70,11 +73,14 @@ export function IncomingDetailsHeader({
   onClose: () => void;
   selectionActions?: PaneHeaderActionBarAction[];
 }) {
+  const hideSync = isShipmentOnly || isCartonOnly;
   const eyebrow = isInboundOnly
     ? 'Marketplace order'
-    : isShipmentOnly
-      ? 'Shipment'
-      : 'Purchase order';
+    : isCartonOnly
+      ? 'Unpaired carton'
+      : isShipmentOnly
+        ? 'Shipment'
+        : 'Purchase order';
 
   const value =
     headerPo ||
@@ -99,7 +105,7 @@ export function IncomingDetailsHeader({
         prevTestId="incoming-details-prev"
         nextTestId="incoming-details-next"
         trailing={
-          selectionActions.length > 0 || !isShipmentOnly ? (
+          selectionActions.length > 0 || !hideSync ? (
             <>
               {selectionActions.map((action) => {
                 const label =
@@ -118,7 +124,7 @@ export function IncomingDetailsHeader({
                   </HoverTooltip>
                 );
               })}
-              {isShipmentOnly ? null : (
+              {hideSync ? null : (
                 <HoverTooltip label={syncTitle} asChild>
                   <IconButton
                     size="xs"

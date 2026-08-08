@@ -13,6 +13,8 @@
  */
 
 import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspects';
+import { canonicalRole, type StaffRole } from '@/lib/auth/permissions-shared';
+import type { UnboxExtraTabId } from '@/lib/receiving/unbox-extra-tabs';
 import type { OrgSettings } from '@/lib/tenancy/settings';
 
 function readOrg<T extends string | number | boolean>(
@@ -75,6 +77,45 @@ export const getReceivingRequiredItemPhotoAspects = (s: OrgSettings): PhotoAspec
 
 export const getReceivingUnboxFlowCaptureOrderRaw = (s: OrgSettings): string =>
   readOrg<string>(s, 'receiving.unboxFlowCaptureOrder', '{}');
+
+/**
+ * Org default for the Unbox Band-1 Inbound pin (registry toggle
+ * `receiving.unboxDefaultPinnedExtraTabs`). v1 the pin catalog is Inbound-only,
+ * so the org policy is a single boolean → the pin list (or none). New staff
+ * inherit this until they pin/unpin their own strip. See the resolve order in
+ * src/lib/receiving/unbox-default-pins.ts (Gemini D9).
+ */
+export const getReceivingUnboxDefaultPins = (s: OrgSettings): UnboxExtraTabId[] =>
+  readOrg<boolean>(s, 'receiving.unboxDefaultPinnedExtraTabs', false) ? ['incoming'] : [];
+
+/**
+ * PER-ROLE override of the Inbound pin default. Admins set it in Settings →
+ * Receiving → Unbox strip as one `select` per role (Inherit · Pinned · Not
+ * pinned), stored as flat registry keys
+ * `receiving.unboxDefaultPinnedByRole.<canonicalRole>` (folded through
+ * {@link canonicalRole} so `receiving`→`receiver` etc. — see the generated rows
+ * in ../settings/registry.ts).
+ *
+ * The three states are the whole point of the role tier: `inherit` (default)
+ * returns `undefined` so the resolver falls through to the org default; `on` /
+ * `off` are an explicit per-role override that WINS over the org default (Gemini
+ * D9). A boolean toggle could not express "inherit", which is why this is a
+ * three-value select rather than a switch.
+ */
+export const getReceivingUnboxRoleDefaultPins = (
+  s: OrgSettings,
+  role: string | null | undefined,
+): UnboxExtraTabId[] | undefined => {
+  if (!role) return undefined;
+  const v = readOrg<string>(
+    s,
+    `receiving.unboxDefaultPinnedByRole.${canonicalRole(role as StaffRole)}`,
+    'inherit',
+  );
+  if (v === 'on') return ['incoming'];
+  if (v === 'off') return [];
+  return undefined; // inherit → fall through to the org default
+};
 
 export const getReceivingVisionConsensus = (s: OrgSettings): number =>
   readOrg<number>(s, 'receiving.vision.consensusNeeded', 2);

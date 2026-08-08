@@ -17,6 +17,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, User, X } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { Button, IconButton } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 import {
   getCurrentPSTDateKey,
   getRollingDaysStartKey,
@@ -193,13 +195,13 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
             type="date"
             value={customStart}
             onChange={(e) => actions.setCustomStart(e.target.value)}
-            className="h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10"
+            className={cn("h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
           />
           <input
             type="date"
             value={customEnd}
             onChange={(e) => actions.setCustomEnd(e.target.value)}
-            className="h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10"
+            className={cn("h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
           />
         </div>
       )}
@@ -355,13 +357,13 @@ export function AuditLogFilterStrip() {
             type="date"
             value={customStart}
             onChange={(e) => setCustomStart(e.target.value)}
-            className="h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+            className={cn("h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default", focusRing("field", "success"))}
           />
           <input
             type="date"
             value={customEnd}
             onChange={(e) => setCustomEnd(e.target.value)}
-            className="h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+            className={cn("h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default", focusRing("field", "success"))}
           />
         </div>
       )}
@@ -457,7 +459,7 @@ function StaffCombobox({
             if (!open) setOpen(true);
           }}
           placeholder="Filter by staff…"
-          className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-7 text-role-caption text-text-default outline-none transition placeholder:text-text-faint focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+          className={cn("h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-7 text-role-caption text-text-default transition placeholder:text-text-faint", focusRing("field", "success"))}
         />
         {value != null && !open && (
           <IconButton

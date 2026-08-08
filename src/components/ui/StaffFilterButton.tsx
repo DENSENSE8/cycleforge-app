@@ -19,6 +19,11 @@ import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
  * Workbench toolbar SoT: popover `align="end"` (opens left — right edge flush
  * with the trigger), matching {@link WorkbenchFilterPopover} lane filters.
  * Do not pass `align="start"` in right-side chrome slots.
+ *
+ * **Band 3 hosts this in-field, not on the right.** Pass `density="field"` and
+ * seat it in `TechRailSearchBar` `trailingSuffix` so the find bar keeps the
+ * whole row (find-only Band 3 — SoT: source-of-truth.md). The `toolbar` density
+ * stays for rail footers and non-Band-3 chrome clusters.
  */
 export function StaffFilterButton({
   iconOnly = false,
@@ -26,6 +31,7 @@ export function StaffFilterButton({
   allLabel = 'All staff',
   allToken,
   meLabel,
+  density = 'toolbar',
   className,
 }: {
   /** Square icon-only trigger for tight bands (label lives in the tooltip). */
@@ -45,6 +51,12 @@ export function StaffFilterButton({
   allToken?: string;
   /** Trigger label when param is absent and {@link allToken} is set (Me default). */
   meLabel?: string;
+  /**
+   * `toolbar` (default) — h-8 {@link ToolbarButton} for chrome right clusters.
+   * `field` — paste-sized glyph for a `SearchField` `trailingSuffix` slot, the
+   * same trigger geometry {@link WorkbenchFilterPopover} `density="field"` uses.
+   */
+  density?: 'toolbar' | 'field';
   className?: string;
 }) {
   const { staffId, options, selectedName, setStaff } = useStaffFilter(
@@ -83,12 +95,37 @@ export function StaffFilterButton({
     );
   };
 
+  const fieldActive = active || (!!token && !isExplicitAll);
+
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        {iconOnly ? (
+        {density === 'field' ? (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={`Filter by staff: ${label}`}
+            // Keep focus in the search field when opening the menu.
+            onMouseDown={(e) => e.preventDefault()}
+            className={`ds-raw-button relative inline-flex h-6 w-6 shrink-0 items-center justify-center transition-colors duration-100 ease-out active:scale-95 ${
+              open || fieldActive ? 'text-blue-600' : 'text-text-faint hover:text-blue-600'
+            } ${className ?? ''}`}
+          >
+            <HoverTooltip label={`Staff filter — ${label}`} focusable={false} asChild>
+              <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center leading-none">
+                <User className="h-3.5 w-3.5" />
+                {fieldActive ? (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-blue-500 ring-1 ring-surface-card"
+                    aria-hidden
+                  />
+                ) : null}
+              </span>
+            </HoverTooltip>
+          </button>
+        ) : iconOnly ? (
           <ToolbarButton
-            active={active || (!!token && !isExplicitAll)}
+            active={fieldActive}
             iconOnly
             aria-label={`Filter by staff: ${label}`}
             className={className}
@@ -99,7 +136,7 @@ export function StaffFilterButton({
           </ToolbarButton>
         ) : (
           <ToolbarButton
-            active={active || (!!token && !isExplicitAll)}
+            active={fieldActive}
             aria-label={`Filter by staff: ${label}`}
             className={`max-w-[160px] ${className ?? ''}`}
           >

@@ -1,15 +1,23 @@
 import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 
 // ── Tab spec ────────────────────────────────────────────────────────────────
-export type TabId = 'po' | 'ebay' | 'shipment' | 'activity' | 'email' | 'notes';
+export type TabId =
+  | 'po'
+  | 'ebay'
+  | 'pairing'
+  | 'shipment'
+  | 'activity'
+  | 'email'
+  | 'notes';
 export const TABS: Array<{ value: TabId; label: string }> = [
-  { value: 'po',       label: 'PO' },
+  { value: 'po', label: 'Purchase order' },
   { value: 'shipment', label: 'Shipment' },
   { value: 'activity', label: 'Activity' },
-  { value: 'email',    label: 'Email' },
-  { value: 'notes',    label: 'Notes' },
+  { value: 'email', label: 'Email' },
+  { value: 'notes', label: 'Notes' },
 ];
 
 /**
@@ -17,14 +25,35 @@ export const TABS: Array<{ value: TabId; label: string }> = [
  * non-Zoho (eBay) row swaps the "PO" tab for an "eBay" tab; a merged row (eBay
  * primary + a Zoho link) shows both. Email/PO-only tabs drop for a pure inbound
  * row that has no Zoho mirror to read.
+ *
+ * Unpaired carton (no Zoho PO): leading **Pairing** topic composes the same
+ * `CartonMatchHub` Arrival Displays use — desk inspector, not Station push.
  */
 export function tabsForData(data: DetailsResponse | undefined): Array<{ value: TabId; label: string }> {
   const inbound = data?.inbound ?? null;
-  if (!inbound) return TABS;
+  const unpaired = !data?.po?.zoho_purchaseorder_id;
+  if (!inbound) {
+    if (!unpaired) return TABS;
+    return [
+      { value: 'pairing', label: 'Pairing' },
+      { value: 'shipment', label: 'Shipment' },
+      { value: 'activity', label: 'Activity' },
+      { value: 'notes', label: 'Notes' },
+    ];
+  }
   const hasZoho = inbound.links.some((l) => l.source_type === 'zoho') || Boolean(data?.po);
-  const label = inbound.source_type === 'ebay' ? 'eBay' : inbound.source_type.charAt(0).toUpperCase() + inbound.source_type.slice(1);
-  const tabs: Array<{ value: TabId; label: string }> = [{ value: 'ebay', label }];
-  if (hasZoho) tabs.push({ value: 'po', label: 'PO' });
+  const label =
+    inbound.source_type === 'ebay'
+      ? 'eBay'
+      : inbound.source_type === 'amazon'
+        ? 'Amazon'
+        : inbound.source_type === 'manual'
+          ? 'Manual'
+          : inbound.source_type.charAt(0).toUpperCase() + inbound.source_type.slice(1);
+  const tabs: Array<{ value: TabId; label: string }> = [];
+  if (unpaired) tabs.push({ value: 'pairing', label: 'Pairing' });
+  tabs.push({ value: 'ebay', label });
+  if (hasZoho) tabs.push({ value: 'po', label: 'Purchase order' });
   tabs.push({ value: 'shipment', label: 'Shipment' });
   tabs.push({ value: 'activity', label: 'Activity' });
   tabs.push({ value: 'notes', label: 'Notes' });
@@ -53,7 +82,16 @@ export interface DetailsResponse {
     id: number;
     shipment_id: number | null;
     received_at: string | null;
+    /** Carton Zoho purchase-receive id when website receive landed. */
+    zoho_purchase_receive_id?: string | null;
+    /** Max line `received_done_at` for this carton (inventory-confirmed). */
+    inventory_received_at?: string | null;
   } | null;
+  /**
+   * Synced inventory PO header notes (carton `zoho_notes`, else mirror `raw.notes`).
+   * Distinct from `notes` (carton support / ops notes).
+   */
+  po_notes: string | null;
   line_items: Array<{
     line_item_id: string | null;
     item_id: string | null;
@@ -139,6 +177,8 @@ export interface DetailsResponse {
     status: string | null;
     payment_status: string | null;
     listing_url: string | null;
+    /** Mirror tracking when no STN soft-join yet. */
+    tracking_number?: string | null;
     account_label: string | null;
     receiving_line_id: number;
     zoho_purchaseorder_id: string | null;
@@ -169,10 +209,15 @@ export interface IncomingDetailsPanelProps {
   /**
    * Unbox/Triage carton focus. When set, the details API prefers this
    * receiving row for notes / shipment / receive_events (multi-box POs).
+   * Alone (no PO / shipment / inbound) keys carton-only Pairing mode.
    */
   focusReceivingId?: number | null;
   /** Active Unbox line — PoTab highlights the matching line_items row. */
   focusReceivingLineId?: number | null;
+  /**
+   * Grid row that opened the panel — seeds Package Pairing without a refetch.
+   */
+  seedRow?: ReceivingLineRow | null;
   onClose: () => void;
 }
 

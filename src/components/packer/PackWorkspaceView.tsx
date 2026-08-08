@@ -48,9 +48,8 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.pack,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.pack);
   const queueActive = packView === 'queue';
   const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
     'unshipped',
@@ -87,7 +86,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
               tab={packView}
               controlsSlotRef={setControlsEl}
               kpiOpen={!kpiCollapsed}
-              onToggleKpi={() => setKpiCollapsed(!kpiCollapsed)}
+              onToggleKpi={toggleKpiCollapsed}
             />
           </div>
         }

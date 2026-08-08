@@ -499,6 +499,14 @@ export async function PATCH(
     // workspace Zoho Notes tab; persisted here and pushed to Zoho when
     // `push_to_zoho` is set (Save to Zoho).
     const pushToZoho = body.push_to_zoho === true;
+    const baseLastModifiedZoho = Object.prototype.hasOwnProperty.call(
+      body,
+      'base_last_modified_zoho',
+    )
+      ? body.base_last_modified_zoho == null || body.base_last_modified_zoho === ''
+        ? null
+        : String(body.base_last_modified_zoho).trim() || null
+      : undefined;
     let zohoNoteEdited: string | null | undefined;
     if (Object.prototype.hasOwnProperty.call(body, 'zoho_notes')) {
       const raw = body.zoho_notes;
@@ -796,11 +804,28 @@ export async function PATCH(
         syncPoHeaderNotesToZoho({
           zohoPoId: zohoPoIdForNotes,
           notes: zohoNoteEdited ?? null,
+          baseLastModifiedZoho,
         }),
       );
       after(async () => {
         try { await invalidateReceivingViews(ctx.organizationId); } catch { /* best-effort */ }
       });
+      // Block-if-stale: local notes already saved above; refuse the Zoho push and
+      // tell the client to keep the draft dirty until Refresh.
+      if (zoho.skipped === 'stale') {
+        return NextResponse.json(
+          {
+            success: false,
+            stale: true,
+            error: zoho.error || 'Inventory changed — Refresh',
+            receiving: receivingRow,
+            zoho_notes: zohoNoteEdited,
+            live_last_modified_zoho: zoho.live_last_modified_zoho ?? null,
+            zoho,
+          },
+          { status: 409 },
+        );
+      }
       if (!zoho.ok && !zoho.skipped) {
         return NextResponse.json(
           {
@@ -818,7 +843,13 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       receiving: receivingRow,
-      ...(zoho != null ? { zoho_notes: zohoNoteEdited, zoho } : {}),
+      ...(zoho != null
+        ? {
+            zoho_notes: zohoNoteEdited,
+            zoho,
+            live_last_modified_zoho: zoho.live_last_modified_zoho ?? null,
+          }
+        : {}),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update receiving';

@@ -122,6 +122,13 @@ export function SupportTicketDetail({
    * Floor toggle ships.
    */
   mergeFloorTimeline = false,
+  /**
+   * Conversation row shell for {@link MergedRecordStream}.
+   * Station Ticket Displays pass `bubble` (read + reply). `/support` keeps
+   * default `ledger` — do **not** derive from `embedded` (`SupportTicketFocus`
+   * is also embedded and must stay a scannable dense list).
+   */
+  streamVariant = 'ledger',
 }: {
   ticketId: number;
   onBack?: () => void;
@@ -142,6 +149,7 @@ export function SupportTicketDetail({
    */
   photoStaging?: TicketPhotoStaging;
   mergeFloorTimeline?: boolean;
+  streamVariant?: 'ledger' | 'bubble';
 }) {
   const hideRequester = hideRequesterBand ?? embedded;
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
@@ -275,6 +283,7 @@ export function SupportTicketDetail({
           onOpenPhoto={onOpenPhoto}
           events={mergeFloorTimeline ? contextBundle?.timeline : undefined}
           compact={embedded}
+          variant={streamVariant}
         />
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}

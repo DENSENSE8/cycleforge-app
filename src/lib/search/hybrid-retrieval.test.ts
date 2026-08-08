@@ -105,10 +105,10 @@ test('exact hit ranks first but does NOT short-circuit keyword (no embed/vector)
 });
 
 test('identifier query merges the serial-unit keyword hit under the exact hit', async () => {
-  // The regression this fixes: a unit serial like "3476" matched an unrelated
-  // order/tracking substring in the exact arm and the serial unit vanished.
-  // The exact arm has no serial-unit searcher, so the unit must arrive via
-  // keyword and be merged in — not short-circuited away.
+  // When exact finds an order (e.g. TSN / tracking substring) and keyword
+  // finds the real SERIAL_UNIT, both must surface — never short-circuit away
+  // the keyword unit. (Exact also has searchSerialUnits now; this locks the
+  // merge path when the unit arrives only via docs.)
   const { deps, cap } = fakes({
     exact: [exactHit(42)], // an order the parent searcher found
     keyword: [doc('SERIAL_UNIT', 1840, '3476')],
@@ -122,6 +122,27 @@ test('identifier query merges the serial-unit keyword hit under the exact hit', 
   const unit = res.hits.find((h) => h.entityType === 'unit');
   assert.ok(unit, 'the serial unit must surface alongside the exact hit');
   assert.equal(unit?.id, 1840);
+});
+
+test('exact-arm unit hit ranks first and de-dupes keyword SERIAL_UNIT', async () => {
+  const { deps } = fakes({
+    exact: [
+      {
+        id: 1840,
+        entityType: 'unit',
+        title: '3476',
+        subtitle: '3476 · SKU · RECEIVED',
+        href: '/inventory/units?unit=1840',
+        matchField: 'serial',
+        facets: { serial_number: '3476' },
+      },
+    ],
+    keyword: [doc('SERIAL_UNIT', 1840, '3476')],
+  });
+  const res = await hybridSearch(ORG, '3476', {}, deps);
+  assert.equal(res.hits.filter((h) => h.entityType === 'unit' && h.id === 1840).length, 1);
+  assert.equal(res.hits[0].entityType, 'unit');
+  assert.equal(res.hits[0].id, 1840);
 });
 
 test('exact + keyword merge de-dupes an entity present in both arms', async () => {

@@ -1,6 +1,6 @@
 /**
  * Unbox Displays Root-to-Leaf drill-down — primary nav is the station SoT
- * index, not an icon plate. Checklist stays ring-only.
+ * index, not an icon plate. Checklist is a Displays leaf (no floor % ring).
  *
  *   node --import tsx --test src/components/receiving/workspace/line-edit/unbox-displays-drilldown.guard.test.ts
  */
@@ -37,10 +37,15 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     assert.match(tabs, /resolveUnboxDisplayNav/);
   });
 
-  it('index builder never emits checklist', () => {
+  it('index builder emits checklist as a Displays leaf', () => {
     const index = read(INDEX);
     assert.match(index, /buildUnboxDisplayIndexRows/);
-    assert.match(index, /id === 'checklist'/);
+    assert.match(index, /checklist:\s*'Checklist'/);
+    assert.doesNotMatch(
+      index,
+      /if \(id === 'checklist'\) continue/,
+      'checklist must appear on the Root Index after the floor ring was deleted',
+    );
     assert.match(index, /group:/, 'Unbox builder emits DisplayIndexRow.group');
   });
 
@@ -49,6 +54,9 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     const column = read(COLUMN);
     assert.match(stack, /StationDisplayIndexList/);
     assert.match(stack, /StationDisplayLeafHeader/);
+    assert.match(stack, /DisplaysLeafChromeProvider/);
+    assert.match(stack, /leafTrail|setTrail/);
+    assert.match(stack, /popOne/);
     assert.match(stack, /onEscape=\{onEscape\}/);
     assert.match(column, /onEscape \?\? onClose/);
     assert.match(column, /headerRightSlot/);
@@ -99,17 +107,117 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     const tabs = read(TABS);
     const builders = read('src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx');
     const host = read('src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx');
+    const sync = read('src/components/receiving/workspace/line-edit/hooks/useZohoSync.ts');
+    const panel = read(PANEL);
+    const claim = read('src/components/receiving/workspace/ReceivingClaimPanel.tsx');
     assert.match(tabs, /\| 'inventory'/);
     assert.match(builders, /id: 'inventory'/);
     assert.match(builders, /InventoryDisplayHost/);
     assert.match(host, /useInventoryPoDossier/);
     assert.match(host, /data-testid="unbox-inventory-display"/);
+    assert.match(host, /data-inventory-flat/);
     assert.match(
       host,
-      /StationActionDossierShell/,
-      'Inventory composes station Action dossier shell',
+      /data-inventory-instrument/,
+      'Inventory is a keyboard instrument panel',
     );
-    assert.match(host, /StationActionKeyLegend/);
+    assert.match(
+      host,
+      /data-inventory-drill/,
+      'Inventory uses secondary child-row drill (index → sub-leaf)',
+    );
+    assert.match(host, /data-inventory-sub-index/);
+    // ONE Back row — stack owns LeafHeader; Inventory reports trail UP.
+    assert.doesNotMatch(
+      host,
+      /StationDisplayLeafHeader/,
+      'Inventory must not nest a second LeafHeader — use useDisplaysLeafChrome',
+    );
+    assert.match(host, /useDisplaysLeafChrome/);
+    assert.match(host, /setTrail/);
+    assert.match(host, /setOnNestedPop/);
+    assert.match(host, /setOnNestedRestore/);
+    assert.match(host, /po_notes/, 'PO notes seed from dossier po_notes');
+    assert.match(
+      host,
+      /data-station-action-dossier/,
+      'Focus restore target for Displays stack',
+    );
+    assert.match(
+      host,
+      /data-claim-chrome="display"/,
+      'Claim Displays chrome attribute (ReceivingClaimPanel twin)',
+    );
+    assert.match(
+      claim,
+      /data-claim-chrome=\{chrome\}/,
+      'Claim panel owns the chrome attribute SoT',
+    );
+    assert.match(
+      host,
+      /StationActionKeyLegend/,
+      'Macro floor CTAs exist for sub-leaves (Action KeyLegend / Claim File twin)',
+    );
+    assert.match(
+      host,
+      /showFloor/,
+      'Floor is contextual — hidden on the Inventory sub-index',
+    );
+    assert.match(
+      host,
+      /subLeaf !== 'info'|subLeaf === 'info'/,
+      'Information is facts-only — floor / hotkeys exclude info',
+    );
+    assert.doesNotMatch(
+      host,
+      /data-inventory-trust-strip/,
+      'Information has no trust strip — facts rows only',
+    );
+    assert.doesNotMatch(
+      host,
+      /data-inventory-receive-fact/,
+      'Receive / PR trail is not a second Information chrome band',
+    );
+    assert.match(
+      host,
+      /DenseComposeBodyBand|DenseComposeBodyTextarea/,
+      'Editable notes use claim sheet-band DenseCompose — not WORKSPACE_NESTED_FIELD',
+    );
+    assert.match(
+      host,
+      /variant="instrument"/,
+      'Info header is edge-to-edge instrument telemetry',
+    );
+    assert.doesNotMatch(
+      host,
+      /StationActionDossierShell/,
+      'No dossier accordion — instrument stack is the section SoT',
+    );
+    assert.doesNotMatch(host, /WORKSPACE_NESTED_FIELD/);
+    assert.match(
+      host,
+      /InventoryActivityPanel/,
+      'Trust view mounts receive + inventory activity on the leaf',
+    );
+    assert.doesNotMatch(host, /data-inventory-trust-strip/);
+    assert.doesNotMatch(host, /data-inventory-receive-fact/);
+    assert.match(host, /baseLastModifiedZoho|base_last_modified_zoho/, 'Cmd+S sends block-if-stale base stamp');
+    assert.match(host, /inlineNotes/, 'Line notes paint inline (no expand-to-reveal)');
+    assert.match(host, /'Refresh'|Refreshing/, 'Operator copy is Refresh, not Sync');
+    assert.match(host, /dossier\.invalidate\(\)/, 'Refresh busts incoming-details cache');
+    // Nested drill: sections live behind sub-index rows, not one stacked scroll.
+    assert.match(host, /subLeaf === 'info'|id: 'info'/);
+    assert.match(host, /subLeaf === 'lines'|id: 'lines'/);
+    assert.match(host, /subLeaf === 'notes'|id: 'notes'/);
+    assert.match(host, /subLeaf === 'activity'|id: 'activity'/);
+    assert.match(
+      sync,
+      /refreshInventoryDossier/,
+      'Refresh pulls mirror sync-one then carton inventory-sync',
+    );
+    assert.match(sync, /incoming\/sync-one/);
+    assert.match(panel, /refreshInventoryDossier/);
+    assert.match(panel, /inventoryRefreshing/);
     assert.doesNotMatch(host, /RightRailHost|DetailStackRailRegistrar/);
     assert.doesNotMatch(host, /CartonMatchHub/, 'Change PO opens Linkage — no second match hub');
     assert.doesNotMatch(host, /InspectorActionFloor/);
@@ -118,6 +226,49 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
       /TabDisplay/,
       'Inventory stacks PO · lines · notes · activity — no nested Items/Notes/Activity tabs',
     );
+    assert.doesNotMatch(
+      host,
+      /Bill|Void|Delete attachment|Create PO/,
+      'No fake commercial write buttons without Zoho APIs',
+    );
+  });
+
+  it('PO notes + line notes enforce block-if-stale (no silent last-write)', () => {
+    const stamp = read('src/lib/receiving/zoho-po-stamp.ts');
+    const notesSync = read('src/lib/receiving/zoho-po-notes-sync.ts');
+    const descSync = read('src/lib/receiving/zoho-item-description-sync.ts');
+    const poNote = read(
+      'src/components/receiving/workspace/line-edit/terminal/usePoNoteTabState.ts',
+    );
+    const synced = read(
+      'src/components/receiving/workspace/line-edit/hooks/useSyncedPoNote.ts',
+    );
+    const noteRoute = read('src/app/api/receiving/lines/[id]/inventory-note/route.ts');
+    const details = read('src/app/api/receiving-lines/incoming/details/route.ts');
+    assert.match(stamp, /isZohoPoStampStale/);
+    assert.match(notesSync, /baseLastModifiedZoho/);
+    assert.match(notesSync, /skipped:\s*'stale'|skipped === 'stale'| 'stale'/);
+    assert.match(descSync, /baseLastModifiedZoho/);
+    assert.match(poNote, /baseLastModifiedZoho/);
+    assert.match(
+      poNote,
+      /draft\.trim\(\) !== \(overallZohoNotes \?\? ''\)\.trim\(\)\) return/,
+      'Refresh must not clobber dirty drafts',
+    );
+    assert.match(synced, /base_last_modified_zoho/);
+    assert.match(synced, /Inventory changed — Refresh/);
+    assert.match(noteRoute, /INSERT INTO receiving_line_zoho/);
+    assert.doesNotMatch(
+      noteRoute,
+      /UPDATE\s+receiving_line\s+SET[\s\S]*zoho_notes/,
+      'inventory-note must not write spine receiving_line.zoho_notes (column dropped)',
+    );
+    assert.match(details, /rz\.zoho_notes/);
+    assert.match(details, /rawLineItems\.length > 0/);
+    assert.match(details, /zoho_purchase_receive_id/);
+    assert.match(details, /inventory_received_at/);
+    assert.match(details, /po_notes/, 'Details exposes synced PO header notes');
+    assert.match(details, /r\.zoho_notes/, 'Carton zoho_notes selected for po_notes');
   });
 
   it('Open displays paints from the shared optimistic URL SoT — not a local twin', () => {

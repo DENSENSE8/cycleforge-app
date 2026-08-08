@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import {
   getDashboardOrderViewFromSearch,
   normalizeDashboardOrderViewParams,
@@ -44,7 +45,6 @@ export function useDashboardSearchController() {
     () => readDetailsOpenBehaviorPreference(),
     [],
   );
-  const showIntakeForm = searchParams.get('new') === 'true';
   // FBA renders its own detail surface, not the shipped/unshipped panel.
   const detailsEnabled = true;
 
@@ -57,6 +57,29 @@ export function useDashboardSearchController() {
     const nextSearch = nextParams.toString();
     router.replace(nextSearch ? `${targetPath}?${nextSearch}` : targetPath, { scroll: false });
   }, [deskPath, pathname, router, searchParams]);
+
+  const urlNewOpen = useMemo(
+    () => searchParams.get('new') === 'true',
+    [searchParams],
+  );
+
+  const replaceNew = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      updateSearch(mutate);
+    },
+    [updateSearch],
+  );
+
+  const writeNew = useCallback((params: URLSearchParams, next: boolean) => {
+    if (next) params.set('new', 'true');
+    else params.delete('new');
+  }, []);
+
+  const { value: showIntakeForm, setValue: setNewOpen } = useOptimisticUrlParam<boolean>({
+    urlValue: urlNewOpen,
+    replace: replaceNew,
+    write: writeNew,
+  });
 
   const setSearch = useCallback(async (nextValue: string) => {
     const trimmed = nextValue.trim();
@@ -100,17 +123,8 @@ export function useDashboardSearchController() {
     writeDetailsOpenBehaviorPreference(value);
   }, []);
 
-  const openIntakeForm = useCallback(() => {
-    updateSearch((params) => {
-      params.set('new', 'true');
-    });
-  }, [updateSearch]);
-
-  const closeIntakeForm = useCallback(() => {
-    updateSearch((params) => {
-      params.delete('new');
-    });
-  }, [updateSearch]);
+  const openIntakeForm = useCallback(() => setNewOpen(true), [setNewOpen]);
+  const closeIntakeForm = useCallback(() => setNewOpen(false), [setNewOpen]);
   useEffect(() => {
     writeShippedFilterPreference(shippedFilter);
   }, [shippedFilter]);

@@ -20,8 +20,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PoLinesAccordion } from "../PoLinesAccordion";
 import { UnmatchedItemsSection } from "../UnmatchedItemsSection";
 import { ActiveLineConditionSerial } from "./ActiveLineConditionSerial";
+import { SerialMatchResult } from "../SerialMatchResult";
 import type { ReceivingLineRow } from "@/components/station/receiving-line-row";
-import type { InlineActionFeedbackPayload } from "../InlineActionFeedbackCard";
 import type { UnboxLineController } from "./unbox-line-controller";
 import {
   dispatchLineUpdated,
@@ -38,22 +38,7 @@ import {
 } from "@/lib/receiving/intake-items-routing";
 import { isReturnIntake } from "@/lib/receiving/triage-intake-kind";
 import { markReceivingSerialAbsent } from "../receiving-label-helpers";
-
-/** Line-scoped condition write for interleaved sibling SKU bodies. */
-function patchLineCondition(lineId: number, next: string) {
-  const cleared = !String(next || "").trim();
-  dispatchLineUpdated({
-    id: lineId,
-    condition_grade: cleared ? "" : next,
-  });
-  void fetch(`/api/receiving/lines/${lineId}/condition`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(
-      cleared ? { reopen: true } : { condition_grade: next },
-    ),
-  }).catch(() => {});
-}
+import { patchReceivingLineCondition } from "../patch-receiving-line-condition";
 
 const IDLE_SERIAL_LOOKUP = {
   state: "idle" as const,
@@ -68,12 +53,17 @@ interface LinePoItemsSectionProps {
   c: UnboxLineController;
   /** Serial-number entry on the active line (unbox captures serials; triage doesn't). */
   serialScan: boolean;
+  /**
+   * Unbox Action Dock owns serial/condition/photos — accordion paints a ledger
+   * and click focuses the dock step. When false, ActiveLineConditionSerial edits
+   * in-place (Testing / unmatched).
+   */
+  dockOwnsCapture?: boolean;
+  onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
   /** Offer the unmatched-carton "open in unbox" jump (triage hands off to unbox). */
   openInUnbox: boolean;
   /** PO-items accordion interactivity — false renders a flat read-only display (triage). */
   editLines: boolean;
-  onItemDescFeedback?: (feedback: InlineActionFeedbackPayload | null) => void;
-  onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   embedded?: boolean;
   headerRight?: React.ReactNode;
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
@@ -91,6 +81,13 @@ interface LinePoItemsSectionProps {
   }) => void;
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /**
+   * When false, meta collapses to qty | SKU | price and unit editors stay off
+   * (Arrival door flow). Defaults true.
+   */
+  unitsChrome?: boolean;
+  /** RETURN match → Displays Timeline (full serial genealogy). */
+  onOpenReturnHistory?: () => void;
 }
 
 interface SiblingsResponse {
@@ -103,16 +100,18 @@ export function LinePoItemsSection({
   staffId,
   c,
   serialScan,
+  dockOwnsCapture = false,
+  onFocusCaptureStep,
   openInUnbox,
   editLines,
-  onItemDescFeedback,
-  onItemDescSaved,
   embedded = false,
   headerRight,
   suppressHeader = false,
   accordionBootstrap = "default",
   onEditFilledSerial,
   onViewAllUnits,
+  unitsChrome = true,
+  onOpenReturnHistory,
 }: LinePoItemsSectionProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -164,12 +163,15 @@ export function LinePoItemsSection({
         embedded={embedded}
         headerRight={headerRight}
         suppressHeader={suppressHeader}
-        showSerialScan={serialScan}
+        showSerialScan={unitsChrome && serialScan}
+        readOnly={!editLines}
+        unitsChrome={unitsChrome}
         onOpenInUnbox={openInUnboxHandler}
         sourcePlatformHint={c.sourcePlatform || undefined}
         receivingTypeHint={receivingTypeHint}
         listingUrlHint={c.listingLink || undefined}
         onFileReturnClaim={c.handleFileReturnClaim}
+        onOpenReturnHistory={onOpenReturnHistory}
         onActiveConditionChange={(next) => {
           c.setCond(next);
           c.setUnitLabelCondition(next);
@@ -186,7 +188,7 @@ export function LinePoItemsSection({
           zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? null,
         }}
         activeLineId={row.id}
-        onViewAllUnits={onViewAllUnits}
+        onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
         onUnlinked={() => {
           invalidateReceivingFeeds(queryClient);
         }}
@@ -234,108 +236,156 @@ export function LinePoItemsSection({
       suppressHeader={suppressHeader}
       placeholderActiveRow={row}
       readOnly={!editLines}
+      unitsChrome={unitsChrome}
       accordionBootstrap={accordionBootstrap}
       serialSplit={
-        editLines
+        unitsChrome && editLines
           ? {
               staffId,
               cartonSource: row.receiving_source,
             }
           : undefined
       }
-      onItemDescFeedback={onItemDescFeedback}
-      onItemDescSaved={onItemDescSaved}
-      onViewAllUnits={onViewAllUnits}
-      activeConditionOverride={
-        c.isMultiQtyLine ? (c.unitLabelCondition ?? c.cond) : c.cond
+      onViewAllUnits={
+        unitsChrome && !dockOwnsCapture ? onViewAllUnits : undefined
       }
-      activeSerialActions={{
-        editingSerialId: c.headerSerialEdit?.id ?? null,
-        onEdit: (s) => c.setHeaderSerialEdit(s),
-        onDelete: async (s, lineId) => {
-          if (s.id == null) return;
-          const ok = await requestConfirm({
-            description: `Remove serial ${s.serial_number}?`,
-            tone: "danger",
-            confirmLabel: "Remove",
-          });
-          if (!ok) return;
-          if (c.headerSerialEdit?.id === s.id) c.setHeaderSerialEdit(null);
-          void c.deleteSerialUnit(s.id, lineId);
-        },
-      }}
-      activeRowSlot={({ serials, units, line }) => {
-        if (!serialScan) return null;
-        const isControllerLine = line.id === row.id;
-        return (
-          <ActiveLineConditionSerial
-            serials={serials}
-            lineId={line.id}
-            receivingId={receivingId}
-            quantityExpected={line.quantity_expected ?? null}
-            cond={
-              isControllerLine
-                ? c.cond
-                : line.condition_grade || "USED_A"
+      onEditConditionInDock={
+        dockOwnsCapture && onFocusCaptureStep
+          ? (line) => {
+              if (line.id !== row.id) dispatchSelectLine(line);
+              onFocusCaptureStep('condition');
             }
-            serialSubmitting={c.serialSubmitting}
-            editingSerial={c.headerSerialEdit}
-            serialLookup={
-              isControllerLine ? c.serialLookup : IDLE_SERIAL_LOOKUP
+          : undefined
+      }
+      onEditSerialInDock={
+        dockOwnsCapture && onFocusCaptureStep
+          ? (line) => {
+              if (line.id !== row.id) dispatchSelectLine(line);
+              onFocusCaptureStep('serial');
             }
-            onFileReturnClaim={
-              isControllerLine ? c.handleFileReturnClaim : undefined
+          : undefined
+      }
+      activeConditionOverride={
+        unitsChrome
+          ? c.isMultiQtyLine
+            ? (c.unitLabelCondition ?? c.cond)
+            : c.cond
+          : undefined
+      }
+      activeSerialActions={
+        unitsChrome
+          ? {
+              editingSerialId: c.headerSerialEdit?.id ?? null,
+              onEdit: (s) => c.setHeaderSerialEdit(s),
+              onDelete: async (s, lineId) => {
+                if (s.id == null) return;
+                const ok = await requestConfirm({
+                  description: `Remove serial ${s.serial_number}?`,
+                  tone: "danger",
+                  confirmLabel: "Remove",
+                });
+                if (!ok) return;
+                if (c.headerSerialEdit?.id === s.id) c.setHeaderSerialEdit(null);
+                void c.deleteSerialUnit(s.id, lineId);
+              },
             }
-            onSubmitSerial={(sn, grade) =>
-              c.enqueueSerial(sn, grade, line.id)
+          : undefined
+      }
+      activeRowSlot={
+        // Dock owns capture: PO meta is the ledger — no under-row editor.
+        // Mount a body only for RETURN match band (otherwise empty curtain).
+        unitsChrome &&
+        serialScan &&
+        dockOwnsCapture &&
+        c.serialLookup &&
+        (c.serialLookup.state === 'found' || c.serialLookup.state === 'not-found')
+          ? ({ line }) => {
+              if (line.id !== row.id) return null;
+              const lookup = c.serialLookup;
+              return (
+                <SerialMatchResult
+                  state={lookup.state}
+                  unit={lookup.unit}
+                  serial={lookup.serial}
+                  matchedOrder={lookup.matchedOrder}
+                  onFileClaim={c.handleFileReturnClaim}
+                  onOpenHistory={onOpenReturnHistory}
+                />
+              );
             }
-            onDeleteSerialUnit={(id, lineId) =>
-              void c.deleteSerialUnit(id, lineId ?? line.id)
-            }
-            onReplaceSerialUnit={(original, next) =>
-              void c.replaceSerialUnit(original, next, line.id)
-            }
-            onSetUnitGrade={(id, grade) =>
-              void c.setUnitGrade(id, grade, line.id)
-            }
-            onActiveConditionChange={(next) => {
-              if (isControllerLine) c.setUnitLabelCondition(next);
-            }}
-            onConditionChange={(next) => {
-              if (isControllerLine) {
-                c.setCond(next);
-                void c.patch({ condition_grade: next });
-                return;
+          : unitsChrome && serialScan && !dockOwnsCapture
+            ? ({ serials, units, line }) => {
+                const isControllerLine = line.id === row.id;
+                return (
+                  <ActiveLineConditionSerial
+                    serials={serials}
+                    lineId={line.id}
+                    receivingId={receivingId}
+                    quantityExpected={line.quantity_expected ?? null}
+                    cond={
+                      isControllerLine
+                        ? c.cond
+                        : line.condition_grade || 'USED_A'
+                    }
+                    serialSubmitting={c.serialSubmitting}
+                    editingSerial={c.headerSerialEdit}
+                    serialLookup={
+                      isControllerLine ? c.serialLookup : IDLE_SERIAL_LOOKUP
+                    }
+                    onFileReturnClaim={
+                      isControllerLine ? c.handleFileReturnClaim : undefined
+                    }
+                    onOpenReturnHistory={
+                      isControllerLine ? onOpenReturnHistory : undefined
+                    }
+                    onSubmitSerial={(sn, grade) =>
+                      c.enqueueSerial(sn, grade, line.id)
+                    }
+                    onDeleteSerialUnit={(id, lineId) =>
+                      void c.deleteSerialUnit(id, lineId ?? line.id)
+                    }
+                    onReplaceSerialUnit={(original, next) =>
+                      void c.replaceSerialUnit(original, next, line.id)
+                    }
+                    onSetUnitGrade={(id, grade) =>
+                      void c.setUnitGrade(id, grade, line.id)
+                    }
+                    onActiveConditionChange={(next) => {
+                      if (isControllerLine) c.setUnitLabelCondition(next);
+                    }}
+                    onConditionChange={(next) => {
+                      if (isControllerLine) c.setCond(next);
+                      patchReceivingLineCondition(line.id, next);
+                    }}
+                    onEditingSerialChange={c.setHeaderSerialEdit}
+                    serialAbsent={
+                      isControllerLine
+                        ? c.serialAbsent
+                        : (line.serial_absent ?? false)
+                    }
+                    serialAbsentReason={
+                      isControllerLine
+                        ? c.serialAbsentReason
+                        : (line.serial_absent_reason ?? null)
+                    }
+                    requireSerialConfirmation={c.requireSerialConfirmation}
+                    onSerialAbsentChange={(next) => {
+                      if (isControllerLine) {
+                        c.commitSerialAbsent(next);
+                        return;
+                      }
+                      markReceivingSerialAbsent(line.id, next);
+                    }}
+                    units={units}
+                    serialInputRef={isControllerLine ? c.serialRef : undefined}
+                    autoFocusSerial={isControllerLine}
+                    onEditFilledSerial={onEditFilledSerial}
+                    stationCompact
+                  />
+                );
               }
-              patchLineCondition(line.id, next);
-            }}
-            onEditingSerialChange={c.setHeaderSerialEdit}
-            serialAbsent={
-              isControllerLine
-                ? c.serialAbsent
-                : (line.serial_absent ?? false)
-            }
-            serialAbsentReason={
-              isControllerLine
-                ? c.serialAbsentReason
-                : (line.serial_absent_reason ?? null)
-            }
-            requireSerialConfirmation={c.requireSerialConfirmation}
-            onSerialAbsentChange={(next) => {
-              if (isControllerLine) {
-                c.commitSerialAbsent(next);
-                return;
-              }
-              markReceivingSerialAbsent(line.id, next);
-            }}
-            units={units}
-            serialInputRef={isControllerLine ? c.serialRef : undefined}
-            autoFocusSerial={isControllerLine}
-            onEditFilledSerial={onEditFilledSerial}
-            stationCompact
-          />
-        );
-      }}
+            : undefined
+      }
     />
   );
 }

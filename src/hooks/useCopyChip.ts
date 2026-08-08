@@ -156,9 +156,16 @@ export function useCopyChip({
       : historyKind === 'id'
         ? formatPlatformTooltipLabel(normalizedValue, platformLabel)
         : normalizedValue;
+  // Id chips may show a catalog platform face with an empty copy payload
+  // (unfound peek placeholder) — still allow the platform-name tooltip.
+  const tooltipEnabled =
+    !disableTooltip &&
+    (!!normalizedValue && normalizedValue !== '---'
+      ? true
+      : historyKind === 'id' && !!tooltipValue);
 
   const { anchorId, tooltipCtxRef, chipRef, ...tooltip } = useChipTooltip({
-    enabled: !disableTooltip && !!normalizedValue && normalizedValue !== '---',
+    enabled: tooltipEnabled,
     tooltipValue,
     tooltipAction,
   });
@@ -186,7 +193,13 @@ export function useCopyChip({
 
   const showTooltipPreview = () => {
     if (disableTooltip || !tooltipCtxRef.current) return;
-    if (!normalizedValue || normalizedValue === '---') return;
+    if (!tooltipValue) return;
+    if (
+      (!normalizedValue || normalizedValue === '---') &&
+      !(historyKind === 'id' && tooltipValue)
+    ) {
+      return;
+    }
     tooltipCtxRef.current.activate({
       anchorId,
       value: tooltipValue,

@@ -1,7 +1,6 @@
 'use client';
 
 import { GridStatusCellValue } from '@/components/ui/grid-cells';
-import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { receivingHistoryStatusTooltip } from './receiving-grid-row-helpers';
 import {
   receivingDataCellClass,
@@ -35,26 +34,37 @@ import {
  * Rendered through the house {@link GridStatusCellValue}: the 3-layer chip with
  * the dot leading it, inside. Bare semibold text in a ruled band read as another
  * data value rather than as a state, and four surfaces had each grown a local
- * chip for the same job. Both halves resolve from the workflow-stage registry —
- * `workflowStageBadge` for the fill/ink, `statusDot` for the dot (which is
- * qty-complete-aware, so it can lead the chip's stage) — never a local map.
+ * chip for the same job. Fill/ink + dot come from ctx (`statusBadgeClass` /
+ * `statusDot`) — fine workflow stages or coarse receiving lifecycle, never a
+ * cell-local map.
  *
  * This is also why the column-display `chip` mode no longer wraps this cell: the
  * value IS a chip, and a chip inside a chip is two rings.
  *
  * ## History tip (2026-08-04)
  *
- * On History, DONE (label Received) is bare — no chip tooltip. UNBOXED tips
+ * On History, DONE / coarse Received is bare — no chip tooltip. UNBOXED tips
  * with the inventory-provider sync gap via {@link receivingHistoryStatusTooltip}.
  * Non-history surfaces keep the stage-stamp tip chain.
  */
 export function ReceivingStatusCell({ col, rule, ctx }: ReceivingGridCellProps) {
-  const { statusDot, stageLabel, stageTip, dateCell, row, isHistory, inventoryProviderLabel } = ctx;
+  const {
+    statusDot,
+    statusBadgeClass,
+    statusVocabulary,
+    stageLabel,
+    stageTip,
+    dateCell,
+    row,
+    isHistory,
+    inventoryProviderLabel,
+  } = ctx;
   const tooltip = isHistory
     ? receivingHistoryStatusTooltip({
         workflowStatus: row.workflow_status,
         inventoryProviderLabel,
         stageTip,
+        statusVocabulary,
       })
     : stageTip || dateCell?.tooltip || stageLabel;
   return (
@@ -64,7 +74,7 @@ export function ReceivingStatusCell({ col, rule, ctx }: ReceivingGridCellProps) 
           stage has nothing to say here and takes the honest em dash. */}
       <GridStatusCellValue
         label={stageLabel || null}
-        toneClass={workflowStageBadge(row.workflow_status)}
+        toneClass={statusBadgeClass}
         dotClass={statusDot}
         tooltip={tooltip}
       />

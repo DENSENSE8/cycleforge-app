@@ -34,15 +34,15 @@ describe('Displays P3 bodies deferred', () => {
     );
   });
 
-  it('Testing displays dynamic-import Ticket chat + Timeline', () => {
+  it('Testing displays dynamic-import TicketDisplayHost + Timeline', () => {
     const testing = read('src/components/tech/testing-panel/build-testing-displays.tsx');
     assert.match(testing, /dynamic\(/);
-    assert.match(testing, /SupportContextHub/);
+    assert.match(testing, /TicketDisplayHost/);
     assert.match(testing, /WorkspaceTimelineTab/);
     assert.doesNotMatch(
       testing,
-      /import\s+\{\s*SupportContextHub\s*\}\s+from/,
-      'SupportContextHub must not be a static import',
+      /import\s+\{\s*TicketDisplayHost\s*\}\s+from/,
+      'TicketDisplayHost must not be a static import',
     );
   });
 });

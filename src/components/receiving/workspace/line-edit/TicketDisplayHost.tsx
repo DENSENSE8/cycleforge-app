@@ -4,28 +4,29 @@
  * Unbox Displays → Ticket topic — presence-exclusive body.
  *
  * Strip cell is "Ticket". No Chat · Claim tab row on the topic plate:
- * - No linked ticket → {@link ReceivingClaimPanel} with **New ticket · Link
- *   existing** tabs (`ClaimWizardNav`) — the sole find/create surface
- *   (Pairing no longer hosts a Tickets avenue or in-strip finder).
+ * - No linked ticket → {@link ReceivingClaimPanel} with **New · Link** as
+ *   leaf-header trailing segment (`ClaimWizardNav` placement `leaf-header`,
+ *   always-visible ⌥1/⌥2) — the sole find/create surface (Pairing no longer
+ *   hosts a Tickets avenue or in-strip finder).
  * - Linked ticket → Chat only
  *
  * URL: `?display=ticket` (+ `claimMode` while on the claim surface).
  * `ticketAction` is derived from linked-ticket presence, not a verb switcher.
  *
  * **Column fill:** Displays uses `DISPLAYS_FLUSH_HOST` (`px-0`) — Claim / Chat
- * sit edge-to-edge. Host has no bottom inset (pinned footers sit flush).
+ * sit edge-to-edge. Chat stream + floating composer own `DISPLAYS_BODY_INSET`;
+ * this host never wraps the whole detail in that gutter. Host has no bottom
+ * inset (pinned footers sit flush).
  *
  * **Chrome:** Claim mounts `chrome="display"` — no gray title / PO restatement /
  * X. Topic plate names Ticket; StationContextBar owns carton identity;
  * column `→|` owns dismiss. Modal hosts keep `chrome="modal"`.
  */
 
-import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { ReceivingClaimPanel } from '../ReceivingClaimPanel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ClaimModalMode } from '../claim/claim-types';
-import { cn } from '@/utils/_cn';
 
 export function TicketDisplayHost({
   row,
@@ -55,7 +56,10 @@ export function TicketDisplayHost({
     >
       <div className="min-h-0 flex-1">
         {hasTicket ? (
-          <div className={cn('flex h-full min-h-0 flex-col overflow-hidden', DISPLAYS_BODY_INSET)}>
+          // Host stays flush (`DISPLAYS_FLUSH_HOST`). Stream rows + composer own
+          // `DISPLAYS_BODY_INSET` — never pad the whole detail (chrome plates
+          // must read edge-to-edge).
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
             <SupportTicketDetail
               ticketId={ticketId}
               onBack={onCloseTicket}
@@ -64,6 +68,8 @@ export function TicketDisplayHost({
               hideRequesterBand={false}
               // Messages only — floor spine lives on the Timeline Displays tab.
               mergeFloorTimeline={false}
+              // Station Ticket Displays = read + reply → conversation bubbles.
+              streamVariant="bubble"
             />
           </div>
         ) : (

@@ -156,7 +156,7 @@ export default function MobileReceivingPipelinePage() {
               <input
                 type="search"
                 inputMode="search"
-                placeholder="Search PO #, SKU, or item"
+                placeholder="Search purchase order #, SKU, or item"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-11 w-full rounded-full border border-border-soft bg-surface-card pl-9 pr-9 text-sm font-semibold text-text-default placeholder:text-text-faint shadow-md shadow-black/10 focus:border-blue-500 focus:outline-none"

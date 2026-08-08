@@ -15,6 +15,7 @@
  */
 
 import { type ReactNode } from 'react';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   GridRowCheckbox,
   isEmptyGutterChrome,
@@ -25,6 +26,9 @@ import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
 import { cn } from '@/utils/_cn';
+
+/** Primary chrome row — LedgerGrid header / select / fact cells. One seam height. */
+const LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
 import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { GridHeaderLabel, gridHeaderAriaSort } from './GridHeaderLabel';
 import { isGridColumnResizable, isGridColumnFillTrack, isGridColumnPaintTrack } from './grid-column-editability';
@@ -150,7 +154,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
     <div
       role="row"
       className={cn(
-        'group/hrow grid h-10 min-h-10 border-b border-border-default bg-surface-card px-0 py-0',
+        'group/hrow grid border-b border-border-default bg-surface-card px-0 py-0',
+        LEDGER_HEADER_ROW_FACE,
         layout.rowShellClass(false, { scrollMinContent: true }),
         className,
       )}
@@ -160,7 +165,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
         <div
           className={cn(
             layout.cellClass({ inset: 'none', rule: true }),
-            'h-10 min-h-10',
+            LEDGER_HEADER_ROW_FACE,
             emptyGutter ? 'items-stretch overflow-hidden p-0' : 'justify-center',
             layout.frozenCellClass,
           )}
@@ -190,7 +195,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               data-col={column.key}
               aria-hidden
               className={cn(
-                'h-10 min-h-10',
+                LEDGER_HEADER_ROW_FACE,
                 layout.cellClass({ rule: false, inset: 'none' }),
               )}
             />
@@ -203,7 +208,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               data-col={column.key}
               className={cn(
                 layout.cellClass({ inset: 'none', rule: true }),
-                'flex h-10 min-h-10 items-center justify-center',
+                'flex items-center justify-center',
+                LEDGER_HEADER_ROW_FACE,
               )}
             >
               {leadingChrome ?? <span className="h-4 w-4 shrink-0" aria-hidden />}
@@ -309,7 +315,8 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
       aria-sort={ariaSort}
       onClick={onSort}
       className={cn(
-        'group/hcell relative gap-1 h-10 min-h-10',
+        'group/hcell relative gap-1',
+        LEDGER_HEADER_ROW_FACE,
         gridHeaderCellAlignClass(resolveGridColumnAlign(column)),
         layout.cellClass({ rule: !last, inset: 'grid' }),
         frozen && layout.frozenCellClass,

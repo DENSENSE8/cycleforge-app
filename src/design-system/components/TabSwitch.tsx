@@ -61,7 +61,7 @@ interface TabSwitchProps {
   /**
    * Solid-hug padding scale. `md` (default) = `px-3 py-2` + rail `p-1`.
    * `sm` = full-height face (`h-full px-2.5`) + `text-role-caption` — for
-   * 40px band workbench chrome (`p-0.5` inset); active pill uses
+   * primary band workbench chrome (`p-0.5` inset); active pill uses
    * `nestedCornerClass('card', 0.5)` so it nests concentrically inside the
    * card shell.
    */

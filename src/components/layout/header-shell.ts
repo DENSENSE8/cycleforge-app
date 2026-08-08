@@ -87,19 +87,45 @@ export const SIDEBAR_RAIL_INSET_X = 'px-0';
 export const SIDEBAR_RAIL_TRAILING_TRACK_CLASS =
   'flex w-8 shrink-0 items-center justify-center';
 
-/** 40px identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
-export const receivingIdentityBandClass = `flex h-[40px] shrink-0 items-center ${appChromeClass} px-3 ${receivingHeaderHairlineClass}`;
+/**
+ * Height-only atom — ops chrome **under** the navigation header (28px / `h-7`).
+ *
+ * Scan-station first seam (scan bar · carton identity **row 1** · Displays top
+ * · MasterNav L1 / Scan Stations drill-back) · workbench tab/triage bands ·
+ * grid column headers · PaneHeader. Station code aliases this as
+ * `STATION_CHROME_ROW_FACE`. Secondary station eyebrow stays
+ * {@link STATION_SECONDARY_BAND_FACE} (`h-6`). Prefer this over raw `h-7` /
+ * `h-[28px]` on those shells.
+ *
+ * **Not** the GlobalHeader / MasterNav spine top band — that is
+ * {@link TOP_CHROME_ROW_FACE} (40px). Do not collapse the two.
+ */
+export const PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0';
 
 /**
- * 40px scan band — same grid height as other header bands, **full-bleed**
+ * Navigation header height atom — GlobalHeader + MasterNav spine top band
+ * (40px / `h-10`). Shares one bottom hairline Y via {@link TOP_CHROME_BAND_FACE}.
+ * Never alias this to {@link PRIMARY_CHROME_ROW_FACE} — densifying the nav
+ * header to match scan-station row 1 is a regression.
+ */
+const TOP_CHROME_ROW_FACE = 'h-10 shrink-0';
+
+/** Pixel twin of {@link TOP_CHROME_ROW_FACE} (assistant dock / detail-stack offset). */
+export const TOP_CHROME_ROW_PX = 40;
+
+/** Identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
+export const receivingIdentityBandClass = `flex ${PRIMARY_CHROME_ROW_FACE} items-center ${appChromeClass} px-3 ${receivingHeaderHairlineClass}`;
+
+/**
+ * Scan band — same grid height as other header bands, **full-bleed**
  * flat chrome (depth 2). StationScanBar owns left/right content inset; no card
  * elevation — the work canvas owns depth 1.
  */
-export const receivingScanBandClass = `flex h-[40px] shrink-0 items-center px-0 ${appChromeClass} ${receivingHeaderHairlineClass}`;
+export const receivingScanBandClass = `flex ${PRIMARY_CHROME_ROW_FACE} items-center px-0 ${appChromeClass} ${receivingHeaderHairlineClass}`;
 
 export const sidebarHeaderBandClass = `shrink-0 ${appChromeClass} ${receivingHeaderHairlineClass}`;
-// 40px pill/tab row — matches the dashboard's HorizontalButtonSlider band height.
-// Sidebar variant of receivingIdentityBandClass: same 40px grid + hairline, but
+// Pill/tab row — matches the dashboard's HorizontalButtonSlider band height.
+// Sidebar variant of receivingIdentityBandClass: same primary grid + hairline, but
 // re-gutters to SIDEBAR_GUTTER so every sidebar panel aligns on one left column.
 // The workspace keeps receivingIdentityBandClass directly (12px), so this only
 // moves sidebar chrome — the two panes stay decoupled.
@@ -110,7 +136,8 @@ export const sidebarHeaderPillRowClass = cn(receivingIdentityBandClass, SIDEBAR_
  * Pair with `HorizontalButtonSlider variant="nav" dense overlay`.
  */
 export const sidebarNavOverlayBandClass = cn(
-  'sticky top-0 z-10 flex min-h-[40px] shrink-0 items-center overflow-visible',
+  'sticky top-0 z-10 flex items-center overflow-visible',
+  PRIMARY_CHROME_ROW_FACE,
   SIDEBAR_GUTTER,
 );
 export const sidebarHeaderControlClass =`h-full min-h-[44px] w-full appearance-none ${appChromeClass} px-3 py-1 pr-8 text-left text-role-micro uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover`;
@@ -118,8 +145,8 @@ export const sidebarHeaderControlClass =`h-full min-h-[44px] w-full appearance-n
 export const mainStickyHeaderClass = `shrink-0 sticky top-0 z-header border-b border-border-hairline ${appChromeMutedClass} backdrop-blur-sm`;
 export const mainStickyHeaderRowClass = 'flex min-h-[44px] items-center justify-between gap-4 px-4 py-1';
 export const mainStickyHeaderShellRowClass = 'flex h-[44px] items-center justify-between gap-4 px-4';
-/** 40px queue banner — matches sidebar identity bands (receivingIdentityBandClass). */
-export const mainStickyHeaderCompactRowClass = 'flex h-[40px] items-center justify-between gap-4 px-4';
+/** Queue banner — matches sidebar identity bands (receivingIdentityBandClass). */
+export const mainStickyHeaderCompactRowClass = `flex ${PRIMARY_CHROME_ROW_FACE} items-center justify-between gap-4 px-4`;
 
 /**
  * Desktop app content host — **square** top-left corner, no edge stroke.
@@ -153,22 +180,33 @@ export const appContentShellClass = cn(
  * Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail).
  * Pair with IconButton `size="md"` — wrappers stretch to the full {@link TOP_CHROME_BAND_FACE}
  * height so hover / open washes meet the top and bottom hairlines (never a floated
- * h-8 island inside the 40px beam).
+ * h-8 island inside the nav beam).
  */
-export const HEADER_ICON_WRAP = 'relative flex h-full min-h-8 w-8 shrink-0 items-stretch justify-center';
+export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-stretch justify-center';
 
 /**
- * Desktop top-chrome seam — GlobalHeader and the MasterNav spine identity band
- * must share this box model so their bottom hairlines meet at one Y.
+ * Desktop navigation-header seam — GlobalHeader and the MasterNav spine top
+ * band must share this box model so their bottom hairlines meet at one Y.
+ *
+ * Height comes from {@link TOP_CHROME_ROW_FACE} (40px), **not**
+ * {@link PRIMARY_CHROME_ROW_FACE} (28px station/ops chrome under the header).
  *
  * Put {@link TOP_CHROME_BAND_FACE} on the **same** element as the band height.
- * Wrapping a `h-[40px]` child in an outer `border-b` yields 41px (border outside
+ * Wrapping a height child in an outer `border-b` yields 41px (border outside
  * the height) and creates the 1px step at the spine × header T-junction.
  */
-export const TOP_CHROME_BAND_FACE = 'h-[40px] shrink-0 border-b border-border-soft';
+export const TOP_CHROME_BAND_FACE = `${TOP_CHROME_ROW_FACE} border-b border-border-soft`;
 
-/** Flex row face for GlobalHeader (and any centered top-chrome band). */
+/** Flex row face for GlobalHeader (and any centered nav top-chrome band). */
 export const TOP_CHROME_BAND_CLASS = `flex items-stretch ${TOP_CHROME_BAND_FACE}`;
+
+/**
+ * Secondary station band under the scan-bar / chrome seam — left-rail eyebrow
+ * (Recent · N + pencil), carton identity commerce row 2, and Displays group
+ * eyebrows (VERIFICATION · …) share this `h-6` (24px) face so one hairline
+ * runs left → center → right.
+ */
+export const STATION_SECONDARY_BAND_FACE = 'h-6 shrink-0';
 
 /**
  * Horizontal inset for GlobalHeader — flush to both edges (no left/right pad).
@@ -177,7 +215,8 @@ export const TOP_CHROME_BAND_CLASS = `flex items-stretch ${TOP_CHROME_BAND_FACE}
 export const HEADER_INSET_X = 'px-0';
 
 /**
- * Exact gap between every GlobalHeader icon hit-box (left cluster + right rail).
+ * Exact gap between every GlobalHeader icon hit-box (nav cluster · session
+ * pace · utilities rail).
  * One knob — left toggle / WO / goal / search / AI / clipboard / phone / inbox /
  * avatar all share this rhythm. Reuse for station more-details icon clusters.
  */

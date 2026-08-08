@@ -1,16 +1,25 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  buildDisplayPending,
   parseUnboxDisplayParam,
   shouldClearDisplayOnLineChange,
 } from './useUnboxDisplayView';
 import { UNBOX_SIDE_TAB_ORDER } from '../unbox-side-tabs';
+import {
+  resolveOptimisticParam,
+  shouldClearOptimisticParam,
+} from '@/lib/routing/optimistic-url-param';
 
 describe('parseUnboxDisplayParam', () => {
   it('accepts every real side tab', () => {
     for (const tab of UNBOX_SIDE_TAB_ORDER) {
       assert.equal(parseUnboxDisplayParam(tab), tab);
     }
+  });
+
+  it('accepts display=index as Root Index nav', () => {
+    assert.equal(parseUnboxDisplayParam('index'), 'index');
   });
 
   it('treats absence as closed', () => {
@@ -32,6 +41,17 @@ describe('parseUnboxDisplayParam', () => {
       assert.equal(parseUnboxDisplayParam(browseTab), null);
     }
   });
+
+  it('accepts legacy pairing / po-note as linkage', () => {
+    assert.equal(parseUnboxDisplayParam('pairing'), 'linkage');
+    assert.equal(parseUnboxDisplayParam('po-note'), 'linkage');
+  });
+
+  it('accepts ticket · photos; claim canonicalizes to ticket', () => {
+    assert.equal(parseUnboxDisplayParam('ticket'), 'ticket');
+    assert.equal(parseUnboxDisplayParam('photos'), 'photos');
+    assert.equal(parseUnboxDisplayParam('claim'), 'ticket');
+  });
 });
 
 describe('shouldClearDisplayOnLineChange', () => {
@@ -44,19 +64,7 @@ describe('shouldClearDisplayOnLineChange', () => {
   });
 
   it('keeps a deep link open when prev line is null (mount / resolve)', () => {
-    // The whole point of the param: `?display=linkage` must survive arrival.
     assert.equal(shouldClearDisplayOnLineChange(null, 22, true), false);
-  });
-
-  it('accepts legacy pairing / po-note as linkage', () => {
-    assert.equal(parseUnboxDisplayParam('pairing'), 'linkage');
-    assert.equal(parseUnboxDisplayParam('po-note'), 'linkage');
-  });
-
-  it('accepts ticket · photos; claim canonicalizes to ticket', () => {
-    assert.equal(parseUnboxDisplayParam('ticket'), 'ticket');
-    assert.equal(parseUnboxDisplayParam('photos'), 'photos');
-    assert.equal(parseUnboxDisplayParam('claim'), 'ticket');
   });
 
   it('keeps open when the line id is unchanged', () => {
@@ -65,5 +73,30 @@ describe('shouldClearDisplayOnLineChange', () => {
 
   it('keeps open when the current line becomes null', () => {
     assert.equal(shouldClearDisplayOnLineChange(22, null, true), false);
+  });
+});
+
+describe('buildDisplayPending (domain snapshot)', () => {
+  it('snapshots nested photo / ticket intents for the same-commit paint', () => {
+    const photos = buildDisplayPending('photos', { photoAction: 'send' }, null);
+    assert.equal(photos.photoAction, 'send');
+    const claim = buildDisplayPending(
+      'ticket',
+      { ticketAction: 'claim', claimMode: 'link' },
+      null,
+    );
+    assert.equal(claim.ticketActionRaw, 'claim');
+    assert.equal(claim.claimMode, 'link');
+  });
+
+  it('paints via the shared optimistic SoT (display key only)', () => {
+    const pending = buildDisplayPending('index', undefined, null);
+    assert.equal(resolveOptimisticParam(null, pending.display), 'index');
+    assert.equal(shouldClearOptimisticParam('index', pending.display), true);
+    assert.equal(
+      shouldClearOptimisticParam('index', buildDisplayPending('photos', undefined, null).display),
+      false,
+      'index→leaf race stays on the shared SoT',
+    );
   });
 });

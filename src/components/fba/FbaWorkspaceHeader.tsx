@@ -18,6 +18,8 @@ import {
   WorkbenchChromeHeader,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { Button } from '@/design-system/primitives';
@@ -136,6 +138,7 @@ export function FbaTriageBand({
   controlsSlotRef?: Ref<HTMLDivElement>;
 }) {
   const selection = useBoardSelectionCount();
+  const fbaInspectorOpen = useRightRailOccupantOpen('detail:fba-plan');
   const isBoard = tab === 'plan' || tab === 'combine';
   const isReady = tab === 'ready';
   const allVisibleSelected = selection.total > 0 && selection.selected === selection.total;
@@ -174,8 +177,8 @@ export function FbaTriageBand({
   const searchPlaceholder = isReady
     ? 'Search tested units…'
     : isBoard
-      ? 'Filter title, FNSKU, ASIN, SKU, plan…'
-      : 'FNSKU, ASIN, SKU, product…';
+      ? 'Filter title, Amazon SKU, ASIN, SKU, plan…'
+      : 'Amazon SKU, ASIN, SKU, product…';
 
   return (
     <WorkbenchTriageBand
@@ -187,10 +190,13 @@ export function FbaTriageBand({
           value={search}
           onChange={onSearchChange}
           placeholder={searchPlaceholder}
-          className="w-40 shrink-0 lg:w-56"
+          className="min-w-0 flex-1"
         />
       }
       right={right}
+      trailing={
+        <WorkbenchInspectorToggle open={fbaInspectorOpen} testId="fba-inspector-toggle" />
+      }
     />
   );
 }

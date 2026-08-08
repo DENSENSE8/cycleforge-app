@@ -9,7 +9,6 @@
  */
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { History, TicketHelp } from '@/components/Icons';
 import { Button, EmptyState } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -22,26 +21,17 @@ import {
   type SupportRecentRailFacets,
 } from '@/components/sidebar/rail-shell/SupportRecentRailFilters';
 import { useRecentTickets } from '@/hooks/useRecentTickets';
+import { useSupportTicketParam } from '@/hooks/useSupportTicketParam';
 import { cn } from '@/utils/_cn';
 import { SupportTicketRow } from './SupportTicketRow';
 
 export function SupportTicketsRecentRail() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedId = Number(searchParams.get('ticket')) || null;
+  const { ticketId: selectedId, setTicket } = useSupportTicketParam();
   const { recents, clear } = useRecentTickets();
   const [filterText, setFilterText] = useState('');
   const [facets, setFacets] = useState<SupportRecentRailFacets>(
     EMPTY_SUPPORT_RECENT_RAIL_FACETS,
   );
-
-  const openTicket = (id: number) => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.delete('mode');
-    sp.set('ticket', String(id));
-    const qs = sp.toString();
-    router.push(qs ? `/support?${qs}` : `/support?ticket=${id}`);
-  };
 
   const filtered = useMemo(() => {
     const q = filterText.trim().toLowerCase();
@@ -96,7 +86,7 @@ export function SupportTicketsRecentRail() {
                 // ticket last changed — `RecentTicket.at` is a ms epoch stamped at open.
                 at={new Date(r.at).toISOString()}
                 selected={r.id === selectedId}
-                onSelect={() => openTicket(r.id)}
+                onSelect={() => setTicket(r.id)}
               />
             ))}
           </div>

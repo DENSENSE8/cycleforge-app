@@ -15,6 +15,7 @@ import { SidebarShell } from '@/components/layout/SidebarShell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
+import { useProductsSkuIdParam } from '@/hooks/useProductsSkuIdParam';
 import { ShoppingCart, Star, Sparkles, List, Package, Check } from '@/components/Icons';
 import { PairingQueueList } from '@/components/products/pairing/PairingQueueList';
 import { PairingUnmatchedSection } from '@/components/products/pairing/PairingUnmatchedSection';
@@ -223,9 +224,8 @@ function PairingSidebarQueue({ query, sort }: { query: string; sort: PairingSort
  * highlighted. Empty query fetches the top page so there's always a list.
  */
 function QcSidebarPicker({ query }: { query: string }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedSkuId = searchParams.get('skuId');
+  const { skuId, setSkuId } = useProductsSkuIdParam();
+  const selectedSkuId = skuId != null ? String(skuId) : null;
 
   // hasQc restricts the list to SKUs that actually have checklist items linked
   // — searches sku + title server-side, so searchField is left at its default.
@@ -239,13 +239,8 @@ function QcSidebarPicker({ query }: { query: string }) {
   const trimmedQuery = query.trim();
 
   const handleSelect = useCallback(
-    (item: SkuCatalogItem) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('view', 'qc');
-      params.set('skuId', String(item.id));
-      router.replace(`/products?${params.toString()}`);
-    },
-    [router, searchParams],
+    (item: SkuCatalogItem) => setSkuId(item.id, 'qc'),
+    [setSkuId],
   );
 
   return (
@@ -325,9 +320,8 @@ function QcSidebarPicker({ query }: { query: string }) {
  * so the main pane (KitPartsWorkspace) loads that SKU's BOM editor.
  */
 function KitPartsPicker({ query }: { query: string }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedSkuId = searchParams.get('skuId');
+  const { skuId, setSkuId } = useProductsSkuIdParam();
+  const selectedSkuId = skuId != null ? String(skuId) : null;
 
   const { data, isLoading, isError } = useSkuCatalogSearch(query, {
     limit: 50,
@@ -338,13 +332,8 @@ function KitPartsPicker({ query }: { query: string }) {
   const trimmedQuery = query.trim();
 
   const handleSelect = useCallback(
-    (item: SkuCatalogItem) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('view', 'kit');
-      params.set('skuId', String(item.id));
-      router.replace(`/products?${params.toString()}`);
-    },
-    [router, searchParams],
+    (item: SkuCatalogItem) => setSkuId(item.id, 'kit'),
+    [setSkuId],
   );
 
   return (

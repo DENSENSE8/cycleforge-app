@@ -76,7 +76,6 @@ export function TriageScanBand({
         inputBorderClassName={
           batchSortArmed ? STATION_SCAN_BAR_SESSION_CAPTURE_BOTTOM_RULE_CLASS : undefined
         }
-        rightPadClass={batchSortArmed ? 'pr-24' : undefined}
         rightContent={
           batchSortArmed ? (
             <span

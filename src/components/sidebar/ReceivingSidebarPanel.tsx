@@ -249,6 +249,8 @@ export function ReceivingSidebarPanel() {
     queryClient,
     publishPhotoRequestFor,
     serialInputRef,
+    selectedLine,
+    scanMatchedRows,
     setSelectedLine,
     setScanMatchedRows,
     setLineAccordionBootstrap,
@@ -376,9 +378,17 @@ export function ReceivingSidebarPanel() {
   // after navigating so the input is hot even when the panel was already mounted.
   // Select any existing text so the operator can immediately overwrite it with
   // the next scan (barcode guns type-then-Enter, so a selected field is "armed").
+  // When Unbox dock scan entry (any step) or legacy serial marker is mounted,
+  // that field owns the wedge — do not steal back to sidebar ingestion.
   useEffect(() => {
     const handler = () =>
       requestAnimationFrame(() => {
+        if (
+          document.querySelector('[data-unbox-dock-scan]') ||
+          document.querySelector('[data-unbox-serial-dock]')
+        ) {
+          return;
+        }
         const el = scanInputRef.current;
         if (!el) return;
         el.focus();

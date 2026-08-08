@@ -22,8 +22,11 @@ import type { ReactNode } from 'react';
  * shipping queue can't drift back into a taller, different-looking row.)
  *
  * Do NOT render a status dot, selection ring, click handler, or far-right
- * timestamp here — those belong to the host frame (`RailRow`'s button /
- * `CardShell`). This component is the content stack only.
+ * timestamp here — those belong to the host frame (`CompactActivityRow` /
+ * `RailRow`'s button / `CardShell`). This component is the content stack only.
+ *
+ * Compact activity face (dot · title · one fact · `4h`): compose this body
+ * inside `CompactActivityRow` — never fork a chat-notification twin.
  */
 
 export interface RailRowVM {

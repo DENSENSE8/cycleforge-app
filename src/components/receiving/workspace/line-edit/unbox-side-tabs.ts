@@ -10,10 +10,13 @@
  *   - `?display=<leaf>` → full-height leaf body
  *   - absence → column CLOSED
  *
- * Index / leaf order: Ticket · Photos · Linkage · Inventory · Classify · Units ·
- * Listings · Support · Tracking · Timeline. Ticket is presence-exclusive
- * (Claim vs Chat). Inventory is one stacked dossier (no nested tabs). Units nests
- * Units · Prebox. `checklist` is ring-only (progress chrome — never an index row).
+ * Index / leaf order (PO-identity first): Listings · Classify · Pairing · Inventory ·
+ * Units · Photos · Ticket · Tracking · Timeline · Support. Ticket is presence-exclusive
+ * (Claim vs Chat). Inventory is a **secondary vertical drill** (Information · Lines ·
+ * PO notes · Activity) via `useDisplaysLeafChrome` — never a nested TabDisplay and
+ * never a second LeafHeader. Photos is **armed-row verbs + URL drills** (golden).
+ * Units · Linkage still nest parent underline (debt — migrate to armed rows); Prebox
+ * mode is child segment. `checklist` is a Displays leaf (never a floor % ring).
  *
  * Legacy aliases (one release): `pairing` / `po-note` → `linkage`;
  * `claim` → `ticket` (with `ticketAction=claim`).
@@ -49,13 +52,27 @@ export type UnboxSideTab =
 export type UnboxDisplayNav = typeof UNBOX_DISPLAY_INDEX | UnboxSideTab;
 
 /**
- * Nested Photos topic actions (`?photoAction=`). Absent / legacy `browse` → Move
- * (gallery browse lives on identity peek / lightbox, not this host).
+ * Photos leaf surfaces (`?photoAction=`). Absent / legacy `browse` → armed
+ * Actions rows (no nested TabDisplay). Move · Send · Compare are URL
+ * drill-downs from those rows (Compare = listing vs bench — trailing).
+ *
+ * {@link UNBOX_PHOTO_ACTION_ORDER}: default first, then drill surfaces — not a
+ * horizontal tab strip. Never land a trailing verb when URL omits `photoAction`.
  */
-export type UnboxPhotoAction = 'move' | 'send';
+export type UnboxPhotoAction = 'actions' | 'move' | 'send' | 'compare';
+
+/** Photos URL surfaces — Actions (default) → Move · Send → Compare. */
+export const UNBOX_PHOTO_ACTION_ORDER = [
+  'actions',
+  'move',
+  'send',
+  'compare',
+] as const satisfies readonly UnboxPhotoAction[];
 
 /** Nested Linkage topic actions (`?linkageAction=`). */
 export type UnboxLinkageAction = 'link' | 'note';
+
+const UNBOX_LINKAGE_ACTION_ORDER = ['link', 'note'] as const satisfies readonly UnboxLinkageAction[];
 
 /**
  * Ticket topic surface derived from linked-ticket presence (`?ticketAction=`
@@ -63,31 +80,45 @@ export type UnboxLinkageAction = 'link' | 'note';
  */
 export type UnboxTicketAction = 'chat' | 'claim';
 
+const UNBOX_TICKET_ACTION_ORDER = ['chat', 'claim'] as const satisfies readonly UnboxTicketAction[];
+
 /** Nested Units topic actions (`?unitsAction=`). */
 export type UnboxUnitsAction = 'units' | 'prebox';
 
-/** All display body ids — includes ring-only `checklist`. */
+const UNBOX_UNITS_ACTION_ORDER = ['units', 'prebox'] as const satisfies readonly UnboxUnitsAction[];
+
+/** All display body ids — includes Displays-leaf `checklist`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'checklist',
-  'ticket',
-  'photos',
+  'listings',
+  'classify',
   'linkage',
   'inventory',
-  'classify',
-  'listings',
   'units',
-  'support',
+  'photos',
+  'ticket',
   'tracking',
   'timeline',
+  'support',
 ];
 
 /**
- * Index-visible leaves — `checklist` opens from the progress ring chrome only
- * (never a Root Index row).
+ * Index-visible leaves — PO-identity first; `checklist` trails (was ring-only;
+ * now a Root Index row, never a floor % ring).
  */
-export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = UNBOX_SIDE_TAB_ORDER.filter(
-  (tab) => tab !== 'checklist',
-);
+export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
+  'listings',
+  'classify',
+  'linkage',
+  'inventory',
+  'units',
+  'photos',
+  'ticket',
+  'tracking',
+  'timeline',
+  'support',
+  'checklist',
+];
 
 /** Per-carton visibility gates. */
 export interface UnboxSideTabGates {
@@ -150,9 +181,24 @@ export function resolveUnboxDisplayNav(
 }
 
 export function parseUnboxPhotoAction(raw: string | null): UnboxPhotoAction {
-  // Legacy `browse` / absent → Move (default Photos verb).
   if (raw === 'send') return 'send';
-  return 'move';
+  if (raw === 'move') return 'move';
+  if (raw === 'compare') return 'compare';
+  // Absent / legacy `browse` / explicit `actions` → in-column action list.
+  return 'actions';
+}
+
+/**
+ * Wire tokens `?photoAction=` may carry (route-param hygiene).
+ *
+ * Includes live {@link UNBOX_PHOTO_ACTION_ORDER} plus legacy `browse`. Do not
+ * round-trip {@link parseUnboxPhotoAction} — it always coerces to `actions`.
+ */
+export function parseUnboxPhotoActionWire(raw: string): string | null {
+  const key = raw.trim().toLowerCase();
+  if ((UNBOX_PHOTO_ACTION_ORDER as readonly string[]).includes(key)) return key;
+  if (key === 'browse') return key;
+  return null;
 }
 
 export function parseUnboxUnitsAction(
@@ -163,12 +209,30 @@ export function parseUnboxUnitsAction(
   return 'units';
 }
 
+/** Wire tokens `?unitsAction=` may carry (hygiene). Gate resolution is separate. */
+export function parseUnboxUnitsActionWire(raw: string): string | null {
+  const key = raw.trim().toLowerCase();
+  return (UNBOX_UNITS_ACTION_ORDER as readonly string[]).includes(key) ? key : null;
+}
+
 export function parseUnboxLinkageAction(
   raw: string | null,
   gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>,
 ): UnboxLinkageAction {
   if (raw === 'note' && gates.hasPoNoteTab) return 'note';
   return 'link';
+}
+
+/** Wire tokens `?linkageAction=` may carry (hygiene). Gate resolution is separate. */
+export function parseUnboxLinkageActionWire(raw: string): string | null {
+  const key = raw.trim().toLowerCase();
+  return (UNBOX_LINKAGE_ACTION_ORDER as readonly string[]).includes(key) ? key : null;
+}
+
+/** Wire tokens `?ticketAction=` may carry (hygiene). Presence still owns the body. */
+export function parseUnboxTicketActionWire(raw: string): string | null {
+  const key = raw.trim().toLowerCase();
+  return (UNBOX_TICKET_ACTION_ORDER as readonly string[]).includes(key) ? key : null;
 }
 
 /**

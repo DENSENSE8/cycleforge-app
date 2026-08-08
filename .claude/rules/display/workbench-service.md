@@ -229,20 +229,20 @@ floor spine into Ticket — that lives on the Timeline peer tab. Guard:
 Support service workspace may still pass `mergeFloorTimeline` (optional merge)
 until an explicit Floor toggle ships — it has no peer Timeline Displays yet.
 
-When merge *is* on, the conversation is a **`MergedRecordStream`**: helpdesk
-messages and warehouse / carrier events interleaved chronologically as **flat
-rows on one shared left reading edge**, `divide-y divide-border-hairline`,
-day-banded through the shared `DateGroupHeader`. **Direction is the leading
-mark** — the author's identity mark for a message, the station glyph for an
-event — **never a background fill**. Internal notes tint with `surface-sunken`
-**and say so in words on the row**, so colour is never the only carrier.
+The conversation is a **`MergedRecordStream`** over the shared `TimelineItem`
+waist — day-banded through `DateGroupHeader`, block markdown via
+`renderBlockMarkdown`. **Two shells, one discriminator (read vs select):**
 
-It replaced a chat (`SupportChatThread`, deleted 2026-08-02): blue and amber
-bubbles, ragged variable widths, a `PUBLIC` chip repeated on every outbound row.
-The job here is not *read a chat* — it is **reconstruct the truth about one
-physical unit fast enough to answer confidently**, and a bubble spends the
-surface's only free signalling channel on saying "this is a chat" while
-destroying the scan speed a dense list exists to buy.
+- **`variant="ledger"` (default, `/support`)** — flat rows on one shared left
+  reading edge (`divide-y`). Direction is the leading mark — never a fill.
+  Correct when the job is **scan / select** a dense triage list.
+- **`variant="bubble"` (station Ticket Displays)** — conversation bubbles for
+  **read + reply** (`TicketDisplayHost` → `streamVariant="bubble"`). Same waist;
+  only the message shell changes. Never resurrect `SupportChatThread`.
+
+Internal notes still say so **in words** on the row (tint alone is never the
+only carrier). Composer + bubble stream share `DISPLAYS_BODY_INSET`; the Displays
+host stays flush.
 
 - **Reading direction is ASCENDING**, unlike every other timeline in the app: the
   composer that answers is docked at the bottom, so the newest message must be

@@ -13,6 +13,20 @@
 
 export type SourcingMode = 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics';
 
+/** Live + legacy wire tokens `?mode=` may carry on `/sourcing`. */
+export const SOURCING_MODE_WIRE = [
+  'queue',
+  'scout',
+  'watchlist',
+  'searches',
+  'suppliers',
+  'analytics',
+  /** Legacy → scout */
+  'lookup',
+  /** Legacy → queue */
+  'alerts',
+] as const;
+
 export function resolveSourcingMode(raw: string | null): SourcingMode {
   if (raw === 'scout' || raw === 'lookup') return 'scout';
   if (raw === 'watchlist') return 'watchlist';
@@ -20,6 +34,16 @@ export function resolveSourcingMode(raw: string | null): SourcingMode {
   if (raw === 'suppliers') return 'suppliers';
   if (raw === 'analytics') return 'analytics';
   return 'queue'; // default; legacy 'alerts' lands here too
+}
+
+/**
+ * Wire tokens for `/sourcing` hygiene. Includes default `queue` + legacy aliases
+ * so old bookmarks reach {@link resolveSourcingMode}. Do not round-trip that
+ * resolver — aliases rewrite (`lookup`→`scout`).
+ */
+export function parseSourcingModeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (SOURCING_MODE_WIRE as readonly string[]).includes(v) ? v : null;
 }
 
 /** Analytics mode ranges (?range= — ephemeral URL filter, Monitor archetype). */

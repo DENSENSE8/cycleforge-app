@@ -67,6 +67,3 @@ export function normalizePhotoDisplayUrl(
   return trimmed;
 }
 
-export function isSameOriginNasProxyUrl(url: string): boolean {
-  return url.startsWith('/api/nas') || url.startsWith('/api/nas-dev');
-}

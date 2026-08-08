@@ -43,7 +43,7 @@ Top-to-bottom, a station is four parts and nothing more:
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
 | **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | In-flow two-row identity (`placement="flow"`, `reserveIdentityClearance={false}`) above the work canvas. Unbox golden; Triage/Testing/Shipping/Pack compose via thin adapters. Never fork. |
-| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`). Displays icon-plate **`rightSlot`** (same row, right of ⋮ — Unbox: `ReceivingDisplaysPushStack`). **Selected face** when checklist display is live. Hover peek is off while Displays is open (strip mount). Click opens/closes/switches checklist (Unbox → `UnboxScanProgressControl`). Checklist is ring-only — never a Lucide strip cell. Closed Displays opens via `←|`. Never fork a second ring under the dock. |
+| **Procedure progress chrome** (when the bench has a derived procedure) | `ScanStationProgressControl` + `ScanStationProgressRing` (`src/components/station/`) | Bare ring (not `GoalRing`) for stations that still mount strip progress. **Unbox:** the compact procedure-% ring sits **under the dock (Band 2 right — `UnboxScanProgressControl`)**, always mounted, and opens the Checklist Displays leaf (checklist body stays a Displays leaf). Not on a Displays `rightSlot`; closed Displays opens via `←|`. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down chrome** (no app-root banner) | `connection-health` + `useNetworkOnline` / `useRealtimeLink` → Operations TV pill + mobile `NetworkChip` | First-class, non-blocking; degrade-not-block. Never a per-bench reconnect strip. |
@@ -51,8 +51,10 @@ Top-to-bottom, a station is four parts and nothing more:
 - **Compose the scan bar, never re-wire its chrome.** Geometry, padding, icon slot, and placeholder styling live in
   `src/components/station/scan-bar/tokens.ts` (`STATION_SCAN_BAR_INPUT_CLASS`, `STATION_SCAN_BAR_ICON_SLOT_CLASS`, …).
   Domain benches (tech, testing, receiving, pack, FBA) wrap `ThemedStationScanBar`, which layers the staff-theme border
-  + focus ring + right-rail inset onto the core `StationScanBar`. *Rationale: one geometry SoT keeps every bench
-  identical and keeps the focus affordance inside the input box so sidebar bands never clip it.*
+  + focus + submit trace onto the core `StationScanBar`. The mode / paste / spinner rail is an **absolute frosted veil**
+  (`backdrop-blur-sm` + translucent card + left fade) over the full-bleed input — long placeholder / typed text
+  soft-peeks under the glyphs. Clearance is **measured** (`ResizeObserver` → `padding-inline-end`), never magic
+  `pr-*` / `rightPadClass`. *Rationale: one geometry SoT; frost beats an opaque wall; measured pad tracks 1–4 modes.*
 - **Compose the entity-context header, never fork it.** Inbound carton benches (Unbox, Triage, Testing)
   and Shipping / Pack / Pickup active-order chrome import `CartonContextCard` + `StationContextBar`
   from `@/components/station/entity-context`. Thin adapters map controller bags → props; omit
@@ -161,7 +163,7 @@ Full law: [`../source-of-truth.md`](../source-of-truth.md) → Scan-station proc
 |---|---|---|---|---|
 | **Centre** | focus deck | *What do I do right now?* | `ProcedureDeck` via a domain wrapper — flat expandable list (full faces · one expanded body) | **Primary — hero surface** |
 | **Right edge** | checklist display | *Where am I in the whole job?* | `ProcedureChecklist` as a Displays body | Secondary navigation |
-| **Displays strip `rightSlot`** | progress ring | opens / closes / switches the checklist | `ScanStationProgressControl` | Entry to checklist only (right of ⋮) |
+| **Under the dock (Band 2 right)** | progress ring | opens / closes / switches the checklist | `ScanStationProgressControl` (`UnboxDockHost.progress`) | Checklist entry; always mounted with the dock |
 
 - **One derivation, however many views.** Both surfaces read the same hook
   (Unbox: `useUnboxProcedureSteps`). Two views was never the hazard — two derivations drifting was.
@@ -183,25 +185,28 @@ Full law: [`../source-of-truth.md`](../source-of-truth.md) → Scan-station proc
 
 ### Ring placement + interaction matrix
 
-The ring lives on the Displays icon plate as **`rightSlot`** (same row, right of
-⋮) while Displays is open — checklist stays `stripHidden` (no Lucide strip cell).
-Closed Displays opens via `←|`; do not remount a second ring under the dock or in
-the pane utility corner (pane top-right stays carton `↑ ↓` only).
+The ring lives **under the dock, Band 2 right** (`UnboxDockHost.progress` →
+`UnboxScanProgressControl`) — always mounted with the dock (hidden only in notes
+mode), **not** on a Displays `rightSlot` (guard-banned) and not in the pane utility
+corner (pane top-right stays carton `↑ ↓` only). The checklist body stays a
+Displays leaf (`stripHidden`, no Lucide strip cell) and is also a Root Index row.
+Closed Displays opens via `←|`.
 
 | Current state | Ring click |
 |---|---|
 | Displays open on checklist | Close Displays |
 | Displays open on another tab | **Switch** to checklist — do not close |
-| Displays closed | Ring not mounted — open via `←|`, then use the ring |
+| Displays closed | Ring stays visible under the dock — click opens the Checklist leaf |
 
 Bare 16px SVG, **no numeral inside**, no card plate behind it; `tone="selected"` while the checklist
 is live. It is **not** `GoalRing` (daily-goal pace, GlobalHeader) — that swap is the most-repeated
-mistake on this surface. Hover peek is suppressed while the strip mount has Displays open.
+mistake on this surface. Hover peek is suppressed while any right-edge push (Displays / Ticket / Claim / tool) is open (`railOpen`).
 
 ### Anti-patterns
 
-- **A Checklist Lucide cell on the Displays icon strip.** The ring (`rightSlot`) is the only
-  entry; a second door is control duplication.
+- **A Checklist Lucide cell on the Displays icon strip, or a `rightSlot` ring.** The
+  checklist's two entries are the under-dock procedure ring and its Root Index leaf;
+  a third door is control duplication.
 - **An always-on procedure column.** That is a third right-edge grammar; one was built and retired
   within a day — [`../source-of-truth.md`](../source-of-truth.md) → Right-rail modality.
 - **A hand-ticked step**, or a `skipped` step drawn as done.

@@ -225,7 +225,7 @@ export function StationActionDossierShell({
                     if (el) detailRefs.current.set(row.id, el);
                     else detailRefs.current.delete(row.id);
                   }}
-                  className="border-t border-border-hairline bg-surface-canvas px-2 py-2"
+                  className="border-t border-border-hairline px-2 py-2"
                   data-dossier-detail={row.id}
                 >
                   {row.detail}

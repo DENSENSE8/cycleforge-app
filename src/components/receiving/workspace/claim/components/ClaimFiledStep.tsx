@@ -65,7 +65,7 @@ function CreatedFiledBody({ c }: { c: ReceivingClaimController }) {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-role-micro uppercase tracking-wider text-blue-700 hover:text-blue-900"
           >
-            Open in Zendesk <ExternalLink className="h-3 w-3" />
+            Open in helpdesk <ExternalLink className="h-3 w-3" />
           </a>
         ) : null}
       </section>

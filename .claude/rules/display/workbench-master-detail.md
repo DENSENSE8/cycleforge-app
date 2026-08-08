@@ -125,22 +125,29 @@ When using the sidebar map, three structural slots, in this order:
   Review) — **carrier postage stays here and never folds into a label workspace**; Sales =
   Sales Board + Local Pickup History; Support = the 6 support children; Live Ops =
   Operations only. Section icons come from
-  `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. **Accent: one NEUTRAL treatment for
-  every row** — `spineAccentFor` → `SPINE_NEUTRAL_ACCENT`; the eight section hues were
-  deleted 2026-08-02 and must not return (`source-of-truth.md` → MasterNav spine accent).
+  `MAIN_GROUPS` / `STATION_GROUPS` / `DOMAIN_GROUPS`. **Treatment: MONOCHROME, one ladder
+  for every row** — `spineAccentFor` → `SPINE_ACCENT` (per-section hue deleted 2026-08-08
+  after a third round; a tint carried by *every* row in an open section marks nothing, and it
+  made the selected row a near-twin of its siblings). Section boundaries are a
+  `border-t border-border-soft` hairline; identity is grouping + order. Uniform **28px** rows,
+  one **13px `role-nav`** size, 16px glyphs, and the current row alone fills — rising to
+  `bg-surface-card` against the spine's own `appCanvasClass` ground. Full ladder + reasoning:
+  `source-of-truth.md` → MasterNav spine treatment.
   **Every row draws its glyph at the 1.5 page stroke** — child rows included, since a mode row
   is the same switch the GlobalHeader Mode menu draws with the same icons; what child rows drop
   is the heavier 2.25 weight, which would out-draw their own parent. Subordination is the indent
-  + caption/medium type + muted ink. **A section with no visible page renders nothing**, and a
+  + the nesting rail + one ink step (`text-soft` under a parent's `text-muted`) — never a second
+  type size, and never a colour. **A section with no visible page renders nothing**, and a
   page whose every mode was permission-filtered is dropped by `isSidebarPageReachable` —
   hollow is forbidden at both altitudes — a section whose every page is filtered contributes
   no rows AND no divider.
-  Body swap (map ⇄ ranked results) uses `framerPresence.spineBodySwap` /
-  `framerTransition.spineBodySwap` (opacity-only, keyed on the KIND of body and never on the
-  query) plus the named active-wash preset. **Page rows and child rows share ONE
-  cascade** — `spineRowStagger*`, 15ms/row; the map itself mounts instantly, and the one
-  surviving cascade belongs to the active page's children, which genuinely mount on
-  navigation. **Nothing on a row travels** — the 14px glyph's CSS lift
+  **The spine has NO motion** (2026-08-08). Map mount, row selection, nest open, and the body
+  swap (map ⇄ Scan Stations drill ⇄ ranked results) are all instant, and `SidebarNavList`
+  imports no motion barrel at all. Four treatments were tried and each lost to the same
+  argument — this is a navigator whose every row the operator reaches for by muscle memory, so
+  any duration sits between the reach and the target. Detail + the table of what went:
+  `motion-crossfade.md` → *RESOLVED — the MasterNav spine has NO motion*.
+  **Nothing on a row travels** — the 14px glyph's CSS lift
   was deleted 2026-08-02; hover is `transition-colors` and nothing else, and `whileHover`,
   a row `scale` and a weight shift stay banned on cost grounds.
   Active rows are a fill **plus** an inset hairline. Detail:

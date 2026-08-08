@@ -55,6 +55,12 @@ interface ReceivingGridViewProps {
   activityAxis?: ReceivingActivityAxis;
   /** History / recent surface flag; status dots use getStatusDotBg (terminal tones win). */
   isHistory?: boolean;
+  /**
+   * Status chip vocabulary. Unbox / Receiving History passes `'coarse'` so
+   * testing terminals (FAILED, …) paint as Received. Testing History omits
+   * (default `'fine'`) so Failed / Passed stay visible.
+   */
+  statusVocabulary?: 'fine' | 'coarse';
   /** Selection bus scope (defaults to receiving). */
   selectionScope?: string;
   /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
@@ -122,7 +128,6 @@ interface ReceivingGridViewProps {
    * History View topics: never paint card-corner ▦ while the inspector host
    * is absent (same contract as To Ship).
    */
-  columnTriggerPortalOnly?: boolean;
 }
 
 function poFoldKey(row: ReceivingLineRow): string {
@@ -155,6 +160,7 @@ export function ReceivingGridView({
   handleToggleRow,
   activityAxis = 'unboxed',
   isHistory = false,
+  statusVocabulary = 'fine',
   selectionScope = RECEIVING_SELECTION_SCOPE,
   columns,
   tableId,
@@ -174,7 +180,6 @@ export function ReceivingGridView({
   linkedReceivingId = null,
   onCrosshairHover,
   columnTriggerPortalTarget = null,
-  columnTriggerPortalOnly = false,
 }: ReceivingGridViewProps) {
   // One fetch for the whole grid — History UNBOXED tips name the connected
   // inventory provider (falls back to capability title while loading).
@@ -285,7 +290,6 @@ export function ReceivingGridView({
       testId={testId}
       tableId={tableId}
       columnTriggerPortalTarget={columnTriggerPortalTarget}
-      columnTriggerPortalOnly={columnTriggerPortalOnly || isHistory}
       renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
         <ReceivingGridColumnHeader
           isMobile={isMobile}
@@ -325,6 +329,7 @@ export function ReceivingGridView({
           handleToggleRow={handleToggleRow}
           activityAxis={activityAxis}
           isHistory={isHistory}
+          statusVocabulary={statusVocabulary}
           inventoryProviderLabel={inventoryProviderLabel}
           columns={visible}
           columnDisplay={displayByKey}
@@ -347,6 +352,7 @@ export function ReceivingGridView({
           handleToggleRow={handleToggleRow}
           activityAxis={activityAxis}
           isHistory={isHistory}
+          statusVocabulary={statusVocabulary}
           inventoryProviderLabel={inventoryProviderLabel}
           columns={visible}
           columnDisplay={displayByKey}

@@ -2,6 +2,9 @@
 
 /**
  * Repair queue host — thin composer for the {@link RepairGridView} spreadsheet.
+ * Dual-door: Scan Stations `/repair` (task/intake) and Sales `?mode=repairs`
+ * (overall history). Same table; surface defaults differ (active vs done).
+ *
  * Owns fetch, the open (detail-panel) record + keyboard move, the `?openRepair=`
  * deep-link, rail multi-select (History SoT — no bottom capsule), and workbench chrome.
  * Sort is URL-backed (`?sort=`/`?dir=`, {@link useRepairDisplaySort}) so the

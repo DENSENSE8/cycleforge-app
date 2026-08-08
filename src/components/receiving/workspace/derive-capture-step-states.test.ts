@@ -38,10 +38,20 @@ const upToSerial: DeriveCaptureStepStatesInput = {
   ...base,
   arrivalPhotoCount: 1,
   unboxCartonPhotoCount: 3,
-  itemPhotoCount: 1,
   cartonAspectCounts: cartonShot,
   contentsConfirmedAt: '2026-08-01T10:00:00Z',
+};
+
+/**
+ * Everything before `item_photos` satisfied (serial + condition included) so
+ * the item-aspect gate is isolated. Capture trio order is Serial → Condition
+ * → Photos.
+ */
+const upToItemPhotos: DeriveCaptureStepStatesInput = {
+  ...upToSerial,
+  serialCount: 1,
   conditionGradedAt: '2026-08-01T10:01:00Z',
+  itemPhotoCount: 1,
 };
 
 const keys = (input: Parameters<typeof captureStepVocabulary>[0]) =>
@@ -56,9 +66,10 @@ test('matched carton: the guided procedure in order', () => {
     'box_photo',
     'packing_material',
     'contents',
+    // Capture trio: Serial → Condition → Photos (FOUND_CAPTURE / Unbox dock).
+    'serial',
     'condition',
     'item_photos',
-    'serial',
     // `label` is a CAPTURE step — reading the face the carton is about to
     // print, the last correction that is still free. `print` stays a commit act
     // on the terminal dock.
@@ -160,11 +171,11 @@ test('one carton shot cannot satisfy all three carton steps', () => {
 // ── Item aspects are ORG POLICY, not a constant ──────────────────────────────
 
 test('with no required aspects, any item photo completes the step', () => {
-  const states = deriveCaptureStepStates({ ...upToSerial, requiredItemAspects: [] });
+  const states = deriveCaptureStepStates({ ...upToItemPhotos, requiredItemAspects: [] });
   assert.equal(states.item_photos, 'done', 'an empty policy must not read vacuously true either');
 
   const none = deriveCaptureStepStates({
-    ...upToSerial,
+    ...upToItemPhotos,
     itemPhotoCount: 0,
     requiredItemAspects: [],
   });
@@ -173,14 +184,14 @@ test('with no required aspects, any item photo completes the step', () => {
 
 test('every required item aspect must have a shot', () => {
   const partial = deriveCaptureStepStates({
-    ...upToSerial,
+    ...upToItemPhotos,
     requiredItemAspects: ['included', 'serial'],
     itemAspectCounts: { included: 2 },
   });
   assert.equal(partial.item_photos, 'active', 'the serial shot is still missing');
 
   const complete = deriveCaptureStepStates({
-    ...upToSerial,
+    ...upToItemPhotos,
     requiredItemAspects: ['included', 'serial'],
     itemAspectCounts: { included: 2, serial: 1 },
   });
@@ -189,7 +200,7 @@ test('every required item aspect must have a shot', () => {
 
 test('an optional aspect never blocks the step', () => {
   const states = deriveCaptureStepStates({
-    ...upToSerial,
+    ...upToItemPhotos,
     requiredItemAspects: ['included'],
     itemAspectCounts: { included: 1 },
   });
@@ -199,13 +210,21 @@ test('an optional aspect never blocks the step', () => {
 // ── Condition is a gate now, and the grade is not the gate ───────────────────
 
 test('condition is gated on the grading ACT, not on the defaulted grade', () => {
-  const ungradedButShot = deriveCaptureStepStates({ ...upToSerial, conditionGradedAt: null });
+  const ungraded = deriveCaptureStepStates({
+    ...upToSerial,
+    serialCount: 1,
+    conditionGradedAt: null,
+  });
   assert.equal(
-    ungradedButShot.condition,
+    ungraded.condition,
     'active',
     'condition_grade is NOT NULL with a default — it can never be the gate',
   );
-  assert.equal(deriveCaptureStepStates(upToSerial).condition, 'done');
+  assert.equal(
+    deriveCaptureStepStates({ ...upToSerial, serialCount: 1, conditionGradedAt: '2026-08-01T10:01:00Z' })
+      .condition,
+    'done',
+  );
 });
 
 test('condition can hold the active marker', () => {
@@ -215,7 +234,13 @@ test('condition can hold the active marker', () => {
 });
 
 test('contents is gated on the confirmation stamp', () => {
-  const before = deriveCaptureStepStates({ ...upToSerial, contentsConfirmedAt: null });
+  const before = deriveCaptureStepStates({
+    ...base,
+    arrivalPhotoCount: 1,
+    unboxCartonPhotoCount: 3,
+    cartonAspectCounts: cartonShot,
+    contentsConfirmedAt: null,
+  });
   assert.equal(before.contents, 'active');
   assert.equal(deriveCaptureStepStates(upToSerial).contents, 'done');
 });
@@ -264,9 +289,9 @@ test('every step renders, in vocabulary order, whatever its state', () => {
       'box_photo',
       'packing_material',
       'contents',
+      'serial',
       'condition',
       'item_photos',
-      'serial',
       'label',
     ],
     'a checklist shows the whole procedure — pending steps are the point',
@@ -291,7 +316,8 @@ test('exactly one step is active, and it is the first incomplete one', () => {
     shot.filter((s) => s.state === 'active').map((s) => s.key),
     ['serial'],
   );
-  assert.equal(shot.find((s) => s.key === 'condition')?.state, 'done');
+  // Condition sits after serial in the capture trio — still pending here.
+  assert.equal(shot.find((s) => s.key === 'condition')?.state, 'pending');
 });
 
 test('an out-of-order completion reads done in place — no reordering', () => {
@@ -334,7 +360,7 @@ test('an acknowledgement step takes its time from the column that gated it', () 
   // Reading it off the gate is what makes the time and the state impossible to
   // disagree — a caller cannot pass one and satisfy the other.
   const steps = deriveProcedureSteps({
-    ...upToSerial,
+    ...upToItemPhotos,
     labelPreviewedAt: '2026-08-01T10:02:00Z',
     // Ignored on purpose for these three.
     evidenceAt: { condition: '1999-01-01T00:00:00Z', label: '1999-01-01T00:00:00Z' },

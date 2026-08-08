@@ -52,7 +52,7 @@ export function MasterNavView({
   return (
     <div className={cn('isolate flex h-full min-h-0 flex-col', className)}>
       {/* The band's HEIGHT is geometry, not content. The spine is a flex SIBLING
-          of the header+content column (see ResponsiveLayout), so this 40px face
+          of the header+content column (see ResponsiveLayout), so this primary face
           is what puts the spine's bottom hairline on the same Y as the
           GlobalHeader's — drop it and the header's border runs into the spine
           mid-row.

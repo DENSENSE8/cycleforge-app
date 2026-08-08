@@ -9,7 +9,7 @@ rail and never switch the inspector to the floating rounded overlay shell.
 Overlay remains explicit for modal/intake, mobile, ambient assistant, and
 station-edge opt-outs.  
 **Header SoT:** `PaneHeader` + blocks (`PaneHeaderLabel`, `PaneHeaderActionBar`, `PaneHeaderCloseButton`, …) **or** Unbox-aligned `DeskRailChromeRow` (`src/components/right-rail/DeskRailChromeRow.tsx`) when the card wants `→|` top-left · ↑↓ · trailing ring-twin. Desk `detail:order` composes `DeskRailChromeRow` + Unbox `SectionTabsSlider` density=icon (no identity row).  
-**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the hover paint is a **4px** full-height bar on the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron (`onCollapse`). Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Unbox Displays (`UnboxPushColumn`) is the golden twin. Left context rail uses the same inset seam paint + sash `onCollapse` + drag-past-min — different dismiss grammar, same hairline placement.  
+**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the hover paint is a **4px** full-height bar on the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron. Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Unbox Displays (`UnboxPushColumn`) is the golden twin. Left context rail uses the same inset seam paint (drag-only sash) + filter trailing + drag-past-min — different dismiss grammar, same hairline placement.  
 **Modality / push / occupancy:** [source-of-truth.md](../source-of-truth.md) → **Right-rail modality**
 (AI and record/ticket details share **one** right-edge slot — detail outranks assistant) ·
 **Frame column budget** (center floor · yield ladder).  
@@ -60,6 +60,7 @@ Band 3 opens that rail with no row selected. Selected-order `detail:order` must
 │ [ >| ] …………………… [ ↑ · ↓ · trailing? ]                     │
 │ close · spacer · cursor · ring — chrome ONLY by default     │
 │ (optional `.actions` only when topics share the chrome row) │
+│ Incoming Sync = trailing after ↑↓ (never the floor)         │
 ├─────────────────────────────────────────────────────────────┤
 │ Row 2 — contextual icons / topic tabs (when present)        │
 │ PaneHeaderActionBar iconOnly — no onClose / onPrev / onNext │
@@ -67,25 +68,41 @@ Band 3 opens that rail with no row selected. Selected-order `detail:order` must
 │ dense identity (PaneHeaderLabel) + status pills             │
 ├─────────────────────────────────────────────────────────────┤
 │ Body …                                                      │
+├─────────────────────────────────────────────────────────────┤
+│ InspectorActionFloor (Workbench triage only; Macro shell)   │
+│ [ leading CTAs? ] ………………………… [ 🗑 flush icon ]       │
+│ Composes FlushTerminalFooter; Delete = flush trailing icon  │
+│ Mount only when the open row has Macro commit / delete      │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Action floor SoT:** `InspectorActionFloor` + `InspectorFlushDelete`
+(`src/components/right-rail/`). Desk triage inspectors only (Incoming ·
+Orders Order-tab · Unfound · Repair · Bin · SKU panel). Never Station
+Displays / `StationTerminalDock`. Never a host slot on `RightRailHost`.
+History keeps identity-row primary (`historyInspectorPrimaryAction`) — no
+floor band.
 
 **History peek golden (`detail:history`).** Its header is chrome → Display tabs
 → identity (+ optional View strip):
 1) `DeskRailChromeRow` with **close + ↑↓ only** (no `.actions`), 2) labelled
 **Display** `PaneHeaderTabs` dense (`Details | Logistics | Evidence | History`)
 with a **View** toggle that expands `HistoryViewTopicsCluster` (paint ·
-Drill|List · compare · zoom · staff · week · ▦ · KPI — sheet layout / refine
-moved off Band 3; forced open in View-only shell), then 3) short status + PO /
+Drill|List · compare · zoom · ▦ — sheet layout moved off Band 3; forced open in
+the View-only shell, which every Unbox **sheet** tab can open since 2026-08-08
+and where only compare · zoom · ▦ render, paint + Drill needing a picked
+carton). **KPI collapse is NOT here** — it is the Band 3 `kpiToggle`, because
+Band 3 is on screen while this rail is parked. Staff · week are query facets and
+ride in the find field. Then 3) short status + PO /
 Receiving identity plus **one** readiness-picked labelled primary CTA
 (`historyInspectorPrimaryAction`) and a More menu for secondary edits —
 **not** an Edit icon ActionBar and **not** a multi-button labelled strip.
 Topic map SoT: `history-inspector-topics.ts`. The topic row lives **only** on
-this push inspector — never on Unbox History Band 3 (Band 3 = find · in-field
-filter · park/reopen via **Show / Hide inspector** — not Station **Open
-displays**). Body shows the **active** Display section only (`data-history-topic`).
+this push inspector — never on Unbox Band 3, any tab (Band 3 = find · in-field
+filter · KPI collapse · park/reopen via **Show / Hide inspector** — not Station
+**Open displays**). Body shows the **active** Display section only (`data-history-topic`).
 **Display topic** (singular — which body section is open) ≠ Station **Displays**
-column (`UnboxPushColumn` / Ticket · Photos · Linkage · …). Law:
+column (`UnboxPushColumn` / Listings · Classify · Pairing · …). Law:
 source-of-truth.md → Displays vs inspector. Desk Orders twin Unbox Displays via
 `DeskRailChromeRow` + `SectionTabsSlider` density=icon +
 `order-inspector-topics.ts` (Assign is a Display topic; View stays on
@@ -94,7 +111,7 @@ source-of-truth.md → Displays vs inspector. Desk Orders twin Unbox Displays vi
 **Desk single-card vs Unbox two-host (ruled 2026-08-03).** Unbox reads
 `[→|] ……… [↑ ↓]` across two regions: column `UNBOX_PUSH_TOP_BAND` + pane-absolute
 `stationMoreDetailsPaneHostClass` (`top-0 right-2`) for the carton cursor; the
-progress ring is Displays strip `rightSlot` (right of ⋮). That absolute host is
+progress ring sits under the dock (Band 2 right), not in this pane. That absolute host is
 **illegal inside a RightRailHost card** — a non-zero top inset only offsets the
 trailing cluster and splits the baseline. When every control lives in one card, compose
 **`DeskRailChromeRow`** (or `PaneHeaderActionBar onClose` for the orders
@@ -178,14 +195,20 @@ plus padding per group for no navigational gain.
 - **A multi-field FORM breaks out of the fact list.** Facts are read; a form is operated. Once a
   group takes more than one editable control, it becomes its own `OrderRecordCard` section with its
   own submit — it is no longer telemetry.
+- **Read facts carry no sunken/canvas wash.** `OrderFactRow` / Displays
+  `StationDenseFactStrip` sit transparent on the card host — hairline dividers
+  only. Never paint a gray fact-list plane behind telemetry.
 - **Create forms in flush push columns** (Station Displays claim compose golden) use **sheet-band
   fields** from `DenseComposeFields` — underline Subject + full-bleed sunken Body (`inset-field`
-  only on the textarea). Never nested `rounded-lg border` boxes, `TextField`, or
-  `WORKSPACE_NESTED_FIELD` for that job.
+  only on the textarea). That sunken band is the **only** depth-indent gray for
+  notes · ticket/claim create/edit — not for read fact rows. Never nested
+  `rounded-lg border` boxes, `TextField`, or `WORKSPACE_NESTED_FIELD` for that job.
 - **One primary CTA band in the footer, at most.** A second primary is the competing-primaries
-  failure (P5). Macro commit / bulk CTAs compose `FlushTerminalFooter` (Claim File golden —
-  in-flow `p-0` hairline floor, flush `Button`); Micro per-row actions stay on
-  `IconButton size="md"`.
+  failure (P5). Workbench record-inspector floors compose `InspectorActionFloor`
+  (wraps Macro `FlushTerminalFooter` — Claim hairline/`p-0`/canvas); Delete is
+  flush trailing icon via `InspectorFlushDelete`, never a full-width labelled
+  danger pill. Station Displays Macro CTAs still compose `FlushTerminalFooter`
+  directly. Micro per-row actions stay on `IconButton size="md"`.
 
 ### Anti-patterns
 

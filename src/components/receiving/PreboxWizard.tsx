@@ -169,7 +169,7 @@ function PreboxWizardBody({
         </div>
       ) : null}
 
-      {/* Mode — underline flush (no sunken segment capsule). */}
+      {/* Mode — child segment under Units · Prebox parent underline (nested grammar). */}
       <div className="shrink-0">
         <TabDisplay
           tabs={PREBOX_MODE_TABS}
@@ -177,7 +177,7 @@ function PreboxWizardBody({
           onTabChange={(id) => setMode(id as PreboxMode)}
           density="nested"
           fit="fill"
-          appearance="underline"
+          appearance="segment"
           aria-label="Prebox label mode"
         />
       </div>

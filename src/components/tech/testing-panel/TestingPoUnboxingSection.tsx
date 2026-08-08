@@ -19,12 +19,15 @@ export function TestingPoUnboxingSection({
   staffId,
   c,
   suppressItemsHeader = false,
+  onViewAllUnits,
 }: {
   row: ReceivingLineRow;
   staffId: string;
   c: TestingController;
   /** Hide "PO items · N" — the parent overview owns the label. */
   suppressItemsHeader?: boolean;
+  /** Serials-cell / edit click → open the right-edge Units Display. */
+  onViewAllUnits?: (line: ReceivingLineRow) => void;
 }) {
   return (
     <div className="min-w-0">
@@ -34,6 +37,7 @@ export function TestingPoUnboxingSection({
         c={c}
         embedded
         suppressHeader={suppressItemsHeader}
+        onViewAllUnits={onViewAllUnits}
       />
     </div>
   );

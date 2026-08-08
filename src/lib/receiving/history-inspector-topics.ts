@@ -29,8 +29,7 @@ type HistoryInspectorViewTopic =
   | 'drill'
   | 'compare'
   | 'zoom'
-  | 'columns'
-  | 'kpi';
+  | 'columns';
 
 type HistoryInspectorTopicId =
   | HistoryInspectorDisplayTopic
@@ -112,14 +111,19 @@ const DISPLAY_TOPICS: HistoryInspectorTopicSpec[] = [
   },
 ];
 
-/** Locked View order — query facets (staff · week · field · scope) live on Band 3 Refine. */
+/**
+ * Locked View order — query facets (staff · week · field · scope) live on Band 3
+ * Refine, and **KPI collapse lives on Band 3 too** (removed here 2026-08-08).
+ * A declaration that outlives its control is documentation that cannot fail, so
+ * `kpi` leaves this list in the same change that removed the toggle from
+ * {@link HistoryViewTopicsCluster}.
+ */
 const VIEW_TOPICS: HistoryInspectorTopicSpec[] = [
   { key: 'paint', group: 'view', label: 'Paint selected rows' },
   { key: 'drill', group: 'view', label: 'Drill / List layout' },
   { key: 'compare', group: 'view', label: 'Compare panes' },
   { key: 'zoom', group: 'view', label: 'Spreadsheet zoom' },
   { key: 'columns', group: 'view', label: 'Column display' },
-  { key: 'kpi', group: 'view', label: 'Show / hide metrics' },
 ];
 
 function primaryEditAccent(
@@ -178,7 +182,7 @@ export function historyInspectorTopicActions(
     edit.push({
       key: 'link',
       group: 'edit',
-      label: 'Link / Resolve Unfound PO',
+      label: 'Link / Resolve unmatched carton',
       ...(accent === 'link' ? { accent: true as const } : {}),
     });
   }

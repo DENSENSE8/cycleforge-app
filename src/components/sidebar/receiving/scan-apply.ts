@@ -37,6 +37,7 @@ import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import type { ScanApplyCtx } from './scan-types';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
+import { photoStageForScanIntakeSurface } from '@/lib/receiving/photo-intent';
 
 /**
  * Announce that this scan was an INSPECTION of finished work, not work.
@@ -327,7 +328,13 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   }
 
   if (ctx.isCurrent()) {
-    if (ctx.autoPushCameraRef.current) void ctx.publishPhotoRequestFor(poCtx.receiving_id, ctx.trackingNumber);
+    if (ctx.autoPushCameraRef.current) {
+      void ctx.publishPhotoRequestFor(
+        poCtx.receiving_id,
+        ctx.trackingNumber,
+        photoStageForScanIntakeSurface(ctx.intakeSurface),
+      );
+    }
     refocusScanInput(ctx);
   }
   // Clear the takeover loader immediately — the optimistic stub + seeded siblings
@@ -489,7 +496,13 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     // Open the same staff's phone camera for this unmatched carton too — a tracking
     // scan still needs unboxing photos even with no PO. Stale-guard: skip if the
     // operator moved on mid-scan.
-    if (ctx.isCurrent() && ctx.autoPushCameraRef.current) void ctx.publishPhotoRequestFor(unmatchedReceivingId, ctx.trackingNumber);
+    if (ctx.isCurrent() && ctx.autoPushCameraRef.current) {
+      void ctx.publishPhotoRequestFor(
+        unmatchedReceivingId,
+        ctx.trackingNumber,
+        photoStageForScanIntakeSurface(ctx.intakeSurface),
+      );
+    }
     // Optimistic open: drop the operator into the unfound carton's workspace
     // INSTANTLY from a synthetic stub — no round-trip wait before they can start
     // adding items. receiving-scan-resolved fires now so the scan loader clears
@@ -506,17 +519,34 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     }
     window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
 
-    // Triage only: optional background reconcile when the carton already has lines.
+    // Triage only: background reconcile when the carton already has lines.
+    // Same siblings key + include=serials as applyMatchedCarton so Arrival
+    // PoLinesAccordion / UnmatchedAccordionSurface paint warm chips (never a
+    // cold metadata-only fetch that blanks serial projection).
     if (!isUnbox) {
       void (async () => {
         try {
-          const linesRes = await fetch(
-            `/api/receiving-lines?receiving_id=${unmatchedReceivingId}`,
-          );
-          const linesData = await linesRes.json();
+          const linesData = await ctx.queryClient.fetchQuery({
+            queryKey: receivingSiblingsQueryKey(unmatchedReceivingId),
+            queryFn: async () => {
+              const r = await fetch(
+                `/api/receiving-lines?receiving_id=${unmatchedReceivingId}&include=serials`,
+              );
+              return r.json();
+            },
+            retry: false,
+          });
           const rows = Array.isArray(linesData?.receiving_lines)
             ? (linesData.receiving_lines as ReceivingLineRow[])
             : [];
+          if (rows.length > 0) {
+            seedReceivingSiblingsCache(
+              ctx.queryClient,
+              unmatchedReceivingId,
+              rows,
+              linesData?.receiving_package,
+            );
+          }
           const realRow = rows[0] ?? null;
           if (realRow && ctx.isCurrent()) {
             ctx.setSelectedLine(realRow);

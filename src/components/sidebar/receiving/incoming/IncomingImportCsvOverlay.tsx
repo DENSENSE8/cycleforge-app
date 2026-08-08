@@ -1,0 +1,263 @@
+'use client';
+
+/**
+ * Incoming Import → Upload CSV — flush inspector (Amazon / Goodwill unfound fix).
+ *
+ * Macro floor = Import CTA + `→|` close in one FlushTerminalFooter wrapper.
+ */
+
+import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-header';
+import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { deskRowFromCsvRecord } from '@/lib/inbound/desk-csv';
+import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { toast } from '@/lib/toast';
+import { cn } from '@/utils/_cn';
+
+function parseCsv(text: string): Record<string, string>[] {
+  const lines = text
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .map((l) => l.trimEnd())
+    .filter((l) => l.length > 0);
+  if (lines.length < 2) return [];
+
+  const split = (line: string): string[] => {
+    const cells: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === ',' && !inQuotes) {
+        cells.push(cur.trim());
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cells.push(cur.trim());
+    return cells;
+  };
+
+  const headers = split(lines[0]).map((h) => h.replace(/^"|"$/g, ''));
+  const rows: Record<string, string>[] = [];
+  for (let r = 1; r < lines.length; r++) {
+    const cells = split(lines[r]);
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      obj[h] = (cells[i] ?? '').replace(/^"|"$/g, '');
+    });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+export function IncomingImportCsvOverlay({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [raw, setRaw] = useState('');
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const rows = useMemo(() => (raw.trim() ? parseCsv(raw) : []), [raw]);
+  const preview = useMemo(
+    () =>
+      rows.slice(0, 8).map((r, i) => {
+        try {
+          return { i, ok: true as const, row: deskRowFromCsvRecord(r) };
+        } catch (err) {
+          return {
+            i,
+            ok: false as const,
+            error: err instanceof Error ? err.message : 'invalid',
+          };
+        }
+      }),
+    [rows],
+  );
+
+  const canSubmit = rows.length > 0 && !submitting;
+
+  const onFile = async (file: File | null) => {
+    if (!file) return;
+    setFileName(file.name);
+    const text = await file.text();
+    setRaw(text);
+    setError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/receiving/inbound/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+        created?: number;
+        updated?: number;
+        failed?: number;
+      } | null;
+      if (!res.ok) {
+        throw new Error(data?.error || `Import failed (${res.status})`);
+      }
+      invalidateReceivingFeeds(queryClient);
+      const created = data?.created ?? 0;
+      const updated = data?.updated ?? 0;
+      const failed = data?.failed ?? 0;
+      if (failed > 0) {
+        toast.error(`Imported ${created + updated}; ${failed} row(s) failed`);
+      } else {
+        toast.success(`Imported ${created} new · ${updated} refreshed`);
+      }
+      onClose();
+      setRaw('');
+      setFileName(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Import failed';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <DetailStackRailRegistrar
+      id="detail:incoming-import-csv"
+      onClose={onClose}
+      modal={false}
+      ariaLabel="Upload inbound CSV"
+    >
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas">
+        <div className="shrink-0 border-b border-border-hairline inset-cozy">
+          <PaneHeaderLabel eyebrow="Upload CSV" value="Amazon · Goodwill · eBay" />
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <p className="inset-cozy text-role-caption text-text-faint">
+            Columns: kind, source (amazon|goodwill|ebay), order_id, tracking, listing_url, sku,
+            item_name, qty, seller, rma_id. Goodwill rows ingest as manual + platform stamp.
+          </p>
+
+          <label
+            className={cn(
+              'ds-raw-button flex w-full cursor-pointer flex-col items-center gap-1 border-y border-border-hairline bg-surface-canvas px-3 py-5 text-center hover:bg-surface-hover',
+              cornerClass('flush'),
+              focusRing('control', 'accent'),
+            )}
+          >
+            <span className="text-role-caption font-semibold text-text-default">
+              {fileName || 'Choose .csv file'}
+            </span>
+            <span className="text-role-micro text-text-faint">or paste below</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="sr-only"
+              onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+
+          <textarea
+            value={raw}
+            onChange={(e) => {
+              setRaw(e.target.value);
+              setFileName(null);
+            }}
+            rows={10}
+            placeholder={
+              'kind,source,order_id,sku,item_name,qty,tracking,listing_url\n'
+              + 'purchase,amazon,111-222-333,SKU1,Widget,1,1Z999,\n'
+              + 'purchase,goodwill,GW-1001,SKU2,Camera,1,,'
+            }
+            className={cn(
+              'w-full resize-y border-0 border-b border-border-hairline bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default',
+              cornerClass('flush'),
+              'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500',
+            )}
+          />
+
+          {preview.length > 0 ? (
+            <div className="divide-y divide-border-hairline border-b border-border-hairline">
+              <p className="inset-cozy text-role-micro uppercase tracking-widest text-text-soft">
+                Preview ({rows.length} rows)
+              </p>
+              {preview.map((p) =>
+                p.ok ? (
+                  <p key={p.i} className="truncate inset-cozy text-role-caption text-text-default">
+                    {p.row.kind} · {p.row.sourcePlatform || p.row.sourceType} ·{' '}
+                    {p.row.orderId || '—'} · {p.row.sku || p.row.itemName || '—'}
+                  </p>
+                ) : (
+                  <p key={p.i} className="inset-cozy text-role-caption text-rose-600">
+                    Row {p.i + 1}: {p.error}
+                  </p>
+                ),
+              )}
+            </div>
+          ) : null}
+
+          {error ? (
+            <p className="inset-cozy text-role-caption font-medium text-red-600" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <InspectorActionFloor
+          actions={
+            <Button
+              type="button"
+              variant="primary"
+              disabled={!canSubmit}
+              onClick={() => void handleSubmit()}
+              ariaLabel={submitting ? 'Importing CSV' : `Import ${rows.length || 0} rows`}
+              className="min-h-9 w-full flex-1"
+              data-testid="import-csv-submit"
+            >
+              {submitting ? 'Importing…' : `Import ${rows.length || 0} row(s)`}
+            </Button>
+          }
+          delete={
+            <PaneHeaderCloseButton
+              onClick={onClose}
+              ariaLabel="Hide right panel"
+              title="Hide right panel"
+              className={cn(
+                'h-full min-h-9 w-10',
+                cornerClass('flush'),
+                'rounded-none border-l border-border-hairline',
+              )}
+            />
+          }
+        />
+      </div>
+    </DetailStackRailRegistrar>
+  );
+}

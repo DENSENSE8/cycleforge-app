@@ -5,6 +5,7 @@ import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { MobilePackingRow } from '@/components/mobile/packer/MobilePackingRow';
 import { MobilePackingSheet } from '@/components/mobile/packer/MobilePackingSheet';
 import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
+import { GridDegradedBox } from '@/design-system/components/grid';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 
 /**
@@ -20,7 +21,7 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
 
   const queryKey = useMemo(() => ['packer-logs-mobile', packerId] as const, [packerId]);
 
-  const { data, isLoading } = useCaptureStackQuery<PackerLogRow>({
+  const { data, isLoading, isError, refetch } = useCaptureStackQuery<PackerLogRow>({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({ packerId: String(packerId), limit: '30', offset: '0' });
@@ -47,6 +48,20 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
     params.set('step', 'slip');
     return `/m/p/${row.packer_log_id}/photos?${params.toString()}`;
   }, []);
+
+  // Fourth settled state: failed fetch + nothing to show → Retry, never empty history copy.
+  if (isError && rows.length === 0) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center bg-surface-card">
+        <GridDegradedBox
+          message="Couldn't load pack history."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full flex-col bg-surface-card">

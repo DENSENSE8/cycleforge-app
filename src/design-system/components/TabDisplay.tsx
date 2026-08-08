@@ -5,11 +5,17 @@
  *
  * Zero corner radius. No soft pills / capsules. Motion via `@/design-system/motion`.
  *
- * Hierarchy (parent above child, cascading weight):
- * - `appearance="underline"` — **parent** nav (Photos Move·Send, Link·Note,
- *   Units·Prebox): larger type, flush underline on active — no inverse fill.
- * - `appearance="segment"` — **child** local toggle (New ticket·Link existing):
- *   muted sunken rail + light rectangular active face, smaller type.
+ * Hierarchy (parent above child, cascading weight) — Station Displays nested
+ * leaf grammar (`source-of-truth.md` → Station Displays navigation):
+ * - Root Index owns the only **subject** lateral layer (rows).
+ * - Inside a leaf: **either** ≤1 parent `underline` strip (distinct action verbs)
+ *   **or** a secondary vertical index (reference sections) — never both, never a
+ *   second `StationDisplayLeafHeader`.
+ * - `appearance="underline"` — **parent** nav inside a leaf (Photos Actions·Compare·
+ *   Move·Send, Link·Note, Units·Prebox): larger type, flush underline on active.
+ * - `appearance="segment"` — **child** local toggle under a parent verb or claim
+ *   (New ticket·Link, Move To·From, Prebox One master·One per unit, Support
+ *   Team·Activity): muted sunken rail + light rectangular active face.
  * - `appearance="fill"` — high-contrast inverse sliding face (legacy nested fill).
  *
  * Densities:
@@ -24,6 +30,7 @@
 
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -35,6 +42,11 @@ interface TabDisplayItem {
   label: string;
   count?: number;
   icon?: (props: { className?: string }) => ReactNode;
+  /**
+   * Always-visible chord face (Claim New·Link `⌥1` / `Alt+1`). From
+   * {@link segmentChordHint} — never a hand-typed twin of the listener.
+   */
+  hint?: string;
   /**
    * When true, render a vertical hairline immediately before this tab
    * (outside the button so the sliding face measurement stays aligned).
@@ -169,7 +181,11 @@ export function TabDisplay({
               // a light face on a light rail renders as a floating capsule —
               // spacing doing the job the hairline border already does. Flush
               // face, edge to edge; band was already flush.
-              band ? 'h-10 p-0' : segment ? 'h-8 p-0' : 'p-0.5',
+              band
+                ? cn(PRIMARY_CHROME_ROW_FACE, 'p-0')
+                : segment
+                  ? 'h-8 p-0'
+                  : 'p-0.5',
               hug
                 ? cn(
                     'inline-flex w-auto max-w-full items-stretch',
@@ -271,8 +287,22 @@ export function TabDisplay({
                       )}
                     />
                   ) : null}
-                  <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1">
                     <span>{tab.label}</span>
+                    {tab.hint ? (
+                      <kbd
+                        className={cn(
+                          'inline-flex h-3.5 shrink-0 items-center justify-center px-0.5',
+                          'text-role-micro font-semibold tabular-nums',
+                          'bg-accent-bg/10 text-accent-bg ring-1 ring-inset ring-accent-bg/30',
+                          flush,
+                          isActive ? 'opacity-90' : 'opacity-70',
+                        )}
+                        aria-hidden
+                      >
+                        {tab.hint}
+                      </kbd>
+                    ) : null}
                     {tab.count !== undefined && tab.count > 0 ? (
                       <span
                         className={cn(

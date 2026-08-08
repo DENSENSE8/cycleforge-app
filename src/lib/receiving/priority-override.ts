@@ -29,9 +29,12 @@ export interface PriorityOverrideTier {
 }
 
 /**
- * Manually-selectable tiers, most urgent first. Tones intentionally mirror the
- * platform-derived urgency words (red → amber → blue → emerald) so a manual
- * "High" reads the same heat as it does anywhere else.
+ * Manually-selectable tiers, most urgent first (storage / filter / facet order).
+ * Tones mirror platform-derived urgency words (red → amber → blue → emerald).
+ *
+ * **Picker lists** (Classify · Add Inbound) put Auto/platform first, then escalate
+ * via {@link priorityOverrideTiersForPicker} so Priority is last — default heat
+ * comes from platform/org unbox policy (e.g. Amazon → High), not a manual pin.
  */
 export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
   {
@@ -67,6 +70,18 @@ export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
     inactiveClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100',
   },
 ];
+
+/**
+ * Manual tiers for urgency comboboxes / pill lists under Auto: Low → Medium →
+ * High → Priority (escalate toward the bottom).
+ */
+export function priorityOverrideTiersForPicker(): readonly PriorityOverrideTier[] {
+  return PRIORITY_OVERRIDE_TIERS_PICKER;
+}
+
+const PRIORITY_OVERRIDE_TIERS_PICKER: readonly PriorityOverrideTier[] = [
+  ...PRIORITY_OVERRIDE_TIERS,
+].reverse();
 
 const BY_VALUE = new Map(PRIORITY_OVERRIDE_TIERS.map((t) => [t.value, t]));
 

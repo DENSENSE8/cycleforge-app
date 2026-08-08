@@ -64,14 +64,11 @@ describe('Move / Send Macro terminal SoT', () => {
     );
   });
 
-  it('Photos verb tabs twin Units · Linkage — underline + icons, Move · Send only', () => {
-    assert.match(photos, /appearance="underline"/);
-    assert.match(photos, /density="nested"/);
-    assert.match(photos, /fit="fill"/);
+  it('Photos is armed rows + URL drill-downs — no nested TabDisplay', () => {
     assert.doesNotMatch(
       photos,
-      /appearance="segment"/,
-      'Photos verbs match Units/Linkage underline, not Ticket segment',
+      /\bTabDisplay\b/,
+      'Photos dropped the broken Actions·Compare·Move·Send underline strip',
     );
     assert.doesNotMatch(
       photos,
@@ -80,28 +77,39 @@ describe('Move / Send Macro terminal SoT', () => {
     );
     assert.match(
       photos,
-      /icon:\s*ArrowLeftRight/,
-      'Move keeps the ArrowLeftRight glyph like sibling display hosts',
-    );
-    assert.match(
-      photos,
-      /icon:\s*Send/,
-      'Send keeps the Send glyph like sibling display hosts',
+      /PhotosActionsArmedList/,
+      'default body is the armed verb list',
     );
     assert.doesNotMatch(
       photos,
-      /id:\s*'browse'|label:\s*'Browse'|icon:\s*Images/,
-      'Browse tab removed — gallery is the default Photos body',
+      /launcherLayout="toolbar"|CopyChipHoverMenuPanel/,
+      'Unbox Photos Actions must not reuse hover-toolbar chrome',
+    );
+    assert.doesNotMatch(
+      photos,
+      /mode="view"|PhotosGalleryBody/,
+      'no legacy PhotosGalleryBody',
     );
     assert.match(
       photos,
-      /mode="view"/,
-      'gallery uses ClaimPhotoPicker view mode (no attach chrome)',
+      /onActionChange\('actions'\)/,
+      'Send/Move onClose returns to the armed row list',
+    );
+    assert.match(photos, /ListingPhotoCompareHost/);
+    assert.match(photos, /MovePhotosBetweenPoPanel/);
+    assert.match(photos, /SendPhotoNotePanel/);
+  });
+
+  it('Move display chrome resets in place after success (no browse handoff)', () => {
+    assert.match(
+      move,
+      /chrome === 'display'/,
+      'display chrome branches post-success away from onClose dismiss',
     );
     assert.match(
-      photos,
-      /action === next \? 'browse'/,
-      're-click active Move/Send returns to gallery',
+      move,
+      /resetFormAfterSuccess/,
+      'success beat clears form so operator can move more',
     );
   });
 

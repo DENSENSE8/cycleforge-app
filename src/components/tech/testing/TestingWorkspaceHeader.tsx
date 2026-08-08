@@ -77,7 +77,35 @@ export function TestingWorkspaceHeader({
   );
 }
 
-/** Band 3 — find left; staff · icon-sort · portal right. Leading = Unbox KPI collapse. */
+/**
+ * Band 3 — find-only command row: dominant find left (staff refine in-field),
+ * display sort + ▦ portal right, Unbox KPI collapse leading.
+ *
+ * **No `trailing` inspector toggle, on any tab including Returns — honest
+ * absence, ruled 2026-08-08.** The empty right edge is the correct render, not
+ * a gap to fill. `WorkbenchInspectorToggle` parks / reopens a desk
+ * `RightRailHost` peek, and Testing has none:
+ *
+ *  1. **Rows claim the bench, they do not peek.** `TestingHistoryList` opens a
+ *     line through `dispatchSelectLine` → `TestingPanel`, which covers this
+ *     whole browse (`TestingLineWorkspace` hides the view behind it). Band 3 is
+ *     off screen the moment a row opens, so a toggle here would have nothing to
+ *     park for the record just picked.
+ *  2. **The one reusable desk peek is welded to Unbox History.**
+ *     `HistoryCartonTriagePanel` (`detail:history`) mounts
+ *     `HistoryViewChromeBridge` + `HistoryViewTopicsCluster` — paint · Drill|
+ *     List · compare · zoom · ▦ · KPI. Mounting it here would ship sheet-layout
+ *     chrome for a sheet Testing does not have (chrome inventing a second
+ *     story — Kinetic Ledger law 1).
+ *  3. So giving Testing a peek means a **new** occupant + panel + topic map,
+ *     and a changed selection semantic on a live floor queue (today a click
+ *     claims the return). That is a product decision, not a wiring line.
+ *
+ * If it is ever built: add the occupant to `RECEIVING_RAIL_OCCUPANT_ID` (+ its
+ * occupancy test), pass `trailing={<WorkbenchInspectorToggle …/>}` here, and
+ * move this file from `NO_DESK_PEEK_SURFACES` to `INSPECTOR_TOGGLE_SURFACES` in
+ * `band3-find-only.guard.test.ts`. Never mount the toggle first.
+ */
 export function TestingTriageBand({
   tab,
   controlsSlotRef,
@@ -101,23 +129,24 @@ export function TestingTriageBand({
 
   // Ownership facet on queue + History. History keeps Me-default (allToken);
   // queue tabs use Option A — absent = All pool, pick a tech to focus.
-  const right = (
-    <>
-      {showStaff ? (
-        tab === 'history' ? (
-          <StaffFilterButton
-            iconOnly
-            allLabel="All technicians"
-            allToken="all"
-            meLabel="You"
-          />
-        ) : (
-          <StaffFilterButton iconOnly allLabel="All technicians" />
-        )
-      ) : null}
-      {showSort ? <QueueSortSwitch sort={sort} onChange={setSort} variant="icon" /> : null}
-    </>
-  );
+  // Refine rides IN the find field (find-only Band 3); the right zone keeps
+  // display sort only.
+  const inFieldRefine = showStaff ? (
+    tab === 'history' ? (
+      <StaffFilterButton
+        density="field"
+        allLabel="All technicians"
+        allToken="all"
+        meLabel="You"
+      />
+    ) : (
+      <StaffFilterButton density="field" allLabel="All technicians" />
+    )
+  ) : null;
+
+  const right = showSort ? (
+    <QueueSortSwitch sort={sort} onChange={setSort} variant="icon" />
+  ) : null;
 
   return (
     <WorkbenchTriageBand
@@ -131,7 +160,8 @@ export function TestingTriageBand({
           value={searchQuery}
           onChange={setSearch}
           placeholder={searchPlaceholder(tab)}
-          className="w-40 shrink-0 lg:w-56"
+          className="min-w-0 flex-1"
+          trailingSuffix={inFieldRefine}
         />
       }
       right={right}

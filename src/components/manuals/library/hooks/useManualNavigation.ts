@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import type { ManualRow } from '../manuals-tree';
 
 export interface UseManualNavigation {
@@ -27,17 +28,40 @@ export interface UseManualNavigation {
 export function useManualNavigation(basePath: string, manuals: ManualRow[]): UseManualNavigation {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectedId = searchParams.get('id') ? Number(searchParams.get('id')) : null;
+
+  const urlSelectedId = useMemo(() => {
+    const raw = searchParams.get('id');
+    if (!raw) return null;
+    const id = Number(raw);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }, [searchParams]);
+
+  const replace = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      mutate(params);
+      const qs = params.toString();
+      router.replace(qs ? `${basePath}?${qs}` : basePath);
+    },
+    [router, searchParams, basePath],
+  );
+
+  const write = useCallback((params: URLSearchParams, next: number | null) => {
+    if (next != null && next > 0) params.set('id', String(next));
+    else params.delete('id');
+  }, []);
+
+  const { value: selectedId, setValue: setSelectedId } = useOptimisticUrlParam<number | null>({
+    urlValue: urlSelectedId,
+    replace,
+    write,
+  });
 
   const [currentPath, setCurrentPath] = useState<string[]>([]);
 
   const handleSelectFile = useCallback(
-    (id: number) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('id', String(id));
-      router.replace(`${basePath}?${params.toString()}`);
-    },
-    [router, searchParams, basePath],
+    (id: number) => setSelectedId(id),
+    [setSelectedId],
   );
 
   const enterFolder = useCallback((segment: string) => {

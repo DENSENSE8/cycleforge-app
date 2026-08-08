@@ -27,7 +27,7 @@ function styleForType(type: string): {
 } {
   switch (type) {
     case 'FNSKU_SCANNED':
-      return { Icon: Barcode,  ring: 'bg-purple-50',   text: 'text-purple-600',  label: 'FNSKU scan' };
+      return { Icon: Barcode,  ring: 'bg-purple-50',   text: 'text-purple-600',  label: 'Amazon SKU scan' };
     case 'TRACKING_SCANNED':
       return { Icon: Barcode,  ring: 'bg-blue-50',     text: 'text-blue-600',    label: 'Tracking scan' };
     case 'PACK_SCAN':

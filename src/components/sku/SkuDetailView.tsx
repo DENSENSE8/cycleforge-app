@@ -2,8 +2,9 @@
 
 import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import DeleteButton from '@/components/ui/DeleteButton';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { useSkuDetailView } from './sku-detail/useSkuDetailView';
 import type { SkuDetailViewProps } from './sku-detail/sku-detail-types';
 import { SkuDetailHeader } from './sku-detail/SkuDetailHeader';
@@ -78,18 +79,26 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
         <SkuDetailCards c={c} data={data} />
       </div>
 
-      {/* Footer: deactivate (panel only, active catalog SKUs) */}
+      {/* Floor: deactivate (panel only, active catalog SKUs) */}
       {isPanel && data.catalog?.isActive ? (
-        <div className="flex-shrink-0 border-t border-border-soft bg-surface-card px-4 py-3">
-          {c.deactivateError ? <p className="mb-2 text-role-caption font-semibold text-rose-600">{c.deactivateError}</p> : null}
-          <DeleteButton
-            onConfirm={c.handleDeactivate}
-            onDeleted={c.handleClose}
-            label="Deactivate SKU"
-            armedLabel="Click again to deactivate"
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-role-caption font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-          />
-        </div>
+        <InspectorActionFloor
+          above={
+            c.deactivateError ? (
+              <p className="px-3 py-2 text-role-caption font-semibold text-rose-600">
+                {c.deactivateError}
+              </p>
+            ) : undefined
+          }
+          delete={
+            <InspectorFlushDelete
+              onConfirm={c.handleDeactivate}
+              onDeleted={c.handleClose}
+              label="Deactivate SKU"
+              confirmLabel="Click again to deactivate"
+              data-testid="sku-details-deactivate"
+            />
+          }
+        />
       ) : null}
 
       <PhotoViewerPortal g={c.gallery} />

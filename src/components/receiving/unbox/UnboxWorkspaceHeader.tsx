@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type Ref } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
-  WORKBENCH_CHROME_PILL_CLASS,
 } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchKpiBand,
@@ -21,16 +20,14 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { Button, IconButton } from '@/design-system/primitives';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ReceivingModeUnbox } from '@/components/icons/stations';
-import { Printer } from '@/components/icons/media';
-import { ColumnsTwo } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { printReturnsBinLabel } from '@/lib/print/printReturnsBinLabel';
+import { ReceivingBoxChromeActions } from '@/components/receiving/ReceivingBoxChromeActions';
+import { IncomingBulkTrackingPanel } from '@/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel';
+import { IncomingAddInboundOverlay } from '@/components/sidebar/receiving/incoming/IncomingAddInboundOverlay';
 import { parseStaffParam, useStaffFilter } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
+import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import {
   HISTORY_SORT_OPTIONS,
   normalizeHistorySort,
@@ -54,19 +51,22 @@ import {
   type HistoryCommandFilterState,
   type HistoryRefineFacetId,
 } from '@/lib/receiving/history-command-filter';
+import {
+  isUnboxPinCapReached,
+  sanitizeUnboxPinnedExtraTabs,
+  unboxExtraTabsAvailable,
+  UNBOX_PINNED_EXTRA_TABS_MAX,
+  type UnboxExtraTabId,
+} from '@/lib/receiving/unbox-extra-tabs';
+import { resolveUnboxPinnedTabs } from '@/lib/receiving/unbox-default-pins';
+import { useUnboxDefaultPins } from '@/hooks/useUnboxDefaultPins';
 import { computeWeekRange, formatWeekRangeCompact } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import {
   classifyHistoryCommandScan,
   type HistoryCommandScanKind,
 } from '@/lib/receiving/history-command-scan';
-import {
-  getDetailInspectorCollapsed,
-  setDetailInspectorCollapsed,
-  toggleDetailInspectorCollapsed,
-  DETAIL_INSPECTOR_COLLAPSE_EVENT,
-  type DetailInspectorCollapseDetail,
-} from '@/design-system/shells/detail-stack';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
 import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
@@ -81,17 +81,19 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanRoute } from '@/lib/barcode-routing';
 import { UnboxChromeKpiCluster } from './UnboxChromeKpiCluster';
+import { UnboxAddListPopover } from './UnboxAddListPopover';
 
-// Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Urgent · Recent · Queue · All ·
-// History, with the archive tab last (emerald, dividerBefore) after the working tabs.
+// Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Inbound · Queue · Recent ·
+// History — the carton's own path, with the archive last (emerald,
+// dividerBefore) after the working tabs.
 const TABS: readonly UnboxWorkspaceTab[] = UNBOX_WORKSPACE_TABS;
 
 const TAB_COLOR: Record<UnboxWorkspaceTab, 'red' | 'blue' | 'orange' | 'gray' | 'emerald'> = {
-  urgent: 'red',
-  recent: 'blue',
+  incoming: 'blue',
   queue: 'orange',
-  all: 'gray',
+  recent: 'blue',
   history: 'emerald',
+  all: 'gray',
 };
 
 const QUEUE_STAGE_OPTS = [
@@ -103,9 +105,7 @@ const QUEUE_STAGE_OPTS = [
 export function UnboxWorkspaceHeader({
   tab,
   onSelectTab,
-  controlsSlotRef,
-  compareChrome,
-  historyTriageOpen = false,
+  inspectorOpen = false,
   className,
 }: {
   tab: UnboxWorkspaceTab;
@@ -113,11 +113,11 @@ export function UnboxWorkspaceHeader({
     tab: UnboxWorkspaceTab,
     opts?: { clearLine?: boolean },
   ) => void;
-  controlsSlotRef?: Ref<HTMLDivElement>;
-  /** Layout toggle + spreadsheet zoom — non-History tabs only (History View cluster). */
-  compareChrome?: ReactNode;
-  /** `detail:history` occupant registered — toggle parks without clearing target. */
-  historyTriageOpen?: boolean;
+  /**
+   * A `detail:history` occupant is registered — a picked carton OR the
+   * View-only shell. The toggle parks without clearing the target.
+   */
+  inspectorOpen?: boolean;
   className?: string;
 }) {
   const router = useRouter();
@@ -125,14 +125,72 @@ export function UnboxWorkspaceHeader({
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } = useWorkbenchKpiCollapsed(
-    WORKBENCH_KPI_SURFACE.unbox,
-  );
+  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
+    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.unbox);
   const historyViewChrome = useHistoryViewChromeOptional();
+  const { prefs, update: updatePrefs } = useStaffPreferences();
+  // Effective non-staff default (role → org → []) folded server-side; the chrome
+  // layers the staffer's own pins on top so a fresh staffer inherits the org/role
+  // template without a personal pin click (Gemini D9).
+  const unboxDefaultPins = useUnboxDefaultPins();
+  const pinnedExtraTabs = useMemo(
+    () =>
+      resolveUnboxPinnedTabs({
+        // absent / null staff key = inherit the default; [] = staff cleared.
+        staffPins: prefs?.unboxPinnedExtraTabs,
+        orgDefault: unboxDefaultPins,
+      }),
+    [prefs?.unboxPinnedExtraTabs, unboxDefaultPins],
+  );
+  // Pins that are NOT already system tabs. `staff_preferences.unboxPinnedExtraTabs`
+  // still carries `incoming` for every staffer who pinned Inbound before it was
+  // promoted (2026-08-08); reading through this filter retires those rows without
+  // a migration write, so nobody's stored prefs are mutated behind their back.
+  const pinnedExtras = useMemo(
+    () => pinnedExtraTabs.filter((id) => !UNBOX_WORKSPACE_TABS.includes(id)),
+    [pinnedExtraTabs],
+  );
+  const availableExtraTabs = useMemo(
+    // Offer only what is not already on the strip — system tab or existing pin —
+    // so Inbound can never be re-pinned into a second copy of itself.
+    () =>
+      unboxExtraTabsAvailable(pinnedExtraTabs).filter(
+        (e) => !UNBOX_WORKSPACE_TABS.includes(e.id),
+      ),
+    [pinnedExtraTabs],
+  );
+  // Band-1 hard cap: never more than UNBOX_PINNED_EXTRA_TABS_MAX pinned extras
+  // (5 system tabs + this ≤ 7 max strip vocabulary — Gemini D2 · D14).
+  const pinCapReached = isUnboxPinCapReached(pinnedExtraTabs);
   const isHistoryTab = tab === 'history';
-  const isQueueTab = tab === 'queue' || tab === 'urgent';
+  const isIncomingTab = tab === 'incoming';
+  // Urgent stopped being a tab 2026-08-08 — it was this same queue with
+  // `?priority_only=1`, and urgency is a flag a carton carries at any stage, not
+  // a stage it sits in. Urgent cartons now pin to the top of these rows.
+  const isQueueTab = tab === 'queue';
   const isAllTab = tab === 'all';
+  /**
+   * The receiving-sheet tabs — the ones whose grid is Unbox's own collection,
+   * so the Band 3 lean row + the inspector View cluster apply. Pinned Inbound
+   * is a foreign collection and is excluded by name, not by `!isIncomingTab`,
+   * so a future pinned extra cannot silently inherit the inspector.
+   */
+  const isSheetTab =
+    tab === 'queue' || tab === 'recent' || tab === 'history' || tab === 'all';
   const kpiFeedTab = unboxKpiFeedTab(tab);
+
+  const pinExtraTab = useCallback(
+    (id: UnboxExtraTabId) => {
+      // Hard cap the write path too — a third pin never persists, independent of
+      // the popover's disabled rows (Gemini D2 · D14).
+      if (pinnedExtraTabs.length >= UNBOX_PINNED_EXTRA_TABS_MAX) return;
+      const next = sanitizeUnboxPinnedExtraTabs([...pinnedExtraTabs, id]);
+      updatePrefs({ unboxPinnedExtraTabs: next });
+      onSelectTab(id);
+    },
+    [pinnedExtraTabs, updatePrefs, onSelectTab],
+  );
+
   // History drill seats find in the parent-map footer (`TechRailSearchBar`
   // rail) so the map matches receiving-rail anatomy — one find surface, not
   // chrome + footer. List mode keeps the chrome search.
@@ -196,7 +254,7 @@ export function UnboxWorkspaceHeader({
   const historyScope = historyFilter.scope;
   const historyWeekOffset = historyFilter.weekOffset;
   const historyStaffId = historyFilter.staffId;
-  const { options: staffOptions } = useStaffFilter();
+  const { options: staffOptions, staffId: filterStaffId, setStaff } = useStaffFilter();
 
   const ustageRaw = (searchParams.get('ustage') || '').trim().toLowerCase();
   const queueStage: 'staged' | 'unstaged' | null =
@@ -354,7 +412,12 @@ export function UnboxWorkspaceHeader({
   const [filterOpen, setFilterOpen] = useState(false);
   /** Active facet tab inside History Refine (Staff · Source · Field · Week). */
   const [refineFacet, setRefineFacet] = useState<HistoryRefineFacetId>('staff');
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(() => getDetailInspectorCollapsed());
+  /** Active facet inside the non-History Refine funnel (Staff · Readiness · Lane). */
+  const [triageFacet, setTriageFacet] = useState<'staff' | 'readiness' | 'lane'>('staff');
+  /** Band 1 Check → same push panel as Incoming (check-only). */
+  const [checkOrdersOpen, setCheckOrdersOpen] = useState(false);
+  /** Band 1 Add → manual inbound rail (box stations only). */
+  const [addInboundOpen, setAddInboundOpen] = useState(false);
   const historyFilterHot = isHistoryTab && isHistoryCommandFilterHot(historyFilter);
   const queueFilterHot = isQueueTab && (queueStage != null || queueLane != null);
 
@@ -363,45 +426,13 @@ export function UnboxWorkspaceHeader({
     if (!next) setRefineFacet('staff');
   }, []);
 
-  useEffect(() => {
-    const onCollapse = (event: Event) => {
-      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
-      if (!detail || typeof detail.collapsed !== 'boolean') return;
-      setInspectorCollapsed(detail.collapsed);
-    };
-    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
-    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
-  }, []);
-
-  const toggleHistoryInspector = useCallback(() => {
-    // No occupant yet — open View-only shell so layout / refine chrome is reachable.
-    if (!historyTriageOpen) {
-      historyViewChrome?.setViewShellOpen(true);
-      setDetailInspectorCollapsed(false);
-      setInspectorCollapsed(false);
-      return;
-    }
-    toggleDetailInspectorCollapsed();
-    setInspectorCollapsed(getDetailInspectorCollapsed());
-  }, [historyTriageOpen, historyViewChrome]);
-
   // Cmd+\ (and bare `]`) parks / expands the History push inspector without
   // clearing `historyTriage` — filter URL edits keep the same target. When the
   // rail is closed, the same keys open the View-only shell.
-  useEffect(() => {
-    if (!isHistoryTab) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      const isCmdBackslash =
-        (e.metaKey || e.ctrlKey) && (e.key === '\\' || e.code === 'Backslash');
-      const isBracket = !e.metaKey && !e.ctrlKey && !e.altKey && e.key === ']';
-      if (!isCmdBackslash && !isBracket) return;
-      e.preventDefault();
-      toggleHistoryInspector();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isHistoryTab, toggleHistoryInspector]);
+  // Both live in `WorkbenchInspectorToggle` (the desk SoT) — never re-hand-roll.
+  const openHistoryViewShell = useCallback(() => {
+    historyViewChrome?.setViewShellOpen(true);
+  }, [historyViewChrome]);
 
   // Esc park→clear lives on the History record-cursor publisher
   // (`ReceivingLinesTable` → `useRecordCursorKeyboard`).
@@ -444,13 +475,30 @@ export function UnboxWorkspaceHeader({
 
   // History keeps the trailing divider (archive after working tabs) — same as
   // Testing / Pack. Do not use withScopeDivider (that put a hairline after Recent).
-  const tabs = TABS.map((id) => ({
-    id,
-    label: UNBOX_WORKSPACE_TAB_LABEL[id],
-    count: tabCount(id),
-    color: TAB_COLOR[id],
-    dividerBefore: id === 'history',
-  }));
+  // Pinned catalog extras follow History with their own divider.
+  const tabs = [
+    ...TABS.map((id) => ({
+      id,
+      label: UNBOX_WORKSPACE_TAB_LABEL[id],
+      count: tabCount(id),
+      color: TAB_COLOR[id],
+      dividerBefore: id === 'history',
+    })),
+    // A pin that has since been promoted to a SYSTEM tab is dropped here rather
+    // than rendered twice. Inbound became the strip's first tab on 2026-08-08,
+    // and it was the only entry in the pin catalog — so for every staffer who
+    // had pinned it, a stale `unboxPinnedExtraTabs` value would otherwise put a
+    // second Inbound after History, at the opposite end of the band from the
+    // stage it represents. Filtering makes the stale pref inert on its own,
+    // which is the migration; nothing has to be written back.
+    ...pinnedExtras.map((id) => ({
+      id,
+      label: UNBOX_WORKSPACE_TAB_LABEL[id],
+      count: undefined as number | undefined,
+      color: TAB_COLOR[id],
+      dividerBefore: id === pinnedExtras[0],
+    })),
+  ];
 
   // Band 3 — find left · refine right. History is the command-row golden:
   // flex-1 search + in-field Refine funnel (Staff · Source · Field · Week
@@ -605,6 +653,164 @@ export function UnboxWorkspaceHeader({
     </WorkbenchFilterPopover>
   ) : null;
 
+  // ONE filter icon per field (ruled 2026-08-08). The staff facet used to be its
+  // own `StaffFilterButton` glyph beside a second "Staging filters" funnel, so
+  // Queue showed paste + 👤 + ▽ — three trailing glyphs on a row whose whole
+  // point is that find carries it. Staff is now a FACET INSIDE the one Refine
+  // funnel, exactly as History already does it: one glyph, labelled facet tabs,
+  // one option body at a time.
+  const triageRefineFacets = useMemo(() => {
+    const facets: { id: 'staff' | 'readiness' | 'lane'; label: string }[] = [];
+    if (tab !== 'recent' && !isAllTab) facets.push({ id: 'staff', label: 'Staff' });
+    if (isQueueTab) {
+      facets.push({ id: 'readiness', label: 'Readiness' });
+      facets.push({ id: 'lane', label: 'Lane' });
+    }
+    return facets;
+  }, [tab, isAllTab, isQueueTab]);
+
+  const triageFacetHot = (id: 'staff' | 'readiness' | 'lane'): boolean => {
+    if (id === 'staff') return filterStaffId != null;
+    if (id === 'readiness') return queueStage != null;
+    return queueLane != null;
+  };
+
+  const activeTriageFacet =
+    triageRefineFacets.find((f) => f.id === triageFacet) ?? triageRefineFacets[0];
+
+  const triageRefineBody = (() => {
+    switch (activeTriageFacet?.id) {
+      case 'staff':
+        return (
+          <>
+            <WorkbenchFilterMenuRow
+              label="All staff"
+              active={filterStaffId == null}
+              onClick={() => {
+                setStaff(null);
+                setFilterOpen(false);
+              }}
+            />
+            {staffOptions.map((opt) => (
+              <WorkbenchFilterMenuRow
+                key={opt.id}
+                label={opt.name}
+                active={filterStaffId === opt.id}
+                onClick={() => {
+                  setStaff(opt.id);
+                  setFilterOpen(false);
+                }}
+              />
+            ))}
+          </>
+        );
+      case 'readiness':
+        return QUEUE_STAGE_OPTS.map((opt) => (
+          <WorkbenchFilterMenuRow
+            key={opt.id ?? 'all'}
+            label={opt.label}
+            active={queueStage === opt.id}
+            onClick={() => {
+              setQueueStage(opt.id);
+              setFilterOpen(false);
+            }}
+          />
+        ));
+      case 'lane':
+        return (
+          <>
+            <WorkbenchFilterMenuRow
+              label="All lanes"
+              active={queueLane == null}
+              onClick={() => {
+                setQueueLane(null);
+                setFilterOpen(false);
+              }}
+            />
+            {TRIAGE_LANE_OPTS.map((opt) => (
+              <WorkbenchFilterMenuRow
+                key={opt.value}
+                label={opt.label}
+                active={queueLane === opt.value}
+                onClick={() => {
+                  setQueueLane(opt.value);
+                  setFilterOpen(false);
+                }}
+              />
+            ))}
+          </>
+        );
+      default:
+        return null;
+    }
+  })();
+
+  const triageInFieldFilter = triageRefineFacets.length ? (
+    <WorkbenchFilterPopover
+      open={filterOpen}
+      onOpenChange={setFilterOpen}
+      hot={triageRefineFacets.some((f) => triageFacetHot(f.id))}
+      label="Refine"
+      density="field"
+      contentClassName="w-72"
+    >
+      {triageRefineFacets.length > 1 ? (
+        <div
+          role="tablist"
+          aria-label="Refine facets"
+          className="flex gap-0.5 border-b border-border-default px-1"
+        >
+          {triageRefineFacets.map((facet) => {
+            const selected = activeTriageFacet?.id === facet.id;
+            return (
+              <button
+                key={facet.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                // Keep the popover open while switching facets.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setTriageFacet(facet.id)}
+                className={cn(
+                  // ds-raw-button: compact facet tabs inside WorkbenchFilterPopover.
+                  'ds-raw-button relative flex-1 border-b-2 px-1.5 py-1.5 text-role-caption font-medium transition-colors',
+                  selected
+                    ? 'border-blue-600 text-text-primary'
+                    : 'border-transparent text-text-muted hover:text-text-primary',
+                )}
+              >
+                {facet.label}
+                {triageFacetHot(facet.id) ? (
+                  <span
+                    className="absolute right-0.5 top-1 h-1 w-1 rounded-full bg-blue-500"
+                    aria-hidden
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      <div className="max-h-64 overflow-y-auto py-0.5">{triageRefineBody}</div>
+      {triageRefineFacets.some((f) => triageFacetHot(f.id)) ? (
+        <>
+          <WorkbenchFilterDivider />
+          <WorkbenchFilterMenuRow
+            label="Clear filters"
+            active={false}
+            onClick={() => {
+              // Clears every facet the funnel owns — staff included, since it
+              // no longer has its own glyph to clear itself from.
+              setStaff(null);
+              if (queueFilterHot) clearQueueFilters();
+              setFilterOpen(false);
+            }}
+          />
+        </>
+      ) : null}
+    </WorkbenchFilterPopover>
+  ) : null;
+
   const triageSearch = historyFindInParentMap ? null : isHistoryTab ? (
     <TechRailSearchBar
       variant="chrome"
@@ -620,107 +826,31 @@ export function UnboxWorkspaceHeader({
       value={searchQuery}
       onChange={setSearch}
       placeholder={
-        tab === 'urgent'
-          ? 'Filter urgent…'
-          : tab === 'queue'
-            ? 'Filter queue…'
-            : tab === 'all'
-              ? 'Search across types…'
-              : 'Filter viewed…'
+        tab === 'queue'
+          ? 'Filter queue…'
+          : tab === 'all'
+            ? 'Search across types…'
+            : 'Filter viewed…'
       }
-      className="w-52 shrink-0 lg:w-64"
+      className="min-w-0 flex-1"
+      trailingSuffix={triageInFieldFilter}
     />
   );
 
-  const triageRight = (
-    <>
-      {tab !== 'recent' && !isAllTab ? <StaffFilterButton iconOnly align="end" /> : null}
-      {isQueueTab && tab === 'queue' ? (
-        <WorkbenchFilterPopover
-          open={filterOpen}
-          onOpenChange={setFilterOpen}
-          hot={queueFilterHot}
-          label="Staging filters"
-        >
-          <WorkbenchFilterGroupLabel>Readiness</WorkbenchFilterGroupLabel>
-          {QUEUE_STAGE_OPTS.map((opt) => (
-            <WorkbenchFilterMenuRow
-              key={opt.id ?? 'all'}
-              label={opt.label}
-              active={queueStage === opt.id}
-              onClick={() => {
-                setQueueStage(opt.id);
-                setFilterOpen(false);
-              }}
-            />
-          ))}
-          <WorkbenchFilterDivider />
-          <WorkbenchFilterGroupLabel>Priority lane</WorkbenchFilterGroupLabel>
-          <WorkbenchFilterMenuRow
-            label="All lanes"
-            active={queueLane == null}
-            onClick={() => {
-              setQueueLane(null);
-              setFilterOpen(false);
-            }}
-          />
-          {TRIAGE_LANE_OPTS.map((opt) => (
-            <WorkbenchFilterMenuRow
-              key={opt.value}
-              label={opt.label}
-              active={queueLane === opt.value}
-              onClick={() => {
-                setQueueLane(opt.value);
-                setFilterOpen(false);
-              }}
-            />
-          ))}
-          {queueFilterHot ? (
-            <>
-              <WorkbenchFilterDivider />
-              <WorkbenchFilterMenuRow
-                label="Clear filters"
-                active={false}
-                onClick={() => {
-                  clearQueueFilters();
-                  setFilterOpen(false);
-                }}
-              />
-            </>
-          ) : null}
-        </WorkbenchFilterPopover>
-      ) : null}
-    </>
+  // Live on every receiving-sheet tab since 2026-08-08 — it is now the ONLY
+  // door to the View cluster (compare layout · zoom · ▦), so gating it to
+  // History would strand an operator in `?clayout=split` with no way back to
+  // one pane. Deliberately NOT on the pinned Inbound tab: that grid is a
+  // foreign collection whose ▦ writes a different prefs bucket, and
+  // `detail:history` would race `detail:incoming` at equal rail priority.
+  const inspectorToggle = (
+    <WorkbenchInspectorToggle
+      enabled={isSheetTab}
+      open={inspectorOpen}
+      onOpenEmpty={openHistoryViewShell}
+      testId="unbox-history-inspector-toggle"
+    />
   );
-
-  const historyInspectorToggle = isHistoryTab ? (
-    <HoverTooltip
-      label={
-        !historyTriageOpen
-          ? 'Show inspector'
-          : inspectorCollapsed
-            ? 'Show inspector'
-            : 'Hide inspector'
-      }
-      asChild
-    >
-      <IconButton
-        size="sm"
-        tone="neutral"
-        ariaLabel={
-          !historyTriageOpen
-            ? 'Show inspector'
-            : inspectorCollapsed
-              ? 'Show inspector'
-              : 'Hide inspector'
-        }
-        aria-pressed={historyTriageOpen && !inspectorCollapsed}
-        icon={<ColumnsTwo className="h-4 w-4" />}
-        onClick={toggleHistoryInspector}
-        data-testid="unbox-history-inspector-toggle"
-      />
-    </HoverTooltip>
-  ) : null;
 
   return (
     <div className={cn('flex flex-col gap-0', className)}>
@@ -731,6 +861,13 @@ export function UnboxWorkspaceHeader({
       <WorkbenchChromeHeader
         density="band"
         className="rounded-none border-l-0 border-t-0 shadow-sm"
+        leading={
+          <UnboxAddListPopover
+            available={availableExtraTabs}
+            atCap={pinCapReached}
+            onPin={pinExtraTab}
+          />
+        }
         tabs={tabs}
         activeTab={tab}
         onTabChange={(id) => onSelectTab(id as UnboxWorkspaceTab)}
@@ -743,29 +880,14 @@ export function UnboxWorkspaceHeader({
              (SoT: display/workbench.md → Multi-region — every scan station). */
           <WorkbenchTrailingCluster
             actions={
-              <>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  icon={<Printer />}
-                  ariaLabel="Print returns testing bin label"
-                  onClick={() => printReturnsBinLabel()}
-                  className={`${WORKBENCH_CHROME_PILL_CLASS} font-semibold uppercase tracking-widest`}
-                >
-                  Returns bin
-                </Button>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  icon={<ReceivingModeUnbox />}
-                  ariaLabel="Unbox"
-                  onClick={handleReturnToUnbox}
-                  // Same soft pill as the band History tab (WORKBENCH_CHROME_PILL_CLASS).
-                  className={`${WORKBENCH_CHROME_PILL_CLASS} font-semibold uppercase tracking-widest`}
-                >
-                  Unbox
-                </Button>
-              </>
+              <ReceivingBoxChromeActions
+                onCheck={() => setCheckOrdersOpen(true)}
+                onAdd={() => setAddInboundOpen(true)}
+                resumeLabel="Unbox"
+                resumeAriaLabel="Unbox"
+                resumeIcon={<ReceivingModeUnbox />}
+                onResume={handleReturnToUnbox}
+              />
             }
           />
         }
@@ -775,44 +897,60 @@ export function UnboxWorkspaceHeader({
         analytics canvas (`UnboxKpiCanvas` via UnboxChromeKpiCluster): time ·
         facets · viz toggle · charts; `?ukpi=` still filters the table.
         Persist collapse: staff_preferences.kpiCollapsed.unbox.
+        Honest absence on pinned Inbound (foreign collection — not Unbox KPI).
       */}
-      <WorkbenchKpiBand
-        open={!kpiCollapsed}
-        onSnapCollapse={() => setKpiCollapsed(true)}
-        onSnapExpand={() => setKpiCollapsed(false)}
-      >
-        <UnboxChromeKpiCluster mode={kpiFeedTab} />
-      </WorkbenchKpiBand>
+      {!isIncomingTab ? (
+        <WorkbenchKpiBand
+          open={!kpiCollapsed}
+          onSnapCollapse={() => setKpiCollapsed(true)}
+          onSnapExpand={() => setKpiCollapsed(false)}
+        >
+          <UnboxChromeKpiCluster mode={kpiFeedTab} />
+        </WorkbenchKpiBand>
+      ) : null}
       {/*
-        Band 3 — triage. History golden: find (+ in-field Refine: staff · scope ·
-        field · week) + inspector park — View topics own layout chrome only
-        (paint · drill · compare · zoom · ▦ · KPI). Other Unbox tabs keep Band 3
-        refine + kpiToggle.
+        Band 3 — the LEAN row (ruled 2026-08-08). Exactly four things, on every
+        receiving-sheet tab:
+
+            [ 🔍 find …………………………… ▽ refine ]      [ ^ KPI ] [ ▥ inspector ]
+
+        find · refine-INSIDE-the-find · KPI collapse · inspector park. Nothing
+        else — no `right`, no controls portal. Everything that used to sit here
+        (compare layout, spreadsheet zoom, ▦ column display, the week pill) now
+        lives on the inspector's View cluster, which the trailing toggle opens;
+        query facets ride in the field beside the query they refine.
+
+        Why the row and not the panel keeps KPI: Band 3 is on screen when the
+        inspector is parked, so a View-cluster twin would be unreachable exactly
+        when it is wanted. One door.
+
+        Inbound is honest absence — no search, no KPI band, no refine, no desk
+        peek of its own, so it gets no band at all rather than a bare hairline.
       */}
-      <WorkbenchTriageBand
-        search={triageSearch}
-        right={
-          isHistoryTab ? undefined : (
-            <>
-              {compareChrome}
-              {triageRight}
-            </>
-          )
-        }
-        kpiToggle={
-          isHistoryTab ? undefined : (
+      {isIncomingTab ? null : (
+        <WorkbenchTriageBand
+          search={triageSearch}
+          kpiToggle={
             <WorkbenchKpiCollapseToggle
               open={!kpiCollapsed}
-              onToggle={() => setKpiCollapsed(!kpiCollapsed)}
+              onToggle={toggleKpiCollapsed}
             />
-          )
-        }
-        trailing={historyInspectorToggle}
-        controlsSlotRef={isHistoryTab ? undefined : controlsSlotRef}
-        controlsSlotProps={
-          isHistoryTab ? undefined : { 'data-unbox-controls': '' }
-        }
-        controlsSlotClassName={isHistoryTab ? undefined : 'contents'}
+          }
+          trailing={inspectorToggle}
+        />
+      )}
+
+      <IncomingBulkTrackingPanel
+        open={checkOrdersOpen}
+        initialAction="check"
+        checkOnly
+        onClose={() => setCheckOrdersOpen(false)}
+      />
+      <IncomingAddInboundOverlay
+        open={addInboundOpen}
+        onClose={() => setAddInboundOpen(false)}
+        initialPlatform="amazon"
+        initialType="PO"
       />
     </div>
   );

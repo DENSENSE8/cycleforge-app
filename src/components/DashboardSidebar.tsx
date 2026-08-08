@@ -7,7 +7,7 @@ import {
   useStationDetailsPanel,
 } from '@/components/sidebar/dashboard-sidebar-hooks';
 
-export interface DashboardSidebarProps {
+interface DashboardSidebarProps {
   /** Rendered inside ResponsiveLayout's mobile drawer (it owns positioning + backdrop). */
   inDrawer?: boolean;
   /** Called when the user navigates from within the sidebar. */
@@ -22,7 +22,7 @@ export interface DashboardSidebarProps {
  * It owns **no geometry**. The host supplies the width — `SidebarNavColumn` on
  * desktop or the mobile drawer — so the two mounts cannot disagree about it.
  */
-export default function DashboardSidebar({
+export function DashboardSidebar({
   inDrawer = false,
   onNavigate,
 }: DashboardSidebarProps) {

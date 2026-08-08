@@ -251,7 +251,10 @@ export async function GET(req: NextRequest) {
       console.warn('[ebay/callback] audit write failed:', auditErr?.message || auditErr);
     }
 
-    return finish('success=ebay_connected');
+    // Role-specific success so Settings can teach next steps (Incoming vs storefront).
+    return finish(
+      accountRole === 'buyer' ? 'success=ebay_buyer_connected' : 'success=ebay_seller_connected',
+    );
   } catch (error: any) {
     console.error('[ebay/callback] Unexpected error:', error?.message || error);
     return finish('error=ebay_callback_failed');

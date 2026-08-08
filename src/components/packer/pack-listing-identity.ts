@@ -8,15 +8,18 @@
  * about to seal:
  *   - `PackOrderWorkspace` (the pack bench's active-entity pane)
  *   - `PackOrderIdentity` → `CartonContextCard` (workbench identity bar)
+ *   - Pack Displays Listings leaf (`ListingLinksTab`)
  *
  * URL + label derivation stays in the `external-item-url` SoT; this only maps
  * its platform label onto the `source-platform` catalog value (`amazon_fba`
  * has no catalog row — it renders as `fba`).
  */
 
+import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import {
   getExternalUrlByItemNumber,
   getPlatformKeyByItemNumber,
+  getPlatformLabelByItemNumber,
 } from '@/utils/external-item-url';
 
 interface PackListingIdentity {
@@ -25,12 +28,15 @@ interface PackListingIdentity {
   listingOpenHref: string | null;
   /** `source-platform` catalog value — drives the chip's tone + label. */
   platformValue: string;
+  /** Displays / chip multi-link face (derived storefront when present). */
+  listingLinks: CartonListingLink[];
 }
 
 const EMPTY: PackListingIdentity = {
   listingLink: '',
   listingOpenHref: null,
   platformValue: '',
+  listingLinks: [],
 };
 
 export function packListingIdentity(
@@ -41,9 +47,13 @@ export function packListingIdentity(
   const href = getExternalUrlByItemNumber(item);
   if (!href) return EMPTY;
   const key = getPlatformKeyByItemNumber(item);
+  const platformLabel = getPlatformLabelByItemNumber(item);
+  const label =
+    platformLabel && platformLabel !== 'Unknown' ? platformLabel : 'Listing';
   return {
     listingLink: href,
     listingOpenHref: href,
     platformValue: key === 'amazon_fba' ? 'fba' : key,
+    listingLinks: [{ href, label, source: 'derived' }],
   };
 }

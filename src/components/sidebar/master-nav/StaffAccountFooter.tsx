@@ -97,11 +97,16 @@ export function StaffAccountFooter({ className }: { className?: string }) {
       className={cn('border-t border-border-soft px-0 py-0', className)}
       data-staff-account-footer
     >
-      <div ref={rowRef} className="flex min-w-0 items-center gap-1 px-2 py-0.5">
+      <div ref={rowRef} className="flex h-9 min-w-0 items-center gap-1 px-2">
         {/* Click the mark to change colour / photo — not Settings. */}
         <StaffAvatarEditor markSize="xs" />
         <div className="min-w-0 flex-1 leading-none">
-          <div className="truncate text-role-caption font-semibold leading-tight text-text-default">
+          {/* Shares the spine's `role-nav` / 500 ladder — at 12px/600 this
+              name was the heaviest ink in a column that now tops out at 500,
+              so it read as a different system bolted to the bottom. The row
+              keeps `h-9`: it stacks name over role, and 28px would crush a
+              two-line identity that is not a nav row. */}
+          <div className="truncate text-role-nav font-medium leading-tight text-text-default">
             {staffName || `Staff #${user.staffId}`}
           </div>
           <div className="truncate text-role-micro font-medium uppercase leading-tight tracking-[0.12em] text-text-soft">

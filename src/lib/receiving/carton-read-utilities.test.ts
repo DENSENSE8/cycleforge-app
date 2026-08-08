@@ -16,8 +16,8 @@ test('buildCartonReadCopyText includes PO + receiving id + tracking', () => {
     received_at: null,
     qa_status: 'PENDING',
   });
-  assert.match(text, /PO #PO-99/);
-  assert.match(text, /Receiving #12/);
+  assert.match(text, /Purchase order #PO-99/);
+  assert.match(text, /Carton #12/);
   assert.match(text, /Tracking: 1Z999/);
   assert.match(text, /QA: PENDING/);
   assert.match(text, /Received: -/);

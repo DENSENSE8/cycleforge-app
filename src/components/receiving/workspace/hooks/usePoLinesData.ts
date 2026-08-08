@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   receivingSiblingsQueryKey,
   receivingSiblingsSerialsQueryKey,
+  seedReceivingSiblingsCache,
   upsertSiblingLine,
 } from '@/lib/queries/receiving-queries';
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
@@ -14,7 +15,7 @@ import type { LineSerial } from '@/lib/receiving/optimistic-serials';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
-export interface ApiResponse {
+interface ApiResponse {
   success: boolean;
   receiving_lines: ReceivingLineRow[];
 }
@@ -105,6 +106,16 @@ export function usePoLinesData({
         : undefined,
     [placeholderActiveRow],
   );
+
+  // Cold carton key: seed the siblings cache with the clicked row so frame-1
+  // never falls through to EMPTY_ROWS → accordion null. Do NOT keepPreviousData
+  // across receivingId (that paints the previous carton as "last selection").
+  useEffect(() => {
+    if (!enabled || !placeholderActiveRow || placeholderActiveRow.id <= 0) return;
+    const existing = queryClient.getQueryData<ApiResponse>(queryKey);
+    if (existing?.receiving_lines && existing.receiving_lines.length > 0) return;
+    seedReceivingSiblingsCache(queryClient, receivingId, [placeholderActiveRow]);
+  }, [enabled, receivingId, placeholderActiveRow, queryClient, queryKey]);
 
   // Primary query = sibling METADATA only (sku / price / condition / qty), no
   // serials/units — so every sibling row paints without waiting on the heavy
@@ -301,6 +312,16 @@ export function usePoLinesData({
   // blanks the workspace.
   const cartonRows = data?.receiving_lines ?? EMPTY_ROWS;
   const allRows = useMemo(() => {
+    // Cold / empty cache: paint the known active row — filterLinesByPoGroup([],
+    // anchor) would return [] and blank the accordion until fetch lands.
+    if (
+      cartonRows.length === 0 &&
+      placeholderActiveRow &&
+      placeholderActiveRow.id > 0 &&
+      placeholderActiveRow.id === activeLineId
+    ) {
+      return [placeholderActiveRow];
+    }
     const anchor =
       cartonRows.find((r) => r.id === activeLineId) ??
       (placeholderActiveRow && placeholderActiveRow.id === activeLineId

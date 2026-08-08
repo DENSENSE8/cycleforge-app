@@ -5,11 +5,8 @@
  *
  * Host = {@link STATION_WORKBENCH_IDENTITY_COLUMN} full-bleed across the sunken
  * center (layout only — no white). White card face + chip measure =
- * {@link STATION_WORKBENCH_COLUMN} (≤720 max, same wrapper as PO lines)
-
-
- * so when Displays is closed the sunken gutters show left · right of carton
- * context; left stack · right actions stay pinned on that measure.
+ * {@link STATION_WORKBENCH_COLUMN} (edge-to-edge of the center column — same
+ * wrapper as PO lines + floating notes dock; no `max-w` / `mx-auto` gutters).
  *
  * Placement:
  * - `'overlay'` (default) — absolute float under GlobalHeader
@@ -20,7 +17,7 @@
  *   above the workbench. Pair with `reserveIdentityClearance={false}` so the
  *   identity hairline abuts PO lines with zero air.
  *
- *   1. Identity — locked 720 white face (centered when sidebars closed)
+ *   1. Identity — edge-to-edge white face (floor = `STATION_WORKBENCH_LOCK_PX`)
  *   2. More details — {@link StationMoreDetails}, absolute top-right
  *
  * Unbox may omit `moreDetails` here and mount it on the pane outer host so
@@ -92,7 +89,9 @@ export function StationContextBar({
             STATION_WORKBENCH_COLUMN,
             // Keep overflow visible so IdentityLinkChip hover menus (top-full)
             // are not clipped; horizontal bleed is fixed via bar px + scan rule.
-            'flex min-h-10 items-center overflow-visible',
+            // Height comes from identity rows (PRIMARY + secondary) — never pin
+            // h-* here or the two-row stack clips.
+            'flex items-center overflow-visible',
           )}
           data-testid="station-identity"
         >

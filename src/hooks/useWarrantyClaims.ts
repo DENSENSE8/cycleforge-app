@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { startTransition, useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { warrantyClaimsQuery, warrantyCoverageQuery } from '@/lib/queries/dashboard-queries';
 import { fetchWarrantyClaim } from '@/lib/warranty/client';
 import { isWarrantyClaimStatus, type WarrantyClaimStatus } from '@/lib/warranty/types';
@@ -33,7 +34,7 @@ export function useWarrantyUrlState(): WarrantyUrlState {
   const status = isWarrantyClaimStatus(statusParam) ? statusParam : null;
   const expiringSoon = searchParams.get('wexp') === '1';
   const openRaw = Number(searchParams.get('open'));
-  const openClaimId = Number.isFinite(openRaw) && openRaw > 0 ? openRaw : null;
+  const urlOpenClaimId = Number.isFinite(openRaw) && openRaw > 0 ? openRaw : null;
 
   const update = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
@@ -54,33 +55,53 @@ export function useWarrantyUrlState(): WarrantyUrlState {
     [pathname, router, searchParams],
   );
 
+  const writeOpen = useCallback((params: URLSearchParams, next: number | null) => {
+    if (next) params.set('open', String(next));
+    else params.delete('open');
+  }, []);
+
+  const {
+    value: openClaimId,
+    setValue: setOpenClaim,
+    paint: paintOpen,
+  } = useOptimisticUrlParam<number | null>({
+    urlValue: urlOpenClaimId,
+    replace: update,
+    write: writeOpen,
+    shareKey: 'warranty:open',
+  });
+
   const setStatus = useCallback(
-    (next: WarrantyClaimStatus | null) =>
-      update((params) => {
-        if (next) params.set('wstatus', next);
-        else params.delete('wstatus');
-        params.delete('open');
-      }),
-    [update],
+    (next: WarrantyClaimStatus | null) => {
+      paintOpen(null);
+      startTransition(() => {
+        update((params) => {
+          if (next) params.set('wstatus', next);
+          else params.delete('wstatus');
+          params.delete('open');
+        });
+      });
+    },
+    [update, paintOpen],
   );
 
   const setExpiringSoon = useCallback(
-    (next: boolean) =>
-      update((params) => {
-        if (next) params.set('wexp', '1');
-        else params.delete('wexp');
-        params.delete('open');
-      }),
-    [update],
+    (next: boolean) => {
+      paintOpen(null);
+      startTransition(() => {
+        update((params) => {
+          if (next) params.set('wexp', '1');
+          else params.delete('wexp');
+          params.delete('open');
+        });
+      });
+    },
+    [update, paintOpen],
   );
 
   const openClaim = useCallback(
-    (id: number | null) =>
-      update((params) => {
-        if (id) params.set('open', String(id));
-        else params.delete('open');
-      }),
-    [update],
+    (id: number | null) => setOpenClaim(id),
+    [setOpenClaim],
   );
 
   return { status, expiringSoon, openClaimId, setStatus, setExpiringSoon, openClaim };

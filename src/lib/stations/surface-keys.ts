@@ -165,7 +165,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   incoming: {
     key: 'incoming',
-    label: 'Incoming',
+    label: 'Inbound',
     route: '/incoming',
     archetype: 'workbench',
     workbenchBranch: 'ops-queue',

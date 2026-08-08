@@ -3,10 +3,14 @@
  *
  * 1. **Identity** — {@link CartonContextCard}: two-row face — row 1 urgency ·
  *    platform · type → Photos; row 2 lifecycle · order#/PO# · tracking ·
- *    price · listing · Claim/ticket as one flush bottom band (gap-0). Listing/tracking Edit
- *    navigate to Unbox SectionTabs (`tracking` / `listings`); PO# is copy/open-only.
- *    Every station that shows inbound carton **or** Shipping active-order chrome
- *    composes this — never fork a parallel header.
+ *    price · listing · Claim/ticket as one flush bottom band (gap-0).
+ *    Secondary / exact triage detail opens in right-edge **Displays**
+ *    (`StationDisplaysPushStack`) — never a "Show details" expander under
+ *    this face (guard: `carton-context-details-in-displays.guard.test.ts`).
+ *    Listing/tracking Edit navigate to Unbox SectionTabs (`tracking` /
+ *    `listings`); PO# is copy/open-only. Every station that shows inbound
+ *    carton **or** Shipping active-order chrome composes this — never fork a
+ *    parallel header.
  * 2. **Identity chrome** — {@link StationContextBar} + {@link StationMoreDetails}:
  *    flush-under-header identity strip + corner utilities
  *    (`stationContextBarHostClass`). Top inset SoT:
@@ -51,6 +55,7 @@ export { StationMoreDetails } from './StationMoreDetails';
 export {
   stationContextBarHostClass,
   stationMoreDetailsPaneHostClass,
+  STATION_CHROME_ROW_FACE,
   STATION_IDENTITY_INSET_TOP,
   STATION_IDENTITY_INSET_RIGHT,
   STATION_IDENTITY_SCROLL_CLEARANCE,

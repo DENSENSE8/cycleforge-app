@@ -40,7 +40,11 @@ import {
   DELIVERED_UNSCANNED_WINDOW_DAYS,
   INCOMING_REMOVED_WINDOW_DAYS,
 } from '@/lib/receiving/incoming-removal-reason';
-import { notInboundMirrorTerminalPredicate } from '@/lib/inbound/mirror';
+import {
+  INBOUND_MARKETPLACE_CARTON_SOURCES_SQL,
+  INBOUND_MARKETPLACE_LINE_SOURCES_SQL,
+  notLineInboundMirrorTerminalPredicate,
+} from '@/lib/inbound/mirror';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
 import { unboxOpenedPredicateSql } from '@/lib/receiving/unbox-scan-opened';
 import { priorityRankSql, laneRankSql } from '@/lib/receiving/display/precedence';
@@ -308,7 +312,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                    AND r.source = 'zoho_po'
                    AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
-                   AND r.source = 'ebay'
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                    AND r.source_order_id = rl.source_order_id
                    AND r.organization_id = rl.organization_id))
             ORDER BY (r.id = rl.receiving_id) DESC,
@@ -523,7 +527,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     search, searchField, searchScope, qaFilter, dispFilter, workflowFilter,
     view, deliveryStateFilter, poFrom, poTo,
     incomingSort, historySort, wantsPrioritySort, testerId, returnScope, priorityOnly, weekStart, weekEnd, limit, offset,
-    inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
+    inboundSourceParam, incomingLinkParam, inboundKindParam, staffFilterRaw, staffFilterId,
     unboxQueueStage, unboxQueueLane, trackingIn,
   } = input.query;
   /**
@@ -935,18 +939,44 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
              (rz.zoho_purchaseorder_id IS NOT NULL${trackingInActive ? '' : ` AND ${NOT_ZOHO_RECEIVED_PREDICATE}`})
              OR
              (rz.zoho_purchaseorder_id IS NULL
-              AND rl.inbound_source_type = 'ebay'${trackingInActive ? '' : `
-              AND ${notInboundMirrorTerminalPredicate('ebay')}`})
+              AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}${trackingInActive ? '' : `
+              AND ${notLineInboundMirrorTerminalPredicate()}`})
            )
            AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
       );
-      // ?inbound facet — filter by PRIMARY source (merged lines read as 'ebay').
-      if (inboundSourceParam === 'ebay') {
-        conditions.push(`rl.inbound_source_type = 'ebay'`);
+      // ?inbound facet — filter by PRIMARY source (merged lines keep marketplace type).
+      if (
+        inboundSourceParam === 'ebay'
+        || inboundSourceParam === 'amazon'
+        || inboundSourceParam === 'manual'
+      ) {
+        conditions.push(`rl.inbound_source_type = '${inboundSourceParam}'`);
       } else if (inboundSourceParam === 'zoho') {
-        conditions.push(`rl.inbound_source_type IS DISTINCT FROM 'ebay'`);
+        conditions.push(
+          `(rl.inbound_source_type = 'zoho' OR (rl.inbound_source_type IS NULL AND rz.zoho_purchaseorder_id IS NOT NULL))`,
+        );
       }
-      // ?link=zoho_pending — eBay lines still awaiting their Zoho PO.
+      // ?inkind= — purchase vs return intake on the spine.
+      if (inboundKindParam === 'return') {
+        conditions.push(
+          `(UPPER(COALESCE(rl.receiving_type, '')) = 'RETURN'
+            OR EXISTS (
+              SELECT 1 FROM receiving_line_return rlr
+               WHERE rlr.receiving_line_id = rl.id
+                 AND rlr.organization_id = rl.organization_id
+            ))`,
+        );
+      } else if (inboundKindParam === 'purchase') {
+        conditions.push(
+          `UPPER(COALESCE(rl.receiving_type, 'PO')) <> 'RETURN'
+            AND NOT EXISTS (
+              SELECT 1 FROM receiving_line_return rlr
+               WHERE rlr.receiving_line_id = rl.id
+                 AND rlr.organization_id = rl.organization_id
+            )`,
+        );
+      }
+      // ?link=zoho_pending — marketplace lines still awaiting their Zoho PO.
       if (incomingLinkParam === 'zoho_pending') {
         conditions.push(`rz.zoho_purchaseorder_id IS NULL`);
       }
@@ -1050,15 +1080,26 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     // Incoming), minus the EXPECTED/untouched membership that a departed row
     // no longer satisfies, plus at least one recorded exit inside the window.
     conditions.push(
-      `(rz.zoho_purchaseorder_id IS NOT NULL OR rl.inbound_source_type = 'ebay')
+      `(rz.zoho_purchaseorder_id IS NOT NULL OR ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL})
          AND ${incomingRemovedExitsSql(INCOMING_REMOVED_WINDOW_DAYS, DELIVERED_UNSCANNED_WINDOW_DAYS)}`,
     );
     // The purchasing-source tab travels with the operator from the lane they
     // came from — a removed row is still an inbound row from some source.
-    if (inboundSourceParam === 'ebay') {
-      conditions.push(`rl.inbound_source_type = 'ebay'`);
+    if (
+      inboundSourceParam === 'ebay'
+      || inboundSourceParam === 'amazon'
+      || inboundSourceParam === 'manual'
+    ) {
+      conditions.push(`rl.inbound_source_type = '${inboundSourceParam}'`);
     } else if (inboundSourceParam === 'zoho') {
-      conditions.push(`rl.inbound_source_type IS DISTINCT FROM 'ebay'`);
+      conditions.push(
+        `(rl.inbound_source_type = 'zoho' OR (rl.inbound_source_type IS NULL AND rz.zoho_purchaseorder_id IS NOT NULL))`,
+      );
+    }
+    if (inboundKindParam === 'return') {
+      conditions.push(`UPPER(COALESCE(rl.receiving_type, '')) = 'RETURN'`);
+    } else if (inboundKindParam === 'purchase') {
+      conditions.push(`UPPER(COALESCE(rl.receiving_type, 'PO')) <> 'RETURN'`);
     }
   }
 
@@ -1478,7 +1519,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                    AND r.source = 'zoho_po'
                    AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
-                   AND r.source = 'ebay'
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                    AND r.source_order_id = rl.source_order_id
                    AND r.organization_id = rl.organization_id))
             ORDER BY (r.id = rl.receiving_id) DESC,
@@ -1547,7 +1588,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                    AND r.source = 'zoho_po'
                    AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
-                   AND r.source = 'ebay'
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                    AND r.source_order_id = rl.source_order_id
                    AND r.organization_id = rl.organization_id))
             ORDER BY (r.id = rl.receiving_id) DESC,

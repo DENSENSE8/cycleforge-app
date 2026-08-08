@@ -13,6 +13,8 @@ import {
 } from '@/design-system/components/Dialog';
 import { platformStyle } from './platform-style';
 import type { UnmappedPlatformId } from './types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 interface CatalogSearchRow {
   id: number;
@@ -231,7 +233,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="e.g. 00326-P-2"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                  className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm font-semibold text-text-default", focusRing("field", "accent"))}
                 />
               </Field>
               <Field label="Product title" required>
@@ -239,7 +241,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Canonical product name"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                  className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm font-semibold text-text-default", focusRing("field", "accent"))}
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
@@ -248,7 +250,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     placeholder="Optional"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                    className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-default", focusRing("field", "accent"))}
                   />
                 </Field>
                 <Field label="UPC">
@@ -256,7 +258,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                     value={upc}
                     onChange={(e) => setUpc(e.target.value)}
                     placeholder="Optional"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                    className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm text-text-default", focusRing("field", "accent"))}
                   />
                 </Field>
               </div>
@@ -274,7 +276,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                   value={existingQuery}
                   onChange={(e) => { setExistingQuery(e.target.value); setSelected(null); }}
                   placeholder="Search canonical SKU or title…"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas py-2 pl-8 pr-3 text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                  className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas py-2 pl-8 pr-3 text-sm font-semibold text-text-default", focusRing("field", "accent"))}
                 />
                 {searching && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />}
               </div>

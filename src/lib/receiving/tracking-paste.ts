@@ -1,11 +1,12 @@
 /**
- * The ONE tracking-paste parser, and the `?tracking_in=` URL vocabulary built
- * on top of it.
+ * The ONE paste parser for tracking **and** order/PO numbers, plus the
+ * `?tracking_in=` URL vocabulary built on top of it.
  *
  * Two operator questions share one input — *"are these received upstream?"*
  * (the ERP check) and *"show me these rows"* (the bulk list filter) — so they
  * share one splitter. A second parser is a second set of paste bugs and a
- * second answer to "is `1Z999 AA1 01` one tracking or three".
+ * second answer to "is `1Z999 AA1 01` one tracking or three". Keys are
+ * upper-alnum canons; short PO/order tokens are valid (no minimum length).
  *
  * **Altitude:** dependency-free apart from {@link canonicalizeTrackingKey}
  * (itself pure), because the paste panel is a CLIENT component. This lived in
@@ -92,12 +93,12 @@ export function parseTrackingPaste(
   }
 
   if (trackings.length === 0) {
-    return { ok: false, error: 'Paste at least one tracking number' };
+    return { ok: false, error: 'Paste at least one tracking or order number' };
   }
   if (trackings.length > maxInputs) {
     return {
       ok: false,
-      error: `Too many tracking numbers (max ${maxInputs}; got ${trackings.length})`,
+      error: `Too many numbers (max ${maxInputs}; got ${trackings.length})`,
     };
   }
 

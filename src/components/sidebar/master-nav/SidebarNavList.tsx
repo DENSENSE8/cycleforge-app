@@ -1,25 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import {
-  framerPresence,
-  framerTransition,
-  framerVariants,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import { ChevronDown, ChevronLeft, ChevronsRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { buildNavDestinations, type NavDestination } from '@/lib/nav/nav-destinations';
 import { searchNav, splitNavHighlight, type NavMatch } from '@/lib/nav/nav-search';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import {
-  spineAccentFor,
-  type SpineAccentClasses,
-} from '@/lib/nav/spine-section-accent';
+import { spineAccentFor, type SpineAccentClasses } from '@/lib/nav/spine-section-accent';
 import {
   SPINE_SECTIONS,
   getStationSubgroupDef,
@@ -39,7 +27,7 @@ import { StaffAccountFooter } from './StaffAccountFooter';
  * **Scan Stations first (2026-08-03)**, because the benches are what this
  * product is for — grouped by a `border-t`; a footer-pinned {@link TechRailSearchBar} (`density="row"`,
  * the shared ~33px band used by station recent rails too) sits above the
- * footer band — Workflow Studio · Admin · Settings — then
+ * footer band — Operations Studio · Admin · Settings — then
  * {@link StaffAccountFooter}.
  *
  * ## The drill is gone (2026-08-02)
@@ -53,16 +41,24 @@ import { StaffAccountFooter } from './StaffAccountFooter';
  * chevron: a header would re-create `Catalog › Catalog` everywhere a section
  * shares a name with a page beneath it, which is most of them.
  *
- * The divider is **load-bearing**: the root axis is deliberately mixed (Scan
- * Stations is an INPUT MODEL among business DOMAINS) and the rule between the
- * blocks is the only thing left saying so.
+ * **Box to box, not spaced (2026-08-03).** Sections used to carry a soft
+ * `mt-1` gap between blocks — the only thing left marking that the root axis
+ * is deliberately mixed (Scan Stations is an INPUT MODEL among business
+ * DOMAINS). That gap is gone: the spine matches the rest of the app's
+ * squared-off, flush-box chrome (`ui-design-system.md` → Ops chrome is
+ * flush-square), and every row in this column — L1, child, subgroup, drill
+ * back header, search result — now abuts its neighbor with zero vertical
+ * margin or padding. What marks the axis split now is the SHAPE difference
+ * (Scan Stations alone carries a drill trailing chevron and a Back header),
+ * not a gap. A row's own hover/active fill is what still shows where you are.
  *
  * ## Multi-child L1 discloses in place
  *
  * Click expands / collapses — it does not navigate. Destination is a child
- * row (or a leaf L1). Every nest opens through {@link renderStaggeredNest}
- * (15ms cascade). Expanding every nest at once was measured at **64 rows /
- * ~1790px against a ~600px scrollport** — accordion keeps the map usable.
+ * row (or a leaf L1). Every nest opens through {@link renderNest} —
+ * **instantly, with no animation**. Expanding every nest at once was measured
+ * at **64 rows / ~1790px against a ~600px scrollport**, so it is an accordion:
+ * opening one closes the others.
  *
  * ## Chrome
  *
@@ -74,32 +70,62 @@ import { StaffAccountFooter } from './StaffAccountFooter';
  *
  * **Nesting is a rail, not just an indent.** Child rows draw a left hairline
  * (`renderChildLikeRow`) that costs no vertical space — the one thing this
- * column cannot spend, since the map already measures 732px against a 685px
- * port on the widest page.
+ * column cannot spend, since the map already measures against its scrollport
+ * on the widest page (`sidebar-open-close.spec.ts` MEASURE tests). The row
+ * gets its height from an explicit box (`PRIMARY_CHROME_ROW_FACE` on L1 /
+ * drill-back so it shares the scan-bar seam; nested children stay `h-7`),
+ * not from `py-*` — a box, not a padded label.
  *
- * **Neutral and STILL.** Accents resolve to one grey ladder via
- * {@link spineAccentFor} — the eight section hues are gone. Nothing on a row
- * travels on hover: the glyph's 2px CSS lift was deleted with the hues, because
- * a structural anchor in a 20-row column should not move under the pointer, and
- * the neutral wash answers hover on its own. The older bans stand and are about
- * cost, not taste — a framer `whileHover` here would re-render React on every
- * mousemove across the list, a row-level `scale` breaks the baseline every dense
- * surface beside it aligns to, and a hover weight shift reflows text mid-pointer.
+ * **Monochrome, uniform, and STILL (2026-08-08).** There is no per-section hue
+ * — {@link spineAccentFor} returns one treatment for every row at every
+ * altitude (`src/lib/nav/spine-section-accent.ts` carries the ruling and the
+ * ink ladder). Hierarchy is INDENT + the nesting rail + ink contrast; identity
+ * is grouping and order. L1 / drill-back / nested children share the same
+ * **`PRIMARY_CHROME_ROW_FACE`** (`h-7`) box as the scan bar. Same
+ * **13px `role-nav`** label, so the map reads as one surface rather than a
+ * stack of differently-sized parts — the 36px-parent / 24px-child jump that
+ * preceded it was 1.5×, which is enough to read as two systems.
  *
- * **Every row carries its glyph, at the same light page stroke.** A child
- * / station-subgroup) row is the switch between one page's siblings, which is
- * the job the GlobalHeader page switcher draws with the same icon set — two doors
- * onto one destination must not disagree about whether it has a face. What child
- * rows do NOT get is the heavier L2 weight: at 2.25 a child glyph out-draws its
- * own parent at 1.5. Subordination is the indent, the caption/medium type, and
- * the muted ink.
+ * Nothing on a row travels on hover: the glyph's 2px CSS lift stays deleted,
+ * because a structural anchor in a 20-row column should not move under the
+ * pointer, and the wash answers hover on its own. The older motion bans stand
+ * and are about cost, not taste — a framer `whileHover` here would re-render
+ * React on every mousemove across the list, a row-level `scale` breaks the
+ * baseline every dense surface beside it aligns to, and a hover weight shift
+ * reflows text mid-pointer.
  *
- * **The map mounts instantly.** It is painted on every cold load, so a cascade
- * there is time-to-interactive spent on rows whose position the operator already
- * knows. The one surviving cascade ({@link framerVariants.spineRowStaggerContainer})
- * belongs to multi-child L1 nests, which mount on expand (15ms × index).
- * Body swap (map ⇄ ranked results) is opacity-only
- * {@link framerPresence.spineBodySwap}.
+ * **Every row carries its glyph, at the same light page stroke and the same
+ * ink as its own label.** A child / station-subgroup row is the switch between
+ * one page's siblings, which is the job the GlobalHeader page switcher draws
+ * with the same icon set — two doors onto one destination must not disagree
+ * about whether it has a face. What child rows do NOT get is the heavier L2
+ * weight: at 2.25 a child glyph out-draws its own parent at 1.5. Subordination
+ * is the indent, the rail, and the ink step (soft vs muted) — never a second
+ * type size, and never a colour.
+ *
+ * **This component has NO motion. None.** (2026-08-08.) It does not import the
+ * motion barrel, and it should not start. Every state change — mounting the
+ * map, selecting a row, opening a nest, entering the Scan Stations drill,
+ * switching to ranked search results — happens on one frame.
+ *
+ * That is a navigator on a scan bench doing what it is for. Everything in this
+ * column is a thing the operator has clicked a hundred times and is reaching
+ * for by muscle memory; any duration at all is time inserted between the reach
+ * and the target. Four treatments were tried and all four are gone:
+ *
+ *  - a **selection wash settle** (`spineActiveWash`, 150ms) — imperceptible
+ *    once the fill became a few-percent plane step;
+ *  - a **per-row nest cascade** (`spineRowStagger*`, 15ms × index) — reads as
+ *    a wave travelling down-and-right rather than a disclosure;
+ *  - a **one-block nest height expand** (`collapseHeight`) — no sweep, same
+ *    delay;
+ *  - a **body crossfade** (`spineBodySwap`, 120ms on `mode="wait"`) — the
+ *    wait meant the outgoing list finished fading before the incoming one
+ *    mounted, so entering Scan Stations cost ~240ms and flashed an empty
+ *    column between two lists.
+ *
+ * `spineRowStagger*` survives in the catalog for ⌘K — a palette revealing
+ * ranked results is a genuinely different job. Nothing else does.
  */
 interface SidebarNavListProps {
   activePage: SidebarPageNav;
@@ -135,10 +161,9 @@ export function SidebarNavList({
   className,
 }: SidebarNavListProps) {
   const highlightedChildId = activeChildId ?? activePage.children?.[0]?.id ?? null;
-  const bodySwapPresence = useMotionPresence(framerPresence.spineBodySwap);
-  const bodySwapTransition = useMotionTransition(framerTransition.spineBodySwap);
-  const activeWashPresence = useMotionPresence(framerPresence.spineActiveWash);
-  const activeWashTransition = useMotionTransition(framerTransition.spineActiveWash);
+  // There is no motion state here, because there is no motion here. See the
+  // "this component has NO motion" note above for the four treatments that
+  // were tried and why each one lost.
   const [navFilter, setNavFilter] = useState('');
 
   /**
@@ -209,9 +234,9 @@ export function SidebarNavList({
   const neutralAccent = spineAccentFor(null);
 
   /**
-   * Station subgroups the operator has expanded (Receiving today). Default is
-   * **collapsed** — opening one nest closes the others (accordion). Owning the
-   * active page still forces open so you cannot hide the bench you are on.
+   * Station subgroups the operator has expanded (Receiving · Walk-In). Default
+   * is **collapsed** — opening one nest closes the others (accordion). Owning
+   * the active page still forces open so you cannot hide the bench you are on.
    * Cleared on every in-app page jump so a manual expand cannot stack beside
    * another page's children (Receiving open + Testing open).
    */
@@ -263,11 +288,17 @@ export function SidebarNavList({
    * page switcher draws with glyphs. Dropping them here would leave the app's two
    * doors onto one destination disagreeing about whether it has a face.
    *
-   * Hierarchy is carried by the **nesting rail** plus the indent, the
-   * caption/medium type against the parent's body/semibold, and the muted ink —
-   * never by a heavier stroke. A child glyph at the L2 weight (2.25) would
-   * out-draw its own parent at 1.5, which inverts the ladder it was supposed to
-   * express.
+   * Hierarchy is carried by the **nesting rail** plus the indent and one ink
+   * step (`text-soft` against a parent's `text-muted`) — never by a heavier
+   * stroke, never by a smaller type size, and never by a colour. A child glyph
+   * at the L2 weight (2.25) would out-draw its own parent at 1.5, which inverts
+   * the ladder it was supposed to express.
+   *
+   * **Same 28px box and same 13px `role-nav` as its parent** (2026-08-08). It
+   * used to be a 24px row at 12px against a 36px/14px parent; a 1.5× height
+   * jump inside one list makes parent and child read as two different kinds of
+   * object rather than two altitudes of one. Weight is the only type variable
+   * left: 400 idle, 500 when it is the page you are on.
    *
    * ## The rail (2026-08-03; centered 2026-08-03)
    *
@@ -309,7 +340,10 @@ export function SidebarNavList({
     const RowIcon = opts.icon;
     return (
       <div className="flex">
-        <div className="ml-2 flex w-3.5 shrink-0 justify-center" aria-hidden>
+        {/* Rail gutter: `ml-2` matches the parent's `px-2` and `w-4` matches the
+            parent's 16px glyph, so the `w-px` lands on the icon's centre
+            without an arbitrary `ml-[Npx]`. */}
+        <div className="ml-2 flex w-4 shrink-0 justify-center" aria-hidden>
           <div
             className={cn(
               'w-px self-stretch transition-colors duration-150',
@@ -322,7 +356,7 @@ export function SidebarNavList({
           onClick={opts.onClick}
           onMouseEnter={opts.onMouseEnter}
           className={cn(
-            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-none py-1 pl-1 pr-2 text-left transition-colors duration-150',
+            'ds-raw-button group flex h-7 min-w-0 flex-1 items-center gap-2 rounded-none pl-1 pr-2 text-left transition-colors duration-150',
             opts.active ? accent.childActive : accent.childIdle,
           )}
         >
@@ -331,13 +365,20 @@ export function SidebarNavList({
               className={navIconStrokeClass(
                 'page',
                 cn(
-                  'h-3.5 w-3.5 shrink-0',
+                  'h-4 w-4 shrink-0',
                   opts.active ? accent.childActiveIcon : accent.childIdleIcon,
                 ),
               )}
             />
           ) : null}
-          <span className="min-w-0 flex-1 truncate text-role-caption font-medium">{opts.label}</span>
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate text-role-nav',
+              opts.active ? 'font-medium' : 'font-normal',
+            )}
+          >
+            {opts.label}
+          </span>
         </button>
       </div>
     );
@@ -383,7 +424,7 @@ export function SidebarNavList({
     drill?: boolean;
   }, accent: SpineAccentClasses) => {
     const PageIcon = opts.icon;
-    const header = (
+    return (
       <button
         type="button"
         onClick={opts.onClick}
@@ -391,7 +432,10 @@ export function SidebarNavList({
         aria-label={opts.ariaLabel}
         aria-expanded={opts.disclosure ? opts.disclosure.expanded : undefined}
         className={cn(
-          'ds-raw-button group flex h-9 w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150',
+          'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150',
+          // L1 + Scan Stations enter share PRIMARY with the context scan bar
+          // (same Y under GlobalHeader / SpineTopPins). Nested children stay h-7.
+          PRIMARY_CHROME_ROW_FACE,
           opts.active ? accent.activePage : accent.idlePage,
         )}
       >
@@ -399,44 +443,54 @@ export function SidebarNavList({
           className={navIconStrokeClass(
             'page',
             cn(
-              'h-3.5 w-3.5 shrink-0',
+              'h-4 w-4 shrink-0',
               opts.active ? accent.activePageIcon : accent.idlePageIcon,
             ),
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-role-body font-semibold leading-tight">{opts.label}</span>
+        <span className="min-w-0 flex-1 truncate text-role-nav font-medium">{opts.label}</span>
         {opts.drill ? (
-          <ChevronsRight className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
+          <ChevronsRight className="h-4 w-4 shrink-0 text-text-faint" aria-hidden />
         ) : opts.disclosure ? (
           <ChevronDown
             className={cn(
-              'h-3.5 w-3.5 shrink-0 text-text-faint motion-safe:transition-transform motion-safe:duration-150',
+              // No rotate transition (2026-08-08). It was the last moving
+              // thing on this interaction, and it was moving on the control
+              // the operator had just committed to — a 150ms tell that the
+              // click registered, on a click whose result (the nest) is
+              // already there instantly. Snap it.
+              'h-4 w-4 shrink-0 text-text-faint',
               !opts.disclosure.expanded && '-rotate-90',
             )}
           />
         ) : null}
       </button>
     );
-
-    if (!opts.active) return header;
-
-    return (
-      <motion.div
-        initial={activeWashPresence.initial}
-        animate={activeWashPresence.animate}
-        transition={activeWashTransition}
-      >
-        {header}
-      </motion.div>
-    );
   };
 
   /**
-   * Staggered nest body — every in-place dropdown (L1 children · Receiving
-   * benches) opens through this so expand always cascades. The list mounts
-   * only while expanded; `initial="hidden"` is unconditional.
+   * Nest body — every in-place dropdown (L1 children · Receiving benches).
+   *
+   * **It is INSTANT. There is no animation here at all** (ruled 2026-08-08),
+   * and the two things it replaced are worth recording so neither returns.
+   *
+   * First it cascaded: a 15ms-per-row stagger with each row fading in from a
+   * 2px offset. On a five-row nest that reads as a wave travelling
+   * down-and-right — a nav dropdown announcing its contents one at a time
+   * rather than disclosing them.
+   *
+   * Then it expanded as one block (height 0 → auto). Better, and still the
+   * wrong idea: this list is a navigator on a scan bench, and the operator
+   * clicking a nest already knows what is in it. Any duration at all is time
+   * between the click and the row they were reaching for. A disclosure whose
+   * contents are fixed and known does not need to be *shown* arriving — it
+   * needs to be there.
+   *
+   * So: a plain `<ul>`. No `motion.*`, no presence, no `overflow-hidden`
+   * (nothing clips), no transition. The rows and the rotated chevron paint on
+   * the same frame as the click.
    */
-  const renderStaggeredNest = (
+  const renderNest = (
     nestKey: string,
     ariaLabel: string,
     rows: Array<{
@@ -449,21 +503,11 @@ export function SidebarNavList({
     }>,
     accent: SpineAccentClasses,
   ) => (
-    <motion.ul
-      key={nestKey}
-      role="group"
-      aria-label={ariaLabel}
-      className="list-none p-0"
-      initial="hidden"
-      animate="visible"
-      variants={framerVariants.spineRowStaggerContainer}
-    >
+    <ul key={nestKey} role="group" aria-label={ariaLabel} className="list-none p-0">
       {rows.map((row) => (
-        <motion.li key={row.id} variants={framerVariants.spineRowStaggerItem}>
-          {renderChildLikeRow(row, accent)}
-        </motion.li>
+        <li key={row.id}>{renderChildLikeRow(row, accent)}</li>
       ))}
-    </motion.ul>
+    </ul>
   );
 
   const renderRow = (
@@ -499,7 +543,20 @@ export function SidebarNavList({
           {
             label: page.label,
             icon: page.icon,
-            active: isPageActive || showChildren,
+            // The fill means "you are here" and NOTHING else (2026-08-08).
+            //
+            // It first also meant "expanded", so standing on Sales with
+            // Shipping open showed two filled rows. Dropping that left one
+            // case behind: an ANCESTOR of the current page still filled,
+            // because `activePage` for `/products?view=manuals` IS Products —
+            // so Products and Manuals both lit.
+            //
+            // `!hasChildren` closes it. A multi-child parent is never a
+            // destination (its click discloses), and whenever it owns the
+            // active page its children are force-open, so the actually-current
+            // child row is always on screen carrying the fill. The parent
+            // adds nothing but a second lit row.
+            active: isPageActive && !hasChildren,
             // Cardinality survives HERE and only here, for the same reason the
             // badge was deleted: a screen reader benefits from "7 pages", and an
             // accessible name competes with nothing for the operator's eye. It
@@ -529,7 +586,7 @@ export function SidebarNavList({
         )}
 
         {showChildren && page.children
-          ? renderStaggeredNest(
+          ? renderNest(
               `nest-${page.id}`,
               `${page.label} pages`,
               page.children.map((child) => ({
@@ -563,6 +620,13 @@ export function SidebarNavList({
       {
         label: section.label,
         icon: section.icon,
+        // The ONE surviving proxy fill, and it is not the ancestor case.
+        // Scan Stations list-REPLACES, so when the operator is on a bench the
+        // genuinely-current row is not rendered on this map at all — this row
+        // is its only representation. Dropping it would leave the root map
+        // showing no location whatsoever for seven of the app's pages.
+        // Everywhere else the current row is on screen, so its ancestor stays
+        // quiet.
         active: floorActive,
         ariaLabel: `Open ${section.label}`,
         onClick: () => onStationsDrillChange(true),
@@ -594,16 +658,21 @@ export function SidebarNavList({
         if (!def || !firstMember) continue;
 
         nodes.push(
-          <div key={`subgroup-${subgroup}`} className="mt-0.5 first:mt-0">
+          <div key={`subgroup-${subgroup}`}>
             {renderPageHeader(
               {
                 label: def.label,
                 icon: def.icon,
-                active: subgroupActive || subgroupExpanded,
-                ariaLabel:
-                  members.length > 1
-                    ? `${def.label} — ${members.length} stations`
-                    : `Go to ${def.label}`,
+                // A subgroup header NEVER fills. It is a disclosure, not a
+                // destination, and when it owns the active station that
+                // station is force-expanded — so the row that is genuinely
+                // current is always rendered directly beneath it. Filling
+                // both is the ancestor duplication this rule removes.
+                active: false,
+                // Disclosure only — never navigates. Same contract as
+                // multi-child L1 pages (Shipping · Locations): expand shows
+                // the benches; the operator picks Arrival / Unbox / etc.
+                ariaLabel: `${def.label} — ${members.length} stations`,
                 onClick: () => {
                   if (subgroupExpanded && !subgroupActive) {
                     closeSubgroup(subgroup);
@@ -611,7 +680,6 @@ export function SidebarNavList({
                   }
                   if (!subgroupExpanded) {
                     openSubgroup(subgroup);
-                    if (!subgroupActive) onNavigate(firstMember.id);
                   }
                 },
                 onMouseEnter: onRowHover ? () => onRowHover(firstMember) : undefined,
@@ -620,7 +688,7 @@ export function SidebarNavList({
               accent,
             )}
             {subgroupExpanded
-              ? renderStaggeredNest(
+              ? renderNest(
                   `nest-subgroup-${subgroup}`,
                   `${def.label} stations`,
                   members.map((member) => ({
@@ -641,7 +709,7 @@ export function SidebarNavList({
 
       lastSubgroup = undefined;
       nodes.push(
-        <div key={page.id} className="mt-0.5 first:mt-0">
+        <div key={page.id}>
           {renderRow(page, 'floor', accent)}
         </div>,
       );
@@ -665,22 +733,21 @@ export function SidebarNavList({
           type="button"
           onClick={() => onStationsDrillChange(false)}
           aria-label="Back to pages"
-          className="ds-raw-button mb-1 grid h-9 w-full grid-cols-[1.25rem_1fr_1.25rem] items-center gap-2 rounded-none px-2 transition-colors duration-150 hover:bg-surface-hover"
+          className={cn(
+            'ds-raw-button grid w-full grid-cols-[1rem_1fr_1rem] items-center gap-2 rounded-none border-b border-border-soft px-2 text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-default',
+            // Same PRIMARY face as context scan bar · carton identity row 1.
+            PRIMARY_CHROME_ROW_FACE,
+          )}
         >
-          <ChevronLeft className="h-3.5 w-3.5 shrink-0 justify-self-start text-text-muted" aria-hidden />
-          <span className="min-w-0 truncate text-center text-role-body font-semibold leading-tight">
+          <ChevronLeft className="h-4 w-4 shrink-0 justify-self-start" aria-hidden />
+          <span className="min-w-0 truncate text-center text-role-nav font-medium">
             {section.label}
           </span>
-          <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="h-4 w-4 shrink-0" aria-hidden />
         </button>
-        <div
-          id="spine-section-floor"
-          role="group"
-          aria-label={section.label}
-          className="mt-0.5"
-        >
+        <div id="spine-section-floor" role="group" aria-label={section.label}>
           {pages.length === 0 ? (
-            <p className="px-2 py-2 text-role-caption text-text-muted">No matching pages</p>
+            <p className="px-2 py-1 text-role-nav text-text-soft">No matching pages</p>
           ) : (
             renderFloorPages(pages, accent)
           )}
@@ -705,27 +772,39 @@ export function SidebarNavList({
       <ul role="group" aria-label="Sections" className="list-none p-0">
         {groups.map(({ section, pages }, index) => {
           const accent = spineAccentFor(section.id);
+          /**
+           * A hairline at each section boundary — the ONLY thing marking
+           * where one section ends now that hue is gone (2026-08-08).
+           *
+           * Deleting the per-section colour deleted the last section marker:
+           * sections draw no header row (pages sit directly on the map, so a
+           * header would read `Catalog › Catalog`), and the old `mt-1` gap was
+           * removed for the box-to-box pass. Without this the map is twenty
+           * identical rows with no breaks — which hides the fact that the root
+           * axis is deliberately mixed (Scan Stations is an INPUT MODEL sitting
+           * among business DOMAINS).
+           *
+           * A hairline and not a gap: 8px × 8 boundaries is 64px against a
+           * scrollport that already measures 732px of map into a 685px port on
+           * the widest page, so whitespace here would push rows below the fold.
+           * A rule costs zero vertical space and survives greyscale.
+           */
+          const seam = index > 0 ? 'border-t border-border-soft' : undefined;
 
           // Scan Stations — enter row only; benches live inside the drill.
           if (section.id === 'floor') {
             return (
-              <li key={section.id} aria-label={section.label} className={cn(index > 0 && 'mt-1')}>
+              <li key={section.id} aria-label={section.label} className={seam}>
                 {renderStationsEnterRow(accent)}
               </li>
             );
           }
 
           return (
-            <li
-              key={section.id}
-              aria-label={section.label}
-              className={cn(index > 0 && 'mt-1')}
-            >
-              <div id={`spine-section-${section.id}`} className="mt-0.5 first:mt-0">
+            <li key={section.id} aria-label={section.label} className={seam}>
+              <div id={`spine-section-${section.id}`}>
                 {pages.map((page) => (
-                  <div key={page.id} className="mt-0.5 first:mt-0">
-                    {renderRow(page, section.id, accent)}
-                  </div>
+                  <div key={page.id}>{renderRow(page, section.id, accent)}</div>
                 ))}
               </div>
             </li>
@@ -762,7 +841,7 @@ export function SidebarNavList({
             if (page) onRowHover?.(page);
           }}
           className={cn(
-            'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 py-1.5 text-left transition-colors duration-150',
+            'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 py-1 text-left transition-colors duration-150',
             isCursor ? accent.activePage : accent.idlePage,
           )}
         >
@@ -770,13 +849,13 @@ export function SidebarNavList({
             className={navIconStrokeClass(
               'page',
               cn(
-                'h-3.5 w-3.5 shrink-0',
+                'h-4 w-4 shrink-0',
                 isCursor ? accent.activePageIcon : accent.idlePageIcon,
               ),
             )}
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-role-body font-semibold leading-tight">
+            <span className="block truncate text-role-nav font-medium">
               {splitNavHighlight(destination.label, match.ranges).map((part, i) =>
                 part.hit ? (
                   // Marks the characters that justified the row. Underline, not
@@ -792,9 +871,12 @@ export function SidebarNavList({
             </span>
             {destination.context ? (
               <span
+                // The cursor row no longer fills saturated, so the old
+                // `text-white/70` here would render white-on-white. It steps
+                // up one ink rung instead, same as the label above it.
                 className={cn(
                   'block truncate text-role-micro uppercase tracking-widest',
-                  isCursor ? 'text-white/70' : 'text-text-faint',
+                  isCursor ? 'text-text-soft' : 'text-text-faint',
                 )}
               >
                 {destination.context}
@@ -811,7 +893,7 @@ export function SidebarNavList({
       {results.length === 0 ? (
         // Names the query back. "No results" leaves the operator unsure whether
         // the place does not exist or the box simply is not working.
-        <li className="px-2 py-2 text-role-caption text-text-muted">
+        <li className="px-2 py-1 text-role-nav text-text-soft">
           No destination matches “{navFilter.trim()}”
         </li>
       ) : (
@@ -833,23 +915,19 @@ export function SidebarNavList({
           to answer, and `.claude/rules/verify.md` requires that answer to come
           from the real runner — so the port names itself rather than making a
           spec guess at a class chain that will drift. */}
+      {/* The body swaps between three KINDS of list — the map, the Scan
+          Stations drill, and ranked search results — and it swaps INSTANTLY
+          (2026-08-08). It used to crossfade through `spineBodySwap`
+          (opacity-only, 120ms, `AnimatePresence mode="wait"`).
+          `mode="wait"` is what made that expensive: the outgoing list had to
+          finish fading before the incoming one mounted, so entering Scan
+          Stations cost ~240ms of round trip and briefly showed an EMPTY
+          column between two lists. On a bench navigator that is time between
+          a click and the bench being reached for.
+          Nothing is keyed or wrapped now: the three branches render different
+          elements, so React swaps them on the same frame. */}
       <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-0">
-        <AnimatePresence mode="wait" initial={false}>
-          {/* Keyed on the MODE, not the query: typing must update the list in
-              place, never replay the crossfade on every keystroke. The swap
-              animates once, when the body changes what KIND of thing it is —
-              the map (hierarchy) or the ranked results (flat). That is now the
-              body's only swap; the drill it was built for is gone. */}
-          <motion.div
-            key={searching ? 'search' : stationsDrillOpen ? 'stations-drill' : 'map'}
-            initial={bodySwapPresence.initial}
-            animate={bodySwapPresence.animate}
-            exit={bodySwapPresence.exit}
-            transition={bodySwapTransition}
-          >
-            {searching ? renderSearchResults() : renderMap()}
-          </motion.div>
-        </AnimatePresence>
+        {searching ? renderSearchResults() : renderMap()}
       </div>
 
       <div className="shrink-0">

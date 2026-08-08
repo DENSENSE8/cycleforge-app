@@ -5,17 +5,14 @@ import type { Variants } from '@/design-system/motion';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import {
-  SIDEBAR_RAIL_DOT_TRACK,
-  SIDEBAR_RAIL_INSET_LEFT,
-  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
-  SIDEBAR_SCAN_DOCK_LEADING_ROW,
-} from '@/components/layout/header-shell';
+import { SIDEBAR_RAIL_INSET_LEFT } from '@/components/layout/header-shell';
 import { Check, ChevronDown } from '@/components/Icons';
+import { CompactActivityRow } from '@/components/ui/CompactActivityRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { NAV_KEY_HINT_CLASS } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
-import { railRelativeTime, type SidebarRailRowContext } from './sidebar-rail-shared';
+import type { SidebarRailRowContext } from './sidebar-rail-shared';
 import { RailPopover } from './RailPopover';
 import { useRailHoverPreview } from './useRailHoverPreview';
 
@@ -30,10 +27,12 @@ const keepOnMainThread = () => {};
 
 export function RailRow<TRow>({
   row, index, isSelected, isFocused, editActive, isChecked, isDisabled, groupSize, groupIndex, isCollapsed, showInlinePkgChip,
-  staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick,
+  staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick, navKey,
 }: {
   row: TRow;
   index: number;
+  /** Reveal-on-arm nav-key letter — present only while this rail's region is armed. */
+  navKey?: string | null;
   isSelected: boolean;
   isFocused: boolean;
   editActive: boolean;
@@ -44,7 +43,8 @@ export function RailRow<TRow>({
   isCollapsed: boolean;
   showInlinePkgChip: boolean;
   /** Present on stagger rails — the row rides the parent ul's `show` timeline via
-   * these variants (and carries no `layout`, which would flash the reveal). */
+   * these variants. Never pair with Framer `layout` — projection rubber-bands
+   * every row when the context column resizes (Displays dual-rail / sash). */
   staggerItemVariants?: Variants;
   onToggleGroup?: () => void;
   getStatusDot: (row: TRow) => string;
@@ -117,11 +117,11 @@ export function RailRow<TRow>({
       ref={rowRef}
       role="option"
       aria-selected={editActive ? isChecked : isSelected}
-      // Stagger rows carry NO layout projection: their reveal is a pure `x`
-      // transform, and enabling `layout` mid-reveal made framer re-project every
-      // row and flash it to opacity 0 for a frame. Non-stagger CRUD rows keep
-      // `layout` so a dismissed row reflows its siblings smoothly.
-      layout={!staggerItemVariants}
+      // Presence only (scan-in / dismiss) — NEVER Framer `layout`. Layout
+      // projection FLIPs every row when the context column width changes
+      // (sash / Displays dual-rail), so the recent rail rubber-bands while
+      // Displays snaps. Sibling reflow on dismiss is instant CSS — same as
+      // the right panel.
       {...motionProps}
       // Full-bleed host: selection wash / ring paints edge-to-edge. Content
       // column pad nests inside (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW) so
@@ -158,11 +158,12 @@ export function RailRow<TRow>({
         )}
       >
         {/* Nested pads ADD (outer gutter + leading pl-2) — never stack both pl-*
-            on one node or Tailwind collapses them. */}
+            on one node or Tailwind collapses them. CompactActivityRow owns the
+            status-mark · title/meta · short-age face (SoT). */}
         <span className={cn(SIDEBAR_RAIL_INSET_LEFT, 'block w-full')}>
-          <span className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'w-full')}>
-            <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'flex shrink-0 items-center justify-center')}>
-              {editActive ? (
+          <CompactActivityRow
+            leading={
+              editActive ? (
                 <span
                   aria-hidden
                   data-rail-select-box
@@ -186,29 +187,31 @@ export function RailRow<TRow>({
                   className={`h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
                   aria-hidden
                 />
-              )}
-            </span>
-            <div data-rail-row-title className="min-w-0 flex-1">
+              )
+            }
+            activityAt={getActivityAt ? activityAt : undefined}
+            showAgeColumn={Boolean(getActivityAt)}
+          >
+            <div data-rail-row-title className="min-w-0">
               {renderRowMain(row, { isSelected, isFocused, pkgChip })}
             </div>
-            {getActivityAt ? (
-              activityAt != null ? (
-                <span
-                  className={cn(
-                    SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
-                    'self-center tabular-nums text-role-micro font-medium text-text-faint',
-                  )}
-                >
-                  {railRelativeTime(activityAt)}
-                </span>
-              ) : (
-                // Keep the age column so titles do not jump when one row lacks activity.
-                <span className={SIDEBAR_RAIL_TRAILING_TRACK_CLASS} aria-hidden />
-              )
-            ) : null}
-          </span>
+          </CompactActivityRow>
         </span>
       </button>
+      {/* Reveal-on-arm nav-key keycap — absolute so it never reflows the row;
+          present only while this rail's region is armed by the leader. */}
+      {navKey ? (
+        <span
+          aria-hidden
+          data-rail-nav-key=""
+          className={cn(
+            NAV_KEY_HINT_CLASS,
+            'pointer-events-none absolute right-1.5 top-1/2 z-raised -translate-y-1/2',
+          )}
+        >
+          {navKey}
+        </span>
+      ) : null}
       <AnimatePresence>
         {previewOpen && renderPopover ? (
           <RailPopover anchorEl={rowRef.current} onMouseEnter={scheduleOpen} onMouseLeave={scheduleClose} onDismiss={dismiss}>

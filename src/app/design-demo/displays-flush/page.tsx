@@ -1,20 +1,20 @@
 'use client';
 
 /**
- * Isolation harness for the **right-rail industrial flush** (Cybertruck / WMS)
- * Displays push column — renders `StationDisplaysPushStack` on the Root Index
- * with mock rows so the index chrome can be eyeballed and Playwright-shot
+ * Isolation harness for the **right-rail industrial flush** Displays push
+ * column — renders `StationDisplaysPushStack` on the Root Index with mock rows
+ * so the WMS selection motion (boxed pulse + layoutId track) can be eyeballed
  * WITHOUT auth.
  *
  * Open http://localhost:3050/design-demo/displays-flush (dev / preview only —
  * the `/design-demo/*` layout 404s in production, so this never ships).
  *
- * What to verify (no login needed):
- *  1. Top icon band carries a bottom hairline against the index below it.
- *  2. Group eyebrow is LABEL ……… action count — no Collapse, no kbd chip.
- *  3. Rows: 2px transparent accent rail → accent + pulsing chevron when armed;
- *     the icon column never moves between states.
- *  4. Clicking a row drills to its leaf (sticky Back); Esc pops back to index.
+ * Validate (no login):
+ *  1. ↑↓ — amber bottom track FLIPs row→row (springArmedTrack); boxed accent
+ *     pulse scales/fades on opacity+transform only (no row reflow).
+ *  2. Enter / click — emerald boxed commit pulse + SYNC chip → leaf.
+ *  3. Left accent rail is static ink (border-l, never animated width).
+ *  4. Esc / Back pops leaf → index.
  */
 
 import { useState } from 'react';
@@ -78,9 +78,6 @@ function VerbBody({
           aria-label="Verb actions"
         />
       </div>
-      {/* No section eyebrow — the verb tab already names this body. Restating
-          it ("Link" tab → "LINK" heading) is the double-title redundancy the
-          condensed Cybertruck grammar forbids. */}
       <div className="min-h-0 flex-1">
         <FlushList rows={rows} />
       </div>
@@ -90,18 +87,18 @@ function VerbBody({
 
 /** Mirrors a real matched carton so the Root Index reads like the bench. */
 const INDEX_ROWS: DisplayIndexRow[] = [
-  { id: 'ticket', label: 'Ticket', subtitle: 'Claim needed', tone: 'action', group: 'verification' },
-  { id: 'photos', label: 'Photos', subtitle: '10 photos', tone: 'ok', group: 'verification' },
-  { id: 'linkage', label: 'Pairing', subtitle: 'Paired', tone: 'ok', group: 'verification' },
+  { id: 'listings', label: 'Listings', subtitle: 'Listing links', tone: 'neutral', group: 'verification' },
   { id: 'classify', label: 'Classify', subtitle: 'PO', tone: 'ok', group: 'verification' },
+  { id: 'linkage', label: 'Pairing', subtitle: 'Paired', tone: 'ok', group: 'verification' },
   { id: 'inventory', label: 'Inventory', subtitle: '1/1 received', tone: 'ok', group: 'assets' },
-  { id: 'staging', label: 'Listings', subtitle: 'Listing links', tone: 'neutral', group: 'assets' },
   { id: 'units', label: 'Units', subtitle: '1 serial', tone: 'ok', group: 'assets' },
+  { id: 'photos', label: 'Photos', subtitle: '10 photos', tone: 'ok', group: 'assets' },
+  { id: 'ticket', label: 'Ticket', subtitle: 'No ticket', tone: 'neutral', group: 'context' },
 ];
 
 export default function DisplaysFlushDemoPage() {
   const [active, setActive] = useState<string>(STATION_DISPLAY_INDEX);
-  const [photoAction, setPhotoAction] = useState<UnboxPhotoAction>('move');
+  const [photoAction, setPhotoAction] = useState<UnboxPhotoAction>('actions');
 
   const tabs: SectionTab[] = [
     {
@@ -125,6 +122,7 @@ export default function DisplaysFlushDemoPage() {
       content: (
         <PhotosDisplayHost
           row={MOCK_ROW}
+          staffId={0}
           action={photoAction}
           onActionChange={setPhotoAction}
         />
@@ -190,11 +188,22 @@ export default function DisplaysFlushDemoPage() {
 
   return (
     <div className="flex h-[100dvh] w-full bg-surface-canvas">
-      {/* Sunken center stand-in — the push column should abut this flush. */}
-      <div className="flex min-w-0 flex-1 items-center justify-center bg-surface-sunken">
-        <p className="text-role-caption text-text-soft">
-          center work surface — Displays push column abuts flush on the right →
+      {/* Sunken center — validation copy for the right-rail motion preview. */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-4 bg-surface-sunken px-8">
+        <p className="text-role-caption font-semibold text-text-default">
+          Right-rail Displays motion preview
         </p>
+        <p className="max-w-md text-role-caption text-text-soft">
+          Real <code className="text-role-micro">StationDisplaysPushStack</code> on
+          the right — click the column, then ↑↓ / Enter. Selection highlight is an
+          instant hard cut (no sliding track).
+        </p>
+        <ul className="max-w-md list-disc space-y-1 pl-5 text-role-eyebrow text-text-muted">
+          <li>↑↓ arm = instant hard cut (left rail + amber track remount)</li>
+          <li>No layoutId FLIP — the track must not slide between rows</li>
+          <li>Emerald boxed pulse + SYNC on Enter/commit only</li>
+          <li>Left accent rail = static ink (no border-width tween)</li>
+        </ul>
       </div>
       <StationDisplaysPushStack
         ariaLabel="Displays flush demo"

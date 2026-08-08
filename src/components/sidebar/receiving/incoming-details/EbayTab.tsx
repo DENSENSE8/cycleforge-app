@@ -11,11 +11,12 @@
  * tab renders the accounting side; here it shows as linked.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, Check, ExternalLink } from '@/components/Icons';
 import { OrderIdChip, PoChip, getLast8 } from '@/components/ui/CopyChip';
 import { PairingLinkButton } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
+import { Button, TextField } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import type { DetailsResponse } from './incoming-details-shared';
@@ -42,9 +43,26 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [listingUrl, setListingUrl] = useState('');
+  const [savingIdentity, setSavingIdentity] = useState(false);
 
   const zohoLink = inbound?.links.find((l) => l.source_type === 'zoho') ?? null;
   const zohoLinked = Boolean(zohoLink) || Boolean(inbound?.zoho_purchaseorder_id);
+  const canEditIdentity =
+    Boolean(inbound)
+    && inbound!.source_type !== 'zoho'
+    && !zohoLinked;
+
+  useEffect(() => {
+    if (!inbound) return;
+    setOrderNumber(inbound.order_number || inbound.source_order_id || '');
+    setTrackingNumber(
+      inbound.tracking_number || data.shipment?.tracking_number || '',
+    );
+    setListingUrl(inbound.listing_url || '');
+  }, [inbound, data.shipment?.tracking_number]);
 
   const trimmed = query.trim();
   const { data: search, isFetching, isError } = useQuery({
@@ -85,7 +103,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
         toast.error(body.error || `Link failed (${res.status})`);
         return;
       }
-      toast.success(body.merged ? `Merged into PO ${poLabel}` : `Linked PO ${poLabel}`);
+      toast.success(body.merged ? `Merged into purchase order ${poLabel}` : `Linked purchase order ${poLabel}`);
       queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
       invalidateReceivingFeeds(queryClient);
@@ -97,7 +115,46 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
     }
   };
 
-  const sourceLabel = inbound.source_type === 'ebay' ? 'eBay' : inbound.source_type;
+  const sourceLabel =
+    inbound.source_type === 'ebay'
+      ? 'eBay'
+      : inbound.source_type === 'amazon'
+        ? 'Amazon'
+        : inbound.source_type === 'manual'
+          ? 'Manual'
+          : inbound.source_type;
+
+  const saveIdentity = async () => {
+    if (!canEditIdentity || savingIdentity) return;
+    setSavingIdentity(true);
+    try {
+      const res = await fetch('/api/receiving/inbound/update-identity', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiving_line_id: inbound.receiving_line_id,
+          order_number: orderNumber.trim() || null,
+          tracking_number: trackingNumber.trim() || null,
+          listing_url: listingUrl.trim() || null,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!res.ok || !body.success) {
+        toast.error(body.error || `Save failed (${res.status})`);
+        return;
+      }
+      toast.success('Identity updated');
+      queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
+      invalidateReceivingFeeds(queryClient);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -124,6 +181,40 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
         ) : null}
       </div>
 
+      {canEditIdentity ? (
+        <div className="space-y-3 border-t border-border-soft pt-3">
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">
+            Edit identity
+          </p>
+          <TextField
+            label="Display order #"
+            value={orderNumber}
+            onChange={setOrderNumber}
+            tone="neutral"
+          />
+          <TextField
+            label="Tracking #"
+            value={trackingNumber}
+            onChange={setTrackingNumber}
+            tone="neutral"
+          />
+          <TextField
+            label="Listing URL"
+            value={listingUrl}
+            onChange={setListingUrl}
+            tone="neutral"
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={savingIdentity}
+            onClick={() => void saveIdentity()}
+          >
+            {savingIdentity ? 'Saving…' : 'Save identity'}
+          </Button>
+        </div>
+      ) : null}
+
       {/* Link to Zoho PO — the merge affordance. */}
       <div className="space-y-2 border-t border-border-soft pt-3">
         <p className="text-role-micro uppercase tracking-widest text-text-soft">Purchase order</p>
@@ -143,7 +234,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search PO # / reference / vendor…"
+                placeholder="Search purchase order # / reference / vendor…"
                 className="w-full rounded-none border border-border-soft py-2 pl-8 pr-8 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {isFetching ? (

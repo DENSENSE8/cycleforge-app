@@ -47,6 +47,7 @@
  */
 
 import { useEffect } from 'react';
+import { focusWithinListKeyOwner, isListKeyRegionOpen } from '@/lib/keyboard/list-key-scope';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { getRecordCursorTop } from '@/lib/record-cursor/store';
 import type { CursorScope, CursorStep } from '@/lib/record-cursor/cursor-model';
@@ -145,6 +146,19 @@ export function useRecordCursorKeyboard({
         }
         return;
       }
+
+      // A focused list owns its own navigation keys (roving tabindex). When
+      // focus is inside one, the record cursor stands down — the same
+      // innermost-surface-owns-the-keys rule as `hasOpenOverlay()` above, but
+      // for a non-overlay focus region (e.g. the Station Displays index). This
+      // must run in the capture listener itself: a `stopPropagation()` in the
+      // list row can't reach a capture-phase window handler.
+      if (focusWithinListKeyOwner(e.target)) return;
+      // …and stand down entirely while an open Station Displays push column is
+      // up: after `←|`, focus sits on that toggle out in the pane, so the
+      // focus-within check above can't catch it — an arrow would step the table
+      // behind the column and pop a second sidebar. See `isListKeyRegionOpen`.
+      if (isListKeyRegionOpen()) return;
 
       // Every other key steps a list, so from here on a publisher is required:
       // a capture listener must not swallow j/k/↓/↑ it cannot act on.

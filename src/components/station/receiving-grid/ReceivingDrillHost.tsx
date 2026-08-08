@@ -152,6 +152,7 @@ export function ReceivingDrillHost({
   handleToggleRow,
   activityAxis,
   isHistory,
+  statusVocabulary,
   selectGutterChrome,
   clickSelect = false,
   onOpenWorkspace,
@@ -172,6 +173,7 @@ export function ReceivingDrillHost({
   handleToggleRow?: (row: ReceivingLineRow) => void;
   activityAxis?: ReceivingActivityAxis;
   isHistory?: boolean;
+  statusVocabulary?: 'fine' | 'coarse';
   selectGutterChrome?: GridSelectGutterChrome;
   clickSelect?: boolean;
   onOpenWorkspace?: (row: ReceivingLineRow) => void;
@@ -311,6 +313,7 @@ export function ReceivingDrillHost({
         handleToggleRow={handleToggleRow}
         activityAxis={activityAxis}
         isHistory={isHistory}
+        statusVocabulary={statusVocabulary}
         selectGutterChrome={selectGutterChrome}
         clickSelect={clickSelect}
         onOpenWorkspace={onOpenWorkspace}

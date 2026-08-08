@@ -18,6 +18,7 @@ import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 const TABLE_ROW_COUNT = 8;
@@ -49,7 +50,12 @@ export function UnboxWorkbenchSkeleton() {
         chrome={
           <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
             {/* Row 1 — tabs · CTA — flush to context rail */}
-            <div className="flex h-10 items-stretch gap-2 border-b border-r border-border-soft bg-surface-card p-0.5 shadow-sm">
+            <div
+              className={cn(
+                'flex items-stretch gap-0 border-b border-r border-border-soft bg-surface-card p-0 shadow-sm',
+                PRIMARY_CHROME_ROW_FACE,
+              )}
+            >
               <div className="flex min-w-0 items-center gap-1.5">
                 <SkeletonBase width="64px" height="24px" className="rounded-full" />
                 <SkeletonBase width="64px" height="24px" className="rounded-full" />
@@ -74,7 +80,12 @@ export function UnboxWorkbenchSkeleton() {
               ))}
             </div>
             {/* Row 2 — search · refine */}
-            <div className="flex h-10 items-center justify-between gap-2 border-b border-r border-border-soft bg-surface-card p-0.5 shadow-sm">
+            <div
+              className={cn(
+                'flex items-center justify-between gap-2 border-b border-r border-border-soft bg-surface-card p-0.5 shadow-sm',
+                PRIMARY_CHROME_ROW_FACE,
+              )}
+            >
               <SkeletonBase width="120px" height="28px" className="rounded-lg" />
               <div className="flex items-center gap-2">
                 <SkeletonBase width="28px" height="28px" className="rounded-lg" />

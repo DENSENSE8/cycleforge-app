@@ -13,8 +13,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveStaffDirectory } from './hooks';
 
-/** Pack modes — set via ?packMode= URL (GlobalHeader L2 / SIDEBAR_PAGE_NAV). */
-type PackMode = 'standard' | 'fragile' | 'multi';
+import { parsePackScanMode } from '@/utils/pack-workspace-state';
 
 export function PackerSidebarPanel() {
   const searchParams = useSearchParams();
@@ -28,8 +27,7 @@ export function PackerSidebarPanel() {
   );
 
   // Pack mode — persisted via ?packMode= URL param so refresh/sharing preserves it.
-  const rawMode = searchParams.get('packMode') ?? 'standard';
-  const packMode: PackMode = rawMode === 'fragile' ? 'fragile' : rawMode === 'multi' ? 'multi' : 'standard';
+  const packMode = parsePackScanMode(searchParams.get('packMode'));
 
   const packerMember = staffDirectory.find((m) => String(m.id) === packerId);
   const packerName = packerMember?.name || 'Packer';

@@ -7,6 +7,11 @@ description: "Isolate query params across mode/surface switches by constructing 
 
 > Construct destination query params from a declared set; drop unknowns at a schema boundary. Never copy the current search string and hand-delete keys.
 
+**Not this skill:** mount-gated open **paint** (pending until soft-replace) lives in
+`src/lib/routing/optimistic-url-param.ts` + `useOptimisticUrlParam` — see
+`.claude/rules/source-of-truth.md` → Optimistic URL-param paint. Isolation owns
+construct/parse; paint owns click→mount latency. Do not merge the two jobs.
+
 ## Quick Reference
 
 | Problem | Solution |
@@ -16,6 +21,7 @@ description: "Isolate query params across mode/surface switches by constructing 
 | "Segments will isolate us" | Segments are layout/remount — not isolation; router still needs empty or constructed query |
 | Shared keys across sibling modes | Emit only target delta (+ explicit preference carries); do not rely on parse alone |
 | Spec drift / undeclared reads | Ownership guard + shrink-only undeclared-read ratchet |
+| Open overlay waits on soft-replace | Paint-pending SoT (`optimistic-url-param`) — not isolation |
 
 ## The Problem
 

@@ -7,8 +7,8 @@
  * two-column body (no padded wrappers). Sibling shell — never remount desk/`/o`.
  *
  * Order resolve shares the TanStack cache seeded by header find
- * (`setSearchOrderResolveCache`) so navigation paints content without a gray
- * loading shell.
+ * (`setSearchOrderResolveCache`) so feedback paints without a body hold —
+ * loading is transparent; the header find pending bar owns the pulse.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -246,8 +246,8 @@ export function SearchOrderFeedback({ orderId }: { orderId: string | number }) {
   const photosSettled = !timelineQuery.isLoading && resolveStatus === 'ok';
 
   if (resolveStatus === 'loading') {
-    // Hold an empty canvas — header owns the pending sweep (cache miss / deep link).
-    return <div className="flex h-full min-h-0 w-full flex-1 bg-surface-canvas" aria-busy />;
+    // Header find pending bar owns chrome; body stays transparent (no “Opening…” copy).
+    return <div className="min-h-0 flex-1" aria-busy />;
   }
 
   if (resolveStatus === 'fba') {

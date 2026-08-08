@@ -82,7 +82,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       theme={c.stationTheme}
       inputBorderClassName={c.scanOutlineClass}
       placeholder={
-        fbaScanOnly ? 'FNSKU (X00…) or ASIN (B0…)' : 'FNSKU, ASIN, tracking, RS-, serial'
+        fbaScanOnly ? 'Amazon SKU / FNSKU (X00…) or ASIN (B0…)' : 'Amazon SKU, ASIN, tracking, Repair, serial'
       }
       autoFocus={false}
       hasRightContent={Boolean(busySpinner)}

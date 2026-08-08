@@ -78,8 +78,8 @@ test('there is ONE face height for every state, matching the layout module', () 
   const src = raw();
   assert.match(
     src,
-    /PROCEDURE_STEP_FACE_HEIGHT\s*=\s*['"]h-10['"]/,
-    'PROCEDURE_STEP_FACE_HEIGHT must be h-10 (40px)',
+    /PROCEDURE_STEP_FACE_HEIGHT\s*=\s*['"]h-7['"]/,
+    'PROCEDURE_STEP_FACE_HEIGHT must be h-7 (28px — PRIMARY chrome)',
   );
 
   const layoutFace = /PROCEDURE_STACK_FACE_REM\s*=\s*([\d.]+)/.exec(layoutRaw());

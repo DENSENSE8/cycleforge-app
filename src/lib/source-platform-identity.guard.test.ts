@@ -18,13 +18,23 @@ describe('source-platform identity SoT', () => {
     const chip = read('src/components/ui/CopyChip.tsx');
     assert.match(
       chip,
-      /export const OrderIdChip[\s\S]{0,900}platformLabel=\{platformLabel\}/,
+      /export const OrderIdChip[\s\S]{0,1600}platformLabel=\{platformLabel\}/,
       'OrderIdChip must forward platformLabel to CopyChip',
     );
     assert.match(
       chip,
-      /export const PoChip[\s\S]{0,1100}platformLabel=\{platformLabel\}/,
+      /export const OrderIdChip[\s\S]{0,1600}iconClass=\{plain \? undefined : iconClass\}/,
+      'OrderIdChip must forward platform icon paint to CopyChip',
+    );
+    assert.match(
+      chip,
+      /export const PoChip[\s\S]{0,1800}platformLabel=\{platformLabel\}/,
       'PoChip must forward platformLabel to CopyChip',
+    );
+    assert.match(
+      chip,
+      /export const PoChip[\s\S]{0,1800}iconClass=\{iconClass\}/,
+      'PoChip must forward platform icon paint to CopyChip',
     );
   });
 
@@ -34,6 +44,15 @@ describe('source-platform identity SoT', () => {
       ['src/components/ui/OrderIdentityChips.tsx', /<OrderIdChip[\s\S]{0,180}platformLabel=\{platformLabel\}/],
       ['src/components/station/incoming-grid/cells/index.tsx', /platformLabel=\{platformMeta\.value \? platformMeta\.label : null\}/],
       ['src/components/station/receiving-grid/cells/ReceivingOrderCell.tsx', /platformLabel=\{platformLabel \|\| null\}/],
+      ['src/components/search/order-feedback/SearchOrderDispositionBar.tsx', /<OrderIdChip[\s\S]{0,220}platformLabel=\{platformLabel\}/],
+      ['src/components/search/order-feedback/SearchOrderFactsColumn.tsx', /<OrderIdChip[\s\S]{0,220}platformLabel=\{platformLabel\}/],
+      ['src/components/search/SearchResultRow.tsx', /<OrderIdChip[\s\S]{0,220}platformLabel=\{platformLabel\}/],
+      // Recent-rail peeks resolve label + `#` tone from platformValue inside the SoT.
+      ['src/components/sidebar/rail-shell/RailPeekIdentityFacts.tsx', /platformLabel=\{platformLabel\}/],
+      ['src/components/sidebar/rail-shell/RailPeekIdentityFacts.tsx', /platformMetaIconTone/],
+      // Empty keepEmpty order paints catalog platform label (hover-prefix parity).
+      ['src/components/sidebar/rail-shell/RailPeekIdentityFacts.tsx', /platformFace/],
+      ['src/components/sidebar/rail-shell/RailPeekIdentityFacts.tsx', /UNKNOWN_PLATFORM/],
     ] as const;
 
     for (const [file, pattern] of surfaces) {
@@ -45,9 +64,12 @@ describe('source-platform identity SoT', () => {
     for (const file of [
       'src/components/station/entity-context/CartonContextCard.tsx',
       'src/components/ui/OrderIdentityChips.tsx',
+      'src/components/search/order-feedback/SearchOrderDispositionBar.tsx',
+      'src/components/search/order-feedback/SearchOrderFactsColumn.tsx',
     ]) {
       const src = read(file);
       assert.doesNotMatch(src, /function\s+formatPlatformTooltip|PLATFORM_COLOR|platformColorMap/);
+      assert.doesNotMatch(src, /getAccountSourceLabel/);
     }
   });
 });

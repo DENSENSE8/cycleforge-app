@@ -45,7 +45,7 @@ export function isEmptyGutterChrome(_chrome: GridSelectGutterChrome): boolean {
 
 function faceClassName(isOn: boolean, isMixed: boolean): string {
   return cn(
-    'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+    'flex h-4 w-4 shrink-0 items-center justify-center rounded-none border transition-colors',
     isOn
       ? 'border-accent-bg bg-accent-bg text-text-inverse'
       : isMixed
@@ -160,7 +160,7 @@ export function GridRowCheckbox({
         // ds-raw-button: gutter check — DS Button has no glyph-square variant.
         // Full-track hit plane for every chrome — the 16px square is the face,
         // not the only clickable pixels.
-        'ds-raw-button flex h-full min-h-10 w-full shrink-0 items-center justify-center self-stretch rounded-none border-0 bg-transparent',
+        'ds-raw-button flex h-full w-full shrink-0 items-center justify-center self-stretch rounded-none border-0 bg-transparent',
         sheetsChrome && 'relative overflow-hidden',
         focusRing('control'),
         className,

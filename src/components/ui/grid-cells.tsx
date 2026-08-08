@@ -29,6 +29,7 @@ import {
   getDaysLateTone,
   getLaneAgeTone,
 } from '@/utils/date';
+import { floorQtyFractionTip } from '@/lib/receiving/rail/quantity';
 import { cn } from '@/utils/_cn';
 
 /** The house empty-cell value — a quiet em dash (never blank, never "N/A"). */
@@ -58,9 +59,9 @@ export function GridCellDash({ className }: { className?: string }) {
  * cell's alignment, and travels together under a drag-resize.
  *
  * **The dot is not redundant with the chip's tone.** It carries the finer
- * vocabulary: receiving's `getStatusDotBg` paints emerald the moment a line is
- * quantity-complete, whichever lifecycle stage the chip names. Two facts, one
- * token, and the dot is the one that changes first.
+ * lifecycle vocabulary (`getStatusDotBg` / coarse stage) — not a qty-complete
+ * shortcut. Unboxed ≠ Received: quantity-full while still UNBOXED stays indigo,
+ * not emerald.
  *
  * `toneClass` comes from the surface's lifecycle registry (`workflowStage().badge`,
  * `pickupOrderStatusChipClass`, …) — **never a local map**. The ring derives from
@@ -168,9 +169,11 @@ export function GridAgeCellValue({
 }
 
 /**
- * Received/expected quantity fraction (`0/1`, `0/?`) — Unbox / Incoming
- * workbench qty track. `?` is load-bearing when expected is unknown (unfound
- * PO). Tone: multi-unit expected → warning; complete → emerald; else muted.
+ * Floor counted/expected quantity fraction (`0/1`, `0/?`) — Unbox / Incoming
+ * workbench **Qty** track (column label Qty, not Received). `?` is load-bearing
+ * when expected is unknown (unfound PO). Tip uses "counted" via
+ * `floorQtyFractionTip` — never the inventory noun Received (Unboxed ≠ Received).
+ * Tone: multi-unit expected → warning; qty-complete → emerald; else muted.
  */
 export function GridQtyFractionValue({
   received,
@@ -180,7 +183,7 @@ export function GridQtyFractionValue({
 }: {
   received: number;
   expected?: number | null;
-  /** Hover tip; defaults to a plain-language received/expected sentence. */
+  /** Hover tip; defaults to floor counted/expected (never "received"). */
   tooltip?: string | null;
   className?: string;
 }) {
@@ -195,11 +198,7 @@ export function GridQtyFractionValue({
         : complete
           ? 'text-emerald-600'
           : 'text-text-muted';
-  const tip =
-    tooltip ??
-    (expected == null
-      ? `${received} received · expected count unknown (no PO line matched yet)`
-      : `${received} of ${expected} received`);
+  const tip = tooltip ?? floorQtyFractionTip(received, expected);
 
   return (
     <HoverTooltip label={tip} focusable={false}>

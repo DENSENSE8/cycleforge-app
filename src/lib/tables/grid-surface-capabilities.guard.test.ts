@@ -75,6 +75,11 @@ import {
 } from '@/components/warehouse/bins-grid/bins-grid-descriptor';
 import { BINS_GRID_COLUMNS } from '@/components/warehouse/bins-grid/bins-grid-layout';
 import {
+  UNITS_GRID_CAPABILITIES,
+  makeUnitsGridDescriptor,
+} from '@/components/inventory/units-grid/units-grid-descriptor';
+import { UNITS_GRID_COLUMNS } from '@/components/inventory/units-grid/units-grid-layout';
+import {
   CATALOG_LINK_GRID_CAPABILITIES,
   makeCatalogLinkGridDescriptor,
   makeImportExceptionGridDescriptor,
@@ -113,6 +118,7 @@ const DECLARED_CAPABILITIES: Record<string, GridSurfaceCapabilities> = {
   'tracking-exceptions': TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
   unfound: UNFOUND_GRID_CAPABILITIES,
   bins: BINS_GRID_CAPABILITIES,
+  units: UNITS_GRID_CAPABILITIES,
   // ONE bag for both Review · Catalog-link tabs: they differ in what their
   // columns MEAN, not in what the surface may do.
   'catalog-link': CATALOG_LINK_GRID_CAPABILITIES,
@@ -137,6 +143,7 @@ describe('grid surface capabilities', () => {
     assert.equal(TRACKING_EXCEPTIONS_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(UNFOUND_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(BINS_GRID_CAPABILITIES.rowTriageFlags, false);
+    assert.equal(UNITS_GRID_CAPABILITIES.rowTriageFlags, false);
     assert.equal(CATALOG_LINK_GRID_CAPABILITIES.rowTriageFlags, false);
   });
 
@@ -199,6 +206,10 @@ describe('grid surface capabilities', () => {
     assert.deepEqual(
       makeBinsGridDescriptor(BINS_GRID_COLUMNS).capabilities,
       BINS_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeUnitsGridDescriptor(UNITS_GRID_COLUMNS).capabilities,
+      UNITS_GRID_CAPABILITIES,
     );
     assert.deepEqual(
       makeMyDayGridDescriptor(MY_DAY_GRID_COLUMNS).capabilities,
@@ -305,6 +316,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx': 'tracking-exceptions',
   'src/components/receiving/unfound/grid/UnfoundGridView.tsx': 'unfound',
   'src/components/warehouse/bins-grid/BinsGridView.tsx': 'bins',
+  'src/components/inventory/units-grid/UnitsGridView.tsx': 'units',
   'src/features/my-day/grid/MyDayGridView.tsx': 'my-day',
   'src/components/tech/all/TechAllGridView.tsx': 'tech-all',
   // Both Review · Catalog-link tabs mount from ONE file under ONE bag.

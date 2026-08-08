@@ -28,11 +28,16 @@ import {
   CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS,
 } from '@/components/sidebar/context-panel-column';
 import type { CollapseStripPin } from '@/components/sidebar/context-panel-collapse-context';
+import { contextPanelToggleHotkeyLabel } from '@/components/sidebar/context-panel-toggle-hotkey';
 import { RailPopover } from '@/components/sidebar/rail-shell/RailPopover';
 import { useRailHoverPreview } from '@/components/sidebar/rail-shell/useRailHoverPreview';
 import { AnimatePresence } from '@/design-system/motion';
 import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+
+function withContextPanelChord(base: string): string {
+  return `${base} (${contextPanelToggleHotkeyLabel()})`;
+}
 
 export { CollapseStripScanCell } from '@/components/sidebar/tech/collapse-strip-scan-cell';
 
@@ -50,12 +55,13 @@ export function RailFilterCollapseButton({
   label?: string;
   testId?: string;
 }) {
+  const face = withContextPanelChord(label);
   return (
-    <HoverTooltip label={label} asChild>
+    <HoverTooltip label={face} asChild>
       <IconButton
         size="xs"
         tone="neutral"
-        ariaLabel={label}
+        ariaLabel={face}
         icon={<ArrowLeftToLine className={LEFT_DOCK_TOGGLE_ICON_CLASS} />}
         onClick={onCollapse}
         data-testid={testId}
@@ -74,12 +80,13 @@ function LeftDockExpandButton({
   label?: string;
   testId?: string;
 }) {
+  const face = withContextPanelChord(label);
   return (
-    <HoverTooltip label={label} asChild>
+    <HoverTooltip label={face} asChild>
       <IconButton
         size="xs"
         tone="neutral"
-        ariaLabel={label}
+        ariaLabel={face}
         icon={<ArrowRightToLine className={LEFT_DOCK_TOGGLE_ICON_CLASS} />}
         onClick={(e: MouseEvent) => {
           e.stopPropagation();
@@ -283,6 +290,7 @@ export function LeftDockCollapseStrip({
    */
   children?: ReactNode;
 }) {
+  const face = withContextPanelChord(label);
   const onStripKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -299,7 +307,7 @@ export function LeftDockCollapseStrip({
       data-left-dock-collapsed=""
       role="button"
       tabIndex={0}
-      aria-label={label}
+      aria-label={face}
       onClick={onExpand}
       onKeyDown={onStripKeyDown}
       {...hostDataAttrs}

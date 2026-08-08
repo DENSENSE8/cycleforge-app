@@ -47,22 +47,31 @@ export function receivingStageTooltip(
 }
 
 /**
- * History-mode status-chip tooltip. DONE (shown as Received) is bare — stamps
- * live on the Date column. UNBOXED uses the shared sync tip SoT
- * ({@link receivingUnboxedSyncTooltip}). Other stages keep the stage tip.
+ * History-mode status-chip tooltip.
+ *
+ * - **Fine** (Testing History): DONE (Received) is bare; UNBOXED uses the shared
+ *   sync tip SoT; other stages keep the stage tip.
+ * - **Coarse** (Unbox / Receiving History): Received (incl. testing terminals) is
+ *   bare; UNBOXED keeps the sync tip; never surface stage tips that name FAILED /
+ *   AWAITING_TEST / etc.
  */
 export function receivingHistoryStatusTooltip({
   workflowStatus,
   inventoryProviderLabel,
   stageTip,
+  statusVocabulary = 'fine',
 }: {
   workflowStatus: string | null | undefined;
   inventoryProviderLabel: string;
   stageTip?: string | null;
+  statusVocabulary?: 'fine' | 'coarse';
 }): string | null {
+  const syncTip = receivingUnboxedSyncTooltip({ workflowStatus, inventoryProviderLabel });
+  if (statusVocabulary === 'coarse') {
+    return syncTip;
+  }
   const s = String(workflowStatus ?? '').trim().toUpperCase();
   if (s === 'DONE') return null;
-  const syncTip = receivingUnboxedSyncTooltip({ workflowStatus, inventoryProviderLabel });
   if (syncTip) return syncTip;
   const tip = String(stageTip ?? '').trim();
   return tip || null;

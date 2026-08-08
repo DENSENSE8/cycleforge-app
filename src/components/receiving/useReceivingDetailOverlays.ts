@@ -24,24 +24,16 @@ import {
   type ReceivingOpenIncomingDetailsDetail,
 } from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
+import {
+  incomingDetailsTargetFromRow,
+  type IncomingDetailsTarget,
+} from '@/lib/receiving/incoming-details-target';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 
-export interface IncomingDetailsTarget {
-  poId: string | null;
-  poNumber: string | null;
-  shipmentId: number | null;
-  /** Universal Incoming (§7.3): a non-Zoho row keys on its link identity. */
-  inboundSourceType?: string | null;
-  inboundSourceOrderId?: string | null;
-  /** Unbox/Triage carton focus — preferred receiving row for notes/shipment. */
-  receivingId?: number | null;
-  /** Active line focus — PoTab highlights matching line_items row. */
-  receivingLineId?: number | null;
-}
+export type { IncomingDetailsTarget } from '@/lib/receiving/incoming-details-target';
 
 export interface ReceivingDetailOverlays {
   overlayLog: ReceivingDetailsLog | null;
@@ -134,34 +126,12 @@ export function useReceivingDetailOverlays(
         setIncomingDetails(null);
         return;
       }
-      const poId = (row.zoho_purchaseorder_id || '').trim();
-      // A "Delivered · not scanned" box that never resolved to a PO is shipment-
-      // anchored (synthetic row, receiving_id null). Recover its shipment id so
-      // the panel can still open (shipment-only mode) and offer a hard delete.
-      const shipmentId = shipmentIdFromDeliveredUnscannedRow(row);
-      // Universal Incoming (§7.3): a non-Zoho row (eBay buyer purchase) has no
-      // zoho PO — key the panel on its polymorphic link identity instead.
-      const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
-      const inboundOrderId = (row.source_order_id || '').trim();
-      const isInbound = !poId && inboundSource !== '' && inboundSource !== 'zoho' && inboundOrderId !== '';
-      if (!poId && shipmentId == null && !isInbound) {
-        // Neither a PO, a shipment-anchored delivered box, nor an inbound row →
-        // nothing the panel can render. Deterministic feedback, not a dead click.
-        const tracking = (row.tracking_number || '').trim();
-        toast.info(tracking ? 'Delivered box not linked to a PO yet' : 'No linked PO for this row yet');
+      const resolved = incomingDetailsTargetFromRow(row);
+      if (!resolved.ok) {
+        toast.info(resolved.toast);
         return;
       }
-      setIncomingDetails({
-        poId: poId || null,
-        poNumber: row.zoho_purchaseorder_number ?? null,
-        // Prefer the richer PO view when a PO exists; fall back to shipment-only,
-        // else the inbound (eBay) identity.
-        shipmentId: poId ? null : shipmentId,
-        inboundSourceType: isInbound ? inboundSource : null,
-        inboundSourceOrderId: isInbound ? inboundOrderId : null,
-        receivingId: row.receiving_id ?? null,
-        receivingLineId: typeof row.id === 'number' && row.id > 0 ? row.id : null,
-      });
+      setIncomingDetails(resolved.target);
     };
     window.addEventListener('receiving-select-line', handler);
     return () => window.removeEventListener('receiving-select-line', handler);
@@ -199,7 +169,14 @@ export function useReceivingDetailOverlays(
         Number(detail.receivingLineId) > 0
           ? Number(detail.receivingLineId)
           : null;
-      if (!poId && shipmentId == null && !(inboundSource && inboundOrderId)) return;
+      if (
+        !poId &&
+        shipmentId == null &&
+        !(inboundSource && inboundOrderId) &&
+        receivingId == null
+      ) {
+        return;
+      }
       setIncomingDetails({
         poId,
         poNumber: detail.poNumber ?? null,
@@ -208,6 +185,7 @@ export function useReceivingDetailOverlays(
         inboundSourceOrderId: inboundOrderId,
         receivingId,
         receivingLineId,
+        seedRow: null,
       });
     };
     window.addEventListener(RECEIVING_OPEN_INCOMING_DETAILS_EVENT, handler);

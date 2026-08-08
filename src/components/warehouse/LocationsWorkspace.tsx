@@ -16,6 +16,12 @@ import {
   WORKBENCH_SHEET_HOST,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import {
+  WorkbenchFilterMenuRow,
+  WorkbenchFilterPopover,
+} from '@/components/dashboard/workbench-filter-popover';
+import { useRightRailTopId } from '@/components/right-rail/useRightRailOccupant';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useLocations } from '@/hooks/useLocations';
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
@@ -83,6 +89,11 @@ function LocationsBinsChrome({
   const { status, room, q, onParamChange } = useBinsFilterParams();
   const { rooms } = useLocations();
   const { counts } = useBinsOverview({ room, q });
+  const [roomFilterOpen, setRoomFilterOpen] = useState(false);
+  // `BinDetailFlyout` registers `detail:bin:<identity>` — a per-entity id, so
+  // match on the prefix rather than a fixed string.
+  const railTopId = useRightRailTopId();
+  const binInspectorOpen = (railTopId ?? '').startsWith('detail:bin:');
 
   const onSelectStatus = useCallback(
     (next: BinFilterStatus) => {
@@ -100,32 +111,56 @@ function LocationsBinsChrome({
       />
       <WorkbenchTriageBand
         controlsSlotRef={controlsSlotRef}
+        trailing={
+          <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />
+        }
         search={
           <TechRailSearchBar
             value={q}
             onChange={(v) => onParamChange('q', v)}
             onClear={() => onParamChange('q', '')}
-            placeholder="Search bins…"
+            placeholder="Filter bins…"
             variant="chrome"
+            className="min-w-0 flex-1"
+            // Room narrows the ROWS, so it rides IN the find field beside the
+            // query it refines (find-only Band 3 — the right zone is view
+            // toggles only). It was a hand-rolled `rounded-md` <select> in
+            // `right` until 2026-08-08: a second filter grammar AND soft radius
+            // on ops chrome.
+            trailingSuffix={
+              <WorkbenchFilterPopover
+                open={roomFilterOpen}
+                onOpenChange={setRoomFilterOpen}
+                hot={Boolean(room)}
+                hotActiveLabel={room || undefined}
+                label="Filter by room"
+                density="field"
+              >
+                <WorkbenchFilterMenuRow
+                  label="All rooms"
+                  active={!room}
+                  onClick={() => {
+                    onParamChange('room', '');
+                    setRoomFilterOpen(false);
+                  }}
+                />
+                {rooms.map((r) => {
+                  const name = r.room || r.name;
+                  return (
+                    <WorkbenchFilterMenuRow
+                      key={r.id}
+                      label={r.zone_letter ? `${name} (${r.zone_letter})` : name}
+                      active={room === name}
+                      onClick={() => {
+                        onParamChange('room', name);
+                        setRoomFilterOpen(false);
+                      }}
+                    />
+                  );
+                })}
+              </WorkbenchFilterPopover>
+            }
           />
-        }
-        right={
-          <select
-            value={room}
-            onChange={(e) => onParamChange('room', e.target.value)}
-            aria-label="Filter by room"
-            className="h-8 max-w-[12rem] rounded-md border border-border-soft bg-surface-card px-2 text-role-caption outline-none focus:border-blue-500"
-          >
-            <option value="">All rooms</option>
-            {rooms.map((r) => {
-              const name = r.room || r.name;
-              return (
-                <option key={r.id} value={name}>
-                  {name} {r.zone_letter ? `(${r.zone_letter})` : ''}
-                </option>
-              );
-            })}
-          </select>
         }
       />
     </>

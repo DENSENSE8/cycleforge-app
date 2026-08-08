@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Voicemail, Link2, Clock } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
@@ -9,6 +8,7 @@ import { SearchBar } from '@/components/ui/SearchBar';
 import { SidebarFacetGroup } from '@/components/sidebar/SidebarFacetGroup';
 import type { SidebarSection } from '@/components/sidebar/SidebarSectionList';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useSupportVmParam } from '@/hooks/useSupportVmParam';
 import { cn } from '@/utils/_cn';
 import {
   VOICEMAIL_STATUS_ITEMS,
@@ -32,9 +32,7 @@ import { isNotConfigured, useVoicemails } from './useVoiceQueries';
  * anatomy: caller → time·mailbox meta → status dot + linked-ticket chip.
  */
 export function VoicemailQueue() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const selectedId = Number(searchParams.get('vm')) || null;
+  const { vmId: selectedId, setVm } = useSupportVmParam();
 
   const [status, setStatus] = useState<VoicemailStatusFilter>('open');
   const [text, setText] = useState('');
@@ -44,12 +42,7 @@ export function VoicemailQueue() {
   const items = data?.items ?? [];
   const nowMs = Date.now();
 
-  const select = (id: number) => {
-    const sp = new URLSearchParams(searchParams.toString());
-    sp.set('mode', 'voicemail');
-    sp.set('vm', String(id));
-    router.push(`/support?${sp.toString()}`);
-  };
+  const select = (id: number) => setVm(id);
 
   const openCount = data?.openCount ?? 0;
 

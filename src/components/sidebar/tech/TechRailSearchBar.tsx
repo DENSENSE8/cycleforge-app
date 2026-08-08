@@ -27,13 +27,30 @@
  * Not the global header search (the app's only "search the app" surface).
  */
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react';
+import { flushSync } from 'react-dom';
 import { Search } from '@/components/Icons';
 import { SIDEBAR_RAIL_TRAILING_TRACK_CLASS } from '@/components/layout/header-shell';
 import { useContextPanelCollapse } from '@/components/sidebar/context-panel-collapse-context';
 import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { cn } from '@/utils/_cn';
+
+/** Keys that drive a sibling result list from the box — flush draft first. */
+const FILTER_NAV_KEYS = new Set([
+  'Enter',
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End',
+  'Escape',
+]);
 
 export function TechRailSearchBar({
   value,
@@ -58,9 +75,14 @@ export function TechRailSearchBar({
   onClear?: () => void;
   /**
    * Keydown from the field, caught on the wrapper (the event bubbles). Lets a
-   * host drive a result list from the box — ↓/↑/Enter in the MasterNav spine.
-   * Optional: station rails filter a list that is already reachable by pointer
-   * and pass nothing.
+   * host drive a result list from the box — ↓/↑/Enter in the MasterNav spine
+   * and Station Displays Root Index (`Filter displays…`). Optional: station
+   * recent rails filter a list that is already reachable by pointer and pass
+   * nothing.
+   *
+   * Before the host handler runs, navigational keys flush the local draft via
+   * `flushSync` so Enter commits against what the operator typed, not the
+   * 250ms-debounced parent value.
    */
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   placeholder?: string;
@@ -128,6 +150,19 @@ export function TechRailSearchBar({
     onClear?.();
   };
 
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (
+      onKeyDown &&
+      FILTER_NAV_KEYS.has(e.key) &&
+      draft.trim() !== value.trim()
+    ) {
+      flushSync(() => {
+        onChange(draft);
+      });
+    }
+    onKeyDown?.(e);
+  };
+
   const chrome = variant === 'chrome';
   const contextPanelCollapse = useContextPanelCollapse();
 
@@ -164,7 +199,7 @@ export function TechRailSearchBar({
 
   return (
     <div
-      onKeyDown={onKeyDown}
+      onKeyDown={handleKeyDown}
       // `group/search-bar` — empty-field paste reveals only while THIS host is
       // hovered/focused, not while the pointer is on a list above.
       //

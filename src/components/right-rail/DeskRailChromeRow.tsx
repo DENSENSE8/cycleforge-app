@@ -37,9 +37,9 @@ import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 /** Optical `pl-2` — Unbox push-band twin so the `→|` mark lands on content ink.
- *  `relative z-raised` keeps Hide free of the inset resize sash. */
+ *  `relative z-header` keeps Hide above the inset resize sash (`z-sticky`). */
 const DESK_RAIL_CHROME_ROW_CLASS =
-  'relative z-raised flex h-8 shrink-0 items-center pl-2 pr-2';
+  'relative z-header flex h-8 shrink-0 items-center pl-2 pr-2';
 
 export function DeskRailChromeRow({
   onClose,

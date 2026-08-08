@@ -52,3 +52,22 @@ test('scan-apply reconciles pending scan: stub without deferInvalidateUnboxRecei
     'optimistic unbox upsert must not immediately invalidate the Unboxed rail',
   );
 });
+
+test('unmatched Arrival reconcile seeds siblings with include=serials', () => {
+  // applyUnmatchedCarton triage path must not cold-fetch metadata-only lines.
+  assert.equal(
+    CODE.includes('receivingSiblingsQueryKey(unmatchedReceivingId)'),
+    true,
+    'unmatched Arrival must fetchQuery the shared siblings key',
+  );
+  assert.equal(
+    /include=serials/.test(CODE),
+    true,
+    'unmatched Arrival reconcile must request include=serials',
+  );
+  assert.equal(
+    CODE.includes('seedReceivingSiblingsCache'),
+    true,
+    'unmatched Arrival must seedReceivingSiblingsCache after reconcile',
+  );
+});

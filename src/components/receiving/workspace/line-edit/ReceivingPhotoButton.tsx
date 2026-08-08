@@ -8,18 +8,16 @@
  * stage SoT (`@/lib/receiving/photo-scope`).
  *
  * One pill: camera pinned left + (count when photos exist, else "+") pinned
- * right. Click always sends a capture request to the paired phone. Hover
- * always reveals the gallery action strip (upload / library / …) — including
- * when the carton has no photos yet (empty → Upload photos). Count and "+"
- * never share the face — when a count is shown the plus is omitted. Width is
- * locked (`justify-between`) so digit growth does not shift the identity row.
- * The wrapper owns hover (with a short leave delay) so the cursor can cross
- * the gap to the popover without it collapsing.
+ * right. **Click always sends a capture request to the paired phone** — that
+ * action never moves. Hover reveals the gallery action strip (upload /
+ * library / …) unless {@link suppressHoverGallery} (Unbox carton identity —
+ * multi-verbs live in Displays → Photos Actions). Count and "+" never share
+ * the face — when a count is shown the plus is omitted. Width is locked
+ * (`justify-between`) so digit growth does not shift the identity row.
  *
- * The hover strip is an {@link AnchoredLayer} at `panelPopover` — a body portal
- * so it escapes the scan-station center's `overflow-hidden` and sibling
- * utility/Displays stacking and paints over the right inspector (carton
- * context `galleryPlacement="right"`).
+ * Default hover strip is an {@link AnchoredLayer} at `panelPopover` (body
+ * portal) so it escapes the scan-station center's `overflow-hidden`. Item
+ * dock / Arrival keep the hover strip; Unbox passes `suppressHoverGallery`.
  *
  * While a gallery-owned upload/move overlay is open, the peek stays pinned so
  * the upload controller is not unmounted mid-pick.
@@ -78,10 +76,11 @@ const HOVER_LEAVE_MS = 140;
 const GALLERY_GAP_PX = 6;
 
 function galleryAnchoredPlacement(
-  placement: 'below' | 'above' | 'right',
+  placement: 'below' | 'above' | 'right' | 'left',
 ): AnchoredPlacement {
   if (placement === 'above') return 'top-end';
   if (placement === 'right') return 'right-start';
+  if (placement === 'left') return 'left-start';
   return 'bottom-end';
 }
 
@@ -97,6 +96,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   appearance = 'pill',
   onSendToTicket,
   onOpenMovePhotosExternal,
+  suppressHoverGallery = false,
 }: {
   receivingId: number;
   staffId: number;
@@ -147,11 +147,12 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    * - `below` — under the pill (unit rows, default).
    * - `above` — bottom-anchored chrome (unbox item dock) so the card never
    *   runs off the pane edge.
-   * - `right` — beside the pill (carton context header) so the menu does not
-   *   cover Claim / ticket stacked under Photos; the pointer can travel down
-   *   from the pill to Claim.
+   * - `left` — beside the pill toward the work surface (carton identity). Keeps
+   *   Claim / ticket under Photos clear and never paints into Displays / off
+   *   the viewport edge.
+   * - `right` — beside the pill toward the trailing edge (legacy / rare).
    */
-  galleryPlacement?: 'below' | 'above' | 'right';
+  galleryPlacement?: 'below' | 'above' | 'right' | 'left';
   /**
    * `pill` — station identity / section chrome (rounded photo pill).
    * `flush` — square ghost cell for flush unit rows (Units Displays explosion).
@@ -161,6 +162,12 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   onSendToTicket?: () => void;
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
   onOpenMovePhotosExternal?: () => void;
+  /**
+   * Unbox carton identity — suppress the hover gallery strip (multi-verbs live
+   * in Displays → Photos Actions). Pill click stays send-to-phone. Omit on
+   * item dock / Arrival so those surfaces keep the hover toolbar.
+   */
+  suppressHoverGallery?: boolean;
 }) {
   const { getClient } = useAblyClient();
   const { user } = useAuth();
@@ -355,7 +362,9 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       : `Upload ${noun} photos`;
 
   const ariaLabel = hasGallery
-    ? `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
+    ? suppressHoverGallery
+      ? `Photos ${count}; send to phone`
+      : `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
     : canSendToPhone
       ? 'Send to phone'
       : `Upload ${noun} photos`;
@@ -376,7 +385,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       disabled={phone.pending}
       aria-disabled={!canSendToPhone || undefined}
       ariaLabel={ariaLabel}
-      aria-expanded={showGalleryPeek}
+      aria-expanded={suppressHoverGallery ? undefined : showGalleryPeek}
       icon={<Camera className="h-4 w-4" />}
       // Right face: count when photos exist (children), else "+". Camera stays
       // left via justify-between on the locked photo-pill width. Count is not
@@ -389,10 +398,26 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     </Button>
   );
 
+  // Unbox carton identity: phone-only face — multi-verbs live in Displays.
+  if (suppressHoverGallery) {
+    return (
+      <div ref={hostRef} className="relative h-full shrink-0">
+        <HoverTooltip label={title} placement="above" asChild>
+          {pillButton}
+        </HoverTooltip>
+        {phone.state !== 'idle' ? (
+          <div className="absolute right-0 top-full z-panelPopover w-max max-w-[18rem] pt-1.5">
+            <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={hostRef}
-      className="relative shrink-0"
+      className="relative h-full shrink-0"
       onMouseEnter={openGallery}
       onMouseLeave={scheduleCloseGallery}
       onFocusCapture={openGallery}
@@ -400,14 +425,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) scheduleCloseGallery();
       }}
     >
-      {/* Suppress pill tooltip while peek is open — avoids tooltip + toolbar stacking. */}
-      {showGalleryPeek ? (
-        pillButton
-      ) : (
-        <HoverTooltip label={title} placement="above" asChild>
-          {pillButton}
-        </HoverTooltip>
-      )}
+      {/* Stable mount — peek disables the tooltip instead of unwrapping the
+          pill (unwrap remounted the trigger mid-press and ate the click). */}
+      <HoverTooltip label={title} placement="above" asChild disabled={showGalleryPeek}>
+        {pillButton}
+      </HoverTooltip>
 
       {/*
         Pairing state, anchored under the pill that triggered it. Absolute so a
@@ -422,10 +444,10 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
       {/*
         Body portal at panelPopover — escapes the locked-720 center
-        (overflow-hidden + sibling utility/Displays stacking) so carton-context
-        hover can paint over the right inspector. Gap bridge lives on the
-        portaled host via mouse enter/leave (pill leave delay still applies).
-        `right` keeps Claim / ticket under Photos reachable.
+        (overflow-hidden + sibling utility/Displays stacking). Gap bridge lives
+        on the portaled host via mouse enter/leave (pill leave delay still
+        applies). Carton identity uses `left` so Claim stays reachable under
+        Photos and the strip never runs into Displays / off-page.
       */}
       <AnchoredLayer
         open={showGalleryPeek}

@@ -36,10 +36,9 @@ function code(src: string): string {
 
 /** Create / import / prefs overlays that may keep SidebarIntakeFormShell. */
 const INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST = new Set<string>([
-  'src/components/sidebar/receiving/incoming/IncomingImportEbayOverlay.tsx',
-  // IncomingBulkTrackingPanel / GridColumnDetailsPanel left this list 2026-08-03.
-  // Shrink-only: finishing a migration removes a line, nothing adds one without
-  // a stated reason.
+  // Incoming Add / CSV left this list 2026-08-08 (flush inspector + classify
+  // platform). Shrink-only: finishing a migration removes a line, nothing adds
+  // one without a stated reason.
 ]);
 
 /**
@@ -256,5 +255,10 @@ describe('right-rail inspector header', () => {
     assert.match(src, /PaneHeaderCloseButton/);
     assert.match(src, /trailing/);
     assert.match(src, /flex h-8 shrink-0 items-center pl-2 pr-2/);
+    assert.match(
+      src,
+      /z-header/,
+      'chrome row must sit above the inset resize sash (z-sticky)',
+    );
   });
 });

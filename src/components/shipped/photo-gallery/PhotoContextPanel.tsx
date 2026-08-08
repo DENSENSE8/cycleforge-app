@@ -123,7 +123,7 @@ export function PhotoContextPanel({
       exit={{ width: 0 }}
       transition={panelTransition}
       aria-label="Photo details"
-      className="relative z-20 h-full max-w-[85vw] shrink-0 overflow-hidden"
+      className="pointer-events-auto relative z-20 h-full max-w-[85vw] shrink-0 overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex h-full w-80 max-w-[85vw] flex-col gap-5 overflow-y-auto border-l border-glass/10 bg-scrim/60 px-5 pb-5 pt-6 backdrop-blur-xl">

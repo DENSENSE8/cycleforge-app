@@ -34,7 +34,7 @@ const PLATFORM_STYLE: Record<
 > = {
   zoho:    { label: 'Zoho',    chip: 'border-red-200    bg-red-50    text-red-700' },
   amazon:  { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
-  fba:     { label: 'FBA',     chip: 'border-orange-200 bg-orange-50 text-orange-700' },
+  fba:     { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
   ecwid:   { label: 'Ecwid',   chip: 'border-blue-200   bg-blue-50   text-blue-700' },
   ebay:    { label: 'eBay',    chip: 'border-yellow-200 bg-yellow-50 text-yellow-800' },
   walmart: { label: 'Walmart', chip: 'border-amber-200  bg-amber-50  text-amber-800' },

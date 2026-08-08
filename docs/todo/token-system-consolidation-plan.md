@@ -93,7 +93,7 @@ Two further corrections: 7 of the 12 status tones are byte-identical to an exist
 `--color-neutral-700` fallback at `StatusBadge.tsx:58` the draft omits.
 
 > **A real bug the draft misses on that same surface:** the banner's `text-teal-700`/`text-amber-700` text *is*
-> remapped under dark, onto an **arbitrary** `bg-[linear-gradient(...)]` shell that system E cannot match —
+> remapped under dark, onto an **arbitrary** linear-gradient `bg-[…]` shell that system E cannot match —
 > ~1.4:1 contrast, illegible today. Six lines, no token implications. Filed separately from this plan.
 > Note that Step 3 *as originally written* would have made this worse, by theming the one legible element.
 

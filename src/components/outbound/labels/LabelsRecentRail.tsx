@@ -153,8 +153,16 @@ export function LabelsRecentRail() {
             return orderId || sku || null;
           }}
           getCollapsePinFacts={(row) => [
-            { tone: 'order', value: String(row.order_id || '') },
-            { tone: 'tracking', value: String(row.shipping_tracking_number || '') },
+            {
+              tone: 'order',
+              value: String(row.order_id || ''),
+              platformValue: row.account_source,
+            },
+            {
+              tone: 'tracking',
+              value: String(row.shipping_tracking_number || ''),
+              carrierHint: row.carrier ?? null,
+            },
             { tone: 'sku', value: String(row.sku || '') },
           ]}
           renderRowMain={(row) => <RailRowBody className="flex-1" vm={orderRowVM(row)} />}

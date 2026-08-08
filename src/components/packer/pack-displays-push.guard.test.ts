@@ -6,7 +6,7 @@
  *
  * Pack joins the Unbox-family scan-station Displays grammar:
  *   - CENTRE = checklist (lines) or UNIT photo peek — not a SectionTabsSlider strip
- *   - RIGHT  = StationDisplaysPushStack (Ticket · Photos · Support · Timeline)
+ *   - RIGHT  = StationDisplaysPushStack (Photos · Timeline · Listings — no Ticket · Support)
  *   - Host   = StationScanPaneHost + StationPanelRoot
  *   - Identity flow + bodyGap=none (flat centre, hairline abuts work)
  *
@@ -43,6 +43,8 @@ describe('Pack Displays push — Unbox-family scan-station SoT', () => {
       'Pack tools live on the shared Displays push stack, never RightRailHost',
     );
     assert.doesNotMatch(panel, /navMode/, 'navMode was deleted — one Root-to-Leaf grammar');
+    assert.match(panel, /indexRows=\{displayIndexRows\}/);
+    assert.match(panel, /buildPackDisplayIndexRows/);
     assert.match(panel, /storageKey=["']pack-displays-push-width["']/);
     assert.match(panel, /testId=["']pack-displays-push["']/);
     assert.match(panel, /ariaLabel=["']Pack displays["']/);
@@ -50,6 +52,25 @@ describe('Pack Displays push — Unbox-family scan-station SoT', () => {
       panel,
       /StationActionDossierShell/,
       'Action densify lives in station/displays leaf hosts — Pack panel must not fork it',
+    );
+  });
+
+  it('scan/pack Displays only — Photos · Timeline · Listings; no Ticket · Support', () => {
+    assert.match(panel, /id:\s*['"]photos['"]/);
+    assert.match(panel, /id:\s*['"]timeline['"]/);
+    assert.match(panel, /id:\s*['"]listings['"]/);
+    assert.match(panel, /ListingLinksTab/);
+    assert.match(panel, /packListingIdentity/);
+    assert.doesNotMatch(panel, /SupportContextHub/, 'Ticket/Support hubs leave Pack Displays');
+    assert.doesNotMatch(
+      panel,
+      /id:\s*['"]ticket['"]/,
+      'Ticket is not a Pack Displays leaf (dumb packer)',
+    );
+    assert.doesNotMatch(
+      panel,
+      /id:\s*['"]support['"]/,
+      'Support is not a Pack Displays leaf (dumb packer)',
     );
   });
 

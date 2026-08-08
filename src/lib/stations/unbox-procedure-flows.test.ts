@@ -37,9 +37,9 @@ const FOUND_CAPTURE = [
   'box_photo',
   'packing_material',
   'contents',
+  'serial',
   'condition',
   'item_photos',
-  'serial',
   'label',
 ];
 

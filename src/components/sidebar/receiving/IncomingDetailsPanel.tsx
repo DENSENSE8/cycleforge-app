@@ -1,9 +1,9 @@
 'use client';
 
-import { Trash2 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
-import DeleteButton from '@/components/ui/DeleteButton';
 import { Button } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { tabsForData, type IncomingDetailsPanelProps } from './incoming-details/incoming-details-shared';
@@ -16,6 +16,7 @@ import {
 } from './incoming-details/IncomingDetailsHeader';
 import { PoTab } from './incoming-details/PoTab';
 import { EbayTab } from './incoming-details/EbayTab';
+import { PairingTab } from './incoming-details/PairingTab';
 import { ShipmentTab } from './incoming-details/ShipmentTab';
 import { ActivityTab } from './incoming-details/ActivityTab';
 import { EmailTab } from './incoming-details/EmailTab';
@@ -25,9 +26,12 @@ export type { IncomingDetailsPanelProps } from './incoming-details/incoming-deta
 
 /**
  * Tabbed details panel for a single incoming PO / shipment / marketplace row.
- * Mounts via RightRailHost when Incoming POS has a row selection (click).
+ * Mounts via RightRailHost when Incoming POS has a 1-check or dblclick open.
  * Data comes from one consolidated endpoint
  * (`/api/receiving-lines/incoming/details`).
+ *
+ * Unpaired rows (no Zoho PO) expose a leading **Pairing** topic that composes
+ * Arrival's `CartonMatchHub` — desk inspector, not Station Displays push.
  *
  * Thin composition shell: data + actions live in {@link useIncomingDetails};
  * chrome matches Repair/Shipped detail stacks (PaneHeader + action bar + tabs).
@@ -41,11 +45,12 @@ export type { IncomingDetailsPanelProps } from './incoming-details/incoming-deta
  * suppressed (`edgeCollapse={false}`) — Unbox parity.
  */
 export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
-  const { onClose, focusReceivingId, focusReceivingLineId } = props;
+  const { onClose, focusReceivingId, focusReceivingLineId, seedRow } = props;
   const c = useIncomingDetails(props);
   const {
     isShipmentOnly,
     isInboundOnly,
+    isCartonOnly,
     tab,
     setTab,
     syncing,
@@ -58,6 +63,7 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
     headerPo,
     headerTracking,
     headerOrder,
+    invalidateIncoming,
   } = c;
   const visibleTabs = tabsForData(data);
   const { statusLabel, vendorName } = incomingDetailsHeaderMeta(data);
@@ -71,7 +77,10 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
       id={INCOMING_DETAILS_RAIL_ID}
       onClose={onClose}
       modal={false}
-      edgeCollapse={false}
+      // Band 3 owns park / reopen (Show / Hide inspector — To-ship twin), so the
+      // panel parks rather than only closing. No parked strip: the band's toggle
+      // is the reopen affordance, exactly as on To-ship.
+      collapsedStrip={false}
       ariaLabel={incomingDetailsAriaLabel(identity)}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -83,6 +92,7 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
           statusLabel={statusLabel}
           isShipmentOnly={isShipmentOnly}
           isInboundOnly={isInboundOnly}
+          isCartonOnly={isCartonOnly}
           syncing={syncing}
           onSync={() => void syncOne()}
           tabs={visibleTabs}
@@ -113,6 +123,15 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
             </div>
           ) : (
             <div className="px-6 py-5">
+              {tab === 'pairing' && (
+                <PairingTab
+                  data={data}
+                  seedRow={seedRow}
+                  focusReceivingId={focusReceivingId}
+                  focusReceivingLineId={focusReceivingLineId}
+                  onPaired={invalidateIncoming}
+                />
+              )}
               {tab === 'ebay' && <EbayTab data={data} />}
               {tab === 'po' && (
                 <PoTab
@@ -134,18 +153,19 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
           )}
         </div>
 
-        {/* Footer — destructive action. Removes the Incoming row; Zoho/marketplace
-            upstream records are untouched. */}
-        <div className="shrink-0 border-t border-border-soft bg-surface-card px-4 py-2.5">
-          <DeleteButton
-            onConfirm={handleDelete}
-            onDeleted={onClose}
-            icon={<Trash2 className="w-3.5 h-3.5" />}
-            label="Delete"
-            armedLabel="Click Again To Confirm"
-            className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-role-micro uppercase tracking-wider disabled:opacity-50"
-          />
-        </div>
+        {/* Floor — flush trailing Delete. Removes the Incoming row; Zoho /
+            marketplace upstream records are untouched. Sync stays in chrome. */}
+        <InspectorActionFloor
+          delete={
+            <InspectorFlushDelete
+              onConfirm={handleDelete}
+              onDeleted={onClose}
+              label="Delete incoming row"
+              confirmLabel="Click again to confirm delete"
+              data-testid="incoming-details-delete"
+            />
+          }
+        />
       </div>
     </DetailStackRailRegistrar>
   );

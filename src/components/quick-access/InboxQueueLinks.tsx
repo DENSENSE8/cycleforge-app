@@ -46,6 +46,7 @@
 
 import Link from 'next/link';
 import { useMyDayFeed } from '@/features/my-day/useMyDayFeed';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Reserve the strip's box while the feed settles, so the list below cannot jump. */
@@ -53,7 +54,7 @@ function QueueLinksSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-1 px-2 py-2" aria-hidden>
       {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="h-7 animate-pulse rounded-md bg-surface-hover" />
+        <div key={i} className={cn('h-7 animate-pulse bg-surface-hover', cornerClass('flush'))} />
       ))}
     </div>
   );
@@ -85,7 +86,8 @@ export function InboxQueueLinks({ onNavigate }: { onNavigate: () => void }) {
               // unlike the spine's structural count, which is `aria-hidden`.
               aria-label={`${card.label} — ${card.count} waiting`}
               className={cn(
-                'flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5',
+                'flex h-7 min-w-0 items-center gap-1.5 px-1.5',
+                cornerClass('flush'),
                 'text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default',
               )}
             >

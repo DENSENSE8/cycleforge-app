@@ -11,6 +11,7 @@ import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeader
 import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import { cn } from '@/utils/_cn';
 import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
+import { UNFOUND_PO_DISPLAY } from '@/lib/receiving/po-group-title';
 
 /**
  * Empty unfound carton — "scan the first return" affordance.
@@ -32,7 +33,7 @@ export function ReturnScanCard({
   serialAbsentReason,
   requireSerialConfirmation,
   onSerialAbsentChange,
-  title = 'Unfound PO',
+  title = UNFOUND_PO_DISPLAY,
   body = 'serial',
 }: {
   condition: string;

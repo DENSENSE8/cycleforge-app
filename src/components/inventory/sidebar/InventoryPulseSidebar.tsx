@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { motion } from '@/design-system/motion';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -13,6 +12,7 @@ import type { UnitListRow, UnitListResponse } from '@/components/inventory/types
 import { cn } from '@/utils/_cn';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { useInventoryUrlState } from '@/components/inventory/useInventoryUrlState';
 
 function useUnitsList(q: string) {
     return useQuery<UnitListRow[]>({
@@ -39,10 +39,8 @@ function useUnitsList(q: string) {
  * chain-of-custody (`/api/inventory-events?serial_unit_id=`) in the right pane.
  */
 export function InventoryPulseSidebar() {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const openId = searchParams.get('open');
+    const { sidebar, setSidebarUrl } = useInventoryUrlState();
+    const openId = sidebar.open;
 
     const [inputValue, setInputValue] = useState('');
     const trimmed = useDebounce(inputValue, 250).trim();
@@ -51,11 +49,9 @@ export function InventoryPulseSidebar() {
 
     const select = useCallback(
         (id: number) => {
-            const sp = new URLSearchParams(searchParams.toString());
-            sp.set('open', String(id));
-            router.replace(`${pathname}?${sp.toString()}`);
+            setSidebarUrl({ open: String(id) });
         },
-        [router, pathname, searchParams],
+        [setSidebarUrl],
     );
 
     const containerVariants = useMemo(

@@ -386,7 +386,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
         <DialogContent hideClose className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-role-caption font-semibold uppercase tracking-wider">
-              Add FNSKU Mapping
+              Add Amazon SKU Mapping
             </DialogTitle>
             <DialogDescription className="text-role-caption">
               Create one catalog row manually when you don&apos;t want to use a CSV upload.

@@ -25,6 +25,18 @@ export const FBA_OUTBOUND_PATH = '/shipping/fba';
 
 const FBA_MODES: FbaMode[] = ['ready', 'plan', 'combine', 'shipped'];
 
+/** Live FBA mode wires — for route-param hygiene (never a hand-copied twin). */
+export const FBA_MODE_WIRE = FBA_MODES;
+
+/**
+ * Wire tokens `?fbaMode=` may carry. Do not round-trip {@link resolveFbaMode}
+ * — it always coerces to `combine`.
+ */
+export function parseFbaModeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (FBA_MODES as string[]).includes(v) ? v : null;
+}
+
 /**
  * Params the legacy `/fba` redirect forwards to {@link FBA_OUTBOUND_PATH}.
  *

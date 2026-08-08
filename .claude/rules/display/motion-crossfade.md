@@ -35,30 +35,31 @@ Adoption status (2026-08-01):
 | Role | Raw call sites left |
 |---|---|
 | `swap.scan` · `swap.focus` · `push.rail` · `gesture.press` | **none** — fully swept |
-| `feedback.pulse` | none *(no site has the job yet — see below)* |
-| `procedure.advance` | `ProcedureDeck` layout settle *(2026-08-03)* |
+| `feedback.pulse` | none *(generic mounted ack — prefer `ActionFlashRow` / chip copy; Displays arm no longer uses it)* |
+| `feedback.hitMarker` | Displays Root Index leaf-commit (`StationDisplayIndexList`) — seventh role, 2026-08-07 |
+| `procedure.advance` | **none — deferred.** The flat `ProcedureDeck` does not wire it *(2026-08-03)* |
 
-`feedback.pulse` ships with **zero consumers**, deliberately. `InlinePillPicker` borrows
-`chipCopyFeedback`'s *duration* for a staggered option-chip reveal — a mount animation, not
-an acknowledgement flash. Mapping it to the pulse role because the curve matches would encode
-a false intent. **A shared curve is not a shared job**; that distinction is the whole product
-of this layer, so the role waits for a real flash site.
+`feedback.pulse` ships with **zero Displays consumers** after arm was hardened dry
+(2026-08-07). It remains the generic mounted-ack job (copy flash / live cell).
+**`feedback.hitMarker` is a different job** — leaf-commit / confirm juice on an
+armed list row (≤100ms inset rail + optional lead micro-scale). Do not retarget
+`pulse` for commit, and do not invent a page-local spring.
 
 | Role | Physics | Resolves to (unchanged) | Legal regions |
 |---|---|---|---|
 | `swap.scan` | tween `easeOut` **0.12s**, exit `duration: 0` | `stationCartonSwap` + `stationCartonSwapMount` | Station |
 | `swap.focus` | tween `easeOut` **0.18s** | `workbenchPane` + `workbenchPaneMount` | Workbench · Monitor drill · Canvas inspector |
-| `push.rail` | tween `motionBezier.layout` **0.24s** | `detailStackPush` + `sidebarNavColumnMount` | Workbench · Monitor · Station push columns |
+| `push.rail` | tween `motionBezier.layout` **0.24s** | `detailStackPush` + `sidebarNavColumnMount` | Workbench · Monitor · Station push columns (**column width only** — not Displays ↑↓ arm) |
 | `gesture.press` | engine default press spring (suppressed under reduced motion) | `framerGesture.tapPress` | Station · Workbench |
 | `feedback.pulse` | `fadeInstant` (opacity 0.15s) | `chipCopyFeedback` | Station · Workbench |
-| `procedure.advance` | tween `motionBezier.layout` **0.55s** | `procedureStackLayout` | Station · Workbench *(Procedure Focus Deck only)* |
+| `feedback.hitMarker` | tween `easeOut` **0.10s** | `framerTransition.hitMarker` | Station · Workbench (armed-list leaf commit) |
+| `procedure.advance` | tween `motionBezier.layout` **0.55s** | `procedureStackLayout` | **deferred — no consumer.** The flat deck advances by content crossfade |
 
-**Six roles today; the count is still the point.** A seventh is a claim that a genuinely new
+**Seven roles today; the count is still the point.** An eighth is a claim that a genuinely new
 *job* exists — not that a surface wants a different duration. Wanting a different duration
-for the same job is the drift roles exist to stop. `procedure.advance` (2026-08-03) is the
-sixth: layout geometry settling when a **procedure step pointer** advances inside
-`ProcedureDeck` — a different job from `push.rail` (panel toggle) and from `swap.scan`
-(content crossfade).
+for the same job is the drift roles exist to stop. `feedback.hitMarker` (2026-08-07) is the
+seventh: **commit acknowledge** on an armed row ≠ generic `pulse` ack. `procedure.advance`
+(2026-08-03) remains the deferred sixth layout job.
 
 **The durations above are the ones the code already ships**, deliberately. The originating
 ruling (D10) proposed 150 / 200 / 250ms; the shipped curves are 120 / 180 / 240ms and were
@@ -155,7 +156,7 @@ two sanctioned layout jobs below, which may run up to **~400ms** on `motionBezie
 > opacity + transform, or as `grid-template-rows` for height.
 
 **Sanctioned layout animation #1: a deliberate PUSH toggle.** A panel that makes room for itself — the sidebar
-nav column (`framerTransition.sidebarNavColumnMount`), the left context rail (`ContextPanelLayout`), the right-rail
+nav column (`framerTransition.sidebarNavColumnMount`), the right-rail
 inspector (`RightRailHost` in push mode), the photo viewer's details drawer (`photoContextPanelMount`), a
 `collapseHeight` reveal — animates its **own** `width`/`height` as a flex sibling,
 because "make room" *is* a reflow and has no transform-only spelling. Three conditions, all required:
@@ -170,8 +171,11 @@ because "make room" *is* a reflow and has no transform-only spelling. Three cond
     slides out from behind the frame edge (`SidebarNavColumn`).
   - **Outset grip → the card animates itself.** `HorizontalEdgeResizeHandle` `placement="outset"` renders the pill
     *outside* the card border, so an `overflow-hidden` host would shear it. Animate the card's own width at
-    `overflow-visible` and clip on an **inner** shell instead (`ContextPanelLayout`, `RightRailHost`). This is the
+    `overflow-visible` and clip on an **inner** shell instead (`RightRailHost`). This is the
     same recipe, not a second drawer — do not "fix" one into the other.
+  - **Context rail (`ContextPanelLayout`) parks/restores with NO width tween** — instant `style.width`
+    snap, same as Station Displays in-flow mount. Live sash drag still paints every frame; only the
+    open↔park toggle is animation-free.
 
 **A push column that mounts and unmounts needs its `AnimatePresence` to OUTLIVE its child.** A presence that mounts
 together with its child suppresses the enter under `initial={false}`; one that unmounts with its child can never play
@@ -250,12 +254,10 @@ The recipe is shared; **what** crossfades is archetype-specific and **singular**
   graph itself pans/zooms directly. **Never crossfade the graph** — it destroys spatial continuity.
 - **Never crossfade a list, map, or graph.** A list re-fading on every keystroke/selection reads as flicker and loses
   scroll. The list is the stable navigator; only the *detail* transitions.
-- **Exception — the MasterNav body swap.** Replacing the spine's flat map with ranked search results (or back) is a
-  deliberate change of what KIND of list the body is, not a per-row flicker. Use named opacity-only SoT
-  (`framerPresence.spineBodySwap` + `framerTransition.spineBodySwap`, ≤150ms) via `useMotionPresence` /
-  `useMotionTransition`, **keyed on the kind and never on the query** — keying on the query replays the crossfade on
-  every keystroke, in a list the operator is reading. **Do not** horizontal-slide a 240px push spine. Law:
-  `workbench.md`; guard: `main-nav-groups.guard.test.ts`.
+- **No exception for the MasterNav body swap (2026-08-08).** Replacing the spine's flat map with the
+  Scan Stations drill or ranked search results is a change of what KIND of list the body is, and it
+  used to earn an opacity-only crossfade on that argument. It swaps INSTANTLY now — see the RESOLVED
+  section below. The spine imports no motion at all.
 
 > Rule of thumb: there is exactly **one** crossfading region per archetype. If you're fading two regions, or fading the
 > list, you've picked the wrong target — re-read the table. (Stock drill is the sole sanctioned spine-list swap.)
@@ -298,7 +300,7 @@ preset resolves to:
 
 - **Cubic-bezier `easeOut` (discrete swaps):** active-card crossfade, right-pane crossfade, table rows, dropdowns,
   chevrons, MasterNav Stock drill. Presets: `framerTransition.stationCardMount` / `tableRowMount` /
-  `dropdownOpen` / `spineBodySwap`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`.
+  `dropdownOpen`, all on `motionBezier.easeOut [0.22, 1, 0.36, 1]`.
 - **Push WIDTH remains tween, never spring** (`sidebarNavColumnMount`, `photoContextPanelMount`,
   `motionRole.push.rail`) — even a critically damped spring on a width every sibling lays out against reads as
   rubber-band under load. Height reveals on dense rows are the exception that uses `springSnappy`.
@@ -312,6 +314,10 @@ preset resolves to:
 |---|---|---|---|
 | Dense height reveal / list reflow | `springSnappy` | `DenseRowReveal` · `DenseListItem` · `stationCollapse` · `cardExpansion` · `captureStackRowMount` | Station · Workbench |
 | Save / copy flash | `fadeInstant` | `ActionFlashRow` · `chipCopyFeedback` · `motionRole.feedback.pulse` | Station · Workbench |
+| Armed-list leaf commit | tween 0.10s | `framerTransition.hitMarker` · `motionRole.feedback.hitMarker` | Station · Workbench |
+| Armed-list ↑↓ geometry | instant remount (no FLIP) | plain absolute track on armed row | Station Displays Root Index |
+| Boxed selection pulse (commit) | tween 0.35s opacity+scale | `framerTransition.selectionPulse` | Station Displays commit only |
+| Armed-list binary cut / track spring (optional cohorts) | `duration: 0` / `springArmedTrack` | `framerTransition.armedSnap` · `armedTrack` | PhotosActionsArmedList / reduced-motion |
 | `gesture.press` | engine default press spring | `framerGesture.tapPress` | Station · Workbench |
 
 ---
@@ -405,50 +411,70 @@ it through `useMotionPresence` / `useMotionTransition`, so the reduced-motion co
 inline literals left to drift. **New right-pane crossfades call `useMotionPresence(framerPresence.workbenchPane)`** —
 never re-inline the values.
 
-## RESOLVED — the MasterNav body swap (`spineBodySwap`)
+## RESOLVED — the MasterNav spine has NO motion
 
-**The spine drill is DELETED (2026-08-02), and with it the ruling this section used to hold.** The
-Vercel-style drill-in was ratified 2026-07-30
-(`docs/todo/spine-drill-in-vercel-GEMINI-RESEARCH-BRIEFING.md`) and shipped correctly; what it could
-not survive was its own content. Six of the eight sections held exactly one page, so drilling charged
-a click to reveal a row carrying the section's own name — `Catalog › Catalog`. Hierarchy with no
-content, and the duplicate label was the visible symptom. The spine body is now one flat map.
+**`SidebarNavList` does not import the motion barrel. Every state change in the spine happens on one
+frame**: mounting the map, selecting a row, opening a nest, entering the Scan Stations drill,
+switching to ranked search results.
 
-**The preset survived under a truer name.** `spineDrill` → **`spineBodySwap`**: the body still swaps
-between two KINDS of list — the flat map and the ranked search results — which is the same altitude
-change at the same physics (opacity-only, `0.12s`, `easeOut`, through the hook bridge, no `x`/`y` on
-a 240px push spine). Renamed rather than deleted-and-recreated, because a preset named for a surface
-that no longer exists is a comment that lies, and one deleted while it still has a consumer just
-gets re-invented. `spineDrillFilter` had no consumer at all and is gone outright.
+That is a navigator on a scan bench doing what it is for. Everything in the column is something the
+operator has clicked a hundred times and reaches for by muscle memory, so any duration at all is
+time inserted between the reach and the target. Four treatments were tried and all four lost:
 
-**Key it on the KIND, never on the query.** A key that includes `navFilter` replays the crossfade on
-every keystroke, under the cursor, in a list the operator is actively reading.
+| Treatment | Why it went |
+|---|---|
+| `spineActiveWash` — 150ms selection settle | Imperceptible once the monochrome pass made the fill a few-percent plane step |
+| `spineRowStagger*` — 15ms × index nest cascade | A five-row nest reads as a wave travelling down-and-right, not a disclosure |
+| `collapseHeight` — one-block nest height expand | No sweep, same delay |
+| `spineBodySwap` — 120ms body crossfade | `mode="wait"` meant the outgoing list finished fading before the incoming one mounted: ~240ms round trip with an EMPTY column between two lists, sitting on the app's most-repeated navigation |
 
-## RESOLVED — ONE MasterNav row cascade (`spineRowStagger`)
+The chevron's `motion-safe:transition-transform` went with them. It was the last moving thing —
+150ms of CSS on the control the operator had just committed to, confirming a click whose result
+was already on screen.
 
-**Page rows and the child rows nested under them run on the SAME ladder** —
-`framerVariants.spineRowStaggerContainer` / `spineRowStaggerItem`: `15ms × index`, `120ms` mount,
-`opacity 0→1` + `y 2→0`. An 8-row section resolves at **225ms**. There is no second step for the
-inner altitude: modes used to stagger at `40ms` while pages did not stagger at all, so a 4-mode page
-resolved *slower* than the 12-page section containing it — the cascade read as lag, not as order.
+**`framerVariants.spineRowStagger*` is NOT deleted** — `CommandBar` still consumes it, and a palette
+revealing ranked results is a genuinely different job from a navigator disclosing a fixed nest.
+`spineBodySwap` and `spineActiveWash` ARE deleted, presets and all: they had exactly one consumer
+each and an orphan preset is both a knip finding and an invitation to re-wire it.
 
-Three constraints, all load-bearing:
+**Do not reintroduce motion here** — not a crossfade, not a settle, not a rotate transition. Guard:
+`main-nav-groups.guard.test.ts` asserts the file imports no motion barrel, no preset, no hook.
 
-- **The container keys on the SECTION id** (`key={`drill-rows-${section.id}`}`), never on the filter
-  query or the filtered array. Keying on either replays the whole cascade on every keystroke, in a
-  list the operator is actively reading.
-- **Pass `initial={false}` while a filter is active.** Same key means no remount — but a row that
-  newly *matches* still mounts at `hidden` and fades in alone. `initial={false}` makes late arrivals
-  inherit `visible`, so filtering updates in place while a fresh section still cascades.
-- **The ROOT section map mounts instantly.** It is painted on every cold load; a cascade there is
-  time-to-interactive spent on four buttons whose position the operator already knows. The cascade
-  earns its keep inside a drill, where the list is long and its contents change.
+## RESOLVED — the MasterNav nest opens INSTANTLY (no motion at all)
 
-`y: 2` is the entire travel, so the reduced-motion floor (which snaps transforms and keeps opacity)
-leaves the correct reduced form — a crossfade, not a cut. **This mount cascade is the ONLY motion
-the spine has left:** row hover/press travel was deleted 2026-08-02 (`source-of-truth.md` →
-MasterNav row hover/press travel), so a spine row now answers the pointer with colour alone. Never
-a framer `whileHover` on a spine row.
+**A spine nest is a plain `<ul>`. No `motion.*`, no presence, no transition.** Rows paint on the
+same frame as the chevron rotates.
+
+This took three passes and the sequence is the useful part. Modes staggered at `40ms` while pages
+did not stagger at all, so a 4-mode page resolved *slower* than the 12-page section containing it —
+the cascade read as lag, not order. That was unified onto one `15ms × index` ladder
+(`spineRowStagger*`, `opacity 0→1` + `y 2→0`). The unified cascade was internally consistent and
+still wrong for the job: at 15ms per row with a y-offset, a five-row nest is a wave travelling
+down-and-right, so a nav dropdown announced its contents one at a time instead of disclosing them.
+Replacing it with a single height expand (`collapseHeight` + `stationCollapse`) fixed the sweep and
+kept the underlying mistake.
+
+**The underlying mistake: this is a navigator on a scan bench.** The operator clicking a nest
+already knows what is in it — they are reaching for a row they have hit a hundred times. Any
+duration at all is time inserted between the click and that row. A disclosure whose contents are
+fixed and known does not need to be *shown arriving*; it needs to be there.
+
+- **The chevron's CSS `motion-safe:transition-transform` stays.** It is chrome confirming the click
+  landed, it runs on the compositor, and it does not sit between the operator and a destination.
+  That is the distinction — not "no motion in navigators", but no motion *on the path to a target*.
+- **`framerVariants.spineRowStagger*` is NOT deleted.** `CommandBar` still consumes it, and a
+  palette revealing ranked results is a genuinely different job from a navigator disclosing a fixed
+  nest. What is gone is the spine's use of it.
+- **The nest still keys on the SECTION id**, never the filter query or the filtered array. This
+  mattered while it animated; it is kept because a churning key remounts the subtree and discards
+  scroll and focus for nothing.
+
+**The spine now has exactly ONE motion left**: the opacity-only body swap between the map and ranked
+results, which is a change of what KIND of list the body is rather than a navigation step.
+Selection is instant — `spineActiveWash` was deleted 2026-08-08 when the monochrome pass replaced
+the saturated selected fill with a few-percent plane step, leaving a 150ms fade between two
+near-identical neutrals that nobody can see. Row hover/press travel was deleted 2026-08-02. Never a
+framer `whileHover` on a spine row.
 
 ## RESOLVED — `MotionConfig` is the reduced-motion FLOOR
 
@@ -536,8 +562,8 @@ blanket mandate is not on the roadmap; reopen it only with evidence the floor mi
 - **Routine transitions over ~300ms** — sluggish; reserve longer only for large physical slides (sheet, pager).
 - **Animating `width`/`height`/`padding`/`margin`** outside the two sanctioned layout jobs (PUSH toggle · Procedure Focus Deck advance) — layout thrash; use `grid-template-rows` for height, transform for the rest.
 - **Crossfading the list / map / graph** — only the detail/active-card/overlay transitions; the navigator stays put.
-  (Exception: the MasterNav body swap via `spineBodySwap` — see above.)
-- **Horizontal slide on the MasterNav body swap** — use opacity-only `framerPresence.spineBodySwap`; never page-local `x: ±12`.
+  (The MasterNav body swap was the one exception; it is instant as of 2026-08-08.)
+- **Any motion at all in the MasterNav spine** — it imports no motion barrel; see the RESOLVED section.
 - **Animating outside framer without a gate** — GSAP / `motion-plus` sit outside the `MotionConfig`
   floor, so they need their own `useReducedMotion()` check. (Consuming `framerPresence.*` raw is
   *fine* — the floor covers it.)
@@ -568,7 +594,7 @@ blanket mandate is not on the roadmap; reopen it only with evidence the floor mi
 - Key by array index, or put `AnimatePresence` behind the `&&`.
 - Ship a **non-framer** animation (GSAP, `motion-plus`, CSS) with no reduced-motion path.
 - Invent new right-pane crossfade literals — use `framerPresence.workbenchPane` via `useMotionPresence`.
-- Horizontal-slide the MasterNav body swap — use `framerPresence.spineBodySwap` (opacity-only).
+- Animate anything in the MasterNav spine — it is motion-free by ruling.
 - Use `layoutId` for a list→detail replace.
 
 ---

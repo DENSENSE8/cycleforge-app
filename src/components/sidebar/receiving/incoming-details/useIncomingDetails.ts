@@ -30,11 +30,33 @@ export function useIncomingDetails({
   // Inbound-only mode (Universal Incoming §7.3): a non-Zoho (eBay) row with no
   // zoho PO of its own — the panel keys on the polymorphic link identity, defaults
   // to the eBay tab, hides the Zoho Sync, and deletes the spine line.
-  const isInboundOnly = !zohoPurchaseOrderId && shipmentId == null && Boolean(inboundSourceType && inboundSourceOrderId);
-  const defaultTab: TabId = isInboundOnly ? 'ebay' : isShipmentOnly ? 'shipment' : 'po';
+  const isInboundOnly =
+    !zohoPurchaseOrderId &&
+    shipmentId == null &&
+    Boolean(inboundSourceType && inboundSourceOrderId);
+  // Carton-only unpaired: dash-Order row with a receiving carton — Pairing tab.
+  const isCartonOnly =
+    !zohoPurchaseOrderId &&
+    shipmentId == null &&
+    !isInboundOnly &&
+    focusReceivingId != null &&
+    Number.isFinite(focusReceivingId) &&
+    focusReceivingId > 0;
+  // Unpaired (no Zoho PO) opens on Pairing — Package Pairing is the job.
+  const defaultTab: TabId = !zohoPurchaseOrderId
+    ? isInboundOnly
+      ? 'ebay'
+      : 'pairing'
+    : 'po';
   // Stable react-query key for the details fetch in each mode.
   const detailsKey = zohoPurchaseOrderId
-    ?? (shipmentId != null ? `shipment:${shipmentId}` : isInboundOnly ? `inbound:${inboundSourceType}:${inboundSourceOrderId}` : '');
+    ?? (shipmentId != null
+      ? `shipment:${shipmentId}`
+      : isInboundOnly
+        ? `inbound:${inboundSourceType}:${inboundSourceOrderId}`
+        : isCartonOnly
+          ? `carton:${focusReceivingId}`
+          : '');
   const focusKey =
     focusReceivingId != null && Number.isFinite(focusReceivingId) && focusReceivingId > 0
       ? focusReceivingId
@@ -47,7 +69,10 @@ export function useIncomingDetails({
   const stationChannel = safeChannelName(() => getStationChannelName(user?.organizationId!));
 
   // Reset to the default tab when the row changes (PO id / shipment id / inbound id).
-  useEffect(() => setTab(defaultTab), [zohoPurchaseOrderId, shipmentId, inboundSourceOrderId, defaultTab]);
+  useEffect(
+    () => setTab(defaultTab),
+    [zohoPurchaseOrderId, shipmentId, inboundSourceOrderId, focusReceivingId, defaultTab],
+  );
 
   const invalidateIncoming = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey, focusKey] });
@@ -63,9 +88,13 @@ export function useIncomingDetails({
         ? `shipment_id=${encodeURIComponent(String(shipmentId))}`
         : isInboundOnly
           ? `inbound_source=${encodeURIComponent(inboundSourceType ?? '')}&inbound_order_id=${encodeURIComponent(inboundSourceOrderId ?? '')}`
-          : `po_id=${encodeURIComponent(zohoPurchaseOrderId ?? '')}`;
+          : isCartonOnly
+            ? `receiving_id=${encodeURIComponent(String(focusReceivingId))}`
+            : `po_id=${encodeURIComponent(zohoPurchaseOrderId ?? '')}`;
       const focusQs =
-        focusKey != null ? `${qs}&receiving_id=${encodeURIComponent(String(focusKey))}` : qs;
+        !isCartonOnly && focusKey != null
+          ? `${qs}&receiving_id=${encodeURIComponent(String(focusKey))}`
+          : qs;
       const res = await fetch(`/api/receiving-lines/incoming/details?${focusQs}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`details ${res.status}`);
       return res.json();
@@ -151,14 +180,20 @@ export function useIncomingDetails({
   // for that PO (Zoho untouched; a future sync may re-add it). For a PO-less
   // delivered box it hard-deletes the shipment row (there's no receiving_line to
   // delete). For an inbound-only (eBay) row it deletes the spine line by id.
-  // Throws on failure so the shared DeleteButton skips its onDeleted (close).
+  // Throws on failure so InspectorFlushDelete skips its onDeleted (close).
   const handleDelete = useCallback(async () => {
     const inboundLineId = isInboundOnly ? data?.inbound?.receiving_line_id ?? null : null;
+    const cartonLineId =
+      isCartonOnly && data?.line_items?.[0]?.receiving_line_id != null
+        ? data.line_items[0].receiving_line_id
+        : null;
     const url = isShipmentOnly
       ? `/api/receiving-lines?shipment_id=${encodeURIComponent(String(shipmentId))}`
       : inboundLineId != null
         ? `/api/receiving-lines?id=${encodeURIComponent(String(inboundLineId))}`
-        : `/api/receiving-lines?po_id=${encodeURIComponent(zohoPurchaseOrderId ?? '')}`;
+        : cartonLineId != null
+          ? `/api/receiving-lines?id=${encodeURIComponent(String(cartonLineId))}`
+          : `/api/receiving-lines?po_id=${encodeURIComponent(zohoPurchaseOrderId ?? '')}`;
     const res = await fetch(url, { method: 'DELETE' });
     const body = await res.json().catch(() => null);
     if (!res.ok || !body?.success) {
@@ -167,12 +202,20 @@ export function useIncomingDetails({
       throw new Error(msg);
     }
     toast.success(
-      isShipmentOnly || inboundLineId != null
+      isShipmentOnly || inboundLineId != null || cartonLineId != null
         ? 'Removed from Incoming'
         : `Removed from Incoming (${body?.deleted ?? 0} line${body?.deleted === 1 ? '' : 's'})`,
     );
     invalidateIncoming();
-  }, [isShipmentOnly, isInboundOnly, shipmentId, zohoPurchaseOrderId, data, invalidateIncoming]);
+  }, [
+    isShipmentOnly,
+    isInboundOnly,
+    isCartonOnly,
+    shipmentId,
+    zohoPurchaseOrderId,
+    data,
+    invalidateIncoming,
+  ]);
 
   // Realtime: a carrier webhook (or poll) that updates this shipment fires
   // `shipment.changed`; refresh the panel + the incoming list/summary instantly
@@ -184,25 +227,35 @@ export function useIncomingDetails({
   }, !!stationChannel);
 
   const headerPo = poNumberHint || data?.po?.zoho_purchaseorder_number || '';
-  // Shipment-only rows have no PO chip — fall back to the tracking# so the
-  // header still identifies the box.
-  const headerTracking = isShipmentOnly
-    ? (data?.shipment?.tracking_number || '').trim()
-    : '';
+  // Shipment-only / carton-only rows have no PO chip — fall back to tracking#.
+  const headerTracking =
+    isShipmentOnly || isCartonOnly
+      ? (data?.shipment?.tracking_number || '').trim()
+      : '';
   // Inbound-only (eBay) rows identify by their external order id.
   const headerOrder = isInboundOnly
     ? (data?.inbound?.order_number || inboundSourceOrderId || '').trim()
     : '';
 
+  // After a successful Pairing link the details payload gains a PO — leave the
+  // Pairing tab so the operator lands on the PO face.
+  useEffect(() => {
+    if (tab === 'pairing' && data?.po?.zoho_purchaseorder_id) {
+      setTab('po');
+    }
+  }, [tab, data?.po?.zoho_purchaseorder_id]);
+
   return {
     isShipmentOnly,
     isInboundOnly,
+    isCartonOnly,
     headerOrder,
     tab, setTab,
     syncing, syncOne,
     handleDelete,
     data, isLoading, isError, refetch,
     headerPo, headerTracking,
+    invalidateIncoming,
   };
 }
 

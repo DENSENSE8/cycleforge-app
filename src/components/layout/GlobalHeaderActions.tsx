@@ -7,6 +7,8 @@ import { IconButton } from '@/design-system/primitives';
 import { Inbox, Clipboard } from '@/components/Icons';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
 import { GlobalHeaderAssistantButton } from '@/components/layout/GlobalHeaderAssistantButton';
+import { HeaderGoalChip } from '@/components/layout/HeaderGoalChip';
+import { HeaderTopWorkOrderChip } from '@/components/layout/HeaderTopWorkOrderChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,25 +47,17 @@ function initials(name: string): string {
 }
 
 /**
- * Persistent right zone of the {@link GlobalHeader}.
+ * Persistent **actions** zone of the {@link GlobalHeader} (far-right).
  *
- * Desktop order (left → right): **search · notifications · AI (far-right)**.
- * Sparkles opens the assistant right-rail occupant, so it sits at the edge it
- * owns (mirror of MasterNav collapse on the far left). Staff identity + org live
- * on the MasterNav spine — no avatar here.
+ * Desktop order (left → right): **search · goal · work order · inbox ·
+ * assistant (far-right)**. Sparkles opens the assistant right-rail occupant, so
+ * it sits at the edge it owns (mirror of MasterNav collapse on the far left).
+ * Staff identity + org live on the MasterNav spine — no avatar here.
  *
- * **Three, down from six (2026-08-01 chrome-altitude pass).** Clipboard history,
- * the phone sign-in QR and the kiosk preview moved to the spine's account
- * overflow ({@link StaffAccountFooter} ⋯). The rule they failed is frequency,
- * not usefulness: a persistent top-right icon is the most expensive slot in the
- * app, and it is earned by something an operator reaches for through the day.
- * A once-a-shift device hand-off and a preview link are not that, and six peers
- * with no ranking between them is what makes a header read as a toolbar.
- *
- * What stays is one of each KIND: **find** (search, which also fronts ⌘K),
- * **be told** (notifications — actionable, cross-domain, badge-only when
- * non-empty), and **ask** (the assistant). Adding a fourth means displacing one
- * of those three or having a genuinely new kind.
+ * Clipboard history, phone sign-in QR, and kiosk preview stay in the spine
+ * account overflow ({@link StaffAccountFooter} ⋯) — earned by frequency, not
+ * existence. Goal / work-order are session glanceables on desktop only; mobile
+ * keeps goal on {@link MobileTopBar} and does not remount them here.
  *
  * Mobile keeps its own utility cluster — it has no MasterNav spine, so it has no
  * account overflow to move clipboard / phone QR into — plus a compact account
@@ -97,7 +91,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
 
   const iconBtnSize = isMobile ? ('touch' as const) : ('md' as const);
   const iconSize = isMobile ? 'h-5 w-5' : TOP_CHROME_ICON_GLYPH;
-  const avatarSize = 'h-10 w-10 text-sm';
+  const avatarSize = 'h-9 w-9 text-sm';
   const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 
   /**
@@ -234,7 +228,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
     return <div className="flex h-full items-center gap-1.5">{iconCluster}</div>;
   }
 
-  // Order: find · be told · ask — AI last, at the right edge it opens.
+  // Order: search · goal · work order · inbox · assistant (far-right).
   // Search stays mounted on `/search` (and carton detail) so find is always
   // reachable from the header — page-rail entry is additive, not a replacement.
   // Stretch the row to the header beam so expanded find + icon washes lock flush.
@@ -247,7 +241,9 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
       )}
     >
       <GlobalHeaderSearch />
-      <div className={HEADER_ICON_CLUSTER}>
+      <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
+        <HeaderGoalChip />
+        <HeaderTopWorkOrderChip />
         {iconCluster}
         <GlobalHeaderAssistantButton />
       </div>

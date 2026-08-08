@@ -4,9 +4,8 @@
  *
  * Source of truth for credentials is `organization_integrations` (provider
  * 'zoho'), read through `getIntegrationCredentials`. For the USAV org that
- * lookup transparently falls back to the ZOHO_* env vars (see
- * src/lib/integrations/credentials.ts → envFallback), so this module needs no
- * env vars of its own and the cutover is invisible to the single live tenant.
+ * lookup falls back to ZOHO_* env only when no vault row exists — never when
+ * the vault is `error`/`revoked` (see credentials.ts).
  *
  * The durable secret (refresh token + client id/secret + Zoho org id + data
  * center) lives ONLY in the vault. The short-lived access token (~1h) is cached
@@ -16,11 +15,14 @@
 
 import {
   getIntegrationCredentials,
-  resolveUsavLegacyZohoCredentials,
   type ZohoCredentials,
 } from '@/lib/integrations/credentials';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { type OrgId } from '@/lib/tenancy/constants';
 import { accountsDomain, buildZohoUrl, getInventoryBaseUrl } from '@/lib/zoho/url';
+import {
+  formatZohoTokenRefreshBodyError,
+  formatZohoTokenRefreshHttpError,
+} from '@/lib/zoho/token-refresh-error';
 
 export type { ZohoCredentials };
 // Re-exported so existing importers of '@/lib/zoho/core' (and the '@/lib/zoho'
@@ -50,28 +52,14 @@ function isComplete(creds: ZohoCredentials | null | undefined): creds is ZohoCre
 }
 
 /**
- * Transitional env bridge (USAV only) — client id/secret + Zoho org id/DC from
- * ZOHO_* env vars; refresh token from ZOHO_REFRESH_TOKEN env or ebay_accounts.ZOHO_MAIN.
- */
-async function loadLegacyZohoCredentials(orgId: OrgId): Promise<ZohoCredentials | null> {
-  if (orgId !== DOGFOOD_ORG_ID) return null;
-  return resolveUsavLegacyZohoCredentials();
-}
-
-/**
- * Load the tenant's Zoho credentials. Resolution order — USAV can use BOTH:
- *   1. the per-tenant vault (organization_integrations, provider 'zoho') — SoT
- *   2. the legacy env bridge (USAV transitional — ZOHO_REFRESH_TOKEN env only)
- * Throws ZohoNotConnectedError when neither yields a usable connection so
- * callers surface a connect prompt instead of a generic 500.
+ * Load the tenant's Zoho credentials via `getIntegrationCredentials` (vault
+ * SoT; USAV env bridge only when no vault row exists — never when vault is
+ * `error`/`revoked`). Throws ZohoNotConnectedError when unusable so callers
+ * surface a connect prompt instead of a generic 500.
  */
 export async function loadZohoCredentials(orgId: OrgId): Promise<ZohoCredentials> {
   const vault = await getIntegrationCredentials<ZohoCredentials>(orgId, 'zoho');
   if (isComplete(vault)) return vault;
-
-  const legacy = await loadLegacyZohoCredentials(orgId);
-  if (isComplete(legacy)) return legacy;
-
   throw new ZohoNotConnectedError(orgId);
 }
 
@@ -102,12 +90,13 @@ export async function getAccessToken(orgId: OrgId, creds?: ZohoCredentials): Pro
   });
 
   if (!response.ok) {
-    throw new Error(`Zoho token refresh failed: ${response.status}`);
+    const body = await response.text().catch(() => '');
+    throw new Error(formatZohoTokenRefreshHttpError(response.status, body));
   }
 
   const data = (await response.json()) as Record<string, unknown>;
   if (data.error) {
-    throw new Error(`Zoho token refresh error: ${data.error}`);
+    throw new Error(formatZohoTokenRefreshBodyError(data));
   }
 
   const accessToken = String(data.access_token || '');

@@ -7,9 +7,27 @@ const INVENTORY_LOCATIONS_PATH = '/inventory/locations' as const;
 
 export type LocationsTab = 'labels' | 'racks' | 'rooms' | 'bins' | 'map';
 
+/** Live Locations tabs — includes default `labels` (usually omitted). */
+export const LOCATIONS_TABS = [
+  'labels',
+  'racks',
+  'rooms',
+  'bins',
+  'map',
+] as const satisfies readonly LocationsTab[];
+
 export function parseLocationsTab(raw: string | null | undefined): LocationsTab {
   if (raw === 'rooms' || raw === 'bins' || raw === 'racks' || raw === 'map') return raw;
   return 'labels';
+}
+
+/**
+ * Wire tokens `?tab=` may carry on `/inventory/locations` (route-param hygiene).
+ * Includes `labels`. Do not round-trip {@link parseLocationsTab}.
+ */
+export function parseLocationsTabWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (LOCATIONS_TABS as readonly string[]).includes(v) ? v : null;
 }
 
 /** Build `/inventory/locations?…` for deep links (barcode routing, redirects). */

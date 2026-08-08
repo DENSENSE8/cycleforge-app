@@ -21,7 +21,11 @@ import {
   isLocalPickupFulfillment,
 } from '@/lib/receiving/fulfillment-mode';
 import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
-import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
+import { receivingCoarseStatusPaint } from '@/lib/receiving/rail/status';
+import {
+  workflowStageBadge,
+  workflowStageLabel,
+} from '@/lib/receiving/workflow-stages';
 import {
   RECEIVING_GRID_COLUMNS,
   receivingGridRowShellClass,
@@ -30,6 +34,7 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
@@ -72,6 +77,11 @@ interface ReceivingGridRowProps {
   activityAxis?: ReceivingActivityAxis;
   /** History / recent surface flag (mobile row chrome); dots use getStatusDotBg. */
   isHistory?: boolean;
+  /**
+   * Unbox / Receiving History → `'coarse'`. Testing History stays `'fine'`
+   * so FAILED / PASSED remain visible. Default `'fine'`.
+   */
+  statusVocabulary?: 'fine' | 'coarse';
   /** Connected inventory provider label for History UNBOXED tips. */
   inventoryProviderLabel?: string;
   columns?: readonly ReceivingGridColumn[];
@@ -115,6 +125,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   onCrosshairHover,
   activityAxis = 'unboxed',
   isHistory = false,
+  statusVocabulary = 'fine',
   inventoryProviderLabel = 'Inventory',
   columns = RECEIVING_GRID_COLUMNS,
   columnDisplay,
@@ -136,6 +147,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         index={index}
         isMobile
         isHistory={isHistory}
+        statusVocabulary={statusVocabulary}
         activityAxis={activityAxis}
         selectMode={selectMode}
         isSelected={isOpen || isChecked}
@@ -156,6 +168,11 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     row.source_platform || row.inbound_source_type || null,
   );
 
+  const coarsePaint =
+    statusVocabulary === 'coarse'
+      ? receivingCoarseStatusPaint(row, inventoryProviderLabel)
+      : null;
+
   const ctx: ReceivingGridCellCtx = {
     row,
     selectMode,
@@ -164,11 +181,13 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     onToggle: clickSelect ? undefined : onToggle,
     activityAxis,
     isHistory,
+    statusVocabulary,
+    statusBadgeClass: coarsePaint?.badge ?? workflowStageBadge(row.workflow_status),
     productTitle: displayReceivingProductTitle(row),
     condGrade: (row.condition_grade || '').toUpperCase(),
     conditionLabel: conditionGradeTableLabel(row.condition_grade),
     stageDisplay: stageStamp?.instant ? formatOpsStageTime(stageStamp.instant) : null,
-    stageLabel: workflowStageLabel(row.workflow_status),
+    stageLabel: coarsePaint?.label ?? workflowStageLabel(row.workflow_status),
     stageTip: stageStamp ? receivingStageTooltip(row, stageStamp, activityAxis) : '',
     dateCell: receivingActivityDateCell(stageStamp?.instant),
     poValue,
@@ -180,11 +199,13 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     onEditTracking: onSelect,
     onEditOrder: onSelect,
     serialsCsv: resolveReceivingLineSerialsCsv(row),
-    statusDot: getStatusDotBg(
-      row.workflow_status,
-      row.quantity_received,
-      row.quantity_expected,
-    ),
+    statusDot:
+      coarsePaint?.dot
+      ?? getStatusDotBg(
+        row.workflow_status,
+        row.quantity_received,
+        row.quantity_expected,
+      ),
     inventoryProviderLabel,
     columnDisplay,
     selectGutterChrome,
@@ -266,9 +287,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       }
       className={cn(
         receivingGridRowShellClass(false, { scrollMinContent: true }),
-        // Same band as LedgerGridColumnHeader / Unbox chrome (h-10) so the
-        // frozen select header and the first body cells share one row rhythm.
-        'h-10 min-h-10',
+        // Same band as LedgerGridColumnHeader / Unbox chrome so the frozen
+        // select header and the first body cells share one row rhythm.
+        PRIMARY_CHROME_ROW_FACE,
         // Either plane fills the row; the gutter checkbox disambiguates which.
         // Linked peer wash is quieter than selection (compare crosshair).
         // Custom paint fill applies when not selected (selection wash wins).

@@ -27,6 +27,8 @@ const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel
 
 const HOTKEY = 'src/components/station/displays/displays-toggle-hotkey.ts';
 const EDGE = 'src/components/station/displays/StationDisplaysEdgeToggle.tsx';
+const WORKBENCH_INSPECTOR_TOGGLE =
+  'src/components/dashboard/workbench-inspector-toggle.tsx';
 const UNBOX_HEADER = 'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx';
 const OUTBOUND_HEADER = 'src/components/dashboard/OutboundWorkspaceHeader.tsx';
 const DISPLAYS_DIR = 'src/components/station/displays';
@@ -53,15 +55,23 @@ describe('Station Displays toggle hotkey (⌘])', () => {
     assert.doesNotMatch(src, /Ctrl\+\]/);
   });
 
-  it('desk inspector headers keep ⌘\\ + bare ] and never claim meta+BracketRight', () => {
+  it('desk inspector toggle keeps ⌘\\ + bare ] and never claims meta+BracketRight', () => {
+    const toggle = read(WORKBENCH_INSPECTOR_TOGGLE);
+    assert.match(toggle, /Backslash/, 'WorkbenchInspectorToggle binds ⌘\\');
+    assert.match(
+      toggle,
+      /!e\.metaKey && !e\.ctrlKey && !e\.altKey && e\.key === '\]'/,
+      'WorkbenchInspectorToggle binds bare ]',
+    );
+    assert.doesNotMatch(
+      toggle,
+      /BracketRight/,
+      'WorkbenchInspectorToggle must not claim BracketRight (Station Displays owns ⌘])',
+    );
+    // Headers compose the SoT toggle — they must not re-bind the chords locally.
     for (const rel of [UNBOX_HEADER, OUTBOUND_HEADER]) {
       const src = read(rel);
-      assert.match(src, /Backslash/, `${rel} binds ⌘\\`);
-      assert.match(
-        src,
-        /!e\.metaKey && !e\.ctrlKey && !e\.altKey && e\.key === '\]'/,
-        `${rel} binds bare ]`,
-      );
+      assert.match(src, /WorkbenchInspectorToggle/, `${rel} composes WorkbenchInspectorToggle`);
       assert.doesNotMatch(
         src,
         /BracketRight/,
@@ -69,8 +79,8 @@ describe('Station Displays toggle hotkey (⌘])', () => {
       );
       assert.doesNotMatch(
         src,
-        /\(e\.metaKey \|\| e\.ctrlKey\).*\]/,
-        `${rel} must not bind meta+]`,
+        /e\.code === 'Backslash'/,
+        `${rel} must not re-bind ⌘\\ locally`,
       );
     }
   });

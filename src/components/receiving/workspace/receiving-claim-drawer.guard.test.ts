@@ -55,6 +55,22 @@ describe('Receiving claim drawer (stacked sections, no ScrollSpy)', () => {
     assert.doesNotMatch(src, /LinearWorkflowStepper/);
   });
 
+  it('Displays Claim parks New·Link in leaf header; modal keeps body strip', () => {
+    const panel = read(PANEL);
+    assert.match(panel, /setLeafTrailing/);
+    assert.match(panel, /placement="leaf-header"/);
+    assert.match(
+      panel,
+      /chrome === 'modal' \? <ClaimWizardNav/,
+      'modal still mounts ClaimWizardNav in the body',
+    );
+    assert.doesNotMatch(
+      panel,
+      /chrome === 'display' \? <ClaimWizardNav/,
+      'display chrome must not keep a body ClaimWizardNav strip',
+    );
+  });
+
   it('Ticket is editable-only; Backup sits on sticky File footer; no Review dupe', () => {
     const types = read(TYPES);
     const compose = read(COMPOSE);

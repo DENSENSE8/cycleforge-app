@@ -4,24 +4,28 @@
  * Column-display control — the SOLE operator entry to `GridColumnDetailsPanel`
  * since chrome Fields was retired (2026-08-02).
  *
- * ## Where it lives
+ * ## Portal or nothing (ruled 2026-08-08)
  *
- * **Band-3 / inspector View topics (the norm):** when
- * {@link triggerPortalTarget} is set, the trigger portals into that host so it
- * sits with the other refine icons (staff / filter / week / sort). Open state +
- * rail stay here — one door, one room; only the paint host moves.
+ * The trigger is painted in exactly ONE way: portaled into a host it is given.
+ * Two hosts exist — the **Band-3 `WorkbenchTriageBand` controls slot** (the
+ * norm) and the **inspector View cluster** (Unbox · To-ship). With no host,
+ * **nothing is painted**.
  *
- * **Portal-only desks (Unbox History · To Ship View topics):** pass
- * {@link triggerPortalOnly}. When the inspector host is not mounted yet, paint
- * **nothing** — never the card-corner hover float. ▦ belongs on the right
- * panel View cluster, not over the sheet.
+ * **The card-corner hover-reveal float is DELETED, and must not come back.** It
+ * hover-revealed a floating ▦ over the grid card's top-right corner, on the
+ * Notion / Airtable argument that table chrome materialises on the table you are
+ * pointing at. That grammar is for a pointer-precise authoring tool and was
+ * never paid for here: it overlapped the first column header, and an operator
+ * who does not know the control exists cannot hover a corner to discover it.
+ * The `triggerPortalOnly` opt-out went with it — there is no fallback left to
+ * opt out of.
  *
- * **Card-corner fallback:** with neither a portal target nor
- * {@link triggerPortalOnly} (a surface that has no Band-3 / View host), the
- * trigger hover-reveals over the grid card's top-right corner (Notion /
- * Airtable grammar), reserving no column track and no page gutter.
+ * A surface with no host therefore shows no ▦ and keeps its descriptor default
+ * columns. **Do not "fix" that by re-adding a float** — give the surface a host,
+ * or wire the right-click column menu.
  *
- * Mount via {@link GridColumnGutter}.
+ * Open state, the fields context and the rail all stay on {@link GridColumnGutter};
+ * only the paint location ever moved.
  */
 
 import {
@@ -38,7 +42,6 @@ import { ColumnsThree } from '@/components/Icons';
 import { GridColumnDetailsPanel } from '@/components/ui/table-column-config/GridColumnDetailsPanel';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
-import { cn } from '@/utils/_cn';
 import type { TableId } from '@/lib/tables/table-columns';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 import { useGridFields } from './useGridColumnVisibility';
@@ -69,11 +72,10 @@ export function useGridColumnFieldsApi(): GridColumnFieldsApi | null {
 /**
  * Mounts the column-display trigger + the rail it opens.
  *
- * `children` is the framed table card. The wrapper is a positioning context
- * for the default card-corner float. When {@link triggerPortalTarget} is set
- * (Band-3 / View topics), the trigger paints there instead — still owned here
- * so open state and panel cannot fork. When {@link triggerPortalOnly} is set
- * and the host is absent, paint nothing (no hover float).
+ * `children` is the framed table card. The trigger paints only into
+ * {@link triggerPortalTarget} (Band-3 controls slot / inspector View topics) —
+ * still owned here, so open state and the panel cannot fork no matter where the
+ * icon lands. With no host, nothing is painted.
  *
  * `columns` is the family's **FULL canonical model**, never the resolved-visible
  * list — the rail must offer the tracks that are currently OFF.
@@ -83,7 +85,6 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
   columns,
   children,
   triggerPortalTarget = null,
-  triggerPortalOnly = false,
 }: {
   /** Staff-prefs identity — the panel's bucket and the visibility key. */
   tableId: TableId;
@@ -91,15 +92,10 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
   columns: readonly C[];
   children: ReactNode;
   /**
-   * Optional host (e.g. Band-3 controls slot · inspector View topics). When
-   * set, the trigger portals there as a resident icon — no card-corner float.
+   * The paint host — a Band-3 controls slot or an inspector View cluster. Null
+   * (or an absent / parked host) paints NO trigger; there is no fallback.
    */
   triggerPortalTarget?: HTMLElement | null;
-  /**
-   * When true and {@link triggerPortalTarget} is null, paint no trigger (wait
-   * for the View / Band-3 host). Suppresses the card-corner hover fallback.
-   */
-  triggerPortalOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [seedKey, setSeedKey] = useState<string | null>(null);
@@ -131,33 +127,18 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
     <GridColumnDetailsTrigger onOpen={() => openDetails(null)} open={open} />
   );
 
-  const cardCornerTrigger = (
-    <div
-      className={cn(
-        'pointer-events-none absolute right-1.5 top-1.5 z-header rounded-lg bg-surface-card shadow-sm',
-        'motion-safe:transition-opacity motion-safe:duration-100',
-        'opacity-0 group-hover/grid-card:opacity-100 group-focus-within/grid-card:opacity-100',
-        'group-hover/grid-card:pointer-events-auto group-focus-within/grid-card:pointer-events-auto',
-        open && 'opacity-100',
-        open && 'pointer-events-auto',
-      )}
-    >
-      {trigger}
-    </div>
-  );
-
+  // Portal or nothing. No host ⇒ no trigger — see the docblock for why the
+  // card-corner float is not coming back.
   const paintedTrigger = triggerPortalTarget
     ? createPortal(trigger, triggerPortalTarget)
-    : triggerPortalOnly
-      ? null
-      : cardCornerTrigger;
+    : null;
 
   return (
     <GridColumnDetailsOpenContext.Provider value={openDetails}>
       <GridColumnFieldsContext.Provider value={fieldsApi}>
         <div
           ref={hostRef}
-          className="group/grid-card relative flex h-full min-h-0 min-w-0 flex-1 flex-col"
+          className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col"
         >
           {children}
           {paintedTrigger}

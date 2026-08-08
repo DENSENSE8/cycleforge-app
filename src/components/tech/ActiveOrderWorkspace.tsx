@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, History, Tags } from '@/components/Icons';
+import { AlertTriangle, ExternalLink, History, Tags } from '@/components/Icons';
 import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
@@ -17,9 +17,14 @@ import {
   WorkspaceTimelineTab,
   buildSectionTabs,
 } from '@/components/station/workbench';
-import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import {
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+  type DisplayIndexRow,
+} from '@/components/station/displays';
 import { StationDisplaysEdgeToggle } from '@/components/station/displays';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
+import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
@@ -30,13 +35,15 @@ import {
   ShippingEntityContextHeader,
   ShippingOutOfStockNotice,
 } from './shipping/ShippingEntityContextHeader';
+import { resolveShippingListingLinks } from './shipping/shipping-listing-links';
 import { TechSubstituteSection } from './TechSubstituteSection';
 import { useSubstitutionPolicy } from '@/hooks/fulfillment/useSubstitutionPolicy';
 import { useOrderAmendments } from '@/hooks/fulfillment/useSubstitution';
 import { canShowTechSubstitution } from '@/lib/tech/substitution-eligibility';
 import { useOrderAssignment } from '@/hooks';
 
-type ShippingDisplayTab = 'condition' | 'timeline';
+/** Condition · Timeline · Listings (trailing — upgrade slot). */
+type ShippingDisplayTab = 'condition' | 'timeline' | 'listings';
 
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 type ShippingDisplayNav = typeof STATION_DISPLAY_INDEX | ShippingDisplayTab;
@@ -66,7 +73,8 @@ interface ActiveOrderWorkspaceProps {
 /**
  * Focused work-item view rendered in the `/test` right pane while an order is
  * active. Unbox-family host: StationScanPaneHost + StationPanelRoot; Ship · Units
- * stay centre work; Condition · Timeline clarify on Displays (Open displays CTA).
+ * stay centre work; Condition · Timeline · Listings (trailing) clarify on
+ * Displays (Open displays CTA).
  */
 export function ActiveOrderWorkspace({
   activeOrder,
@@ -81,6 +89,20 @@ export function ActiveOrderWorkspace({
   const cardTransition = useMotionTransition(framerTransition.stationCardMount);
 
   const [activeSideTab, setActiveSideTab] = useState<ShippingDisplayNav | null>(null);
+
+  const listingResolution = useMemo(
+    () => resolveShippingListingLinks(activeOrder),
+    [activeOrder.itemNumber, activeOrder.sku],
+  );
+  const [listingLink, setListingLink] = useState(listingResolution.listingUrl ?? '');
+  useEffect(() => {
+    setListingLink(listingResolution.listingUrl ?? '');
+  }, [
+    activeOrder.orderId,
+    activeOrder.tracking,
+    listingResolution.listingItemKey,
+    listingResolution.listingUrl,
+  ]);
 
   const policyQuery = useSubstitutionPolicy();
   const substitution = useMemo(
@@ -134,6 +156,44 @@ export function ActiveOrderWorkspace({
   const hasTimelineDisplay =
     tracking.length > 0 || orderId.length > 0 || activeOrder.serialNumbers.length > 0;
 
+  const conditionLabel = String(activeOrder.condition || '').trim() || 'Not set';
+
+  /** Enriched rows keep Listings in Context (trailing) — default group would
+   *  hoist `listings` into Verification and jump it above Condition. */
+  const displayIndexRows = useMemo<DisplayIndexRow[]>(() => {
+    const rows: DisplayIndexRow[] = [
+      {
+        id: 'condition',
+        label: 'Condition',
+        subtitle: conditionLabel,
+        tone: String(activeOrder.condition || '').trim() ? 'ok' : 'action',
+        group: 'verification',
+      },
+    ];
+    if (hasTimelineDisplay) {
+      rows.push({
+        id: 'timeline',
+        label: 'Timeline',
+        subtitle: 'Order history',
+        tone: 'neutral',
+        group: 'context',
+      });
+    }
+    rows.push({
+      id: 'listings',
+      label: 'Listings',
+      subtitle: listingResolution.listingUrl ? 'Listing links' : 'No listing',
+      tone: listingResolution.listingUrl ? 'ok' : 'neutral',
+      group: 'context',
+    });
+    return rows;
+  }, [
+    activeOrder.condition,
+    conditionLabel,
+    hasTimelineDisplay,
+    listingResolution.listingUrl,
+  ]);
+
   const displayTabs = useMemo(
     () =>
       buildSectionTabs([
@@ -165,6 +225,20 @@ export function ActiveOrderWorkspace({
             />
           ),
         },
+        {
+          id: 'listings',
+          label: 'Listings',
+          icon: ExternalLink,
+          // Trailing upgrade slot — always on the index so Ready-to-Pack can
+          // grow listing tools without reshuffling Condition · Timeline.
+          content: (
+            <ListingLinksTab
+              listingLinks={listingResolution.listingLinks}
+              listingLink={listingLink}
+              setListingLink={setListingLink}
+            />
+          ),
+        },
       ]),
     [
       activeOrder.condition,
@@ -176,6 +250,8 @@ export function ActiveOrderWorkspace({
       isShipped,
       isPreview,
       orderAssignmentMutation.isPending,
+      listingResolution.listingLinks,
+      listingLink,
     ],
   );
 
@@ -282,6 +358,7 @@ export function ActiveOrderWorkspace({
               testId="shipping-displays-push"
               resizeTestId="shipping-displays-push-resize"
               tabs={displayTabs}
+              indexRows={displayIndexRows}
               activeTab={resolvedSideTab}
               onTabChange={(id) => setActiveSideTab(id as ShippingDisplayNav)}
               onClose={closeDisplays}

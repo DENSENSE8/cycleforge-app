@@ -5,16 +5,12 @@
  * unfound / return / sales-order-linked carton (no feature flag;
  * receiving-condition-serial-unification-plan.md).
  *
- * Replaces the former standing carton-level `SerialCard` scanner + a separate
- * `UnmatchedLineRow[]` list with ONE row surface:
- *   - ≥1 line  → {@link PoLinesAccordion} (embedded). Condition + serial
- *                editors interleave under each SKU (`ActiveLineConditionSerial`) —
- *                the SAME leaf a matched PO line uses (Kinetic Ledger: one row
- *                anatomy). There is NO standing carton scanner beside the rows,
- *                so a return import updates the row IN PLACE — no duplicate.
- *   - 0 lines  → the {@link ReturnScanCard} "scan the first return" affordance
- *                (the stub active-row scanner). It is shown ONLY when the carton
- *                has no line yet, so it never stands beside a line row.
+ * ONE row surface (Kinetic Ledger):
+ *   - ≥1 line (or a known placeholderActiveRow) → {@link PoLinesAccordion}.
+ *     Default leaf is `ActiveLineConditionSerial`; Testing overrides via
+ *     `activeRowSlot` (verdict pills). No standing carton scanner beside rows.
+ *   - 0 lines and no placeholder → {@link ReturnScanCard} (scan-first return).
+ *     Shown ONLY when the carton has no line yet — no double-row.
  *
  * A return import (`handleReturnSerialScan`) writes the accordion's own
  * {@link receivingSiblingsQueryKey} cache via the wrapped `onLinked`, so the new
@@ -52,7 +48,10 @@ import {
   unlinkSerialFromLineUnits,
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
-import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
+import type {
+  ReceivingLineRow,
+  ReceivingLineUnitView,
+} from '@/components/station/receiving-line-row';
 import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
@@ -198,6 +197,7 @@ function useActiveUnfoundLineSerials({
             is_return: true,
             unit: su
               ? {
+                  id: typeof su.id === 'number' ? su.id : null,
                   serial_number: String(su.serial_number ?? serial),
                   sku: su.sku ?? null,
                   current_status: String(su.current_status ?? 'RETURNED'),
@@ -435,19 +435,29 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     staffId,
     receivingTypeHint = 'PO',
     onFileReturnClaim,
+    onOpenReturnHistory,
     onActiveConditionChange,
     serialAbsent,
     serialAbsentReason,
     requireSerialConfirmation,
     onSerialAbsentChange,
     showSerialScan = true,
+    readOnly: readOnlyProp,
+    unitsChrome = true,
     onOpenInUnbox,
     embedded = false,
     headerRight,
     suppressHeader = false,
     activeLineId,
     onViewAllUnits,
+    activeRowSlot: activeRowSlotProp,
+    placeholderActiveRow: placeholderActiveRowProp,
+    hideNoTestLines = false,
+    activeSerialActions: activeSerialActionsProp,
   } = props;
+  // Legacy callers tied interactivity to showSerialScan; Arrival passes
+  // readOnly from editLines so unit capture can stay off independently.
+  const readOnly = readOnlyProp ?? !showSerialScan;
 
   const queryClient = useQueryClient();
 
@@ -477,6 +487,20 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     return c.lines.find((l) => l.id === activeLineId) ?? c.lines[0] ?? null;
   }, [activeLineId, c.lines, hasLines]);
   const resolvedActiveLineId = resolvedActiveLine?.id ?? null;
+
+  // Never-blank: host placeholder (Testing / workspace) wins; else the resolved
+  // fetched line. A known positive id keeps the accordion mounted while GET
+  // clears local lines — never flash ReturnScanCard beside a known selection.
+  const paintPlaceholder = useMemo<ReceivingLineRow | undefined>(() => {
+    if (placeholderActiveRowProp && placeholderActiveRowProp.id > 0) {
+      return placeholderActiveRowProp;
+    }
+    if (resolvedActiveLine && resolvedActiveLine.id > 0) {
+      return resolvedActiveLine as unknown as ReceivingLineRow;
+    }
+    return undefined;
+  }, [placeholderActiveRowProp, resolvedActiveLine]);
+  const showAccordion = hasLines || Boolean(paintPlaceholder);
 
   const lineSerials = useActiveUnfoundLineSerials({
     receivingId,
@@ -593,94 +617,121 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
         }
       />
 
-      {hasLines ? (
+      {showAccordion ? (
         // One row surface — condition/serial editors interleaved under each SKU.
         <PoLinesAccordion
           receivingId={receivingId}
-          activeLineId={resolvedActiveLineId ?? c.lines[0].id}
+          activeLineId={
+            resolvedActiveLineId ?? paintPlaceholder?.id ?? c.lines[0]?.id ?? 0
+          }
+          // Cold siblings key: paint the known unfound line on frame 1 (never
+          // blank while GET /api/receiving-lines is in flight).
+          placeholderActiveRow={paintPlaceholder}
+          hideNoTestLines={hideNoTestLines}
           embedded
           suppressHeader
-          readOnly={!showSerialScan}
-          activeConditionOverride={resolvedActiveLine?.condition_grade ?? null}
-          activeSerialActions={{
-            editingSerialId: lineSerials.editingSerial?.id ?? null,
-            onEdit: (s) => lineSerials.setEditingSerial(s),
-            onDelete: async (s, targetLineId) => {
-              if (s.id == null) return;
-              const ok = await requestConfirm({
-                description: `Remove serial ${s.serial_number}?`,
-                tone: 'danger',
-                confirmLabel: 'Remove',
-              });
-              if (!ok) return;
-              void lineSerials.deleteSerialUnit(s.id, targetLineId);
-            },
-          }}
-          onViewAllUnits={onViewAllUnits}
-          activeRowSlot={({ serials, units, line }) => {
-            if (!showSerialScan) return null;
-            const isActiveLine = line.id === resolvedActiveLineId;
-            return (
-              <ActiveLineConditionSerial
-                serials={serials}
-                lineId={line.id}
-                receivingId={receivingId}
-                quantityExpected={line.quantity_expected ?? null}
-                cond={line.condition_grade || 'USED_A'}
-                serialSubmitting={lineSerials.serialSubmitting}
-                editingSerial={lineSerials.editingSerial}
-                serialLookup={
-                  isActiveLine ? lineSerials.serialLookup : IDLE_SERIAL_LOOKUP
-                }
-                onFileReturnClaim={
-                  isActiveLine && onFileReturnClaim
-                    ? (mo) => onFileReturnClaim(mo, lineSerials.serialLookup.serial)
-                    : undefined
-                }
-                onSubmitSerial={(sn, grade) =>
-                  lineSerials.submitSerial(sn, grade, line.id)
-                }
-                onDeleteSerialUnit={(id, targetLineId) =>
-                  void lineSerials.deleteSerialUnit(id, targetLineId ?? line.id)
-                }
-                onReplaceSerialUnit={(original, next) =>
-                  void lineSerials.replaceSerialUnit(original, next, line.id)
-                }
-                onSetUnitGrade={(id, grade) =>
-                  void lineSerials.setUnitGrade(id, grade, line.id)
-                }
-                onActiveConditionChange={(next) => {
-                  if (isActiveLine && next) onActiveConditionChange?.(next);
-                }}
-                onConditionChange={(next) => {
-                  void c.handleConditionChange(line.id, next);
-                }}
-                onEditingSerialChange={lineSerials.setEditingSerial}
-                serialAbsent={
-                  isActiveLine
-                    ? (serialAbsent ?? false)
-                    : (line.serial_absent ?? false)
-                }
-                serialAbsentReason={
-                  isActiveLine
-                    ? (serialAbsentReason ?? null)
-                    : (line.serial_absent_reason ?? null)
-                }
-                requireSerialConfirmation={requireSerialConfirmation ?? false}
-                onSerialAbsentChange={(next) => {
-                  if (isActiveLine) {
-                    onSerialAbsentChange?.(next);
-                    return;
+          readOnly={readOnly}
+          unitsChrome={unitsChrome}
+          activeConditionOverride={
+            unitsChrome ? (resolvedActiveLine?.condition_grade ?? null) : undefined
+          }
+          activeSerialActions={
+            activeSerialActionsProp !== undefined
+              ? activeSerialActionsProp
+              : unitsChrome && showSerialScan
+                ? {
+                    editingSerialId: lineSerials.editingSerial?.id ?? null,
+                    onEdit: (s) => lineSerials.setEditingSerial(s),
+                    onDelete: async (s, targetLineId) => {
+                      if (s.id == null) return;
+                      const ok = await requestConfirm({
+                        description: `Remove serial ${s.serial_number}?`,
+                        tone: 'danger',
+                        confirmLabel: 'Remove',
+                      });
+                      if (!ok) return;
+                      void lineSerials.deleteSerialUnit(s.id, targetLineId);
+                    },
                   }
-                  markReceivingSerialAbsent(line.id, next);
-                }}
-                units={units}
-                autoFocusSerial={isActiveLine}
-              />
-            );
-          }}
+                : undefined
+          }
+          onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
+          activeRowSlot={
+            activeRowSlotProp !== undefined
+              ? activeRowSlotProp
+              : unitsChrome && showSerialScan
+                ? ({ serials, units, line }) => {
+                    const isActiveLine = line.id === resolvedActiveLineId;
+                    return (
+                      <ActiveLineConditionSerial
+                        serials={serials}
+                        lineId={line.id}
+                        receivingId={receivingId}
+                        quantityExpected={line.quantity_expected ?? null}
+                        cond={line.condition_grade || 'USED_A'}
+                        serialSubmitting={lineSerials.serialSubmitting}
+                        editingSerial={lineSerials.editingSerial}
+                        serialLookup={
+                          isActiveLine ? lineSerials.serialLookup : IDLE_SERIAL_LOOKUP
+                        }
+                        onFileReturnClaim={
+                          isActiveLine && onFileReturnClaim
+                            ? (mo) =>
+                                onFileReturnClaim(mo, lineSerials.serialLookup.serial)
+                            : undefined
+                        }
+                        onOpenReturnHistory={
+                          isActiveLine ? onOpenReturnHistory : undefined
+                        }
+                        onSubmitSerial={(sn, grade) =>
+                          lineSerials.submitSerial(sn, grade, line.id)
+                        }
+                        onDeleteSerialUnit={(id, targetLineId) =>
+                          void lineSerials.deleteSerialUnit(
+                            id,
+                            targetLineId ?? line.id,
+                          )
+                        }
+                        onReplaceSerialUnit={(original, next) =>
+                          void lineSerials.replaceSerialUnit(original, next, line.id)
+                        }
+                        onSetUnitGrade={(id, grade) =>
+                          void lineSerials.setUnitGrade(id, grade, line.id)
+                        }
+                        onActiveConditionChange={(next) => {
+                          if (isActiveLine && next) onActiveConditionChange?.(next);
+                        }}
+                        onConditionChange={(next) => {
+                          void c.handleConditionChange(line.id, next);
+                        }}
+                        onEditingSerialChange={lineSerials.setEditingSerial}
+                        serialAbsent={
+                          isActiveLine
+                            ? (serialAbsent ?? false)
+                            : (line.serial_absent ?? false)
+                        }
+                        serialAbsentReason={
+                          isActiveLine
+                            ? (serialAbsentReason ?? null)
+                            : (line.serial_absent_reason ?? null)
+                        }
+                        requireSerialConfirmation={requireSerialConfirmation ?? false}
+                        onSerialAbsentChange={(next) => {
+                          if (isActiveLine) {
+                            onSerialAbsentChange?.(next);
+                            return;
+                          }
+                          markReceivingSerialAbsent(line.id, next);
+                        }}
+                        units={units}
+                        autoFocusSerial={isActiveLine}
+                      />
+                    );
+                  }
+                : undefined
+          }
         />
-      ) : showSerialScan ? (
+      ) : unitsChrome && showSerialScan ? (
         // Empty carton: the "scan the first return" active-row affordance. Shown
         // ONLY at 0 lines, so it never stands beside a line row (no double-row).
         <ReturnScanCard
@@ -702,7 +753,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
         {suppressHeader ? null : (
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-role-caption font-semibold uppercase tracking-[0.14em] text-text-soft">
-              PO items · {c.lines.length}
+              Purchase order items · {c.lines.length}
             </h3>
             <div className="flex items-center gap-1.5">
               {headerActions}
@@ -716,7 +767,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
   }
 
   return (
-    <WorkspaceCard label={`PO items · ${c.lines.length}`} actions={headerActions}>
+    <WorkspaceCard label={`Purchase order items · ${c.lines.length}`} actions={headerActions}>
       {body}
     </WorkspaceCard>
   );

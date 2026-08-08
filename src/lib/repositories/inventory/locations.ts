@@ -11,9 +11,9 @@
  * module's hypothetical mutators.
  */
 import { db } from '@/lib/drizzle/db';
-import { binContents, locations } from '@/lib/drizzle/schema';
-import type { BinContent, Location } from '@/lib/drizzle/schema';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { locations } from '@/lib/drizzle/schema';
+import type { Location } from '@/lib/drizzle/schema';
+import { eq } from 'drizzle-orm';
 
 export async function findLocationByBarcode(barcode: string): Promise<Location | null> {
   const rows = await db.select().from(locations).where(eq(locations.barcode, barcode)).limit(1);
@@ -23,12 +23,5 @@ export async function findLocationByBarcode(barcode: string): Promise<Location |
 export async function findLocationByName(name: string): Promise<Location | null> {
   const rows = await db.select().from(locations).where(eq(locations.name, name)).limit(1);
   return rows[0] ?? null;
-}
-
-interface ListBinsOptions {
-  room?: string;
-  activeOnly?: boolean;
-  binType?: string;
-  limit?: number;
 }
 

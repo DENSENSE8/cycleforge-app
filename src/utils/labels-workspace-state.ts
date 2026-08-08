@@ -22,6 +22,12 @@ export function getLabelsWorkspaceTabFromSearch(
   return VALID.has(raw) ? (raw as LabelsWorkspaceTab) : 'queue';
 }
 
+/** Wire tokens `?ltab=` may carry (route-param hygiene). */
+export function parseLabelsWorkspaceTabWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return VALID.has(v) ? v : null;
+}
+
 /**
  * Normalize URL for a labels workspace tab switch. Clears the open-order label
  * flow (`open`) so a selection from Queue doesn't bleed into Recent, and omits

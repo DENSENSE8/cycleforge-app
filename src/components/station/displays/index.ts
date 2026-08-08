@@ -23,7 +23,10 @@ export {
 } from './StationDisplaysPushColumn';
 
 export { StationDisplaysPushStack } from './StationDisplaysPushStack';
+export type { DisplaysVisitFrame } from './StationDisplaysPushStack';
 export { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
+export { useDisplaysLeafChrome } from './displays-leaf-chrome';
+export type { DisplaysFooterCommand } from './displays-footer-command';
 
 export { StationDenseFactStrip } from './StationDenseFactStrip';
 

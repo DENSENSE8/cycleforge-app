@@ -8,40 +8,61 @@
  * Eyebrow trailing = an action count, or nothing. Rows are read-only navigation:
  * the row holds NO control but itself (see the row-anatomy law below).
  *
- * Character-select keyboard: ↑↓ wrap an absolute cursor across the flattened
- * visual order; Enter/Space (and click) commit → open the leaf. The armed
- * marker FLIPs with the cursor. No Tab trap, no bare digits (wedge-safe).
+ * Character-select: ↑↓ wrap via {@link useArmedCursorList}; armed face =
+ * leading `>` + bottom accent track + marker pulse — no left rail / row wash.
+ * Enter/Space/click opens the leaf in the **same turn** (never a hit-marker
+ * DOM withhold). Footer `Filter displays…` drives the same cursor via
+ * {@link StationDisplayIndexFilterKeys} (↑↓ without stealing focus; Enter
+ * opens; Esc clears the query). Idle rows stay flush; tone chip stays a
+ * trailing sibling. No Tab trap, no bare digits (wedge-safe). No UI audio.
  */
 
 import {
+  forwardRef,
   useCallback,
-  useEffect,
   useId,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { ChevronRight } from 'lucide-react';
-import {
-  AnimatePresence,
-  motion,
-  motionRole,
-  useMotionRole,
-  useReducedMotion,
-} from '@/design-system/motion';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { useReducedMotion } from '@/design-system/motion';
 import type { SectionTab } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { STATION_SECONDARY_BAND_FACE } from '@/components/layout/header-shell';
+import { ChevronRight } from '@/components/Icons';
 import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
+import {
+  matchNavKey,
+  NAV_KEY_HINT_CLASS,
+  useNavRegion,
+} from '@/lib/keyboard/nav-keys';
+import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
 import { cn } from '@/utils/_cn';
 import {
+  ARMED_CURSOR_CHEVRON_CLASS,
+  ARMED_CURSOR_CHIP_FACE_CLASS,
+  ARMED_CURSOR_MARKER_PULSE_CLASS,
+  ARMED_CURSOR_TRACK_CLASS,
+} from './armed-cursor-face';
+import {
+  DISPLAY_LEAF_NAV_KEY,
   groupDisplayIndexRows,
   summarizeDisplayIndexGroup,
   type DisplayIndexRow,
   type DisplayIndexTone,
 } from './display-index';
+import { useArmedCursorList } from './useArmedCursorList';
+
+/**
+ * Imperative bridge for the footer {@link TechRailSearchBar} — ↑↓/Enter/Esc
+ * from the box without lifting cursor state into PushStack.
+ */
+export type StationDisplayIndexFilterKeys = {
+  onFilterKeyDown: (e: ReactKeyboardEvent) => void;
+};
 
 const TONE_CHIP: Record<DisplayIndexTone, string> = {
   action: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
@@ -55,82 +76,54 @@ const TONE_ROW_WASH: Record<DisplayIndexTone, string | false> = {
   neutral: false,
 };
 
-/** One shared marker across every row — framer FLIPs it between them. */
-const ARMED_MARKER_LAYOUT_ID = 'station-displays-armed-marker';
-
-/** One-shot settle wash duration — matches PoLineRow scan ack. */
-const CURSOR_PULSE_MS = 400;
-
 const SUMMARY_TONE: Record<DisplayIndexTone, string> = {
   action: 'text-amber-700',
   ok: 'text-emerald-700',
   neutral: 'text-text-faint',
 };
 
-function seedCursorId(
-  orderedIds: readonly string[],
-  activeId: string | null | undefined,
-  prev: string | null,
-): string | null {
-  if (orderedIds.length === 0) return null;
-  if (prev && orderedIds.includes(prev)) return prev;
-  if (activeId && orderedIds.includes(activeId)) return activeId;
-  return orderedIds[0] ?? null;
-}
-
-function isEditableOutsideList(
-  el: EventTarget | null,
-  root: HTMLElement | null,
-): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  if (root?.contains(el)) return false;
-  const tag = el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (el.isContentEditable) return true;
-  const role = el.getAttribute('role');
-  return role === 'textbox' || role === 'searchbox' || role === 'combobox';
-}
-
-export function StationDisplayIndexList({
-  rows,
-  tabs,
-  onSelect,
-  activeId = null,
-  filterQuery = '',
-  onClearFilter,
-}: {
-  rows: DisplayIndexRow[];
-  /** Leaf registry — icons paint from matching tab ids. */
-  tabs: readonly SectionTab[];
-  onSelect: (id: string) => void;
-  /**
-   * The footer filter's current text. Only used to tell the two empty states
-   * apart — "this station has no displays" is a different answer from "your
-   * filter excluded all of them", and showing the first when the second is true
-   * tells the operator their displays are gone.
-   */
-  filterQuery?: string;
-  /** Clears the footer filter from the no-match state. */
-  onClearFilter?: () => void;
-  /**
-   * Last opened leaf id — seeds the character-select cursor when the index
-   * mounts or when returning from a leaf. Distinct from `tone === 'action'`
-   * amber wash (attention ≠ selection). Armed paint follows the cursor.
-   */
-  activeId?: string | null;
-}) {
+export const StationDisplayIndexList = forwardRef<
+  StationDisplayIndexFilterKeys,
+  {
+    rows: DisplayIndexRow[];
+    /** Leaf registry — icons paint from matching tab ids. */
+    tabs: readonly SectionTab[];
+    onSelect: (id: string) => void;
+    /**
+     * The footer filter's current text. Only used to tell the two empty states
+     * apart — "this station has no displays" is a different answer from "your
+     * filter excluded all of them", and showing the first when the second is true
+     * tells the operator their displays are gone.
+     */
+    filterQuery?: string;
+    /** Clears the footer filter from the no-match state. */
+    onClearFilter?: () => void;
+    /**
+     * Last opened leaf id — seeds the character-select cursor when the index
+     * mounts or when returning from a leaf. Distinct from `tone === 'action'`
+     * amber wash (attention ≠ selection). Armed paint follows the cursor.
+     */
+    activeId?: string | null;
+  }
+>(function StationDisplayIndexList(
+  {
+    rows,
+    tabs,
+    onSelect,
+    activeId = null,
+    filterQuery = '',
+    onClearFilter,
+  },
+  filterKeysRef,
+) {
   const reduce = useReducedMotion();
-  const { transition: armedTransition } = useMotionRole(motionRole.push.rail);
-  const pulseTransition = useMotionTransition(motionRole.feedback.pulse.transition);
+  const markerPulse = reduce ? undefined : ARMED_CURSOR_MARKER_PULSE_CLASS;
   const sections = useMemo(() => groupDisplayIndexRows(rows), [rows]);
   const trimmedQuery = filterQuery.trim();
   const iconById = new Map(tabs.map((t) => [t.id, t.icon]));
   const rootRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const listId = useId();
-  const prevActiveIdRef = useRef(activeId);
-  const prevCursorForPulseRef = useRef<string | null>(null);
-  const didMountFocusRef = useRef(false);
 
   // Flattened visual order — groups render Verification → Assets → Context, so
   // the absolute cursor walks the same order the eye reads.
@@ -139,69 +132,90 @@ export function StationDisplayIndexList({
     [sections],
   );
 
-  const [cursorId, setCursorId] = useState<string | null>(() =>
-    seedCursorId(orderedIds, activeId, null),
+  // Reveal-on-arm: keycaps show while the list is focused (the honest arm when
+  // the operator is already in the list) OR while the leader armed this region
+  // (⌘; → r) — and vanish otherwise. Zero permanent per-row chrome.
+  const [focusWithin, setFocusWithin] = useState(false);
+  const { isOwner: isKeyboardRegion } = useKeyboardRegionOwner();
+  const rightOwnsKeyboard = isKeyboardRegion('right');
+
+  const {
+    cursorId,
+    setCursorId,
+    commitArmed,
+    handleNavKeyDown,
+    handleFilterNavKeyDown,
+  } = useArmedCursorList({
+    orderedIds,
+    activeId,
+    rootRef,
+    rowRefs,
+    regionActive: rightOwnsKeyboard,
+  });
+
+  // Nav-keys (Right region). One keymap drives both the revealed keycaps and the
+  // store's leader-armed letter match, resolved from the co-located
+  // DISPLAY_LEAF_NAV_KEY declarations. Letters jump + commit the same targets ↑↓
+  // reach — they coexist, and both go through the shipped hit-marker commit.
+  const rightTargets = useMemo(
+    () => orderedIds.map((id) => ({ id, preferredKey: DISPLAY_LEAF_NAV_KEY[id] })),
+    [orderedIds],
   );
-  const [pulseToken, setPulseToken] = useState(0);
+  const { armed: regionArmed, keymap: navKeymap } = useNavRegion({
+    id: 'right',
+    targets: rightTargets,
+    onCommit: (targetId) => commitArmed(targetId, onSelect),
+  });
+  const revealed = focusWithin || regionArmed;
 
-  // Keep cursor inside the filtered absolute order; reseed from activeId when
-  // the operator returns from a leaf (activeId changes).
-  useEffect(() => {
-    const activeChanged = prevActiveIdRef.current !== activeId;
-    prevActiveIdRef.current = activeId;
-
-    setCursorId((prev) => {
-      if (orderedIds.length === 0) return null;
-      if (activeChanged && activeId && orderedIds.includes(activeId)) {
-        return activeId;
+  const onFilterKeyDown = useCallback(
+    (e: ReactKeyboardEvent) => {
+      // Esc with a live query clears first (MasterNav comment contract) — do
+      // not let the stack Esc close Displays while the operator is refining.
+      if (e.key === 'Escape' && trimmedQuery) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClearFilter?.();
+        return;
       }
-      return seedCursorId(orderedIds, activeId, prev);
-    });
-  }, [orderedIds, activeId]);
 
-  // Autofocus the seeded row once when the index mounts with rows — Open
-  // displays is immediately ↑↓-ready. Skip when focus sits in an editable
-  // outside the list (footer filter, scan bar).
-  useEffect(() => {
-    if (didMountFocusRef.current) return;
-    if (!cursorId || orderedIds.length === 0) return;
-    if (isEditableOutsideList(document.activeElement, rootRef.current)) return;
+      if (handleFilterNavKeyDown(e)) return;
 
-    didMountFocusRef.current = true;
-    const raf = window.requestAnimationFrame(() => {
-      rowRefs.current.get(cursorId)?.focus();
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [cursorId, orderedIds.length]);
+      if (e.key === 'Enter') {
+        if (orderedIds.length === 0) return;
+        const id =
+          (cursorId && orderedIds.includes(cursorId) ? cursorId : null) ??
+          orderedIds[0] ??
+          null;
+        if (!id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        commitArmed(id, onSelect);
+        onClearFilter?.();
+      }
+    },
+    [
+      commitArmed,
+      cursorId,
+      handleFilterNavKeyDown,
+      onClearFilter,
+      onSelect,
+      orderedIds,
+      trimmedQuery,
+    ],
+  );
 
-  // One-shot settle wash when the cursor moves (not on initial seed).
-  useEffect(() => {
-    const prev = prevCursorForPulseRef.current;
-    prevCursorForPulseRef.current = cursorId;
-    if (reduce || !cursorId || prev == null || prev === cursorId) return;
-    setPulseToken((n) => n + 1);
-  }, [cursorId, reduce]);
-
-  useEffect(() => {
-    if (pulseToken === 0) return;
-    const token = pulseToken;
-    const timer = window.setTimeout(() => {
-      setPulseToken((n) => (n === token ? 0 : n));
-    }, CURSOR_PULSE_MS);
-    return () => window.clearTimeout(timer);
-  }, [pulseToken]);
-
-  const moveCursorTo = useCallback((nextId: string) => {
-    setCursorId(nextId);
-    rowRefs.current.get(nextId)?.focus();
-  }, []);
+  useImperativeHandle(
+    filterKeysRef,
+    () => ({ onFilterKeyDown }),
+    [onFilterKeyDown],
+  );
 
   const onRowKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLButtonElement>, id: string) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        setCursorId(id);
-        onSelect(id);
+        commitArmed(id, onSelect);
         return;
       }
 
@@ -210,35 +224,22 @@ export function StationDisplayIndexList({
       // ambient window keyboards (`useRecordCursorKeyboard`,
       // `useReceivingLineNavigation`) yield to — keeps ↑/↓ walking these rows
       // instead of leaking out to step the carton table + pop its peek.
-      // Character-select: ↑↓ wrap modulo the absolute flattened order.
-      const key = e.key;
-      if (
-        key !== 'ArrowDown' &&
-        key !== 'ArrowUp' &&
-        key !== 'Home' &&
-        key !== 'End'
-      ) {
-        return;
+      if (handleNavKeyDown(e, id)) return;
+
+      // Letter jump (nav-keys) — a bare single letter matching a live row's
+      // nav key commits that row, the same as ↑↓-then-Enter. Modifier combos
+      // pass through (browser / ⌘ chords stay owned); an unmapped letter is NOT
+      // consumed so it never swallows a keystroke — that no-op is how the
+      // leader-armed mode will exit in P1. Digits are never matched (wedge law).
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const targetId = matchNavKey(e.key, navKeymap);
+      if (targetId) {
+        e.preventDefault();
+        e.stopPropagation();
+        commitArmed(targetId, onSelect);
       }
-
-      if (orderedIds.length === 0) return;
-
-      const idx = orderedIds.indexOf(id);
-      if (idx === -1) return;
-
-      let nextIdx: number;
-      if (key === 'Home') nextIdx = 0;
-      else if (key === 'End') nextIdx = orderedIds.length - 1;
-      else if (key === 'ArrowDown') nextIdx = (idx + 1) % orderedIds.length;
-      else nextIdx = (idx - 1 + orderedIds.length) % orderedIds.length;
-
-      const nextId = orderedIds[nextIdx];
-      e.preventDefault();
-      e.stopPropagation();
-      if (nextId == null || nextId === id) return;
-      moveCursorTo(nextId);
     },
-    [moveCursorTo, onSelect, orderedIds],
+    [commitArmed, handleNavKeyDown, navKeymap, onSelect],
   );
 
   return (
@@ -254,6 +255,14 @@ export function StationDisplayIndexList({
       {...{ [LIST_KEY_OWNER_ATTR]: '' }}
       tabIndex={-1}
       className="outline-none"
+      // Focus-within is one of two arm sources (the leader is the other);
+      // moving between rows keeps focus inside, so hints don't flicker.
+      onFocus={() => setFocusWithin(true)}
+      onBlur={(e) => {
+        if (!rootRef.current?.contains(e.relatedTarget as Node | null)) {
+          setFocusWithin(false);
+        }
+      }}
     >
       {sections.length === 0 ? (
         <div className="inset-empty text-center" data-testid="station-displays-index-empty">
@@ -291,7 +300,7 @@ export function StationDisplayIndexList({
         return (
           <section
             key={section.group}
-            className="pt-4 first:pt-2"
+            className="pt-4 first:pt-0"
             data-display-index-group={section.group}
           >
             {/* Eyebrow is LABEL ……… action count, and nothing else. A per-group
@@ -301,8 +310,16 @@ export function StationDisplayIndexList({
                 fired after the operator had already tabbed into the list, which
                 is a false shortcut hint (worse than no hint). Both deleted; bare
                 digits cannot be safely bound on a bench where a wedge scan types
-                digits into the page. */}
-            <div className="flex items-center gap-2 px-4 pb-1.5">
+                digits into the page.
+                Height = {@link STATION_SECONDARY_BAND_FACE} — same h-6 seam as
+                left-rail eyebrow + carton commerce row 2. First group is flush
+                under the Displays top band (first:pt-0). */}
+            <div
+              className={cn(
+                'flex items-center gap-2 px-4',
+                STATION_SECONDARY_BAND_FACE,
+              )}
+            >
               <h3
                 id={headingId}
                 className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint"
@@ -330,6 +347,8 @@ export function StationDisplayIndexList({
                 const Icon = iconById.get(row.id);
                 const chipText = row.subtitle.trim();
                 const isArmed = cursorId != null && cursorId === row.id;
+                const navKey = navKeymap.get(row.id);
+                const showChip = Boolean(chipText);
                 return (
                   <li key={row.id}>
                     <button
@@ -339,27 +358,24 @@ export function StationDisplayIndexList({
                         else rowRefs.current.delete(row.id);
                       }}
                       onClick={() => {
-                        setCursorId(row.id);
-                        onSelect(row.id);
+                        commitArmed(row.id, onSelect);
                       }}
                       onFocus={() => setCursorId(row.id)}
                       onKeyDown={(e) => onRowKeyDown(e, row.id)}
                       className={cn(
                         // 44px hit: py-3 + h-5 icon. Measured at 40px when this
                         // briefly ran py-2.5 — under the bench floor, so the
-                        // density stays and "immediate" is bought with the
-                        // accent rail / pulse / tighter left gutter instead.
+                        // density stays and "immediate" is bought with binary-
+                        // cut arm + type roles (not pad shrink).
                         'group/row ds-raw-button relative flex w-full items-center gap-2 py-3 pl-3 pr-3 text-left',
-                        // ARMED CHANNEL RAIL. The 2px accent edge is a border on
-                        // the element itself (never `rounded-[inherit]` on a
-                        // child), and it is ALWAYS present as `transparent` so
-                        // arming a row changes ink, never geometry — the row
-                        // must not shift 2px under an operator's cursor.
-                        'border-l-2 border-transparent',
                         'hover:bg-surface-hover',
-                        'focus-visible:bg-accent-bg/10 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent-bg/40',
-                        isArmed && 'border-l-accent-bg bg-accent-bg/10',
-                        focusRing('control', 'accent'),
+                        // Armed face = `>` + bottom track. Suppress control
+                        // focusRing while armed — ring-2 + ring-offset paints
+                        // blue top/bottom bands that read as a second selection.
+                        // ds-allow-focus
+                        isArmed
+                          ? 'outline-none'
+                          : focusRing('control', 'accent'),
                         cornerClass('flush'),
                         TONE_ROW_WASH[row.tone],
                       )}
@@ -368,67 +384,71 @@ export function StationDisplayIndexList({
                       data-active={isArmed ? 'true' : undefined}
                       data-display-index-cursor={isArmed ? 'true' : undefined}
                       aria-current={isArmed ? 'true' : undefined}
+                      aria-keyshortcuts={navKey ? navKey.toUpperCase() : undefined}
                     >
-                      {/* One-shot settle wash — opacity only, terminates after
-                          one play. Never a looping full-row glow. */}
-                      <AnimatePresence>
-                        {isArmed && pulseToken > 0 ? (
-                          <motion.span
-                            key={pulseToken}
-                            aria-hidden
-                            initial={{ opacity: 0.35 }}
-                            animate={{ opacity: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={pulseTransition}
-                            className="pointer-events-none absolute inset-0 z-0 bg-accent-bg"
-                            data-display-index-cursor-pulse=""
-                          />
-                        ) : null}
-                      </AnimatePresence>
-                      {/* TRAVELING ARMED MARKER — the selection itself moves.
-                          Absolutely positioned, so icon + title stay flush
-                          left and NOTHING reflows when a row arms; the old
-                          in-flow gutter bought layout stability by pushing
-                          every icon 16px right on every row forever.
-                          `layoutId` is the sanctioned use of shared-element
-                          continuity (motion law: one element that physically
-                          travels) — framer FLIPs this chevron from the old row
-                          to the new one, so the operator SEES what moved
-                          rather than diffing two static states. Dropped under
-                          reduced motion, where it cross-fades in place. */}
+                      {/* Arm highlight is INSTANT — chevron + bottom track.
+                          No layoutId FLIP (that was sliding the bar). */}
                       {isArmed ? (
-                        <motion.span
-                          layoutId={reduce ? undefined : ARMED_MARKER_LAYOUT_ID}
-                          transition={armedTransition}
-                          className="pointer-events-none absolute inset-y-0 left-0 z-raised flex w-7 items-center justify-center"
+                        <span
+                          className={cn(ARMED_CURSOR_TRACK_CLASS, markerPulse)}
                           aria-hidden
                           data-display-index-armed-marker=""
-                        >
-                          <ChevronRight className="h-4 w-4 text-accent-bg motion-safe:animate-pulse" />
-                        </motion.span>
-                      ) : null}
-                      {Icon ? (
-                        <Icon
-                          className="h-5 w-5 shrink-0 text-text-soft"
-                          aria-hidden
+                          data-display-index-armed-track=""
                         />
-                      ) : (
-                        <span className="h-5 w-5 shrink-0" aria-hidden />
-                      )}
-                      <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-                        {row.label}
+                      ) : null}
+                      {/* Lead — idle flush leftmost; `>` mounts only when armed
+                          (never an empty reserved gutter on peers). */}
+                      <span
+                        className="relative z-raised flex min-w-0 flex-1 items-center gap-2 overflow-hidden"
+                        data-display-index-content-nudge=""
+                      >
+                        {isArmed ? (
+                          <span data-display-index-armed-chevron="" aria-hidden>
+                            <ChevronRight
+                              className={cn(
+                                ARMED_CURSOR_CHEVRON_CLASS,
+                                markerPulse,
+                              )}
+                            />
+                          </span>
+                        ) : null}
+                        {Icon ? (
+                          <Icon
+                            className="h-5 w-5 shrink-0 text-text-soft"
+                            aria-hidden
+                          />
+                        ) : (
+                          <span className="h-5 w-5 shrink-0" aria-hidden />
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+                          {row.label}
+                        </span>
                       </span>
-                      {chipText ? (
+                      {showChip ? (
                         <span
                           className={cn(
-                            'max-w-[45%] shrink-0 truncate rounded-none px-1.5 py-0.5',
-                            // tabular so 1/1 · 10 PHOTOS · 1 SERIAL align down
-                            // the column — `role-eyebrow` does not bind it.
-                            'text-role-eyebrow font-semibold uppercase tracking-widest tabular-nums',
+                            'relative z-raised max-w-[45%]',
+                            ARMED_CURSOR_CHIP_FACE_CLASS,
                             TONE_CHIP[row.tone],
                           )}
+                          data-display-index-tone-chip=""
                         >
                           {chipText}
+                        </span>
+                      ) : null}
+                      {/* Reveal-on-arm keycap — the row's stable nav-key letter,
+                          shown only while the list is armed (focus-within) and
+                          gone on disarm. A decorative sibling (never a control):
+                          the letter fires through the button's own onKeyDown.
+                          Trailing so it never touches the leading marker / nudge
+                          track. */}
+                      {revealed && navKey ? (
+                        <span
+                          className={cn(NAV_KEY_HINT_CLASS, 'relative z-raised')}
+                          data-display-index-nav-key=""
+                          aria-hidden
+                        >
+                          {navKey}
                         </span>
                       ) : null}
                     </button>
@@ -441,4 +461,6 @@ export function StationDisplayIndexList({
       })}
     </div>
   );
-}
+});
+
+StationDisplayIndexList.displayName = 'StationDisplayIndexList';

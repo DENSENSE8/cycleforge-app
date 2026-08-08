@@ -20,6 +20,10 @@ import { getCurrentUser, type CurrentUser } from './current-user';
 import type { PermissionString } from './permissions';
 import { audit } from './audit';
 import { isTrialBlocked } from '@/lib/billing/trial-gate';
+import {
+  ACTIVATION_REDIRECT_HREF,
+  isActivationBlocked,
+} from '@/lib/onboarding/activation-gate';
 
 export interface PageGuardOpts {
   /** @deprecated kept for callsite compatibility; enforcement is always on. */
@@ -61,6 +65,12 @@ export async function requirePermission(
   const trialPath = (await headers()).get('x-pathname') || '/';
   if (await isTrialBlocked(user.organizationId, trialPath)) {
     redirect('/settings/billing?status=trial_expired');
+  }
+
+  // Activation gate — template-less orgs go to /onboarding/template before
+  // empty operator desks. Fail-open on probe error; allowlist in activation-gate.
+  if (await isActivationBlocked(user.organizationId, trialPath)) {
+    redirect(ACTIVATION_REDIRECT_HREF);
   }
 
   return user;

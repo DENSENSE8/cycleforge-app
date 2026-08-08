@@ -85,7 +85,9 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
   };
 
   const poNumber = (log.zoho_purchaseorder_number || '').trim();
-  const headerTitle = poNumber ? `PO #${poNumber}` : `Receiving #${log.id} (no PO linked)`;
+  const headerTitle = poNumber
+    ? `Purchase order #${poNumber}`
+    : `Carton #${log.id} (no purchase order linked)`;
 
   const handleCopyPoNumber = async () => {
     if (!poNumber || copiedPoNumber) return;
@@ -103,11 +105,11 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
     setIsCopying(true);
     try {
       const lines = [
-        poNumber ? `PO #${poNumber}` : null,
-        `Receiving #${log.id}`,
+        poNumber ? `Purchase order #${poNumber}` : null,
+        `Carton #${log.id}`,
         log.tracking ? `Tracking: ${log.tracking}` : null,
         `Received: ${log.received_at ? formatDateTimePST(log.received_at) : '-'}`,
-        log.zoho_purchase_receive_id ? `Zoho Receive: ${log.zoho_purchase_receive_id}` : null,
+        log.zoho_purchase_receive_id ? `Inventory receive: ${log.zoho_purchase_receive_id}` : null,
         log.qa_status ? `QA: ${log.qa_status}` : null,
         log.disposition_code ? `Disposition: ${log.disposition_code}` : null,
         log.condition_grade ? `Condition: ${log.condition_grade}` : null,
@@ -165,7 +167,7 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
     }
   };
 
-  // Readiness-driven next action only. Edit PO / Search Zoho PO are deliberately
+  // Readiness-driven next action only. Edit PO / Search purchase order are deliberately
   // absent — operators match or edit lines from the Unbox workspace (or the
   // triage "open in unbox" icon), not from this read-focused details header.
   const primaryCta =

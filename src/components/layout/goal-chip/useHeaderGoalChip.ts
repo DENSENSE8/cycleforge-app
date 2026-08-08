@@ -20,7 +20,7 @@ import { useGoalChecklists } from './useGoalChecklists';
  * consumed by the chip shell + popover.
  */
 export function useHeaderGoalChip() {
-  const { user } = useAuth();
+  const { user, isLoaded } = useAuth();
   const staffId = user?.staffId ?? null;
 
   const [open, setOpen] = useState(false);
@@ -30,7 +30,7 @@ export function useHeaderGoalChip() {
   const [draft, setDraft] = useState('');
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const { goals, active, selectStation, reload } = useStationGoals(staffId);
+  const { goals, active, selectStation, reload, goalsLoading } = useStationGoals(staffId);
   const checklists = useGoalChecklists(staffId, active);
 
   // When the active station changes, hydrate its mode (a UI pref) from LS.
@@ -103,7 +103,9 @@ export function useHeaderGoalChip() {
 
   return {
     user,
+    isLoaded,
     goals,
+    goalsLoading,
     active,
     activeGoal,
     view,

@@ -3,9 +3,10 @@
 /**
  * Scan-station utility rail — slim white trailing chrome.
  *
- * Hosts Displays open (`←|`) + carton cursor (`↑` next / `↓` prev) as a
- * vertical stack. Sibling of the center work column on
- * {@link StationScanPaneHost} — never inside carton identity / Photos.
+ * Hosts carton cursor (`↑` / `↓`) at the top and Displays open (`←|`) in the
+ * **bottom** footer cell — twin of the left-dock expand seat. Sibling of the
+ * center work column on {@link StationScanPaneHost} — never inside carton
+ * identity / Photos.
  *
  * Visual twin of the left context collapse strip (flush card, hairline seam).
  */

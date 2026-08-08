@@ -28,6 +28,7 @@ const ROLE_TOKENS = [
   'role-title',
   'role-body',
   'role-data',
+  'role-nav',
   'role-caption',
   'role-eyebrow',
   'role-micro',

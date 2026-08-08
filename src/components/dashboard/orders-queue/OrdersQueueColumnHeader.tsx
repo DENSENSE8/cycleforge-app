@@ -1,5 +1,6 @@
 'use client';
 
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { GRID_HEADER_ROW_INDEX } from '@/design-system/components/grid/grid-row-index';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from '@/design-system/components/grid/grid-header-align';
 import {
@@ -138,7 +139,7 @@ export function OrdersQueueColumnHeader({
         // whole band freezes as one layer; this row fills that band.
         'group/hrow grid border-b border-border-default',
         gridSkin
-          ? cn('h-10 min-h-10 px-0 py-0', TABLE_FROZEN_HEADER_CLASS)
+          ? cn(PRIMARY_CHROME_ROW_FACE, 'px-0 py-0', TABLE_FROZEN_HEADER_CLASS)
           : cn('sticky top-0 z-sticky bg-surface-canvas/95 py-2 backdrop-blur-sm', ORDERS_QUEUE_COL_HEADER_STICKY, QUEUE_ROW.px),
         ordersQueueRowShellClass(false, { scrollMinContent: gridSkin }),
         className,
@@ -178,7 +179,7 @@ export function OrdersQueueColumnHeader({
               data-col={column.key}
               aria-hidden
               className={cn(
-                gridSkin ? 'h-10 min-h-10' : 'h-10 min-h-10',
+                PRIMARY_CHROME_ROW_FACE,
                 ordersQueueGridCell({ rule: false, inset: 'none' }),
               )}
             />
@@ -317,7 +318,7 @@ function HeaderCell({
         ordersQueueGridCell({ rule: !last, inset: cellInset }),
         frozen && ORDERS_QUEUE_FROZEN_CELL,
         tableHeader,
-        gridSkin && 'h-10 min-h-10',
+        gridSkin && PRIMARY_CHROME_ROW_FACE,
         sortActive && 'cursor-pointer hover:text-text-default',
         isActiveSort && 'text-text-default',
       )}

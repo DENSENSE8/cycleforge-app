@@ -71,22 +71,22 @@ export const CONTEXT_PANEL_RESIZE = {
  * feed — whatever the route mounts in {@link ContextPanelLayout}).
  *
  * Open: paths into the same preference —
- * 1. **Sash-top chevron:** {@link HorizontalEdgeResizeHandle} `onCollapse` on
- *    the trailing inset edge (every mounted context rail, including dashboard);
- * 2. **Filter trailing:** {@link RailFilterCollapseButton} — auto-seated by
+ * 1. **Filter trailing:** {@link RailFilterCollapseButton} — auto-seated by
  *    `TechRailSearchBar` `variant="rail"` when under
  *    {@link ContextPanelCollapseProvider} (age column / bottom-right). Hosts
  *    may override via explicit `trailingAction` (LedgerDrill parent map);
- * 3. drag the trailing edge past min (`useHorizontalEdgeResize`
+ * 2. drag the trailing edge past min (`useHorizontalEdgeResize`
  *    `onCollapseBeyondMin` / `collapseBelowPx` ≈ min − 48) — release-time
  *    only; live layout still floors at {@link CONTEXT_PANEL_RESIZE.minWidthPx}.
+ * The trailing {@link HorizontalEdgeResizeHandle} is drag-only (no sash-top
+ * collapse chevron).
  *
  * Collapsed: width-drawer to 0 + a slim expand strip on the canvas
  * ({@link CONTEXT_PANEL_COLLAPSE_STRIP_CLASS}) — whole-strip click restores;
  * optional mid-strip MRU pins (`mruPinCount`) from the open rail feed. Persists
  * beside {@link CONTEXT_PANEL_RESIZE} — one shared preference across routes. Do
- * not put a close icon in-row or in the UNBOXED eyebrow — sash + filter
- * trailing track (same column as relative-age) + drag-past-min only.
+ * not put a close icon in-row or in the UNBOXED eyebrow — filter trailing
+ * track (same column as relative-age) + drag-past-min only.
  */
 export const CONTEXT_PANEL_COLLAPSE = {
   storageKey: 'context-panel-collapsed',

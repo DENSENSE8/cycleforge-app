@@ -54,6 +54,16 @@ export type SupportMode =
 
 export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 
+/** Live Support modes — includes default `tickets` (usually omitted from the URL). */
+export const SUPPORT_MODES = [
+  'tickets',
+  'voicemail',
+  'calls',
+  'warranty',
+  'issues',
+  'orders',
+] as const satisfies readonly SupportMode[];
+
 export function parseSupportMode(raw: string | null | undefined): SupportMode {
   return raw === 'voicemail' ||
     raw === 'calls' ||
@@ -62,6 +72,16 @@ export function parseSupportMode(raw: string | null | undefined): SupportMode {
     raw === 'orders'
     ? raw
     : 'tickets';
+}
+
+/**
+ * Wire tokens `?mode=` may carry on `/support` (route-param hygiene / deep links).
+ * Includes `tickets` — writers usually omit it, but `VoicemailDetail` and shared
+ * links still write `?mode=tickets`. Do not round-trip {@link parseSupportMode}.
+ */
+export function parseSupportModeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (SUPPORT_MODES as readonly string[]).includes(v) ? v : null;
 }
 
 /**

@@ -33,10 +33,12 @@ export function ClaimModalHeader({
         <p className="text-role-micro uppercase tracking-[0.14em] text-rose-700">File a claim</p>
         <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">
           {row.receiving_source === 'unmatched'
-            ? 'Unfound'
+            ? 'Unmatched carton'
             : row.zoho_purchaseorder_number
               ? `PO ${row.zoho_purchaseorder_number}`
-              : `Receiving #${row.receiving_id ?? '—'}`}
+              : row.tracking_number
+                ? `Carton · ${String(row.tracking_number).slice(-8)}`
+                : 'Unmatched carton'}
         </p>
       </div>
       <IconButton

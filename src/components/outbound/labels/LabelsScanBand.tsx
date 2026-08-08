@@ -93,7 +93,7 @@ export function LabelsScanBand({ autoFocus = true }: { autoFocus?: boolean } = {
         inputRef={inputRef}
         staffId={user?.staffId}
         autoFocus={autoFocus}
-        placeholder="Scan order # · tracking · SKU"
+        placeholder="Order · Tracking · SKU"
         icon={<Barcode className="h-[17px] w-[17px]" />}
         iconClassName="text-text-faint"
         isResolving={resolving}

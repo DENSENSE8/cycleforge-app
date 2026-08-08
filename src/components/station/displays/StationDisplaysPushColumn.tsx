@@ -25,13 +25,21 @@
  * {@link footer}. Top band keeps fullscreen + optional ring / carton cursor.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Maximize2, Minimize2 } from '@/components/Icons';
-import { STATION_IDENTITY_INSET_TOP } from '@/components/station/entity-context';
+import {
+  STATION_CHROME_ROW_FACE,
+  STATION_IDENTITY_INSET_TOP,
+} from '@/components/station/entity-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { useEscapeClose, useHorizontalEdgeResize } from '@/design-system/hooks';
+import {
+  KEYBOARD_REGION_ACTIVE_ATTR,
+  KEYBOARD_REGION_ATTR,
+} from '@/lib/keyboard/keyboard-region-owner';
 import { LIST_KEY_REGION_OPEN_ATTR } from '@/lib/keyboard/list-key-scope';
+import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
 import { IconButton } from '@/design-system/primitives';
 import {
   DETAIL_STACK_ASIDE_SURFACE,
@@ -81,10 +89,11 @@ const STATION_DISPLAYS_FILL_DEFAULT_WIDTH_PX = 10_000;
  * One row: `[fullscreen] ……… [ring?] [↑ ↓]`. Column dismiss (`→|`) seats in the
  * **footer** with the filter search (left-rail twin) — see {@link footer}.
  *
- * **Height is derived, not picked.** Carton cursor on this band uses `xs`
- * IconButtons. Flush push has no `my-2`, so `h-8` (32px) with controls
- * pinned to the band's TOP clears identity chrome optically. When Displays
- * is closed the cursor lives on {@link ScanStationUtilityRail} instead.
+ * **Height matches the station chrome seam** (`STATION_CHROME_ROW_FACE` /
+ * left scan bar / carton identity row 1) — `h-10` (40px) so the hairline
+ * reads continuous across scan bar · identity · Displays. Carton cursor on
+ * this band uses `xs` IconButtons, centered. When Displays is closed the
+ * cursor lives on {@link ScanStationUtilityRail} instead.
  *
  * **The band aligns to the CONTENT gutter, and it aligns OPTICALLY** — `pl-2`,
  * not the `px-4` every other row in the column carries. Ruled 2026-08-02 after
@@ -108,33 +117,21 @@ const STATION_DISPLAYS_FILL_DEFAULT_WIDTH_PX = 10_000;
  * | Displays' card border | 17 | **17.0** |
  * | `→|`, `pl-2` (after) | 8 | **~16.8** |
  *
- * **Why this only ever looked right on Displays.** Displays is the one occupant
- * whose first row is also a glyph plate (`ICON_CELL_*` — SpaceX `h-10`), so it
- * was indented by the same ~8px and the two agreed with each other while both
- * missed the card border below them. Displays is also the only occupant that
- * was ever measured, so the band shipped tuned to the single surface where the
- * defect cancels. On Claim / the tool bodies the `→|` sat a visible 8px right of
- * the first line of text; on Ticket, whose header is `px-2.5` around an avatar,
- * further still.
- *
  * The 8px is the control's optical inset, not a taste nudge, and `pl-2` keeps it
  * density-aware (`spacing.mjs` → `calc(rem × var(--cf-density))`) so it tracks
  * the box it is correcting for. The button's box now overhangs the gutter — that
  * is the point: a hit box may bleed, a mark may not.
  *
- * `sm` and not `xs` is still a two-axis decision: a 24px box parks its centre at
- * y 12 against the ring's y 14.
- *
  * The Displays topic plate cancels host `px-4` with `-mx-4` (edge-to-edge
  * Cybertruck plate + trailing ⋮). Nested verb strips sit `gap-0` flush under it.
  * The E2E pins that dismiss + plate stay column-aligned.
  */
-/** `relative z-raised` keeps `→|` above the inset resize sash (same token).
- *  One horizontal row: `[→|] [fullscreen] ……… [↑ ↓]` — `items-center`, never a
- *  stacked trailing cluster. */
+/** `relative z-header` keeps `→|` / fullscreen above the inset resize sash
+ *  (`z-sticky`). One horizontal row: `[→|] [fullscreen] ……… [↑ ↓]` —
+ *  `items-center`, never a stacked trailing cluster. Height =
+ *  {@link STATION_CHROME_ROW_FACE}. */
 const STATION_DISPLAYS_PUSH_TOP_BAND =
-  'relative z-raised flex h-8 shrink-0 items-center gap-0.5 border-b border-border-hairline pl-2 pr-2';
-
+  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-center gap-0.5 border-b border-border-hairline pl-2 pr-2`;
 /**
  * Fullscreen toggle — names the REGION. "Expand panel" / "Collapse panel",
  * never "Expand displays" — the control is mounted once in the shared shell.
@@ -192,8 +189,9 @@ export function StationDisplaysPushColumn({
    */
   headerRightSlot?: ReactNode;
   /**
-   * Bottom band — filter search + `→|` Hide right panel (left-rail twin).
-   * Hosts compose {@link TechRailSearchBar} + Displays edge close toggle.
+   * Bottom band — stage-owned by {@link StationDisplaysPushStack}:
+   * Root Index = filter search + `→|`; leaf default = dismiss-only `→|`;
+   * leaf opt-in = `/` command palette + `→|`.
    */
   footer?: ReactNode;
   children: ReactNode;
@@ -309,6 +307,21 @@ export function StationDisplaysPushColumn({
     setWidth(coupled.displaysPx);
   }, [coupled, isDragging, overlay, layoutWidth, setWidth]);
 
+  // Pointer into Displays claims Right as keyboard owner (← → → history; focus face).
+  const { isOwner: isRightOwner, claim: claimKeyboardRegion } = useKeyboardRegionOwner();
+  const rightOwnsKeyboard = isRightOwner('right');
+  const claimRight = useCallback(() => {
+    claimKeyboardRegion('right');
+  }, [claimKeyboardRegion]);
+  useEffect(() => {
+    // Opening the column seeds Right ownership once (operator opened it to work here).
+    claimKeyboardRegion('right');
+    return () => {
+      // Closing Displays returns horizontal keys to Middle.
+      claimKeyboardRegion('middle');
+    };
+  }, [claimKeyboardRegion]);
+
   return (
     <aside
       role="region"
@@ -318,7 +331,11 @@ export function StationDisplaysPushColumn({
       // stands down for ↑/↓ (see `isListKeyRegionOpen`) — this is what stops an
       // arrow press from stepping the map and popping a second sidebar.
       {...{ [LIST_KEY_REGION_OPEN_ATTR]: '' }}
+      {...{ [KEYBOARD_REGION_ATTR]: 'right' }}
+      {...(rightOwnsKeyboard ? { [KEYBOARD_REGION_ACTIVE_ATTR]: '' } : null)}
       {...(dataTool ? { 'data-tool': dataTool } : null)}
+      onPointerDownCapture={claimRight}
+      data-keyboard-region-focus={rightOwnsKeyboard ? 'true' : undefined}
       className={cn(
         'relative min-h-0 overflow-visible',
         // Narrow overlay: float with identity top inset. Fullscreen expand:
@@ -330,6 +347,8 @@ export function StationDisplaysPushColumn({
             ? 'absolute inset-0'
             : cn('absolute bottom-2 right-0 shrink-0', STATION_IDENTITY_INSET_TOP)
           : 'min-w-0 flex-1 self-stretch',
+        // Focus feedback — inset accent ring while Right owns keyboard (click / open).
+        rightOwnsKeyboard && 'ring-1 ring-inset ring-accent-border',
       )}
       style={{
         // Fullscreen fills its positioning context. Narrow overlay keeps a

@@ -3,7 +3,7 @@
  *
  * Returns the station-wide {@link DisplayIndexRow} shape. UI lives in
  * `@/components/station/displays` ({@link StationDisplayIndexList}).
- * Checklist stays ring-only and is never emitted here.
+ * Checklist is a Displays leaf (no floor % ring).
  */
 
 import type { DisplayIndexGroup, DisplayIndexRow } from '@/components/station/displays';
@@ -34,7 +34,8 @@ export interface UnboxDisplayIndexSignals {
   inventoryExpected?: number | null;
 }
 
-const LABELS: Record<Exclude<UnboxSideTab, 'checklist'>, string> = {
+const LABELS: Record<UnboxSideTab, string> = {
+  checklist: 'Checklist',
   ticket: 'Ticket',
   photos: 'Photos',
   linkage: 'Pairing',
@@ -47,24 +48,28 @@ const LABELS: Record<Exclude<UnboxSideTab, 'checklist'>, string> = {
   timeline: 'Timeline',
 };
 
-const GROUPS: Record<Exclude<UnboxSideTab, 'checklist'>, DisplayIndexGroup> = {
-  ticket: 'verification',
-  photos: 'verification',
-  linkage: 'verification',
+/** PO-identity → stock → exceptions/history. */
+const GROUPS: Record<UnboxSideTab, DisplayIndexGroup> = {
+  checklist: 'verification',
+  listings: 'verification',
   classify: 'verification',
+  linkage: 'verification',
   inventory: 'assets',
   units: 'assets',
-  listings: 'assets',
-  support: 'context',
+  photos: 'assets',
+  ticket: 'context',
   tracking: 'context',
   timeline: 'context',
+  support: 'context',
 };
 
 function ticketRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   if (signals.hasTicketId) {
     return { subtitle: 'Linked ticket', tone: 'ok' };
   }
-  return { subtitle: 'Claim needed', tone: 'action' };
+  // Quiet directory — filing/linking is the Ticket leaf job (header New·Link),
+  // not an index amber alarm.
+  return { subtitle: 'No ticket', tone: 'neutral' };
 }
 
 function photosRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
@@ -139,11 +144,17 @@ function timelineRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, '
   return { subtitle: 'Carton history', tone: 'neutral' };
 }
 
+function checklistRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  return { subtitle: 'Procedure steps', tone: 'neutral' };
+}
+
 function rowMeta(
-  id: Exclude<UnboxSideTab, 'checklist'>,
+  id: UnboxSideTab,
   signals: UnboxDisplayIndexSignals,
 ): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   switch (id) {
+    case 'checklist':
+      return checklistRow();
     case 'ticket':
       return ticketRow(signals);
     case 'photos':
@@ -169,7 +180,7 @@ function rowMeta(
 
 /**
  * Build visible Root Index rows for the current carton gates + signals.
- * Order matches {@link UNBOX_STRIP_TAB_ORDER}; checklist never appears.
+ * Order matches {@link UNBOX_STRIP_TAB_ORDER}.
  */
 export function buildUnboxDisplayIndexRows(
   gates: UnboxSideTabGates,
@@ -178,7 +189,6 @@ export function buildUnboxDisplayIndexRows(
   const rows: DisplayIndexRow[] = [];
   for (const id of UNBOX_STRIP_TAB_ORDER) {
     if (!isUnboxSideTabVisible(id, gates)) continue;
-    if (id === 'checklist') continue;
     const meta = rowMeta(id, signals);
     rows.push({
       id,

@@ -1,30 +1,42 @@
 'use client';
 
 /**
- * Cross-tree bridge for Unbox History View topics — sheet layout chrome lives
+ * Cross-tree bridge for the Unbox **View** topics — sheet layout chrome lives
  * in {@link HistoryCartonTriagePanel} while the grid (zoom style, ▦ portal)
  * stays under {@link UnboxWorkspaceView}. Query facets (staff · scope · week ·
  * field) live on Band 3 Refine, not this bridge.
  *
- * Provider mounts on the Unbox right-pane host so the workspace + History rail
- * share one controls portal target + zoom + KPI collapse state.
+ * Provider mounts on the Unbox right-pane host, so every Unbox tab — not only
+ * History — shares one controls portal target and one zoom value.
+ *
+ * **KPI collapse is deliberately NOT here (2026-08-08).** Band 3 is the one KPI
+ * door; a View-cluster twin would be unreachable exactly when it is wanted
+ * (the inspector parked). See `source-of-truth.md` → Find-only Band 3.
+ *
+ * **The zoom chords live here, not in {@link UnboxCompareChrome}.** That
+ * component now mounts only inside the rail cluster, so a listener bound in it
+ * would die whenever the inspector is closed — a silent loss of function with
+ * no missing control to notice. The provider spans the whole Unbox subtree, so
+ * ⌘+ / ⌘- / ⌘0 survive rail state.
  */
 
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
   GRID_ZOOM_DEFAULT,
   readStoredGridZoom,
+  stepGridZoom,
+  writeStoredGridZoom,
   type GridZoomPercent,
 } from '@/design-system/components/grid/grid-zoom';
-import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
-import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 
 type HistoryViewChromeValue = {
   /** Portal host for ▦ column trigger (inside View cluster). Week / staff live on Band 3 Refine. */
@@ -32,8 +44,6 @@ type HistoryViewChromeValue = {
   setControlsEl: (el: HTMLElement | null) => void;
   zoom: GridZoomPercent;
   setZoom: (z: GridZoomPercent) => void;
-  kpiOpen: boolean;
-  onToggleKpi: () => void;
   /** View-only shell open (no carton target) — Band 3 can open layout chrome. */
   viewShellOpen: boolean;
   setViewShellOpen: (open: boolean) => void;
@@ -48,16 +58,51 @@ export function HistoryViewChromeProvider({ children }: { children: ReactNode })
     return readStoredGridZoom();
   });
   const [viewShellOpen, setViewShellOpen] = useState(false);
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed } =
-    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.unbox);
 
   const setZoom = useCallback((z: GridZoomPercent) => {
     setZoomState(z);
+    writeStoredGridZoom(z);
   }, []);
 
-  const onToggleKpi = useCallback(() => {
-    setKpiCollapsed(!kpiCollapsed);
-  }, [kpiCollapsed, setKpiCollapsed]);
+  // Read the live zoom inside the key handler without re-binding the listener
+  // on every step.
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+
+  // ⌘+ / ⌘- / ⌘0 — bound at the provider, not in the rail cluster, so zoom
+  // survives a closed inspector (see the docblock).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        setZoom(stepGridZoom(zoomRef.current, 1));
+      } else if (e.key === '-') {
+        e.preventDefault();
+        setZoom(stepGridZoom(zoomRef.current, -1));
+      } else if (e.key === '0') {
+        e.preventDefault();
+        setZoom(GRID_ZOOM_DEFAULT);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setZoom]);
+
+  // A carton opening owns the right edge (LineEditPanel / the station Displays
+  // column). Leaving the View-only shell registered would put a second full
+  // right column beside it — the dual-right-column ban. `historyTriage` is
+  // cleared on these same two events by `useReceivingDetailOverlays`; the shell
+  // is owned here, so it is cleared here.
+  useEffect(() => {
+    const close = () => setViewShellOpen(false);
+    window.addEventListener('receiving-workspace-open', close);
+    window.addEventListener('receiving-select-line', close);
+    return () => {
+      window.removeEventListener('receiving-workspace-open', close);
+      window.removeEventListener('receiving-select-line', close);
+    };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -65,19 +110,10 @@ export function HistoryViewChromeProvider({ children }: { children: ReactNode })
       setControlsEl,
       zoom,
       setZoom,
-      kpiOpen: !kpiCollapsed,
-      onToggleKpi,
       viewShellOpen,
       setViewShellOpen,
     }),
-    [
-      controlsEl,
-      zoom,
-      setZoom,
-      kpiCollapsed,
-      onToggleKpi,
-      viewShellOpen,
-    ],
+    [controlsEl, zoom, setZoom, viewShellOpen],
   );
 
   return (

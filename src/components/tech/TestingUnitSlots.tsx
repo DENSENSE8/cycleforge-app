@@ -72,6 +72,19 @@ interface Props {
   editingSerial?: UnitSlotSerial | null;
   onEditingSerialChange?: (serial: UnitSlotSerial | null) => void;
   /**
+   * Force the per-unit row layout even for a single-qty line — one flush
+   * editable row per serial (verdict · condition · serial), exactly like Unbox's
+   * Units display. Without it, a single-qty line falls back to the inline
+   * condition · verdict · serial-adder row, which duplicates a scanned serial as
+   * a chip + an empty "Serial" adder. The right-edge Units Display sets this.
+   */
+  forceUnitRows?: boolean;
+  /**
+   * Units Display flush chrome: full-bleed hairline rows, square controls,
+   * edge-to-edge. Only meaningful with {@link forceUnitRows}.
+   */
+  flush?: boolean;
+  /**
    * @deprecated Always one-row now (unbox parity). Kept for call-site compat.
    */
   oneRow?: boolean;
@@ -172,10 +185,12 @@ export function TestingLinePanel({
   showSavedChips = true,
   editingSerial = null,
   onEditingSerialChange,
+  forceUnitRows = false,
+  flush = false,
 }: Props) {
   const total = Math.max(expected ?? 0, saved.length, 1);
 
-  if (total > 1) {
+  if (forceUnitRows || total > 1) {
     return (
       <TestingUnitRows
         lineId={lineId}
@@ -194,12 +209,13 @@ export function TestingLinePanel({
         onDeleteSerial={onDeleteSerial}
         onReplaceSerial={onReplaceSerial}
         serialEditTarget={editingSerial}
+        flush={flush}
       />
     );
   }
 
   // When the parent header already surfaces saved serials (PoLinesAccordion /
-  // UnmatchedLineRow meta chips), skip the inline adder so the verdict band
+  // accordion meta chips), skip the inline adder so the verdict band
   // fills the trailing width. Re-show it for the first scan or an in-place edit
   // from the header chip menu.
   const headerOwnsSerial = !showSavedChips && saved.length > 0 && editingSerial == null;
@@ -261,6 +277,8 @@ interface TestingUnitRowsProps {
   onDeleteSerial: (serial: UnitSlotSerial) => void;
   onReplaceSerial: (original: UnitSlotSerial, next: string) => void;
   serialEditTarget?: UnitSlotSerial | null;
+  /** Units Display flush chrome — full-bleed hairline rows, square controls. */
+  flush?: boolean;
 }
 
 /**
@@ -287,6 +305,7 @@ function TestingUnitRows({
   onDeleteSerial,
   onReplaceSerial,
   serialEditTarget = null,
+  flush = false,
 }: TestingUnitRowsProps) {
   // Local selection fallback when the parent doesn't control it: default to the
   // first not-yet-scanned slot, else the first unit.
@@ -310,6 +329,7 @@ function TestingUnitRows({
       onSelect={select}
       disabled={disabled}
       isSubmitting={isSubmitting}
+      flush={flush}
       // Match the receiving display: every unit is an always-open row (verdict
       // pills + serial input, no n/N counter), and a committed scan advances
       // focus to the next unit so a lot is scanned in one fast pass.

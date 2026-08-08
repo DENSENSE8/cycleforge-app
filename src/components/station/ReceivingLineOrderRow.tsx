@@ -45,6 +45,10 @@ import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { formatDateTimePST } from '@/utils/date';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import {
+  getReceivingStatusDot,
+  getReceivingStatusDotLabel,
+} from '@/lib/receiving/rail/status';
 import type { ReceivingLineRow } from './receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
 
@@ -86,6 +90,7 @@ export function ReceivingLineOrderRow({
   isMobile,
   isIncoming = false,
   isHistory = false,
+  statusVocabulary = 'fine',
   selectMode = false,
   isChecked,
   onToggleSelect,
@@ -100,12 +105,14 @@ export function ReceivingLineOrderRow({
   /** Incoming view: serials aren't assigned until unboxing and the carrier /
    *  "EXPECTED" status are redundant, so we drop those chips/labels. */
   isIncoming?: boolean;
-  /** History view: everything shown has already been received (an unfound box
-   *  is received too — it just can't be marked received in Zoho because the PO
-   *  isn't found there). So the workflow status icon (EXPECTED clock / RECEIVED
-   *  check) and the testing verdict (FAILED box) are noise — we drop the icon
-   *  and read the dot as a uniform "received" green. */
+  /** History view: workflow status icon is noise (received is implied on
+   *  Unbox History; Testing History still paints fine status via the dot). */
   isHistory?: boolean;
+  /**
+   * Unbox / Receiving History → `'coarse'` (Scanned / Unboxed / Received).
+   * Testing History stays `'fine'` so FAILED dots remain visible.
+   */
+  statusVocabulary?: 'fine' | 'coarse';
   /** Multi-select mode: render the leading checkbox. */
   selectMode?: boolean;
   /**
@@ -132,6 +139,10 @@ export function ReceivingLineOrderRow({
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
+  const coarseDot =
+    statusVocabulary === 'coarse' ? getReceivingStatusDot(row) : null;
+  const coarseLabel =
+    statusVocabulary === 'coarse' ? getReceivingStatusDotLabel(row) : null;
   // The workflow status renders as a compact icon (not text) — RECEIVED and
   // EXPECTED are the dominant states; everything else falls back to a generic
   // package glyph. The label rides along as the `title` for hover/a11y.
@@ -204,11 +215,17 @@ export function ReceivingLineOrderRow({
               </span>
             )
           }
-          // History reads as received across the board (unfound boxes included),
-          // so the dot is a uniform "received" green there rather than the
-          // workflow-derived color that paints unfound rows amber/"pending".
-          dot={isHistory ? 'bg-emerald-500' : getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected)}
-          dotTitle={isHistory ? 'Received' : workflowLabel}
+          // Coarse History: Scanned / Unboxed / Received (testing terminals →
+          // Received). Fine (Testing History): workflow-stage dots incl. FAILED.
+          dot={
+            coarseDot
+            ?? getStatusDotBg(
+              row.workflow_status,
+              row.quantity_received,
+              row.quantity_expected,
+            )
+          }
+          dotTitle={coarseLabel ?? workflowLabel}
           dotTrack={META_COL.dotTrackWide}
           title={productTitle}
         />

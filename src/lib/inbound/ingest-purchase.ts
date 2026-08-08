@@ -32,7 +32,7 @@ import { upsertInboundMirror } from './mirror';
 import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { linkShipment } from '@/lib/shipping/shipment-links';
-import { ensureReceivingForEbayOrder, ensureReceivingForPo } from '@/lib/receiving/attach-box';
+import { ensureReceivingForInboundOrder, ensureReceivingForPo } from '@/lib/receiving/attach-box';
 
 /** condition_grade_enum values (mirror of the DB enum). */
 const CONDITION_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
@@ -263,14 +263,20 @@ export async function ingestPurchase(
       { withTx: (_o, fn) => fn(client) },
     );
 
-    // When tracking is present on an eBay purchase: register STN → ensure eBay
-    // (or merged Zoho) carton → link STN → stamp receiving_line.receiving_id
-    // if still null. Mirrors zoho-receiving-sync's registerShipmentPermissive +
-    // carton upsert.
+    // When tracking is present on a marketplace / manual purchase: register STN
+    // → ensure inbound carton (or merged Zoho) → link STN → stamp
+    // receiving_line.receiving_id if still null.
     const tracking = input.trackingNumber?.trim() || null;
-    if (tracking && sourceType === 'ebay') {
+    const trackingSources: ReadonlyArray<InboundSourceType> = ['ebay', 'amazon', 'manual'];
+    if (tracking && trackingSources.includes(sourceType as InboundSourceType)) {
+      const shipmentSource =
+        sourceType === 'ebay'
+          ? 'ebay_purchase'
+          : sourceType === 'amazon'
+            ? 'amazon_purchase'
+            : 'manual_inbound';
       const shipment = await registerShipmentPermissive(
-        { trackingNumber: tracking, sourceSystem: 'ebay_purchase' },
+        { trackingNumber: tracking, sourceSystem: shipmentSource },
         orgId,
       );
       if (shipment?.id) {
@@ -302,7 +308,7 @@ export async function ingestPurchase(
             [cartonId, shipmentId, orgId],
           );
         } else if (meta?.zoho_purchaseorder_id) {
-          // Merged eBay→Zoho line: anchor on the Zoho PO carton, not a sibling ebay carton.
+          // Merged marketplace→Zoho line: anchor on the Zoho PO carton.
           cartonId = await ensureReceivingForPo({
             poId: meta.zoho_purchaseorder_id,
             poNumber: meta.zoho_purchaseorder_number,
@@ -316,7 +322,8 @@ export async function ingestPurchase(
             [cartonId, shipmentId, orgId],
           );
         } else {
-          cartonId = await ensureReceivingForEbayOrder({
+          cartonId = await ensureReceivingForInboundOrder({
+            sourceType: sourceType as 'ebay' | 'amazon' | 'manual',
             sourceOrderId,
             shipmentId,
             organizationId: orgId,
@@ -332,7 +339,7 @@ export async function ingestPurchase(
             direction: 'INBOUND',
             isPrimary: true,
             role: 'PO_ANCHOR',
-            source: 'ebay_purchase',
+            source: shipmentSource,
           },
           // Inverse of the withTx boundary cast above: TxClient is the same
           // tenant-transaction client, just narrowed differently than

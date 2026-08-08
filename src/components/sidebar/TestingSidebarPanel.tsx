@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Barcode, Hash, MapPin, Package, Pencil } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
@@ -28,6 +29,7 @@ import {
 import { publishTestingScanSession } from '@/lib/testing/testing-scan-session-bridge';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { seedReceivingSiblingsCache } from '@/lib/queries/receiving-queries';
 import {
   readSelectLineDetail,
   type ReceivingSelectLineDetail,
@@ -94,6 +96,20 @@ function lineAckSummary(row: ReceivingLineRow): {
 }
 
 /**
+ * Frame-1 siblings paint for Testing open (scan / picker). Resolve already
+ * returns include=serials rows — seed before select so PoLinesAccordion never
+ * cold-fetches an empty projection.
+ */
+function seedTestingOpenLine(
+  queryClient: ReturnType<typeof useQueryClient>,
+  row: ReceivingLineRow,
+): void {
+  const receivingId = row.receiving_id;
+  if (receivingId == null || receivingId <= 0 || row.id <= 0) return;
+  seedReceivingSiblingsCache(queryClient, receivingId, [row]);
+}
+
+/**
  * Tech sidebar for Testing mode — Pass+Print / unit-label creation surface.
  * Scan band + To Test / Tested rail. STN anchors a line; unit-label scan
  * confirms prepack identity (TRK↔SKU + serials feedback).
@@ -102,6 +118,7 @@ export function TestingSidebarPanel({
   selectedLineId: selectedLineIdProp,
   staffId,
 }: Props) {
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { theme: themeColor } = useStationTheme({ staffId: staffId ? Number(staffId) : 0 });
   const [railFilter, setRailFilter] = useState('');
@@ -226,6 +243,7 @@ export function TestingSidebarPanel({
       const result = await resolveTestingScan(value, { forcedType });
       switch (result.kind) {
         case 'line': {
+          seedTestingOpenLine(queryClient, result.row);
           dispatchSelectLine(result.row);
           setScanValue('');
           setArmedMode(null);
@@ -280,7 +298,7 @@ export function TestingSidebarPanel({
       inFlightRef.current = false;
       setIsResolving(false);
     }
-  }, [applyLineToSession]);
+  }, [applyLineToSession, queryClient]);
 
   const handleSubmit = useCallback(() => {
     void runScan(scanValue, armedMode);
@@ -381,6 +399,7 @@ export function TestingSidebarPanel({
                 <button
                   type="button"
                   onClick={() => {
+                    seedTestingOpenLine(queryClient, row);
                     dispatchSelectLine(row);
                     setLastAck((prev) => ({
                       via: picker.via ?? prev?.via ?? 'receiving_id',

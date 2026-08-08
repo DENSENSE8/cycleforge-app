@@ -83,3 +83,59 @@ export function classifyUnboxScan(raw: string, ctx: UnboxScanContext): UnboxScan
 
   return { type: base, intent: intentFor(base), reclassified: false };
 }
+
+/**
+ * True when a known-carrier tracking scan would open a *new* carton while the
+ * active Unbox carton still owes serials — hold and confirm before switching.
+ *
+ * Complements {@link classifyUnboxScan}: unknown-carrier barcodes reclassify as
+ * serial mid-carton; known-carrier tracking stays `open_carton` and needs this
+ * interrupt so the operator does not silently orphan incomplete work.
+ */
+export function shouldConfirmCartonSwitch(args: {
+  intent: UnboxScanIntent;
+  knownCarrier: boolean;
+  activeCartonNeedsSerials: boolean;
+}): boolean {
+  return (
+    args.intent === 'open_carton' &&
+    args.knownCarrier === true &&
+    args.activeCartonNeedsSerials === true
+  );
+}
+
+/**
+ * Minimal line shape for serial-need checks — avoids importing the heavy
+ * `ReceivingLineRow` module into this pure classifier.
+ */
+interface SerialNeedLine {
+  quantity_expected?: number | null;
+  serial_absent?: boolean | null;
+  serials?: Array<{ serial_number?: string | null }> | null;
+  units?: Array<{ serial?: string | null; serial_absent?: boolean }> | null;
+}
+
+/**
+ * Whether a PO line still owes serials (mirrors Unbox `unitsSatisfied` /
+ * `deriveReceivingStepFlags`). Line-level waiver (`serial_absent`) satisfies.
+ * Missing/zero expected qty → does not owe (avoids trapping unmatched stubs).
+ */
+export function lineNeedsSerials(line: SerialNeedLine): boolean {
+  if (line.serial_absent) return false;
+  const expected = Math.max(0, Number(line.quantity_expected) || 0);
+  if (expected <= 0) return false;
+  const serialCount = (line.serials ?? []).filter((s) =>
+    String(s.serial_number ?? '').trim(),
+  ).length;
+  const perUnitAbsent = (line.units ?? []).filter((u) => u.serial_absent).length;
+  return serialCount + perUnitAbsent < expected;
+}
+
+/**
+ * Carton-level: any sibling line on the open carton still owes serials.
+ * `lines` should be the selected line plus `scanMatchedRows` scoped to the
+ * same `receiving_id` (caller owns that filter).
+ */
+export function cartonNeedsSerials(lines: readonly SerialNeedLine[]): boolean {
+  return lines.some(lineNeedsSerials);
+}

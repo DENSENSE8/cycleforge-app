@@ -15,7 +15,7 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   // the sidebar page label.
   assert.equal(getMobileAppTitle('/incoming'), 'Inbound');
   assert.equal(getMobileAppTitle('/pickup'), 'Local Pickup');
-  assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
+  assert.equal(getMobileAppTitle('/repair'), 'Repair');
 });
 
 test('routeHasMobileContextRow includes receiving', () => {

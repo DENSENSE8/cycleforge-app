@@ -5,7 +5,7 @@
  *
  * Outbound To-ship graduated to `/shipping/orders` (P2 page-mode condensation).
  * Bare `/dashboard` and outbound lifecycle bookmarks 308 there (proxy + client).
- * Sales (`?mode=sales|pickup`) stays until the dedicated `/sales` desk pass (P3).
+ * Sales (`?mode=sales|pickup|repairs`) stays until the dedicated `/sales` desk pass (P3).
  */
 
 import { Suspense, useCallback, useEffect } from 'react';

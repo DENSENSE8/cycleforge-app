@@ -20,16 +20,11 @@ const STEPS: ReadonlyArray<LinearStep> = [
 /**
  * The order's packout pipeline — Tested → Packed → Scanned Out — as a compact
  * stepper over a next-step callout and attributed milestone rows. Mirrors the
- * receiving carton pipeline (`ReceivingCartonPipeline`), but phase-aware so the
- * panel reads completely differently per lifecycle state without forking the
- * layout (facts drive chrome):
- *
- *   - pending     → stepper + "Awaiting testing"; NO empty milestone rows.
- *   - in_progress → stepper + callout + ONLY the stamped milestone rows.
- *   - shipped     → all rows + carrier status hoisted as the terminal fact.
- *
- * State is derived from the order's stamps (never stored) via
- * {@link deriveOrderPipeline}, so it always reflects the source of truth.
+ * receiving carton pipeline (`ReceivingCartonPipeline`): **all three milestone
+ * rows stay mounted** (spatial predictability). Empty stages render
+ * `PipelineStageRow` emptyFallback in-bounds — never progressive hide that
+ * shifts muscle-memory layout. Phase from {@link deriveOrderPipeline} drives
+ * the next-step callout + carrier terminal fact, not which rows mount.
  */
 export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
   const meta = deriveShippingDisplayMeta(shipped, serialNumberRowsFromShipped(shipped));
@@ -62,42 +57,29 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
         size="compact"
       />
 
-      {/* Teaching callout — the operator's next action. Replaces the row of
-          empty "PENDING …" stamps a fully-pending order used to show. The
-          extra top padding keeps it clear of the stepper labels above. */}
+      {/* Teaching callout — the operator's next action (Required Next Action). */}
       <p className="pt-1 text-sm font-semibold text-text-default">{nextStep}</p>
 
-      {/* Milestone rows appear ONLY for stamped stages — an unstamped stage
-          lives solely as a gray dot in the stepper above (progressive
-          disclosure: summarize the past, don't enumerate the empty future). */}
-      {(testedAt || packedAt || scannedOutAt) ? (
-        <div className="divide-y divide-border-hairline">
-          {testedAt ? (
-            <PipelineStageRow
-              label="Tested"
-              at={testedAt}
-              staffName={meta.techNameDisplay}
-              emptyFallback="Not tested"
-            />
-          ) : null}
-          {packedAt ? (
-            <PipelineStageRow
-              label="Packed"
-              at={packedAt}
-              staffName={meta.packerNameDisplay}
-              emptyFallback="Pending pack"
-            />
-          ) : null}
-          {scannedOutAt ? (
-            <PipelineStageRow
-              label="Scanned Out"
-              at={scannedOutAt}
-              staffName={meta.scannedOutByDisplay ?? ''}
-              emptyFallback="Pending scan-out"
-            />
-          ) : null}
-        </div>
-      ) : null}
+      <div className="divide-y divide-border-hairline">
+        <PipelineStageRow
+          label="Tested"
+          at={testedAt}
+          staffName={meta.techNameDisplay}
+          emptyFallback="Not tested"
+        />
+        <PipelineStageRow
+          label="Packed"
+          at={packedAt}
+          staffName={meta.packerNameDisplay}
+          emptyFallback="Pending pack"
+        />
+        <PipelineStageRow
+          label="Scanned Out"
+          at={scannedOutAt}
+          staffName={meta.scannedOutByDisplay ?? ''}
+          emptyFallback="Pending scan-out"
+        />
+      </div>
 
       {showCarrierStatus ? (
         <DetailsPanelRow label="Carrier Status" dividerClassName="">

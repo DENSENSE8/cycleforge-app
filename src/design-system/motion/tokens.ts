@@ -29,6 +29,19 @@ export const springSnappy = {
 } as const satisfies Transition;
 
 /**
+ * Armed-list track FLIP — snappier mass than {@link springSnappy} so the
+ * traveling underline / marker glides row→row without floaty lag. WMS research
+ * (stiffness 500 · damping ~38 · mass 0.5). Never inline at call sites.
+ */
+export const springArmedTrack = {
+  type: 'spring' as const,
+  stiffness: 500,
+  damping: 38,
+  mass: 0.5,
+  restDelta: 0.001,
+} as const satisfies Transition;
+
+/**
  * Instant fade — opacity changes only (tooltips, state icons, save flash).
  * Fast enough that the operator does not wait for it.
  */

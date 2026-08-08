@@ -62,7 +62,7 @@ const QUEUE_SURFACE_LINKS: Array<{
   },
   {
     key: 'fba',
-    label: 'FBA prep',
+    label: 'Amazon Prep',
     permission: 'fba.view',
     href: '/fba',
     match: (row) => row.queueKey === 'fba_shipments',

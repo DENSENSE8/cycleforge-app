@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-export interface ListingGalleryPhoto {
+interface ListingGalleryPhoto {
   id: number;
   photoId: number;
   sortOrder: number;
@@ -12,7 +12,7 @@ export interface ListingGalleryPhoto {
   thumbUrl: string;
 }
 
-export type ListingGalleryTarget = { kind: 'sku' | 'unit'; id: number };
+type ListingGalleryTarget = { kind: 'sku' | 'unit'; id: number };
 
 interface GalleryResponse {
   items: ListingGalleryPhoto[];

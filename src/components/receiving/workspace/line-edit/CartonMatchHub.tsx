@@ -71,7 +71,7 @@ import {
   HorizontalButtonSlider,
   type HorizontalSliderItem,
 } from '@/components/ui/HorizontalButtonSlider';
-import { EcwidProductSearchInline } from '@/components/receiving/unfound/EcwidProductSearchInline';
+import { RepairServiceIdentify } from '@/components/receiving/workspace/line-edit/RepairServiceIdentify';
 import { ZohoItemPairTab } from '@/components/receiving/workspace/line-edit/ZohoItemPairTab';
 import { PoLinkTab } from '@/components/receiving/workspace/line-edit/PoLinkTab';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
@@ -378,11 +378,21 @@ function MatchHubCard({
     setForcePicker(false);
   }, [pkg.poNumber, pkg.zohoPoId]);
 
+  const intakeHint = (pkg.intakeType || 'PO').toUpperCase();
+  const receivingTypeHint =
+    intakeHint === 'RETURN' ||
+    intakeHint === 'TRADE_IN' ||
+    intakeHint === 'REPAIR' ||
+    intakeHint === 'PICKUP' ||
+    intakeHint === 'PO'
+      ? intakeHint
+      : 'PO';
+
   const u = useUnmatchedItems({
     receivingId,
     staffId,
     sourcePlatformHint: pkg.sourcePlatform ?? undefined,
-    receivingTypeHint: (pkg.intakeType?.toUpperCase() as 'PO' | 'RETURN' | 'TRADE_IN') ?? 'PO',
+    receivingTypeHint,
     listingUrlHint: row.receiving_listing_url ?? undefined,
     onLinked: ({ carton, line }) => {
       const cartonPatch = {
@@ -423,12 +433,12 @@ function MatchHubCard({
   const tabs: HorizontalSliderItem[] =
     tabSet === 'arrival'
       ? [
-          { id: 'zoho_po', label: 'PO', icon: Link2 },
+          { id: 'zoho_po', label: 'Purchase order', icon: Link2 },
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
         ]
       : [
           { id: 'zoho_item', label: 'Inventory Item', icon: Search },
-          { id: 'zoho_po', label: 'PO', icon: Link2 },
+          { id: 'zoho_po', label: 'Purchase order', icon: Link2 },
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
         ];
 
@@ -492,6 +502,7 @@ function MatchHubCard({
         ticketUrl={autoMatch.ticketUrl}
         onTicketChanged={autoMatch.onTicketChanged}
         onFindTicket={autoMatch.onFindTicket}
+        onLinkRepair={() => selectAvenue('ecwid')}
         showTopRule={false}
       />
     ) : null;
@@ -561,9 +572,8 @@ function MatchHubCard({
 
   const tabBody =
     tab === 'ecwid' ? (
-      <EcwidProductSearchInline
+      <RepairServiceIdentify
         receivingId={receivingId}
-        popoverMode="repair_service"
         initialOrderScope="all"
         chrome="bare"
         autoFocusSearch={autoFocusSearch}

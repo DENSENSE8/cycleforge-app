@@ -80,7 +80,7 @@ test('receivingRailRowTitle — po-group mode keeps unfound product label', () =
     receiving_source: 'unmatched',
     item_name: 'Unfound PO',
   });
-  assert.equal(receivingRailRowTitle(r, 'po-group', identity), 'Unfound PO');
+  assert.equal(receivingRailRowTitle(r, 'po-group', identity), 'Unfound order');
 });
 
 test('receivingRailRowTitle — marketplace order without Zoho PO', () => {
@@ -128,6 +128,21 @@ test('getReceivingPoIdentityParts — Zoho PO wins over eBay source_order_id', (
   );
   assert.equal(parts.poValue, 'PO-99');
   assert.equal(parts.idPrefix, 'PO');
+});
+
+test('getReceivingPoIdentityParts — Ecwid repair pairing shows Order # (not PO)', () => {
+  const parts = getReceivingPoIdentityParts(
+    row({
+      source_platform: 'ecwid',
+      zoho_purchaseorder_number: '554433',
+      zoho_purchaseorder_id: null,
+      inbound_source_type: null,
+    }),
+    (p) => (p === 'ecwid' ? 'ECWID-RS' : p),
+  );
+  assert.equal(parts.poValue, '554433');
+  assert.equal(parts.idPrefix, 'Order');
+  assert.equal(parts.platformLabel, 'ECWID-RS');
 });
 
 test('receivingRailRowTitle — line mode keeps product name', () => {

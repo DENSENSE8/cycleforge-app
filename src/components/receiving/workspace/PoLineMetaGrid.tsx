@@ -6,20 +6,18 @@ import { EmptySkuChipFace, UnitPriceChip } from '@/components/ui/CopyChip';
 
 /**
  * Boxed meta sub-grid for PO line accordion rows.
- * Order: qty | SKU | condition | serial | price (price last — variable width).
+ * Default order: qty | SKU | condition | serial | price (price last — variable width).
  * Empty SKU uses the mono `----` face (same slot as a filled SkuScanRefChip).
  * Empty price uses {@link UnitPriceChip} with no amount — Receipt mark + `—`
  * so unfound / unpriced lines keep the price column (never a blank cell).
  *
- * Tracks: `auto auto auto 1fr auto` so qty/SKU/condition/price hug content and
- * the serials cell absorbs remaining width. Column separation is `gap-x-3`
- * whitespace (no `divide-x` / vertical meta hairlines) — inline PO meta favors
- * horizontal alignment + gap so the eye can sweep the row. Keep `border-t` as
- * the horizontal row seam. Nested CSS grid, not floating flex columns.
+ * When {@link unitsChrome} is false (Arrival door flow), tracks collapse to
+ * qty | SKU | price — condition · serial / Units stay Unbox-only.
  *
- * Cells are flex + items-center so plain qty text shares a vertical midline
- * with underlined identity chips. Qty gets the same `pb-0.5` as chip labels
- * so its baseline sits with the chip text, not above the underline band.
+ * Default tracks: `auto auto auto 1fr auto` so qty/SKU/condition/price hug
+ * content and the serials cell absorbs remaining width. Column separation is
+ * `gap-x-3` whitespace (no `divide-x` / vertical meta hairlines). Nested CSS
+ * grid, not floating flex columns.
  */
 export function PoLineMetaGrid({
   qty,
@@ -27,13 +25,19 @@ export function PoLineMetaGrid({
   condition,
   serial,
   price,
+  unitsChrome = true,
   className,
 }: {
   qty: ReactNode;
   sku?: ReactNode;
-  condition: ReactNode;
+  condition?: ReactNode;
   serial?: ReactNode;
   price?: ReactNode;
+  /**
+   * When false, omit condition + serial columns (Arrival — no units chrome).
+   * Defaults true (Unbox / Testing full meta).
+   */
+  unitsChrome?: boolean;
   /**
    * @deprecated Thumb is the left rail on the nested grid row — meta no longer
    * indents under a chevron track. Ignored when present.
@@ -44,9 +48,12 @@ export function PoLineMetaGrid({
   return (
     <div
       data-po-line-meta-grid
+      data-units-chrome={unitsChrome ? 'true' : 'false'}
       className={cn(
         'grid min-w-0 items-stretch border-t border-border-soft',
-        'grid-cols-[auto_auto_auto_minmax(2.5rem,1fr)_auto]',
+        unitsChrome
+          ? 'grid-cols-[auto_auto_auto_minmax(2.5rem,1fr)_auto]'
+          : 'grid-cols-[auto_auto_auto]',
         'gap-x-3',
         'text-role-eyebrow uppercase tracking-widest leading-none',
         className,
@@ -61,17 +68,21 @@ export function PoLineMetaGrid({
       <span data-col="sku" className="flex min-w-0 items-center justify-start truncate px-2 py-1">
         {sku ?? <EmptySkuChipFace dense />}
       </span>
-      <span data-col="condition" className="flex min-w-0 items-center justify-start truncate px-2 py-1">
-        {condition}
-      </span>
-      <span
-        data-col="serial"
-        className="flex min-w-0 items-stretch justify-start overflow-hidden p-0"
-      >
-        {serial ?? (
-          <span className="px-2 py-1 text-text-faint/40">—</span>
-        )}
-      </span>
+      {unitsChrome ? (
+        <>
+          <span data-col="condition" className="flex min-w-0 items-center justify-start truncate px-2 py-1">
+            {condition}
+          </span>
+          <span
+            data-col="serial"
+            className="flex min-w-0 items-stretch justify-start overflow-hidden p-0"
+          >
+            {serial ?? (
+              <span className="px-2 py-1 text-text-faint/40">—</span>
+            )}
+          </span>
+        </>
+      ) : null}
       <span
         className="flex items-center justify-end text-right tabular-nums px-2 py-1"
         data-col="price"

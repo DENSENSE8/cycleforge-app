@@ -11,8 +11,9 @@
  *
  * The flattened option index model (must match the keyboard nav in the host):
  *   • recents  → option i = recents[i]
- *   • preview  → option 0 = "See all results"; options 1..N = the preview hits
- *                in grouped display order (flattenPreviewGroups)
+ *   • preview  → options 0..N-1 = the preview hits in grouped display order
+ *                (flattenPreviewGroups). There is no "See all results" row —
+ *                the dropdown IS the results list; picking a hit opens `?sel=`.
  *
  * Flush column chrome: `rounded-none`, zero gap under the find cell, width
  * matched to the anchor (`bottom-stretch`). The column is the card — never a
@@ -20,9 +21,7 @@
  */
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
-import Link from 'next/link';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { Search, History } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
@@ -55,7 +54,6 @@ export interface GlobalSearchDropdownProps {
   recents: SearchRecentEntry[];
   previewGroups: PreviewGroup[];
   onClose: () => void;
-  onSeeAll: () => void;
   onSelectRecent: (entry: SearchRecentEntry) => void;
   onRemoveRecent: (id: string) => void;
   onClearRecents: () => void;
@@ -76,8 +74,6 @@ const FLUSH_PANEL = cn(
 const SCROLL = 'max-h-[min(420px,55vh)] overflow-y-auto';
 const GROUP_HEADER =
   'px-3 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint';
-const FOOTER_LINK =
-  'flex items-center gap-1.5 border-t border-border-hairline px-3 py-2.5 text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken';
 const RECENTS_COMPACT =
   '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-2.5';
 
@@ -92,7 +88,6 @@ export function GlobalSearchDropdown({
   recents,
   previewGroups,
   onClose,
-  onSeeAll,
   onSelectRecent,
   onRemoveRecent,
   onClearRecents,
@@ -103,7 +98,7 @@ export function GlobalSearchDropdown({
   const presence = useMotionPresence(framerPresence.dropdownPanel);
   const transition = useMotionTransition(framerTransition.dropdownOpen);
 
-  // Base flat index of each group's first hit (0 = "See all" in preview).
+  // Base flat index of each group's first hit (option 0 = the first hit).
   let running = 0;
   const groupsWithBase = previewGroups.map((group) => {
     const base = running;
@@ -161,21 +156,6 @@ export function GlobalSearchDropdown({
 
               {state === 'preview' && (
                 <>
-                  {/* ds-raw-button: listbox combobox option row (role="option"), not a Button action */}
-                  <button
-                    type="button"
-                    role="option"
-                    id={optionId(0)}
-                    aria-selected={activeIndex === 0 || undefined}
-                    onClick={onSeeAll}
-                    className={cn(
-                      'flex w-full items-center gap-2 border-b border-border-hairline px-3 py-2.5 text-left text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken',
-                      activeIndex === 0 && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
-                    )}
-                  >
-                    <Search className="h-3 w-3" />
-                    See all results for &ldquo;{query}&rdquo;
-                  </button>
                   {groupsWithBase.map(({ group, base }) => (
                     <section key={group.label}>
                       <p className={GROUP_HEADER} role="presentation">
@@ -183,7 +163,7 @@ export function GlobalSearchDropdown({
                       </p>
                       <ul className="divide-y divide-border-hairline">
                         {group.hits.map((hit, j) => {
-                          const idx = base + j + 1; // +1 → "See all" is 0
+                          const idx = base + j;
                           return (
                             <li key={`${hit.entityType}:${hit.id}`}>
                               <SearchResultRow
@@ -217,22 +197,11 @@ export function GlobalSearchDropdown({
               )}
 
               {state === 'empty' && (
-                <div className="px-3 py-3 text-center">
-                  <p className="text-role-micro font-semibold text-text-default">
-                    No matches for &ldquo;{query}&rdquo;
-                  </p>
-                  <p className="mt-1 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
-                    Try a partial serial or the last 8 of a tracking #
-                  </p>
-                </div>
+                <p className="px-3 py-3 text-center text-role-caption font-semibold text-text-danger">
+                  No matches for &ldquo;{query}&rdquo;
+                </p>
               )}
             </div>
-
-            {state === 'recents' && (
-              <Link href="/search" onClick={onClose} className={FOOTER_LINK}>
-                <History className="h-3.5 w-3.5" /> View all recent searches
-              </Link>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

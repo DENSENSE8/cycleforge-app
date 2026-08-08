@@ -3,15 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle } from '@/components/Icons';
 import { CartonContextCard } from '@/components/station/entity-context';
-import { isEmptyDisplayValue } from '@/utils/empty-display-value';
-import {
-  getExternalUrlByItemNumber,
-  getPlatformKeyByItemNumber,
-  getPlatformLabelByItemNumber,
-} from '@/utils/external-item-url';
 import { getTrackingUrl } from '@/utils/order-links';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
-import type { CartonListingLink } from '@/lib/receiving/listing-links';
+import { resolveShippingListingLinks } from './shipping-listing-links';
 
 /**
  * Shipping adapter for the station entity-context header SoT
@@ -34,23 +28,10 @@ export function ShippingEntityContextHeader({
   const tracking = String(activeOrder.tracking || '').trim();
   const orderId = String(activeOrder.orderId || '').trim();
 
-  const itemNumberRaw = String(activeOrder.itemNumber || '').trim();
-  const itemNumberValue = isEmptyDisplayValue(activeOrder.itemNumber) ? '' : itemNumberRaw;
-  const listingItemKey = itemNumberValue || String(activeOrder.sku || '').trim();
-  const listingUrl = getExternalUrlByItemNumber(listingItemKey);
-  const listingPlatformLabel = listingItemKey
-    ? getPlatformLabelByItemNumber(listingItemKey)
-    : null;
-  const platformKey = listingItemKey ? getPlatformKeyByItemNumber(listingItemKey) : '';
-
-  const listingLinks = useMemo<CartonListingLink[]>(() => {
-    if (!listingUrl) return [];
-    const label =
-      listingPlatformLabel && listingPlatformLabel !== 'Unknown'
-        ? listingPlatformLabel
-        : 'Listing';
-    return [{ href: listingUrl, label, source: 'derived' }];
-  }, [listingUrl, listingPlatformLabel]);
+  const { listingItemKey, listingUrl, platformKey, listingLinks } = useMemo(
+    () => resolveShippingListingLinks(activeOrder),
+    [activeOrder.itemNumber, activeOrder.sku],
+  );
 
   const [listingLink, setListingLink] = useState(listingUrl ?? '');
   const [platformValue, setPlatformValue] = useState(platformKey);

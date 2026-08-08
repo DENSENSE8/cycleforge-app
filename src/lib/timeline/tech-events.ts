@@ -38,7 +38,7 @@ const KIND_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   // synthetic + scan sources
   SERIAL_TESTED: { title: 'Serial tested', tone: 'success' },
   SERIAL_ADDED: { title: 'Serial added', tone: 'muted' },
-  FNSKU_SCANNED: { title: 'FNSKU scanned', tone: 'info' },
+  FNSKU_SCANNED: { title: 'Amazon SKU scanned', tone: 'info' },
   TRACKING_SCANNED: { title: 'Tracking scanned', tone: 'info' },
   LABEL_PRINTED: { title: 'Label printed', tone: 'info' },
   PACK_COMPLETED: { title: 'Packed', tone: 'success' },

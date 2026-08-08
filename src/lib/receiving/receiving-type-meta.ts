@@ -47,7 +47,7 @@ export interface ReceivingTypeMeta {
 export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
   {
     value: 'PO',
-    label: 'PO',
+    label: 'Purchase order',
     short: 'PO',
     icon: 'package',
     text: 'text-blue-600',
@@ -68,15 +68,20 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
       'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100',
   },
   {
+    // Orange — matches functional.repair (DESIGN_SYSTEM.md functional hue
+    // table) and TicketChip. Was violet until 2026-08-07: two registries
+    // named a color for "repair" and disagreed; orange is the one already
+    // load-bearing on the ticket/support side, so violet lost. Violet is
+    // free again elsewhere in the color system as of this change.
     value: 'REPAIR',
     label: 'Repair',
     short: 'Rep',
     icon: 'wrench',
-    text: 'text-violet-600',
-    border: 'border-violet-500',
-    activeClass: 'border-violet-200 bg-violet-50 text-violet-700 shadow-none',
+    text: 'text-orange-600',
+    border: 'border-orange-500',
+    activeClass: 'border-orange-200 bg-orange-50 text-orange-700 shadow-none',
     inactiveClass:
-      'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100',
+      'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-300 hover:bg-orange-100',
   },
   {
     value: 'TRADE_IN',

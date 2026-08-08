@@ -6,8 +6,7 @@ import { InlineNotice } from '@/design-system/components';
 import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
-import { TestingLineSlot, confirmDeleteSerial } from './TestingLineSlot';
-import { TestingSerialLinkControls } from './TestingSerialLinkControls';
+import { TestingLineSlot } from './TestingLineSlot';
 import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';
 import {
   shouldUseUnmatchedItemsSurface,
@@ -22,12 +21,21 @@ interface Props {
   headerRight?: React.ReactNode;
   /** Hide the "PO items · N" header — parent tab row owns the pencil. */
   suppressHeader?: boolean;
+  /**
+   * Open the right-edge Units Display for a line (serials-cell / edit click).
+   * The per-unit verdict list is an Action Display, not a centre `activeRowSlot`
+   * — the centre PO line stays a pure ledger row (title · meta · serials
+   * preview), matching Unbox. See TestingPanel `openUnits`.
+   */
+  onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
 /**
- * PO-items block for the testing workspace — same accordion / unmatched list as
- * unbox, but the active-row slot renders {@link TestingLineSlot} (verdict pills)
- * instead of condition + receive serials. Composed inside
+ * PO-items block for the testing workspace — the same accordion / unmatched
+ * surface as Unbox, rendered as a **pure ledger row**. The per-unit verdict
+ * surface ({@link TestingLineSlot}) no longer mounts under the row in the
+ * centre; the serials cell opens the right-edge Units Display via
+ * {@link onViewAllUnits} (Unbox parity). Composed inside
  * {@link TestingPoUnboxingSection} in embedded mode so the wrapper owns the card
  * chrome and the single package-pairing pencil (no CartonAddPopover modal).
  */
@@ -38,6 +46,7 @@ export function TestingPoItemsSection({
   embedded = false,
   headerRight,
   suppressHeader = false,
+  onViewAllUnits,
 }: Props) {
   if (row.receiving_id == null) {
     // Not linked to a carton yet — no longer a dead end. A REAL line (positive
@@ -93,17 +102,10 @@ export function TestingPoItemsSection({
           sourcePlatformHint={c.sourcePlatform || undefined}
           receivingTypeHint={isReturnIntake(row) ? 'RETURN' : c.receivingType}
           listingUrlHint={c.listingLink || undefined}
-          renderLineActions={(line) => (
-            <TestingLineSlot
-              c={c}
-              lineId={line.id}
-              serials={(line.serials ?? []) as UnitSlotSerial[]}
-              expected={line.quantity_expected ?? null}
-              disabled={c.saving}
-              selectedIndex={c.activeSlotByLine[line.id] ?? 0}
-              showSavedChips={false}
-            />
-          )}
+          activeLineId={row.id}
+          placeholderActiveRow={row.id > 0 ? row : undefined}
+          hideNoTestLines
+          onViewAllUnits={onViewAllUnits}
         />
       </div>
     );
@@ -125,33 +127,7 @@ export function TestingPoItemsSection({
           dispatchTestingLineUpdated({ id: line.id, serials: line.serials ?? [] });
         },
       }}
-      renderTitleActions={(line) => (
-        <TestingSerialLinkControls carton={row} line={line} />
-      )}
-      activeSerialActions={{
-        editingSerialId: c.headerSerialEdit?.id ?? null,
-        onEdit: (s) => c.setHeaderSerialEdit(s as UnitSlotSerial),
-        onDelete: async (s, lineId) => {
-          if (s.id == null) return;
-          if (!(await confirmDeleteSerial(s.serial_number))) return;
-          if (c.headerSerialEdit?.id === s.id) c.setHeaderSerialEdit(null);
-          void c.deleteSerial(lineId, s.id);
-        },
-      }}
-      activeRowSlot={({ serials }) => (
-        <TestingLineSlot
-          c={c}
-          lineId={row.id}
-          serials={serials as UnitSlotSerial[]}
-          expected={row.quantity_expected ?? null}
-          disabled={row.receiving_id == null || c.saving}
-          selectedIndex={c.activeSlot}
-          autoFocus
-          showSavedChips={false}
-          editingSerial={c.headerSerialEdit}
-          onEditingSerialChange={c.setHeaderSerialEdit}
-        />
-      )}
+      onViewAllUnits={onViewAllUnits}
     />
   );
 }

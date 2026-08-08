@@ -10,8 +10,9 @@
  * top-50. When `onSelectHit` is provided, hosts should `preventDefault` to keep
  * selection in-page (`?sel=`).
  *
- * Loading paints nothing here — hosts (stage) drive a thin bottom pulse via
- * `onLoadingChange`. Never height-fill with skeleton rows.
+ * Loading paints nothing here — hosts publish pending via
+ * `setGlobalSearchPending` so the header paints `SearchPendingBar`. Never
+ * invent body “Opening…” holds or height-fill with skeleton rows.
  */
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
@@ -222,7 +223,7 @@ export function SearchResultsSurface({
 
   return (
     <div className={className}>
-      {state.status === 'done' && (
+      {state.status === 'done' && state.hits.length > 0 && (
         <p className="px-3 pt-2 pb-1.5 text-role-eyebrow uppercase text-text-soft">
           {hasRefine
             ? `${displayHits.length} of ${state.hits.length === 50 ? '50+' : state.hits.length}`
@@ -259,17 +260,7 @@ export function SearchResultsSurface({
           className="mx-3 mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
         />
       )}
-      {state.status === 'done' && state.hits.length === 0 && q && (
-        <EmptyState
-          icon={<Search className="h-6 w-6 text-text-faint" />}
-          title={`No matches for “${q}”`}
-          description="Try fewer words, a partial serial, or the last 8 digits of a tracking number."
-          className={cn(
-            'mx-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas',
-            isCompact ? 'py-6' : 'py-8',
-          )}
-        />
-      )}
+      {/* Absolute zero hits: header dropdown owns feedback — no page EmptyState. */}
       {state.status === 'done' && state.hits.length > 0 && displayHits.length === 0 && q && (
         <EmptyState
           icon={<Search className="h-6 w-6 text-text-faint" />}

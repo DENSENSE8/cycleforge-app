@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Paperclip, Plus, X } from '@/components/Icons';
 import { IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
+import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
@@ -354,7 +355,12 @@ export function SupportChatComposer({
     return <div className="w-full">{dock}</div>;
   }
 
+  // Floating composer: the dock is already a rounded, elevated bubble, so it
+  // sits on transparent air — never on a padded `bg-surface-canvas` plane with
+  // a hairline behind it (that reads as a docked toolbar, not a floating
+  // composer). Horizontal air is the Displays body gutter (`DISPLAYS_BODY_INSET`);
+  // `py-2` is vertical breath around the bubble only — never stack a second `px-*`.
   return (
-    <div className="shrink-0 border-t border-border-hairline bg-surface-canvas/40 px-3 py-2">{dock}</div>
+    <div className={cn(DISPLAYS_BODY_INSET, 'min-w-0 shrink-0 py-2')}>{dock}</div>
   );
 }

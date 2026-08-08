@@ -4,8 +4,9 @@
  * StagingSection — shelf + priority-lane assignment for triage.
  * Auto-routes lane on shelf save; operator can override via lane select.
  * Placement summary is written for the unboxing person (room · bin · barcode).
- * When embedded on Arrival overview, pass {@link eyebrow} ("Location Placement").
- * Dedicated Staging tab leaves the card unlabeled (SectionTabsSlider owns the title).
+ * When embedded on Arrival's door-flow chrome host, pass {@link eyebrow}
+ * ("Staging"). Displays-tab mounts leave the card unlabeled (the strip owns
+ * the title). Edge-to-edge host (`px-0`); content rows own `inset-cozy`.
  */
 
 import { useMemo } from 'react';
@@ -13,8 +14,6 @@ import {
   WORKSPACE_NESTED_FIELD,
   WORKSPACE_NESTED_FIELD_PAD,
 } from '@/design-system/components';
-import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
-import { cn } from '@/utils/_cn';
 import { Loader2, MapPin, Flag, Barcode } from '@/components/Icons';
 import { SELECT_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TRIAGE_LANE_OPTS, triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
@@ -157,9 +156,9 @@ export function StagingSection({
     // Flush Displays body — no glass card island. The dedicated Staging tab
     // already names this surface (no eyebrow); an Arrival-overview mount passes
     // `eyebrow` and gets a plain label row instead of a card header.
-    <div className={cn('space-y-4 pt-3', DISPLAYS_BODY_INSET)}>
+    <div className="min-h-0 space-y-0">
       {eyebrow || savingIndicator ? (
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 inset-cozy">
           {eyebrow ? (
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               {eyebrow}
@@ -170,7 +169,7 @@ export function StagingSection({
           {savingIndicator}
         </div>
       ) : null}
-      <div className="space-y-4">
+      <div className="space-y-3 border-t border-border-hairline inset-cozy pb-3">
         <TriageStagingStatusChips
           complete={isStaged}
           locationLabel={locationLabel}

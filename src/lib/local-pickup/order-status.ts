@@ -83,3 +83,12 @@ export function parsePickupStatusTab(raw: string | null | undefined): PickupStat
   if (v === 'process' || v === 'draft' || v === 'done') return v;
   return 'all';
 }
+
+/**
+ * Wire tokens `?status=` may carry on `/pickup` (route-param hygiene).
+ * Do not round-trip {@link parsePickupStatusTab} — it always coerces to `all`.
+ */
+export function parsePickupStatusTabWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (PICKUP_STATUS_TABS as readonly string[]).includes(v) ? v : null;
+}

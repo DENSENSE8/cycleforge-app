@@ -103,22 +103,26 @@ describe('History topics stay off the Unbox History sheet', () => {
   );
 
   test('Band 3 owns find + park/reopen only — no topic ActionBar / sheet refine', () => {
-    assert.match(header, /historyInspectorToggle/);
+    assert.match(header, /inspectorToggle/);
     assert.match(header, /unbox-history-inspector-toggle/);
     assert.doesNotMatch(header, /historyInspectorTopicActions/);
     assert.doesNotMatch(header, /history-triage-topic-actions/);
     assert.doesNotMatch(header, /data-history-topic/);
     assert.doesNotMatch(header, /HistoryDrillChrome/);
     assert.doesNotMatch(header, /HistoryRowPaintChrome/);
-    // History path must not mount Band 3 kpiToggle / refine right / controls portal.
-    assert.match(header, /isHistoryTab \? undefined/);
     const triageIdx = header.indexOf('<WorkbenchTriageBand');
     assert.ok(triageIdx >= 0);
     const triageBlock = header.slice(triageIdx, triageIdx + 1400);
+    // Refine lives in-field (trailingSuffix) — no Band 3 `right=` refine twin.
+    assert.doesNotMatch(
+      triageBlock,
+      /\bright=\{/,
+      'History Band 3 must omit the refine right cluster',
+    );
     assert.match(
       triageBlock,
-      /right=\{\s*isHistoryTab(?:\s*\|\|\s*isIncomingTab)?\s*\?\s*undefined/,
-      'History Band 3 must omit the refine right cluster',
+      /trailing=\{inspectorToggle\}/,
+      'Inspector toggle must sit in WorkbenchTriageBand.trailing',
     );
     // Sheet toggle is ColumnsTwo park — not Print / summary / logistics topics.
     assert.doesNotMatch(header, /Order \/ PO summary/);
@@ -137,7 +141,11 @@ describe('History topics stay off the Unbox History sheet', () => {
       /StaffFilterButton/,
       'Staff is a Band 3 Refine query facet — not View layout chrome',
     );
-    assert.match(viewCluster, /WorkbenchKpiCollapseToggle/);
+    assert.doesNotMatch(
+      viewCluster,
+      /WorkbenchKpiCollapseToggle/,
+      'KPI collapse is Band 3 — View topics stay layout-only',
+    );
     assert.match(viewCluster, /data-testid="history-triage-view-topics"/);
   });
 
@@ -154,8 +162,15 @@ describe('History topics stay off the Unbox History sheet', () => {
   });
 
   test('Band 3 toggle uses inspector nouns — not Station Open displays', () => {
-    assert.match(header, /Show inspector/);
-    assert.match(header, /Hide inspector/);
+    assert.match(header, /WorkbenchInspectorToggle/);
+    const inspectorToggle = readFileSync(
+      fileURLToPath(
+        new URL('../../dashboard/workbench-inspector-toggle.tsx', import.meta.url),
+      ),
+      'utf8',
+    );
+    assert.match(inspectorToggle, /Show inspector/);
+    assert.match(inspectorToggle, /Hide inspector/);
     // View-only shell: toggle opens without a row — no "select a row" gate.
     assert.doesNotMatch(header, /Select a row to open the inspector/);
     assert.doesNotMatch(

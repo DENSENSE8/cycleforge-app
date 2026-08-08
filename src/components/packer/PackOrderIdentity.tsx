@@ -36,7 +36,9 @@ export function PackOrderIdentity({
 
   // Listing + platform derive from the scanned item number (shared SoT with the
   // sidebar active-order chips) — read-only, so no local edit state.
-  const { listingLink, listingOpenHref, platformValue } = packListingIdentity(sku || orderId);
+  const { listingLink, listingOpenHref, platformValue, listingLinks } = packListingIdentity(
+    sku || orderId,
+  );
 
   const packerLogId = Number(activeOrder.packerLogId);
   const canSendToPhone = Number.isFinite(packerLogId) && packerLogId > 0;
@@ -58,7 +60,7 @@ export function PackOrderIdentity({
           showClassifyControls={false}
           listingLink={listingLink}
           listingOpenHref={listingOpenHref}
-          listingLinks={[]}
+          listingLinks={listingLinks}
           poOpenHref={null}
           trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
           poDisplay={poDisplay}

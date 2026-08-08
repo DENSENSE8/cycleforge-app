@@ -20,6 +20,7 @@ import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
+import { useSupportOrderOpenParam } from '@/hooks/useSupportOrderOpenParam';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
@@ -34,6 +35,7 @@ import {
   SHIPPING_ORDERS_PATH,
 } from '@/lib/shipping/orders-desk';
 import { refreshDomain } from '@/lib/refresh/bus';
+import { getOpenShippedDetailsPayload } from '@/utils/events';
 
 function OutboundOrdersDeskContent({
   onPrimaryPainted,
@@ -54,6 +56,21 @@ function OutboundOrdersDeskContent({
   const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
     useDashboardSelectedOrder(detailsEnabled && !isSupportContext);
 
+  const { openOrderId, setOpenOrderId } = useSupportOrderOpenParam(isSupportContext);
+
+  // Support desk: queue row clicks dispatch `open-shipped-details`, but the
+  // dashboard sync-guard is off — write paint-pending openOrderId instead.
+  useEffect(() => {
+    if (!isSupportContext) return;
+    const onOpen = (e: Event) => {
+      const payload = getOpenShippedDetailsPayload((e as CustomEvent).detail);
+      const id = Number(payload?.order?.id);
+      if (Number.isFinite(id) && id > 0) setOpenOrderId(id);
+    };
+    window.addEventListener('open-shipped-details', onOpen as EventListener);
+    return () => window.removeEventListener('open-shipped-details', onOpen as EventListener);
+  }, [isSupportContext, setOpenOrderId]);
+
   useDashboardRealtime();
   useDashboardViewWarmup({ orderView, searchQuery, enabled: true });
 
@@ -63,15 +80,15 @@ function OutboundOrdersDeskContent({
 
   // Support context: Station focus replaces the slide-in details panel when an
   // order is open (`?openOrderId=`). Board stays DashboardOrdersView SoT.
-  if (isSupportContext) {
-    const openOrderId = Number(searchParams.get('openOrderId')) || null;
-    if (openOrderId) {
-      return (
-        <div className="flex min-h-0 w-full flex-1">
-          <SupportOrdersFocusHost openOrderId={openOrderId} />
-        </div>
-      );
-    }
+  if (isSupportContext && openOrderId) {
+    return (
+      <div className="flex min-h-0 w-full flex-1">
+        <SupportOrdersFocusHost
+          openOrderId={openOrderId}
+          onClear={() => setOpenOrderId(null)}
+        />
+      </div>
+    );
   }
 
   return (

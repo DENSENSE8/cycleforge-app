@@ -63,7 +63,13 @@ import { TriageClassifySection } from './TriageClassifySection';
 import { StagingSection } from './StagingSection';
 import { deriveTriageFocusFacts, resolveTriageFocus } from '@/lib/receiving/triage-focus';
 import { buildTriageDisplayTabs, type TriageDisplayTab } from './build-triage-displays';
-import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
+import { buildTriageDisplayIndexRows } from './triage-display-index';
+import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
+import {
+  dispatchIncomingAddInboundClose,
+  dispatchReceivingOpenIncomingDetails,
+  STATION_DISPLAYS_CLOSE_EVENT,
+} from '@/utils/events';
 import {
   DISPLAYS_FLUSH_HOST,
 } from '@/design-system/shells/detail-stack';
@@ -112,8 +118,25 @@ export function TriagePanel({
   const classifySectionRef = useRef<HTMLDivElement | null>(null);
   const stagingSectionRef = useRef<HTMLDivElement | null>(null);
 
-  const openDisplays = useCallback((tab: TriageDisplayTab) => setActiveSideTab(tab), []);
+  const claimDisplays = useCallback(
+    (tab: TriageDisplayTab | typeof STATION_DISPLAY_INDEX) => {
+      // One right-edge wrapper — Add inbound (RightRailHost) yields to Displays.
+      dispatchIncomingAddInboundClose();
+      setActiveSideTab(tab);
+    },
+    [],
+  );
+  const openDisplays = useCallback(
+    (tab: TriageDisplayTab) => claimDisplays(tab),
+    [claimDisplays],
+  );
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+
+  useEffect(() => {
+    const onAddClaimsEdge = () => closeDisplays();
+    window.addEventListener(STATION_DISPLAYS_CLOSE_EVENT, onAddClaimsEdge);
+    return () => window.removeEventListener(STATION_DISPLAYS_CLOSE_EVENT, onAddClaimsEdge);
+  }, [closeDisplays]);
 
   // The `# ----` PO chip → open Pairing on the PO avenue. The intent travels as
   // DATA (`pairingFocus` → the hub's `focusTab`, read on mount); a dispatched
@@ -256,19 +279,6 @@ export function TriagePanel({
     return () => window.removeEventListener('keydown', handler);
   }, [handleSaveForUnbox, savingTriage, triageSaved]);
 
-  const handleItemDescFeedback = useCallback((feedback: InlineActionFeedbackPayload | null) => {
-    setActionFeedback(feedback);
-  }, []);
-
-  const handleItemDescSaved = useCallback(
-    (lineId: number, zohoNotes: string | null) => {
-      if (lineId === row.id) {
-        dispatchLineUpdated({ id: row.id, zoho_notes: zohoNotes });
-      }
-    },
-    [row.id],
-  );
-
   const triageDisplayTabs = useMemo(
     () =>
       buildTriageDisplayTabs({
@@ -277,6 +287,15 @@ export function TriagePanel({
         pairingFocus,
       }),
     [row, staffId, pairingFocus],
+  );
+
+  const triageDisplayIndexRows = useMemo(
+    () =>
+      buildTriageDisplayIndexRows({
+        linkagePaired: Boolean(String(row.zoho_purchaseorder_id ?? '').trim()),
+        isUnfound: shouldUseUnmatchedItemsSurface(row),
+      }),
+    [row],
   );
 
   const buildTerminal = useCallback(
@@ -440,8 +459,6 @@ export function TriagePanel({
                       serialScan={false}
                       unitsChrome={false}
                       c={c}
-                      onItemDescFeedback={handleItemDescFeedback}
-                      onItemDescSaved={handleItemDescSaved}
                     />
                     <div ref={classifySectionRef}>
                       <TriageClassifySection
@@ -479,13 +496,14 @@ export function TriagePanel({
               testId="arrival-displays-push"
               resizeTestId="arrival-displays-push-resize"
               tabs={triageDisplayTabs}
+              indexRows={triageDisplayIndexRows}
               activeTab={activeSideTab}
               onTabChange={(id) => {
                 if (id === STATION_DISPLAY_INDEX) {
-                  setActiveSideTab(STATION_DISPLAY_INDEX);
+                  claimDisplays(STATION_DISPLAY_INDEX);
                   return;
                 }
-                setActiveSideTab(id as TriageDisplayTab);
+                claimDisplays(id as TriageDisplayTab);
               }}
               onClose={closeDisplays}
               headerTrailing={displaysCartonCursor}

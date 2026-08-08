@@ -37,14 +37,20 @@ describe('Workbench KPI snap-collapse SoT', () => {
       /WORKBENCH_TRIAGE_LEADING_CLASS/,
       'Select-gutter leading cell retired — search is flush left (Unbox History golden)',
     );
-    const triage = shell.slice(shell.indexOf('export function WorkbenchTriageBand'));
+    const triageStart = shell.indexOf('export function WorkbenchTriageBand');
+    const afterTriage = shell.indexOf('\nexport function', triageStart + 1);
+    const triage = shell.slice(
+      triageStart,
+      afterTriage >= 0 ? afterTriage : shell.length,
+    );
     assert.match(triage, /kpiToggle\?:/);
     assert.doesNotMatch(triage, /\bleading\?:/);
   });
 
   it('Unbox triage kpiToggle composes the SoT WorkbenchTriageBand.kpiToggle (no local twin)', () => {
-    // Non-History tabs: KPI collapse on Band 3 kpiToggle. History: View cluster
-    // on detail:history (HistoryViewTopicsCluster).
+    // KPI collapse lives on Band 3 for every Unbox sheet tab (incl. History) —
+    // one door that stays on screen when the inspector rail is parked. Pinned
+    // Inbound omits the whole triage band. View topics are layout-only.
     const header = read('src/components/receiving/unbox/UnboxWorkspaceHeader.tsx');
     assert.match(header, /<WorkbenchTriageBand/, 'Unbox composes the SoT WorkbenchTriageBand');
     assert.doesNotMatch(header, /function UnboxTriageBand/, 'the page-local triage twin is deleted');
@@ -52,12 +58,12 @@ describe('Workbench KPI snap-collapse SoT', () => {
     assert.match(
       header.slice(triageIdx, triageIdx + 1000),
       /kpiToggle=\{/,
-      'Unbox non-History tabs pass KPI collapse via the SoT kpiToggle slot',
+      'Unbox sheet tabs pass KPI collapse via the SoT kpiToggle slot',
     );
     assert.match(
       header.slice(triageIdx, triageIdx + 1000),
-      /isHistoryTab \? undefined/,
-      'History omits Band 3 kpiToggle — View topics own KPI hide',
+      /WorkbenchKpiCollapseToggle/,
+      'Band 3 hosts WorkbenchKpiCollapseToggle (not View topics)',
     );
     assert.doesNotMatch(
       header.slice(triageIdx, triageIdx + 1000),
@@ -67,7 +73,11 @@ describe('Workbench KPI snap-collapse SoT', () => {
     const viewCluster = read(
       'src/components/receiving/history/HistoryViewTopicsCluster.tsx',
     );
-    assert.match(viewCluster, /WorkbenchKpiCollapseToggle/);
+    assert.doesNotMatch(
+      viewCluster,
+      /WorkbenchKpiCollapseToggle/,
+      'View topics stay layout-only — KPI collapse is Band 3',
+    );
   });
 
   it('Unbox chrome imports KPI collapse from the SoT module', () => {
@@ -129,5 +139,37 @@ describe('Workbench KPI snap-collapse SoT', () => {
     const hook = read('src/hooks/useWorkbenchKpiCollapsed.ts');
     assert.match(hook, /\.\.\.\(prev\.kpiCollapsed \?\? \{\}\)/);
     assert.match(hook, /update\(\{ kpiCollapsed: nextMap \}\)/);
+  });
+
+  it('hook hydrates once — does not re-apply stored on every prefs write', () => {
+    const hook = read('src/hooks/useWorkbenchKpiCollapsed.ts');
+    assert.match(hook, /hydratedRef/);
+    assert.match(
+      hook,
+      /if \(isLoading \|\| hydratedRef\.current\) return/,
+      'must not sync local ← stored after first hydrate (flash / snap-back)',
+    );
+    assert.match(hook, /toggleCollapsed/, 'ref-stable toggle for Band 3 click');
+  });
+
+  it('staff-preferences onSuccess merges only patched keys', () => {
+    const src = read('src/hooks/useStaffPreferences.ts');
+    assert.match(src, /mergePatchedPrefs/);
+    assert.match(
+      src,
+      /Object\.keys\(patch\)/,
+      'full server replace clobbers concurrent kpiCollapsed optimism',
+    );
+  });
+
+  it('KPI band keeps children mounted (height animate — no AnimatePresence unmount)', () => {
+    const src = read('src/components/dashboard/workbench-kpi-collapse.tsx');
+    assert.doesNotMatch(
+      src,
+      /AnimatePresence/,
+      'unmounting KPI body on hide remount-flashes the metrics cluster',
+    );
+    assert.match(src, /framerPresence\.collapseHeight\.(animate|exit)/);
+    assert.match(src, /\{children\}/);
   });
 });

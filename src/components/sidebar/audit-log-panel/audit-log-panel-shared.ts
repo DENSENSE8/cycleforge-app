@@ -14,7 +14,7 @@ export const AUDIT_SECTIONS: AuditSection[] = [
   { id: 'trace',     label: 'Trace',     href: '/audit-log/trace',     icon: Activity,      available: true  },
   { id: 'receiving', label: 'Receiving', href: '/audit-log/receiving', icon: ClipboardList, available: true },
   { id: 'packing',   label: 'Packing',   href: '/audit-log/packing',   icon: Package,       available: true  },
-  { id: 'tech',      label: 'Tech',      href: '/audit-log/tech',      icon: FileText,      available: true  },
+  { id: 'tech',      label: 'Testing',   href: '/audit-log/tech',      icon: FileText,      available: true  },
   { id: 'sku',       label: 'SKU',       href: '/audit-log/sku',       icon: Search,        available: true  },
   { id: 'staff',     label: 'Staff',     href: '/audit-log/staff',     icon: User,          available: true  },
 ];

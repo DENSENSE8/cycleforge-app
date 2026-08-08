@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { useRouter, useSearchParams } from 'next/navigation';
 import { fbaPaths } from '@/lib/fba/api-paths';
-import { normalizeFnsku } from '@/lib/tracking-format';
+import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import {
   mergeIntoPendingToday,
   PLAN_QTY_MAX,
@@ -250,7 +250,7 @@ export function useFbaPlanFlows({
 
   const handleFnskuPlanFlow = useCallback(
     async (raw: string) => {
-      const fnsku = normalizeFnsku(raw);
+      const fnsku = normalizeTrackingCanonical(raw);
       if (!fnsku) return;
 
       setIsFbaLoading(true);

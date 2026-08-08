@@ -90,7 +90,7 @@ export const appCanvasClass = 'bg-surface-canvas';
 export const appWorkCanvasEdgeClass = 'border border-border-soft';
 
 /**
- * Inset bottom rule for 40px chrome bands (scan / identity / pane headers).
+ * Inset bottom rule for primary chrome bands (scan / identity / pane headers).
  * Theme `border-default` — same contrast language as the canvas edge, not a
  * raw hex fork.
  */

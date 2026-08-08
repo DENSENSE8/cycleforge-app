@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { FileText, MoreHorizontal, Unlink, X } from '@/components/Icons';
+import { MoreHorizontal, Unlink, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton, Popover } from '@/design-system/primitives';
@@ -18,18 +18,23 @@ export interface PoLineSerialSplitContext {
 
 interface Props {
   line: ReceivingLineRow;
-  descShown: boolean;
-  onToggleDesc: () => void;
   /** When set, Unlink is offered for unmatched cartons that have a serial. */
   serialSplit?: PoLineSerialSplitContext;
 }
 
 /**
- * Title-row ⋮ overflow for a PO line: toggle synced item description, and
- * (when eligible) unlink/split the serial onto its own unmatched row after a
- * {@link RightPaneOverlay} confirm — same shell family as ReceivingClaimModal.
+ * Title-row ⋮ overflow for a PO line — currently just the (conditional)
+ * unlink/split action: move a serial onto its own unmatched row after a
+ * {@link RightPaneOverlay} confirm (same shell family as ReceivingClaimModal).
+ *
+ * Item-description ("more details") editing left this menu on 2026-08-08: the
+ * per-line description is edited in the right-edge **Inventory** Display
+ * (`InventoryDisplayHost` → `onSaveDescription`), so the redundant inline
+ * editor was removed from the centre PO line item. When no action applies
+ * (a matched line with no unlink target) the menu renders nothing — the ⋮
+ * only appears where it still does something.
  */
-export function PoLineTitleMenu({ line, descShown, onToggleDesc, serialSplit }: Props) {
+export function PoLineTitleMenu({ line, serialSplit }: Props) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -41,11 +46,6 @@ export function PoLineTitleMenu({ line, descShown, onToggleDesc, serialSplit }: 
     (line.serials?.length ?? 0) > 0;
 
   const closeMenu = () => setMenuOpen(false);
-
-  const handleToggleDesc = () => {
-    closeMenu();
-    onToggleDesc();
-  };
 
   const handleRequestUnlink = () => {
     closeMenu();
@@ -63,6 +63,11 @@ export function PoLineTitleMenu({ line, descShown, onToggleDesc, serialSplit }: 
     if (ok) setConfirmOpen(false);
   };
 
+  // The ⋮ menu now hosts only the conditional Unlink action — a matched line
+  // with no unlink target has no line actions, so render nothing rather than an
+  // empty menu (item-description "more details" moved to the Inventory Display).
+  if (!canUnlink) return null;
+
   return (
     <>
       <HoverTooltip label="Line actions" asChild>
@@ -76,12 +81,12 @@ export function PoLineTitleMenu({ line, descShown, onToggleDesc, serialSplit }: 
             setMenuOpen((o) => !o);
           }}
           className={`group -m-1 flex shrink-0 items-center justify-center rounded-md p-1 transition-colors hover:bg-blue-100 ${
-            menuOpen || descShown ? 'bg-blue-100' : ''
+            menuOpen ? 'bg-blue-100' : ''
           }`}
           icon={
             <MoreHorizontal
               className={`h-3.5 w-3.5 ${
-                menuOpen || descShown
+                menuOpen
                   ? 'text-blue-600'
                   : 'text-text-faint group-hover:text-text-muted'
               }`}
@@ -107,38 +112,16 @@ export function PoLineTitleMenu({ line, descShown, onToggleDesc, serialSplit }: 
             <button
               type="button"
               role="menuitem"
-              aria-pressed={descShown}
               onClick={(e) => {
                 e.stopPropagation();
-                handleToggleDesc();
+                handleRequestUnlink();
               }}
-              className="ds-raw-button flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default transition-colors hover:bg-surface-hover"
+              className="ds-raw-button flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-amber-700 transition-colors hover:bg-amber-50"
             >
-              <FileText
-                className={`h-3.5 w-3.5 shrink-0 ${descShown ? 'text-blue-600' : 'text-text-faint'}`}
-                aria-hidden
-              />
-              <span className="min-w-0 flex-1 font-medium">
-                {descShown ? 'Hide item description' : 'Item description (synced)'}
-              </span>
+              <Unlink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 font-medium">Unlink item</span>
             </button>
           </li>
-          {canUnlink ? (
-            <li role="none">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRequestUnlink();
-                }}
-                className="ds-raw-button flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-amber-700 transition-colors hover:bg-amber-50"
-              >
-                <Unlink className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1 font-medium">Unlink item</span>
-              </button>
-            </li>
-          ) : null}
         </ul>
       </Popover>
 

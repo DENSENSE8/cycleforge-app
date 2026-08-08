@@ -43,7 +43,7 @@ export interface TechLaneMeta {
 export const TECH_HISTORY_STATE_META: Record<TechHistoryLane, TechLaneMeta> = {
   TODAY: { label: 'Today', description: 'Tested today (PST).', tone: 'blue', dot: TONE_CLASSES.blue.dot },
   THIS_WEEK: { label: 'This week', description: 'Tested earlier this week.', tone: 'indigo', dot: TONE_CLASSES.indigo.dot },
-  FBA: { label: 'FBA', description: 'FBA / FNSKU tech scans.', tone: 'orange', dot: TONE_CLASSES.orange.dot },
+  FBA: { label: 'Amazon Prep', description: 'Amazon Prep / FNSKU tech scans.', tone: 'orange', dot: TONE_CLASSES.orange.dot },
 };
 
 /** Minimal structural input — the fields the bucket reads (decoupled from TechRecord). */

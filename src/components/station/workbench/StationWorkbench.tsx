@@ -84,7 +84,7 @@ export function StationWorkbench({
    * Top clearance for scroll content under identity chrome.
    *
    * - `true` — one-row absolute overlay (`pt-10`)
-   * - `'stacked'` — two-row absolute overlay (`pt-16`)
+   * - `'stacked'` — two-row absolute overlay (`pt-[52px]` = h-7 + h-6)
    * - `false` — in-flow identity (`StationContextBar placement="flow"`) or no
    *   identity — `pt-0` so the hairline can abut PO lines with zero air
    */

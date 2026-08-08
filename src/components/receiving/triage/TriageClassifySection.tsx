@@ -1,29 +1,29 @@
 'use client';
 
 /**
- * Classify controls — Urgency / Platform / Type.
+ * Classify controls — Urgency / Platform / Type + repair-order identify.
  *
- * Shared by Arrival (centre door flow under items) + Unbox Classify Displays.
- * Flush plane (no WorkspaceCard glass island) — same recipe as Package Pairing
- * bare chrome. Dimension eyebrows left; expanded options stay a **names list**
- * active row). Collapsed value chip shows the identity face (platform mark /
- * type glyph / urgency). Carton **banner** is icon+name via `InlinePillPicker`
- * — tab icon option grids are deferred:
- * docs/todo/classify-option-icon-faces-handoff.md.
+ * Shared by Arrival (centre door-flow chrome host under items) + Unbox Classify
+ * Displays. Flush plane (no WorkspaceCard glass island) — edge-to-edge host
+ * (`px-0`); dimension rows are house flush comboboxes
+ * ({@link SearchableSelectField} `appearance="flush"`) — same quick-search
+ * grammar as receiving claim type / Add Inbound Platform · Type · Priority.
  *
- * Accordion: CSS `grid-template-rows` (not AnimatePresence exit) so switching
- * from an open row to another never stacks two option lists (layout jump).
+ * Repair identify composes the same {@link RepairServiceIdentify} host as
+ * Arrival Pairing / Unbox Linkage Store — Classify never forks a second Ecwid
+ * search. Writes go through {@link addUnmatchedLine} (not a second
+ * `useUnmatchedItems` mount). Mobile Arrival classify identify is out of scope
+ * (desktop Displays / centre hosts only).
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronRight, Flag, Globe, Tag } from '@/components/Icons';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ChevronRight, Link2, Unlink, Wrench } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives';
+import { SearchableSelectField } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import {
-  INLINE_PILL_ICON_FACE,
-  type InlinePillOption,
-} from '../workspace/line-edit/InlinePillPicker';
 import {
   platformClassifyOptions,
   typeClassifyOptions,
@@ -34,18 +34,31 @@ import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import type { UnboxLineController } from '../workspace/line-edit/unbox-line-controller';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { RepairServiceIdentify } from '@/components/receiving/workspace/line-edit/RepairServiceIdentify';
+import {
+  isRepairServiceLinked,
+  repairServiceLinkedOrderId,
+} from '@/lib/receiving/repair-service-identify';
+import { addUnmatchedLine } from '@/lib/receiving/add-unmatched-line-client';
+import { useReceivingCartonUnlink } from '@/components/receiving/workspace/unmatched-items/useReceivingCartonUnlink';
+import {
+  dispatchLineUpdated,
+  dispatchSelectLine,
+} from '@/components/station/receiving-lines-table-helpers';
+import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import type { EcwidProductSelection } from '@/components/receiving/unfound/ecwid-search/ecwid-search-shared';
 
 type ClassifyPicker = 'urgency' | 'platform' | 'type';
 
 type ClassifyExpandDimension = ClassifyPicker;
 
-/** Flush Displays body — sits in the push column `px-4`; no glass card island. */
+/** Flush Displays / Arrival door-flow body — edge-to-edge; comboboxes own pad. */
 const CLASSIFY_FLUSH_HOST_CLASS = cn('min-h-0', cornerClass('flush'));
 
-const DIMENSION_ICON: Record<ClassifyPicker, ReactNode> = {
-  urgency: <Flag className="h-3.5 w-3.5" />,
-  platform: <Globe className="h-3.5 w-3.5" />,
-  type: <Tag className="h-3.5 w-3.5" />,
+const EXPAND_ARIA: Record<ClassifyPicker, string> = {
+  urgency: 'Urgency',
+  platform: 'Platform',
+  type: 'Type',
 };
 
 const RANK_TO_TIER: Record<number, number> = { 0: 0, 1: 1, 2: 1, 3: 2, 4: 3 };
@@ -59,31 +72,94 @@ export function TriageClassifySection({
   row: ReceivingLineRow;
   c: UnboxLineController;
   /**
-   * Header bookmark handoff — open this dimension's names list when the host
+   * Header bookmark handoff — open this dimension's combobox when the host
    * switches to Classify (or bumps {@link expandRequestId} while already here).
    */
   expandDimension?: ClassifyExpandDimension | null;
   /** Monotonic bump so a closed row can be re-opened from the header pill. */
   expandRequestId?: number;
 }) {
+  const queryClient = useQueryClient();
   const isUnmatched = row.receiving_source === 'unmatched';
   const platformCatalog = usePlatformCatalog();
   const typeCatalog = useReceivingTypeCatalog();
-  const [openPicker, setOpenPicker] = useState<ClassifyPicker | null>(null);
+  const [repairIdentifyOpen, setRepairIdentifyOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const openPickerRef = useRef<ClassifyPicker | null>(openPicker);
-  openPickerRef.current = openPicker;
+  const lastExpandRef = useRef<{ dim: ClassifyPicker | null; id: number }>({
+    dim: null,
+    id: -1,
+  });
+  const receivingId = row.receiving_id ?? null;
+  const repairLinked = isRepairServiceLinked(row);
+  const linkedOrderId = repairServiceLinkedOrderId(row);
+  const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
 
+  // Identify only — do NOT mount useUnmatchedItems here (items accordion owns
+  // that controller). A second mount would GET + setLines([]) and flash empty.
+  const handleRepairIdentifySelect = useCallback(
+    async (selection: EcwidProductSelection) => {
+      if (receivingId == null || receivingId <= 0) return;
+      await addUnmatchedLine({
+        receivingId,
+        selection,
+        sourcePlatformHint: c.sourcePlatform || 'ecwid',
+        receivingTypeHint: 'REPAIR',
+        listingUrlHint: row.receiving_listing_url ?? undefined,
+        queryClient,
+        onLinked: ({ carton, line }) => {
+          const cartonPatch = {
+            zoho_purchaseorder_number: carton.zoho_purchaseorder_number,
+            receiving_source: carton.source ?? 'unmatched',
+            source_platform: carton.source_platform ?? 'ecwid',
+            source_platform_pill: carton.source_platform ?? 'ecwid',
+            receiving_type: 'REPAIR',
+          };
+          c.setSourcePlatform(cartonPatch.source_platform ?? 'ecwid');
+          c.setReceivingType('REPAIR');
+          if (line && line.id > 0 && row.id < 0) {
+            dispatchSelectLine({
+              ...row,
+              ...cartonPatch,
+              id: line.id,
+              sku: line.sku ?? row.sku,
+              item_name: line.item_name ?? row.item_name,
+              quantity_expected: line.quantity_expected,
+              quantity_received: line.quantity_received,
+              condition_grade: line.condition_grade ?? row.condition_grade,
+              receiving_listing_url: line.listing_url ?? row.receiving_listing_url,
+              source_order_id: carton.zoho_purchaseorder_number,
+            });
+          } else {
+            dispatchLineUpdated({
+              id: row.id,
+              ...cartonPatch,
+              source_order_id: carton.zoho_purchaseorder_number,
+            });
+          }
+          invalidateReceivingFeeds(queryClient);
+          setRepairIdentifyOpen(false);
+        },
+      });
+    },
+    [c, queryClient, receivingId, row],
+  );
+
+  // Header classify pill → open the matching flush combobox (click its trigger).
   useEffect(() => {
     if (expandDimension == null) return;
-    // Already expanded on this dimension — don't re-set / re-scroll (header
-    // re-click while the Classify dropdown is open).
-    if (openPickerRef.current === expandDimension) return;
-    setOpenPicker(expandDimension);
+    if (
+      lastExpandRef.current.dim === expandDimension &&
+      lastExpandRef.current.id === expandRequestId
+    ) {
+      return;
+    }
+    lastExpandRef.current = { dim: expandDimension, id: expandRequestId };
+    const aria = EXPAND_ARIA[expandDimension];
     const t = window.setTimeout(() => {
-      document
-        .getElementById(`triage-classify-${expandDimension}-options`)
-        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const btn = rootRef.current?.querySelector(
+        `button[role="combobox"][aria-label="${aria}"]`,
+      );
+      if (btn instanceof HTMLElement) btn.click();
     }, 50);
     return () => window.clearTimeout(t);
   }, [expandDimension, expandRequestId]);
@@ -92,8 +168,6 @@ export function TriageClassifySection({
   const derivedTone = receivingPriorityTone(derivedRank);
   const overrideMeta = priorityOverrideTier(c.priorityTier);
   const urgencyValue = c.priorityTier != null ? String(c.priorityTier) : 'auto';
-  const effectiveUrgencyLabel = overrideMeta ? overrideMeta.label : derivedTone.label;
-  const effectiveUrgencyClass = overrideMeta ? overrideMeta.activeClass : derivedTone.className;
   const derivedTierEquivalent =
     c.priorityTier == null ? (RANK_TO_TIER[derivedRank] ?? null) : null;
 
@@ -102,12 +176,6 @@ export function TriageClassifySection({
     derivedTierEquivalent,
     autoActiveClass: 'border-border-default bg-surface-card text-text-muted',
   });
-  // When Auto is selected, collapsed face still shows effective urgency tone.
-  const urgencyOptionsWithEffective: InlinePillOption[] = urgencyOptions.map((o) =>
-    o.value === 'auto'
-      ? { ...o, activeClass: effectiveUrgencyClass }
-      : o,
-  );
 
   const platformOptions = platformClassifyOptions({
     catalogOptions: platformCatalog.options,
@@ -115,245 +183,207 @@ export function TriageClassifySection({
   });
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
-  const platformActive = platformOptions.find((o) => o.value === c.sourcePlatform);
-  const typeActive = typeOptions.find((o) => o.value === c.receivingType);
-  const urgencyActive = urgencyOptionsWithEffective.find((o) => o.value === urgencyValue);
-  const platformLabel =
-    platformActive?.label ?? (isUnmatched ? 'Unfound' : 'Select…');
-  const typeLabel = typeActive?.label ?? 'Select…';
+  const urgencySelectOptions = useMemo(
+    () =>
+      urgencyOptions.map((o) => ({
+        value: o.value,
+        label:
+          o.value === 'auto' && overrideMeta == null
+            ? `Auto · ${derivedTone.label}`
+            : o.label,
+        meta: o.title,
+        // Platform/org policy first; manual pins in a trailing group (Priority last).
+        group: o.value === 'auto' ? 'Platform' : 'Manual override',
+      })),
+    [urgencyOptions, overrideMeta, derivedTone.label],
+  );
 
-  const platformSet = isUnmatched
-    ? true // Unfound '' is a real classification on unmatched cartons
-    : c.sourcePlatform.trim().length > 0;
-  const typeSet = c.receivingType.trim().length > 0;
+  const platformSelectOptions = useMemo(
+    () =>
+      platformOptions.map((o) => ({
+        value: o.value,
+        label: o.label,
+        meta: o.title,
+        group: 'Platforms',
+      })),
+    [platformOptions],
+  );
 
-  const handleUrgencySelect = (v: string) => {
-    void c.handlePrioritySelect(v === 'auto' ? null : Number(v));
-    setOpenPicker(null);
-  };
-
-  useEffect(() => {
-    if (openPicker == null) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      // Header classify pills live outside this section — ignore them so a
-      // re-click does not close-then-reopen the already-open dimension.
-      if (
-        t instanceof Element &&
-        t.closest('[data-testid="carton-context-classify-pills"]')
-      ) {
-        return;
-      }
-      if (rootRef.current && !rootRef.current.contains(t)) {
-        setOpenPicker(null);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenPicker(null);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [openPicker]);
+  const typeSelectOptions = useMemo(
+    () =>
+      typeOptions.map((o) => ({
+        value: o.value,
+        label: o.label,
+        meta: o.title,
+        group: 'Standard types',
+      })),
+    [typeOptions],
+  );
 
   return (
     <div className={CLASSIFY_FLUSH_HOST_CLASS}>
+      {/* One card plane — flush combobox cells (floating labels), same grammar
+          as Add Inbound / claim type. Keyboard: Tab walks triggers; ArrowDown /
+          Enter / typeahead open; Escape returns focus. */}
       <div
         ref={rootRef}
-        role="list"
         data-testid="triage-classify-checklist"
-        className="divide-y divide-border-hairline"
+        className="divide-y divide-border-hairline border-b border-border-hairline"
       >
-        <ClassifyDimension
-          id="urgency"
+        <SearchableSelectField
+          appearance="flush"
           label="Urgency"
-          valueLabel={effectiveUrgencyLabel}
-          valueFace={urgencyActive?.face}
-          valueTone={effectiveUrgencyClass}
-          set
-          open={openPicker === 'urgency'}
-          onToggle={() => setOpenPicker((p) => (p === 'urgency' ? null : 'urgency'))}
-          options={urgencyOptionsWithEffective}
-          selectedValue={urgencyValue}
-          onSelect={handleUrgencySelect}
+          value={urgencyValue}
+          onChange={(id) => {
+            if (id == null) return;
+            const next = String(id);
+            void c.handlePrioritySelect(next === 'auto' ? null : Number(next));
+          }}
+          options={urgencySelectOptions}
+          placeholder="Search or select…"
+          searchPlaceholder="Type to filter…"
+          emptyMessage="No urgencies match"
+          ariaLabel="Urgency"
         />
-        <ClassifyDimension
-          id="platform"
+        <SearchableSelectField
+          appearance="flush"
           label="Platform"
-          valueLabel={platformLabel}
-          valueFace={platformActive?.face}
-          valueTone={platformActive?.activeClass}
-          set={platformSet}
-          open={openPicker === 'platform'}
-          onToggle={() => setOpenPicker((p) => (p === 'platform' ? null : 'platform'))}
-          options={platformOptions}
-          selectedValue={c.sourcePlatform}
+          value={c.sourcePlatform}
           disabled={row.receiving_id == null}
-          onSelect={(next) => {
+          onChange={(id) => {
+            if (id == null) return;
+            const next = String(id);
             c.setSourcePlatform(next);
             void c.savePlatform(next, {
               isReturn: String(c.receivingType ?? '').trim().toUpperCase() === 'RETURN',
             });
-            setOpenPicker(null);
           }}
+          options={platformSelectOptions}
+          placeholder="Search or select…"
+          searchPlaceholder="Type to filter…"
+          emptyMessage="No platforms match"
+          ariaLabel="Platform"
         />
-        <ClassifyDimension
-          id="type"
+        <SearchableSelectField
+          appearance="flush"
           label="Type"
-          valueLabel={typeLabel}
-          valueFace={typeActive?.face}
-          valueTone={typeActive?.activeClass}
-          set={typeSet}
-          open={openPicker === 'type'}
-          onToggle={() => setOpenPicker((p) => (p === 'type' ? null : 'type'))}
-          options={typeOptions}
-          selectedValue={c.receivingType}
-          onSelect={(next) => {
+          value={c.receivingType || null}
+          onChange={(id) => {
+            if (id == null) return;
+            const next = String(id);
             c.setReceivingType(next);
             void c.saveType(next);
-            setOpenPicker(null);
           }}
+          options={typeSelectOptions}
+          placeholder="Search or select…"
+          searchPlaceholder="Type to filter…"
+          emptyMessage="No types match"
+          ariaLabel="Type"
         />
       </div>
-    </div>
-  );
-}
 
-function ClassifyDimension({
-  id,
-  label,
-  valueLabel,
-  valueFace,
-  valueTone,
-  set,
-  open,
-  onToggle,
-  options,
-  selectedValue,
-  onSelect,
-  disabled = false,
-}: {
-  id: ClassifyPicker;
-  label: string;
-  valueLabel: string;
-  valueFace?: ReactNode;
-  valueTone?: string;
-  set: boolean;
-  open: boolean;
-  onToggle: () => void;
-  options: InlinePillOption[];
-  selectedValue: string;
-  onSelect: (next: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div
-      role="listitem"
-      className={cn(disabled && 'pointer-events-none opacity-50', open && 'bg-surface-hover/40')}
-    >
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={`triage-classify-${id}-options`}
-        aria-label={`${label}: ${valueLabel} — click to ${open ? 'collapse' : 'classify'}`}
-        title={options.find((o) => o.value === selectedValue)?.title}
-        onClick={onToggle}
-        className={cn(
-          'flex w-full items-center gap-2.5 inset-cozy text-left',
-          focusRing('control', 'accent'),
-        )}
-      >
-        <span
-          className={cn(
-            'grid h-5 w-5 shrink-0 place-items-center transition-colors',
-            cornerClass('flush'),
-            set ? 'text-text-muted' : 'text-text-faint',
-          )}
-          aria-hidden
+      {/* Same RepairServiceIdentify host as Pairing/Linkage Store — Classify
+          never forks Ecwid search. Linked → chip + unlink; unpaired → CTA. */}
+      {receivingId != null && receivingId > 0 ? (
+        <div
+          data-testid="triage-classify-repair-identify"
+          className="border-t border-border-hairline"
         >
-          {DIMENSION_ICON[id]}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-          {label}
-        </span>
-        {/* Keep the identity chip mounted while open — hiding it caused a
-            horizontal jump when switching accordion rows. */}
-        {set && valueFace ? (
-          <span className={cn(INLINE_PILL_ICON_FACE, valueTone)} aria-hidden>
-            <span className="grid place-items-center">{valueFace}</span>
-          </span>
-        ) : (
-          <span
-            className={cn(
-              'max-w-[50%] truncate text-role-caption font-semibold',
-              set ? 'text-text-default' : 'text-text-faint',
-            )}
-          >
-            {valueLabel}
-          </span>
-        )}
-        <ChevronRight
-          className={cn(
-            'h-3.5 w-3.5 shrink-0 text-text-faint transition-transform duration-150 ease-out motion-reduce:transition-none',
-            open && 'rotate-90',
-          )}
-          aria-hidden
-        />
-      </button>
-
-      {/* grid-template-rows: only one row is 1fr at a time — no AnimatePresence
-          exit stacking (that was the open→open jump). */}
-      <div
-        id={`triage-classify-${id}-options`}
-        role="radiogroup"
-        aria-label={label}
-        aria-hidden={!open}
-        className={cn(
-          'grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none',
-          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
-        )}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div
-            className={cn(
-              'pb-2 pl-9 pr-2 transition-opacity duration-150 ease-out motion-reduce:transition-none',
-              open ? 'opacity-100' : 'opacity-0 pointer-events-none',
-            )}
-          >
-            <div className="flex flex-col gap-0.5">
-              {options.map((opt) => {
-                const isActive = opt.value === selectedValue;
-                return (
-                  <button
-                    key={opt.value || '__none__'}
-                    type="button"
-                    role="radio"
-                    aria-checked={isActive}
-                    tabIndex={open ? 0 : -1}
-                    title={opt.title ?? opt.label}
-                    onClick={() => onSelect(opt.value)}
+          {repairLinked && linkedOrderId ? (
+            <div className="flex min-w-0 items-center gap-2 inset-cozy">
+              <span
+                className={cn(
+                  'grid h-5 w-5 shrink-0 place-items-center text-text-muted',
+                  cornerClass('flush'),
+                )}
+                aria-hidden
+              >
+                <Wrench className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+                Order #{linkedOrderId} · Repair
+              </span>
+              <IconButton
+                icon={<Unlink className="h-3.5 w-3.5" />}
+                ariaLabel="Unlink repair order"
+                disabled={unlinking}
+                onClick={() => {
+                  void unlinkCarton({
+                    receivingId,
+                    lineId: row.id,
+                    confirmMessage:
+                      'Unlink this repair order? The carton goes back to the Unfound queue.',
+                  });
+                }}
+              />
+            </div>
+          ) : (
+            <div className="min-w-0">
+              <button
+                type="button"
+                aria-expanded={repairIdentifyOpen}
+                aria-controls="triage-classify-repair-identify-body"
+                onClick={() => setRepairIdentifyOpen((o) => !o)}
+                className={cn(
+                  'flex w-full items-center gap-2.5 inset-cozy text-left',
+                  focusRing('control', 'accent'),
+                  repairIdentifyOpen && 'bg-surface-hover/40',
+                )}
+              >
+                <span
+                  className={cn(
+                    'grid h-5 w-5 shrink-0 place-items-center text-text-muted',
+                    cornerClass('flush'),
+                  )}
+                  aria-hidden
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  Link repair order
+                </span>
+                <ChevronRight
+                  className={cn(
+                    'h-3.5 w-3.5 shrink-0 text-text-faint transition-transform duration-150 ease-out motion-reduce:transition-none',
+                    repairIdentifyOpen && 'rotate-90',
+                  )}
+                  aria-hidden
+                />
+              </button>
+              <div
+                id="triage-classify-repair-identify-body"
+                aria-hidden={!repairIdentifyOpen}
+                className={cn(
+                  'grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none',
+                  repairIdentifyOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                )}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div
                     className={cn(
-                      'flex w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors',
-                      cornerClass('flush'),
-                      focusRing('control', 'accent'),
-                      isActive
-                        ? opt.activeClass ??
-                            'bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-200'
-                        : 'text-text-default hover:bg-surface-hover',
+                      'px-2 pb-2 transition-opacity duration-150 ease-out motion-reduce:transition-none',
+                      repairIdentifyOpen
+                        ? 'opacity-100'
+                        : 'pointer-events-none opacity-0',
                     )}
                   >
-                    <span className="text-role-caption font-semibold">{opt.label}</span>
-                  </button>
-                );
-              })}
+                    {repairIdentifyOpen ? (
+                      <RepairServiceIdentify
+                        receivingId={receivingId}
+                        initialOrderScope="repair_rs"
+                        chrome="bare"
+                        autoFocusSearch
+                        onSelect={handleRepairIdentifySelect}
+                        onClose={() => setRepairIdentifyOpen(false)}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

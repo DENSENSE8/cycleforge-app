@@ -12,6 +12,7 @@
 import { Package } from '@/components/Icons';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
 import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
+import { GridDegradedBox } from '@/design-system/components/grid';
 import { PendingOrderRow } from '@/components/mobile/feed/rows/PendingOrderRow';
 import { fetchPendingOrdersData } from '@/lib/dashboard-table-data';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -24,7 +25,7 @@ const PENDING_QUERY_KEY = ['dashboard-table', 'pending', { searchQuery: '', pack
 export default function RedesignedMobilePickQueue() {
   const router = useRouter();
 
-  const { data, isLoading } = useCaptureStackQuery<ShippedOrder>({
+  const { data, isLoading, isError, refetch } = useCaptureStackQuery<ShippedOrder>({
     queryKey: PENDING_QUERY_KEY,
     queryFn: () => fetchPendingOrdersData({}),
     realtime: { invalidation: { dashboard: true }, refreshDomains: ['orders.outbound'] },
@@ -32,6 +33,20 @@ export default function RedesignedMobilePickQueue() {
 
   // Queue reads top-down in deadline/priority order — no reverse, no auto-scroll.
   const { rows, scrollRef } = useCaptureStackWindow(data, { limit: null, anchor: 'top', freshPulse: false });
+
+  // Fourth settled state: failed fetch + nothing to show → Retry, never "Nothing pending".
+  if (isError && rows.length === 0) {
+    return (
+      <div className={`flex h-full flex-col items-center justify-center ${TOKENS.colors.background}`}>
+        <GridDegradedBox
+          message="Couldn't load the pick queue."
+          onRetry={() => {
+            void refetch();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`flex h-full flex-col ${TOKENS.colors.background}`}>

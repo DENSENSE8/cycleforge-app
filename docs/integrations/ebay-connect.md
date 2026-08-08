@@ -60,7 +60,8 @@ then apply migration `2026-07-20_ebay_vault_tokens.sql` (drops token columns).
    identity API for the eBay user id; **upserts vault** via `upsertEbayUserCreds`
    (scope `seller:`/`buyer:`); upserts `ebay_accounts` **metadata** (no token columns);
    syncs `platform_accounts`; audits `integrations.ebay.connected`; redirects to
-   `/settings/integrations?success=ebay_connected`.
+   `/settings/integrations?success=ebay_buyer_connected` or `ebay_seller_connected`
+   (role-specific next-step copy in Settings).
    Buyer connects also enable `organization_feature_flags(flag='incoming_universal')`.
 
 ## Purchasing accounts → Incoming
@@ -216,7 +217,8 @@ Purchase sync: `/api/cron/ebay/purchase-sync` (~30m) for buyer → Incoming (gat
    `INTEGRATION_KMS_KEY`; point the sandbox RuName at `…/api/ebay/callback`.
 2. Settings → Integrations → eBay → **Connect**, enter a label, sign in to the
    sandbox seller account, grant consent.
-3. Expect redirect to `…?success=ebay_connected`, a success toast, and the account
+3. Expect redirect to `…?success=ebay_seller_connected` (or `ebay_buyer_connected`
+   for purchasing), a success toast with role-specific next steps, and the account
    in the card with a token-expiry detail.
 4. **Check** → healthy. **Refresh** (per-account) → success.
 5. **Cancel** consent on a second attempt → `?error=ebay_consent_declined` banner.

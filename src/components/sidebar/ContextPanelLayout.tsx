@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { motion, motionRole } from '@/design-system/motion';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
 import {
@@ -16,13 +21,13 @@ import {
   ContextPanelCollapseProvider,
   useContextPanelCollapse,
 } from '@/components/sidebar/context-panel-collapse-context';
+import { useContextPanelToggleHotkey } from '@/components/sidebar/context-panel-toggle-hotkey';
 import {
   CollapseStripMruPins,
   CollapseStripScanCell,
   LeftDockCollapseStrip,
 } from '@/components/sidebar/tech/left-dock-toggle';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
   EDGE_RESIZE_COLLAPSE_SLACK_PX,
   useHorizontalEdgeResize,
@@ -85,11 +90,13 @@ const SidebarContextPanel = dynamic(
  * {@link useHorizontalEdgeResize} + {@link HorizontalEdgeResizeHandle}
  * (`placement="inset"` — paint is the panel's own `border-r` hairline, not an
  * outset twin to the right of the seam); width persists in localStorage
- * ({@link CONTEXT_PANEL_RESIZE}). Collapse via sash-top `onCollapse` on that
- * handle **or** drag-past-min (`onCollapseBeyondMin`) **or** the filter-bar
- * trailing {@link RailFilterCollapseButton} — all write
- * {@link CONTEXT_PANEL_COLLAPSE} (width-drawer to 0 + slim expand strip). One
- * shared preference across routes.
+ * ({@link CONTEXT_PANEL_RESIZE}). Collapse via drag-past-min
+ * (`onCollapseBeyondMin`), the filter-bar trailing
+ * {@link RailFilterCollapseButton}, **or ⌘/Ctrl+B**
+ * ({@link useContextPanelToggleHotkey}) — all write {@link CONTEXT_PANEL_COLLAPSE}
+ * (width-drawer to 0 + slim expand strip). One shared preference across routes.
+ * The resize sash is drag-only (no sash-top collapse chevron). MasterNav spine
+ * stays click-only (distinct altitude from this work rail).
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.
@@ -105,6 +112,15 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     CONTEXT_PANEL_COLLAPSE.storageKey,
     false,
   );
+  const collapse = useCallback(() => setCollapsed(true), [setCollapsed]);
+  const expand = useCallback(() => setCollapsed(false), [setCollapsed]);
+  const toggle = useCallback(
+    () => setCollapsed((prev) => !prev),
+    [setCollapsed],
+  );
+  // Single owner — the open panel stays mounted (inert) while parked, so the
+  // chord cannot live on both collapse + expand click hosts.
+  useContextPanelToggleHotkey(toggle, hasPanel);
   // Station Displays push — re-render when frame mode/cap flips (opening
   // Displays switches centerFloor 784→0 and changes capPx). Snapshot is the
   // live stationPushActive flag for dual-rail coupling.
@@ -140,7 +156,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     testId: 'context-panel-resize',
     collapseBelowPx:
       CONTEXT_PANEL_RESIZE.minWidthPx - EDGE_RESIZE_COLLAPSE_SLACK_PX,
-    onCollapseBeyondMin: () => setCollapsed(true),
+    onCollapseBeyondMin: collapse,
   });
 
   // Publish what this rail would COST IF OPEN — never a measurement of the
@@ -236,19 +252,8 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   // this rail — both stay open and the center hugs `MIN_WORK_SURFACE_PX` /
   // the station workbench lock while the right panel's resize cap shrinks.
   const isCollapsed = hasPanel && collapsed;
-  // `motionRole.push.rail` — TRANSITION ONLY. This column animates its own
-  // width keyframes inline rather than mounting a presence shape, so it takes
-  // the role's physics without pretending to have the role's presence.
-  // Live drag / settled open: duration 0. Collapse open-close: tween.
-  const railTransition = useMotionTransition(motionRole.push.rail.transition);
-  const [collapseSettled, setCollapseSettled] = useState(!isCollapsed);
-  useEffect(() => {
-    if (isCollapsed) setCollapseSettled(false);
-  }, [isCollapsed]);
-  const widthTransition =
-    isDragging || (!isCollapsed && collapseSettled)
-      ? { duration: 0 }
-      : railTransition;
+  // Park/restore snaps — same as Station Displays (no `motionRole.push.rail`
+  // width tween). Live sash drag still paints every frame via paintWidthPx.
 
   if (!hasPanel) return <>{children}</>;
 
@@ -286,26 +291,29 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           edge="trailing"
           placement="inset"
           tooltipLabel="Resize"
-          onCollapse={() => setCollapsed(true)}
-          collapseLabel="Hide sidebar"
         />
       ) : null}
     </>
   );
 
   return (
-    <ContextPanelCollapseProvider collapse={() => setCollapsed(true)}>
+    <ContextPanelCollapseProvider
+      collapse={collapse}
+      expand={expand}
+      toggle={toggle}
+    >
       <div className={cn(CONTEXT_PANEL_HOST_CLASS, 'relative')}>
         {/* The strip is the OPERATOR's restore control — only when they collapsed
             the rail. Mid-strip MRU pins come from the open rail via
             {@link usePublishCollapsePins}. */}
         {isCollapsed ? (
-          <ContextPanelCollapseStripSlot onExpand={() => setCollapsed(false)} />
+          <ContextPanelCollapseStripSlot onExpand={expand} />
         ) : null}
 
         {/* `data-context-panel` is the panel's identity hook, so a test can ask
-            "did the route's rail render?" without keying off its width class. */}
-        <motion.div
+            "did the route's rail render?" without keying off its width class.
+            Width snaps (no layout animation) — Displays in-flow twin. */}
+        <div
           className={cn(
             CONTEXT_PANEL_COLUMN_CLASS,
             // Inset sash lives inside the card — clip is safe; the inner shell
@@ -314,18 +322,13 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           )}
           data-context-panel
           data-collapsed={isCollapsed ? 'true' : 'false'}
-          initial={false}
-          animate={{ width: isCollapsed ? 0 : paintWidthPx }}
-          transition={widthTransition}
-          onAnimationComplete={() => {
-            if (!isCollapsed) setCollapseSettled(true);
-          }}
+          style={{ width: isCollapsed ? 0 : paintWidthPx }}
           // Collapsed column stays mounted so the scan session does not remount
           // on expand — same latch idiom as SidebarNavColumn.
           inert={isCollapsed || undefined}
         >
           {panelBody}
-        </motion.div>
+        </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </ContextPanelCollapseProvider>

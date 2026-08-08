@@ -18,7 +18,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /** Matches {@link InlinePillPicker} collapsed shell — flush square in the carton bar. */
 const RAIL_PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-none border px-2.5 text-role-micro uppercase tracking-wide shadow-none';
+  'inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-none border px-2.5 text-role-micro uppercase tracking-wide shadow-none';
 const RAIL_PICKUP_TONE = 'border-emerald-600 bg-emerald-600 text-white';
 
 export type FulfillmentPickupPillVariant = 'chip' | 'rail';
@@ -26,7 +26,7 @@ export type FulfillmentPickupPillVariant = 'chip' | 'rail';
 /**
  * Non-copy pickup indicator for the tracking slot.
  * - `chip` (default) — ring badge for table columns, popovers, dense rows.
- * - `rail` — solid h-8 flush square aligned with InlinePillPicker in CartonContextCard.
+ * - `rail` — solid h-10 flush square aligned with InlinePillPicker in CartonContextCard.
  */
 export function FulfillmentPickupPill({
   dense,

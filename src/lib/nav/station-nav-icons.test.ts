@@ -33,9 +33,9 @@ test('every floor-station mode glyph key is unique', () => {
   );
 });
 
-test('Arrival Truck is not reused by Tech Shipping queue (Send)', () => {
+test('Arrival Truck is not reused by Tech Ready to Pack (PackageCheck)', () => {
   assert.equal(STATION_GLYPH_KEYS['receiving.triage'], 'Truck');
-  assert.equal(STATION_GLYPH_KEYS['tech.shipping'], 'Send');
+  assert.equal(STATION_GLYPH_KEYS['tech.shipping'], 'PackageCheck');
   assert.notEqual(STATION_GLYPH_KEYS['receiving.triage'], STATION_GLYPH_KEYS['tech.shipping']);
   assert.equal(RECEIVING_NAV_ICONS.triage, ReceivingModeArrival);
   assert.equal(TECH_NAV_ICONS.shipping, TechModeShippingQueue);

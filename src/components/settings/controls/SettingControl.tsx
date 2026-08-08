@@ -11,6 +11,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, Switch } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import type { SettingDef, SettingValue } from '@/lib/settings/types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 interface SettingControlProps {
   def: SettingDef;
@@ -105,7 +107,7 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
               const n = Number(e.target.value);
               if (Number.isFinite(n) && n !== Number(value)) onChange(n);
             }}
-            className="w-24 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            className={cn("w-24 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default disabled:cursor-not-allowed disabled:opacity-40", focusRing("field", "accent"))}
           />
           {def.unit && <span className="text-role-caption text-text-soft">{def.unit}</span>}
         </div>
@@ -122,7 +124,7 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
             const v = e.target.value.trim();
             if (v && v !== String(value)) onChange(v);
           }}
-          className="w-48 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn("w-48 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default disabled:cursor-not-allowed disabled:opacity-40", focusRing("field", "accent"))}
         />
       );
 

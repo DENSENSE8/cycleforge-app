@@ -12,6 +12,11 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { TABLE_SURFACE_SHEET_CLASS } from '@/design-system/tokens/table-surface';
 import { RECEIVING_BROWSE_DEFINITION } from '@/components/station/receiving-grid/receiving-table-definition';
+import {
+  UNBOX_WORKSPACE_TABS,
+  getUnboxWorkspaceTabFromSearch,
+  normalizeUnboxWorkspaceTabParams,
+} from '@/utils/unbox-workspace-state';
 
 const ROOT = join(process.cwd());
 
@@ -179,23 +184,26 @@ describe('Receiving grid Sheets recipe', () => {
     assert.match(skeleton, /border-b border-r/);
   });
 
-  it('LedgerGridColumnHeader is h-10 to match Unbox chrome bands', () => {
+  it('LedgerGridColumnHeader uses PRIMARY_CHROME_ROW_FACE to match Unbox chrome bands', () => {
     const src = read('src/design-system/components/grid/LedgerGridColumnHeader.tsx');
     assert.doesNotMatch(src, /\bmin-h-11\b/);
-    assert.match(src, /group\/hrow grid h-10 min-h-10/);
-    // Select gutter stays h-10 when present; paint track also h-10.
-    assert.match(src, /'h-10 min-h-10'/);
+    assert.match(src, /PRIMARY_CHROME_ROW_FACE/);
+    assert.match(src, /LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE/);
+    assert.match(src, /group\/hrow grid/);
     assert.match(src, /emptyGutter \? 'items-stretch overflow-hidden p-0' : 'justify-center'/);
-    assert.match(src, /group\/hcell relative gap-1 h-10 min-h-10/);
+    assert.match(src, /group\/hcell relative gap-1/);
+    assert.match(src, /LEDGER_HEADER_ROW_FACE/);
   });
 
-  it('Receiving leaf rows are h-10 to match the column header band', () => {
+  it('Receiving leaf rows use PRIMARY_CHROME_ROW_FACE to match the column header band', () => {
     const row = read('src/components/station/receiving-grid/ReceivingGridRow.tsx');
     assert.match(
       row,
-      /'h-10 min-h-10'/,
-      'ReceivingGridRow must share the header band height (h-10)',
+      /PRIMARY_CHROME_ROW_FACE/,
+      'ReceivingGridRow must share the primary chrome row height',
     );
+    assert.match(row, /PRIMARY_CHROME_ROW_FACE/);
+    assert.doesNotMatch(row, /min-h-9/, 'row height is the primary atom — no min-h floor twin');
     // Flat lines only — PO group summary folds were removed (Sheets golden).
     assert.doesNotMatch(
       read('src/components/station/receiving-grid/ReceivingGridGroupRow.tsx'),
@@ -238,16 +246,45 @@ describe('Receiving grid Sheets recipe', () => {
     );
   });
 
-  it('Unbox Band 1 includes Urgent and All; All mounts TechAllTriageTable', () => {
-    const state = read('src/utils/unbox-workspace-state.ts');
-    assert.match(state, /urgent/);
-    assert.match(state, /['"]all['"]/);
-    assert.match(state, /priority_only/);
+  it('Unbox Band 1 is Inbound · Queue · Recent · History — Urgent is not a tab, All is deep-link only', () => {
+    // Asserted against the EXPORTED CONTRACT, never the source text. Until
+    // 2026-08-08 this test read `assert.match(state, /urgent/)` on the file's
+    // characters, and the module's docblock explains at length *why* Urgent was
+    // removed — so the word appears repeatedly and the guard sailed through
+    // green while claiming the exact opposite of what shipped. Same failure
+    // mode as `return-to-scan.guard.test.ts:82`. A guard that greps prose
+    // cannot fail when the prose is about the removal.
+    assert.deepEqual(
+      [...UNBOX_WORKSPACE_TABS],
+      ['incoming', 'queue', 'recent', 'history'],
+      'the strip is ordered by PROCESS — where a carton comes from, the work in ' +
+        'front of you, what you have touched, the archive',
+    );
+    assert.equal(
+      getUnboxWorkspaceTabFromSearch(new URLSearchParams()),
+      'queue',
+      'bare /unbox opens the Queue — a process-ordered strip must not default to its own last tab',
+    );
+    assert.equal(
+      getUnboxWorkspaceTabFromSearch(new URLSearchParams('unboxview=urgent')),
+      'queue',
+      'urgency is a flag a carton carries at any stage, not a stage it sits in — ' +
+        'a stale ?unboxview=urgent link migrates to the queue it was always a filter over',
+    );
+    // No tab owns `priority_only` any more, so a leftover from an old link must
+    // be cleared rather than silently hiding every non-urgent carton behind
+    // chrome that gives no hint the list is filtered.
+    const stale = new URLSearchParams('unboxview=urgent&priority_only=1');
+    normalizeUnboxWorkspaceTabParams(stale, 'queue');
+    assert.equal(stale.get('priority_only'), null);
+
+    // `all` survives in the vocabulary as a deep link but is NOT in the strip:
+    // it mounts a different component, so it is a mode, not a filter of this table.
+    assert.equal(UNBOX_WORKSPACE_TABS.includes('all'), false);
     const view = read('src/components/receiving/unbox/UnboxWorkspaceView.tsx');
     assert.match(view, /TechAllTriageTable/);
     assert.match(view, /scope=["']unbox["']/);
     const header = read('src/components/receiving/unbox/UnboxWorkspaceHeader.tsx');
-    assert.match(header, /Urgent/);
     assert.match(header, /dividerBefore:\s*id === ['"]history['"]/);
   });
 
@@ -285,32 +322,42 @@ describe('Receiving grid Sheets recipe', () => {
       /\bleading=\{/,
       'Search must be flush left — no leading utility over the select gutter',
     );
-    // History omits Band 3 kpiToggle / refine right / controls portal.
-    assert.match(
+    // Refine right / controls portal stay off Band 3; KPI toggle lives here.
+    assert.doesNotMatch(
       triageBlock,
-      /isHistoryTab \? undefined/,
-      'History Band 3 must not host kpiToggle / refine / controls portal',
+      /\bright=\{/,
+      'History Band 3 must not host a refine right cluster',
     );
     assert.match(
       triageBlock,
-      /trailing=\{historyInspectorToggle\}/,
+      /WorkbenchKpiCollapseToggle/,
+      'History Band 3 hosts KPI collapse (park-safe door)',
+    );
+    assert.match(
+      triageBlock,
+      /trailing=\{inspectorToggle\}/,
       'Inspector toggle must sit in WorkbenchTriageBand.trailing',
     );
     assert.match(header, /unbox-history-inspector-toggle/);
+    assert.match(header, /WorkbenchInspectorToggle/);
     assert.match(header, /setViewShellOpen/);
+    const inspectorToggle = read(
+      'src/components/dashboard/workbench-inspector-toggle.tsx',
+    );
     assert.match(
-      header,
+      inspectorToggle,
       /Show inspector/,
       'History Band 3 reopen uses inspector nouns (not Station Open displays)',
     );
+    assert.match(inspectorToggle, /Hide inspector/);
     assert.doesNotMatch(
       header,
       /Open displays/,
       'Open displays belongs on StationDisplaysEdgeToggle (LineEdit), not History Band 3',
     );
-    // View cluster owns layout chrome only (no staff / week portal).
+    // View cluster owns layout chrome only (no staff / week / KPI portal).
     assert.match(panel, /HistoryViewTopicsCluster/);
-    assert.match(viewCluster, /WorkbenchKpiCollapseToggle/);
+    assert.doesNotMatch(viewCluster, /WorkbenchKpiCollapseToggle/);
     assert.match(viewCluster, /HistoryDrillChrome/);
     assert.doesNotMatch(viewCluster, /StaffFilterButton/);
     // Unbox History must not portal the week pill into View controls.
@@ -319,15 +366,13 @@ describe('Receiving grid Sheets recipe', () => {
       /isHistoryMode && embedded/,
       'Embedded History must skip week DateRangePickerPill portal',
     );
-    // Filter must not remain as a Band 3 toolbar sibling outside the field.
-    const triageRightStart = header.indexOf('const triageRight');
-    const triageRightEnd = header.indexOf('const historyInspectorToggle');
-    assert.ok(triageRightStart >= 0 && triageRightEnd > triageRightStart);
-    const triageRight = header.slice(triageRightStart, triageRightEnd);
+    // Filter must not remain as a Band 3 toolbar sibling outside the field —
+    // History Refine lives only in TechRailSearchBar trailingSuffix.
     assert.doesNotMatch(
-      triageRight,
-      /Sort \/ search field|label="Refine"/,
-      'History Refine funnel must not live in triageRight (in-field only)',
+      header,
+      /const triageRight/,
+      'History must not keep a Band 3 triageRight refine cluster (in-field only)',
     );
+    assert.match(header, /trailingSuffix=\{historyInFieldFilter\}/);
   });
 });

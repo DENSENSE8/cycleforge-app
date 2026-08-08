@@ -37,7 +37,11 @@ import {
   CARRIER_MISMATCH_PREDICATE,
   SHIPMENT_SCANNED_PREDICATE,
 } from '@/lib/receiving/delivered-unscanned';
-import { notInboundMirrorTerminalPredicate } from '@/lib/inbound/mirror';
+import {
+  INBOUND_MARKETPLACE_CARTON_SOURCES_SQL,
+  INBOUND_MARKETPLACE_LINE_SOURCES_SQL,
+  notLineInboundMirrorTerminalPredicate,
+} from '@/lib/inbound/mirror';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
 import { UNBOX_OPENED_PREDICATE_SQL } from '@/lib/receiving/unbox-scan-opened-sql';
 import { priorityRankSql, laneRankSql } from '@/lib/receiving/display/precedence';
@@ -196,7 +200,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                    AND r.source = 'zoho_po'
                    AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
-                   AND r.source = 'ebay'
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                    AND r.source_order_id = rl.source_order_id
                    AND r.organization_id = rl.organization_id))
             ORDER BY (r.id = rl.receiving_id) DESC,
@@ -462,6 +466,9 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
     const includeSerials = include.split(',').map((s) => s.trim()).includes('serials');
     const inboundSourceParam = String(searchParams.get('inbound') || '').trim().toLowerCase();
     const incomingLinkParam = String(searchParams.get('link') || '').trim().toLowerCase();
+    const inkindRaw = String(searchParams.get('inkind') || '').trim().toLowerCase();
+    const inboundKindParam =
+      inkindRaw === 'purchase' || inkindRaw === 'return' ? inkindRaw : '';
     const conditions: string[] = [];
     const values: unknown[]    = [];
     let idx = 1;
@@ -777,10 +784,8 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
            AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
         );
       } else {
-        // Universal Incoming (plan §6.1): a line qualifies if it's a Zoho PO not
-        // yet received (this INCLUDES eBay→Zoho merged lines, which carry the zoho
-        // PO id and are governed by the Zoho mirror), OR an eBay-only buyer line
-        // (no zoho PO, governed by the eBay mirror). Same SHIPMENT_SCANNED drop-off.
+        // Universal Incoming (plan §6.1): Zoho PO not yet received OR marketplace /
+        // manual-only buyer line (ebay · amazon · manual). Same SHIPMENT_SCANNED drop-off.
         conditions.push(
           `rl.workflow_status = 'EXPECTED'
            AND COALESCE(rl.quantity_received, 0) = 0
@@ -788,18 +793,43 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
              (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
              OR
              (rz.zoho_purchaseorder_id IS NULL
-              AND rl.inbound_source_type = 'ebay'
-              AND ${notInboundMirrorTerminalPredicate('ebay')})
+              AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
+              AND ${notLineInboundMirrorTerminalPredicate()})
            )
            AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
         );
-        // ?inbound facet — filter by PRIMARY source (merged lines read as 'ebay').
-        if (inboundSourceParam === 'ebay') {
-          conditions.push(`rl.inbound_source_type = 'ebay'`);
+        // ?inbound facet — filter by PRIMARY source (merged lines keep marketplace type).
+        if (
+          inboundSourceParam === 'ebay'
+          || inboundSourceParam === 'amazon'
+          || inboundSourceParam === 'manual'
+        ) {
+          conditions.push(`rl.inbound_source_type = '${inboundSourceParam}'`);
         } else if (inboundSourceParam === 'zoho') {
-          conditions.push(`rl.inbound_source_type IS DISTINCT FROM 'ebay'`);
+          conditions.push(
+            `(rl.inbound_source_type = 'zoho' OR (rl.inbound_source_type IS NULL AND rz.zoho_purchaseorder_id IS NOT NULL))`,
+          );
         }
-        // ?link=zoho_pending — eBay lines still awaiting their Zoho PO.
+        if (inboundKindParam === 'return') {
+          conditions.push(
+            `(UPPER(COALESCE(rl.receiving_type, '')) = 'RETURN'
+            OR EXISTS (
+              SELECT 1 FROM receiving_line_return rlr
+               WHERE rlr.receiving_line_id = rl.id
+                 AND rlr.organization_id = rl.organization_id
+            ))`,
+          );
+        } else if (inboundKindParam === 'purchase') {
+          conditions.push(
+            `UPPER(COALESCE(rl.receiving_type, 'PO')) <> 'RETURN'
+            AND NOT EXISTS (
+              SELECT 1 FROM receiving_line_return rlr
+               WHERE rlr.receiving_line_id = rl.id
+                 AND rlr.organization_id = rl.organization_id
+            )`,
+          );
+        }
+        // ?link=zoho_pending — marketplace lines still awaiting their Zoho PO.
         if (incomingLinkParam === 'zoho_pending') {
           conditions.push(`rz.zoho_purchaseorder_id IS NULL`);
         }
@@ -1255,7 +1285,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                    AND r.source = 'zoho_po'
                    AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
-                   AND r.source = 'ebay'
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                    AND r.source_order_id = rl.source_order_id
                    AND r.organization_id = rl.organization_id))
             ORDER BY (r.id = rl.receiving_id) DESC,
@@ -1323,7 +1353,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                    AND r.source = 'zoho_po'
                    AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
-                   AND r.source = 'ebay'
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
                    AND r.source_order_id = rl.source_order_id
                    AND r.organization_id = rl.organization_id))
             ORDER BY (r.id = rl.receiving_id) DESC,

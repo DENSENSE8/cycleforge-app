@@ -6,8 +6,15 @@ import { UnitsDisplayHost } from '../UnitsDisplayHost';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
+import { UnboxStepDock } from '../UnboxStepDock';
+import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
+import { emitReceiving } from '@/components/receiving/receiving-events';
+import { ConditionPills } from '../../ConditionPills';
+import { patchReceivingLineCondition } from '../../patch-receiving-line-condition';
+import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
 import { LinkageDisplayHost } from '../LinkageDisplayHost';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
+import { InventoryDisplayHost } from '../InventoryDisplayHost';
+import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import {
   Barcode,
@@ -18,11 +25,11 @@ import {
   Link2,
   MapPin,
   MessageSquare,
+  Package,
   SlidersHorizontal,
   Ticket,
 } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
 import type {
   UnboxLinkageAction,
@@ -34,6 +41,7 @@ import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
 import type { ClaimModalMode } from '../../claim/claim-types';
+import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 
 /**
  * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
@@ -85,6 +93,8 @@ export interface BuildUnboxTabsInput {
   classifyOnStrip: boolean;
   /** Linkage (Pairing + Zoho note) needs a carton record. */
   hasLinkageTab: boolean;
+  /** Inventory dossier — same carton gate as Linkage. */
+  hasInventoryTab: boolean;
   poIdForTracking: string;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
@@ -92,6 +102,9 @@ export interface BuildUnboxTabsInput {
   onPhotoActionChange: (action: UnboxPhotoAction) => void;
   linkageAction: UnboxLinkageAction;
   onLinkageActionChange: (action: UnboxLinkageAction) => void;
+  onInventoryChangePo: () => void;
+  onInventorySync: () => void | Promise<void>;
+  inventorySyncing?: boolean;
   unitsAction: UnboxUnitsAction;
   onUnitsActionChange: (action: UnboxUnitsAction) => void;
   /** Nested Prebox tab — gated on carton serials. */
@@ -116,8 +129,6 @@ export interface BuildUnboxTabsInput {
    * Arrival has no Ticket topic.
    */
   onFindTicket?: () => void;
-  onItemDescFeedback?: (feedback: InlineActionFeedbackPayload | null) => void;
-  onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
   accordionBootstrap?: 'default' | 'all';
   /** Filled multi-qty unit pencil → open Units display + edit handoff. */
@@ -128,16 +139,19 @@ export interface BuildUnboxTabsInput {
   }) => void;
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /**
+   * RETURN match band → Displays Timeline (full serial genealogy).
+   * Wired from LineEditPanel `openDisplays('timeline')`.
+   */
+  onOpenReturnHistory?: () => void;
 }
 
 /**
- * The Unbox CENTRE — PO lines (condition + serial) → label preview.
+ * The Unbox CENTRE — PO lines (meta = condition · serial ledger) → label preview.
  *
- * No tab strip above it: `overview` is the whole workbench body, and every other
- * display lives in the right-edge Displays push column ({@link buildUnboxSideTabs}).
- *
- * The guided ProcedureDeck / step dock continues on the `unbox-work` lane
- * (`../cycleforge-unbox`); main dogfood ships this PO-line centre instead.
+ * Capture actions live in the bottom {@link buildUnboxStepDock}. PO meta already
+ * shows grade/serial — no under-row editor. Meta click focuses the dock step.
+ * Centre `ProcedureDeck` stays parked.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -145,22 +159,24 @@ export function buildUnboxOverview(
     | 'row'
     | 'staffId'
     | 'c'
-    | 'onItemDescFeedback'
-    | 'onItemDescSaved'
     | 'accordionBootstrap'
     | 'onEditFilledSerial'
     | 'onViewAllUnits'
-  >,
+    | 'onOpenReturnHistory'
+  > & {
+    /** Click ledger chips → focus the matching procedure step in the dock. */
+    onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
+  },
 ): ReactNode {
   const {
     row,
     staffId,
     c,
-    onItemDescFeedback,
-    onItemDescSaved,
     accordionBootstrap = 'default',
     onEditFilledSerial,
     onViewAllUnits,
+    onOpenReturnHistory,
+    onFocusCaptureStep,
   } = input;
 
   return (
@@ -173,13 +189,14 @@ export function buildUnboxOverview(
         openInUnbox={false}
         editLines
         serialScan
+        dockOwnsCapture
+        onFocusCaptureStep={onFocusCaptureStep}
         c={c}
         suppressItemsHeader
-        onItemDescFeedback={onItemDescFeedback}
-        onItemDescSaved={onItemDescSaved}
         accordionBootstrap={accordionBootstrap}
         onEditFilledSerial={onEditFilledSerial}
         onViewAllUnits={onViewAllUnits}
+        onOpenReturnHistory={onOpenReturnHistory}
       />
       <UnboxLabelPreview row={row} c={c} />
     </div>
@@ -187,12 +204,65 @@ export function buildUnboxOverview(
 }
 
 /**
+ * The Unbox DOCK's leading zone — the active step's action control.
+ *
+ * Sibling of {@link buildUnboxOverview}: the ledger reads, the dock acts.
+ * Capture trio order is Serial → Condition → Photos (`FOUND_CAPTURE`).
+ */
+export function buildUnboxStepDock(
+  input: Pick<BuildUnboxTabsInput, 'row' | 'staffId' | 'c'>,
+): ReactNode {
+  const { row, staffId, c } = input;
+  const receivingId = row.receiving_id ?? 0;
+
+  const setCondition = (next: string) => {
+    c.setCond(next);
+    // Gate stamp via /condition — a generic line PATCH never writes
+    // `condition_graded_at`, so the Condition step would never settle.
+    if (row.id > 0) patchReceivingLineCondition(row.id, next);
+    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+  };
+
+  return (
+    <UnboxStepDock
+      row={row}
+      staffId={staffId}
+      onSetCondition={setCondition}
+      conditionSlot={
+        <ConditionPills
+          value={c.cond}
+          onChange={setCondition}
+          collapsible={false}
+        />
+      }
+      itemPhotoSlot={
+        receivingId > 0 && row.id > 0 ? (
+          <ReceivingPhotoButton
+            receivingId={receivingId}
+            staffId={Number(staffId) || 0}
+            poRef={row.zoho_purchaseorder_number ?? null}
+            photoStage="unbox_item"
+            receivingLineId={row.id}
+            poRouteRef={row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null}
+            galleryPlacement="above"
+          />
+        ) : null
+      }
+      serialSlot={<UnboxSerialStepSurface row={row} c={c} />}
+      classifySlot={<TriageClassifySection row={row} c={c} />}
+    />
+  );
+}
+
+/**
  * Build the Unbox side displays for the Displays push column.
  *
- * Strip (left → right): Ticket · Photos · Linkage · Classify · Units.
- * Ticket is presence-exclusive (Claim vs Chat — no nested tabs). Units nests
- * Units · Prebox. Overflow: Listings · Support · Tracking · Timeline (Audit
- * nested in Timeline). Checklist is ring-only.
+ * Strip (PO-identity first): Listings · Classify · Pairing · Inventory · Units ·
+ * Photos · Ticket · Tracking · Timeline · Support. Ticket is presence-exclusive
+ * (Claim vs Chat — no nested tabs). Inventory is one stacked dossier (no nested
+ * tabs). Photos is armed-row Actions + URL drills. Units · Linkage still nest
+ * parent underline (debt — migrate to armed rows).
+ * Checklist is a Displays leaf (no floor % ring).
  */
 export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
   const {
@@ -208,6 +278,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     hasClassifyTab,
     classifyOnStrip,
     hasLinkageTab,
+    hasInventoryTab,
     poIdForTracking,
     hasPoNoteTab,
     poNote,
@@ -215,6 +286,9 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     onPhotoActionChange,
     linkageAction,
     onLinkageActionChange,
+    onInventoryChangePo,
+    onInventorySync,
+    inventorySyncing = false,
     unitsAction,
     onUnitsActionChange,
     hasPrebox,
@@ -228,45 +302,46 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     pairingFocusTab = null,
     pairingFocusRequestId = 0,
     onFindTicket,
+    onOpenReturnHistory,
   } = input;
 
   const ticketId = c.providerTicketId as number | null | undefined;
+  const timelineOnStrip = hasTimelineTab && isReturnIntake(row);
 
   return buildSectionTabs([
     {
-      id: 'ticket',
-      label: 'Ticket',
-      icon: Ticket,
-      content:
-        activeSideTab === 'ticket' ? (
-          <TicketDisplayHost
-            row={row}
-            ticketId={ticketId}
-            claimMode={claimMode}
-            onCloseClaim={onCloseClaim}
-            onCloseTicket={onCloseTicket}
-            onClaimTicketCreated={onClaimTicketCreated}
-            onClaimTicketUnlinked={onClaimTicketUnlinked}
-            returnClaimPrefill={c.returnClaimPrefill ?? null}
-          />
-        ) : null,
+      id: 'listings',
+      label: 'Listings',
+      icon: ExternalLink,
+      visible: hasListingsTab,
+      content: (
+        <ListingLinksTab
+          listingLinks={c.listingLinks ?? []}
+          listingLink={c.listingLink}
+          setListingLink={c.setListingLink}
+        />
+      ),
     },
     {
-      id: 'photos',
-      label: 'Photos',
-      icon: Images,
-      content:
-        activeSideTab === 'photos' ? (
-          <PhotosDisplayHost
-            row={row}
-            action={photoAction}
-            onActionChange={onPhotoActionChange}
-          />
-        ) : null,
+      id: 'classify',
+      label: 'Classify',
+      icon: SlidersHorizontal,
+      visible: hasClassifyTab,
+      // Unfound still promotes Classify on any legacy strip; matched keeps it
+      // index-first via UNBOX_STRIP_TAB_ORDER regardless of overflow priority.
+      priority: classifyOnStrip ? 'primary' : 'overflow',
+      content: (
+        <TriageClassifySection
+          row={row}
+          c={c}
+          expandDimension={classifyExpandDimension}
+          expandRequestId={classifyExpandRequestId}
+        />
+      ),
     },
     {
       id: 'linkage',
-      label: 'Linkage',
+      label: 'Pairing',
       icon: Link2,
       visible: hasLinkageTab,
       content:
@@ -299,33 +374,21 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
         ) : null,
     },
     {
-      id: 'classify',
-      label: 'Classify',
-      icon: SlidersHorizontal,
-      visible: hasClassifyTab,
-      priority: classifyOnStrip ? 'primary' : 'overflow',
-      content: (
-        <TriageClassifySection
-          row={row}
-          c={c}
-          expandDimension={classifyExpandDimension}
-          expandRequestId={classifyExpandRequestId}
-        />
-      ),
-    },
-    {
-      id: 'listings',
-      label: 'Listings',
-      icon: ExternalLink,
-      visible: hasListingsTab,
-      priority: 'overflow',
-      content: (
-        <ListingLinksTab
-          listingLinks={c.listingLinks ?? []}
-          listingLink={c.listingLink}
-          setListingLink={c.setListingLink}
-        />
-      ),
+      id: 'inventory',
+      label: 'Inventory',
+      icon: Package,
+      visible: hasInventoryTab,
+      content:
+        activeSideTab === 'inventory' ? (
+          <InventoryDisplayHost
+            row={row}
+            hasPoNote={hasPoNoteTab}
+            poNote={poNote}
+            onChangePo={onInventoryChangePo}
+            onSyncFromInventory={onInventorySync}
+            syncing={inventorySyncing}
+          />
+        ) : null,
     },
     {
       id: 'units',
@@ -359,41 +422,50 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             commitSerialAbsent: c.commitSerialAbsent,
             serialRef: c.serialRef,
             handleFileReturnClaim: c.handleFileReturnClaim,
+            handleOpenReturnHistory: onOpenReturnHistory,
             serialLookup: c.serialLookup,
           }}
         />
       ),
     },
     {
+      id: 'photos',
+      label: 'Photos',
+      icon: Images,
+      content:
+        activeSideTab === 'photos' ? (
+          <PhotosDisplayHost
+            row={row}
+            staffId={Number(staffId) || 0}
+            action={photoAction}
+            onActionChange={onPhotoActionChange}
+          />
+        ) : null,
+    },
+    {
+      id: 'ticket',
+      label: 'Ticket',
+      icon: Ticket,
+      content:
+        activeSideTab === 'ticket' ? (
+          <TicketDisplayHost
+            row={row}
+            ticketId={ticketId}
+            claimMode={claimMode}
+            onCloseClaim={onCloseClaim}
+            onCloseTicket={onCloseTicket}
+            onClaimTicketCreated={onClaimTicketCreated}
+            onClaimTicketUnlinked={onClaimTicketUnlinked}
+            returnClaimPrefill={c.returnClaimPrefill ?? null}
+          />
+        ) : null,
+    },
+    {
       id: 'checklist',
       label: 'Checklist',
       icon: ClipboardList,
-      stripHidden: true,
       // Flush Displays body — no WorkspaceCard glass island (Classify / Pairing SoT).
       content: <UnboxProcedureChecklist row={row} />,
-    },
-    {
-      id: 'support',
-      label: 'Support',
-      icon: MessageSquare,
-      priority: 'overflow',
-      content:
-        activeSideTab === 'support' && (row.id != null || row.receiving_id != null) ? (
-          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
-            <SupportContextHub
-              anchor={{
-                receivingId: row.receiving_id ?? null,
-                lineId: row.id ?? null,
-                tracking: row.tracking_number ?? null,
-              }}
-              variant="station"
-              defaultSegment="team"
-              hideCustomerSegment
-              hideLinkage
-              className="h-full min-h-0 rounded-2xl"
-            />
-          </div>
-        ) : null,
     },
     {
       id: 'tracking',
@@ -422,7 +494,9 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       id: 'timeline',
       label: 'Timeline',
       icon: History,
-      priority: 'overflow',
+      // Return intake: strip-visible so Full history is one click when Displays
+      // is already open. PO/found keeps Timeline in overflow.
+      priority: timelineOnStrip ? 'primary' : 'overflow',
       visible: hasTimelineTab,
       content: (
         <div className="space-y-4">
@@ -442,52 +516,28 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
         </div>
       ),
     },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: MessageSquare,
+      priority: 'overflow',
+      content:
+        activeSideTab === 'support' && (row.id != null || row.receiving_id != null) ? (
+          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
+            <SupportContextHub
+              anchor={{
+                receivingId: row.receiving_id ?? null,
+                lineId: row.id ?? null,
+                tracking: row.tracking_number ?? null,
+              }}
+              variant="station"
+              defaultSegment="team"
+              hideCustomerSegment
+              hideLinkage
+              className="h-full min-h-0 rounded-2xl"
+            />
+          </div>
+        ) : null,
+    },
   ]);
-}
-
-export function UnboxSectionTabs({
-  tabs,
-  value,
-  onChange,
-  rightSlot,
-  headerClassName,
-  compact = false,
-  fillHeight = false,
-}: {
-  tabs: SectionTab[];
-  value: string;
-  onChange: (id: string) => void;
-  /** Right cluster: vertical ⋮ peer · optional progress ring (ring rightmost). */
-  rightSlot?: ReactNode;
-  /**
-   * Optional strip-row class. Unbox no longer passes one — the flush host
-   * (`DISPLAYS_FLUSH_HOST`, `px-0`) makes the topic plate edge-to-edge with no
-   * `-mx-4` cancel. Kept for sibling surfaces that still need a header override.
-   */
-  headerClassName?: string;
-  /**
-   * Icon plate: tighter horizontal padding only — never a shorter face.
-   */
-  compact?: boolean;
-  /**
-   * Column fill — Unbox Displays push hosts pinned footers (Ticket → Claim).
-   * See {@link SectionTabsSlider} `fillHeight`.
-   */
-  fillHeight?: boolean;
-}) {
-  return (
-    <SectionTabsSlider
-      tabs={tabs}
-      value={value}
-      onChange={onChange}
-      ariaLabel="Unbox displays"
-      rightSlot={rightSlot}
-      headerClassName={headerClassName}
-      compact={compact}
-      fillHeight={fillHeight}
-      // SpaceX h-10 topic plate: idle = icon-only (tooltip + a11y name),
-      // selected expands to icon + caption label; trailing ⋮ is edge-flush.
-      density="icon"
-    />
-  );
 }

@@ -13,11 +13,12 @@
  * (`detail:receiving` keeps the float host).
  *
  * Centre `ProcedureDeck` stays parked. Capture lives in {@link UnboxDockHost}
- * (step CTA · notes · Print · Receive) with the progress ring under the Panel.
+ * as a polymorphic flush floor: Active Step Studio XOR Resolution Terminal
+ * (Print·Receive only when `activeKey === null` && not received).
  *
- * The bottom dock trailing is **carton-terminal**: Print · Receive never
- * re-labels with the Displays selection — that would be cross-region
- * action-at-a-distance.
+ * The bottom dock trailing is **carton-terminal** on settle only: Print · Receive
+ * never co-mounts with an active step prompt, and never re-labels with the
+ * Displays selection.
  *
  * Triage (the identify-before-unbox pass) is its own lean panel
  * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
@@ -48,6 +49,7 @@ import {
 import {
   StationDisplaysPushStack,
   STATION_DISPLAYS_HOST_PAD_CLASS,
+  type DisplaysVisitFrame,
 } from '@/components/station/displays';
 import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
 import { ASSISTANT_DOCK_OPEN_EVENT } from '@/utils/events';
@@ -70,7 +72,6 @@ import {
   ScanStationCartonCursor,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import {
@@ -92,6 +93,7 @@ import {
   type UnboxLinkageAction,
   type UnboxPhotoAction,
   type UnboxSideTab,
+  type UnboxTicketAction,
   type UnboxUnitsAction,
 } from './line-edit/unbox-side-tabs';
 import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
@@ -151,7 +153,7 @@ export function LineEditPanel({
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const { saveOverallNote } = useSyncedPoNote(row, setActionFeedback);
-  const { focusStep } = useUnboxProcedureSteps(row);
+  const { focusStep, activeKey, settled: procedureSettled } = useUnboxProcedureSteps(row);
   useUnboxProcedureArrowKeys(row);
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
@@ -202,6 +204,52 @@ export function LineEditPanel({
   const unitsAction = resolveUnitsAction({ hasPrebox });
   const ticketViewActive = activeSideTab === 'ticket';
   const claimViewActive = ticketViewActive && ticketAction === 'claim';
+
+  /** Visit snapshot for Displays ← → — nest verbs ride with the leaf tab. */
+  const displaysVisitFrame = useMemo((): DisplaysVisitFrame => {
+    const tab = activeSideTab ?? UNBOX_DISPLAY_INDEX;
+    if (tab === UNBOX_DISPLAY_INDEX) return { tab: UNBOX_DISPLAY_INDEX };
+    const nest: Record<string, string> = {};
+    if (tab === 'photos') nest.photoAction = photoAction;
+    if (tab === 'linkage') nest.linkageAction = linkageAction;
+    if (tab === 'units') nest.unitsAction = unitsAction;
+    if (tab === 'ticket') {
+      nest.ticketAction = ticketAction;
+      if (ticketAction === 'claim') nest.claimMode = claimMode;
+    }
+    return { tab, nest };
+  }, [
+    activeSideTab,
+    photoAction,
+    linkageAction,
+    unitsAction,
+    ticketAction,
+    claimMode,
+  ]);
+
+  const onDisplaysVisitNavigate = useCallback(
+    (frame: DisplaysVisitFrame) => {
+      if (frame.tab === UNBOX_DISPLAY_INDEX) {
+        setRequestedSideTab(UNBOX_DISPLAY_INDEX);
+        return;
+      }
+      const nest = frame.nest ?? {};
+      const tab = frame.tab as UnboxSideTab;
+      setRequestedSideTab(tab, {
+        photoAction: nest.photoAction as UnboxPhotoAction | undefined,
+        linkageAction: nest.linkageAction as UnboxLinkageAction | undefined,
+        unitsAction: nest.unitsAction as UnboxUnitsAction | undefined,
+        ticketAction: nest.ticketAction as UnboxTicketAction | undefined,
+        claimMode:
+          nest.claimMode === 'link' || nest.claimMode === 'create'
+            ? nest.claimMode
+            : undefined,
+      });
+    },
+    [setRequestedSideTab],
+  );
+
+  const displaysHistoryScopeKey = row.receiving_id ?? row.id;
   const returnIntake = isReturnIntake(row);
   const linkagePaired =
     Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) ||
@@ -316,6 +364,30 @@ export function LineEditPanel({
     },
     [setRequestedSideTab],
   );
+
+  // Item-photos step → open listing vs bench Compare on Displays. Never yank
+  // Ticket (claim/chat) or interrupt a Move/Send drill-down.
+  const itemPhotosCompareOpenedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!procedureSettled || activeKey !== 'item_photos') {
+      if (activeKey !== 'item_photos') itemPhotosCompareOpenedRef.current = null;
+      return;
+    }
+    if (itemPhotosCompareOpenedRef.current === row.id) return;
+    if (activeSideTab === 'ticket') return;
+    if (activeSideTab === 'photos' && (photoAction === 'move' || photoAction === 'send')) {
+      return;
+    }
+    itemPhotosCompareOpenedRef.current = row.id;
+    openDisplays('photos', { photoAction: 'compare' });
+  }, [
+    procedureSettled,
+    activeKey,
+    activeSideTab,
+    photoAction,
+    row.id,
+    openDisplays,
+  ]);
 
   const onLinkageActionChange = useCallback(
     (action: UnboxLinkageAction) => {
@@ -499,19 +571,6 @@ export function LineEditPanel({
     [focusStep],
   );
 
-  const handleItemDescFeedback = useCallback((feedback: InlineActionFeedbackPayload | null) => {
-    setActionFeedback(feedback);
-  }, []);
-
-  const handleItemDescSaved = useCallback(
-    (lineId: number, zohoNotes: string | null) => {
-      if (lineId === row.id) {
-        dispatchLineUpdated({ id: row.id, zoho_notes: zohoNotes });
-      }
-    },
-    [row.id],
-  );
-
   const showReceiveFeedback = Boolean(c.receiving || c.receiveResult);
 
   const reduceMotion = useReducedMotion();
@@ -526,8 +585,6 @@ export function LineEditPanel({
         row,
         staffId,
         c,
-        onItemDescFeedback: handleItemDescFeedback,
-        onItemDescSaved: handleItemDescSaved,
         accordionBootstrap,
         onFocusCaptureStep,
         onEditFilledSerial: (serial) => {
@@ -546,8 +603,6 @@ export function LineEditPanel({
       row,
       staffId,
       c,
-      handleItemDescFeedback,
-      handleItemDescSaved,
       accordionBootstrap,
       onFocusCaptureStep,
       openDisplays,
@@ -583,8 +638,10 @@ export function LineEditPanel({
         linkageAction,
         onLinkageActionChange,
         onInventoryChangePo: openPoPairing,
-        onInventorySync: () => void c.syncCartonFromZoho(),
-        inventorySyncing: Boolean(c.zohoSyncing),
+        onInventorySync: async () => {
+          await c.refreshInventoryDossier();
+        },
+        inventorySyncing: Boolean(c.inventoryRefreshing),
         unitsAction,
         onUnitsActionChange,
         hasPrebox,
@@ -593,8 +650,6 @@ export function LineEditPanel({
         onCloseTicket: closeDisplays,
         onClaimTicketCreated,
         onClaimTicketUnlinked,
-        onItemDescFeedback: handleItemDescFeedback,
-        onItemDescSaved: handleItemDescSaved,
         accordionBootstrap,
         classifyExpandDimension: classifyExpand?.dimension ?? null,
         classifyExpandRequestId: classifyExpand?.requestId ?? 0,
@@ -633,8 +688,6 @@ export function LineEditPanel({
       closeDisplays,
       onClaimTicketCreated,
       onClaimTicketUnlinked,
-      handleItemDescFeedback,
-      handleItemDescSaved,
       accordionBootstrap,
       classifyExpand,
       pairingFocus,
@@ -651,8 +704,8 @@ export function LineEditPanel({
   );
 
   /**
-   * Ring mounts under the Unbox dock Panel (`UnboxDockHost` progress slot).
-   * Peek when Displays is closed; suppress peek while Displays is open.
+   * Live procedure % — under-dock bottom-right. Opens the Checklist Displays
+   * leaf in-station (never a route hop).
    */
   const scanProgressControl = (
     <UnboxScanProgressControl
@@ -715,7 +768,7 @@ export function LineEditPanel({
   // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`). Unbox has no free
   // slot for it: the left context column already renders the Queue/Viewed/
   // History rail, and the right edge is Displays ∪ `detail:receiving` ∪ AI.
-  // In-flow identity — hairline abuts PO lines (no absolute float + pt-16 air).
+  // In-flow identity — hairline abuts PO lines (no absolute float + clearance air).
   const stationContextBar = (
     <StationContextBar
       placement="flow"
@@ -734,6 +787,8 @@ export function LineEditPanel({
           claimViewActive={claimViewActive}
           onOpenMovePhotosExternal={openMovePhotosDisplay}
           onSendToTicketExternal={openSendPhotoNoteDisplay}
+          // Pill click stays send-to-phone; multi-verbs live in Displays Actions.
+          suppressPhotoHoverGallery
           // Identity pills open the Displays column on their own tab — the
           // editors moved right, so the header route follows them.
           onEditTracking={hasTrackingTab ? () => openDisplays('tracking') : undefined}
@@ -759,15 +814,15 @@ export function LineEditPanel({
         centerTestId="unbox-station-center"
         utilityRail={utilityRailBody}
         center={
-          <StationPanelRoot>
+          <StationPanelRoot density="floor">
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
               {stationContextBar}
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                // Notes composer floats over the canvas — reserve composer
-                // clearance (not procedure-pager height).
-                reserveScrollClearance
+                // Host + under-dock pager is taller than notes-only —
+                // pager clearance keeps PO lines / label above the float.
+                reserveScrollClearance="pager"
                 // Identity is in-flow (`StationContextBar placement="flow"`)
                 // above this workbench — no guessed stacked pt clearance.
                 reserveIdentityClearance={false}
@@ -787,21 +842,23 @@ export function LineEditPanel({
                 // dock float stack above UnboxDockHost (an absolute dock would
                 // cover an in-flow footer).
                 dock={
-                  // ONE elevated shell — step CTA · notes · Print · Receive, with
-                  // the progress ring under the Panel. Placement SoT =
-                  // slicedActionDockWrapperClass({ docked: false }).
-                  <div className={slicedActionDockWrapperClass({ docked: false })}>
-                    <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
-                      {terminalVm?.disabled && terminalVm.disabledReason ? (
+                  // Flush floor instrument — step studio XOR Print·Receive.
+                  // Float is Unbox-owned: inset-x-0, safe-area floor only.
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-fab pb-[env(safe-area-inset-bottom,0px)] pt-0" // ds-allow-spacing: fixed-overlay safe-area geometry
+                    data-unbox-dock-float
+                  >
+                    <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
+                      {terminalVm?.disabled && terminalVm.disabledReason && !activeKey ? (
                         <p
                           role="status"
-                          className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
+                          className="mb-1 text-right text-role-caption font-semibold text-amber-700"
                         >
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
                       {showReceiveFeedback ? (
-                        <div className="mb-1.5">
+                        <div className="mb-1">
                           <ReceiveFeedbackRegion
                             receiving={c.receiving}
                             receiveResult={c.receiveResult}
@@ -826,9 +883,11 @@ export function LineEditPanel({
                         onOpenNotes={openNotes}
                         onCloseNotes={closeNotes}
                         hasItemNote={hasItemNote}
-                        pager={<UnboxProcedurePager row={row} />}
+                        showNotesToggle={false}
+                        expandBand={activeKey === 'classify'}
+                        stepContext={<UnboxProcedurePager row={row} />}
                         leading={stepDock}
-                        trailing={embeddedTerminal}
+                        trailing={!activeKey ? embeddedTerminal : null}
                         progress={scanProgressControl}
                         notesEntry={
                           <UnboxDockNotesEntry
@@ -840,10 +899,7 @@ export function LineEditPanel({
                               void c.patch({ notes: next });
                               return true;
                             }}
-                            onPrimaryAction={
-                              terminalVm ? () => void terminalVm.onClick() : undefined
-                            }
-                            primaryActionDisabled={Boolean(terminalVm?.disabled)}
+                            onDone={closeNotes}
                           />
                         }
                       />
@@ -881,6 +937,9 @@ export function LineEditPanel({
               tabs={unboxSideTabs}
               activeTab={activeSideTab ?? UNBOX_DISPLAY_INDEX}
               indexRows={displayIndexRows}
+              visitFrame={displaysVisitFrame}
+              onVisitNavigate={onDisplaysVisitNavigate}
+              historyScopeKey={displaysHistoryScopeKey}
               onTabChange={(id) => {
                 if (id === UNBOX_DISPLAY_INDEX) {
                   setRequestedSideTab(UNBOX_DISPLAY_INDEX);

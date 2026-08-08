@@ -39,7 +39,7 @@ export function StationMoreDetails({
         stationUtilityPanelClass,
         stationIdentityPadClass,
         stationIdentityGapClass,
-        'flex min-h-10 shrink-0 items-center overflow-visible',
+        'flex h-full shrink-0 items-center overflow-visible',
         className,
       )}
       data-testid="station-more-details"

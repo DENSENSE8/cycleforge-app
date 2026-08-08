@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { motion } from '@/design-system/motion';
 import confetti from 'canvas-confetti';
 import { Check } from '@/components/Icons';
@@ -13,10 +14,18 @@ interface IntegrationConnectSuccessProps {
   message: string;
   /** Brief celebratory burst — default true for OAuth returns. */
   confettiBurst?: boolean;
+  /** Optional next-step link (e.g. Incoming after buyer eBay connect). */
+  href?: string;
+  linkLabel?: string;
 }
 
 /** Animated success checkmark for provider connect outcomes. */
-export function IntegrationConnectSuccess({ message, confettiBurst = true }: IntegrationConnectSuccessProps) {
+export function IntegrationConnectSuccess({
+  message,
+  confettiBurst = true,
+  href,
+  linkLabel,
+}: IntegrationConnectSuccessProps) {
   const transition = useMotionTransition(framerTransition.cardExpansion);
 
   useEffect(() => {
@@ -50,6 +59,14 @@ export function IntegrationConnectSuccess({ message, confettiBurst = true }: Int
       <div className="min-w-0 flex-1 pt-0.5">
         <p className="text-role-caption font-semibold uppercase tracking-[0.14em] text-emerald-700">Connected</p>
         <p className="mt-0.5 text-role-body font-medium text-emerald-900">{message}</p>
+        {href && linkLabel ? (
+          <Link
+            href={href}
+            className="mt-1.5 inline-block text-role-caption font-semibold text-emerald-800 underline decoration-emerald-600/40 underline-offset-2 hover:text-emerald-950"
+          >
+            {linkLabel}
+          </Link>
+        ) : null}
       </div>
     </motion.div>
   );

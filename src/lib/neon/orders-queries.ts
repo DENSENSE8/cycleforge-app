@@ -1,10 +1,8 @@
 import pool from '../db';
-import { formatPSTTimestamp } from '@/utils/date';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { queryWithRetry } from '@/lib/db-retry';
 import { getShippedSearchFieldConfig, type ShippedSearchField } from '@/lib/shipped-search';
 import { buildRankedSearchSql, buildTextSearchVariants, type RankedSearchVariant } from '@/lib/search/sql-ranked-search';
-import { resolveOrCreateSkuCatalogId } from './sku-catalog-queries';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 

@@ -28,11 +28,16 @@
 
 import { useRef, useState } from 'react';
 import { Images } from '@/components/Icons';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { Button, Popover } from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '../../ReceivingPhotoButton';
 import { CartonPhotoPairPanel } from '../CartonPhotoPairPanel';
 import { photoAspectLabel } from '@/lib/photos/photo-aspects';
 import type { UnboxStepDockContext } from './types';
+
+function handFocusBack() {
+  setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+}
 
 export function CartonPhotoDockControl({
   receivingId,
@@ -68,7 +73,10 @@ export function CartonPhotoDockControl({
         </Button>
       </div>
 
-      <div className="-my-0.5 shrink-0">
+      <div
+        className="-my-0.5 shrink-0"
+        onClick={() => handFocusBack()}
+      >
         <ReceivingPhotoButton
           receivingId={receivingId}
           staffId={Number(staffId) || 0}
@@ -85,14 +93,24 @@ export function CartonPhotoDockControl({
 
       <Popover
         open={pairOpen}
-        onClose={() => setPairOpen(false)}
+        onClose={() => {
+          setPairOpen(false);
+          handFocusBack();
+        }}
         anchorRef={anchorRef}
         // Upward: the dock is pinned to the bottom of the viewport, so a
         // `bottom-*` panel would open off-screen.
         placement="top-end"
         className="w-[22rem] max-w-[90vw]"
       >
-        <CartonPhotoPairPanel receivingId={receivingId} aspect={aspect ?? null} />
+        <CartonPhotoPairPanel
+          receivingId={receivingId}
+          aspect={aspect ?? null}
+          onPaired={() => {
+            setPairOpen(false);
+            handFocusBack();
+          }}
+        />
       </Popover>
     </div>
   );

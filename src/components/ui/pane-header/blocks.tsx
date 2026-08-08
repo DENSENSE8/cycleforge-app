@@ -16,7 +16,10 @@ import { IconButton } from '@/design-system/primitives';
 import { Popover } from '@/design-system';
 import { TOOLBAR_LISTBOX_PANEL_CLASS } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
-import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
+import {
+  PRIMARY_CHROME_ROW_FACE,
+  receivingHeaderHairlineClass,
+} from '@/components/layout/header-shell';
 import { RECEIVING_WORKSPACE_HEADER_COLUMN } from '@/components/receiving/workspace/receiving-workspace-layout';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -518,7 +521,14 @@ export function PaneHeaderActionBar({
   // and chevrons (right) line up with the rest of the workspace.
   if (variant === 'header') {
     return (
-      <div className={cn('flex h-[40px] w-full shrink-0 items-center bg-surface-card', receivingHeaderHairlineClass, className)}>
+      <div
+        className={cn(
+          'flex w-full items-center bg-surface-card',
+          PRIMARY_CHROME_ROW_FACE,
+          receivingHeaderHairlineClass,
+          className,
+        )}
+      >
         <div className={cn(RECEIVING_WORKSPACE_HEADER_COLUMN, 'flex items-center gap-1')}>
           {content}
         </div>

@@ -32,31 +32,42 @@ test('STATION_DISPLAY_INDEX sentinel is index', () => {
 });
 
 test('defaultDisplayIndexGroup maps known leaves', () => {
-  assert.equal(defaultDisplayIndexGroup('ticket'), 'verification');
+  assert.equal(defaultDisplayIndexGroup('listings'), 'verification');
+  assert.equal(defaultDisplayIndexGroup('listing'), 'verification');
+  assert.equal(defaultDisplayIndexGroup('classify'), 'verification');
   assert.equal(defaultDisplayIndexGroup('units'), 'assets');
+  assert.equal(defaultDisplayIndexGroup('photos'), 'assets');
+  assert.equal(defaultDisplayIndexGroup('checklist'), 'assets');
+  assert.equal(defaultDisplayIndexGroup('manuals'), 'assets');
+  assert.equal(defaultDisplayIndexGroup('ticket'), 'context');
   assert.equal(defaultDisplayIndexGroup('timeline'), 'context');
-  assert.equal(defaultDisplayIndexGroup('manuals'), 'context');
 });
 
-test('deriveDisplayIndexRowsFromTabs skips checklist + stripHidden', () => {
-  const rows = deriveDisplayIndexRowsFromTabs([
+test('deriveDisplayIndexRowsFromTabs skips stripHidden only (visible checklist stays)', () => {
+  const hiddenRing = deriveDisplayIndexRowsFromTabs([
     tab('ticket'),
     tab('checklist', { stripHidden: true }),
-    tab('photos'),
+    tab('photos', { count: 3 }),
     tab('ghost', { stripHidden: true }),
   ]);
   assert.deepEqual(
-    rows.map((r) => r.id),
+    hiddenRing.map((r) => r.id),
     ['ticket', 'photos'],
   );
-  assert.equal(rows.every((r) => r.tone === 'neutral'), true);
-  assert.equal(rows.find((r) => r.id === 'ticket')?.group, 'verification');
+  assert.equal(hiddenRing.find((r) => r.id === 'photos')?.subtitle, '3 items');
+
+  const testingChecklist = deriveDisplayIndexRowsFromTabs([tab('checklist')]);
+  assert.deepEqual(
+    testingChecklist.map((r) => r.id),
+    ['checklist'],
+  );
+  assert.equal(testingChecklist[0]?.group, 'assets');
 });
 
 test('groupDisplayIndexRows omits empty groups and keeps order', () => {
   const rows: DisplayIndexRow[] = [
     { id: 'timeline', label: 'Timeline', subtitle: '', tone: 'neutral', group: 'context' },
-    { id: 'ticket', label: 'Ticket', subtitle: 'Claim', tone: 'action', group: 'verification' },
+    { id: 'listings', label: 'Listings', subtitle: 'Links', tone: 'neutral', group: 'verification' },
     { id: 'units', label: 'Units', subtitle: '1', tone: 'ok', group: 'assets' },
   ];
   const sections = groupDisplayIndexRows(rows);
@@ -64,18 +75,19 @@ test('groupDisplayIndexRows omits empty groups and keeps order', () => {
     sections.map((s) => s.group),
     ['verification', 'assets', 'context'],
   );
-  assert.equal(sections[0]?.rows[0]?.id, 'ticket');
+  assert.equal(sections[0]?.rows[0]?.id, 'listings');
 });
 
 test('filterDisplayIndexRows matches label · subtitle · id · group', () => {
   const rows: DisplayIndexRow[] = [
-    { id: 'ticket', label: 'Ticket', subtitle: 'Claim needed', tone: 'action', group: 'verification' },
-    { id: 'photos', label: 'Photos', subtitle: '10 photos', tone: 'ok', group: 'verification' },
+    { id: 'ticket', label: 'Ticket', subtitle: 'No ticket', tone: 'neutral', group: 'context' },
+    { id: 'photos', label: 'Photos', subtitle: '10 photos', tone: 'ok', group: 'assets' },
   ];
   assert.equal(filterDisplayIndexRows(rows, '').length, 2);
-  assert.equal(filterDisplayIndexRows(rows, 'claim')[0]?.id, 'ticket');
-  assert.equal(filterDisplayIndexRows(rows, 'assets').length, 0);
-  assert.ok(filterDisplayIndexRows(rows, 'verification').length === 2);
+  assert.equal(filterDisplayIndexRows(rows, 'no ticket')[0]?.id, 'ticket');
+  assert.equal(filterDisplayIndexRows(rows, 'verification').length, 0);
+  assert.ok(filterDisplayIndexRows(rows, 'assets').length === 1);
+  assert.ok(filterDisplayIndexRows(rows, 'context').length === 1);
 });
 
 test('summarizeDisplayIndexGroup speaks only for ACTION rows', () => {

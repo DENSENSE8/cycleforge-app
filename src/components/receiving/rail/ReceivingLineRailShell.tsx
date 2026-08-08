@@ -6,7 +6,8 @@
  *
  * Cardinality (see `receiving-selection-occupancy.ts`):
  * - Unbox / History: any non-empty check-set
- * - Incoming: 2+ (1-row stays on `IncomingDetailsPanel` / `detail:incoming`)
+ * - Incoming: 2+ only — 1-check opens `IncomingDetailsPanel` / `detail:incoming`
+ *   (never this batch shell)
  *
  * Close clears the selection (order-rail D4 / receiving R6).
  */
@@ -52,8 +53,8 @@ export function ReceivingLineRailShell({
   /**
    * When the 1-row inspect panel is already open (`detail:incoming` or
    * `detail:history`), the batch shell stays off so the two registrars never
-   * fight over the slot. When the operator checked row(s) without opening the
-   * panel, the batch shell covers Copy / Print / Ticket.
+   * fight over the slot. Incoming 1-check always opens inspect (never falls
+   * through to this shell).
    */
   inspectOpen = false,
 }: {
@@ -73,14 +74,10 @@ export function ReceivingLineRailShell({
     if (scope) emitToggleAll(scope, 'none');
   }, [scope]);
 
-  // Incoming: 1-check can claim the batch shell when inspect is closed.
-  // Lines (Unbox History): suppress the batch shell whenever History triage
-  // inspect is open — even for a single check that would otherwise light it.
+  // Batch only when occupancy is attention (Incoming 2+, History any check-set).
+  // Suppress whenever a 1-row inspect panel already owns the slot.
   const active =
-    enabled &&
-    !inspectOpen &&
-    (isReceivingRailBatchActive(occupancy) ||
-      (surface === 'incoming' && occupancy.kind === 'inspect'));
+    enabled && !inspectOpen && isReceivingRailBatchActive(occupancy);
 
   return (
     <DetailStackRailRegistrar

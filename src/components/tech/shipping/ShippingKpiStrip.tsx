@@ -145,7 +145,7 @@ function StripLayout({
   const tiles = [...attention, ...rest];
   if (tiles.length === 0) return <StripAllClear mode={mode} />;
   return (
-    <OpsKpiBand density="band" aria-label="Shipping attention metrics">
+    <OpsKpiBand density="band" aria-label="Ready to Pack attention metrics">
       {tiles.map((metric) => (
         <OpsKpiBandCell key={metric.id} density="band">
           <MetricKpiTile metric={metric} toShipFilter={toShipFilter} />
@@ -228,7 +228,7 @@ export function ShippingKpiStrip({
   techId?: number;
 }) {
   return (
-    <section aria-label="Shipping attention" className="shrink-0">
+    <section aria-label="Ready to Pack attention" className="shrink-0">
       {mode === 'history' ? (
         <HistoryStrip techId={techId} />
       ) : (

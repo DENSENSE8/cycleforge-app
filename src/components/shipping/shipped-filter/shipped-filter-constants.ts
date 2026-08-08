@@ -32,7 +32,7 @@ export const TYPE_ITEMS: HorizontalSliderItem[] = [
   { id: 'all', label: 'All' },
   { id: 'orders', label: 'Orders' },
   { id: 'sku', label: 'SKU' },
-  { id: 'fba', label: 'FBA' },
+  { id: 'fba', label: 'Amazon Prep' },
 ];
 
 export const CARRIER_LABEL = new Map(CARRIERS.map((c) => [c.value, c.label]));

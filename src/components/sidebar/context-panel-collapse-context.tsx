@@ -83,6 +83,10 @@ export type CollapseStripScan = {
 type ContextPanelCollapseApi = {
   /** Park the left context rail (operator preference). */
   collapse: () => void;
+  /** Restore a parked context rail. */
+  expand: () => void;
+  /** Park ↔ restore — same action as ⌘/Ctrl+B. */
+  toggle: () => void;
   /** Mid-strip MRU snapshot from the active rail feed (null = none). */
   collapseMru: CollapseMruSnapshot | null;
   setCollapseMru: (next: CollapseMruSnapshot | null) => void;
@@ -97,9 +101,13 @@ const ContextPanelCollapseContext = createContext<ContextPanelCollapseApi | null
 
 export function ContextPanelCollapseProvider({
   collapse,
+  expand,
+  toggle,
   children,
 }: {
   collapse: () => void;
+  expand: () => void;
+  toggle: () => void;
   children: ReactNode;
 }) {
   const [collapseMru, setCollapseMruState] = useState<CollapseMruSnapshot | null>(
@@ -117,12 +125,22 @@ export function ContextPanelCollapseProvider({
   const value = useMemo(
     () => ({
       collapse,
+      expand,
+      toggle,
       collapseMru,
       setCollapseMru,
       collapseScan,
       setCollapseScan,
     }),
-    [collapse, collapseMru, setCollapseMru, collapseScan, setCollapseScan],
+    [
+      collapse,
+      expand,
+      toggle,
+      collapseMru,
+      setCollapseMru,
+      collapseScan,
+      setCollapseScan,
+    ],
   );
   return (
     <ContextPanelCollapseContext.Provider value={value}>

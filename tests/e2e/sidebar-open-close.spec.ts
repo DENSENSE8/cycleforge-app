@@ -127,12 +127,12 @@ test.describe('sidebar spine — open and close', () => {
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
     await expect(toggle, 'the sidebar control must be reachable').toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-label', 'Show sidebar');
+    await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
 
     await toggle.click();
     await expectSpineOpen(page);
     // The control is a state toggle, so it must announce the new state.
-    await expect(toggle).toHaveAttribute('aria-label', 'Hide sidebar');
+    await expect(toggle).toHaveAttribute('aria-label', 'Hide navigation');
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -144,7 +144,7 @@ test.describe('sidebar spine — open and close', () => {
 
     await toggleSpine(page);
     await expectSpineClosed(page);
-    await expect(page.locator(SIDEBAR_TOGGLE).first()).toHaveAttribute('aria-label', 'Show sidebar');
+    await expect(page.locator(SIDEBAR_TOGGLE).first()).toHaveAttribute('aria-label', 'Show navigation');
   });
 
   test('open → close → open again (the toggle is not one-shot)', async ({ page }) => {
@@ -169,7 +169,7 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineClosed(page);
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    await expect(toggle).toHaveAttribute('aria-label', 'Show sidebar');
+    await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
 
     // Hover peeks the four top destinations (replaced the old 2s left-edge dwell).
     await toggle.hover();
@@ -184,6 +184,28 @@ test.describe('sidebar spine — open and close', () => {
     await toggle.click();
     await expectSpineOpen(page);
     await expect(peek).toHaveCount(0);
+  });
+
+  test('one press opens the spine even when the peek timer fires mid-press', async ({ page }) => {
+    // Regression: unwrapping HoverTooltip when peekOpen flipped remounted the
+    // IconButton between mousedown and mouseup → no click → needed a second press.
+    await gotoSurface(page, ROUTE);
+    await expectSpineClosed(page);
+
+    const toggle = page.locator(SIDEBAR_TOGGLE).first();
+    const box = await toggle.boundingBox();
+    expect(box, 'sidebar toggle must have a hit box').toBeTruthy();
+    const x = box!.x + box!.width / 2;
+    const y = box!.y + box!.height / 2;
+
+    await page.mouse.move(x, y);
+    // Peek openDelay is 180ms — start the press just before it fires.
+    await page.waitForTimeout(160);
+    await page.mouse.down();
+    await page.waitForTimeout(60);
+    await page.mouse.up();
+
+    await expectSpineOpen(page);
   });
 
   test('peek pin navigates without opening the spine', async ({ page }) => {
@@ -206,7 +228,7 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineOpen(page);
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    await expect(toggle).toHaveAttribute('aria-label', 'Hide sidebar');
+    await expect(toggle).toHaveAttribute('aria-label', 'Hide navigation');
     await toggle.hover();
     // Give the old openDelay a beat so a regression would flash the peek.
     await page.waitForTimeout(300);

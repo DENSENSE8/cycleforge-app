@@ -36,6 +36,17 @@ export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'si
 
 export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 
+/** Live Operations modes — includes default `live` (usually omitted). */
+export const OPERATIONS_MODES = [
+  'live',
+  'analytics',
+  'insights',
+  'history',
+  'signals',
+  'plans',
+  'reconciliation',
+] as const satisfies readonly OperationsMode[];
+
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
   return raw === 'analytics' ||
     raw === 'insights' ||
@@ -45,6 +56,15 @@ export function parseOperationsMode(raw: string | null | undefined): OperationsM
     raw === 'reconciliation'
     ? raw
     : 'live';
+}
+
+/**
+ * Wire tokens `?mode=` may carry on `/operations` (route-param hygiene).
+ * Includes `live`. Do not round-trip {@link parseOperationsMode}.
+ */
+export function parseOperationsModeWire(raw: string): string | null {
+  const v = raw.trim().toLowerCase();
+  return (OPERATIONS_MODES as readonly string[]).includes(v) ? v : null;
 }
 
 /**
@@ -68,10 +88,10 @@ export function parseJourneyDimension(raw: string | null | undefined): JourneyDi
 /** Station facets — the UI vocab the journey endpoint maps to each spine. */
 export const JOURNEY_STATION_ITEMS: HorizontalSliderItem[] = [
   { id: 'RECEIVING', label: 'Receiving' },
-  { id: 'TECH', label: 'Tech' },
-  { id: 'PACK', label: 'Pack' },
-  { id: 'SHIP', label: 'Ship' },
-  { id: 'FBA', label: 'FBA' },
+  { id: 'TECH', label: 'Testing' },
+  { id: 'PACK', label: 'Packing' },
+  { id: 'SHIP', label: 'Shipping' },
+  { id: 'FBA', label: 'Amazon Prep' },
 ];
 
 /** Curated event-type facets (raw event_type / activity_type / action values). */
@@ -80,7 +100,7 @@ export const JOURNEY_TYPE_ITEMS: { id: string; label: string }[] = [
   { id: 'TEST_PASS', label: 'Tested — Pass' },
   { id: 'TEST_FAIL', label: 'Tested — Fail' },
   { id: 'GRADED', label: 'Graded' },
-  { id: 'TRACKING_SCANNED', label: 'Tech scan' },
+  { id: 'TRACKING_SCANNED', label: 'Testing scan' },
   { id: 'SERIAL_ADDED', label: 'Serial added' },
   { id: 'PACK_COMPLETED', label: 'Packed' },
   { id: 'SHIP_CONFIRM', label: 'Shipped out' },

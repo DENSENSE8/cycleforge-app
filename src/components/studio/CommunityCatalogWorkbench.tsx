@@ -24,6 +24,7 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
 import { AlertCircle, Boxes, Copy, Globe, Layers, Loader2, RefreshCw } from '@/components/Icons';
+import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { toast } from '@/lib/toast';
 import type { StudioTemplateSummary } from '@/components/studio/studio-types';
 
@@ -41,10 +42,31 @@ export function CommunityCatalogWorkbench() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const selectedId = useMemo(() => {
+  const urlSelectedId = useMemo(() => {
     const raw = Number(searchParams.get('selectedId'));
     return Number.isFinite(raw) && raw > 0 ? raw : null;
   }, [searchParams]);
+
+  const replaceSelected = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const next = new URLSearchParams(searchParams.toString());
+      mutate(next);
+      const qs = next.toString();
+      router.replace(qs ? `?${qs}` : '?', { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const writeSelected = useCallback((params: URLSearchParams, next: number | null) => {
+    if (next != null && next > 0) params.set('selectedId', String(next));
+    else params.delete('selectedId');
+  }, []);
+
+  const { value: selectedId, setValue: setSelectedId } = useOptimisticUrlParam<number | null>({
+    urlValue: urlSelectedId,
+    replace: replaceSelected,
+    write: writeSelected,
+  });
 
   const {
     data: templates,
@@ -59,12 +81,8 @@ export function CommunityCatalogWorkbench() {
   });
 
   const selectTemplate = useCallback(
-    (id: number) => {
-      const next = new URLSearchParams(searchParams.toString());
-      next.set('selectedId', String(id));
-      router.replace(`?${next.toString()}`, { scroll: false });
-    },
-    [router, searchParams],
+    (id: number) => setSelectedId(id),
+    [setSelectedId],
   );
 
   const selected = useMemo(

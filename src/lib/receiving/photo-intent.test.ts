@@ -13,6 +13,7 @@ import {
   isPackagePhotoType,
   isUnboxCartonPhotoType,
   photoIntentFromStage,
+  photoStageForScanIntakeSurface,
   receivingEntityTypeForStage,
   receivingPhotoIntentSql,
   receivingPhotoTypeForStage,
@@ -21,6 +22,21 @@ import {
   remapReceivingPhotoTypeOnMove,
   validateReceivingPhotoWrite,
 } from '@/lib/receiving/photo-intent';
+
+describe('photoStageForScanIntakeSurface (scan auto-push stage)', () => {
+  it('maps Unbox intake to unbox_carton (per-scan spam, not guided arrival)', () => {
+    assert.equal(photoStageForScanIntakeSurface('unbox'), 'unbox_carton');
+  });
+
+  it('maps Arrival/triage intake to arrival_package (guided door studio)', () => {
+    assert.equal(photoStageForScanIntakeSurface('triage'), 'arrival_package');
+  });
+
+  it('treats a missing surface as arrival (legacy door default)', () => {
+    assert.equal(photoStageForScanIntakeSurface(null), 'arrival_package');
+    assert.equal(photoStageForScanIntakeSurface(undefined), 'arrival_package');
+  });
+});
 
 describe('photo type predicates', () => {
   it('classifies package types including the legacy alias', () => {

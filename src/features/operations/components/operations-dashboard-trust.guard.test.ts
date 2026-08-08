@@ -51,4 +51,10 @@ describe('Ops dashboard trust & finish', () => {
     assert.match(dash, /isError \?/);
     assert.match(dash, /<GridDegradedBox[\s\S]*?onRetry=\{\(\) => \{[\s\S]*?refetch\(\)/);
   });
+
+  it('B — zero KPI tiles are suppressed when error and no cached data', () => {
+    const dash = read('src/features/operations/components/OperationsDashboard.tsx');
+    assert.match(dash, /snapshotEmpty = isError && !data/);
+    assert.match(dash, /!snapshotEmpty \?[\s\S]*?<PrimaryKpiGrid/);
+  });
 });

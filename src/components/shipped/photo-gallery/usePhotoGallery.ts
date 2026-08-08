@@ -247,6 +247,34 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   }, []);
 
   const closeViewer = useCallback(() => {
+    // #region agent log
+    {
+      const payload = {
+        sessionId: '251bbb',
+        runId: 'pre-fix',
+        hypothesisId: 'D',
+        location: 'usePhotoGallery.ts:closeViewer',
+        message: 'closeViewer called',
+        data: { stack: (new Error().stack || '').split('\n').slice(1, 6).map((s) => s.trim()) },
+        timestamp: Date.now(),
+      };
+      try {
+        const w = window as unknown as { __dbg251?: unknown[] };
+        w.__dbg251 = w.__dbg251 ?? [];
+        w.__dbg251.push(payload);
+      } catch { /* ignore */ }
+      const body = JSON.stringify(payload);
+      try {
+        navigator.sendBeacon?.('/api/agent-debug-log', new Blob([body], { type: 'text/plain' }));
+      } catch { /* ignore */ }
+      fetch('/api/agent-debug-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    }
+    // #endregion
     dispatchClose('requestClose');
     // Chrome clears when the machine actually closes (not when only deferring).
   }, []);

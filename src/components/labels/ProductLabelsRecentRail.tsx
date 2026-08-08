@@ -8,7 +8,6 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailPeekCard } from '@/components/sidebar/rail-shell/RailPeekCard';
@@ -23,6 +22,7 @@ import {
   type LabelPrintRailFacets,
 } from '@/components/sidebar/rail-shell/LabelPrintRailFilters';
 import { recentLookupKey } from '@/components/labels/recent-lookup-key';
+import { useLabelsHistoryIdParam } from '@/hooks/useLabelsHistoryIdParam';
 import {
   getLabelPrintStatusDot,
   getLabelPrintStatusDotLabel,
@@ -69,9 +69,7 @@ function filterLabelPrintRows(
 }
 
 export function ProductLabelsRecentRail() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const historyId = searchParams.get('historyId');
+  const { historyId, setHistoryId } = useLabelsHistoryIdParam();
   const [filterText, setFilterText] = useState('');
   const [facets, setFacets] = useState<LabelPrintRailFacets>(EMPTY_LABEL_PRINT_RAIL_FACETS);
 
@@ -121,14 +119,9 @@ export function ProductLabelsRecentRail() {
     (item: LabelPrintFeedItem) => {
       const key = recentLookupKey(item);
       if (!key) return;
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('view', 'labels');
-      params.set('labelsView', 'recent');
-      params.set('historyId', key);
-      params.delete('q');
-      router.replace(`/products?${params.toString()}`);
+      setHistoryId(key, 'recent');
     },
-    [router, searchParams],
+    [setHistoryId],
   );
 
   return (
