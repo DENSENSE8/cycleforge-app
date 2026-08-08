@@ -61,14 +61,14 @@ export function totalBoxesPacked(counts: {
   return safeInt(counts.small_count) + safeInt(counts.medium_count) + safeInt(counts.large_count);
 }
 
-export function addDaysToPstDateKey(day: string, delta: number): string {
+function addDaysToPstDateKey(day: string, delta: number): string {
   const [year, month, dayNum] = day.split('-').map(Number);
   const date = new Date(year, month - 1, dayNum);
   date.setDate(date.getDate() + delta);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export function lastNPstDateKeys(endDay: string, count: number): string[] {
+function lastNPstDateKeys(endDay: string, count: number): string[] {
   const n = Math.max(1, Math.floor(count));
   return Array.from({ length: n }, (_, i) => addDaysToPstDateKey(endDay, -(n - 1 - i)));
 }
@@ -83,7 +83,7 @@ export type PackerDailyCsvRow = {
   percentOfDay: string;
 };
 
-export const PACKER_DAILY_CSV_COLUMNS: Array<{ key: keyof PackerDailyCsvRow; label: string }> = [
+const PACKER_DAILY_CSV_COLUMNS: Array<{ key: keyof PackerDailyCsvRow; label: string }> = [
   { key: 'packer', label: 'Packer' },
   { key: 'boxes', label: 'Boxes' },
   { key: 'small', label: 'Small' },
@@ -117,7 +117,7 @@ export function packerKpiSummaryToCsv(summary: PackingKpiSummary): string {
 }
 
 /** Micro-copy appended below the per-packer table in downloadable reports. */
-export function packingReportFooterLines(summary: PackingKpiSummary): string[] {
+function packingReportFooterLines(summary: PackingKpiSummary): string[] {
   const { SMALL, MEDIUM, LARGE } = DEFAULT_TIER_MINUTES;
   const workday = summary.capacity.workday_minutes;
   return [
@@ -142,7 +142,7 @@ function tierMinutes(tier: PackTier): number {
   return DEFAULT_TIER_MINUTES[tier] ?? DEFAULT_TIER_MINUTES.MEDIUM;
 }
 
-export async function getOrgPackCapacity(orgId: OrgId): Promise<PackingCapacity> {
+async function getOrgPackCapacity(orgId: OrgId): Promise<PackingCapacity> {
   const result = await tenantQuery<{
     packer_headcount: number;
     workday_minutes: number;
@@ -406,21 +406,5 @@ export async function getPackingKpisForLastFilledDays(
   const daily = await Promise.all(days.map((day) => getPackingKpisForDay(orgId, day)));
   const capacity = daily[daily.length - 1]?.capacity ?? (await getOrgPackCapacity(orgId));
   return buildPeriodSummaryFromDaily(daily, capacity);
-}
-
-export async function getPackingKpisForPeriod(
-  orgId: OrgId,
-  endDayPst: string,
-  dayCount: number,
-): Promise<PackingKpiPeriodSummary> {
-  const days = lastNPstDateKeys(endDayPst, dayCount);
-  const daily = await Promise.all(days.map((day) => getPackingKpisForDay(orgId, day)));
-  const capacity = daily[daily.length - 1]?.capacity ?? (await getOrgPackCapacity(orgId));
-  const summary = buildPeriodSummaryFromDaily(daily, capacity);
-  return {
-    ...summary,
-    day_count: days.length,
-    filled_day_count: summary.daily.length,
-  };
 }
 

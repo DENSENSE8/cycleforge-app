@@ -19,18 +19,18 @@
  */
 
 /** Rank for a manually/auto-flagged carton (is_priority) — leads the sort. */
-export const PRIORITY_RANK_FLAGGED = 0;
+const PRIORITY_RANK_FLAGGED = 0;
 /** Rank for an unmatched / untagged carton (no source platform). */
-export const PRIORITY_RANK_UNMATCHED = 1;
+const PRIORITY_RANK_UNMATCHED = 1;
 /** Rank for any platform without a specific rank below. */
-export const PRIORITY_RANK_OTHER = 9;
+const PRIORITY_RANK_OTHER = 9;
 
 /**
  * Platform → rank, after the flagged (0) and unmatched (1) cases. This array IS
  * the source of truth; both the SQL CASE and the JS lookup derive from it. Add a
  * platform here and both surfaces update together.
  */
-export const PRIORITY_PLATFORM_RANKS: ReadonlyArray<{ platform: string; rank: number }> = [
+const PRIORITY_PLATFORM_RANKS: ReadonlyArray<{ platform: string; rank: number }> = [
   { platform: 'amazon', rank: 2 },
   { platform: 'ebay', rank: 3 },
   { platform: 'goodwill', rank: 4 },
@@ -55,7 +55,7 @@ export function platformPriorityRank(
 }
 
 /** Column/expression names for {@link priorityRankSql} (lets carton/line callers vary the alias). */
-export interface PriorityRankSqlCols {
+interface PriorityRankSqlCols {
   /** Manual override column, e.g. 'r.priority_tier'. */
   tier: string;
   /** is_priority boolean column, e.g. 'r.is_priority'. */
@@ -95,14 +95,14 @@ ${platformWhens}
  * so it never outranks a staged carton, but still sorts purely by the primary
  * rank relative to other unassigned cartons (this tier only ever breaks ties).
  */
-export const LANE_RANK_ORDER: ReadonlyArray<string> = [
+const LANE_RANK_ORDER: ReadonlyArray<string> = [
   'PO_STOCKOUT',
   'RETURN',
   'PO_STANDARD',
   'HOLD',
 ];
 
-export function laneRank(lane: string | null | undefined): number {
+function laneRank(lane: string | null | undefined): number {
   if (!lane) return LANE_RANK_ORDER.length;
   const idx = LANE_RANK_ORDER.indexOf(lane);
   return idx === -1 ? LANE_RANK_ORDER.length : idx;

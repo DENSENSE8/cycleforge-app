@@ -23,7 +23,7 @@
  * components/fba/shared/FbaStatusBadge.tsx, which sources labels + order here.
  */
 
-export const FBA_STATUS = {
+const FBA_STATUS = {
   PLANNED: 'PLANNED',
   TESTED: 'TESTED',
   PACKED: 'PACKED',
@@ -33,16 +33,7 @@ export const FBA_STATUS = {
   CLOSED: 'CLOSED',
 } as const;
 
-export type FbaStatus = (typeof FBA_STATUS)[keyof typeof FBA_STATUS];
-
-/** The happy-path lifecycle, in order. Drives steppers and progress UI. */
-export const FBA_LIFECYCLE: FbaStatus[] = [
-  FBA_STATUS.PLANNED,
-  FBA_STATUS.TESTED,
-  FBA_STATUS.PACKED,
-  FBA_STATUS.LABEL_ASSIGNED,
-  FBA_STATUS.SHIPPED,
-];
+type FbaStatus = (typeof FBA_STATUS)[keyof typeof FBA_STATUS];
 
 /** Board sort order — lowest sorts first. Side states sit after the path. */
 export const FBA_STATUS_ORDER: Record<string, number> = {
@@ -73,7 +64,7 @@ export const FBA_STATUS_LABEL: Record<string, string> = {
  * (matching prior behavior). Classes are plain strings so this module stays
  * framework-agnostic; src/lib is in Tailwind's content globs.
  */
-export const FBA_STATUS_PILL: Record<string, string> = {
+const FBA_STATUS_PILL: Record<string, string> = {
   PLANNED: 'bg-amber-100 text-amber-700',
   TESTED: 'bg-emerald-100 text-emerald-700',
   PACKED: 'bg-blue-100 text-blue-700',
@@ -87,7 +78,7 @@ export function fbaStatusPillClass(status: string): string {
 }
 
 /** Allowed forward + revert transitions. Used to guard status writes. */
-export const FBA_ALLOWED_TRANSITIONS: Record<string, FbaStatus[]> = {
+const FBA_ALLOWED_TRANSITIONS: Record<string, FbaStatus[]> = {
   PLANNED: [FBA_STATUS.TESTED, FBA_STATUS.OUT_OF_STOCK],
   TESTED: [FBA_STATUS.PACKED, FBA_STATUS.OUT_OF_STOCK, FBA_STATUS.PLANNED],
   PACKED: [FBA_STATUS.LABEL_ASSIGNED, FBA_STATUS.TESTED],
@@ -97,13 +88,3 @@ export const FBA_ALLOWED_TRANSITIONS: Record<string, FbaStatus[]> = {
   CLOSED: [],
 };
 
-export function canTransition(from: string, to: string): boolean {
-  return (FBA_ALLOWED_TRANSITIONS[from] ?? []).includes(to as FbaStatus);
-}
-
-export function isTerminalFbaStatus(status: string): boolean {
-  return status === FBA_STATUS.SHIPPED || status === FBA_STATUS.CLOSED;
-}
-
-/** Statuses the combiner pulls from on the Combine sub-page. */
-export const FBA_COMBINE_QUEUE_STATUSES: FbaStatus[] = [FBA_STATUS.PACKED];
