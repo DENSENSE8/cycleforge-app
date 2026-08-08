@@ -6,7 +6,7 @@
  *
  * Pack joins the Unbox-family scan-station Displays grammar:
  *   - CENTRE = checklist (lines) or UNIT photo peek — not a SectionTabsSlider strip
- *   - RIGHT  = ReceivingDisplaysPushStack (Ticket · Photos · Support · Timeline)
+ *   - RIGHT  = StationDisplaysPushStack (Ticket · Photos · Support · Timeline)
  *   - Host   = StationScanPaneHost + StationPanelRoot
  *   - Identity flow + bodyGap=none (flat centre, hairline abuts work)
  *
@@ -36,15 +36,21 @@ describe('Pack Displays push — Unbox-family scan-station SoT', () => {
     assert.match(panel, /centerTestId=["']pack-station-center["']/);
   });
 
-  it('mounts ReceivingDisplaysPushStack with Pack storage key / testids', () => {
+  it('mounts StationDisplaysPushStack with Pack storage key / testids', () => {
     assert.match(
       panel,
-      /ReceivingDisplaysPushStack/,
+      /StationDisplaysPushStack/,
       'Pack tools live on the shared Displays push stack, never RightRailHost',
     );
+    assert.doesNotMatch(panel, /navMode/, 'navMode was deleted — one Root-to-Leaf grammar');
     assert.match(panel, /storageKey=["']pack-displays-push-width["']/);
     assert.match(panel, /testId=["']pack-displays-push["']/);
     assert.match(panel, /ariaLabel=["']Pack displays["']/);
+    assert.doesNotMatch(
+      panel,
+      /StationActionDossierShell/,
+      'Action densify lives in station/displays leaf hosts — Pack panel must not fork it',
+    );
   });
 
   it('the CENTRE carries no SectionTabsSlider packing-displays strip', () => {
@@ -86,7 +92,7 @@ describe('Pack Displays push — Unbox-family scan-station SoT', () => {
     );
     assert.match(
       panel,
-      /!activeSideTab \?[\s\S]{0,160}UnboxDisplaysEdgeToggle variant="pane-open"/,
+      /!activeSideTab \?[\s\S]{0,160}StationDisplaysEdgeToggle variant="pane-open"/,
       '←| Open displays mounts only while the Displays column is closed',
     );
   });

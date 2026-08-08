@@ -6,20 +6,21 @@
  *
  * Station column anatomy (Arrival carve-out of the Unbox-family host):
  *   - CENTRE is the door flow — identity ({@link StationContextBar}
- *     `placement="flow"`) → PO / unfound **items** (`POUnboxingSection` →
- *     `LinePoItemsSection`, Unbox-parity interactive surface) → **Classify** →
- *     **Staging**, stacked flush. Identity abuts items with zero air
+ *     `placement="flow"`) → one white door-flow plane (`DISPLAYS_FLUSH_HOST` +
+ *     `appSurfaceFillClass('chrome')`) holding PO / unfound **items** (no units
+ *     chrome) → **Classify** → **Staging**. Identity abuts items with zero air
  *     (`reserveIdentityClearance={false}`, `bodyGap="none"`).
  *   - The bottom **dock** floats the internal item-note composer
  *     (`WorkspaceNotesCard` → `receiving_line.notes`) + the Save-for-unbox CTA.
  *     The note is not printed on Arrival; it carries to Unbox and displays there
  *     as the item's internal note.
  *   - Pairing/Linkage is the right-edge **Displays** push
- *     ({@link ReceivingDisplaysPushStack} + {@link buildTriageDisplayTabs}),
+ *     ({@link StationDisplaysPushStack} + {@link buildTriageDisplayTabs}),
  *     never a centre `SectionTabsSlider` strip.
  *   - {@link ScanStationUtilityRail} (slim white trailing chrome) carries the
- *     **carton cursor** (`↑` next / `↓` prev) and, when Displays is closed, the
- *     **`←|` expand** toggle. Not carton identity — a separate scan-station rail.
+ *     **carton cursor** (`↑` / `↓`) at the top and, when Displays is closed, the
+ *     **`←|` expand** toggle in the **bottom** footer (left-dock twin). Not
+ *     carton identity — a separate scan-station rail.
  *
  * The identity classify pills expand the centre Classify section; the `# ----`
  * PO chip opens the Linkage display and hands the PO avenue over as DATA
@@ -50,8 +51,8 @@ import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
 import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
 import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
-import { ReceivingDisplaysPushStack } from '../workspace/ReceivingDisplaysPushStack';
-import { UnboxDisplaysEdgeToggle } from '../workspace/UnboxDisplaysEdgeToggle';
+import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import { UnboxDisplaysUtilityRailBody } from '../workspace/UnboxDisplaysUtilityRailBody';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
@@ -63,6 +64,11 @@ import { StagingSection } from './StagingSection';
 import { deriveTriageFocusFacts, resolveTriageFocus } from '@/lib/receiving/triage-focus';
 import { buildTriageDisplayTabs, type TriageDisplayTab } from './build-triage-displays';
 import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
+import {
+  DISPLAYS_FLUSH_HOST,
+} from '@/design-system/shells/detail-stack';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { cn } from '@/utils/_cn';
 
 export function TriagePanel({
   row,
@@ -89,9 +95,11 @@ export function TriagePanel({
   const [savingTriage, setSavingTriage] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
 
-  // The right-edge Displays push (Pairing only). `null` IS closed — the selected
-  // tab's selected-ness is the open state, so there is no second `pairingOpen` flag.
-  const [activeSideTab, setActiveSideTab] = useState<TriageDisplayTab | null>(null);
+  // The right-edge Displays push (Pairing only). `null` IS closed; `index` is
+  // Root Index; a leaf id is the open body. No second `pairingOpen` flag.
+  const [activeSideTab, setActiveSideTab] = useState<
+    TriageDisplayTab | typeof STATION_DISPLAY_INDEX | null
+  >(null);
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
     requestId: number;
@@ -291,25 +299,27 @@ export function TriagePanel({
     build: buildTerminal,
   });
 
-  // Scan-station chrome: utility rail when Displays closed; ↑↓ on details
-  // panel top-right when open. ↑ prev / ↓ next — same as left sidebar.
+  // Scan-station chrome: utility rail when Displays closed (`←|` bottom
+  // footer); ↑↓ on details panel top-right when open.
   const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
   const utilityRailBody = !activeSideTab ? (
-    <div className="flex flex-col items-center gap-0 pt-0">
-      <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysForExpand} />
-      {showCartonCursor ? (
-        <ScanStationCartonCursor
-          onPrev={onPrevCarton}
-          onNext={onNextCarton}
-          prevDisabled={prevCartonDisabled}
-          nextDisabled={nextCartonDisabled}
-          orientation="vertical"
-          prevTestId="arrival-carton-prev"
-          nextTestId="arrival-carton-next"
-          groupTestId="arrival-carton-cursor"
-        />
-      ) : null}
-    </div>
+    <UnboxDisplaysUtilityRailBody
+      onOpenDisplays={openDisplaysForExpand}
+      cartonCursor={
+        showCartonCursor ? (
+          <ScanStationCartonCursor
+            onPrev={onPrevCarton}
+            onNext={onNextCarton}
+            prevDisabled={prevCartonDisabled}
+            nextDisabled={nextCartonDisabled}
+            orientation="vertical"
+            prevTestId="arrival-carton-prev"
+            nextTestId="arrival-carton-next"
+            groupTestId="arrival-carton-cursor"
+          />
+        ) : null
+      }
+    />
   ) : null;
 
   const displaysCartonCursor = showCartonCursor ? (
@@ -405,37 +415,45 @@ export function TriagePanel({
                   </div>
                 }
               >
-                <div className="space-y-0">
-                  <POUnboxingSection
-                    row={row}
-                    staffId={staffId}
-                    // Unbox-parity items surface: matched → PoLinesAccordion;
-                    // unfound → interactive UnmatchedAccordionSurface (same
-                    // ReturnScanCard / editable rows as Unbox). No "Open in
-                    // unbox" — the operator saves for unbox from the dock.
-                    // Suppress the "PO items · N" eyebrow — identity abuts the
-                    // lines (Unbox overview SoT). An unfound carton with 0 lines
-                    // must not show an empty "PO ITEMS · 0".
-                    suppressItemsHeader
-                    poItems
-                    matching
-                    openInUnbox={false}
-                    editLines
-                    serialScan
-                    c={c}
-                    onItemDescFeedback={handleItemDescFeedback}
-                    onItemDescSaved={handleItemDescSaved}
-                  />
-                  <div ref={classifySectionRef}>
-                    <TriageClassifySection
+                <div
+                  className={cn(
+                    DISPLAYS_FLUSH_HOST,
+                    appSurfaceFillClass('chrome'),
+                    'min-h-0 flex-1 overflow-y-auto',
+                  )}
+                  data-testid="arrival-door-flow"
+                >
+                  <div className="space-y-0">
+                    <POUnboxingSection
                       row={row}
+                      staffId={staffId}
+                      // Door-flow items: matched → PoLinesAccordion; unfound →
+                      // interactive UnmatchedAccordionSurface without units
+                      // chrome (no condition · serial / Units). No "Open in
+                      // unbox" — save for unbox from the dock. Suppress the
+                      // "PO items · N" eyebrow — identity abuts the lines.
+                      suppressItemsHeader
+                      poItems
+                      matching
+                      openInUnbox={false}
+                      editLines
+                      serialScan={false}
+                      unitsChrome={false}
                       c={c}
-                      expandDimension={classifyExpand?.dimension ?? null}
-                      expandRequestId={classifyExpand?.requestId ?? 0}
+                      onItemDescFeedback={handleItemDescFeedback}
+                      onItemDescSaved={handleItemDescSaved}
                     />
-                  </div>
-                  <div ref={stagingSectionRef}>
-                    <StagingSection staging={staging} eyebrow="Staging" />
+                    <div ref={classifySectionRef}>
+                      <TriageClassifySection
+                        row={row}
+                        c={c}
+                        expandDimension={classifyExpand?.dimension ?? null}
+                        expandRequestId={classifyExpand?.requestId ?? 0}
+                      />
+                    </div>
+                    <div ref={stagingSectionRef}>
+                      <StagingSection staging={staging} eyebrow="Staging" />
+                    </div>
                   </div>
                 </div>
               </StationWorkbench>
@@ -455,14 +473,20 @@ export function TriagePanel({
         }
         displays={
           activeSideTab ? (
-            <ReceivingDisplaysPushStack
+            <StationDisplaysPushStack
               ariaLabel="Arrival displays"
               storageKey="arrival-displays-push-width"
               testId="arrival-displays-push"
               resizeTestId="arrival-displays-push-resize"
               tabs={triageDisplayTabs}
               activeTab={activeSideTab}
-              onTabChange={(id) => setActiveSideTab(id as TriageDisplayTab)}
+              onTabChange={(id) => {
+                if (id === STATION_DISPLAY_INDEX) {
+                  setActiveSideTab(STATION_DISPLAY_INDEX);
+                  return;
+                }
+                setActiveSideTab(id as TriageDisplayTab);
+              }}
               onClose={closeDisplays}
               headerTrailing={displaysCartonCursor}
             />

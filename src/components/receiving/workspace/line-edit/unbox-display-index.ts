@@ -1,0 +1,192 @@
+/**
+ * Unbox Displays Root Index — domain row builder (no React).
+ *
+ * Returns the station-wide {@link DisplayIndexRow} shape. UI lives in
+ * `@/components/station/displays` ({@link StationDisplayIndexList}).
+ * Checklist stays ring-only and is never emitted here.
+ */
+
+import type { DisplayIndexGroup, DisplayIndexRow } from '@/components/station/displays';
+import {
+  UNBOX_STRIP_TAB_ORDER,
+  isUnboxSideTabVisible,
+  type UnboxSideTab,
+  type UnboxSideTabGates,
+} from './unbox-side-tabs';
+
+export interface UnboxDisplayIndexSignals {
+  hasTicketId: boolean;
+  /** Carton photo count when known; `null` → generic subtitle. */
+  photoCount: number | null;
+  /** Short classify face (urgency / type) — empty → "Not set". */
+  classifyLabel: string | null;
+  serialCount: number;
+  /** Matched to a PO / inbound source (Linkage). */
+  linkagePaired: boolean;
+  isUnfound: boolean;
+  trackingPresent: boolean;
+  isReturnIntake: boolean;
+  /**
+   * Received / expected across PO lines when known (`null` → generic subtitle).
+   * Used for the Inventory index row.
+   */
+  inventoryReceived?: number | null;
+  inventoryExpected?: number | null;
+}
+
+const LABELS: Record<Exclude<UnboxSideTab, 'checklist'>, string> = {
+  ticket: 'Ticket',
+  photos: 'Photos',
+  linkage: 'Pairing',
+  inventory: 'Inventory',
+  classify: 'Classify',
+  listings: 'Listings',
+  units: 'Units',
+  support: 'Support',
+  tracking: 'Tracking',
+  timeline: 'Timeline',
+};
+
+const GROUPS: Record<Exclude<UnboxSideTab, 'checklist'>, DisplayIndexGroup> = {
+  ticket: 'verification',
+  photos: 'verification',
+  linkage: 'verification',
+  classify: 'verification',
+  inventory: 'assets',
+  units: 'assets',
+  listings: 'assets',
+  support: 'context',
+  tracking: 'context',
+  timeline: 'context',
+};
+
+function ticketRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  if (signals.hasTicketId) {
+    return { subtitle: 'Linked ticket', tone: 'ok' };
+  }
+  return { subtitle: 'Claim needed', tone: 'action' };
+}
+
+function photosRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  const n = signals.photoCount;
+  if (n == null) return { subtitle: 'Carton photos', tone: 'neutral' };
+  if (n <= 0) return { subtitle: 'None', tone: 'neutral' };
+  return {
+    subtitle: n === 1 ? '1 photo' : `${n} photos`,
+    tone: 'ok',
+  };
+}
+
+function linkageRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  if (signals.linkagePaired) {
+    return { subtitle: 'Paired', tone: 'ok' };
+  }
+  if (signals.isUnfound) {
+    return { subtitle: 'Unpaired', tone: 'action' };
+  }
+  return { subtitle: 'Pairing · PO note', tone: 'neutral' };
+}
+
+function inventoryRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  if (!signals.linkagePaired) {
+    return { subtitle: 'Unpaired', tone: 'action' };
+  }
+  const recv = signals.inventoryReceived;
+  const exp = signals.inventoryExpected;
+  if (typeof recv === 'number' && typeof exp === 'number' && exp > 0) {
+    return {
+      subtitle: `${recv}/${exp} received`,
+      tone: recv >= exp ? 'ok' : 'neutral',
+    };
+  }
+  return { subtitle: 'PO · lines · notes', tone: 'ok' };
+}
+
+function classifyRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  const label = (signals.classifyLabel ?? '').trim();
+  if (!label) return { subtitle: 'Not set', tone: 'action' };
+  return { subtitle: label, tone: 'ok' };
+}
+
+function unitsRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  const n = signals.serialCount;
+  if (n <= 0) return { subtitle: 'No serials', tone: 'neutral' };
+  return {
+    subtitle: n === 1 ? '1 serial' : `${n} serials`,
+    tone: 'ok',
+  };
+}
+
+function listingsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  return { subtitle: 'Listing links', tone: 'neutral' };
+}
+
+function supportRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  return { subtitle: 'Team context', tone: 'neutral' };
+}
+
+function trackingRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  if (signals.trackingPresent) {
+    return { subtitle: 'Tracking on file', tone: 'ok' };
+  }
+  return { subtitle: 'No tracking', tone: 'neutral' };
+}
+
+function timelineRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  if (signals.isReturnIntake) {
+    return { subtitle: 'Return history', tone: 'action' };
+  }
+  return { subtitle: 'Carton history', tone: 'neutral' };
+}
+
+function rowMeta(
+  id: Exclude<UnboxSideTab, 'checklist'>,
+  signals: UnboxDisplayIndexSignals,
+): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  switch (id) {
+    case 'ticket':
+      return ticketRow(signals);
+    case 'photos':
+      return photosRow(signals);
+    case 'linkage':
+      return linkageRow(signals);
+    case 'inventory':
+      return inventoryRow(signals);
+    case 'classify':
+      return classifyRow(signals);
+    case 'listings':
+      return listingsRow();
+    case 'units':
+      return unitsRow(signals);
+    case 'support':
+      return supportRow();
+    case 'tracking':
+      return trackingRow(signals);
+    case 'timeline':
+      return timelineRow(signals);
+  }
+}
+
+/**
+ * Build visible Root Index rows for the current carton gates + signals.
+ * Order matches {@link UNBOX_STRIP_TAB_ORDER}; checklist never appears.
+ */
+export function buildUnboxDisplayIndexRows(
+  gates: UnboxSideTabGates,
+  signals: UnboxDisplayIndexSignals,
+): DisplayIndexRow[] {
+  const rows: DisplayIndexRow[] = [];
+  for (const id of UNBOX_STRIP_TAB_ORDER) {
+    if (!isUnboxSideTabVisible(id, gates)) continue;
+    if (id === 'checklist') continue;
+    const meta = rowMeta(id, signals);
+    rows.push({
+      id,
+      label: LABELS[id],
+      subtitle: meta.subtitle,
+      tone: meta.tone,
+      group: GROUPS[id],
+    });
+  }
+  return rows;
+}

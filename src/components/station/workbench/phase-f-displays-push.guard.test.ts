@@ -31,6 +31,7 @@ describe('Labels flush Station column — Print · Documents · Timeline stay ce
     assert.match(panel, /id:\s*['"]timeline['"]/);
     assert.match(panel, /OrderDocumentsSection[\s\S]*?\bflush\b/);
     assert.match(panel, /OrderTimelineSection[\s\S]*?\bflush\b/);
+    assert.ok(!panel.includes('StationDisplaysPushStack'), 'Documents/Timeline are not Displays push');
     assert.ok(!panel.includes('ReceivingDisplaysPushStack'), 'Documents/Timeline are not Displays push');
     assert.ok(!panel.includes('StationScanPaneHost'), 'no dual-pane host — single flush column');
     assert.ok(!panel.includes('bg-surface-canvas'), 'hand-rolled canvas root deleted');
@@ -44,9 +45,10 @@ describe('Shipping Displays push — Phase F', () => {
 
   it('host mounts Displays for Condition · Timeline; centre keeps Ship · Units only', () => {
     assert.match(host, /StationScanPaneHost/);
-    assert.match(host, /ReceivingDisplaysPushStack/);
+    assert.match(host, /StationDisplaysPushStack/);
+    assert.doesNotMatch(host, /navMode/, 'navMode was deleted — one Root-to-Leaf grammar');
     assert.match(host, /storageKey=["']shipping-displays-push-width["']/);
-    assert.match(host, /UnboxDisplaysEdgeToggle variant=["']pane-open["']/);
+    assert.match(host, /StationDisplaysEdgeToggle variant=["']pane-open["'] onClick=\{openDisplaysIndex\}/);
     assert.match(host, /id:\s*['"]condition['"]/);
     assert.match(host, /id:\s*['"]timeline['"]/);
     // CTA always when Displays closed — not gated on timeline data.
@@ -83,7 +85,8 @@ describe('Packer review Displays push — Phase F', () => {
   it('Note owns centre; Photos · Tracking · Timeline on Displays', () => {
     assert.match(panel, /StationScanPaneHost/);
     assert.match(panel, /StationPanelRoot/);
-    assert.match(panel, /ReceivingDisplaysPushStack/);
+    assert.match(panel, /StationDisplaysPushStack/);
+    assert.doesNotMatch(panel, /navMode/, 'navMode was deleted — one Root-to-Leaf grammar');
     assert.match(panel, /storageKey=["']pack-review-displays-push-width["']/);
     assert.ok(!panel.includes('SectionTabsSlider'), 'mid-canvas review strip deleted');
     assert.ok(!panel.includes('WorkspaceCard'), 'glass WorkspaceCard islands deleted');

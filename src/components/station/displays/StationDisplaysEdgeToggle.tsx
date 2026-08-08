@@ -1,14 +1,24 @@
 'use client';
 
 /**
- * Displays edge toggle — one control, two exclusive hosts.
+ * Station Displays edge toggle — one control, two exclusive hosts.
  *
- * Closed: pane top-right (`←|` Open displays).
- * Open: push-column top-left (`→|` Hide right panel).
+ * Closed: utility-rail **bottom** footer (`←|` Open displays) — left-dock
+ * expand twin.
+ * Open: Displays footer search trailing track (`→|` Hide displays) —
+ * left-rail filter-collapse twin.
  *
  * Shared `layoutId` FLIPs the mark across the work surface with the push
  * column width tween (`motionRole.push.rail`). Never mount both at once —
  * that was two dismisses for one edge.
+ *
+ * **Lives with the shared column, not with Unbox** (moved 2026-08-07). It was
+ * born in `receiving/workspace/` and imported back UP into
+ * {@link StationDisplaysPushStack}, so the station-wide SoT depended on one
+ * domain folder and carried its vocabulary — including a `layoutId` literally
+ * named `unbox-…` that all six stations then shared. The `layoutId` is now
+ * station-neutral. `data-testid`s deliberately keep their original values: a
+ * testid is an address, and E2E specs point at these.
  */
 
 import { useState } from 'react';
@@ -18,14 +28,18 @@ import { IconButton } from '@/design-system/primitives';
 import { motion, motionRole, useMotionRole, useReducedMotion } from '@/design-system/motion';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
+import {
+  stationDisplaysToggleHotkeyLabel,
+  useStationDisplaysToggleHotkey,
+} from './displays-toggle-hotkey';
 
 /** Shared layout id — pane open host ↔ column close host. */
-const UNBOX_DISPLAYS_EDGE_TOGGLE_LAYOUT_ID = 'unbox-displays-edge-toggle';
+const STATION_DISPLAYS_EDGE_TOGGLE_LAYOUT_ID = 'station-displays-edge-toggle';
 
 /** One control closes all Displays push surfaces — names the REGION, not the tab. */
-const UNBOX_PUSH_CLOSE_LABEL = 'Hide right panel';
+const STATION_DISPLAYS_CLOSE_LABEL = 'Hide displays';
 
-export function UnboxDisplaysEdgeToggle({
+export function StationDisplaysEdgeToggle({
   variant,
   onClick,
 }: {
@@ -36,21 +50,28 @@ export function UnboxDisplaysEdgeToggle({
   const { transition } = useMotionRole(motionRole.push.rail);
   const [isMorphing, setIsMorphing] = useState(false);
   const paneOpen = variant === 'pane-open';
+  // ⌘/Ctrl+] — same action as this control's click; exclusive host owns the chord.
+  useStationDisplaysToggleHotkey(onClick);
+
+  const chord = stationDisplaysToggleHotkeyLabel();
+  const label = paneOpen
+    ? `Open displays (${chord})`
+    : `${STATION_DISPLAYS_CLOSE_LABEL} (${chord})`;
 
   return (
     <motion.div
-      layoutId={reduce ? undefined : UNBOX_DISPLAYS_EDGE_TOGGLE_LAYOUT_ID}
+      layoutId={reduce ? undefined : STATION_DISPLAYS_EDGE_TOGGLE_LAYOUT_ID}
       transition={transition}
       onLayoutAnimationStart={() => setIsMorphing(true)}
       onLayoutAnimationComplete={() => setIsMorphing(false)}
       style={{ zIndex: isMorphing ? zIndex.raised : undefined }}
       className="inline-flex"
     >
-      <HoverTooltip label={paneOpen ? 'Open displays' : UNBOX_PUSH_CLOSE_LABEL} asChild>
+      <HoverTooltip label={label} asChild>
         <IconButton
           size={paneOpen ? 'xs' : 'sm'}
           tone="neutral"
-          ariaLabel={paneOpen ? 'Open displays' : UNBOX_PUSH_CLOSE_LABEL}
+          ariaLabel={label}
           aria-expanded={!paneOpen}
           icon={
             paneOpen ? (

@@ -4,7 +4,7 @@
  * Live pack workspace overlay — Unbox-family Tier A:
  * StationScanPaneHost + StationPanelRoot; checklist (or UNIT peek) owns the
  * locked 720 centre; Ticket · Photos · Support · Timeline live on
- * ReceivingDisplaysPushStack. Sibling to LineEditPanel / TriagePanel; binds
+ * StationDisplaysPushStack. Sibling to LineEditPanel / TriagePanel; binds
  * PackActiveOrderPane, not ReceivingLineRow. No sticky terminal dock (Tier C).
  */
 
@@ -46,13 +46,19 @@ import {
   StationContextBar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
-import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
-import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
+import {
+  StationDisplaysEdgeToggle,
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+} from '@/components/station/displays';
 import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 type PackDisplayTab = 'ticket' | 'photos' | 'support' | 'timeline';
+
+/** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
+type PackDisplayNav = typeof STATION_DISPLAY_INDEX | PackDisplayTab;
 
 interface PackOrderPanelProps {
   activeOrder: PackActiveOrderPane;
@@ -82,7 +88,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
   /** Photos own the centre on UNIT scans — only offer a Displays tab otherwise. */
   const photosInDisplays = hasUnitPhotos && !isUnitScan;
 
-  const [activeSideTab, setActiveSideTab] = useState<PackDisplayTab | null>(null);
+  const [activeSideTab, setActiveSideTab] = useState<PackDisplayNav | null>(null);
 
   const resetKey = activeOrder.serialUnitId
     ? `unit-${activeOrder.serialUnitId}`
@@ -108,16 +114,16 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
   const hasTimelineTab =
     tracking.length > 0 || orderId.length > 0 || timelineSerials.length > 0;
 
-  const openDisplays = useCallback((tab: PackDisplayTab) => setActiveSideTab(tab), []);
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
 
-  const openDisplaysForExpand = useCallback(() => {
-    if (photosInDisplays) {
-      openDisplays('photos');
-      return;
-    }
-    openDisplays('ticket');
-  }, [openDisplays, photosInDisplays]);
+  /**
+   * `←|` Open displays → the Root Index, never a guessed leaf.
+   *
+   * This used to open `photos` or `ticket` and, with no switcher in the column,
+   * that guess WAS the whole surface: Pack declares four displays and the
+   * operator could reach exactly one of them.
+   */
+  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
 
   const displayTabs = useMemo(
     () =>
@@ -206,10 +212,14 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     ],
   );
 
-  const resolvedSideTab: PackDisplayTab | null = useMemo(() => {
+  const resolvedSideTab: PackDisplayNav | null = useMemo(() => {
     if (!activeSideTab) return null;
+    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
     if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    return (displayTabs[0]?.id as PackDisplayTab | undefined) ?? null;
+    // A requested leaf that gated away falls back to the INDEX, never to
+    // `displayTabs[0]` — silently swapping in an unrelated display is the
+    // failure the index exists to make impossible.
+    return STATION_DISPLAY_INDEX;
   }, [activeSideTab, displayTabs]);
 
   const packedCount = checklist?.progress.packedLines ?? 0;
@@ -219,7 +229,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
   const paneUtilityRow = (
     <div className="flex flex-col items-center gap-0 pt-0">
       {!activeSideTab ? (
-        <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysForExpand} />
+        <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
       ) : null}
     </div>
   );
@@ -343,14 +353,14 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
         }
         displays={
           resolvedSideTab ? (
-            <ReceivingDisplaysPushStack
+            <StationDisplaysPushStack
               ariaLabel="Pack displays"
               storageKey="pack-displays-push-width"
               testId="pack-displays-push"
               resizeTestId="pack-displays-push-resize"
               tabs={displayTabs}
               activeTab={resolvedSideTab}
-              onTabChange={(id) => setActiveSideTab(id as PackDisplayTab)}
+              onTabChange={(id) => setActiveSideTab(id as PackDisplayNav)}
               onClose={closeDisplays}
             />
           ) : null

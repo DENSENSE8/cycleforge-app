@@ -117,7 +117,7 @@ describe('History topics stay off the Unbox History sheet', () => {
     const triageBlock = header.slice(triageIdx, triageIdx + 1400);
     assert.match(
       triageBlock,
-      /right=\{\s*isHistoryTab \? undefined/,
+      /right=\{\s*isHistoryTab(?:\s*\|\|\s*isIncomingTab)?\s*\?\s*undefined/,
       'History Band 3 must omit the refine right cluster',
     );
     // Sheet toggle is ColumnsTwo park — not Print / summary / logistics topics.
@@ -160,8 +160,8 @@ describe('History topics stay off the Unbox History sheet', () => {
     assert.doesNotMatch(header, /Select a row to open the inspector/);
     assert.doesNotMatch(
       header,
-      /Open displays|Hide right panel/,
-      'History Band 3 parks the Desk inspector; Station UnboxDisplaysEdgeToggle owns Displays copy',
+      /Open displays|Hide displays/,
+      'History Band 3 parks the Desk inspector; Station StationDisplaysEdgeToggle owns Displays copy',
     );
   });
 });
@@ -195,7 +195,7 @@ describe('History context menu', () => {
     assert.match(menu, /receiving-row-triage-menu-history/);
     assert.match(menu, /resolveReceivingColFromTarget/);
     assert.match(menu, /Filter grid by this tracking number/);
-    assert.match(menu, /Resolve Unfound PO/);
+    assert.match(menu, /Resolve unmatched carton/);
   });
 });
 

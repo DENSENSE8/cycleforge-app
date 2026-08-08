@@ -17,8 +17,8 @@ import {
   WorkspaceTimelineTab,
   buildSectionTabs,
 } from '@/components/station/workbench';
-import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
-import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
+import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import { StationDisplaysEdgeToggle } from '@/components/station/displays';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
@@ -37,6 +37,9 @@ import { canShowTechSubstitution } from '@/lib/tech/substitution-eligibility';
 import { useOrderAssignment } from '@/hooks';
 
 type ShippingDisplayTab = 'condition' | 'timeline';
+
+/** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
+type ShippingDisplayNav = typeof STATION_DISPLAY_INDEX | ShippingDisplayTab;
 
 interface ActiveOrderWorkspaceProps {
   activeOrder: ActiveStationOrder;
@@ -77,7 +80,7 @@ export function ActiveOrderWorkspace({
   const cardPresence = useMotionPresence(framerPresence.stationCard);
   const cardTransition = useMotionTransition(framerTransition.stationCardMount);
 
-  const [activeSideTab, setActiveSideTab] = useState<ShippingDisplayTab | null>(null);
+  const [activeSideTab, setActiveSideTab] = useState<ShippingDisplayNav | null>(null);
 
   const policyQuery = useSubstitutionPolicy();
   const substitution = useMemo(
@@ -176,21 +179,21 @@ export function ActiveOrderWorkspace({
     ],
   );
 
-  const openDisplays = useCallback(() => {
-    const first = displayTabs[0]?.id as ShippingDisplayTab | undefined;
-    setActiveSideTab(first ?? 'condition');
-  }, [displayTabs]);
+  /** `←|` Open displays → the Root Index, not `displayTabs[0]`. */
+  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
 
-  const resolvedSideTab: ShippingDisplayTab | null = useMemo(() => {
+  const resolvedSideTab: ShippingDisplayNav | null = useMemo(() => {
     if (!activeSideTab) return null;
+    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
     if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    return (displayTabs[0]?.id as ShippingDisplayTab | undefined) ?? null;
+    // Gated-away leaf → the index, never a silent swap to an unrelated display.
+    return STATION_DISPLAY_INDEX;
   }, [activeSideTab, displayTabs]);
 
   const utilityRailBody = !resolvedSideTab ? (
     <div className="flex flex-col items-center gap-0 pt-0">
-      <UnboxDisplaysEdgeToggle variant="pane-open" onClick={openDisplays} />
+      <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
     </div>
   ) : null;
 
@@ -273,14 +276,14 @@ export function ActiveOrderWorkspace({
         }
         displays={
           resolvedSideTab ? (
-            <ReceivingDisplaysPushStack
-              ariaLabel="Shipping displays"
+            <StationDisplaysPushStack
+              ariaLabel="Ready to Pack displays"
               storageKey="shipping-displays-push-width"
               testId="shipping-displays-push"
               resizeTestId="shipping-displays-push-resize"
               tabs={displayTabs}
               activeTab={resolvedSideTab}
-              onTabChange={(id) => setActiveSideTab(id as ShippingDisplayTab)}
+              onTabChange={(id) => setActiveSideTab(id as ShippingDisplayNav)}
               onClose={closeDisplays}
             />
           ) : null

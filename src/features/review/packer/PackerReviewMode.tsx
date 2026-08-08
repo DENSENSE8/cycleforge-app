@@ -45,8 +45,8 @@ import {
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import { StationTerminalDock } from '@/components/station/terminal';
-import { ReceivingDisplaysPushStack } from '@/components/receiving/workspace/ReceivingDisplaysPushStack';
-import { UnboxDisplaysEdgeToggle } from '@/components/receiving/workspace/UnboxDisplaysEdgeToggle';
+import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import { StationDisplaysEdgeToggle } from '@/components/station/displays';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -64,6 +64,9 @@ import type { PackTier } from '@/lib/packing/pack-tier-classifier';
 import { DEFAULT_TIER_MINUTES } from '@/lib/packing/pack-tier-classifier';
 
 type ReviewDisplayTab = 'photos' | 'tracking' | 'timeline';
+
+/** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
+type ReviewDisplayNav = typeof STATION_DISPLAY_INDEX | ReviewDisplayTab;
 
 async function submitDecision(args: {
   packerLogId: number;
@@ -91,7 +94,7 @@ export function PackerReviewMode({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [note, setNote] = useState('');
-  const [activeSideTab, setActiveSideTab] = useState<ReviewDisplayTab | null>(null);
+  const [activeSideTab, setActiveSideTab] = useState<ReviewDisplayNav | null>(null);
   const [packEditorOpen, setPackEditorOpen] = useState(false);
 
   const packTierLabel = useMemo(() => {
@@ -170,7 +173,8 @@ export function PackerReviewMode({
   const busy = decide.isPending;
   const flagDisabled = busy || note.trim().length === 0;
 
-  const openDisplays = useCallback((tab: ReviewDisplayTab) => setActiveSideTab(tab), []);
+  /** `←|` Open displays → the Root Index, not a guessed leaf. */
+  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
 
   const displayTabs = useMemo(
@@ -273,10 +277,12 @@ export function PackerReviewMode({
     ],
   );
 
-  const resolvedSideTab: ReviewDisplayTab | null = useMemo(() => {
+  const resolvedSideTab: ReviewDisplayNav | null = useMemo(() => {
     if (!activeSideTab) return null;
+    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
     if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    return (displayTabs[0]?.id as ReviewDisplayTab | undefined) ?? null;
+    // Gated-away leaf → the index, never a silent swap to an unrelated display.
+    return STATION_DISPLAY_INDEX;
   }, [activeSideTab, displayTabs]);
 
   const terminalVm: TerminalActionVm = {
@@ -311,10 +317,7 @@ export function PackerReviewMode({
   const utilityRailBody = (
     <div className="flex flex-col items-center gap-0 pt-0">
       {!activeSideTab ? (
-        <UnboxDisplaysEdgeToggle
-          variant="pane-open"
-          onClick={() => openDisplays('photos')}
-        />
+        <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
       ) : null}
     </div>
   );
@@ -413,14 +416,14 @@ export function PackerReviewMode({
         }
         displays={
           resolvedSideTab ? (
-            <ReceivingDisplaysPushStack
+            <StationDisplaysPushStack
               ariaLabel="Pack review displays"
               storageKey="pack-review-displays-push-width"
               testId="pack-review-displays-push"
               resizeTestId="pack-review-displays-push-resize"
               tabs={displayTabs}
               activeTab={resolvedSideTab}
-              onTabChange={(id) => setActiveSideTab(id as ReviewDisplayTab)}
+              onTabChange={(id) => setActiveSideTab(id as ReviewDisplayNav)}
               onClose={closeDisplays}
             />
           ) : null

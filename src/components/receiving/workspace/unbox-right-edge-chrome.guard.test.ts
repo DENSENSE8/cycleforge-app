@@ -21,12 +21,11 @@
  *     panel's glyph, sitting in the open panel's corner, and mounting only when
  *     that panel was up. An operator who reached for it lost their carton.
  *
- *     So `→|` moved to {@link UnboxPushColumn}'s header band — the column's own
- *     top-left — and closes the column. `↑ ↓` step the CARTON, which is on
- *     screen either way, so they lost the gate they only ever had by adjacency.
- *     The ring lives on the Displays strip `rightSlot` (right of ⋮) while
- *     Displays is open; closed Displays opens via `←|`. Do not remount a second
- *     ring under the dock.
+ *     So `→|` closes the column from the Displays **footer** search trailing
+ *     track (left-rail filter-collapse twin); `←|` Open displays seats in the
+ *     utility-rail **bottom** footer (left-dock expand twin). `↑ ↓` step the
+ *     CARTON. The procedure ring lives under the Unbox dock Panel
+ *     (`UnboxDockHost` progress slot) — not Displays `headerRightSlot`.
  *
  *     The failure modes point in three directions now, so all three are pinned:
  *     re-adding a carton-close to the pane row, re-gating the cursor on
@@ -55,9 +54,9 @@ function stripComments(src: string): string {
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
 const PANEL_PATH = 'src/components/receiving/workspace/LineEditPanel.tsx';
-const DISPLAYS_PATH = 'src/components/receiving/workspace/ReceivingDisplaysPushStack.tsx';
-const PUSH_COLUMN_PATH = 'src/components/receiving/workspace/UnboxPushColumn.tsx';
-const EDGE_TOGGLE_PATH = 'src/components/receiving/workspace/UnboxDisplaysEdgeToggle.tsx';
+const DISPLAYS_PATH = 'src/components/station/displays/StationDisplaysPushStack.tsx';
+const PUSH_COLUMN_PATH = 'src/components/station/displays/StationDisplaysPushColumn.tsx';
+const EDGE_TOGGLE_PATH = 'src/components/station/displays/StationDisplaysEdgeToggle.tsx';
 const WORKSPACE_PATH = 'src/components/receiving/workspace/ReceivingLineWorkspace.tsx';
 
 /**
@@ -71,11 +70,12 @@ const WORKSPACE_PATH = 'src/components/receiving/workspace/ReceivingLineWorkspac
  * child and a naive slice cuts the gate off after one button.
  */
 function cursorGateBody(panel: string): string {
-  // Cursor group is nested: `{showCartonCursor ? (` inside utilityRailBody.
-  const open = panel.indexOf('{showCartonCursor ? (');
+  // Cursor group is nested: `showCartonCursor ? (` as cartonCursor= prop
+  // (was `{showCartonCursor ? (` when the toggle stacked above the cursor).
+  const open = panel.indexOf('showCartonCursor ? (');
   assert.ok(open >= 0, 'the utility rail must gate the cursor on showCartonCursor');
   let depth = 0;
-  for (let i = open + 1; i < panel.length; i += 1) {
+  for (let i = open; i < panel.length; i += 1) {
     if (panel[i] === '(') depth += 1;
     else if (panel[i] === ')') {
       depth -= 1;
@@ -130,23 +130,34 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('the push column owns a VISIBLE dismiss at its own top-left', () => {
+    it('the push column footer owns a VISIBLE dismiss (left-rail twin)', () => {
       const column = read(PUSH_COLUMN_PATH);
+      const displays = read(DISPLAYS_PATH);
       const edge = read(EDGE_TOGGLE_PATH);
       assert.match(
         column,
-        /UnboxDisplaysEdgeToggle/,
+        /footer/,
+        'column accepts a footer slot for filter + →|',
+      );
+      assert.match(
+        displays,
+        /StationDisplaysEdgeToggle/,
         'column dismiss is the shared edge-toggle host (layoutId handoff with the pane)',
       );
       assert.match(
-        column,
+        displays,
         /variant="column-close"/,
-        'open Displays lands the flipped →| on the column band, not a second pane close',
+        'open Displays lands the flipped →| on the footer search trailing track',
       );
       assert.match(
-        column,
-        /onClick=\{onClose\}/,
-        'the band’s dismiss must call the occupant’s own onClose, so it closes whichever column is up',
+        displays,
+        /TechRailSearchBar/,
+        'Displays footer mounts TechRailSearchBar (recent-rail twin)',
+      );
+      assert.match(
+        displays,
+        /trailingAction=\{/,
+        '→| seats as TechRailSearchBar trailingAction (filter-collapse twin)',
       );
       assert.match(
         edge,
@@ -173,7 +184,10 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       // non-modal push column has no scrim to click off — an invisible dismiss
       // is not a dismiss. The band must therefore be a REAL row, not an
       // absolute float that three of the four occupants' headers sit under.
-      const band = column.match(/const UNBOX_PUSH_TOP_BAND\s*=\s*'[^']*'/)?.[0] ?? '';
+      const band =
+        column.match(/const STATION_DISPLAYS_PUSH_TOP_BAND\s*=\s*'[^']*'/)?.[0] ??
+        column.match(/const UNBOX_PUSH_TOP_BAND\s*=\s*'[^']*'/)?.[0] ??
+        '';
       assert.ok(band, 'the header band must stay a named constant');
       assert.doesNotMatch(
         band,
@@ -208,14 +222,14 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         edge,
-        /UNBOX_PUSH_CLOSE_LABEL = 'Hide right panel'/,
-        'one control closes all four push surfaces, so "Hide displays" would be false on three of them',
+        /STATION_DISPLAYS_CLOSE_LABEL = 'Hide displays'/,
+        'one control closes the Displays REGION across stations — names the region, not an occupant',
       );
       // Operator nouns: Station ←| opens Displays — never Desk "inspector" /
       // "details editor" (those are History Band 3 / LineEdit itself).
       assert.match(
         edge,
-        /['"]Open displays['"]/,
+        /Open displays/,
         'pane-open tooltip/aria must stay Open displays (Station Displays column)',
       );
       assert.doesNotMatch(
@@ -287,12 +301,12 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('Displays toggle mounts above the carton cursor, outside the cursor gate', () => {
+    it('Displays toggle mounts in the utility-rail bottom footer, outside the cursor gate', () => {
       const edge = read(EDGE_TOGGLE_PATH);
       assert.match(
         panel,
-        /UnboxDisplaysEdgeToggle/,
-        'carton pane must compose the shared Displays edge toggle',
+        /UnboxDisplaysUtilityRailBody/,
+        'carton pane must compose the bottom-seated Open displays host',
       );
       assert.match(
         panel,
@@ -301,13 +315,8 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         panel,
-        /variant="pane-open"/,
-        'closed pane mounts the open variant (←|)',
-      );
-      assert.match(
-        panel,
-        /openDisplays\('ticket',\s*\{\s*ticketAction:\s*hasTicketId \? 'chat' : 'claim'/,
-        'closed → opens Displays on Ticket with presence verb (chat if linked, else claim)',
+        /onOpenDisplays=\{openDisplaysIndex\}/,
+        'closed → opens Displays on Root Index (drill-down)',
       );
       assert.match(
         panel,
@@ -330,12 +339,12 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.ok(
         !utilitySlice.includes('closeDisplays'),
-        'open → close lives on the column host only — never a second pane dismiss',
+        'open → close lives on the column footer only — never a second pane dismiss',
       );
       assert.match(
         edge,
-        /UNBOX_DISPLAYS_EDGE_TOGGLE_LAYOUT_ID/,
-        'shared layoutId SoT for the pane ↔ column morph',
+        /STATION_DISPLAYS_EDGE_TOGGLE_LAYOUT_ID/,
+        'shared layoutId SoT for the pane ↔ column morph (station-neutral)',
       );
       assert.match(
         edge,
@@ -354,7 +363,8 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       const gated = cursorGateBody(panel);
       assert.ok(
-        !gated.includes('UnboxDisplaysEdgeToggle'),
+        !gated.includes('StationDisplaysEdgeToggle') &&
+          !gated.includes('UnboxDisplaysUtilityRailBody'),
         'Displays toggle is a peer of the cursor group, not gated behind ↑↓ availability',
       );
     });
@@ -379,7 +389,7 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.doesNotMatch(
         gated,
         /scanProgressControl|UnboxScanProgressControl/,
-        'the progress ring lives on the Displays strip rightSlot, not beside ↑↓',
+        'the progress ring lives on Displays column chrome (rightSlot), not the pane utility row',
       );
       // Pane utility assignment ends at `);` before stationContextBar — ring
       // must stay out of that whole JSX tree (Displays toggle + cursor).
@@ -416,22 +426,21 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.match(desk, /ChevronDown[\s\S]{0,200}onClick=\{onNext\}/);
     });
 
-    it('the RING mounts as Displays strip rightSlot — not under the dock', () => {
+    it('the RING mounts under the Unbox dock — not Displays rightSlot', () => {
       assert.match(
         panel,
-        /rightSlot=\{scanProgressControl\}/,
-        'the ring must mount on the Displays strip (right of ⋮), not the pane utility row',
+        /progress=\{scanProgressControl\}/,
+        'the ring must mount on UnboxDockHost progress (under the Panel)',
       );
       assert.match(
         panel,
-        /WorkspaceNotesCard/,
-        'main Unbox dock is notes + Print · Receive (WorkspaceNotesCard)',
+        /UnboxDockHost/,
+        'main Unbox dock is UnboxDockHost (step CTA · notes · Print · Receive)',
       );
-      // Dock float stack must not remount the ring (second progress chrome).
       assert.doesNotMatch(
         panel,
-        /slicedActionDockWrapperClass[\s\S]{0,1200}?scanProgressControl/,
-        'do not remount the ring under the notes+Print dock',
+        /rightSlot=\{scanProgressControl\}/,
+        'do not mount the ring on Displays rightSlot',
       );
       const gated = cursorGateBody(panel);
       assert.doesNotMatch(
@@ -441,13 +450,11 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('strip-mounted ring suppresses hover peek (railOpen always true)', () => {
-      // Ring only mounts while Displays is open — peek stays off.
-      assert.match(panel, /<UnboxScanProgressControl[\s\S]{0,240}railOpen/);
-      assert.doesNotMatch(
+    it('under-dock ring peeks when Displays closed; suppresses peek when open', () => {
+      assert.match(
         panel,
-        /railOpen=\{railOpen\}/,
-        'strip mount passes railOpen as always-true, not a closed-state variable',
+        /railOpen=\{showDisplays\}/,
+        'under-dock mount passes showDisplays so peek works while Displays is closed',
       );
       const control = read('src/components/receiving/workspace/UnboxScanProgressControl.tsx');
       assert.doesNotMatch(
@@ -463,7 +470,7 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.match(
         control,
         /variant=["']strip["']/,
-        'Unbox mounts the ring as a Displays strip cell (centered h-10 peer of ⋮)',
+        'Unbox mounts the ring as strip chrome under the dock',
       );
       assert.match(
         control,
@@ -472,29 +479,22 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         control,
-        /previewRailActionLabel=["']Open in Displays["']/,
+        /previewRailActionLabel=["']Open displays["']/,
         'peek must offer a footer action that opens the checklist in the right-edge Displays rail',
       );
     });
 
     it('the shared progress ring CLOSE names the REGION, not the tab', () => {
       // The ring toggles the whole Station push column, so its close label must
-      // name the region ("Hide right panel") — same reason UNBOX_PUSH_CLOSE_LABEL
-      // is region-scoped. "Hide displays" would be false whenever Ticket/Claim/
-      // tool holds the edge, and it borrows a Station-Displays noun for a REGION
-      // close. Law: source-of-truth.md → Displays vs inspector.
+      // name the region ("Hide displays") — same reason STATION_DISPLAYS_CLOSE_LABEL
+      // is region-scoped. Law: source-of-truth.md → Displays vs inspector.
       const ring = read('src/components/station/ScanStationProgressControl.tsx');
       const dflt = ring.match(/ariaLabelClose = '[^']*'/)?.[0] ?? '';
       assert.ok(dflt, 'ScanStationProgressControl must keep a default ariaLabelClose');
-      assert.doesNotMatch(
-        dflt,
-        /Hide displays/,
-        'the region close must not say "Hide displays" — one control closes the whole push column',
-      );
       assert.match(
         dflt,
-        /Hide right panel/,
-        'the Station push close names the region: "Hide right panel"',
+        /Hide displays/,
+        'the Station push close names the region: "Hide displays"',
       );
     });
   });
@@ -503,21 +503,21 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
     const panel = read(PANEL_PATH);
     const displays = read(DISPLAYS_PATH);
 
-    it('the Displays strip rightSlot is the procedure ring, not a pairing pencil', () => {
+    it('the Displays column does not host the procedure ring or a pairing pencil', () => {
       assert.match(
         displays,
-        /rightSlot/,
-        'ReceivingDisplaysPushStack must thread rightSlot for the progress ring',
+        /headerRightSlot=\{rightSlot\}/,
+        'StationDisplaysPushStack still threads optional rightSlot onto headerRightSlot',
       );
       assert.doesNotMatch(
         displays,
         /PairingTogglePill/,
-        'PairingTogglePill is still Triage/Testing chrome; Unbox must not mount it beside the strip',
+        'PairingTogglePill is still Triage/Testing chrome; Unbox must not mount it on Displays',
       );
-      assert.match(
+      assert.doesNotMatch(
         panel,
         /rightSlot=\{scanProgressControl\}/,
-        'Unbox passes the progress ring as Displays rightSlot (right of ⋮)',
+        'Unbox procedure ring is under the dock, not Displays rightSlot',
       );
     });
 
@@ -548,15 +548,16 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
         /setPairingFocus\(/,
         'the PO-tab intent travels as a prop, read at mount',
       );
-      // Opening the display is a `router.replace`, so `CartonMatchHub` mounts a
-      // navigation later. A dispatch — even one deferred a frame, which is what
-      // shipped until 2026-08-02 — always fires before anything is listening,
-      // and the display opens on its default tab. Verified in a browser on the
-      // QA org, which is the only way this was ever going to be caught.
+      // Durable open is still `router.replace`, but paint is optimistic in
+      // `useUnboxDisplayView` (pending snapshot). A dispatched focus event —
+      // even one deferred a frame, which is what shipped until 2026-08-02 —
+      // races the hub mount and lands on the default tab. Intent travels as
+      // the `focusTab` prop handoff instead. Verified in a browser on the QA
+      // org, which is the only way this was ever going to be caught.
       assert.doesNotMatch(
         openPairing,
         /requestAnimationFrame|dispatchReceivingOpenPairingPo/,
-        'a timed event cannot outrun a navigation — do not reintroduce the rAF dispatch here',
+        'a timed event cannot outrun the hub mount — do not reintroduce the rAF dispatch here',
       );
     });
 
