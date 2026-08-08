@@ -30,11 +30,11 @@ import { AnimatePresence, motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { useEffect, useRef, type ComponentType, type ReactNode } from 'react';
-import { Check, ChevronRight } from '@/components/Icons';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import type { ProcedureStepRow, ProcedureStepState } from './types';
+import { StepStateBadge } from './StepStateBadge';
+import type { ProcedureStepRow } from './types';
 import { PROCEDURE_STACK_GAP_REM } from './procedure-stack-layout';
 
 /**
@@ -70,24 +70,6 @@ interface ProcedureDeckProps {
    */
   onSelectStep?: (key: string) => void;
   className?: string;
-}
-
-function StepStateMark({ state }: { state: ProcedureStepState }) {
-  if (state === 'done') {
-    return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-blue-600 text-white">
-        <Check className="h-2.5 w-2.5" />
-      </span>
-    );
-  }
-  if (state === 'skipped') {
-    return (
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-surface-strong text-text-soft ring-1 ring-inset ring-border-soft">
-        <ChevronRight className="h-2.5 w-2.5" />
-      </span>
-    );
-  }
-  return null;
 }
 
 export function ProcedureDeck({
@@ -162,7 +144,7 @@ export function ProcedureDeck({
                     {step.summary}
                   </span>
                 ) : null}
-                <StepStateMark state={step.state} />
+                <StepStateBadge state={step.state} variant="status" />
               </span>
             </div>
           );

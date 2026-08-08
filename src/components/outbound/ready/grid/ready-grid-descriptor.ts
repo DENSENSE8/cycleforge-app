@@ -1,7 +1,7 @@
 /**
  * Ready / recently-tested grid surface descriptor — lifts
  * {@link READY_GRID_COLUMNS} into the TanStack defs `LedgerGridSurface` mounts.
- * Row ORDER stays with the house comparator in `ReadyGridView` (state math only).
+ * Row ORDER stays with the house comparator in `ReadyQueueTable` (state math only).
  */
 
 import {

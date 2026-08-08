@@ -6,7 +6,7 @@
  * order details, or deep-link to /repair · /pickup.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
@@ -26,7 +26,40 @@ import {
   type TechAllTriageRow,
   type TechAllTriageScope,
 } from '@/lib/tech/tech-all-triage';
-import { TechAllGridView } from './TechAllGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { RowGroup } from '@/lib/group-rows';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import {
+  defaultDirForTechAllGridSort,
+  isTechAllGridSortable,
+  type TechAllGridColumn,
+  type TechAllGridColumnKey,
+} from '@/lib/tech/tech-all-grid-layout';
+import { TECH_ALL_TABLE_BINDING } from './tech-all-table-definition';
+import { TechAllGridColumnHeader } from './TechAllGridColumnHeader';
+import { TechAllGridRow } from './TechAllGridRow';
+
+function compareTechAllRows(
+  a: TechAllTriageRow,
+  b: TechAllTriageRow,
+  key: TechAllGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  switch (key) {
+    case 'identity':
+      return sign * a.title.localeCompare(b.title);
+    case 'type':
+      return sign * a.typeLabel.localeCompare(b.typeLabel);
+    case 'stage':
+      return sign * a.stage.localeCompare(b.stage);
+    case 'urgency':
+      return sign * (a.urgencyRank - b.urgencyRank);
+    default:
+      return 0;
+  }
+}
 
 interface TechAllTriageTableProps {
   scope: TechAllTriageScope;
@@ -185,15 +218,74 @@ export function TechAllTriageTable({
     [onOpenTestingLine, onOpenUnboxLine, router, scope],
   );
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<TechAllGridColumnKey>({
+    isColumn: isTechAllGridSortable,
+    defaultDir: defaultDirForTechAllGridSort,
+  });
+
+  const [, settleTick] = useState(0);
+  const hasRows = rows.length > 0;
+  useEffect(() => {
+    if (loading || !hasRows) return;
+    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
+    return () => cancelAnimationFrame(raf);
+  }, [loading, hasRows]);
+
+  const orderGroupsByDate = useMemo(() => {
+    const ordered =
+      columnSort && sortDir
+        ? [...rows].sort((a, b) => compareTechAllRows(a, b, columnSort, sortDir))
+        : rows;
+    const groups: RowGroup<TechAllTriageRow>[] = ordered.map((row) => ({ key: row.id, rows: [row] }));
+    return [['', groups]] as [string, RowGroup<TechAllTriageRow>[]][];
+  }, [rows, columnSort, sortDir]);
+
+  const emptyMessage = 'Nothing to triage';
+
   return (
-    <TechAllGridView
+    <NonlinearTableHost<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
+      binding={TECH_ALL_TABLE_BINDING}
+      orderGroupsByDate={orderGroupsByDate}
       rows={rows}
+      getRowId={(r) => r.id}
+      sort={columnSort}
+      dir={sortDir}
+      onSortChange={setSort}
       loading={loading}
-      emptyMessage="Nothing to triage"
+      emptyMessage={emptyMessage}
+      emptyState={
+        <div className="flex min-h-[240px] flex-col items-center justify-center gap-1 px-4 py-10 text-center">
+          <p className="text-role-body font-medium text-text-default">{emptyMessage}</p>
+          <p className="text-role-caption text-text-soft">
+            All — prioritize across types. Queues are clear for this scope.
+          </p>
+        </div>
+      }
       searchEmptyMessage="No matches for this search"
       isSearching={Boolean(searchQuery.trim())}
-      onOpen={onOpen}
-      columnTriggerPortalTarget={columnTriggerPortalTarget}
+      scrollRef={scrollRef}
+      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
+      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+        <TechAllGridColumnHeader
+          columns={visible}
+          activeSort={columnSort}
+          sortDir={sortDir}
+          onSortColumn={toggleColumnSort}
+          onResizeColumn={onResizeColumn}
+          onResetColumn={onResetColumn}
+        />
+      )}
+      renderGroup={(group, _stripe, { columns: visible }) => (
+        <TechAllGridRow key={group.rows[0].id} row={group.rows[0]} onOpen={onOpen} columns={visible} />
+      )}
+      renderRow={(row, _stripe, { columns: visible }) => (
+        <TechAllGridRow row={row} onOpen={onOpen} columns={visible} />
+      )}
     />
   );
 }

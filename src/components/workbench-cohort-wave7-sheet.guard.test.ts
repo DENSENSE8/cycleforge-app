@@ -78,7 +78,7 @@ function assertNoGutters(src: string) {
 // Grid surfaces — full flush Sheets stack. `triageFiles` are where the
 // WorkbenchTriageBand actually mounts (view or its split header). `gridView`
 // is the inner adapter that must pin `surface="sheet"` (never the framed CLIP
-// default). FBA's Ledger grid is ReadyGridView — guarded in
+// default). FBA's Ledger grid is ReadyQueueTable — guarded in
 // ready-workspace-sheet.guard.test.ts (its board/shipped tables are non-Ledger).
 const GRID_SURFACES: {
   label: string;
@@ -92,21 +92,22 @@ const GRID_SURFACES: {
     label: 'Pickup',
     view: 'src/components/receiving/pickup/PickupWorkspace.tsx',
     triageFiles: ['src/components/receiving/pickup/PickupWorkspace.tsx'],
-    gridView: 'src/components/receiving/pickup/grid/PickupGridView.tsx',
+    gridView: 'src/components/receiving/pickup/PickupWorkspace.tsx',
     definition: PICKUP_TABLE_DEFINITION,
   },
   {
     label: 'Repair',
     view: 'src/components/repair/RepairTable.tsx',
     triageFiles: ['src/components/repair/RepairWorkspaceHeader.tsx'],
-    gridView: 'src/components/repair/repair-grid/RepairGridView.tsx',
+    gridView: 'src/components/repair/RepairTable.tsx',
     definition: REPAIR_TABLE_DEFINITION,
   },
   {
     label: 'Catalog',
     view: 'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
     triageFiles: ['src/components/products/catalog/ProductsCatalogWorkspace.tsx'],
-    gridView: 'src/components/products/catalog/catalog-grid/CatalogGridView.tsx',
+    // The catalog grid mount now lives in the workspace (no wrapper file).
+    gridView: 'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
     definition: CATALOG_TABLE_DEFINITION,
   },
   {
@@ -123,17 +124,18 @@ const GRID_SURFACES: {
 const RESIDUAL_GRID_PINS: { label: string; gridView: string; definition?: TableDefinition }[] = [
   {
     label: 'Warranty',
-    gridView: 'src/components/warranty/grid/WarrantyGridView.tsx',
+    // Grid mount now lives in the claims table (no wrapper file).
+    gridView: 'src/components/warranty/WarrantyClaimsTable.tsx',
     definition: WARRANTY_TABLE_DEFINITION,
   },
   {
     label: 'Unfound',
-    gridView: 'src/components/receiving/unfound/grid/UnfoundGridView.tsx',
+    gridView: 'src/components/receiving/unfound/UnfoundQueueTable.tsx',
     definition: UNFOUND_TABLE_DEFINITION,
   },
   {
     label: 'Tracking exceptions',
-    gridView: 'src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx',
+    gridView: 'src/components/tracking-exceptions/TrackingExceptionsTable.tsx',
     definition: TRACKING_EXCEPTIONS_TABLE_DEFINITION,
   },
 ];

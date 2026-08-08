@@ -6,8 +6,8 @@
  *
  * Read-only browse (`selectMode: 'never'`); the empty `select` gutter keeps the
  * frozen listing cell aligned with every other house grid. Columns arrive
- * already visibility-resolved from {@link ReviewCatalogLinkGridView}, so the
- * header, the rows and the CSS template all consume the same list.
+ * already visibility-resolved by the grid mount, so the header, the rows and
+ * the CSS template all consume the same list.
  */
 
 import {

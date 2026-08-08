@@ -13,7 +13,7 @@
  *   - useReceivingTableNavigation . arrow/chevron + detail-overlay nav
  *   - useReceivingDeepLink ........ ?recvId/?lineId auto-select
  *   - useReceivingAutoWeek ........ History empty-week back-jump
- *   - IncomingGridView ............ Incoming POS → LedgerGrid spreadsheet
+ *   - Incoming POS (inline) → LedgerGrid spreadsheet
  *   - ReceivingGridView ........... Unbox / History → LedgerGrid spreadsheet
  *
  * Types + dispatchers live in leaf modules — import those, never this file,
@@ -40,7 +40,20 @@ import {
   WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
-import { incomingGridColumnsFor } from '@/lib/receiving/incoming-grid-layout';
+import {
+  incomingGridColumnsFor,
+  defaultDirForIncomingGridSort,
+  isIncomingGridSortable,
+  type IncomingGridColumn,
+  type IncomingGridColumnKey,
+} from '@/lib/receiving/incoming-grid-layout';
+import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
+import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
+import { IncomingGridColumnHeader } from '@/components/station/incoming-grid/IncomingGridColumnHeader';
+import { IncomingGridGroupRow } from '@/components/station/incoming-grid/IncomingGridGroupRow';
 import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
@@ -62,7 +75,6 @@ import { useReceivingTableNavigation } from '@/components/station/useReceivingTa
 import { useReceivingDeepLink } from '@/components/station/useReceivingDeepLink';
 import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
-import { IncomingGridView } from '@/components/station/incoming-grid/IncomingGridView';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import { ReceivingDrillHost } from '@/components/station/receiving-grid/ReceivingDrillHost';
@@ -85,6 +97,7 @@ import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-t
 import {
   dispatchSelectLine,
   poGroupAnchorMs,
+  RECEIVING_SELECTION_SCOPE,
 } from '@/components/station/receiving-lines-table-helpers';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -472,6 +485,54 @@ export default function ReceivingLinesTable({
   // keep showing them; a background refetch error must not blank the grid.
   const incomingDegraded = isIncomingMode && isError && localRows.length === 0;
 
+  // Incoming grid adapter (was `IncomingGridView`): the table mounts the
+  // registry host directly for the Incoming POS spreadsheet. Column sort is
+  // DURABLE on `?colsort=`/`?coldir=` — deliberately NOT `?sort=` (that param is
+  // the Incoming SERVER ORDER BY vocabulary). `isIncomingGridSortable` resolves
+  // a receiving/history column key to null, so this always-live hook never acts
+  // on the other family's sort while its grid is off screen.
+  const {
+    sort: incomingColumnSort,
+    dir: incomingSortDir,
+    setSort: setIncomingSort,
+  } = useUrlColumnSort<IncomingGridColumnKey>({
+    isColumn: isIncomingGridSortable,
+    defaultDir: defaultDirForIncomingGridSort,
+  });
+  const incomingFoldKey = (row: ReceivingLineRow): string => {
+    const po = (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || '').trim();
+    return po || `line:${row.id}`;
+  };
+  const { incomingGroups, incomingFlatRows } = useMemo(() => {
+    const flat = Object.values(filteredGroupedRecords).flatMap((day) =>
+      day.flatMap((g) => g.rows),
+    );
+    // Column sort: one flat global order (single synthetic band — LedgerGrid has
+    // no day headers). Otherwise day-band the PO groups.
+    if (incomingColumnSort && incomingSortDir) {
+      const sorted = [...flat].sort((a, b) =>
+        compareIncomingGridRows(a, b, incomingColumnSort, incomingSortDir),
+      );
+      return {
+        incomingGroups: [['', groupRowsBy(sorted, incomingFoldKey)]] as [
+          string,
+          RowGroup<ReceivingLineRow>[],
+        ][],
+        incomingFlatRows: sorted,
+      };
+    }
+    const banded: [string, RowGroup<ReceivingLineRow>[]][] = Object.entries(filteredGroupedRecords)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, dayGroups]) => {
+        const sorted = mode.serverSorted
+          ? dayGroups
+          : [...dayGroups].sort((a, b) => poGroupAnchorMs(b) - poGroupAnchorMs(a));
+        return [date, sorted];
+      });
+    return { incomingGroups: banded, incomingFlatRows: flat };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir]);
+
   // Pipeline (board) layout for Incoming / History (behind the boards flag). The
   // board buckets the flat rows by the receiving lane SoT and day-bands per lane;
   // it replaces the header + dense list (SwimlaneBoard supplies its own toolbar).
@@ -547,7 +608,7 @@ export default function ReceivingLinesTable({
   }
 
   // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridView (same
-  // family as IncomingGridView). Date is a per-row column; no sticky day bands.
+  // family as the Incoming grid). Date is a per-row column; no sticky day bands.
   // History default is the folded list; Drill (`?hlayout=drill`) mounts linked
   // dual panes via ReceivingDrillHost.
   const weekCount = getWeekCount();
@@ -647,10 +708,10 @@ export default function ReceivingLinesTable({
 
   // Unbox workbench embeds the table under UnboxWorkspaceHeader — week pill
   // (History only) portals into the top tabs bar controls slot.
-  // Pinned Inbound (`?unboxview=incoming`): IncomingGridView on its OWN
+  // Pinned Inbound (`?unboxview=incoming`): Incoming spreadsheet on its OWN
   // `tableId="incoming_embed"` prefs bucket — hiding a heavy column here never
   // touches the full `/incoming` desk density (Gemini D13). Triage/read only:
-  // it mounts the grid directly, never the Incoming desk header — so no
+  // it mounts the host directly, never the Incoming desk header — so no
   // Check/Import/Add CTA cluster on this tab (Unbox owns Band 1).
   if (embedded) {
     if (isIncomingMode) {
@@ -661,26 +722,66 @@ export default function ReceivingLinesTable({
               <GridDegradedBox onRetry={refetch} />
             </div>
           ) : (
-            <IncomingGridView
+            <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+              binding={INCOMING_TABLE_BINDING}
               tableId="incoming_embed"
-              columnTriggerPortalTarget={columnDisplayPortalTarget}
-              filteredGroupedRecords={filteredGroupedRecords}
-              serverSorted={mode.serverSorted}
-              loading={isLoading && localRows.length === 0}
-              emptyMessage={emptyMessage}
-              isMobile={isMobile}
-              selectMode={selectMode}
-              selectedId={selectedId}
-              selectedIds={selectedIds}
-              handleSelectRow={handleSelectRow}
-              handleToggleRow={handleToggleRow}
-              selectGutterChrome={selectGutterChrome}
-              clickSelect={incomingClickSelect}
               columns={incomingGridColumnsFor({
                 trackingFiltered: modeContext.trackingIn.length > 0,
                 removedLane: mode.id === 'incoming_removed',
               })}
+              orderGroupsByDate={incomingGroups}
+              rows={incomingFlatRows}
+              sort={incomingColumnSort}
+              dir={incomingSortDir}
+              onSortChange={setIncomingSort}
+              loading={isLoading && localRows.length === 0}
+              emptyMessage={emptyMessage}
               scrollRef={scrollRef}
+              columnTriggerPortalTarget={columnDisplayPortalTarget}
+              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+                <IncomingGridColumnHeader
+                  isMobile={isMobile}
+                  selectMode={selectMode}
+                  selectionScope={RECEIVING_SELECTION_SCOPE}
+                  selectGutterChrome={selectGutterChrome}
+                  columns={visible}
+                  activeSort={incomingColumnSort}
+                  sortDir={incomingSortDir}
+                  onSortColumn={toggleColumnSort}
+                  onResizeColumn={onResizeColumn}
+                  onResetColumn={onResetColumn}
+                />
+              )}
+              renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+                <IncomingGridGroupRow
+                  group={group}
+                  baseStripeIndex={baseStripeIndex}
+                  isMobile={isMobile}
+                  selectMode={selectMode}
+                  selectedId={selectedId}
+                  selectedIds={selectedIds}
+                  handleSelectRow={handleSelectRow}
+                  handleToggleRow={handleToggleRow}
+                  clickSelect={incomingClickSelect}
+                  selectGutterChrome={selectGutterChrome}
+                  columns={visible}
+                />
+              )}
+              renderRow={(row, stripeIndex, { columns: visible }) => (
+                <IncomingGridGroupRow
+                  group={{ key: `k:${row.id}`, rows: [row] }}
+                  baseStripeIndex={stripeIndex}
+                  isMobile={isMobile}
+                  selectMode={selectMode}
+                  selectedId={selectedId}
+                  selectedIds={selectedIds}
+                  handleSelectRow={handleSelectRow}
+                  handleToggleRow={handleToggleRow}
+                  clickSelect={incomingClickSelect}
+                  selectGutterChrome={selectGutterChrome}
+                  columns={visible}
+                />
+              )}
             />
           )}
         </TableColumnConfigProvider>
@@ -736,25 +837,65 @@ export default function ReceivingLinesTable({
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
-              <IncomingGridView
-                columnTriggerPortalTarget={incomingControlsEl}
-                filteredGroupedRecords={filteredGroupedRecords}
-                serverSorted={mode.serverSorted}
-                loading={isLoading && localRows.length === 0}
-                emptyMessage={emptyMessage}
-                isMobile={isMobile}
-                selectMode={selectMode}
-                selectedId={selectedId}
-                selectedIds={selectedIds}
-                handleSelectRow={handleSelectRow}
-                handleToggleRow={handleToggleRow}
-                selectGutterChrome={selectGutterChrome}
-                clickSelect={incomingClickSelect}
+              <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+                binding={INCOMING_TABLE_BINDING}
                 columns={incomingGridColumnsFor({
                   trackingFiltered: modeContext.trackingIn.length > 0,
                   removedLane: mode.id === 'incoming_removed',
                 })}
+                orderGroupsByDate={incomingGroups}
+                rows={incomingFlatRows}
+                sort={incomingColumnSort}
+                dir={incomingSortDir}
+                onSortChange={setIncomingSort}
+                loading={isLoading && localRows.length === 0}
+                emptyMessage={emptyMessage}
                 scrollRef={scrollRef}
+                columnTriggerPortalTarget={incomingControlsEl}
+                renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+                  <IncomingGridColumnHeader
+                    isMobile={isMobile}
+                    selectMode={selectMode}
+                    selectionScope={RECEIVING_SELECTION_SCOPE}
+                    selectGutterChrome={selectGutterChrome}
+                    columns={visible}
+                    activeSort={incomingColumnSort}
+                    sortDir={incomingSortDir}
+                    onSortColumn={toggleColumnSort}
+                    onResizeColumn={onResizeColumn}
+                    onResetColumn={onResetColumn}
+                  />
+                )}
+                renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+                  <IncomingGridGroupRow
+                    group={group}
+                    baseStripeIndex={baseStripeIndex}
+                    isMobile={isMobile}
+                    selectMode={selectMode}
+                    selectedId={selectedId}
+                    selectedIds={selectedIds}
+                    handleSelectRow={handleSelectRow}
+                    handleToggleRow={handleToggleRow}
+                    clickSelect={incomingClickSelect}
+                    selectGutterChrome={selectGutterChrome}
+                    columns={visible}
+                  />
+                )}
+                renderRow={(row, stripeIndex, { columns: visible }) => (
+                  <IncomingGridGroupRow
+                    group={{ key: `k:${row.id}`, rows: [row] }}
+                    baseStripeIndex={stripeIndex}
+                    isMobile={isMobile}
+                    selectMode={selectMode}
+                    selectedId={selectedId}
+                    selectedIds={selectedIds}
+                    handleSelectRow={handleSelectRow}
+                    handleToggleRow={handleToggleRow}
+                    clickSelect={incomingClickSelect}
+                    selectGutterChrome={selectGutterChrome}
+                    columns={visible}
+                  />
+                )}
               />
               )}
             </div>

@@ -2,7 +2,7 @@
  * Local Pickup grid surface descriptor — lifts the house
  * {@link PICKUP_GRID_COLUMNS} SoT into the TanStack defs `LedgerGridSurface`
  * mounts. Sorting stays inside the pickup sort vocabulary; row ORDER stays with
- * the house comparator in {@link PickupGridView} (state math only — grouping is
+ * the house comparator in `PickupWorkspace` (state math only — grouping is
  * house `group-rows`, not TanStack).
  */
 
@@ -49,7 +49,7 @@ export function makePickupGridDescriptor(
 }
 
 // No pre-built canonical descriptor: the column set is now resolved per staffer
-// by `useGridColumnVisibility`, so `PickupGridView` always builds from the
+// by `useGridColumnVisibility`, so the pickup grid mount always builds from the
 // RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
 // honest when a track is hidden). A module-level constant built from the full
 // column list would have been wrong for every staffer with a delta.

@@ -5,8 +5,9 @@
  * Workbench chrome ({@link DashboardScrollShell} pinned band +
  * {@link WorkbenchChromeHeader} status tabs + scoped {@link TechRailSearchBar}
  * + {@link WorkbenchTrailingCluster} New Local Pickup CTA) over
- * {@link PickupGridView} — the pickup-native {@link LedgerGridSurface}
- * adapter, products condensed under their LCPU order number (one-to-many fold).
+ * the pickup-native {@link LedgerGridSurface} adapter (mounted via
+ * {@link NonlinearTableHost}), products condensed under their LCPU order number
+ * (one-to-many fold).
  *
  * Data is the LCPU pickup dataset (`usePickupLines`), NOT the receiving-lines
  * pipeline — LCPU orders are a distinct entity (draft pickup orders in
@@ -14,7 +15,7 @@
  * any receiving edit/serial/receive side-effects.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
@@ -49,7 +50,54 @@ import {
   type PickupLine,
   type PickupStatusTab,
 } from './pickup-lines';
-import { PickupGridView } from './grid/PickupGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
+import { PICKUP_TABLE_BINDING } from './grid/pickup-table-definition';
+import { PickupGridColumnHeader } from './grid/PickupGridColumnHeader';
+import { PickupGridGroupRow } from './grid/PickupGridGroupRow';
+import {
+  defaultDirForPickupGridSort,
+  isPickupGridSortable,
+  type PickupGridColumn,
+  type PickupGridColumnKey,
+} from './grid/pickup-grid-layout';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+
+/** Group flat pickup lines under their LCPU order (the one-to-many fold key). */
+function pickupFoldKey(line: PickupLine): string {
+  const po = (line.po_number || '').trim();
+  return po || `order:${line.order_id}`;
+}
+
+function comparePickupRows(
+  a: PickupLine,
+  b: PickupLine,
+  key: PickupGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  switch (key) {
+    case 'title':
+      return sign * a.product_title.localeCompare(b.product_title);
+    case 'sku':
+      return sign * (a.sku || '').localeCompare(b.sku || '');
+    case 'order':
+      return sign * (a.po_number || '').localeCompare(b.po_number || '');
+    case 'date':
+      return sign * (a.pickup_date || '').localeCompare(b.pickup_date || '');
+    case 'qty':
+      return sign * (a.quantity - b.quantity);
+    case 'condition':
+      return sign * (a.condition_grade || '').localeCompare(b.condition_grade || '');
+    case 'price':
+      return sign * ((Number(a.total_price) || 0) - (Number(b.total_price) || 0));
+    case 'status':
+      return sign * (a.order_status || '').localeCompare(b.order_status || '');
+    default:
+      return 0;
+  }
+}
 
 function rowMatchesQuery(line: PickupLine, q: string): boolean {
   if (!q) return true;
@@ -186,6 +234,39 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
       : 'No local pickup orders yet.';
   const searchEmptyMessage = 'No local pickup items match this search.';
 
+  // Grid adapter (was `PickupGridView`): the workspace mounts the registry host
+  // directly, products condensed under their LCPU order number (one-to-many
+  // fold). Column sort is DURABLE on `?colsort=`/`?coldir=`.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<PickupGridColumnKey>({
+    isColumn: isPickupGridSortable,
+    defaultDir: defaultDirForPickupGridSort,
+  });
+
+  // One-shot "settle" re-render after the grid first has data — the virtualized
+  // LedgerGrid mounts its scroll element in the same commit the data arrives,
+  // and its re-measure can miss on first paint when nothing else re-renders this
+  // subtree, leaving the body blank until the first interaction.
+  const [, settleTick] = useState(0);
+  const hasRows = visibleRows.length > 0;
+  useEffect(() => {
+    if (isLoading || !hasRows) return;
+    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
+    return () => cancelAnimationFrame(raf);
+  }, [isLoading, hasRows]);
+
+  const orderGroupsByDate = useMemo<[string, RowGroup<PickupLine>[]][]>(() => {
+    const ordered =
+      columnSort && sortDir
+        ? [...visibleRows].sort((a, b) => comparePickupRows(a, b, columnSort, sortDir))
+        : visibleRows;
+    return [['', groupRowsBy(ordered, pickupFoldKey)]];
+  }, [visibleRows, columnSort, sortDir]);
+
   return (
     <>
       <DashboardScrollShell
@@ -222,15 +303,48 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
         }
       >
         <div className={WORKBENCH_SHEET_HOST}>
-          <PickupGridView
+          <NonlinearTableHost<PickupLine, PickupGridColumnKey, PickupGridColumn>
+            binding={PICKUP_TABLE_BINDING}
+            orderGroupsByDate={orderGroupsByDate}
             rows={visibleRows}
+            getRowId={(r) => String(r.id)}
+            sort={columnSort}
+            dir={sortDir}
+            onSortChange={setSort}
             loading={isLoading}
             emptyMessage={emptyMessage}
             searchEmptyMessage={searchEmptyMessage}
             isSearching={Boolean(normalizedQuery) && !isError}
-            selectedOrderId={selectedOrderId}
-            onSelectOrder={onSelectOrder}
+            scrollRef={scrollRef}
             columnTriggerPortalTarget={pickupControlsEl}
+            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+              <PickupGridColumnHeader
+                columns={visible}
+                activeSort={columnSort}
+                sortDir={sortDir}
+                onSortColumn={toggleColumnSort}
+                onResizeColumn={onResizeColumn}
+                onResetColumn={onResetColumn}
+              />
+            )}
+            renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+              <PickupGridGroupRow
+                group={group}
+                baseStripeIndex={baseStripeIndex}
+                selectedOrderId={selectedOrderId}
+                onSelectOrder={onSelectOrder}
+                columns={visible}
+              />
+            )}
+            renderRow={(row, stripeIndex, { columns: visible }) => (
+              <PickupGridGroupRow
+                group={{ key: `k:${row.id}`, rows: [row] }}
+                baseStripeIndex={stripeIndex}
+                selectedOrderId={selectedOrderId}
+                onSelectOrder={onSelectOrder}
+                columns={visible}
+              />
+            )}
           />
         </div>
       </DashboardScrollShell>

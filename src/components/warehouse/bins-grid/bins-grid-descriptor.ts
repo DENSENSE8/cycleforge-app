@@ -1,7 +1,7 @@
 /**
  * Warehouse › Bins grid surface descriptor — lifts {@link BINS_GRID_COLUMNS}
  * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER stays with the
- * house comparator in `BinsGridView` (state math only).
+ * house comparator in `BinsTable` (state math only).
  */
 
 import {

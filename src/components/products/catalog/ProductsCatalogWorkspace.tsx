@@ -30,8 +30,13 @@ import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { Button } from '@/design-system/primitives';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { productDetailHref } from '@/components/products/products-view';
-import { CatalogGridView } from '@/components/products/catalog/catalog-grid/CatalogGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
+import { CatalogGridColumnHeader } from '@/components/products/catalog/catalog-grid/CatalogGridColumnHeader';
+import { CatalogGridRow } from '@/components/products/catalog/catalog-grid/CatalogGridRow';
 import { CatalogBulkActionBar } from '@/components/products/catalog/CatalogBulkActionBar';
+import type { RowGroup } from '@/lib/group-rows';
+import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import {
   applyCatalogRefine,
@@ -47,6 +52,7 @@ import {
   compareCatalogGridRows,
   defaultDirForCatalogGridSort,
   isCatalogGridSortable,
+  type CatalogGridColumn,
   type CatalogGridColumnKey,
 } from '@/lib/products/catalog-grid-layout';
 import { CATALOG_SELECTION_SCOPE } from '@/lib/selection/catalog-scopes';
@@ -214,6 +220,43 @@ export function ProductsCatalogWorkspace() {
         ? 'No products in the catalog yet. Refresh inventory to sync.'
         : `No products linked to ${PLATFORM_TABS.find((t) => t.id === platform)?.label ?? platform}.`;
 
+  // Grid adapter (was `CatalogGridView`): one catalog spreadsheet mounts the
+  // registry host directly. `useTableSelectMode` owns the checkbox toggle and
+  // broadcasts on `CATALOG_SELECTION_SCOPE`; the bulk bar above reads the same
+  // scope via `useTableSelection`.
+  const { selectedIds, toggle } = useTableSelectMode<CatalogListRow>({
+    scope: CATALOG_SELECTION_SCOPE,
+    selectMode: true,
+    rows: visibleItems,
+    getId: (r) => r.id,
+  });
+
+  const orderGroupsByDate = useMemo<[string, RowGroup<CatalogListRow>[]][]>(
+    () => [['', visibleItems.map((r) => ({ key: String(r.id), rows: [r] }))]],
+    [visibleItems],
+  );
+
+  const onToggleSelect = useCallback(
+    (r: CatalogListRow, event: { shiftKey: boolean }) => toggle(r.id, event.shiftKey),
+    [toggle],
+  );
+
+  const renderCatalogLeaf = useCallback(
+    (row: CatalogListRow, visible: readonly CatalogGridColumn[]) => (
+      <CatalogGridRow
+        key={row.id}
+        row={row}
+        isSelected={false}
+        isChecked={selectedIds.has(row.id)}
+        inventoryProviderLabel={provider?.label}
+        onOpen={onOpenRow}
+        onToggleSelect={onToggleSelect}
+        columns={visible}
+      />
+    ),
+    [selectedIds, provider?.label, onOpenRow, onToggleSelect],
+  );
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <DashboardScrollShell
@@ -353,18 +396,33 @@ export function ProductsCatalogWorkspace() {
               Loading catalog…
             </div>
           ) : (
-            <CatalogGridView
+            <NonlinearTableHost<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
+              binding={CATALOG_TABLE_BINDING}
+              orderGroupsByDate={orderGroupsByDate}
               rows={visibleItems}
-              loading={loading}
-              emptyMessage={emptyMessage}
-              selectionScope={CATALOG_SELECTION_SCOPE}
-              inventoryProviderLabel={provider?.label}
-              onOpenRow={onOpenRow}
+              getRowId={(r) => String(r.id)}
               sort={sort}
               dir={dir}
               onSortChange={setSort}
-              columnTriggerPortalTarget={catalogControlsEl}
+              loading={loading}
+              emptyMessage={emptyMessage}
               className="min-h-0 flex-1"
+              columnTriggerPortalTarget={catalogControlsEl}
+              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+                <CatalogGridColumnHeader
+                  selectionScope={CATALOG_SELECTION_SCOPE}
+                  columns={visible}
+                  activeSort={sort}
+                  sortDir={dir}
+                  onSortColumn={toggleColumnSort}
+                  onResizeColumn={onResizeColumn}
+                  onResetColumn={onResetColumn}
+                />
+              )}
+              renderGroup={(group, _stripe, { columns: visible }) =>
+                renderCatalogLeaf(group.rows[0], visible)
+              }
+              renderRow={(row, _stripe, { columns: visible }) => renderCatalogLeaf(row, visible)}
             />
           )}
         </div>

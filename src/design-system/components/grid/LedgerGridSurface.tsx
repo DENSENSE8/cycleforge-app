@@ -69,7 +69,7 @@ import { TABLE_SURFACE_CLIP_CLASS, TABLE_SURFACE_SHEET_CLASS } from '@/design-sy
  * force-hide) via {@link renderColumnHeader}. Column order is pinned to the
  * layout SoT. Do **not** half-port that header onto `makeLedgerGridColumnHeader`.
  *
- * Station adopters: Incoming POS (`IncomingGridView`) and Unbox / History /
+ * Station adopters: Incoming POS and Unbox / History /
  * Testing (`ReceivingGridView`). Outbound: Ready + Orders (`OrdersGridView`).
  */
 
