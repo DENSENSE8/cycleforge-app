@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Repair queue host — thin composer for the {@link RepairGridView} spreadsheet.
+ * Repair queue host — mounts the repair-queue spreadsheet (`NonlinearTableHost`
+ * + the repair table definition) directly.
  * Owns fetch, the open (detail-panel) record + keyboard move, the `?openRepair=`
  * deep-link, rail multi-select (History SoT — no bottom capsule), and workbench chrome.
  * Sort is URL-backed (`?sort=`/`?dir=`, {@link useRepairDisplaySort}) so the
@@ -13,7 +14,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { RepairDetailsPanel } from './RepairDetailsPanel';
-import { RepairGridView } from './repair-grid/RepairGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useTableSelectMode } from '@/hooks/useTableSelectMode';
+import type { RowGroup } from '@/lib/group-rows';
+import {
+  type RepairGridColumn,
+  type RepairGridColumnKey,
+} from '@/lib/repair/repair-grid-layout';
+import { REPAIR_TABLE_BINDING } from './repair-grid/repair-table-definition';
+import { RepairGridColumnHeader } from './repair-grid/RepairGridColumnHeader';
+import { RepairGridRow } from './repair-grid/RepairGridRow';
 import { RepairRailShell } from './rail/RepairRailShell';
 import { useRepairsTable } from '@/hooks/useRepairs';
 import { useRepairDisplaySort } from '@/hooks/useRepairDisplaySort';
@@ -135,6 +145,51 @@ export function RepairTable({ filter }: RepairTableProps) {
     }
   }, [selectedIndex, displayRepairs]);
 
+  // Grid adapter (was `RepairGridView`): the host mounts here directly. The
+  // always-on left gutter (airtable) toggles the shared selection scope; the row
+  // body selectOnly + opens the record (one selection channel — History / D3).
+  const selectedId = selectedRepair?.id ?? null;
+  const { selectedIds, toggle, selectOnly } = useTableSelectMode<RSRecord>({
+    scope: REPAIR_SELECTION_SCOPE,
+    selectMode: true,
+    rows: displayRepairs,
+    getId: (r) => r.id,
+  });
+
+  // Flat spreadsheet: one synthetic band, each repair a singleton group (no
+  // PO/day fold). Row order is `displayRepairs` (server order or column sort).
+  const orderGroupsByDate = useMemo<[string, RowGroup<RSRecord>[]][]>(
+    () => [['', displayRepairs.map((r) => ({ key: String(r.id), rows: [r] }))]],
+    [displayRepairs],
+  );
+
+  const onOpenRow = useCallback(
+    (r: RSRecord) => {
+      selectOnly(r.id);
+      handleOpen(r);
+    },
+    [selectOnly, handleOpen],
+  );
+  const onToggleSelect = useCallback(
+    (r: RSRecord, event: { shiftKey: boolean }) => toggle(r.id, event.shiftKey),
+    [toggle],
+  );
+
+  const renderRepairLeaf = useCallback(
+    (repair: RSRecord, visible: readonly RepairGridColumn[]) => (
+      <RepairGridRow
+        key={repair.id}
+        repair={repair}
+        isSelected={selectedId === repair.id}
+        isChecked={selectedIds.has(repair.id)}
+        onOpen={onOpenRow}
+        onToggleSelect={onToggleSelect}
+        columns={visible}
+      />
+    ),
+    [selectedId, selectedIds, onOpenRow, onToggleSelect],
+  );
+
   return (
     <div className="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
       <div className={cn('relative z-header shrink-0 flex flex-col gap-0', WORKBENCH_SHEET_CHROME)}>
@@ -144,19 +199,34 @@ export function RepairTable({ filter }: RepairTableProps) {
       {/* Grid mounts flush in the sheet host — the grid's own sheet surface is
           the single plane (no gutter column, no nested card wrapper). */}
       <div className={WORKBENCH_SHEET_HOST}>
-        <RepairGridView
-          records={displayRepairs}
-          loading={loading}
-          emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-          selectionScope={REPAIR_SELECTION_SCOPE}
-          selectedId={selectedRepair?.id ?? null}
-          onOpenRecord={handleOpen}
+        <NonlinearTableHost<RSRecord, RepairGridColumnKey, RepairGridColumn>
+          binding={REPAIR_TABLE_BINDING}
+          orderGroupsByDate={orderGroupsByDate}
+          rows={displayRepairs}
+          getRowId={(r) => String(r.id)}
           sort={columnSort}
           dir={dir}
           onSortChange={(key, nextDir) => {
             if (isRepairColumnSort(key)) setSort(key, nextDir);
           }}
+          loading={loading}
+          emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
           columnTriggerPortalTarget={repairControlsEl}
+          renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+            <RepairGridColumnHeader
+              selectionScope={REPAIR_SELECTION_SCOPE}
+              columns={visible}
+              activeSort={columnSort}
+              sortDir={dir}
+              onSortColumn={toggleColumnSort}
+              onResizeColumn={onResizeColumn}
+              onResetColumn={onResetColumn}
+            />
+          )}
+          renderGroup={(group, _stripe, { columns: visible }) =>
+            renderRepairLeaf(group.rows[0], visible)
+          }
+          renderRow={(row, _stripe, { columns: visible }) => renderRepairLeaf(row, visible)}
         />
       </div>
 

@@ -298,7 +298,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/station/receiving-grid/ReceivingGridView.tsx': 'receiving',
   'src/components/station/incoming-grid/IncomingGridView.tsx': 'incoming',
   'src/components/products/catalog/ProductsCatalogWorkspace.tsx': 'catalog',
-  'src/components/repair/repair-grid/RepairGridView.tsx': 'repair',
+  'src/components/repair/RepairTable.tsx': 'repair',
   'src/components/receiving/pickup/PickupWorkspace.tsx': 'pickup',
   'src/components/warranty/WarrantyClaimsTable.tsx': 'warranty',
   'src/components/outbound/ready/ReadyQueueTable.tsx': 'ready',
@@ -414,7 +414,6 @@ describe('ledger grid mounts', () => {
  */
 const GRID_VIEW_FOREST: string[] = [
   'src/components/dashboard/orders-queue/OrdersGridView.tsx',
-  'src/components/repair/repair-grid/RepairGridView.tsx',
   'src/components/station/incoming-grid/IncomingGridView.tsx',
   'src/components/station/receiving-grid/ReceivingGridView.tsx',
   'src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx',
