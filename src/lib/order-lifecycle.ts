@@ -52,13 +52,13 @@ export interface OrderLifecycleSignals {
 
 // ─── Shared predicates (one definition, reused by every evaluator) ──────────────
 /** True when the order is flagged out of stock (boolean SoT, legacy text tolerated). */
-export function isOutOfStock(s: OrderLifecycleSignals): boolean {
+function isOutOfStock(s: OrderLifecycleSignals): boolean {
   if (typeof s.isOutOfStock === 'boolean') return s.isOutOfStock;
   if (typeof s.outOfStock === 'boolean') return s.outOfStock;
   return String(s.outOfStock ?? '').trim() !== '';
 }
 /** A label/tracking is attached (shipment_id present). */
-export function hasLabel(s: OrderLifecycleSignals): boolean {
+function hasLabel(s: OrderLifecycleSignals): boolean {
   return s.shipmentId != null && String(s.shipmentId) !== '';
 }
 
@@ -84,7 +84,7 @@ export const UNSHIPPED_LIFECYCLE_RULES: readonly OrderLifecycleRule[] = [
 ];
 
 /** Stage when no rule matches: sold but not yet labeled. */
-export const DEFAULT_LIFECYCLE_STAGE: OrderLifecycleStage = 'AWAITING_LABEL';
+const DEFAULT_LIFECYCLE_STAGE: OrderLifecycleStage = 'AWAITING_LABEL';
 
 /** Resolve the full pre‑dock pipeline stage from the canonical signals. */
 export function resolveOrderLifecycleStage(signals: OrderLifecycleSignals): OrderLifecycleStage {
@@ -184,7 +184,7 @@ export const SHIPMENT_STATUS_CATEGORIES = [
  * Single SoT for "is the carrier holding it" — the one vocabulary every
  * custody/shipped predicate reads.
  */
-export const CUSTODY_CATEGORIES: ReadonlySet<string> = new Set([
+const CUSTODY_CATEGORIES: ReadonlySet<string> = new Set([
   'ACCEPTED',
   'IN_TRANSIT',
   'OUT_FOR_DELIVERY',

@@ -18,20 +18,11 @@
 
 export { StationWorkbench } from './StationWorkbench';
 export { StationPanelRoot } from './StationPanelRoot';
-export {
-  SectionTabsRightTrack,
-  SectionTabsRightPill,
-} from './SectionTabsRightSlot';
-export { buildSectionTabs, type SectionTabDef } from './build-section-tabs';
+export { buildSectionTabs } from './build-section-tabs';
 export {
   WorkspaceTimelineTab,
   type WorkspaceTimelineAnchor,
 } from './WorkspaceTimelineTab';
-export { StationUnitJourneys } from './StationUnitJourneys';
-export {
-  mergeStationUnitJourneys,
-  type SerialJourneyBucket,
-} from './merge-station-unit-journeys';
 export {
   STATION_WORKBENCH_COLUMN,
   // Body pad is intentionally empty (flush to rails). Export kept so surfaces
@@ -39,12 +30,12 @@ export {
   // SoT instead of reintroducing `px-4 sm:px-6` literals.
   STATION_WORKBENCH_BODY_PAD_X,
   STATION_WORKBENCH_IDENTITY_COLUMN,
-  STATION_WORKBENCH_HEADER_COLUMN,
   STATION_WORKBENCH_BODY_COLUMN,
-  STATION_WORKBENCH_BODY_DOCKED,
 } from './workbench-layout';
 export { StationScanPaneHost } from './StationScanPaneHost';
 export { ScanStationCartonCursor } from './ScanStationCartonCursor';
+// Station Displays SoT lives at `@/components/station/displays` — import
+// push stack / index rows from there (not re-exported here).
 // ScanStationUtilityRail + STATION_UTILITY_RAIL_CLASS are internal to
 // StationScanPaneHost — import the host, not the rail. Guards read the
 // defining modules directly.
