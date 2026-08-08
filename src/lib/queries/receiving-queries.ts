@@ -31,7 +31,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  * New receiving feeds should key under one of these roots so this helper keeps
  * covering them with no extra wiring.
  */
-export const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
+const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
   ['receiving-lines-table'],
   ['receiving'],
   ['incoming-delivered-unscanned'],
@@ -88,20 +88,13 @@ export const TESTING_RAIL_SEGMENT = 'tested' as const;
  */
 export const UNBOX_QUEUE_SEGMENT = 'unbox-queue' as const;
 
-/** Unbox sidebar rail segments (all Unbox-mode caches). */
-export const UNBOX_RAIL_SEGMENTS = new Set([
-  UNBOX_RAIL_SEGMENT,
-  UNBOX_QUEUE_SEGMENT,
-  'viewed',
-]);
-
 /** Unbox-surface rails only — excludes Queue (triage bridge). */
 const UNBOX_SURFACE_SEGMENTS = new Set([UNBOX_RAIL_SEGMENT, 'viewed']);
 
 /** Triage sidebar rail segments — never refresh from an Unbox-surface scan. */
 export const TRIAGE_RAIL_SEGMENTS = new Set(['scanned', 'triage-combined', 'unfound']);
 
-export type ReceivingIntakeSurface = 'triage' | 'unbox';
+type ReceivingIntakeSurface = 'triage' | 'unbox';
 
 export interface ReceivingRailRow {
   id: number;
@@ -112,7 +105,7 @@ export interface ReceivingRailRow {
 }
 
 /** Scoped target for `receiving-lines-prepended` — prevents cross-mode rail bleed. */
-export interface ReceivingLinesPrependedDetail {
+interface ReceivingLinesPrependedDetail {
   segments: string[];
   /** When set, only rails whose query key carries this scope accept the prepend. */
   scope?: string;
@@ -194,16 +187,11 @@ export function dispatchReceivingTriageRefresh(): void {
   window.dispatchEvent(new CustomEvent('receiving-triage-refresh'));
 }
 
-/** Unbox-only refresh — Triage rails must not listen. */
-export function dispatchReceivingUnboxRefresh(): void {
-  window.dispatchEvent(new CustomEvent('receiving-unbox-refresh'));
-}
-
 /**
  * Invalidate Unbox-surface rails + History — use after Unbox-surface scans.
  * Does NOT touch the Unbox Queue (triage found-PO bridge).
  */
-export function invalidateUnboxReceivingFeeds(queryClient: QueryClient): void {
+function invalidateUnboxReceivingFeeds(queryClient: QueryClient): void {
   lastLocalReceivingInvalidationAt = Date.now();
   void queryClient.invalidateQueries({
     predicate: (q) => isUnboxReceivingQueryKey(q.queryKey),
@@ -211,7 +199,7 @@ export function invalidateUnboxReceivingFeeds(queryClient: QueryClient): void {
 }
 
 /** Invalidate only the Unbox Queue (triage found-PO bridge). */
-export function invalidateUnboxQueueFeeds(queryClient: QueryClient): void {
+function invalidateUnboxQueueFeeds(queryClient: QueryClient): void {
   lastLocalReceivingInvalidationAt = Date.now();
   void queryClient.invalidateQueries({
     predicate: (q) => isUnboxQueueQueryKey(q.queryKey),
@@ -222,27 +210,18 @@ export function invalidateUnboxQueueFeeds(queryClient: QueryClient): void {
  * After a triage found-PO scan: refresh triage rails AND the Unbox Queue mirror.
  * This is the only deliberate cross-mode invalidation.
  */
-export function invalidateTriageAndUnboxQueueFeeds(queryClient: QueryClient): void {
+function invalidateTriageAndUnboxQueueFeeds(queryClient: QueryClient): void {
   invalidateTriageReceivingFeeds(queryClient);
   invalidateUnboxQueueFeeds(queryClient);
 }
 
 /** Invalidate triage rails + the triage unfound queue cache root. */
-export function invalidateTriageReceivingFeeds(queryClient: QueryClient): void {
+function invalidateTriageReceivingFeeds(queryClient: QueryClient): void {
   lastLocalReceivingInvalidationAt = Date.now();
   void queryClient.invalidateQueries({
     predicate: (q) => isTriageReceivingQueryKey(q.queryKey),
   });
   void queryClient.invalidateQueries({ queryKey: ['receiving'] });
-}
-
-export function deferInvalidateUnboxReceivingFeeds(queryClient: QueryClient): void {
-  const run = () => invalidateUnboxReceivingFeeds(queryClient);
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    window.requestIdleCallback(run, { timeout: 2_000 });
-  } else {
-    setTimeout(run, 16);
-  }
 }
 
 export function deferInvalidateTriageReceivingFeeds(queryClient: QueryClient): void {

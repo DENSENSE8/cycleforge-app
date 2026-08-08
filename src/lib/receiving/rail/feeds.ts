@@ -25,7 +25,7 @@
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
-import { stampCartonRailTitleContext, stampPoRailTitleContext } from '@/lib/receiving/po-group-title';
+import { stampCartonRailTitleContext } from '@/lib/receiving/po-group-title';
 import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
 import { receivingRailCartonKey } from '@/lib/queries/receiving-queries';
 import { getViewedAt, type RailStatusId } from './status';
@@ -42,10 +42,10 @@ import {
 } from './done-stub';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 /** Unbox sidebar "Unboxed" rail — most recent cartons opened on the Unbox surface. */
-export const UNBOX_SIDEBAR_LIMIT = 50;
+const UNBOX_SIDEBAR_LIMIT = 50;
 
-export type ReceivingLinesView = 'activity' | 'scanned' | 'viewed' | 'unbox_opened';
-export type ReceivingLinesSort = 'unboxed_newest' | 'priority';
+type ReceivingLinesView = 'activity' | 'scanned' | 'viewed' | 'unbox_opened';
+type ReceivingLinesSort = 'unboxed_newest' | 'priority';
 
 /** Runtime inputs the rail supplies to a fetcher (URL-derived). */
 export interface RailFetchRuntime {
@@ -65,7 +65,7 @@ interface ReceivingLinesQuery {
 }
 
 /** A declarative rail feed. `buildFetcher` (multi-source) takes precedence over `view`. */
-export interface ReceivingRailFeed {
+interface ReceivingRailFeed {
   /** Cache segment → ['receiving-lines-table','rail',segment,…]. */
   segment: string;
   eyebrowTitle: string;
@@ -139,7 +139,7 @@ const RECEIVING_RAIL_DOMAINS = ['receiving.lines'] as const satisfies readonly R
 const notUnmatched = (r: ReceivingLineRow) => r.receiving_source !== 'unmatched';
 
 /** Search match for a real receiving line (tracking / sku / item / PO). */
-export function matchesReceivingLine(row: ReceivingLineRow, q: string): boolean {
+function matchesReceivingLine(row: ReceivingLineRow, q: string): boolean {
   if (!q) return true;
   const hay = [
     row.tracking_number,
@@ -184,18 +184,6 @@ export async function fetchReceivingLines(
   return { success: true, receiving_lines: rows, total: rows.length };
 }
 
-/** Apply PO-level adaptive title context after a standard lines fetch. */
-export function fetchReceivingLinesWithPoTitleContext(
-  spec: ReceivingLinesQuery,
-  rt: RailFetchRuntime,
-  opts?: { limit?: number; includeSerials?: boolean },
-): Promise<ApiResponse> {
-  return fetchReceivingLines(spec, rt, opts).then((data) => ({
-    ...data,
-    receiving_lines: stampPoRailTitleContext(data.receiving_lines ?? []),
-  }));
-}
-
 // Triage "Prioritize" — door-scanned matched cartons, priority-sorted.
 const SCANNED_SOURCE: ReceivingLinesQuery = {
   segment: 'scanned',
@@ -207,7 +195,7 @@ const SCANNED_SOURCE: ReceivingLinesQuery = {
 // Unbox "Queue" — triage door-scanned matched POs (isolated cache segment `unbox-queue`).
 
 /** Scanned subset rows (reused by triage Prioritize + combined feed). */
-export async function fetchScannedRows(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
+async function fetchScannedRows(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
   return (await fetchReceivingLines(SCANNED_SOURCE, rt)).receiving_lines;
 }
 
@@ -219,11 +207,6 @@ const ACTIVITY_SOURCE: ReceivingLinesQuery = {
   view: 'activity',
   sort: 'unboxed_newest',
 };
-
-/** Recently-unboxed rows (reused by the Received feed). */
-export async function fetchActivityRows(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
-  return (await fetchReceivingLines(ACTIVITY_SOURCE, rt)).receiving_lines;
-}
 
 // Unbox sidebar — cartons scanned on the Unbox surface (ops UNBOX_SCAN_OPENED).
 const UNBOX_OPENED_SOURCE: ReceivingLinesQuery = {
@@ -259,7 +242,7 @@ function triageDoorScanAt(row: ReceivingLineRow): string | null {
 }
 
 /** Unfound-queue rows mapped to stub lines (reused by the unfound + combined feeds). */
-export async function fetchUnfoundStubs(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
+async function fetchUnfoundStubs(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
   const res = await fetch(
     '/api/receiving/unfound-queue?kind=unmatched_receiving&checked=false&limit=200&exclude_unbox_intake=true',
     { cache: 'no-store' },
@@ -278,7 +261,7 @@ export async function fetchUnfoundStubs(rt: RailFetchRuntime): Promise<Receiving
  * Reuses the EXACT same two subset fetchers (never a divergent third query), and
  * degrades: a failing source resolves empty so the other still lists.
  */
-export function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
   return async () => {
     const [scanned, unfound] = await Promise.all([
       fetchScannedRows(rt).catch(() => [] as ReceivingLineRow[]),
@@ -325,7 +308,7 @@ export function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<
  * Unbox "Unboxed" feed — every carton scanned on the Unbox surface (found or
  * unfound). Order is SQL first-open only — do not client-re-sort.
  */
-export function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
   return async () => {
     const opened = await fetchReceivingLines(UNBOX_OPENED_SOURCE, rt, {
       limit: UNBOX_SIDEBAR_LIMIT,
@@ -368,7 +351,7 @@ export function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<A
 }
 
 /** Unfound feed — unmatched cartons (no PO yet) as stub lines. */
-export function buildUnfoundFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+function buildUnfoundFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
   return async () => {
     const rows = await fetchUnfoundStubs(rt);
     return { success: true, receiving_lines: rows, total: rows.length };
@@ -376,7 +359,7 @@ export function buildUnfoundFetcher(rt: RailFetchRuntime): () => Promise<ApiResp
 }
 
 /** Done-tab rows (`receiving.triage_complete = true`) mapped to stub lines. */
-export async function fetchDoneStubs(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
+async function fetchDoneStubs(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
   const params = new URLSearchParams({ limit: '200' });
   if (rt.query) params.set('q', rt.query);
   const res = await fetch(`/api/receiving/triage/done?${params.toString()}`, { cache: 'no-store' });
@@ -387,7 +370,7 @@ export async function fetchDoneStubs(rt: RailFetchRuntime): Promise<ReceivingLin
 }
 
 /** Done feed — cartons staged + saved for unbox, newest-completed first. */
-export function buildDoneFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+function buildDoneFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
   return async () => {
     const rows = await fetchDoneStubs(rt);
     return { success: true, receiving_lines: rows, total: rows.length };
