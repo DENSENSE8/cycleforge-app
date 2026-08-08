@@ -25,59 +25,10 @@ export async function findLocationByName(name: string): Promise<Location | null>
   return rows[0] ?? null;
 }
 
-export async function getLocationById(id: number): Promise<Location | null> {
-  const rows = await db.select().from(locations).where(eq(locations.id, id)).limit(1);
-  return rows[0] ?? null;
-}
-
-export interface ListBinsOptions {
+interface ListBinsOptions {
   room?: string;
   activeOnly?: boolean;
   binType?: string;
   limit?: number;
 }
 
-export async function listBins(opts: ListBinsOptions = {}): Promise<Location[]> {
-  const filters = [];
-  if (opts.activeOnly !== false) filters.push(eq(locations.isActive, true));
-  if (opts.room) filters.push(eq(locations.room, opts.room));
-  if (opts.binType) filters.push(eq(locations.binType, opts.binType));
-  // Bin rows have row_label + col_label; room headers have neither.
-  filters.push(sql`${locations.rowLabel} IS NOT NULL AND ${locations.colLabel} IS NOT NULL`);
-
-  const limit = opts.limit ?? 1000;
-  return db
-    .select()
-    .from(locations)
-    .where(and(...filters))
-    .orderBy(asc(locations.sortOrder), asc(locations.name))
-    .limit(limit);
-}
-
-export async function listBinContentsByLocation(locationId: number): Promise<BinContent[]> {
-  return db
-    .select()
-    .from(binContents)
-    .where(eq(binContents.locationId, locationId))
-    .orderBy(asc(binContents.sku));
-}
-
-export async function listBinContentsBySku(sku: string): Promise<BinContent[]> {
-  return db
-    .select()
-    .from(binContents)
-    .where(eq(binContents.sku, sku))
-    .orderBy(desc(binContents.qty));
-}
-
-/**
- * Sum bin_contents.qty for a SKU across all bins. Useful for spot-checking
- * against sku_stock_ledger sums in v_sku_stock_drift.
- */
-export async function totalBinQtyForSku(sku: string): Promise<number> {
-  const result = await db.execute<{ qty: number }>(sql`
-    SELECT COALESCE(SUM(qty), 0)::int AS qty FROM bin_contents WHERE sku = ${sku}
-  `);
-  const rows = ((result as unknown as { rows?: { qty: number }[] }).rows) ?? (result as unknown as { qty: number }[]);
-  return rows?.[0]?.qty ?? 0;
-}

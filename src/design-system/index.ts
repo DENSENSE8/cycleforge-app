@@ -5,6 +5,5 @@ export * from './primitives';
 export * from './shells';
 export * from './components';
 export * from './hooks';
-export * from './providers';
 export * from './utils';
 export * from './motion';
