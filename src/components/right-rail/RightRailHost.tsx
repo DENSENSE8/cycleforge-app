@@ -123,13 +123,68 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   // is up, Escape dismisses THAT, not the whole inspector underneath it.
   const overlayOpen = useAnyOverlayOpen();
 
-  // Push mode has nothing to lock: it covers nothing.
-  const isPush = inline && frame.mode === 'push';
-  useBodyScrollLock(!!renderable && isModal && !isPush);
-  useEscapeClose(!!renderable?.onClose && !overlayOpen, renderable?.onClose ?? (() => {}));
+  // Collapse state (localStorage) — read BEFORE the push/overlay decision, which
+  // depends on it: a parked-no-strip occupant is treated as overlay so it stays
+  // mounted-but-hidden (the latch below) rather than losing its slot. Band 3
+  // inspector toggle / Cmd+\ write via collapse-control on the same storage key;
+  // sync in-memory state on the same tab (useLocalStorage alone does not see
+  // cross-component writes).
+  const [collapsed, setCollapsed] = useLocalStorage(
+    DETAIL_STACK_COLLAPSE.storageKey,
+    false,
+  );
+  useEffect(() => {
+    const onCollapseChange = (event: Event) => {
+      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
+      if (!detail || typeof detail.collapsed !== 'boolean') return;
+      setCollapsed(detail.collapsed);
+    };
+    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapseChange);
+    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapseChange);
+  }, [setCollapsed]);
 
   // Drag-to-resize + collapse, non-modal occupants only.
   const isResizable = !!renderable && !isModal && !isAssistantDock;
+  // Occupants that opt out of host park (Incoming Unbox-parity) ignore
+  // DETAIL_STACK_COLLAPSE / Band 3 parking — treat them as expanded even if
+  // localStorage still holds a prior collapse from another rail. Hairline
+  // never mounts a sash chevron; close stays header `→|`.
+  const allowEdgeCollapse = renderable?.edgeCollapse !== false;
+  const isCollapsed = isResizable && collapsed && allowEdgeCollapse;
+  const showCollapsedStrip = renderable?.collapsedStrip !== false;
+
+  // Whether THIS occupant pushes — the demand published to `resolveRightRailFrame`
+  // (below) AND the local render decision. Computed synchronously from the
+  // occupant, NOT read back from `frame.mode`.
+  //
+  // WHY IT IS LOCAL, NOT `frame.mode`. The demand effect publishes `wantsPush`
+  // AFTER commit, so `frame.mode` lags it by one render. A push occupant therefore
+  // mounted in the OVERLAY branch on its first render (`frame.mode` still
+  // 'overlay') and only swapped to PUSH after the store round-trip — and
+  // `AnimatePresence` keeps the losing overlay `motion.aside` alive through its
+  // exit. In a throttled-rAF context that exit never completes, so the SAME
+  // occupant renders TWICE (e.g. two live "Delete carton" controls on one Unbox
+  // History carton). Deriving the mode from the occupant's own intent removes the
+  // overlay→push handoff entirely: a push occupant only ever mounts in the push
+  // branch. The frame store still owns `capPx` (the resize ceiling); only the mode
+  // decision moved local.
+  //
+  // A chrome-owned reopen affordance (parked-no-strip) leaves no host strip, so it
+  // releases push demand the same way a closed occupant does → overlay branch,
+  // where it stays mounted-but-hidden (the latch).
+  const wantsPush =
+    inline &&
+    !!renderable &&
+    !isModal &&
+    !isAssistantDock &&
+    renderable.push !== false &&
+    !(isCollapsed && !showCollapsedStrip);
+  // Push mode has nothing to lock: it covers nothing.
+  const isPush = wantsPush;
+
+  useBodyScrollLock(!!renderable && isModal && !isPush);
+  useEscapeClose(!!renderable?.onClose && !overlayOpen, renderable?.onClose ?? (() => {}));
+
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: DETAIL_STACK_RESIZE.storageKey,
     defaultWidth: DETAIL_STACK_RESIZE.defaultWidthPx,
@@ -142,28 +197,6 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     label: 'Resize details panel',
     testId: 'detail-inspector-resize',
   });
-  const [collapsed, setCollapsed] = useLocalStorage(
-    DETAIL_STACK_COLLAPSE.storageKey,
-    false,
-  );
-  // Band 3 inspector toggle / Cmd+\ write via collapse-control (same storage key)
-  // — sync in-memory state on the same tab (useLocalStorage alone does not).
-  useEffect(() => {
-    const onCollapseChange = (event: Event) => {
-      const detail = (event as CustomEvent<DetailInspectorCollapseDetail>).detail;
-      if (!detail || typeof detail.collapsed !== 'boolean') return;
-      setCollapsed(detail.collapsed);
-    };
-    window.addEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapseChange);
-    return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapseChange);
-  }, [setCollapsed]);
-  // Occupants that opt out of host park (Incoming Unbox-parity) ignore
-  // DETAIL_STACK_COLLAPSE / Band 3 parking — treat them as expanded even if
-  // localStorage still holds a prior collapse from another rail. Hairline
-  // never mounts a sash chevron; close stays header `→|`.
-  const allowEdgeCollapse = renderable?.edgeCollapse !== false;
-  const isCollapsed = isResizable && collapsed && allowEdgeCollapse;
-  const showCollapsedStrip = renderable?.collapsedStrip !== false;
 
   // Width tween ONLY on open / close. Drag + double-click snap must write
   // width instantly — otherwise the hairline / panel lag the pointer
@@ -175,19 +208,6 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   }, [pushColumnOpen]);
   const pushWidthTransition =
     isDragging || pushWidthSettled ? { duration: 0 } : pushTransition;
-
-  // Publish this occupant's demand so `resolveRightRailFrame` can answer push vs
-  // overlay and the resize cap beside an open context rail. An occupant that
-  // opted out publishes `wantsPush: false` → overlay.
-  const wantsPush =
-    inline &&
-    !!renderable &&
-    !isModal &&
-    !isAssistantDock &&
-    renderable.push !== false &&
-    // A chrome-owned reopen affordance leaves no parked host strip — release
-    // frame demand the same way a closed occupant does.
-    !(isCollapsed && !showCollapsedStrip);
   // Freeze `desiredWidthPx` while dragging so hosts that still publish desire
   // do not thrash on every pointer move; publish the final width on pointerup.
   const publishedDesireRef = useRef(width);
