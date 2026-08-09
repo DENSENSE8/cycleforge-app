@@ -12,12 +12,14 @@
  * `SIDEBAR_SPINE_MENU_PANEL_CLASS` + `*-stretch` — never a wider magic width /
  * bare `text-sm`. Menu type = caption/micro (trigger org name stays body).
  *
- * The left cluster ORDER is pinned (toggle · Recents · page identity · Pins ·
- * work order · goal), the page face is one `PAGE_FACE_CLASS` shared by the static
+ * The left cluster ORDER is pinned (toggle · Pins · Recents · page identity),
+ * the page face is one `PAGE_FACE_CLASS` shared by the static
  * chip and the menu trigger, and every header dropdown composes
  * `HeaderChromeMenu` / `HeaderChromeMenuItem` — see
  * `.claude/rules/source-of-truth.md` → **GlobalHeader left cluster**.
  *
+ * Pace-and-next (`HeaderGoalChip`) sits in `GlobalHeaderActions` between search
+ * and inbox — never in the nav cluster.
  * SoT: SIDEBAR_PAGE_NAV + useSidebarChildNav · HeaderPageSwitcher · HeaderRecentsSwitcher
  *      · HeaderPinsSwitcher / useQuickAccess · StaffAccountFooter · SidebarCollapseControl
  *      · IdentityMark / StaffAvatar · sidebar-spine.ts
@@ -93,21 +95,13 @@ test('GlobalHeader always mounts Page + Recents + Pins', () => {
   assert.doesNotMatch(HEADER, /isReceivingHeaderModeRoute/);
 });
 
-// SoT: source-of-truth.md → "GlobalHeader left cluster". The order reads outward
-// from the operator's frame (came from → AM → keep going → next → pacing), and
-// the two conditional slots sit last so a hidden chip cannot gap the row.
+// SoT: source-of-truth.md → "GlobalHeader zones". Nav = saved → trail → where I am.
 test('GlobalHeader left cluster keeps the pinned slot ORDER', () => {
   const CLUSTER_ORDER = [
     'SidebarCollapseControl',
+    'HeaderPinsSwitcher',
     'HeaderRecentsSwitcher',
     'HeaderPageSwitcher',
-    'HeaderPinsSwitcher',
-    // 'HeaderTopWorkOrderChip' removed 2026-08-08 — a queue depth of one does
-    // not earn a permanent chrome slot, least of all one that rendered nothing
-    // whenever the operator was already on the record. Its row now lives inside
-    // HeaderGoalChip's panel (pace AND next, one button), so the cluster's slot
-    // count is unchanged and no work-order occupant may reappear here.
-    'HeaderGoalChip',
   ] as const;
   assert.match(HEADER, /HEADER_ICON_CLUSTER/, 'left cluster uses the shared class');
   const positions = CLUSTER_ORDER.map((name) => {
@@ -119,9 +113,35 @@ test('GlobalHeader left cluster keeps the pinned slot ORDER', () => {
     assert.ok(
       positions[i]!.at > positions[i - 1]!.at,
       `${positions[i]!.name} must render after ${positions[i - 1]!.name} `
-        + '(see source-of-truth.md → GlobalHeader left cluster)',
+        + '(see source-of-truth.md → GlobalHeader zones)',
     );
   }
+  // Pace-and-next is an action, never a nav occupant.
+  assert.doesNotMatch(
+    HEADER,
+    /HeaderGoalChip/,
+    'HeaderGoalChip mounts in GlobalHeaderActions (search → goal → inbox), not nav',
+  );
+});
+
+test('pace-and-next sits between search and inbox in GlobalHeaderActions', () => {
+  // Search is a sibling outside the actions icon cluster; goal leads the cluster
+  // so the ring sits between find and the inbox / assistant utilities.
+  assert.match(HEADER_ACTIONS, /<GlobalHeaderSearch\s*\/>/);
+  assert.match(HEADER_ACTIONS, /<HeaderGoalChip\s*\/>/);
+  // Measure mount order in the desktop actions cluster — `ActivityInboxPopover`
+  // also appears earlier as the iconCluster definition, so slice from the zone.
+  const zoneAt = HEADER_ACTIONS.indexOf('data-header-zone="actions"');
+  assert.ok(zoneAt >= 0, 'actions zone marker present');
+  const zone = HEADER_ACTIONS.slice(zoneAt);
+  const goalAt = zone.indexOf('<HeaderGoalChip');
+  const inboxAt = zone.indexOf('iconCluster');
+  const assistantAt = zone.lastIndexOf('GlobalHeaderAssistantButton');
+  assert.ok(goalAt >= 0, 'HeaderGoalChip mounts in the actions zone');
+  assert.ok(inboxAt > goalAt, 'inbox cluster after goal');
+  assert.ok(assistantAt > inboxAt, 'assistant far-right after inbox');
+  const searchAt = HEADER_ACTIONS.indexOf('<GlobalHeaderSearch');
+  assert.ok(searchAt >= 0 && searchAt < zoneAt, 'search mounts before the actions cluster');
 });
 
 test('the page face is ONE shared chrome (static chip === menu trigger)', () => {
@@ -441,4 +461,20 @@ test('modeful sidebar panels do not mount an L2 mode rail twin', () => {
       `${rel} still mounts a page-L2 mode rail`,
     );
   }
+});
+
+// To-ship (`/shipping/orders`) is a desk — UnshippedSidebar filter map — never
+// the Labels station scanner / "Labels printed" rail. Labels · Scan-out · FBA
+// keep their station bodies behind explicit mode branches.
+test('OutboundSidebarPanel: To-ship desk is UnshippedSidebar, not Labels station', () => {
+  const panel = code(sourceOf('../sidebar/OutboundSidebarPanel.tsx'));
+  assert.match(panel, /SHIPPING_ORDERS_PATH/);
+  assert.match(panel, /UnshippedSidebar/);
+  assert.match(panel, /LabelsModeBody/);
+  assert.match(panel, /ScanOutModeBody/);
+  assert.doesNotMatch(
+    panel,
+    /LabelsScanBand|LabelsRecentRail/,
+    'Labels station chrome must not be inlined on the outbound panel — only via LabelsModeBody on /shipping/labels',
+  );
 });

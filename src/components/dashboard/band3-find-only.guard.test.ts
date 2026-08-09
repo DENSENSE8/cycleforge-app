@@ -91,6 +91,8 @@ const NO_DESK_PEEK_SURFACES: Readonly<Record<string, string>> = {
     'review workspace — rows open the packing QA body',
   'src/features/review/pairing/ReviewPairingTable.tsx':
     'review workspace — rows open the pairing body',
+  'src/components/tracking-exceptions/TrackingExceptionsTable.tsx':
+    'ops triage — rows open an edit dialog, not a RightRailHost desk peek',
 };
 
 /**
@@ -221,6 +223,25 @@ describe('Band 3 is find-only', () => {
       /enabled=\{isHistoryTab\}/,
       'the inspector toggle is live on every sheet tab — it is the only door to compare / zoom / ▦',
     );
+  });
+
+  it('filtering is a nav TARGET, never a second global chord', () => {
+    // Ruled 2026-08-08. ⌘; → m → f focuses find, r opens Refine. A band that
+    // bound its own ⌘F (or a bare `/`, which a wedge types inside a printed
+    // Digital Link) would be a second claimant on a chord registry that allows
+    // exactly one owner each.
+    for (const { rel, body } of bandMounts) {
+      assert.doesNotMatch(
+        body,
+        /key === 'f'|code === 'KeyF'/,
+        `${rel}: no page-local ⌘F — compose useNavRegion (the ⌘; leader)`,
+      );
+      assert.doesNotMatch(
+        body,
+        /key === '\/'|code === 'Slash'/,
+        `${rel}: bare / is wedge-unsafe — a printed Digital Link types it mid-scan`,
+      );
+    }
   });
 
   it('no hand-rolled <select> chrome on a Band 3', () => {

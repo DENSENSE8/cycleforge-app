@@ -50,8 +50,8 @@ export function ScanStationCartonCursor({
   return (
     <div
       className={cn(
-        'flex items-center gap-0',
-        orientation === 'vertical' ? 'flex-col' : 'flex-row',
+        'flex gap-0',
+        orientation === 'vertical' ? 'flex-col items-center' : 'h-full flex-row items-stretch',
       )}
       data-testid={groupTestId}
     >
@@ -64,7 +64,7 @@ export function ScanStationCartonCursor({
             ariaLabel="Previous carton"
             icon={<ChevronUp className={glyph} />}
             onClick={onPrev}
-            className={cn(size === 'sm' && 'rounded-none')}
+            className={cn(size === 'sm' && 'h-full w-auto aspect-square rounded-none')}
             data-testid={prevTestId}
           />
         </HoverTooltip>
@@ -78,7 +78,7 @@ export function ScanStationCartonCursor({
             ariaLabel="Next carton"
             icon={<ChevronDown className={glyph} />}
             onClick={onNext}
-            className={cn(size === 'sm' && 'rounded-none')}
+            className={cn(size === 'sm' && 'h-full w-auto aspect-square rounded-none')}
             data-testid={nextTestId}
           />
         </HoverTooltip>

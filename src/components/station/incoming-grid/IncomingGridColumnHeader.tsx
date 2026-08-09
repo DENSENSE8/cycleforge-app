@@ -42,6 +42,8 @@ export const IncomingGridColumnHeader = makeLedgerGridColumnHeader<
   layout: INCOMING_HEADER_LAYOUT,
   defaultColumns: INCOMING_GRID_COLUMNS,
   selectMode: 'prop',
+  // Desk default; embed mounts pass `tableId="incoming_embed"`.
+  tableId: 'incoming',
   glyphFor: (column) =>
     column.key === 'date' ? (
       <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />

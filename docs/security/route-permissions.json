@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-08T18:33:33Z",
-  "totalRoutes": 917,
+  "generatedAt": "2026-08-09T16:01:53Z",
+  "totalRoutes": 924,
   "summary": {
-    "permissionGated": 777,
+    "permissionGated": 784,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -1711,6 +1711,34 @@
       "gate": "NONE",
       "permission": null,
       "exemptReason": "cron endpoint"
+    },
+    {
+      "path": "/api/custom-fields/defs/[id]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "settings.custom_fields",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/custom-fields/defs/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/custom-fields/values/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.view",
+      "exemptReason": null
     },
     {
       "path": "/api/customers/[id]/route.ts",
@@ -5067,6 +5095,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/inbound/import-csv/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/inbound/import-ebay/route.ts",
       "methods": [
         "POST"
@@ -5076,12 +5113,30 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/inbound/import-purchase/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/inbound/link/route.ts",
       "methods": [
         "POST"
       ],
       "gate": "withAuth",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/update-identity/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {
@@ -7600,6 +7655,15 @@
     },
     {
       "path": "/api/testing/recent/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/testing/seller-claimed/route.ts",
       "methods": [
         "GET"
       ],

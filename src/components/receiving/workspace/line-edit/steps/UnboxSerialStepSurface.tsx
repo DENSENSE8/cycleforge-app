@@ -24,7 +24,7 @@
  * shape.
  */
 
-import { useEffect, type RefObject } from 'react';
+import { useCallback, useEffect, type RefObject } from 'react';
 import { SerialCard } from '../../SerialCard';
 import { SerialMatchResult, type SerialMatchedOrder } from '../../SerialMatchResult';
 import { ReceivingUnitRows, type UnitSerial } from '../../ReceivingUnitRows';
@@ -34,6 +34,7 @@ import { NoSerialControl } from '../NoSerialControl';
 import { markAllEmptyReceivingUnitsSerialAbsent } from '../../receiving-label-helpers';
 import { useSetting } from '@/hooks/useSettings';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
+import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { requestConfirm } from '@/design-system/components/confirm';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -115,6 +116,25 @@ export function UnboxSerialStepSurface({
     'receiving-focus-scan': () => {
       requestAnimationFrame(() => focusDockSerial(c.serialRef));
     },
+  });
+
+  const applySerialScan = useCallback(
+    (raw: string) => {
+      const sn = raw.trim();
+      if (!sn || !receivingId) return;
+      void c.enqueueSerial(sn, c.cond);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- controller methods are stable enough; cond + enqueue matter
+    [receivingId, c.cond, c.enqueueSerial],
+  );
+
+  // Action sink while serial owns the dock — exclusive with UnboxDockScanEntry
+  // under the same `po-line:` id (mouse select can setActiveSinkId).
+  useRegisterScanSink({
+    id: `po-line:${lineId}`,
+    enabled: lineId > 0 && !!receivingId,
+    onScan: applySerialScan,
+    focus: () => focusDockSerial(c.serialRef),
   });
 
   // Idle must pass `undefined` (not a null-rendering element) so SerialCard does

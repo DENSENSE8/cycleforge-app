@@ -188,13 +188,13 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         column,
-        /ml-auto flex shrink-0 items-center/,
-        'carton cursor seats on the same header row, top-right',
+        /pointer-events-auto ml-auto flex h-full shrink-0 items-stretch/,
+        'carton cursor seats on the same header row, top-right, fill-height',
       );
       assert.match(
         column,
-        /items-center gap-0\.5/,
-        'top band is one horizontal row (items-center)',
+        /items-stretch gap-0\.5/,
+        'top band is one horizontal fill row (items-stretch — station chrome seam)',
       );
       // The edge grip's chevron is `opacity-0 group-hover:opacity-100`, so it
       // does not exist until the pointer is already on the 8px sash. A
@@ -220,7 +220,12 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.match(
         band,
         /z-header/,
-        'top band must sit above the inset resize sash (z-sticky) so →| / fullscreen stay free of drag',
+        'top band stacks above the inset resize sash paint (z-sticky) so fullscreen glyphs stay visible',
+      );
+      assert.match(
+        band,
+        /pointer-events-none/,
+        'top band must not cover the resize sash hit target — children re-enable pointer-events',
       );
       assert.match(
         column,

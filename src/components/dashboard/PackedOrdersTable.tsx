@@ -3,13 +3,13 @@
 /**
  * Dashboard · Packed — first-class staged queue (PACK event, no dock scan-out).
  * Uses `/api/orders?stagedOnly=true` via {@link packedOrdersQuery}, rendered on
- * the shared outbound spreadsheet ({@link OrdersGridView} / LedgerGrid).
+ * the shared outbound spreadsheet ({@link OrdersGridHost} / LedgerGrid).
  */
 
 import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -66,7 +66,7 @@ export function PackedOrdersTable({
 
   const records = query.data ?? [];
 
-  // The cursor is published by the OrdersGridView below — it owns the grouping,
+  // The cursor is published by the OrdersGridHost below — it owns the grouping,
   // the fold state and the on-screen order. This lane only turns the keyboard on;
   // publishing here too would put a second, flatter claim on the same scope.
   useRecordCursorKeyboard({ enabled: true, scope: 'record' });
@@ -101,7 +101,7 @@ export function PackedOrdersTable({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
       <div className={WORKBENCH_SHEET_HOST}>
-        <OrdersGridView
+        <OrdersGridHost
           ariaLabel="Packed orders"
           records={records as ShippedOrder[]}
           loading={query.isLoading}

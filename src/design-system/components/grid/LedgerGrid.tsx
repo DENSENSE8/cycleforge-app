@@ -26,7 +26,7 @@ import { cn } from '@/utils/_cn';
  *
  * One sticky column header, one always-virtualized body
  * ({@link VirtualGroupedSections}), and a per-surface `scrollX` contract.
- * Outbound Pending (via {@link OrdersGridView}) is the golden path:
+ * Outbound Pending (via {@link OrdersGridHost}) is the golden path:
  * `showDayHeaders={false}`, Date as a per-row column, `gridSkin="airtable"`.
  * Station / receiving feeds may pass `showDayHeaders` and/or `daySections`.
  *

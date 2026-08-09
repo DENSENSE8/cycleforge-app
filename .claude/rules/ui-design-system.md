@@ -57,7 +57,7 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Hand-rolled `<table>` / tab band / row markup** for a tabular ops surface. **Do:** compose the
   Workbench spreadsheet SoT — `LedgerGrid` (+ `VirtualGroupedSections`, optional `gridSkin="airtable"`)
   from `@/design-system/components/grid`, with a **domain thin composer** for cells/columns (golden:
-  Pending via `OrdersGridView`). **Airtable structural noise (1B):** BOTTOM row hairlines only —
+  Pending via `OrdersGridHost`). **Airtable structural noise (1B):** BOTTOM row hairlines only —
   no vertical column rules; data contrast outranks structure. Page chrome still uses `DashboardScrollShell` +
   `WORKBENCH_CHROME_COLUMN`/`WORKBENCH_BODY_COLUMN` + `WorkbenchChromeHeader` + `KpiTile` where needed;
   day bands via `LedgerGrid` `showDayHeaders` / `DateGroupHeader`. **Sheet list

@@ -12,7 +12,10 @@
  */
 
 import type { CSSProperties } from 'react';
-import { SIDEBAR_RAIL_TRAILING_TRACK_CLASS } from '@/components/layout/header-shell';
+import {
+  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
+  STATION_COLUMN_FOOTER_BAND_FACE,
+} from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 import { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 
@@ -28,7 +31,8 @@ export function StationDisplaysDismissFooter({
       data-testid="station-displays-dismiss-footer"
       style={{ '--cf-density': '1' } as CSSProperties}
       className={cn(
-        'flex shrink-0 items-center justify-end border-t border-border-hairline bg-surface-card py-0 pl-3 pr-0',
+        STATION_COLUMN_FOOTER_BAND_FACE,
+        'justify-end bg-surface-card py-0 pl-3 pr-0',
         className,
       )}
     >

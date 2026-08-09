@@ -73,13 +73,13 @@ describe('queue-row left-edge chrome', () => {
     }
   });
 
-  it('OrdersGridView outer shell has no list-body px-2 inset', () => {
-    const src = readSibling('../dashboard/orders-queue/OrdersGridView.tsx');
-    assert.ok(src.includes('LedgerGrid'), 'OrdersGridView must compose LedgerGrid');
+  it('OrdersGridHost outer shell has no list-body px-2 inset', () => {
+    const src = readSibling('../dashboard/orders-queue/OrdersGridHost.tsx');
+    assert.ok(src.includes('LedgerGrid'), 'OrdersGridHost must compose LedgerGrid');
     assert.doesNotMatch(
       src,
       /flex w-full flex-col px-2/,
-      'OrdersGridView must not add list-body px-2',
+      'OrdersGridHost must not add list-body px-2',
     );
   });
 

@@ -16,7 +16,7 @@ import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 
 /**
  * The Orders queue **selection / cursor plane** — the page concern lifted out of
- * `OrdersGridView` (plan Phase 1, wave 5c) so the grid becomes a presentational
+ * `OrdersGridHost` (plan Phase 1, wave 5c) so the grid becomes a presentational
  * adapter over {@link NonlinearTableHost}.
  *
  * This is deliberately a VERBATIM move, not a rewrite: the two rail effects

@@ -2,7 +2,7 @@
 
 /**
  * Unshipped · Pending Grid — To Ship fulfillment queue as a single connected
- * spreadsheet (`OrdersGridView` → `LedgerGridSurface` `surface="sheet"`).
+ * spreadsheet (`OrdersGridHost` → `LedgerGridSurface` `surface="sheet"`).
  * Board|Grid switcher retired; search uses the same grid surface (filtered records).
  *
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
@@ -65,7 +65,7 @@ export function UnshippedShelfBoard({
     'close-shipped-details': () => setSelectedId(null),
   });
 
-  // The OrdersGridView below publishes the cursor (it owns grouping + folds);
+  // The OrdersGridHost below publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.
   useRecordCursorKeyboard({ enabled: true, scope: 'record' });
 
@@ -73,7 +73,7 @@ export function UnshippedShelfBoard({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Flush sheet host — flex-fill self-scroll (Unbox golden), definite chain. */}
       <div className={WORKBENCH_SHEET_HOST}>
-        <OrdersGridView
+        <OrdersGridHost
           ariaLabel="Shelved unshipped orders"
           records={records}
           loading={loading}

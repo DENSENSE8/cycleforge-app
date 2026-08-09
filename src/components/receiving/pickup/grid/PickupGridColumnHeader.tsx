@@ -37,4 +37,8 @@ const PICKUP_HEADER_LAYOUT: LedgerHeaderLayoutApi<PickupGridColumn> = {
 export const PickupGridColumnHeader = makeLedgerGridColumnHeader<
   PickupGridColumn,
   PickupGridColumnKey
->({ layout: PICKUP_HEADER_LAYOUT, defaultColumns: PICKUP_GRID_COLUMNS });
+>({
+  layout: PICKUP_HEADER_LAYOUT,
+  defaultColumns: PICKUP_GRID_COLUMNS,
+  tableId: 'pickup',
+});

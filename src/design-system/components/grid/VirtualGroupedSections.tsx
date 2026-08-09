@@ -18,7 +18,7 @@ import {
  * `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered
  * ledgers (optionally day-banded). Owned by `@/design-system/components/grid`
  * and composed by {@link LedgerGrid}. Outbound spreadsheets
- * ({@link OrdersGridView} / LedgerGrid) pass `showDayHeaders={false}`: absolute
+ * ({@link OrdersGridHost} / LedgerGrid) pass `showDayHeaders={false}`: absolute
  * Date lives in a per-row column. Station / receiving feeds may still emit
  * sticky {@link DateGroupHeader} bands (`showDayHeaders` default true).
  *

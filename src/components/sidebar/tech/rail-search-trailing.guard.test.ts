@@ -84,8 +84,9 @@ test('paste · filter · collapse share one control and glyph size', () => {
   assert.match(LEFT_DOCK_TOGGLE, /LEFT_DOCK_TOGGLE_ICON_CLASS = 'h-3\.5 w-3\.5'/);
   assert.match(LEFT_DOCK_TOGGLE, /size="xs"/);
   assert.match(SEARCH_FIELD, /flex shrink-0 items-center gap-0\.5/);
-  assert.match(SEARCH_BAR, /flex min-w-0 items-center gap-0\.5/);
-  assert.match(SEARCH_BAR, /cn\('-ml-1', SIDEBAR_RAIL_TRAILING_TRACK_CLASS\)/);
+  // Rail footer is the station floor band — field + collapse are direct children.
+  assert.match(SEARCH_BAR, /STATION_COLUMN_FOOTER_BAND_FACE/);
+  assert.match(SEARCH_BAR, /cn\('-ml-1 h-full', SIDEBAR_RAIL_TRAILING_TRACK_CLASS\)/);
 });
 
 test('Receiving rail facets seat in trailingSuffix (paste-left)', () => {

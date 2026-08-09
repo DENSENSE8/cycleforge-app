@@ -36,7 +36,9 @@ import {
   type SerialAbsentState,
 } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import {
   SCAN_LINE_PULSE_EVENT,
@@ -225,18 +227,29 @@ export function PoLineRow({
         ) : null}
       </AnimatePresence>
       {/* Click area = title + meta. Kept as a <div role="button"> so
-          interactive children can render inside without nested <button>. */}
+          interactive children can render inside without nested <button>.
+          Mouse + keyboard parity: selecting / focusing the row arms the
+          Action scan sink (`po-line:`) and reclaims the dock wedge. */}
       <div
         role={!readOnly && !isActive ? 'button' : undefined}
         tabIndex={!readOnly && !isActive ? 0 : -1}
+        onFocus={() => {
+          if (readOnly) return;
+          setActiveSinkId(`po-line:${line.id}`);
+        }}
         onClick={() => {
-          if (!readOnly && !isActive) dispatchSelectLine(line);
+          if (readOnly) return;
+          setActiveSinkId(`po-line:${line.id}`);
+          if (!isActive) dispatchSelectLine(line);
+          setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
         }}
         onKeyDown={(e) => {
           if (readOnly || isActive) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
+            setActiveSinkId(`po-line:${line.id}`);
             dispatchSelectLine(line);
+            setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
           }
         }}
         className={`w-full min-w-0 py-0 pl-0 pr-0 text-left ${
@@ -305,8 +318,10 @@ export function PoLineRow({
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
+                          setActiveSinkId(`po-line:${line.id}`);
                           if (!isActive) dispatchSelectLine(line);
                           onEditConditionInDock(line);
+                          setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
                         }}
                       >
                         <ConditionGradeChip
@@ -363,9 +378,13 @@ export function PoLineRow({
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
+                          setActiveSinkId(`po-line:${line.id}`);
                           if (!isActive) dispatchSelectLine(line);
                           if (onEditSerialInDock) onEditSerialInDock(line);
                           else onViewAllUnits?.(line);
+                          if (onEditSerialInDock) {
+                            setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+                          }
                         }}
                       >
                         <Barcode

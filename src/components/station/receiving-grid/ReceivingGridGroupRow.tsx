@@ -7,6 +7,7 @@ import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
+import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { ReceivingGridRow } from './ReceivingGridRow';
 
 interface ReceivingGridGroupRowProps {
@@ -44,6 +45,9 @@ interface ReceivingGridGroupRowProps {
   /** Unbox compare crosshair carton id (peer wash). */
   linkedReceivingId?: number | null;
   onCrosshairHover?: (receivingId: number | null) => void;
+  /** Live custom_field_defs for `custom:*` columns. */
+  customFieldDefs?: readonly CustomFieldDef[];
+  onCustomFieldCommit?: (entityId: number, defKey: string, next: string) => void;
 }
 
 /**
@@ -76,6 +80,8 @@ export function ReceivingGridGroupRow({
   rowFillsById,
   linkedReceivingId = null,
   onCrosshairHover,
+  customFieldDefs,
+  onCustomFieldCommit,
 }: ReceivingGridGroupRowProps) {
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => {
     const isOpen = handleToggleRow
@@ -117,6 +123,8 @@ export function ReceivingGridGroupRow({
         selectGutterChrome={selectGutterChrome}
         clickSelect={clickSelect}
         rowFillHex={rowFillsById?.[String(row.id)] ?? null}
+        customFieldDefs={customFieldDefs}
+        onCustomFieldCommit={onCustomFieldCommit}
       />
     );
   };

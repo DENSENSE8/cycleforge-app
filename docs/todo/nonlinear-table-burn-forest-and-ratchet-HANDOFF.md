@@ -19,8 +19,8 @@ auto-memory `nonlinear-table-registry-waist.md`.
 |---|---|
 | **P1 — registry waist** | ✅ **DONE on `main`.** `table-definition.ts` (Zod + `superRefine` linter, `MAX_DEFAULT_VISIBLE_TRACKS=10`), `NonlinearTableHost.tsx`, `table-definition-registry.ts` (16 definitions). |
 | **P3 — migration onto the engine** | ✅ **DONE.** Every workbench grid mounts via `NonlinearTableHost`; **0 direct `<LedgerGridSurface>`/`<LedgerGrid>` mounts remain in pages** (only the host mounts the engine). |
-| **P3 — burn the forest (DELETE wrappers)** | ❌ **NOT DONE.** 14 `*GridView.tsx` wrappers still exist as thin bindings. Success metric "pages do not import `*GridView`" is unmet. |
-| **P3 — anti-regrowth ratchet** | ⚠️ **committed on `topic/tables` (`3e522a690`), NOT on `main`.** So `main` has no guard stopping a new `*GridView` from regrowing. |
+| **P3 — burn the forest (DELETE wrappers)** | ✅ **DONE.** `GRID_VIEW_FOREST === []`; 0 `*GridView.tsx` on disk. Shared adapters are `ReceivingGridHost` / `OrdersGridHost` (non-forest); Units inlined in `UnitsWorkspaceView`. |
+| **P3 — anti-regrowth ratchet** | ✅ **LIVE.** Disk-walk freeze in `grid-surface-capabilities.guard.test.ts` — list only shrinks; new `*GridView.tsx` fails CI. |
 | **P2 — AI authoring (Studio/Canvas)** | ❌ **not started — and DEFERRED to last** (this handoff). Only the schema-level density linter exists; no authoring UI / publish gate. |
 
 **The blocker on landing the ratchet is the same one this initiative has hit all week:**
@@ -48,39 +48,22 @@ The forest-freeze already exists on `topic/tables`; it just isn't on `main`.
 **Exit:** `grid-surface-capabilities.guard.test.ts` forest-freeze is live on `main`; a
 new `*GridView.tsx` fails CI.
 
-### Phase B — Burn the forest (the main deliverable)
-Delete the 14 wrappers; pages bind `NonlinearTableHost` directly.
-
-**The 14 `*GridView.tsx` (all now thin bindings):**
-`Bins · Catalog · Incoming · MyDay · Orders · Pickup · Ready · Receiving · Repair ·
-ReviewCatalogLink · TechAll · TrackingExceptions · Unfound · Warranty`.
-
-**Per-wrapper deletion recipe (one at a time, shrink-only):**
-1. Confirm the family's registry entry + host mount are the live path (they are).
-2. Move any residual page concern (chrome slots / intents / feed) into the page that
-   imported the wrapper, so the page binds `NonlinearTableHost` directly.
-3. Delete `<X>GridView.tsx`.
-4. **Shrink the freeze allowlist** in `grid-surface-capabilities.guard.test.ts` by exactly
-   that one entry (pattern-evolution: a retirement isn't done until the guard shrinks).
-5. `npm run verify` green (table guard set at minimum) before the next wrapper.
-
-**Order:** easy thin ones first (Bins, Pickup, Warranty, Unfound, Ready, MyDay,
-TrackingExceptions, TechAll, Catalog, ReviewCatalogLink, Repair), then Incoming/Receiving,
-then **Orders LAST**.
+### Phase B — Burn the forest — ✅ DONE
+`GRID_VIEW_FOREST` is empty; 0 `*GridView.tsx` on disk. New queues bind
+`NonlinearTableHost` + a registry entry (shared multi-consumer logic may live in a
+non-`*GridView` host such as `ReceivingGridHost` / `OrdersGridHost`).
 
 **Keep / do NOT delete:**
-- **`OrdersGridView` header fork** — `OrdersQueueColumnHeader` is a *permanent allowlisted
-  fork* (resize + viewport force-hide). If the Orders wrapper file itself can be dissolved
-  into a page binding, fine; but the header fork stays allowlisted, not "unified for
-  consistency."
+- **`OrdersGridHost` header fork** — `OrdersQueueColumnHeader` is a *permanent allowlisted
+  fork* (resize + viewport force-hide). The former `OrdersGridView` wrapper is burned; the
+  header fork stays allowlisted, not "unified for consistency."
 - **`StationListTable` / `FbaBoardTable`** — documented raw-mount exceptions (no column
   model; declared capability bag without a definition). Keep.
 - **Station PO accordion (`PoLinesAccordion` / `PoLineMetaGrid`)** — NOT LedgerGrid, never
   migrate (plan §3.5).
 - **`DataTable`** admin sibling — different family, keep.
 
-**Exit:** "New queue ships without a new GridView file." Allowlist → only the sanctioned
-exceptions above.
+**Exit (met):** "New queue ships without a new GridView file."
 
 ### Phase C — Display-consistency cleanup (Horizon A) — foundation, before AI
 The engine is unified, but *displays* still diverge (per-family cell maps + chrome). This

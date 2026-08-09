@@ -72,7 +72,7 @@ const TRAILING_CLUSTER_ADOPTERS = [
 const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string])[] = [
   [
     'src/components/station/receiving-grid/ReceivingGridColumnHeader.tsx',
-    'src/components/station/receiving-grid/ReceivingGridView.tsx',
+    'src/components/station/receiving-grid/ReceivingGridHost.tsx',
   ],
   [
     'src/components/station/incoming-grid/IncomingGridColumnHeader.tsx',
@@ -121,7 +121,7 @@ const COLUMN_DISPLAY_SURFACES: readonly (readonly [header: string, view: string]
   ],
   [
     'src/components/dashboard/orders-queue/OrdersQueueColumnHeader.tsx',
-    'src/components/dashboard/orders-queue/OrdersGridView.tsx',
+    'src/components/dashboard/orders-queue/OrdersGridHost.tsx',
   ],
 ];
 
@@ -272,17 +272,11 @@ describe('WorkbenchTrailingCluster SoT', () => {
    * PAINT — it stays green through a total loss of the control.
    *
    * **Shrink-only.** Wiring a host removes a line; nothing may add one.
+   * Cleared 2026-08-08 (Phase 0 table connector) — Warranty · Unfound ·
+   * Tracking-exceptions · Scan-out now host ▦. Keep the empty ledger so a
+   * future dark surface has a documented place to land.
    */
-  const NO_COLUMN_DISPLAY_HOST: Readonly<Record<string, string>> = {
-    'src/components/warranty/WarrantyClaimsTable.tsx':
-      'WarrantyWorkspace has no WorkbenchTriageBand and the view wires no columnMenu',
-    'src/components/receiving/unfound/UnfoundQueueTable.tsx':
-      'PoMailboxAdminSection (/admin) has no Band-3 and the view wires no columnMenu',
-    'src/components/tracking-exceptions/TrackingExceptionsTable.tsx':
-      'bespoke FilterBar instead of WorkbenchTriageBand — host chrome not yet migrated',
-    'src/components/scan-out/ScanOutWorkspace.tsx':
-      'StagedQueueTable threads the target but the workspace passes none — already dark before 2026-08-08',
-  };
+  const NO_COLUMN_DISPLAY_HOST: Readonly<Record<string, string>> = {};
 
   it('every no-host surface is recorded with its reason', () => {
     for (const [rel, why] of Object.entries(NO_COLUMN_DISPLAY_HOST)) {
@@ -294,10 +288,9 @@ describe('WorkbenchTrailingCluster SoT', () => {
   });
 
   /**
-   * Band-3 + fieldsMenu surfaces must wire the portal end-to-end (norm 2026-08-06).
-   * Surfaces with no host at all are absent from this list and recorded in
-   * NO_COLUMN_DISPLAY_HOST above — they lost the control when the card-corner
-   * float was deleted (2026-08-08) and owe a host.
+   * Band-3 / Band-1 + fieldsMenu surfaces must wire the portal end-to-end
+   * (norm 2026-08-06). Surfaces with no host at all are absent from this list
+   * and recorded in NO_COLUMN_DISPLAY_HOST above.
    */
   it('Band-3 fieldsMenu desks portal ▦ into the triage controls slot', () => {
     const cases: { file: string; pattern: RegExp; why: string }[] = [
@@ -339,7 +332,31 @@ describe('WorkbenchTrailingCluster SoT', () => {
       {
         file: 'src/components/outbound/scan-out/StagedQueueTable.tsx',
         pattern: /columnTriggerPortalTarget/,
-        why: 'StagedQueueTable accepts portal (Labels Recent; Scan-out omits)',
+        why: 'StagedQueueTable accepts portal (Labels Recent + Scan-out)',
+      },
+      {
+        file: 'src/components/outbound/workspaces/ScanOutWorkspace.tsx',
+        pattern:
+          /controlsSlotRef=\{setControlsEl\}[\s\S]*columnTriggerPortalTarget=\{controlsEl\}/,
+        why: 'Scan-out dock Band-1 portals ▦ into StagedQueueTable',
+      },
+      {
+        file: 'src/components/warranty/WarrantyClaimsTable.tsx',
+        pattern:
+          /controlsSlotRef=\{setControlsEl\}[\s\S]*columnTriggerPortalTarget=\{controlsEl\}/,
+        why: 'Warranty Claims Band-1 portals ▦',
+      },
+      {
+        file: 'src/components/receiving/unfound/UnfoundQueueTable.tsx',
+        pattern:
+          /controlsSlotRef=\{setControlsEl\}[\s\S]*columnTriggerPortalTarget=\{controlsEl\}/,
+        why: 'Unfound Queue Band-1 portals ▦',
+      },
+      {
+        file: 'src/components/tracking-exceptions/TrackingExceptionsTable.tsx',
+        pattern:
+          /controlsSlotRef=\{setControlsEl\}[\s\S]*columnTriggerPortalTarget=\{controlsEl\}/,
+        why: 'Tracking Exceptions Band-3 portals ▦',
       },
       {
         file: 'src/components/dashboard/DashboardOrdersView.tsx',

@@ -223,6 +223,8 @@ export const PERMISSIONS = [
   // ─ Admin ─
   { id: 'settings.workstation',     category: 'admin', label: 'Workstation settings' },
   { id: 'settings.hardware',        category: 'admin', label: 'Hardware settings' },
+  /** Define / archive org custom grid columns (custom_field_defs). */
+  { id: 'settings.custom_fields',   category: 'admin', label: 'Manage custom table columns' },
   { id: 'admin.view',               category: 'admin', label: 'View admin' },
   { id: 'admin.manage_staff',       category: 'admin', label: 'Manage staff' },
   { id: 'admin.manage_roles',       category: 'admin', label: 'Manage roles' },

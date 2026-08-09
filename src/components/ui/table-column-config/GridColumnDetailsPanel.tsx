@@ -42,6 +42,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { RotateCcw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { ColorSwatchPicker } from '@/components/ui/ColorSwatchPicker';
@@ -67,6 +68,15 @@ import { Button } from '@/design-system/primitives/Button';
 import { Switch } from '@/design-system/primitives/Switch';
 import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import {
+  customFieldEntityTypeForTableId,
+  labelToCustomFieldKey,
+} from '@/lib/custom-fields/table-entity';
+import {
+  CUSTOM_FIELD_VALUE_TYPES,
+  type CustomFieldEntityType,
+  type CustomFieldValueType,
+} from '@/lib/custom-fields/types';
 import type { TableId } from '@/lib/tables/table-columns';
 import {
   COLUMN_WIDTH_MAX,
@@ -173,6 +183,7 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   const cellMode = pref?.cell ?? 'default';
   const textMode =
     normalizeGridColumnTextEmphasis(pref?.text) ?? ('default' as const);
+  const createEntityType = customFieldEntityTypeForTableId(tableId);
 
   return (
     <DetailStackRailRegistrar
@@ -385,6 +396,10 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
               ) : null}
             </>
           )}
+
+          {createEntityType ? (
+            <CreateCustomFieldSection entityType={createEntityType} />
+          ) : null}
         </div>
 
         <div className="border-t border-border-soft bg-surface-card p-4">
@@ -409,6 +424,128 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
         </div>
       </div>
     </DetailStackRailRegistrar>
+  );
+}
+
+const CREATE_FIELD_INPUT_CLASS = cn(
+  'w-full rounded-none border border-border-soft bg-surface-card px-2 py-1.5',
+  'text-role-caption text-text-default placeholder:text-text-faint',
+  focusRing('field'),
+);
+
+function CreateCustomFieldSection({
+  entityType,
+}: {
+  entityType: CustomFieldEntityType;
+}) {
+  const queryClient = useQueryClient();
+  const [label, setLabel] = useState('');
+  const [type, setType] = useState<CustomFieldValueType>('text');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const key = labelToCustomFieldKey(label);
+
+  const onCreate = async () => {
+    const trimmed = label.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/custom-fields/defs', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entityType,
+          key,
+          label: trimmed,
+          type,
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+      } | null;
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || 'Failed to create field');
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ['custom-field-defs', entityType],
+      });
+      setLabel('');
+      setType('text');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create field');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="space-y-2 border-t border-border-soft pt-5">
+      <div>
+        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          Create field
+        </h3>
+        <p className="text-role-caption text-text-soft">
+          New org column on this grid. Header “Add column…” only unhides existing tracks.
+        </p>
+      </div>
+      <label className="block space-y-1">
+        <span className="text-role-micro uppercase tracking-widest text-text-muted">
+          Label
+        </span>
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. Vendor lot"
+          maxLength={80}
+          className={CREATE_FIELD_INPUT_CLASS}
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-role-micro uppercase tracking-widest text-text-muted">
+          Key
+        </span>
+        <input
+          type="text"
+          value={key}
+          readOnly
+          aria-readonly
+          className={cn(CREATE_FIELD_INPUT_CLASS, 'text-text-muted')}
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-role-micro uppercase tracking-widest text-text-muted">
+          Type
+        </span>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as CustomFieldValueType)}
+          className={CREATE_FIELD_INPUT_CLASS}
+        >
+          {CUSTOM_FIELD_VALUE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
+      {error ? (
+        <p className="text-role-caption text-text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <Button
+        variant="secondary"
+        className="w-full"
+        disabled={!label.trim() || saving}
+        onClick={() => void onCreate()}
+      >
+        {saving ? 'Creating…' : 'Create field'}
+      </Button>
+    </section>
   );
 }
 

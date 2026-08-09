@@ -97,7 +97,7 @@ export function isGridColumnResizable(column: ResizableLike): boolean {
 /**
  * Trailing structural filler (`_fill`) — absorbs leftover sheet width via
  * `minmax(0rem, 1fr)`. Not a fact column: empty header/body, never in Column
- * display, never sortable/resizable. Receiving (Unbox History) golden.
+ * display, never sortable/resizable. Orders + Receiving (Unbox History) consumers.
  */
 export function isGridColumnFillTrack(column: { key: string }): boolean {
   return column.key === '_fill';

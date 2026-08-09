@@ -7,6 +7,7 @@ import { IconButton } from '@/design-system/primitives';
 import { Inbox, Clipboard } from '@/components/Icons';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
 import { GlobalHeaderAssistantButton } from '@/components/layout/GlobalHeaderAssistantButton';
+import { HeaderGoalChip } from '@/components/layout/HeaderGoalChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
@@ -226,11 +227,9 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
     return <div className="flex h-full items-center gap-1.5">{iconCluster}</div>;
   }
 
-  // Order: search · inbox · assistant (far-right).
-  // Pace-and-next (HeaderGoalChip) lives in the left nav cluster — one button
-  // for goal + next work order. Search stays mounted on `/search` (and carton
-  // detail) so find is always reachable from the header — page-rail entry is
-  // additive, not a replacement.
+  // Order: search · pace-and-next (goal ring) · inbox · assistant (far-right).
+  // Search stays mounted on `/search` (and carton detail) so find is always
+  // reachable from the header — page-rail entry is additive, not a replacement.
   // Stretch the row to the header beam so expanded find + icon washes lock flush.
   return (
     <div
@@ -242,6 +241,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
     >
       <GlobalHeaderSearch />
       <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
+        <HeaderGoalChip />
         {iconCluster}
         <GlobalHeaderAssistantButton />
       </div>

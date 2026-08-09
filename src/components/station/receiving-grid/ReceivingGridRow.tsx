@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, memo } from 'react';
+import { Fragment, memo, useState } from 'react';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
@@ -15,6 +15,7 @@ import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { RECEIVING_GRID_CAPABILITIES } from '@/components/station/receiving-grid/receiving-grid-descriptor';
 import { usePlatformMeta } from '@/hooks/useCatalog';
+import type { CustomFieldDef, CustomFieldValueMap } from '@/lib/custom-fields/types';
 import {
   displayTrackingNumber,
   fulfillmentModeLabel,
@@ -102,6 +103,8 @@ interface ReceivingGridRowProps {
   /** Persisted custom row fill hex (Sheets paint). Selection wash outranks. */
   rowFillHex?: string | null;
   selectGutterChrome?: GridSelectGutterChrome;
+  customFieldDefs?: readonly CustomFieldDef[];
+  onCustomFieldCommit?: (entityId: number, defKey: string, next: string) => void;
 }
 
 /**
@@ -134,9 +137,12 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   historyTriageMenu = false,
   rowFillHex = null,
   selectGutterChrome = 'always',
+  customFieldDefs,
+  onCustomFieldCommit,
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
+  const [customOverlay, setCustomOverlay] = useState<CustomFieldValueMap>({});
   /** A gutter handler IS the signal that this surface split the two planes. */
   const splitPlanes = Boolean(onToggle) && !clickSelect;
 
@@ -173,8 +179,17 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       ? receivingCoarseStatusPaint(row, inventoryProviderLabel)
       : null;
 
+  const customValues: CustomFieldValueMap = {
+    ...(row.customFields ?? {}),
+    ...customOverlay,
+  };
+  const rowForCells: ReceivingLineRow = {
+    ...row,
+    customFields: Object.keys(customValues).length > 0 ? customValues : row.customFields,
+  };
+
   const ctx: ReceivingGridCellCtx = {
-    row,
+    row: rowForCells,
     selectMode,
     isSelected: isOpen || isChecked,
     isChecked,
@@ -210,6 +225,13 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     columnDisplay,
     selectGutterChrome,
     clickSelect,
+    customFieldDefs,
+    onCustomFieldCommit: onCustomFieldCommit
+      ? (defKey, next) => {
+          setCustomOverlay((prev) => ({ ...prev, [defKey]: next }));
+          onCustomFieldCommit(row.id, defKey, next);
+        }
+      : undefined,
   };
 
   const selected = isOpen || isChecked;

@@ -257,20 +257,20 @@ describe('Sheets-class freeze + Qty header (receiving family)', () => {
 });
 
 describe('default (core) column sets — change these deliberately', () => {
-  // Receiving default: which PO (`order`, frozen with select), WHEN (`date`),
-  // what is it, what STATE (`status`), how many (`qty`), what it cost (`price`),
-  // where in the flow, and the other scan identifier (`tracking`). Identity
-  // pane is `select · order`. Platform dropped 2026-08-05. condition / serial
-  // stay opt-in (usually empty at scan time). There is no `stage` track
-  // (deleted 2026-08-02): its clock moved into `date` and its runtime header
-  // label became `status`.
+  // Receiving default: which PO (`order`, frozen with select), Product, STATE
+  // (`status`), WHEN (`date` after status — not jammed under Product), qty,
+  // price, where in the flow, and the other scan identifier (`tracking`).
+  // Trailing `_fill` is structural slack (not a core fact). Identity pane is
+  // `select · order`. Platform dropped 2026-08-05. condition / serial stay
+  // opt-in. There is no `stage` track (deleted 2026-08-02): its clock moved
+  // into `date` and its runtime header label became `status`.
   it('receiving ships the import-support scan set', () => {
     assert.deepEqual(coreKeys(RECEIVING_GRID_COLUMNS), [
       'select',
       'order',
-      'date',
       'title',
       'status',
+      'date',
       'qty',
       'price',
       'location',

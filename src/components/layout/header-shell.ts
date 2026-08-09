@@ -107,10 +107,12 @@ export const PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0';
  * (40px / `h-10`). Shares one bottom hairline Y via {@link TOP_CHROME_BAND_FACE}.
  * Never alias this to {@link PRIMARY_CHROME_ROW_FACE} — densifying the nav
  * header to match scan-station row 1 is a regression.
+ * Kept file-local so knip does not flag an unused export; guards assert the
+ * literal via {@link TOP_CHROME_BAND_FACE}.
  */
 const TOP_CHROME_ROW_FACE = 'h-10 shrink-0';
 
-/** Pixel twin of {@link TOP_CHROME_ROW_FACE} (assistant dock / detail-stack offset). */
+/** Pixel twin of the nav header height (assistant dock / detail-stack offset). */
 export const TOP_CHROME_ROW_PX = 40;
 
 /** Identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
@@ -207,6 +209,22 @@ export const TOP_CHROME_BAND_CLASS = `flex items-stretch ${TOP_CHROME_BAND_FACE}
  * runs left → center → right.
  */
 export const STATION_SECONDARY_BAND_FACE = 'h-6 shrink-0';
+
+/**
+ * Top-edge seam for every station-column **footer** band — Context filter /
+ * recent receiving · utility `←|` · Displays `→|` · Unbox dock Band 2 · spine
+ * sign-in. One `border-t` + `border-border-hairline` so the floor hairline
+ * reads as a continuous Y across columns (twin of {@link TOP_CHROME_BAND_FACE}
+ * for the nav top). Distinct from {@link receivingHeaderHairlineClass} (top
+ * inset chrome under GlobalHeader).
+ */
+export const STATION_COLUMN_FOOTER_SEAM_CLASS = 'border-t border-border-hairline';
+
+/**
+ * Shared `h-8` footer band + {@link STATION_COLUMN_FOOTER_SEAM_CLASS}.
+ * Pad / justify are consumer-local (`mt-auto`, `justify-center`, `px-2`, …).
+ */
+export const STATION_COLUMN_FOOTER_BAND_FACE = `flex h-8 w-full shrink-0 items-center ${STATION_COLUMN_FOOTER_SEAM_CLASS}`;
 
 /**
  * Horizontal inset for GlobalHeader — flush to both edges (no left/right pad).

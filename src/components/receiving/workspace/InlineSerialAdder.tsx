@@ -5,6 +5,7 @@ import { Plus, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, TextField } from '@/design-system/primitives';
 import { SerialChipWithMenu } from '@/components/receiving/workspace/SerialCard';
+import { useRegisterScanSink } from '@/lib/station-scan-sink';
 
 interface SavedSerial {
   id?: number;
@@ -151,30 +152,58 @@ export function InlineSerialAdder({
     setScan('');
   };
 
-  const submit = () => {
-    const trimmed = scan.trim();
-    if (!trimmed || disabled) return;
+  const applyPayload = useCallback(
+    (raw: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed || disabled) return;
 
-    // Replace mode — operator is finalizing an in-place edit.
-    if (editing && onReplaceSerial) {
-      if (trimmed !== editing.serial_number) {
-        onReplaceSerial(lineId, editing, trimmed);
+      // Replace mode — operator is finalizing an in-place edit.
+      if (editing && onReplaceSerial) {
+        if (trimmed !== editing.serial_number) {
+          onReplaceSerial(lineId, editing, trimmed);
+        }
+        setEditing(null);
+        onEditingSerialChange?.(null);
+        setScan('');
+        return;
       }
-      setEditing(null);
-      onEditingSerialChange?.(null);
-      setScan('');
-      return;
-    }
 
-    // Comma-paste → enqueue each value. Parent queues writes; clear + stay
-    // focused so the wedge can keep typing while optimistic chips land.
-    const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-    setScan('');
-    for (const sn of parts) {
-      void onAdd(lineId, sn);
-    }
-    refocusScanInput();
+      // Comma-paste → enqueue each value. Parent queues writes; clear + stay
+      // focused so the wedge can keep typing while optimistic chips land.
+      const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+      setScan('');
+      for (const sn of parts) {
+        void onAdd(lineId, sn);
+      }
+      refocusScanInput();
+    },
+    [
+      disabled,
+      editing,
+      lineId,
+      onAdd,
+      onEditingSerialChange,
+      onReplaceSerial,
+      refocusScanInput,
+    ],
+  );
+
+  const submit = () => {
+    applyPayload(scan);
   };
+
+  // Active Testing (or any under-row) line — wedge while focus is elsewhere.
+  useRegisterScanSink({
+    id: `po-line:${lineId}`,
+    enabled: autoFocus && !disabled && lineId > 0,
+    onScan: applyPayload,
+    focus: () => {
+      const el = inputRef.current;
+      if (!el || el.disabled) return;
+      el.focus({ preventScroll: true });
+      el.select();
+    },
+  });
 
   return (
     // items-end: the +/save button bottom-aligns with the input only, so the

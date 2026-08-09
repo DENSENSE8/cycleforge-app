@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -67,6 +67,8 @@ import {
   type HistoryCommandScanKind,
 } from '@/lib/receiving/history-command-scan';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { NAV_KEY_HINT_CLASS, useNavRegion, type NavRegionId } from '@/lib/keyboard/nav-keys';
+import { UNBOX_BAND3_NAV_KEY } from '@/lib/receiving/unbox-band3-nav-keys';
 import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
 import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
@@ -106,6 +108,7 @@ export function UnboxWorkspaceHeader({
   tab,
   onSelectTab,
   inspectorOpen = false,
+  navRegionId,
   className,
 }: {
   tab: UnboxWorkspaceTab;
@@ -118,6 +121,13 @@ export function UnboxWorkspaceHeader({
    * View-only shell. The toggle parks without clearing the target.
    */
   inspectorOpen?: boolean;
+  /**
+   * Opt this band into the leader-armed selection keyboard as the MIDDLE region
+   * (`⌘;` → `m` → letter). `null` opts out — the host passes null while a
+   * carton covers the browse, because `registerNavRegion` keys by region id and
+   * the station bench is the other middle claimant.
+   */
+  navRegionId?: NavRegionId | null;
   className?: string;
 }) {
   const router = useRouter();
@@ -678,6 +688,40 @@ export function UnboxWorkspaceHeader({
   const activeTriageFacet =
     triageRefineFacets.find((f) => f.id === triageFacet) ?? triageRefineFacets[0];
 
+  // Nav keys — Band 3 opts into the ONE leader-armed selection keyboard as the
+  // middle region (`⌘;` → `m` → letter). No new chord: `⌘F` / `/` were both
+  // rejected — `/` because a printed Digital Link (`https://…/m/r/…`) makes a
+  // wedge type it, and a second global binder because the chord registry has
+  // exactly one owner per chord (`source-of-truth.md` → Nav keys · ⌘K).
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+  const navTargets = useMemo(
+    () => [
+      { id: 'find', preferredKey: UNBOX_BAND3_NAV_KEY.find },
+      ...(triageRefineFacets.length
+        ? [{ id: 'refine', preferredKey: UNBOX_BAND3_NAV_KEY.refine }]
+        : []),
+    ],
+    [triageRefineFacets.length],
+  );
+  const { armed: navArmed, keymap: navKeymap } = useNavRegion({
+    id: isIncomingTab ? null : navRegionId,
+    targets: navTargets,
+    onCommit: (targetId) => {
+      if (targetId === 'find') {
+        const el = findInputRef.current;
+        el?.focus();
+        el?.select();
+        return;
+      }
+      if (targetId === 'refine') setFilterOpen(true);
+    },
+  });
+  const navKeyCap = (targetId: string) => {
+    if (!navArmed) return undefined;
+    const key = navKeymap.get(targetId);
+    return key ? <span className={NAV_KEY_HINT_CLASS}>{key}</span> : undefined;
+  };
+
   const triageRefineBody = (() => {
     switch (activeTriageFacet?.id) {
       case 'staff':
@@ -746,6 +790,7 @@ export function UnboxWorkspaceHeader({
   })();
 
   const triageInFieldFilter = triageRefineFacets.length ? (
+    <>
     <WorkbenchFilterPopover
       open={filterOpen}
       onOpenChange={setFilterOpen}
@@ -809,6 +854,8 @@ export function UnboxWorkspaceHeader({
         </>
       ) : null}
     </WorkbenchFilterPopover>
+    {navKeyCap('refine')}
+    </>
   ) : null;
 
   const triageSearch = historyFindInParentMap ? null : isHistoryTab ? (
@@ -819,6 +866,8 @@ export function UnboxWorkspaceHeader({
       placeholder={getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')}
       className="min-w-0 flex-1"
       trailingSuffix={historyInFieldFilter}
+      inputRef={findInputRef}
+      navKeyHint={navKeyCap('find')}
     />
   ) : (
     <TechRailSearchBar
@@ -834,6 +883,8 @@ export function UnboxWorkspaceHeader({
       }
       className="min-w-0 flex-1"
       trailingSuffix={triageInFieldFilter}
+      inputRef={findInputRef}
+      navKeyHint={navKeyCap('find')}
     />
   );
 

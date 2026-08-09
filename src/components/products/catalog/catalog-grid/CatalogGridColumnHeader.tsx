@@ -38,4 +38,9 @@ export const CatalogGridColumnHeader = makeLedgerGridColumnHeader<
   CatalogGridColumn,
   CatalogGridColumnKey,
   'always'
->({ layout: CATALOG_HEADER_LAYOUT, defaultColumns: CATALOG_GRID_COLUMNS, selectMode: 'always' });
+>({
+  layout: CATALOG_HEADER_LAYOUT,
+  defaultColumns: CATALOG_GRID_COLUMNS,
+  selectMode: 'always',
+  tableId: 'catalog',
+});

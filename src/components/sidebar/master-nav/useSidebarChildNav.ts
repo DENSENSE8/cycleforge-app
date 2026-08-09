@@ -34,9 +34,12 @@ export function useSidebarChildNav() {
       // settings, …) — which aren't in SIDEBAR_PAGE_NAV — still land on their
       // real route instead of falling back to the current pathname (no-op).
       if (!page || !childId) {
+        // Search is header-find only — never push bare `/search` (blank page).
+        if (pageId === 'search') {
+          dispatchGlobalSearchFocus();
+          return;
+        }
         if (samePage && !childId) {
-          // Re-click Search while already on `/search` — refocus the rail field.
-          if (pageId === 'search') dispatchGlobalSearchFocus();
           return;
         }
         const href = getSidebarHref(pageId) ?? pathname ?? '/';

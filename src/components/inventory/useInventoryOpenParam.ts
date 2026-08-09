@@ -21,6 +21,8 @@
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
+import { INVENTORY_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
+import { parseRouteParams } from '@/lib/routing/route-params';
 import {
   parseInventoryOpenKey,
   type OpenInventoryDetailsPayload,
@@ -48,7 +50,13 @@ export function useInventoryOpenParam(): {
     (mutate: (params: URLSearchParams) => void) => {
       const params = new URLSearchParams(searchParams.toString());
       mutate(params);
-      const qs = params.toString();
+      // Emit in the route's declared key order so `SurfaceParamHygiene` sees the
+      // URL already canonical and does NOT fire a second reordering replace
+      // (URLSearchParams.set appends `open` at the end; hygiene rebuilds in
+      // declaredKeys order). parseRouteParams keeps owned + carried keys, so the
+      // active `q`/`state`/`condition` filters and the ambient `colsort`/`coldir`
+      // column sort survive.
+      const qs = parseRouteParams(INVENTORY_ROUTE_PARAMS, params).toString();
       router.replace(qs ? `${INVENTORY_UNITS_ROUTE}?${qs}` : INVENTORY_UNITS_ROUTE, {
         scroll: false,
       });

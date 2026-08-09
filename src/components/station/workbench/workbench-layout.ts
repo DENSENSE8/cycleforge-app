@@ -5,7 +5,9 @@
  * existing imports keep working; new stations import from this module.
  */
 
+import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { CONTEXT_PANEL_RESIZE } from '@/components/sidebar/context-panel-column';
+import { cn } from '@/utils/_cn';
 
 /**
  * Scan-station middle **floor** width (px) — min on
@@ -111,11 +113,12 @@ export const STATION_UTILITY_RAIL_CLASS =
 
 /**
  * Bottom cell of {@link STATION_UTILITY_RAIL_CLASS} — `←|` Open displays.
- * Same band as left-dock expand / `TechRailSearchBar` density=`row` (`h-8` +
- * `border-t`).
+ * Same band as left-dock expand / `TechRailSearchBar` density=`row`.
  */
-export const STATION_UTILITY_RAIL_FOOTER_CLASS =
-  'mt-auto flex h-8 w-full shrink-0 items-center justify-center border-t border-border-hairline';
+export const STATION_UTILITY_RAIL_FOOTER_CLASS = cn(
+  'mt-auto justify-center',
+  STATION_COLUMN_FOOTER_BAND_FACE,
+);
 
 // ── Column budget (the yield ladder — SoT for the three-column frame) ────────
 //

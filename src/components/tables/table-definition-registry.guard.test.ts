@@ -183,13 +183,14 @@ describe('receiving.browse — the golden definition', () => {
 
     assert.deepEqual(defaultVisibleTrackKeys(RECEIVING_BROWSE_DEFINITION.columns), [
       'order',
-      'date',
       'title',
       'status',
+      'date',
       'qty',
       'price',
       'location',
       'tracking',
+      '_fill',
     ]);
   });
 });

@@ -15,6 +15,7 @@ import { getLast8 } from '@/components/ui/CopyChip';
 import { useScanOutStation, type ActiveScanOut } from '@/components/outbound/scan-out/useScanOutStation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStationTheme } from '@/hooks/useStationTheme';
+import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
@@ -30,6 +31,12 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
   const { user } = useAuth();
   const { theme: themeColor } = useStationTheme({ staffId: user?.staffId ?? 0 });
   const station = useScanOutStation();
+  useRegisterScanSink({
+    id: 'scan-out-bar',
+    enabled: true,
+    onScan: station.submitRaw,
+    focus: () => station.inputRef.current?.focus(),
+  });
   const active = station.active;
   const label = active?.result?.orderId
     ? `#${getLast8(active.result.orderId)}`

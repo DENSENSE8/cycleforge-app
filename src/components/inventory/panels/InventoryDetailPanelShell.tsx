@@ -17,6 +17,14 @@ export interface InventoryDetailPanelShellProps {
     onClose?: () => void;
     /** When false, hides the up/down nav arrows in the header. */
     showNavigation?: boolean;
+    /**
+     * `'default'` (legacy inline overlay) renders the hero-title header + Escape /
+     * nav keydown. `'bare'` renders ONLY the body — no header, no key handlers —
+     * for a host that owns its own chrome (the `RightRailHost` push inspector,
+     * whose `DeskRailChromeRow` provides close and whose `useEscapeClose` owns
+     * Escape). Default keeps every existing consumer unchanged.
+     */
+    chrome?: 'default' | 'bare';
     children: React.ReactNode;
 }
 
@@ -34,14 +42,19 @@ export function InventoryDetailPanelShell({
     eyebrow,
     onClose,
     showNavigation = true,
+    chrome = 'default',
     children,
 }: InventoryDetailPanelShellProps) {
+    const bare = chrome === 'bare';
+
     const close = () => {
         onClose?.();
         dispatchCloseInventoryDetails();
     };
 
     useEffect(() => {
+        // The rail host owns Escape / prev-next; only the inline overlay binds keys.
+        if (bare) return;
         const handler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') close();
             else if (e.key === '[') dispatchNavigateInventoryDetails('up');
@@ -50,7 +63,10 @@ export function InventoryDetailPanelShell({
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [bare]);
+
+    // Bare: content only — the host provides the region + chrome + scroll port.
+    if (bare) return <>{children}</>;
 
     return (
         <section

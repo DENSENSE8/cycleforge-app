@@ -1,7 +1,7 @@
 /**
  * Unbox History / Receiving — deterministic fact tracks stay FIXED; Product
- * (flex) and Status are drag-resizable (2026-08-06). Zoom scales rem floors via
- * density.
+ * (hard preferred) and Status are drag-resizable; trailing `_fill` owns the
+ * sole `1fr` slack. Zoom scales rem floors via density.
  *
  *   npx tsx --test src/lib/receiving/receiving-grid-fixed-columns.guard.test.ts
  */
@@ -23,13 +23,13 @@ const FIXED_FACT_KEYS = [
   'tracking',
   'serial',
   'zoho',
+  '_fill',
 ] as const;
 
-// Product (flex) + Status expose a drag-resize grip (2026-08-06); every other
-// fact track stays locked.
+// Product + Status expose a drag-resize grip; every other track stays locked.
 const RESIZABLE_KEYS = new Set(['title', 'status']);
 
-describe('RECEIVING_GRID_COLUMNS — fixed facts · resizable Product + Status', () => {
+describe('RECEIVING_GRID_COLUMNS — fixed facts · resizable Product + Status · `_fill` slack', () => {
   it('only Product and Status are resizable', () => {
     for (const col of RECEIVING_GRID_COLUMNS) {
       if (RESIZABLE_KEYS.has(col.key)) {
@@ -50,10 +50,15 @@ describe('RECEIVING_GRID_COLUMNS — fixed facts · resizable Product + Status',
     }
   });
 
-  it('fact tracks are content-hard minmax(X,X); Product flexes', () => {
+  it('fact tracks are content-hard minmax(X,X); `_fill` flexes; Product is hard', () => {
     for (const col of RECEIVING_GRID_COLUMNS) {
+      if (col.key === '_fill') {
+        assert.match(col.width, /1fr/, '_fill absorbs leftover sheet width');
+        continue;
+      }
       if (col.key === 'title') {
-        assert.match(col.width, /1fr/, 'Product absorbs leftover sheet width');
+        assert.equal(col.width, 'minmax(16rem, 16rem)');
+        assert.doesNotMatch(col.width, /1fr/, 'Product must not own the flex track');
         continue;
       }
       assert.match(

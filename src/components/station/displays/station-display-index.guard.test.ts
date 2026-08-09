@@ -288,6 +288,11 @@ describe('Station Displays Root Index chrome', () => {
     );
     // Verifiable 24px height — shared STATION_SECONDARY_BAND_FACE (h-6) eyebrow.
     assert.match(header, /STATION_SECONDARY_BAND_FACE/);
+    assert.match(
+      header,
+      /STATION_CHROME_SEAM_HAIRLINE/,
+      'leaf hairline is the shared seam token — never border-b that notches Displays border-l',
+    );
     assert.doesNotMatch(
       header,
       /\bh-10\b/,

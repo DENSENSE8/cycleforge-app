@@ -1,22 +1,21 @@
 'use client';
 
+/**
+ * GlobalHeader activity inbox — ephemeral + dismissible feed.
+ *
+ * Rows compose {@link CompactActivityRow} + {@link RailRowBody} (SoT compact
+ * activity face): status mark · title · one fact · short age. Never a large
+ * kind glyph, prose `4 hrs ago`, or tone-pill parade.
+ */
+
 import Link from 'next/link';
-import { useState, type ComponentType, type ReactNode } from 'react';
-import { formatDistanceToNowStrict } from 'date-fns';
+import { useState, type ReactNode } from 'react';
 import {
   Copy,
   Check,
   X,
   Inbox,
-  Wrench,
-  Zap,
-  ShieldCheck,
   RotateCcw,
-  Truck,
-  MessageSquare,
-  Phone,
-  ChevronRight,
-  ClipboardList,
   Loader2,
 } from '@/components/Icons';
 import { copyToClipboard } from '@/utils/_dom';
@@ -28,7 +27,11 @@ import {
   type ActivityInboxItem,
   type ActivityInboxItemKind,
 } from '@/contexts/ActivityInboxContext';
+import { usePlatformMeta } from '@/hooks/useCatalog';
+import { platformMetaIconTone, UNKNOWN_PLATFORM } from '@/lib/source-platform';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { CompactActivityRow } from '@/components/ui/CompactActivityRow';
+import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { Button, IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
@@ -39,39 +42,28 @@ interface ActivityInboxPopoverProps {
   onClose: () => void;
 }
 
-type Tone = 'blue' | 'amber' | 'emerald' | 'rose' | 'violet' | 'gray';
-type Glyph = ComponentType<{ className?: string }>;
-
-const PILL_TONE: Record<Tone, string> = {
-  blue: 'bg-blue-50 text-blue-700 ring-blue-200',
-  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
-  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  rose: 'bg-rose-50 text-rose-700 ring-rose-200',
-  violet: 'bg-violet-50 text-violet-700 ring-violet-200',
-  gray: 'bg-surface-sunken text-text-muted ring-border-soft',
+/** Soft status dots — never large kind glyphs on this face. */
+const KIND_DOT: Record<ActivityInboxItemKind, string> = {
+  repair_status: 'bg-amber-500',
+  priority_unbox: 'bg-violet-500',
+  warranty_claim: 'bg-emerald-500',
+  return_pending_test: 'bg-rose-500',
+  order_ready_ship: 'bg-emerald-500',
+  support_followup: 'bg-violet-500',
+  staff_message: 'bg-blue-500',
+  work_task: 'bg-amber-500',
 };
 
-const KIND_META: Record<ActivityInboxItemKind, { label: string; Icon: Glyph; tone: Tone }> = {
-  repair_status: { label: 'Repair', Icon: Wrench, tone: 'amber' },
-  priority_unbox: { label: 'Priority', Icon: Zap, tone: 'violet' },
-  warranty_claim: { label: 'Warranty', Icon: ShieldCheck, tone: 'emerald' },
-  return_pending_test: { label: 'Tech', Icon: RotateCcw, tone: 'rose' },
-  order_ready_ship: { label: 'Tech', Icon: Truck, tone: 'blue' },
-  support_followup: { label: 'Support', Icon: Phone, tone: 'violet' },
-  staff_message: { label: 'Message', Icon: MessageSquare, tone: 'blue' },
-  // Same glyph HeaderTopWorkOrderChip uses for work orders — a thrown task IS
-  // a work_assignment row, so one concept keeps one mark. Amber because it is
-  // addressed to you and waiting, not because it is an error.
-  work_task: { label: 'Task', Icon: ClipboardList, tone: 'amber' },
+const KIND_LABEL: Record<ActivityInboxItemKind, string> = {
+  repair_status: 'Repair',
+  priority_unbox: 'Priority',
+  warranty_claim: 'Warranty',
+  return_pending_test: 'Tech',
+  order_ready_ship: 'Tech',
+  support_followup: 'Support',
+  staff_message: 'Message',
+  work_task: 'Task',
 };
-
-function inboxRelativeTime(ms: number): string {
-  return formatDistanceToNowStrict(new Date(ms), { addSuffix: true })
-    .replace(/\bhours ago\b/, 'hrs ago')
-    .replace(/\bhour ago\b/, 'hr ago')
-    .replace(/\bminutes ago\b/, 'mins ago')
-    .replace(/\bminute ago\b/, 'min ago');
-}
 
 function afterSep(title: string): string {
   const i = title.indexOf(' · ');
@@ -89,8 +81,6 @@ function primaryFor(it: ActivityInboxItem): string {
     case 'priority_unbox':
       return 'Unbox this first';
     case 'work_task':
-      // The title already carries who handed it over (and "Urgent ·" when it
-      // jumps the queue); strip the prefix so the row leads with the substance.
       return afterSep(it.title) || 'Handed to you';
     case 'warranty_claim':
       return it.claimNumber || afterSep(it.title);
@@ -101,18 +91,7 @@ function primaryFor(it: ActivityInboxItem): string {
   }
 }
 
-function statusTone(status: string): Tone {
-  const v = status.toLowerCase();
-  if (/(approv|repaired|repair_logged|closed|done|complete|received|ready|ship)/.test(v)) return 'emerald';
-  if (/(deni|expire|fail|error|block|reject|cancel)/.test(v)) return 'rose';
-  if (/(submit|pending|progress|in_repair|await|test|open)/.test(v)) return 'blue';
-  return 'gray';
-}
-
 function hrefFor(it: ActivityInboxItem): string | null {
-  // A thrown task opens the record it points at, through the same resolver the
-  // Home Inbox uses — so the bell and the inbox never disagree about where a
-  // row goes.
   if (it.kind === 'work_task' && it.entityType && it.entityId) {
     return notificationHref(it.entityType, it.entityId);
   }
@@ -127,7 +106,6 @@ function hrefFor(it: ActivityInboxItem): string | null {
     it.receivingId
   ) {
     const line = it.lineId ? `&lineId=${it.lineId}` : '';
-    // The Unbox surface (`/unbox`) is where a carton is worked; `?recvId=` focuses it.
     return `/unbox?recvId=${it.receivingId}${line}`;
   }
   if (it.kind === 'return_pending_test') return '/test';
@@ -135,22 +113,59 @@ function hrefFor(it: ActivityInboxItem): string | null {
   return null;
 }
 
-function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
-        PILL_TONE[tone],
-      )}
-    >
-      {children}
-    </span>
-  );
+function metaFactFor(
+  it: ActivityInboxItem,
+  platformLabel: string | null,
+  platformIconTone: ReturnType<typeof platformMetaIconTone> | null,
+): ReactNode {
+  if (it.kind === 'order_ready_ship' || it.kind === 'return_pending_test') {
+    return (
+      <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
+        {it.kind === 'order_ready_ship' ? (
+          <Check className="h-3 w-3 shrink-0 text-emerald-600" aria-hidden />
+        ) : null}
+        {it.orderNumber ? (
+          <OrderIdChip
+            value={it.orderNumber}
+            display={getLast8(it.orderNumber)}
+            dense
+            platformLabel={platformLabel}
+            iconClass={platformIconTone?.className}
+            iconStyle={platformIconTone?.style}
+          />
+        ) : null}
+        {it.trackingNumber ? (
+          <TrackingChip
+            value={it.trackingNumber}
+            display={getLast8(it.trackingNumber)}
+            dense
+          />
+        ) : null}
+        {!it.orderNumber && !it.trackingNumber
+          ? it.kind === 'return_pending_test'
+            ? 'Needs testing'
+            : 'Ready to ship'
+          : null}
+      </span>
+    );
+  }
+  if (it.kind === 'repair_status') {
+    const from = it.previousStatus?.trim();
+    const to = it.nextStatus?.trim();
+    if (from || to) return [from, to].filter(Boolean).join(' → ');
+  }
+  if (it.kind === 'warranty_claim' && it.claimStatus) return it.claimStatus;
+  if (it.kind === 'priority_unbox' && it.sku) return it.sku;
+  if (it.kind === 'support_followup' && it.ticketId) return `#${it.ticketId}`;
+  if (it.kind === 'staff_message' && it.body) return it.body;
+  if (it.kind === 'work_task' && it.urgent) return 'Urgent';
+  return it.subtitle?.trim() || KIND_LABEL[it.kind];
 }
 
 export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
   const { items, dismissItem, clear, undoItem, pendingUndoId } = useActivityInbox();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const resolvePlatformMeta = usePlatformMeta();
 
   const handleCopyBack = async (body: string, id: string) => {
     const ok = await copyToClipboard(body);
@@ -209,11 +224,19 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       ) : (
         <ul className="divide-y divide-border-hairline">
           {items.map((it) => {
-            const meta = KIND_META[it.kind];
-            const Icon = meta.Icon;
             const href = hrefFor(it);
             const navigable = href != null;
             const primary = primaryFor(it);
+            // Inbox items do not carry a platform key today — still resolve
+            // through the catalog so OrderIdChip hover/glyph tone stay SoT.
+            const platformMeta = resolvePlatformMeta('');
+            const platformLabel =
+              platformMeta && platformMeta.label !== UNKNOWN_PLATFORM.label
+                ? platformMeta.label
+                : null;
+            const platformIconTone = platformMeta
+              ? platformMetaIconTone(platformMeta)
+              : null;
 
             const undoable =
               it.kind === 'repair_status' &&
@@ -223,166 +246,99 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
               it.undoUntil > Date.now();
             const undoing = pendingUndoId === it.id;
 
+            const actions = (
+              <>
+                {undoable ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void undoItem(it.id)}
+                    disabled={undoing}
+                    className="pointer-events-auto h-7 px-1.5 text-role-micro font-semibold text-text-soft"
+                  >
+                    {undoing ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-3 w-3" />
+                    )}
+                    Undo
+                  </Button>
+                ) : null}
+                {it.kind === 'staff_message' && it.body ? (
+                  <HoverTooltip label="Copy message" asChild>
+                    <IconButton
+                      ariaLabel="Copy message"
+                      onClick={() => {
+                        if (!it.body) return;
+                        void handleCopyBack(it.body, it.id);
+                      }}
+                      className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-none hover:bg-surface-sunken"
+                      icon={
+                        copiedId === it.id ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 text-text-faint" />
+                        )
+                      }
+                    />
+                  </HoverTooltip>
+                ) : null}
+                <HoverTooltip label="Dismiss" asChild>
+                  <IconButton
+                    ariaLabel="Dismiss"
+                    onClick={() => dismissItem(it.id)}
+                    className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-none text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                    icon={<X className="h-3.5 w-3.5" />}
+                  />
+                </HoverTooltip>
+              </>
+            );
+
             return (
-              <li key={it.id} className="group relative">
+              <li key={it.id} className="group relative px-2 py-1 hover:bg-surface-hover">
                 {navigable ? (
                   <Link
                     href={href}
                     onClick={onClose}
-                    aria-label={`${meta.label}: ${primary}`}
+                    aria-label={`${KIND_LABEL[it.kind]}: ${primary}`}
                     className="absolute inset-0 z-0"
                   />
                 ) : null}
-                <div
-                  className={cn(
-                    'relative flex items-start gap-2.5 px-3 py-2 transition-colors group-hover:bg-surface-hover',
-                    navigable && 'pointer-events-none',
-                  )}
-                >
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center text-text-muted">
-                    <Icon className="h-5 w-5" />
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        'truncate text-role-caption font-semibold text-text-default',
-                        navigable && 'group-hover:text-blue-700',
-                      )}
-                    >
-                      {primary}
-                    </p>
-
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                      <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                        {inboxRelativeTime(it.createdAt)}
-                      </span>
-
-                      {(it.kind === 'order_ready_ship' || it.kind === 'return_pending_test') && (
-                        it.kind === 'order_ready_ship' ? (
-                          <span className="pointer-events-auto relative z-10 inline-flex shrink-0">
-                            <HoverTooltip label="Ready to ship" asChild focusable={false}>
-                              <span className="inline-flex items-center text-emerald-600">
-                                <Check className="h-4 w-4" aria-hidden />
-                              </span>
-                            </HoverTooltip>
-                          </span>
-                        ) : (
-                          <Pill tone="rose">Needs testing</Pill>
-                        )
-                      )}
-
-                      {it.kind === 'support_followup' && (
-                        <>
-                          <Pill tone="violet">Follow up</Pill>
-                          {it.ticketId ? <Pill tone="gray">#{it.ticketId}</Pill> : null}
-                        </>
-                      )}
-
-                      {it.orderNumber ? (
-                        <span className="pointer-events-auto relative z-10 inline-flex max-w-full">
-                          <OrderIdChip
-                            value={it.orderNumber}
-                            display={getLast8(it.orderNumber)}
-                            dense
-                          />
-                        </span>
-                      ) : null}
-
-                      {it.trackingNumber ? (
-                        <span className="pointer-events-auto relative z-10 inline-flex max-w-full">
-                          <TrackingChip
-                            value={it.trackingNumber}
-                            display={getLast8(it.trackingNumber)}
-                            dense
-                          />
-                        </span>
-                      ) : null}
-
-                      {it.kind === 'repair_status' && (it.previousStatus || it.nextStatus) ? (
-                        <>
-                          {it.previousStatus ? <Pill tone="gray">{it.previousStatus}</Pill> : null}
-                          <ChevronRight className="h-3 w-3 shrink-0 text-text-faint" />
-                          {it.nextStatus ? (
-                            <Pill tone={statusTone(it.nextStatus)}>{it.nextStatus}</Pill>
-                          ) : null}
-                        </>
-                      ) : null}
-
-                      {it.kind === 'warranty_claim' && it.claimStatus ? (
-                        <Pill tone={statusTone(it.claimStatus)}>{it.claimStatus}</Pill>
-                      ) : null}
-
-                      {it.kind === 'priority_unbox' && it.sku ? (
-                        <Pill tone="violet">{it.sku}</Pill>
-                      ) : null}
-                    </div>
-
-                    {it.kind === 'staff_message' && it.body ? (
-                      <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-role-caption text-text-soft">
-                        {it.body}
-                      </p>
-                    ) : null}
-
-                    {it.kind === 'repair_status' && (it.undone || it.undoFailed) ? (
-                      <p
-                        className={cn(
-                          'mt-1 text-role-eyebrow font-semibold uppercase tracking-widest',
-                          it.undoFailed ? 'text-rose-600' : 'text-text-faint',
-                        )}
-                      >
-                        {it.undoFailed ? 'Undo failed' : 'Reverted'}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="pointer-events-auto relative z-10 flex shrink-0 items-center gap-0.5">
-                    {undoable ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void undoItem(it.id)}
-                        disabled={undoing}
-                        className="h-7 px-1.5 text-role-micro font-semibold text-text-soft"
-                      >
-                        {undoing ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <RotateCcw className="h-3 w-3" />
-                        )}
-                        Undo
-                      </Button>
-                    ) : null}
-
-                    {it.kind === 'staff_message' && it.body ? (
-                      <HoverTooltip label="Copy message" asChild>
-                        <IconButton
-                          ariaLabel="Copy message"
-                          onClick={() => {
-                            if (!it.body) return;
-                            void handleCopyBack(it.body, it.id);
-                          }}
-                          className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-sunken"
-                          icon={
-                            copiedId === it.id ? (
-                              <Check className="h-3.5 w-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5 text-text-faint" />
-                            )
-                          }
+                <div className={cn('relative z-10', navigable && 'pointer-events-none')}>
+                  <CompactActivityRow
+                    leading={
+                      <HoverTooltip label={KIND_LABEL[it.kind]} focusable={false} asChild>
+                        <span
+                          className={cn('block h-2 w-2 shrink-0 rounded-full', KIND_DOT[it.kind])}
+                          aria-label={KIND_LABEL[it.kind]}
                         />
                       </HoverTooltip>
-                    ) : null}
-
-                    <HoverTooltip label="Dismiss" asChild>
-                      <IconButton
-                        ariaLabel="Dismiss"
-                        onClick={() => dismissItem(it.id)}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-text-faint opacity-0 hover:bg-surface-sunken hover:text-text-muted focus-visible:opacity-100 group-hover:opacity-100"
-                        icon={<X className="h-3.5 w-3.5" />}
-                      />
-                    </HoverTooltip>
-                  </div>
+                    }
+                    activityAt={it.createdAt}
+                    actions={actions}
+                  >
+                    <RailRowBody
+                      vm={{
+                        title: primary,
+                        titleAttr: primary,
+                        meta: (
+                          <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
+                            {metaFactFor(it, platformLabel, platformIconTone)}
+                            {it.kind === 'repair_status' && (it.undone || it.undoFailed) ? (
+                              <span
+                                className={cn(
+                                  'ml-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
+                                  it.undoFailed ? 'text-rose-600' : 'text-text-faint',
+                                )}
+                              >
+                                {it.undoFailed ? 'Undo failed' : 'Reverted'}
+                              </span>
+                            ) : null}
+                          </span>
+                        ),
+                      }}
+                    />
+                  </CompactActivityRow>
                 </div>
               </li>
             );

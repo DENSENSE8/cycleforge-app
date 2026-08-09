@@ -296,7 +296,7 @@ test('identity pad is horizontal-only (zero vertical pad)', () => {
   assert.match(IDENTITY, /STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0'/);
   assert.match(
     IDENTITY,
-    /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0`/,
+    /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0 \$\{STATION_CHROME_SEAM_HAIRLINE\}`/,
     'identity chip row must be gap-0 and stretch flush on the primary chrome face',
   );
   assert.match(

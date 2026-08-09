@@ -8,7 +8,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { useReceivingRowSelection } from '@/components/station/useReceivingRowSelection';
-import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
+import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import {
@@ -311,7 +311,7 @@ export function TestingHistoryList({
           right={localHeaderOptions}
         />
       ) : null}
-      <ReceivingGridView
+      <ReceivingGridHost
         daySections={daySections}
         loading={isLoading && rows.length === 0}
         emptyMessage={emptyMessage}

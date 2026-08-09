@@ -3,8 +3,7 @@
 /**
  * Inventory push inspector — the Wave-1 keystone. A non-modal `RightRailHost`
  * occupant (`modal={false}`) keyed on `?open=<kind>:<ref>`, replacing the legacy
- * inline `InventoryDetailsOverlay` for the migrated `/inventory/units` route (and
- * the later skus / bins / alerts / counts routes that reuse it).
+ * inline `InventoryDetailsOverlay` for the migrated `/inventory/units` route.
  *
  * Chrome is the Desk single-card golden (`BinDetailFlyout`): `DeskRailChromeRow`
  * (`→|` close) over a dense `PaneHeaderLabel` identity — never the hero-title
@@ -12,11 +11,19 @@
  * inspector (`display/right-rail-inspector.md`). The work surface reflows beside
  * it (push, `edgeCollapse` / resize inherited from the host).
  *
- * Bodies compose the record-content SoTs directly — `ByUnitView` / `BySkuView`
- * (`SkuDetailView`) / `ByBinView` (`LocationDetailView`) — so a later wave that
- * retires the `*DetailsPanel` wrappers leaves this untouched. `alert` / `count`
- * reuse their existing panels in `chrome="bare"` mode (content only, no hero
- * header) until their own wave lands a by-id surface.
+ * Body scope — the units grid only ever writes `unit:`, so `unit` is the only
+ * kind Wave 1 exercises:
+ *   - `unit`  → `ByUnitView` (record-content SoT; its own body-level title is
+ *               allowed — the SoT bans a hero title in the CHROME, not in the body).
+ *   - `alert` / `count` → the existing panels in `chrome="bare"` mode (content
+ *               only; the rail owns the chrome + scroll port).
+ *   - `sku` / `bin` → an honest deferred hint. Their real bodies compose
+ *               `SkuDetailView` (panel mode) / `LocationDetailView`, which are
+ *               designed by the `/inventory/{skus,bins}` migration (Wave 3);
+ *               rendering their full-page shells raw inside a push rail would
+ *               double the header, nest a scroll port, and `router.push('/inventory')`
+ *               back into the RETIRED shell on Back. A hand-crafted `?open=sku:`
+ *               deep-link on this surface lands the hint instead.
  */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
@@ -26,8 +33,6 @@ import type {
   InventoryDetailKind,
   OpenInventoryDetailsPayload,
 } from '@/lib/inventory-events-channel';
-import { ByBinView } from './ByBinView';
-import { BySkuView } from './BySkuView';
 import { ByUnitView } from './ByUnitView';
 import { AlertDetailsPanel } from './panels/AlertDetailsPanel';
 import { CountCampaignDetailsPanel } from './panels/CountCampaignDetailsPanel';
@@ -38,6 +43,12 @@ const KIND_EYEBROW: Record<InventoryDetailKind, string> = {
   bin: 'Bin',
   alert: 'Alert',
   count: 'Cycle Count',
+};
+
+/** Kinds whose full body lands with their own route migration (Wave 3). */
+const DEFERRED_HINT: Partial<Record<InventoryDetailKind, string>> = {
+  sku: 'SKU details open from the SKUs workspace.',
+  bin: 'Bin details open from the Locations workspace.',
 };
 
 function InspectorBody({
@@ -51,16 +62,18 @@ function InspectorBody({
     case 'unit':
       // `ref` is a plain string prop on ByUnitView (React 19 ref-as-prop).
       return <ByUnitView ref={recordRef} />;
-    case 'sku':
-      return <BySkuView sku={recordRef} />;
-    case 'bin':
-      return <ByBinView barcode={recordRef} />;
     case 'alert':
       return <AlertDetailsPanel alertId={recordRef} chrome="bare" />;
     case 'count':
       return <CountCampaignDetailsPanel campaignId={recordRef} chrome="bare" />;
     default:
-      return null;
+      return (
+        <div className="flex h-full items-center justify-center px-6 text-center">
+          <p className="text-sm text-text-muted">
+            {DEFERRED_HINT[kind] ?? 'This record opens from its own workspace.'}
+          </p>
+        </div>
+      );
   }
 }
 

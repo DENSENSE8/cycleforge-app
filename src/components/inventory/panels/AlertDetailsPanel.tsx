@@ -10,6 +10,8 @@ import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
 interface AlertDetailsPanelProps {
     alertId: string;
     onClose?: () => void;
+    /** `'bare'` drops the hero header for a host that owns its own chrome. */
+    chrome?: 'default' | 'bare';
 }
 
 /**
@@ -17,7 +19,7 @@ interface AlertDetailsPanelProps {
  * currently has no detail-by-id route, so we list the matching one out of
  * the bulk feed. Ack/resolve actions land in Phase 5 via a POST.
  */
-export function AlertDetailsPanel({ alertId, onClose }: AlertDetailsPanelProps) {
+export function AlertDetailsPanel({ alertId, onClose, chrome = 'default' }: AlertDetailsPanelProps) {
     const [alert, setAlert] = useState<AlertRow | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export function AlertDetailsPanel({ alertId, onClose }: AlertDetailsPanelProps) 
             title={title}
             subtitle={subtitle}
             onClose={onClose}
+            chrome={chrome}
         >
             {loading ? (
                 <div className="flex items-center justify-center py-16 text-text-faint">

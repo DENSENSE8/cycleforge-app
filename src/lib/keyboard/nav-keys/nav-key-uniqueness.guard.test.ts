@@ -23,10 +23,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DISPLAY_LEAF_NAV_KEY } from '@/components/station/displays/display-index';
+import { UNBOX_BAND3_NAV_KEY } from '@/lib/receiving/unbox-band3-nav-keys';
 
 /** Every region that hand-declares co-located nav keys. Add new maps here. */
 const DECLARED_KEY_MAPS: Record<string, Record<string, string>> = {
   'right / Station Displays leaves': DISPLAY_LEAF_NAV_KEY,
+  'middle / Unbox Band 3': UNBOX_BAND3_NAV_KEY,
 };
 
 describe('nav-keys declared-key uniqueness', () => {

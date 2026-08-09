@@ -9,6 +9,8 @@ import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
 interface CountCampaignDetailsPanelProps {
     campaignId: string;
     onClose?: () => void;
+    /** `'bare'` drops the hero header for a host that owns its own chrome. */
+    chrome?: 'default' | 'bare';
 }
 
 /**
@@ -16,7 +18,7 @@ interface CountCampaignDetailsPanelProps {
  * execution lands in Phase 5 with `/api/inventory/counts/[id]/lines` and
  * the line PATCH endpoint.
  */
-export function CountCampaignDetailsPanel({ campaignId, onClose }: CountCampaignDetailsPanelProps) {
+export function CountCampaignDetailsPanel({ campaignId, onClose, chrome = 'default' }: CountCampaignDetailsPanelProps) {
     const [campaign, setCampaign] = useState<CountRow | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export function CountCampaignDetailsPanel({ campaignId, onClose }: CountCampaign
             title={title}
             subtitle={subtitle}
             onClose={onClose}
+            chrome={chrome}
         >
             {loading ? (
                 <div className="flex items-center justify-center py-16 text-text-faint">

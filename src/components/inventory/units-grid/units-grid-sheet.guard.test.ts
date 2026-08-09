@@ -3,8 +3,8 @@
  *
  * Wave 0 of the SoT page-violation migrate: `/inventory` units is the first
  * inventory collection on the ops-queue golden. `inventory.units` declares
- * `surface: 'sheet'`; `UnitsGridView` mounts it through `NonlinearTableHost`;
- * `UnitsWorkspaceView` wires `WORKBENCH_SHEET_HOST` / `WORKBENCH_SHEET_CHROME`
+ * `surface: 'sheet'`; `UnitsWorkspaceView` mounts it through `NonlinearTableHost`;
+ * and wires `WORKBENCH_SHEET_HOST` / `WORKBENCH_SHEET_CHROME`
  * (never a `PageHeader` + `max-w-5xl` island); the `/inventory/units` route
  * mounts the workspace, not the legacy `InventoryShell`.
  *
@@ -34,12 +34,12 @@ describe('Units grid Sheets recipe (Unbox / bins golden)', () => {
     assert.equal(UNITS_TABLE_DEFINITION.tableId, 'inventory-units');
   });
 
-  it('UnitsGridView mounts the registry host, not the engine directly', () => {
-    const src = read('src/components/inventory/units-grid/UnitsGridView.tsx');
+  it('UnitsWorkspaceView mounts the registry host, not the engine directly', () => {
+    const src = read('src/components/inventory/UnitsWorkspaceView.tsx');
     assert.match(
       src,
       /<NonlinearTableHost[\s\S]*?binding=\{UNITS_TABLE_BINDING\}/,
-      'UnitsGridView must mount NonlinearTableHost with the units binding',
+      'UnitsWorkspaceView must mount NonlinearTableHost with the units binding',
     );
     assert.doesNotMatch(
       src,
@@ -50,6 +50,11 @@ describe('Units grid Sheets recipe (Unbox / bins golden)', () => {
       src,
       /surface="(sheet|framed)"/,
       'The shell recipe belongs to the definition, never to the mount',
+    );
+    assert.doesNotMatch(
+      src,
+      /UnitsGridView/,
+      'The UnitsGridView wrapper is burned — the workspace binds the host directly',
     );
   });
 
@@ -77,6 +82,38 @@ describe('Units grid Sheets recipe (Unbox / bins golden)', () => {
       /InventoryShell/,
       'The units route is migrated — it must not fall back to the shared legacy shell',
     );
+  });
+
+  it('Wave 1: row-click opens the push inspector, never the legacy shell route', () => {
+    const src = read('src/components/inventory/UnitsWorkspaceView.tsx');
+    // The keystone: no record may route through the retired InventoryShell.
+    assert.doesNotMatch(
+      src,
+      /\/inventory\?unit=/,
+      'row-click must open the RightRailHost inspector, not push /inventory?unit= through the legacy shell',
+    );
+    assert.doesNotMatch(
+      src,
+      /useRouter/,
+      'the units workspace no longer imperatively pushes a shell route',
+    );
+    assert.match(
+      src,
+      /InventoryInspectorRail/,
+      'the units workspace mounts the push inspector',
+    );
+    assert.match(
+      src,
+      /useInventoryOpenParam/,
+      'row-click writes ?open= via the optimistic mount-gated hook',
+    );
+  });
+
+  it('Wave 1: the inspector is a non-modal RightRailHost push occupant (never the hero-title shell)', () => {
+    const src = read('src/components/inventory/InventoryInspectorRail.tsx');
+    assert.match(src, /DetailStackRailRegistrar/);
+    assert.match(src, /modal=\{false\}/, 'record inspectors push; they do not float behind a scrim');
+    assert.match(src, /DeskRailChromeRow/, 'chrome is the Desk single-card row, not InventoryDetailPanelShell');
   });
 
   it('units status resolves through the unit-status registry, never a local cell tone map', () => {

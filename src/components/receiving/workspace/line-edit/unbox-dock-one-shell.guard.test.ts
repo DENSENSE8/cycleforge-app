@@ -78,7 +78,7 @@ test('UnboxDockHost is a full-width two-band flush floor — no raised Panel', (
   const host = src(HOST);
   const code = codeOnly(HOST);
   assert.match(host, /w-full/, 'full-width plane (inset-x-0 alone is not enough in-flow)');
-  assert.match(host, /border-t border-border/, 'hairline top border on the floor');
+  assert.match(host, /STATION_COLUMN_FOOTER_SEAM_CLASS/, 'floor top seam = column footer SoT');
   assert.match(host, /bg-surface-card/, 'flush card plane');
   assert.doesNotMatch(code, /\bPanel\b/, 'no Panel identifier in code (import or JSX)');
   assert.doesNotMatch(code, /<Panel[\s>]/, 'no outer Panel wrapper');
@@ -87,8 +87,8 @@ test('UnboxDockHost is a full-width two-band flush floor — no raised Panel', (
   assert.match(host, /data-unbox-dock-progress/, 'under-dock row marker');
   assert.match(
     host,
-    /border-t border-border[\s\S]*data-unbox-dock-progress/,
-    'under-row hairline separates step face · progress from the step CTA band',
+    /STATION_COLUMN_FOOTER_BAND_FACE[\s\S]*data-unbox-dock-progress/,
+    'Band 2 uses shared h-8 footer band SoT (aligned with Displays →| / rail filter)',
   );
   assert.match(host, /stepContext:/, 'step context prop required (bottom-left)');
   assert.match(host, /progress:/, 'progress ring prop required (bottom-right)');

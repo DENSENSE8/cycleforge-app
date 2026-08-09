@@ -3,28 +3,46 @@
 /**
  * Inventory › Units browse workspace — the ops-queue Sheets golden applied to
  * the units collection (Wave 0 of the SoT page-violation migrate). Flush sheet
- * chrome (`WORKBENCH_SHEET_CHROME` Band 1) over `UnitsGridView` in
- * `WORKBENCH_SHEET_HOST`, mounted at `/inventory/units`.
+ * chrome (`WORKBENCH_SHEET_CHROME` Band 1) over `NonlinearTableHost` +
+ * `UNITS_TABLE_BINDING` in `WORKBENCH_SHEET_HOST`, mounted at `/inventory/units`.
  *
- * Phase A scope (additive, collision-free): Band 1 lifecycle tab + the sheet
- * grid + the ▦ column-display portal. Band 2 (KPI), Band 3 (find + Refine +
- * Show/Hide inspector) and the left `useSavedViews` rail land in Phase B, when
- * the shared `InventoryShell` / `useInventoryUrlState` files (currently dirty in
- * a parallel session) are clean to swap. Row click opens the unit at the record
- * plane through the untouched shell (`/inventory?unit=`) — the push inspector is
- * the Phase B replacement for `InventoryDetailsOverlay`.
+ * Row click opens the unit in the `RightRailHost` push inspector
+ * (`InventoryInspectorRail`, keyed on `?open=unit:<ref>` via
+ * `useInventoryOpenParam`) — Wave 1 broke the keystone coupling to the legacy
+ * `InventoryShell`, so the units route no longer routes any record through the
+ * retired shell's by-unit viewport.
+ *
+ * Still Phase B: Band 2 (KPI), Band 3 (find + Refine + Show/Hide inspector) and
+ * the left `useSavedViews` rail land once the shared `InventoryShell` /
+ * `useInventoryUrlState` files (currently dirty in a parallel session) are clean
+ * to swap.
  */
 
-import { useCallback, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
-import { UnitsGridView } from './units-grid/UnitsGridView';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import type { RowGroup } from '@/lib/group-rows';
+import { serializeInventoryOpenKey } from '@/lib/inventory-events-channel';
+import { InventoryInspectorRail } from './InventoryInspectorRail';
+import { useInventoryOpenParam } from './useInventoryOpenParam';
 import { useUnitsOverview, type UnitsOverviewRow } from '@/hooks/useUnitsOverview';
+import { UnitsGridColumnHeader } from './units-grid/UnitsGridColumnHeader';
+import { UnitsGridRow } from './units-grid/UnitsGridRow';
+import { UNITS_TABLE_BINDING } from './units-grid/units-table-definition';
+import {
+  defaultDirForUnitsGridSort,
+  isUnitsGridSortable,
+  type UnitsGridColumn,
+  type UnitsGridColumnKey,
+} from './units-grid/units-grid-layout';
 
 function parseList(raw: string | null): string[] {
   if (!raw) return [];
@@ -34,8 +52,38 @@ function parseList(raw: string | null): string[] {
     .filter(Boolean);
 }
 
+/** Row order for a column sort — string/number/date compares, unknown parks last. */
+function compareUnitsRows(
+  a: UnitsOverviewRow,
+  b: UnitsOverviewRow,
+  key: UnitsGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  const s = (v: string | null) => String(v ?? '');
+  switch (key) {
+    case 'serial':
+      return sign * s(a.serial_number).localeCompare(s(b.serial_number));
+    case 'product':
+      return sign * s(a.product_title).localeCompare(s(b.product_title));
+    case 'status':
+      return sign * s(a.current_status).localeCompare(s(b.current_status));
+    case 'condition':
+      return sign * s(a.condition_grade).localeCompare(s(b.condition_grade));
+    case 'location':
+      return sign * s(a.current_location).localeCompare(s(b.current_location));
+    case 'updated': {
+      if (!a.updated_at && !b.updated_at) return 0;
+      if (!a.updated_at) return 1;
+      if (!b.updated_at) return -1;
+      return sign * a.updated_at.localeCompare(b.updated_at);
+    }
+    default:
+      return 0;
+  }
+}
+
 export function UnitsWorkspaceView() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const q = (searchParams.get('q') ?? '').trim();
@@ -44,6 +92,11 @@ export function UnitsWorkspaceView() {
 
   const { rows, loading } = useUnitsOverview({ q, states, conditions });
 
+  // Push inspector selection — `?open=unit:<ref>`, painted optimistically so the
+  // rail opens in the click commit (not after the soft-replace).
+  const { selection, setOpen } = useInventoryOpenParam();
+  const closeInspector = useCallback(() => setOpen(null), [setOpen]);
+
   // ▦ column-display portal target — the header renders the portal div, the grid
   // portals its column-display trigger into it (Band-3 norm, minimal here).
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
@@ -51,12 +104,45 @@ export function UnitsWorkspaceView() {
   const onRowClick = useCallback(
     (row: UnitsOverviewRow) => {
       const ref = row.serial_number ?? String(row.id);
-      router.push(`/inventory?unit=${encodeURIComponent(ref)}`);
+      setOpen(serializeInventoryOpenKey('unit', ref));
     },
-    [router],
+    [setOpen],
   );
 
   const isSearching = q.length > 0 || states.length > 0 || conditions.length > 0;
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    sort: columnSort,
+    dir: sortDir,
+    setSort,
+  } = useUrlColumnSort<UnitsGridColumnKey>({
+    isColumn: isUnitsGridSortable,
+    defaultDir: defaultDirForUnitsGridSort,
+  });
+
+  // One-shot settle re-render after first data — see BinsTable.
+  const [, settleTick] = useState(0);
+  const hasRows = rows.length > 0;
+  useEffect(() => {
+    if (loading || !hasRows) return;
+    const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
+    return () => cancelAnimationFrame(raf);
+  }, [loading, hasRows]);
+
+  const orderGroupsByDate = useMemo<[string, RowGroup<UnitsOverviewRow>[]][]>(() => {
+    const ordered =
+      columnSort && sortDir
+        ? [...rows].sort((a, b) => compareUnitsRows(a, b, columnSort, sortDir))
+        : rows;
+    return [['', ordered.map((row) => ({ key: `unit:${row.id}`, rows: [row] }))]];
+  }, [rows, columnSort, sortDir]);
+
+  const onOpen = useCallback((row: UnitsOverviewRow) => onRowClick(row), [onRowClick]);
+
+  const renderLeaf = (row: UnitsOverviewRow, visible: readonly UnitsGridColumn[]) => (
+    <UnitsGridRow key={row.id} row={row} onOpen={onOpen} columns={visible} />
+  );
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
@@ -75,16 +161,41 @@ export function UnitsWorkspaceView() {
         }
       >
         <div className={WORKBENCH_SHEET_HOST}>
-          <UnitsGridView
+          <NonlinearTableHost<UnitsOverviewRow, UnitsGridColumnKey, UnitsGridColumn>
+            binding={UNITS_TABLE_BINDING}
+            orderGroupsByDate={orderGroupsByDate}
             rows={rows}
+            getRowId={(r) => String(r.id)}
+            sort={columnSort}
+            dir={sortDir}
+            onSortChange={setSort}
             loading={loading}
-            onRowClick={onRowClick}
-            isSearching={isSearching}
+            emptyMessage="No units match the current filters."
             searchEmptyMessage="No units match the current filters."
+            isSearching={isSearching}
+            scrollRef={scrollRef}
             columnTriggerPortalTarget={controlsEl}
+            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+              <UnitsGridColumnHeader
+                columns={visible}
+                activeSort={columnSort}
+                sortDir={sortDir}
+                onSortColumn={toggleColumnSort}
+                onResizeColumn={onResizeColumn}
+                onResetColumn={onResetColumn}
+              />
+            )}
+            renderGroup={(group, _stripe, { columns: visible }) => (
+              <>{group.rows.map((row) => renderLeaf(row, visible))}</>
+            )}
+            renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
           />
         </div>
       </DashboardScrollShell>
+
+      {/* Geometry-free — registers the picked record with the app-wide
+          RightRailHost slot (returns null). */}
+      <InventoryInspectorRail selection={selection} onClose={closeInspector} />
     </div>
   );
 }

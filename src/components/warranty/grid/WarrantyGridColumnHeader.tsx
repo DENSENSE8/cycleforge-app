@@ -37,4 +37,8 @@ const WARRANTY_HEADER_LAYOUT: LedgerHeaderLayoutApi<WarrantyGridColumn> = {
 export const WarrantyGridColumnHeader = makeLedgerGridColumnHeader<
   WarrantyGridColumn,
   WarrantyGridColumnKey
->({ layout: WARRANTY_HEADER_LAYOUT, defaultColumns: WARRANTY_GRID_COLUMNS });
+>({
+  layout: WARRANTY_HEADER_LAYOUT,
+  defaultColumns: WARRANTY_GRID_COLUMNS,
+  tableId: 'warranty',
+});

@@ -2,6 +2,11 @@
 
 import type { ReactNode } from 'react';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
+import { CustomFieldCell } from '@/components/tables/CustomFieldCell';
+import {
+  isCustomFieldColumnKey,
+  parseCustomFieldDefKey,
+} from '@/lib/tables/custom-field-keys';
 import { ReceivingConditionCell } from './ReceivingConditionCell';
 import { ReceivingDateCell } from './ReceivingDateCell';
 import { ReceivingLocationCell } from './ReceivingLocationCell';
@@ -62,12 +67,43 @@ export function renderReceivingGridCell(
       return <ReceivingSerialCell {...props} />;
     case 'zoho':
       return <ReceivingZohoCell {...props} />;
-    default:
+    case '_fill':
+      // Structural slack track — empty header/body; never a fact column.
+      return (
+        <div
+          data-col="_fill"
+          role="presentation"
+          aria-hidden
+          className={`${receivingDataCellClass(col, false, ctx)} min-h-0`}
+        />
+      );
+    default: {
+      if (isCustomFieldColumnKey(col.key)) {
+        const defKey = parseCustomFieldDefKey(col.key);
+        const fieldType = defKey
+          ? ctx.customFieldDefs?.find((d) => d.key === defKey)?.type
+          : undefined;
+        return (
+          <div
+            className={receivingDataCellClass(col, rule, ctx)}
+            style={receivingDataCellHighlightStyle(col, ctx)}
+          >
+            <CustomFieldCell
+              column={col}
+              values={ctx.row.customFields}
+              fieldType={fieldType}
+              className="px-0"
+              onCommit={ctx.onCustomFieldCommit}
+            />
+          </div>
+        );
+      }
       return (
         <span
           className={receivingDataCellClass(col, rule, ctx)}
           style={receivingDataCellHighlightStyle(col, ctx)}
         />
       );
+    }
   }
 }

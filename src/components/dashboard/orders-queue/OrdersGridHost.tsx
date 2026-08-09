@@ -39,7 +39,7 @@ import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useViewportForcedHidden } from './ViewportForcedHidden';
 
-interface OrdersGridViewProps {
+interface OrdersGridHostProps {
   records: ShippedOrder[];
   loading: boolean;
   searchValue: string;
@@ -131,7 +131,7 @@ interface OrdersGridViewProps {
  * `OrdersQueueColumnHeader` fork keeps drag-reorder UI; fat `OrdersQueueTableRow`
  * keeps triage + in-cell edit.
  */
-export function OrdersGridView({
+export function OrdersGridHost({
   records,
   loading,
   searchValue,
@@ -154,7 +154,7 @@ export function OrdersGridView({
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
   columnTriggerPortalTarget,
-}: OrdersGridViewProps) {
+}: OrdersGridHostProps) {
   const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();

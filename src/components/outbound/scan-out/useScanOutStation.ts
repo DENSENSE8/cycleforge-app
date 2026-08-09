@@ -100,13 +100,20 @@ export function useScanOutStation() {
     },
   });
 
+  const submitRaw = useCallback(
+    (raw: string) => {
+      const v = raw.trim();
+      if (!v || scanOut.isPending) return;
+      scanOut.mutate(v);
+      setScanValue('');
+      refocus();
+    },
+    [scanOut, refocus],
+  );
+
   const submit = useCallback(() => {
-    const v = scanValue.trim();
-    if (!v || scanOut.isPending) return;
-    scanOut.mutate(v);
-    setScanValue('');
-    refocus();
-  }, [scanValue, scanOut, refocus]);
+    submitRaw(scanValue);
+  }, [scanValue, submitRaw]);
 
   const undo = useCallback(() => {
     if (undoable) undoMutation.mutate(undoable.shipmentId);
@@ -120,6 +127,7 @@ export function useScanOutStation() {
     active,
     undoable,
     submit,
+    submitRaw,
     undo,
     isScanning: scanOut.isPending,
     isUndoing: undoMutation.isPending,

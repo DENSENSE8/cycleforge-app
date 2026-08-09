@@ -98,7 +98,7 @@ type PlumbingSymbol = keyof typeof PLUMBING;
  * a stated reason, and an entry that is no longer needed fails below.
  */
 const ALLOWLIST: Readonly<Record<string, readonly PlumbingSymbol[]>> = {
-  // Orders shell plumbing closed 2026-08-03 — `OrdersGridView` mounts
+  // Orders shell plumbing closed 2026-08-03 — `OrdersGridHost` mounts
   // `LedgerGridSurface` with `forceHidden`. Column order is pinned to the
   // layout SoT (no staff reorder). The allowlisted header fork
   // (`OrdersQueueColumnHeader`) remains for resize + force-hide; it is not a

@@ -1,9 +1,11 @@
 'use client';
 
-import { useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { LayoutGroup, useInView } from '@/design-system/motion';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';
 import { markReceivingSerialAbsent } from './receiving-label-helpers';
@@ -13,6 +15,10 @@ import type {
   ActiveRowSlot,
   PoLineSerialActions,
 } from './po-lines-accordion-types';
+import { singleBand } from '@/lib/group-rows';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
+import { setActiveSinkId } from '@/lib/station-scan-sink';
 
 // Type re-exports — ActiveLineConditionSerial / Units hosts import from here.
 export type {
@@ -110,6 +116,11 @@ interface Props {
  * line is highlighted for focus / scan-default; clicking a sibling still
  * dispatches `receiving-select-line` to re-seed the workspace controller.
  *
+ * Publishes the record-cursor **`sibling`** scope so ambient ↑/↓ steps PO
+ * lines while the carton middle is open (←/→ stay on procedure steps). Carton
+ * hopping stays on chrome {@link ScanStationCartonCursor} / History triage
+ * `record` scope — not ambient arrows here.
+ *
  * A thin shell over two collaborators (per the god-component cleanup):
  * - {@link usePoLinesData} — sibling query + cache-coordination bus.
  * - {@link PoLineRow} — the presentational row leaf.
@@ -151,23 +162,54 @@ export function PoLinesAccordion({
   const listRef = useRef<HTMLUListElement>(null);
   const layoutActive = useInView(listRef, { margin: '600px' });
 
+  const paintRows = useMemo((): ReceivingLineRow[] => {
+    if (rows.length > 0) return rows;
+    if (placeholderActiveRow && placeholderActiveRow.id > 0) {
+      return [placeholderActiveRow];
+    }
+    return [];
+  }, [rows, placeholderActiveRow]);
+
+  const siblingOrder = useMemo(() => singleBand(paintRows), [paintRows]);
+
+  const openSiblingLine = useCallback((line: ReceivingLineRow) => {
+    setActiveSinkId(`po-line:${line.id}`);
+    dispatchSelectLine(line);
+    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+  }, []);
+
+  const handleSiblingCursorOpen = useCallback(
+    (line: ReceivingLineRow) => {
+      openSiblingLine(line);
+    },
+    [openSiblingLine],
+  );
+
+  // ↑/↓ = PO lines inside the open carton (`sibling` scope). Enabled whenever
+  // the accordion is interactive — Testing + Unbox share this grammar. Carton
+  // ambient `record` keys are History-triage only today, so they do not fight.
+  usePublishRecordCursor<ReceivingLineRow>({
+    surfaceId: `po-lines-sibling-${receivingId}`,
+    scope: 'sibling',
+    enabled: !readOnly && paintRows.length > 0,
+    order: siblingOrder,
+    openId: activeLineId > 0 ? activeLineId : null,
+    getId: (row) => row.id,
+    onOpen: handleSiblingCursorOpen,
+  });
+
+  useRecordCursorKeyboard({
+    enabled: !readOnly && paintRows.length > 0,
+    scope: 'sibling',
+  });
+
   // Always render — even for single-line POs the row layout (title, qty,
   // sku, price, condition, serial chip) is the canonical context display the
   // workspace expects above the body. Never blank while we still have a
   // known active row (cold siblings key / in-flight fetch).
-  if (
-    rows.length === 0 &&
-    !(placeholderActiveRow && placeholderActiveRow.id > 0)
-  ) {
+  if (paintRows.length === 0) {
     return null;
   }
-  const paintRows =
-    rows.length > 0
-      ? rows
-      : placeholderActiveRow && placeholderActiveRow.id > 0
-        ? [placeholderActiveRow]
-        : [];
-  if (paintRows.length === 0) return null;
 
   // Embedded → bare wrapper (parent supplies layout). Standalone (testing /
   // other callers) stays a flush plane too — flat hairline list, not a raised

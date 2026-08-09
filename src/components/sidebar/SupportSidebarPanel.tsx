@@ -19,7 +19,7 @@ import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
  *
  * - tickets   → recently selected dock only; full queue + status tabs live in
  *   the right-pane workbench (`SupportTicketsBoard` / `?ticket=` focus).
- * - orders    → To Ship filter map (UnshippedSidebar SoT); body is OrdersGridView.
+ * - orders    → To Ship filter map (UnshippedSidebar SoT); body is OrdersGridHost.
  * - voicemail → voicemail / missed-call follow-up to-do list (Workbench);
  *   selecting one sets `?vm=<id>` for the page body.
  * - calls     → org call log filter rail (Monitor); the stream lives in the body.

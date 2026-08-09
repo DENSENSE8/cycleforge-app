@@ -2,7 +2,7 @@
 
 /**
  * Dashboard · Shipped — week-bucketed packer-log list on the shared outbound
- * spreadsheet ({@link OrdersGridView} / LedgerGrid). Day bands and swimlane
+ * spreadsheet ({@link OrdersGridHost} / LedgerGrid). Day bands and swimlane
  * board are retired; Date is a per-row column.
  */
 
@@ -22,7 +22,7 @@ import { useShippedPeriodControls } from '@/components/shipped/dashboard-table/u
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import {
   derivedPackerRecordToQueueRow,
@@ -72,7 +72,7 @@ export function DashboardShippedTable({
   const { orderedRecords, totalCount } = useShippedTableGrouping(derivedRecords);
   const { selectedDetailId, handleRowClick } = useShippedDetailsSelection();
 
-  // The OrdersGridView below publishes the cursor (it owns grouping + folds);
+  // The OrdersGridHost below publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on. `embedded` still gates it so a nested
   // mount does not bind a second ambient listener.
   useRecordCursorKeyboard({ enabled: !embedded, scope: 'record' });
@@ -168,7 +168,7 @@ export function DashboardShippedTable({
       {portaledToolbar}
       {/* Staff / period chrome portals into View topics — no inline strip twin. */}
       <div className={WORKBENCH_SHEET_HOST} data-testid="column-table-body">
-        <OrdersGridView
+        <OrdersGridHost
           ariaLabel="Shipped orders"
           records={gridRecords}
           loading={query.isLoading}

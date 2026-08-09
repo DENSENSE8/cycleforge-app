@@ -24,7 +24,7 @@
  * (emitSelection / emitSelectionTotal / onToggleAll). Refs let the handlers and
  * listeners read current values without stale closures.
  *
- * **Every table that renders `ReceivingGridView` selects through THIS hook.**
+ * **Every table that renders `ReceivingGridHost` selects through THIS hook.**
  * Testing History kept a private re-implementation until 2026-08-01, differing
  * only in the selection-bus scope (now the `selectionScope` arg) — and that copy
  * still carried the pre-split `selectMode swallows the click` early return, so
@@ -89,7 +89,7 @@ interface UseReceivingRowSelectionArgs {
    * (`src/lib/selection/table-selection.ts`). Defaults to receiving.
    *
    * Testing History passes `TESTING_SELECTION_SCOPE`: it renders the same
-   * `ReceivingGridView` over the same `ReceivingLineRow`, but its bulk bar is
+   * `ReceivingGridHost` over the same `ReceivingLineRow`, but its bulk bar is
    * the tech dashboard's, not the receiving pane's. The scope was the ONLY
    * thing its private copy of this hook varied — every handler and every bus
    * effect below was a byte-level duplicate that then missed the two-plane

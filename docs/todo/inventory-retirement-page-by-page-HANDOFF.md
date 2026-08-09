@@ -1,6 +1,6 @@
 # /inventory legacy retirement — page-by-page delete-old / import-new HANDOFF
 
-**Status:** plan only (verified). Wave 0 landed; Waves 1–8 not started.
+**Status:** Waves 0–1 landed; Waves 2–8 not started.
 **Date:** 2026-08-08.
 **Parent:** [`sot-page-violation-audit-migrate-CLAUDE-CODE-PROMPT.md`](./sot-page-violation-audit-migrate-CLAUDE-CODE-PROMPT.md) (this is its /inventory Wave-0→teardown detail).
 **Why this doc:** finishing the migrate means **deleting** the legacy `InventoryShell`
@@ -25,12 +25,43 @@ safely ordered, collision-aware.
 
 ---
 
-## 🔑 KEYSTONE — nothing in the shell tree deletes until this ships
+## Landed (Wave 1) — the keystone push inspector
 
-`UnitsWorkspaceView.tsx` row-click does `router.push('/inventory?unit=…')`, which renders
-the unit record **through** `InventoryShell → ByUnitView`. The migrated units route is
-still coupled to the legacy shell. **The whole deletion cascade is gated on Wave 1: a
-`RightRailHost` (`modal={false}`) push inspector + retargeting that navigation to it.**
+- **`InventoryInspectorRail`** (`src/components/inventory/InventoryInspectorRail.tsx`) — a
+  non-modal `RightRailHost` occupant (`DetailStackRailRegistrar` `modal={false}`) keyed on
+  `?open=<kind>:<ref>`; Desk chrome (`DeskRailChromeRow` + `PaneHeaderLabel`), never the
+  hero-title `InventoryDetailPanelShell`. Bodies: `unit` → `ByUnitView`; `alert` / `count`
+  → the existing panels in new **`chrome="bare"`** mode; **`sku` / `bin` → an honest deferred
+  hint** (their real bodies compose `SkuDetailView` panel-mode / `LocationDetailView`, designed
+  by W3 — rendering those full-page shells raw in a push rail double-headers, nests a scroll
+  port, and `router.push('/inventory')` back into the retired shell on Back).
+- **`useInventoryOpenParam`** (`src/components/inventory/useInventoryOpenParam.ts`) — optimistic
+  `?open=` paint (`useOptimisticUrlParam`, the mount-gated hard law); canonicalizes to
+  `INVENTORY_ROUTE_PARAMS` declared order so `SurfaceParamHygiene` fires no redundant replace.
+  `open` was already owned by the `/inventory` prefix as `paramText`, so **no routing edit**.
+- **`UnitsWorkspaceView`** row-click retargeted: `setOpen(serializeInventoryOpenKey('unit', ref))`
+  instead of `router.push('/inventory?unit=')`. (This file was concurrently rewritten by the
+  `topic/tables` GridView-burn session onto `NonlinearTableHost`; the Wave-1 wiring merged cleanly.)
+- **Additive `chrome?: 'default' | 'bare'`** on `InventoryDetailPanelShell` + passthrough on
+  `AlertDetailsPanel` / `CountCampaignDetailsPanel` — default preserves the legacy overlay
+  byte-for-byte.
+- Guard grown: `units-grid-sheet.guard` pins row-click ≠ `/inventory?unit=`, no `useRouter`, and
+  the inspector is a `modal={false}` `DeskRailChromeRow` occupant.
+- Verified: `tsc` 0 errors (Wave-1 files) · `units-grid-sheet.guard` 7/7 · `param-ownership.guard`
+  7/7 · right-rail inspector/push/collapse + optimistic-url-param + route-params guards green ·
+  ESLint clean. Adversarially reviewed (4 lenses + per-finding verify).
+- **NEW surviving consumers Wave 1 introduced** (see deletion-order + carve-out updates below):
+  `ByUnitView` (unit body), `AlertDetailsPanel` / `CountCampaignDetailsPanel` /
+  `InventoryDetailPanelShell` (alert/count bodies via `chrome="bare"`).
+
+---
+
+## 🔑 KEYSTONE — RESOLVED (Wave 1)
+
+~~`UnitsWorkspaceView.tsx` row-click does `router.push('/inventory?unit=…')` through
+`InventoryShell → ByUnitView`.~~ **Done:** row-click now opens `InventoryInspectorRail`
+(`?open=unit:<ref>`), so the units route routes no record through the retired shell. The
+Waves 2–8 deletion cascade is unblocked.
 
 ---
 
@@ -52,7 +83,7 @@ Also off-limits: `src/components/receiving/inventory/**`, `line-edit/InventoryDi
 | Route | New surface | Legacy freed | Deletable after | Guard | Collision |
 |---|---|---|---|---|---|
 | `/inventory` | Operations Monitor default (or redirect); `?open/unit/sku/bin` → push inspector; `?section=replenish` → `ReplenishWorkspace`; `?view=by-filter` → `/inventory/units` | `InventoryShell`, `PulseView`, `ByFilterResultList`, `InventoryDetailsOverlay` | shell LAST | `inventory-root-monitor.guard` | shell clean; sidebar path blocked |
-| `/inventory/units` | **DONE** `UnitsWorkspaceView`; W1: retarget row-click to inspector | frees `ByUnitView` via shell | retarget unblocks `ByUnitView` | extend `units-grid-sheet.guard` | this session |
+| `/inventory/units` | **DONE (W0+W1)** `UnitsWorkspaceView`; row-click → `InventoryInspectorRail` (`?open=unit:`) | `ByUnitView` now the **surviving** unit inspector body (NOT freed) | — | `units-grid-sheet.guard` (grown) | this session |
 | `/inventory/skus` | `SkusWorkspaceView` + saved-views; row → push inspector → `@/components/sku/SkuDetailView` | `BySkuView`, `SkuDetailsPanel` | both (thin adapters) | `skus-workspace-sheet.guard` | sidebar blocked |
 | `/inventory/bins` | fold into `/inventory/locations` (green) or thin `BinsWorkspaceView`; row → `LocationDetailView` | `ByBinView`, `BinDetailsPanel` | both | `bins-fold.guard` | sidebar blocked |
 | `/inventory/activity` | Operations Monitor via `EventTimeline` (`inventoryEventsToTimeline`) | `PulseView`, `EventRow` | after root+pulse too | `inventory-activity-monitor.guard` | sidebar blocked |
@@ -81,9 +112,21 @@ Also off-limits: `src/components/receiving/inventory/**`, `line-edit/InventoryDi
 `InventoryDetailsOverlay`. **`UnitDetailsPanel` is CROSS-FEATURE** — also consumed by
 `src/components/search/SearchDetailWorkspace.tsx` (case `'unit'`); retarget search in
 the same change or defer to W6.
+**⚠ Wave-1 consumer (W6):** `AlertDetailsPanel` / `CountCampaignDetailsPanel` — and
+transitively `InventoryDetailPanelShell` — gained a live consumer, `InventoryInspectorRail`'s
+`case 'alert'` / `case 'count'` branches (`chrome="bare"`). Re-point those branches to a by-id
+alert/count body **in the same change** that deletes the panels, or the ordered Tier-B teardown
+(panels → shell → overlay) cannot complete. The additive `chrome` prop is deleted with the shell.
 
-**Tier C — viewports:** `BySkuView`, `ByBinView`, `ByFilterResultList`, `ByUnitView`
-(the keystone coupling — deletes only after inspector retarget + `UnitDetailsPanel`).
+**Tier C — viewports:** `BySkuView`, `ByBinView`, `ByFilterResultList`. **`ByUnitView` is
+NOT here anymore** — Wave 1 made it the **surviving** unit inspector body
+(`InventoryInspectorRail` `case 'unit'`), exactly like `BySkuView`/`ByBinView` remain the
+sku/bin bodies. W2 deletes only `UnitDetailsPanel` (+ retarget its `SearchDetailWorkspace`
+`'unit'` consumer); `ByUnitView` survives until a richer unit body replaces it.
+**⚠ `ByUnitView` internal link (W4/W8):** its SKU cell links to `/inventory?sku=` (the legacy
+shell vocabulary). W4's `/inventory` root migration must bridge legacy `?sku`/`?bin` →
+`?open=<kind>:<ref>`; W8 must audit the shared inspector bodies for internal hrefs into the
+retired shell before deleting `InventoryShell`.
 
 **Tier D — pulse:** `EventRow` (only consumers `PulseView`+`PulseWorkspace`) → `PulseView`
 → `PulseWorkspace`.
@@ -116,7 +159,9 @@ the same change or defer to W6.
 - `/admin/inventory/**` — CLIP; the `AllocationRow`/`AlertRow`/`EventRow`/`TriageWorkspace`
   name-matches there are **locally-declared**, not imports.
 - `LocationsWorkspace` + `bins-grid` — green; `LocationDetailView` is the shared bin record.
-- `ByUnitView` — load-bearing until the push inspector exists (Tier C keystone).
+- `ByUnitView` — **now the surviving unit inspector body** (`InventoryInspectorRail` `case 'unit'`,
+  Wave 1). Keep it exactly as `BySkuView`/`ByBinView` are kept for sku/bin; it leaves only when a
+  richer unit body replaces it (not W2).
 - `SkuIdentity` — **relocate, don't delete** (used by `app/m/(shell)/pick/**` +
   `useSkuIdentity`); move to `components/sku`/`components/identity` before `inventory/` folder removal.
 
@@ -124,14 +169,23 @@ the same change or defer to W6.
 
 ## Wave sequence
 
-- **W1 — push inspector** (collision-free keystone): `RightRailHost modal={false}`,
-  per-kind bodies (unit/sku/bin/alert/count) keyed on `?open=<kind>:<ref>` via
-  `PaneHeader`/`DeskRailChromeRow`; retarget `UnitsWorkspaceView` row-click. No deletions.
-- **W2** — delete `ByUnitView` (coordinate `UnitDetailsPanel` search consumer).
-- **W3** — `/inventory/skus` + `/inventory/bins`; delete their views/panels.
+- **W1 — push inspector** — ✅ **LANDED** (see *Landed (Wave 1)* above). `InventoryInspectorRail`
+  (`modal={false}`, `DeskRailChromeRow`) keyed on `?open=<kind>:<ref>`; `unit`/`alert`/`count`
+  bodies real, `sku`/`bin` deferred to W3 (honest hint — their full-page shells are unsafe raw in
+  a push rail). `UnitsWorkspaceView` row-click retargeted. No deletions.
+- **W2** — delete `UnitDetailsPanel` (coordinate its `SearchDetailWorkspace` `'unit'` consumer).
+  **NOT `ByUnitView`** — Wave 1 made it the surviving unit inspector body (see Tier C).
+- **W3** — `/inventory/skus` + `/inventory/bins`; build the **real** `sku`/`bin` inspector bodies
+  (replace `InventoryInspectorRail`'s deferred hint — compose `SkuDetailView` panel-mode /
+  `LocationDetailView` in a content-only mode: suppress their internal header + scroll port, route
+  close through the rail's `onClose`, never `router.push('/inventory')`); delete `SkuDetailsPanel` /
+  `BinDetailsPanel`. `BySkuView`/`ByBinView` stay the shared sku/bin bodies (keep their lazy-load).
 - **W4** — `/inventory` root + `/activity` + `/pulse` → Operations Monitor; delete pulse cluster.
 - **W5** — `/inventory/triage` → tracking-exceptions; delete `TriageWorkspace`.
 - **W6** — `/alerts` + `/counts`; retire overlay/panels/`ByFilterResultList`; finish `UnitDetailsPanel`.
+  **Re-point `InventoryInspectorRail`'s `alert`/`count` branches** off `AlertDetailsPanel` /
+  `CountCampaignDetailsPanel` (`chrome="bare"`) to by-id bodies **before** deleting those panels +
+  `InventoryDetailPanelShell` (Tier B ⚠).
 - **W7** — relocate enums out of `types.ts` (independent of collision; anytime).
 - **W8 — final teardown** (AFTER the zoho-trust session lands): re-verify the 4 blocked
   files are clean, then delete `InventorySidebar`/`useInventorySearch`/`InventoryShell`/

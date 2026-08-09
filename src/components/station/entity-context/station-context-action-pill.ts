@@ -39,8 +39,13 @@ export const STATION_CONTEXT_EXIT_PILL_CLASS = `${STATION_CONTEXT_BOXED_CUBE_CLA
  * Locked width: camera left, count/plus right (`justify-between`) with inset
  * pad so neither face kisses the border — digit growth must not shift the row.
  * Height fills chrome row 1 (`h-full`) — never Button `size` height.
+ *
+ * **Seam flush:** `border-b-0 border-r-0` — the row owns the bottom hairline
+ * ({@link STATION_CHROME_SEAM_HAIRLINE}); the Displays / utility `border-l` owns
+ * the trailing vertical rule. Never stack Photos' own bottom+right borders
+ * against Claim / Displays (that doubles the seam and optically shifts it).
  */
-export const STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-between px-1.5 text-role-caption border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-700`;
+export const STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-between px-1.5 text-role-caption border-b-0 border-r-0 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-700`;
 
 /**
  * Square h-11 cell for Units explosion / joined serial rows — same blue face +
@@ -53,8 +58,11 @@ export const STATION_CONTEXT_PHOTO_FLUSH_CLASS =
  * Locked width matches Photos / status so Claim does not reflow the commerce
  * row. Fills secondary band row 2 (`h-6`). Typography matches classify pills
  * (`text-role-micro` + uppercase).
+ *
+ * **Seam flush:** `border-t-0 border-r-0` — pairs with Photos above; trailing
+ * vertical rule is the Displays / utility hairline, not a second Claim border.
  */
-export const STATION_CONTEXT_CLAIM_PILL_CLASS = `h-6 ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-center px-1.5 border-orange-200 bg-orange-50 text-role-micro font-medium uppercase tracking-wide text-orange-600 hover:bg-orange-100 hover:text-orange-700`;
+export const STATION_CONTEXT_CLAIM_PILL_CLASS = `h-6 ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-center px-1.5 border-t-0 border-r-0 border-orange-200 bg-orange-50 text-role-micro font-medium uppercase tracking-wide text-orange-600 hover:bg-orange-100 hover:text-orange-700`;
 
 /**
  * Carton lifecycle status — locked `w-14` face on commerce row 2 (replaces the

@@ -43,6 +43,7 @@ export const RepairGridColumnHeader = makeLedgerGridColumnHeader<
   layout: REPAIR_HEADER_LAYOUT,
   defaultColumns: REPAIR_GRID_COLUMNS,
   selectMode: 'always',
+  tableId: 'repair',
   glyphFor: (column) =>
     column.key === 'date' ? (
       <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />

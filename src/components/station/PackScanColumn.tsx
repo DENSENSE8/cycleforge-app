@@ -16,6 +16,7 @@ import { ScanBandShell } from '@/components/station/scan-bar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { scannedUnitKey } from '@/lib/barcode-routing';
+import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { STATION_SKILL } from '@/lib/assistant/page-skills';
 import {
@@ -157,9 +158,10 @@ export default function PackScanColumn({
     getAblyClient,
     stationChannelName: unitPhotoChannelName,
   });
-  const handleSubmit = async (event?: React.FormEvent) => {
-    if (event) event.preventDefault();
-    const scan = inputValue.trim();
+  const handleSubmit = async (eventOrRaw?: React.FormEvent | string) => {
+    if (eventOrRaw && typeof eventOrRaw !== 'string') eventOrRaw.preventDefault();
+    const scan =
+      typeof eventOrRaw === 'string' ? eventOrRaw.trim() : inputValue.trim();
     if (!scan || isLoading) return;
 
     // §1b dual-link: a unit QR scanned while an ORDERS/SKU pack is still active
@@ -398,6 +400,15 @@ export default function PackScanColumn({
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
+
+  useRegisterScanSink({
+    id: 'pack-scan-bar',
+    enabled: true,
+    onScan: (raw) => {
+      void handleSubmit(raw);
+    },
+    focus: () => inputRef.current?.focus(),
+  });
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-surface-card">

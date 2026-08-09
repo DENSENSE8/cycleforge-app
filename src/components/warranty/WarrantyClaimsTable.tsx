@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import {
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
+  WorkbenchChromeHeader,
+} from '@/components/dashboard/workbench-shell';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useWarrantyClaims, useWarrantyUrlState } from '@/hooks/useWarrantyClaims';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -20,6 +25,7 @@ import {
   type WarrantyGridColumnKey,
 } from '@/components/warranty/grid/warranty-grid-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import { cn } from '@/utils/_cn';
 
 /**
  * Row order for a column sort.
@@ -81,6 +87,8 @@ export function WarrantyClaimsTable() {
 
   const { data: claims = [], isLoading, error } = useWarrantyClaims({ status, search, expiringSoon });
 
+  // ▦ portals into Band-1 controls (find lives in Support sidebar — Units recipe).
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -150,34 +158,47 @@ export function WarrantyClaimsTable() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
-      <NonlinearTableHost<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
-        binding={WARRANTY_TABLE_BINDING}
-        orderGroupsByDate={orderGroupsByDate}
-        rows={claims}
-        getRowId={(r) => String(r.id)}
-        sort={columnSort}
-        dir={sortDir}
-        onSortChange={setSort}
-        loading={isLoading}
-        emptyMessage="No warranty claims logged yet."
-        searchEmptyMessage="No warranty claims match these filters."
-        isSearching={isSearching}
-        scrollRef={scrollRef}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-          <WarrantyGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-            onResetColumn={onResetColumn}
-          />
-        )}
-        renderGroup={(group, _stripe, { columns: visible }) => (
-          <>{group.rows.map((claim) => renderLeaf(claim, visible))}</>
-        )}
-        renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
-      />
+      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+        <WorkbenchChromeHeader
+          density="band"
+          tabs={[{ id: 'claims', label: 'Claims' }]}
+          activeTab="claims"
+          onTabChange={() => undefined}
+          controlsSlotRef={setControlsEl}
+          className="rounded-none border-l-0 border-t-0 shadow-sm"
+        />
+      </div>
+      <div className={WORKBENCH_SHEET_HOST}>
+        <NonlinearTableHost<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
+          binding={WARRANTY_TABLE_BINDING}
+          orderGroupsByDate={orderGroupsByDate}
+          rows={claims}
+          getRowId={(r) => String(r.id)}
+          sort={columnSort}
+          dir={sortDir}
+          onSortChange={setSort}
+          loading={isLoading}
+          emptyMessage="No warranty claims logged yet."
+          searchEmptyMessage="No warranty claims match these filters."
+          isSearching={isSearching}
+          scrollRef={scrollRef}
+          columnTriggerPortalTarget={controlsEl}
+          renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+            <WarrantyGridColumnHeader
+              columns={visible}
+              activeSort={columnSort}
+              sortDir={sortDir}
+              onSortColumn={toggleColumnSort}
+              onResizeColumn={onResizeColumn}
+              onResetColumn={onResetColumn}
+            />
+          )}
+          renderGroup={(group, _stripe, { columns: visible }) => (
+            <>{group.rows.map((claim) => renderLeaf(claim, visible))}</>
+          )}
+          renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
+        />
+      </div>
     </div>
   );
 }

@@ -37,4 +37,8 @@ const MY_DAY_HEADER_LAYOUT: LedgerHeaderLayoutApi<MyDayGridColumn> = {
 export const MyDayGridColumnHeader = makeLedgerGridColumnHeader<
   MyDayGridColumn,
   MyDayGridColumnKey
->({ layout: MY_DAY_HEADER_LAYOUT, defaultColumns: MY_DAY_GRID_COLUMNS });
+>({
+  layout: MY_DAY_HEADER_LAYOUT,
+  defaultColumns: MY_DAY_GRID_COLUMNS,
+  tableId: 'my-day',
+});

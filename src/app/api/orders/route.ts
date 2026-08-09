@@ -173,7 +173,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       if (cached) {
         ok = true;
         cache = 'HIT';
-        return NextResponse.json(cached, { headers: { 'x-cache': 'HIT', ...CACHE_HEADERS } });
+        return NextResponse.json(cached, {
+          headers: { 'x-cache': 'HIT', ...CACHE_HEADERS },
+        });
       }
     }
 

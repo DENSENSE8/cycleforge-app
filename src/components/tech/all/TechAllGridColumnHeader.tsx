@@ -30,4 +30,8 @@ const TECH_ALL_HEADER_LAYOUT: LedgerHeaderLayoutApi<TechAllGridColumn> = {
 export const TechAllGridColumnHeader = makeLedgerGridColumnHeader<
   TechAllGridColumn,
   TechAllGridColumnKey
->({ layout: TECH_ALL_HEADER_LAYOUT, defaultColumns: TECH_ALL_GRID_COLUMNS });
+>({
+  layout: TECH_ALL_HEADER_LAYOUT,
+  defaultColumns: TECH_ALL_GRID_COLUMNS,
+  tableId: 'tech-all',
+});

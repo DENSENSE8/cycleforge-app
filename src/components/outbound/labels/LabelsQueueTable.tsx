@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
@@ -79,7 +79,7 @@ export function LabelsQueueTable({
   return (
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
       <div className={WORKBENCH_SHEET_HOST}>
-        <OrdersGridView
+        <OrdersGridHost
           ariaLabel="Labels queue"
           records={records}
           queueMode="labels"

@@ -1,9 +1,10 @@
 /**
  * Receiving golden Sheets recipe — pin flush surface + host SoT.
  *
- * `ReceivingGridView` mounts `LedgerGridSurface` with `surface="sheet"` so the
- * Unbox / History browse grid uses `TABLE_SURFACE_SHEET_CLASS` (no rounded-xl
- * island, no raised lift). Hosts wire `WORKBENCH_SHEET_HOST` — never raw `p-0`.
+ * `ReceivingGridHost` mounts `NonlinearTableHost` with the receiving definition
+ * (`surface: "sheet"`) so Unbox / History uses `TABLE_SURFACE_SHEET_CLASS` (no
+ * rounded-xl island, no raised lift). Hosts wire `WORKBENCH_SHEET_HOST` — never
+ * raw `p-0`.
  */
 
 import assert from 'node:assert/strict';
@@ -32,12 +33,12 @@ describe('Receiving grid Sheets recipe', () => {
     assert.equal(RECEIVING_BROWSE_DEFINITION.surface, 'sheet');
   });
 
-  it('ReceivingGridView mounts the registry host, not the engine directly', () => {
-    const src = read('src/components/station/receiving-grid/ReceivingGridView.tsx');
+  it('ReceivingGridHost mounts the registry host, not the engine directly', () => {
+    const src = read('src/components/station/receiving-grid/ReceivingGridHost.tsx');
     assert.match(
       src,
       /<NonlinearTableHost[\s\S]*?binding=\{RECEIVING_TABLE_BINDING\}/,
-      'ReceivingGridView must mount NonlinearTableHost with the receiving binding',
+      'ReceivingGridHost must mount NonlinearTableHost with the receiving binding',
     );
     assert.doesNotMatch(
       src,
