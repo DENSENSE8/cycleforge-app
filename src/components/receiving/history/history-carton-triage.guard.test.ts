@@ -52,8 +52,15 @@ describe('HistoryCartonTriagePanel', () => {
     assert.match(panel, /data-testid="history-carton-triage-panel"/);
   });
 
-  test('header is navigation → Display tabs → identity + one primary CTA', () => {
-    assert.match(panel, /PaneHeaderTabs/);
+  test('header is chrome → View → identity → DeskInspectorIndexShell', () => {
+    assert.match(panel, /DeskInspectorIndexShell/);
+    assert.match(panel, /buildHistoryInspectorLeaves/);
+    assert.doesNotMatch(panel, /PaneHeaderTabs/);
+    assert.doesNotMatch(panel, /SectionTabsSlider/);
+    assert.doesNotMatch(
+      panel.replace(/\/\*[\s\S]*?\*\//g, ''),
+      /StationDisplaysPushStack/,
+    );
     assert.match(panel, /historyInspectorTopicActions/);
     assert.match(panel, /historyInspectorPrimaryAction/);
     assert.match(panel, /DeskRailChromeRow/);
@@ -67,11 +74,13 @@ describe('HistoryCartonTriagePanel', () => {
       /\bactions=/,
       'top chrome row must contain only close + previous/next',
     );
-    // Row 2 owns labelled Display tabs + View toggle; row 3 owns identity + CTA.
-    const topicsAt = panel.indexOf('data-testid="history-triage-topic-tabs"');
+    // View chrome + identity stay above the topic shell.
+    const viewAt = panel.indexOf('data-testid="history-triage-view-chrome"');
     const identityAt = panel.indexOf('data-testid="history-triage-identity"');
-    assert.ok(topicsAt > 0, 'contextual topic row must exist');
-    assert.ok(identityAt > topicsAt, 'identity must render below the topic row');
+    const shellAt = panel.indexOf('testId="history-inspector-index"');
+    assert.ok(viewAt > 0, 'View chrome row must exist');
+    assert.ok(identityAt > viewAt, 'identity must render below View chrome');
+    assert.ok(shellAt > identityAt, 'topic shell must render below identity');
     assert.match(panel, /data-testid="history-triage-primary-cta"/);
     assert.match(panel, /data-testid="history-triage-view-toggle"/);
     assert.match(panel, /data-history-topic=/);

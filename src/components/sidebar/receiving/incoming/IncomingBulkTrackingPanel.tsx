@@ -32,11 +32,10 @@
  * which `ui-design-system.md` → *Scroll ownership* bans outright — a component
  * mounted into an existing scroll host is CONTENT, never a viewport.
  *
- * Both are fixed by the same move: the buckets become **displays** on a
- * {@link SectionTabsSlider} `density="icon"` strip — the Unbox Displays
- * grammar — so exactly one renders at a time, at whatever height it needs,
- * inside the ONE port this shell owns. Panels stay mounted behind `hidden`, so
- * switching keeps each bucket's scroll position.
+ * Both are fixed by the same move: the buckets become **leaves** on
+ * {@link DeskInspectorIndexShell} — Unbox index→leaf grammar — so exactly one
+ * renders at a time, at whatever height it needs, inside the ONE port this
+ * shell owns. Back returns to the topic index.
  *
  * ## Why this dropped `SidebarIntakeFormShell`
  *
@@ -48,10 +47,10 @@
  * beneath it. Its entry in `INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST` was removed
  * in the same change; that allowlist is shrink-only.
  *
- * Composed, never forked: `RightRailHost` for the slot, `SectionTabsSlider` for
- * the display switcher, `PaneHeaderCloseButton` for the dismiss,
- * `OmnichannelComposerDock` for the paste dock, `parseTrackingKeys` for the
- * split.
+ * Composed, never forked: `RightRailHost` for the slot,
+ * `DeskInspectorIndexShell` for result topics, `PaneHeaderCloseButton` for the
+ * dismiss, `OmnichannelComposerDock` for the paste dock, `parseTrackingKeys`
+ * for the split. Never mounts station Displays push stack on RightRailHost.
  */
 
 import {
@@ -74,11 +73,15 @@ import {
   Search,
 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import {
+  DeskInspectorIndexShell,
+  type DeskInspectorLeaf,
+} from '@/components/right-rail/DeskInspectorIndexShell';
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import { Button, IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
+import type { SectionTab } from '@/design-system/components';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import {
   INCOMING_REMOVAL_REASON_FACE,
@@ -134,14 +137,6 @@ type CheckResult = {
  * gutter OPTICALLY*.
  */
 const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 pl-1.5 pr-3';
-
-/**
- * The icon strip's half of the same gutter. Its cells are 14px glyphs in 26px
- * boxes (`compact`), so a box parked on the `px-4` edge draws its mark ~7px
- * inside it — `-ml-2` pulls the ROW back so the first glyph's ink sits on the
- * gutter. Identical to the Unbox Displays strip, for the identical reason.
- */
-const STRIP_HEADER_CLASS = '-ml-2';
 
 function reasonLabel(reason: CheckZohoReceivedRow['reason']): string {
   switch (reason) {
@@ -447,7 +442,8 @@ export function IncomingBulkTrackingPanel({
   const [action, setAction] = useState<PasteAction>(checkOnly ? 'check' : initialAction);
   const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
   const [filterResult, setFilterResult] = useState<TrackingRemovalStatusResult | null>(null);
-  const [activeTab, setActiveTab] = useState<ResultTabId>('off-list');
+  /** Leaf id, or desk inspector index id when Back is on the topic list. */
+  const [activeTab, setActiveTab] = useState<string>('off-list');
 
   const activeFilter = checkOnly ? '' : (searchParams.get(TRACKING_IN_PARAM) || '').trim();
   const panelTitle =
@@ -598,68 +594,72 @@ export function IncomingBulkTrackingPanel({
    * The displays for whichever question was asked last. Built as data so the
    * strip, the counts and the bodies can never disagree about what exists.
    */
-  const tabs = useMemo<SectionTab[]>(() => {
+  const leaves = useMemo((): DeskInspectorLeaf[] => {
     if (action === 'filter' && filterResult) {
       return [
         {
           id: 'off-list' satisfies ResultTabId,
           label: 'Off the list',
+          subtitle: `${filterResult.hidden.length} hidden`,
           icon: History,
-          count: filterResult.hidden.length,
           content: (
-            <BucketBody
-              hint="These exist, but the default list hides them. Each row says why."
-              copyLabel="hidden rows"
-              // Columns in the order the row shows them, so a paste into a
-              // sheet lines up with what the operator just read.
-              copyLines={filterResult.hidden.map((r) =>
-                [
-                  r.po_number ? `PO ${r.po_number}` : '',
-                  r.tracking,
-                  r.reason ? INCOMING_REMOVAL_REASON_FACE[r.reason].label : '',
-                ]
-                  .filter(Boolean)
-                  .join('\t'),
-              )}
-              empty="None of these had left the list."
-              isEmpty={filterResult.hidden.length === 0}
-            >
-              <div className="space-y-2">
-                {/* The door to the rows just named. Carries the SAME keys, so
-                    the operator never retypes the paste. */}
-                <Button variant="secondary" size="sm" onClick={showOnRemovedLane}>
-                  Show these on Recently removed
-                </Button>
-                <ul className="space-y-1.5">
-                  {filterResult.hidden.map((row) => (
-                    <HiddenRow key={row.key} row={row} onFocusTracking={focusTracking} />
-                  ))}
-                </ul>
-              </div>
-            </BucketBody>
+            <div className="min-h-0 flex-1 overflow-y-auto px-1">
+              <BucketBody
+                hint="These exist, but the default list hides them. Each row says why."
+                copyLabel="hidden rows"
+                // Columns in the order the row shows them, so a paste into a
+                // sheet lines up with what the operator just read.
+                copyLines={filterResult.hidden.map((r) =>
+                  [
+                    r.po_number ? `PO ${r.po_number}` : '',
+                    r.tracking,
+                    r.reason ? INCOMING_REMOVAL_REASON_FACE[r.reason].label : '',
+                  ]
+                    .filter(Boolean)
+                    .join('\t'),
+                )}
+                empty="None of these had left the list."
+                isEmpty={filterResult.hidden.length === 0}
+              >
+                <div className="space-y-2">
+                  {/* The door to the rows just named. Carries the SAME keys, so
+                      the operator never retypes the paste. */}
+                  <Button variant="secondary" size="sm" onClick={showOnRemovedLane}>
+                    Show these on Recently removed
+                  </Button>
+                  <ul className="space-y-1.5">
+                    {filterResult.hidden.map((row) => (
+                      <HiddenRow key={row.key} row={row} onFocusTracking={focusTracking} />
+                    ))}
+                  </ul>
+                </div>
+              </BucketBody>
+            </div>
           ),
         },
         {
           id: 'not-found' satisfies ResultTabId,
           label: 'Not found',
+          subtitle: `${filterResult.not_found.length} unknown`,
           icon: AlertCircle,
-          count: filterResult.not_found.length,
           content: (
-            <BucketBody
-              hint="Nothing in this workspace carries these numbers at all."
-              copyLabel="not found"
-              copyLines={filterResult.not_found}
-              empty="Every tracking resolved to an inbound shipment."
-              isEmpty={filterResult.not_found.length === 0}
-            >
-              <ul className="space-y-1 rounded-none border border-border-soft bg-surface-canvas/60 p-2">
-                {filterResult.not_found.map((key) => (
-                  <li key={key} className="break-all font-mono text-role-caption text-text-default">
-                    {key}
-                  </li>
-                ))}
-              </ul>
-            </BucketBody>
+            <div className="min-h-0 flex-1 overflow-y-auto px-1">
+              <BucketBody
+                hint="Nothing in this workspace carries these numbers at all."
+                copyLabel="not found"
+                copyLines={filterResult.not_found}
+                empty="Every tracking resolved to an inbound shipment."
+                isEmpty={filterResult.not_found.length === 0}
+              >
+                <ul className="space-y-1 rounded-none border border-border-soft bg-surface-canvas/60 p-2">
+                  {filterResult.not_found.map((key) => (
+                    <li key={key} className="break-all font-mono text-role-caption text-text-default">
+                      {key}
+                    </li>
+                  ))}
+                </ul>
+              </BucketBody>
+            </div>
           ),
         },
       ];
@@ -673,29 +673,31 @@ export function IncomingBulkTrackingPanel({
         hint: string,
         empty: string,
         rows: CheckZohoReceivedRow[],
-      ): SectionTab => ({
+      ): DeskInspectorLeaf => ({
         id,
         label,
+        subtitle: `${rows.length}`,
         icon,
-        count: rows.length,
         content: (
-          <BucketBody
-            hint={hint}
-            copyLabel={label.toLowerCase()}
-            copyLines={checkCopyBlock(rows)}
-            empty={empty}
-            isEmpty={rows.length === 0}
-          >
-            <ul className="space-y-1.5">
-              {rows.map((row) => (
-                <CheckResultRow
-                  key={`${row.tracking}:${row.po_number ?? ''}:${row.reason}`}
-                  row={row}
-                  onFocusTracking={focusTracking}
-                />
-              ))}
-            </ul>
-          </BucketBody>
+          <div className="min-h-0 flex-1 overflow-y-auto px-1">
+            <BucketBody
+              hint={hint}
+              copyLabel={label.toLowerCase()}
+              copyLines={checkCopyBlock(rows)}
+              empty={empty}
+              isEmpty={rows.length === 0}
+            >
+              <ul className="space-y-1.5">
+                {rows.map((row) => (
+                  <CheckResultRow
+                    key={`${row.tracking}:${row.po_number ?? ''}:${row.reason}`}
+                    row={row}
+                    onFocusTracking={focusTracking}
+                  />
+                ))}
+              </ul>
+            </BucketBody>
+          </div>
         ),
       });
 
@@ -754,13 +756,14 @@ export function IncomingBulkTrackingPanel({
           </p>
         </div>
 
-        {/* The ONE scroll port on this surface. Everything below is CONTENT. */}
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3">
+        {/* Stats / paste feedback above the topic shell; buckets own their scroll. */}
+        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="shrink-0 space-y-3 px-4 pb-2 pt-3">
           {error ? (
             <p className="text-role-caption font-medium text-red-600" role="alert">
               {error}
             </p>
-          ) : tabs.length === 0 ? (
+          ) : leaves.length === 0 ? (
             <p className="text-role-caption text-text-faint">
               {checkOnly ? (
                 <>
@@ -833,21 +836,19 @@ export function IncomingBulkTrackingPanel({
             </div>
           ) : null}
 
-          {tabs.length > 0 ? (
-            <SectionTabsSlider
-              tabs={tabs}
-              value={activeTab}
-              onChange={(id) => setActiveTab(id as ResultTabId)}
+        </div>
+
+          {leaves.length > 0 ? (
+            <DeskInspectorIndexShell
+              leaves={leaves}
+              activeId={activeTab}
+              onActiveIdChange={setActiveTab}
               ariaLabel={
                 action === 'check' ? 'Unreceived order check results' : 'Tracking results'
               }
-              headerClassName={STRIP_HEADER_CLASS}
-              // Quiet icon row: idle cells are icon-only (the label is both the
-              // tooltip and the accessible name) and the selected cell expands
-              // to icon + label. The switcher is chrome for a ~380px column —
-              // it must not out-shout the list it selects.
-              density="icon"
-              compact
+              testId="incoming-bulk-tracking-inspector-index"
+              backLabel="Back to topics"
+              className="min-h-0 flex-1 px-3"
             />
           ) : null}
         </div>

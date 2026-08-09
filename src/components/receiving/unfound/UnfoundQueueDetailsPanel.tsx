@@ -3,13 +3,13 @@
 /**
  * Right-side slide-in details panel for an unfound-queue row.
  *
- * Tabs mirror the receiving-side details stack tab pattern:
+ * Topics (email_po only) via {@link DeskInspectorIndexShell}:
  *   • Overview — identity, Zendesk handoff, team notes, timing
  *   • Extract  — LLM-extracted fields editor + Zoho compare + Zoho PO# I
- *                uploaded + free-form notes (email_po only)
- *   • Email    — full Gmail body (email_po only)
+ *                uploaded + free-form notes
+ *   • Email    — full Gmail body
  *
- * For non-email_po kinds the panel renders only Overview (no tabs).
+ * For non-email_po kinds the panel renders only Overview (no index shell).
  *
  * Serial numbers were intentionally cut from this surface — they belong
  * on the receiving workspace where the operator scans them during the
@@ -24,17 +24,22 @@
  * presentational components under `./details-panel/`.
  */
 
+import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  DESK_INSPECTOR_INDEX,
+  DeskInspectorIndexShell,
+  type DeskInspectorLeaf,
+} from '@/components/right-rail/DeskInspectorIndexShell';
 import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import {
   PaneHeaderIconBadge,
   PaneHeaderLabel,
-  PaneHeaderTabs,
 } from '@/components/ui/pane-header';
 import { useUnfoundDetailsPanel } from './details-panel/useUnfoundDetailsPanel';
 import type { DetailsTab, UnfoundQueueDetailsPanelProps } from './details-panel/unfound-details-helpers';
@@ -52,6 +57,80 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
   const c = useUnfoundDetailsPanel(props);
   const { meta, Icon, detailQuery, detail, isEmailPo } = c;
 
+  /** Index | leaf — stub-opens on Overview; Back → topics. */
+  const [navId, setNavId] = useState<string>('overview');
+  useEffect(() => {
+    setNavId('overview');
+  }, [row.source_id, row.kind]);
+
+  const onNavChange = useCallback(
+    (id: string) => {
+      setNavId(id);
+      if (id !== DESK_INSPECTOR_INDEX) {
+        c.setActiveTab(id as DetailsTab);
+      }
+    },
+    [c.setActiveTab],
+  );
+
+  const overviewBody = (
+    <OverviewTab
+      row={row}
+      subjectPrefix={c.subjectPrefix}
+      poNumbers={c.poNumbers}
+      pushing={c.pushing}
+      onPushToZendesk={c.handlePushToZendesk}
+      detail={detail}
+    />
+  );
+
+  const leaves: DeskInspectorLeaf[] = !isEmailPo
+    ? []
+    : [
+        {
+          id: 'overview',
+          label: 'Overview',
+          content: (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{overviewBody}</div>
+          ),
+        },
+        {
+          id: 'extract',
+          label: 'Extract',
+          content: (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {detailQuery.isLoading && !detail ? (
+                <LoadingBlock />
+              ) : detailQuery.error ? (
+                <ErrorBlock message={detailQuery.error.message} />
+              ) : detail ? (
+                <ExtractTab
+                  detail={detail}
+                  rowId={row.source_id}
+                  patchTriage={c.patchTriage}
+                  onRowUpdated={c.updateTriageRow}
+                />
+              ) : null}
+            </div>
+          ),
+        },
+        {
+          id: 'email',
+          label: 'Email',
+          content: (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {detailQuery.isLoading && !detail ? (
+                <LoadingBlock />
+              ) : detailQuery.error ? (
+                <ErrorBlock message={detailQuery.error.message} />
+              ) : detail ? (
+                <EmailTab detail={detail} />
+              ) : null}
+            </div>
+          ),
+        },
+      ];
+
   return (
     // STABLE occupant id, and deliberately NOT the `detail:claim:` namespace it
     // used to share with the Repair inspector — two unrelated surfaces on one id
@@ -67,18 +146,6 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
           <DeskRailChromeRow onClose={onClose} closeTitle="Close details" />
-          {isEmailPo ? (
-            <PaneHeaderTabs<DetailsTab>
-              tabs={[
-                { value: 'overview', label: 'Overview' },
-                { value: 'extract', label: 'Extract' },
-                { value: 'email', label: 'Email' },
-              ]}
-              value={c.activeTab}
-              onChange={c.setActiveTab}
-              className="px-2"
-            />
-          ) : null}
           <div className="flex items-center gap-2 px-2 pb-2 pt-1">
             <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
             <PaneHeaderLabel
@@ -96,44 +163,19 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
           </div>
         </div>
 
-        {/* Scrollable body */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-          {!isEmailPo || c.activeTab === 'overview' ? (
-            <OverviewTab
-              row={row}
-              subjectPrefix={c.subjectPrefix}
-              poNumbers={c.poNumbers}
-              pushing={c.pushing}
-              onPushToZendesk={c.handlePushToZendesk}
-              detail={detail}
-            />
-          ) : null}
-
-          {isEmailPo && c.activeTab === 'extract' ? (
-            detailQuery.isLoading && !detail ? (
-              <LoadingBlock />
-            ) : detailQuery.error ? (
-              <ErrorBlock message={detailQuery.error.message} />
-            ) : detail ? (
-              <ExtractTab
-                detail={detail}
-                rowId={row.source_id}
-                patchTriage={c.patchTriage}
-                onRowUpdated={c.updateTriageRow}
-              />
-            ) : null
-          ) : null}
-
-          {isEmailPo && c.activeTab === 'email' ? (
-            detailQuery.isLoading && !detail ? (
-              <LoadingBlock />
-            ) : detailQuery.error ? (
-              <ErrorBlock message={detailQuery.error.message} />
-            ) : detail ? (
-              <EmailTab detail={detail} />
-            ) : null
-          ) : null}
-        </div>
+        {isEmailPo ? (
+          <DeskInspectorIndexShell
+            leaves={leaves}
+            activeId={navId}
+            onActiveIdChange={onNavChange}
+            defaultActiveId="overview"
+            ariaLabel="Unfound topics"
+            testId="unfound-inspector-index"
+            backLabel="Back to topics"
+          />
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{overviewBody}</div>
+        )}
 
         <InspectorActionFloor
           above={

@@ -9,7 +9,7 @@
 import type { ReactNode } from 'react';
 import type { SectionTab, SectionTabPriority } from '@/design-system/components';
 
-export interface SectionTabDef {
+interface SectionTabDef {
   id: string;
   label: string;
   icon: SectionTab['icon'];

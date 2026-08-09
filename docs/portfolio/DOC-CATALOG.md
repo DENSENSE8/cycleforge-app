@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-09T16:08:41.810Z` · Files: **578** · Repo: `cycleforge-app`  
+> Generated: `2026-08-09T16:13:36.912Z` · Files: **579** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `68fd82449` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `d7a02ef69` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -610,6 +610,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-WMS-PREMIUM-PARITY-GAP-H1-HANDOFF-FAEE` | `WS-TODO-MISC` | [`todo/wms-premium-parity-gap-H1-HANDOFF.md`](../todo/wms-premium-parity-gap-H1-HANDOFF.md) |
 | `DOC-TODO-WMS-PREMIUM-PARITY-GAP-RESEARCH-ACA9` | `WS-TODO-MISC` | [`todo/wms-premium-parity-gap-RESEARCH.md`](../todo/wms-premium-parity-gap-RESEARCH.md) |
 | `DOC-TODO-WORKBENCH-CHROME-BAND-DENSITY-GEMINI-RESEARCH-BR-DB4F` | `WS-TODO-MISC` | [`todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-WORKBENCH-TABLE-DS-PRINCIPLES-2026-GEMINI-RESEAR-EF9C` | `WS-TODO-MISC` | [`todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-HANDOFF-E249` | `WS-TODO-MISC` | [`todo/zoho-received-check-watchlist-HANDOFF.md`](../todo/zoho-received-check-watchlist-HANDOFF.md) |
 | `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-PLAN-92D6` | `WS-TODO-MISC` | [`todo/zoho-received-check-watchlist-PLAN.md`](../todo/zoho-received-check-watchlist-PLAN.md) |
 | `DOC-TODO-ZOMBIE-CODE-ELIMINATION-HANDOFF-3E6B` | `WS-TODO-MISC` | [`todo/zombie-code-elimination-HANDOFF.md`](../todo/zombie-code-elimination-HANDOFF.md) |
@@ -879,7 +880,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (407)
+### `WS-TODO-MISC` (408)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1285,6 +1286,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-WMS-PREMIUM-PARITY-GAP-H1-HANDOFF-FAEE` — [`todo/wms-premium-parity-gap-H1-HANDOFF.md`](../todo/wms-premium-parity-gap-H1-HANDOFF.md)
 - `DOC-TODO-WMS-PREMIUM-PARITY-GAP-RESEARCH-ACA9` — [`todo/wms-premium-parity-gap-RESEARCH.md`](../todo/wms-premium-parity-gap-RESEARCH.md)
 - `DOC-TODO-WORKBENCH-CHROME-BAND-DENSITY-GEMINI-RESEARCH-BR-DB4F` — [`todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-WORKBENCH-TABLE-DS-PRINCIPLES-2026-GEMINI-RESEAR-EF9C` — [`todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-HANDOFF-E249` — [`todo/zoho-received-check-watchlist-HANDOFF.md`](../todo/zoho-received-check-watchlist-HANDOFF.md)
 - `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-PLAN-92D6` — [`todo/zoho-received-check-watchlist-PLAN.md`](../todo/zoho-received-check-watchlist-PLAN.md)
 - `DOC-TODO-ZOMBIE-CODE-ELIMINATION-HANDOFF-3E6B` — [`todo/zombie-code-elimination-HANDOFF.md`](../todo/zombie-code-elimination-HANDOFF.md)

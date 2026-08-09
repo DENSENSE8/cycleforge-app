@@ -78,7 +78,9 @@ describe('Incoming Pairing inspector', () => {
   it('IncomingDetailsPanel mounts PairingTab', () => {
     const src = read('../IncomingDetailsPanel.tsx');
     assert.match(src, /PairingTab/);
-    assert.match(src, /tab === 'pairing'/);
+    assert.match(src, /DeskInspectorIndexShell/);
+    assert.match(src, /buildIncomingInspectorLeaves/);
+    assert.match(src, /pairing:/);
   });
 
   it('ReceivingDashboard opens inspect from Incoming 1-check', () => {

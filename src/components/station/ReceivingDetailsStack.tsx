@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { TRIAGE_SURFACE_ROUTE, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { Copy, PackageOpen, RefreshCw, Trash2 } from '@/components/Icons';
@@ -20,19 +20,20 @@ import {
   PaneHeader,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
-  PaneHeaderTabs,
   PaneHeaderActionBar,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
 import { paneHeaderLabelValueClass } from '@/components/ui/pane-header/blocks';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import {
+  DeskInspectorIndexShell,
+  type DeskInspectorLeaf,
+} from '@/components/right-rail/DeskInspectorIndexShell';
 import { useQuery } from '@tanstack/react-query';
 import {
   deriveCartonReadiness,
   type ReceivingMatchLine,
 } from '@/lib/receiving/carton-readiness';
-
-type ReceivingTab = 'progress' | 'items' | 'journeys';
 
 async function fetchReceivingMatchLines(receivingId: string): Promise<ReceivingMatchLine[]> {
   const res = await fetch(`/api/receiving/match?receiving_id=${encodeURIComponent(receivingId)}`);
@@ -57,10 +58,19 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
   const isTriageSurface =
     pathname === TRIAGE_SURFACE_ROUTE || pathname.startsWith(`${TRIAGE_SURFACE_ROUTE}/`);
   const [isOpeningEditor, setIsOpeningEditor] = useState(false);
-  const [activeTab, setActiveTab] = useState<ReceivingTab>('progress');
+  /** Index | leaf — stub-opens on Progress; Back → topics. Synced leaf id when not on index. */
+  const [navId, setNavId] = useState<string>('progress');
   const [isCopying, setIsCopying] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [copiedPoNumber, setCopiedPoNumber] = useState(false);
+
+  useEffect(() => {
+    setNavId('progress');
+  }, [log.id]);
+
+  const onNavChange = useCallback((id: string) => {
+    setNavId(id);
+  }, []);
 
   const matchQuery = useQuery({
     queryKey: ['receiving-match', String(log.id)] as const,
@@ -179,6 +189,69 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
     handleClose();
   };
 
+  const triageOpenSlot = isTriageSurface ? (
+    <HoverTooltip label="Open this carton in unbox" asChild focusable={false}>
+      <IconButton
+        icon={<PackageOpen className="h-4 w-4" />}
+        ariaLabel="Open in unbox"
+        tone="accent"
+        size="sm"
+        onClick={() => void handleEditPO()}
+        disabled={isOpeningEditor || form.isSaving}
+        className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+      />
+    </HoverTooltip>
+  ) : null;
+
+  const leaves = useMemo<DeskInspectorLeaf[]>(
+    () => [
+      {
+        id: 'progress',
+        label: 'Progress',
+        content: (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            <div className="space-y-4">
+              <ReceivingProgressTab
+                log={log}
+                readiness={readiness}
+                form={form}
+                journey={isTriageSurface ? 'arrival' : 'unbox'}
+              />
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'items',
+        label: 'Items',
+        subtitle:
+          typeof log.count === 'number' ? String(log.count) : undefined,
+        content: (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            <div className="space-y-4">
+              <ReceivingItemsTab
+                receivingId={log.id}
+                trackingNumber={log.tracking}
+              />
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'journeys',
+        label: 'Serial journey',
+        content: (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            <div className="space-y-4">
+              <ReceivingSerialJourneys receivingId={log.id} />
+            </div>
+          </div>
+        ),
+      },
+    ],
+    [log, readiness, form, isTriageSurface],
+  );
+
   return (
     // Non-modal elevated inspector: glance-at-progress / skim-items without a
     // dimming scrim. Push would crush the 1440px workbench. Keep `elevated` so
@@ -254,98 +327,63 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
           ) : null
         }
         belowSlot={
-          <>
-            {/* Utility toolbar — same shape as the LineEditPanel toolbar, so
-                detail panes have one consistent action surface. Sits ABOVE
-                the tabs per the dual-sticky preview. */}
-            <div className="px-6 pb-2">
-              <PaneHeaderActionBar
-                iconOnly
-                actions={[
-                  {
-                    key: 'refresh',
-                    label: 'Refresh',
-                    icon: <RefreshCw className="h-3.5 w-3.5" />,
-                    onClick: handleRefresh,
-                    disabled: form.isSaving,
-                    title: 'Refetch this receiving log',
-                  },
-                  {
-                    key: 'copy',
-                    label: 'Copy',
-                    icon: <Copy className={`h-3.5 w-3.5 ${isCopying ? 'animate-pulse' : ''}`} />,
-                    onClick: () => void handleCopyAll(),
-                    disabled: isCopying,
-                    title: 'Copy receiving details to clipboard',
-                  },
-                ] satisfies PaneHeaderActionBarAction[]}
-                status={form.isSaving ? 'Saving' : undefined}
-                onPrev={() =>
-                  window.dispatchEvent(
-                    new CustomEvent('receiving-navigate-detail-overlay', {
-                      detail: { direction: 'prev', currentReceivingId: Number(log.id) },
-                    }),
-                  )
-                }
-                onNext={() =>
-                  window.dispatchEvent(
-                    new CustomEvent('receiving-navigate-detail-overlay', {
-                      detail: { direction: 'next', currentReceivingId: Number(log.id) },
-                    }),
-                  )
-                }
-                prevTitle="Previous receiving"
-                nextTitle="Next receiving"
-              />
-            </div>
-            <PaneHeaderTabs<ReceivingTab>
-              tabs={[
-                { value: 'progress', label: 'Progress' },
-                { value: 'items', label: 'Items', count: typeof log.count === 'number' ? log.count : undefined },
-                { value: 'journeys', label: 'Serial journey' },
-              ]}
-              value={activeTab}
-              onChange={setActiveTab}
-              className="px-6"
-              rightSlot={
-                isTriageSurface ? (
-                  <HoverTooltip label="Open this carton in unbox" asChild focusable={false}>
-                    <IconButton
-                      icon={<PackageOpen className="h-4 w-4" />}
-                      ariaLabel="Open in unbox"
-                      tone="accent"
-                      size="sm"
-                      onClick={() => void handleEditPO()}
-                      disabled={isOpeningEditor || form.isSaving}
-                      className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    />
-                  </HoverTooltip>
-                ) : null
+          /* Utility toolbar — same shape as the LineEditPanel toolbar, so
+              detail panes have one consistent action surface. Sits ABOVE
+              the index→leaf shell. */
+          <div className="px-6 pb-2">
+            <PaneHeaderActionBar
+              iconOnly
+              actions={[
+                {
+                  key: 'refresh',
+                  label: 'Refresh',
+                  icon: <RefreshCw className="h-3.5 w-3.5" />,
+                  onClick: handleRefresh,
+                  disabled: form.isSaving,
+                  title: 'Refetch this receiving log',
+                },
+                {
+                  key: 'copy',
+                  label: 'Copy',
+                  icon: <Copy className={`h-3.5 w-3.5 ${isCopying ? 'animate-pulse' : ''}`} />,
+                  onClick: () => void handleCopyAll(),
+                  disabled: isCopying,
+                  title: 'Copy receiving details to clipboard',
+                },
+              ] satisfies PaneHeaderActionBarAction[]}
+              status={form.isSaving ? 'Saving' : undefined}
+              onPrev={() =>
+                window.dispatchEvent(
+                  new CustomEvent('receiving-navigate-detail-overlay', {
+                    detail: { direction: 'prev', currentReceivingId: Number(log.id) },
+                  }),
+                )
               }
+              onNext={() =>
+                window.dispatchEvent(
+                  new CustomEvent('receiving-navigate-detail-overlay', {
+                    detail: { direction: 'next', currentReceivingId: Number(log.id) },
+                  }),
+                )
+              }
+              prevTitle="Previous receiving"
+              nextTitle="Next receiving"
             />
-          </>
+          </div>
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-        <div className="space-y-4">
-          {activeTab === 'progress' && (
-            <ReceivingProgressTab
-              log={log}
-              readiness={readiness}
-              form={form}
-              journey={isTriageSurface ? 'arrival' : 'unbox'}
-            />
-          )}
-
-          {activeTab === 'items' && (
-            <ReceivingItemsTab receivingId={log.id} trackingNumber={log.tracking} />
-          )}
-
-          {activeTab === 'journeys' && <ReceivingSerialJourneys receivingId={log.id} />}
-
-        </div>
-      </div>
+      <DeskInspectorIndexShell
+        leaves={leaves}
+        activeId={navId}
+        onActiveIdChange={onNavChange}
+        defaultActiveId="progress"
+        indexRightSlot={triageOpenSlot}
+        leafTrailing={triageOpenSlot}
+        ariaLabel="Receiving topics"
+        testId="receiving-inspector-index"
+        backLabel="Back to topics"
+      />
 
       {/* Footer — destructive action pinned to panel bottom (unfound / shipped pattern). */}
       <div className="shrink-0 border-t border-border-hairline px-6 py-3">

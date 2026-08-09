@@ -5,9 +5,10 @@
  *
  * ```text
  * [→|] ……………………………… [↑][↓][↻]
- * tabs
  * identity
  * ```
+ *
+ * Topic nav lives in {@link DeskInspectorIndexShell} below — never PaneHeaderTabs.
  *
  * NON-MODAL: Escape via RightRailHost; outset edge-collapse suppressed
  * (`edgeCollapse={false}`).
@@ -19,12 +20,11 @@ import {
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
-  PaneHeaderTabs,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { IconButton } from '@/design-system/primitives';
-import type { DetailsResponse, TabId } from './incoming-details-shared';
+import type { DetailsResponse } from './incoming-details-shared';
 
 function statusTone(
   status: string | null | undefined,
@@ -49,9 +49,6 @@ export function IncomingDetailsHeader({
   isCartonOnly = false,
   syncing,
   onSync,
-  tabs,
-  tab,
-  onTabChange,
   onClose,
   /** Selection-plane actions (Copy / Print / Ticket) when the check-set is published. */
   selectionActions = [],
@@ -67,9 +64,6 @@ export function IncomingDetailsHeader({
   isCartonOnly?: boolean;
   syncing: boolean;
   onSync: () => void;
-  tabs: Array<{ value: TabId; label: string }>;
-  tab: TabId;
-  onTabChange: (next: TabId) => void;
   onClose: () => void;
   selectionActions?: PaneHeaderActionBarAction[];
 }) {
@@ -145,13 +139,6 @@ export function IncomingDetailsHeader({
         }
       />
 
-      <PaneHeaderTabs
-        dense
-        tabs={tabs}
-        value={tab}
-        onChange={onTabChange}
-        className="px-2"
-      />
       <div className="flex items-center gap-2 px-2 pb-2 pt-1">
         <PaneHeaderIconBadge Icon={Inbox} bg="bg-emerald-100" tint="text-emerald-700" />
         <div className="flex min-w-0 flex-col gap-1">

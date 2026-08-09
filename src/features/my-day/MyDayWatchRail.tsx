@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Today **Watch** right rail — Unbox Displays pattern.
+ * Today **Watch** right rail — Unbox index→leaf desk grammar.
  *
- * `SectionTabsSlider density="icon"` switches Ticket / Tracking list displays.
- * Each display is add-field + watched list (rail stays open on Watch success).
+ * {@link DeskInspectorIndexShell} switches Ticket / Tracking list displays.
+ * Each leaf is add-field + watched list (rail stays open on Watch success).
  *
  * Ticket → self-assign (`support_ticket_assignments` → Today Attention).
  * Tracking → subscribe to the linked inbound carton (`staff_subscriptions`).
@@ -15,8 +15,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Barcode, Loader2, MessageSquare, Plus } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  DESK_INSPECTOR_INDEX,
+  DeskInspectorIndexShell,
+  type DeskInspectorLeaf,
+} from '@/components/right-rail/DeskInspectorIndexShell';
 import { PaneHeaderLabel } from '@/components/ui/pane-header';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import { Button, TextField } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
@@ -74,12 +78,14 @@ function MyDayWatchRailBody({
 }) {
   const queryClient = useQueryClient();
   const defaultKind: WatchKind = canTicket ? 'ticket' : 'tracking';
-  const [kind, setKind] = useState<WatchKind>(defaultKind);
+  /** Index | leaf — opens on first permitted topic; Back → topics. */
+  const [navId, setNavId] = useState<string>(defaultKind);
 
   useEffect(() => {
-    if (kind === 'ticket' && !canTicket && canTracking) setKind('tracking');
-    if (kind === 'tracking' && !canTracking && canTicket) setKind('ticket');
-  }, [canTicket, canTracking, kind]);
+    if (navId === DESK_INSPECTOR_INDEX) return;
+    if (navId === 'ticket' && !canTicket && canTracking) setNavId('tracking');
+    if (navId === 'tracking' && !canTracking && canTicket) setNavId('ticket');
+  }, [canTicket, canTracking, navId]);
 
   const listQuery = useQuery({
     queryKey: WATCH_LIST_QUERY_KEY,
@@ -105,40 +111,42 @@ function MyDayWatchRailBody({
   const tickets = listQuery.data?.tickets ?? [];
   const tracking = listQuery.data?.tracking ?? [];
 
-  const tabs = useMemo((): SectionTab[] => {
-    const next: SectionTab[] = [];
+  const leaves = useMemo((): DeskInspectorLeaf[] => {
+    const next: DeskInspectorLeaf[] = [];
     if (canTicket) {
       next.push({
         id: 'ticket',
         label: 'Ticket',
+        subtitle: tickets.length ? `${tickets.length} watched` : 'Watch a ticket',
         icon: MessageSquare,
-        count: tickets.length || undefined,
         content: (
-          <WatchKindDisplay
-            kind="ticket"
-            rows={tickets.map((t) => ({
-              id: String(t.ticketId),
-              title: t.subject?.trim() || `Ticket #${t.ticketId}`,
-              identity: `#${t.ticketId}`,
-            }))}
-            loading={listQuery.isLoading}
-            onWatched={invalidateLists}
-            onStop={async (id) => {
-              const ticketId = Number(id);
-              const res = await fetch(`/api/zendesk/tickets/${ticketId}/assign`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ staffId: null }),
-              });
-              if (!res.ok) {
-                const body = (await res.json().catch(() => null)) as { error?: string } | null;
-                throw new Error(body?.error || `Could not stop watching (${res.status})`);
-              }
-              toast.success(`Stopped watching ticket #${ticketId}`);
-              await invalidateLists();
-            }}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2">
+            <WatchKindDisplay
+              kind="ticket"
+              rows={tickets.map((t) => ({
+                id: String(t.ticketId),
+                title: t.subject?.trim() || `Ticket #${t.ticketId}`,
+                identity: `#${t.ticketId}`,
+              }))}
+              loading={listQuery.isLoading}
+              onWatched={invalidateLists}
+              onStop={async (id) => {
+                const ticketId = Number(id);
+                const res = await fetch(`/api/zendesk/tickets/${ticketId}/assign`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ staffId: null }),
+                });
+                if (!res.ok) {
+                  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+                  throw new Error(body?.error || `Could not stop watching (${res.status})`);
+                }
+                toast.success(`Stopped watching ticket #${ticketId}`);
+                await invalidateLists();
+              }}
+            />
+          </div>
         ),
       });
     }
@@ -146,38 +154,40 @@ function MyDayWatchRailBody({
       next.push({
         id: 'tracking',
         label: 'Tracking',
+        subtitle: tracking.length ? `${tracking.length} watched` : 'Watch tracking',
         icon: Barcode,
-        count: tracking.length || undefined,
         content: (
-          <WatchKindDisplay
-            kind="tracking"
-            rows={tracking.map((t) => ({
-              id: String(t.receivingId),
-              title: t.tracking ?? `Carton #${t.receivingId}`,
-              identity: t.tracking ?? `Carton #${t.receivingId}`,
-            }))}
-            loading={listQuery.isLoading}
-            onWatched={invalidateLists}
-            onStop={async (id) => {
-              const receivingId = Number(id);
-              const res = await fetch('/api/subscriptions/toggle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                  entityType: 'receiving',
-                  entityId: receivingId,
-                  desired: 'muted',
-                }),
-              });
-              if (!res.ok) {
-                const body = (await res.json().catch(() => null)) as { error?: string } | null;
-                throw new Error(body?.error || `Could not stop watching (${res.status})`);
-              }
-              toast.success('Stopped watching tracking');
-              await invalidateLists();
-            }}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2">
+            <WatchKindDisplay
+              kind="tracking"
+              rows={tracking.map((t) => ({
+                id: String(t.receivingId),
+                title: t.tracking ?? `Carton #${t.receivingId}`,
+                identity: t.tracking ?? `Carton #${t.receivingId}`,
+              }))}
+              loading={listQuery.isLoading}
+              onWatched={invalidateLists}
+              onStop={async (id) => {
+                const receivingId = Number(id);
+                const res = await fetch('/api/subscriptions/toggle', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    entityType: 'receiving',
+                    entityId: receivingId,
+                    desired: 'muted',
+                  }),
+                });
+                if (!res.ok) {
+                  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+                  throw new Error(body?.error || `Could not stop watching (${res.status})`);
+                }
+                toast.success('Stopped watching tracking');
+                await invalidateLists();
+              }}
+            />
+          </div>
         ),
       });
     }
@@ -191,7 +201,7 @@ function MyDayWatchRailBody({
     tracking,
   ]);
 
-  if (tabs.length === 0) {
+  if (leaves.length === 0) {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <WatchRailHeader onClose={onClose} />
@@ -205,16 +215,14 @@ function MyDayWatchRailBody({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <WatchRailHeader onClose={onClose} />
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2">
-        <SectionTabsSlider
-          tabs={tabs}
-          value={kind}
-          onChange={(id) => setKind(id as WatchKind)}
-          ariaLabel="Watch displays"
-          density="icon"
-          compact
-        />
-      </div>
+      <DeskInspectorIndexShell
+        leaves={leaves}
+        activeId={navId}
+        onActiveIdChange={setNavId}
+        ariaLabel="Watch topics"
+        testId="my-day-watch-inspector-index"
+        backLabel="Back to topics"
+      />
     </div>
   );
 }

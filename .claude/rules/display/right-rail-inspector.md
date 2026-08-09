@@ -20,7 +20,7 @@ station-edge opt-outs.
 
 ## Anatomy (every record inspector)
 
-### Orders family — desk `detail:order` (Unbox Displays twin)
+### Orders family — desk `detail:order` (Unbox index→leaf twin)
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -28,24 +28,24 @@ station-edge opt-outs.
 │ [→|] ……………………………… [ N / M ] [ ↑ ] [ ↓ ]                 │
 │ DeskRailChromeRow — close top-left; cursor + ↑↓ trailing    │
 ├─────────────────────────────────────────────────────────────┤
-│ Row 2 — Displays topic plate (Unbox twin) — locked four     │
-│ SectionTabsSlider density="icon" + buildSectionTabs         │
-│ [ Order | Documents | Timeline | Conversation ] + ⋮         │
-│ Topic map SoT: order-inspector-topics.ts                    │
-│ ⋮ = station handoffs only (not Assign / urgent / notes)     │
-│ Order nests Shipping · Product via TabDisplay underline     │
+│ DeskInspectorIndexShell (Context plane — never              │
+│ StationDisplaysPushStack)                                   │
+│   Index — DisplayIndexRow topics + ⋮ handoffs               │
+│   [ Order | Documents | Timeline | Conversation ]           │
+│   Topic map SoT: order-inspector-topics.ts                  │
+│   Leaf — sticky Back + flush body (no ORDER # identity)     │
+│   Order leaf stacks Shipping + Product (no nested tabs)     │
 ├─────────────────────────────────────────────────────────────┤
-│ Body — flush Display content (no ORDER # identity row)      │
-├─────────────────────────────────────────────────────────────┤
-│ Order tab only — bottom update bar (`OrderUpdateDock`)      │
+│ Order leaf only — bottom update bar (`OrderUpdateDock`)     │
 │ [ Assign | Urgent | Notes | OOS | Ship ] …… [🗑 icon]       │
 │ Delete = flush trailing icon (no padded surface). Assign    │
 │ expands OrderAssignDisplayHost above the bar (never popover)│
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Full-page `/o/[id]` is retired. Desk selected-order mirrors Unbox Displays —
-no `RecordPaneHeader` identity ladder on `detail:order`.
+Full-page `/o/[id]` is retired. Desk selected-order mirrors Unbox **rows-index
+grammar** on `RightRailHost` — never `SectionTabsSlider density="icon"` /
+`PaneHeaderTabs` as primary topic nav, never `RecordPaneHeader` identity ladder.
 
 Sheet **View** topics (paint · drill · compare · Urgent board filter · sort ·
 staff · ▦ · KPI) live on **`detail:orders-view`** (`OrdersViewControlsRail`) —
@@ -62,12 +62,10 @@ Band 3 opens that rail with no row selected. Selected-order `detail:order` must
 │ (optional `.actions` only when topics share the chrome row) │
 │ Incoming Sync = trailing after ↑↓ (never the floor)         │
 ├─────────────────────────────────────────────────────────────┤
-│ Row 2 — contextual icons / topic tabs (when present)        │
-│ PaneHeaderActionBar iconOnly — no onClose / onPrev / onNext │
-├─────────────────────────────────────────────────────────────┤
 │ dense identity (PaneHeaderLabel) + status pills             │
 ├─────────────────────────────────────────────────────────────┤
-│ Body …                                                      │
+│ DeskInspectorIndexShell — topic rows → leaf bodies          │
+│ (never PaneHeaderTabs / SectionTabsSlider density=icon)     │
 ├─────────────────────────────────────────────────────────────┤
 │ InspectorActionFloor (Workbench triage only; Macro shell)   │
 │ [ leading CTAs? ] ………………………… [ 🗑 flush icon ]       │
@@ -78,35 +76,20 @@ Band 3 opens that rail with no row selected. Selected-order `detail:order` must
 
 **Action floor SoT:** `InspectorActionFloor` + `InspectorFlushDelete`
 (`src/components/right-rail/`). Desk triage inspectors only (Incoming ·
-Orders Order-tab · Unfound · Repair · Bin · SKU panel). Never Station
+Orders Order-leaf · Unfound · Repair · Bin · SKU panel). Never Station
 Displays / `StationTerminalDock`. Never a host slot on `RightRailHost`.
 History keeps identity-row primary (`historyInspectorPrimaryAction`) — no
 floor band.
 
-**History peek golden (`detail:history`).** Its header is chrome → Display tabs
-→ identity (+ optional View strip):
-1) `DeskRailChromeRow` with **close + ↑↓ only** (no `.actions`), 2) labelled
-**Display** `PaneHeaderTabs` dense (`Details | Logistics | Evidence | History`)
-with a **View** toggle that expands `HistoryViewTopicsCluster` (paint ·
-Drill|List · compare · zoom · ▦ — sheet layout moved off Band 3; forced open in
-the View-only shell, which every Unbox **sheet** tab can open since 2026-08-08
-and where only compare · zoom · ▦ render, paint + Drill needing a picked
-carton). **KPI collapse is NOT here** — it is the Band 3 `kpiToggle`, because
-Band 3 is on screen while this rail is parked. Staff · week are query facets and
-ride in the find field. Then 3) short status + PO /
-Receiving identity plus **one** readiness-picked labelled primary CTA
-(`historyInspectorPrimaryAction`) and a More menu for secondary edits —
-**not** an Edit icon ActionBar and **not** a multi-button labelled strip.
-Topic map SoT: `history-inspector-topics.ts`. The topic row lives **only** on
-this push inspector — never on Unbox Band 3, any tab (Band 3 = find · in-field
-filter · KPI collapse · park/reopen via **Show / Hide inspector** — not Station
-**Open displays**). Body shows the **active** Display section only (`data-history-topic`).
-**Display topic** (singular — which body section is open) ≠ Station **Displays**
-column (`UnboxPushColumn` / Listings · Classify · Pairing · …). Law:
-source-of-truth.md → Displays vs inspector. Desk Orders twin Unbox Displays via
-`DeskRailChromeRow` + `SectionTabsSlider` density=icon +
-`order-inspector-topics.ts` (Assign is a Display topic; View stays on
-`detail:orders-view`, not a toggle on the selected-order rail).
+**History peek golden (`detail:history`).** Chrome → optional View strip →
+identity → **`DeskInspectorIndexShell`** (Details · Logistics · Evidence ·
+History as index rows → leaf). View toggle expands `HistoryViewTopicsCluster`
+(paint · Drill|List · compare · zoom · ▦). **KPI collapse is NOT here** —
+Band 3 `kpiToggle`. Topic map SoT: `history-inspector-topics.ts`. Never
+`PaneHeaderTabs` as primary topic nav. **Display topic** (singular — which
+leaf is open) ≠ Station **Displays** column. Desk Orders twin:
+`DeskRailChromeRow` + `DeskInspectorIndexShell` + `order-inspector-topics.ts`
+(View stays on `detail:orders-view`).
 
 **Desk single-card vs Unbox two-host (ruled 2026-08-03).** Unbox reads
 `[→|] ……… [↑ ↓]` across two regions: column `UNBOX_PUSH_TOP_BAND` + pane-absolute
@@ -136,12 +119,13 @@ as contextual `actions`.
 - Contextual icon actions are a **per-occupant** `PaneHeaderActionBarAction[]` (Link / Sync / Print / Ignore / …). The shell does not hardcode them.
 - Close is **`PaneHeaderActionBar onClose`** (orders) **or** **`DeskRailChromeRow`** (Incoming-family) — mandatory for `modal={false}`. Queue walk uses the same row's prev/next. **Never** close in a `rightSlot` on the row above prev/next (split-cluster drift). Reach for `PaneHeaderCloseButton` directly only outside an action/chrome row.
 - **Close glyph is `ArrowRightToLine` (`>|`), not an `X`** (2026-08-02). The arrow says the panel is parked back against the right edge; `intent="dismiss"` restores the `X` for a pane that genuinely goes away.
-- **Desk selected-order (`detail:order`)** uses Unbox Displays grammar:
-  `DeskRailChromeRow` + locked four-topic `SectionTabsSlider` density=icon
-  (`order-inspector-topics.ts`). No ORDER # identity row. Order updates
+- **Desk selected-order (`detail:order`)** uses Unbox **index→leaf** grammar:
+  `DeskRailChromeRow` + `DeskInspectorIndexShell` (`order-inspector-topics.ts`).
+  No ORDER # identity row. Order leaf stacks Shipping + Product. Order updates
   (Assign · urgent · notes · OOS · ship) + flush Delete icon live on
-  `OrderUpdateDock` under the Order tab; plate ⋮ is handoffs only. Sheet View
-  chrome is **`detail:orders-view` only** — never on `detail:order`.
+  `OrderUpdateDock` under the Order leaf; index ⋮ is handoffs only. Sheet View
+  chrome is **`detail:orders-view` only** — never on `detail:order`. Never
+  `SectionTabsSlider density="icon"` / `PaneHeaderTabs` as primary topic nav.
 - **Incoming / Unfound / Bin / Support-context compose `DeskRailChromeRow`.** Trailing Sync (Incoming) is the Unbox ring twin — always most right after ↑↓.
 
 **Never**

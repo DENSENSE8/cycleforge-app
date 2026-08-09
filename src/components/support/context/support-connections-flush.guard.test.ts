@@ -55,8 +55,9 @@ test('LinkageStrip flush layout + LinkedTicketsPanel surface plumbing', () => {
   );
 });
 
-test('SupportContextDetailPanel slider body is flush (no outer p-2 island)', () => {
-  assert.match(detail, /className="space-y-0"/);
+test('SupportContextDetailPanel uses DeskInspectorIndexShell (no icon strip)', () => {
+  assert.match(detail, /DeskInspectorIndexShell/);
+  assert.doesNotMatch(detail, /SectionTabsSlider/);
+  assert.doesNotMatch(detail, /StationDisplaysPushStack/);
   assert.doesNotMatch(detail, /className="p-2"/);
-  assert.match(detail, /headerClassName="px-2 pt-2 pb-1"/);
 });

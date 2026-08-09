@@ -7,6 +7,10 @@ import { dispatchNavigateShippedDetails } from '@/utils/events';
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  DESK_INSPECTOR_INDEX,
+  DeskInspectorIndexShell,
+} from '@/components/right-rail/DeskInspectorIndexShell';
 import { CursorPositionReadout } from '@/components/ui/pane-header';
 import { MoreHorizontal } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
@@ -16,8 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { SectionTabsSlider } from '@/design-system/components';
-import { DISPLAYS_FLUSH_HOST } from '@/design-system/shells/detail-stack/layout';
 import type {
   DetailsStackDurationData,
   ShippedActiveInput,
@@ -32,13 +34,15 @@ import {
   useShippedPanelViewState,
 } from './details-panel/shipped-details-hooks';
 import { ShippedDetailsBody } from './details-panel/ShippedDetailsBody';
-import { buildOrderInspectorDisplays } from './details-panel/build-order-inspector-displays';
+import { buildOrderInspectorLeaves } from './details-panel/build-order-inspector-displays';
 import { resolveOrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 import { testingHandoffHref } from '@/lib/selection-context/station-handoff';
 import {
   orderInspectorActiveSection,
   orderInspectorMoreItems,
   orderInspectorOrderUpdateActions,
+  resolveOrderInspectorDisplayTopic,
+  resolveOrderInspectorTopicState,
   type OrderInspectorDisplayTopic,
   type OrderInspectorUpdateActionKey,
 } from '@/lib/shipping/order-inspector-topics';
@@ -46,7 +50,6 @@ import {
   consumeReplaceTrackingIntent,
   subscribeReplaceTrackingIntent,
 } from '@/lib/order-inspector/replace-tracking-intent';
-import { cn } from '@/utils/_cn';
 
 export type { ShippedActiveInput };
 
@@ -54,7 +57,7 @@ interface ShippedDetailsPanelProps {
   shipped: ShippedOrder;
   onClose: () => void;
   onUpdate: () => void;
-  /** Inspector capability lane (tabs / docs / dispatch) — not a body layout switch. */
+  /** Inspector capability lane — not a body layout switch. */
   context?: 'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer';
 }
 
@@ -66,10 +69,8 @@ export function ShippedDetailsPanel({
 }: ShippedDetailsPanelProps) {
   const router = useRouter();
   /**
-   * Unbox Displays twin: chrome → locked four-topic plate → flush body.
-   * Order updates (Assign · urgent · notes · ship) live on the Order tab
-   * bottom bar; plate ⋮ is station handoffs only. Sheet View on
-   * `detail:orders-view` only.
+   * Unbox grammar twin: chrome → index→leaf → flush body.
+   * Order updates live on the Order leaf bottom bar; index ⋮ = station handoffs.
    */
   const inspectorContext = resolveOrderInspectorContext({ panelContext: context });
   const showDocumentsTab = inspectorContext.showDocumentsTab;
@@ -105,10 +106,8 @@ export function ShippedDetailsPanel({
   const liveMeta = deriveShippedHeaderMeta(shipped);
 
   const {
-    displayTopic,
     setDisplayTopic,
     orderChild,
-    setOrderChild,
     setActiveSection,
     activeInput,
     setActiveInput,
@@ -118,12 +117,25 @@ export function ShippedDetailsPanel({
     showDocumentsTab,
   });
 
+  /** Index | leaf nav — opens on the contextual default leaf; Back → topics. */
+  const [navId, setNavId] = useState<string>(() => {
+    const seed = resolveOrderInspectorTopicState(inspectorContext.defaultTab);
+    return resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab });
+  });
+  useEffect(() => {
+    const seed = resolveOrderInspectorTopicState(inspectorContext.defaultTab);
+    setNavId(
+      resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab }),
+    );
+  }, [initialShipped.id, inspectorContext.defaultTab, showDocumentsTab]);
+
   const [replaceTrackingNonce, setReplaceTrackingNonce] = useState(0);
   useEffect(() => {
     const applyIntent = () => {
       const orderId = Number(initialShipped.id);
       if (!consumeReplaceTrackingIntent(orderId)) return;
       setActiveSection('shipping');
+      setNavId('order');
       setReplaceTrackingNonce((n) => n + 1);
     };
     applyIntent();
@@ -253,14 +265,18 @@ export function ShippedDetailsPanel({
     onClose,
     onMoveUp: handleMoveUp,
     onMoveDown: handleMoveDown,
-    onAssign: showAssign ? () => {
-      setDisplayTopic('order');
-      setActiveInput('assign');
-    } : undefined,
+    onAssign: showAssign
+      ? () => {
+          setDisplayTopic('order');
+          setNavId('order');
+          setActiveInput('assign');
+        }
+      : undefined,
   };
 
   const renderTopicBody = (topic: OrderInspectorDisplayTopic): ReactNode => {
-    const activeSection = orderInspectorActiveSection(topic, orderChild);
+    const activeSection =
+      topic === 'order' ? undefined : orderInspectorActiveSection(topic, orderChild);
 
     return (
       <ShippedDetailsBody
@@ -269,8 +285,6 @@ export function ShippedDetailsPanel({
         showQuickLinks
         activeSection={activeSection}
         displayTopic={topic}
-        orderChild={orderChild}
-        onOrderChildChange={setOrderChild}
         shipped={shipped}
         durationData={durationData}
         copiedAll={copiedAll}
@@ -312,7 +326,7 @@ export function ShippedDetailsPanel({
     );
   };
 
-  const displayTabs = buildOrderInspectorDisplays({
+  const leaves = buildOrderInspectorLeaves({
     showDocumentsTab,
     contents: {
       order: renderTopicBody('order'),
@@ -321,6 +335,16 @@ export function ShippedDetailsPanel({
       conversation: renderTopicBody('conversation'),
     },
   });
+
+  const onNavChange = useCallback(
+    (id: string) => {
+      setNavId(id);
+      if (id !== DESK_INSPECTOR_INDEX) {
+        setDisplayTopic(id as OrderInspectorDisplayTopic);
+      }
+    },
+    [setDisplayTopic],
+  );
 
   const moreSlot =
     moreItems.length > 0 ? (
@@ -379,18 +403,15 @@ export function ShippedDetailsPanel({
           />
         </div>
 
-        <div className={cn(DISPLAYS_FLUSH_HOST, 'min-h-0 flex-1')}>
-          <SectionTabsSlider
-            tabs={displayTabs}
-            value={displayTopic}
-            onChange={(id) => setDisplayTopic(id as OrderInspectorDisplayTopic)}
-            ariaLabel="Order displays"
-            density="icon"
-            compact
-            fillHeight
-            rightSlot={moreSlot}
-          />
-        </div>
+        <DeskInspectorIndexShell
+          leaves={leaves}
+          activeId={navId}
+          onActiveIdChange={onNavChange}
+          indexRightSlot={moreSlot}
+          ariaLabel="Order topics"
+          testId="order-inspector-index"
+          backLabel="Back to topics"
+        />
       </div>
     </DetailStackRailRegistrar>
   );

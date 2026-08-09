@@ -1,6 +1,5 @@
 'use client';
 
-import { TabDisplay } from '@/design-system/components/TabDisplay';
 import {
   DISPLAYS_BODY_INSET,
   DISPLAYS_FLUSH_HOST,
@@ -20,9 +19,7 @@ import { OrderUpdateDock } from '@/components/shipped/details-panel/OrderUpdateD
 import { OrderStationHandoff } from '@/components/shipped/details-panel/OrderStationHandoff';
 import type { OrderInspectorContext } from '@/lib/selection-context/order-inspector-context';
 import {
-  orderInspectorOrderChildren,
   type OrderInspectorDisplayTopic,
-  type OrderInspectorOrderChild,
   type OrderInspectorUpdateActionKey,
 } from '@/lib/shipping/order-inspector-topics';
 import { cn } from '@/utils/_cn';
@@ -61,11 +58,13 @@ export interface ShippedDetailsBodyProps {
   inspectorContext: OrderInspectorContext;
   /** Slide-over: render Warranty/Customer quick-link rows instead of tabs. */
   showQuickLinks?: boolean;
-  activeSection: ShippedActiveSection;
-  /** Parent Display topic — drives nested Order verbs when `order`. */
+  /**
+   * Body section for non-Order topics. Order leaf stacks Shipping + Product
+   * (undefined → both sections in {@link ShippedDetailsPanelContent}).
+   */
+  activeSection: ShippedActiveSection | undefined;
+  /** Parent Display topic — Order leaf is one stacked dossier (no nested tabs). */
   displayTopic: OrderInspectorDisplayTopic;
-  orderChild: OrderInspectorOrderChild;
-  onOrderChildChange: (child: OrderInspectorOrderChild) => void;
   shipped: ShippedOrder;
   durationData: DetailsStackDurationData;
   copiedAll: boolean;
@@ -103,8 +102,6 @@ export function ShippedDetailsBody({
   showQuickLinks,
   activeSection,
   displayTopic,
-  orderChild,
-  onOrderChildChange,
   shipped,
   durationData,
   copiedAll,
@@ -137,13 +134,12 @@ export function ShippedDetailsBody({
     ),
   ];
 
-  const orderChildTabs = orderInspectorOrderChildren().map((c) => ({
-    id: c.id,
-    label: c.label,
-  }));
+  /** Order leaf = stacked Shipping + Product; other topics keep exclusive section. */
+  const stackSection =
+    displayTopic === 'order' ? undefined : (activeSection as ShippedActiveSection | undefined);
 
   const scrollContent = (() => {
-    if (activeSection === 'documents' && shipped?.id) {
+    if (displayTopic === 'documents' && shipped?.id) {
       return (
         <div className={cn('flex min-h-full flex-col gap-4', DISPLAYS_BODY_INSET, 'pb-6 pt-3')}>
           <OrderDocumentsSection
@@ -165,7 +161,7 @@ export function ShippedDetailsBody({
       return <OrderWarrantySection order={shipped} />;
     }
 
-    if (activeSection === 'conversation' && shipped?.id) {
+    if (displayTopic === 'conversation' && shipped?.id) {
       return (
         <div className="flex h-full min-h-0 flex-col">
           <ThreadPanel entityType="ORDER" entityId={Number(shipped.id)} />
@@ -173,7 +169,7 @@ export function ShippedDetailsBody({
       );
     }
 
-    if (activeSection === 'timeline' && shipped?.id) {
+    if (displayTopic === 'timeline' && shipped?.id) {
       return (
         <div className={cn('flex min-h-full flex-col', DISPLAYS_BODY_INSET, 'pb-6 pt-2')}>
           <div className="flex-1 pt-1">
@@ -190,7 +186,7 @@ export function ShippedDetailsBody({
       );
     }
 
-    // Order parent body — Shipping / Product via stacks.
+    // Order leaf — Shipping + Product stacked (no nested Shipping · Product tabs).
     if (showDispatchExtras) {
       return (
         <DashboardDetailsStack
@@ -200,7 +196,7 @@ export function ShippedDetailsBody({
           onCopyAll={onCopyAll}
           onUpdate={onUpdate}
           showShippingTimestamp={false}
-          activeSection={activeSection}
+          activeSection={stackSection}
           showQuickLinks={showQuickLinks}
           replaceTrackingNonce={replaceTrackingNonce}
           flush
@@ -218,7 +214,7 @@ export function ShippedDetailsBody({
           onUpdate={onUpdate}
           showShippingTimestamp={false}
           actionBar={stackActionBar}
-          activeSection={activeSection}
+          activeSection={stackSection}
           showQuickLinks={showQuickLinks}
           flush
         />
@@ -235,7 +231,7 @@ export function ShippedDetailsBody({
           onUpdate={onUpdate}
           showShippingTimestamp={false}
           actionBar={stackActionBar}
-          activeSection={activeSection}
+          activeSection={stackSection}
           showQuickLinks={showQuickLinks}
           flush
         />
@@ -246,7 +242,7 @@ export function ShippedDetailsBody({
       <div className={cn('flex min-h-full flex-col', DISPLAYS_BODY_INSET, 'pb-6 pt-3')}>
         <div className="flex-1 space-y-4">
           <ShippedDetailsPanelContent
-            activeSection={activeSection}
+            activeSection={stackSection}
             shipped={{
               ...shipped,
               order_id: editableFields.orderNumber,
@@ -284,20 +280,7 @@ export function ShippedDetailsBody({
   const showDeleteInDock = showOrderUpdateDock && (showDelete || context === 'shipped');
 
   return (
-    <div className={cn(DISPLAYS_FLUSH_HOST, 'flex-1')} data-order-inspector-body="">
-      {displayTopic === 'order' ? (
-        <div className="shrink-0" data-testid="order-inspector-order-children">
-          <TabDisplay
-            tabs={orderChildTabs}
-            activeTab={orderChild}
-            onTabChange={(id) => onOrderChildChange(id as OrderInspectorOrderChild)}
-            density="nested"
-            fit="fill"
-            appearance="underline"
-            aria-label="Order sections"
-          />
-        </div>
-      ) : null}
+    <div className={cn(DISPLAYS_FLUSH_HOST, 'flex min-h-0 flex-1 flex-col')} data-order-inspector-body="">
       <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
         {scrollContent}
       </div>

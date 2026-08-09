@@ -4,7 +4,7 @@
 **Status:** HISTORY DOGFOOD LOCK (2026-08-09) — Unbox History / Receiving only; Orders port reverted.
 **Enforcement:** `CUSTOM_FIELD_LIVE_ENTITY_TYPES` + `custom-fields-history-first.guard.test.ts` +
 AGENTS.md / source-of-truth.md → *Table engine fan-out (History first)*.  
-**Companions:** [`universal-table-connector-and-custom-columns-GEMINI-RESEARCH-BRIEFING.md`](universal-table-connector-and-custom-columns-GEMINI-RESEARCH-BRIEFING.md) · [`unbox-view-switcher-and-custom-fields-HANDOFF.md`](unbox-view-switcher-and-custom-fields-HANDOFF.md)
+**Companions:** [`universal-table-connector-and-custom-columns-GEMINI-RESEARCH-BRIEFING.md`](universal-table-connector-and-custom-columns-GEMINI-RESEARCH-BRIEFING.md) · [`workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md`](workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md) (DS bar + History GO/NO-GO before fan-out) · [`unbox-view-switcher-and-custom-fields-HANDOFF.md`](unbox-view-switcher-and-custom-fields-HANDOFF.md)
 
 ---
 
