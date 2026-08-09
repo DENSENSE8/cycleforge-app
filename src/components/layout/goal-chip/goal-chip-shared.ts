@@ -23,7 +23,7 @@ export type StationGoal = {
  * goal panel, and the work-order-only panel shown on a day with no goal set.
  */
 export const GOAL_PANEL_SHELL_CLASS =
-  'w-[290px] origin-top-left overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-[0_12px_40px_rgba(20,30,55,0.16)]';
+  'w-[290px] origin-top-right overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-[0_12px_40px_rgba(20,30,55,0.16)]';
 
 export const STATIONS: StationKey[] = ['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'];
 export const STATION_LABEL: Record<StationKey, string> = {

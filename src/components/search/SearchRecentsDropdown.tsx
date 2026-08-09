@@ -5,9 +5,9 @@
  * dropdown (docs/unified-global-search-consolidation-plan.md §2.1, §3.3).
  *
  * Presentational: the host owns storage (useSearchRecents) and placement (the
- * header AnchoredLayer). Rows are real links to each recent's re-run target
- * (recentRerunHref) so middle-click / new-tab behave, with an `onSelect` hook
- * so the host can also set the header value + close. Anatomy: when a recent
+ * header AnchoredLayer). Rows keep an `href` for middle-click / new-tab, but a
+ * primary click with `onSelect` stays on the current page (re-run in the field)
+ * — never navigate to `/search?q=` before a hit. Anatomy: when a recent
  * resolved to an order, title is primary and the query (order # / tracking)
  * sits on a quiet secondary line; otherwise the query is primary. Relative
  * time sits right. The remove affordance is a sibling button (never nested in
@@ -79,8 +79,19 @@ export function SearchRecentsDropdown({
           return (
             <li key={entry.id} className="group relative flex items-center">
               <Link
-                href={recentRerunHref(entry)}
-                onClick={() => onSelect?.(entry)}
+                href={
+                  entry.topHit?.href?.trim()
+                    ? entry.topHit.href
+                    : recentRerunHref(entry)
+                }
+                onClick={(e) => {
+                  if (!onSelect) return;
+                  // Plain primary click → host re-runs in the header field.
+                  // Modified clicks keep the href (new tab / middle-click).
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                  e.preventDefault();
+                  onSelect(entry);
+                }}
                 role={asOptions ? 'option' : undefined}
                 id={asOptions ? getOptionId!(index) : undefined}
                 aria-selected={active || undefined}

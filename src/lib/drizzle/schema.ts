@@ -5416,3 +5416,48 @@ export const savedViews = pgTable('saved_views', {
 
 export type SavedViewsRow = typeof savedViews.$inferSelect;
 export type NewSavedViewsRow = typeof savedViews.$inferInsert;
+
+// ─── Custom field defs / values (2026-08-08f) ────────────────────────────────
+export const customFieldDefs = pgTable('custom_field_defs', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  entityType: text('entity_type').notNull(),
+  key: text('key').notNull(),
+  label: text('label').notNull(),
+  type: text('type').notNull(),
+  options: jsonb('options'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgEntityKeyUx: uniqueIndex('ux_custom_field_defs_org_entity_key').on(
+    table.organizationId, table.entityType, table.key,
+  ),
+}));
+
+export type CustomFieldDefsRow = typeof customFieldDefs.$inferSelect;
+export type NewCustomFieldDefsRow = typeof customFieldDefs.$inferInsert;
+
+export const customFieldValues = pgTable('custom_field_values', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  fieldId: bigint('field_id', { mode: 'number' }).notNull().references(() => customFieldDefs.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  valueText: text('value_text'),
+  valueNumber: numeric('value_number'),
+  valueDate: date('value_date'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgFieldEntityUx: uniqueIndex('ux_custom_field_values_org_field_entity').on(
+    table.organizationId, table.fieldId, table.entityId,
+  ),
+  orgEntityIdx: index('idx_custom_field_values_org_entity').on(
+    table.organizationId, table.entityType, table.entityId,
+  ),
+}));
+
+export type CustomFieldValuesRow = typeof customFieldValues.$inferSelect;
+export type NewCustomFieldValuesRow = typeof customFieldValues.$inferInsert;

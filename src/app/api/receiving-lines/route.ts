@@ -40,6 +40,7 @@ import {
 } from '@/lib/receiving/facts/narrow';
 import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
+import { attachCustomFieldsToRows } from '@/lib/custom-fields/queries';
 
 // `receiving_line_unit` materialises LAZILY, on the two BOUNDED `include=serials`
 // reads below — `?id=` (one line) and `?receiving_id=` (one carton), i.e. the
@@ -197,10 +198,15 @@ export async function handleReceivingLinesGet(
         (normalized as Record<string, unknown>).units = unitsByLine.get(normalized.id) ?? [];
       }
       // Mobile `/receiving/lines/:id` historically read `receiving_lines[]`; desktop sidebar uses `receiving_line`.
+      const [withCustom] = await attachCustomFieldsToRows(
+        orgId,
+        'RECEIVING',
+        [normalized],
+      );
       return NextResponse.json({
         success: true,
-        receiving_line: normalized,
-        receiving_lines: [normalized],
+        receiving_line: withCustom,
+        receiving_lines: [withCustom],
       });
     }
 
@@ -243,7 +249,12 @@ export async function handleReceivingLinesGet(
             is_return: !!pkgRes.rows[0].is_return,
           }
         : null;
-      return NextResponse.json({ success: true, receiving_lines: normalizedRows, receiving_package });
+      const withCustom = await attachCustomFieldsToRows(orgId, 'RECEIVING', normalizedRows);
+      return NextResponse.json({
+        success: true,
+        receiving_lines: withCustom,
+        receiving_package,
+      });
     }
 
     // Paginated list — all lines, optionally filtered. The dynamic WHERE /
@@ -381,9 +392,14 @@ export async function handleReceivingLinesGet(
       }
     }
 
+    const receiving_lines = await attachCustomFieldsToRows(
+      orgId,
+      'RECEIVING',
+      normalizedList,
+    );
     return NextResponse.json({
       success: true,
-      receiving_lines: normalizedList,
+      receiving_lines,
       total,
       limit,
       offset,

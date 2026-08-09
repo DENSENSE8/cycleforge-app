@@ -38,6 +38,7 @@ import { SerialPreviewStrip, BoxMembershipHint, serialLast8 } from '@/components
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { BoxWorkbenchPanel } from '@/components/receiving/BoxWorkbenchPanel';
 import { ManifestWorkbenchPanel } from '@/components/receiving/ManifestWorkbenchPanel';
+import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
@@ -303,6 +304,18 @@ export function TestingSidebarPanel({
   const handleSubmit = useCallback(() => {
     void runScan(scanValue, armedMode);
   }, [runScan, scanValue, armedMode]);
+
+  // Carton / lookup sink when no active line adder owns `po-line:`.
+  useRegisterScanSink({
+    id: 'testing-scan-bar',
+    enabled: true,
+    onScan: (raw) => {
+      void runScan(raw, armedMode);
+    },
+    focus: () => {
+      document.querySelector<HTMLInputElement>('[data-testing-scan] input')?.focus();
+    },
+  });
 
   const toggleMode = useCallback(
     (mode: ForcedTestingType) => {

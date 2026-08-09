@@ -6,7 +6,7 @@
  *
  * Domain owns: URL (`?drillPo=`), parent-map title/meta (product + qty/order/
  * tracking), parent-map footer find (`?rh_q=` via TechRailSearchBar), and the
- * child {@link ReceivingGridView}. Layout / resize / narrow list-OR-detail live
+ * child {@link ReceivingGridHost}. Layout / resize / narrow list-OR-detail live
  * in the design-system host — never re-fork them here.
  *
  * - **List** = flat leaf sheet (default / `?hlayout=list`) — no in-grid PO summary
@@ -50,7 +50,7 @@ import {
 import { formatDateKeyShort } from '@/utils/date';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import { displayReceivingProductTitle } from './cells/receiving-grid-row-helpers';
-import { ReceivingGridView } from './ReceivingGridView';
+import { ReceivingGridHost } from './ReceivingGridHost';
 
 /** Parent-map filter footer — must mount under {@link LedgerDrillHost} for collapse context. */
 function ReceivingDrillParentFilter({
@@ -300,7 +300,7 @@ export function ReceivingDrillHost({
         />
       }
     >
-      <ReceivingGridView
+      <ReceivingGridHost
         filteredGroupedRecords={childRecords}
         serverSorted
         loading={false}

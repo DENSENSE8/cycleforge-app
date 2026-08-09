@@ -16,7 +16,7 @@ import { describe, it } from 'node:test';
 
 const ROOT = join(process.cwd());
 const ORDERS_VIEW = 'src/components/dashboard/DashboardOrdersView.tsx';
-const ORDERS_GRID = 'src/components/dashboard/orders-queue/OrdersGridView.tsx';
+const ORDERS_GRID = 'src/components/dashboard/orders-queue/OrdersGridHost.tsx';
 const ORDERS_PLANE = 'src/components/dashboard/orders-queue/useOrdersQueuePlane.ts';
 const ORDERS_ROW = 'src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx';
 const OUTBOUND_HEADER = 'src/components/dashboard/OutboundWorkspaceHeader.tsx';

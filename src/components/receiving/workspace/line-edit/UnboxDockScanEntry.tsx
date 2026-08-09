@@ -23,6 +23,7 @@ import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { toast } from '@/lib/toast';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -153,66 +154,80 @@ export function UnboxDockScanEntry({
     }
   }, [advance, row.id, row.label_previewed_at]);
 
-  const onSubmit = useCallback(() => {
-    if (!activeKey || !active) return;
-    const raw = value.trim();
+  /**
+   * Apply a dock payload — shared by Enter on the focused input and the
+   * Action scan sink (wedge while focus is on a PO line / chrome).
+   */
+  const applyScan = useCallback(
+    (rawInput: string) => {
+      if (!activeKey || !active) return;
+      const raw = rawInput.trim();
 
-    if (activeKey === 'condition') {
-      if (!raw) return;
-      const grade = isKnownGrade(raw);
-      if (!grade) {
-        toast.error('Unknown grade — try A, B, C, NEW, …');
+      if (activeKey === 'condition') {
+        if (!raw) return;
+        const grade = isKnownGrade(raw);
+        if (!grade) {
+          toast.error('Unknown grade — try A, B, C, NEW, …');
+          setValue('');
+          return;
+        }
+        onSetCondition?.(grade);
         setValue('');
+        setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
         return;
       }
-      onSetCondition?.(grade);
-      setValue('');
-      setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-      return;
-    }
 
-    if (activeKey === 'contents') {
-      setValue('');
-      void ackContents();
-      return;
-    }
-
-    if (activeKey === 'label') {
-      setValue('');
-      void ackLabel();
-      return;
-    }
-
-    if (ADVANCE_KEYS.has(activeKey)) {
-      setValue('');
-      advance();
-      return;
-    }
-
-    if (PHOTO_KEYS.has(activeKey)) {
-      // Empty Enter no-ops while pending; advance when evidence already settled.
-      if (!raw && active.state !== 'done') {
+      if (activeKey === 'contents') {
+        setValue('');
+        void ackContents();
         return;
       }
-      setValue('');
-      advance();
-      return;
-    }
 
-    // Fallback: positional next when a neighbour exists.
-    if (raw || active.state === 'done') {
-      setValue('');
-      advance();
-    }
-  }, [
-    ackContents,
-    ackLabel,
-    active,
-    activeKey,
-    advance,
-    onSetCondition,
-    value,
-  ]);
+      if (activeKey === 'label') {
+        setValue('');
+        void ackLabel();
+        return;
+      }
+
+      if (ADVANCE_KEYS.has(activeKey)) {
+        setValue('');
+        advance();
+        return;
+      }
+
+      if (PHOTO_KEYS.has(activeKey)) {
+        // Empty Enter no-ops while pending; advance when evidence already settled.
+        if (!raw && active.state !== 'done') {
+          return;
+        }
+        setValue('');
+        advance();
+        return;
+      }
+
+      // Fallback: positional next when a neighbour exists.
+      if (raw || active.state === 'done') {
+        setValue('');
+        advance();
+      }
+    },
+    [ackContents, ackLabel, active, activeKey, advance, onSetCondition],
+  );
+
+  const onSubmit = useCallback(() => {
+    applyScan(value);
+  }, [applyScan, value]);
+
+  // Action sink — wedge while focus is NOT in this input (row / chrome).
+  // Exclusive with UnboxSerialStepSurface (this surface is hidden on serial).
+  useRegisterScanSink({
+    // Shared with UnboxSerialStepSurface / Testing line adder — exclusive
+    // mount per line under `po-line:` so mouse/↑↓ can setActiveSinkId.
+    id: `po-line:${row.id}`,
+    enabled: !hidden && row.id > 0,
+    onScan: applyScan,
+    focus: () => focusEntry(inputRef.current),
+  });
 
   if (hidden) return null;
 

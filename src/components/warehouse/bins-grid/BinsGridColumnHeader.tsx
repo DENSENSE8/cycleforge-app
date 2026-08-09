@@ -41,4 +41,9 @@ export const BinsGridColumnHeader = makeLedgerGridColumnHeader<
   BinsGridColumn,
   BinsGridColumnKey,
   'always'
->({ layout: BINS_HEADER_LAYOUT, defaultColumns: BINS_GRID_COLUMNS, selectMode: 'always' });
+>({
+  layout: BINS_HEADER_LAYOUT,
+  defaultColumns: BINS_GRID_COLUMNS,
+  selectMode: 'always',
+  tableId: 'bins',
+});

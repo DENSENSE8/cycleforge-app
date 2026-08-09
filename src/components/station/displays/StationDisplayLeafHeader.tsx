@@ -14,6 +14,7 @@ import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STATION_SECONDARY_BAND_FACE } from '@/components/layout/header-shell';
+import { STATION_CHROME_SEAM_HAIRLINE } from '@/components/station/entity-context';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import type { DisplaysBreadcrumbSegment } from './displays-leaf-chrome';
@@ -94,8 +95,11 @@ export function StationDisplayLeafHeader({
         // Sticky at z-base — below the inset resize sash (z-sticky) so ← → /
         // title / this hairline never steal the left-edge drag. Column top
         // band stays z-header so →| / fullscreen remain above the sash.
-        'sticky top-0 z-base flex w-full items-stretch border-b border-border-hairline bg-surface-card',
+        // Hairline via STATION_CHROME_SEAM_HAIRLINE — not border-b (avoids
+        // notching the column border-l).
+        'sticky top-0 z-base flex w-full items-stretch bg-surface-card',
         STATION_SECONDARY_BAND_FACE,
+        STATION_CHROME_SEAM_HAIRLINE,
         focusRing('control', 'accent'),
         'outline-none',
       )}

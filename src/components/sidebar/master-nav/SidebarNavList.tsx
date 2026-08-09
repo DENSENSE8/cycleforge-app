@@ -930,14 +930,14 @@ export function SidebarNavList({
         {searching ? renderSearchResults() : renderMap()}
       </div>
 
-      <div className="shrink-0">
+      <div className="flex w-full shrink-0 flex-col">
         {/* One placeholder, because the box now does ONE thing everywhere: it
             searches every destination. It used to say "Filter sections…" at the
             root and "Filter pages…" in a drill — two behaviours from one field,
             and the root one described filtering categories rather than finding
             a page. */}
-        {/* `density="row"` — shared ~33px band (spine + station recent rails).
-            The 32px field is the floor's touch target; no vertical band pad. */}
+        {/* `density="row"` — shared h-8 floor band (spine + station recent rails).
+            Sign-in below is the true column floor (aligns with context filters). */}
         <TechRailSearchBar
           value={navFilter}
           onChange={setNavFilter}
@@ -946,7 +946,7 @@ export function SidebarNavList({
           density="row"
         />
         {bottomPages.length > 0 ? (
-          <div className="border-t border-border-soft p-0">
+          <div className="w-full border-t border-border-soft p-0">
             {bottomPages.map((page) => renderRow(page, 'bottom', neutralAccent, { pinned: true }))}
           </div>
         ) : null}

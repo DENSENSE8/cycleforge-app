@@ -8,9 +8,11 @@
  *
  * - `variant="rail"` (default) — bottom-anchored band for MasterNav / station
  *   rails (Testing / Shipping / Unbox / Packer / Triage) and LedgerDrill
- *   parent-map footers. Owns `border-t` + card surface + density padding.
- *   Pins `--cf-density: 1` so spreadsheet zoom on a wrapping grid host cannot
- *   shrink the band below the sibling context-rail footer height.
+ *   parent-map footers. Owns {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-8` +
+ *   floor hairline) + card surface + density padding — same Y as Displays
+ *   `→|` / utility `←|` / Unbox dock Band 2 / spine sign-in. Pins
+ *   `--cf-density: 1` so spreadsheet zoom on a wrapping grid host cannot
+ *   shrink the band below sibling footers.
  * - `variant="chrome"` — workbench header / triage band. Same in-field Search
  *   glyph as rail (`SearchBar` → `SearchField`); flush sunken plane (no rounded
  *   bubble) hosts the field + optional `trailingAction`, edge-to-edge with the
@@ -36,7 +38,10 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import { Search } from '@/components/Icons';
-import { SIDEBAR_RAIL_TRAILING_TRACK_CLASS } from '@/components/layout/header-shell';
+import {
+  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
+  STATION_COLUMN_FOOTER_BAND_FACE,
+} from '@/components/layout/header-shell';
 import { useContextPanelCollapse } from '@/components/sidebar/context-panel-collapse-context';
 import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -64,6 +69,8 @@ export function TechRailSearchBar({
   trailingPrefix,
   trailingSuffix,
   trailingAction,
+  inputRef,
+  navKeyHint,
   className,
 }: {
   value: string;
@@ -131,6 +138,18 @@ export function TechRailSearchBar({
    * collapse, Incoming list-paste, or to suppress (`null`).
    */
   trailingAction?: ReactNode;
+  /**
+   * Focus handle for the field. Lets a host aim a keyboard chord at THIS bar
+   * (nav-keys `⌘;` → region → letter) without querying the DOM for an input.
+   */
+  inputRef?: React.Ref<HTMLInputElement>;
+  /**
+   * Reveal-on-arm keycap (nav-keys). Renders as the LAST in-field trailing item
+   * — after paste and after {@link trailingSuffix} filters — and only while the
+   * host's region is armed. Never a resident affordance: nav keys reveal on arm
+   * and vanish on disarm, so this is `undefined` at rest.
+   */
+  navKeyHint?: ReactNode;
   className?: string;
 }) {
   const [draft, setDraft] = useState(value);
@@ -193,7 +212,17 @@ export function TechRailSearchBar({
       leadingIcon={<Search className="h-3.5 w-3.5" />}
       hideUnderline
       trailingPrefix={trailingPrefix}
-      trailingSuffix={trailingSuffix}
+      trailingSuffix={
+        navKeyHint ? (
+          <>
+            {trailingSuffix}
+            {navKeyHint}
+          </>
+        ) : (
+          trailingSuffix
+        )
+      }
+      inputRef={inputRef}
     />
   );
 
@@ -215,7 +244,8 @@ export function TechRailSearchBar({
             // plane is edge-to-edge with the row (not a floated pill).
             'flex h-full min-w-0 self-stretch items-stretch'
           : [
-              'border-t border-border-hairline bg-surface-card',
+              STATION_COLUMN_FOOTER_BAND_FACE,
+              'bg-surface-card',
               // With a trailing collapse, flush right so the age / collapse
               // column lines up with full-bleed rail rows; otherwise keep the
               // denser bilateral `px-3`.
@@ -234,14 +264,14 @@ export function TechRailSearchBar({
           {resolvedTrailingAction}
         </div>
       ) : (
-        <div className="flex min-w-0 items-center gap-0.5">
+        <>
           <div className="min-w-0 flex-1">{field}</div>
           {resolvedTrailingAction ? (
-            <div className={cn('-ml-1', SIDEBAR_RAIL_TRAILING_TRACK_CLASS)}>
+            <div className={cn('-ml-1 h-full', SIDEBAR_RAIL_TRAILING_TRACK_CLASS)}>
               {resolvedTrailingAction}
             </div>
           ) : null}
-        </div>
+        </>
       )}
     </div>
   );

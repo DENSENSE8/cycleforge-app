@@ -1,7 +1,7 @@
 /**
  * Inventory › Units grid surface descriptor — lifts {@link UNITS_GRID_COLUMNS}
  * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER stays with the
- * house comparator in `UnitsGridView` (state math only).
+ * house comparator in `UnitsWorkspaceView` (state math only).
  */
 
 import {

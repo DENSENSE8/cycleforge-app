@@ -12,7 +12,7 @@ import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { computeWeekRange } from '@/utils/date';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
 import { useReceivingGrouping } from '@/components/station/useReceivingGrouping';
-import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
+import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import {
@@ -211,7 +211,7 @@ export function ReceivingPaneTable({
       </div>
 
       <div className="min-h-0 flex-1">
-        <ReceivingGridView
+        <ReceivingGridHost
           filteredGroupedRecords={filteredGroupedRecords}
           loading={isLoading}
           emptyMessage="No rows in this pane"

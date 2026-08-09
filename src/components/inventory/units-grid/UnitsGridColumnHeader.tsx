@@ -40,4 +40,9 @@ export const UnitsGridColumnHeader = makeLedgerGridColumnHeader<
   UnitsGridColumn,
   UnitsGridColumnKey,
   'never'
->({ layout: UNITS_HEADER_LAYOUT, defaultColumns: UNITS_GRID_COLUMNS, selectMode: 'never' });
+>({
+  layout: UNITS_HEADER_LAYOUT,
+  defaultColumns: UNITS_GRID_COLUMNS,
+  selectMode: 'never',
+  tableId: 'inventory-units',
+});

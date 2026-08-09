@@ -60,9 +60,18 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
 - Migrations, security, tenant scoping, status-machine / audit / search waists.
 - Introducing a **second** visual or domain language without merging or deleting the old one.
 - Expanding beyond the asked surface solely to migrate other call sites (recommend first).
+- **Table-engine fan-out past Unbox History** — growing `CUSTOM_FIELD_LIVE_ENTITY_TYPES` (or
+  porting a new spreadsheet capability to Orders / Catalog / …) before History is
+  dogfood-verified. Golden-first is the law; multi-queue ports in one pass are a
+  regression class (2026-08-09). Guard: `custom-fields-history-first.guard.test.ts`.
 
 ## Never
 
+- **Fan out a Workbench spreadsheet capability past Unbox History before History dogfood** —
+  custom columns, shell geometry, cell-map seams, Fields verbs. Grow
+  `CUSTOM_FIELD_LIVE_ENTITY_TYPES` (and peer allowlists) only after History is verified;
+  wire the next family's host + list API in the same change. Guard:
+  `custom-fields-history-first.guard.test.ts`.
 - Fork a **page-local** parallel primitive (`function SectionCard`, second KPI shell, new search
   engine, raw status `UPDATE`) — compose the shared one and grow it instead. *(A genuinely different
   job may add a **new sibling that composes the same primitive** — that's growth, not a fork.)*

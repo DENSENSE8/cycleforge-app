@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Review · Packing — outbound spreadsheet (OrdersGridView) with Packed / Shipped /
+ * Review · Packing — outbound spreadsheet (OrdersGridHost) with Packed / Shipped /
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
@@ -200,7 +200,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
         }
       >
         <div className={WORKBENCH_SHEET_HOST}>
-          <OrdersGridView
+          <OrdersGridHost
             ariaLabel="Orders awaiting packing review"
             records={records as ShippedOrder[]}
             loading={loading}

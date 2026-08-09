@@ -80,7 +80,7 @@ export function HeaderGoalChip() {
           open={g.open && !!wo.top}
           onClose={g.closePopover}
           anchorRef={g.wrapRef}
-          placement="bottom-start"
+          placement="bottom-end"
           gap={0}
         >
           <div className={GOAL_PANEL_SHELL_CLASS}>
@@ -128,7 +128,7 @@ export function HeaderGoalChip() {
         />
       ) : null}
 
-      <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-start" gap={0}>
+      <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-end" gap={0}>
         <GoalPopover
           g={g}
           view={view}

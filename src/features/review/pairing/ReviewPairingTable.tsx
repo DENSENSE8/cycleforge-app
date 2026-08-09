@@ -2,13 +2,13 @@
 
 /**
  * Review · Pairing — outbound orders in flight (staged + awaiting label) with
- * allocate-serial detail overlay. Uses existing allocate API + OrdersGridView.
+ * allocate-serial detail overlay. Uses existing allocate API + OrdersGridHost.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
@@ -102,7 +102,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
         }
       >
         <div className={WORKBENCH_SHEET_HOST}>
-          <OrdersGridView
+          <OrdersGridHost
             ariaLabel="Orders awaiting pairing review"
             records={records}
             loading={loading}

@@ -1,3 +1,4 @@
+import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -130,8 +131,8 @@ export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
  * `TechRailSearchBar` density=`row`, so expand sits where collapse was.
  */
 export const CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS = cn(
-  'flex h-8 w-full shrink-0 items-center justify-center',
-  'border-t border-border-hairline',
+  'justify-center',
+  STATION_COLUMN_FOOTER_BAND_FACE,
 );
 
 /**

@@ -104,26 +104,54 @@ test('identifier chrome seeds resolve cache and does not gray-handoff on miss', 
   assert.match(missBlock, /keepPreviewOpen/, 'identifier miss re-opens preview/empty dropdown');
 });
 
-test('NL zero preview hits stay in header dropdown (no /search?q= blank canvas)', () => {
-  // handleSearchSubmit NL: empty flatPreviewHits → keepPreviewOpen (no navigate)
-  // when chrome has no onBrowseQuery. Explicit Maximize still opens /search via
-  // openSearchWorkbench — that is opt-in, not Enter/empty-query handoff.
-  assert.match(combobox, /openSearchWorkbench/);
+test('chrome Enter/paste is identifier resolve only (no best-hit navigate)', () => {
+  // Maximize / openSearchWorkbench is gone — dropdown is the only results list.
+  assert.doesNotMatch(combobox, /openSearchWorkbench/);
+  assert.doesNotMatch(combobox, /showOpenWorkbench/);
+  assert.doesNotMatch(combobox, /Maximize2/);
+  // Chrome NL submit must keepPreviewOpen — never auto-commit top preview hit.
+  assert.doesNotMatch(
+    combobox,
+    /\/\/ Header: the dropdown IS the results list[\s\S]*?commitHit\(top\)/,
+    'chrome must not Enter-commit best preview hit',
+  );
   assert.match(
     combobox,
-    /preview\.length === 0/,
-    'expected NL submit zero-hit gate',
+    /looksLikeIdentifier\(trimmed\)/,
+    'Enter/paste must gate on identifier resolve',
   );
-  const submitZero = combobox.match(
-    /if \(preview\.length === 0\) \{[\s\S]*?keepPreviewOpen\(\);\s*\n\s*return;\s*\n\s*\}/,
+  const submit = combobox.match(
+    /const handleSearchSubmit = useCallback\([\s\S]*?\n  \);/,
   )?.[0];
-  assert.ok(submitZero, 'expected NL submit zero-hit keepPreviewOpen block');
+  assert.ok(submit, 'expected handleSearchSubmit');
   assert.doesNotMatch(
-    submitZero,
+    submit,
     /navigateSearchHref\(router,\s*searchRerunHref|navigateSearchHref\(router,\s*globalSearchHandoffHref/,
-    'zero-hit submit must not open /search?q= gray shell',
+    'submit must not open /search?q=',
   );
-  assert.match(submitZero, /keepPreviewOpen/);
+  // After the identifier block, chrome falls through to keepPreviewOpen (NL stay-put).
+  assert.match(submit, /keepPreviewOpen\(\);\s*\n\s*\}\,/);
+});
+
+test('header recents re-run in the field (never /search?q=)', () => {
+  assert.match(combobox, /rerunRecentInField/);
+  assert.doesNotMatch(
+    combobox,
+    /navigateSearchHref\(router,\s*recentRerunHref/,
+    'recents must not navigate to /search?q= blank browse',
+  );
+  const recentsDropdown = read('src/components/search/SearchRecentsDropdown.tsx');
+  assert.match(
+    recentsDropdown,
+    /e\.preventDefault\(\)/,
+    'recent row primary click must prevent Link navigation to /search?q=',
+  );
+  const resultRow = read('src/components/search/SearchResultRow.tsx');
+  assert.match(
+    resultRow,
+    /if \(!onNavigate\) return;[\s\S]*?e\.preventDefault\(\)/,
+    'preview hit Link must preventDefault when host owns commit',
+  );
 });
 
 test('page surface does not paint absolute-zero EmptyState', () => {

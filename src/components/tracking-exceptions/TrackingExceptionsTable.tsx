@@ -2,10 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import {
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
+  WorkbenchChromeHeader,
+  WorkbenchTrailingCluster,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import { cn } from '@/utils/_cn';
 import { TrackingExceptionEditDialog } from './TrackingExceptionEditDialog';
 import { TRACKING_EXCEPTIONS_TABLE_BINDING } from './grid/tracking-exceptions-table-definition';
 import { TrackingExceptionsGridColumnHeader } from './grid/TrackingExceptionsGridColumnHeader';
@@ -85,6 +94,8 @@ export function TrackingExceptionsTable() {
   const [statusTab, setStatusTab] = useState<TrackingExceptionStatusFilter>('open');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<TrackingExceptionRow | null>(null);
+  // ▦ portals into Band-3 controls beside find / reload.
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const {
     rows,
@@ -142,18 +153,55 @@ export function TrackingExceptionsTable() {
     />
   );
 
+  const chrome = (
+    <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+      <WorkbenchChromeHeader
+        density="band"
+        tabs={STATUS_TABS}
+        activeTab={statusTab}
+        onTabChange={(id) => setStatusTab(id as TrackingExceptionStatusFilter)}
+        trailing={
+          <WorkbenchTrailingCluster
+            actions={
+              <Button
+                type="button"
+                size="sm"
+                variant="brand"
+                onClick={() => void fetchRows()}
+                disabled={loading}
+                aria-label="Reload list"
+              >
+                {loading ? 'Loading…' : 'Reload'}
+              </Button>
+            }
+          />
+        }
+        className="rounded-none border-l-0 border-t-0 shadow-sm"
+      />
+      <WorkbenchTriageBand
+        controlsSlotRef={setControlsEl}
+        search={
+          <TechRailSearchBar
+            variant="chrome"
+            value={search}
+            onChange={setSearch}
+            placeholder="Search tracking…"
+            className="min-w-0 flex-1"
+          />
+        }
+        right={
+          <span className="text-role-micro uppercase tracking-widest text-text-soft">
+            {total} rows
+          </span>
+        }
+      />
+    </div>
+  );
+
   if (error && rows.length === 0 && !loading) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <FilterBar
-          statusTab={statusTab}
-          setStatusTab={setStatusTab}
-          search={search}
-          setSearch={setSearch}
-          loading={loading}
-          total={total}
-          onReload={() => void fetchRows()}
-        />
+        {chrome}
         <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8">
           <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
             <p className="text-sm font-semibold text-text-danger">{error}</p>
@@ -178,15 +226,7 @@ export function TrackingExceptionsTable() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <FilterBar
-        statusTab={statusTab}
-        setStatusTab={setStatusTab}
-        search={search}
-        setSearch={setSearch}
-        loading={loading}
-        total={total}
-        onReload={() => void fetchRows()}
-      />
+      {chrome}
 
       {error ? (
         <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-semibold text-red-700">
@@ -194,7 +234,7 @@ export function TrackingExceptionsTable() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas p-4">
+      <div className={cn(WORKBENCH_SHEET_HOST, 'flex min-h-0 flex-1 flex-col bg-surface-canvas')}>
         <NonlinearTableHost<
           TrackingExceptionRow,
           TrackingExceptionsGridColumnKey,
@@ -212,6 +252,7 @@ export function TrackingExceptionsTable() {
           searchEmptyMessage="No exceptions match this search."
           isSearching={isSearching}
           scrollRef={scrollRef}
+          columnTriggerPortalTarget={controlsEl}
           renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
             <TrackingExceptionsGridColumnHeader
               columns={visible}
@@ -243,62 +284,6 @@ export function TrackingExceptionsTable() {
           }}
         />
       ) : null}
-    </div>
-  );
-}
-
-function FilterBar({
-  statusTab,
-  setStatusTab,
-  search,
-  setSearch,
-  loading,
-  total,
-  onReload,
-}: {
-  statusTab: TrackingExceptionStatusFilter;
-  setStatusTab: (tab: TrackingExceptionStatusFilter) => void;
-  search: string;
-  setSearch: (value: string) => void;
-  loading: boolean;
-  total: number;
-  onReload: () => void;
-}) {
-  return (
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-border-soft bg-surface-card px-6 py-3">
-      <div className="flex items-center gap-1">
-        {STATUS_TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            type="button"
-            size="sm"
-            variant={statusTab === tab.id ? 'brand' : 'secondary'}
-            onClick={() => setStatusTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
-        ))}
-      </div>
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search tracking…"
-        className="ml-auto w-64 rounded-md border border-border-soft bg-surface-card px-3 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-      />
-      <Button
-        type="button"
-        size="sm"
-        variant="brand"
-        onClick={onReload}
-        disabled={loading}
-        aria-label="Reload list"
-      >
-        {loading ? 'Loading…' : 'Reload'}
-      </Button>
-      <span className="text-role-micro uppercase tracking-widest text-text-soft">
-        {total} rows
-      </span>
     </div>
   );
 }

@@ -58,6 +58,7 @@ import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 import type { LedgerGridColumnMenuApi } from './LedgerGridColumnContextMenu';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
+import type { TableId } from '@/lib/tables/table-columns';
 
 /** How this surface answers "may an operator select rows here?". */
 export type GridHeaderSelectMode = 'always' | 'prop' | 'never';
@@ -78,8 +79,23 @@ export interface GridColumnHeaderBaseProps<
   onResizeColumn?: (key: string, px: number) => void;
   /** Drop a column's persisted width (double-click grip → SoT default). */
   onResetColumn?: (key: string) => void;
-  /** Sheets-class header context menu (Receiving / Unbox). */
+  /**
+   * Sheets-class header context menu (hide / unhide / paint / fit). Prefer
+   * omitting this and setting {@link MakeLedgerGridColumnHeaderConfig.tableId}
+   * so the factory defaults the menu on — pass an explicit object only when the
+   * mount needs a prefs-bucket override (Receiving History) or dir-aware sort.
+   */
   columnMenu?: LedgerGridColumnMenuApi<C>;
+  /**
+   * When false, skip the factory-default column menu. Explicit {@link columnMenu}
+   * still wins. Receiving passes this with its host `enableColumnMenu` gate.
+   */
+  enableColumnMenu?: boolean;
+  /**
+   * Prefs-bucket override for the default column menu (Incoming embed · History).
+   * Falls back to the factory {@link MakeLedgerGridColumnHeaderConfig.tableId}.
+   */
+  tableId?: TableId;
   /** Per-mount glyph override; falls back to the factory config, then the type glyph. */
   glyphFor?: (column: C) => ReactNode;
   /** Per-mount label override (e.g. Receiving's `stage` → Unboxed / Scanned / Tested). */
@@ -115,6 +131,13 @@ export interface MakeLedgerGridColumnHeaderConfig<
   layout: LedgerHeaderLayoutApi<C>;
   /** The family's full column model — the default when a caller passes none. */
   defaultColumns: readonly C[];
+  /**
+   * Prefs bucket for the default Sheets column menu. When set, right-click
+   * hide / unhide / paint / fit is on without every mount spreading
+   * `columnMenu`. Mounts that share a header under different buckets
+   * (Incoming · Receiving) pass `tableId` / `columnMenu` per mount instead.
+   */
+  tableId?: TableId;
   /** Defaults to `'never'` (read-only browse). */
   selectMode?: M;
   /** Family-wide glyph override (e.g. Repair's date / price / ticket icons). */
@@ -130,6 +153,7 @@ export function makeLedgerGridColumnHeader<
 >({
   layout,
   defaultColumns,
+  tableId: configTableId,
   selectMode = 'never' as M,
   glyphFor: configGlyphFor,
   labelFor: configLabelFor,
@@ -149,6 +173,8 @@ export function makeLedgerGridColumnHeader<
       glyphFor,
       labelFor,
       columnMenu,
+      enableColumnMenu = true,
+      tableId: propTableId,
       selectGutterChrome,
       leadingChrome,
     } = props;
@@ -159,6 +185,18 @@ export function makeLedgerGridColumnHeader<
     const callerSelectMode = (props as { selectMode?: boolean }).selectMode;
     const resolvedSelectMode =
       selectMode === 'always' ? true : selectMode === 'prop' ? Boolean(callerSelectMode) : false;
+
+    const resolvedTableId = propTableId ?? configTableId;
+    const resolvedMenu =
+      columnMenu ??
+      (enableColumnMenu && resolvedTableId
+        ? {
+            tableId: resolvedTableId,
+            allColumns: defaultColumns,
+            activeSort,
+            sortDir,
+          }
+        : undefined);
 
     return (
       <LedgerGridColumnHeader<C>
@@ -180,7 +218,7 @@ export function makeLedgerGridColumnHeader<
         onResetColumn={onResetColumn}
         glyphFor={glyphFor ?? configGlyphFor}
         labelFor={labelFor ?? configLabelFor}
-        columnMenu={columnMenu}
+        columnMenu={resolvedMenu}
       />
     );
   };

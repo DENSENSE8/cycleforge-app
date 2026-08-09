@@ -101,8 +101,8 @@ describe('grid ARIA structure', () => {
     const composers: [string, string][] = [
       ['LedgerGridSurface.tsx', join(GRID_DIR, 'LedgerGridSurface.tsx')],
       [
-        'OrdersGridView.tsx',
-        join(SRC_DIR, 'components/dashboard/orders-queue/OrdersGridView.tsx'),
+        'OrdersGridHost.tsx',
+        join(SRC_DIR, 'components/dashboard/orders-queue/OrdersGridHost.tsx'),
       ],
     ];
     for (const [name, path] of composers) {
@@ -113,10 +113,10 @@ describe('grid ARIA structure', () => {
         `${name} must declare \`ariaLabel: string\` (required, not optional) so ` +
           'every mounted table carries an accessible name.',
       );
-      // Surface forwards via the `ariaLabel` prop; OrdersGridView mounts Surface
+      // Surface forwards via the `ariaLabel` prop; OrdersGridHost mounts Surface
       // (not LedgerGrid) so it forwards `ariaLabel={ariaLabel}` instead.
       const forward =
-        name === 'OrdersGridView.tsx'
+        name === 'OrdersGridHost.tsx'
           ? /ariaLabel=\{ariaLabel\}/
           : /aria-label=\{ariaLabel\}/;
       assert.match(

@@ -20,6 +20,10 @@
 
 import type { ReactNode } from 'react';
 import { FileText } from '@/components/Icons';
+import {
+  STATION_COLUMN_FOOTER_BAND_FACE,
+  STATION_COLUMN_FOOTER_SEAM_CLASS,
+} from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
@@ -62,7 +66,10 @@ export function UnboxDockHost({
 
   return (
     <div
-      className="flex w-full min-w-0 flex-col gap-0 border-t border-border bg-surface-card"
+      className={cn(
+        'flex w-full min-w-0 flex-col gap-0 bg-surface-card',
+        STATION_COLUMN_FOOTER_SEAM_CLASS,
+      )}
       data-unbox-dock
       data-unbox-dock-mode={mode}
       data-unbox-dock-expand={expandBand ? '1' : undefined}
@@ -133,7 +140,10 @@ export function UnboxDockHost({
       {/* Band 2 — step face (left) · progress (right). Always mounted. */}
       {!notesOpen ? (
         <div
-          className="flex h-8 w-full min-w-0 items-center gap-2 border-t border-border px-2 leading-none"
+          className={cn(
+            STATION_COLUMN_FOOTER_BAND_FACE,
+            'min-w-0 gap-2 px-2 leading-none',
+          )}
           data-unbox-dock-progress
         >
           <div className="flex min-w-0 flex-1 items-center">{stepContext}</div>

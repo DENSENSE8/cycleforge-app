@@ -14,7 +14,7 @@
  *   - useReceivingDeepLink ........ ?recvId/?lineId auto-select
  *   - useReceivingAutoWeek ........ History empty-week back-jump
  *   - Incoming POS (inline) → LedgerGrid spreadsheet
- *   - ReceivingGridView ........... Unbox / History → LedgerGrid spreadsheet
+ *   - ReceivingGridHost ........... Unbox / History → LedgerGrid spreadsheet
  *
  * Types + dispatchers live in leaf modules — import those, never this file,
  * unless you are mounting the table:
@@ -76,7 +76,7 @@ import { useReceivingDeepLink } from '@/components/station/useReceivingDeepLink'
 import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { GridDegradedBox } from '@/design-system/components/grid';
-import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
+import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
 import { ReceivingDrillHost } from '@/components/station/receiving-grid/ReceivingDrillHost';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
@@ -607,7 +607,7 @@ export default function ReceivingLinesTable({
     );
   }
 
-  // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridView (same
+  // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridHost (same
   // family as the Incoming grid). Date is a per-row column; no sticky day bands.
   // History default is the folded list; Drill (`?hlayout=drill`) mounts linked
   // dual panes via ReceivingDrillHost.
@@ -654,7 +654,7 @@ export default function ReceivingLinesTable({
       />
     ) : (
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <ReceivingGridView
+        <ReceivingGridHost
           filteredGroupedRecords={filteredGroupedRecords}
           serverSorted={mode.serverSorted}
           loading={isLoading && localRows.length === 0}
@@ -750,6 +750,7 @@ export default function ReceivingLinesTable({
                   onSortColumn={toggleColumnSort}
                   onResizeColumn={onResizeColumn}
                   onResetColumn={onResetColumn}
+                  tableId="incoming_embed"
                 />
               )}
               renderGroup={(group, baseStripeIndex, { columns: visible }) => (

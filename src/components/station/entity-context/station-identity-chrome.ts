@@ -83,12 +83,22 @@ export const stationIdentityPadClass = 'px-0';
 export const STATION_CHROME_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
 
 /**
+ * Bottom hairline on a station chrome row — painted via `after:` so it does
+ * **not** eat the `h-7` / `h-6` box (border-box `border-b` would shrink the
+ * fill) and does **not** notch a parent `border-l` (Displays seam). Same token
+ * as Displays top band · identity row 1 · leaf eyebrows.
+ */
+export const STATION_CHROME_SEAM_HAIRLINE =
+  'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-hairline';
+
+/**
  * Chip-to-chip step on chrome row 1 (classify · Photos) — flush (zero gap),
  * locked to {@link STATION_CHROME_ROW_FACE}. Classify urgency·platform·type
  * uses the same flush abut as Photos ({@link STATION_IDENTITY_GROUP_CLASS}).
  * Never reintroduce `row-gap` / `row-tight` air tokens for identity chrome.
+ * Bottom seam = {@link STATION_CHROME_SEAM_HAIRLINE} (matches Displays top band).
  */
-export const STATION_IDENTITY_ROW_CLASS = `flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0`;
+export const STATION_IDENTITY_ROW_CLASS = `flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 /**
  * Commerce row 2 face — same {@link STATION_SECONDARY_BAND_FACE} (`h-6`) as the

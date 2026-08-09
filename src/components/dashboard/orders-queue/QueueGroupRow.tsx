@@ -23,7 +23,7 @@ export interface QueueGroupRowProps {
  *
  * Always a flat list of leaf lines — no collapsible order summary. Multi-product
  * parent rollups belong only on the drill parent map
- * (`OrdersDrillHost` / `LedgerDrillParentMap`). Shared by {@link OrdersGridView}.
+ * (`OrdersDrillHost` / `LedgerDrillParentMap`). Shared by {@link OrdersGridHost}.
  */
 export function QueueGroupRow({
   group,

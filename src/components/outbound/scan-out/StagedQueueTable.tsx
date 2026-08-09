@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
@@ -24,8 +24,8 @@ interface StagedQueueTableProps {
    */
   disableBackfill?: boolean;
   /**
-   * Band-3 triage controls slot — Labels Recent portals ▦ here. Scan-out dock
-   * omits this (no Band-3 → card-corner hover fallback).
+   * Band-3 / Band-1 controls slot — Labels Recent and Scan-out dock portal ▦
+   * here (portal-or-nothing; no card-corner fallback).
    */
   columnTriggerPortalTarget?: HTMLElement | null;
 }
@@ -70,7 +70,7 @@ export function StagedQueueTable({
 
   return (
     <div className={cn(WORKBENCH_SHEET_HOST, 'flex h-full min-h-0 min-w-0 flex-1 flex-col')}>
-      <OrdersGridView
+      <OrdersGridHost
         ariaLabel="Orders staged for scan-out"
         records={records}
         queueMode="staged"

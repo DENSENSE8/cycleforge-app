@@ -37,4 +37,8 @@ const READY_HEADER_LAYOUT: LedgerHeaderLayoutApi<ReadyGridColumn> = {
 export const ReadyGridColumnHeader = makeLedgerGridColumnHeader<
   ReadyGridColumn,
   ReadyGridColumnKey
->({ layout: READY_HEADER_LAYOUT, defaultColumns: READY_GRID_COLUMNS });
+>({
+  layout: READY_HEADER_LAYOUT,
+  defaultColumns: READY_GRID_COLUMNS,
+  tableId: 'ready',
+});

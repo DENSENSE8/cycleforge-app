@@ -4,14 +4,17 @@
  *
  * Same spreadsheet family as Pending / Incoming (Date as a per-row column —
  * no sticky day-band headers on these rails):
- *   select · order · date · title · status · qty · price · cond · location · tracking · serial
+ *   select · order · title · status · date · qty · price · cond · location · tracking · serial · _fill
  *
- * Frozen identity pane: `select · order` (PO stays pinned while Date / Product /
+ * Frozen identity pane: `select · order` (PO stays pinned while Product / Date /
  * facts h-scroll). Incoming keeps its own Expected / Age / Status columns
  * ({@link INCOMING_GRID_COLUMNS}). The activity-axis stamp (Unboxed / Scanned /
  * Tested) renders as `date` (civil day; full stamp on hover) and its stage NAME
  * as `status`; there is no separate `stage` track. Location is triage shelf
  * placement (`staging_location_label`).
+ *
+ * Product is a hard preferred track (Sheets-exact drag-resize). Trailing
+ * `_fill` owns the sole `1fr` slack — same law as Orders.
  */
 
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
@@ -21,6 +24,7 @@ import {
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import type { CustomFieldColumnKey } from '@/lib/tables/custom-field-keys';
 
 export type ReceivingGridColumnKey =
   | 'select'
@@ -34,7 +38,10 @@ export type ReceivingGridColumnKey =
   | 'order'
   | 'tracking'
   | 'serial'
-  | 'zoho';
+  | 'zoho'
+  | '_fill'
+  /** Org-defined custom columns (`custom:<defKey>`). */
+  | CustomFieldColumnKey;
 
 /**
  * EXTENDS the house model — it does not re-declare it. Every shared field
@@ -55,24 +62,25 @@ export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> 
  *
  * Deterministic fact tracks stay content-hard `minmax(X,X)` + `resizable: false`
  * (Order · Date · Qty · Price · Loc · Tracking …). **Product and Status are
- * drag-resizable** (2026-08-06): Product is the flex track (`minmax(8rem, 1fr)`
- * + `resizable: true`, clamped 8rem…720px) that absorbs sheet slack; Status keeps its content-hard
- * `minmax(6rem, 6rem)` floor but exposes a grip so operators widen it for long
- * stage names — the `--cf-col-status` drag override rides the same generic
- * `gridTemplate` var as Product. Spreadsheet zoom scales rem floors via
- * `--cf-density`.
+ * drag-resizable** (2026-08-06): Product is a hard preferred track
+ * (`minmax(16rem, 16rem)` + `resizable: true`, clamped 8rem…720px); trailing
+ * `_fill` (`minmax(0rem, 1fr)`) absorbs leftover sheet width so Product drag is
+ * Sheets-visible. Status keeps its content-hard `minmax(6rem, 6rem)` floor but
+ * exposes a grip so operators widen it for long stage names — the
+ * `--cf-col-status` drag override rides the same generic `gridTemplate` var as
+ * Product. Spreadsheet zoom scales rem floors via `--cf-density`.
  *
  * Frozen identity pane (2026-08-05): `select · order`. The PO is the unique
- * alphanumeric row handle — pinned while Date / Product / Status / facts
+ * alphanumeric row handle — pinned while Product / Status / Date / facts
  * h-scroll. Contiguous-prefix rule as every other LedgerGrid family.
  * Operator-editable freeze panes (pin any column) remain future work.
  *
  * ## Default (`core`) set
  *
- * A receiving line is scanned by: which PO (`order`), when it reached its stage
- * (`date`), what is it (`title`), what state (`status`), how many (`qty`), what
- * it cost (`price` — Zoho line rate), where triage placed it (`location`), and
- * the other identifier an operator scans (`tracking`). That is the whole
+ * A receiving line is scanned by: which PO (`order`), what is it (`title`),
+ * what state (`status`), when it reached its stage (`date`), how many (`qty`),
+ * what it cost (`price` — Zoho line rate), where triage placed it (`location`),
+ * and the other identifier an operator scans (`tracking`). That is the whole
  * default grid.
  *
  * `condition` and `serial` stay `optional` — they are usually empty at the
@@ -99,34 +107,13 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     resizable: false,
     labelFitRem: 4.5,
   },
-  // WHEN it reached that stage — civil day floor (`MIN_TRACK_REM_BY_DATE_FACE.day`).
-  // Full day + time stays on the cell tooltip. Scrolls with facts (not identity).
-  {
-    key: 'date',
-    width: 'minmax(4.5rem, 4.5rem)',
-    label: 'Date',
-    gridLabel: 'Date',
-    type: 'date',
-    dateFace: 'day',
-    align: 'end',
-    resizable: false,
-    labelFitRem: 4.5,
-  },
-  // Product — variable title track. Flex absorbs sheet slack; drag-resize for
-  // long titles, clamped to a real **8rem min / 720px max** (`minTrackRem: 8` +
-  // the house `COLUMN_WIDTH_MAX`). Product is the ONLY `1fr` track and it sits
-  // before the fixed facts, so its floor is what resizing a fixed column (e.g.
-  // Status) drains INTO — widen Status and Product shrinks toward its floor
-  // before Qty · Price · Loc · Tracking h-scroll. **The floor is `8rem`, not a
-  // sliver** (2026-08-06 corrected): an earlier 4rem drain floor rendered the
-  // header as a bare type glyph because `gridHeaderShowsLabel` measured the floor
-  // (< the 8rem label-fit). Two guarantees now hold: the flex-track rule in
-  // `gridHeaderShowsLabel` always shows the "Product" label, AND the 8rem floor
-  // keeps Product legible under drain/drag instead of collapsing. Default width
-  // is still the full `1fr` share.
+  // Fixed preferred track — NOT `1fr`. A fill track made Product drag-resize a
+  // floor-only change while `1fr` kept stretching to the card (narrower = no
+  // visible move). Content-sized so resize is Sheets-exact; leftover sheet
+  // width is absorbed by trailing `_fill`.
   {
     key: 'title',
-    width: 'minmax(8rem, 1fr)',
+    width: 'minmax(16rem, 16rem)',
     label: 'Product Title',
     gridLabel: 'Product',
     type: 'text',
@@ -139,6 +126,20 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   // Drag-resizable (2026-08-06): content-hard 6rem floor, widened via
   // `--cf-col-status` for long stage names.
   { key: 'status', width: 'minmax(6rem, 6rem)', label: 'Status', type: 'tag', align: 'start', hideKey: 'status', resizable: true, labelFitRem: 4.5 },
+  // WHEN it reached that stage — civil day floor (`MIN_TRACK_REM_BY_DATE_FACE.day`).
+  // Full day + time stays on the cell tooltip. Scrolls with facts (not identity).
+  // Sits AFTER Product/Status so the day stamp is not jammed against the title.
+  {
+    key: 'date',
+    width: 'minmax(4.5rem, 4.5rem)',
+    label: 'Date',
+    gridLabel: 'Date',
+    type: 'date',
+    dateFace: 'day',
+    align: 'end',
+    resizable: false,
+    labelFitRem: 4.5,
+  },
   // Qty — magnitude → end + tabular-nums.
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', align: 'end', hideKey: 'qty', resizable: false, labelFitRem: 3.5 },
   // Zoho PO line unit cost — magnitude → end. Header owns the Receipt glyph;
@@ -170,6 +171,10 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   },
   { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', align: 'start', hideKey: 'serial', tier: 'optional', resizable: false, labelFitRem: 4.5 },
   { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', label: 'Vendor', type: 'tag', align: 'start', hideKey: 'zoho', tier: 'optional', resizable: false, labelFitRem: 4.5 },
+  // Trailing filler — geometry only. Absorbs zoom-out / wide-card slack so fact
+  // tracks stay content-hard. No label, type, hideKey, or tier: never in Column
+  // display; Column discovery stays triage ▦ / header menus.
+  { key: '_fill', width: 'minmax(0rem, 1fr)', sortable: false, resizable: false },
 ] as const;
 
 /**
@@ -178,9 +183,9 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
  */
 const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozenKeys(RECEIVING_GRID_COLUMNS);
 
-/** Data columns that support click-to-sort (excludes select / paint chrome). */
+/** Data columns that support click-to-sort (excludes select / paint chrome / `_fill`). */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
+  (c) => c.sortable !== false && c.key !== 'select' && c.key !== '_fill',
 ).map((c) => c.key);
 
 export function isReceivingGridSortable(key: string): key is ReceivingGridColumnKey {

@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { deriveFulfillmentState } from '@/lib/unshipped-state';
 import { dispatchOpenShippedDetails } from '@/utils/events';
@@ -127,7 +127,7 @@ function UnshippedComparePane({
   }, [data, view]);
 
   return (
-    <OrdersGridView
+    <OrdersGridHost
       records={records}
       loading={isPending}
       searchValue={searchQuery}

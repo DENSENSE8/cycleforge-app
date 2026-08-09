@@ -117,6 +117,8 @@ export const AUDIT_ENTITY = {
   STAFF_PREFERENCE: 'staff_preference',
   // Settings Registry — per-page org/staff configurable behavior (docs/settings-registry.md)
   SETTINGS: 'settings',
+  /** Org-defined custom grid column (custom_field_defs). */
+  CUSTOM_FIELD_DEF: 'custom_field_def',
   REASON_CODE: 'reason_code',
   RMA: 'rma',
   REPAIR_SERVICE: 'repair_service',
@@ -439,6 +441,9 @@ export const AUDIT_ACTION = {
   INBOX_TRIAGE: 'inbox.triage',
   // Settings Registry — org/staff per-page setting change (docs/settings-registry.md)
   SETTINGS_UPDATE: 'settings.update',
+  CUSTOM_FIELD_DEF_CREATE: 'custom_field_def.create',
+  CUSTOM_FIELD_DEF_ARCHIVE: 'custom_field_def.archive',
+  CUSTOM_FIELD_VALUE_UPSERT: 'custom_field_value.upsert',
   // Per-unit repair records
   REPAIR_OPEN:     'unit_repair.open',
   REPAIR_UPDATE:   'unit_repair.update',

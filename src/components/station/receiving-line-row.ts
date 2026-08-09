@@ -9,6 +9,7 @@
  * re-exports this type for backwards compatibility, so existing importers are
  * unaffected.
  */
+
 /**
  * One materialised `receiving_line_unit` — an *expected physical unit* on the
  * line, with its scanned serial resolved. The wire shape both
@@ -340,4 +341,9 @@ export interface ReceivingLineRow {
     line_count: number;
     distinct_sku_count: number;
   };
+  /**
+   * Org-defined custom field values (def `key` → value), hydrated by
+   * `attachCustomFieldsToRows` on browse reads. Absent when none set.
+   */
+  customFields?: Record<string, string | number | boolean | null>;
 }

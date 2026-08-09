@@ -25,7 +25,7 @@ import { cn } from '@/utils/_cn';
  * Virtualized path composes the Workbench spreadsheet SoT {@link LedgerGrid}
  * (sticky column guide + {@link VirtualGroupedSections}). Dense path keeps an
  * inline day map for small auto-height embeds. Sibling of outbound
- * {@link OrdersGridView}: week/banner chrome stays here; row + grouping are
+ * {@link OrdersGridHost}: week/banner chrome stays here; row + grouping are
  * injected (`renderRow` / `renderGroup`).
  */
 export interface StationListTableProps<TRecord> {
@@ -163,7 +163,7 @@ export function StationListTable<TRecord>({
   const scrollRef = useRef<HTMLDivElement>(null);
   const allowHorizontalScroll = !noHorizontalScroll;
 
-  // Body class logic mirrors OrdersGridView / LedgerGrid scroll scaffolds.
+  // Body class logic mirrors OrdersGridHost / LedgerGrid scroll scaffolds.
   // X triage bar lives on {@link TableStickyXScroll} / LedgerGrid sticky gutter —
   // the body port keeps `no-scrollbar` and only owns Y (plus clipped X when off).
   const rootClass = autoHeight

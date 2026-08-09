@@ -22,7 +22,10 @@ import {
   HeaderChromeMenuEmpty,
   HeaderChromeMenuItem,
 } from '@/components/layout/header-chrome-menu';
-import { SIDEBAR_RAIL_TRAILING_TRACK_CLASS } from '@/components/layout/header-shell';
+import {
+  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
+  STATION_COLUMN_FOOTER_BAND_FACE,
+} from '@/components/layout/header-shell';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { isKeyboardRegionOwner } from '@/lib/keyboard/keyboard-region-owner';
 import { hasOpenOverlay, pushOverlay } from '@/lib/overlay-stack/store';
@@ -163,7 +166,8 @@ export function StationDisplaysCommandFooter({
       data-command-open={open ? 'true' : 'false'}
       style={{ '--cf-density': '1' } as CSSProperties}
       className={cn(
-        'relative flex shrink-0 items-center gap-2 border-t border-border-hairline bg-surface-card py-0 pl-3 pr-0',
+        'relative gap-2 bg-surface-card py-0 pl-3 pr-0',
+        STATION_COLUMN_FOOTER_BAND_FACE,
         className,
       )}
     >

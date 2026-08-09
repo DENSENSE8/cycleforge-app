@@ -35,8 +35,8 @@ describe('Unbox pinned Inbound', () => {
     assert.match(embed, /tableId="incoming_embed"/, 'embed provider must use incoming_embed');
     assert.match(
       embed,
-      /<IncomingGridView[\s\S]*?tableId="incoming_embed"/,
-      'embed IncomingGridView must be passed incoming_embed',
+      /NonlinearTableHost[\s\S]*?tableId="incoming_embed"/,
+      'embed NonlinearTableHost must be passed incoming_embed',
     );
     // And the embed branch must NOT fall back to the shared `/incoming` bucket.
     assert.doesNotMatch(embed, /tableId="incoming"(?!_)/, 'embed must not use the shared incoming bucket');

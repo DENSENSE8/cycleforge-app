@@ -144,7 +144,7 @@ describe('carton-context-density', () => {
     );
     assert.match(
       identity,
-      /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0`/,
+      /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0 \$\{STATION_CHROME_SEAM_HAIRLINE\}`/,
       'identity row chips must abut (gap-0) and stretch flush to the primary chrome face',
     );
     assert.match(
@@ -212,8 +212,18 @@ describe('carton-context-density', () => {
     );
     assert.match(
       actionPillCode,
+      /STATION_CONTEXT_PHOTO_PILL_CLASS[\s\S]*?border-b-0 border-r-0/,
+      'Photos drops bottom+trailing borders — row hairline + Displays border-l own the seam',
+    );
+    assert.match(
+      actionPillCode,
       /STATION_CONTEXT_CLAIM_PILL_CLASS = `h-6 /,
       'Claim face fills secondary band row 2 (h-6)',
+    );
+    assert.match(
+      actionPillCode,
+      /STATION_CONTEXT_CLAIM_PILL_CLASS[\s\S]*?border-t-0 border-r-0/,
+      'Claim drops top+trailing borders — pairs with Photos; Displays owns the vertical rule',
     );
     assert.match(
       actionPillCode,

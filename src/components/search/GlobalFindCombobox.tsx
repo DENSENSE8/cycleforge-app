@@ -2,9 +2,14 @@
 
 /**
  * GlobalFindCombobox — find field + WAI-ARIA combobox for the global header
- * (`presentation="chrome"`). Identifier resolve stays on the current page with
- * {@link SearchPendingBar}; on hit it seeds the shared resolve cache then
- * navigates to order feedback. Hosts own recents storage and commit destinations.
+ * (`presentation="chrome"`).
+ *
+ * Chrome Enter/paste contract (number / identifier find):
+ *   • Pulse {@link SearchPendingBar} while {@link commitIdentifierFind} runs.
+ *   • Hit → seed resolve cache → navigate to `/search?sel=…` only.
+ *   • Miss → “No matches” dropdown on the current page (URL unchanged).
+ *   • Never open `/search?q=` or auto-commit a preview “best hit” on Enter.
+ * Explicit arrow+Enter / click still opens a highlighted preview row.
  *
  * `presentation="stage"` remains for legacy callers but `/search` browse no
  * longer mounts a page-local field — header owns find everywhere.
@@ -25,7 +30,7 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { IconButton, SearchField } from '@/design-system/primitives';
-import { Maximize2, Search } from '@/components/Icons';
+import { Search } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   GlobalSearchDropdown,
@@ -42,12 +47,11 @@ import {
   clearGlobalHeaderSearchDraft,
   setGlobalHeaderSearchDraft,
 } from '@/lib/global-header-search-query';
-import { recentRerunHref, type SearchRecentEntry } from '@/lib/search/search-recents';
+import { type SearchRecentEntry } from '@/lib/search/search-recents';
 import { searchRerunHref } from '@/lib/search/search-page-recents';
 import {
   journeyHandoffHref,
   looksLikeIdentifier,
-  orderRecordHref,
 } from '@/lib/search/search-hit';
 import {
   commitIdentifierFind,
@@ -104,8 +108,8 @@ interface GlobalFindComboboxProps {
    */
   onSelectHit?: (hit: AiSearchHit) => void;
   /**
-   * Stage: NL “See all” / Enter opens the in-page browse list instead of
-   * navigating. When absent, chrome navigates to `/search?q=`.
+   * Stage: NL Enter opens the in-page browse list instead of navigating.
+   * When absent, chrome keeps the query in the header field (never `/search?q=`).
    */
   onBrowseQuery?: (query: string) => void;
   /**
@@ -116,7 +120,6 @@ interface GlobalFindComboboxProps {
   /** Hide preview dropdown (e.g. stage browse panel is already open). */
   suppressPreview?: boolean;
   trailingSuffix?: ReactNode;
-  showOpenWorkbench?: boolean;
   listboxId?: string;
   autoFocus?: boolean;
   /** Sync draft to the far-right assistant (chrome only). */
@@ -162,7 +165,6 @@ export function GlobalFindCombobox({
   onSelectOrderId,
   suppressPreview = false,
   trailingSuffix,
-  showOpenWorkbench,
   listboxId = 'global-search-listbox',
   autoFocus = false,
   syncAssistantDraft = false,
@@ -173,7 +175,6 @@ export function GlobalFindCombobox({
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const isStage = presentation === 'stage';
-  const openWorkbench = showOpenWorkbench ?? !isStage;
 
   const [uncontrolledQuery, setUncontrolledQuery] = useState(initialQuery);
   const query = controlledQuery ?? uncontrolledQuery;
@@ -418,15 +419,19 @@ export function GlobalFindCombobox({
     inputRef.current?.focus();
   }, [isStage]);
 
-  /** Maximize glyph — open `/search` (with current query when present). */
-  const openSearchWorkbench = useCallback(() => {
-    setFocused(false);
-    navigateSearchHref(
-      router,
-      trimmedQuery ? searchRerunHref(trimmedQuery) : '/search',
-      pathname,
-    );
-  }, [router, trimmedQuery, pathname]);
+  /** Re-run a recent in the header field — never navigate to `/search?q=`. */
+  const rerunRecentInField = useCallback(
+    (entry: SearchRecentEntry) => {
+      setQuery(entry.query);
+      if (onBrowseQuery) {
+        setFocused(false);
+        onBrowseQuery(entry.query);
+        return;
+      }
+      keepPreviewOpen();
+    },
+    [setQuery, onBrowseQuery, keepPreviewOpen],
+  );
 
   const emptyQuery = trimmedQuery.length === 0;
   const fieldOpen = isStage || expanded;
@@ -474,18 +479,13 @@ export function GlobalFindCombobox({
 
   const navigateActive = useCallback((): boolean => {
     const { dropdownState: st, recents: rec, flatPreviewHits: hits } = navRef.current;
-    setFocused(false);
     if (st === 'recents') {
       const entry = rec[activeIndex];
       if (!entry) return false;
-      if (onBrowseQuery) {
-        setQuery(entry.query);
-        onBrowseQuery(entry.query);
-        return true;
-      }
-      navigateSearchHref(router, recentRerunHref(entry), pathname);
+      rerunRecentInField(entry);
       return true;
     }
+    setFocused(false);
     if (st === 'preview') {
       const hit = hits[activeIndex];
       if (!hit) return false;
@@ -493,7 +493,7 @@ export function GlobalFindCombobox({
       return true;
     }
     return false;
-  }, [activeIndex, router, pathname, onBrowseQuery, setQuery, commitHit]);
+  }, [activeIndex, rerunRecentInField, commitHit]);
 
   useEffect(() => {
     if (!fieldOpen) return;
@@ -539,13 +539,14 @@ export function GlobalFindCombobox({
 
   const handleSearchSubmit = useCallback(
     (raw: string) => {
+      // Explicit keyboard highlight → commit that row (recent re-run or preview hit).
       if (navRef.current.dropdownOpen && activeIndex >= 0 && navigateActive()) return;
       const trimmed = raw.trim();
       if (!trimmed) return;
 
-      setFocused(false);
-
+      // ── Identifier (order # / tracking / serial): pulse → hit or miss dropdown ──
       if (looksLikeIdentifier(trimmed)) {
+        setFocused(false);
         void (async () => {
           setResolvePending(true);
           try {
@@ -554,7 +555,7 @@ export function GlobalFindCombobox({
               onPushRecent?.({
                 query: trimmed,
                 scope: isStage ? 'dashboard' : 'global',
-                scopeHref: searchRerunHref(trimmed),
+                scopeHref: result.href,
                 topHit: {
                   title: result.order.product_title || result.order.order_id || trimmed,
                   href: result.href,
@@ -573,11 +574,11 @@ export function GlobalFindCombobox({
               scope: isStage ? 'dashboard' : 'global',
               scopeHref: searchRerunHref(trimmed),
             });
+            // Stage legacy may still browse; chrome miss = dropdown only.
             if (onBrowseQuery) {
               onBrowseQuery(trimmed);
               return;
             }
-            // Miss / FBA: stay put — show preview/empty dropdown (no /search?q=).
             keepPreviewOpen();
           } finally {
             setResolvePending(false);
@@ -586,45 +587,30 @@ export function GlobalFindCombobox({
         return;
       }
 
-      const preview = navRef.current.flatPreviewHits;
-      // Zero preview hits → stay put (red empty dropdown); never a list page.
-      if (preview.length === 0) {
-        onPushRecent?.({
-          query: trimmed,
-          scope: isStage ? 'dashboard' : 'global',
-          scopeHref: searchRerunHref(trimmed),
-        });
-        if (onBrowseQuery) {
-          onBrowseQuery(trimmed);
-          return;
-        }
-        keepPreviewOpen();
-        return;
-      }
-      const top = preview.find((h) => h.entityType === 'order') ?? preview[0];
+      // ── Natural language ──
+      // Chrome: stay put — dropdown shows hits or “No matches”; never navigate.
+      // Stage: optional in-page browse via onBrowseQuery.
       onPushRecent?.({
         query: trimmed,
         scope: isStage ? 'dashboard' : 'global',
         scopeHref: searchRerunHref(trimmed),
-        topHit:
-          top && top.entityType === 'order'
-            ? { title: top.title, href: orderRecordHref(top.id), entityType: 'order' }
-            : undefined,
       });
-
       if (onBrowseQuery) {
-        // Stage legacy: sole order → open in-page; else browse list under the bar.
-        if (top && top.entityType === 'order' && preview.filter((h) => h.entityType === 'order').length === 1 && preview.length === 1 && onSelectHit) {
+        const preview = navRef.current.flatPreviewHits;
+        const top = preview.find((h) => h.entityType === 'order') ?? preview[0];
+        if (
+          top &&
+          top.entityType === 'order' &&
+          preview.filter((h) => h.entityType === 'order').length === 1 &&
+          preview.length === 1 &&
+          onSelectHit
+        ) {
+          setFocused(false);
           onSelectHit(top);
           return;
         }
+        setFocused(false);
         onBrowseQuery(trimmed);
-        return;
-      }
-      // Header: the dropdown IS the results list — open the best hit directly
-      // (no `/search?q=` list page).
-      if (top) {
-        commitHit(top);
         return;
       }
       keepPreviewOpen();
@@ -641,7 +627,6 @@ export function GlobalFindCombobox({
       onSelectHit,
       queryClient,
       keepPreviewOpen,
-      commitHit,
     ],
   );
 
@@ -726,19 +711,6 @@ export function GlobalFindCombobox({
         hideUnderline
         autoFocus={autoFocus || (!isStage && expanded)}
         className="min-w-0 flex-1 border-0 bg-transparent px-3"
-        trailingPrefix={
-          openWorkbench ? (
-            <HoverTooltip label="Open search" focusable={false}>
-              <IconButton
-                icon={<Maximize2 className="h-3 w-3" />}
-                ariaLabel="Open search page"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={openSearchWorkbench}
-                className="inline-flex h-3.5 w-3.5 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
-              />
-            </HoverTooltip>
-          ) : undefined
-        }
         trailingSuffix={trailingSuffix}
       />
 
@@ -760,15 +732,7 @@ export function GlobalFindCombobox({
           releaseHoverSoon();
           scheduleCollapse();
         }}
-        onSelectRecent={(entry) => {
-          handleChange(entry.query);
-          setFocused(false);
-          if (onBrowseQuery) {
-            onBrowseQuery(entry.query);
-            return;
-          }
-          navigateSearchHref(router, recentRerunHref(entry), pathname);
-        }}
+        onSelectRecent={rerunRecentInField}
         onRemoveRecent={onRemoveRecent}
         onClearRecents={() => onClearRecents()}
         onNavigateHit={(hit, event: ReactMouseEvent) => {

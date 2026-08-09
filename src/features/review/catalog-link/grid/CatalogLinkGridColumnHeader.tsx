@@ -17,6 +17,7 @@ import {
 import {
   CATALOG_LINK_GRID_COLUMNS,
   CATALOG_LINK_GRID_FROZEN_CELL,
+  CATALOG_LINK_TABLE_ID,
   catalogLinkGridCell,
   catalogLinkGridFrozenLeft,
   catalogLinkGridRowShellClass,
@@ -29,6 +30,7 @@ import {
 import {
   IMPORT_EXCEPTION_GRID_COLUMNS,
   IMPORT_EXCEPTION_GRID_FROZEN_CELL,
+  IMPORT_EXCEPTION_TABLE_ID,
   importExceptionGridCell,
   importExceptionGridFrozenLeft,
   importExceptionGridRowShellClass,
@@ -62,9 +64,17 @@ const IMPORT_EXCEPTION_HEADER_LAYOUT: LedgerHeaderLayoutApi<ImportExceptionGridC
 export const CatalogLinkGridColumnHeader = makeLedgerGridColumnHeader<
   CatalogLinkGridColumn,
   CatalogLinkGridColumnKey
->({ layout: CATALOG_LINK_HEADER_LAYOUT, defaultColumns: CATALOG_LINK_GRID_COLUMNS });
+>({
+  layout: CATALOG_LINK_HEADER_LAYOUT,
+  defaultColumns: CATALOG_LINK_GRID_COLUMNS,
+  tableId: CATALOG_LINK_TABLE_ID,
+});
 
 export const ImportExceptionGridColumnHeader = makeLedgerGridColumnHeader<
   ImportExceptionGridColumn,
   ImportExceptionGridColumnKey
->({ layout: IMPORT_EXCEPTION_HEADER_LAYOUT, defaultColumns: IMPORT_EXCEPTION_GRID_COLUMNS });
+>({
+  layout: IMPORT_EXCEPTION_HEADER_LAYOUT,
+  defaultColumns: IMPORT_EXCEPTION_GRID_COLUMNS,
+  tableId: IMPORT_EXCEPTION_TABLE_ID,
+});

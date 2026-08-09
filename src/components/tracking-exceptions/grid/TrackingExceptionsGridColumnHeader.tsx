@@ -37,4 +37,8 @@ const TRACKING_EXCEPTIONS_HEADER_LAYOUT: LedgerHeaderLayoutApi<TrackingException
 export const TrackingExceptionsGridColumnHeader = makeLedgerGridColumnHeader<
   TrackingExceptionsGridColumn,
   TrackingExceptionsGridColumnKey
->({ layout: TRACKING_EXCEPTIONS_HEADER_LAYOUT, defaultColumns: TRACKING_EXCEPTIONS_GRID_COLUMNS });
+>({
+  layout: TRACKING_EXCEPTIONS_HEADER_LAYOUT,
+  defaultColumns: TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  tableId: 'tracking-exceptions',
+});

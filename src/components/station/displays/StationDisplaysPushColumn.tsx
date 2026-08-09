@@ -29,6 +29,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import { Maximize2, Minimize2 } from '@/components/Icons';
 import {
   STATION_CHROME_ROW_FACE,
+  STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_INSET_TOP,
 } from '@/components/station/entity-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -90,10 +91,15 @@ const STATION_DISPLAYS_FILL_DEFAULT_WIDTH_PX = 10_000;
  * **footer** with the filter search (left-rail twin) — see {@link footer}.
  *
  * **Height matches the station chrome seam** (`STATION_CHROME_ROW_FACE` /
- * left scan bar / carton identity row 1) — `h-10` (40px) so the hairline
- * reads continuous across scan bar · identity · Displays. Carton cursor on
- * this band uses `xs` IconButtons, centered. When Displays is closed the
- * cursor lives on {@link ScanStationUtilityRail} instead.
+ * left scan bar / carton identity row 1 — `h-7` / 28px) so the hairline reads
+ * continuous across scan bar · identity · Displays. Carton cursor on this band
+ * fills the row (`h-full`); never a taller `h-10` twin of GlobalHeader
+ * (`TOP_CHROME_ROW_FACE`).
+ *
+ * **Pointer-events:** the band is `pointer-events-none` with interactive
+ * children re-enabled — otherwise this `z-header` row covers the inset resize
+ * sash (`z-sticky`) for the top 28px and the operator's natural grab at the
+ * identity × Displays T-junction cannot start a drag (only Expand panel fires).
  *
  * **The band aligns to the CONTENT gutter, and it aligns OPTICALLY** — `pl-2`,
  * not the `px-4` every other row in the column carries. Ruled 2026-08-02 after
@@ -126,12 +132,18 @@ const STATION_DISPLAYS_FILL_DEFAULT_WIDTH_PX = 10_000;
  * Cybertruck plate + trailing ⋮). Nested verb strips sit `gap-0` flush under it.
  * The E2E pins that dismiss + plate stay column-aligned.
  */
-/** `relative z-header` keeps `→|` / fullscreen above the inset resize sash
- *  (`z-sticky`). One horizontal row: `[→|] [fullscreen] ……… [↑ ↓]` —
- *  `items-center`, never a stacked trailing cluster. Height =
- *  {@link STATION_CHROME_ROW_FACE}. */
+/** `relative z-header` keeps fullscreen / trailing cursor above the inset
+ *  resize sash (`z-sticky`). One horizontal row — children **fill** the
+ *  {@link STATION_CHROME_ROW_FACE} (items-stretch · h-full), never a centered
+ *  h-7 island. `pointer-events-none` lets the sash own the leading seam.
+ *  Bottom rule = {@link STATION_CHROME_SEAM_HAIRLINE} (not `border-b` — that
+ *  notches the column `border-l` and optically desyncs from Photos/Claim). */
 const STATION_DISPLAYS_PUSH_TOP_BAND =
-  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-center gap-0.5 border-b border-border-hairline pl-2 pr-2`;
+  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0.5 pl-2 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+
+/** Square fill cell on the Displays top band — re-enables hits; matches identity lead cubes. */
+const STATION_DISPLAYS_PUSH_TOP_CELL =
+  'pointer-events-auto flex h-full aspect-square shrink-0 items-stretch justify-stretch';
 /**
  * Fullscreen toggle — names the REGION. "Expand panel" / "Collapse panel",
  * never "Expand displays" — the control is mounted once in the shared shell.
@@ -384,29 +396,31 @@ export function StationDisplaysPushColumn({
             }
             asChild
           >
-            <IconButton
-              size="sm"
-              tone="neutral"
-              ariaLabel={
-                expanded
-                  ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
-                  : STATION_DISPLAYS_PUSH_EXPAND_LABEL
-              }
-              icon={
-                expanded ? (
-                  <Minimize2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Maximize2 className="h-3.5 w-3.5" />
-                )
-              }
-              onClick={() => setExpanded((prev) => !prev)}
-              className="rounded-none"
-              data-testid="unbox-push-fullscreen"
-            />
+            <span className={STATION_DISPLAYS_PUSH_TOP_CELL}>
+              <IconButton
+                size="sm"
+                tone="neutral"
+                ariaLabel={
+                  expanded
+                    ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
+                    : STATION_DISPLAYS_PUSH_EXPAND_LABEL
+                }
+                icon={
+                  expanded ? (
+                    <Minimize2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  )
+                }
+                onClick={() => setExpanded((prev) => !prev)}
+                className="h-full w-full rounded-none"
+                data-testid="unbox-push-fullscreen"
+              />
+            </span>
           </HoverTooltip>
           {/* Progress ring (optional) + carton ↑↓ — top-right when Displays open. */}
           {headerRightSlot != null || headerTrailing != null ? (
-            <div className="ml-auto flex shrink-0 items-center gap-0.5">
+            <div className="pointer-events-auto ml-auto flex h-full shrink-0 items-stretch gap-0.5">
               {headerRightSlot}
               {headerTrailing}
             </div>

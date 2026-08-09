@@ -1,7 +1,7 @@
 /**
  * Outbound Orders table definitions (plan Phase 1, wave 5).
  *
- * Orders is the one **shared parametric grid**: `OrdersGridView` mounts across
+ * Orders is the one **shared parametric grid**: `OrdersGridHost` mounts across
  * ~9 consumers (To-ship, Packed, Shipped, Staged, Labels, Review pairing/packing,
  * compare pane, drill host). What varies is TWO things, on two different axes:
  *

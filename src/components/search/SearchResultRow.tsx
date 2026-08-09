@@ -251,7 +251,13 @@ function ComfortableAlignedRow({
   return (
     <Link
       href={hit.href}
-      onClick={(e) => onNavigate?.(hit, e)}
+      onClick={(e) => {
+        if (!onNavigate) return;
+        // Host owns commit (header stays put until hit, then router.push).
+        // Without preventDefault the Link href races and flips the URL first.
+        e.preventDefault();
+        onNavigate(hit, e);
+      }}
       role="option"
       id={optionId}
       aria-selected={active || undefined}
@@ -355,7 +361,13 @@ function OrderRow({
   return (
     <Link
       href={hit.href}
-      onClick={(e) => onNavigate?.(hit, e)}
+      onClick={(e) => {
+        if (!onNavigate) return;
+        // Host owns commit (header stays put until hit, then router.push).
+        // Without preventDefault the Link href races and flips the URL first.
+        e.preventDefault();
+        onNavigate(hit, e);
+      }}
       role="option"
       id={optionId}
       aria-selected={active || undefined}
@@ -430,7 +442,13 @@ function UnitRow({
   return (
     <Link
       href={hit.href}
-      onClick={(e) => onNavigate?.(hit, e)}
+      onClick={(e) => {
+        if (!onNavigate) return;
+        // Host owns commit (header stays put until hit, then router.push).
+        // Without preventDefault the Link href races and flips the URL first.
+        e.preventDefault();
+        onNavigate(hit, e);
+      }}
       role="option"
       id={optionId}
       aria-selected={active || undefined}
@@ -549,7 +567,13 @@ function GenericRow({
   return (
     <Link
       href={hit.href}
-      onClick={(e) => onNavigate?.(hit, e)}
+      onClick={(e) => {
+        if (!onNavigate) return;
+        // Host owns commit (header stays put until hit, then router.push).
+        // Without preventDefault the Link href races and flips the URL first.
+        e.preventDefault();
+        onNavigate(hit, e);
+      }}
       role="option"
       id={optionId}
       aria-selected={active || undefined}

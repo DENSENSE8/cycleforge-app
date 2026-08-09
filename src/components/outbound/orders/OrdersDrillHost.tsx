@@ -4,7 +4,7 @@
  * To-ship Orders drill — thin adapter over {@link LedgerDrillHost}.
  *
  * Parent map = order groups (the only place multi-line rollups show); child =
- * flat lines for the selected order. List mode is a single flat {@link OrdersGridView}.
+ * flat lines for the selected order. List mode is a single flat {@link OrdersGridHost}.
  */
 
 import { useCallback, useMemo, type ReactNode } from 'react';
@@ -18,7 +18,7 @@ import {
   LedgerDrillParentMap,
   type LedgerDrillParentSection,
 } from '@/design-system/components/grid';
-import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { useOrdersQueueRows } from '@/components/dashboard/orders-queue/useOrdersQueueRows';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
@@ -212,7 +212,7 @@ export function OrdersDrillHost({
         />
       }
     >
-      <OrdersGridView
+      <OrdersGridHost
         records={selectedChildRecords}
         loading={false}
         searchValue={searchQuery}

@@ -21,6 +21,7 @@ import {
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { SourcePlatformMeta } from '@/lib/source-platform';
+import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { cn } from '@/utils/_cn';
 
 export type ReceivingActivityDateCell = {
@@ -89,6 +90,10 @@ export type ReceivingGridCellCtx = {
    * decorative GridClickSelectFace when selected (select-all in header).
    */
   clickSelect?: boolean;
+  /** Live defs for `custom:*` columns — type lookup for {@link CustomFieldCell}. */
+  customFieldDefs?: readonly CustomFieldDef[];
+  /** Persist one custom cell (def key + next string). */
+  onCustomFieldCommit?: (defKey: string, next: string) => void;
 };
 
 export type ReceivingGridCellProps = {

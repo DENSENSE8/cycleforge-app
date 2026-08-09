@@ -305,8 +305,8 @@ const MOUNT_EXEMPT = new Set([
  * both directions, so a mount with no bag and a bag with no mount both fail.
  */
 const MOUNTS: Record<string, string> = {
-  'src/components/dashboard/orders-queue/OrdersGridView.tsx': 'orders',
-  'src/components/station/receiving-grid/ReceivingGridView.tsx': 'receiving',
+  'src/components/dashboard/orders-queue/OrdersGridHost.tsx': 'orders',
+  'src/components/station/receiving-grid/ReceivingGridHost.tsx': 'receiving',
   'src/components/station/ReceivingLinesTable.tsx': 'incoming',
   'src/components/products/catalog/ProductsCatalogWorkspace.tsx': 'catalog',
   'src/components/repair/RepairTable.tsx': 'repair',
@@ -316,8 +316,7 @@ const MOUNTS: Record<string, string> = {
   'src/components/tracking-exceptions/TrackingExceptionsTable.tsx': 'tracking-exceptions',
   'src/components/receiving/unfound/UnfoundQueueTable.tsx': 'unfound',
   'src/components/warehouse/BinsTable.tsx': 'bins',
-  // Inventory units still mounts via UnitsGridView (main WIP; forest burn pending).
-  'src/components/inventory/units-grid/UnitsGridView.tsx': 'units',
+  'src/components/inventory/UnitsWorkspaceView.tsx': 'units',
   'src/features/my-day/MyDayWorkspace.tsx': 'my-day',
   'src/components/tech/all/TechAllTriageTable.tsx': 'tech-all',
   // Both Review · Catalog-link tabs mount from ONE file under ONE bag.
@@ -425,12 +424,8 @@ describe('ledger grid mounts', () => {
  * new wrapper file). A `FooTable.tsx` that mounts the host still answers to the
  * content guard — it is simply not a member of the forest this list freezes.
  */
-const GRID_VIEW_FOREST: string[] = [
-  'src/components/dashboard/orders-queue/OrdersGridView.tsx',
-  'src/components/station/receiving-grid/ReceivingGridView.tsx',
-  // Inventory units landed on main before the Phase-3 ratchet; burn next.
-  'src/components/inventory/units-grid/UnitsGridView.tsx',
-];
+/** Empty — Phase 3 forest burn complete. New queues bind NonlinearTableHost. */
+const GRID_VIEW_FOREST: string[] = [];
 
 /** Every `*GridView.tsx` wrapper on disk, off the same walk the mounts use. */
 function discoverGridViewForest(): string[] {

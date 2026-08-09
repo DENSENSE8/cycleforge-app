@@ -155,6 +155,12 @@ export function UnboxWorkspaceView(props: {
               tab={unboxView}
               onSelectTab={setUnboxView}
               inspectorOpen={Boolean(props.inspectorOpen)}
+              // Middle region only while the browse is the middle. A carton
+              // covers this view (kept mounted, `visibility: hidden`), and the
+              // station bench is the other `middle` claimant —
+              // `registerNavRegion` keys by region id, so two live registrations
+              // would silently fight over `⌘; m`.
+              navRegionId={lineWorkspaceOpen ? null : 'middle'}
             />
           </div>
         }

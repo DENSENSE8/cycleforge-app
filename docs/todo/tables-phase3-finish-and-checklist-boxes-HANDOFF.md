@@ -4,18 +4,21 @@ Two independent tracks. **Deliverable 1** (land the table Phase-3 work) is
 blocked on repo health, not on code. **Deliverable 2** (checklist marks → flush
 boxes) is a fresh UI-consistency change with one hard-rule caveat.
 
-## STATUS (updated 2026-08-08)
+## STATUS (updated 2026-08-08 — Phase 3 forest burn closed in working tree)
 - **Deliverable 2 — DONE + committed** on `topic/tables` as **`377f74d05`**
   (tip). Step marks are flush checkbox boxes (shared `StepStateBadge`); shape
   only, still read-only/evidence-derived, `skipped` keeps its chevron. Guards
   (procedure-deck-order · surface-box · typography · color-neutrals/tokens) +
   the change's typecheck are green. **Not pushed** (branch tip carries the 20
   pre-existing errors below; pushing is a separate ask).
-- **Deliverable 1 — STILL BLOCKED.** Re-confirmed 2026-08-08: main tip is
-  `2133a7aa7`; `testing-panel/testing-ticket-context.ts` is still absent on
-  main and `UnboxDockHost.tsx` is still untracked-only — the same 20 tsc errors
-  sit on the `topic/tables` tip too. Land it once those concurrent sessions
-  commit and main goes green. The ratchet (`3e522a690`) is ready and unchanged.
+- **Deliverable 1 / forest burn — DONE in app checkout.** `GRID_VIEW_FOREST === []`;
+  0 `*GridView.tsx` on disk. Shared adapters: `ReceivingGridHost` · `OrdersGridHost`;
+  Units inlined. Unbox History geometry restored (hard Product 16rem + trailing
+  `_fill`; date after status). Anti-regrowth ratchet live. See
+  [`nonlinear-table-forest-finish-HANDOFF.md`](nonlinear-table-forest-finish-HANDOFF.md).
+  Full-tree `npm run verify` may still be red from **unrelated** concurrent dirt
+  (migration slot clash, inbox CompactActivityRow mid-migrate, route-permissions
+  for inbound import routes) — table guard set is the green signal for this work.
 
 ---
 

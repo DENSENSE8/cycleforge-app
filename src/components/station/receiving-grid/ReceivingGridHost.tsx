@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, type RefObject } from 'react';
+import { useCallback, useMemo, type RefObject } from 'react';
 import { useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
+import { useCustomFieldDefs } from '@/hooks/useCustomFieldDefs';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { TableId } from '@/lib/tables/table-columns';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
@@ -25,8 +26,11 @@ import { RECEIVING_TABLE_BINDING } from './receiving-table-definition';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { ReceivingGridColumnHeader } from './ReceivingGridColumnHeader';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
+import { mergeCustomFieldColumns } from '@/lib/custom-fields/column-model';
+import { commitCustomFieldValueClient } from '@/lib/custom-fields/commit-value-client';
+import { toast } from '@/lib/toast';
 
-interface ReceivingGridViewProps {
+interface ReceivingGridHostProps {
   /** Day-banded PO groups (Unbox / History). */
   filteredGroupedRecords?: Record<string, ReceivingPoGroup[]>;
   /**
@@ -136,17 +140,17 @@ function poFoldKey(row: ReceivingLineRow): string {
 }
 
 /**
- * Unbox / History / Testing spreadsheet — the receiving-domain **binding** for
- * the `receiving.browse` table definition.
+ * Unbox / History / Testing spreadsheet host — shared receiving-domain binding
+ * for the `receiving.browse` table definition (replaces the burned
+ * `ReceivingGridHost` wrapper).
  *
- * Since the definition registry landed (plan Phase 1) this file no longer
- * decides what kind of grid it is: the shell recipe, prefs bucket, accessible
- * name, testid and column model all resolve from
- * {@link RECEIVING_TABLE_BINDING} through {@link NonlinearTableHost}. What
- * stays here is what is genuinely per-page — the feed, the PO fold + day-band
- * math, sort durability, and the family's header / group / row renderers.
+ * The shell recipe, prefs bucket, accessible name, testid and column model all
+ * resolve from {@link RECEIVING_TABLE_BINDING} through {@link NonlinearTableHost}.
+ * This host owns the feed fold + day-band math, sort durability, and the
+ * family's header / group / row renderers for every Unbox / Drill / Compare /
+ * Testing mount.
  */
-export function ReceivingGridView({
+export function ReceivingGridHost({
   filteredGroupedRecords,
   daySections,
   serverSorted = false,
@@ -180,7 +184,7 @@ export function ReceivingGridView({
   linkedReceivingId = null,
   onCrosshairHover,
   columnTriggerPortalTarget = null,
-}: ReceivingGridViewProps) {
+}: ReceivingGridHostProps) {
   // One fetch for the whole grid — History UNBOXED tips name the connected
   // inventory provider (falls back to capability title while loading).
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
@@ -190,8 +194,26 @@ export function ReceivingGridView({
   // definition under its own prefs bucket. The header's column menu and the
   // per-staff display/fill hooks need the resolved values locally, so read them
   // once here rather than re-typing the defaults.
-  const allColumns = columns ?? RECEIVING_TABLE_BINDING.columns;
+  const { data: customDefs = [] } = useCustomFieldDefs('RECEIVING');
+  const systemColumns = columns ?? RECEIVING_TABLE_BINDING.columns;
+  const allColumns = mergeCustomFieldColumns(systemColumns, customDefs);
   const prefsTableId = tableId ?? RECEIVING_TABLE_BINDING.definition.tableId;
+
+  const handleCustomFieldCommit = useCallback(
+    (entityId: number, defKey: string, next: string) => {
+      const def = customDefs.find((d) => d.key === defKey);
+      if (!def || entityId <= 0) return;
+      void commitCustomFieldValueClient({
+        fieldId: def.id,
+        entityType: 'RECEIVING',
+        entityId,
+        value: next,
+      }).catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to save field');
+      });
+    },
+    [customDefs],
+  );
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
@@ -276,7 +298,7 @@ export function ReceivingGridView({
   return (
     <NonlinearTableHost<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
       binding={RECEIVING_TABLE_BINDING}
-      columns={columns}
+      columns={allColumns}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}
       sort={columnSort}
@@ -302,6 +324,10 @@ export function ReceivingGridView({
           onSortColumn={applyToggle}
           onResizeColumn={onResizeColumn}
           onResetColumn={onResetColumn}
+          // Prefs bucket is mount-resolved (History / Testing); keep an explicit
+          // menu so dir-aware sort + clear stay wired. `enableColumnMenu` gates
+          // the factory default so a false host prop cannot fall back on.
+          enableColumnMenu={enableColumnMenu}
           columnMenu={
             enableColumnMenu
               ? {
@@ -338,6 +364,8 @@ export function ReceivingGridView({
           rowFillsById={clickSelect ? fillsById : undefined}
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}
+          customFieldDefs={customDefs}
+          onCustomFieldCommit={handleCustomFieldCommit}
         />
       )}
       renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -363,6 +391,8 @@ export function ReceivingGridView({
           rowFillsById={clickSelect ? fillsById : undefined}
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}
+          customFieldDefs={customDefs}
+          onCustomFieldCommit={handleCustomFieldCommit}
         />
       )}
     />

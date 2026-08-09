@@ -38,4 +38,8 @@ const UNFOUND_HEADER_LAYOUT: LedgerHeaderLayoutApi<UnfoundGridColumn> = {
 export const UnfoundGridColumnHeader = makeLedgerGridColumnHeader<
   UnfoundGridColumn,
   UnfoundGridColumnKey
->({ layout: UNFOUND_HEADER_LAYOUT, defaultColumns: UNFOUND_GRID_COLUMNS });
+>({
+  layout: UNFOUND_HEADER_LAYOUT,
+  defaultColumns: UNFOUND_GRID_COLUMNS,
+  tableId: 'unfound',
+});
