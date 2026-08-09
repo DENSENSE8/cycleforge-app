@@ -602,6 +602,47 @@ Handoff: `docs/todo/unbox-procedure-flows-HANDOFF.md`.
   (`GRID_IDENTITY_COLUMN_KEYS` / `isGridColumnInCellEditable` in
   `src/design-system/components/grid/grid-column-editability.ts`). Correction at the record plane.
 
+## Left-edge occupant (the context column is earned, not a default — ruled 2026-08-09)
+
+The left context column is **not** free chrome every surface gets. Each region
+contract earns (or forgoes) it, and what it may hold is fixed:
+
+| Region contract | Left edge | What it holds | Why it is earned |
+|---|---|---|---|
+| **Scan Station** (`floor`) | **Recents rail** | the MRU / resume set (`SidebarRecentRailBase`) | hands are on the scanner — the left is where you pick up the carton you left, not a browse map |
+| **Workbench — `master-detail`** | **Record picker** | the collection navigator (`SidebarShell` / `SidebarRailShell`) | the record has no other address; the picker **is** how you select it |
+| **Workbench — `ops-queue`** (desk triage) | **NOTHING — rail-less by default (Pattern E)** | — | the table rows **are** the picker; tabs own stage, KPI owns attention, a Band-1 Views menu owns saved views + scope. A left rail could only restate them |
+| **Monitor** | **Nothing** (filter band only) | — | observe-only; no durable selection |
+
+**The one test — does the left hold something the tabs, the KPI band, the
+top-chrome Views menu, and the table rows cannot express?** For a scan station
+that is the recents/resume set; for a master-detail workbench it is the record
+picker. For a pointer-driven triage queue there is nothing left over — so it is
+**rail-less**, and the reclaimed width goes to the table (the Zendesk / Linear /
+Shopify-Admin shape; report Pattern E / D9 / D10).
+
+- **Saved views + personal scope on an `ops-queue` desk live in a Band-1 Views
+  menu** (`OutboundViewsMenu` → `TableOptionsMenu`, composing `useSavedViews`) —
+  the top-right star control, **never** a left rail and **never** the right
+  inspector. The right edge is record **detail** / assistant — one slot, detail
+  outranks assistant (see **Right-rail modality**); it does not host views,
+  scopes, or filter chrome. *(Home → Today is not an `ops-queue` desk — its rail
+  holds saved views because that is its one navigational job.)*
+- **Lifecycle stage → tabs. Attention (urgent · out-of-stock · exceptions) →
+  KPI band.** A left "Focus" row that restates either is a duplicate — every
+  facet has exactly one owner in `OUTBOUND_FACET_OWNER` (report P1/P5/P8).
+- **Rail-less is a routing predicate, and it is the extension point.**
+  `isRaillessOrderFeedSurface` (`sidebar-navigation.ts`) → `useIsRaillessOrderFeed`
+  → `ContextPanelLayout` `hasPanel` (the same collapse `/search` already uses). A
+  new rail-less desk **extends that predicate**; it never re-derives the frame or
+  returns `null` into a reserved column (the `?mode=inbound` void bug).
+- **Never** a monitor rollup (ROI / throughput) or an onboarding checklist in a
+  working triage rail — ROI → KPI band / Operations analytics, onboarding →
+  Home → Today (report P6/P10).
+
+Guard: `outbound-rail-dedup.guard.test.ts`. Frame mechanics: **Frame column
+budget** · **Right-rail modality**.
+
 ## Frame column budget (ruled 2026-08-03)
 
 The content row is a **width budget**, not five independent preferred widths.

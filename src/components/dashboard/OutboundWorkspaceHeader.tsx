@@ -23,6 +23,7 @@ import {
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
+import { OutboundViewsMenu } from '@/components/dashboard/OutboundViewsMenu';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -91,6 +92,7 @@ export function OutboundWorkspaceHeader({
       className={className}
       trailing={
         <WorkbenchTrailingCluster
+          before={<OutboundViewsMenu />}
           actions={<OutboundOrderChromeActions onNewOrder={openIntakeForm} />}
         />
       }

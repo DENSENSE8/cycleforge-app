@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
+import { useIsRaillessOrderFeed } from '@/components/sidebar/useIsRaillessOrderFeed';
 import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_COLUMN_CLASS,
@@ -104,8 +105,12 @@ const SidebarContextPanel = dynamic(
 export function ContextPanelLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Two families, one question: station benches (scan bar + rail) and classic
-  // routes (picker / feed) both mount their panel here now.
-  const hasPanel = useHasSidebarContext() || isStationSurfaceRoute(pathname);
+  // routes (picker / feed) both mount their panel here now — EXCEPT the To-ship
+  // order feed, which runs rail-less (Pattern E) so the center reclaims the
+  // column. `isRaillessOrderFeedSurface` / `outbound-rail-dedup.guard.test.ts`.
+  const railless = useIsRaillessOrderFeed();
+  const hasPanel =
+    (useHasSidebarContext() || isStationSurfaceRoute(pathname)) && !railless;
   const stationSurface = isStationSurfaceRoute(pathname);
   // Collapse preference before resize so drag-past-min can write the same key.
   const [collapsed, setCollapsed] = useLocalStorage(

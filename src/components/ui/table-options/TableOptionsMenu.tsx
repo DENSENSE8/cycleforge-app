@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Check, MoreHorizontal, Plus, Trash2 } from '@/components/Icons';
+import { Check, MoreHorizontal, Plus, Star, Trash2 } from '@/components/Icons';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { useSavedViews } from '@/hooks/useSavedViews';
 import { useTableColumnConfig } from '@/components/ui/table-column-config/TableColumnConfig';
@@ -50,6 +50,13 @@ export interface TableOptionsMenuProps {
   /** Extra content rendered as its own "Columns" section (a column list). */
   columnsSlot?: ReactNode;
   align?: 'start' | 'end';
+  /**
+   * Trigger face. Default = the stations' quiet `⋮` "Table options". `'views'`
+   * renders a Star + "Views" label — the Zendesk-style top-chrome views control
+   * for a rail-less desk (`OutboundViewsMenu`). Same popover body either way.
+   */
+  triggerIcon?: 'options' | 'views';
+  triggerLabel?: string;
 }
 
 /** One eyebrow-labelled section inside the menu. */
@@ -245,18 +252,35 @@ export function TableOptionsMenu({
   savedViews,
   columnsSlot,
   align = 'end',
+  triggerIcon = 'options',
+  triggerLabel,
 }: TableOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const { density, setDensity } = useTableDensity();
 
+  const isViews = triggerIcon === 'views';
+  const label = triggerLabel ?? (isViews ? 'Views' : 'Table options');
+  const TriggerGlyph = isViews ? Star : MoreHorizontal;
+
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <ToolbarButton iconOnly active={open} aria-label="Table options">
-          <HoverTooltip label="Table options" focusable={false}>
-            <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
-          </HoverTooltip>
-        </ToolbarButton>
+        {isViews ? (
+          <ToolbarButton active={open} aria-label={label}>
+            <HoverTooltip label="Saved views · staff scope" focusable={false}>
+              <span className="inline-flex items-center gap-1.5">
+                <TriggerGlyph className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-role-caption font-semibold">{label}</span>
+              </span>
+            </HoverTooltip>
+          </ToolbarButton>
+        ) : (
+          <ToolbarButton iconOnly active={open} aria-label={label}>
+            <HoverTooltip label={label} focusable={false}>
+              <TriggerGlyph className="h-3.5 w-3.5 shrink-0" />
+            </HoverTooltip>
+          </ToolbarButton>
+        )}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

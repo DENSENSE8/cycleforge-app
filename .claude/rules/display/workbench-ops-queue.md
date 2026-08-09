@@ -1,8 +1,10 @@
 # Workbench branch `ops-queue` — Desk collection recipe
 
 The **tabular queue** branch of Workbench: operator browses a dense ledger, refines with
-**saved views** + lifecycle tabs, and peeks/edits via a **pushing right rail**. Default for Sales /
-Fulfillment desk queues / Inbound pointer triage / Labels unification targets.
+lifecycle tabs + a **Band-1 Views menu** (saved views + personal scope), and peeks/edits via a
+**pushing right rail**. **Rail-less by default (Pattern E)** — the left context column is not
+reserved; the table takes the width. Default for Sales / Fulfillment desk queues / Inbound
+pointer triage / Labels unification targets.
 
 **Inherits:** [`workbench.md`](workbench.md) (contract). Support conversation-first is **not** this
 branch — see [`workbench-service.md`](workbench-service.md).
@@ -12,19 +14,21 @@ branch — see [`workbench-service.md`](workbench-service.md).
 ## Composition
 
 ```text
-┌──────────────────────┬────────────────────────────────┬─────────────────────────────┐
-│ LEFT                 │ MIDDLE                         │ RIGHT                       │
-│ ContextPanelLayout   │ WorkbenchChromeHeader (band)   │ RightRailHost               │
-│ + SidebarShell       │ + primary Add / Print CTA      │ modal={false}               │
-│ SAVED VIEWS list     │ + KPI strip (in scroll body)   │ scrollable form / inspector │
-│ (useSavedViews)      │ + LedgerGridSurface            │ opened by row select OR Add │
-│ optional filter map  │   URL selection                │                             │
-└──────────────────────┴────────────────────────────────┴─────────────────────────────┘
+┌─ LEFT — rail-less (Pattern E) ─┬─ MIDDLE ───────────────────────┬─ RIGHT ─────────────────────┐
+│ NO column for the order feed.  │ WorkbenchChromeHeader (band)   │ RightRailHost               │
+│ Reclaimed width → the table.   │ + Band-1 ⭐ Views menu + Add   │ modal={false}               │
+│                                │ + KPI strip (Band 2)           │ record inspector (detail)   │
+│ (a desk that KEEPS a rail →    │ + LedgerGridSurface            │ opened by row select OR Add │
+│  recents rail OR record picker │   URL selection                │ — NOT views / scope /       │
+│  — never a saved-views fixture)│                                │   filter chrome             │
+└────────────────────────────────┴────────────────────────────────┴─────────────────────────────┘
 ```
+Left-edge law (which contract earns a column, and what it may hold):
+[`source-of-truth.md`](../source-of-truth.md) → **Left-edge occupant**.
 
 | Slot | Must | Must not |
 |---|---|---|
-| **Left** | `useSavedViews` list (compose `OutboundSavedViewsList`). Optional thin filter facets *below* views. | Recent/MRU rails, room pickers, library trees as the **primary** left map |
+| **Left** | **Rail-less by default for the To-ship order feed (Pattern E, ruled 2026-08-09).** `/shipping/orders` + `/dashboard` outbound reserve **no** left column (`isRaillessOrderFeedSurface` → `ContextPanelLayout` `hasPanel`, same collapse `/search` uses); saved views + personal scope live in the **Band-1 Views star-menu** (`OutboundViewsMenu` → `TableOptionsMenu`, composing `useSavedViews`). A desk that *does* keep a rail composes the `useSavedViews` list (`OutboundSavedViewsList`) + a thin **personal-scope** facet (My queue) below views — never more. | A left column for the To-ship order feed (the report's whole point — reclaimed table width, D10); **restating a Band-1 lifecycle tab or a Band-2 KPI facet as a Focus row** — the rail's own facets are `'rail'`-owned in `OUTBOUND_FACET_OWNER` (`outbound-sidebar-shared.ts`), everything else is a tab/KPI duplicate; a **monitor rollup or onboarding checklist** in the working rail (report P6/P10 — ROI → Band-2 KPI / Operations analytics; checklist → Home → Today); Recent/MRU rails / library trees as the **primary** left map. Guard: `outbound-rail-dedup.guard.test.ts` |
 | **Middle** | `LedgerGrid` / `LedgerGridSurface` + `GridSurfaceDescriptor` + `GridSurfaceCapabilities` + URL row selection | Hand-rolled boards / raw `<table>` as the collection map |
 | **Right** | Non-modal `RightRailHost` form/inspector | Full-pane Station column shell replacing the grid; modal-by-default detail |
 | **Top Add** | Chrome CTA opens empty/create on the **right rail** | Modal-only create when a rail form exists |
@@ -155,7 +159,7 @@ Band 3  [ 🔍 find ……………………………… ▽ refine ]           
 
 - **Flush, not islands.** Chrome uses `WORKBENCH_SHEET_CHROME` (rail-abutting — no `WORKBENCH_CHROME_COLUMN` gutters). Tab band: `WorkbenchChromeHeader density="band"` with `rounded-none border-l-0 border-t-0` (GlobalHeader owns the top seam). Triage and KPI: `border-r` / `border-b border-r` against the sheet plane — **never** `cornerClass('card')` islands floating on sunken ground.
 - **Band 1 = tabs + return-to-scan CTAs** (`WorkbenchTrailingCluster.actions`). The optional `middle` prop on `WorkbenchChromeHeader` remains available for other surfaces that need a single-line readout in the 40px face; Unbox no longer parks KPIs there. **Unbox Band-1 (2026-08-04):** Urgent|Recent|Queue|All|History — Urgent owns `?priority_only=1` on `view=scanned`; All → `TechAllTriageTable scope="unbox"` (inbound-typed triage; repair/pickup deep-link). KPI canvas for Urgent/All reuses Queue feed metrics via `unboxKpiFeedTab`.
-- **Band 2 = KPI row** — `WorkbenchKpiBand` wraps `UnboxChromeKpiCluster` → `UnboxKpiCanvas`: a **compact Usage strip** (`text-role-micro` quiet `?urange=` / stage / lane text · `KpiChartCard density="compact"` with tiny spark only — no solid TabSwitch, no Tile/Bars/Pie/Line switch, no `GaugeDonut` / high-line). Clickable `?ukpi=` still filters the table. **No LedgerGrid inside Band 2.** **Snap-collapsible** (binary open/closed): drag the bottom hairline past a threshold, or use Band 3’s **`kpiToggle`**. Persist `staff_preferences.kpiCollapsed[surface]` via `useWorkbenchKpiCollapsed` (`WORKBENCH_KPI_SURFACE.unbox`). Closed → height 0 + thin residual grab; sheet host flexes. Cohort ports compose the same SoT — never a page-local collapse twin. Guard: `workbench-kpi-collapse.guard.test.ts`. Data: `GET /api/receiving/unbox-kpi` + `unbox-metrics` series.
+- **Band 2 = KPI row** — `WorkbenchKpiBand` wraps `UnboxChromeKpiCluster` → `UnboxKpiCanvas`: a **compact Usage strip** (`text-role-micro` quiet `?urange=` / stage / lane text · `KpiChartCard density="compact"` with tiny spark only — no solid TabSwitch, no Tile/Bars/Pie/Line switch, no `GaugeDonut` / high-line). Clickable `?ukpi=` still filters the table. **No LedgerGrid inside Band 2.** **Snap-collapsible** (binary open/closed, **instant** — `hidden` ↔ visible on the same frame; never `collapseHeight` / opacity / layout tween that pushes the grid): drag the bottom hairline past a threshold, or use Band 3’s **`kpiToggle`**. Persist `staff_preferences.kpiCollapsed[surface]` via `useWorkbenchKpiCollapsed` (`WORKBENCH_KPI_SURFACE.unbox`). Closed → layout height freed + thin residual grab; sheet host flexes. Cohort ports compose the same SoT — never a page-local collapse twin. Guard: `workbench-kpi-collapse.guard.test.ts`. Data: `GET /api/receiving/unbox-kpi` + `unbox-metrics` series.
 - **Band 3 = data-table triage / command row** — compose SoT `WorkbenchTriageBand` (`PRIMARY_CHROME_ROW_FACE`, `border-r` only — **no** `border-t` / `border-b`; the sheet owns the seam below). **Left = scanner ingestion** (`search` flush to the sheet edge — never indented by a utility toggle). **Right = `kpiToggle` → `trailing` inspector, and nothing else on Unbox** (the generic band still allows pagination · display sort · controls portal). Shows on every Unbox **sheet** tab — Queue · Recent · All · History; pinned Inbound renders no band (honest absence: no search, no KPI band, no desk peek). Shared SoT slot: `WorkbenchTriageBand.kpiToggle`.
   **Refine left the right zone codebase-wide 2026-08-08** — a facet that narrows the ROWS (staff · staging · source · search field · attention · week) rides **in the find field** (`trailingSuffix`, `density="field"`), so the dominant find carries the row and refine stays adjacent to the query it refines. A control that changes how the same rows are LAID OUT stays right. Three documented residents keep the right zone because they are not a single field-density glyph: `OutboundExactFilters` (Urgent + Filters pair — Shipping / Pack / Labels queue tabs), Incoming's pagination + sort, and My Day's due-horizon chips (live counts per horizon — `trailingSuffix` is a one-glyph slot). A tab with **no find field at all** (Shipping / Pack History) keeps its staff facet on the right — there is no in-field slot to move into, and inventing a find bar to host one would be worse; those two are the `RIGHT_ZONE_FACET_RESIDENTS` allowlist. **A raw `<select>` is never a resident** — it is a second filter grammar beside `WorkbenchFilterPopover` *and* soft radius on ops chrome. Locations' room facet shipped one in `right` until 2026-08-08; it is now `WorkbenchFilterPopover density="field"` in the find field's `trailingSuffix`. **The ▦ card-corner hover-reveal float is deleted (2026-08-08)** — column display is portal-or-nothing (Band-3 controls slot or inspector View cluster); a surface with neither paints no ▦ and owes a host.
   **Honest absence states its reason.** `NO_DESK_PEEK_SURFACES` carries one line per surface saying why no peek exists, so the next agent reads the reason before calling an empty right edge a bug. **Testing (incl. the Returns queue) is the ruled case (2026-08-08):** rows claim the bench — `dispatchSelectLine` → `TestingPanel` covers this whole browse, so Band 3 leaves the screen the moment a row opens — and the one reusable peek (`HistoryCartonTriagePanel` @ `detail:history`) mounts `HistoryViewChromeBridge` + `HistoryViewTopicsCluster`, i.e. Unbox History's sheet layout chrome for a sheet Testing does not have. A Testing peek therefore means a NEW occupant + panel + topic map plus a changed selection semantic on a live floor queue: a product decision, not a wiring line. Never mount the toggle first.

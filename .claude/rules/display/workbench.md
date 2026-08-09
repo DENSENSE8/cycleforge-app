@@ -36,13 +36,15 @@ Station / Monitor / Canvas keep `workbenchBranch: null`.
 
 | Branch id | Primary map | Focus surface | Law |
 |---|---|---|---|
-| **`ops-queue`** | Saved views + dense `LedgerGrid` | Right-rail inspector (push) | [`workbench-ops-queue.md`](workbench-ops-queue.md) |
+| **`ops-queue`** | Dense `LedgerGrid` — **rail-less** (Pattern E); saved views + scope in a Band-1 Views menu | Right-rail inspector (push) | [`workbench-ops-queue.md`](workbench-ops-queue.md) |
 | **`master-detail`** | Sidebar picker (`SidebarShell` / rail) | Right pane workspace | [`workbench-master-detail.md`](workbench-master-detail.md) |
 | **`board`** | Swimlanes / cards | Board detail panel | FBA board — compose board patterns; no separate law file yet |
 | **`fact-stack`** | Optional thin list or none | Full-width record body | Single durable entity already selected |
 | **`service-workspace`** | Durable ticket/case queue — **stays mounted** | Thread + composer; context pushes right | [`workbench-service.md`](workbench-service.md) |
 
 **Detail pane / right rail = optional secondary** in table/board recipes. Do not invent a dual pane to satisfy an old template when the collection is already the job.
+
+**Left edge is earned, not default.** A pointer-driven triage queue (`ops-queue`) is **rail-less** — the table rows are the picker, so a left column would only restate the tabs / KPI / Views menu. A left rail is right only when it holds something they cannot: a scan station's **recents/resume rail**, or a `master-detail` **record picker**. Full law: [`source-of-truth.md`](../source-of-truth.md) → Left-edge occupant.
 
 **A named BRANCH is a recipe that earned a law**, not a fifth contract. `service-workspace` (Support) is the only
 branch with a dedicated entry test today. The bar to mint another: primary **data shape** must mandate a different

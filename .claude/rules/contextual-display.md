@@ -92,6 +92,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 | Driven by | scanner | pointer | stream / poll | pan / zoom / focus |
 | Job | act-and-clear | pick + edit | observe | reshape definition |
 | Selection | ephemeral | durable URL | none (filters only) | durable focus URL |
+| Left edge | **recents rail** (MRU/resume) | **rail-less** for `ops-queue` desks (views → Band-1 menu) · **record picker** for `master-detail` | none (filter band only) | none (graph is the map) |
 | What may crossfade | **active card** | **focus detail region** (pane/drawer/stack) — never the collection map | drill/detail only — never the stream | overlay repaint — never the graph |
 | Common primary surfaces | scan card | list / table / board / master–detail | timeline / KPI rollup | React Flow graph |
 | Persistence | act-and-clear | CRUD | none | draft → publish |
@@ -236,8 +237,9 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **[`display/instrument-panel.md`](display/instrument-panel.md)** — Instrument-panel sub-identity: P1–P7, procedure composition map, metaphor translation. Cross-cutting (Station + right rail), not a fifth contract.
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
 - **[`display/station-workbench.md`](display/station-workbench.md)** — **Station column shell** (Unbox-family right-pane anatomy) — not Layer A Workbench.
+- **[`display/scan-cockpit.md`](display/scan-cockpit.md)** — **Scan-station cockpit (DO / KNOW split)**: centre + dock = the one armed action; right Displays column = default-open, step-driven reference. Ratified 2026-08-09, golden lands Phase 1 (Unbox).
 - **[`display/workbench.md`](display/workbench.md)** — Workbench contract; recipe index; multi-region (list ↔ bench).
-- **[`display/workbench-ops-queue.md`](display/workbench-ops-queue.md)** — Workbench branch **`ops-queue`** (Desk): saved views \| chrome+KPI \| LedgerGrid \| right rail.
+- **[`display/workbench-ops-queue.md`](display/workbench-ops-queue.md)** — Workbench branch **`ops-queue`** (Desk): **rail-less** (Pattern E) \| chrome+KPI+Band-1 Views menu \| LedgerGrid \| right inspector.
 - **[`display/workbench-master-detail.md`](display/workbench-master-detail.md)** — Workbench recipe **`master-detail`**: SidebarShell picker \| right workspace.
 - **[`display/workbench-service.md`](display/workbench-service.md)** — Workbench branch **`service-workspace`** (Support): list \| thread + composer \| context. Conversation-first, still Workbench physics — not a 5th contract, not a Station.
 - **[`display/right-rail-inspector.md`](display/right-rail-inspector.md)** — Right details panel: icon row · dense identity · contextual actions; never intake-shell hero titles on record peeks.
