@@ -37,6 +37,7 @@ export type DeskInspectorLeaf = {
   subtitle?: string;
   tone?: DisplayIndexTone;
   group?: DisplayIndexGroup;
+  /** Glyph for the index list; falls back to a blank mark when omitted. */
   icon?: SectionTab['icon'];
   content: ReactNode;
 };
@@ -59,11 +60,15 @@ function leafToIndexRow(leaf: DeskInspectorLeaf): DisplayIndexRow {
   };
 }
 
+function BlankLeafIcon({ className }: { className?: string }) {
+  return <span className={className} aria-hidden />;
+}
+
 function leafToSectionTab(leaf: DeskInspectorLeaf): SectionTab {
   return {
     id: leaf.id,
     label: leaf.label,
-    icon: leaf.icon,
+    icon: leaf.icon ?? BlankLeafIcon,
     content: null,
   };
 }

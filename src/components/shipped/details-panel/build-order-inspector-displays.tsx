@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Desk order inspector Displays — Unbox twin via {@link buildSectionTabs} +
- * {@link SectionTabsSlider} `density="icon"`. Locked four topics (Documents gated).
+ * Desk order inspector — Root Index rows + leaf contents (Unbox grammar).
+ * Documents gated. Never SectionTabsSlider density=icon.
  */
 
 import type { ReactNode } from 'react';
@@ -12,32 +12,50 @@ import {
   MessageSquare,
   Package,
 } from '@/components/Icons';
-import { buildSectionTabs, type SectionTabDef } from '@/components/station/workbench/build-section-tabs';
-import type { SectionTab } from '@/design-system/components';
-import { orderInspectorDisplayTopics } from '@/lib/shipping/order-inspector-topics';
+import type { DeskInspectorLeaf } from '@/components/right-rail/DeskInspectorIndexShell';
+import type { DisplayIndexRow } from '@/components/station/displays/display-index';
+import {
+  orderInspectorDisplayTopics,
+  type OrderInspectorDisplayTopic,
+} from '@/lib/shipping/order-inspector-topics';
 
-export function buildOrderInspectorDisplays(input: {
+const ICON_FOR = {
+  order: Package,
+  documents: FileText,
+  timeline: History,
+  conversation: MessageSquare,
+} as const;
+
+const SUBTITLE_FOR: Record<OrderInspectorDisplayTopic, string> = {
+  order: 'Fulfillment & product',
+  documents: 'Label & packing slip',
+  timeline: 'Order & item journey',
+  conversation: 'Thread',
+};
+
+const GROUP_FOR: Record<OrderInspectorDisplayTopic, DisplayIndexRow['group']> = {
+  order: 'verification',
+  documents: 'assets',
+  timeline: 'context',
+  conversation: 'context',
+};
+
+export function buildOrderInspectorLeaves(input: {
   showDocumentsTab: boolean;
-  contents: Record<'order' | 'documents' | 'timeline' | 'conversation', ReactNode>;
-}): SectionTab[] {
+  contents: Record<OrderInspectorDisplayTopic, ReactNode>;
+}): DeskInspectorLeaf[] {
   const topics = orderInspectorDisplayTopics({
     showDocumentsTab: input.showDocumentsTab,
   });
 
-  const iconFor = {
-    order: Package,
-    documents: FileText,
-    timeline: History,
-    conversation: MessageSquare,
-  } as const;
-
-  const defs: SectionTabDef[] = topics.map((t) => ({
+  return topics.map((t) => ({
     id: t.key,
     label: t.tabLabel,
-    icon: iconFor[t.key],
+    subtitle: SUBTITLE_FOR[t.key],
+    tone: 'neutral' as const,
+    group: GROUP_FOR[t.key],
+    icon: ICON_FOR[t.key],
     content: input.contents[t.key],
-    visible: true,
   }));
-
-  return buildSectionTabs(defs);
 }
+

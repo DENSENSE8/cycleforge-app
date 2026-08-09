@@ -2,10 +2,12 @@
  * Pins desk order inspector Display-topic grammar + View rail split.
  *
  * - Locked four Displays topics (Order · Documents · Timeline · Conversation).
- * - Assign + order updates on Order tab bottom dock — never a fifth topic cell
+ * - Assign + order updates on Order leaf bottom dock — never a fifth topic cell
  *   or Assign popover.
- * - Plate ⋮ = station handoffs only.
+ * - Index ⋮ = station handoffs only.
  * - Sheet View chrome stays on `detail:orders-view`.
+ * - Unbox grammar: Root Index → leaf via DeskInspectorIndexShell (never
+ *   SectionTabsSlider density=icon on the desk inspector).
  *
  * Run: npx tsx --test src/components/shipped/order-inspector-topics.guard.test.ts
  */
@@ -27,14 +29,15 @@ function code(s: string): string {
 }
 
 describe('order inspector Display topics + View rail split', () => {
-  it('ShippedDetailsPanel uses locked four-topic Unbox plate; updates on Order dock', () => {
+  it('ShippedDetailsPanel uses DeskInspectorIndexShell; updates on Order dock', () => {
     const panel = code(read('src/components/shipped/ShippedDetailsPanel.tsx'));
-    assert.match(panel, /buildOrderInspectorDisplays/);
-    assert.match(panel, /SectionTabsSlider/);
-    assert.match(panel, /density=["']icon["']/);
+    assert.match(panel, /buildOrderInspectorLeaves/);
+    assert.match(panel, /DeskInspectorIndexShell/);
     assert.match(panel, /orderInspectorOrderUpdateActions/);
     assert.match(panel, /orderInspectorMoreItems/);
     assert.match(panel, /DeskRailChromeRow/);
+    assert.doesNotMatch(panel, /SectionTabsSlider/);
+    assert.doesNotMatch(panel, /density=["']icon["']/);
     assert.doesNotMatch(panel, /OrderAssignDisplayHost/);
     assert.doesNotMatch(panel, /RecordPaneHeader/);
     assert.doesNotMatch(panel, /WorkOrderAssignmentCard/);
@@ -42,12 +45,15 @@ describe('order inspector Display topics + View rail split', () => {
     assert.doesNotMatch(panel, /viewTopics=/);
   });
 
-  it('build-order-inspector-displays composes buildSectionTabs without Assign topic', () => {
+  it('build-order-inspector-displays builds leaves without Assign topic', () => {
     const builder = code(
       read('src/components/shipped/details-panel/build-order-inspector-displays.tsx'),
     );
-    assert.match(builder, /buildSectionTabs/);
+    assert.match(builder, /buildOrderInspectorLeaves/);
+    assert.match(builder, /DeskInspectorLeaf/);
     assert.match(builder, /orderInspectorDisplayTopics/);
+    assert.doesNotMatch(builder, /buildSectionTabs/);
+    assert.doesNotMatch(builder, /SectionTabsSlider/);
     assert.doesNotMatch(builder, /\bUser\b/);
     assert.doesNotMatch(builder, /assign/);
   });
@@ -55,9 +61,9 @@ describe('order inspector Display topics + View rail split', () => {
   it('ShippedDetailsBody mounts OrderUpdateDock on Order topic with flush delete', () => {
     const body = code(read('src/components/shipped/details-panel/ShippedDetailsBody.tsx'));
     assert.match(body, /OrderUpdateDock/);
-    assert.match(body, /orderInspectorOrderChildren/);
-    assert.match(body, /TabDisplay/);
     assert.match(body, /DISPLAYS_FLUSH_HOST/);
+    assert.doesNotMatch(body, /orderInspectorOrderChildren/);
+    assert.doesNotMatch(body, /TabDisplay/);
     assert.doesNotMatch(body, /DeleteOrderControl/);
   });
 

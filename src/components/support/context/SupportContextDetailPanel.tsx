@@ -1,13 +1,18 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 // Direct, not via the barrel this file is itself exported from — a member
 // importing its own barrel is a module cycle.
 import { SupportContextHub } from './SupportContextHub';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  DESK_INSPECTOR_INDEX,
+  DeskInspectorIndexShell,
+  type DeskInspectorLeaf,
+} from '@/components/right-rail/DeskInspectorIndexShell';
 import { PaneHeaderLabel } from '@/components/ui/pane-header';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
+import type { SectionTab } from '@/design-system/components';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
 
 export interface SupportContextDetailPanelProps {
@@ -29,9 +34,8 @@ export interface SupportContextDetailPanelProps {
   push: boolean;
   /**
    * Opt-in DISPLAYS — the right edge as a display column, one showing at a
-   * time, switched by a `density="icon"` strip (the Unbox Displays shape;
-   * `display/station-workbench.md`). `/support` passes Connections ·
-   * Conversations · Timeline · Assist.
+   * time via DeskInspectorIndexShell (Unbox index→leaf grammar).
+   * `/support` passes Connections · Conversations · Timeline · Assist.
    *
    * Omit for the historical body — linkage strip above the hub's own
    * Customer | Team | Activity pills, which is what the Unbox "Links" rail has
@@ -86,10 +90,10 @@ export function SupportContextDetailPanel({
   focusDisplay,
   focusRequestId = 0,
 }: SupportContextDetailPanelProps) {
-  // A display the caller no longer offers must not strand the rail on an empty
-  // body — `SectionTabsSlider` resolves an unknown id back to the first tab, so
-  // the empty seed is deliberate rather than a missing default.
-  const [display, setDisplay] = useState('');
+  const hasDisplays = Boolean(displays && displays.length > 0);
+  const defaultLeafId = displays?.[0]?.id ?? DESK_INSPECTOR_INDEX;
+  // Opens on the first / focused topic leaf; Back → index.
+  const [navId, setNavId] = useState(defaultLeafId);
 
   // Read on mount as well as on change, so a request made while this panel was
   // still closed is honoured the moment it opens.
@@ -97,10 +101,32 @@ export function SupportContextDetailPanel({
   useEffect(() => {
     if (!focusDisplay || focusRequestId === lastFocusRequest.current) return;
     lastFocusRequest.current = focusRequestId;
-    setDisplay(focusDisplay);
+    setNavId(focusDisplay);
   }, [focusDisplay, focusRequestId]);
+
+  // A display the caller no longer offers must not strand the rail on an empty
+  // body — fall back to the first leaf (or index when none).
+  useEffect(() => {
+    if (!hasDisplays) return;
+    if (navId === DESK_INSPECTOR_INDEX) return;
+    if (displays!.some((d) => d.id === navId)) return;
+    setNavId(displays![0]!.id);
+  }, [displays, hasDisplays, navId]);
+
+  const leaves = useMemo((): DeskInspectorLeaf[] => {
+    if (!displays?.length) return [];
+    return displays.map((tab) => ({
+      id: tab.id,
+      label: tab.label,
+      subtitle: tab.count != null ? String(tab.count) : undefined,
+      icon: tab.icon,
+      content: (
+        <div className="min-h-0 flex-1 overflow-y-auto">{tab.content}</div>
+      ),
+    }));
+  }, [displays]);
+
   const variant = embedded ? 'station' : 'workbench';
-  const hasDisplays = Boolean(displays && displays.length > 0);
 
   return (
     <DetailStackRailRegistrar
@@ -131,33 +157,21 @@ export function SupportContextDetailPanel({
           </div>
         </div>
 
-        {/* THE one scroll port of this column. The displays render into it as
-            content and own no viewport of their own — a nested `overflow-y-auto`
-            inside a host that already scrolls is how a child ends up with no
-            height at all (`ui-design-system.md` → Scroll ownership).
-
-            Display state lives HERE, above the registrar, so switching pushes a
+        {/* Display state lives HERE, above the registrar, so switching pushes a
             fresh node through `updateRightRailPanelNode` without touching the
             occupant id — the host keys its AnimatePresence on that id, so a
             re-key would replay the whole panel crossfade on every click. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {hasDisplays ? (
-            <SectionTabsSlider
-              tabs={displays!}
-              value={display}
-              onChange={setDisplay}
-              ariaLabel="Ticket inspector"
-              // The quiet switcher: idle cells are icon-only, the selected one
-              // names itself. A labelled rail in a ~420px column reads louder
-              // than the display it selects.
-              density="icon"
-              // Flush body bands own their pad; only the icon strip keeps inset.
-              // Override the slider's default space-y-4 so Assigned/Linkage read
-              // as squared hairline bands, not detached islands.
-              className="space-y-0"
-              headerClassName="px-2 pt-2 pb-1"
-            />
-          ) : (
+        {hasDisplays ? (
+          <DeskInspectorIndexShell
+            leaves={leaves}
+            activeId={navId}
+            onActiveIdChange={setNavId}
+            ariaLabel="Ticket inspector"
+            testId="support-inspector-index"
+            backLabel="Back to topics"
+          />
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <SupportContextHub
               anchor={anchor}
               variant={variant}
@@ -166,8 +180,8 @@ export function SupportContextDetailPanel({
               surface="flush"
               className="h-full"
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </DetailStackRailRegistrar>
   );

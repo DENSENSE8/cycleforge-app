@@ -2,17 +2,18 @@
 
 /**
  * Unbox History left-click triage inspector — Desk-family RightRailHost card
- * (`detail:history`, non-modal **push**). Read + Display tabs + one primary CTA;
- * full station work stays on LineEditPanel (double-click / Open in Unbox).
- * Mutually exclusive with LineEditPanel / UnboxPushColumn — opening the
+ * (`detail:history`, non-modal **push**). DeskInspectorIndexShell topics + one
+ * primary CTA; full station work stays on LineEditPanel (double-click / Open in
+ * Unbox). Mutually exclusive with LineEditPanel / UnboxPushColumn — opening the
  * workspace closes this rail.
  *
- * Header hierarchy (three fixed rows + optional View strip):
- *   1. `[→|] ………………………………… [↑ · ↓]` — navigation only
- *   2. `[Details | Logistics | Evidence | History] …… [View]` — Display tabs
- *   2b. View topics cluster when toggled (forced open in View-only shell)
+ * Header hierarchy (chrome → View → identity → index|leaf):
+ *   1. `[→|] ………………………………… [↑ · ↓]` — navigation only ({@link DeskRailChromeRow})
+ *   2. View toggle (+ View topics cluster when open; forced in View-only shell)
  *   3. status + short PO / Receiving identity + ONE primary CTA + More
- * Topic tabs live ONLY on this push inspector — never on Unbox History Band 3.
+ *   4. {@link DeskInspectorIndexShell} — Details · Logistics · Evidence · History
+ * Topics live ONLY on this push inspector — never on Unbox History Band 3.
+ * Never mounts station Displays push stack on RightRailHost.
  */
 
 import {
@@ -31,6 +32,7 @@ import {
 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import {
   DETAIL_INSPECTOR_COLLAPSE_EVENT,
   getDetailInspectorCollapsed,
@@ -41,12 +43,12 @@ import {
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
-  PaneHeaderTabs,
 } from '@/components/ui/pane-header';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
 import { ReceivingAuditPanel } from '@/components/receiving/workspace/ReceivingAuditPanel';
 import { HistoryViewTopicsCluster } from '@/components/receiving/history/HistoryViewTopicsCluster';
+import { buildHistoryInspectorLeaves } from '@/components/receiving/history/build-history-inspector-leaves';
 import {
   HistoryViewChromeBridge,
   useHistoryViewChromeOptional,
@@ -161,8 +163,8 @@ export function HistoryCartonTriagePanel({
   // Read here (inside the provider) — the rail body renders under RightRailHost.
   const viewChrome = useHistoryViewChromeOptional();
   const [opening, setOpening] = useState(false);
-  const [activeDisplayTopic, setActiveDisplayTopic] =
-    useState<HistoryInspectorDisplayTopic>('summary');
+  /** Index | leaf nav — opens on Details; Back → topics. */
+  const [navId, setNavId] = useState<string>('summary');
   const [viewTopicsOpen, setViewTopicsOpen] = useState(false);
 
   const viewOnly = target == null;
@@ -266,15 +268,6 @@ export function HistoryCartonTriagePanel({
     [viewOnly, unfound, readiness?.cta],
   );
 
-  const displayTabs = useMemo(
-    () =>
-      topicSpecs.display.map((spec) => ({
-        value: spec.key as HistoryInspectorDisplayTopic,
-        label: spec.tabLabel ?? spec.label,
-      })),
-    [topicSpecs.display],
-  );
-
   const openInUnbox = useCallback(
     async (opts?: { pairing?: boolean }) => {
       if (opening || !target) return;
@@ -354,7 +347,11 @@ export function HistoryCartonTriagePanel({
   );
 
   const selectDisplayTopic = useCallback((topic: HistoryInspectorDisplayTopic) => {
-    setActiveDisplayTopic(topic);
+    setNavId(topic);
+  }, []);
+
+  const onNavChange = useCallback((id: string) => {
+    setNavId(id);
   }, []);
 
   // Panel-scoped hotkeys — ignore when typing in inputs.
@@ -394,6 +391,12 @@ export function HistoryCartonTriagePanel({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [viewOnly, primaryAction, moreItems, runPrimary, runMoreItem, selectDisplayTopic]);
+
+  // Seed Details leaf when a carton target lands (View-only has no topics).
+  useEffect(() => {
+    if (viewOnly) return;
+    setNavId('summary');
+  }, [viewOnly, receivingId]);
 
   const qtyExpected = line?.quantity_expected ?? null;
   const qtyReceived = line?.quantity_received ?? null;
@@ -463,51 +466,28 @@ export function HistoryCartonTriagePanel({
             nextTestId="history-triage-next"
           />
 
+          {/* View cluster toggle — not primary topic nav (topics live in the shell). */}
           {!viewOnly ? (
             <div
-              className="border-t border-border-soft"
-              data-testid="history-triage-topic-tabs"
+              className="flex h-9 items-center justify-end border-t border-border-soft px-2"
+              data-testid="history-triage-view-chrome"
             >
-              {displayTabs.length > 0 ? (
-                <PaneHeaderTabs
-                  dense
-                  tabs={displayTabs}
-                  value={activeDisplayTopic}
-                  onChange={selectDisplayTopic}
-                  rightSlot={
-                    <IconButton
-                      size="xs"
-                      tone="neutral"
-                      ariaLabel={
-                        viewTopicsOpen ? 'Hide view controls' : 'Show view controls'
-                      }
-                      aria-pressed={viewTopicsOpen}
-                      icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
-                      onClick={() => setViewTopicsOpen((open) => !open)}
-                      data-testid="history-triage-view-toggle"
-                    />
-                  }
-                />
-              ) : (
-                <div className="flex h-9 items-center justify-end px-2">
-                  <IconButton
-                    size="xs"
-                    tone="neutral"
-                    ariaLabel={
-                      viewTopicsOpen ? 'Hide view controls' : 'Show view controls'
-                    }
-                    aria-pressed={viewTopicsOpen}
-                    icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
-                    onClick={() => setViewTopicsOpen((open) => !open)}
-                    data-testid="history-triage-view-toggle"
-                  />
-                </div>
-              )}
+              <IconButton
+                size="xs"
+                tone="neutral"
+                ariaLabel={
+                  viewTopicsOpen ? 'Hide view controls' : 'Show view controls'
+                }
+                aria-pressed={viewTopicsOpen}
+                icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+                onClick={() => setViewTopicsOpen((open) => !open)}
+                data-testid="history-triage-view-toggle"
+              />
             </div>
           ) : (
             <div
               className="border-t border-border-soft"
-              data-testid="history-triage-topic-tabs"
+              data-testid="history-triage-view-chrome"
               data-history-view-only-tabs=""
             />
           )}
@@ -617,101 +597,130 @@ export function HistoryCartonTriagePanel({
           )}
         </div>
 
-        {!viewOnly ? (
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">
-            {cartonQuery.isLoading && !carton ? (
+        {!viewOnly && target ? (
+          cartonQuery.isLoading && !carton ? (
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">
               <SkeletonList count={4} type="row" />
-            ) : (
-              <>
-                {activeDisplayTopic === 'summary' ? (
-                  <section className="space-y-2" data-history-topic="summary">
-                    <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                      {unfound ? 'PO linking' : 'Order summary'}
-                    </h3>
-                    {unfound ? (
-                      <div
-                        className={cn(
-                          'flex w-full items-center gap-2 rounded-lg border border-dashed border-border-strong',
-                          'bg-surface-sunken px-3 py-3 text-left text-role-caption text-text-soft',
-                        )}
-                      >
-                        <Search className="h-4 w-4 shrink-0" aria-hidden />
-                        <span>
-                          No PO linked — use Resolve Unfound on the identity row
-                        </span>
-                      </div>
-                    ) : (
-                      <OrderFactList>
-                        <OrderFactRow label="PO" value={poNumber} mono omitWhenEmpty />
-                        <OrderFactRow label="Title" value={title} omitWhenEmpty />
-                        <OrderFactRow
-                          label="Next step"
-                          value={readiness?.nextStep ?? null}
-                          omitWhenEmpty
-                        />
-                      </OrderFactList>
-                    )}
-                  </section>
-                ) : null}
-
-                {activeDisplayTopic === 'logistics' ? (
-                  <section className="space-y-2" data-history-topic="logistics">
-                    <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                      Logistics &amp; channel
-                    </h3>
-                    <OrderFactList>
-                      <OrderFactRow
-                        label="Tracking"
-                        value={
-                          tracking ? (
-                            <TrackingNumberMenuChip
-                              value={tracking}
-                              carrierHint={carton?.carrier ?? line?.carrier}
-                              dense
+            </div>
+          ) : (
+            <DeskInspectorIndexShell
+              leaves={buildHistoryInspectorLeaves({
+                topics: topicSpecs.display.map(
+                  (spec) => spec.key as HistoryInspectorDisplayTopic,
+                ),
+                contents: {
+                  summary: (
+                    <div
+                      className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
+                      data-history-topic="summary"
+                    >
+                      <section className="space-y-2">
+                        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                          {unfound ? 'PO linking' : 'Order summary'}
+                        </h3>
+                        {unfound ? (
+                          <div
+                            className={cn(
+                              'flex w-full items-center gap-2 rounded-lg border border-dashed border-border-strong',
+                              'bg-surface-sunken px-3 py-3 text-left text-role-caption text-text-soft',
+                            )}
+                          >
+                            <Search className="h-4 w-4 shrink-0" aria-hidden />
+                            <span>
+                              No PO linked — use Resolve Unfound on the identity row
+                            </span>
+                          </div>
+                        ) : (
+                          <OrderFactList>
+                            <OrderFactRow label="PO" value={poNumber} mono omitWhenEmpty />
+                            <OrderFactRow label="Title" value={title} omitWhenEmpty />
+                            <OrderFactRow
+                              label="Next step"
+                              value={readiness?.nextStep ?? null}
+                              omitWhenEmpty
                             />
-                          ) : null
-                        }
-                        omitWhenEmpty
-                      />
-                      <OrderFactRow label="Channel" value={channel} omitWhenEmpty />
-                      <OrderFactRow label="Price" value={price} omitWhenEmpty />
-                      <OrderFactRow label="Qty" value={qtyLabel} omitWhenEmpty />
-                      <OrderFactRow label="Location" value={location} omitWhenEmpty />
-                    </OrderFactList>
-                  </section>
-                ) : null}
-
-                {activeDisplayTopic === 'photos' ? (
-                  <section className="space-y-2" data-history-topic="photos">
-                    <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                      Photo evidence
-                    </h3>
-                    <ReceivingPhotosSection
-                      receivingId={String(target!.receivingId)}
-                      poRef={poNumber}
-                      readOnly
-                      hideHeader
-                      launcherTitle="Scan bench photos"
-                    />
-                  </section>
-                ) : null}
-
-                {activeDisplayTopic === 'audit' && target ? (
-                  <section className="space-y-2" data-history-topic="audit">
-                    <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                      Audit
-                    </h3>
-                    <ReceivingAuditPanel
-                      open
-                      receivingId={target.receivingId}
-                      onClose={onClose}
-                      hideHeader
-                    />
-                  </section>
-                ) : null}
-              </>
-            )}
-          </div>
+                          </OrderFactList>
+                        )}
+                      </section>
+                    </div>
+                  ),
+                  logistics: (
+                    <div
+                      className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
+                      data-history-topic="logistics"
+                    >
+                      <section className="space-y-2">
+                        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                          Logistics &amp; channel
+                        </h3>
+                        <OrderFactList>
+                          <OrderFactRow
+                            label="Tracking"
+                            value={
+                              tracking ? (
+                                <TrackingNumberMenuChip
+                                  value={tracking}
+                                  carrierHint={carton?.carrier ?? line?.carrier}
+                                  dense
+                                />
+                              ) : null
+                            }
+                            omitWhenEmpty
+                          />
+                          <OrderFactRow label="Channel" value={channel} omitWhenEmpty />
+                          <OrderFactRow label="Price" value={price} omitWhenEmpty />
+                          <OrderFactRow label="Qty" value={qtyLabel} omitWhenEmpty />
+                          <OrderFactRow label="Location" value={location} omitWhenEmpty />
+                        </OrderFactList>
+                      </section>
+                    </div>
+                  ),
+                  photos: (
+                    <div
+                      className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
+                      data-history-topic="photos"
+                    >
+                      <section className="space-y-2">
+                        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                          Photo evidence
+                        </h3>
+                        <ReceivingPhotosSection
+                          receivingId={String(target.receivingId)}
+                          poRef={poNumber}
+                          readOnly
+                          hideHeader
+                          launcherTitle="Scan bench photos"
+                        />
+                      </section>
+                    </div>
+                  ),
+                  audit: (
+                    <div
+                      className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
+                      data-history-topic="audit"
+                    >
+                      <section className="space-y-2">
+                        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                          Audit
+                        </h3>
+                        <ReceivingAuditPanel
+                          open
+                          receivingId={target.receivingId}
+                          onClose={onClose}
+                          hideHeader
+                        />
+                      </section>
+                    </div>
+                  ),
+                },
+              })}
+              activeId={navId}
+              onActiveIdChange={onNavChange}
+              ariaLabel="History topics"
+              testId="history-inspector-index"
+              backLabel="Back to topics"
+            />
+          )
         ) : null}
       </div>
     </DetailStackRailRegistrar>

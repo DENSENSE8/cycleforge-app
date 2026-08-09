@@ -138,21 +138,26 @@ describe('right-rail inspector header', () => {
     assert.match(doc, /DeskRailChromeRow/);
     assert.match(doc, /stationMoreDetailsPaneHostClass/);
     assert.match(doc, /single-card|one in-flow/i);
-    assert.match(doc, /chrome → Displays topics → flush body|chrome → context → identity/);
-  assert.match(doc, /chrome ONLY/);
-});
+    assert.match(
+      doc,
+      /DeskInspectorIndexShell|chrome → Displays topics → flush body|chrome → context → identity/,
+    );
+    assert.match(doc, /chrome ONLY/);
+    assert.match(doc, /index→leaf|index → leaf/);
+  });
 
-  it('ShippedDetailsPanel composes DeskRailChromeRow + Unbox Displays plate', () => {
+  it('ShippedDetailsPanel composes DeskRailChromeRow + Unbox index→leaf shell', () => {
     const panel = code(read('src/components/shipped/ShippedDetailsPanel.tsx'));
     assert.match(
       panel,
       /DeskRailChromeRow/,
       'chrome Row 1 must compose DeskRailChromeRow (top-left →|)',
     );
-    assert.match(panel, /SectionTabsSlider/);
-    assert.match(panel, /density=["']icon["']/);
-    assert.match(panel, /buildOrderInspectorDisplays/);
+    assert.match(panel, /DeskInspectorIndexShell/);
+    assert.match(panel, /buildOrderInspectorLeaves/);
     assert.match(panel, /orderInspectorOrderUpdateActions/);
+    assert.doesNotMatch(panel, /SectionTabsSlider/);
+    assert.doesNotMatch(panel, /density=["']icon["']/);
     assert.doesNotMatch(panel, /RecordPaneHeader/);
     assert.doesNotMatch(panel, /WorkOrderAssignmentCard/);
   });

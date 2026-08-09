@@ -16,7 +16,7 @@ export type CustomFieldEntityType = (typeof CUSTOM_FIELD_ENTITY_TYPES)[number];
  */
 export const CUSTOM_FIELD_LIVE_ENTITY_TYPES = ['RECEIVING'] as const satisfies readonly CustomFieldEntityType[];
 
-export type CustomFieldLiveEntityType = (typeof CUSTOM_FIELD_LIVE_ENTITY_TYPES)[number];
+type CustomFieldLiveEntityType = (typeof CUSTOM_FIELD_LIVE_ENTITY_TYPES)[number];
 
 export function isCustomFieldEntityLive(
   entityType: string,
