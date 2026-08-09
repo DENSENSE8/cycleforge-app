@@ -488,6 +488,40 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
 }
 
 /**
+ * Rail-less order-feed surfaces (Pattern E — no left context column).
+ *
+ * The To-ship order feed reserves **no** desktop context rail: the dedicated
+ * desk (`/shipping/orders`) and the `/dashboard` outbound domain both run
+ * toolbar-only (the Zendesk / Linear / Shopify-Admin shape). Lifecycle stages
+ * own the Band-1 tabs, attention owns the Band-2 KPI strip, and saved views +
+ * personal scope live in the Band-1 **Views** menu (`OutboundViewsMenu`) — so
+ * the left column is pure reclaimed table width, not a fourth navigation.
+ *
+ * `/dashboard` is multi-domain, so the answer is param-aware for it: inbound
+ * (recents) and sales (walk-in history) keep their pickers; only the outbound
+ * domain goes rail-less. This does NOT reintroduce the `?mode=inbound` void bug
+ * `useHasSidebarContext` retired — there the column was reserved and then painted
+ * empty; here `hasPanel` goes false and the frame collapses the column outright,
+ * exactly as `/search` already does.
+ *
+ * Frame consumer: `ContextPanelLayout` via `useIsRaillessOrderFeed`. Guard:
+ * `outbound-rail-dedup.guard.test.ts`.
+ */
+export function isRaillessOrderFeedSurface(
+  pathname: string | null,
+  isDashboardOutboundDomain: boolean,
+): boolean {
+  if (!pathname) return false;
+  if (
+    pathname === SHIPPING_ORDERS_PATH ||
+    pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`)
+  ) {
+    return true;
+  }
+  return getSidebarRouteKey(pathname) === 'dashboard' && isDashboardOutboundDomain;
+}
+
+/**
  * Route keys whose sidebar spine carries a per-route **context panel** — a
  * picker / rail that is the route's primary navigator (Products' catalog list,
  * the dashboard order feed, Inventory's tabs, …). Exactly the keys

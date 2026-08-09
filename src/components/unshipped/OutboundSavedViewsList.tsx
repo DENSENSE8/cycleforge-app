@@ -11,32 +11,13 @@
  */
 
 import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
-import {
-  PACKED_SAVED_VIEWS_KEY,
-  PACKED_VIEW_PARAMS,
-  SHIPPED_SAVED_VIEWS_KEY,
-  SHIPPED_VIEW_PARAMS,
-  UNSHIPPED_SAVED_VIEWS_KEY,
-  UNSHIPPED_VIEW_PARAMS,
-} from '@/components/unshipped/outbound-sidebar-shared';
+import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
 
 export function OutboundSavedViewsList({
   mode,
 }: {
   mode: 'unshipped' | 'packed' | 'shipped';
 }) {
-  const storageKey =
-    mode === 'unshipped'
-      ? UNSHIPPED_SAVED_VIEWS_KEY
-      : mode === 'packed'
-        ? PACKED_SAVED_VIEWS_KEY
-        : SHIPPED_SAVED_VIEWS_KEY;
-  const paramKeys =
-    mode === 'unshipped'
-      ? UNSHIPPED_VIEW_PARAMS
-      : mode === 'packed'
-        ? PACKED_VIEW_PARAMS
-        : SHIPPED_VIEW_PARAMS;
-
+  const { storageKey, paramKeys } = outboundSavedViewsConfig(mode);
   return <SavedViewsList storageKey={storageKey} paramKeys={paramKeys} />;
 }

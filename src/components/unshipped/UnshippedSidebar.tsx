@@ -4,8 +4,6 @@ import { ReactNode, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
-import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
-import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
 import { ShippedFilterDropdown } from '@/components/shipping/shipped-filter/ShippedFilterDropdown';
 import { motion } from '@/design-system/motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -111,13 +109,12 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
         <OutboundSidebarFilterMap />
       </motion.div>
 
-      {/* Ambient / teach — ROI when hasData. The first-scan onboarding hero was
-          removed from this rail: it is a large decorative card sitting above the
-          working filter map on the operator's primary outbound surface. */}
-      <motion.div variants={itemVariants} className="space-y-3 border-t border-border-hairline pt-3">
-        <ThroughputRoiCard variant="sidebar" />
-        <GettingStartedChecklist variant="sidebar" />
-      </motion.div>
+      {/* No ROI hero and no onboarding checklist here. The working triage rail is
+          Focus (personal scope) + Saved Views only — a monitor rollup pulls the
+          eye off triage (report P6) and an activation checklist is not navigation
+          (report P10). Throughput ROI already lives on the Band-2 KPI strip and
+          Operations analytics; the checklist lives on Home → Today.
+          Guard: `outbound-rail-dedup.guard.test.ts`. */}
     </SidebarShell>
   );
 

@@ -8,19 +8,15 @@
 import { useMemo, type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { AlertTriangle, Inbox, User, Clock, Check, Zap } from '@/components/Icons';
+import { AlertTriangle, User } from '@/components/Icons';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import {
-  FULFILLMENT_STATE_META,
-  fulfillmentCountsFromCombos,
-  type FulfillmentState,
-} from '@/lib/unshipped-state';
 import { cn } from '@/utils/_cn';
-import {
-  useOutboundSidebarScope,
-  type UnshippedSegmentId,
-} from '@/components/unshipped/useOutboundSidebarScope';
+import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSidebarScope';
 import { OutboundSavedViewsList } from '@/components/unshipped/OutboundSavedViewsList';
+import {
+  RAIL_OWNED_SEGMENT_IDS,
+  type RailOwnedSegmentId,
+} from '@/components/unshipped/outbound-sidebar-shared';
 import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 
 const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
@@ -31,7 +27,7 @@ const ROW_IDLE = 'hover:bg-surface-hover text-text-muted';
 const ROW_ACTIVE = NAV_ROW.selectedClass;
 
 type SegmentRow = {
-  id: UnshippedSegmentId;
+  id: RailOwnedSegmentId;
   label: string;
   count: number | null;
   icon: ComponentType<{ className?: string }>;
@@ -40,61 +36,51 @@ type SegmentRow = {
   tooltip?: string;
 };
 
+/**
+ * Label + glyph for each rail-owned facet. A total `Record<RailOwnedSegmentId>`
+ * so a new `'rail'` owner in {@link OUTBOUND_FACET_OWNER} is a compile error
+ * here until its face is declared.
+ */
+const RAIL_SEGMENT_FACE: Record<
+  RailOwnedSegmentId,
+  { label: string; icon: ComponentType<{ className?: string }> }
+> = {
+  mine: { label: 'My queue', icon: User },
+};
+
+/**
+ * The Focus rail owns ONLY personal scope (`mine`). Lifecycle stages live in the
+ * Band-1 tabs; Urgent / Out-of-stock live in the Band-2 KPI strip. Rows are built
+ * from {@link RAIL_OWNED_SEGMENT_IDS} so the rail can never restate a tab or a
+ * KPI tile — see `outbound-sidebar-shared.ts` → OUTBOUND_FACET_OWNER (report
+ * P1/P5/P8). Guard: `outbound-rail-dedup.guard.test.ts`.
+ */
 function UnshippedSegments() {
-  const { myStaffId, staffId, activeUnshippedSegment, selectUnshippedSegment } =
+  const { myStaffId, activeUnshippedSegment, selectUnshippedSegment } =
     useOutboundSidebarScope();
 
-  const scopedStaff = staffId ?? undefined;
-  const { data: scopedCounts } = useQuery(unshippedQueueCountsQuery({ staffId: scopedStaff }));
   const { data: myCounts } = useQuery({
     ...unshippedQueueCountsQuery({ staffId: myStaffId ?? undefined }),
     enabled: myStaffId != null,
   });
 
-  const lanes = useMemo(
-    () => fulfillmentCountsFromCombos(scopedCounts?.combos ?? []),
-    [scopedCounts],
+  const rows: SegmentRow[] = useMemo(
+    () =>
+      RAIL_OWNED_SEGMENT_IDS.map((id): SegmentRow => {
+        const face = RAIL_SEGMENT_FACE[id];
+        // `mine` is the only rail-owned facet today; its count is the operator's
+        // own open-queue total and it disables until they sign in as staff.
+        return {
+          id,
+          label: face.label,
+          icon: face.icon,
+          count: myStaffId != null ? (myCounts?.total ?? null) : null,
+          disabled: myStaffId == null,
+          tooltip: myStaffId == null ? 'Sign in as staff to scope your queue' : undefined,
+        };
+      }),
+    [myCounts, myStaffId],
   );
-
-  const rows: SegmentRow[] = useMemo(() => {
-    const total = scopedCounts?.total ?? null;
-    const list: SegmentRow[] = [
-      { id: 'all', label: 'All open', count: total, icon: Inbox },
-      {
-        id: 'mine',
-        label: 'My queue',
-        count: myStaffId != null ? (myCounts?.total ?? null) : null,
-        icon: User,
-        disabled: myStaffId == null,
-        tooltip: myStaffId == null ? 'Sign in as staff to scope your queue' : undefined,
-      },
-      {
-        // Wire id/param stays `attention`; the filter now means "urgent only"
-        // (orders.is_urgent). Count comes from the queue-counts `urgent` tally.
-        id: 'attention',
-        label: 'Urgent',
-        count: scopedCounts?.urgent ?? null,
-        icon: Zap,
-        toneClass: (scopedCounts?.urgent ?? 0) > 0 ? 'text-amber-700' : undefined,
-        tooltip: 'Operator-flagged urgent / expedited orders',
-      },
-    ];
-    const laneIcon: Record<FulfillmentState, ComponentType<{ className?: string }>> = {
-      BLOCKED: AlertTriangle,
-      PENDING: Clock,
-      TESTED: Check,
-    };
-    (['BLOCKED', 'PENDING', 'TESTED'] as FulfillmentState[]).forEach((lane) => {
-      list.push({
-        id: lane,
-        label: FULFILLMENT_STATE_META[lane].label,
-        count: lanes[lane],
-        icon: laneIcon[lane],
-        toneClass: lane === 'BLOCKED' && lanes[lane] > 0 ? 'text-amber-700' : undefined,
-      });
-    });
-    return list;
-  }, [scopedCounts, myCounts, myStaffId, lanes]);
 
   return (
     <section className="space-y-1.5" aria-label="Queue segments">
