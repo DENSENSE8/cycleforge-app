@@ -20,7 +20,7 @@ test.describe('Photo library · viewer context panel', () => {
 
     // grid-sm is a flat view — tiles open the shared lightbox (not a new tab).
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/photos? in view/i)).toBeVisible();
+    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
 
     const firstTile = page.getByTestId('photo-tile').first();
     if (await firstTile.count()) {
@@ -52,7 +52,7 @@ test.describe('Photo library · viewer context panel', () => {
 
   test('the panel deep link returns to a source-scoped library view', async ({ page }) => {
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/photos? in view/i)).toBeVisible();
+    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
 
     const firstTile = page.getByTestId('photo-tile').first();
     if (!(await firstTile.count())) test.skip(true, 'no photos seeded in this environment');
@@ -73,7 +73,7 @@ test.describe('Photo library · viewer context panel', () => {
       expect(href).toMatch(/\/ops\/photos\?/);
       await sourceLink.click();
       await expect(page).toHaveURL(/\/ops\/photos\?/);
-      await expect(page.getByText(/photos? in view/i)).toBeVisible();
+      await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
     }
   });
 
@@ -82,7 +82,7 @@ test.describe('Photo library · viewer context panel', () => {
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/photos? in view/i)).toBeVisible();
+    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
 
     const firstTile = page.getByTestId('photo-tile').first();
     if (!(await firstTile.count())) test.skip(true, 'no photos seeded in this environment');
@@ -117,7 +117,7 @@ test.describe('Photo library · viewer context panel', () => {
     // Small grid is a flat contact sheet now (Finder-style — no day-separator
     // bands); photo tiles render directly.
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/photos? in view/i)).toBeVisible();
+    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
     if (await page.getByTestId('photo-tile').count()) {
       await expect(page.getByTestId('photo-tile').first()).toBeVisible();
     }
@@ -126,7 +126,7 @@ test.describe('Photo library · viewer context panel', () => {
 
     // Large grid switches to the masonry layout; must render error-free.
     await page.goto('/ops/photos?view=grid-lg');
-    await expect(page.getByText(/photos? in view/i)).toBeVisible();
+    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
 
     expect(pageErrors, `Uncaught page errors: ${pageErrors.join(' | ')}`).toHaveLength(0);
   });

@@ -86,6 +86,7 @@ describe('Station Displays footer stage split', () => {
     );
 
     // TechRailSearchBar must appear only in the index-filter footer branch.
+    // Macro actionFloor sits above this close chrome — never steals Filter/`→|`.
     const footerIdx = src.indexOf('footer={');
     assert.ok(footerIdx >= 0, 'footer prop present');
     const footerSlice = src.slice(footerIdx, footerIdx + 1600);
@@ -179,12 +180,14 @@ describe('Station Displays footer stage split', () => {
     assert.match(src, /DisplaysFooterCommand/);
   });
 
-  it('Inventory golden opt-in registers leaf commands on sub-leaves', () => {
+  it('Inventory clears leaf commands — footer stays leaf-dismiss (no / Commands)', () => {
     const src = read(INVENTORY);
-    assert.match(src, /setLeafCommands/);
-    assert.match(src, /change po|change-po/);
-    assert.match(src, /save notes|save-notes/);
-    assert.match(src, /slash:\s*['"]refresh['"]/);
+    assert.match(src, /setLeafCommands\(null\)/);
+    assert.doesNotMatch(
+      src,
+      /slash:\s*['"](?:change po|refresh|mark received|save notes)['"]/,
+      'Inventory must not register / leaf-command faces',
+    );
   });
 
   it('stack hosts do not fork a page-local Displays footer filter', () => {

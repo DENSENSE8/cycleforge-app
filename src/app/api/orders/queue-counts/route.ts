@@ -5,6 +5,7 @@ import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { withAuth } from '@/lib/auth/withAuth';
+import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
 
 /**
  * GET /api/orders/queue-counts — lightweight Unshipped-queue tallies WITHOUT
@@ -37,8 +38,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       organizationId: ctx.organizationId,
       staff: staffId ?? '',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
-      // Bump when membership SQL changes so stale tallies cannot outlive the fix.
-      queueScope: 'labeled_tracked_v1',
+      // Bump when membership SQL / payload shape changes so stale tallies cannot outlive the fix.
+      queueScope: 'labeled_tracked_pack_placement_v1',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -102,6 +103,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // scoped rows, orthogonal to the PENDING/TESTED/BLOCKED lane mapping.
     const urgent = result.rows.reduce((s, r) => s + (Number(r.urgent_n) || 0), 0);
 
+    const packPlacementCounts = await countOpenPlacementsByLocation(ctx.organizationId);
+    const packPlacementPlaced = packPlacementCounts.reduce((s, r) => s + r.count, 0);
+
     const payload = {
       total,
       // Coarse `?stage` facet (has_tech_scan raw split) — safe to compute here
@@ -112,6 +116,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // Raw combos for the PENDING/TESTED/BLOCKED legend, mapped client-side via
       // deriveFulfillmentState (Decision 8).
       combos,
+      /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
+      packPlacement: {
+        counts: packPlacementCounts,
+        totalPlaced: packPlacementPlaced,
+      },
     };
 
     await setCachedJson('api:orders-queue-counts', cacheLookup, payload, 60, ['orders']);
@@ -129,6 +138,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         byStage: { all: 0, tested: 0, pending: 0 },
         urgent: 0,
         combos: [],
+        packPlacement: { counts: [], totalPlaced: 0 },
         degraded: true,
         error: 'queue_counts_unavailable',
       },

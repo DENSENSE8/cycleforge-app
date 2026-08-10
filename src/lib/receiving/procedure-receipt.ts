@@ -19,10 +19,10 @@
  * derive independently is the day an operator is told two different things
  * about the same box.
  *
- * The commit steps (print · receive) are the receipt's own addition: they are
- * declared `phase: 'commit'` and the bench deliberately never renders them
- * (the terminal dock owns them), but a closed-carton receipt is incomplete
- * without the two acts that closed it.
+ * The commit steps (print · stage · receive) are the receipt's own addition:
+ * they are declared `phase: 'commit'`. Print · Receive live on the dogfood
+ * strip; `stage` arms Band 1 after print. A closed-carton receipt is incomplete
+ * without the acts that closed it.
  *
  * ## `at` is the SERVER instant, never the device's
  *
@@ -88,6 +88,8 @@ interface ProcedureReceiptInput {
   evidence: Record<string, StepEvidence>;
   /** `receiving_line_testing.label_printed_at`, folded across the carton's lines. */
   labelPrintedAt: string | null;
+  /** `receiving_line_putaway.staged_at`, folded across the carton's lines. */
+  stagedAt?: string | null;
   /** `receiving_carton.received_at` — also the receipt's `closedAt`. */
   receivedAt: string | null;
 }
@@ -152,11 +154,12 @@ export function buildProcedureReceipt(input: ProcedureReceiptInput): ProcedureRe
     attach(step.key, step.label, step.state, input.evidence, step.at),
   );
 
-  // Commit — the receipt's own two steps, in declaration order. `print` is done
-  // when the label was printed; `receive` when the carton was received. Neither
-  // has a bench gate to reuse, because the bench does not render them.
+  // Commit — the receipt's own steps, in declaration order. `print` when the
+  // label was printed; `stage` when a putaway location was scanned; `receive`
+  // when the carton was received.
   const commitDone: Record<string, string | null> = {
     print: input.labelPrintedAt,
+    stage: input.stagedAt ?? null,
     receive: input.receivedAt,
   };
   const commit = resolveProcedureSteps(unbox, input.gates.vocabulary, 'commit');

@@ -20,6 +20,7 @@ import {
   receivingStageFromPhotoType,
   receivingUploadStage,
   remapReceivingPhotoTypeOnMove,
+  remapReceivingPhotoTypeOnStageClaim,
   validateReceivingPhotoWrite,
 } from '@/lib/receiving/photo-intent';
 
@@ -278,6 +279,63 @@ describe('remapReceivingPhotoTypeOnMove', () => {
         photoType: RECEIVING_PHOTO_PACKAGE,
       }),
       null,
+    );
+  });
+});
+
+describe('remapReceivingPhotoTypeOnStageClaim', () => {
+  it('promotes unbox_carton → arrival_package to receiving_package', () => {
+    assert.equal(
+      remapReceivingPhotoTypeOnStageClaim({
+        fromStage: 'unbox_carton',
+        toStage: 'arrival_package',
+      }),
+      RECEIVING_PHOTO_PACKAGE,
+    );
+  });
+
+  it('same-stage arrival_package is a type no-op (null)', () => {
+    assert.equal(
+      remapReceivingPhotoTypeOnStageClaim({
+        fromStage: 'arrival_package',
+        toStage: 'arrival_package',
+      }),
+      null,
+    );
+  });
+
+  it('refuses unclassifiable / item / reverse / unsupported targets', () => {
+    assert.throws(
+      () =>
+        remapReceivingPhotoTypeOnStageClaim({
+          fromStage: null,
+          toStage: 'arrival_package',
+        }),
+      (err: unknown) => err instanceof ReceivingPhotoWriteError,
+    );
+    assert.throws(
+      () =>
+        remapReceivingPhotoTypeOnStageClaim({
+          fromStage: 'unbox_item',
+          toStage: 'arrival_package',
+        }),
+      (err: unknown) => err instanceof ReceivingPhotoWriteError,
+    );
+    assert.throws(
+      () =>
+        remapReceivingPhotoTypeOnStageClaim({
+          fromStage: 'unbox_carton',
+          toStage: 'unbox_item',
+        }),
+      (err: unknown) => err instanceof ReceivingPhotoWriteError,
+    );
+    assert.throws(
+      () =>
+        remapReceivingPhotoTypeOnStageClaim({
+          fromStage: 'arrival_package',
+          toStage: 'unbox_carton',
+        }),
+      (err: unknown) => err instanceof ReceivingPhotoWriteError,
     );
   });
 });

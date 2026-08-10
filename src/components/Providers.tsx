@@ -7,6 +7,8 @@ import { ConfirmDialogHost } from '@/design-system/components/confirm';
 import { SiteTooltipProvider } from '@/components/providers/SiteTooltipProvider';
 import { StepUpProvider } from '@/components/providers/StepUpProvider';
 import { UIModeProvider } from '@/design-system/providers/UIModeProvider';
+import { NavRegionPickHud } from '@/lib/keyboard/nav-keys/NavRegionPickHud';
+import { KeyboardShortcutsCheatSheet } from '@/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(() => new QueryClient({
@@ -32,6 +34,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                     </StepUpProvider>
                 </SiteTooltipProvider>
             </UIModeProvider>
+            <NavRegionPickHud />
+            <KeyboardShortcutsCheatSheet />
             <AppToaster />
             <ConfirmDialogHost />
         </QueryClientProvider>

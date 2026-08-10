@@ -38,7 +38,6 @@ describe('Station Action dossier SoT', () => {
     const index = read(INDEX);
     assert.match(index, /StationDenseFactStrip/);
     assert.match(index, /StationActionDossierShell/);
-    assert.match(index, /StationActionKeyLegend/);
     assert.match(index, /useStationActionKeyBindings/);
   });
 
@@ -74,18 +73,26 @@ describe('Station Action dossier SoT', () => {
     assert.doesNotMatch(src, /e\.key === ['"]Escape['"]/);
   });
 
-  it('key legend skips editables and does not bind Escape', () => {
+  it('Action key bindings skip editables and do not bind Escape', () => {
     const src = read(LEGEND);
-    assert.match(src, /isEditable/);
-    assert.match(src, /FlushTerminalFooter/);
+    assert.match(src, /useStationActionKeyBindings/);
+    assert.match(src, /isEditableKeyTarget/);
+    assert.doesNotMatch(src, /FlushTerminalFooter/);
     assert.doesNotMatch(src, /code:\s*['"]Escape['"]/);
     assert.doesNotMatch(src, /InspectorActionFloor/);
   });
 
   it('push stack restores focus into Action dossier on leaf open', () => {
     const stack = read(STACK);
+    const stage = read(
+      'src/components/station/displays/DisplaysIndexLeafStage.tsx',
+    );
     assert.match(stack, /data-station-action-dossier/);
-    assert.match(stack, /data-station-displays-leaf-body/);
+    assert.match(
+      stage,
+      /data-station-displays-leaf-body/,
+      'leaf body attr lives on the shared DisplaysIndexLeafStage waist',
+    );
     assert.match(stack, /button\[tabindex="0"\]/);
     assert.match(stack, /requestAnimationFrame/);
   });
@@ -93,12 +100,12 @@ describe('Station Action dossier SoT', () => {
   it('Unbox Inventory composes Action primitives; never desk Macro floor', () => {
     const host = read(HOST);
     const header = read(PO_HEADER);
-    // Instrument panel: edge-to-edge info header + DenseCompose edit bands +
-    // FlushTerminalFooter floor. Keyboard bindings stay Action-plane SoT.
+    // Instrument panel: edge-to-edge info header + DenseCompose edit bands.
+    // Silent Action keys (F5 / ⌘S) — no KeyLegend floor / leaf-command chrome.
     assert.match(host, /data-inventory-instrument/);
     assert.match(host, /data-station-action-dossier/);
     assert.match(host, /data-claim-chrome="display"/);
-    assert.match(host, /StationActionKeyLegend/);
+    assert.doesNotMatch(host, /StationActionKeyLegend/);
     assert.match(host, /useStationActionKeyBindings/);
     assert.match(host, /DenseComposeBodyBand/);
     assert.match(host, /variant="instrument"/);
@@ -167,8 +174,13 @@ describe('Station Action dossier SoT', () => {
     );
     assert.match(
       host,
-      /subLeaf !== 'info'/,
-      'Floor / Action legend must exclude Information',
+      /showSave = subLeaf === 'notes'|subLeaf === 'notes' && hasPoNote/,
+      'Save is PO-notes only — Information stays facts (Refresh is Macro-floor icon)',
+    );
+    assert.doesNotMatch(
+      host,
+      /StationActionKeyLegend/,
+      'No painted KeyLegend floor under Information',
     );
     assert.match(
       header,

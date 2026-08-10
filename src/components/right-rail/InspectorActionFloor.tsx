@@ -1,59 +1,79 @@
 'use client';
 
 /**
- * Workbench inspector action floor — Macro column floor for desk triage
- * RightRailHost record peeks.
+ * Workbench inspector action floor — the ONE icons-first Macro floor for desk
+ * triage RightRailHost record peeks (History · Orders · Incoming · Unfound ·
+ * Bin · SKU · Repair).
  *
- * Composes `FlushTerminalFooter` (Claim shell). Optional `above` (expand
- * panels / notes), leading context, labelled `actions` cluster, and flush
- * trailing Delete (`InspectorFlushDelete`). Returns null when empty — never
- * mount an empty bar. Not for Station Displays / station docks.
+ * Shape (never a grid of labelled buttons): a single equal-column icon row —
+ * `⋯` overflow leading · icon verbs · flush trailing Delete far-right — with an
+ * optional `above` expand (assign / notes composer / error / teaching text).
+ * Park / close chrome stays on the top `DeskRailChromeRow`, never in this floor.
  *
+ * Compose the shared peers so every panel's row is identical by construction:
+ *   <InspectorActionFloor above={…}>
+ *     <FloorOverflowButton items={…} data-testid="…" />
+ *     <FloorIconButton icon={<Printer/>} label="Print" onClick={…} data-testid="…" />
+ *     <InspectorFlushDelete … className={FLOOR_DELETE_PEER_CLASS} data-testid="…" />
+ *   </InspectorActionFloor>
+ *
+ * Under the hood this is `IconActionFloor surface="canvas"` (spread). The intake
+ * overlays (Import CSV / Add inbound) are a DIFFERENT job — a labelled commit
+ * CTA — and compose `FlushTerminalFooter` directly, not this floor.
+ *
+ * Not for Station Displays / station docks (that shell is
+ * `StationDisplaysActionFloor` — the station half of the same display method).
  * Law: `.claude/rules/display/right-rail-inspector.md` · SoT Macro CTA.
  */
 
-import type { ReactNode } from 'react';
-import { FlushTerminalFooter } from '@/design-system/primitives';
+import type { MouseEvent, ReactNode } from 'react';
+import { Loader2, MoreHorizontal } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
+import {
+  ICON_ACTION_FLOOR_CELL_ACTIVE_CLASS,
+  ICON_ACTION_FLOOR_CELL_CLASS,
+  IconActionFloor,
+} from '@/design-system/primitives/IconActionFloor';
+import { FLUSH_TERMINAL_SPREAD_PEER_CLASS } from '@/design-system/primitives/FlushTerminalFooter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives/DropdownMenu';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+
+/** Fill-width Macro spread peer face (hit target IS the column). */
+const FLOOR_CELL = cn(
+  cornerClass('flush'),
+  FLUSH_TERMINAL_SPREAD_PEER_CLASS,
+  ICON_ACTION_FLOOR_CELL_CLASS,
+);
+
+/** Class every trailing `<InspectorFlushDelete />` peer must carry (no left rule). */
+export const FLOOR_DELETE_PEER_CLASS = cn(FLUSH_TERMINAL_SPREAD_PEER_CLASS, 'border-l-0');
 
 export function InspectorActionFloor({
   above,
-  leading,
-  actions,
-  delete: deleteSlot,
+  children,
   className,
   'data-testid': testId = 'inspector-action-floor',
 }: {
-  /** Expand hosts / notes composer seated above the Macro bar. */
+  /** Expand host / notes composer / error / teaching text seated above the bar. */
   above?: ReactNode;
-  /** Left-side context (Copy, backup note, selection count). */
-  leading?: ReactNode;
-  /** Labelled update / resolve CTA cluster (flex-1 when present). */
-  actions?: ReactNode;
-  /** Flush trailing Delete — usually `<InspectorFlushDelete />`. */
-  delete?: ReactNode;
+  /**
+   * Equal fill-width icon peers — `<FloorOverflowButton>` (leading) ·
+   * `<FloorIconButton>` verbs · trailing `<InspectorFlushDelete>`.
+   */
+  children?: ReactNode;
   className?: string;
   'data-testid'?: string;
 }) {
-  const hasBar = leading != null || actions != null || deleteSlot != null;
-  if (above == null && !hasBar) return null;
-
-  const barLeading =
-    actions != null ? (
-      <div className="flex min-w-0 flex-1 items-stretch">
-        {leading != null ? (
-          <div className="flex shrink-0 items-stretch">{leading}</div>
-        ) : null}
-        <div
-          className="flex min-w-0 flex-1 items-stretch divide-x divide-border-hairline overflow-x-auto no-scrollbar"
-          data-testid={`${testId}-actions`}
-        >
-          {actions}
-        </div>
-      </div>
-    ) : leading != null ? (
-      leading
-    ) : undefined;
+  const hasRow = children != null;
+  if (above == null && !hasRow) return null;
 
   return (
     <div className={cn('shrink-0', className)} data-testid={testId}>
@@ -62,15 +82,144 @@ export function InspectorActionFloor({
           {above}
         </div>
       ) : null}
-      {hasBar ? (
-        <FlushTerminalFooter
-          layout="cluster"
-          leading={barLeading}
-          data-testid={`${testId}-bar`}
-        >
-          {deleteSlot}
-        </FlushTerminalFooter>
+      {hasRow ? (
+        <IconActionFloor surface="canvas" data-testid={`${testId}-bar`}>
+          {children}
+        </IconActionFloor>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * One icon verb in the floor — the shared peer every desk panel composes so the
+ * row is identical across rails. Renders an `IconButton size="fill"` (or an
+ * `<a>` peer when `href` is set — external listing link). The glyph auto-sizes
+ * to the floor rung (the spread layout forces svgs to `h-5 w-5`); `busy` swaps
+ * to a spinner; `selected` lights the bottom underline.
+ */
+export function FloorIconButton({
+  icon,
+  label,
+  onClick,
+  disabled = false,
+  busy = false,
+  selected = false,
+  href,
+  hrefTarget,
+  hrefRel,
+  'data-testid': testId,
+}: {
+  icon: ReactNode;
+  /** HoverTooltip + aria-label. */
+  label: string;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  busy?: boolean;
+  selected?: boolean;
+  /** External link peer — renders an `<a>` instead of a button. */
+  href?: string;
+  hrefTarget?: string;
+  hrefRel?: string;
+  'data-testid'?: string;
+}) {
+  const glyph = busy ? <Loader2 className="animate-spin" /> : icon;
+  const cellClass = cn(FLOOR_CELL, selected && ICON_ACTION_FLOOR_CELL_ACTIVE_CLASS);
+
+  if (href) {
+    return (
+      <HoverTooltip asChild label={label}>
+        {/* ds-raw-anchor — external link styled as a fill peer (not a button). */}
+        <a
+          href={href}
+          target={hrefTarget}
+          rel={hrefRel}
+          aria-label={label}
+          data-testid={testId}
+          className={cn(
+            'ds-raw-anchor inline-flex items-center justify-center',
+            focusRing('control', 'accent'),
+            cellClass,
+          )}
+        >
+          {glyph}
+        </a>
+      </HoverTooltip>
+    );
+  }
+
+  return (
+    <HoverTooltip asChild label={label}>
+      <IconButton
+        type="button"
+        size="fill"
+        tone="neutral"
+        icon={glyph}
+        onClick={onClick}
+        disabled={disabled || busy}
+        ariaLabel={label}
+        aria-pressed={selected || undefined}
+        className={cellClass}
+        data-testid={testId}
+      />
+    </HoverTooltip>
+  );
+}
+
+type FloorOverflowItem = {
+  key: string;
+  label: string;
+  shortcut?: string;
+  onSelect: () => void;
+  disabled?: boolean;
+};
+
+/**
+ * The `⋯` overflow peer — leads the row, holds secondary verbs (never a verb
+ * that already has its own icon). Disabled when empty; never hidden, so the row
+ * geometry stays stable across record states.
+ */
+export function FloorOverflowButton({
+  items,
+  label = 'More actions',
+  'data-testid': testId = 'inspector-floor-more',
+}: {
+  items: readonly FloorOverflowItem[];
+  label?: string;
+  'data-testid'?: string;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <IconButton
+          type="button"
+          size="fill"
+          tone="neutral"
+          icon={<MoreHorizontal />}
+          disabled={items.length === 0}
+          ariaLabel={label}
+          title={label}
+          className={FLOOR_CELL}
+          data-testid={testId}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {items.map((item) => (
+          <DropdownMenuItem
+            key={item.key}
+            disabled={item.disabled}
+            onSelect={item.onSelect}
+            className="justify-between gap-4"
+          >
+            <span>{item.label}</span>
+            {item.shortcut ? (
+              <kbd className="font-mono text-role-micro text-text-faint">
+                ⌥{item.shortcut}
+              </kbd>
+            ) : null}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

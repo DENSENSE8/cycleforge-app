@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * Repair workbench-chrome CTAs — Add (green), twin of
- * {@link OutboundOrderChromeActions} / {@link IncomingChromeActions} without Import.
+ * Repair workbench-chrome CTA — Add, as the Band-1 cube every scan station's
+ * chrome row uses ({@link WORKBENCH_CHROME_CUBE_CLASS}). Twin of
+ * {@link OutboundOrderChromeActions} / {@link IncomingChromeActions} without
+ * Import. Repair hosts no workbench strip, so there is no resume CTA beside it.
  */
 
 import { Plus } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
+import {
+  WorkbenchChromeCubeButton,
+  WORKBENCH_CHROME_CUBE_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-chrome-cube';
 
 export function RepairChromeActions({
   onAdd,
@@ -18,18 +21,12 @@ export function RepairChromeActions({
   disabled?: boolean;
 }) {
   return (
-    <Button
-      size="sm"
+    <WorkbenchChromeCubeButton
+      label="New repair order"
+      icon={<Plus className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />}
       onClick={onAdd}
       disabled={disabled}
-      ariaLabel="New repair order"
-      icon={<Plus />}
-      className={cn(
-        WORKBENCH_CHROME_PILL_CLASS,
-        'font-semibold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
-      )}
-    >
-      Add
-    </Button>
+      data-testid="repair-chrome-add"
+    />
   );
 }

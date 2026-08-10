@@ -28,6 +28,7 @@ const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel
 const SLIDER = 'src/design-system/components/SectionTabsSlider.tsx';
 const UNBOX_TABS = 'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx';
 const DISPLAYS = 'src/components/station/displays/StationDisplaysPushStack.tsx';
+const DISPLAYS_STAGE = 'src/components/station/displays/DisplaysIndexLeafStage.tsx';
 const TICKET = 'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx';
 const PHOTOS = 'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx';
 const CLAIM = 'src/components/receiving/workspace/ReceivingClaimPanel.tsx';
@@ -73,20 +74,26 @@ describe('Unbox Displays claim fill + pinned footer', () => {
 
   it('Unbox Displays drill-down leaf fills height and drops outer-column scroll', () => {
     const displays = read(DISPLAYS);
+    const stage = read(DISPLAYS_STAGE);
     assert.match(
-      displays,
+      stage,
       /StationDisplayIndexList|station-displays-index/,
       'Displays push uses Root Index drill-down (not a permanent icon plate)',
     );
     assert.match(
-      displays,
-      /flex h-full min-h-0 flex-col/,
+      stage,
+      /flex h-full min-h-0 flex-col|flex min-h-0 flex-1 flex-col/,
       'leaf host fills column height for pinned Ticket/Claim footers',
     );
     assert.match(
-      displays,
+      stage,
       /DISPLAYS_FLUSH_HOST/,
       'outer column uses flush host (overflow-hidden lives on the SoT token)',
+    );
+    assert.match(
+      displays,
+      /DisplaysIndexLeafStage/,
+      'PushStack composes the shared index→leaf stage waist',
     );
     assert.doesNotMatch(
       displays,
@@ -102,14 +109,14 @@ describe('Unbox Displays claim fill + pinned footer', () => {
 
   it('Ticket → Claim fills remaining height on flush Displays host', () => {
     const ticket = read(TICKET);
-    const displays = read(DISPLAYS);
+    const stage = read(DISPLAYS_STAGE);
     assert.match(
       ticket,
       /flex h-full min-h-0 flex-col/,
       'ticket topic fills the active tabpanel',
     );
     assert.match(
-      displays,
+      stage,
       /DISPLAYS_FLUSH_HOST/,
       'Displays body host is the flush SoT (px-0 — no -mx-4 cancel dance)',
     );
@@ -124,7 +131,7 @@ describe('Unbox Displays claim fill + pinned footer', () => {
       'no bottom negative-margin hack — Displays must not pad the column bottom',
     );
     assert.doesNotMatch(
-      displays,
+      stage,
       /\bpb-\d+\b/,
       'Displays host must not add pb-* under pinned claim/chat footers',
     );

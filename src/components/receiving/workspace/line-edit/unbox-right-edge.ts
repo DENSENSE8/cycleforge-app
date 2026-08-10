@@ -77,6 +77,10 @@ export function clearUnboxPeerRightEdgeSurfaces(): void {
 /**
  * AI dock just opened (false→true) — yield every Unbox station right-edge surface.
  *
+ * Unbox twin of {@link useYieldStationDisplaysOnAssistantOpen}: clears URL peer
+ * params (Displays + nested) in one write. Sibling stations use the hook with a
+ * React-state `closeDisplays` only — mechanisms stay forked (C2).
+ *
  * **One URL write:** pass `clearAllUrl` that runs {@link clearAllUnboxRightEdgeParams}
  * once. `clearDisplay` is a no-op alias for callers that still pass both.
  */

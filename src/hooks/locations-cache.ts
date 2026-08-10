@@ -19,6 +19,8 @@ export interface LocationRecord {
   parent_id: number | null;
   /** Zone letter A-Z for parent room rows only. */
   zone_letter: string | null;
+  /** Typed hierarchy — ROOM / DESK / STAGING / BIN / … (2026-08-09). */
+  location_kind?: string | null;
 }
 
 /** Room → { rows: { [row]: cols[] } } structure for cascading pickers. */

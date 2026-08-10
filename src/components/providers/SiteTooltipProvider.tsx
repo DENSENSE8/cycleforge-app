@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * Site-wide copy-chip hover bubble (full id + copy / external-link mark).
+ *
+ * Ops law: paint **immediately** on hover — no enter fade, no layout tween,
+ * no content slide. Warehouse staff scan dense LedgerGrid columns; a 150–220ms
+ * animation stack reads as "the tip is slow to load." Placement still waits one
+ * measure frame (hidden until clamped) — that is geometry, not decoration.
+ *
+ * Close stays lightly delayed ({@link CLOSE_DELAY_MS}) so crossing chip→menu
+ * gaps does not flicker the tip off.
+ */
+
 import React, {
   createContext,
   useCallback,
@@ -11,14 +23,14 @@ import React, {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from '@/design-system/motion';
 import { Check, Copy, ExternalLink } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
 import {
   clampPortalTooltipPosition,
   isTrustedPortalAnchor,
   PORTAL_TOOLTIP_MARGIN,
 } from '@/lib/ui/portal-anchor';
-
+import { cn } from '@/utils/_cn';
 const CLOSE_DELAY_MS = 100;
 const CARET_PAD = 10;
 const MAX_PLACEMENT_RETRIES = 8;
@@ -61,7 +73,6 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeAnchorIdRef = useRef<string | null>(null);
   const placementRetryRef = useRef(0);
-  const isAnimatingRef = useRef(false);
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimerRef.current != null) {
@@ -203,7 +214,8 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
     };
   }, [open, updateTooltipPosition]);
 
-  // Position on session change
+  // Position on session change — layout effect so the tip can paint the same
+  // frame the bubble mounts (no decorative enter delay after measure).
   useLayoutEffect(() => {
     if (!open) return;
     updateTooltipPosition();
@@ -211,24 +223,14 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
     return () => window.cancelAnimationFrame(id);
   }, [open, session, updateTooltipPosition]);
 
-  // Reposition when tooltip resizes (skip during layout animation)
+  // Reposition when tooltip resizes (value / copied-icon swap).
   useEffect(() => {
     if (!open || !tooltipRef.current) return;
     const el = tooltipRef.current;
-    const ro = new ResizeObserver(() => {
-      if (!isAnimatingRef.current) updateTooltipPosition();
-    });
+    const ro = new ResizeObserver(() => updateTooltipPosition());
     ro.observe(el);
     return () => ro.disconnect();
   }, [open, updateTooltipPosition]);
-
-  const handleLayoutAnimStart = useCallback(() => {
-    isAnimatingRef.current = true;
-  }, []);
-
-  const handleLayoutAnimComplete = useCallback(() => {
-    isAnimatingRef.current = false;
-  }, []);
 
   const api = useMemo(
     () => ({
@@ -254,52 +256,36 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
                 position: 'fixed',
                 top: tooltipPosition?.top ?? -9999,
                 left: tooltipPosition?.left ?? -9999,
+                // Instant paint once clamped — no opacity fade (ops density).
                 visibility: placementReady ? 'visible' : 'hidden',
-                opacity: placementReady ? 1 : 0,
-                transition: 'opacity 0.15s ease-out',
               }}
               className="pointer-events-none z-tooltip"
             >
-              {/* Shell — layout-animated width via Framer Motion */}
-              <motion.div
-                layout
-                onLayoutAnimationStart={handleLayoutAnimStart}
-                onLayoutAnimationComplete={handleLayoutAnimComplete}
-                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                style={{ overflow: 'hidden' }}
+              <div
                 // Match HoverTooltip chrome height: py-1 + items-center +
                 // leading-none so carrier/platform id bubbles read as one line.
-                className="flex max-w-[min(90vw,24rem)] items-center gap-1.5 rounded-md bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-none text-white shadow-md"
+                // Flush-square — ops density; floating is not a soft-radius escape.
+                className={cn(
+                  'relative flex max-w-[min(90vw,24rem)] items-center gap-1.5 bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-none text-white shadow-md',
+                  cornerClass('flush'),
+                )}
               >
-                <AnimatePresence mode="popLayout">
-                  <motion.div
-                    key={session.anchorId}
-                    initial={{ opacity: 0, y: 3 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -3 }}
-                    transition={{ duration: 0.12 }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <span className="font-mono whitespace-nowrap leading-none">
-                      {session.value}
-                    </span>
-                    {session.action === 'external-link' ? (
-                      <ExternalLink className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-                    ) : session.copied ? (
-                      <Check className="h-3 w-3 shrink-0 text-emerald-400" />
-                    ) : (
-                      <Copy className="h-3 w-3 shrink-0 text-text-soft" />
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </motion.div>
-              {/* Caret — layout-animated position to stay in sync with shell */}
-              <motion.span
-                layout="position"
-                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                className="absolute border-x-4 border-b-0 border-t-4 border-x-transparent border-t-surface-inverse"
-                style={{ left: caretOffsetX, transform: 'translateX(-50%)' }}
-              />
+                <span className="font-mono whitespace-nowrap leading-none">
+                  {session.value}
+                </span>
+                {session.action === 'external-link' ? (
+                  <ExternalLink className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+                ) : session.copied ? (
+                  <Check className="h-3 w-3 shrink-0 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3 w-3 shrink-0 text-text-soft" />
+                )}
+                {/* Caret — static under the shell; offset updates with clamp. */}
+                <span
+                  className="absolute top-full border-x-4 border-b-0 border-t-4 border-x-transparent border-t-surface-inverse"
+                  style={{ left: caretOffsetX, transform: 'translateX(-50%)' }}
+                />
+              </div>
             </div>
           ) : null,
           document.body

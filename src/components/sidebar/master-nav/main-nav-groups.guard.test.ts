@@ -584,6 +584,14 @@ test('SidebarNavList: top pins are band icons, not rows; footer filter above Set
   assert.match(SPINE_TOP_PINS, /kind === ['"]top['"]/);
   assert.match(SPINE_TOP_PINS, /export function TopDestinationPins/);
   assert.match(SPINE_TOP_PINS, /export function SpineTopPins/);
+  // Band cells equal-fill (`SPINE_TOP_PIN_WRAP` / flex-1) so hover washes abut —
+  // never justify-between air between fixed HEADER_ICON_WRAP (w-8) islands.
+  assert.match(SPINE_TOP_PINS, /SPINE_TOP_PIN_WRAP/);
+  assert.doesNotMatch(
+    SPINE_TOP_PINS,
+    /layout === ['"]band['"][\s\S]{0,80}justify-between/,
+    'spine top band must not justify-between (leaves hover gaps)',
+  );
   // ONE resident home while the spine is open: the band inside MasterNavView.
   // Collapsed cold-load reachability is a gated peek on the toggle
   // (`SidebarCollapseControl` + `TopDestinationPins layout="cluster"`) — never

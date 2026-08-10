@@ -8,7 +8,7 @@ import { AnimateNumber } from '@/design-system/motion/plus';
 
 type AnimateNumberFormat = NonNullable<ComponentProps<typeof AnimateNumber>['format']>;
 
-export type AnimatedStatProps = {
+type AnimatedStatProps = {
   /** Numeric value to display. Non-finite values render as `—`. */
   value: number;
   className?: string;

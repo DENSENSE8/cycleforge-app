@@ -2,15 +2,15 @@
  * Scan-focus hotkey — a tiny framework-agnostic store shared by EVERY
  * StationScanBar across the app.
  *
- * Three responsibilities:
- *   1. Hold the current binding (Insert / ScrollLock / F1–F12, default "Insert").
- *      Hydrated synchronously from localStorage so the gear shows the right key
- *      with no flash; the server (staff_preferences) is the durable cross-device
- *      SoT, reconciled in the background by <ScanHotkeySync/>.
- *   2. Keep a stack of mounted scan-bar focus targets. The global key focuses
- *      the most-recently-mounted one (the page's active scan bar).
- *   3. Install ONE global keydown listener (lazily, on first subscribe) that
- *      fires the binding — independent of which page or component is mounted.
+ * Responsibilities:
+ *   1. Hold the current focus binding (Insert / ScrollLock / F1–F12, default
+ *      "Insert"). Hydrated from localStorage; durable SoT is staff_preferences.
+ *   2. Keep a stack of mounted scan-bar targets. Most-recently-registered wins.
+ *   3. ONE global keydown listener:
+ *        - bare Insert/F* → focus + select (reclaim mid-carton)
+ *        - ⌘. / Ctrl+. → **arm next scan** (clear value + focus + select)
+ *          — the station ingestion bar for the next carton, not the Unbox dock
+ *          wedge (`receiving-focus-scan` / `⌘; m → s` owns that locus).
  *
  * Pure module, no React imports — consumed via useScanHotkey / useRegisterScanTarget.
  */
@@ -35,7 +35,18 @@ function readStored(): string {
 
 let hotkey = readStored();
 const listeners = new Set<() => void>();
-const targets: Array<() => void> = [];
+
+type ScanBarTarget = {
+  /** Focus + select — reclaim without clearing typed text. */
+  focus: () => void;
+  /**
+   * Clear the bar value, then focus + select — arm for the next carton scan.
+   * Sidebar ingestion only; dock wedge fields never register here.
+   */
+  armNext: () => void;
+};
+
+const targets: ScanBarTarget[] = [];
 let persister: ((key: string) => void) | null = null;
 
 // While a gear is in "press a key" capture mode the global listener must stand
@@ -93,54 +104,86 @@ export function subscribe(listener: () => void): () => void {
 }
 
 /**
- * Register a scan-bar input's focus action. The most-recently-registered target
- * is the one the hotkey focuses. Returns an unregister fn for cleanup on unmount.
+ * Register a scan-bar target while mounted. Most-recently-registered wins.
+ * Returns an unregister fn for cleanup on unmount.
  */
-export function registerScanTarget(focus: () => void): () => void {
+export function registerScanTarget(target: ScanBarTarget): () => void {
   ensureGlobalListener();
-  targets.push(focus);
+  targets.push(target);
   return () => {
-    const i = targets.lastIndexOf(focus);
+    const i = targets.lastIndexOf(target);
     if (i >= 0) targets.splice(i, 1);
   };
 }
 
 /**
- * Fired on `window` immediately before the hotkey moves focus to the active
- * scan bar. Transient chrome that can cover the bench — the master-nav menus
- * drop down from the 40px band directly over the scan bar at the top of the
- * station card — listens for this and dismisses itself, so the operator never
- * ends up typing a scan into an input hidden behind a menu.
- *
- * Deliberately a DOM event, not a store callback: the store is framework-
- * agnostic (no React import), and any overlay anywhere may need to yield to a
- * scan without registering itself here.
+ * Fired on `window` immediately before focus / arm-next moves to the active
+ * scan bar. Transient chrome that can cover the bench listens and dismisses.
+ * Kept module-private — listeners use the string literal or a future SoT import
+ * if a consumer remounts.
  */
 const SCAN_FOCUS_REQUESTED_EVENT = 'scan-focus-requested';
+
+/** Fired immediately before ⌘. arms the next-scan bar (clear + focus). */
+const SCAN_NEXT_REQUESTED_EVENT = 'scan-next-requested';
+
+function topTarget(): ScanBarTarget | undefined {
+  return targets[targets.length - 1];
+}
 
 function focusTopTarget(): void {
   if (isBrowser()) {
     window.dispatchEvent(new CustomEvent(SCAN_FOCUS_REQUESTED_EVENT));
   }
-  targets[targets.length - 1]?.();
+  topTarget()?.focus();
+}
+
+function armNextTopTarget(): void {
+  if (isBrowser()) {
+    window.dispatchEvent(new CustomEvent(SCAN_FOCUS_REQUESTED_EVENT));
+    window.dispatchEvent(new CustomEvent(SCAN_NEXT_REQUESTED_EVENT));
+  }
+  topTarget()?.armNext();
+}
+
+/**
+ * Operator-facing face for the universal next-scan chord (clear + focus the
+ * station Ticket · Tracking · PO bar). House glyph is Mac-first (`⌘.`); the
+ * binder also accepts Ctrl+. — never remap via the focus-scan picker.
+ */
+export const NEXT_SCAN_CHORD_LABEL = '⌘.';
+
+/** `⌘.` / `Ctrl+.` — arm next carton scan (clear + focus). Universal next-scan. */
+export function isNextScanChord(e: KeyboardEvent): boolean {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return false;
+  return e.key === '.' || e.code === 'Period';
 }
 
 let installed = false;
 function ensureGlobalListener(): void {
   if (installed || !isBrowser()) return;
   installed = true;
-  window.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (capturing) return; // capture handler owns the keystroke
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    // Shift+<hotkey> is a DIFFERENT chord and belongs to whoever bound it — the
-    // Pending grid binds Shift+F2 to the in-cell note editor (Sheets' insert-note
-    // key) and only calls preventDefault(), so the event still reaches this
-    // window listener. Without this guard a staffer who rebinds the scan hotkey
-    // to F2 gets both: the note editor opens AND the scan bar steals focus.
-    // A keyboard wedge never emits Shift+<hotkey>, so nothing real is lost.
-    if (e.shiftKey) return;
-    if (e.key !== hotkey) return;
-    e.preventDefault();
-    focusTopTarget();
-  });
+  window.addEventListener(
+    'keydown',
+    (e: KeyboardEvent) => {
+      if (capturing) return; // capture handler owns the keystroke
+
+      // ⌘. / Ctrl+. — arm next scan (clear + focus). Capture-phase so we beat
+      // ambient handlers. Chosen over ⌘Q (macOS Quit) and ⌘W (Close Tab).
+      if (isNextScanChord(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+        armNextTopTarget();
+        return;
+      }
+
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Shift+<hotkey> is a DIFFERENT chord — Pending grid binds Shift+F2.
+      if (e.shiftKey) return;
+      if (e.key !== hotkey) return;
+      e.preventDefault();
+      focusTopTarget();
+    },
+    { capture: true },
+  );
 }

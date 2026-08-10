@@ -18,6 +18,7 @@ import {
 import { applyGridOverflowXClasses } from '@/design-system/components/grid/grid-overflow-x';
 import { GridStickyXScrollbar } from '@/design-system/components/grid/GridStickyXScrollbar';
 import { useSyncedHorizontalScrollbar } from '@/design-system/components/grid/useSyncedHorizontalScrollbar';
+import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface';
 import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
 
@@ -170,7 +171,13 @@ export function LedgerGrid<T>({
   // synced `--cf-grid-sx` offset (see globals.css `[data-grid-split-x]`).
   const splitX = useAncestorScroll && scrollX;
   // Self-scroll + scrollX: dual-axis port is nested so the X gutter can pin.
+  // Column header sits OUTSIDE that port (flex sibling above) — sticky-inside-
+  // dual-axis still lets absolute body chips paint through the band when the
+  // sheet narrows (inspector push). H-scroll mirrors via `--cf-grid-sx` the
+  // same way split-x does (see globals.css `[data-grid-split-x]`).
   const selfScrollX = scrollX && !useAncestorScroll;
+  // Header row is translated by body scrollLeft (not native co-scroll).
+  const headerSyncedX = splitX || selfScrollX;
   // Vertical-only self-scroll (shelf board): surface IS the scrollport.
   const selfScrollYOnly = !useAncestorScroll && !scrollX;
 
@@ -310,7 +317,11 @@ export function LedgerGrid<T>({
       headerEstimate={headerEstimate}
       rowEstimate={rowEstimate}
       showDayHeaders={showDayHeaders}
-      stickyHeaderTop={showDayHeaders ? 'var(--cf-grid-header-h, 0px)' : '0'}
+      // Self-scroll keeps the column header OUTSIDE the Y port — day bands
+      // dock at the port top, not under a co-scrolled sticky band height.
+      stickyHeaderTop={
+        showDayHeaders && !selfScrollX ? 'var(--cf-grid-header-h, 0px)' : '0'
+      }
     />
   );
 
@@ -326,9 +337,14 @@ export function LedgerGrid<T>({
       className={cn(
         // `relative` keeps the band a positioning context for anything a
         // family anchors to the VISIBLE header rather than the translated
-        // wide header row (frozen-edge chrome under split mode).
-        'relative sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
-        splitX && 'overflow-x-clip',
+        // wide header row (frozen-edge chrome under split / self-scroll-x).
+        // Opaque card fill — never translucent/blur under absolute rows.
+        'relative z-header isolate shrink-0',
+        TABLE_FROZEN_HEADER_CLASS,
+        // Split-x / page Y: stick under chrome. Self-scroll-x: flex-pinned
+        // above the body port (not sticky) so rows cannot leak through.
+        !selfScrollX && 'sticky top-0',
+        headerSyncedX && 'overflow-x-clip',
       )}
     >
       {columnHeader}
@@ -363,7 +379,7 @@ export function LedgerGrid<T>({
       aria-rowcount={empty ? undefined : rowCount}
       data-cf-grid
       data-grid-skin={gridSkin}
-      data-grid-split-x={splitX ? '' : undefined}
+      data-grid-split-x={headerSyncedX ? '' : undefined}
       data-testid={splitX || selfScrollX ? undefined : dataTestId}
       onScroll={
         selfScrollYOnly
@@ -381,7 +397,8 @@ export function LedgerGrid<T>({
             // page port; the inner body box owns overflow-x.
             'overflow-x-clip'
           : selfScrollX
-            ? // Constrained sheet: Y/X on the nested port; gutter is a flex sibling.
+            ? // Constrained sheet: header flex-pinned; Y/X on the nested body
+              // port; gutter is a flex sibling.
               'h-full min-h-0 flex-1 overflow-hidden'
             : cn(
                 'h-full min-h-0 flex-1 overflow-y-auto overscroll-y-none no-scrollbar',
@@ -410,25 +427,26 @@ export function LedgerGrid<T>({
         </>
       ) : selfScrollX ? (
         <>
+          {headerBand}
           <div
             ref={scrollPortRef}
             data-testid={dataTestId}
             className={cn(
-              'relative flex min-h-0 min-w-0 w-full flex-1 flex-col',
-              // Dual-axis port: trackpad X + Y. Bars hidden — sticky gutter owns X.
+              'relative min-h-0 min-w-0 w-full flex-1',
+              // Dual-axis body port only — column header is a flex sibling above
+              // so absolute rows cannot paint through it. H-scroll syncs the
+              // header via `--cf-grid-sx` (data-grid-split-x).
               'overflow-x-auto overflow-y-auto overscroll-x-none overscroll-y-none no-scrollbar',
             )}
             onScroll={(e) => {
               const el = e.currentTarget;
-              const surface = surfaceRef.current;
-              if (surface) applyGridOverflowXClasses(surface, el);
+              syncSplitScroll(el);
               el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
-              // Mirror Y-scrolled cue onto the shell so sticky-header CSS still
+              // Mirror Y-scrolled cue onto the shell so header depth CSS still
               // matches `[data-cf-grid].cf-grid-scrolled-y`.
-              surface?.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
+              surfaceRef.current?.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
             }}
           >
-            {headerBand}
             {body}
           </div>
           {stickyGutter}

@@ -4,11 +4,6 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, motionRole } from '@/design-system/motion';
 import { Barcode } from '@/components/Icons';
 import {
-  framerPresence,
-  motionBezier,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import {
@@ -61,20 +56,6 @@ const PO_LINE_LAYOUT_SPRING = {
   mass: 0.9,
 };
 
-/** Active row body expand/collapse — slower + layout-eased than stationCollapse. */
-const PO_LINE_BODY_COLLAPSE = {
-  height: {
-    type: 'tween' as const,
-    duration: 0.4,
-    ease: motionBezier.layout,
-  },
-  opacity: {
-    type: 'tween' as const,
-    duration: 0.32,
-    ease: motionBezier.easeOut,
-  },
-};
-
 /** Max last-8 serials shown in the collapsed meta preview. */
 const SERIAL_PREVIEW_CAP = 2;
 
@@ -113,9 +94,10 @@ interface Props {
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
   /**
-   * Unbox Action Dock: condition / serial meta click → focus that step in the
-   * dock (PO meta is the ledger — no under-row editor). When serial handler is
-   * set it outranks {@link onViewAllUnits} for the serials cell.
+   * Unbox dual loci: condition / serial meta click → focus that step in the
+   * dock (and select the line so the under-row mouse editor shows). When the
+   * serial handler is set it outranks {@link onViewAllUnits} for the serials
+   * cell.
    */
   onEditConditionInDock?: (line: ReceivingLineRow) => void;
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
@@ -131,8 +113,10 @@ interface Props {
  * boxed meta (qty · SKU · condition · serials preview · price).
  * The thumb lives in the title + details band and expands that row’s height.
  * Inactive siblings dispatch `receiving-select-line` on click for focus.
- * Condition/serial bodies mount under every editable line (SKU→serial
- * interleave). Purely presentational — mutations are delegated up.
+ * Unbox dual loci: meta chips (`onEditConditionInDock` / `onEditSerialInDock`)
+ * focus the dock; parent may also pass `activeRowSlot`
+ * (`ActiveLineConditionSerial`) under the active line for mouse go-back edit.
+ * Purely presentational — mutations up.
  */
 export function PoLineRow({
   line,
@@ -149,8 +133,6 @@ export function PoLineRow({
   onEditSerialInDock,
   unitsChrome = true,
 }: Props) {
-  const rowBodyCollapse = useMotionPresence(framerPresence.collapseHeight);
-  const rowBodyTransition = useMotionTransition(PO_LINE_BODY_COLLAPSE);
   const rowLayoutTransition = useMotionTransition(PO_LINE_LAYOUT_SPRING);
   const pulseTransition = useMotionTransition(motionRole.feedback.pulse.transition);
   const lineTitle = receivingWorkspaceLineTitle(line);
@@ -424,18 +406,12 @@ export function PoLineRow({
           </div>
         </div>
       </div>
-      {/* Condition/serial body under every editable SKU (interleaved). Bodies
-          stay expanded — capture lives in the bottom dock, so there is no
-          title-band collapse chevron. Arrival (`unitsChrome={false}`) never
-          mounts unit editors. */}
+      {/* Mouse-escape / Testing body when parent passes `activeRowSlot`.
+          Unbox mounts only under the active line; Testing may interleave.
+          Snap — no height tween that pushes the ledger on line focus.
+          Arrival (`unitsChrome={false}`) never mounts unit editors. */}
       {unitsChrome && !readOnly && activeRowSlot ? (
-        <motion.div
-          initial={false}
-          layout={animateLayout ? 'position' : false}
-          animate={rowBodyCollapse.animate}
-          transition={rowBodyTransition}
-          className="min-w-0 overflow-hidden border-t border-border-hairline bg-surface-card"
-        >
+        <div className="min-w-0 overflow-hidden bg-surface-card">
           <div className="min-w-0 bg-surface-card px-0 py-0">
             {typeof activeRowSlot === 'function'
               ? activeRowSlot({
@@ -445,7 +421,7 @@ export function PoLineRow({
                 })
               : activeRowSlot}
           </div>
-        </motion.div>
+        </div>
       ) : null}
     </motion.li>
   );

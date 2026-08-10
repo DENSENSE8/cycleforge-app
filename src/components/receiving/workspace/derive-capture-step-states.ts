@@ -19,7 +19,7 @@ import {
  * Capture-stack step gates — the bench half of the operator-facing unbox
  * procedure:
  *
- *   Arrival photos → Shipping label → The box → Packing material
+ *   Label photo → Box photo → Shipping label → The box → Packing material
  *   → Contents → Condition → Item photos → Serial → Label
  *
  * A sibling vocabulary over the same shared walk (`deriveLinearStepStates`),
@@ -33,21 +33,19 @@ import {
  *
  * `photoStage` says which evidentiary moment (`@/lib/receiving/photo-intent`);
  * `photoAspect` says which shot of that moment (`@/lib/photos/photo-aspects`).
- * They are orthogonal, so the carton steps that share `unbox_carton` are told
- * apart by aspect alone:
+ * They are orthogonal, so steps that share a stage are told apart by aspect:
  *
- *   arrival_check        → arrival_package                      (door / Triage)
+ *   arrival_label_photo  → arrival_package · shipping_label     (door / Triage)
+ *   arrival_box_photo    → arrival_package · box_exterior
  *   shipping_label_photo → unbox_carton · shipping_label        (the bench's own
  *   box_photo            → unbox_carton · box_exterior           carton capture,
  *   packing_material     → unbox_carton · packing_material       three shots)
  *   item_photos          → unbox_item   · required aspect set   (RECEIVING_LINE)
  *
- * **`arrival_check` is a VERIFY step on the bench, never a capture step.** Its
- * stage is the pre-opening insurance shot, and the `require_one` receive gate
- * counts only that stage (`photo-policy.ts` — it even names the confusion in its
- * blocker string). A bench capture that stamped `arrival_package` would silently
- * satisfy the gate with a post-opening photo and void the control. Bench captures
- * land on `unbox_carton` / `unbox_item`; step 1 reads what the door already shot.
+ * Door steps stamp `arrival_package` only — the stage the `require_one` receive
+ * gate counts (`photo-policy.ts`). A bench capture that stamped `arrival_package`
+ * would silently satisfy the gate with a post-opening photo and void the
+ * control. Bench carton shots stay on `unbox_carton`.
  *
  * ## Condition IS a gate now (reversed 2026-08-01)
  *
@@ -82,7 +80,8 @@ import {
 // reject. Consumers reach these through `CaptureStepDef` / `ProcedureStepRow`.
 type CaptureStepKey =
   | 'classify'
-  | 'arrival_check'
+  | 'arrival_label_photo'
+  | 'arrival_box_photo'
   | 'shipping_label_photo'
   | 'box_photo'
   | 'packing_material'
@@ -131,7 +130,8 @@ interface CaptureStepDef {
  */
 const GATED_KEYS: Record<CaptureStepKey, true> = {
   classify: true,
-  arrival_check: true,
+  arrival_label_photo: true,
+  arrival_box_photo: true,
   shipping_label_photo: true,
   box_photo: true,
   packing_material: true,
@@ -216,6 +216,11 @@ export interface DeriveCaptureStepStatesInput
   /** Photos stamped `unbox_item` on THIS line. */
   itemPhotoCount: number;
   /**
+   * Per-aspect photo counts on THIS carton (`arrival_package` stage). The two
+   * door steps share that stage and are told apart by aspect alone.
+   */
+  arrivalAspectCounts: Partial<Record<PhotoAspect, number>>;
+  /**
    * Per-aspect photo counts on THIS carton (`unbox_carton` stage). A missing key
    * is zero — the three carton shots are told apart by aspect alone, so a stage
    * count cannot answer them.
@@ -287,8 +292,11 @@ export function deriveCaptureStepFlags(
     switch (step.key) {
       case 'classify':
         return { key: step.key, done: !!input.classified };
-      case 'arrival_check':
-        return { key: step.key, done: input.arrivalPhotoCount > 0 };
+      // Door steps share `arrival_package` and are told apart by aspect —
+      // same law as the bench carton trio one stage down.
+      case 'arrival_label_photo':
+      case 'arrival_box_photo':
+        return { key: step.key, done: arrivalAspectShot(input, step.aspect) };
       // The three bench carton shots share one stage and are told apart by
       // aspect. Gating any of them on the STAGE count would let one photo
       // satisfy all three — the same over-counting `sqlCartonStagePhotoCount`
@@ -323,6 +331,14 @@ export function deriveCaptureStepFlags(
  * declaration bug, and reading it as satisfied would hide the bug behind a
  * green row.
  */
+function arrivalAspectShot(
+  input: DeriveCaptureStepStatesInput,
+  aspect: PhotoAspect | undefined,
+): boolean {
+  if (!aspect) return input.arrivalPhotoCount > 0;
+  return (input.arrivalAspectCounts[aspect] ?? 0) > 0;
+}
+
 function cartonAspectShot(
   input: DeriveCaptureStepStatesInput,
   aspect: PhotoAspect | undefined,

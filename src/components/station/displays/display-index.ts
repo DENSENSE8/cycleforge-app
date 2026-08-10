@@ -94,6 +94,9 @@ export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
   support: 's',
   tracking: 'r',
   timeline: 'm',
+  // Visible Testing / station checklist · manuals (Unbox checklist is stripHidden)
+  checklist: 'h',
+  manuals: 'a',
   // Desk order inspector (Context plane — same letter map when Right owns keys)
   order: 'o',
   documents: 'e',

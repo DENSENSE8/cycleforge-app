@@ -22,7 +22,7 @@ import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
-import { SendToDeviceStatus } from '@/components/station/send-to-device/SendToDeviceStatus';
+import { useSendToDeviceToast } from '@/components/station/send-to-device/useSendToDeviceToast';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPackerBridgeChannelName } from '@/lib/realtime/channels';
@@ -50,10 +50,11 @@ export function PackSendToPhoneButton({
   usePackerPhotosRealtimeRefresh(packerLogId, () => void query.refetch());
   const count = query.data?.photos?.length ?? 0;
 
-  // Same handshake and same status card as the Unbox carton pill (P1 · D2):
+  // Same handshake and same toast as the Unbox carton pill (P1 · D2):
   // `scan_ready` used to publish blind, so a locked phone was indistinguishable
   // from a delivered request.
   const phone = useSendToDevice('pack_scan');
+  useSendToDeviceToast(phone.state, phone.retry);
 
   const handleSend = useCallback(async () => {
     if (!channelName || staffId <= 0) {
@@ -105,18 +106,7 @@ export function PackSendToPhoneButton({
     </HoverTooltip>
   );
 
-  // No pairing state → render the bare pill, so the identity row keeps the exact
-  // geometry it had before this wrapper existed.
-  if (phone.state === 'idle') return pill;
-
-  return (
-    <div className="relative shrink-0">
-      {pill}
-      {/* Anchored under the pill — absolute, so an "unreachable" row cannot
-          grow the pack identity row mid-scan (mirrors the Unbox carton pill). */}
-      <div className="absolute right-0 top-full z-30 w-max max-w-[18rem] pt-1.5">
-        <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
-      </div>
-    </div>
-  );
+  // Waiting/answered/unreachable renders on the house toast surface — the
+  // identity row keeps the exact pill geometry regardless of phone.state.
+  return pill;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   type StationInputMode,
   useStationTestingController,
@@ -9,6 +10,11 @@ import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
+import { useArmedPackStation } from '@/hooks/useArmedPackStation';
+import { unitPackPlacementQuery } from '@/lib/queries/unit-pack-placement-queries';
+import { IconButton } from '@/design-system/primitives/IconButton';
+import { X } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 interface ShippingScanBandProps {
   userId: string;
@@ -49,6 +55,12 @@ export function ShippingScanBand({
 }: ShippingScanBandProps) {
   const { theme: themeColor } = useStationTheme({ staffId });
   const [manualMode, setManualMode] = useState<StationInputMode | null>(null);
+  const { armed, clear: clearArmedStation } = useArmedPackStation();
+  // Live count of loose units staged at the armed bench (Phase 2 unit placement).
+  const unitPlacement = useQuery(unitPackPlacementQuery());
+  const armedUnitCount = armed
+    ? (unitPlacement.data?.counts ?? []).find((c) => c.locationId === armed.locationId)?.count ?? 0
+    : 0;
 
   const {
     inputValue,
@@ -59,7 +71,6 @@ export function ShippingScanBand({
     setActiveOrder,
     handleSubmit,
     clearFeedback,
-    reopenLastActiveOrderCard,
   } = useStationTestingController({
     userId,
     userName,
@@ -67,9 +78,6 @@ export function ShippingScanBand({
     themeColor,
     onTrackingOrderLoaded: useCallback(() => {
       setManualMode((m) => (m === 'tracking' ? null : m));
-    }, []),
-    onActiveOrderCardAutoHidden: useCallback(() => {
-      setManualMode('tracking');
     }, []),
     onFnskuOrderLoaded: useCallback(() => {
       setManualMode((m) => (m === 'fba' ? null : m));
@@ -129,7 +137,6 @@ export function ShippingScanBand({
       const togglingOff = manualMode === nextMode;
       const nextManualMode = togglingOff ? null : nextMode;
       setManualMode(nextManualMode);
-      if (nextManualMode === 'serial') reopenLastActiveOrderCard();
       const pendingInput = inputValue.trim();
       if (togglingOff || !pendingInput) {
         queueMicrotask(() => inputRef.current?.focus());
@@ -148,7 +155,7 @@ export function ShippingScanBand({
       }
       handleSubmit(undefined, raw, { forcedType: forced });
     },
-    [manualMode, inputValue, inputRef, forcedTypeForManualMode, handleSubmit, reopenLastActiveOrderCard],
+    [manualMode, inputValue, inputRef, forcedTypeForManualMode, handleSubmit],
   );
 
   const idleFallbackMode: StationInputMode = activeOrder ? 'serial' : 'tracking';
@@ -167,9 +174,35 @@ export function ShippingScanBand({
     />
   );
 
+  const armedChip = armed ? (
+    <div className="flex items-center gap-1 border-b border-border-soft bg-surface-sunken px-2 py-1">
+      <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-soft">
+        Placing at {armed.name}
+        <span className="ml-1 text-text-faint" data-testid="armed-unit-count">
+          · {armedUnitCount} unit{armedUnitCount === 1 ? '' : 's'} staged
+        </span>
+      </span>
+      <HoverTooltip label="Clear armed packing station">
+        <IconButton
+          type="button"
+          size="sm"
+          tone="neutral"
+          ariaLabel="Clear armed packing station"
+          onClick={() => clearArmedStation()}
+          icon={<X className="h-3.5 w-3.5" />}
+        />
+      </HoverTooltip>
+    </div>
+  ) : (
+    <div className="border-b border-border-soft bg-amber-50 px-2 py-1 text-role-micro font-semibold text-amber-900">
+      Scan a packing station barcode (or pick a station KPI) to place
+    </div>
+  );
+
   if (scanOnly) {
     return (
       <div className="min-w-0 shrink-0">
+        {armedChip}
         <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
       </div>
     );
@@ -177,6 +210,7 @@ export function ShippingScanBand({
 
   return (
     <div className="shrink-0 min-w-0">
+      {armedChip}
       <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
     </div>
   );

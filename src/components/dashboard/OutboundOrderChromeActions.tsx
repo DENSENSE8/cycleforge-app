@@ -1,33 +1,26 @@
 'use client';
 
 /**
- * Shared workbench-chrome CTAs for order ingest — Import (blue) + Add (green).
+ * The desk's ONE data-in CTA (Band 1 trailing).
+ *
+ * Import and Add used to be two solid pills side by side — a blue popover
+ * trigger and a green button — which spent the band's whole trailing budget on
+ * two spellings of "get orders into this queue". They are now one quiet `+`
+ * whose panel carries **Import** (a CSV file, then channel sync) and **Add**
+ * (one order typed by hand), with Backfill where it already was.
+ *
+ * One cube on purpose: getting data in is an occasional act, so it sits as a
+ * peer of the band's other cells rather than as a solid fill competing with the
+ * lifecycle tabs — and the verbs are named in WORDS as tabs inside the panel,
+ * never as a row of separated glyphs (`AGENTS.md` → Band-1 same-topic controls
+ * are tabs).
+ *
  * Golden source: Labels station header; reused by Dashboard · Outbound,
  * `/test` Shipping, and `/pack`.
  */
 
 import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
-import { Plus } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
 
 export function OutboundOrderChromeActions({ onNewOrder }: { onNewOrder: () => void }) {
-  return (
-    <>
-      <OrdersSyncPopover triggerVariant="header" />
-      <Button
-        size="sm"
-        onClick={onNewOrder}
-        ariaLabel="New order entry"
-        icon={<Plus />}
-        className={cn(
-          WORKBENCH_CHROME_PILL_CLASS,
-          'font-semibold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
-        )}
-      >
-        Add
-      </Button>
-    </>
-  );
+  return <OrdersSyncPopover onNewOrder={onNewOrder} />;
 }

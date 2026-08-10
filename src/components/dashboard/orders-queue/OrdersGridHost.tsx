@@ -190,7 +190,6 @@ export function OrdersGridHost({
   const {
     selectedIds,
     selectedRecord,
-    singleSelectedId,
     clickSelect,
     fillsById,
     handleRowAction,
@@ -247,8 +246,6 @@ export function OrdersGridHost({
         (r.packer_name as string | undefined) ||
         getStaffName(r.packed_by as number | null | undefined) ||
         getStaffName(r.packer_id as number | null | undefined);
-      const hasOutOfStock = Boolean(r.is_out_of_stock);
-      const notesValue = String(r.notes || '').trim();
       const rowFillHex =
         clickSelect ? (fillsById[String(record.id)] ?? null) : null;
       return (
@@ -263,7 +260,6 @@ export function OrdersGridHost({
           rowFillHex={rowFillHex}
           rowIndex={rowIndex}
           onToggleSelect={handleToggleSelect}
-          singleSelected={singleSelectedId === Number(record.id)}
           record={r}
           isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
           selectMode={selectMode}
@@ -275,8 +271,6 @@ export function OrdersGridHost({
           testerId={(r.tested_by as number | null) ?? (r.tester_id as number | null)}
           packerId={(r.packed_by as number | null) ?? (r.packer_id as number | null)}
           rowStatus={resolveRowStatus(r, queueMode)}
-          hasOutOfStock={hasOutOfStock}
-          notesValue={notesValue}
           daysLate={getDaysLateNullable(
             (r.deadline_at as string | null | undefined) ||
               (r.ship_by_date as string | null | undefined),
@@ -307,7 +301,6 @@ export function OrdersGridHost({
       handleRowOpen,
       handleToggleSelect,
       handleRequestReplaceTracking,
-      singleSelectedId,
       queueMode,
       clickSelect,
       fillsById,

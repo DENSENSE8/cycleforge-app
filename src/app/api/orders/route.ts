@@ -502,6 +502,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         staff_pack_assignee.name AS packer_name,
         staff_packed_by.name     AS packed_by_name,
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
+        opp.location_id AS pack_location_id,
+        loc_pack.name AS pack_location_name,
+        loc_pack.location_kind AS pack_location_kind,
         o.sku_catalog_id,
         sc.image_url AS catalog_image_url,
         sc.category AS catalog_category
@@ -514,6 +517,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LEFT JOIN pack_activity ON pack_activity.shipment_id = o.shipment_id
       LEFT JOIN next_pack_activity ON next_pack_activity.shipment_id = o.shipment_id
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      LEFT JOIN order_pack_placements opp
+        ON opp.order_id = o.id AND opp.organization_id = o.organization_id
+      LEFT JOIN locations loc_pack ON loc_pack.id = opp.location_id
       LEFT JOIN LATERAL (
         SELECT
           COALESCE(

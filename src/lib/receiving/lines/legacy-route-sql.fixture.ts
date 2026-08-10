@@ -112,6 +112,13 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
                 rlt.label_previewed_at::text                       AS label_previewed_at,
+                rlp.staged_at::text AS staged_at,
+                rlp.staged_location_id AS staged_location_id,
+                stg_loc.name AS staged_location_name,
+                stg_loc.barcode AS staged_location_barcode,
+                stg_loc.room AS staged_location_room,
+                stg_loc.row_label AS staged_location_row_label,
+                stg_loc.col_label AS staged_location_col_label,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -126,6 +133,12 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 rz.zoho_synced_at                            AS zoho_synced_at,
                 rz.zoho_notes                                AS zoho_notes,
                 rz.unit_price                                AS unit_price,
+                -- Mirror receipt status — REQUIRED on ?id=. Inventory Refresh
+                -- re-fetches through this builder then dispatchLine; without
+                -- these columns the client zoho_status is null forever and
+                -- coarse paint stays UNBOXED while Information shows RECEIVED.
+                mirror.status                                AS zoho_status,
+                mirror.last_synced_at::text                  AS zoho_status_synced_at,
                 stn.tracking_number_raw AS receiving_tracking_number,
                 r.carrier,
                 r.source                     AS receiving_source,
@@ -183,6 +196,12 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_putaway rlp
+           ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
+         LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
+         LEFT JOIN zoho_po_mirror mirror
+           ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
+          AND mirror.organization_id = rl.organization_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback. Partial
          -- unique index ux_receiving_zoho_po_matched (source='zoho_po') ensures
          -- at most one PO-matched receiving row per PO, so no dedup needed.
@@ -278,6 +297,13 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
                 rlt.label_previewed_at::text                       AS label_previewed_at,
+                rlp.staged_at::text AS staged_at,
+                rlp.staged_location_id AS staged_location_id,
+                stg_loc.name AS staged_location_name,
+                stg_loc.barcode AS staged_location_barcode,
+                stg_loc.room AS staged_location_room,
+                stg_loc.row_label AS staged_location_row_label,
+                stg_loc.col_label AS staged_location_col_label,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -292,6 +318,10 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                 rz.zoho_synced_at                            AS zoho_synced_at,
                 rz.zoho_notes                                AS zoho_notes,
                 rz.unit_price                                AS unit_price,
+                -- Mirror receipt status — same wire as ?id= / view=activity so
+                -- sibling refresh after receive/Refresh cannot clobber zoho_status.
+                mirror.status                                AS zoho_status,
+                mirror.last_synced_at::text                  AS zoho_status_synced_at,
                   stn.tracking_number_raw AS receiving_tracking_number,
                   r.carrier,
                   r.source                     AS receiving_source,
@@ -341,6 +371,12 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
            ${sqlLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
            LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+           LEFT JOIN receiving_line_putaway rlp
+           ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
+         LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
+           LEFT JOIN zoho_po_mirror mirror
+             ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
+            AND mirror.organization_id = rl.organization_id
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (
@@ -1135,8 +1171,15 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
     // `zoho` row chip discloses that age in its tooltip — the same honesty the
     // Check rail's "as of …" already shipped. Selected wherever the status is,
     // so no surface can render the claim without the caveat available.
+    // Keep in lockstep with build-sql.ts needsZohoMirror — Unbox rail + History
+    // need mirror status for coarse Received paint after Inventory Refresh.
     const needsZohoMirror =
-      view === 'incoming' || view === 'scanned' || view === 'activity';
+      view === 'incoming'
+      || view === 'incoming_removed'
+      || view === 'scanned'
+      || view === 'activity'
+      || view === 'all'
+      || view === 'unbox_opened';
     const zohoStatusSelect = needsZohoMirror
       ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at`
       : '';
@@ -1191,6 +1234,13 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
                 rlt.label_previewed_at::text                       AS label_previewed_at,
+                rlp.staged_at::text AS staged_at,
+                rlp.staged_location_id AS staged_location_id,
+                stg_loc.name AS staged_location_name,
+                stg_loc.barcode AS staged_location_barcode,
+                stg_loc.room AS staged_location_room,
+                stg_loc.row_label AS staged_location_row_label,
+                stg_loc.col_label AS staged_location_col_label,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1270,6 +1320,9 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_putaway rlp
+           ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
+         LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback (see note above).
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po

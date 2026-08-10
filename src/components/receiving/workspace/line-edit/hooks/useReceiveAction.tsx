@@ -168,9 +168,9 @@ export function useReceiveAction(
     (
       receiveIntent: ReceiveIntent = 'zoho_receive',
       options?: { photoPolicyOverride: PhotoPolicyOverrideCode },
-    ) => {
+    ): Promise<boolean> => {
       const photoPolicyOverride = options?.photoPolicyOverride ?? null;
-      if (receiveInFlightRef.current) return;
+      if (receiveInFlightRef.current) return Promise.resolve(false);
       if (row.receiving_id == null) {
         // Pre-condition failure surfaces inline (no toast) so every receive
         // signal lives in the same place below the label.
@@ -189,7 +189,7 @@ export function useReceiveAction(
           },
         });
         setResponseExpanded(false);
-        return;
+        return Promise.resolve(false);
       }
       // Unfound dock walk: never stamp empty local_receive (unfound_no_po) —
       // identify/create the unmatched line first (contents step / classify).
@@ -209,8 +209,33 @@ export function useReceiveAction(
           },
         });
         setResponseExpanded(false);
-        return;
+        return Promise.resolve(false);
       }
+      // Commit order: print → stage → receive. Block inventory commit until the
+      // operator has scanned a putaway location (after print). Unreceive skips.
+      if (
+        receiveIntent !== 'unreceive' &&
+        Boolean(row.label_printed_at) &&
+        !(row.staged_at && row.staged_location_id)
+      ) {
+        setReceiveResult({
+          kind: 'diagnostic',
+          intent: receiveIntent,
+          response: {
+            at: Date.now(),
+            durationMs: 0,
+            httpStatus: 0,
+            ok: false,
+            body: {
+              error:
+                'Scan a location barcode first — stage this unit before receiving into inventory.',
+            },
+          },
+        });
+        setResponseExpanded(false);
+        return Promise.resolve(false);
+      }
+
       receiveInFlightRef.current = true;
       const startedAt = Date.now();
       setReceiving({ startedAt, intent: receiveIntent });
@@ -225,15 +250,16 @@ export function useReceiveAction(
       // (which would double-call Zoho).
       const clientEventId = randomId();
 
-      // Fire-and-forget — operator keeps working while the local commit + Zoho
-      // sync settle. The print popup was opened synchronously by the caller
-      // (runPrintLabel) before we got here, so no await blocks it.
+      // Returns a promise so Inventory Displays (and other awaiters) can refresh
+      // the dossier after push. Dock print+receive still fires without await —
+      // the print popup was opened synchronously by the caller (runPrintLabel).
       //
       // NOTE: the former /api/zoho/health circuit pre-check (up to 3s on EVERY
       // receive) is gone. The server now reads its own in-process breaker and
       // returns skip_reason 'zoho_circuit_open' inline, so a cooldown surfaces
       // with zero added latency on the happy path.
-      void (async () => {
+      return (async () => {
+        let succeeded = false;
         try {
           const perLineNotes = notes.trim() || null;
 
@@ -286,6 +312,30 @@ export function useReceiveAction(
             setResponseExpanded(true);
             playScanFeedback('reject');
           } else {
+            succeeded = true;
+            // Prefer the Unbox `stage` bin over silent default putaway
+            // (`putaway-placement` / UNSORTED). Fire-and-forget after inventory
+            // commit — putaway requires `receiving.bin_assign`; stage stamp alone
+            // used `mark_received`.
+            const stagedBinId = Number(row.staged_location_id);
+            if (
+              receiveIntent !== 'unreceive' &&
+              Number.isFinite(stagedBinId) &&
+              stagedBinId > 0 &&
+              row.id > 0
+            ) {
+              void fetch(`/api/receiving/lines/${row.id}/putaway`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  bin_id: stagedBinId,
+                  station: 'RECEIVING',
+                  notes: 'Unbox staged location',
+                }),
+              }).catch(() => {
+                /* non-fatal — inventory already committed; stock desk can relocate */
+              });
+            }
             // Optimistic workspace + Unboxed dock: POST already carries updated
             // qty/workflow. Narrow bus patches update accordion/selection;
             // Unboxed is opted off that bus — allowlisted carton qty helper
@@ -465,11 +515,15 @@ export function useReceiveAction(
           receiveInFlightRef.current = false;
           setReceiving(null);
         }
+        return succeeded;
       })();
     },
     [
       row.receiving_id,
       row.id,
+      row.label_printed_at,
+      row.staged_at,
+      row.staged_location_id,
       orgId,
       isUnfound,
       qa,

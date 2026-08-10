@@ -6,6 +6,7 @@ import { describePhotoDatePath, dayLabel } from '@/lib/photos/date-hierarchy';
 import type { PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
 import { resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context-label';
 import { sourceScopeFromFilters } from '@/lib/photos/library-filter-state';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 interface PhotoDateBreadcrumbProps {
@@ -80,8 +81,9 @@ export function PhotoDateBreadcrumb({
         onClick={() => onNavigate({ dateFrom: undefined, dateTo: undefined })}
         className={cn(
           // ds-raw-button: breadcrumb nav crumb (disabled = current depth) — not a DS Button
-          // pl-0: align calendar icon with the path-bar leading edge (Panel px-3).
-          'ds-raw-button flex shrink-0 items-center gap-1 rounded-md py-1 pl-0 pr-1.5 font-semibold transition',
+          // pl-0: align calendar icon with the path-bar leading edge (row inset).
+          'ds-raw-button flex shrink-0 items-center gap-1 py-1 pl-0 pr-1.5 font-semibold transition',
+          cornerClass('flush'),
           canReset ? 'text-text-soft hover:bg-surface-hover hover:text-text-default' : 'text-text-default',
         )}
       >
@@ -98,7 +100,8 @@ export function PhotoDateBreadcrumb({
             onClick={() => onNavigate(crumb.range)}
             className={cn(
               // ds-raw-button: breadcrumb nav crumb (disabled = current depth) — not a DS Button
-              'ds-raw-button shrink-0 truncate rounded-md px-1.5 py-1 transition',
+              'ds-raw-button shrink-0 truncate px-1.5 py-1 transition',
+              cornerClass('flush'),
               crumb.current
                 ? 'font-semibold text-text-default'
                 : 'font-semibold text-text-soft hover:bg-surface-hover hover:text-text-default',
@@ -112,7 +115,12 @@ export function PhotoDateBreadcrumb({
       {showFolderLeaf ? (
         <Fragment key="folder-leaf">
           <ChevronRight className="h-3 w-3 shrink-0 text-text-faint" />
-          <span className="shrink-0 truncate rounded-md px-1.5 py-1 font-semibold text-text-default">
+          <span
+            className={cn(
+              'shrink-0 truncate px-1.5 py-1 font-semibold text-text-default',
+              cornerClass('flush'),
+            )}
+          >
             {resolvedFolderLeaf}
           </span>
         </Fragment>
@@ -144,7 +152,10 @@ function DateQuickChip({ label, onClick }: { label: string; onClick: () => void 
       <button
         type="button"
         onClick={onClick}
-        className="ds-raw-button shrink-0 truncate rounded-md px-1.5 py-1 font-semibold text-text-soft transition hover:bg-surface-hover hover:text-text-default"
+        className={cn(
+          'ds-raw-button shrink-0 truncate px-1.5 py-1 font-semibold text-text-soft transition hover:bg-surface-hover hover:text-text-default',
+          cornerClass('flush'),
+        )}
       >
         {label}
       </button>

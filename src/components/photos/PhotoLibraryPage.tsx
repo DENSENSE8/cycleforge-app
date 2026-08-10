@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, ExternalLink, Link2, Loader2, Tag, TicketHelp, Trash2 } from '@/components/Icons';
+import { usePhotoInspectorParam } from '@/hooks/usePhotoInspectorParam';
 import { usePhotoLibrary, photoLibraryFilterParams } from '@/hooks/usePhotoLibrary';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
@@ -38,11 +39,13 @@ import { PhotoDateBreadcrumb } from './PhotoDateBreadcrumb';
 import { PhotoDisplayControls } from './PhotoDisplayControls';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
-import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
+import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
+import { PhotoLibraryScopeBand } from './PhotoLibraryScopeBand';
 import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
+import { PhotoInspectorPanel } from './photo-inspector/PhotoInspectorPanel';
 import { photoLibraryShowsGridControls } from '@/lib/photos/photo-grid-density';
 
 /** Fixed share-link lifetime (24h) for copied links + share pages. */
@@ -167,6 +170,76 @@ export function PhotoLibraryPage() {
 
   const shareLinks = usePhotoShareLinks();
   const { subtitle } = describePhotoLibraryContext(displayFilters);
+
+  // ── The desk inspector ────────────────────────────────────────────────────
+  //
+  // Cardinality is the mode switch, and there is no third state: one photo
+  // selected opens the rail; two or more hand the chrome slot to the bulk
+  // toolbar; zero closes both. The tile click is untouched — it still opens the
+  // fullscreen viewer (operator ruling 2026-08-09).
+  //
+  // `?photoId=` is written FROM this selection and cleared WITH it, which is the
+  // eviction rule: the `scopeKey` effect below already clears the selection
+  // whenever a filter swaps `photos` out, so the rail closes with it and there
+  // is no "open photo" state that can outlive the set it was picked from.
+  const { photoId: openPhotoId, setPhotoId } = usePhotoInspectorParam();
+  /** `?photoId=` as it stood on first paint — the reload / deep-link seed. */
+  const [seedPhotoId] = useState(() => openPhotoId);
+  const [inspectorHydrated, setInspectorHydrated] = useState(() => openPhotoId === null);
+
+  const inspectorPhoto = useMemo(() => {
+    if (selected.size !== 1) return null;
+    // Resolved against the LOADED stream on purpose: "select all matching" can
+    // hold ids that were never fetched, and a record we do not have is one we
+    // cannot inspect. That case falls through to the batch rail instead.
+    return photos.find((p) => selected.has(p.id)) ?? null;
+  }, [photos, selected]);
+  const inspectorPhotoId = inspectorPhoto ? String(inspectorPhoto.id) : null;
+  const inspectorIndex = useMemo(
+    () => (inspectorPhoto ? photos.findIndex((p) => p.id === inspectorPhoto.id) : -1),
+    [inspectorPhoto, photos],
+  );
+
+  // Seed the selection from the URL exactly ONCE, so a reload lands on the same
+  // photo. Gated on `isSettled` because the first page has to be in hand before
+  // "is this photo in the set" can be answered; a seed that is NOT in the set
+  // stays unselected, and the sync effect below then clears the param — the same
+  // eviction rule, applied at load.
+  useEffect(() => {
+    if (inspectorHydrated || !seedPhotoId || !isSettled) return;
+    const target = Number(seedPhotoId);
+    if (Number.isFinite(target) && photos.some((p) => p.id === target)) {
+      selectIds([target]);
+    }
+    setInspectorHydrated(true);
+  }, [inspectorHydrated, seedPhotoId, isSettled, photos, selectIds]);
+
+  // Selection → URL. Gated on hydration so the seed is never clobbered by the
+  // empty selection that exists for the frame before it lands.
+  useEffect(() => {
+    if (!inspectorHydrated || openPhotoId === inspectorPhotoId) return;
+    setPhotoId(inspectorPhotoId);
+  }, [inspectorHydrated, inspectorPhotoId, openPhotoId, setPhotoId]);
+
+  /**
+   * The batch rail and the record inspector are ONE right-edge slot at two
+   * cardinalities, so they are mutually exclusive by construction rather than by
+   * two booleans that can both be true. `selectionActive && !inspectorPhoto`
+   * also keeps the pencil's zero-selected entry state (Select all N) exactly as
+   * it was — that state moved into the rail with the verbs rather than being
+   * dropped with the toolbar.
+   */
+  const showBatchRail = selectionActive && inspectorPhoto === null;
+
+  /** `↑` steps toward the top of the stream, `↓` toward the bottom. */
+  const stepInspector = useCallback(
+    (delta: number) => {
+      if (inspectorIndex < 0) return;
+      const next = photos[inspectorIndex + delta];
+      if (next) selectIds([next.id]);
+    },
+    [inspectorIndex, photos, selectIds],
+  );
 
   // Trailing breadcrumb crumb naming the entity in view (PO / ticket / carton).
   //
@@ -568,30 +641,40 @@ export function PhotoLibraryPage() {
   );
 
   return (
-    <RightPaneOverlayHost className="flex h-full min-h-0 flex-col">
+    // `min-w-0 flex-1` is load-bearing, not decoration: this host is a flex ITEM
+    // in `<main>`'s row, and without a grow it sizes to `max-content` — which
+    // measured **721px inside a 1440 viewport**, i.e. below `MIN_WORK_SURFACE_PX`
+    // (784). Deleting the left rail reclaimed the column but handed the width to
+    // nobody; the S1 report read that 720 as the rail's cost when it was actually
+    // this. Pinned by `tests/e2e/photos-railless-frame.spec.ts`.
+    <RightPaneOverlayHost className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <DashboardScrollShell
       chrome={
-        <div className={cn(WORKBENCH_SHEET_CHROME, 'px-3 py-2')}>
-          {selectionActive ? (
-            <PhotoLibraryToolbar
-              rows={selectedPhotos}
-              total={photos.length}
-              selectedCount={selected.size}
-              hasMore={query.hasNextPage}
-              onSelectAllMatching={() => void selectAllMatching()}
-              actions={photoBulkActions}
-              onDeleteSelected={deleteSelectedPhotos}
-              onSelectAll={selectAll}
-              onClear={exitSelectMode}
-            />
-          ) : (
-            <PhotoLibraryWorkspaceHeader />
-          )}
-        </div>
-      }
-    >
-      <div className={cn(WORKBENCH_SHEET_HOST, 'px-3 pb-6 pt-0')}>
-        {!selectionActive ? (
+        // Flush sheet chrome — THREE bands stack with `gap-0` inside ONE
+        // non-scrolling slot (Sheets flush mount recipe). No host `px`/`py`:
+        // the outer host is flush and readable pad lives on each band's row.
+        //
+        //   Band 1  lifecycle tabs + media-type cube  (PhotoLibraryScopeBand)
+        //   Band 2  the search band                   (PhotoLibraryWorkspaceHeader)
+        //   Band 3  breadcrumb + display controls     (PhotoLibraryHeader)
+        //
+        // That order INVERTS the house Band 2 = KPI / Band 3 = find, and the
+        // divergence is deliberate: there is no KPI band here (so Band 2 is
+        // free, not displaced); search is this surface's approved entry path
+        // rather than a refinement, so it earns its own band; and a path strip
+        // is a context readout, which is the altitude a KPI strip occupies on a
+        // queue. Recorded in `.claude/rules/display/media-library.md`.
+        //
+        // The bands STAY MOUNTED under selection (2026-08-09). A bulk-action
+        // toolbar used to swap itself in over all three, so ticking two photos
+        // took away the lifecycle tabs, the search field and the breadcrumb —
+        // the operator lost their place in the archive to read a row of icons.
+        // Bulk verbs are armed ROWS on the right edge now
+        // (`PhotoBatchInspectorPanel`), which is where "what can I do to the
+        // picked record" already lived at n = 1.
+        <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+          <PhotoLibraryScopeBand />
+          <PhotoLibraryWorkspaceHeader />
           <PhotoLibraryHeader
             breadcrumb={
               <PhotoDateBreadcrumb
@@ -625,18 +708,26 @@ export function PhotoLibraryPage() {
               />
             }
           />
-        ) : null}
-
-        {resolvedTicketId && !selectionActive ? (
+        </div>
+      }
+    >
+      <div className={WORKBENCH_SHEET_HOST}>
+        {resolvedTicketId ? (
           <PhotoLibraryTicketNasBackup ticketId={resolvedTicketId} />
         ) : null}
 
+        {/* The sheet plane: flush, borderless, no lift — the chrome bands above
+            own every hairline. Still not `TABLE_SURFACE_SHEET_CLASS`, but the
+            reason changed: that token is the LedgerGrid sheet's framed shell,
+            and this surface is a media stream, not a grid. (The old reason —
+            its `overflow-hidden` clipping the tile hero-morph mid-flight — died
+            with the morph on 2026-08-09.) */}
         <Panel
           data-testid="photo-library-display"
           padding="none"
-          radius="xl"
-          elevation="md"
-          className="relative mb-6 min-h-0 flex-1 p-3"
+          elevation="none"
+          borderless
+          className="relative min-h-0 flex-1 inset-field"
         >
           <PhotoLibraryGrid
             photos={photos}
@@ -673,6 +764,42 @@ export function PhotoLibraryPage() {
           ) : null}
         </Panel>
       </div>
+
+      {/* Registers into the global `RightRailHost` (already mounted by
+          ResponsiveLayout) and renders null here — geometry belongs to the host,
+          not to this page. Closing clears the selection, which clears the param. */}
+      {inspectorPhoto ? (
+        <PhotoInspectorPanel
+          photo={inspectorPhoto}
+          scope={scope}
+          position={inspectorIndex + 1}
+          total={photos.length}
+          onPrev={() => stepInspector(-1)}
+          onNext={() => stepInspector(1)}
+          prevDisabled={inspectorIndex <= 0}
+          nextDisabled={inspectorIndex < 0 || inspectorIndex >= photos.length - 1}
+          onClose={clear}
+        />
+      ) : null}
+
+      {/* The n ≠ 1 face of the SAME slot — armed rows for the bulk verbs that
+          used to be a chrome toolbar. `showBatchRail` is the toolbar's own
+          predicate unchanged, so the zero-selected entry state ("Select all
+          48") is relocated rather than dropped, and the two panels stay
+          mutually exclusive by construction. */}
+      {showBatchRail ? (
+        <PhotoBatchInspectorPanel
+          rows={selectedPhotos}
+          total={photos.length}
+          selectedCount={selected.size}
+          hasMore={query.hasNextPage}
+          onSelectAllMatching={() => void selectAllMatching()}
+          actions={photoBulkActions}
+          onDeleteSelected={deleteSelectedPhotos}
+          onSelectAll={selectAll}
+          onClear={exitSelectMode}
+        />
+      ) : null}
 
       {claimPhotos !== null ? (
         <ZendeskClaimModal

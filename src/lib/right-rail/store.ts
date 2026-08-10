@@ -23,13 +23,14 @@
  * panel that still renders its own fixed element (see the migration note below).
  *
  * MIGRATION PATH (strangler)
- * Today two occupant kinds use this: the assistant (a real node) and a single
- * URL-driven `external-detail` YIELD claim (`node: null`) that suppresses the
- * assistant whenever any `open<Kind>Id` param is present. As each detail panel
- * is converted to render INSIDE the host, it registers its own real node at
- * `RIGHT_RAIL_PRIORITY.detail` and drops its private `fixed` geometry; the
- * `external-detail` yield claim then becomes redundant for that kind. Until a
- * panel migrates, the yield claim is what stops the assistant covering it.
+ * The URL-driven `external-detail` YIELD claim (`node: null`) is **retired** —
+ * desk record peeks register real nodes at `RIGHT_RAIL_PRIORITY.detail` via
+ * `DetailStackRailRegistrar` / `useRegisterRightPanel`. Do not reintroduce a
+ * null-node yield id named `external-detail`. Remaining Dialog /
+ * `RightPaneOverlay` create/edit twins stay on Session 2 of
+ * `docs/todo/right-rail-inspector-FINISH-HANDOFF.md` (dirty strategy before
+ * converting). A `node: null` YIELD claim remains a valid API for rare
+ * suppress-the-slot cases — never as a standing twin of an unmigrated panel.
  */
 
 import type { ReactNode } from 'react';
@@ -97,7 +98,7 @@ export interface RightRailPanel {
    * things, each recorded at its call site:
    *  - the occupant is ambient chat with its own flush-right dock (`assistant`);
    *  - the occupant opens on a STATION page whose right edge is already pushed
-   *    by `UnboxPushColumn`, and two push mechanisms on one edge is exactly what
+   *    by `StationDisplaysPushColumn`, and two push mechanisms on one edge is exactly what
    *    this store exists to prevent.
    *
    * The actual push/overlay decision is `resolveRightRailFrame`

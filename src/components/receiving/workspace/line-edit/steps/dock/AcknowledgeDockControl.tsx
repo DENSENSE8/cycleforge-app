@@ -80,11 +80,9 @@ function AcknowledgeControl({
   );
 
   return (
-    // No prose prompt: this renders inside the composer footer now, and the cue
-    // line above the dock already names the step. The button labels are
-    // self-describing ("Contents match", "Face is right"); the prompt survives
-    // as the accessible label so a screen reader still hears the instruction.
-    <div className="flex h-11 min-w-0 items-center gap-2">
+    // Flush Band 1 segment — full height · full width · no gap air.
+    // The cue line above the dock already names the step.
+    <div className="flex h-11 w-full min-w-0 items-stretch gap-0">
       {acknowledged ? (
         <Button
           variant="secondary"
@@ -93,6 +91,7 @@ function AcknowledgeControl({
           ariaLabel={`Reopen: ${prompt}`}
           icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
           onClick={() => void run(false)}
+          className="h-full w-full min-w-0 justify-center rounded-none"
         >
           Reopen
         </Button>
@@ -106,6 +105,7 @@ function AcknowledgeControl({
             saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-3.5 w-3.5" />
           }
           onClick={() => void run(true)}
+          className="h-full w-full min-w-0 justify-center rounded-none"
         >
           {confirmLabel}
         </Button>
@@ -172,7 +172,7 @@ function UnfoundContentsCreateControl({
   );
 
   return (
-    <div className="flex h-11 min-w-0 items-center gap-2" data-unbox-contents-create>
+    <div className="flex h-11 w-full min-w-0 items-stretch gap-0" data-unbox-contents-create>
       <Button
         variant="primary"
         size="sm"
@@ -180,6 +180,7 @@ function UnfoundContentsCreateControl({
         ariaLabel="Identify item — add unmatched line for this carton"
         icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
         onClick={() => setOpen(true)}
+        className="h-full w-full min-w-0 justify-center rounded-none"
       >
         Identify item
       </Button>

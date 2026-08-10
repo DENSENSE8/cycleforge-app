@@ -44,7 +44,8 @@ export type { UnboxStepBodyContext } from './types';
 
 export const UNBOX_STEP_BODIES: Record<string, UnboxStepBody> = {
   classify: ClassifyStepBody,
-  arrival_check: ArrivalCheckStepBody,
+  arrival_label_photo: ArrivalCheckStepBody,
+  arrival_box_photo: ArrivalCheckStepBody,
   shipping_label_photo: CartonPhotoStepBody,
   box_photo: CartonPhotoStepBody,
   packing_material: CartonPhotoStepBody,

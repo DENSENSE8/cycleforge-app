@@ -114,7 +114,7 @@ test.describe('unbox procedure checklist', () => {
       .poll(() => stepKeys(page), { timeout: 45_000 })
       .toEqual([
         'classify',
-        'arrival_check',
+        'arrival_label_photo',
         'shipping_label_photo',
         'box_photo',
         'packing_material',
@@ -144,7 +144,7 @@ test.describe('unbox procedure checklist', () => {
     // Re-open rather than reload+goto: one navigation, one settle.
     await openUnbox(page, receivingId, lineId);
 
-    await expectActive(page, ['arrival_check']);
+    await expectActive(page, ['arrival_label_photo']);
     expect(await stepKeys(page), 'the list does not reorder as work lands').toEqual(orderBefore);
     await expect(page.locator('[data-procedure-step="classify"]')).toHaveAttribute(
       'data-procedure-state',
@@ -163,7 +163,7 @@ test.describe('unbox procedure checklist', () => {
     await attachCartonShots(request, receivingId);
     await openUnbox(page, receivingId, lineId);
 
-    await expectActive(page, ['arrival_check']);
+    await expectActive(page, ['arrival_label_photo']);
     await expect(page.locator('[data-procedure-step="packing_material"]')).toHaveAttribute(
       'data-procedure-state',
       'done',

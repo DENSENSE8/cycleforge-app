@@ -63,6 +63,10 @@ const DESK_RAIL_CHROME_ROW_GOLDEN = [
   'src/components/support/context/SupportContextDetailPanel.tsx',
   'src/components/receiving/workspace/ZohoSplitPane.tsx',
   'src/components/receiving/history/HistoryCartonTriagePanel.tsx',
+  'src/components/photos/photo-inspector/PhotoInspectorPanel.tsx',
+  // The n ≠ 1 face of the SAME Media Library slot — one chrome grammar at both
+  // cardinalities, so a selection never changes what the top row is.
+  'src/components/photos/photo-inspector/PhotoBatchInspectorPanel.tsx',
 ] as const;
 
 function walkTsx(dir: string, out: string[] = []): string[] {
@@ -162,7 +166,7 @@ describe('right-rail inspector header', () => {
     assert.doesNotMatch(panel, /WorkOrderAssignmentCard/);
   });
 
-  it('Incoming / Unfound / Bin / Support-context compose DeskRailChromeRow', () => {
+  it('Incoming / Unfound / Bin / Support-context / Media Library compose DeskRailChromeRow', () => {
     for (const rel of DESK_RAIL_CHROME_ROW_GOLDEN) {
       const src = code(read(rel));
       assert.ok(

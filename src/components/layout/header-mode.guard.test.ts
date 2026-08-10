@@ -270,6 +270,11 @@ test('HEADER icon cells fill the chrome beam (no floated h-8 island)', () => {
   assert.match(HEADER_SHELL, /HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch/);
   assert.match(HEADER_SHELL, /TOP_CHROME_BAND_CLASS = `flex items-stretch/);
   assert.match(HEADER_SHELL, /HEADER_ICON_GAP = 'gap-0'/);
+  // Spine top pins equal-fill the seam — never fixed w-8 islands with air between.
+  assert.match(
+    HEADER_SHELL,
+    /SPINE_TOP_PIN_WRAP\s*=\s*'relative flex h-full min-h-0 min-w-0 flex-1 items-stretch justify-center'/,
+  );
 });
 
 test('HeaderPinsSwitcher owns Quick Access pins (not the avatar popover)', () => {
@@ -299,6 +304,13 @@ test('desktop GlobalHeaderActions has no staff avatar (spine owns identity)', ()
   // outside the isMobile branch — StaffAccountFooter is the desktop home.
   assert.match(STAFF_FOOTER, /data-staff-account-footer/);
   assert.match(STAFF_FOOTER, /Power/);
+  // Floor: flex-1 ⋯ fills left of sign-out; idle muted; full square danger wash + glyph on hover.
+  assert.match(STAFF_FOOTER, /flex-1 items-center[\s\S]*MoreHorizontal/);
+  assert.match(
+    STAFF_FOOTER,
+    /text-text-faint hover:bg-surface-danger hover:text-text-danger/,
+  );
+  assert.match(STAFF_FOOTER, /group-hover:drop-shadow-\[0_0_6px_currentColor\]/);
   assert.match(NAV_LIST, /StaffAccountFooter/);
 });
 

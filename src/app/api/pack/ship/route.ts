@@ -7,6 +7,8 @@ import { transition } from '@/lib/inventory/state-machine';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { isUnifiedEngineFulfillmentTaps, isFulfillmentSubstitution } from '@/lib/feature-flags';
+import { clearOrderPackPlacement } from '@/lib/packing/pack-placement';
+import { clearUnitPackPlacement } from '@/lib/packing/unit-pack-placement';
 
 /**
  * Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a
@@ -376,6 +378,26 @@ export const POST = withAuth(async (request, ctx) => {
         `UPDATE orders SET status = 'shipped' WHERE id = $1 AND organization_id = $2`,
         [orderId, orgId],
       );
+
+      // 9. Clear packing-station placement — order left the ready-to-pack board.
+      await clearOrderPackPlacement(
+        orgId,
+        { orderId, staffId: actorStaffId, reason: 'pack_complete' },
+        client,
+      );
+
+      // 10. Clear loose-unit placement for each shipped unit — a unit staged on a
+      //     bench has left the pack floor. Parallel to the order clear above; same
+      //     transaction (client), so a rolled-back ship leaves the ledger intact.
+      //     The count already excludes off-floor statuses, so this only removes the
+      //     lingering row (returns false when the unit was never bench-staged).
+      for (const u of perUnit) {
+        await clearUnitPackPlacement(
+          orgId,
+          { unitId: u.unitId, staffId: actorStaffId, reason: 'pack_complete' },
+          client,
+        );
+      }
 
       return {
         ok: true as const,

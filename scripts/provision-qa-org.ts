@@ -48,7 +48,10 @@ import {
   QA_FIXTURE_SKUS,
   QA_FIXTURE_ZOHO_ITEM,
   QA_FIXTURE_SUPPORT,
+  QA_FIXTURE_CUSTOM_FIELD,
+  QA_FIXTURE_PHOTOS,
   QA_FIXTURE_TESTED_LINE,
+  QA_FIXTURE_UNIT,
   QA_FIXTURE_TESTING_LINE,
   QA_FIXTURE_TRACKING,
   QA_FIXTURE_TRACKING_PACKED,
@@ -515,10 +518,77 @@ async function seedReceivingFixture(client: PoolClient, orgId: string, adminStaf
     [receivingId, QA_FIXTURE_TRACKING],
   );
 
+  // ── Org custom column (Horizon C wave 1) ─────────────────────────────────
+  // A def + a value on two lines, so a LedgerGrid column sort has something to
+  // order. Decimals on purpose — see QA_FIXTURE_CUSTOM_FIELD's docblock.
+  const customDefRes = await client.query<{ id: number }>(
+    `INSERT INTO custom_field_defs
+       (organization_id, entity_type, key, label, type, sort_order)
+     VALUES ($1, $2, $3, $4, $5, 0)
+     ON CONFLICT (organization_id, entity_type, key) DO UPDATE
+       SET label = EXCLUDED.label, type = EXCLUDED.type, archived_at = NULL, updated_at = now()
+     RETURNING id`,
+    [
+      orgId,
+      QA_FIXTURE_CUSTOM_FIELD.entityType,
+      QA_FIXTURE_CUSTOM_FIELD.key,
+      QA_FIXTURE_CUSTOM_FIELD.label,
+      QA_FIXTURE_CUSTOM_FIELD.type,
+    ],
+  );
+  const customFieldId = Number(customDefRes.rows[0]!.id);
+
+  for (const [lineId, value] of [
+    [testedLineId, QA_FIXTURE_CUSTOM_FIELD.lower.value],
+    [testingLineId, QA_FIXTURE_CUSTOM_FIELD.upper.value],
+  ] as const) {
+    await client.query(
+      `INSERT INTO custom_field_values
+         (organization_id, field_id, entity_type, entity_id, value_number)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (organization_id, field_id, entity_id) DO UPDATE
+         SET value_number = EXCLUDED.value_number, updated_at = now()`,
+      [orgId, customFieldId, QA_FIXTURE_CUSTOM_FIELD.entityType, lineId, value],
+    );
+  }
+
+  // The merged column is `tier: 'optional'`, so it stays hidden until a staffer
+  // opts in. Seed that opt-in for the QA admin under BOTH prefs buckets — the
+  // Unbox History mount (`receiving`) and the Testing History mount (`testing`)
+  // share one binding but keep independent Fields deltas, so seeding one would
+  // leave the other's column invisible and the spec unable to see it.
+  // `jsonb_agg(DISTINCT …)` keeps re-provisioning idempotent.
+  for (const bucket of QA_FIXTURE_CUSTOM_FIELD.prefsTableIds) {
+    await client.query(
+      `INSERT INTO staff_preferences (organization_id, staff_id, prefs)
+       VALUES ($1, $2, jsonb_build_object('tableColumns',
+                 jsonb_build_object($3::text, jsonb_build_object('shown', jsonb_build_array($4::text)))))
+       ON CONFLICT (organization_id, staff_id) DO UPDATE
+         SET prefs = jsonb_set(
+               COALESCE(staff_preferences.prefs, '{}'::jsonb),
+               ARRAY['tableColumns', $3::text, 'shown'],
+               (
+                 SELECT COALESCE(jsonb_agg(DISTINCT e), '[]'::jsonb)
+                 FROM jsonb_array_elements(
+                   COALESCE(
+                     staff_preferences.prefs->'tableColumns'->($3::text)->'shown',
+                     '[]'::jsonb
+                   ) || to_jsonb($4::text)
+                 ) e
+               ),
+               true
+             ),
+             updated_at = now()`,
+      [orgId, adminStaffId, bucket, QA_FIXTURE_CUSTOM_FIELD.columnKey],
+    );
+  }
+
   log(
     'Receiving fixture',
     `carton=${receivingId} tracking=${QA_FIXTURE_TRACKING} ` +
-      `needsTestLine=${testingLineId} testedLine=${testedLineId}`,
+      `needsTestLine=${testingLineId} testedLine=${testedLineId} ` +
+      `customField=${QA_FIXTURE_CUSTOM_FIELD.columnKey}#${customFieldId} ` +
+      `(${QA_FIXTURE_CUSTOM_FIELD.lower.value} / ${QA_FIXTURE_CUSTOM_FIELD.upper.value})`,
   );
 }
 
@@ -940,6 +1010,99 @@ async function seedHelpdeskConnection(orgId: string) {
   log('Helpdesk vault', `zendesk connected for ticket #${QA_FIXTURE_SUPPORT.ticketId}`);
 }
 
+/**
+ * Media Library evidence — metadata-only `photos` rows + their polymorphic
+ * links, so `/ops/photos` has a real stream on the QA org.
+ *
+ * Until 2026-08-09 this provisioner seeded ZERO photos, so every Media Library
+ * spec on `--project=qa-desktop` either failed or skipped itself with "no photos
+ * seeded in this environment". Rationale for metadata-only, and for deriving
+ * stage/sourceScope from the LINK shape rather than storing them, lives on
+ * {@link QA_FIXTURE_PHOTOS} — read it before adding a column here.
+ *
+ * Idempotent by delete-then-insert on `(organization_id, po_ref)`: `photos` has
+ * no natural key to `ON CONFLICT` against, and `photo_entity_links` cascades on
+ * `photo_id`.
+ *
+ * Resolves the carton and line by the existing QA constants rather than taking
+ * ids from `seedReceivingFixture` — that keeps this additive, so it does not
+ * change a signature another lane may be editing.
+ */
+async function seedPhotoFixtures(client: PoolClient, orgId: string, adminStaffId: number) {
+  const cartonRes = await client.query<{ id: number }>(
+    `SELECT id FROM receiving_carton
+      WHERE organization_id = $1 AND zoho_purchaseorder_id = $2
+      LIMIT 1`,
+    [orgId, QA_FIXTURE_PO_ID],
+  );
+  const receivingId = cartonRes.rows[0] ? Number(cartonRes.rows[0].id) : null;
+  if (receivingId == null) {
+    log('Media Library', 'skipped — the receiving fixture carton is missing');
+    return;
+  }
+
+  const lineRes = await client.query<{ id: number }>(
+    // `item_name`, not `title` — and newest-first, because seedReceivingFixture
+    // INSERTs its lines fresh on every provision rather than upserting.
+    `SELECT id FROM receiving_line
+      WHERE organization_id = $1 AND receiving_id = $2 AND item_name = $3
+      ORDER BY id DESC
+      LIMIT 1`,
+    [orgId, receivingId, QA_FIXTURE_TESTED_LINE.title],
+  );
+  const lineId = lineRes.rows[0] ? Number(lineRes.rows[0].id) : null;
+
+  await client.query(`DELETE FROM photos WHERE organization_id = $1 AND po_ref = $2`, [
+    orgId,
+    QA_FIXTURE_PHOTOS.poRef,
+  ]);
+
+  const seeds = [
+    ...QA_FIXTURE_PHOTOS.carton.map((p) => ({
+      ...p,
+      entityType: 'RECEIVING' as const,
+      entityId: receivingId,
+    })),
+    ...(lineId == null
+      ? []
+      : QA_FIXTURE_PHOTOS.line.map((p) => ({
+          ...p,
+          entityType: 'RECEIVING_LINE' as const,
+          entityId: lineId,
+        }))),
+  ];
+
+  for (const seed of seeds) {
+    const photoRes = await client.query<{ id: number }>(
+      `INSERT INTO photos
+         (organization_id, taken_by_staff_id, photo_type, po_ref, created_at, client_captured_at)
+       VALUES (
+         $1, $2, $3, $4,
+         now() - make_interval(days => $5::int),
+         CASE WHEN $6::boolean THEN now() - make_interval(days => $5::int) ELSE NULL END
+       )
+       RETURNING id`,
+      [orgId, adminStaffId, seed.photoType, QA_FIXTURE_PHOTOS.poRef, seed.ageDays, seed.captured],
+    );
+    const photoId = Number(photoRes.rows[0]!.id);
+    await client.query(
+      `INSERT INTO photo_entity_links
+         (photo_id, organization_id, entity_type, entity_id, link_role)
+       VALUES ($1, $2, $3, $4, 'primary')
+       ON CONFLICT DO NOTHING`,
+      [photoId, orgId, seed.entityType, seed.entityId],
+    );
+  }
+
+  log(
+    'Media Library',
+    `${seeds.length} photos carton=${receivingId} ` +
+      (lineId == null
+        ? '(no tested line — the unbox_item stage is unseeded)'
+        : `line=${lineId} (stages arrival_package · unbox_carton · unbox_item)`),
+  );
+}
+
 async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   const client = await pool.connect();
   try {
@@ -947,7 +1110,32 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
     await setOrgGuc(client, orgId);
     await seedSkus(client, orgId);
     await seedZohoItems(client, orgId);
+    // Packing DESK/STAGING benches — QA-prefixed barcodes (locations.name/barcode
+    // are still globally unique). Requires location_kind migration applied.
+    const { seedPackingStationsForOrg } = await import('@/lib/packing/pack-placement');
+    await seedPackingStationsForOrg(client, orgId, {
+      barcodePrefix: 'QA-',
+      namePrefix: 'QA ',
+    });
+    // A loose serialized unit for Phase 2 unit pack placement (Ready-to-Pack
+    // loose-unit staging). unit_uid is printed-unit-id-shaped so looksLikeUnitId
+    // fires; the move route resolves it by unit_uid. On-floor status so it counts.
+    await client.query(
+      `INSERT INTO serial_units (organization_id, serial_number, normalized_serial, unit_uid, sku, current_status)
+         SELECT $1::uuid, $2, $3, $4, $5, 'TESTED'
+        WHERE NOT EXISTS (
+          SELECT 1 FROM serial_units WHERE organization_id = $1::uuid AND normalized_serial = $3
+        )`,
+      [
+        orgId,
+        QA_FIXTURE_UNIT.unitUid,
+        QA_FIXTURE_UNIT.normalizedSerial,
+        QA_FIXTURE_UNIT.unitUid,
+        QA_FIXTURE_SKUS.speaker,
+      ],
+    );
     await seedReceivingFixture(client, orgId, adminStaffId);
+    await seedPhotoFixtures(client, orgId, adminStaffId);
     await seedIncomingFixture(client, orgId);
     const orderRowIds = await seedOrderFixtures(client, orgId);
     await seedDemoOrderVolume(client, orgId);

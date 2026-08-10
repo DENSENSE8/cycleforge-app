@@ -181,6 +181,10 @@ export interface PutawayFactsInput {
   bin?: string | null;
   putAwayAt?: string | null;
   putAwayBy?: number | null;
+  /** Unbox commit `stage` — intended bin before receive. */
+  stagedLocationId?: number | null;
+  stagedAt?: string | null;
+  stagedBy?: number | null;
 }
 
 export function upsertReceivingLinePutaway(
@@ -194,6 +198,9 @@ export function upsertReceivingLinePutaway(
     bin: f.bin,
     put_away_at: f.putAwayAt,
     put_away_by: f.putAwayBy,
+    staged_location_id: f.stagedLocationId,
+    staged_at: f.stagedAt,
+    staged_by: f.stagedBy,
   }, deps);
 }
 

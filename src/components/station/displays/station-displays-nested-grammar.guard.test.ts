@@ -2,16 +2,13 @@
  * Station Displays nested-leaf grammar (locked 2026-08-08; armed-row verbs).
  *
  * Root Index = the only subject lateral layer. Inside a leaf:
- *   - **Preferred:** armed-row verb list + URL drill-downs (Photos golden) —
- *     trail via `useDisplaysLeafChrome`; never a parent TabDisplay strip.
- *   - **OR** secondary vertical index (Inventory reference sections).
- * Never both. Never a second `StationDisplayLeafHeader`.
+ *   - **Preferred:** armed-row verb list + stack chrome (Photos · Linkage ·
+ *     Units · Inventory) — trail via `useDisplaysLeafChrome`; never a parent
+ *     TabDisplay strip or a hand-rolled sub-index.
+ * Never a second `StationDisplayLeafHeader`.
  * Child perspectives **inside a tool** use `appearance="segment"` (Claim New·Link ·
  * Move To·From · Prebox mode · Support Team·Activity) — never soft `TabSwitch` /
  * `rounded-full` pills.
- *
- * Debt allowlist (shrink-only): Linkage · Units still mount one parent underline
- * until migrated to armed rows. Nothing may join this list.
  *
  *   node --import tsx --test src/components/station/displays/station-displays-nested-grammar.guard.test.ts
  */
@@ -29,19 +26,16 @@ function stripComments(src: string): string {
 
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
-/**
- * Parent-underline debt survivors — shrink-only. Migrating a host to armed
- * rows removes it from this list; never add a new Displays leaf here.
- */
-const UNDERLINE_PARENT_HOSTS = [
+/** Armed-row + parent-chrome drill leaves (no parent underline). */
+const ARMED_VERB_HOSTS = [
+  'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
+  'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx',
 ] as const;
 
 const LEAF_HOSTS = [
-  'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
-  ...UNDERLINE_PARENT_HOSTS,
-  'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx',
+  ...ARMED_VERB_HOSTS,
   'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
 ] as const;
 
@@ -58,47 +52,52 @@ describe('Station Displays nested-leaf grammar', () => {
     });
   }
 
-  it('Inventory is secondary vertical drill — no parent TabDisplay', () => {
+  it('Inventory is armed-row secondary drill — parent chrome owns ← → Esc', () => {
     const src = read(
       'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx',
     );
     assert.match(src, /useDisplaysLeafChrome/);
+    assert.match(
+      src,
+      /StationArmedVerbList/,
+      'Inventory sub-index is StationArmedVerbList (Photos/Linkage twin)',
+    );
+    assert.match(src, /setTrail|setOnNestedPop|setOnNestedRestore/);
     assert.doesNotMatch(
       src,
       /\bTabDisplay\b/,
-      'Inventory reference sections use vertical rows, not a TabDisplay strip',
+      'Inventory reference sections use armed rows, not a TabDisplay strip',
+    );
+    assert.doesNotMatch(
+      src,
+      /StationDisplayLeafHeader/,
+      'No nested LeafHeader — stack paints Back from trail',
     );
     assert.match(src, /secondary Root-to-Leaf|InventorySubLeaf|SUB_LEAF_META/);
   });
 
-  it('Photos is armed-row list + URL drill-downs — no parent TabDisplay', () => {
-    const src = read(
-      'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
-    );
-    assert.match(src, /PhotosActionsArmedList/);
-    assert.match(
-      src,
-      /useDisplaysLeafChrome/,
-      'Photos drills report trail so Back pops drill → Actions (Inventory twin)',
-    );
-    assert.doesNotMatch(
-      src,
-      /\bTabDisplay\b/,
-      'Photos verbs are vertical armed rows, not a nested Actions·Compare·Move·Send strip',
-    );
-    assert.match(src, /ListingPhotoCompareHost/);
-    assert.match(src, /MovePhotosBetweenPoPanel/);
-    assert.match(src, /SendPhotoNotePanel/);
-  });
-
-  for (const host of UNDERLINE_PARENT_HOSTS) {
-    it(`${host} has exactly one parent underline strip`, () => {
+  for (const host of ARMED_VERB_HOSTS) {
+    it(`${host} is armed-row list + URL drills — no parent TabDisplay`, () => {
       const src = read(host);
-      const matches = src.match(/appearance="underline"/g) ?? [];
-      assert.equal(
-        matches.length,
-        1,
-        `${host}: exactly one parent underline (got ${matches.length})`,
+      assert.match(
+        src,
+        /StationArmedVerbList|PhotosActionsArmedList/,
+        `${host}: must compose an armed verb list`,
+      );
+      assert.match(
+        src,
+        /useDisplaysLeafChrome/,
+        `${host}: drills report trail so Back pops drill → Actions`,
+      );
+      assert.doesNotMatch(
+        src,
+        /\bTabDisplay\b/,
+        `${host}: verbs are vertical armed rows, not a nested underline strip`,
+      );
+      assert.doesNotMatch(
+        src,
+        /appearance="underline"/,
+        `${host}: parent underline debt is retired`,
       );
     });
   }
@@ -156,64 +155,16 @@ describe('Station Displays nested-leaf grammar', () => {
     assert.doesNotMatch(src, /\bTabSwitch\b/);
   });
 
-  it('SoT documents armed-row leaf verbs + debt allowlist', () => {
+  it('SoT documents armed-row leaf verbs (no underline debt allowlist)', () => {
     const sot = read('.claude/rules/source-of-truth.md');
     assert.match(sot, /armed-row|armed row/i);
-    assert.match(sot, /PhotosActionsArmedList|useArmedCursorList/);
+    assert.match(sot, /PhotosActionsArmedList|useArmedCursorList|StationArmedVerbList/);
     assert.match(sot, /secondary vertical|secondary drill/i);
     assert.match(sot, /appearance="segment"/);
-    assert.match(
-      sot,
-      /Debt allowlist|underline survivors|LinkageDisplayHost/,
-      'SoT must name the parent-underline debt hosts (shrink-only)',
-    );
-    assert.match(
-      sot,
-      /never both|Never both|never a nested parent|never.*parent TabDisplay/i,
-    );
-  });
-
-  it('parent-underline debt allowlist is exactly Linkage · Units (shrink-only)', () => {
-    assert.deepEqual(
-      [...UNDERLINE_PARENT_HOSTS],
-      [
-        'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
-        'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
-      ],
-      'Do not add Displays leaves to the underline debt list — migrate to armed rows',
-    );
-  });
-
-  it('Photos nest altitude is Actions → Move · Send → Compare (bench → tools → evidence)', () => {
-    const tabs = read(
-      'src/components/receiving/workspace/line-edit/unbox-side-tabs.ts',
-    );
-    const host = read(
-      'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
-    );
-    const actions = read(
-      'src/components/receiving/workspace/line-edit/PhotosActionsArmedList.tsx',
-    );
-    assert.match(
-      tabs,
-      /UNBOX_PHOTO_ACTION_ORDER\s*=\s*\[[\s\S]*?'actions'[\s\S]*?'move'[\s\S]*?'send'[\s\S]*?'compare'[\s\S]*?\]/,
-      'UNBOX_PHOTO_ACTION_ORDER must stay Actions · Move · Send · Compare',
-    );
     assert.doesNotMatch(
-      host,
-      /\bTabDisplay\b/,
-      'Photos no longer mounts a nested underline strip from UNBOX_PHOTO_ACTION_ORDER',
+      sot,
+      /Debt allowlist[\s\S]{0,80}LinkageDisplayHost/,
+      'Linkage · Units underline debt allowlist must be gone from SoT',
     );
-    assert.match(host, /PhotosActionsArmedList/);
-    const move = actions.indexOf("id: 'move'");
-    const send = actions.indexOf("id: 'send'");
-    const compare = actions.indexOf("id: 'compare'");
-    assert.ok(
-      move > 0 && send > move && compare > send,
-      'armed drills Move → Send → Compare',
-    );
-    const sot = read('.claude/rules/source-of-truth.md');
-    assert.match(sot, /Nested verb altitude/i);
-    assert.match(sot, /UNBOX_PHOTO_ACTION_ORDER/);
   });
 });

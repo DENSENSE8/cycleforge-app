@@ -23,6 +23,7 @@ import { useOrdersQueueRows } from '@/components/dashboard/orders-queue/useOrder
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { formatDateKeyShort } from '@/utils/date';
 import { deriveFulfillmentState } from '@/lib/unshipped-state';
 import type { ShippedOrder } from '@/types/orders';
@@ -56,35 +57,20 @@ function trackingHay(r: ShippedOrder): string {
     .join(' ');
 }
 
-function metaSep() {
-  return (
-    <span className="shrink-0 text-text-faint" aria-hidden>
-      ·
-    </span>
-  );
-}
-
 function parentMeta(rows: ShippedOrder[]): ReactNode {
   const qty = rows.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
   const orderId = String(rows[0]?.order_id || '').trim();
-  const parts: ReactNode[] = [
-    <span key="qty" className="shrink-0 tabular-nums">
+  return joinStackedIdentityKeys([
+    <span key="qty" className="shrink-0 tabular-nums text-role-caption text-text-soft">
       {qty || rows.length}
     </span>,
-  ];
-  if (orderId) {
-    parts.push(metaSep());
-    parts.push(
-      <OrderIdChip key="order" value={orderId} display={getLast8(orderId)} dense />,
-    );
-  }
-  parts.push(metaSep());
-  parts.push(
-    <span key="lines" className="shrink-0 tabular-nums text-text-muted">
+    orderId ? (
+      <OrderIdChip key="order" value={orderId} display={getLast8(orderId)} dense />
+    ) : null,
+    <span key="lines" className="shrink-0 tabular-nums text-role-caption text-text-muted">
       {rows.length} line{rows.length === 1 ? '' : 's'}
     </span>,
-  );
-  return <>{parts}</>;
+  ]);
 }
 
 export function OrdersDrillHost({

@@ -5,6 +5,7 @@ import { ArrowUpDown, ChevronDown, ChevronUp } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { Popover } from '@/design-system';
 import type { PhotoLibrarySortMode } from '@/lib/photos/library-filter-state';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 const OPTIONS: {
@@ -80,7 +81,10 @@ export function PhotoSortMenu({
       >
         <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
         <span className="whitespace-nowrap">{activeOption.label}</span>
-        <ChevronDown className={cn('h-3 w-3 shrink-0 opacity-60 transition-transform', open && 'rotate-180')} />
+        {/* Flips state, never travels — a 150ms rotate on the control the
+            operator has already committed to confirms a result that is on
+            screen. Colour transitions stay (house hover law); transforms do not. */}
+        <ChevronDown className={cn('h-3 w-3 shrink-0 opacity-60', open && 'rotate-180')} />
       </ToolbarButton>
 
       <Popover
@@ -93,7 +97,7 @@ export function PhotoSortMenu({
         padded={false}
         role="listbox"
         aria-label="Sort photos"
-        className="min-w-0 rounded-lg p-0.5 shadow-md"
+        className={cn('min-w-0 p-0.5 shadow-md', cornerClass('flush'))}
       >
         <ul ref={listRef} className="list-none">
           {OPTIONS.map((o, index) => {
@@ -109,7 +113,8 @@ export function PhotoSortMenu({
                   onClick={() => handleSelect(o.value)}
                   onKeyDown={(event) => handleOptionKeyDown(event, index)}
                   className={cn(
-                    'ds-raw-button flex w-full items-center justify-start gap-1.5 rounded-md py-1.5 pl-1.5 pr-1 text-role-micro font-semibold transition-colors',
+                    'ds-raw-button flex w-full items-center justify-start gap-1.5 py-1.5 pl-1.5 pr-1 text-role-micro font-semibold transition-colors',
+                    cornerClass('flush'),
                     active
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',

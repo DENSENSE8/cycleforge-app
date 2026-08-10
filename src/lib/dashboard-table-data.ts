@@ -166,6 +166,17 @@ export interface UnshippedQueueCounts {
   /** Operator-flagged urgent tally (orders.is_urgent) for the "Urgent" segment. */
   urgent: number;
   combos: QueueCountsCombo[];
+  /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
+  packPlacement?: {
+    counts: Array<{
+      locationId: number;
+      locationName: string;
+      locationBarcode: string | null;
+      locationKind: 'DESK' | 'STAGING';
+      count: number;
+    }>;
+    totalPlaced: number;
+  };
 }
 
 const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
@@ -173,6 +184,7 @@ const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
   byStage: { all: 0, pending: 0, tested: 0 },
   urgent: 0,
   combos: [],
+  packPlacement: { counts: [], totalPlaced: 0 },
 };
 
 /**
@@ -190,11 +202,21 @@ export async function fetchUnshippedQueueCounts({
   if (!res.ok) return ZERO_QUEUE_COUNTS;
   const data = await res.json().catch(() => null);
   if (!data || typeof data.total !== 'number') return ZERO_QUEUE_COUNTS;
+  const packPlacement = data.packPlacement && typeof data.packPlacement === 'object'
+    ? {
+        counts: Array.isArray(data.packPlacement.counts) ? data.packPlacement.counts : [],
+        totalPlaced:
+          typeof data.packPlacement.totalPlaced === 'number'
+            ? data.packPlacement.totalPlaced
+            : 0,
+      }
+    : ZERO_QUEUE_COUNTS.packPlacement;
   return {
     total: data.total,
     byStage: data.byStage ?? ZERO_QUEUE_COUNTS.byStage,
     urgent: typeof data.urgent === 'number' ? data.urgent : 0,
     combos: Array.isArray(data.combos) ? data.combos : [],
+    packPlacement,
   };
 }
 

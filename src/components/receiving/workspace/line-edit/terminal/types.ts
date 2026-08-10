@@ -47,6 +47,8 @@ export interface UnboxReceiveTerminalInput {
   /** Unreceive / Unreceive all — mirrors Receive all scope. */
   unreceiveMenuLabel?: string;
   unreceiveMenuTitle?: string;
+  /** Pre-disable when shipment missing or outbound serials would 409. */
+  unreceiveMenuDisabled?: boolean;
   handlePrintAndReceive: () => void | Promise<void>;
   /** Print the currently selected label kind. */
   runPrintLabel: () => void;
@@ -61,5 +63,5 @@ export interface UnboxReceiveTerminalInput {
   requestLabelEditor?: () => void;
   handleReceive: (
     mode: 'scan_only' | 'zoho_receive' | 'local_receive' | 'unreceive',
-  ) => void | Promise<void>;
+  ) => void | Promise<boolean | void>;
 }

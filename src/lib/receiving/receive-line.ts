@@ -18,6 +18,15 @@ import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { escapeLike } from '@/lib/sql-like';
+import {
+  UNRECEIVE_BLOCKING_SERIAL_STATUSES,
+  isUnreceiveSerialBlocking,
+} from '@/lib/receiving/unreceive-serial-guard';
+
+// Re-export pure guard for server/test callers that historically imported it
+// from this module. Definition stays in unreceive-serial-guard so Client
+// Components never pull this file (and @/lib/db) into the bundle.
+export { UNRECEIVE_BLOCKING_SERIAL_STATUSES, isUnreceiveSerialBlocking };
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -839,33 +848,6 @@ export async function receiveLineUnits(
 }
 
 // ── Unreceive (website reverse of Receive) ─────────────────────────────────
-
-/**
- * Serial statuses that block website unreceive — the unit has left the dock
- * into fulfillment / outbound / hold. STOCKED is recoverable via un-putaway;
- * RECEIVED / TESTED / GRADED / TRIAGED stay linked but do not block the line
- * qty rewind.
- */
-export const UNRECEIVE_BLOCKING_SERIAL_STATUSES: ReadonlySet<string> = new Set([
-  'ALLOCATED',
-  'PICKING',
-  'PICKED',
-  'PACKING',
-  'PACKED',
-  'LABELED',
-  'STAGED',
-  'LOADING',
-  'SHIPPED',
-  'ON_HOLD',
-  'IN_REPAIR',
-  'RMA',
-]);
-
-/** Pure — used by unreceiveLineUnits + unit tests. */
-export function isUnreceiveSerialBlocking(status: string | null | undefined): boolean {
-  const s = String(status ?? '').trim().toUpperCase();
-  return s.length > 0 && UNRECEIVE_BLOCKING_SERIAL_STATUSES.has(s);
-}
 
 export interface UnreceiveLineUnitsInput {
   organizationId: string;

@@ -4,8 +4,9 @@
  * LedgerGrid drill — left parent map (WMS-wide).
  *
  * Sectioned list of parent keys. Selection orients the right child collection
- * ({@link NAV_ROW} wash — not record pick). Domain supplies titles / meta;
- * never invent a second column vocabulary here.
+ * ({@link NAV_ROW} wash — not record pick). Domain supplies titles / keys;
+ * row face composes {@link StackedRowIdentity} (title → typed CopyChip keys) —
+ * never a hand-rolled `flex-col` title/meta twin.
  *
  * Scroll + more-below lip compose {@link SidebarRailScrollport} — same SoT as
  * station recent rails. Optional `footer` pins a domain filter
@@ -14,6 +15,7 @@
 
 import type { ReactNode } from 'react';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 import { TABLE_SURFACE_SHEET_CLASS } from '@/design-system/tokens/table-surface';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -22,6 +24,7 @@ import { cn } from '@/utils/_cn';
 export type LedgerDrillParentRow = {
   key: string;
   title: ReactNode;
+  /** Second-row keys — prefer `joinStackedIdentityKeys` + CopyChip family. */
   meta?: ReactNode;
 };
 
@@ -113,21 +116,21 @@ export function LedgerDrillParentMap({
                           }
                         }}
                         className={cn(
-                          'flex w-full cursor-pointer flex-col gap-0.5 px-3 py-2 text-left transition-colors',
+                          'w-full cursor-pointer px-3 py-2 text-left transition-colors',
                           focusRing('control'),
                           selected
                             ? NAV_ROW.selectedClass
                             : 'hover:bg-surface-hover',
                         )}
                       >
-                        <span className="truncate text-role-body font-medium text-text-primary">
-                          {row.title}
-                        </span>
-                        {row.meta != null ? (
-                          <span className="flex min-w-0 items-center gap-1.5 text-role-caption text-text-soft">
-                            {row.meta}
-                          </span>
-                        ) : null}
+                        <StackedRowIdentity
+                          title={
+                            <span className="truncate text-role-body font-medium text-text-primary">
+                              {row.title}
+                            </span>
+                          }
+                          keys={row.meta}
+                        />
                       </div>
                     </li>
                   );

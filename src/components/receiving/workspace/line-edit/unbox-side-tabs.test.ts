@@ -148,14 +148,16 @@ test('photo / linkage / ticket / units nested action parsers', () => {
   assert.equal(parseUnboxPhotoActionWire('browse'), 'browse');
   assert.equal(parseUnboxPhotoActionWire('bogus'), null);
   assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: true }), 'note');
-  assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: false }), 'link');
-  assert.equal(parseUnboxLinkageAction(null, { hasPoNoteTab: true }), 'link');
+  assert.equal(parseUnboxLinkageAction('note', { hasPoNoteTab: false }), 'actions');
+  assert.equal(parseUnboxLinkageAction('link', { hasPoNoteTab: true }), 'link');
+  assert.equal(parseUnboxLinkageAction(null, { hasPoNoteTab: true }), 'actions');
   // Presence-only: linked ticket → chat; no ticket → claim (URL verb ignored).
   assert.equal(resolveUnboxTicketAction(true), 'chat');
   assert.equal(resolveUnboxTicketAction(false), 'claim');
   assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: true }), 'prebox');
-  assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: false }), 'units');
-  assert.equal(parseUnboxUnitsAction(null, { hasPrebox: true }), 'units');
+  assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: false }), 'actions');
+  assert.equal(parseUnboxUnitsAction('units', { hasPrebox: true }), 'units');
+  assert.equal(parseUnboxUnitsAction(null, { hasPrebox: true }), 'actions');
 });
 
 test('overview is NOT a side tab — the carton owns the centre', () => {

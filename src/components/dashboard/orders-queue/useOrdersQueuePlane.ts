@@ -56,7 +56,6 @@ interface OrdersQueuePlaneArgs {
 interface OrdersQueuePlane {
   selectedIds: ReadonlySet<number>;
   selectedRecord: ShippedOrder | null;
-  singleSelectedId: number | null;
   clickSelect: boolean;
   fillsById: Record<string, string>;
   handleRowAction: (
@@ -97,8 +96,6 @@ export function useOrdersQueuePlane({
     rows: displayedRecords,
     getId: getRowId,
   });
-  const singleSelectedId = selectedIds.size === 1 ? [...selectedIds][0] : null;
-
   // ─── Rail selection: the check-set is the only selection ───────────────────
   // Set iteration is insertion order, so this preserves the order rows were
   // picked in — which is what the compare pane's left/right columns key off.
@@ -330,7 +327,6 @@ export function useOrdersQueuePlane({
   return {
     selectedIds,
     selectedRecord,
-    singleSelectedId,
     clickSelect,
     fillsById,
     handleRowAction,

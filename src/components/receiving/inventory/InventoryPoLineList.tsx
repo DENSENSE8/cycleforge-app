@@ -16,11 +16,39 @@ import {
 } from '@/design-system/components';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { parseSerialFromLineDescription } from '@/lib/zoho-po-prefill';
+import { deriveReceivingLineStatus } from '@/lib/receiving/workflow-stages';
+import { isZohoReceivedLikeStatus } from '@/lib/receiving/zoho-received-status';
 import { cn } from '@/utils/_cn';
 import type { DetailsResponse } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { Row } from '@/components/sidebar/receiving/incoming-details/incoming-details-primitives';
 
 type LineItem = DetailsResponse['line_items'][number];
+
+const COARSE_FACE: Record<string, string> = {
+  INCOMING: 'Incoming',
+  SCANNED: 'Scanned',
+  UNBOXED: 'Unboxed',
+  RECEIVED: 'Received',
+};
+
+/**
+ * Trust face for a PO line — prefer vendor PO receipt (same plane as
+ * Information's RECEIVED chip) when local qty still shows received. After
+ * Unreceive, qty is 0 while Zoho status may lag until Refresh — prefer local
+ * workflow so Lines do not contradict the dock.
+ */
+function lineTrustStatusLabel(
+  workflowStatus: string | null | undefined,
+  poStatus: string | null | undefined,
+  quantityReceived?: number,
+): string | null {
+  const localQty = Number(quantityReceived ?? 0);
+  if (localQty > 0 && isZohoReceivedLikeStatus(poStatus)) return 'Received';
+  if (!(workflowStatus || '').trim()) return null;
+  return COARSE_FACE[deriveReceivingLineStatus(workflowStatus)] ?? null;
+}
 
 function lineKey(line: LineItem, idx: number): string {
   return String(line.line_item_id || line.receiving_line_id || `line-${idx}`);
@@ -32,6 +60,8 @@ export function InventoryPoLineList({
   editable = false,
   /** Edge-to-edge editable line notes (Unbox Inventory instrument). */
   inlineNotes = false,
+  /** Linked inventory PO status (dossier `po.status`) — drives Received trust face. */
+  poStatus = null,
   onSaveDescription,
   savingLineId = null,
   /** Roving keyboard focus index among line instruments (−1 = none). */
@@ -42,6 +72,7 @@ export function InventoryPoLineList({
   focusReceivingLineId?: number | null;
   editable?: boolean;
   inlineNotes?: boolean;
+  poStatus?: string | null;
   onSaveDescription?: (line: LineItem, description: string | null) => void | Promise<void>;
   savingLineId?: number | null;
   focusIndex?: number;
@@ -81,6 +112,24 @@ export function InventoryPoLineList({
       el.focus({ preventScroll: true });
     }
   }, [focusIndex, inlineNotes, lines]);
+
+  // Seed roving focus + scroll to the workspace-active line (middle twin).
+  useEffect(() => {
+    if (focusReceivingLineId == null || lines.length === 0) return;
+    const idx = lines.findIndex(
+      (l) =>
+        l.receiving_line_id != null && l.receiving_line_id === focusReceivingLineId,
+    );
+    if (idx < 0) return;
+    onFocusIndexChange?.(idx);
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-inventory-line-id="${focusReceivingLineId}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+    // lines.length only — avoid resetting focus on every description refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusReceivingLineId, lines.length]);
 
   if (lines.length === 0) {
     return (
@@ -127,15 +176,23 @@ export function InventoryPoLineList({
             savingLineId === line.receiving_line_id;
           const dirty = draft.trim() !== (line.description ?? '').trim();
           const noteId = `inventory-line-note-${key}`;
+          const snFace = parseSerialFromLineDescription(draft || line.description);
+          const lineIdAttr =
+            line.receiving_line_id != null ? String(line.receiving_line_id) : undefined;
 
           return (
             <li
               key={key}
               className={cn(
-                isActive && 'bg-blue-50/40',
-                isFocused && 'ring-inset ring-1 ring-blue-500/40',
+                // Station selected face — same opacity semantics as middle PoLineRow.
+                isActive && QUEUE_ROW.selectedStationClass,
+                isActive && 'ring-inset ring-2 ring-accent-bg/50',
+                isFocused && !isActive && 'ring-inset ring-1 ring-accent-bg/40',
               )}
               data-inventory-line-instrument={idx}
+              data-inventory-line-id={lineIdAttr}
+              data-inventory-line-active={isActive ? 'true' : undefined}
+              aria-current={isActive ? 'true' : undefined}
             >
               {/* Identity face — keyboard target for ↑↓ roving */}
               <button
@@ -153,11 +210,20 @@ export function InventoryPoLineList({
                 }}
                 aria-label={`${label}, ${qty}${isActive ? ', active line' : ''}`}
               >
-                <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
-                  {label}
-                  {isActive ? (
-                    <span className="ml-1.5 text-role-eyebrow font-semibold uppercase tracking-wider text-blue-700">
-                      Active
+                <span className="min-w-0 flex-1 overflow-hidden">
+                  <span className="flex min-w-0 items-baseline gap-1.5">
+                    <span className="truncate text-role-caption font-semibold text-text-default">
+                      {label}
+                    </span>
+                    {isActive ? (
+                      <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-wider text-accent-bg">
+                        Active
+                      </span>
+                    ) : null}
+                  </span>
+                  {snFace ? (
+                    <span className="mt-0.5 block truncate text-role-micro text-text-muted">
+                      SN: {snFace}
                     </span>
                   ) : null}
                 </span>
@@ -169,11 +235,18 @@ export function InventoryPoLineList({
                       {totalLabel ? ` · ${totalLabel}` : ''}
                     </span>
                   ) : null}
-                  {line.workflow_status ? (
-                    <span className="mt-0.5 block text-role-eyebrow uppercase tracking-wider text-text-soft">
-                      {line.workflow_status}
-                    </span>
-                  ) : null}
+                  {(() => {
+                    const trust = lineTrustStatusLabel(
+                      line.workflow_status,
+                      poStatus,
+                      line.quantity_received,
+                    );
+                    return trust ? (
+                      <span className="mt-0.5 block text-role-eyebrow uppercase tracking-wider text-text-soft">
+                        {trust}
+                      </span>
+                    ) : null;
+                  })()}
                 </span>
               </button>
 

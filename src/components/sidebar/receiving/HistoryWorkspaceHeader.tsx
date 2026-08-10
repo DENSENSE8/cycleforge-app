@@ -9,6 +9,13 @@
  *   Band 3 — {@link HistoryTriageBand}: search LEFT · refine (sort / field
  *            popover) + week pill RIGHT — composes the SoT {@link WorkbenchTriageBand}.
  *
+ * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed carton-source
+ * tabs for every staffer — never Chrome-style unpin · Pin-list cube omitted
+ * (honest absence — no closed foreign-collection catalog) · Views on Band 3
+ * (`WorkbenchViewsMenu` in the triage `views` slot, never Band-1 leading) ·
+ * page-pin in GlobalHeader. Three pin scopes never share a trigger/store. SoT:
+ * source-of-truth.md → Workbench Band-1 strip · Left-edge → SCOPE decides its home.
+ *
  * Search / field / sort / week all live on Band 3 now — never Band 1. Mirrors
  * `OutboundWorkspaceHeader` / `OutboundTriageBand`. Row select lives in the
  * table left gutter; column display (▦) portals into Band-3 `controlsSlotRef`.
@@ -46,6 +53,11 @@ import {
   type ReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
 import { formatWeekRangeCompact } from '@/utils/date';
+import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
+import {
+  SAVED_VIEW_PARAM_KEYS,
+  SAVED_VIEW_STORAGE_KEY,
+} from '@/lib/station/table-url-params';
 
 /** Shared URL replace — both bands write history search params. */
 function useHistoryParamReplace() {
@@ -253,6 +265,13 @@ export function HistoryTriageBand({
     <WorkbenchTriageBand
       className={className}
       controlsSlotRef={controlsSlotRef}
+      views={
+        <WorkbenchViewsMenu
+          storageKey={SAVED_VIEW_STORAGE_KEY.receiving_history}
+          paramKeys={SAVED_VIEW_PARAM_KEYS.receiving_history}
+          emptyHint="No saved views yet — refine History (staff, sort, field, week), then save it here."
+        />
+      }
       search={
         <TechRailSearchBar
           variant="chrome"

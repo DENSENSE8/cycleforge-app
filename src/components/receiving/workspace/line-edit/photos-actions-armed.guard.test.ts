@@ -81,6 +81,36 @@ describe('Photos Actions keyboard-armed Displays SoT', () => {
     assert.ok(move > 0 && send > move && compare > send);
   });
 
+  it('Upload opens the native file picker immediately — no PhotoUploadOverlay', () => {
+    assert.match(actions, /usePhotoDropzone/);
+    assert.match(actions, /dz\.openPicker/);
+    assert.doesNotMatch(
+      actions,
+      /PhotoUploadOverlay/,
+      'Displays Upload must not mount the dropzone overlay',
+    );
+    assert.doesNotMatch(
+      actions,
+      /openUploadOverlay/,
+      'Upload verb opens Finder/Explorer via openPicker — never the overlay',
+    );
+  });
+
+  it('Media library navigates same-tab — never window.open / target=_blank', () => {
+    assert.match(actions, /router\.push\(libraryHref\)/);
+    assert.doesNotMatch(
+      actions,
+      /window\.open/,
+      'Media library must not open a new browser tab',
+    );
+    assert.doesNotMatch(actions, /target=["']_blank["']/);
+    assert.doesNotMatch(
+      actions,
+      /ExternalLink/,
+      'ExternalLink implies new-tab — Media library is in-app navigation',
+    );
+  });
+
   it('Unbox identity Photos pill stays send-to-phone (hover strip suppressed)', () => {
     assert.match(panel, /suppressPhotoHoverGallery/);
     assert.doesNotMatch(panel, /onOpenPhotosDisplay/);

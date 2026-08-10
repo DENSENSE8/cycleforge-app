@@ -7,16 +7,6 @@
 
 import { useEffect, useState } from 'react';
 
-/**
- * How long a scanned/active order stays on the packer right pane before it
- * auto-crossfades back to the history table. Mirrors the Station act-and-clear
- * auto-hide (`COMPLETED_ORDER_AUTO_HIDE_MS` in `useStationTestingController`);
- * the crossfade itself stays fast (`framerTransition.stationCardMount`, 0.26s)
- * — this is the *dwell*, not the animation length (see
- * `.claude/rules/display/station.md` §5 and `motion-crossfade.md`).
- */
-const ACTIVE_ORDER_AUTO_HIDE_MS = 2 * 60 * 1000;
-
 export interface PackActiveOrderPane {
   orderRowId: number | null;
   orderId: string;
@@ -82,25 +72,6 @@ export function usePackerOrderPane() {
     window.addEventListener('pack-active-fba-changed', handler);
     return () => window.removeEventListener('pack-active-fba-changed', handler);
   }, []);
-
-  // Act-and-clear dwell: hold the active order for 2 minutes, then clear it so
-  // `PackerRightPane` crossfades back to the history table. Every scan dispatches
-  // a fresh pane object, so this effect re-runs and restarts the 2-minute window
-  // (a new scan still replaces the card immediately). Manual close / unmount
-  // clears the timer via cleanup.
-  useEffect(() => {
-    if (!activeOrderPane) return;
-    const timer = setTimeout(() => setActiveOrderPane(null), ACTIVE_ORDER_AUTO_HIDE_MS);
-    return () => clearTimeout(timer);
-  }, [activeOrderPane]);
-
-  // Same act-and-clear dwell for the FBA card — a station bench must return to
-  // "ready for the next scan" on its own, not hold the last entity forever.
-  useEffect(() => {
-    if (!activeFbaPane) return;
-    const timer = setTimeout(() => setActiveFbaPane(null), ACTIVE_ORDER_AUTO_HIDE_MS);
-    return () => clearTimeout(timer);
-  }, [activeFbaPane]);
 
   return { activeOrderPane, setActiveOrderPane, activeFbaPane, setActiveFbaPane };
 }

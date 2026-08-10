@@ -197,6 +197,28 @@ describe('Optimistic URL-param paint SoT', () => {
     assert.match(manuals, /useOptimisticUrlParam/);
   });
 
+  it('Media Library photoId is paint-pending and stays a DISPLAY param', () => {
+    const hook = read('src/hooks/usePhotoInspectorParam.ts');
+    const page = read('src/components/photos/PhotoLibraryPage.tsx');
+    const filterState = read('src/lib/photos/library-filter-state.ts');
+    assert.match(hook, /useOptimisticUrlParam/);
+    assert.match(hook, /shareKey:\s*['"]photos:photoId['"]/);
+    assert.match(page, /usePhotoInspectorParam/);
+    assert.doesNotMatch(
+      page,
+      /router\.replace/,
+      'the library must not raw-replace ?photoId= beside the SoT hook',
+    );
+    // A record param that reached the filter set would narrow the very stream
+    // the photo was picked from — `photoId` belongs to the DISPLAY bag only.
+    assert.match(filterState, /parsePhotoLibraryDisplayParams[\s\S]{0,600}?photoId/);
+    assert.doesNotMatch(
+      filterState,
+      /parsePhotoLibraryFilters[\s\S]{0,1400}?['"]photoId['"]/,
+      'photoId must never be parsed as a library FILTER',
+    );
+  });
+
   it('Signals browse paints ephemeral row preview chrome (SoT stays id-typed)', () => {
     const signal = read('src/hooks/useSignalIdParam.ts');
     const browse = read('src/features/signals/SignalsBrowseWorkspace.tsx');

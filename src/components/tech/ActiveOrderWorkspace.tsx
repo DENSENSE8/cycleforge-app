@@ -1,12 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import { AlertTriangle, ExternalLink, History, Tags } from '@/components/Icons';
 import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import { StationContextBar } from '@/components/station/entity-context';
@@ -18,11 +12,12 @@ import {
   buildSectionTabs,
 } from '@/components/station/workbench';
 import {
+  StationDisplaysEdgeToggle,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
-import { StationDisplaysEdgeToggle } from '@/components/station/displays';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
@@ -35,6 +30,7 @@ import {
   ShippingEntityContextHeader,
   ShippingOutOfStockNotice,
 } from './shipping/ShippingEntityContextHeader';
+import { PackStationPlacementControl } from './shipping/PackStationPlacementControl';
 import { resolveShippingListingLinks } from './shipping/shipping-listing-links';
 import { TechSubstituteSection } from './TechSubstituteSection';
 import { useSubstitutionPolicy } from '@/hooks/fulfillment/useSubstitutionPolicy';
@@ -85,8 +81,6 @@ export function ActiveOrderWorkspace({
   setActiveOrder,
 }: ActiveOrderWorkspaceProps) {
   const isPreview = mode === 'preview';
-  const cardPresence = useMotionPresence(framerPresence.stationCard);
-  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
 
   const [activeSideTab, setActiveSideTab] = useState<ShippingDisplayNav | null>(null);
 
@@ -258,6 +252,7 @@ export function ActiveOrderWorkspace({
   /** `←|` Open displays → the Root Index, not `displayTabs[0]`. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   const resolvedSideTab: ShippingDisplayNav | null = useMemo(() => {
     if (!activeSideTab) return null;
@@ -273,15 +268,9 @@ export function ActiveOrderWorkspace({
     </div>
   ) : null;
 
+  // Host (`TechRightPane`) owns scan-cadence swap; this panel is opaque content.
   return (
-    <motion.div
-      key={activeOrder.tracking || activeOrder.orderId}
-      initial={cardPresence.initial}
-      animate={cardPresence.animate}
-      exit={cardPresence.exit}
-      transition={cardTransition}
-      className="flex h-full min-h-0 w-full flex-col"
-    >
+    <div className="flex h-full min-h-0 w-full flex-col">
       <StationScanPaneHost
         displaysOpen={Boolean(resolvedSideTab)}
         hostDataAttrs={{ 'data-shipping-pane-host': true }}
@@ -309,6 +298,13 @@ export function ActiveOrderWorkspace({
                   {isPreview ? null : (
                     <ActiveOrderScanFeedback activeOrder={activeOrder} />
                   )}
+                  {!isPreview && activeOrder.id != null && activeOrder.orderFound !== false ? (
+                    <PackStationPlacementControl
+                      orderId={Number(activeOrder.id)}
+                      initialLocationId={activeOrder.packLocationId}
+                      initialLocationName={activeOrder.packLocationName}
+                    />
+                  ) : null}
                   <ShippingOutOfStockNotice
                     isOutOfStock={Boolean(previewOrder?.is_out_of_stock)}
                   />
@@ -366,6 +362,6 @@ export function ActiveOrderWorkspace({
           ) : null
         }
       />
-    </motion.div>
+    </div>
   );
 }

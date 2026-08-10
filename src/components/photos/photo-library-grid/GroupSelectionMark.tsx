@@ -2,9 +2,10 @@
 
 import { Check } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/** PO/ticket group select-all — matches {@link SelectionMark} tile styling. */
+/** PO/ticket group select-all — matches {@link SelectionMark} tile styling (flush). */
 export function GroupSelectionMark({
   allSelected,
   someSelected,
@@ -30,7 +31,8 @@ export function GroupSelectionMark({
           onToggle();
         }}
         className={cn(
-          'ds-raw-button inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border shadow-sm transition',
+          'ds-raw-button inline-flex h-6 w-6 shrink-0 items-center justify-center border shadow-sm transition',
+          cornerClass('flush'),
           allSelected
             ? 'border-blue-600 bg-blue-600 text-white'
             : someSelected

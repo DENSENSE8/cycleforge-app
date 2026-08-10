@@ -27,7 +27,7 @@ import { UserIssueResolvedToaster } from "../components/providers/UserIssueResol
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { isKioskHost } from "@/lib/tenancy/kiosk-host";
+import { isKioskHost, isKioskUiPath } from "@/lib/tenancy/kiosk-host";
 import {
   ACTIVATION_REDIRECT_HREF,
   isActivationBlocked,
@@ -51,19 +51,17 @@ export default async function RootLayout({
     // by each route as they adopt it — see docs/cycle-forge-branding-spec.md §3).
     const documentTitle = initialUser ? initialUser.organizationName : PRODUCT_NAME;
 
-    // A tenant kiosk host ({slug}.kiosk.app…) only ever serves `/` or `/kiosk`
-    // (proxy.ts 404s everything else) and never carries a staff session — the
-    // device is authed via withKioskAuth, not a cookie. Resolved server-side
-    // from the real Host header so client providers agree with SSR on first
-    // paint (no window-based host sniff, no hydration mismatch).
+    // Kiosk surface = tenant kiosk host OR staff-path dogfood (`/kiosk`, `/kiosk/v2`).
+    // Host-only sniff misses path dogfood; path-only misses MDM on `{slug}.kiosk…`.
+    // Resolved server-side from Host + x-pathname so SSR matches first paint.
     const h = await headers();
-    const kioskHost = isKioskHost(h.get('host'));
+    const pathname = h.get('x-pathname') || '/';
+    const kioskHost = isKioskHost(h.get('host')) || isKioskUiPath(pathname);
 
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
     // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
     if (initialUser && !kioskHost) {
-      const path = h.get('x-pathname') || '/';
-      if (await isActivationBlocked(initialUser.organizationId, path)) {
+      if (await isActivationBlocked(initialUser.organizationId, pathname)) {
         redirect(ACTIVATION_REDIRECT_HREF);
       }
     }

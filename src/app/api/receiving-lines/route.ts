@@ -1428,6 +1428,14 @@ function normalizeRow(row: Record<string, unknown>) {
     condition_graded_at:      (row.condition_graded_at as string | null) ?? null,
     contents_confirmed_at:    (row.contents_confirmed_at as string | null) ?? null,
     label_previewed_at:       (row.label_previewed_at as string | null) ?? null,
+    // Unbox commit `stage` — intended putaway (receiving_line_putaway).
+    staged_at:                (row.staged_at as string | null) ?? null,
+    staged_location_id:       row.staged_location_id != null ? Number(row.staged_location_id) : null,
+    staged_location_name:     (row.staged_location_name as string | null) ?? null,
+    staged_location_barcode:  (row.staged_location_barcode as string | null) ?? null,
+    staged_location_room:     (row.staged_location_room as string | null) ?? null,
+    staged_location_row_label:(row.staged_location_row_label as string | null) ?? null,
+    staged_location_col_label:(row.staged_location_col_label as string | null) ?? null,
     // Denormalized serial projection (rlt.serial_projection) surfaced by the list
     // builders as `serials` — the FAST DEFAULT for first-frame chip display, so a
     // row-click / deep-link / arrow-nav open paints serials without waiting on the

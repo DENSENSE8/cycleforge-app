@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { UnitsDisplayHost } from '../UnitsDisplayHost';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
+import { UnboxPlacementSection } from '../UnboxPlacementSection';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
 import { UnboxStepDock } from '../UnboxStepDock';
@@ -11,7 +12,6 @@ import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { ConditionPills } from '../../ConditionPills';
 import { patchReceivingLineCondition } from '../../patch-receiving-line-condition';
-import { ReceivingPhotoButton } from '../ReceivingPhotoButton';
 import { LinkageDisplayHost } from '../LinkageDisplayHost';
 import { InventoryDisplayHost } from '../InventoryDisplayHost';
 import { type SectionTab } from '@/design-system/components';
@@ -47,28 +47,41 @@ import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
  * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
  * Ticket / Photos / Timeline / Support chat must not ride the P1 paint path.
  * (ssr OK — they only mount when the topic is selected.)
+ *
+ * **Triage speed:** `loading: () => null` + a cold `import()` paints the leaf
+ * header ← chevron with an empty body until the chunk lands — reads as lag.
+ * {@link preloadUnboxDisplayLeafChunks} warms every deferred leaf when Displays
+ * opens so index→leaf is a binary cut (mouse + keyboard).
  */
-const TicketDisplayHost = dynamic(
-  () => import('../TicketDisplayHost').then((m) => m.TicketDisplayHost),
-  { loading: () => null },
-);
-const PhotosDisplayHost = dynamic(
-  () => import('../PhotosDisplayHost').then((m) => m.PhotosDisplayHost),
-  { loading: () => null },
-);
-const WorkspaceTimelineTab = dynamic(
-  () =>
-    import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab),
-  { loading: () => null },
-);
-const SupportContextHub = dynamic(
-  () => import('@/components/support/context').then((m) => m.SupportContextHub),
-  { loading: () => null },
-);
-const ReceivingAuditPanel = dynamic(
-  () => import('../../ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel),
-  { loading: () => null },
-);
+const loadTicketDisplayHost = () =>
+  import('../TicketDisplayHost').then((m) => m.TicketDisplayHost);
+const loadPhotosDisplayHost = () =>
+  import('../PhotosDisplayHost').then((m) => m.PhotosDisplayHost);
+const loadWorkspaceTimelineTab = () =>
+  import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab);
+const loadSupportContextHub = () =>
+  import('@/components/support/context').then((m) => m.SupportContextHub);
+const loadReceivingAuditPanel = () =>
+  import('../../ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel);
+
+const TicketDisplayHost = dynamic(loadTicketDisplayHost, { loading: () => null });
+const PhotosDisplayHost = dynamic(loadPhotosDisplayHost, { loading: () => null });
+const WorkspaceTimelineTab = dynamic(loadWorkspaceTimelineTab, {
+  loading: () => null,
+});
+const SupportContextHub = dynamic(loadSupportContextHub, { loading: () => null });
+const ReceivingAuditPanel = dynamic(loadReceivingAuditPanel, {
+  loading: () => null,
+});
+
+/** Warm deferred Displays leaf chunks once the push column is open. */
+export function preloadUnboxDisplayLeafChunks(): void {
+  void loadTicketDisplayHost();
+  void loadPhotosDisplayHost();
+  void loadWorkspaceTimelineTab();
+  void loadSupportContextHub();
+  void loadReceivingAuditPanel();
+}
 
 /**
  * Controller is the full `useUnboxLineController` return. Typed as unknown at
@@ -103,7 +116,11 @@ export interface BuildUnboxTabsInput {
   linkageAction: UnboxLinkageAction;
   onLinkageActionChange: (action: UnboxLinkageAction) => void;
   onInventoryChangePo: () => void;
-  onInventorySync: () => void | Promise<void>;
+  onInventorySync: () => void | Promise<
+    | { ok: true; zohoNotes: string | null }
+    | { ok: false; error: string; painted?: boolean }
+    | void
+  >;
   inventorySyncing?: boolean;
   unitsAction: UnboxUnitsAction;
   onUnitsActionChange: (action: UnboxUnitsAction) => void;
@@ -149,9 +166,10 @@ export interface BuildUnboxTabsInput {
 /**
  * The Unbox CENTRE — PO lines (meta = condition · serial ledger) → label preview.
  *
- * Capture actions live in the bottom {@link buildUnboxStepDock}. PO meta already
- * shows grade/serial — no under-row editor. Meta click focuses the dock step.
- * Centre `ProcedureDeck` stays parked.
+ * Dual loci: dock ({@link buildUnboxStepDock}) owns scanner/procedure; meta
+ * chips focus the dock step; the active line mounts a mouse
+ * {@link ActiveLineConditionSerial} under the row. Centre `ProcedureDeck`
+ * stays parked.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -199,6 +217,7 @@ export function buildUnboxOverview(
         onOpenReturnHistory={onOpenReturnHistory}
       />
       <UnboxLabelPreview row={row} c={c} />
+      <UnboxPlacementSection row={row} />
     </div>
   );
 }
@@ -213,7 +232,6 @@ export function buildUnboxStepDock(
   input: Pick<BuildUnboxTabsInput, 'row' | 'staffId' | 'c'>,
 ): ReactNode {
   const { row, staffId, c } = input;
-  const receivingId = row.receiving_id ?? 0;
 
   const setCondition = (next: string) => {
     c.setCond(next);
@@ -233,21 +251,11 @@ export function buildUnboxStepDock(
           value={c.cond}
           onChange={setCondition}
           collapsible={false}
+          layout="barDistribute"
         />
       }
-      itemPhotoSlot={
-        receivingId > 0 && row.id > 0 ? (
-          <ReceivingPhotoButton
-            receivingId={receivingId}
-            staffId={Number(staffId) || 0}
-            poRef={row.zoho_purchaseorder_number ?? null}
-            photoStage="unbox_item"
-            receivingLineId={row.id}
-            poRouteRef={row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null}
-            galleryPlacement="above"
-          />
-        ) : null
-      }
+      // item_photos Band 1 is ItemPhotoDockControl (Link | Upload | Send to phone).
+      // Progressive line peers still mount ReceivingPhotoButton via PoLineItemPhotoPeers.
       serialSlot={<UnboxSerialStepSurface row={row} c={c} />}
       classifySlot={<TriageClassifySection row={row} c={c} />}
     />

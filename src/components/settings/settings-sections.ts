@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 export type SettingsSection =
-  | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'about'
+  | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'keyboard' | 'about'
   | 'security' | 'organization' | 'billing' | 'integrations' | 'team'
   | 'roles' | 'access' | 'sessions' | 'audit' | 'catalog' | 'legal' | 'receiving'
   | 'devices' | 'ai';
@@ -23,6 +23,7 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   { id: 'workstation',   label: 'Workstation',   description: 'Station, role, location',                          group: 'Personal' },
   { id: 'quick-access',  label: 'Quick Access',  description: 'Bottom-right shortcuts & pins',                    group: 'Personal' },
   { id: 'appearance',    label: 'Appearance',    description: 'Density, text size',                               group: 'Personal' },
+  { id: 'keyboard',      label: 'Keyboard',      description: 'Focus-scan hotkey & shortcut policy',              group: 'Personal' },
   { id: 'receiving',     label: 'Receiving',     description: 'Unboxing scan, photos & org policy',               group: 'Personal' },
   { id: 'security',      label: 'Security',      description: 'PIN and passkeys',                                 group: 'Personal' },
   { id: 'about',         label: 'About',         description: 'Version & diagnostics',                            group: 'Personal' },

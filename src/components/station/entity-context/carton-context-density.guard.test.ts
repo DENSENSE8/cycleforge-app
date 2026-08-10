@@ -207,13 +207,28 @@ describe('carton-context-density', () => {
     );
     assert.match(
       actionPillCode,
+      /STATION_CONTEXT_PHOTO_TONE =/,
+      'Photos blue tone is one SoT — chrome + dock phone thirds compose it',
+    );
+    assert.match(
+      actionPillCode,
       /STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full /,
       'Photos face fills chrome row 1 (h-full — never Button size height)',
     );
     assert.match(
       actionPillCode,
+      /STATION_CONTEXT_PHOTO_PILL_CLASS[\s\S]*?\$\{STATION_CONTEXT_PHOTO_TONE\}/,
+      'Photos pill composes PHOTO_TONE — never a forked blue recipe',
+    );
+    assert.match(
+      actionPillCode,
       /STATION_CONTEXT_PHOTO_PILL_CLASS[\s\S]*?border-b-0 border-r-0/,
       'Photos drops bottom+trailing borders — row hairline + Displays border-l own the seam',
+    );
+    assert.match(
+      actionPillCode,
+      /STATION_CONTEXT_PHOTO_FLUSH_CLASS[\s\S]*?\$\{STATION_CONTEXT_PHOTO_TONE\}/,
+      'Photos flush cell composes PHOTO_TONE',
     );
     assert.match(
       actionPillCode,

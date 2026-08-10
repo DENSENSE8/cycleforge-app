@@ -7,12 +7,21 @@ import {
   CONDITION_GRADES,
   conditionLabel,
   conditionDescription,
+  conditionOptions,
+  type ConditionLabelVariant,
 } from "@/lib/conditions";
-import { conditionPillClass, conditionGradeTone } from "@/lib/condition-tone";
+import {
+  conditionPillClass,
+  conditionGradeTone,
+  type ConditionPillDensity,
+} from "@/lib/condition-tone";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { useHorizontalWheelScroll } from "@/hooks/useHorizontalWheelScroll";
 import { cornerClass } from "@/design-system/tokens/radius";
 import { cn } from "@/utils/_cn";
+
+/** Expanded strip layout — scroll (Units / compact hosts) vs full-width distribute. */
+type ConditionPillsLayout = "scroll" | "barDistribute";
 
 interface Props {
   value: string | null | undefined;
@@ -61,13 +70,25 @@ interface Props {
    * `header` = PO line title+details band (`h-20`), peer of the product thumb.
    */
   faceSize?: "bar" | "header";
+  /**
+   * Expanded grade label shape from `src/lib/conditions.ts`. Defaults to
+   * `'pill'` (NEW · L-New · …). Progressive Unbox passes `'full'`
+   * (Brand New · Like New · …). Collapsed Tags face never paints these
+   * strings — only the expanded strip does.
+   */
+  labelVariant?: ConditionLabelVariant;
+  /**
+   * Expanded strip layout. Defaults to `'scroll'` (compact pills + overflow).
+   * Progressive Unbox passes `'barDistribute'` — full-width flush cells
+   * (`flex-1` / `justify-between`) with no left-clump dead air.
+   */
+  layout?: ConditionPillsLayout;
 }
 
-// Single flat row of grades, in display order. Used grades (A / B / C) are
-// shown bare; retail-ready grades + parts follow — no "USED"/"NEW+" parents.
-// Labels come from the shared `pill` variant (src/lib/conditions.ts) so the
-// picker copy stays in lockstep with every other grade display.
-const GRADES = CONDITION_GRADES.map((value) => ({
+// Collapsed / locked faces keep abbreviated pill labels for aria — long
+// names never land on the Tags square. Expanded strip builds from
+// `conditionOptions(labelVariant)` instead.
+const PILL_GRADES = CONDITION_GRADES.map((value) => ({
   value,
   label: conditionLabel(value, "pill"),
 }));
@@ -105,7 +126,7 @@ function ConditionGradeCircle({
   const selected = String(grade || "")
     .trim()
     .toUpperCase();
-  const selectedGrade = GRADES.find((g) => g.value === selected) ?? null;
+  const selectedGrade = PILL_GRADES.find((g) => g.value === selected) ?? null;
   const faceBtn = COLLAPSED_ICON_BTN[faceSize];
   const tagsIcon = COLLAPSED_TAGS_ICON[faceSize];
   if (!selectedGrade) {
@@ -161,7 +182,9 @@ function ConditionGradeCircle({
 /**
  * Bare, mobile-first condition picker. Renders every grade as a single
  * horizontally-scrolling row of pills — no nested parents. In `collapsible`
- * mode a trailing confirm folds the strip to a Tags square.
+ * mode a trailing confirm folds the strip to a Tags square. Progressive
+ * Unbox opts into `labelVariant="full"` + `layout="barDistribute"` for a
+ * flush edge-to-edge full-name bar.
  */
 export function ConditionPills({
   value,
@@ -173,11 +196,21 @@ export function ConditionPills({
   readOnly = false,
   startCollapsed = false,
   faceSize = "bar",
+  labelVariant = "pill",
+  layout = "scroll",
 }: Props) {
   const selected = String(value || "")
     .trim()
     .toUpperCase();
-  const selectedGrade = GRADES.find((g) => g.value === selected) ?? null;
+  const grades = conditionOptions(labelVariant);
+  const selectedGrade =
+    grades.find((g) => g.value === selected) ??
+    PILL_GRADES.find((g) => g.value === selected) ??
+    null;
+  const distribute = layout === "barDistribute";
+  const pillDensity: ConditionPillDensity = distribute
+    ? "barDistribute"
+    : "pill";
   // The scrollbar is hidden, so without this a mouse wheel scrolls the parent
   // panel vertically and the overflowing grades (USED_C / PARTS) are
   // unreachable in narrow hosts like the shipped details sidebar.
@@ -196,9 +229,9 @@ export function ConditionPills({
     onExpandedChange?.(next);
     if (expandedProp === undefined) setInternalExpanded(next);
   };
-  // The row scroller remounts across collapse/expand, so `expanded` re-binds
-  // the wheel listener to the fresh element.
-  useHorizontalWheelScroll(scrollerRef, expanded);
+  // Scroll layout remounts across collapse/expand — re-bind the wheel listener.
+  // barDistribute never overflows, so skip the scroll host binding.
+  useHorizontalWheelScroll(scrollerRef, expanded && !distribute);
 
   // Locked: order has shipped, so the grade is frozen. Render just the selected
   // pill (styled active) with a lock affordance — no other grades, no click.
@@ -266,17 +299,25 @@ export function ConditionPills({
     <div
       className={cn(
         "flex min-w-0 items-stretch",
-        // Collapsible expanded: pills scroll; trailing confirm owns a fixed cell.
-        collapsible ? "w-full max-w-full" : "w-max max-w-full",
+        // Collapsible expanded: grades fill; trailing confirm owns a fixed cell.
+        // barDistribute always claims full width (progressive Unbox bar).
+        collapsible || distribute ? "w-full max-w-full" : "w-max max-w-full",
       )}
     >
       <div
         ref={scrollerRef}
         role="radiogroup"
         aria-label="Condition grade"
-        className="flex min-w-0 flex-1 items-stretch gap-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className={cn(
+          "flex min-w-0 flex-1 items-stretch gap-0",
+          distribute
+            ? // Full-name progressive bar: even share across the row — no
+              // left-clump + dead air before the confirm ✓.
+              "justify-between overflow-hidden"
+            : "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+        )}
       >
-        {GRADES.map((g) => (
+        {grades.map((g) => (
           <HoverTooltip
             key={g.value}
             label={
@@ -302,7 +343,7 @@ export function ConditionPills({
                 }
                 onChange(g.value);
               }}
-              className={`${conditionPillClass(g.value, selected === g.value)} ds-raw-button`}
+              className={`${conditionPillClass(g.value, selected === g.value, pillDensity)} ds-raw-button`}
             >
               {g.label}
             </button>

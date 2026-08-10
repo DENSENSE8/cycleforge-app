@@ -4,14 +4,16 @@
  * `pattern-evolution.md` Always #6: a rules file cannot fail, so the law lands
  * with a guard, not only prose.
  *
- * Arrival carve-out (2026-08-06): the CENTRE is one white door-flow plane
+ * Arrival port (2026-08-09): the CENTRE is one white door-flow plane
  * (`DISPLAYS_FLUSH_HOST` + chrome) — identity + PO / unfound items **without
- * units chrome** + Classify + Staging stacked + dock. Pairing/Linkage is the
- * right-edge **Displays** push (`ReceivingDisplaysPushStack` /
- * `UnboxPushColumn`), never a centre `SectionTabsSlider` strip and never a
- * `RightRailHost` occupant. Unbox (`LineEditPanel`) remains the golden for
- * the host; Classify stays on Unbox Displays. See
- * `.claude/rules/source-of-truth.md` → Scan-station centre lines display.
+ * units chrome** + Classify. Staging is the flush dock Band 1 ACTION
+ * (`ArrivalStagingDockControl` via `UnboxDockHost`); Save-for-unbox rides the
+ * dogfood strip. Pairing/Linkage is the right-edge **Displays** push
+ * (`StationDisplaysPushStack` / `StationDisplaysPushColumn`), never a centre
+ * `SectionTabsSlider` strip and never a `RightRailHost` occupant. Unbox
+ * (`LineEditPanel`) remains the golden for the host. See
+ * `.claude/rules/source-of-truth.md` → Scan-station centre lines display ·
+ * `display/station-port-from-unbox.md`.
  *
  * The `# ----` PO chip opens the Linkage display and hands the PO avenue over
  * as DATA (`setPairingFocus`), like Unbox.
@@ -42,8 +44,8 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
   const displays = read(TRIAGE_DISPLAYS);
 
   it('the CENTRE carries no station SectionTabsSlider chrome', () => {
-    // No Classify | Staging | Pairing pill strip in the middle — Classify ·
-    // Staging are stacked sections under items; Pairing is Displays.
+    // No Classify | Staging | Pairing pill strip in the middle — Classify
+    // stacks under items; Staging is the flush dock; Pairing is Displays.
     assert.ok(
       !panel.includes('TriageSectionTabs'),
       'the center Classify/Staging/Pairing SectionTabsSlider must leave TriagePanel',
@@ -84,12 +86,16 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
     );
   });
 
-  it('the CENTRE stacks Classify then Staging under items (door flow)', () => {
+  it('the CENTRE stacks Classify under items; Staging is the flush dock ACTION', () => {
     assert.match(panel, /TriageClassifySection/);
-    assert.match(panel, /StagingSection/);
-    const classifyAt = panel.indexOf('TriageClassifySection');
-    const stagingAt = panel.indexOf('StagingSection');
-    assert.ok(classifyAt > 0 && stagingAt > classifyAt, 'Classify must mount above Staging in the centre');
+    assert.doesNotMatch(
+      panel,
+      /StagingSection/,
+      'centre StagingSection is retired — ArrivalStagingDockControl owns shelf · lane',
+    );
+    assert.match(panel, /ArrivalStagingDockControl/);
+    assert.match(panel, /UnboxDockHost/);
+    assert.match(panel, /data-arrival-dogfood-terminal|data-arrival-dock-float/);
   });
 
   it('Arrival Displays strip is Pairing-only (no Classify · Staging tabs)', () => {
@@ -102,10 +108,10 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
     assert.doesNotMatch(
       displays,
       /id:\s*['"]staging['"]/,
-      'Staging left the Displays strip — it stacks under Classify in TriagePanel',
+      'Staging left the Displays strip — it lives in the flush dock Band 1',
     );
     assert.doesNotMatch(displays, /TriageClassifySection/);
-    assert.doesNotMatch(displays, /StagingSection/);
+    assert.doesNotMatch(displays, /StagingSection|ArrivalStagingDockControl/);
   });
 
   it('items keep editLines but hide units chrome (no condition · serial / Units)', () => {
@@ -138,18 +144,18 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
     assert.match(panel, /data-testid="arrival-door-flow"/);
   });
 
-  it('Classify · Staging hosts are edge-to-edge (no DISPLAYS_BODY_INSET pad)', () => {
+  it('Classify · Staging dock hosts are edge-to-edge (no DISPLAYS_BODY_INSET pad)', () => {
     const classify = read('src/components/receiving/triage/TriageClassifySection.tsx');
-    const staging = read('src/components/receiving/triage/StagingSection.tsx');
+    const stagingDock = read('src/components/receiving/triage/ArrivalStagingDockControl.tsx');
     assert.doesNotMatch(
       classify,
       /DISPLAYS_BODY_INSET/,
       'Classify host must be px-0 — dimension rows own inset-cozy so hairlines span the column',
     );
     assert.doesNotMatch(
-      staging,
+      stagingDock,
       /DISPLAYS_BODY_INSET/,
-      'Staging host must be px-0 — content rows own inset-cozy',
+      'Staging dock ACTION must be px-0 — content rows own inset-cozy',
     );
   });
 
@@ -237,13 +243,11 @@ describe('Phase E — Testing Displays push', () => {
 });
 
 /**
- * Arrival pane chrome (2026-08-05; ScanStationUtilityRail 2026-08-06) — the
- * scan-station utility rail and the dock notes, pinned so they cannot silently
- * regress. Mirrors the Unbox golden: utility rail carries Displays "expand" +
- * carton cursor; the internal item note lives in the dock float; there is no
- * "Open in unbox" affordance.
+ * Arrival pane chrome (2026-08-09 Unbox flush dock port) — utility rail +
+ * UnboxDockHost dogfood Save-for-unbox. Omnichannel notes float retired;
+ * notes live on Unbox. No "Open in unbox" affordance.
  */
-describe('Arrival pane controls — expand · cursor · dock note', () => {
+describe('Arrival pane controls — expand · cursor · flush dock', () => {
   const panel = read(TRIAGE_PANEL);
 
   it('ScanStationUtilityRail carries the Displays expand toggle (only while closed)', () => {
@@ -283,13 +287,19 @@ describe('Arrival pane controls — expand · cursor · dock note', () => {
     assert.match(cursor, /ariaLabel="Next carton"/);
   });
 
-  it('the item note is pinned to the bottom dock float (internal — carries to Unbox)', () => {
-    assert.match(panel, /slicedActionDockWrapperClass\(\{ docked: false \}\)/, 'the dock is the floating shell');
-    assert.match(panel, /WorkspaceNotesCard/, 'the internal item-note composer lives in the dock');
+  it('the dock is Unbox flush geometry — Save-for-unbox dogfood, no Omnichannel notes', () => {
+    assert.match(panel, /data-arrival-dock-float/, 'Unbox-shaped absolute flush float');
+    assert.match(panel, /UnboxDockHost/, 'flush two-band floor host');
+    assert.match(panel, /ArrivalStagingDockControl/, 'shelf · lane is Band 1 ACTION');
     assert.match(
       panel,
-      /trailingAction=\{<StationTerminalDock embedded/,
-      'Save-for-unbox rides as the dock trailing action, beside the note',
+      /data-arrival-dogfood-terminal[\s\S]{0,800}embeddedTerminal|StationTerminalDock/,
+      'Save-for-unbox rides the dogfood strip (Print·Receive twin)',
+    );
+    assert.doesNotMatch(
+      panel,
+      /WorkspaceNotesCard|OmnichannelComposerDock|slicedActionDockWrapperClass/,
+      'raised Omnichannel notes float is deleted — notes live on Unbox',
     );
   });
 
@@ -331,7 +341,7 @@ describe('Arrival flat centre — Unbox flow identity parity', () => {
     assert.doesNotMatch(
       panel,
       /space-y-4/,
-      'centre must not reintroduce space-y-4 between items · Classify · Staging',
+      'centre must not reintroduce space-y-4 between items · Classify',
     );
   });
 
@@ -341,5 +351,71 @@ describe('Arrival flat centre — Unbox flow identity parity', () => {
       /suppressItemsHeader/,
       'Arrival must not show "PO ITEMS · N" (esp. empty unfound · 0) — Unbox overview SoT',
     );
+  });
+});
+
+/**
+ * Arrival Displays carton Macro floor (icons-first port, 2026-08-09) — the
+ * station half of the icons-first action-floor work. Mirrors Unbox's
+ * `UnboxDisplaysActionFloor` (share the METHOD, fork the HOST — C2 / Scan vs
+ * desk right-edge), minus the Print peer (no printable label at the door pass).
+ */
+describe('Arrival Displays carton Macro floor', () => {
+  const panel = read(TRIAGE_PANEL);
+  const floor = read('src/components/receiving/triage/ArrivalDisplaysActionFloor.tsx');
+
+  it('TriagePanel passes ArrivalDisplaysActionFloor as the Displays actionFloor', () => {
+    assert.match(
+      panel,
+      /actionFloor=\{[\s\S]{0,400}ArrivalDisplaysActionFloor/,
+      'the Macro floor mounts via the PushStack actionFloor slot (above the close chrome)',
+    );
+    assert.match(panel, /onDeleted=\{closeDisplays\}/);
+    assert.match(panel, /editSelected=\{activeSideTab === ['"]linkage['"]\}/);
+    assert.match(panel, /onInventorySync=\{\(\) => c\.refreshInventoryDossier\(\)\}/);
+    assert.match(panel, /inventorySyncing=\{Boolean\(c\.inventoryRefreshing\)\}/);
+  });
+
+  it('composes the STATION shell + shared waist (not the desk InspectorActionFloor)', () => {
+    assert.match(floor, /StationDisplaysActionFloor/);
+    assert.match(floor, /InspectorFlushDelete/);
+    assert.match(floor, /stationDisplaysFloorMoreItems/);
+    assert.match(floor, /size="fill"/);
+    assert.match(floor, /FLUSH_TERMINAL_SPREAD_PEER_CLASS/);
+    assert.match(floor, /FLUSH_TERMINAL_SPREAD_GLYPH_CLASS/);
+  });
+
+  it('C2 — never imports the desk shell / peers', () => {
+    assert.doesNotMatch(floor, /InspectorActionFloor/);
+    assert.doesNotMatch(floor, /FloorIconButton/);
+    assert.doesNotMatch(floor, /FloorOverflowButton/);
+  });
+
+  it('Arrival omits Print (door pass — no printable label yet)', () => {
+    assert.doesNotMatch(floor, /\bPrinter\b/);
+    assert.doesNotMatch(
+      floor,
+      /data-testid="arrival-displays-floor-primary"/,
+      'no Print peer at Arrival — the floor is ⋯ · Sync · Edit · Delete (4 peers)',
+    );
+  });
+
+  it('verb order is More → Sync → Edit → far-right Delete', () => {
+    assert.match(floor, /MoreHorizontal/);
+    assert.match(floor, /RefreshCw/);
+    assert.match(floor, /Pencil/);
+    const morePos = floor.indexOf('arrival-displays-floor-more');
+    const syncPos = floor.indexOf('arrival-displays-floor-inventory-sync');
+    const editPos = floor.indexOf('arrival-displays-floor-edit');
+    const deletePos = floor.indexOf('arrival-displays-floor-delete');
+    assert.ok(
+      morePos > 0 && syncPos > morePos && editPos > syncPos && deletePos > editPos,
+      'peer columns left→right: More · Sync · Edit · Delete',
+    );
+  });
+
+  it('no floating island / touch peers (hit target is the fill column)', () => {
+    assert.doesNotMatch(floor, /size="touch"/);
+    assert.doesNotMatch(floor, /\bw-11\b/);
   });
 });

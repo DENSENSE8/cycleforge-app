@@ -115,13 +115,19 @@ surface with no pointer.
   card grid. Compose `StationDenseFactStrip layout="rows"`; never `grid-cols-*`
   / `layout="strip"` inside a Displays leaf. Guard:
   `station-action-dossier.guard.test.ts`.
+- **Inventory Information golden (SoT).** Unbox Displays → Inventory →
+  Information is `InventoryPoHeader` `variant="instrument"` over
+  `StationDenseFactStrip layout="rows"` (PO # · status chip · total · vendor ·
+  dates · Last pulled). Sibling stations compose the same strip — never a
+  page-local fact twin. Mutators (Refresh · Save) live in
+  `setLeafTrailing` on the sticky leaf header, not under the facts.
 - **Gray canvas/sunken wash behind Displays Information facts.** Read telemetry
   sits on the white Displays card (hairlines only). A full-bleed
   `bg-surface-canvas` or `bg-surface-sunken` block behind PO # / Status / Total
   rows is debt — sunken depth-indent is exclusive to `DenseComposeBodyBand`
   (notes · ticket/claim create/edit). Guard: `station-action-dossier.guard.test.ts`.
 - **A third right-edge grammar.** Exactly two exist — app push column (`RightRailHost`) and station
-  push column (`UnboxPushColumn`). An always-on procedure region was built and retired within a day.
+  push column (`StationDisplaysPushColumn`). An always-on procedure region was built and retired within a day.
   Full reasoning: [`../source-of-truth.md`](../source-of-truth.md) → Right-rail modality.
 - **A second progress ring.** `GoalRing` is daily-goal pace in GlobalHeader; the scan ring is
   procedure completion at a bench. Copying one to the other's surface is the most-repeated mistake

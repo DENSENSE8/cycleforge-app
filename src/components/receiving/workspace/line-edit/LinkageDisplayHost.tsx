@@ -3,12 +3,17 @@
 /**
  * Unbox Displays → Linkage topic — Pairing (CartonMatchHub) + Zoho PO note.
  *
- * Condenses the retired `pairing` and `po-note` strip cells. Nested:
- * `?display=linkage&linkageAction=link|note`.
+ * Armed-row verbs + URL drills (Photos twin):
+ * `?display=linkage` → Actions list · `?linkageAction=link|note` → bodies.
  */
 
+import { useEffect, useMemo } from 'react';
 import { FileText, Link2 } from '@/components/Icons';
-import { TabDisplay } from '@/design-system/components';
+import { useDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
+import {
+  StationArmedVerbList,
+  type StationArmedVerb,
+} from '@/components/station/displays/StationArmedVerbList';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 import { CartonMatchHub } from './CartonMatchHub';
@@ -22,6 +27,17 @@ function providerStripLabel(providerKey: string): string {
   const full = providerCatalogLabel(providerKey);
   const brand = full.split(/\s+/)[0]?.trim();
   return brand || full;
+}
+
+const LINKAGE_DRILL_LABEL: Record<'link' | 'note', string> = {
+  link: 'Link',
+  note: 'Note',
+};
+
+function isLinkageDrill(
+  action: UnboxLinkageAction,
+): action is 'link' | 'note' {
+  return action === 'link' || action === 'note';
 }
 
 export function LinkageDisplayHost({
@@ -46,39 +62,71 @@ export function LinkageDisplayHost({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- same shape as CartonMatchHub autoMatch
   autoMatch: any;
 }) {
-  const tabs = [
-    { id: 'link', label: 'Link', icon: Link2 },
-    ...(hasPoNote
-      ? [
-          {
-            id: 'note',
-            label: providerStripLabel('zoho'),
-            icon: FileText,
-          },
-        ]
-      : []),
-  ];
+  const { setTrail, setOnNestedPop, setOnNestedRestore } = useDisplaysLeafChrome();
 
-  const resolved: UnboxLinkageAction =
-    action === 'note' && hasPoNote ? 'note' : 'link';
+  const verbs = useMemo<StationArmedVerb[]>(() => {
+    const rows: StationArmedVerb[] = [
+      {
+        id: 'link',
+        label: 'Link',
+        preferredKey: 'k',
+        icon: (p) => <Link2 className={p.className} />,
+      },
+    ];
+    if (hasPoNote) {
+      rows.push({
+        id: 'note',
+        label: providerStripLabel('zoho'),
+        preferredKey: 'n',
+        icon: (p) => <FileText className={p.className} />,
+      });
+    }
+    return rows;
+  }, [hasPoNote]);
+
+  const verb: UnboxLinkageAction = isLinkageDrill(action)
+    ? action === 'note' && !hasPoNote
+      ? 'actions'
+      : action
+    : 'actions';
+
+  useEffect(() => {
+    if (verb === 'actions') {
+      setTrail([{ id: 'linkage', label: 'Linkage' }]);
+    } else {
+      setTrail([
+        { id: 'linkage', label: 'Linkage' },
+        { id: verb, label: LINKAGE_DRILL_LABEL[verb] },
+      ]);
+    }
+  }, [verb, setTrail]);
+
+  useEffect(() => {
+    setOnNestedPop(() => onActionChange('actions'));
+    return () => setOnNestedPop(null);
+  }, [setOnNestedPop, onActionChange]);
+
+  useEffect(() => {
+    setOnNestedRestore((segmentId) => {
+      if (isLinkageDrill(segmentId as UnboxLinkageAction)) {
+        onActionChange(segmentId as UnboxLinkageAction);
+      }
+    });
+    return () => setOnNestedRestore(null);
+  }, [setOnNestedRestore, onActionChange]);
 
   return (
     <div className="flex min-h-0 flex-col gap-0" data-testid="unbox-linkage-display">
-      {tabs.length > 1 ? (
-        <div className="shrink-0">
-          <TabDisplay
-            tabs={tabs}
-            activeTab={resolved}
-            onTabChange={(id) => onActionChange(id as UnboxLinkageAction)}
-            density="nested"
-            fit="fill"
-            appearance="underline"
-            aria-label="Linkage actions"
-          />
-        </div>
+      {verb === 'actions' ? (
+        <StationArmedVerbList
+          verbs={verbs}
+          listLabel="Linkage actions"
+          testId="unbox-linkage-actions"
+          onCommit={(id) => onActionChange(id as UnboxLinkageAction)}
+        />
       ) : null}
-      <div className={cn('min-h-0 flex-1 pt-3', DISPLAYS_BODY_INSET)}>
-        {resolved === 'link' ? (
+      {verb === 'link' ? (
+        <div className={cn('min-h-0 flex-1 pt-3', DISPLAYS_BODY_INSET)}>
           <CartonMatchHub
             row={row}
             staffId={staffId}
@@ -90,7 +138,10 @@ export function LinkageDisplayHost({
             focusRequestId={pairingFocusRequestId}
             autoMatch={autoMatch}
           />
-        ) : (
+        </div>
+      ) : null}
+      {verb === 'note' && hasPoNote ? (
+        <div className={cn('min-h-0 flex-1 pt-3', DISPLAYS_BODY_INSET)}>
           <LinePoNoteCard
             draft={poNote.draft}
             onDraftChange={poNote.setDraft}
@@ -100,8 +151,8 @@ export function LinkageDisplayHost({
             onSave={() => void poNote.save()}
             onSyncFromInventory={() => void poNote.syncFromInventory()}
           />
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

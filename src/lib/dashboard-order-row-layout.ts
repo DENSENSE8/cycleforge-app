@@ -53,6 +53,7 @@ export type OrdersQueueColumnKey =
   | 'qty'
   | 'tester'
   | 'testedAt'
+  | 'packStation'
   | 'order'
   | 'tracking'
   /** Trailing structural filler — absorbs leftover sheet width (`1fr`). */
@@ -238,6 +239,15 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
     width: 'minmax(10rem, 10rem)',
     label: 'Tested at',
     type: 'date',
+    resizable: false,
+    labelFitRem: 4.5,
+  },
+  {
+    key: 'packStation',
+    width: 'minmax(7rem, 7rem)',
+    label: 'Station',
+    type: 'text',
+    align: 'start',
     resizable: false,
     labelFitRem: 4.5,
   },

@@ -13,6 +13,18 @@ import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
  */
 export const FOCUS_SCAN_HOTKEY_RE = /^(Insert|ScrollLock|F([1-9]|1[0-2]))$/;
 
+/**
+ * The selectable set behind {@link FOCUS_SCAN_HOTKEY_RE} — one SoT for the regex
+ * gate AND the Settings picker, so a rendered option can never be a value the
+ * validator would reject. Order is the operator's mental model: the two named
+ * keys first, then F1–F12.
+ */
+export const FOCUS_SCAN_HOTKEY_OPTIONS: readonly string[] = [
+  'Insert',
+  'ScrollLock',
+  ...Array.from({ length: 12 }, (_, i) => `F${i + 1}`),
+];
+
 /** Default binding when a staffer has never customized it. */
 export const DEFAULT_FOCUS_SCAN_HOTKEY = 'Insert';
 

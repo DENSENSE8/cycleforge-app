@@ -1,6 +1,6 @@
 /**
  * Source guard: Unbox Units Displays body is flush, nested Units · Prebox
- * TabDisplay (not a RightPaneOverlay modal). Condition pills are square-flush
+ * armed rows (not a RightPaneOverlay modal). Condition pills are square-flush
  * with re-click clear (no trailing clear control).
  *
  * Handoff: docs/todo/units-explosion-display-flush-HANDOFF.md
@@ -41,14 +41,16 @@ test('Units tab mounts UnitsDisplayHost (nested Units · Prebox)', () => {
   );
 });
 
-test('UnitsDisplayHost nests Units · Prebox via TabDisplay + unitsAction', () => {
+test('UnitsDisplayHost nests Units · Prebox via armed rows + unitsAction', () => {
   assert.match(HOST, /data-testid="unbox-units-display"/);
-  assert.match(HOST, /TabDisplay/);
+  assert.match(HOST, /StationArmedVerbList/);
+  assert.doesNotMatch(HOST, /\bTabDisplay\b/);
   assert.match(HOST, /id:\s*'prebox'/);
   assert.match(HOST, /<PreboxWizard[\s\S]*embedded/);
   assert.match(HOST, /<UnitsExplosionDisplay/);
   assert.match(SIDE, /UnboxUnitsAction/);
   assert.match(SIDE, /parseUnboxUnitsAction/);
+  assert.match(SIDE, /'actions'/);
 });
 
 test('ActiveLineExplosion is square-flush (no rounded-xl card shell)', () => {
@@ -193,6 +195,42 @@ test('ConditionPills collapsible strip confirms via trailing check (not auto-col
   );
 });
 
+test('Progressive Unbox condition strip uses full labels + barDistribute (no left-clump)', () => {
+  const SERIAL = code(sourceOf('./SerialCard.tsx'));
+  // Progressive SerialCard opts into full SoT names + edge-to-edge distribute.
+  assert.match(
+    SERIAL,
+    /labelVariant=\{progressive \? ['"]full['"]/,
+    'progressive Unbox must request conditionLabel full names',
+  );
+  assert.match(
+    SERIAL,
+    /layout=\{progressive \? ['"]barDistribute['"]/,
+    'progressive Unbox must distribute grades across the full bar',
+  );
+  // ConditionPills scopes the layout; defaults stay pill + scroll for Units.
+  assert.match(PILLS, /labelVariant = ["']pill["']/);
+  assert.match(PILLS, /layout = ["']scroll["']/);
+  assert.match(
+    PILLS,
+    /conditionOptions\(labelVariant\)/,
+    'expanded strip labels must come from conditionOptions SoT — no local map',
+  );
+  assert.match(
+    PILLS,
+    /justify-between overflow-hidden/,
+    'barDistribute radiogroup must justify-between (no left-clump dead air)',
+  );
+  // Density SoT: flush p-0 + flex-1 grade cells (confirm stays w-11).
+  const TONE = code(sourceOf('../../../lib/condition-tone.ts'));
+  assert.match(
+    TONE,
+    /barDistribute[\s\S]{0,300}flex-1[\s\S]{0,200}p-0/,
+    'barDistribute density must be flex-1 flush (p-0) — not padded pills',
+  );
+  assert.match(PILLS, /w-11 shrink-0/);
+});
+
 test('Condition grade pills are square-flush (not rounded-full sausages)', () => {
   const TONE = code(sourceOf('../../../lib/condition-tone.ts'));
   assert.match(TONE, /function conditionPillClass/);
@@ -201,17 +239,17 @@ test('Condition grade pills are square-flush (not rounded-full sausages)', () =>
   // floated h-9 face with top/bottom air inside the joined bar.
   assert.match(
     TONE,
-    /conditionPillClass[\s\S]{0,500}inline-flex h-11/,
+    /conditionPillClass[\s\S]{0,800}inline-flex h-11/,
     'expanded condition pills must be h-11 flush with the joined scan bar',
   );
   assert.doesNotMatch(
     TONE,
-    /conditionPillClass[\s\S]{0,500}inline-flex h-9/,
+    /conditionPillClass[\s\S]{0,800}inline-flex h-9/,
     'condition pills must not shrink to h-9 inside an h-11 bar',
   );
   assert.doesNotMatch(
     TONE,
-    /conditionPillClass[\s\S]{0,400}rounded-full/,
+    /conditionPillClass[\s\S]{0,600}rounded-full/,
     'condition picker pills must be square — not rounded-full',
   );
 });
@@ -280,10 +318,33 @@ test('Units flush / stationCompact joined bars are border-0 (parent divide owns 
     /flush[\s\S]{0,40}border border-border-hairline/,
     'flush joined shell must not frame itself with a hairline box',
   );
+  // Embedded Serial: soft cell seams + top/bottom hairlines (omitBottomHairline
+  // nests under a flush leading shell that owns border-y).
   assert.match(
     SERIAL,
-    /embedded[\s\S]{0,200}border-0[\s\S]{0,80}divide-x/,
-    'embedded SerialCard must be border-0 with divide-x cell seams only',
+    /divide-x divide-border-soft/,
+    'embedded SerialCard must use soft divide-x cell seams (Units golden)',
+  );
+  assert.match(
+    SERIAL,
+    /border-y border-border-hairline/,
+    'embedded SerialCard owns top+bottom hairlines unless nested in a leading shell',
+  );
+  assert.match(
+    SERIAL,
+    /omitBottomHairline/,
+    'embedded SerialCard must yield horizontal hairlines to a flush leading shell',
+  );
+  const ACTIVE = code(sourceOf('./line-edit/ActiveLineConditionSerial.tsx'));
+  assert.match(
+    ACTIVE,
+    /border-y border-border-hairline divide-x divide-border-soft/,
+    'flush leading shell owns top+bottom hairlines + soft column seam',
+  );
+  assert.match(
+    ACTIVE,
+    /omitBottomHairline=\{Boolean\(flush && activeRowLeading\)\}/,
+    'leading shell must suppress SerialCard bottom hairline (one seam)',
   );
   // Joined collapsed grade face: fill only — no inset ring vs divide-x.
   assert.match(

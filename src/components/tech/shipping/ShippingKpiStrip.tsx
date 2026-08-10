@@ -7,12 +7,17 @@
  * Pending tiles that map to a fulfillment lane click-to-toggle `?ustatus` via
  * {@link useToShipStatusFilter} — the same param the toolbar exact filters use —
  * so the board under the strip collapses to that lane.
+ *
+ * Packing-station tiles (DESK / STAGING) arm the Ready-to-Pack place target and
+ * set `?packStation=` — placement facets, not lifecycle tabs.
  */
 
 import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
+import { unitPackPlacementQuery } from '@/lib/queries/unit-pack-placement-queries';
 import { KpiTile, metricIntentTextClass, OpsKpiBand, OpsKpiBandCell, OpsKpiBandEmpty, OpsKpiBandError, OpsKpiBandSkeletonTile } from '@/design-system/components/monitor';
 import {
   resolveShippingMetrics,
@@ -29,16 +34,37 @@ import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import { computeWeekRange, toPSTDateKey } from '@/utils/date';
 import type { FulfillmentState } from '@/lib/unshipped-state';
+import { useArmedPackStation } from '@/hooks/useArmedPackStation';
+import type { PackPlacementCountRow } from '@/lib/packing/pack-placement';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+import { PackBenchChipRow } from '@/components/packing/PackBenchChipRow';
 
 const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0 };
 
 type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
 
-function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShipFilter?: ToShipFilter }) {
+const stationShortLabel = (row: PackPlacementCountRow) => packBenchShortLabel(row);
+
+function MetricKpiTile({
+  metric,
+  toShipFilter,
+  onStationOpen,
+  stationActive,
+}: {
+  metric: ComputedMetric;
+  toShipFilter?: ToShipFilter;
+  onStationOpen?: () => void;
+  stationActive?: boolean;
+}) {
   const tone = metricIntentTextClass(metric.intent);
   const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
-  const clickable = Boolean(metric.filterUstatus && toShipFilter);
-  const active = Boolean(metric.filterUstatus && toShipFilter?.active === metric.filterUstatus);
+  const isStation = metric.id.startsWith('pack-station-');
+  const clickable = isStation
+    ? Boolean(onStationOpen)
+    : Boolean(metric.filterUstatus && toShipFilter);
+  const active = isStation
+    ? Boolean(stationActive)
+    : Boolean(metric.filterUstatus && toShipFilter?.active === metric.filterUstatus);
 
   const tile = (
     <KpiTile
@@ -50,7 +76,11 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
       invertDelta={metric.deltaInvert}
       active={active}
       onOpen={
-        clickable ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState) : undefined
+        isStation
+          ? onStationOpen
+          : clickable
+            ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState)
+            : undefined
       }
       className="h-full"
     />
@@ -130,6 +160,8 @@ function StripLayout({
   reservedSlots,
   onRetry,
   toShipFilter,
+  armedLocationId,
+  onArmStation,
 }: {
   mode: ShippingWorkspaceTab;
   metrics: ComputedMetric[];
@@ -138,6 +170,8 @@ function StripLayout({
   reservedSlots: number;
   onRetry: () => void;
   toShipFilter?: ToShipFilter;
+  armedLocationId?: number | null;
+  onArmStation?: (metric: ComputedMetric) => void;
 }) {
   if (isError) return <StripError onRetry={onRetry} />;
   if (isPending) return <StripSkeleton reservedSlots={reservedSlots} />;
@@ -146,19 +180,58 @@ function StripLayout({
   if (tiles.length === 0) return <StripAllClear mode={mode} />;
   return (
     <OpsKpiBand density="band" aria-label="Ready to Pack attention metrics">
-      {tiles.map((metric) => (
-        <OpsKpiBandCell key={metric.id} density="band">
-          <MetricKpiTile metric={metric} toShipFilter={toShipFilter} />
-        </OpsKpiBandCell>
-      ))}
+      {tiles.map((metric) => {
+        const stationId = metric.id.startsWith('pack-station-')
+          ? Number(metric.id.replace('pack-station-', ''))
+          : null;
+        return (
+          <OpsKpiBandCell key={metric.id} density="band">
+            <MetricKpiTile
+              metric={metric}
+              toShipFilter={toShipFilter}
+              stationActive={
+                stationId != null && armedLocationId != null && stationId === armedLocationId
+              }
+              onStationOpen={
+                stationId != null && onArmStation ? () => onArmStation(metric) : undefined
+              }
+            />
+          </OpsKpiBandCell>
+        );
+      })}
     </OpsKpiBand>
+  );
+}
+
+/**
+ * Per-bench LOOSE-UNIT count — a compact secondary strip under the order KPI
+ * tiles on Ready-to-Pack (P3b). Orders and units keep SEPARATE ledgers + counts,
+ * so this never merges into an order tile's number: it answers "how many loose
+ * units are staged at each bench" alongside the order tiles' "how many orders".
+ * Fed by the same {@link unitPackPlacementQuery} the armed-bench chip reads, so
+ * it costs no extra fetch. Every bench renders (spatial predictability) — muted
+ * at zero so the row stays quiet on the common empty case.
+ */
+function UnitBenchStrip() {
+  const query = useQuery(unitPackPlacementQuery());
+  const counts = query.data?.counts ?? [];
+  if (query.isPending || query.isError) return null;
+  return (
+    <PackBenchChipRow
+      label="Units staged"
+      rows={counts}
+      testId="unit-bench"
+      itemNoun="unit"
+    />
   );
 }
 
 function PendingStrip() {
   const query = useQuery(unshippedQueueCountsQuery());
+  const placementQuery = useQuery(packPlacementQuery());
   const { roi, pending: roiPending } = useGatedOperationsRoi();
   const toShipFilter = useToShipStatusFilter();
+  const { armed, arm } = useArmedPackStation();
   const data = query.data;
   const unshipped = {
     total: data?.total ?? 0,
@@ -166,24 +239,61 @@ function PendingStrip() {
     tested: data?.byStage.tested ?? 0,
     blocked: (data?.combos ?? []).reduce((s, c) => s + (c.blocked ? c.count : 0), 0),
   };
-  const metrics = resolveShippingMetrics({
+  const lifecycleMetrics = resolveShippingMetrics({
     mode: 'pending',
     unshipped,
     history: ZERO_SHIPPING_HISTORY,
     roi,
   });
+  const stationMetrics: ComputedMetric[] = useMemo(() => {
+    const counts = placementQuery.data?.counts ?? [];
+    return counts.map((row) => {
+      const label = stationShortLabel(row);
+      return {
+        id: `pack-station-${row.locationId}`,
+        label,
+        value: row.count.toLocaleString(),
+        fraction: unshipped.tested > 0 ? Math.min(1, row.count / unshipped.tested) : 0,
+        intent: row.locationKind === 'STAGING' ? ('warn' as const) : ('neutral' as const),
+        severity: row.locationKind === 'STAGING' ? 2 : 1,
+        status: row.locationKind === 'STAGING' ? 'Staging' : 'Bench',
+        tooltip: `${row.locationName}: ${row.count} package${row.count === 1 ? '' : 's'}. Click to arm and filter.`,
+      };
+    });
+  }, [placementQuery.data?.counts, unshipped.tested]);
+  const metrics = [...lifecycleMetrics, ...stationMetrics];
   return (
-    <StripLayout
-      mode="pending"
-      metrics={metrics}
-      isPending={query.isPending || roiPending}
-      isError={query.isError}
-      reservedSlots={4}
-      toShipFilter={toShipFilter}
-      onRetry={() => {
-        void query.refetch();
-      }}
-    />
+    <>
+      <StripLayout
+        mode="pending"
+        metrics={metrics}
+        isPending={query.isPending || roiPending || placementQuery.isPending}
+        isError={query.isError}
+        reservedSlots={4}
+        toShipFilter={toShipFilter}
+        armedLocationId={armed?.locationId ?? null}
+        onArmStation={(metric) => {
+          const locationId = Number(metric.id.replace('pack-station-', ''));
+          const row = (placementQuery.data?.counts ?? []).find((c) => c.locationId === locationId);
+          if (!row) return;
+          if (armed?.locationId === locationId) {
+            arm(null);
+            return;
+          }
+          arm({
+            locationId: row.locationId,
+            name: row.locationName,
+            barcode: row.locationBarcode,
+            locationKind: row.locationKind,
+          });
+        }}
+        onRetry={() => {
+          void query.refetch();
+          void placementQuery.refetch();
+        }}
+      />
+      <UnitBenchStrip />
+    </>
   );
 }
 

@@ -194,6 +194,8 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   search: 'A second search box on surfaces that already spend `q` on a different field (Repair\'s queue, Support\'s orders).',
   attention: 'The needs-attention filter — one question ("only the rows that need me") on every queue that offers it.',
   ustatus: 'Unit-status facet, shared by the surfaces that show unit rows (To-ship desk, Support).',
+  packStation: 'Packing-station location id filter — Ready to Pack (`/test`) and To-ship (`/shipping/orders`) share the same placement fact.',
+  packPlaced: 'Any packing-station placement filter — same question on Ready to Pack and To-ship.',
   rtab: 'Right-pane / workbench facet tab. Same question; the tab vocabularies differ per surface (Labels Queue/Recent, FBA Ready disposition, …).',
   view: 'A saved/named view within the surface. One question ("which view of this list"), per-route vocabularies.',
   range: 'A time-range facet over the surface\'s own data. Same question; each route validates its own windows.',

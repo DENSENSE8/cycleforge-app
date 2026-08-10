@@ -3,6 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 export interface ProductSelection {
   type: string;
@@ -40,6 +43,11 @@ interface ProductSelectorProps {
    * can't see. Mutually exclusive with `fillHeight`.
    */
   flowInPage?: boolean;
+  /**
+   * `flush` = kiosk V2 edge-to-edge catalog (square chrome, full-bleed rows).
+   * Staff intake keeps the soft `default` cards.
+   */
+  appearance?: 'default' | 'flush';
 }
 
 interface CategoryNode {
@@ -94,7 +102,9 @@ export function ProductSelector({
   onSelect, selectedProduct, onPriceChange, fillHeight,
   selectedItems: controlledItems, onSelectedItemsChange,
   apiBasePath = '/api/repair', hideManualEntry = false, flowInPage = false,
+  appearance = 'default',
 }: ProductSelectorProps) {
+  const flush = appearance === 'flush';
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [products, setProducts] = useState<EcwidProduct[]>([]);
   const [rootName, setRootName] = useState('Bose Repair Service');
@@ -315,10 +325,27 @@ export function ProductSelector({
   const loading = loadingCategories;
 
   return (
-    <div className={fillHeight ? 'flex h-full flex-col gap-4' : 'space-y-4'}>
+    <div
+      className={cn(
+        flush
+          ? fillHeight
+            ? 'flex h-full flex-col gap-0'
+            : 'flex flex-col gap-0'
+          : fillHeight
+            ? 'flex h-full flex-col gap-4'
+            : 'space-y-4',
+      )}
+    >
 
       {/* Back + Search */}
-      <div className="flex items-center gap-2">
+      <div
+        className={cn(
+          'flex items-stretch',
+          flush
+            ? 'gap-0 border-b border-border-hairline bg-surface-sunken'
+            : 'items-center gap-2',
+        )}
+      >
         <IconButton
           type="button"
           onClick={() => {
@@ -335,7 +362,16 @@ export function ProductSelector({
             );
           }}
           disabled={loading || (isAtRoot && !showAllProducts)}
-          className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl border border-border-soft bg-surface-canvas transition-colors hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn(
+            flush
+              ? cn(
+                  'flex h-11 w-11 shrink-0 items-center justify-center border-r border-border-hairline',
+                  'bg-surface-card transition-colors hover:bg-surface-sunken',
+                  'disabled:cursor-not-allowed disabled:opacity-40',
+                  cornerClass('flush'),
+                )
+              : 'flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-xl border border-border-soft bg-surface-canvas transition-colors hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-40',
+          )}
           ariaLabel="Go back"
           icon={<ChevronLeft className="h-4 w-4" />}
         />
@@ -345,21 +381,34 @@ export function ProductSelector({
           onChange={setSearch}
           className="flex-1"
           tone="blue"
+          appearance={flush ? 'flush' : 'default'}
         />
       </div>
 
       {/* Manual Entry + SKU pairing — suppressed on the kiosk (catalog-only) */}
       {!hideManualEntry && (
-      <div className="space-y-2">
+      <div className={cn(flush ? 'space-y-0 border-b border-border-hairline' : 'space-y-2')}>
         {/* ds-raw-button: full-width selectable toggle card with title + conditional subtitle and active-state restyle — not a Button/IconButton shape */}
         <button
           type="button"
           onClick={() => setShowOther((prev) => !prev)}
-          className={`w-full rounded-xl p-3.5 text-left transition-all ${
-            selectedProduct?.type === 'Other'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-              : 'border border-border-soft bg-surface-canvas text-text-default hover:border-blue-300 hover:bg-blue-50'
-          }`}
+          className={cn(
+            'w-full text-left transition-all',
+            flush
+              ? cn(
+                  'px-4 py-3.5',
+                  cornerClass('flush'),
+                  selectedProduct?.type === 'Other'
+                    ? 'bg-surface-inverse text-white'
+                    : 'border-b border-border-hairline bg-surface-canvas text-text-default hover:bg-surface-sunken',
+                )
+              : cn(
+                  'rounded-xl p-3.5',
+                  selectedProduct?.type === 'Other'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'border border-border-soft bg-surface-canvas text-text-default hover:border-blue-300 hover:bg-blue-50',
+                ),
+          )}
         >
           <div className="text-xs font-semibold uppercase tracking-wide">Other -- Manual Entry</div>
           {selectedProduct?.type === 'Other' && (
@@ -368,13 +417,14 @@ export function ProductSelector({
         </button>
 
         {showOther && (
-          <div className="flex items-center gap-2">
+          <div className={cn('flex items-center', flush ? 'gap-0' : 'gap-2')}>
             <TextField
               label="Product name"
               value={otherModelText}
               onChange={setOtherModelText}
               className="flex-1"
               tone="blue"
+              appearance={flush ? 'flush' : 'default'}
               onKeyDown={(e) => { if (e.key === 'Enter') handleOtherSubmit(); }}
             />
             <Button
@@ -383,6 +433,7 @@ export function ProductSelector({
               size="lg"
               onClick={handleOtherSubmit}
               disabled={!otherModelText.trim()}
+              className={flush ? cornerClass('flush') : undefined}
             >
               Add
             </Button>
@@ -395,7 +446,12 @@ export function ProductSelector({
           is no separate "Start" crumb; the root IS the start. Crumb 0 resets to
           the root level (keeping the "All Repairs" affordance visible). */}
       {(breadcrumbs.length > 0 || showAllProducts) && (
-        <div className="flex flex-wrap items-center gap-1 text-role-eyebrow uppercase tracking-wide text-text-soft">
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-1 text-role-eyebrow uppercase tracking-wide text-text-soft',
+            flush && 'border-b border-border-hairline px-4 py-2',
+          )}
+        >
           {showAllProducts ? (
             <>
               {/* ds-raw-button: inline breadcrumb text link (no chrome) — Button would add height/padding */}
@@ -427,14 +483,28 @@ export function ProductSelector({
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-xl border border-border-soft bg-surface-canvas p-4 text-xs font-semibold text-text-faint uppercase tracking-wide">
+        <div
+          className={cn(
+            'text-xs font-semibold uppercase tracking-wide text-text-faint',
+            flush
+              ? 'border-b border-border-hairline px-4 py-3.5'
+              : 'rounded-xl border border-border-soft bg-surface-canvas p-4',
+          )}
+        >
           Loading...
         </div>
       )}
 
       {/* Error */}
       {!loading && error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700">
+        <div
+          className={cn(
+            'text-xs font-semibold text-red-700',
+            flush
+              ? 'border-b border-border-hairline bg-red-50 px-4 py-3.5'
+              : 'rounded-xl border border-red-200 bg-red-50 p-4',
+          )}
+        >
           {error}
         </div>
       )}
@@ -442,24 +512,39 @@ export function ProductSelector({
       {/* Content */}
       {!loading && !error && (
         <div
-          className={`space-y-4 p-0.5 ${
-            flowInPage ? '' : `${fillHeight ? 'flex-1' : 'max-h-[50vh]'} overflow-y-auto`
-          }`}
+          className={cn(
+            flush ? 'gap-0' : 'space-y-4 p-0.5',
+            flowInPage ? '' : `${fillHeight ? 'flex-1' : 'max-h-[50vh]'} overflow-y-auto`,
+          )}
         >
 
           {/* Sub-categories */}
           {!showAllProducts && filteredCategories.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-role-eyebrow uppercase tracking-[0.15em] text-text-faint">
+            <div className={flush ? 'gap-0' : 'space-y-1.5'}>
+              <p
+                className={cn(
+                  'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
+                  flush && 'border-b border-border-hairline px-4 py-2',
+                )}
+              >
                 {isAtRoot ? 'Categories' : 'Sub-categories'}
               </p>
               {/* Category rows are short labels — stacking them one-per-row wasted
                   the whole right half of the column. Auto-fill keeps one column on
                   a narrow pane and fills wider ones (kiosk tablet) without a
-                  breakpoint guess. */}
+                  breakpoint guess. Soft mode keeps the card grid; flush is a
+                  full-bleed divided list. */}
               <div
-                className="grid gap-1.5"
-                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}
+                className={cn(
+                  flush
+                    ? 'divide-y divide-border-hairline border-b border-border-hairline'
+                    : 'grid gap-1.5',
+                )}
+                style={
+                  flush
+                    ? undefined
+                    : { gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }
+                }
               >
                 {/* ds-raw-button: full-width category nav row card (title + chevron), not a Button shape */}
                 {filteredCategories.map((cat) => (
@@ -467,7 +552,15 @@ export function ProductSelector({
                     key={cat.id}
                     type="button"
                     onClick={() => void fetchCategoryLevel(cat.id)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-soft bg-surface-card p-3.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100"
+                    className={cn(
+                      'flex w-full items-center justify-between gap-3 text-left transition-all',
+                      flush
+                        ? cn(
+                            'bg-surface-card px-4 py-3.5 hover:bg-surface-sunken active:bg-surface-sunken',
+                            cornerClass('flush'),
+                          )
+                        : 'rounded-xl border border-border-soft bg-surface-card p-3.5 hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
+                    )}
                   >
                     <span className="truncate text-xs font-semibold text-text-default">
                       {cat.name}
@@ -480,7 +573,15 @@ export function ProductSelector({
                   <button
                     type="button"
                     onClick={() => void fetchAllProducts()}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100"
+                    className={cn(
+                      'flex w-full items-center justify-between gap-3 text-left transition-all',
+                      flush
+                        ? cn(
+                            'bg-surface-sunken px-4 py-3.5 hover:bg-blue-50 active:bg-blue-50',
+                            cornerClass('flush'),
+                          )
+                        : 'rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
+                    )}
                   >
                     <span className="truncate text-xs font-semibold text-text-default">
                       Pick Your Repair - All Repairs
@@ -494,14 +595,23 @@ export function ProductSelector({
 
           {/* Products grid */}
           {(loadingProducts || loadingRootSearch || filteredProducts.length > 0) && (
-            <div className="space-y-2">
-              <p className="text-role-eyebrow uppercase tracking-[0.15em] text-text-faint">
+            <div className={flush ? 'gap-0' : 'space-y-2'}>
+              <p
+                className={cn(
+                  'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
+                  flush && 'border-b border-border-hairline px-4 py-2',
+                )}
+              >
                 {loadingProducts || loadingRootSearch ? 'Loading products...' : 'Products'}
               </p>
               {!loadingProducts && !loadingRootSearch && (
                 <div
-                  className="grid gap-2"
-                  style={{ gridTemplateColumns: `repeat(auto-fill, minmax(148px, 1fr))` }}
+                  className={cn(flush ? 'grid gap-0 border-b border-border-hairline' : 'grid gap-2')}
+                  style={{
+                    gridTemplateColumns: flush
+                      ? 'repeat(auto-fill, minmax(148px, 1fr))'
+                      : 'repeat(auto-fill, minmax(148px, 1fr))',
+                  }}
                 >
                   {filteredProducts.map((product) => {
                     const selected = isSelected(product.id);
@@ -511,11 +621,23 @@ export function ProductSelector({
                         key={product.id}
                         type="button"
                         onClick={() => toggleProduct(product)}
-                        className={`relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all ${
-                          selected
-                            ? 'border-blue-500 shadow-md shadow-blue-500/20'
-                            : 'border-border-soft hover:border-blue-300 hover:shadow-sm'
-                        }`}
+                        className={cn(
+                          'relative flex flex-col overflow-hidden text-left transition-all',
+                          flush
+                            ? cn(
+                                'border border-border-hairline',
+                                cornerClass('flush'),
+                                selected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'hover:bg-surface-sunken',
+                              )
+                            : cn(
+                                'rounded-xl border-2',
+                                selected
+                                  ? 'border-blue-500 shadow-md shadow-blue-500/20'
+                                  : 'border-border-soft hover:border-blue-300 hover:shadow-sm',
+                              ),
+                        )}
                       >
                         {/* Square image */}
                         <div className="relative aspect-square w-full flex-shrink-0 overflow-hidden bg-surface-sunken">
@@ -535,7 +657,12 @@ export function ProductSelector({
 
                           {/* Selected checkmark */}
                           {selected && (
-                            <div className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600">
+                            <div
+                              className={cn(
+                                'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
+                                flush ? cornerClass('flush') : 'rounded-full',
+                              )}
+                            >
                               <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
@@ -573,7 +700,7 @@ export function ProductSelector({
                   size="sm"
                   onClick={loadMoreProducts}
                   disabled={loadingMoreProducts}
-                  className="mt-2 w-full"
+                  className={cn('w-full', flush ? cn('mt-0', cornerClass('flush')) : 'mt-2')}
                 >
                   {loadingMoreProducts ? 'Loading More...' : `Load ${PRODUCT_PAGE_SIZE} More`}
                 </Button>
@@ -583,39 +710,77 @@ export function ProductSelector({
 
           {/* Empty state */}
           {!loadingProducts && filteredCategories.length === 0 && filteredProducts.length === 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-700">
+            <div
+              className={cn(
+                'text-xs font-semibold text-amber-700',
+                flush
+                  ? 'border-b border-border-hairline bg-amber-50 px-4 py-3.5'
+                  : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
+              )}
+            >
               {search.trim() ? 'No results match your search.' : 'No items found at this level.'}
             </div>
           )}
         </div>
       )}
 
-      {/* Selected items tray */}
+      {/* Selected items tray — StackedRowIdentity (title → SKU keys) */}
       {selectedItems.length > 0 && (
-        <div className="overflow-hidden rounded-xl bg-blue-600 p-3 shadow-lg shadow-blue-500/20">
-          <div className="space-y-1.5">
+        <div
+          className={cn(
+            flush
+              ? cn(
+                  'mt-auto border-t border-border-hairline bg-surface-inverse',
+                  cornerClass('flush'),
+                )
+              : 'overflow-hidden rounded-xl bg-blue-600 p-3 shadow-lg shadow-blue-500/20',
+          )}
+        >
+          <div className={cn(flush ? 'divide-y divide-white/15' : 'space-y-1.5')}>
             {selectedItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg bg-surface-card px-3 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-role-micro text-text-default">{item.name}</p>
-                  {item.sku && <p className="text-role-eyebrow font-semibold text-text-faint">{item.sku}</p>}
-                </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  {item.price !== null && (
-                    <span className="text-role-micro text-emerald-600">${item.price.toFixed(2)}</span>
-                  )}
-                  <IconButton
-                    type="button"
-                    onClick={() => removeItem(item.id)}
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-surface-sunken transition-colors hover:bg-red-100"
-                    ariaLabel="Remove item"
-                    icon={
-                      <svg className="h-3 w-3 text-text-soft hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    }
-                  />
-                </div>
+              <div
+                key={item.id}
+                className={cn(
+                  flush
+                    ? 'bg-surface-card px-4 py-2.5'
+                    : 'rounded-lg bg-surface-card px-3 py-2',
+                )}
+              >
+                <StackedRowIdentity
+                  title={
+                    <p className="truncate text-role-micro text-text-default">{item.name}</p>
+                  }
+                  keys={
+                    item.sku ? (
+                      <span className="text-role-eyebrow font-semibold text-text-faint">
+                        {item.sku}
+                      </span>
+                    ) : null
+                  }
+                  trailing={
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                      {item.price !== null && (
+                        <span className="text-role-micro text-emerald-600">
+                          ${item.price.toFixed(2)}
+                        </span>
+                      )}
+                      <IconButton
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className={cn(
+                          'flex h-5 w-5 items-center justify-center bg-surface-sunken transition-colors hover:bg-red-100',
+                          flush ? cornerClass('flush') : 'rounded-md',
+                        )}
+                        ariaLabel="Remove item"
+                        icon={
+                          <svg className="h-3 w-3 text-text-soft hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        }
+                      />
+                    </div>
+                  }
+                />
               </div>
             ))}
           </div>

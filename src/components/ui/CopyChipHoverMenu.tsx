@@ -1,21 +1,26 @@
 'use client';
 
 /**
- * Hover-under-chip secondary action menu — SoT for dense table identity chips
+ * Hover-beside-chip secondary action menu — SoT for dense table identity chips
  * and (via thin adapters) unbox carton chips.
  *
  * Pattern (IdentityLinkChip / SerialChipWithMenu):
  *   • Chip click = primary (copy or open) — parent supplies the chip child.
- *   • Hover the group → menu below chip.
+ *   • Hover the group → menu beside the chip (prefer trailing/right; flip left).
  *   • stopPropagation so table rows don't open detail on menu clicks.
  *
+ * Side placement is load-bearing for LedgerGrid / queue sheets: a below-chip
+ * menu sits in the vertical row-scan path and blocks travel to the next row.
+ * The full-ID SiteTooltip stays above (`pointer-events-none`); OPEN/EDIT exit
+ * horizontally so the column stays traversable.
+ *
  * The menu renders in a **body portal** (like {@link HoverTooltip}) positioned
- * from the trigger's rect. This is load-bearing: the dashboard order rows apply
- * a `transform` to the chip cluster on row-hover, and `transform` creates a
- * stacking context — an in-flow `absolute` menu would be trapped inside it and
- * painted over by the next row (a later DOM sibling), regardless of its
- * `z-index`. A body portal escapes every row stacking context so the menu is
- * never clipped or covered.
+ * from the trigger's rect via {@link clampPortalSideMenuPosition}. This is also
+ * load-bearing: dashboard order rows apply a `transform` to the chip cluster on
+ * row-hover, and `transform` creates a stacking context — an in-flow `absolute`
+ * menu would be trapped inside it and painted over by the next row (a later DOM
+ * sibling), regardless of its `z-index`. A body portal escapes every row
+ * stacking context so the menu is never clipped or covered.
  *
  * {@link CopyChipHoverMenuPanel} is the presentational chrome + rows — also
  * composed in-place by hosts that already own hover (e.g. photo launcher toolbar).
@@ -32,10 +37,14 @@ import {
 import { createPortal } from 'react-dom';
 import { cn } from '@/utils/_cn';
 import { zIndex } from '@/design-system/tokens/z-index';
-
-const MARGIN = 8;
-/** Gap between the chip and the menu — also the pointer-bridge the portal must cover. */
-const GAP = 4;
+import { cornerClass } from '@/design-system/tokens/radius';
+import {
+  clampPortalSideMenuPosition,
+  PORTAL_SIDE_MENU_GAP,
+  readTrustedTriggerRect,
+  type PortalSideMenuAlign,
+  type PortalSideMenuPlacement,
+} from '@/lib/ui/portal-anchor';
 /** Grace period so crossing the chip→menu gap doesn't close the menu. */
 const CLOSE_DELAY_MS = 120;
 
@@ -78,10 +87,11 @@ export function CopyChipHoverMenuPanel({
       aria-label={menuLabel}
       data-testid={dataTestId}
       className={cn(
-        'min-w-35 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg',
+        // Flush-square ops chrome — floating portal is not a soft-radius escape.
+        'min-w-35 overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+        cornerClass('flush'),
         className,
-      )}
-    >
+      )}    >
       {items.map((item, i) => {
         const toneClass =
           item.tone === 'danger'
@@ -144,6 +154,8 @@ export function CopyChipHoverMenu({
   menuLabel,
   className,
   denseLabel = false,
+  placement = 'auto',
+  align = 'start',
   onOpenChange,
 }: {
   children: ReactNode;
@@ -155,6 +167,13 @@ export function CopyChipHoverMenu({
    * carton IdentityLinkChip parity. Default keeps sentence-case dashboard labels.
    */
   denseLabel?: boolean;
+  /**
+   * Side flyout for dense tables — prefer trailing (`auto`/`end`), flip leading.
+   * Never default to below: that blocks vertical row travel in LedgerGrid.
+   */
+  placement?: PortalSideMenuPlacement;
+  /** Vertical align vs the chip. `start` (default) keeps OPEN/EDIT on the hovered row. */
+  align?: PortalSideMenuAlign;
   /** Fires when the dropdown opens (true) / closes (false) — lets a host row keep
    *  its hover-expanded chrome (chevron + shifted chips) while the menu is up. */
   onOpenChange?: (open: boolean) => void;
@@ -163,6 +182,10 @@ export function CopyChipHoverMenu({
   const triggerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const placementRef = useRef(placement);
+  placementRef.current = placement;
+  const alignRef = useRef(align);
+  alignRef.current = align;
 
   // Trigger rect captured on open; the menu is positioned off-screen+hidden
   // first so we can measure it, then clamped into view in the layout effect.
@@ -179,8 +202,8 @@ export function CopyChipHoverMenu({
   const open = useCallback(() => {
     if (!enabled) return;
     clearClose();
-    const r = triggerRef.current?.getBoundingClientRect();
-    if (r && r.width >= 2 && r.height >= 2) {
+    const r = readTrustedTriggerRect(triggerRef.current);
+    if (r) {
       setAnchor(r);
       setPos(null);
     }
@@ -211,19 +234,16 @@ export function CopyChipHoverMenu({
   useLayoutEffect(() => {
     if (!anchor || !menuRef.current) return;
     const b = menuRef.current.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    const roomBelow = vh - anchor.bottom - MARGIN;
-    // Prefer below the chip; flip above only when there isn't room below.
-    const below = roomBelow >= b.height || roomBelow >= anchor.top - MARGIN;
-    const rawTop = below ? anchor.bottom + GAP : anchor.top - b.height - GAP;
-    const top = Math.min(Math.max(rawTop, MARGIN), Math.max(MARGIN, vh - b.height - MARGIN));
-
-    const rawLeft = anchor.left + anchor.width / 2 - b.width / 2;
-    const left = Math.min(Math.max(rawLeft, MARGIN), Math.max(MARGIN, vw - b.width - MARGIN));
-
-    setPos({ top, left });
+    const next = clampPortalSideMenuPosition({
+      anchor,
+      bubble: b,
+      gap: PORTAL_SIDE_MENU_GAP,
+      placement: placementRef.current,
+      align: alignRef.current,
+    });
+    // Keep hidden (pos null) when clamp rejects — never paint at ~(MARGIN,MARGIN)
+    // from a bad/stale anchor.
+    setPos(next ? { top: next.top, left: next.left } : null);
   }, [anchor]);
 
   // Close on scroll (the fixed portal would otherwise leak over unrelated
@@ -247,12 +267,13 @@ export function CopyChipHoverMenu({
           <div
             ref={menuRef}
             style={{
+              position: 'fixed',
               top: pos?.top ?? -9999,
               left: pos?.left ?? -9999,
               visibility: pos ? 'visible' : 'hidden',
               zIndex: zIndex.panelPopover,
             }}
-            className="fixed transition-opacity duration-100"
+            className="transition-opacity duration-100"
             onClick={(e) => e.stopPropagation()}
             onMouseEnter={clearClose}
             onMouseLeave={scheduleClose}

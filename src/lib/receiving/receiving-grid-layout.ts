@@ -24,7 +24,10 @@ import {
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
-import type { CustomFieldColumnKey } from '@/lib/tables/custom-field-keys';
+import {
+  isCustomFieldColumnKey,
+  type CustomFieldColumnKey,
+} from '@/lib/tables/custom-field-keys';
 
 export type ReceivingGridColumnKey =
   | 'select'
@@ -141,7 +144,7 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     labelFitRem: 4.5,
   },
   // Qty — magnitude → end + tabular-nums.
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', align: 'end', hideKey: 'qty', resizable: false, labelFitRem: 3.5 },
+  { key: 'qty', width: 'minmax(4.5rem, 4.5rem)', label: 'Qty', type: 'number', align: 'end', hideKey: 'qty', resizable: false, labelFitRem: 3.5 },
   // Zoho PO line unit cost — magnitude → end. Header owns the Receipt glyph;
   // dense Sheets face keeps the cell mark omitted (`omitCellIcon`).
   { key: 'price', width: 'minmax(5.5rem, 5.5rem)', label: 'Price', type: 'price', align: 'end', omitCellIcon: true, hideKey: 'price', resizable: false, labelFitRem: 4.5 },
@@ -188,7 +191,25 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVIN
   (c) => c.sortable !== false && c.key !== 'select' && c.key !== '_fill',
 ).map((c) => c.key);
 
+/**
+ * Click-to-sort predicate — the ONE sortability answer for this family.
+ *
+ * Three call sites read it together, which is why admitting a key here is the
+ * whole fix rather than a third of it: the descriptor's `isSortable` (TanStack
+ * column defs), `ReceivingGridColumnHeader`'s click-to-sort, and
+ * `useUrlColumnSort`'s `isColumn` guard (URL durability). A key accepted here
+ * is sortable, clickable, and survives a reload as one unit.
+ *
+ * Org custom columns (`custom:*`) are merged into the column model at RUNTIME
+ * from `custom_field_defs`, so they can never appear in the static
+ * {@link RECEIVING_GRID_SORTABLE_KEYS} derivation above — they are admitted by
+ * key SHAPE instead. Consequence, deliberately accepted: a stale
+ * `?colsort=custom:<archived-or-typo>` stays "valid" and degrades to every row
+ * blank ⇒ a stable id-order tie. That is quieter than rejecting the param,
+ * which would silently drop an operator's shared link back to default order.
+ */
 export function isReceivingGridSortable(key: string): key is ReceivingGridColumnKey {
+  if (isCustomFieldColumnKey(key)) return true;
   return (RECEIVING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 

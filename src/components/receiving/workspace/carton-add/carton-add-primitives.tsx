@@ -1,4 +1,9 @@
 import { Loader2, Package, Plus } from '@/components/Icons';
+import { SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
 
 // ─── Hint banner (e.g. off-PO notice) ────────────────────────────────────────
 
@@ -26,18 +31,25 @@ export function DisabledNote({ reason }: { reason: string }) {
 export function ResultRow({
   title,
   subtitle,
+  sku,
   imageUrl,
   busy,
   disabled,
   onClick,
 }: {
   title: string;
-  subtitle: string;
+  /** Prose secondary line when `sku` is absent (e.g. web hit condition · price). */
+  subtitle?: string;
+  /** Typed SKU key — preferred over prose subtitle for catalog picks. */
+  sku?: string | null;
   imageUrl: string | null;
   busy: boolean;
   disabled: boolean;
   onClick: () => void;
 }) {
+  const skuValue = (sku ?? '').trim();
+  const subtitleValue = (subtitle ?? '').trim();
+
   return (
     <button
       type="button"
@@ -53,10 +65,22 @@ export function ResultRow({
           <Package className="h-4 w-4" />
         </div>
       )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-role-caption font-semibold text-text-default">{title}</p>
-        {subtitle ? <p className="truncate text-role-micro text-text-soft">{subtitle}</p> : null}
-      </div>
+      <StackedRowIdentity
+        className="min-w-0 flex-1"
+        title={
+          <p className="truncate text-role-caption font-semibold text-text-default">{title}</p>
+        }
+        keys={joinStackedIdentityKeys([
+          skuValue ? (
+            <SkuScanRefChip key="sku" value={skuValue} display={getLast8(skuValue)} dense />
+          ) : null,
+          !skuValue && subtitleValue ? (
+            <span key="sub" className="truncate text-role-micro text-text-soft">
+              {subtitleValue}
+            </span>
+          ) : null,
+        ])}
+      />
       {busy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-text-faint" /> : <Plus className="h-3.5 w-3.5 shrink-0 text-text-faint" />}
     </button>
   );

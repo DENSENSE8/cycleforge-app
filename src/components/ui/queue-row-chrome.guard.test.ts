@@ -195,7 +195,8 @@ describe('queue-row left-edge chrome', () => {
     const files = [
       ['SidebarSectionList', '../sidebar/SidebarSectionList.tsx'],
       ['SavedViewsList', '../saved-views/SavedViewsList.tsx'],
-      ['PhotoLibrarySidebarPanel', '../photos/PhotoLibrarySidebarPanel.tsx'],
+      // (`PhotoLibrarySidebarPanel` left this list 2026-08-09 — the Media
+      // library went rail-less, so there is no navigator column to check.)
       ['OutboundSidebarFilterMap', '../unshipped/OutboundSidebarFilterMap.tsx'],
     ] as const;
 

@@ -101,6 +101,46 @@ is not.
 The non-modal photo inspector (`PhotoInspectorPanel.tsx`, `?photoId=` URL state) was built,
 verified, then deleted. Its URL plumbing was cleanly removed too. Leave it gone.
 
+#### SUPERSEDED 2026-08-09 — the ban is lifted, conditionally
+
+Keep the paragraph above: it is the evidence, and the two conditions below exist only because
+it was written. The blanket "leave it gone" no longer holds.
+
+**Why the deletion was rational.** The operator did not recall the reason; the code did, in three
+places that agree:
+
+| Evidence | What it says |
+|---|---|
+| `PhotoCard.tsx:53-62` | *"There is deliberately no second, quieter 'inspect' path competing for the same click."* |
+| `src/data/release-notes.json:91` | *"Drop PhotoInspectorPanel + date-folder tree; tile click reopens fullscreen viewer"* |
+| `src/lib/photos/library-filter-state.ts:526-537` | *"There is deliberately no `?photoId=` record selection here… re-adding a durable record param means re-answering what happens when a filter change evicts that photo from the result set."* |
+
+Two independent failures: (1) the inspector **competed with the lightbox for the tile click** —
+on a photo surface a click means *show me the photo*, and the operator resolved the ambiguity by
+giving the click back to the viewer; (2) **`?photoId=` had no eviction answer** on a filtered
+stream.
+
+**The two conditions any return must meet.** Both are met by the A3 plan
+([`media-library-desk-inspector-A3-PLAN.md`](media-library-desk-inspector-A3-PLAN.md)) and both
+are Stage-1 acceptance checks there:
+
+1. **The tile click is not touched.** Click stays → fullscreen lightbox. The inspector is the
+   **n = 1 face of the selection plane** (select one → inspector; select two or more → the
+   existing `PhotoLibraryToolbar`), the same cardinality switch Orders and History already use.
+   *Operator ruling, 2026-08-09* — this overrides D2 of the answering research report, which had
+   click → inspector and double-click → lightbox.
+2. **Eviction is ruled explicitly.** `?photoId=` is written from selection and cleared with it, so
+   a filter change that drops the photo from the loaded set closes the rail. One rule, no new
+   concept.
+
+**What makes it worth rebuilding rather than restoring.** The deleted panel was facts-only, which
+is why it read as a redundant second Details drawer. The return is `DeskInspectorIndexShell`
+index→leaf topics plus an `InspectorActionFloor`, and it inherits the seven single-asset verbs
+that are currently reachable **only by right-click** — a plane the deleted panel never replaced.
+
+A restoration that is facts-only, or that takes the tile click, is still banned by the paragraph
+above.
+
 ---
 
 ## 3. The date-filter fix (done — context so you don't undo it)

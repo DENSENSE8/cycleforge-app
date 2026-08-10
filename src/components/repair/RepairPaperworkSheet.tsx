@@ -46,7 +46,7 @@ export function RepairPaperworkSheet({
         disabled={disabled}
         aria-pressed={active}
         ariaLabel={label}
-        className={`rounded-lg border transition-colors ${
+        className={`rounded-none border transition-colors ${
           active
             ? 'border-border-strong bg-surface-inverse text-white'
             : 'border-border-soft text-text-soft hover:border-border-strong hover:text-text-default'

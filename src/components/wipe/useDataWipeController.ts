@@ -1,31 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { safeRandomUUID } from '@/lib/safe-uuid';
-// Type-only import: `WipeMethod` is erased at compile time, so the server-only
-// `recordDataWipe` module (which pulls in `@/lib/db`) is NEVER bundled into the
-// client. This keeps the wipe-method enum a single source of truth without
-// dragging DB code into the browser bundle.
-import type { WipeMethod } from '@/lib/tech/recordDataWipe';
-import { refreshDomains } from '@/lib/refresh/bus';
-import { unwrapScannedSerial } from '@/lib/barcode-routing';
-
 /**
- * Station controller for the Data-Wipe bench — the scan → resolve → active-card
- * → record → clear/refocus loop (mirrors `useStationTestingController`, but a
- * wipe acts on a single resolved serial_unit rather than a receiving line).
+ * Controller for the Data-Wipe Station. Owns scan → resolve → method → verdict
+ * state; the view (`DataWipeStation`) is presentational.
  *
- *   1. SCAN     — operator scans a device serial / printed unit label.
- *   2. RESOLVE  — `GET /api/serial-units/{scan}` (accepts serial / unit_uid and
- *                 returns the unit WITH its id) — the same resolver the testing
- *                 sidebar already uses via `fetchLineByUnitId`.
- *   3. ACTIVE   — the resolved unit replaces the previous active card; the
- *                 operator picks a wipe method.
- *   4. RECORD   — `POST /api/serial-units/{id}/data-wipe` with a per-scan
- *                 `client_event_id` (idempotent retry → no-op).
- *   5. CLEAR    — big pass/fail outcome, then auto-clear + refocus for the next
- *                 scan (ephemeral selection, never URL-addressable).
+ * Act-and-clear: the next scan replaces the standing card / outcome. Do not
+ * start a dwell timer that hides finished work behind the operator.
  */
+
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { refreshDomains } from '@/lib/refresh/bus';
+// Type-only — the SoT enum lives in a server module (`'server-only'`). Importing
+// the value would pull that graph into the client bundle; the string-literal
+// union below is the client-side twin and stays in lockstep via the exhaustiveness
+// check on `WIPE_METHOD_META` in the view.
+import type { WipeMethod } from '@/lib/tech/recordDataWipe';
 
 export interface ResolvedWipeUnit {
   id: number;
@@ -48,8 +45,6 @@ export interface WipeOutcome {
 }
 
 const DEFAULT_METHOD: WipeMethod = 'factory_reset';
-/** How long the big outcome card lingers before the bench resets for the next scan. */
-const OUTCOME_AUTO_HIDE_MS = 2600;
 
 /**
  * Non-visual pass/fail cue for the eyes-down operator (station.md §6 — "pair the
@@ -99,7 +94,6 @@ export function useDataWipeController() {
   // One idempotency key per scanned unit; the verdict POST reuses it so a
   // double-click / wedge double-fire collapses to a no-op server-side.
   const clientEventIdRef = useRef<string>('');
-  const autoHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isSubmitting = submittingVerdict !== null;
   const isBusy = isResolving || isSubmitting;
@@ -108,15 +102,6 @@ export function useDataWipeController() {
     // One-tick defer so React commits the cleared input before focus returns.
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
-
-  const clearAutoHideTimer = useCallback(() => {
-    if (autoHideTimerRef.current) {
-      clearTimeout(autoHideTimerRef.current);
-      autoHideTimerRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => () => clearAutoHideTimer(), [clearAutoHideTimer]);
 
   // Focus-watchdog: re-grab the scan bar when the tab regains visibility —
   // modals / tab-aways steal focus, the classic wedge failure mode (station.md
@@ -141,13 +126,12 @@ export function useDataWipeController() {
   );
 
   const resetStation = useCallback(() => {
-    clearAutoHideTimer();
     setActiveUnit(null);
     setOutcome(null);
     setErrorMessage(null);
     setWipeMethod(DEFAULT_METHOD);
     clientEventIdRef.current = '';
-  }, [clearAutoHideTimer]);
+  }, []);
 
   // ── 1+2. SCAN → RESOLVE ───────────────────────────────────────────────────
   const handleScan = useCallback(
@@ -157,7 +141,6 @@ export function useDataWipeController() {
       if (!raw) return;
       if (isResolving || submittingVerdict !== null) return; // double-fire / wedge-burst guard
 
-      clearAutoHideTimer();
       setIsResolving(true);
       setErrorMessage(null);
       setOutcome(null);
@@ -198,7 +181,7 @@ export function useDataWipeController() {
         focusInput();
       }
     },
-    [inputValue, isResolving, submittingVerdict, clearAutoHideTimer, focusInput],
+    [inputValue, isResolving, submittingVerdict, focusInput],
   );
 
   // ── 4. RECORD the wipe verdict ────────────────────────────────────────────
@@ -231,13 +214,6 @@ export function useDataWipeController() {
         setOutcome({ kind, method: wipeMethod, idempotent: Boolean(data.idempotent), unit });
         playWipeCue(kind);
         refreshDomains(['receiving.lines']);
-
-        // Act-and-clear: the finished unit gets out of the way for the next scan.
-        clearAutoHideTimer();
-        autoHideTimerRef.current = setTimeout(() => {
-          resetStation();
-          inputRef.current?.focus();
-        }, OUTCOME_AUTO_HIDE_MS);
       } catch {
         setErrorMessage('Network error recording the wipe. Try again.');
       } finally {
@@ -245,7 +221,7 @@ export function useDataWipeController() {
         focusInput();
       }
     },
-    [activeUnit, submittingVerdict, wipeMethod, clearAutoHideTimer, resetStation, focusInput],
+    [activeUnit, submittingVerdict, wipeMethod, focusInput],
   );
 
   return {

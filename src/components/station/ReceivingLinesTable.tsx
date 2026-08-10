@@ -25,7 +25,7 @@
  * Re-exports below remain for accidental legacy imports; new code must use leaves.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
@@ -66,6 +66,10 @@ import {
   setDetailInspectorCollapsed,
 } from '@/design-system/shells/detail-stack';
 import { emitReceiving } from '@/components/receiving/receiving-events';
+import {
+  buildReceivingHistoryExportCsv,
+  receivingHistoryExportFilename,
+} from '@/lib/receiving/history-export-csv';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -339,6 +343,31 @@ export default function ReceivingLinesTable({
 
   const { groupedRecords, filteredGroupedRecords, orderedVisibleRows, getWeekCount } =
     useReceivingGrouping({ localRows: kpiFilteredRows, mode, historyAxis, weekRange, skipWeekFilter });
+
+  // Export the current Unbox History view as CSV — Band-1 trailing triggers the
+  // event, the table (rows in hand: kpi + week filtered, ordered) formats and
+  // downloads. Never a second query. History surface only.
+  const exportRowsRef = useRef<typeof orderedVisibleRows>(orderedVisibleRows);
+  exportRowsRef.current = orderedVisibleRows;
+  useEffect(() => {
+    if (!isUnboxHistoryTriage) return;
+    const onExport = () => {
+      const rows = exportRowsRef.current;
+      const csv = buildReceivingHistoryExportCsv(rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = receivingHistoryExportFilename();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(rows.length === 1 ? 'Exported 1 row' : `Exported ${rows.length} rows`);
+    };
+    window.addEventListener('receiving-export-history', onExport);
+    return () => window.removeEventListener('receiving-export-history', onExport);
+  }, [isUnboxHistoryTriage]);
 
   const {
     selectedId,

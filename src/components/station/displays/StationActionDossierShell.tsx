@@ -22,6 +22,7 @@ import {
 import { ChevronDown, ChevronRight } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { cn } from '@/utils/_cn';
 
 export type StationActionDossierRow = {
@@ -33,13 +34,6 @@ export type StationActionDossierRow = {
   /** Face stays open; no collapse control. */
   alwaysOpen?: boolean;
 };
-
-function isEditable(el: EventTarget | null): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  if (el.isContentEditable) return true;
-  const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-}
 
 function focusableIn(root: HTMLElement): HTMLElement[] {
   const nodes = root.querySelectorAll<HTMLElement>(
@@ -114,7 +108,7 @@ export function StationActionDossierShell({
 
   const onRowKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLButtonElement>, row: StationActionDossierRow, index: number) => {
-      if (isEditable(e.target)) return;
+      if (isEditableKeyTarget(e.target)) return;
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();

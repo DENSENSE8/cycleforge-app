@@ -50,6 +50,14 @@ const SHIPPING_SCAN_MODES: readonly ShippingScanModeMeta[] = [
   },
 ] as const;
 
+/** Full operator name for the ready-arm face — short `label` stays on the rail. */
+const SHIPPING_SCAN_MODE_FULL_LABEL: Record<StationInputMode, string> = {
+  tracking: 'Tracking #',
+  fba: 'Amazon Prep',
+  repair: 'Repair',
+  serial: 'Serial',
+};
+
 function modeMeta(mode: StationInputMode): ShippingScanModeMeta {
   return SHIPPING_SCAN_MODES.find((m) => m.mode === mode) ?? SHIPPING_SCAN_MODES[0];
 }
@@ -103,9 +111,20 @@ export function ShippingScanBar({
     armedMode ?? classifyShippingScan(value, idleFallbackMode);
   const active = modeMeta(effective);
   const ActiveIcon = active.Icon;
-  // Un-armed: neutral scan glyph — mode lives in the right rail only.
+  // Un-armed: neutral scan glyph — mode lives in the right rail + ready-arm face.
   const LeadingIcon = armedMode ? ActiveIcon : Barcode;
   const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
+  const readyArm = armedMode
+    ? {
+        label: `${SHIPPING_SCAN_MODE_FULL_LABEL[armedMode]} armed`,
+        Icon: ActiveIcon,
+        tintClassName: active.iconClass,
+      }
+    : {
+        label: 'Auto',
+        Icon: Barcode,
+        tintClassName: 'text-text-faint',
+      };
 
   return (
     <ThemedStationScanBar
@@ -114,7 +133,8 @@ export function ShippingScanBar({
       onSubmit={onSubmit}
       inputRef={inputRef}
       staffId={staffId}
-      placeholder={armedMode ? `Scan ${active.label}` : 'Orders · Amz SKU · Repair · Serial'}
+      placeholder=""
+      readyArm={readyArm}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.

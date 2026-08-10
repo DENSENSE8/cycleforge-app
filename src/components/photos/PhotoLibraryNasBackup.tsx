@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { toast } from '@/lib/toast';
+import { cn } from '@/utils/_cn';
 
 interface NasBackupStatus {
   agentConfigured: boolean;
@@ -86,7 +88,12 @@ export function PhotoLibraryNasBackup() {
   const pending = status.data.pendingMirror;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-2 border border-border bg-muted/30 inset-field',
+        cornerClass('flush'),
+      )}
+    >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">NAS cold backup</p>
         <p className="text-xs text-muted-foreground">

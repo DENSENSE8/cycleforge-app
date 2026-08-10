@@ -11,6 +11,32 @@ const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), 'utf8');
 
 describe('LedgerGrid sticky X scrollbar', () => {
+  it('self-scroll scrollX keeps the column header outside the Y port', () => {
+    const grid = read('src/design-system/components/grid/LedgerGrid.tsx');
+    assert.match(
+      grid,
+      /headerSyncedX/,
+      'Self-scroll-x must sync header h-scroll via --cf-grid-sx (same as split-x)',
+    );
+    assert.match(
+      grid,
+      /TABLE_FROZEN_HEADER_CLASS/,
+      'Header band must compose TABLE_FROZEN_HEADER_CLASS (opaque card)',
+    );
+    // Header must be a flex sibling of the body port, not a sticky child inside it —
+    // sticky-inside-dual-axis lets absolute Tracking chips paint through the band.
+    assert.match(
+      grid,
+      /selfScrollX \? \([\s\S]*?\{headerBand\}[\s\S]*?scrollPortRef[\s\S]*?\{body\}/,
+      'Self-scroll-x must render headerBand above the body scrollPort (not inside it)',
+    );
+    assert.match(
+      grid,
+      /!selfScrollX && 'sticky top-0'/,
+      'Self-scroll-x header is flex-pinned (not sticky); sticky remains for page/Y-only modes',
+    );
+  });
+
   it('owns a synced sticky X gutter (not body-native bar alone)', () => {
     const grid = read('src/design-system/components/grid/LedgerGrid.tsx');
     assert.match(

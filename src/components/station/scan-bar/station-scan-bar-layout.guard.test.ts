@@ -36,4 +36,62 @@ describe('StationScanBar frosted mode rail', () => {
     const themed = code('ThemedStationScanBar.tsx');
     assert.doesNotMatch(themed, /rightPadClass/);
   });
+
+  it('ready HUD paints readyArm face — no Scan prose; input column only', () => {
+    const bar = code('StationScanBar.tsx');
+    const tokens = code('tokens.ts');
+    const glow = code('ScanBandGlowHost.tsx');
+    const leading = code('StationScanLeadingIcon.tsx');
+    assert.match(bar, /readyArm\?:/);
+    assert.match(bar, /StationScanReadyArm/);
+    assert.match(bar, /scanBandReadyBlink/);
+    assert.match(bar, /scanBandReadySweep/);
+    assert.match(bar, /caret-transparent/);
+    assert.match(bar, /STATION_SCAN_BAR_READY_CURSOR_CLASS/);
+    assert.match(bar, /STATION_SCAN_BAR_READY_RETICLE_CLASS/);
+    assert.match(bar, /resolvedPlaceholder/);
+    assert.match(bar, /focusScanInput/);
+    assert.match(bar, /onActivate: focusScanInput/);
+    assert.match(bar, /showReadyHud \? 'pl-3' : padLeft/);
+    assert.match(bar, /readyArm\.label/);
+    assert.match(bar, /text-text-faint/);
+    assert.match(leading, /onActivate\?:/);
+    assert.match(tokens, /border-emerald-500\/35/);
+    // The sweep has ONE owner (StationScanBar), never the glow host module.
+    // (HUD spans the full bar above the frosted mode rail; see tokens.ts.)
+    assert.doesNotMatch(glow, /scanBandReadySweep/);
+    assert.doesNotMatch(bar, /from ['"]motion\/react['"]/);
+  });
+
+  it('mode-rail stations wipe Scan placeholders and pass readyArm', () => {
+    const receivingRoot = join(ROOT, '../../sidebar/receiving');
+    const techRoot = join(ROOT, '../../sidebar/tech');
+    const unbox = readFileSync(join(receivingRoot, 'ReceivingUnboxScanBar.tsx'), 'utf8');
+    const testing = readFileSync(join(receivingRoot, 'TestingScanBar.tsx'), 'utf8');
+    const shipping = readFileSync(join(techRoot, 'ShippingScanBar.tsx'), 'utf8');
+    for (const [name, src] of [
+      ['Unbox', unbox],
+      ['Testing', testing],
+      ['Shipping', shipping],
+    ] as const) {
+      assert.match(src, /readyArm=\{readyArm\}/, `${name} must pass readyArm`);
+      assert.match(src, /placeholder=""/, `${name} must use empty placeholder`);
+      assert.doesNotMatch(
+        src,
+        /placeholder=\{armedMode \? `Scan \$\{/,
+        `${name} must not use Scan \${label} placeholders`,
+      );
+    }
+    assert.match(
+      unbox,
+      /UNBOX_SCAN_MODE_FACE_LABEL[\s\S]*order:\s*'PO #'/,
+      'Unbox ready face must use PO # not Purchase order',
+    );
+    assert.match(unbox, /UNBOX_SCAN_MODE_FACE_LABEL\[armedMode\]/);
+    assert.doesNotMatch(
+      unbox,
+      /label: `\$\{UNBOX_SCAN_MODE_FULL_LABEL/,
+      'readyArm must not use FULL_LABEL (Purchase order #) for the face',
+    );
+  });
 });

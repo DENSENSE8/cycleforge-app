@@ -6,7 +6,6 @@ import { LabelsModeBody } from '@/components/outbound/labels/LabelsModeBody';
 import { ScanOutModeBody } from '@/components/outbound/scan-out/ScanOutModeBody';
 import { FbaSidebarPanel } from '@/components/fba/sidebar';
 import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
-import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
@@ -27,13 +26,17 @@ function isOrdersDeskPath(pathname: string | null): boolean {
  * To-ship (`/shipping/orders`) is a desk, not a scan station — it mounts the
  * order-feed filter map ({@link UnshippedSidebar}), never Labels scan band /
  * "Labels printed". Labels · Scan-out · FBA keep their station rails.
+ *
+ * Add / `?new=true` intake is owned by {@link OutboundOrdersDesk}
+ * (`NewOrderEntryOverlay`) — Pattern E rail-less does not mount this panel on
+ * desktop, so the desk host is the SoT.
  */
 export function OutboundSidebarPanel() {
   const pathname = usePathname();
   const { mode } = useOutboundUrlState();
   const dashboardSearch = useDashboardSearchController();
 
-  // Desk To-ship — filter map + new-order intake. Not LabelsModeBody.
+  // Desk To-ship — filter map only. Not LabelsModeBody.
   if (isOrdersDeskPath(pathname)) {
     return (
       <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>
@@ -45,10 +48,6 @@ export function OutboundSidebarPanel() {
             onSearchChange={dashboardSearch.setSearch}
           />
         </div>
-        <NewOrderEntryOverlay
-          open={dashboardSearch.showIntakeForm}
-          onClose={dashboardSearch.closeIntakeForm}
-        />
       </div>
     );
   }

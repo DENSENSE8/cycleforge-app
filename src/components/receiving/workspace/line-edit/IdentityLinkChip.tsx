@@ -296,8 +296,8 @@ export function IdentityLinkChip({
             carrierHint={tone === 'tracking' ? carrierHint : null}
             platformLabel={tone === 'id' ? platformLabel : null}
             // Hover shows the full value (listing URL / tracking / PO# / ticket#)
-            // via the site tooltip above; the Open/Edit action menu still opens
-            // below the chip on the same hover.
+            // via the site tooltip above; the Open/Edit action menu opens beside
+            // the chip (CopyChipHoverMenu side clamp — clears vertical travel).
             tooltipTrigger="hover"
             onActivate={chipActivate}
             activationLabel={chipActivateLabel}

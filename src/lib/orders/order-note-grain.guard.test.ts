@@ -115,15 +115,15 @@ test('no order UI writes the legacy scalar', () => {
     'ShippedDetailsBody must not hard-disable notes — desk is the durable note plane',
   );
 
-  // The grid's in-cell editor appends; `commitAssign({ notes })` is the old
-  // overwrite it replaced.
+  // Notes · OOS are record-plane only (inspector). The collection map must not
+  // grow a scalar notes writer — `commitAssign({ notes })` was the old overwrite.
   assert.ok(
     !/commitAssign\(\s*\{\s*notes/.test(QUEUE_ROW),
-    'OrdersQueueTableRow re-added an in-cell scalar note write — the cell appends via useAppendOrderNote',
+    'OrdersQueueTableRow re-added an in-cell scalar note write — notes append on the desk inspector',
   );
   assert.ok(
-    QUEUE_ROW.includes('useAppendOrderNote'),
-    'OrdersQueueTableRow no longer appends through the note waist',
+    !/useAppendOrderNote/.test(QUEUE_ROW),
+    'OrdersQueueTableRow must not mount useAppendOrderNote — notes are record-plane only',
   );
 });
 

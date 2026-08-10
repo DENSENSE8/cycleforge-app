@@ -137,7 +137,7 @@ test('IconButton box-size overrides do not grow (ratchet toward size=)', () => {
 test('keystone: the IconButton size scale stays intact and touch.ts stays retired', () => {
   const ib = readFileSync(join(SRC_ROOT, 'design-system/primitives/IconButton.tsx'), 'utf8');
   assert.ok(ib.includes('export type IconButtonSize'), 'IconButton must export IconButtonSize.');
-  for (const size of ['xs', 'sm', 'md', 'lg', 'touch']) {
+  for (const size of ['xs', 'sm', 'md', 'lg', 'touch', 'fill']) {
     assert.ok(
       new RegExp(`(?<![\\w])${size}:`).test(ib),
       `IconButton sizeClassName must define '${size}'.`,

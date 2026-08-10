@@ -9,60 +9,15 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-header';
-import { Button } from '@/design-system/primitives';
+import { Button, FlushTerminalFooter } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { deskRowFromCsvRecord } from '@/lib/inbound/desk-csv';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { parseCsv } from '@/lib/tables/import/parse-csv';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-
-function parseCsv(text: string): Record<string, string>[] {
-  const lines = text
-    .replace(/^\uFEFF/, '')
-    .split(/\r?\n/)
-    .map((l) => l.trimEnd())
-    .filter((l) => l.length > 0);
-  if (lines.length < 2) return [];
-
-  const split = (line: string): string[] => {
-    const cells: string[] = [];
-    let cur = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          cur += '"';
-          i += 1;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === ',' && !inQuotes) {
-        cells.push(cur.trim());
-        cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-    cells.push(cur.trim());
-    return cells;
-  };
-
-  const headers = split(lines[0]).map((h) => h.replace(/^"|"$/g, ''));
-  const rows: Record<string, string>[] = [];
-  for (let r = 1; r < lines.length; r++) {
-    const cells = split(lines[r]);
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      obj[h] = (cells[i] ?? '').replace(/^"|"$/g, '');
-    });
-    rows.push(obj);
-  }
-  return rows;
-}
 
 export function IncomingImportCsvOverlay({
   open,
@@ -77,7 +32,7 @@ export function IncomingImportCsvOverlay({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const rows = useMemo(() => (raw.trim() ? parseCsv(raw) : []), [raw]);
+  const rows = useMemo(() => (raw.trim() ? parseCsv(raw).rows : []), [raw]);
   const preview = useMemo(
     () =>
       rows.slice(0, 8).map((r, i) => {
@@ -230,33 +185,35 @@ export function IncomingImportCsvOverlay({
           ) : null}
         </div>
 
-        <InspectorActionFloor
-          actions={
-            <Button
-              type="button"
-              variant="primary"
-              disabled={!canSubmit}
-              onClick={() => void handleSubmit()}
-              ariaLabel={submitting ? 'Importing CSV' : `Import ${rows.length || 0} rows`}
-              className="min-h-9 w-full flex-1"
-              data-testid="import-csv-submit"
-            >
-              {submitting ? 'Importing…' : `Import ${rows.length || 0} row(s)`}
-            </Button>
+        <FlushTerminalFooter
+          layout="cluster"
+          leading={
+            <div className="flex min-w-0 flex-1 items-stretch">
+              <Button
+                type="button"
+                variant="primary"
+                disabled={!canSubmit}
+                onClick={() => void handleSubmit()}
+                ariaLabel={submitting ? 'Importing CSV' : `Import ${rows.length || 0} rows`}
+                className="min-h-9 w-full flex-1"
+                data-testid="import-csv-submit"
+              >
+                {submitting ? 'Importing…' : `Import ${rows.length || 0} row(s)`}
+              </Button>
+            </div>
           }
-          delete={
-            <PaneHeaderCloseButton
-              onClick={onClose}
-              ariaLabel="Hide right panel"
-              title="Hide right panel"
-              className={cn(
-                'h-full min-h-9 w-10',
-                cornerClass('flush'),
-                'rounded-none border-l border-border-hairline',
-              )}
-            />
-          }
-        />
+        >
+          <PaneHeaderCloseButton
+            onClick={onClose}
+            ariaLabel="Hide right panel"
+            title="Hide right panel"
+            className={cn(
+              'h-full min-h-9 w-10',
+              cornerClass('flush'),
+              'rounded-none border-l border-border-hairline',
+            )}
+          />
+        </FlushTerminalFooter>
       </div>
     </DetailStackRailRegistrar>
   );

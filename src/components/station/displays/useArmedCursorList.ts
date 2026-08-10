@@ -12,9 +12,14 @@
  * this listener those keys were swallowed with no owner.
  *
  * **Commit paints DOM immediately** — `onCommit` runs in the same turn as
- * Enter / Space / click. Never a hit-marker timer that withholds the leaf /
- * verb mount (right-rail law). SelectionPulse / press depth juice stays on
- * the scan-station **middle**, not on Displays open.
+ * Enter / Space / pointerdown / click. Never a hit-marker timer that withholds
+ * the leaf / verb mount (right-rail law). SelectionPulse / press depth juice
+ * stays on the scan-station **middle**, not on Displays open.
+ *
+ * **Mouse = keyboard.** Primary-button `pointerdown` commits (table twin:
+ * `OrdersPaneTable` / `ReceivingPaneTable`); click is deduped so a11y /
+ * Space-generated clicks still work without a double navigate. Never arm the
+ * chevron for a frame before the rail updates.
  *
  * Arm is a binary-cut snap — no one-shot wash on cursor change. Golden
  * consumer: {@link StationDisplayIndexList}. Next cohort composes this hook +
@@ -29,8 +34,10 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 function seedCursorId(
   orderedIds: readonly string[],
@@ -49,21 +56,7 @@ function isEditableOutsideList(
 ): boolean {
   if (!(el instanceof HTMLElement)) return false;
   if (root?.contains(el)) return false;
-  const tag = el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (el.isContentEditable) return true;
-  const role = el.getAttribute('role');
-  return role === 'textbox' || role === 'searchbox' || role === 'combobox';
-}
-
-function isEditableKeyTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  return Boolean(
-    target.closest('input, textarea, select, [contenteditable="true"]'),
-  );
+  return isEditableKeyTarget(el);
 }
 
 export function useArmedCursorList({
@@ -86,6 +79,8 @@ export function useArmedCursorList({
 }) {
   const prevActiveIdRef = useRef(activeId);
   const didMountFocusRef = useRef(false);
+  /** Suppress the follow-up `click` after a primary `pointerdown` commit. */
+  const pointerCommitGuardRef = useRef(false);
 
   const [cursorId, setCursorId] = useState<string | null>(() =>
     seedCursorId(orderedIds, activeId, null),
@@ -136,13 +131,45 @@ export function useArmedCursorList({
   );
 
   /**
-   * Commit → navigate / run verb in the **same turn**. Never delays `onCommit`
+   * Commit → navigate / run verb in the **same turn**. `onCommit` runs first so
+   * the right rail paints before any armed-chevron cursor update. Never delays
    * for hit-marker juice (that withhold is banned on the right rail).
    */
   const commitArmed = useCallback((id: string, onCommit: (id: string) => void) => {
-    setCursorId(id);
     onCommit(id);
+    setCursorId(id);
   }, []);
+
+  /**
+   * Primary-button pointerdown commit — same turn as keyboard Enter. Sets a
+   * guard so the trailing `click` does not double-fire.
+   */
+  const handleCommitPointerDown = useCallback(
+    (
+      e: ReactPointerEvent,
+      id: string,
+      onCommit: (id: string) => void,
+    ): void => {
+      if (e.button !== 0) return;
+      pointerCommitGuardRef.current = true;
+      commitArmed(id, onCommit);
+    },
+    [commitArmed],
+  );
+
+  /**
+   * Click commit for a11y / Space — no-ops when pointerdown already committed.
+   */
+  const handleCommitClick = useCallback(
+    (id: string, onCommit: (id: string) => void): void => {
+      if (pointerCommitGuardRef.current) {
+        pointerCommitGuardRef.current = false;
+        return;
+      }
+      commitArmed(id, onCommit);
+    },
+    [commitArmed],
+  );
 
   /**
    * Arrow / Home / End wrap. Caller handles Enter/Space commit before calling.
@@ -275,6 +302,8 @@ export function useArmedCursorList({
     /** @deprecated Always null — commit no longer delays for hit-marker juice. */
     commitId: null as string | null,
     commitArmed,
+    handleCommitPointerDown,
+    handleCommitClick,
     moveCursorTo,
     handleNavKeyDown,
     handleFilterNavKeyDown,

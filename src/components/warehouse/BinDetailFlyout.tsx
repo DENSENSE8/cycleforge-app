@@ -27,7 +27,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
 import { ExternalLink, Printer } from '@/components/Icons';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { FLOOR_DELETE_PEER_CLASS, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { IconButton } from '@/design-system/primitives';
 import {
@@ -252,19 +252,19 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
                 </p>
               ) : undefined
             }
-            delete={
-              <InspectorFlushDelete
-                onConfirm={handleDelete}
-                onDeleted={() => {
-                  onDeleted?.();
-                  onClose();
-                }}
-                label="Delete bin"
-                confirmLabel="Click again to delete bin"
-                data-testid="bin-details-delete"
-              />
-            }
-          />
+          >
+            <InspectorFlushDelete
+              onConfirm={handleDelete}
+              onDeleted={() => {
+                onDeleted?.();
+                onClose();
+              }}
+              label="Delete bin"
+              confirmLabel="Click again to delete bin"
+              data-testid="bin-details-delete"
+              className={FLOOR_DELETE_PEER_CLASS}
+            />
+          </InspectorActionFloor>
         ) : null}
       </div>
     </DetailStackRailRegistrar>

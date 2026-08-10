@@ -6,10 +6,10 @@ import type { LibraryPhoto } from '../photo-library-types';
 import { isLibraryDocument } from '../photo-library-types';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import type { PhotoGridTileRatio } from '@/lib/photos/photo-grid-density';
-import { photoHeroLayoutId } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { PhotoThumb } from '../PhotoThumb';
 import { PhotoLabelChips } from '../PhotoLabelChips';
 import { SelectionMark } from './SelectionMark';
@@ -59,6 +59,11 @@ export function PhotoCard({
    * details toggle ({@link PhotoContextPanel}) *and* left/right paging through
    * the photo's group, so a side panel showing the same facts one photo at a
    * time was strictly the weaker half of one surface.
+   *
+   * **The desk inspector (2026-08-09) does not reopen that question.** It is the
+   * n = 1 face of the SELECTION plane — tick one photo and the rail pushes in;
+   * tick a second and the bulk toolbar takes over. It never binds this click,
+   * which is exactly the axis the retired `PhotoInspectorPanel` failed on.
    */
   onOpen?: () => void;
   /** Right-click handler — surfaces the per-photo action menu. */
@@ -75,11 +80,12 @@ export function PhotoCard({
     <div
       onContextMenu={onContextMenu && !isDocument ? (e) => onContextMenu(photo, e) : undefined}
       className={cn(
-        // No `overflow-hidden` here — clipping lives on PhotoThumb itself
-        // (matching `rounded-lg`) so the hero-morph shared-layout transform
-        // (see PhotoThumb `heroId`) isn't cut off by this ancestor mid-animation;
-        // it stays visually ON TOP of this border rather than clipped behind it.
-        'group relative rounded-lg border bg-surface-card text-left transition-colors',
+        // Clipping lives on PhotoThumb itself. It stays there now for a plainer
+        // reason than it used to: the thumb owns its own aspect box, so this
+        // ancestor has nothing to clip. (It used to be load-bearing for the
+        // hero-morph transform, which was deleted 2026-08-09.)
+        'group relative border bg-surface-card text-left transition-colors',
+        cornerClass('flush'),
         selected ? 'border-primary ring-2 ring-inset ring-primary' : 'border-border hover:border-border-default',
       )}
     >
@@ -94,7 +100,11 @@ export function PhotoCard({
         // Roving-focus target for grid arrow-key nav (usePhotoGridKeyboardNav).
         data-photo-tile=""
         data-photo-id={photo.id}
-        className={cn('ds-raw-button block w-full rounded-lg text-left', focusRing('control', 'accent'))}
+        className={cn(
+          'ds-raw-button block w-full text-left',
+          cornerClass('flush'),
+          focusRing('control', 'accent'),
+        )}
         onClick={(e) => {
           if (clickSelectsInstead(e, selectionActive)) {
             e.preventDefault();
@@ -112,7 +122,7 @@ export function PhotoCard({
           <div
             className={cn(
               'flex aspect-square flex-col items-center justify-center gap-2 bg-surface-canvas px-3',
-              showLabel ? 'rounded-t-lg' : 'rounded-lg',
+              cornerClass('flush'),
             )}
           >
             <FileText className="h-10 w-10 text-text-faint" />
@@ -126,12 +136,7 @@ export function PhotoCard({
             alt={primaryLabel}
             ratio={ratio}
             damage={Boolean(photo.damageDetected)}
-            heroId={photoHeroLayoutId(photo.id)}
-            // Only rounds the corners that sit at the CARD's own edge — top-only
-            // when a label footer follows below, so the hero-morph transform
-            // (unclipped by the ancestor, see the wrapper `div` above) still
-            // matches the card's static rounded silhouette at rest.
-            className={showLabel ? 'rounded-t-lg' : 'rounded-lg'}
+            className={cornerClass('flush')}
           />
         )}
         {showLabel ? (

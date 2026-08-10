@@ -56,6 +56,7 @@ const emptyGates: DeriveCaptureStepStatesInput = {
   arrivalPhotoCount: 0,
   unboxCartonPhotoCount: 0,
   itemPhotoCount: 0,
+  arrivalAspectCounts: {},
   cartonAspectCounts: {},
   itemAspectCounts: {},
   requiredItemAspects: [],
@@ -68,7 +69,8 @@ const emptyGates: DeriveCaptureStepStatesInput = {
 
 const workedGates: DeriveCaptureStepStatesInput = {
   ...emptyGates,
-  arrivalPhotoCount: 1,
+  arrivalPhotoCount: 2,
+  arrivalAspectCounts: { shipping_label: 1, box_exterior: 1 },
   unboxCartonPhotoCount: 3,
   itemPhotoCount: 2,
   cartonAspectCounts: { shipping_label: 1, box_exterior: 1, packing_material: 1 },
@@ -102,14 +104,13 @@ const SHAPES = [
 const ALL_EVIDENCE: Record<string, StepEvidence> = Object.fromEntries(
   [
     'classify',
-    'arrival_check',
-    'shipping_label_photo',
-    'box_photo',
+    'arrival_label_photo',
+    'arrival_box_photo',
     'packing_material',
     'contents',
     'condition',
-    'item_photos',
     'serial',
+    'label',
     'print',
     'receive',
   ].map((key) => [
@@ -163,7 +164,9 @@ test('the receipt reports exactly the bench states, on every carton shape', () =
         );
       }
       assert.deepEqual(
-        receipt.steps.filter((s) => !['print', 'receive'].includes(s.key)).map((s) => s.key),
+        receipt.steps
+          .filter((s) => !['print', 'stage', 'receive'].includes(s.key))
+          .map((s) => s.key),
         bench.map((s) => s.key),
         `${name}/${label}: the capture half of the receipt is the bench list, in order`,
       );
@@ -242,55 +245,75 @@ test('an acknowledgement step reports its OWN gate instant, not a caller-supplie
 
 test('a caller-resolved instant reaches the receipt for every OTHER done step', () => {
   const receipt = buildProcedureReceipt({
-    gates: { ...workedGates, evidenceAt: { arrival_check: '2026-08-01T09:30:00Z' } },
+    gates: { ...workedGates, evidenceAt: { arrival_label_photo: '2026-08-01T09:30:00Z' } },
     evidence: {},
     labelPrintedAt: null,
     receivedAt: null,
   });
-  const arrival = receipt.steps.find((s) => s.key === 'arrival_check');
+  const arrival = receipt.steps.find((s) => s.key === 'arrival_label_photo');
   assert.equal(arrival?.state, 'done');
   assert.equal(arrival?.at, '2026-08-01T09:30:00Z');
 });
 
-test('the commit steps are the receipt’s addition and never reach the bench', () => {
+test('the commit steps are the receipt’s addition and never reach the capture derivation', () => {
   registerBuiltinProcedures();
   const unbox = getProcedure('unbox')!;
   const commitKeys = unbox.steps.filter((s) => s.phase === 'commit').map((s) => s.key);
-  assert.deepEqual(commitKeys, ['print', 'receive']);
+  assert.deepEqual(commitKeys, ['print', 'stage', 'receive']);
 
   const benchKeys = new Set(deriveProcedureSteps(emptyGates).map((s) => s.key));
   for (const key of commitKeys) {
-    assert.equal(benchKeys.has(key), false, `"${key}" is commit — the terminal dock owns it`);
+    assert.equal(
+      benchKeys.has(key),
+      false,
+      `"${key}" is commit — not in deriveProcedureSteps (dock pointer folds stage after print)`,
+    );
   }
 
   const receipt = buildProcedureReceipt({
     gates: emptyGates,
     evidence: {},
     labelPrintedAt: null,
+    stagedAt: null,
     receivedAt: null,
   });
-  assert.deepEqual(receipt.steps.slice(-2).map((s) => s.key), commitKeys);
+  assert.deepEqual(receipt.steps.slice(-3).map((s) => s.key), commitKeys);
 });
 
-test('print and receive are done only when their own fact exists', () => {
+test('print, stage and receive are done only when their own fact exists', () => {
   const open = buildProcedureReceipt({
     gates: workedGates,
     evidence: {},
     labelPrintedAt: null,
+    stagedAt: null,
     receivedAt: null,
   });
   assert.equal(open.steps.find((s) => s.key === 'print')?.state, 'active');
+  assert.equal(open.steps.find((s) => s.key === 'stage')?.state, 'pending');
   assert.equal(open.steps.find((s) => s.key === 'receive')?.state, 'pending');
   assert.equal(open.closedAt, null, 'an unreceived carton is not closed');
+
+  const staged = buildProcedureReceipt({
+    gates: workedGates,
+    evidence: {},
+    labelPrintedAt: '2026-08-01T11:00:00Z',
+    stagedAt: '2026-08-01T11:02:00Z',
+    receivedAt: null,
+  });
+  assert.equal(staged.steps.find((s) => s.key === 'print')?.state, 'done');
+  assert.equal(staged.steps.find((s) => s.key === 'stage')?.state, 'done');
+  assert.equal(staged.steps.find((s) => s.key === 'receive')?.state, 'active');
 
   const closed = buildProcedureReceipt({
     gates: workedGates,
     evidence: {},
     labelPrintedAt: '2026-08-01T11:00:00Z',
+    stagedAt: '2026-08-01T11:02:00Z',
     receivedAt: '2026-08-01T11:05:00Z',
   });
   assert.equal(closed.steps.find((s) => s.key === 'print')?.state, 'done');
   assert.equal(closed.steps.find((s) => s.key === 'print')?.at, '2026-08-01T11:00:00Z');
+  assert.equal(closed.steps.find((s) => s.key === 'stage')?.state, 'done');
   assert.equal(closed.steps.find((s) => s.key === 'receive')?.state, 'done');
   assert.equal(closed.closedAt, '2026-08-01T11:05:00Z');
 });
@@ -306,7 +329,7 @@ test('a receive with unfinished capture still reads done — a checklist, not a 
     receivedAt: '2026-08-01T11:05:00Z',
   });
   assert.equal(receipt.steps.find((s) => s.key === 'receive')?.state, 'done');
-  assert.equal(receipt.steps.find((s) => s.key === 'arrival_check')?.state, 'active');
+  assert.equal(receipt.steps.find((s) => s.key === 'arrival_label_photo')?.state, 'active');
 });
 
 test('exactly one step holds the active marker across the whole receipt', () => {

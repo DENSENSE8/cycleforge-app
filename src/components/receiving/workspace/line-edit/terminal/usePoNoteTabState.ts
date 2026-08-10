@@ -35,6 +35,8 @@ export function usePoNoteTabState({
   active,
   onSaveOverallNote,
   onLoadZohoNotes,
+  /** Carton / PO identity — re-pull when the operator switches cartons while Inventory stays open. */
+  syncKey = null,
 }: {
   overallZohoNotes: string | null;
   /** Whether the Zoho (PO notes) tab is currently selected. */
@@ -44,18 +46,21 @@ export function usePoNoteTabState({
     opts?: SaveOverallNoteOptions,
   ) => void | Promise<void | SaveOverallNoteResult>;
   onLoadZohoNotes?: () => Promise<string | null | undefined>;
+  syncKey?: string | number | null;
 }): PoNoteTabState {
   const [draft, setDraft] = useState(overallZohoNotes ?? '');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [baseLastModifiedZoho, setBaseLastModifiedZoho] = useState<string | null>(null);
 
-  // Re-seed when the carton's synced note changes (carton switch, external save).
-  useEffect(() => {
-    setDraft(overallZohoNotes ?? '');
-  }, [overallZohoNotes]);
-
   const dirty = draft.trim() !== (overallZohoNotes ?? '').trim();
+
+  // Re-seed when the carton's synced note changes (carton switch, external save).
+  // Never wipe a dirty draft when the feed briefly reports null mid-pull.
+  useEffect(() => {
+    if (dirty) return;
+    setDraft(overallZohoNotes ?? '');
+  }, [overallZohoNotes, dirty]);
 
   const syncFromInventory = useCallback(async () => {
     if (!onLoadZohoNotes || loading) return;
@@ -64,19 +69,19 @@ export function usePoNoteTabState({
     setLoading(true);
     try {
       const fresh = await onLoadZohoNotes();
-      if (fresh !== undefined) setDraft(fresh ?? '');
+      // Successful string (incl. '') updates the draft. null/undefined = failed
+      // pull — keep whatever we have so empty local never wipes a good draft.
+      if (typeof fresh === 'string') setDraft(fresh);
     } finally {
       setLoading(false);
     }
   }, [onLoadZohoNotes, loading, draft, overallZohoNotes]);
 
-  // On becoming the active tab, pull the latest note so the operator edits
-  // current truth. Lazy: an unopened (mounted-but-hidden) tab never syncs.
+  // On becoming the active tab (or switching carton while open), pull latest.
   useEffect(() => {
     if (active) void syncFromInventory();
-    // Only react to the tab becoming active — syncFromInventory guards dirty itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, syncKey]);
 
   const save = useCallback(async () => {
     if (!dirty || saving) return;

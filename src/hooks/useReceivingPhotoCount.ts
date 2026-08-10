@@ -54,6 +54,11 @@ interface ReceivingPhotoStageCounts {
   /** Every photo on the carton, whatever the stage. */
   total: number;
   /**
+   * Per-aspect counts of door shots (`arrival_package`). The two door steps
+   * share that stage and are told apart by aspect alone.
+   */
+  arrivalAspect: Partial<Record<PhotoAspect, number>>;
+  /**
    * Per-aspect counts of the bench's own carton shots (`unbox_carton`). The
    * three carton steps share that stage and are told apart by aspect alone, so
    * a stage count cannot answer them.
@@ -72,6 +77,7 @@ interface ReceivingPhotoStageCounts {
    */
   arrivalFirstAt: string | null;
   itemFirstAt: string | null;
+  arrivalAspectFirstAt: Partial<Record<PhotoAspect, string>>;
   cartonAspectFirstAt: Partial<Record<PhotoAspect, string>>;
   itemAspectFirstAt: Partial<Record<PhotoAspect, string>>;
 }
@@ -82,10 +88,12 @@ const EMPTY_COUNTS: ReceivingPhotoStageCounts = {
   unboxCarton: 0,
   item: 0,
   total: 0,
+  arrivalAspect: {},
   cartonAspect: {},
   itemAspect: {},
   arrivalFirstAt: null,
   itemFirstAt: null,
+  arrivalAspectFirstAt: {},
   cartonAspectFirstAt: {},
   itemAspectFirstAt: {},
 };
@@ -175,8 +183,10 @@ export function useReceivingPhotoStageCounts(
     const counts: ReceivingPhotoStageCounts = {
       ...EMPTY_COUNTS,
       settled: true,
+      arrivalAspect: {},
       cartonAspect: {},
       itemAspect: {},
+      arrivalAspectFirstAt: {},
       cartonAspectFirstAt: {},
       itemAspectFirstAt: {},
     };
@@ -216,6 +226,14 @@ export function useReceivingPhotoStageCounts(
       if (stage === 'arrival_package') {
         counts.arrivalPackage += 1;
         counts.arrivalFirstAt = earlier(counts.arrivalFirstAt, photo.createdAt);
+        // Door aspect buckets — never into cartonAspect (bench Shipping label
+        // must not close from a door shot).
+        bump(
+          counts.arrivalAspect,
+          counts.arrivalAspectFirstAt,
+          photo.photoAspect,
+          photo.createdAt,
+        );
       } else if (stage === 'unbox_carton') {
         counts.unboxCarton += 1;
         // Aspect buckets only for the BENCH stage. An arrival shot may legally

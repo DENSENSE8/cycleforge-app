@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import {
   deriveReceivingPhotoStageCounts,
@@ -34,6 +35,8 @@ import { useSetting } from '@/hooks/useSettings';
 import type { LabelEditDraft } from '../LabelEditPopover';
 import type { AsListedLabelDraft } from '@/components/labels/AsListedEditPopover';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import { isUnreceiveSerialBlocking } from '@/lib/receiving/unreceive-serial-guard';
+import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import {
   UNBOX_LABEL_KINDS,
   labelOptionsForSelect,
@@ -291,7 +294,7 @@ export function useUnboxLineController(
     setReceiveResult,
     responseExpanded,
     setResponseExpanded,
-    handleReceive,
+    handleReceive: runReceive,
   } = useReceiveAction(row, {
     qa,
     disp,
@@ -307,6 +310,20 @@ export function useUnboxLineController(
     serialAbsentReason,
     staffId,
   });
+
+  // After local commit, pull the Inventory dossier so Information / Lines /
+  // Activity trail match Zoho without waiting on a manual F5 Refresh.
+  const handleReceive = useCallback(
+    (
+      receiveIntent: 'zoho_receive' | 'scan_only' | 'local_receive' | 'unreceive' = 'zoho_receive',
+      options?: { photoPolicyOverride: PhotoPolicyOverrideCode },
+    ): Promise<boolean> =>
+      runReceive(receiveIntent, options).then((ok) => {
+        if (ok) void core.refreshInventoryDossier();
+        return ok;
+      }),
+    [runReceive, core.refreshInventoryDossier],
+  );
 
   const scanValue = core.poNumber || (row.receiving_id != null ? `RCV-${row.receiving_id}` : '');
   const isMultiQtyLine = (row.quantity_expected ?? 0) > 1;
@@ -603,10 +620,31 @@ export function useUnboxLineController(
   // Unfound, return, and sales-order-linked cartons have no Zoho PO to receive against.
   const isUnfound = shouldUseLocalReceiveOnly(row);
 
+  /**
+   * Dogfood primary: Print arms commit `stage`; Receive only after stage.
+   * Combined print→receive is gone — location scan sits between them.
+   */
   const handlePrintAndReceive = useCallback(() => {
-    runPrimaryPrint();
+    const printed = Boolean(row.label_printed_at);
+    const staged = Boolean(row.staged_at && row.staged_location_id);
+    if (!printed) {
+      runPrimaryPrint();
+      return;
+    }
+    if (!staged) {
+      toast.message('Scan a location barcode in the dock');
+      setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+      return;
+    }
     handleReceive(isUnfound ? 'local_receive' : 'zoho_receive');
-  }, [runPrimaryPrint, handleReceive, isUnfound]);
+  }, [
+    runPrimaryPrint,
+    handleReceive,
+    isUnfound,
+    row.label_printed_at,
+    row.staged_at,
+    row.staged_location_id,
+  ]);
 
   const canPrintReview = labelOptions.length > 0;
   const canReceiveReview = row.receiving_id != null;
@@ -702,9 +740,15 @@ export function useUnboxLineController(
   // Once received the primary action is print-only, so the receive-side gates
   // (shipment link, serial confirmation, photo policy) must stop blocking it —
   // otherwise a received line with no serial could never reprint its label.
+  const labelPrinted = Boolean(row.label_printed_at);
+  const locationStaged = Boolean(row.staged_at && row.staged_location_id);
   const combinedReviewDisabled = isReceived
     ? !canPrintReview
-    : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
+    : !labelPrinted
+      ? !canPrintReview
+      : !locationStaged
+        ? true
+        : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
   // Bench-visible reason for the disabled Receive bar. A hover `title` is
   // invisible to an operator standing at a station — the bar renders this
   // line above the pill so the blocker names itself.
@@ -712,13 +756,19 @@ export function useUnboxLineController(
     ? !canPrintReview
       ? 'Add a PO number or SKU before printing'
       : null
-    : !canReceiveReview
-      ? 'Link this carton to a shipment to receive'
-      : !canPrintReview
-        ? 'Add a PO number or SKU before printing and receiving'
-        : !serialConfirmed
-          ? 'Scan a serial — or mark “No serial” with a reason — to receive'
-          : photoPolicyDisabledReason;
+    : !labelPrinted
+      ? !canPrintReview
+        ? 'Add a PO number or SKU before printing'
+        : null
+      : !locationStaged
+        ? 'Scan a location barcode in the dock'
+        : !canReceiveReview
+          ? 'Link this carton to a shipment to receive'
+          : !canPrintReview
+            ? 'Add a PO number or SKU before printing and receiving'
+            : !serialConfirmed
+              ? 'Scan a serial — or mark “No serial” with a reason — to receive'
+              : photoPolicyDisabledReason;
   // itemTotal is PO-scoped (workspace nav / useReceivingWorkspaceBridge) so
   // "Receive all" never claims lines from a different PO on a mixed carton.
   const isSinglePoItem = itemTotal === 1;
@@ -734,29 +784,53 @@ export function useUnboxLineController(
   const canUnreceive =
     isReceived || Number(row.quantity_received ?? 0) > 0;
   const unreceiveMenuLabel = isSinglePoItem ? 'Unreceive' : 'Unreceive all';
-  const unreceiveMenuTitle = isUnfound
-    ? 'Undo local receive — quantities and received stamp clear; inventory is not touched'
-    : 'Undo website receive — quantities and received stamp clear; linked inventory PO is marked unreceived';
-  // Received ⇒ the bench's remaining job is the package label, so the primary
-  // collapses to Print. This is the same CTA regardless of which surface did
-  // the receiving (this bench, the PO bulk route, or the phone).
+  // Server 409s the same statuses — surface before click so the menu is honest.
+  const unreceiveBlockedBySerial = (row.serials ?? []).some((s) =>
+    isUnreceiveSerialBlocking(
+      (s as { current_status?: string | null }).current_status,
+    ),
+  );
+  const unreceiveMenuDisabled = !canReceiveReview || unreceiveBlockedBySerial;
+  const unreceiveMenuTitle = unreceiveBlockedBySerial
+    ? 'Cannot unreceive — a unit is in fulfillment, outbound, or hold'
+    : !canReceiveReview
+      ? 'Line must be linked to a shipment'
+      : isUnfound
+        ? 'Undo local receive — quantities and received stamp clear; inventory is not touched'
+        : 'Undo website receive — quantities and received stamp clear; linked inventory PO is marked unreceived';
+  // Received ⇒ Print. Open + not printed ⇒ Print (arms stage). Printed + not
+  // staged ⇒ Scan location (dock). Staged ⇒ Receive.
   const printReceivePrimaryLabel = isReceived
     ? 'Print label'
-    : isUnfound
-      ? 'Receive locally'
-      : receiveMenuLabel;
+    : !labelPrinted
+      ? 'Print label'
+      : !locationStaged
+        ? 'Scan location'
+        : isUnfound
+          ? 'Receive locally'
+          : receiveMenuLabel;
   // Unfound cartons have no Zoho/scan options in the menu — just print-only and
   // a local "receive all". Keep the menu copy honest so it matches what's shown.
+  // When Unreceive is available, name it in the split affordance — after receive
+  // the primary is Print-only and undo used to be buried with no menu hint.
   const splitMenuAriaLabel = isUnfound
     ? 'Print only, or receive all locally (no print)'
-    : isSinglePoItem
-      ? 'Print only, or receive without print'
-      : 'Print only, or receive all without print';
+    : canUnreceive
+      ? isSinglePoItem
+        ? 'Print only, receive again, or unreceive'
+        : 'Print only, receive all again, or unreceive all'
+      : isSinglePoItem
+        ? 'Print only, or receive without print'
+        : 'Print only, or receive all without print';
   const splitMenuHoverTitle = isUnfound
     ? 'More options: print-only or receive all locally — external inventory is not touched'
-    : isSinglePoItem
-      ? 'More options: print-only or receive without print'
-      : 'More options: print-only or receive all without print';
+    : canUnreceive
+      ? isSinglePoItem
+        ? 'More options: print-only, receive again, or unreceive'
+        : 'More options: print-only, receive all again, or unreceive all'
+      : isSinglePoItem
+        ? 'More options: print-only or receive without print'
+        : 'More options: print-only or receive all without print';
   const receiveMenuTitle = isUnfound
     ? 'Unfound carton — no external PO to receive against; use Receive locally'
     : row.receiving_id == null
@@ -764,13 +838,17 @@ export function useUnboxLineController(
       : undefined;
   const printThenReceiveTitle = isReceived
     ? 'Already received — print the package label'
-    : row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
-      ? 'Need a shipment link or SKU to continue'
-      : isUnfound
-        ? 'Print label (if available), then receive locally — unfound carton, external inventory is not touched'
-        : isSinglePoItem
-          ? 'Print label (if available), then receive this line into inventory'
-          : 'Print label (if available), then receive every open line on this PO';
+    : !labelPrinted
+      ? 'Print the label — then scan a putaway location'
+      : !locationStaged
+        ? 'Scan a location barcode in the dock to stage this unit'
+        : row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
+          ? 'Need a shipment link or SKU to continue'
+          : isUnfound
+            ? 'Receive locally — unfound carton, external inventory is not touched'
+            : isSinglePoItem
+              ? 'Receive this line into the staged location'
+              : 'Receive every open line on this PO into the staged location';
 
   // Pair the carton with the shipped order a scanned serial matched. Fires for
   // ANY line once a return is detected (not just a pre-typed RETURN) — the server
@@ -1003,7 +1081,7 @@ export function useUnboxLineController(
     asListedPayload, ticketPayload, applyUnitAndPrint,
     canPrintReview, canReceiveReview, canZohoReceive, isUnfound, isReceived, canUnreceive, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
     photoPolicy, lineItemPhotoCount,
-    receiveMenuLabel, receiveMenuTitle, unreceiveMenuLabel, unreceiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
+    receiveMenuLabel, receiveMenuTitle, unreceiveMenuLabel, unreceiveMenuTitle, unreceiveMenuDisabled, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow
     openClaimModal,
     returnClaimPrefill, setReturnClaimPrefill,

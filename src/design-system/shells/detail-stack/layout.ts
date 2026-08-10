@@ -95,7 +95,8 @@ export const DETAIL_STACK_ASIDE_SURFACE =
  * The IN-FLOW flush push column — right-edge mirror of
  * {@link CONTEXT_PANEL_COLUMN_CLASS} (ruled 2026-08-03 exact flush planes).
  *
- * - **The card itself is the element that tweens its width**, not an
+ * - **The card itself owns painted width** (`style.width` snap on desk
+ *   `RightRailHost` / Station Displays — never a layout tween). Not an
  *   `overflow-hidden` host wrapping a fixed-width absolute child (the spine's
  *   shape in `SidebarNavColumn`). The leading resize grip is
  *   `placement="inset"` — hit sash inside the card, 1px paint on this

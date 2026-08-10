@@ -164,6 +164,7 @@ export function StationDisplaysPushColumn({
   onEscape,
   headerTrailing = null,
   headerRightSlot = null,
+  actionFloor = null,
   footer = null,
   children,
 }: {
@@ -201,9 +202,14 @@ export function StationDisplaysPushColumn({
    */
   headerRightSlot?: ReactNode;
   /**
-   * Bottom band — stage-owned by {@link StationDisplaysPushStack}:
-   * Root Index = filter search + `→|`; leaf default = dismiss-only `→|`;
-   * leaf opt-in = `/` command palette + `→|`.
+   * Carton Macro floor — seated **above** the close chrome {@link footer}
+   * (`→|` / Filter hairline). Unbox golden: {@link StationDisplaysActionFloor}
+   * at dock Band 1 `h-11`. Never desk `InspectorActionFloor`.
+   */
+  actionFloor?: ReactNode;
+  /**
+   * Absolute-bottom close chrome — Root Index filter + `→|` · leaf dismiss ·
+   * leaf `/` commands. Always below {@link actionFloor} when both are set.
    */
   footer?: ReactNode;
   children: ReactNode;
@@ -427,6 +433,7 @@ export function StationDisplaysPushColumn({
           ) : null}
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {actionFloor}
         {footer}
       </div>
     </aside>

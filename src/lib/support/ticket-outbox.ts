@@ -2,12 +2,12 @@
  * ticket-outbox — a transactional outbox for helpdesk work.
  *
  * WHY THIS EXISTS
- * `submitRepairIntake` wraps its ticket call in a `try/catch` that logs and
- * continues. Not blocking the counter on a helpdesk outage is CORRECT — an
- * operator with a customer in front of them must not be stopped by Zendesk being
- * down. Having no compensating mechanism is not: today that path produces a
- * repair with `ticket_number = NULL`, no retry, and no reconciliation surface.
- * The ticket is simply lost.
+ * Repair intake must not block a walk-in on a helpdesk outage — that trade is
+ * correct. The compensating mechanism lives here: enqueue CREATE_TICKET /
+ * ATTACH / POST_REPLY, drain via the helpdesk capability facade, link the
+ * repair anchor, and stamp `repair_service.ticket_number`. Without this outbox,
+ * a failed or deferred create leaves a repair with `ticket_number = NULL` and
+ * no retry surface.
  *
  * SHAPE
  * Follows `entity_search_outbox` + `search-outbox-worker.ts` exactly — the house

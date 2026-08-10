@@ -33,15 +33,19 @@ const DESK_FLOOR_CONSUMERS = [
   'src/components/repair/RepairDetailsPanel.tsx',
   'src/components/sku/SkuDetailView.tsx',
   'src/components/shipped/details-panel/OrderUpdateDock.tsx',
+  'src/components/receiving/history/HistoryCartonTriagePanel.tsx',
+  // Media Library batch rail — a BULK destructive verb still belongs on the
+  // floor, never in the armed verb rows beside its peers (2026-08-10).
+  'src/components/photos/photo-inspector/PhotoBatchInspectorPanel.tsx',
 ] as const;
 
 describe('InspectorActionFloor Macro SoT', () => {
   const floor = read(FLOOR);
   const flushDelete = read(FLUSH_DELETE);
 
-  it('composes FlushTerminalFooter cluster layout', () => {
-    assert.match(floor, /FlushTerminalFooter/);
-    assert.match(floor, /layout="cluster"/);
+  it('composes the IconActionFloor spread shell (never a labelled cluster)', () => {
+    assert.match(floor, /IconActionFloor/);
+    assert.doesNotMatch(floor, /layout="cluster"/);
   });
 
   it('forbids soft radius, sticky/absolute, and soft pad on the floor shell', () => {
@@ -110,5 +114,42 @@ describe('InspectorActionFloor Macro SoT', () => {
     assert.match(headerChunk, /\bonSync\b/);
     const floorChunk = panel.slice(floorIdx);
     assert.doesNotMatch(floorChunk, /\bonSync\b|\bsyncOne\b|\bsyncing\b/);
+  });
+});
+
+// Icons-first migration (default A) — the desk floor renders equal fill-width
+// icon peers via the shared `IconActionFloor`; desk park stays in the top
+// `DeskRailChromeRow`. History is the desk golden; the other 6 rails migrate
+// off the legacy cluster in the sweep, at which point the cluster path + these
+// per-mode assertions collapse to one.
+describe('Icons-first Macro floor (SoT — History golden)', () => {
+  const floor = read(FLOOR);
+  const primitive = read('src/design-system/primitives/IconActionFloor.tsx');
+  const history = read(
+    'src/components/receiving/history/HistoryCartonTriagePanel.tsx',
+  );
+
+  it('InspectorActionFloor composes the shared IconActionFloor primitive', () => {
+    assert.match(floor, /IconActionFloor/);
+  });
+
+  it('IconActionFloor is spread, null-when-empty, no soft radius / sticky', () => {
+    assert.match(primitive, /layout="spread"/);
+    assert.match(primitive, /children == null/);
+    assert.doesNotMatch(primitive, /\brounded-(?:lg|xl|2xl|full)\b/);
+    assert.doesNotMatch(primitive, /\bsticky\b|\babsolute\b/);
+  });
+
+  it('History floor is icons-first fill peers + flush trailing Delete', () => {
+    assert.match(history, /FloorIconButton|FloorOverflowButton/);
+    assert.match(history, /FLOOR_DELETE_PEER_CLASS/);
+    assert.match(history, /InspectorFlushDelete/);
+    // The labelled primary/ghost cluster Buttons are gone (icons carry verbs).
+    assert.doesNotMatch(history, /variant="primary"/);
+    assert.doesNotMatch(history, /variant="ghost"/);
+    // Icon verbs keep their test ids for the History delete E2E + triage guard.
+    assert.match(history, /data-testid="history-triage-primary-cta"/);
+    assert.match(history, /data-testid="history-triage-more"/);
+    assert.match(history, /data-testid="history-triage-delete"/);
   });
 });

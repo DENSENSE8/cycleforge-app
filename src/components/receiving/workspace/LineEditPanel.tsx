@@ -13,12 +13,10 @@
  * (`detail:receiving` keeps the float host).
  *
  * Centre `ProcedureDeck` stays parked. Capture lives in {@link UnboxDockHost}
- * as a polymorphic flush floor: Active Step Studio XOR Resolution Terminal
- * (Print·Receive only when `activeKey === null` && not received).
- *
- * The bottom dock trailing is **carton-terminal** on settle only: Print · Receive
- * never co-mounts with an active step prompt, and never re-labels with the
- * Displays selection.
+ * as a polymorphic flush floor (Active Step Studio on Band 1). **Dogfood
+ * validation lane:** top commit strip (`data-unbox-dogfood-print`) =
+ * always-on label note (`+` insert · field) · compact Print · Receive.
+ * Never Band 1 / Band 2. Displays-independent; Band 1 trailing null.
  *
  * Triage (the identify-before-unbox pass) is its own lean panel
  * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
@@ -78,12 +76,16 @@ import {
   buildUnboxOverview,
   buildUnboxSideTabs,
   buildUnboxStepDock,
+  preloadUnboxDisplayLeafChunks,
 } from './line-edit/terminal/unbox-tabs';
 import { UnboxDockHost } from './line-edit/UnboxDockHost';
 import { UnboxDockNotesEntry } from './line-edit/UnboxDockNotesEntry';
+import { UnboxDisplaysActionFloor } from './line-edit/UnboxDisplaysActionFloor';
 import { UnboxProcedurePager } from './line-edit/UnboxProcedurePager';
 import { useUnboxProcedureArrowKeys } from './line-edit/useUnboxProcedureArrowKeys';
 import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
+import { useUnboxMiddleCartonNav } from './line-edit/useUnboxMiddleCartonNav';
+import { nudgeUnboxPrintReceive } from '@/lib/keyboard/shortcut-nudge';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { UnboxScanProgressControl } from './UnboxScanProgressControl';
 import {
@@ -151,9 +153,13 @@ export function LineEditPanel({
   );
   const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
-  const [notesOpen, setNotesOpen] = useState(false);
   const { saveOverallNote } = useSyncedPoNote(row, setActionFeedback);
-  const { focusStep, activeKey, settled: procedureSettled } = useUnboxProcedureSteps(row);
+  const {
+    focusStep,
+    activeKey,
+    railLeaf,
+    settled: procedureSettled,
+  } = useUnboxProcedureSteps(row);
   useUnboxProcedureArrowKeys(row);
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
@@ -197,6 +203,15 @@ export function LineEditPanel({
     requestedSideTab,
     sideGates,
   );
+
+  // Warm deferred Photos / Ticket / Timeline / Support / Audit chunks while the
+  // operator is on the index — cold dynamic() otherwise paints leaf ← with an
+  // empty body until the import lands (mouse/keyboard triage lag).
+  useEffect(() => {
+    if (!showDisplays) return;
+    preloadUnboxDisplayLeafChunks();
+  }, [showDisplays]);
+
   const linkageAction = resolveLinkageAction(sideGates);
   const hasTicketId = c.providerTicketId != null;
   const ticketAction = resolveTicketAction(hasTicketId);
@@ -303,7 +318,13 @@ export function LineEditPanel({
       (activeSideTab === 'linkage' && linkageAction === 'note') ||
       activeSideTab === 'inventory',
     onSaveOverallNote: saveOverallNote,
-    onLoadZohoNotes: () => c.syncCartonFromZoho(),
+    // Full Inventory pull (mirror sync-one + carton inventory-sync) so PO header
+    // notes land in receiving_carton.zoho_notes — not carton-only sync.
+    onLoadZohoNotes: async () => {
+      const result = await c.refreshInventoryDossier();
+      return result.ok ? result.zohoNotes : null;
+    },
+    syncKey: row.receiving_id ?? row.id,
   });
 
   const clearDisplaysUrl = useCallback(() => {
@@ -340,10 +361,14 @@ export function LineEditPanel({
     yieldUnboxStationPushesOnAssistantOpen(yieldPeersRef.current);
   }, [assistantOpen]);
 
-  const closeDisplays = useCallback(
-    () => setRequestedSideTab(null),
-    [setRequestedSideTab],
-  );
+  // Cockpit auto-follow yields to an EXPLICIT close (per carton). Holds the
+  // row.id the operator closed the rail on; a different carton passes the gate
+  // and defaults open again (`display/scan-cockpit.md`).
+  const cockpitClosedForRowRef = useRef<number | null>(null);
+  const closeDisplays = useCallback(() => {
+    cockpitClosedForRowRef.current = row.id;
+    setRequestedSideTab(null);
+  }, [row.id, setRequestedSideTab]);
 
   const openDisplays = useCallback(
     (tab: UnboxDisplayNav, opts?: Parameters<typeof setRequestedSideTab>[1]) => {
@@ -386,6 +411,45 @@ export function LineEditPanel({
     activeSideTab,
     photoAction,
     row.id,
+    openDisplays,
+  ]);
+
+  // Cockpit auto-follow — the right rail is the CURRENT step's reference
+  // (`display/scan-cockpit.md`, DO/KNOW split). On carton open and each step
+  // advance, open the step's `railLeaf`; the leaf swaps as the step changes.
+  // Yields to: an explicit close this carton (cockpitClosedForRowRef); an
+  // operator reading an exception surface (Ticket); a mid photo drill
+  // (Move/Send); Displays Root Index **or any other leaf the operator picked**
+  // (Photos while the beat is Units must stick — do not yank until the step
+  // advances). `item_photos` is owned by the bespoke Compare effect above.
+  const prevCockpitActiveKeyRef = useRef(activeKey);
+  useEffect(() => {
+    const stepChanged = prevCockpitActiveKeyRef.current !== activeKey;
+    prevCockpitActiveKeyRef.current = activeKey;
+
+    if (activeKey == null || activeKey === 'item_photos') return;
+    if (cockpitClosedForRowRef.current === row.id) return;
+    if (!railLeaf) return; // reference-less step — its reference is the work plane
+    if (activeSideTab === 'ticket') return; // never yank claim/chat
+    if (
+      activeSideTab === 'photos' &&
+      (photoAction === 'move' || photoAction === 'send')
+    ) {
+      return; // never interrupt a Move/Send drill
+    }
+    if (showDisplays && activeSideTab === railLeaf) return; // already showing it
+    // Operator browse — Index (Back/Esc) OR a leaf that is not this beat's
+    // reference (picked Photos while railLeaf is Units). Resume only on
+    // stepChanged so a beat advance can still swap the cockpit leaf.
+    if (showDisplays && activeSideTab !== railLeaf && !stepChanged) return;
+    openDisplays(railLeaf);
+  }, [
+    activeKey,
+    railLeaf,
+    row.id,
+    activeSideTab,
+    showDisplays,
+    photoAction,
     openDisplays,
   ]);
 
@@ -493,15 +557,25 @@ export function LineEditPanel({
           receiveMenuTitle: c.receiveMenuTitle,
           unreceiveMenuLabel: c.unreceiveMenuLabel,
           unreceiveMenuTitle: c.unreceiveMenuTitle,
-          handlePrintAndReceive: () => void c.handlePrintAndReceive(),
-          runPrintLabel: () => c.runPrintLabel(),
+          unreceiveMenuDisabled: c.unreceiveMenuDisabled,
+          handlePrintAndReceive: () => {
+            void c.handlePrintAndReceive();
+            nudgeUnboxPrintReceive('cta');
+          },
+          runPrintLabel: () => {
+            c.runPrintLabel();
+            nudgeUnboxPrintReceive('print');
+          },
           printKind: (kind) => c.printKind(kind),
           labelSelectOptions: c.labelSelectOptions,
           selectedLabelKind: c.selectedLabelKind,
           setSelectedLabelKind: c.setSelectedLabelKind,
           activeLabelKind: c.activeLabelKind,
           requestLabelEditor: () => c.requestLabelEditor(),
-          handleReceive: (mode) => void c.handleReceive(mode),
+          handleReceive: (mode) => {
+            void c.handleReceive(mode);
+            nudgeUnboxPrintReceive('receive');
+          },
         },
       }),
     [row, c],
@@ -512,6 +586,16 @@ export function LineEditPanel({
     mode: 'unbox',
     build: buildTerminal,
   });
+
+  // Middle nav-keys while carton open (Band 3 nulls Middle in UnboxWorkspaceView).
+  const { armed: middleNavArmed, navKeyCap: middleNavKeyCap } =
+    useUnboxMiddleCartonNav(row, {
+      runPrintLabel: () => c.runPrintLabel(),
+      handleReceive: () => void c.handleReceive('zoho_receive'),
+      canPrint: c.canPrintReview,
+      canReceive: c.canReceiveReview || c.canZohoReceive,
+      terminalVm,
+    });
 
   /**
    * Carton `# ----` / Link PO → open Linkage (Link) with its PO avenue selected.
@@ -541,27 +625,23 @@ export function LineEditPanel({
 
   useEffect(() => {
     setActionFeedback(null);
-    setNotesOpen(false);
   }, [row.id]);
 
   const hasItemNote = Boolean((c.itemNote || row.notes || '').trim());
+
+  // Scan-theme tint = operating staff (same SoT as ThemedStationScanBar),
+  // falling back to the carton's assigned tech when staffId is absent.
+  const terminalThemeStaffId =
+    Number(staffId) || row.assigned_tech_id || null;
 
   const embeddedTerminal = (
     <StationTerminalDock
       embedded
       vm={terminalVm}
-      assignedTechId={row.assigned_tech_id}
+      assignedTechId={terminalThemeStaffId}
+      className="h-full shrink-0 self-stretch"
     />
   );
-
-  const openNotes = useCallback(() => {
-    setNotesOpen(true);
-  }, []);
-
-  const closeNotes = useCallback(() => {
-    setNotesOpen(false);
-    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-  }, []);
 
   const onFocusCaptureStep = useCallback(
     (key: 'serial' | 'condition' | 'item_photos') => {
@@ -588,14 +668,14 @@ export function LineEditPanel({
         accordionBootstrap,
         onFocusCaptureStep,
         onEditFilledSerial: (serial) => {
-          openDisplays('units');
+          openDisplays('units', { unitsAction: 'units' });
           c.setHeaderSerialEdit(serial);
         },
         onViewAllUnits: (line) => {
           if (line.id !== row.id) {
             dispatchSelectLine(line);
           }
-          openDisplays('units');
+          openDisplays('units', { unitsAction: 'units' });
         },
         onOpenReturnHistory: () => openDisplays('timeline'),
       }),
@@ -638,9 +718,7 @@ export function LineEditPanel({
         linkageAction,
         onLinkageActionChange,
         onInventoryChangePo: openPoPairing,
-        onInventorySync: async () => {
-          await c.refreshInventoryDossier();
-        },
+        onInventorySync: () => c.refreshInventoryDossier(),
         inventorySyncing: Boolean(c.inventoryRefreshing),
         unitsAction,
         onUnitsActionChange,
@@ -722,7 +800,7 @@ export function LineEditPanel({
    *
    * **Closed:** {@link ScanStationUtilityRail} — vertical `↑↓` top, `←|` in the
    * bottom footer (left-dock expand twin).
-   * **Open:** cursor on {@link UnboxPushColumn} top-right (`headerTrailing`);
+   * **Open:** cursor on {@link StationDisplaysPushColumn} top-right (`headerTrailing`);
    * utility rail unmounts. `→|` lives on the Displays footer search trailing
    * track (left-rail filter-collapse twin).
    *
@@ -842,14 +920,45 @@ export function LineEditPanel({
                 // dock float stack above UnboxDockHost (an absolute dock would
                 // cover an in-flow footer).
                 dock={
-                  // Flush floor instrument — step studio XOR Print·Receive.
+                  // Flush floor + dogfood Print·Receive strip above it.
                   // Float is Unbox-owned: inset-x-0, safe-area floor only.
                   <div
                     className="pointer-events-none absolute inset-x-0 bottom-0 z-fab pb-[env(safe-area-inset-bottom,0px)] pt-0" // ds-allow-spacing: fixed-overlay safe-area geometry
                     data-unbox-dock-float
                   >
                     <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
-                      {terminalVm?.disabled && terminalVm.disabledReason && !activeKey ? (
+                      {middleNavArmed ? (
+                        <div
+                          className="mb-1 flex flex-wrap items-center justify-end gap-2 px-2"
+                          data-testid="unbox-middle-nav-keycaps"
+                          aria-hidden
+                        >
+                          {(
+                            [
+                              ['scan', 'Scan'],
+                              ['serial', 'Serial'],
+                              ['condition', 'Condition'],
+                              ['photos', 'Photos'],
+                              ['cta', 'Act'],
+                              ['print', 'Print'],
+                              ['receive', 'Receive'],
+                            ] as const
+                          ).map(([id, label]) => {
+                            const cap = middleNavKeyCap(id);
+                            if (!cap) return null;
+                            return (
+                              <span
+                                key={id}
+                                className="inline-flex items-center gap-1 text-role-micro text-text-muted"
+                              >
+                                {cap}
+                                <span>{label}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                      {terminalVm?.disabled && terminalVm.disabledReason ? (
                         <p
                           role="status"
                           className="mb-1 text-right text-role-caption font-semibold text-amber-700"
@@ -878,30 +987,55 @@ export function LineEditPanel({
                           />
                         </div>
                       ) : null}
-                      <UnboxDockHost
-                        mode={notesOpen ? 'notes' : 'entry'}
-                        onOpenNotes={openNotes}
-                        onCloseNotes={closeNotes}
-                        hasItemNote={hasItemNote}
-                        showNotesToggle={false}
-                        expandBand={activeKey === 'classify'}
-                        stepContext={<UnboxProcedurePager row={row} />}
-                        leading={stepDock}
-                        trailing={!activeKey ? embeddedTerminal : null}
-                        progress={scanProgressControl}
-                        notesEntry={
+                      {/* Dogfood top row: always-on label note (`+` insert) ·
+                          compact Print · Receive. Never Band 1 / Band 2. */}
+                      {terminalVm ? (
+                        <div
+                          className="mb-0 flex h-11 w-full min-w-0 items-stretch border-t border-border-hairline bg-surface-card"
+                          data-unbox-dogfood-print
+                        >
                           <UnboxDockNotesEntry
                             value={c.itemNote}
                             onChange={c.setItemNote}
-                            onSave={() => {
-                              const next = c.itemNote;
-                              if (next === (row.notes || '')) return false;
-                              void c.patch({ notes: next });
+                            previousLineNotes={c.prevLineNotes}
+                            skuTitle={row.zoho_item_title || row.item_name || null}
+                            unitPrice={row.unit_price ?? null}
+                            overallZohoNotes={row.receiving_zoho_notes ?? null}
+                            zendeskTicket={c.zendeskTrimmed || row.zendesk_ticket || null}
+                            zendeskProviderTicketId={c.providerTicketId}
+                            zendeskTicketSubject={c.supportTicket?.subject ?? null}
+                            serialNumbers={(row.serials ?? [])
+                              .map((s) => String(s.serial_number ?? '').trim())
+                              .filter(Boolean)}
+                            showSyncToPo={!c.isUnfound}
+                            onSave={(next) => {
+                              const phrase = next ?? c.itemNote;
+                              if (phrase !== c.itemNote) c.setItemNote(phrase);
+                              if (phrase === (row.notes || '')) return false;
+                              void c.patch({ notes: phrase });
                               return true;
                             }}
-                            onDone={closeNotes}
                           />
-                        }
+                          <div
+                            className="flex shrink-0 items-stretch border-l border-border-hairline"
+                            data-unbox-dock-terminal
+                          >
+                            {embeddedTerminal}
+                          </div>
+                        </div>
+                      ) : null}
+                      <UnboxDockHost
+                        mode="entry"
+                        onOpenNotes={() => {}}
+                        onCloseNotes={() => {}}
+                        hasItemNote={hasItemNote}
+                        showNotesToggle={false}
+                        expandBand={activeKey === 'classify'}
+                        omitTopSeam={Boolean(terminalVm)}
+                        stepContext={<UnboxProcedurePager row={row} />}
+                        leading={stepDock}
+                        trailing={null}
+                        progress={scanProgressControl}
                       />
                     </div>
                   </div>
@@ -956,6 +1090,26 @@ export function LineEditPanel({
               }}
               onClose={closeDisplays}
               headerTrailing={displaysCartonCursor}
+              actionFloor={
+                <UnboxDisplaysActionFloor
+                  receivingId={row.receiving_id}
+                  isUnfound={c.isUnfound}
+                  canPrint={c.canPrintReview}
+                  runPrintLabel={() => {
+                    c.runPrintLabel();
+                    nudgeUnboxPrintReceive('print');
+                  }}
+                  openDisplays={(tab, opts) => openDisplays(tab, opts)}
+                  onDeleted={closeDisplays}
+                  editSelected={activeSideTab === 'linkage'}
+                  onInventorySync={() => c.refreshInventoryDossier()}
+                  inventorySyncing={Boolean(c.inventoryRefreshing)}
+                  canInventorySync={
+                    row.receiving_id != null &&
+                    Boolean((row.zoho_purchaseorder_id || '').trim())
+                  }
+                />
+              }
             />
           ) : null
         }

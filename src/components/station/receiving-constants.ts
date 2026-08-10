@@ -57,7 +57,7 @@ const CONDITION_BADGE: Record<string, string> = {
   USED_A:      'bg-blue-100 text-blue-700',
   USED_B:      'bg-indigo-100 text-indigo-700',
   USED_C:      'bg-surface-sunken text-text-muted',
-  PARTS:       'bg-amber-100 text-amber-800',
+  PARTS:       'bg-orange-100 text-orange-900',
 };
 
 export function conditionBadgeTone(code: string | null | undefined): string {

@@ -99,6 +99,7 @@ function fakes(opts: FakeOpts = {}) {
         documentId: 12,
         signatureUrl: 'https://blob/sig.png',
         signatureWarning: null,
+        ticketWarning: null,
       };
     },
     async linkRepairToHeader(_orgId, repairId, headerId) {
@@ -316,6 +317,11 @@ test('helpdesk work is QUEUED, never called inline — the counter is never bloc
   assert.equal(calls.enqueued[0].workType, 'CREATE_TICKET');
   assert.equal(calls.enqueued[0].entityType, 'REPAIR');
   assert.equal(calls.enqueued[0].entityId, 321);
+  assert.equal(
+    calls.repairInputs[0]?.ticketWork,
+    'skip',
+    'counter owns the outbox enqueue — inline create must be skipped',
+  );
   assert.equal(calls.enqueued[0].counterTransactionId, 900);
 });
 

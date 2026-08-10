@@ -7,6 +7,12 @@ import { parseZendeskListingFromPoNotes } from '@/lib/zoho-po-prefill';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
+/** Result of Inventory Displays Refresh (sync-one + carton inventory-sync). */
+export type InventoryDossierRefreshResult =
+  | { ok: true; zohoNotes: string | null }
+  /** Live Zoho failed but local mirror/line paint was refreshed. */
+  | { ok: false; error: string; painted?: boolean };
+
 /**
  * Refresh ↔ Zoho for a single receiving line. Always searches by tracking#
  * (PO# search is a future upgrade). Flow:
@@ -49,23 +55,35 @@ export function useZohoSync(
    * Pull-from-Zoho for the whole carton: re-imports the linked PO so
    * receiving.zoho_notes (PO header notes), receiving_lines.unit_price (price),
    * and receiving_lines.zoho_notes (item descriptions) all refresh from Zoho.
-   * Returns the freshly-synced carton notes so a caller (the Zoho Notes tab)
-   * can update its draft. No-op without a receiving id.
+   * Returns ok + notes so Inventory Refresh can toast; thin `string | null`
+   * wrapper stays for older callers.
    */
-  const syncCartonFromZoho = useCallback(async (): Promise<string | null> => {
-    if (!row.receiving_id) return null;
+  const syncCartonFromZohoResult = useCallback(async (): Promise<InventoryDossierRefreshResult> => {
+    if (!row.receiving_id) {
+      return { ok: false, error: 'No carton linked — cannot pull inventory' };
+    }
     try {
       const res = await fetch(`/api/receiving/${row.receiving_id}/inventory-sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const data = (await res.json().catch(() => null)) as { zoho_notes?: string | null } | null;
+      const data = (await res.json().catch(() => null)) as {
+        zoho_notes?: string | null;
+        error?: string;
+      } | null;
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: data?.error?.trim() || `Inventory sync failed (${res.status})`,
+        };
+      }
       const syncedNotes =
         data && 'zoho_notes' in data ? ((data.zoho_notes ?? null) as string | null) : undefined;
 
-      // Re-fetch the line so the sidebar/table/panel pick up price + notes.
-      // Always patch receiving_zoho_notes from the sync response so PO-notes
-      // draft dirty-state reseeds (false "Unsaved" after a clean pull).
+      // Re-fetch the line so the sidebar/table/panel pick up price + notes +
+      // zoho_status (by-id SQL joins zoho_po_mirror). Always patch
+      // receiving_zoho_notes from the sync response so PO-notes draft
+      // dirty-state reseeds (false "Unsaved" after a clean pull).
       try {
         const lineRes = await fetch(`/api/receiving-lines?id=${row.id}`);
         const lineData = await lineRes.json();
@@ -86,37 +104,106 @@ export function useZohoSync(
       }
       refreshDomains(REFRESH_BUNDLES.receivingWrite);
 
-      return syncedNotes !== undefined ? syncedNotes : null;
+      return { ok: true, zohoNotes: syncedNotes !== undefined ? syncedNotes : null };
     } catch {
-      return null;
+      return { ok: false, error: 'Inventory sync failed' };
     }
   }, [row.receiving_id, row.id, dispatchLine]);
+
+  const syncCartonFromZoho = useCallback(async (): Promise<string | null> => {
+    const result = await syncCartonFromZohoResult();
+    return result.ok ? result.zohoNotes : null;
+  }, [syncCartonFromZohoResult]);
+
+  /** Re-fetch the open line so zoho_status / notes from the local mirror land even when live Zoho is down. */
+  const refetchLineForPaint = useCallback(async (): Promise<boolean> => {
+    try {
+      const lineRes = await fetch(`/api/receiving-lines?id=${row.id}`);
+      const lineData = await lineRes.json();
+      if (lineData?.success && lineData.receiving_line) {
+        dispatchLine(lineData.receiving_line as ReceivingLineRow);
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
+        return true;
+      }
+    } catch {
+      /* paint re-fetch best-effort */
+    }
+    return false;
+  }, [row.id, dispatchLine]);
 
   /**
    * Inventory Displays Refresh — refresh the Zoho PO mirror (header · line_items ·
    * activity) then pull carton notes/prices. Incoming desk Sync's twin.
+   * Callers that toast (header Refresh / F5) read {@link InventoryDossierRefreshResult}.
+   * Always re-fetches the open line afterward so coarse Received paint updates
+   * from the local mirror even when live Zoho credentials fail.
    */
-  const refreshInventoryDossier = useCallback(async (): Promise<string | null> => {
-    if (inventoryRefreshing) return null;
+  const refreshInventoryDossier = useCallback(async (): Promise<InventoryDossierRefreshResult> => {
+    if (inventoryRefreshing) {
+      return { ok: false, error: 'Refresh already in progress' };
+    }
     setInventoryRefreshing(true);
     try {
       const poId = (row.zoho_purchaseorder_id || '').trim();
+      let mirrorError: string | null = null;
+      let mirrorOk = !poId; // no PO id → skip mirror, not a failure
       if (poId) {
         try {
-          await fetch('/api/receiving-lines/incoming/sync-one', {
+          const mirrorRes = await fetch('/api/receiving-lines/incoming/sync-one', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ po_id: poId }),
           });
+          if (mirrorRes.ok) {
+            mirrorOk = true;
+          } else {
+            const mirrorData = (await mirrorRes.json().catch(() => null)) as {
+              error?: string;
+              details?: string;
+            } | null;
+            mirrorError =
+              mirrorData?.error?.trim()
+              || mirrorData?.details?.trim()
+              || `Mirror sync failed (${mirrorRes.status})`;
+          }
         } catch {
-          /* mirror pull best-effort — carton pull still runs */
+          mirrorError = 'Mirror sync failed';
         }
       }
-      return await syncCartonFromZoho();
+
+      const carton = await syncCartonFromZohoResult();
+      if (carton.ok) {
+        return carton;
+      }
+
+      // Live pulls failed — still paint from local mirror / carton rows.
+      const painted = await refetchLineForPaint();
+      if (painted && (mirrorOk || !poId)) {
+        // Mirror was already current (or skipped); local paint refreshed.
+        return { ok: true, zohoNotes: null };
+      }
+      if (painted) {
+        // Operator still gets status from the local mirror; surface that the
+        // live Zoho pull failed (common when credentials are missing in a lane).
+        return {
+          ok: false,
+          painted: true,
+          error: mirrorError || carton.error || 'Inventory sync failed',
+        };
+      }
+      return {
+        ok: false,
+        error: mirrorError || carton.error || 'Inventory sync failed',
+      };
     } finally {
       setInventoryRefreshing(false);
     }
-  }, [inventoryRefreshing, row.zoho_purchaseorder_id, syncCartonFromZoho]);
+  }, [
+    inventoryRefreshing,
+    row.zoho_purchaseorder_id,
+    syncCartonFromZohoResult,
+    refetchLineForPaint,
+  ]);
 
   const syncWithZoho = useCallback(async () => {
     if (zohoSyncing) return;

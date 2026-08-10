@@ -8,18 +8,33 @@
  * (Macro `FlushTerminalFooter` shell) + `InspectorFlushDelete`.
  */
 
-import { Button } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import {
+  AlertTriangle,
+  FileText,
+  Flag,
+  Truck,
+  User,
+} from '@/components/Icons';
+import {
+  FLOOR_DELETE_PEER_CLASS,
+  FloorIconButton,
+  InspectorActionFloor,
+} from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { OrderAssignDisplayHost } from '@/components/shipped/details-panel/OrderAssignDisplayHost';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { OrderInspectorUpdateActionKey } from '@/lib/shipping/order-inspector-topics';
-import { cn } from '@/utils/_cn';
 
-const FLUSH = cornerClass('flush');
+/** One glyph per order-update verb — the messy labelled grid condensed to icons. */
+const ACTION_ICON: Record<OrderInspectorUpdateActionKey, React.ReactNode> = {
+  assign: <User />,
+  urgent: <Flag />,
+  notes: <FileText />,
+  out_of_stock: <AlertTriangle />,
+  status: <Truck />,
+};
 
 export function OrderUpdateDock({
   shipped,
@@ -98,43 +113,32 @@ export function OrderUpdateDock({
     ) : undefined;
 
   return (
-    <InspectorActionFloor
-      data-testid="order-update-dock"
-      above={above}
-      actions={
-        actions.length > 0 ? (
-          <>
-            {actions.map((action) => (
-              <Button
-                key={action.key}
-                type="button"
-                size="sm"
-                variant={isActive(action.key) ? 'secondary' : 'ghost'}
-                onClick={() => onAction(action.key)}
-                className={cn(
-                  FLUSH,
-                  'h-10 min-w-0 flex-1 rounded-none px-2 text-role-micro font-semibold tracking-wide',
-                )}
-                data-testid={`order-update-${action.key}`}
-              >
-                <span className="truncate">{action.label}</span>
-              </Button>
-            ))}
-          </>
-        ) : undefined
-      }
-      delete={
-        showDelete ? (
-          <InspectorFlushDelete
-            isArmed={isDeleteArmed}
-            isDeleting={isDeleting}
-            onClick={onDelete}
-            label="Delete order"
-            confirmLabel="Click again to confirm delete"
-            data-testid="order-update-delete"
-          />
-        ) : undefined
-      }
-    />
+    <InspectorActionFloor data-testid="order-update-dock" above={above}>
+      {actions.length > 0 || showDelete ? (
+        <>
+          {actions.map((action) => (
+            <FloorIconButton
+              key={action.key}
+              icon={ACTION_ICON[action.key]}
+              label={action.label}
+              onClick={() => onAction(action.key)}
+              selected={isActive(action.key)}
+              data-testid={`order-update-${action.key}`}
+            />
+          ))}
+          {showDelete ? (
+            <InspectorFlushDelete
+              isArmed={isDeleteArmed}
+              isDeleting={isDeleting}
+              onClick={onDelete}
+              label="Delete order"
+              confirmLabel="Click again to confirm delete"
+              data-testid="order-update-delete"
+              className={FLOOR_DELETE_PEER_CLASS}
+            />
+          ) : null}
+        </>
+      ) : null}
+    </InspectorActionFloor>
   );
 }

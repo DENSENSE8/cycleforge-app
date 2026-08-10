@@ -6,7 +6,7 @@ import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { FLOOR_DELETE_PEER_CLASS, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 import { Button } from '@/design-system/primitives';
@@ -222,17 +222,16 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
 
         {/* Floor — flush trailing Delete. Removes the Incoming row; Zoho /
             marketplace upstream records are untouched. Sync stays in chrome. */}
-        <InspectorActionFloor
-          delete={
-            <InspectorFlushDelete
-              onConfirm={handleDelete}
-              onDeleted={onClose}
-              label="Delete incoming row"
-              confirmLabel="Click again to confirm delete"
-              data-testid="incoming-details-delete"
-            />
-          }
-        />
+        <InspectorActionFloor>
+          <InspectorFlushDelete
+            onConfirm={handleDelete}
+            onDeleted={onClose}
+            label="Delete incoming row"
+            confirmLabel="Click again to confirm delete"
+            data-testid="incoming-details-delete"
+            className={FLOOR_DELETE_PEER_CLASS}
+          />
+        </InspectorActionFloor>
       </div>
     </DetailStackRailRegistrar>
   );

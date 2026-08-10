@@ -418,7 +418,7 @@ function ReceivingPopoverContent({
       : condGrade === 'USED_A' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
         : condGrade === 'USED_B' ? 'bg-blue-50 text-blue-700 ring-blue-200'
           : condGrade === 'USED_C' ? 'bg-surface-sunken text-text-muted ring-border-default'
-            : condGrade === 'PARTS' ? 'bg-amber-50 text-amber-700 ring-amber-200'
+            : condGrade === 'PARTS' ? 'bg-orange-50 text-orange-900 ring-orange-200'
               : 'bg-surface-sunken text-text-soft ring-border-soft';
 
   const workflowLabel = statusLabel;

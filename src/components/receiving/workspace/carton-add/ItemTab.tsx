@@ -155,7 +155,7 @@ export function ItemTab({
               <li key={item.id}>
                 <ResultRow
                   title={item.product_title}
-                  subtitle={item.sku ?? item.zoho_sku ?? ''}
+                  sku={item.sku ?? item.zoho_sku ?? ''}
                   imageUrl={item.image_url}
                   busy={submitting === item.id}
                   disabled={submitting != null}

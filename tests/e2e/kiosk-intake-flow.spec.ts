@@ -531,9 +531,8 @@ test.describe('Kiosk host — subdomain gating', () => {
     }
   });
 
-  test('staff-host /kiosk 308s to the tenant kiosk origin when Host has a slug', async ({ baseURL }) => {
+  test('staff-host /kiosk serves path dogfood (no 308 while J7b DNS pending)', async ({ baseURL }) => {
     const staffHost = dogfoodStaffHost();
-    const kioskHost = dogfoodKioskHost();
     const ctx = await pwRequest.newContext({
       baseURL: baseURL!,
       storageState: EMPTY_STORAGE,
@@ -541,17 +540,16 @@ test.describe('Kiosk host — subdomain gating', () => {
     });
     try {
       const res = await ctx.get('/kiosk', { maxRedirects: 0 });
-      expect(res.status(), `GET /kiosk on ${staffHost}`).toBe(308);
-      const location = res.headers()['location'] || '';
-      expect(location, 'Location points at kiosk origin').toContain(kioskHost);
+      // Path dogfood: staff host serves /kiosk* until kioskPathDogfoodActive flips off.
+      expect(res.status(), `GET /kiosk on ${staffHost} (no subdomain 308)`).not.toBe(308);
+      expect(res.ok(), `GET /kiosk served (${res.status()})`).toBe(true);
     } finally {
       await ctx.dispose();
     }
   });
 
-  // Production apex + DEFAULT_TENANT_SLUG → same kiosk origin is covered by
-  // unit tests on staffKioskRedirectOrigin (proxy only applies that branch when
-  // NODE_ENV=production; local E2E keeps serving /kiosk on apex for tablet UI).
+  // After J7b: staff /kiosk 308 → kiosk origin resumes when kioskPathDogfoodActive
+  // is false (covered by unit tests on staffKioskRedirectOrigin).
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -584,7 +582,7 @@ for (const factor of TABLET_FACTORS) {
       }
     });
 
-    test('landscape shell on /kiosk/v2: dock modes + catalog rail', async ({
+    test('landscape shell on /kiosk/v2: mode spine + catalog rail', async ({
       request,
       browser,
       baseURL,
@@ -594,14 +592,18 @@ for (const factor of TABLET_FACTORS) {
       try {
         await pairViaUiV2(page, code);
 
+        await expect(page.getByTestId('kiosk-mode-spine')).toBeVisible();
         await expect(page.getByRole('heading', { name: /catalog/i })).toBeVisible();
         await expect(page.getByRole('heading', { name: /repair details/i })).toBeVisible();
+        // Mode selection lives in the left spine — never a bottom dock tablist.
+        await expect(page.getByRole('tablist', { name: /kiosk service mode/i })).toBeVisible();
+        await expect(page.locator('[class*="fixed"][class*="bottom-0"]')).toHaveCount(0);
 
-        await page.getByRole('button', { name: /buy \/ sell/i }).click();
+        await page.getByRole('tab', { name: /buy \/ sell/i }).click();
         await expect(page.getByRole('heading', { name: /buy \/ sell details/i })).toBeVisible();
         await expect(page.getByRole('heading', { name: /products/i })).toBeVisible();
 
-        await page.getByRole('button', { name: /^pickup$/i }).click();
+        await page.getByRole('tab', { name: /order pickup/i }).click();
         await expect(page.getByRole('heading', { name: /pickup details/i })).toBeVisible();
         await expect(page.getByText(/find your order/i)).toBeVisible();
         await expect(page.getByRole('button', { name: /look up order/i })).toBeVisible();

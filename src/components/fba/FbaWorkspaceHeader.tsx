@@ -10,6 +10,13 @@
  * Selection stays owned by `FbaBoardTable`: this header listens to the
  * `FBA_BOARD_SELECTION_COUNT` window event for the live count and dispatches
  * `FBA_BOARD_TOGGLE_ALL`, exactly like the toolbar it replaces.
+ *
+ * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed stage tabs for
+ * every staffer — never Chrome-style unpin of a system stage · Pin-list cube
+ * omitted (honest absence — no closed foreign-collection catalog) · no page Views
+ * yet (honest absence; if added they mount on Band 3, never Band-1 leading) ·
+ * page-pin in GlobalHeader. Three pin scopes never share a trigger/store. SoT:
+ * source-of-truth.md → Workbench Band-1 strip · Left-edge → SCOPE decides its home.
  */
 
 import { useEffect, useMemo, useState, type ReactNode, type Ref } from 'react';

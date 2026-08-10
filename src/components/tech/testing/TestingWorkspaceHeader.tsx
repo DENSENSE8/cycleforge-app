@@ -6,6 +6,13 @@
  *   Band 1 — tabs (Urgent · Returns · Pending · All · History)
  *   Band 2 — KPI (`WorkbenchKpiBand` in TestingWorkspaceView)
  *   Band 3 — triage: search · staff · icon-sort · portal
+ *
+ * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
+ * for every staffer — never Chrome-style unpin of a system stage · Pin-list cube
+ * omitted (honest absence — no closed foreign-collection catalog) · Views on
+ * Band 3 (`WorkbenchViewsMenu` in the triage `views` slot, never Band-1 leading)
+ * · page-pin in GlobalHeader. Three pin scopes never share a trigger/store. SoT:
+ * source-of-truth.md → Workbench Band-1 strip · Left-edge → SCOPE decides its home.
  */
 
 import type { Ref } from 'react';
@@ -24,6 +31,11 @@ import {
   TESTING_WORKSPACE_TABS,
   type TestingWorkspaceTab,
 } from '@/utils/testing-workspace-state';
+import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
+import {
+  SAVED_VIEW_PARAM_KEYS,
+  SAVED_VIEW_STORAGE_KEY,
+} from '@/lib/station/table-url-params';
 
 const TAB_COLOR: Record<TestingWorkspaceTab, 'red' | 'orange' | 'blue' | 'gray' | 'emerald'> = {
   urgent: 'red',
@@ -153,6 +165,15 @@ export function TestingTriageBand({
       className={className}
       kpiToggle={
         <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
+      }
+      views={
+        tab === 'history' ? (
+          <WorkbenchViewsMenu
+            storageKey={SAVED_VIEW_STORAGE_KEY.testing_history}
+            paramKeys={SAVED_VIEW_PARAM_KEYS.testing_history}
+            emptyHint="No saved views yet — refine Testing History, then save it here."
+          />
+        ) : null
       }
       search={
         <TechRailSearchBar

@@ -3,7 +3,8 @@
 /**
  * Station-theme gradient fills for the scan-band glow layer.
  * Opacity / enter-exit is owned by {@link ScanBandGlowHost} + motion catalog
- * (`framerTransition.scanBandGlow` / `scanBandGlowPulse`).
+ * (`framerTransition.scanBandGlow` / `scanBandGlowPulse`). Ready HUD (reticle /
+ * sweep / caret) lives on {@link StationScanBar}'s input column.
  */
 
 import type { StationTheme } from '@/hooks/useStationTheme';

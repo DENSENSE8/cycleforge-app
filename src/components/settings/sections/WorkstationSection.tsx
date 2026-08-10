@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
+  DEFAULT_WORKSTATION,
   getWorkstation,
+  normalizePackBenchLocationId,
   setWorkstation,
   type WorkstationRole,
   type WorkstationSettings,
 } from '@/lib/settings/workstation';
+import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
 
 const ROLES: { value: WorkstationRole; label: string }[] = [
   { value: '', label: '— No default role —' },
@@ -22,12 +26,12 @@ const FIELD_CLS =
   'focus:ring-blue-500/20';
 
 export function WorkstationSection() {
-  const [settings, setSettings] = useState<WorkstationSettings>({
-    stationName: '',
-    defaultWarehouse: '',
-    defaultRole: '',
-  });
+  const [settings, setSettings] = useState<WorkstationSettings>(DEFAULT_WORKSTATION);
   const [status, setStatus] = useState('');
+  // Bench list for the packing-bench binding. The `locations` row stays the SoT —
+  // this setting only REFERENCES one, and never counts anything.
+  const benchQuery = useQuery(packPlacementQuery());
+  const benches = benchQuery.data?.locations ?? [];
 
   useEffect(() => { setSettings(getWorkstation()); }, []);
 
@@ -82,6 +86,36 @@ export function WorkstationSection() {
           </select>
           <span className="mt-1 block text-role-caption text-text-soft">
             Determines which dashboard opens by default when the app launches.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-text-muted">Packing bench</span>
+          <select
+            value={settings.packBenchLocationId == null ? '' : String(settings.packBenchLocationId)}
+            onChange={(e) =>
+              update('packBenchLocationId', normalizePackBenchLocationId(e.target.value))
+            }
+            disabled={benchQuery.isPending || benchQuery.isError}
+            data-testid="workstation-pack-bench"
+            className={FIELD_CLS}
+          >
+            <option value="">— No bench —</option>
+            {benches.map((bench) => (
+              <option key={bench.id} value={String(bench.id)}>
+                {bench.name}
+                {bench.locationKind === 'STAGING' ? ' (staging)' : ''}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-role-caption text-text-soft">
+            {benchQuery.isPending
+              ? 'Loading benches…'
+              : benchQuery.isError
+                ? "Couldn't load packing benches. The saved bench is unchanged."
+                : benches.length === 0
+                  ? 'No packing benches exist yet. Add a DESK or STAGING location under Inventory → Locations.'
+                  : 'Ready to Pack arms this bench automatically when nothing is armed. Clearing the bench there wins for the rest of that session.'}
           </span>
         </label>
 

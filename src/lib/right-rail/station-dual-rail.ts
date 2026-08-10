@@ -345,7 +345,7 @@ export function applyStationDisplaysDelta(
 
 /**
  * Context-rail sash moved by `deltaPx` (positive = context wider). Updates the
- * Displays preference inversely and notifies UnboxPushColumn.
+ * Displays preference inversely and notifies StationDisplaysPushColumn.
  */
 export function applyStationContextDelta(
   deltaPx: number,

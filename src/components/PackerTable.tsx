@@ -7,7 +7,6 @@ import { usePackerTableController } from '@/hooks/station/usePackerTableControll
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
 import { packerRecordToDetail, getPackerDetailId } from '@/components/station/packer-record-mappers';
-import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { AlertTriangle, Calendar, Clock, Package } from '@/components/Icons';
 import { toPSTDateKey } from '@/utils/date';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -112,8 +111,6 @@ export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTabl
       getRowKey={(record, index) => (record.id != null ? `pkr-${record.id}` : `pkr-${index}`)}
       tableId="packer"
       toolbarPortalTarget={toolbarPortalTarget}
-      savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
-      savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
       // History is WEEK-scoped, so an empty view is a no-results state, not a
       // first run — hence no `firstRunEmpty`. Passing one also suppressed the
       // shell's "back to this week" reset button (it only renders on the

@@ -92,7 +92,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 | Driven by | scanner | pointer | stream / poll | pan / zoom / focus |
 | Job | act-and-clear | pick + edit | observe | reshape definition |
 | Selection | ephemeral | durable URL | none (filters only) | durable focus URL |
-| Left edge | **recents rail** (MRU/resume) | **rail-less** for `ops-queue` desks (views → Band-1 menu) · **record picker** for `master-detail` | none (filter band only) | none (graph is the map) |
+| Left edge | **recents rail** (MRU/resume) | **rail-less** for `ops-queue` desks (Views → Band 3; fixed Band-1 system tabs) · **record picker** for `master-detail` | none (filter band only) | none (graph is the map) |
 | What may crossfade | **active card** | **focus detail region** (pane/drawer/stack) — never the collection map | drill/detail only — never the stream | overlay repaint — never the graph |
 | Common primary surfaces | scan card | list / table / board / master–detail | timeline / KPI rollup | React Flow graph |
 | Persistence | act-and-clear | CRUD | none | draft → publish |
@@ -121,7 +121,7 @@ Density defaults: Station → `floor`; Workbench collection edit → `ops`; Moni
 2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
 3. **Fact stack / form** — single durable record focused without a heavy dual pane.
 
-Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **The page switcher + Recents live in GlobalHeader** (`HeaderPageSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine: domains stay flat; **Scan Stations alone is a Vercel list-replace drill** (enter with `ChevronRight` → Back + benches) because it holds multiple categories — never restore an all-sections drill (`Catalog › Catalog`). Order from `SPINE_SECTIONS`; Workflow Studio is a footer pin — see `display/workbench-master-detail.md` + `source-of-truth.md`. Hybrid Station+Workbench pages: both exits (Back to list · **return-to-scan CTA** in trailing `actions`, every strip tab, above KPIs) — `display/workbench.md` → Multi-region pages.
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; **The page switcher + Recents live in GlobalHeader** (`HeaderPageSwitcher` / `HeaderRecentsSwitcher`); related/similar is progressive disclosure below the map, never an inverted sidebar. Spine: domains stay flat; **Scan Stations alone is a Vercel list-replace drill** (enter with `ChevronRight` → Back + benches) because it holds multiple categories — never restore an all-sections drill (`Catalog › Catalog`). Order from `SPINE_SECTIONS`; Workflow Studio is a footer pin — see `display/workbench-master-detail.md` + `source-of-truth.md`. Hybrid Station+Workbench pages: both exits (Back to list · **return-to-scan CTA** in trailing `actions`, every strip tab, above KPIs) — `display/workbench.md` → Multi-region pages. Hybrid **Band-1 strip** chrome (fixed system tabs · optional Pin-list · Band-3 Views · GlobalHeader page-pin) is house-wide — [`source-of-truth.md`](source-of-truth.md) → **Workbench Band-1 strip** · [workbench-ops-queue.md](display/workbench-ops-queue.md) (not the Unbox **dock** Band 1).
 
 References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
 
@@ -237,18 +237,21 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 - **[`display/instrument-panel.md`](display/instrument-panel.md)** — Instrument-panel sub-identity: P1–P7, procedure composition map, metaphor translation. Cross-cutting (Station + right rail), not a fifth contract.
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
 - **[`display/station-workbench.md`](display/station-workbench.md)** — **Station column shell** (Unbox-family right-pane anatomy) — not Layer A Workbench.
-- **[`display/scan-cockpit.md`](display/scan-cockpit.md)** — **Scan-station cockpit (DO / KNOW split)**: centre + dock = the one armed action; right Displays column = default-open, step-driven reference. Ratified 2026-08-09, golden lands Phase 1 (Unbox).
+- **[`display/unbox-station.md`](display/unbox-station.md)** — **Unbox golden** — centre ops-flow · flush dock · per-step ACTION/`railLeaf` · Displays leaves. Exact walk for Found/Unfound/Return.
+- **[`display/station-port-from-unbox.md`](display/station-port-from-unbox.md)** — **Identify → remove → compose** sibling stations onto the Unbox method (Arrival · Testing · Pack · Shipping).
+- **[`display/scan-cockpit.md`](display/scan-cockpit.md)** — **Scan-station cockpit (DO / KNOW split)**: centre + dock = the one armed action; right Displays column = default-open, step-driven reference. Unbox Phase 1 live; siblings after Unbox dogfood.
 - **[`display/workbench.md`](display/workbench.md)** — Workbench contract; recipe index; multi-region (list ↔ bench).
-- **[`display/workbench-ops-queue.md`](display/workbench-ops-queue.md)** — Workbench branch **`ops-queue`** (Desk): **rail-less** (Pattern E) \| chrome+KPI+Band-1 Views menu \| LedgerGrid \| right inspector.
+- **[`display/workbench-ops-queue.md`](display/workbench-ops-queue.md)** — Workbench branch **`ops-queue`** (Desk): **rail-less** (Pattern E) \| fixed Band-1 system tabs (+ optional Pin-list) \| Band-3 Views \| LedgerGrid \| right inspector.
 - **[`display/workbench-master-detail.md`](display/workbench-master-detail.md)** — Workbench recipe **`master-detail`**: SidebarShell picker \| right workspace.
 - **[`display/workbench-service.md`](display/workbench-service.md)** — Workbench branch **`service-workspace`** (Support): list \| thread + composer \| context. Conversation-first, still Workbench physics — not a 5th contract, not a Station.
+- **[`display/media-library.md`](display/media-library.md)** — Media Library (`/ops/photos`): **rail-less** (Pattern E) three-band chrome — tabs \| **search** \| path strip. Documented inversion of Band 2 = KPI / Band 3 = find. Media stream, **not** a LedgerGrid.
 - **[`display/right-rail-inspector.md`](display/right-rail-inspector.md)** — Right details panel: icon row · dense identity · contextual actions; never intake-shell hero titles on record peeks.
 - **[`display/carton-read.md`](display/carton-read.md)** — Durable carton **read** record (`/carton/[id]`): disposition · handling|findings · Photos → viewer SoT · quiet work escape. Not Station column shell.
 - **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — Monitor observe + Canvas graph.
 - **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).
 - **[`display/motion-crossfade.md`](display/motion-crossfade.md)** — Motion / singular focus crossfade.
 - **[`display/auth-step-panel.md`](display/auth-step-panel.md)** — Compact multi-step auth panels.
-- **[`display/kiosk-shell.md`](display/kiosk-shell.md)** — Landscape front-desk kiosk (attract, left catalog rail, bottom mode dock). Not a Station.
+- **[`display/kiosk-shell.md`](display/kiosk-shell.md)** — Landscape front-desk kiosk (attract, far-left mode spine, catalog rail). Not a Station. Never bottom mode pills.
 - **[`display/reference-timeline.md`](display/reference-timeline.md)** — Event-stream primary or secondary surface.
 
 ---

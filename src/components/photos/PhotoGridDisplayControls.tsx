@@ -7,6 +7,7 @@ import {
   PHOTO_GRID_DENSITY_ORDER,
   type PhotoGridDensity,
 } from '@/lib/photos/photo-grid-density';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { photoLibraryControlButtonClass, photoLibraryControlGroupClass } from './photo-library-controls';
 
@@ -24,11 +25,11 @@ export interface PhotoGridDisplayControlsProps {
   isRefreshing?: boolean;
   disabled?: boolean;
   className?: string;
-  /** Override density-group chrome (e.g. claim flush `rounded-none p-0`). */
+  /** Override density-group chrome (e.g. claim `p-0`). Radius is already flush. */
   groupClassName?: string;
-  /** Override density button chrome (claim flush `!rounded-none`). */
+  /** Override density button chrome. Radius is already flush. */
   buttonClassName?: string;
-  /** Override refresh button chrome (claim flush square). */
+  /** Override refresh button chrome. Radius is already flush. */
   refreshClassName?: string;
 }
 
@@ -86,7 +87,8 @@ export function PhotoGridDisplayControls({
             disabled={disabled || isRefreshing}
             onClick={onRefresh}
             className={cn(
-              'ds-raw-button flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft bg-surface-card text-text-soft transition-colors',
+              'ds-raw-button flex h-8 w-8 items-center justify-center border border-border-soft bg-surface-card text-text-soft transition-colors',
+              cornerClass('flush'),
               'hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60',
               refreshClassName,
             )}

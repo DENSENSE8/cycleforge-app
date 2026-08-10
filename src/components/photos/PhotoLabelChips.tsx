@@ -1,6 +1,7 @@
 'use client';
 
 import { Tag } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { labelChipClasses } from '@/lib/photos/label-colors';
 import type { LibraryPhotoLabel } from './photo-library-types';
@@ -29,7 +30,8 @@ export function PhotoLabelChips({
         <span
           key={lbl.id}
           className={cn(
-            'inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-role-micro uppercase tracking-widest',
+            'inline-flex items-center gap-0.5 px-1 py-0.5 text-role-micro uppercase tracking-widest',
+            cornerClass('chip'),
             labelChipClasses(lbl.color),
           )}
         >
@@ -38,7 +40,12 @@ export function PhotoLabelChips({
         </span>
       ))}
       {overflow > 0 ? (
-        <span className="inline-flex items-center rounded bg-surface-sunken px-1 py-0.5 text-role-micro uppercase tracking-widest text-text-soft">
+        <span
+          className={cn(
+            'inline-flex items-center bg-surface-sunken px-1 py-0.5 text-role-micro uppercase tracking-widest text-text-soft',
+            cornerClass('chip'),
+          )}
+        >
           +{overflow}
         </span>
       ) : null}

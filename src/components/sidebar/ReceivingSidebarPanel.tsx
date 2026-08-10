@@ -72,6 +72,7 @@ import { usePhotoRequestPublisher } from '@/components/sidebar/receiving/usePhot
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
 import { useArrivalBatchSortSession } from '@/components/sidebar/receiving/useArrivalBatchSortSession';
 import { ArrivalBatchCaptureStrip } from '@/components/sidebar/receiving/ArrivalBatchCaptureStrip';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { classifyArrivalScan } from '@/lib/receiving/arrival-command-routing';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { toast } from '@/lib/toast';
@@ -355,6 +356,20 @@ export function ReceivingSidebarPanel() {
     onTriageScanResult,
   ]);
 
+  // Procedure → ingest hand-back. The Arrival staging dock owns shelf scans on
+  // the open carton; a payload it does not own is a tracking, and it lands here
+  // rather than being swallowed at the dock. Only this direction is legal —
+  // this bar never places cartons.
+  useReceivingEvents({
+    'receiving-submit-tracking': ({ tracking }) => {
+      const raw = String(tracking ?? '').trim();
+      // Gated to Arrival: the only mounted procedure waist that hands back
+      // today. Unbox's dock keeps its own submit meaning per step.
+      if (!raw || mode !== 'triage') return;
+      submitTrackingScan(raw, { mode: 'tracking', onResult: onTriageScanResult });
+    },
+  });
+
   // ── Rail edit mode (pencil bulk select / dismiss) — Unbox Unboxed dock +
   // thin combined Triage rail. Right-pane workbench Select is table multi-select
   // (separate); the sidebar pencil dismisses rows from this staffer's rail.
@@ -378,14 +393,17 @@ export function ReceivingSidebarPanel() {
   // after navigating so the input is hot even when the panel was already mounted.
   // Select any existing text so the operator can immediately overwrite it with
   // the next scan (barcode guns type-then-Enter, so a selected field is "armed").
-  // When Unbox dock scan entry (any step) or legacy serial marker is mounted,
-  // that field owns the wedge — do not steal back to sidebar ingestion.
+  // When a station PROCEDURE waist is mounted — Unbox dock scan entry (any
+  // step), the legacy serial marker, or the Arrival staging dock — that field
+  // owns the wedge; do not steal back to sidebar ingestion. This bar stays the
+  // ingest locus (which carton), never the placement one (which shelf).
   useEffect(() => {
     const handler = () =>
       requestAnimationFrame(() => {
         if (
           document.querySelector('[data-unbox-dock-scan]') ||
-          document.querySelector('[data-unbox-serial-dock]')
+          document.querySelector('[data-unbox-serial-dock]') ||
+          document.querySelector('[data-arrival-dock-scan]')
         ) {
           return;
         }

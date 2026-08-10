@@ -23,6 +23,7 @@ import type { ReceivingActivityAxis } from '@/components/station/receiving-lines
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
 import { usePlatformMeta } from '@/hooks/useCatalog';
@@ -86,16 +87,8 @@ function ReceivingDrillParentFilter({
   );
 }
 
-function metaSep() {
-  return (
-    <span className="shrink-0 text-text-faint" aria-hidden>
-      ·
-    </span>
-  );
-}
-
 /**
- * Parent-map second row — qty (digit only) · order # · tracking.
+ * Parent-map second row — qty · order # · tracking (StackedRowIdentity keys).
  * Title is the product name (not platform · PO).
  */
 function parentMeta(
@@ -116,28 +109,21 @@ function parentMeta(
       .map((r) => (r.tracking_number || '').trim())
       .find(Boolean) || '';
 
-  const parts: ReactNode[] = [
-    <span key="qty" className="shrink-0 tabular-nums">
+  return joinStackedIdentityKeys([
+    <span key="qty" className="shrink-0 tabular-nums text-role-caption text-text-soft">
       {qty}
     </span>,
-  ];
-  if (poValue) {
-    parts.push(metaSep());
-    parts.push(
+    poValue ? (
       <OrderIdChip
         key="order"
         value={poValue}
         display={getLast8(poValue)}
         platformLabel={platformLabel || null}
         dense
-      />,
-    );
-  }
-  if (tracking) {
-    parts.push(metaSep());
-    parts.push(<TrackingChip key="tracking" value={tracking} dense />);
-  }
-  return <>{parts}</>;
+      />
+    ) : null,
+    tracking ? <TrackingChip key="tracking" value={tracking} dense /> : null,
+  ]);
 }
 
 export function ReceivingDrillHost({

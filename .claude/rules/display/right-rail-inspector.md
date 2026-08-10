@@ -9,12 +9,30 @@ rail and never switch the inspector to the floating rounded overlay shell.
 Overlay remains explicit for modal/intake, mobile, ambient assistant, and
 station-edge opt-outs.  
 **Header SoT:** `PaneHeader` + blocks (`PaneHeaderLabel`, `PaneHeaderActionBar`, `PaneHeaderCloseButton`, …) **or** Unbox-aligned `DeskRailChromeRow` (`src/components/right-rail/DeskRailChromeRow.tsx`) when the card wants `→|` top-left · ↑↓ · trailing ring-twin. Desk `detail:order` composes `DeskRailChromeRow` + Unbox `SectionTabsSlider` density=icon (no identity row).  
-**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the hover paint is a **4px** full-height bar on the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron. Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Unbox Displays (`UnboxPushColumn`) is the golden twin. Left context rail uses the same inset seam paint (drag-only sash) + filter trailing + drag-past-min — different dismiss grammar, same hairline placement.  
+**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the hover paint is a **4px** full-height bar on the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron. Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Station Displays (`StationDisplaysPushColumn`) is the golden twin for hairline placement — **not** the same host. Left context rail uses the same inset seam paint (drag-only sash) + filter trailing + drag-past-min — different dismiss grammar, same hairline placement.  
+**Motion:** desk push open ↔ park **snaps** (`style.width` — Unbox Displays / `ContextPanelLayout` twin). Never `motionRole.push.rail` width tween or opacity presence on the push column; overlay / modal / intake keep their presence fade. Guard: `right-rail-push.guard.test.ts` · `detail-stack-collapse.guard.test.ts`.  
 **Modality / push / occupancy:** [source-of-truth.md](../source-of-truth.md) → **Right-rail modality**
 (AI and record/ticket details share **one** right-edge slot — detail outranks assistant) ·
-**Frame column budget** (center floor · yield ladder).  
+**Frame column budget** (center floor · yield ladder) · **Scan vs desk right-edge (C2 thin waist)**
+(distinct hosts; share `DisplaysIndexLeafStage` + tokens + domain; never share dismiss chords /
+AI occupancy / visit-history).  
 **Guard:** `src/components/right-rail/right-rail-inspector-header.guard.test.ts` ·
-`src/components/right-rail/detail-stack-collapse.guard.test.ts`.
+`src/components/right-rail/detail-stack-collapse.guard.test.ts` ·
+`src/components/right-rail/desk-inspector-index.guard.test.ts`.
+
+### C2 — desk host vs station Displays (do not merge)
+
+| Concern | Desk (`RightRailHost` + `DeskInspectorIndexShell`) | Station (`StationDisplaysPushStack`) |
+|---|---|---|
+| Job | Inspect / light-edit selected queue row | Tools for active carton / procedure |
+| Operator copy | **Show / Hide inspector** | **Open displays** / Hide right panel |
+| Park / edge chord | **⌘\\** + bare **]** · Band 3 | **⌘]** · `←|` / `→|` |
+| Esc | Leaf → index (does not necessarily park) | Leaf → index → close column |
+| AI | Same slot; detail priority 100 > assistant 10 | Yield Displays on assistant open (forked mechanism) |
+| Visit history | URL / simple last leaf — not station stack | Local `displays-visit-history` |
+| Shared waist | `DisplaysIndexLeafStage` + tokens | Same stage body |
+
+**Ask-first:** mounting the push stack on `RightRailHost`, or unifying Esc/park Redux across hosts.
 
 ---
 
@@ -28,8 +46,9 @@ station-edge opt-outs.
 │ [→|] ……………………………… [ N / M ] [ ↑ ] [ ↓ ]                 │
 │ DeskRailChromeRow — close top-left; cursor + ↑↓ trailing    │
 ├─────────────────────────────────────────────────────────────┤
-│ DeskInspectorIndexShell (Context plane — never              │
-│ StationDisplaysPushStack)                                   │
+│ DeskInspectorIndexShell → DisplaysIndexLeafStage            │
+│ (shared Unbox waist with StationDisplaysPushStack; never    │
+│ mount the push stack on RightRailHost)                      │
 │   Index — DisplayIndexRow topics + ⋮ handoffs               │
 │   [ Order | Documents | Timeline | Conversation ]           │
 │   Topic map SoT: order-inspector-topics.ts                  │
@@ -67,23 +86,46 @@ Band 3 opens that rail with no row selected. Selected-order `detail:order` must
 │ DeskInspectorIndexShell — topic rows → leaf bodies          │
 │ (never PaneHeaderTabs / SectionTabsSlider density=icon)     │
 ├─────────────────────────────────────────────────────────────┤
-│ InspectorActionFloor (Workbench triage only; Macro shell)   │
-│ [ leading CTAs? ] ………………………… [ 🗑 flush icon ]       │
-│ Composes FlushTerminalFooter; Delete = flush trailing icon  │
+│ InspectorActionFloor (Workbench triage only; icons-first)   │
+│ [ ⋯ ][ icon ][ icon ] …………………………… [ 🗑 flush icon ]   │
+│ FloorOverflowButton · FloorIconButton peers + delete child  │
 │ Mount only when the open row has Macro commit / delete      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Action floor SoT:** `InspectorActionFloor` + `InspectorFlushDelete`
-(`src/components/right-rail/`). Desk triage inspectors only (Incoming ·
-Orders Order-leaf · Unfound · Repair · Bin · SKU panel). Never Station
-Displays / `StationTerminalDock`. Never a host slot on `RightRailHost`.
-History keeps identity-row primary (`historyInspectorPrimaryAction`) — no
-floor band.
+**Action floor SoT (desk):** `InspectorActionFloor` + the shared peers
+`FloorIconButton` / `FloorOverflowButton` + `FLOOR_DELETE_PEER_CLASS`
+(`src/components/right-rail/`). **Icons-first, ONE row (ruled 2026-08-09):** an
+equal-column `IconActionFloor` spread — `⋯` overflow leading · icon verbs ·
+flush trailing `InspectorFlushDelete` **child** far-right — with an optional
+`above` expand (assign / notes / error / teaching text). **Never a grid of
+labelled buttons, and never a labelled `actions` / `leading` / `delete` cluster**
+(that legacy path is deleted). Every desk panel composes the SAME peers so the
+row is identical by construction; test-ids ride on the peer as JSX attrs. Desk
+triage inspectors only (Incoming · Orders Order-leaf · Unfound · Repair · Bin ·
+SKU panel · **History**). Never Station Displays / `StationTerminalDock`. Never a
+host slot on `RightRailHost`. **Intake overlays are NOT this floor** — a labelled
+commit (Import CSV / Add inbound) composes `FlushTerminalFooter layout="cluster"`
+directly. **History mounts the floor when n=1** (ruled 2026-08-09): the record's
+edit gravity is the bottom dock — `⋯` More · Print · Edit (Open/Continue/Match in
+Unbox, `historyInspectorPrimaryAction`) · flush trailing **Delete carton**
+(`DELETE /api/receiving-logs`) far-right. The top chrome row stays
+navigation-only so a Park never sits beside a Delete. The View-only shell (n=0)
+mounts no floor.
 
-**History peek golden (`detail:history`).** Chrome → optional View strip →
-identity → **`DeskInspectorIndexShell`** (Details · Logistics · Evidence ·
-History as index rows → leaf). View toggle expands `HistoryViewTopicsCluster`
+**Station Displays carton Macro (fork):** scan benches mount
+`StationDisplaysActionFloor` (`src/components/station/displays/`) via
+`StationDisplaysPushStack` `actionFloor` **above** the close chrome footer
+(`→|` / Filter hairline) — `h-11`, Unbox dock Band 1. Layout: Edit ·
+Print/Resolve · Delete far bottom-right (no `…` menu). Unbox golden:
+`UnboxDisplaysActionFloor` (`station-displays-carton-floor.ts`). Still never
+import desk `InspectorActionFloor` into Displays.
+
+**History peek golden (`detail:history`).** Chrome → optional View strip → slim
+identity key (status + short PO/Carton; **no icon hero, no CTA row**) →
+**`DeskInspectorIndexShell`** (Details · Logistics · Evidence · History as index
+rows → leaf) → **`InspectorActionFloor`** bottom dock (record actions + Delete,
+n=1). View toggle expands `HistoryViewTopicsCluster`
 (paint · Drill|List · compare · zoom · ▦). **KPI collapse is NOT here** —
 Band 3 `kpiToggle`. Topic map SoT: `history-inspector-topics.ts`. Never
 `PaneHeaderTabs` as primary topic nav. **Display topic** (singular — which
@@ -187,12 +229,14 @@ plus padding per group for no navigational gain.
   only on the textarea). That sunken band is the **only** depth-indent gray for
   notes · ticket/claim create/edit — not for read fact rows. Never nested
   `rounded-lg border` boxes, `TextField`, or `WORKSPACE_NESTED_FIELD` for that job.
-- **One primary CTA band in the footer, at most.** A second primary is the competing-primaries
-  failure (P5). Workbench record-inspector floors compose `InspectorActionFloor`
-  (wraps Macro `FlushTerminalFooter` — Claim hairline/`p-0`/canvas); Delete is
-  flush trailing icon via `InspectorFlushDelete`, never a full-width labelled
-  danger pill. Station Displays Macro CTAs still compose `FlushTerminalFooter`
-  directly. Micro per-row actions stay on `IconButton size="md"`.
+- **One icon row in the footer, no labelled CTA band.** A second primary is the
+  competing-primaries failure (P5). Workbench record-inspector floors compose
+  `InspectorActionFloor` **icons-first** — `FloorIconButton` / `FloorOverflowButton`
+  peers + a flush trailing `InspectorFlushDelete` child (`IconActionFloor` spread
+  on canvas) — never a labelled `actions` cluster or a full-width labelled danger
+  pill. Station Displays Macro CTAs compose `FlushTerminalFooter` /
+  `StationDisplaysActionFloor` directly. Micro per-row actions stay on
+  `IconButton size="md"`.
 
 ### Anti-patterns
 
@@ -229,7 +273,7 @@ Different rails own different action contracts. Pass them in; do not fork a seco
 | Occupant (examples) | Typical icon actions |
 |---|---|
 | `detail:order` | Locked Displays topics + ⋮ handoffs; Order-tab `OrderUpdateDock` for Assign · urgent · notes · ship · flush Delete |
-| `detail:history` | **Receiving golden** — labelled Display `PaneHeaderTabs` + one identity primary CTA (`historyInspectorPrimaryAction`); Edit icon strip / multi-button labelled strips banned |
+| `detail:history` | **Receiving golden** — index→leaf topics + slim identity key; record actions (primary CTA `historyInspectorPrimaryAction` · More · flush Delete carton) dock on the bottom `InspectorActionFloor` (n=1). No CTA on the identity band; no `PaneHeaderTabs` / `PaneHeaderActionBar` |
 | `detail:incoming` | Sync |
 | `detail:catalog-link` | Link listing · Ignore |
 | `detail:import-exception` | Resolve · Ignore |

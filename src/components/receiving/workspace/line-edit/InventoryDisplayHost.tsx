@@ -3,20 +3,24 @@
 /**
  * Unbox Displays → Inventory leaf — secondary Root-to-Leaf drill.
  *
- *   Inventory index (this host)
+ *   Inventory index ({@link StationArmedVerbList})
  *     → Information   (PO telemetry)
  *     → Lines         (qty · rate · line notes / SN·condition text)
  *     → PO notes      (overall inventory header notes)
  *     → Activity      (receive / unreceive trail)
  *
- * Nested drill reports trail segments UP via {@link useDisplaysLeafChrome} —
- * the stack paints top-left ← → + current title. This host never mounts
- * {@link StationDisplayLeafHeader}.
+ * Nested drill reports trail / pop / restore UP via
+ * {@link useDisplaysLeafChrome} — the stack owns ← → Esc / Back and the
+ * leaf-dismiss footer (`→|`). This host never mounts
+ * {@link StationDisplayLeafHeader}, a hand-rolled sub-index, an Action
+ * KeyLegend floor, or `/` leaf-commands.
  *
- * Keyboard / floor (Lines · PO notes · Activity only): F2 Change PO · F5
- * Refresh · ⌘/Ctrl+S Save on notes — also opt-in `/` leaf-commands
- * (`setLeafCommands`). **Information is read-only facts** — no trust strip,
- * no floor CTAs. Index has no floor. Focus restore: `data-station-action-dossier`.
+ * Primary mutator for notes Save mounts in the sticky leaf header via
+ * {@link useDisplaysLeafChrome} `setLeafTrailing`. Zoho inventory Refresh lives
+ * on the carton Macro floor (`UnboxDisplaysActionFloor` refresh icon) — never
+ * in the Inventory breadcrumb. Silent F5 / ⌘S still work (incl. inside the
+ * notes field). Receive / Unreceive stay on the Unbox dock. Change PO → Pair
+ * inventory empty state or Linkage. Focus restore: `data-station-action-dossier`.
  *
  * Law: instrument-panel.md · Station Action vs Context · Displays Root-to-Leaf.
  */
@@ -26,37 +30,36 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   Check,
-  ChevronRight,
-  ClipboardList,
   FileText,
   Info,
   Link2,
   Loader2,
   Package,
-  Pencil,
-  RefreshCw,
 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import {
   DenseComposeBodyBand,
   DenseComposeBodyTextarea,
 } from '@/design-system/components';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
 import { InventoryPoHeader } from '@/components/receiving/inventory/InventoryPoHeader';
 import { InventoryPoLineList } from '@/components/receiving/inventory/InventoryPoLineList';
 import { InventoryActivityPanel } from '@/components/receiving/inventory/InventoryActivityPanel';
 import { useInventoryPoDossier } from '@/components/receiving/inventory/useInventoryPoDossier';
 import {
-  StationActionKeyLegend,
   useDisplaysLeafChrome,
   useStationActionKeyBindings,
-  type DisplaysFooterCommand,
   type StationActionKeyBinding,
 } from '@/components/station/displays';
+import {
+  StationArmedVerbList,
+  type StationArmedVerb,
+} from '@/components/station/displays/StationArmedVerbList';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { zohoReceiptFace } from '@/lib/receiving/zoho-receipt-face';
+import { toast } from '@/lib/toast';
+import { cn } from '@/utils/_cn';
+import type { InventoryDossierRefreshResult } from './hooks/useZohoSync';
 import type { PoNoteTabState } from './terminal/usePoNoteTabState';
 import type { DetailsResponse } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 
@@ -64,13 +67,17 @@ type InventorySubLeaf = 'info' | 'lines' | 'notes' | 'activity';
 
 const SUB_LEAF_META: Record<
   InventorySubLeaf,
-  { label: string; Icon: typeof Info }
+  { label: string; Icon: typeof Info; preferredKey: string }
 > = {
-  info: { label: 'Information', Icon: Info },
-  lines: { label: 'Lines', Icon: Package },
-  notes: { label: 'PO notes', Icon: FileText },
-  activity: { label: 'Activity', Icon: Activity },
+  info: { label: 'Information', Icon: Info, preferredKey: 'i' },
+  lines: { label: 'Lines', Icon: Package, preferredKey: 'l' },
+  notes: { label: 'PO notes', Icon: FileText, preferredKey: 'n' },
+  activity: { label: 'Activity', Icon: Activity, preferredKey: 'a' },
 };
+
+function isInventorySubLeaf(id: string): id is InventorySubLeaf {
+  return id in SUB_LEAF_META;
+}
 
 export function InventoryDisplayHost({
   row,
@@ -84,7 +91,7 @@ export function InventoryDisplayHost({
   hasPoNote: boolean;
   poNote: PoNoteTabState;
   onChangePo: () => void;
-  onSyncFromInventory: () => void | Promise<void>;
+  onSyncFromInventory: () => void | Promise<InventoryDossierRefreshResult | void>;
   syncing?: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -93,8 +100,13 @@ export function InventoryDisplayHost({
   const [subLeaf, setSubLeaf] = useState<InventorySubLeaf | null>(null);
   const [lineFocus, setLineFocus] = useState(0);
   const poNotesRef = useRef<HTMLTextAreaElement>(null);
-  const { setTrail, setOnNestedPop, setOnNestedRestore, setLeafCommands } =
-    useDisplaysLeafChrome();
+  const {
+    setTrail,
+    setOnNestedPop,
+    setOnNestedRestore,
+    setLeafCommands,
+    setLeafTrailing,
+  } = useDisplaysLeafChrome();
 
   // Report breadcrumb trail to the stack header — never mount a nested LeafHeader.
   useEffect(() => {
@@ -115,12 +127,16 @@ export function InventoryDisplayHost({
 
   useEffect(() => {
     setOnNestedRestore((segmentId) => {
-      if (segmentId in SUB_LEAF_META) {
-        setSubLeaf(segmentId as InventorySubLeaf);
-      }
+      if (isInventorySubLeaf(segmentId)) setSubLeaf(segmentId);
     });
     return () => setOnNestedRestore(null);
   }, [setOnNestedRestore]);
+
+  // Never opt into `/` leaf-command footer — stack stays on leaf-dismiss (`→|`).
+  useEffect(() => {
+    setLeafCommands(null);
+    return () => setLeafCommands(null);
+  }, [setLeafCommands]);
 
   const poId = (row.zoho_purchaseorder_id || '').trim() || null;
   const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
@@ -168,17 +184,19 @@ export function InventoryDisplayHost({
     if (draftTrim && draftTrim !== rowTrim) return; // unsaved path already guarded by dirty
     if (nextTrim === draftTrim) {
       if (nextTrim !== rowTrim) {
-        dispatchLineUpdated({ id: row.id, receiving_zoho_notes: next || null });
+        dispatchLineUpdated({ id: row.id, receiving_zoho_notes: next });
       }
       return;
     }
     poNote.setDraft(next);
-    dispatchLineUpdated({ id: row.id, receiving_zoho_notes: next || null });
+    if (nextTrim !== rowTrim) {
+      dispatchLineUpdated({ id: row.id, receiving_zoho_notes: next });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dossier.data?.po_notes, poNote.dirty, row.id, row.receiving_zoho_notes]);
 
   const onSaveDescription = useCallback(
-    async (line: DetailsResponse['line_items'][number], description: string | null) => {
+    async (line: DetailsResponse['line_items'][number], next: string | null) => {
       const lineId = line.receiving_line_id;
       if (lineId == null || lineId <= 0) return;
       setSavingLineId(lineId);
@@ -188,15 +206,15 @@ export function InventoryDisplayHost({
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            zoho_notes: description,
+            notes: next ?? '',
             base_last_modified_zoho: poNote.baseLastModifiedZoho,
           }),
         });
         const data = (await res.json().catch(() => null)) as {
           error?: string;
           stale?: boolean;
-          live_last_modified_zoho?: string | null;
           zoho?: { skipped?: string };
+          live_last_modified_zoho?: string | null;
         } | null;
         if (res.status === 409 || data?.stale || data?.zoho?.skipped === 'stale') {
           setDescError(data?.error?.trim() || 'Inventory changed — Refresh');
@@ -221,26 +239,92 @@ export function InventoryDisplayHost({
   );
 
   const unpaired = !poId && !dossier.data?.po;
-  const syncDisabled = syncing || unpaired || row.receiving_id == null;
+  const syncDisabled =
+    syncing || poNote.loading || unpaired || row.receiving_id == null;
 
   const runRefresh = useCallback(async () => {
     if (syncDisabled) return;
-    await onSyncFromInventory();
+    const result = await onSyncFromInventory();
     dossier.invalidate();
+    if (result && typeof result === 'object' && 'ok' in result) {
+      if (result.ok) {
+        toast.success('Inventory refreshed', {
+          description: 'Pulled latest status, notes, and lines from inventory.',
+        });
+      } else if (result.painted) {
+        toast.warning('Inventory status updated locally', {
+          description: result.error,
+        });
+      } else {
+        toast.error('Inventory refresh failed', {
+          description: result.error,
+        });
+      }
+      return;
+    }
+    // Legacy void callers — still confirm the gesture completed.
+    toast.success('Inventory refreshed');
   }, [syncDisabled, onSyncFromInventory, dossier]);
 
+  // Sticky leaf-header trailing — Save on PO notes only. Zoho Refresh is the
+  // Macro-floor refresh icon (never the Inventory breadcrumb).
+  useEffect(() => {
+    if (unpaired || dossier.isLoading || dossier.isError || !dossier.data) {
+      setLeafTrailing(null);
+      return () => setLeafTrailing(null);
+    }
+    const showSave = subLeaf === 'notes' && hasPoNote;
+    if (!showSave) {
+      setLeafTrailing(null);
+      return () => setLeafTrailing(null);
+    }
+    setLeafTrailing(
+      <div
+        className="flex h-full items-stretch gap-0"
+        data-inventory-leaf-trailing=""
+      >
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          className={cn('h-full min-h-0 rounded-none px-2')}
+          icon={
+            poNote.saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )
+          }
+          disabled={!poNote.dirty || poNote.saving || poNote.loading}
+          onClick={() => void poNote.save()}
+          title="Save PO notes to inventory"
+          ariaLabel="Save notes"
+        >
+          {poNote.saving ? 'Saving…' : 'Save'}
+        </Button>
+      </div>,
+    );
+    return () => setLeafTrailing(null);
+  }, [
+    unpaired,
+    dossier.isLoading,
+    dossier.isError,
+    dossier.data,
+    subLeaf,
+    hasPoNote,
+    poNote.saving,
+    poNote.dirty,
+    poNote.loading,
+    poNote,
+    setLeafTrailing,
+  ]);
+
+  // Silent Action keys — F5 / ⌘S also fire inside the notes textarea.
   const keyBindings = useMemo((): StationActionKeyBinding[] => {
-    // Information is read-only — no Action floor / hotkeys.
-    if (subLeaf == null || subLeaf === 'info') return [];
+    if (unpaired) return [];
     const isMac =
       typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
     const bindings: StationActionKeyBinding[] = [
-      {
-        chord: 'F2',
-        label: 'Change PO',
-        code: 'F2',
-        onAction: onChangePo,
-      },
       {
         chord: 'F5',
         label: syncing ? 'Refreshing…' : 'Refresh',
@@ -265,62 +349,17 @@ export function InventoryDisplayHost({
       });
     }
     return bindings;
-  }, [onChangePo, runRefresh, syncing, syncDisabled, hasPoNote, poNote, subLeaf]);
+  }, [unpaired, runRefresh, syncing, syncDisabled, hasPoNote, poNote, subLeaf]);
 
-  useStationActionKeyBindings(
-    keyBindings,
-    subLeaf != null && subLeaf !== 'info',
-  );
+  useStationActionKeyBindings(keyBindings, !unpaired);
 
-  // Opt-in leaf-command footer — same actions as the key legend, slash faces.
-  // Index + Information stay dismiss-only.
+  // Entering PO notes with an empty draft — pull once (header Refresh twin).
   useEffect(() => {
-    if (subLeaf == null || subLeaf === 'info') {
-      setLeafCommands(null);
-      return;
-    }
-    const cmds: DisplaysFooterCommand[] = [
-      {
-        id: 'change-po',
-        slash: 'change po',
-        label: 'Change PO',
-        onAction: onChangePo,
-      },
-      {
-        id: 'refresh',
-        slash: 'refresh',
-        label: syncing ? 'Refreshing…' : 'Refresh',
-        disabled: syncDisabled,
-        onAction: () => {
-          void runRefresh();
-        },
-      },
-    ];
-    if (subLeaf === 'notes' && hasPoNote) {
-      cmds.push({
-        id: 'save-notes',
-        slash: 'save notes',
-        label: 'Save notes',
-        disabled: poNote.saving || !poNote.dirty,
-        onAction: () => {
-          if (poNote.dirty && !poNote.saving) void poNote.save();
-        },
-      });
-    }
-    setLeafCommands(cmds);
-    return () => setLeafCommands(null);
-  }, [
-    subLeaf,
-    onChangePo,
-    runRefresh,
-    syncing,
-    syncDisabled,
-    hasPoNote,
-    poNote.dirty,
-    poNote.saving,
-    poNote,
-    setLeafCommands,
-  ]);
+    if (subLeaf !== 'notes' || !hasPoNote) return;
+    if (poNote.dirty || poNote.draft.trim() || poNote.loading || syncDisabled) return;
+    void runRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on notes open when empty
+  }, [subLeaf]);
 
   useEffect(() => {
     if (subLeaf !== 'notes') return;
@@ -333,116 +372,67 @@ export function InventoryDisplayHost({
   const infoStatusLabel =
     zohoReceiptFace(dossier.data?.po?.status)?.label ?? dossier.data?.po?.status ?? null;
 
-  const indexRows: Array<{
-    id: InventorySubLeaf;
-    label: string;
-    subtitle: string;
-    tone: 'action' | 'ok' | 'neutral';
-    Icon: typeof Info;
-    visible: boolean;
-  }> = [
-    {
-      id: 'info',
-      label: 'Information',
-      subtitle: dossier.data?.po
-        ? `${infoStatusLabel ?? '—'} · ${dossier.data.po.vendor_name ?? '—'}`
-        : 'PO header · vendor · dates',
-      tone: 'neutral',
-      Icon: Info,
-      visible: true,
-    },
-    {
-      id: 'lines',
-      label: 'Lines',
-      subtitle:
-        lineCount > 0
-          ? `${inventoryReceived}/${inventoryExpected} received · ${lineCount} line${lineCount === 1 ? '' : 's'}`
-          : 'Line qty · rate · description',
-      tone: lineCount === 0 ? 'action' : 'ok',
-      Icon: Package,
-      visible: true,
-    },
-    {
-      id: 'notes',
-      label: 'PO notes',
-      subtitle: poNote.dirty
-        ? 'Unsaved draft'
-        : poNote.draft.trim()
-          ? 'Synced inventory notes'
-          : 'No notes yet',
-      tone: poNote.dirty ? 'action' : poNote.draft.trim() ? 'ok' : 'neutral',
-      Icon: FileText,
-      visible: hasPoNote,
-    },
-    {
+  const verbs = useMemo<StationArmedVerb[]>(() => {
+    const rows: StationArmedVerb[] = [
+      {
+        id: 'info',
+        label: SUB_LEAF_META.info.label,
+        preferredKey: SUB_LEAF_META.info.preferredKey,
+        subtitle: dossier.data?.po
+          ? `${infoStatusLabel ?? '—'} · ${dossier.data.po.vendor_name ?? '—'}`
+          : 'PO header · vendor · dates',
+        icon: (p) => <Info className={p.className} />,
+      },
+      {
+        id: 'lines',
+        label: SUB_LEAF_META.lines.label,
+        preferredKey: SUB_LEAF_META.lines.preferredKey,
+        subtitle:
+          lineCount > 0
+            ? `${inventoryReceived}/${inventoryExpected} received · ${lineCount} line${lineCount === 1 ? '' : 's'}`
+            : 'Line qty · rate · description',
+        icon: (p) => <Package className={p.className} />,
+      },
+    ];
+    if (hasPoNote) {
+      rows.push({
+        id: 'notes',
+        label: SUB_LEAF_META.notes.label,
+        preferredKey: SUB_LEAF_META.notes.preferredKey,
+        subtitle: poNote.dirty
+          ? 'Unsaved draft'
+          : poNote.draft.trim()
+            ? 'Synced inventory notes'
+            : 'No notes yet',
+        icon: (p) => <FileText className={p.className} />,
+      });
+    }
+    rows.push({
       id: 'activity',
-      label: 'Activity',
+      label: SUB_LEAF_META.activity.label,
+      preferredKey: SUB_LEAF_META.activity.preferredKey,
       subtitle:
         activityCount > 0
           ? `${activityCount} event${activityCount === 1 ? '' : 's'}`
           : 'Receive · unreceive trail',
-      tone: activityCount > 0 ? 'ok' : 'neutral',
-      Icon: ClipboardList,
-      visible: true,
-    },
-  ];
+      icon: (p) => <Activity className={p.className} />,
+    });
+    return rows;
+  }, [
+    dossier.data?.po,
+    infoStatusLabel,
+    lineCount,
+    inventoryReceived,
+    inventoryExpected,
+    hasPoNote,
+    poNote.dirty,
+    poNote.draft,
+    activityCount,
+  ]);
 
-  const openSub = useCallback((id: InventorySubLeaf) => setSubLeaf(id), []);
-
-  /** Floor on Lines · PO notes · Activity only — Information is facts-only. */
-  const showFloor = subLeaf != null && subLeaf !== 'info' && !unpaired;
-
-  const floorLeading = showFloor ? (
-    <div className="flex shrink-0 items-stretch justify-start gap-0 [&_button]:h-full [&_button]:min-h-9">
-      {(subLeaf === 'lines' || subLeaf === 'activity') ? (
-        <Button
-          type="button"
-          variant="secondary"
-          size="md"
-          icon={<Pencil className="h-3.5 w-3.5" />}
-          onClick={onChangePo}
-          ariaLabel="Change purchase order"
-        >
-          Change PO
-        </Button>
-      ) : null}
-      <Button
-        type="button"
-        variant="ghost"
-        size="md"
-        icon={
-          syncing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )
-        }
-        disabled={syncDisabled}
-        onClick={() => void runRefresh()}
-        title={unpaired ? 'Pair a purchase order first' : 'Pull latest from inventory'}
-      >
-        {syncing ? 'Refreshing…' : 'Refresh'}
-      </Button>
-      {hasPoNote && subLeaf === 'notes' ? (
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          icon={
-            poNote.saving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Check className="h-3.5 w-3.5" />
-            )
-          }
-          disabled={!poNote.dirty || poNote.saving || poNote.loading}
-          onClick={() => void poNote.save()}
-        >
-          {poNote.saving ? 'Saving…' : 'Save notes'}
-        </Button>
-      ) : null}
-    </div>
-  ) : null;
+  const openSub = useCallback((id: string) => {
+    if (isInventorySubLeaf(id)) setSubLeaf(id);
+  }, []);
 
   return (
     <div
@@ -480,55 +470,14 @@ export function InventoryDisplayHost({
           </Button>
         </div>
       ) : subLeaf == null ? (
-        /* ── SECONDARY INDEX — no trust strip, no floor ─────────────────── */
-        <div className="min-h-0 flex-1 overflow-y-auto" data-inventory-sub-index="">
-          <ul className="divide-y divide-border-hairline">
-            {indexRows
-              .filter((r) => r.visible)
-              .map((r) => {
-                const Icon = r.Icon;
-                return (
-                  <li key={r.id}>
-                    <button
-                      type="button"
-                      className={cn(
-                        'flex w-full items-center gap-3 px-3 py-3 text-left',
-                        r.tone === 'action' && 'bg-amber-50/60',
-                        'hover:bg-surface-sunken/80',
-                        focusRing('control', 'accent'),
-                        'outline-none',
-                      )}
-                      onClick={() => openSub(r.id)}
-                      data-inventory-sub-row={r.id}
-                    >
-                      <Icon className="h-5 w-5 shrink-0 text-text-soft" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-role-caption font-semibold text-text-default">
-                          {r.label}
-                        </span>
-                        <span className="mt-0.5 block truncate text-role-micro text-text-muted">
-                          {r.subtitle}
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          'shrink-0 rounded-none px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider',
-                          r.tone === 'action' &&
-                            'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
-                          r.tone === 'ok' &&
-                            'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200',
-                          r.tone === 'neutral' &&
-                            'bg-surface-sunken text-text-soft ring-1 ring-inset ring-border-hairline',
-                        )}
-                      >
-                        {r.tone === 'action' ? 'Open' : r.tone === 'ok' ? 'Ready' : 'View'}
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-text-faint" aria-hidden />
-                    </button>
-                  </li>
-                );
-              })}
-          </ul>
+        /* ── SECONDARY INDEX — armed SoT list; stack owns ← → Esc ─────────── */
+        <div className="flex min-h-0 flex-1 flex-col" data-inventory-sub-index="">
+          <StationArmedVerbList
+            verbs={verbs}
+            listLabel="Inventory sections"
+            testId="unbox-inventory-actions"
+            onCommit={openSub}
+          />
         </div>
       ) : (
         /* ── SUB-LEAF ──────────────────────────────────────────────────── */
@@ -550,6 +499,7 @@ export function InventoryDisplayHost({
                   focusReceivingLineId={row.id ?? null}
                   editable
                   inlineNotes
+                  poStatus={dossier.data?.po?.status ?? null}
                   onSaveDescription={onSaveDescription}
                   savingLineId={savingLineId}
                   focusIndex={lineFocus}
@@ -572,9 +522,10 @@ export function InventoryDisplayHost({
                     className="min-h-[12rem]"
                   />
                 </DenseComposeBodyBand>
-                {!poNote.draft.trim() ? (
+                {!poNote.draft.trim() && !poNote.loading ? (
                   <p className="px-2 py-3 text-role-caption text-text-faint">
-                    No inventory notes yet — Refresh to pull, or type and Save.
+                    No inventory notes yet — use the Displays refresh icon (or
+                    F5), then Save.
                   </p>
                 ) : null}
               </section>
@@ -588,14 +539,6 @@ export function InventoryDisplayHost({
           </div>
         </div>
       )}
-
-      {showFloor ? (
-        <StationActionKeyLegend
-          bindings={keyBindings}
-          data-testid="inventory-instrument-floor"
-          leading={floorLeading}
-        />
-      ) : null}
     </div>
   );
 }

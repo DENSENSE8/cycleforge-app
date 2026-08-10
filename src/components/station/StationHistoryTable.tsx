@@ -36,8 +36,8 @@ import { formatWeekRangeCompact } from '@/utils/date';
  * through the shared `OrdersQueueTableRow` (via {@link StationQueueRow}) inside
  * the unified {@link StationListTable}, which composes the Workbench spreadsheet
  * SoT `LedgerGrid` — the same grid the Queue tab uses. The benches get
- * windowing, the week band, the ⋮ menu (row density + saved views), bulk
- * select, and a typed first-run empty.
+ * windowing, the week band, the ⋮ menu (row density / layout), bulk
+ * select, and a typed first-run empty. Saved views live on Band-3 Views ▾.
  *
  * Wraps the per-staff `TableColumnConfigProvider` + `TableDensityProvider` (both
  * keyed by `tableId`) so density + hidden-column prefs stay wired for rows.
@@ -56,9 +56,6 @@ export interface StationHistoryTableProps<T> {
   getRowKey?: (record: T, index: number) => string;
   /** Per-staff column-config + density bag (`tech` | `packer`). */
   tableId: TableId;
-  /** Saved-views storage + params for the ⋮ menu. */
-  savedViewsStorageKey: string;
-  savedViewsParamKeys: readonly string[];
   emptyMessage: string;
   /** Teaching first-run empty (zero rows, no active filter). */
   firstRunEmpty?: ReactNode;
@@ -104,8 +101,6 @@ export function StationHistoryTable<T>({
   daySections,
   getRowKey,
   tableId,
-  savedViewsStorageKey,
-  savedViewsParamKeys,
   emptyMessage,
   firstRunEmpty,
   toolbarPortalTarget = null,
@@ -234,10 +229,11 @@ export function StationHistoryTable<T>({
     [searchParams, router, pathname],
   );
 
+  // Saved views live on Band-3 Views ▾ (`WorkbenchViewsMenu`) — ⋮ keeps layout
+  // / density only so the page-scoped slice has one locus.
   const optionsMenu = (
     <TableOptionsMenu
       layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
-      savedViews={{ storageKey: savedViewsStorageKey, paramKeys: savedViewsParamKeys }}
     />
   );
   const headerControls = (

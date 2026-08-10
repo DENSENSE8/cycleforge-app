@@ -110,7 +110,13 @@ export type TableId =
   /** Support › Tickets spreadsheet (`SUPPORT_TICKETS_GRID_COLUMNS`). */
   | 'support-tickets'
   /** Inventory › Units browse spreadsheet (`UNITS_GRID_COLUMNS`). */
-  | 'inventory-units';
+  | 'inventory-units'
+  /**
+   * To-Ship CSV import staging (`CSV_IMPORT_STAGING_GRID_COLUMNS`) — its OWN
+   * bucket, never `orders`: hiding a column while triaging a file must not
+   * change the density of the live queue those rows are about to land in.
+   */
+  | 'orders-import';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -258,6 +264,17 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('condition', 'Condition', 'tag'),
     GRID_COL('location', 'Location', 'location'),
     GRID_COL('updated', 'Updated', 'date'),
+  ],
+  // Keys are the `hideKey`s in
+  // `src/components/outbound/orders/import-staging/csv-import-staging-grid-layout.ts`.
+  // `select` / `order` are frozen identity and `status` is the triage state —
+  // all three are structural, so none of them is offered here.
+  'orders-import': [
+    GRID_COL('sku', 'SKU', 'id'),
+    GRID_COL('qty', 'Quantity', 'number'),
+    GRID_COL('customer', 'Customer', 'text'),
+    GRID_COL('tracking', 'Tracking', 'tracking'),
+    GRID_COL('platform', 'Platform', 'text'),
   ],
   // Keys are the `hideKey`s in
   // `src/components/receiving/unfound/grid/unfound-grid-layout.ts`. The `action`

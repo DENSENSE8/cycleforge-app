@@ -12,26 +12,24 @@
  *
  * Every declared step has a body — a card with nothing in it is a blank card at
  * a bench, so that registry is total and the guard requires it. Not every step
- * has an ACTION. `arrival_check` reads what the door already shot and
- * deliberately offers no camera. A registry that demanded an entry for that
- * would be answered with a placeholder button, which is worse than an honest
- * absence.
- *
- * `classify` *does* have a dock control: it mounts the shared
- * `TriageClassifySection` via `classifySlot` so an unfound carton can be
- * identified without leaving the dock (Band 1 grows for that step only).
+ * has an ACTION — declare those in `UNBOX_STEPS_WITHOUT_DOCK_ACTION` with a
+ * reason. Photo steps mount Link | Upload | Send to phone
+ * (`PhotoStepDockStrip`). `classify` mounts `TriageClassifySection` via
+ * `classifySlot`.
  *
  * So the dock band renders **nothing** for a step with no entry, and
  * `procedure-step-dock.guard.test.ts` pins exactly which steps that is —
  * membership is a decision someone made, not a gap someone left.
  */
 
+import { ArrivalPhotosDockControl } from './ArrivalPhotosDockControl';
 import { CartonPhotoDockControl } from './CartonPhotoDockControl';
 import { ClassifyDockControl } from './ClassifyDockControl';
 import { ContentsDockControl, LabelDockControl } from './AcknowledgeDockControl';
+import { ItemPhotoDockControl } from './ItemPhotoDockControl';
+import { LocationScanDockControl } from './LocationScanDockControl';
 import {
   ConditionDockControl,
-  ItemPhotoDockControl,
   SerialDockControl,
 } from './SlotDockControls';
 import type { UnboxStepDock } from './types';
@@ -39,6 +37,9 @@ import type { UnboxStepDock } from './types';
 export type { UnboxStepDockContext } from './types';
 
 export const UNBOX_STEP_DOCK_CONTROLS: Partial<Record<string, UnboxStepDock>> = {
+  // Door evidence — Link | Upload | Send to phone (arrival_package + aspect).
+  arrival_label_photo: ArrivalPhotosDockControl,
+  arrival_box_photo: ArrivalPhotosDockControl,
   classify: ClassifyDockControl,
   // The three bench carton shots differ in one value — which aspect they
   // capture — so they share one control, parameterised by the step's declared
@@ -51,7 +52,14 @@ export const UNBOX_STEP_DOCK_CONTROLS: Partial<Record<string, UnboxStepDock>> = 
   serial: SerialDockControl,
   contents: ContentsDockControl,
   label: LabelDockControl,
+  // Commit `stage` — docks after print; not a capture checklist step.
+  // Listed in {@link UNBOX_COMMIT_DOCK_KEYS} so the either-or capture guard
+  // does not treat it as undeclared dead coverage.
+  stage: LocationScanDockControl,
 };
+
+/** Dock controls for commit-phase keys (not `phase: 'capture'` vocabulary). */
+export const UNBOX_COMMIT_DOCK_KEYS = ['stage'] as const;
 
 /**
  * Steps that deliberately have NO dock action, with the reason.
@@ -59,9 +67,9 @@ export const UNBOX_STEP_DOCK_CONTROLS: Partial<Record<string, UnboxStepDock>> = 
  * Exported so the guard reads the same list this module declares — a guard with
  * its own hand-typed copy is a second declaration, and the two drift the first
  * time a step changes shape.
+ *
+ * Empty today — every vocabulary step has a dock action (photo steps mount
+ * Link | Upload | Send to phone). Keep the map so the either-or guard still
+ * runs when a future actionless step is declared.
  */
-export const UNBOX_STEPS_WITHOUT_DOCK_ACTION: Readonly<Record<string, string>> = {
-  arrival_check:
-    'reads the door’s arrival_package evidence and must not offer a camera — a bench ' +
-    'capture there would void the require_one receive gate',
-};
+export const UNBOX_STEPS_WITHOUT_DOCK_ACTION: Readonly<Record<string, string>> = {};

@@ -145,9 +145,28 @@ test('item scope and the line id travel together, both ways', () => {
   }
 });
 
-test('PO-line body does not mount an item camera (condition · serial only)', () => {
-  // Main Unbox / unmatched accordion paint condition · serial on the active
-  // line; item capture lives on the Units explosion display (and phone).
+test('PO-line progressive Photos peers mount the shared item camera', () => {
+  // Unbox dual loci: progressive bar mounts ReceivingPhotoButton via
+  // PoLineItemPhotoPeers (Upload peer + Send-to-phone trailing). Unmatched
+  // centre still leaves capture to Units / dock — no PO-body camera.
+  const peers = MOUNTS.filter(
+    (m) =>
+      m.file ===
+      'components/receiving/workspace/line-edit/PoLineItemPhotoPeers.tsx',
+  );
+  assert.ok(
+    peers.length > 0,
+    'PoLineItemPhotoPeers must mount ReceivingPhotoButton',
+  );
+  assert.ok(
+    peers.every(itemScope),
+    'PoLineItemPhotoPeers item camera must use photoStage="unbox_item"',
+  );
+  assert.ok(
+    peers.every((m) => has(m, 'receivingLineId')),
+    'PoLineItemPhotoPeers item camera must pass receivingLineId',
+  );
+
   for (const lane of [
     'components/receiving/workspace/line-edit/LinePoItemsSection.tsx',
     'components/receiving/workspace/unmatched-items/UnmatchedAccordionSurface.tsx',
@@ -156,7 +175,7 @@ test('PO-line body does not mount an item camera (condition · serial only)', ()
     assert.equal(
       mounts.length,
       0,
-      `${lane}: active-line body must not mount ReceivingPhotoButton (found ${mounts.length})`,
+      `${lane}: must not mount ReceivingPhotoButton directly (found ${mounts.length})`,
     );
   }
 });

@@ -103,7 +103,7 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.ok(
         !panel.includes('unbox-carton-close'),
-        'unbox-carton-close is retired; the panel’s dismiss is unbox-push-close, and it belongs to UnboxPushColumn',
+        'unbox-carton-close is retired; the panel’s dismiss is unbox-push-close, and it belongs to StationDisplaysPushColumn',
       );
       assert.ok(
         !panel.includes('ArrowRightToLine'),
@@ -278,10 +278,18 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
 
     it('the Displays strip no longer reserves that band itself', () => {
       const displays = read(DISPLAYS_PATH);
+      const stage = read(
+        'src/components/station/displays/DisplaysIndexLeafStage.tsx',
+      );
       assert.match(
-        displays,
+        stage,
         /DISPLAYS_FLUSH_HOST/,
         'Displays body uses the flush host SoT (edge-to-edge plate; no -mx-4 cancel)',
+      );
+      assert.match(
+        displays,
+        /DisplaysIndexLeafStage/,
+        'PushStack composes the shared stage that owns DISPLAYS_FLUSH_HOST',
       );
       assert.doesNotMatch(
         displays,
@@ -467,8 +475,13 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
       assert.match(
         panel,
-        /trailing=\{!activeKey \? embeddedTerminal : null\}/,
-        'Print·Receive in UnboxDockHost only on settled state (in-station)',
+        /trailing=\{null\}/,
+        'Band 1 trailing stays null — Print·Receive is the dogfood strip above the floor',
+      );
+      assert.match(
+        panel,
+        /data-unbox-dogfood-print[\s\S]{0,2500}embeddedTerminal/,
+        'Print·Receive mounts in the dogfood strip above UnboxDockHost (Displays-independent)',
       );
       assert.doesNotMatch(
         panel,

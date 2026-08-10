@@ -256,6 +256,12 @@ export const AUDIT_ACTION = {
    */
   RECEIVING_LABEL_PREVIEWED: 'receiving.label.previewed',
   RECEIVING_LABEL_REOPENED:  'receiving.label.reopened',
+  /**
+   * Unbox commit `stage` — operator scanned an intended putaway location
+   * (`receiving_line_putaway.staged_at` / `staged_location_id`).
+   */
+  RECEIVING_STAGE_CONFIRMED: 'receiving.stage.confirmed',
+  RECEIVING_STAGE_REOPENED:  'receiving.stage.reopened',
   /** Incoming email to-do check-off / restore — a reversible pile move on an
    *  email_missing_purchase_orders row, never a delete. */
   RECEIVING_TODO_CHECKED:    'receiving.todo.checked',
@@ -384,6 +390,10 @@ export const AUDIT_ACTION = {
   // Same pairing as RECEIVING_LABEL_PREVIEWED / …_REOPENED.
   PHOTO_ASPECT_SET:        'photo.aspect_set',
   PHOTO_ASPECT_CLEARED:    'photo.aspect_cleared',
+  // Same-carton stage claim (bench → door): remaps photo_type + sets a legal
+  // door aspect in one write. Distinct from PHOTO_REASSIGN (entity hop) and
+  // PHOTO_ASPECT_* (within-stage name-only).
+  PHOTO_STAGE_CLAIM:       'photo.stage_claim',
   // Photo library master folders (operator-created, persistent) + assignments
   PHOTO_FOLDER_CREATE:     'photo_folder.create',
   PHOTO_FOLDER_RENAME:     'photo_folder.rename',
@@ -498,6 +508,14 @@ export const AUDIT_ACTION = {
   ORDER_SUBSTITUTE_UNIT:   'order.substitute_unit',
   ORDER_AMENDMENT_APPROVE: 'order.amendment.approve',
   ORDER_AMENDMENT_REJECT:  'order.amendment.reject',
+  /** Ready-to-pack packing-station place / move / clear (order_pack_placements). */
+  ORDER_PACK_PLACE: 'order.pack_place',
+  ORDER_PACK_MOVE: 'order.pack_move',
+  ORDER_PACK_CLEAR: 'order.pack_clear',
+  /** Ready-to-pack loose-unit place / move / clear (unit_pack_placements). */
+  UNIT_PACK_PLACE: 'unit.pack_place',
+  UNIT_PACK_MOVE: 'unit.pack_move',
+  UNIT_PACK_CLEAR: 'unit.pack_clear',
   // Unshipped governing events — first time a carrier tracking number is added to
   // an order, and when its shipping label is printed/attached. Feed the order
   // timeline (EventTimeline) on the dashboard details panel.

@@ -12,8 +12,11 @@
  * already selected, stays on checklist (column dismiss is `→|`). Closed
  * Displays opens via `←|`.
  *
+ * **`variant="floor"`** (Unbox dock Band 2): flush `h-full w-full` cell filling
+ * the host progress slot — never a floating IconButton in dead white.
+ *
  * **`variant="default"`**: compact IconButton — hover peek + click toggles
- * open/close (legacy dock / closed-rail call sites).
+ * open/close (legacy closed-rail call sites).
  *
  * Hover peek is **off** while any push rail is open (`railOpen`). Domain
  * benches pass percent + preview node + open/close. Unbox adapter:
@@ -70,6 +73,7 @@ export function ScanStationProgressControl({
   previewRailActionLabel,
   /**
    * `strip` — Displays icon-plate `rightSlot` cell (centered h-10 peer of ⋮).
+   * `floor` — Unbox dock Band 2 flush progress cell (fills host).
    * `default` — compact IconButton with hover peek.
    */
   variant = 'default',
@@ -91,11 +95,12 @@ export function ScanStationProgressControl({
   previewClassName?: string;
   previewStyle?: CSSProperties;
   previewRailActionLabel?: string;
-  variant?: 'default' | 'strip';
+  variant?: 'default' | 'strip' | 'floor';
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const strip = variant === 'strip';
-  const previewEnabled = !strip && !railOpen;
+  const floor = variant === 'floor';
+  const previewEnabled = !strip && !floor && !railOpen;
   const {
     isOpen: previewOpen,
     hoverProps,
@@ -114,7 +119,7 @@ export function ScanStationProgressControl({
 
   const openLabel =
     ariaLabelOpen ?? `Show checklist · ${done}/${total > 0 ? total : '—'} steps`;
-  const label = strip
+  const label = strip || floor
     ? selected
       ? `Checklist · ${done}/${total > 0 ? total : '—'} steps`
       : openLabel
@@ -124,14 +129,14 @@ export function ScanStationProgressControl({
 
   const onClick = useCallback(() => {
     dismiss();
-    if (strip) {
-      // Strip: select + show procedure. Column dismiss stays on →|.
+    if (strip || floor) {
+      // Strip / floor: select + show procedure. Column dismiss stays on →|.
       onOpen();
       return;
     }
     if (expanded) onClose();
     else onOpen();
-  }, [dismiss, strip, expanded, onClose, onOpen]);
+  }, [dismiss, strip, floor, expanded, onClose, onOpen]);
 
   const onOpenInRail = useCallback(() => {
     dismiss();
@@ -170,7 +175,11 @@ export function ScanStationProgressControl({
   return (
     <div
       ref={wrapRef}
-      className={cn('relative', strip && 'flex h-10 shrink-0 items-stretch')}
+      className={cn(
+        'relative',
+        strip && 'flex h-10 shrink-0 items-stretch',
+        floor && 'flex h-full w-full min-w-0 items-stretch',
+      )}
       {...(previewEnabled ? hoverProps : {})}
       data-testid="scan-station-progress-control"
     >
@@ -190,6 +199,24 @@ export function ScanStationProgressControl({
             selected
               ? SECTION_TAB_ICON_CELL_ACTIVE_CLASS
               : SECTION_TAB_ICON_CELL_IDLE_CLASS,
+          )}
+        >
+          {ring}
+        </button>
+      ) : floor ? (
+        // ds-raw-button: Unbox dock Band 2 flush progress cell — fills host.
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={selected}
+          onClick={onClick}
+          data-testid={testId}
+          data-selected={selected ? 'true' : 'false'}
+          data-unbox-dock-progress-btn=""
+          className={cn(
+            'ds-raw-button flex h-full w-full items-center justify-center text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default',
+            focusRing('control', 'accent'),
+            selected && 'text-text-default',
           )}
         >
           {ring}

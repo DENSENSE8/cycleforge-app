@@ -7,7 +7,7 @@
  * with Station Action-plane rows: ↑↓ / Home / End via {@link useArmedCursorList};
  * Enter / Space / click runs the verb in the same turn (no hit-marker DOM
  * withhold). Esc stays on the Displays push stack. Mounts gallery viewer +
- * upload overlay owned by this leaf.
+ * hidden file input — Upload opens the native picker immediately (no overlay).
  *
  * Verbs: View · Phone · Upload · Download · Media · Move · Send · Compare ·
  * Details. Drill altitude (tools → evidence): Move · Send · Compare open
@@ -22,13 +22,14 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeftRight,
   ColumnsTwo,
   Download,
-  ExternalLink,
   Image as ImageIcon,
+  Images,
   Info,
   Loader2,
   Send,
@@ -39,12 +40,12 @@ import { useReducedMotion } from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
+import { NAV_KEY_HINT_CLASS, useNavRegion } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import { PhotoUploadOverlay } from '@/components/shipped/photo-gallery/PhotoUploadOverlay';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
@@ -55,7 +56,8 @@ import {
   publishReceivingPhotoRequest,
 } from '@/lib/realtime/receiving-photo-request';
 import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
-import { SendToDeviceStatus } from '@/components/station/send-to-device/SendToDeviceStatus';
+import { useSendToDeviceToast } from '@/components/station/send-to-device/useSendToDeviceToast';
+import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { toast } from '@/lib/toast';
 import {
   ARMED_CURSOR_CHEVRON_CLASS,
@@ -66,6 +68,7 @@ import { useArmedCursorList } from '@/components/station/displays/useArmedCursor
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ChevronRight } from '@/components/Icons';
 import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
+import { PHOTO_VERB_NAV_KEY } from './photo-verb-nav-keys';
 
 interface PhotoRow {
   id: number;
@@ -116,6 +119,7 @@ export function PhotosActionsArmedList({
   const poRef = row.zoho_purchaseorder_number ?? null;
   const poRouteRef =
     row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null;
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
@@ -200,8 +204,14 @@ export function PhotosActionsArmedList({
     onSendToTicket: onOpenSend,
   });
 
+  // Upload verb → native Finder / Explorer immediately (no PhotoUploadOverlay).
+  const dz = usePhotoDropzone(g.handleUploadFiles);
+
   const routeRef = String(poRouteRef ?? '').trim();
   const phone = useSendToDevice('receiving_photo');
+  // Waiting / answered / unreachable renders on the house toast surface
+  // (bottom-right) — never a card competing with the rows for header space.
+  useSendToDeviceToast(phone.state, phone.retry);
   const ackChannelName = getReceivingPhotoRequestChannelName(orgId, staffId);
 
   const handleRequestOnPhone = useCallback(async () => {
@@ -266,7 +276,7 @@ export function PhotosActionsArmedList({
       {
         id: 'media',
         label: 'Media library',
-        icon: (p) => <ExternalLink className={p.className} />,
+        icon: (p) => <Images className={p.className} />,
         disabled: !libraryHref,
       },
       {
@@ -307,14 +317,29 @@ export function PhotosActionsArmedList({
   const { isOwner: isKeyboardRegion } = useKeyboardRegionOwner();
   const rightOwnsKeyboard = isKeyboardRegion('right');
 
-  const { cursorId, setCursorId, commitArmed, handleNavKeyDown } =
-    useArmedCursorList({
-      orderedIds,
-      activeId: null,
-      rootRef,
-      rowRefs,
-      regionActive: rightOwnsKeyboard,
-    });
+  const {
+    cursorId,
+    setCursorId,
+    commitArmed,
+    handleCommitPointerDown,
+    handleCommitClick,
+    handleNavKeyDown,
+  } = useArmedCursorList({
+    orderedIds,
+    activeId: null,
+    rootRef,
+    rowRefs,
+    regionActive: rightOwnsKeyboard,
+  });
+
+  const rightTargets = useMemo(
+    () =>
+      orderedIds.map((id) => ({
+        id,
+        preferredKey: PHOTO_VERB_NAV_KEY[id as VerbId] ?? null,
+      })),
+    [orderedIds],
+  );
 
   const runVerb = useCallback(
     (id: string) => {
@@ -328,13 +353,14 @@ export function PhotosActionsArmedList({
           void handleRequestOnPhone();
           break;
         case 'upload':
-          g.openUploadOverlay();
+          dz.openPicker();
           break;
         case 'download':
           void g.handleDownloadAll();
           break;
         case 'media':
-          if (libraryHref) window.open(libraryHref, '_blank', 'noopener,noreferrer');
+          // Same-tab app nav to /ops/photos — never a browser new-tab display.
+          if (libraryHref) router.push(libraryHref);
           break;
         case 'compare':
           onOpenCompare();
@@ -351,15 +377,23 @@ export function PhotosActionsArmedList({
       }
     },
     [
+      dz.openPicker,
       g,
       handleRequestOnPhone,
       libraryHref,
       onOpenCompare,
       onOpenMove,
       onOpenSend,
+      router,
       verbById,
     ],
   );
+
+  const { armed: regionArmed, keymap: navKeymap } = useNavRegion({
+    id: 'right',
+    targets: rightTargets,
+    onCommit: (targetId) => commitArmed(targetId, runVerb),
+  });
 
   const onRowKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLButtonElement>, id: string) => {
@@ -383,30 +417,9 @@ export function PhotosActionsArmedList({
     );
   }
 
-  const uploadOverlay = g.canUpload ? (
-    <PhotoUploadOverlay
-      open={g.uploadOverlayOpen}
-      onClose={g.closeUploadOverlay}
-      onFiles={g.handleUploadFiles}
-      uploading={g.uploading}
-      uploadError={g.uploadError}
-      onClearError={g.clearUploadError}
-      secondaryAction={{
-        label: 'Send to phone',
-        onClick: () => void handleRequestOnPhone(),
-        loading: phone.pending,
-        disabled: phone.pending,
-      }}
-    />
-  ) : null;
-
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="unbox-photos-actions">
-      {phone.state !== 'idle' ? (
-        <div className="shrink-0 border-b border-border-hairline px-3 py-2">
-          <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
-        </div>
-      ) : null}
+      {g.canUpload ? <input ref={dz.inputRef} {...dz.inputProps} /> : null}
       <div
         ref={rootRef}
         data-station-action-dossier=""
@@ -425,6 +438,7 @@ export function PhotosActionsArmedList({
           {verbs.map((verb) => {
             const isArmed = cursorId != null && cursorId === verb.id;
             const Icon = verb.icon;
+            const navLetter = regionArmed ? navKeymap.get(verb.id) : undefined;
             return (
               <li key={verb.id}>
                 <button
@@ -434,9 +448,13 @@ export function PhotosActionsArmedList({
                     else rowRefs.current.delete(verb.id);
                   }}
                   disabled={verb.disabled}
+                  onPointerDown={(e) => {
+                    if (verb.disabled) return;
+                    handleCommitPointerDown(e, verb.id, runVerb);
+                  }}
                   onClick={() => {
                     if (verb.disabled) return;
-                    commitArmed(verb.id, runVerb);
+                    handleCommitClick(verb.id, runVerb);
                   }}
                   onFocus={() => setCursorId(verb.id)}
                   onKeyDown={(e) => onRowKeyDown(e, verb.id)}
@@ -453,6 +471,7 @@ export function PhotosActionsArmedList({
                   data-testid={`unbox-photos-action-${verb.id}`}
                   data-active={isArmed ? 'true' : undefined}
                   aria-current={isArmed ? 'true' : undefined}
+                  aria-keyshortcuts={navLetter ?? undefined}
                 >
                   {isArmed ? (
                     <span
@@ -477,13 +496,17 @@ export function PhotosActionsArmedList({
                       {verb.label}
                     </span>
                   </span>
+                  {navLetter ? (
+                    <span className={NAV_KEY_HINT_CLASS} aria-hidden>
+                      {navLetter}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );
           })}
         </ul>
       </div>
-      {uploadOverlay}
       {g.photoItems.length > 0 ? <PhotoViewerPortal g={g} /> : null}
     </div>
   );

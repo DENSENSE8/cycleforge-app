@@ -250,3 +250,49 @@ export function remapReceivingPhotoTypeOnMove(input: {
   }
   return isCartonPhotoType(input.photoType) ? null : RECEIVING_PHOTO_PACKAGE;
 }
+
+/**
+ * photo_type remap for a same-carton stage claim (bench → door evidence).
+ *
+ * Distinct from {@link remapReceivingPhotoTypeOnMove}: that helper only fires on
+ * entity hops (carton↔line). This one stays on the RECEIVING primary link and
+ * promotes a carton sub-stage — the write Arrival Link needs when chrome shows
+ * carton shots but the door filter is empty.
+ *
+ * Returns the canonical type for `toStage`, or `null` when the row is already
+ * at that stage (type write is a no-op; aspect may still change). Illegal hops
+ * throw {@link ReceivingPhotoWriteError}.
+ *
+ * Legal for this cut: `unbox_carton` → `arrival_package`. Same-stage
+ * `arrival_package` → `arrival_package` returns null. Item evidence and reverse
+ * door→bench claims are refused.
+ */
+export function remapReceivingPhotoTypeOnStageClaim(input: {
+  fromStage: ReceivingPhotoStage | null;
+  toStage: ReceivingPhotoStage;
+}): string | null {
+  if (input.fromStage === null) {
+    throw new ReceivingPhotoWriteError(
+      'Photo has no classifiable evidence stage — cannot claim for a step',
+    );
+  }
+  if (input.fromStage === 'unbox_item' || input.toStage === 'unbox_item') {
+    throw new ReceivingPhotoWriteError(
+      'Stage claim cannot move item evidence — use entity reassign',
+    );
+  }
+  if (input.toStage !== 'arrival_package') {
+    throw new ReceivingPhotoWriteError(
+      `Stage claim target '${input.toStage}' is not supported`,
+    );
+  }
+  if (input.fromStage === 'arrival_package') {
+    return null;
+  }
+  if (input.fromStage === 'unbox_carton') {
+    return RECEIVING_PHOTO_PACKAGE;
+  }
+  throw new ReceivingPhotoWriteError(
+    `Cannot claim stage from '${input.fromStage}' to '${input.toStage}'`,
+  );
+}

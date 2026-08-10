@@ -7,7 +7,7 @@
  * **Action Plane host** (Station Action vs Context planes): every scan station
  * mounts this stack. Leaf densify / keyboard grammar lives in
  * {@link StationActionDossierShell} · {@link StationDenseFactStrip} ·
- * {@link StationActionKeyLegend} — builders only register leaves. Esc / Back
+ * {@link useStationActionKeyBindings} — builders only register leaves. Esc / Back
  * stay here; leaf legends must not bind Escape. On leaf open, focus restores
  * into `[data-station-action-dossier]` when present.
  *
@@ -22,7 +22,7 @@
  *     {@link StationDisplayLeafHeader}.
  *   - Forward restores nested drill first, then the visit future stack.
  *
- * Footer is stage-owned (left-rail twin grammar):
+ * Chrome bands are stage-owned (left-rail twin grammar):
  *   - Root Index → {@link TechRailSearchBar} (`Filter displays…`) with `→|`
  *     as `trailingAction` (`index-filter`)
  *   - Leaf default → {@link StationDisplaysDismissFooter} (`→|` only)
@@ -31,7 +31,12 @@
  *     when the active leaf registers commands via
  *     {@link useDisplaysLeafChrome} `setLeafCommands` (`leaf-command`)
  *
- * Host body uses {@link DISPLAYS_FLUSH_HOST} (`px-0`) — the column IS the card.
+ * When {@link actionFloor} is set (Unbox carton Macro), that row sits
+ * **above** the close chrome footer (`→|` / Filter hairline) — never below
+ * or instead of it. Delete docks on the Macro row's far bottom-right.
+ *
+ * Host body is {@link DisplaysIndexLeafStage} (shared with desk
+ * `DeskInspectorIndexShell`) inside the push column.
  */
 
 import {
@@ -43,7 +48,6 @@ import {
   type ReactNode,
 } from 'react';
 import type { SectionTab } from '@/design-system/components';
-import { DISPLAYS_FLUSH_HOST } from '@/design-system/shells/detail-stack';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { isKeyboardRegionOwner } from '@/lib/keyboard/keyboard-region-owner';
 import { StationDisplaysCommandFooter } from './StationDisplaysCommandFooter';
@@ -72,17 +76,13 @@ import {
   type DisplaysVisitFrame,
   type DisplaysVisitHistoryState,
 } from './displays-visit-history';
-import { StationDisplayIndexList, type StationDisplayIndexFilterKeys } from './StationDisplayIndexList';
+import {
+  DisplaysIndexLeafStage,
+  type StationDisplayIndexFilterKeys,
+} from './DisplaysIndexLeafStage';
 import { StationDisplayLeafHeader } from './StationDisplayLeafHeader';
 import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
-
-function isEditableKeyTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
-}
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 const DISPLAYS_PUSH_STORAGE_KEY = 'unbox-displays-push-width';
 
@@ -101,6 +101,7 @@ export function StationDisplaysPushStack({
   onClose,
   headerTrailing = null,
   rightSlot = null,
+  actionFloor = null,
   indexRows,
   /**
    * Current visit snapshot (tab + nest). When omitted, `{ tab: activeTab }`.
@@ -138,6 +139,11 @@ export function StationDisplaysPushStack({
    * carton cursor). Optional; stations without a derived procedure leave it empty.
    */
   rightSlot?: ReactNode;
+  /**
+   * Carton Macro floor above close chrome (Unbox golden — Edit · Print/Resolve
+   * · trailing Delete). Omit on stations that have not wired it yet.
+   */
+  actionFloor?: ReactNode;
   /**
    * Enriched Root Index rows (subtitle + tone + group). When omitted, rows are
    * derived from visible {@link tabs} (neutral tone + default groups).
@@ -378,8 +384,10 @@ export function StationDisplaysPushStack({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onHistoryBack, goForward]);
 
+  // Index Left always closes the column — never "Back to <prior leaf>" while
+  // the topic list is showing (past may still hold a leaf under Index).
   const visitBackLabel = (() => {
-    if (!canHistoryBack) return null;
+    if (onIndex || !canHistoryBack) return null;
     const tab = history.past[history.past.length - 1]!.tab;
     if (tab === STATION_DISPLAY_INDEX) return 'Displays';
     return tabLabel(tabs, tab);
@@ -452,6 +460,7 @@ export function StationDisplaysPushStack({
       onEscape={onEscape}
       headerTrailing={headerTrailing}
       headerRightSlot={rightSlot}
+      actionFloor={actionFloor}
       footer={
         footerStage === 'index-filter' ? (
           <div
@@ -488,46 +497,30 @@ export function StationDisplaysPushStack({
         )
       }
     >
-      <div className={DISPLAYS_FLUSH_HOST}>
-        {onIndex ? (
-          <div className="flex h-full min-h-0 flex-col">
-            {historyChrome}
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <StationDisplayIndexList
-                ref={indexFilterKeysRef}
-                rows={filteredIndexRows}
-                tabs={tabs}
-                onSelect={onTabChange}
-                activeId={lastLeafId}
-                filterQuery={filterQuery}
-                onClearFilter={() => setFilterQuery('')}
-              />
-            </div>
-          </div>
-        ) : (
-          <div
-            className="flex h-full min-h-0 flex-col"
-            data-testid="unbox-displays-leaf"
-            data-station-displays-leaf={activeTab}
+      <DisplaysIndexLeafStage
+        onIndex={onIndex}
+        stickyHeader={historyChrome}
+        rows={filteredIndexRows}
+        tabs={tabs}
+        onSelectLeaf={onTabChange}
+        lastLeafId={lastLeafId}
+        filterQuery={filterQuery}
+        onClearFilter={() => setFilterQuery('')}
+        indexFilterKeysRef={indexFilterKeysRef}
+        leafId={activeTab}
+        leafTestId="unbox-displays-leaf"
+        leafBody={
+          <DisplaysLeafChromeProvider
+            setTrail={setTrail}
+            setOnNestedPop={setOnNestedPop}
+            setOnNestedRestore={setOnNestedRestore}
+            setLeafCommands={setLeafCommands}
+            setLeafTrailing={setLeafTrailing}
           >
-            {historyChrome}
-            <div
-              className="flex min-h-0 flex-1 flex-col overflow-hidden"
-              data-station-displays-leaf-body=""
-            >
-              <DisplaysLeafChromeProvider
-                setTrail={setTrail}
-                setOnNestedPop={setOnNestedPop}
-                setOnNestedRestore={setOnNestedRestore}
-                setLeafCommands={setLeafCommands}
-                setLeafTrailing={setLeafTrailing}
-              >
-                {activeLeafTab?.content ?? null}
-              </DisplaysLeafChromeProvider>
-            </div>
-          </div>
-        )}
-      </div>
+            {activeLeafTab?.content ?? null}
+          </DisplaysLeafChromeProvider>
+        }
+      />
     </StationDisplaysPushColumn>
   );
 }

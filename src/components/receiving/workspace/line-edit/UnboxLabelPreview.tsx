@@ -108,7 +108,7 @@ export function UnboxLabelPreview({
         : undefined;
 
   return (
-    <div className="border-t border-border-hairline" data-testid="unbox-label-preview">
+    <div data-testid="unbox-label-preview">
       <AnimatePresence initial={false}>
         {labelOpen ? (
           <motion.div

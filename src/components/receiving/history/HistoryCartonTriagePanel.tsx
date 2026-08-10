@@ -4,14 +4,18 @@
  * Unbox History left-click triage inspector — Desk-family RightRailHost card
  * (`detail:history`, non-modal **push**). DeskInspectorIndexShell topics + one
  * primary CTA; full station work stays on LineEditPanel (double-click / Open in
- * Unbox). Mutually exclusive with LineEditPanel / UnboxPushColumn — opening the
+ * Unbox). Mutually exclusive with LineEditPanel / StationDisplaysPushColumn — opening the
  * workspace closes this rail.
  *
- * Header hierarchy (chrome → View → identity → index|leaf):
+ * Stack (chrome → View → slim key → index|leaf → floor):
  *   1. `[→|] ………………………………… [↑ · ↓]` — navigation only ({@link DeskRailChromeRow})
  *   2. View toggle (+ View topics cluster when open; forced in View-only shell)
- *   3. status + short PO / Receiving identity + ONE primary CTA + More
+ *   3. status + short PO / Carton key (slim — no icon hero, no CTA row)
  *   4. {@link DeskInspectorIndexShell} — Details · Logistics · Evidence · History
+ *   5. {@link InspectorActionFloor} bottom dock (n=1) — primary CTA (Print ·
+ *      Open/Continue/Match in Unbox) + More on the dominant side, flush trailing
+ *      Delete carton isolated at the far edge. This is the record's edit gravity;
+ *      the top chrome row stays navigation-only so a Park never sits by a Delete.
  * Topics live ONLY on this push inspector — never on Unbox History Band 3.
  * Never mounts station Displays push stack on RightRailHost.
  */
@@ -22,17 +26,25 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
-  MoreHorizontal,
-  PackageOpen,
+  Pencil,
+  Printer,
   Search,
   SlidersHorizontal,
 } from '@/components/Icons';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
+import {
+  FLOOR_DELETE_PEER_CLASS,
+  FloorIconButton,
+  FloorOverflowButton,
+  InspectorActionFloor,
+} from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import {
   DETAIL_INSPECTOR_COLLAPSE_EVENT,
   getDetailInspectorCollapsed,
@@ -40,7 +52,6 @@ import {
 } from '@/design-system/shells/detail-stack';
 import { OrderFactList, OrderFactRow } from '@/components/order-record/order-record-card';
 import {
-  PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
 } from '@/components/ui/pane-header';
@@ -53,13 +64,7 @@ import {
   HistoryViewChromeBridge,
   useHistoryViewChromeOptional,
 } from '@/components/receiving/history/history-view-chrome-context';
-import { Button, IconButton } from '@/design-system/primitives';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
+import { IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
 import { isHistoryUnfoundRow } from '@/lib/receiving/history-triage-row';
@@ -70,6 +75,7 @@ import {
   type HistoryInspectorDisplayTopic,
 } from '@/lib/receiving/history-inspector-topics';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
+import { removeReceivingRailByCarton } from '@/lib/queries/receiving-queries';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import {
   deriveCartonReadiness,
@@ -144,13 +150,6 @@ async function fetchLineRow(
   return rows[0] ?? null;
 }
 
-function isEditableTarget(el: EventTarget | null): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  const tag = el.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  return el.isContentEditable;
-}
-
 export function HistoryCartonTriagePanel({
   target,
   onClose,
@@ -160,6 +159,7 @@ export function HistoryCartonTriagePanel({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   // Read here (inside the provider) — the rail body renders under RightRailHost.
   const viewChrome = useHistoryViewChromeOptional();
   const [opening, setOpening] = useState(false);
@@ -268,6 +268,16 @@ export function HistoryCartonTriagePanel({
     [viewOnly, unfound, readiness?.cta],
   );
 
+  // Print + Open in Unbox are dedicated icon peers on the floor now, so the
+  // visible `⋯` overflow holds only the secondary verbs (flag · photo ·
+  // holding) — never a duplicate of a verb that already has its own icon
+  // (golden rule). The Alt-shortcut handler still reads full `moreItems`, so
+  // ⌥P / ⌥U keep keyboard parity with the Print / Edit icons.
+  const moreDisplay = useMemo(
+    () => moreItems.filter((item) => item.key !== 'print' && item.key !== 'unbox'),
+    [moreItems],
+  );
+
   const openInUnbox = useCallback(
     async (opts?: { pairing?: boolean }) => {
       if (opening || !target) return;
@@ -291,6 +301,30 @@ export function HistoryCartonTriagePanel({
     },
     [opening, line, target, router, onClose],
   );
+
+  // Destructive floor — deletes the whole carton (`receiving_carton`), matching
+  // the sibling desk peeks (Orders / Incoming). Throws on failure so
+  // `InspectorFlushDelete` skips its `onDeleted` (keeps the panel open).
+  // Refresh: rail cache mirror + `receiving-lines-table` query (the History grid
+  // re-seeds `localRows` from it) + the shared `receiving-entry-deleted` event.
+  const handleDelete = useCallback(async () => {
+    if (viewOnly || !target) return;
+    const receivingId = target.receivingId;
+    const res = await fetch(
+      `/api/receiving-logs?id=${encodeURIComponent(String(receivingId))}`,
+      { method: 'DELETE' },
+    );
+    if (!res.ok && res.status !== 404) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      const msg = body?.error || `Delete failed (${res.status})`;
+      toast.error(msg);
+      throw new Error(msg);
+    }
+    removeReceivingRailByCarton(queryClient, receivingId);
+    void queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
+    emitReceiving('receiving-entry-deleted', receivingId);
+    toast.success('Carton deleted');
+  }, [viewOnly, target, queryClient]);
 
   const handlePrint = useCallback(() => {
     const sku = (line?.sku || '').trim();
@@ -325,6 +359,13 @@ export function HistoryCartonTriagePanel({
     }
   }, [primaryAction, handlePrint, openInUnbox]);
 
+  // Edit icon = the record's edit gravity: open this carton in Unbox (an
+  // unfound carton opens straight into pairing so Edit doubles as Resolve/Match).
+  const editLabel = unfound ? 'Resolve in Unbox' : 'Open in Unbox';
+  const openEdit = useCallback(() => {
+    void openInUnbox({ pairing: unfound });
+  }, [openInUnbox, unfound]);
+
   const runMoreItem = useCallback(
     (key: string) => {
       switch (key) {
@@ -354,22 +395,23 @@ export function HistoryCartonTriagePanel({
     setNavId(id);
   }, []);
 
-  // Panel-scoped hotkeys — ignore when typing in inputs.
+  // Panel-scoped hotkeys — wedge-safe: topic / More letters require Alt
+  // (bare keys are banned on scan-adjacent desks). Enter stays for primary.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey) {
         return;
       }
-      if (isEditableTarget(event.target)) return;
+      if (isEditableKeyTarget(event.target)) return;
 
       const key = event.key;
-      if (key === 'Enter' && !viewOnly && primaryAction) {
+      if (key === 'Enter' && !event.altKey && !viewOnly && primaryAction) {
         event.preventDefault();
         runPrimary();
         return;
       }
 
-      if (!viewOnly) {
+      if (!viewOnly && event.altKey && !event.shiftKey) {
         if (key >= '1' && key <= '4') {
           const topic = DISPLAY_TOPICS[Number(key) - 1];
           if (topic) {
@@ -518,72 +560,22 @@ export function HistoryCartonTriagePanel({
           </div>
 
           {!viewOnly ? (
+            // Slim key row (H3) — status + short PO/Carton key only. The record
+            // actions (Print · Open in Unbox · More) moved to the bottom dock
+            // (InspectorActionFloor) so the queue-redundant icon hero is gone and
+            // the CTAs anchor at fixed spatial gravity regardless of scroll.
             <div
-              className="flex items-start gap-2 border-t border-border-soft px-2 pb-2 pt-1"
+              className="flex items-center gap-2 border-t border-border-soft px-3 pb-1.5 pt-1"
               data-testid="history-triage-identity"
             >
-              <PaneHeaderIconBadge
-                Icon={PackageOpen}
-                bg="bg-blue-100"
-                tint="text-blue-700"
+              {statusLabel ? (
+                <PaneHeaderStatusPill tone="neutral">{statusLabel}</PaneHeaderStatusPill>
+              ) : null}
+              <PaneHeaderLabel
+                eyebrow={poNumber ? 'Purchase order #' : 'Carton'}
+                value={poNumber ?? `#${target!.receivingId}`}
+                valueTitle={poNumber ?? `Carton #${target!.receivingId}`}
               />
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  {statusLabel ? (
-                    <PaneHeaderStatusPill tone="neutral">{statusLabel}</PaneHeaderStatusPill>
-                  ) : null}
-                  <PaneHeaderLabel
-                    eyebrow={poNumber ? 'Purchase order #' : 'Carton'}
-                    value={poNumber ?? `#${target!.receivingId}`}
-                    valueTitle={poNumber ?? `Carton #${target!.receivingId}`}
-                  />
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                {primaryAction ? (
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    loading={opening}
-                    disabled={opening}
-                    onClick={runPrimary}
-                    data-testid="history-triage-primary-cta"
-                    ariaLabel={primaryAction.label}
-                  >
-                    {primaryAction.label}
-                  </Button>
-                ) : null}
-                {moreItems.length > 0 ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton
-                        size="xs"
-                        tone="neutral"
-                        ariaLabel="More actions"
-                        icon={<MoreHorizontal className="h-4 w-4" />}
-                        disabled={opening}
-                        data-testid="history-triage-more"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {moreItems.map((item) => (
-                        <DropdownMenuItem
-                          key={item.key}
-                          onSelect={() => runMoreItem(item.key)}
-                          className="justify-between gap-4"
-                        >
-                          <span>{item.label}</span>
-                          {item.shortcut ? (
-                            <kbd className="font-mono text-role-micro text-text-faint">
-                              {item.shortcut}
-                            </kbd>
-                          ) : null}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
-              </div>
             </div>
           ) : (
             <div
@@ -721,6 +713,52 @@ export function HistoryCartonTriagePanel({
               backLabel="Back to topics"
             />
           )
+        ) : null}
+
+        {/* Icons-first Macro floor (n=1) — the record's edit gravity:
+            `⋯` More · 🖨 Print · ✏️ Edit (Open in Unbox) · 🗑 Delete as equal
+            fill-width peers, docked BELOW the topic shell so a Park in the top
+            chrome never sits beside the Delete. View-only shell (n=0) never
+            mounts it. Delete grain: `DELETE /api/receiving-logs`. */}
+        {!viewOnly && target ? (
+          <InspectorActionFloor>
+            <FloorOverflowButton
+              items={
+                opening
+                  ? []
+                  : moreDisplay.map((item) => ({
+                      key: item.key,
+                      label: item.label,
+                      shortcut: item.shortcut,
+                      onSelect: () => runMoreItem(item.key),
+                    }))
+              }
+              data-testid="history-triage-more"
+            />
+            <FloorIconButton
+              icon={<Printer />}
+              label={unfound ? 'Print needs a linked SKU' : 'Print'}
+              onClick={handlePrint}
+              disabled={opening || unfound}
+              data-testid="history-triage-print"
+            />
+            <FloorIconButton
+              icon={<Pencil />}
+              label={editLabel}
+              onClick={openEdit}
+              disabled={opening}
+              busy={opening}
+              data-testid="history-triage-primary-cta"
+            />
+            <InspectorFlushDelete
+              onConfirm={handleDelete}
+              onDeleted={onClose}
+              label="Delete carton"
+              confirmLabel="Click again to delete carton"
+              data-testid="history-triage-delete"
+              className={FLOOR_DELETE_PEER_CLASS}
+            />
+          </InspectorActionFloor>
         ) : null}
       </div>
     </DetailStackRailRegistrar>

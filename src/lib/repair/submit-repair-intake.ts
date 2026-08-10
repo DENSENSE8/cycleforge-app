@@ -14,10 +14,9 @@
  * any other throw is an internal error (callers map → 500).
  */
 
-import { createRepair, updateRepairField } from '@/lib/neon/repair-service-queries';
+import { createRepair } from '@/lib/neon/repair-service-queries';
 import { createAssignment } from '@/lib/neon/assignments-queries';
-import { addBusinessDays, createZendeskTicket } from '@/lib/zendesk';
-import { logger } from '@/lib/observability/logger';
+import { addBusinessDays } from '@/lib/zendesk';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
@@ -26,6 +25,10 @@ import { findOrCreateRepairCustomer, linkCustomerToRepair } from '@/lib/neon/cus
 import { put } from '@vercel/blob';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import {
+  createRepairIntakeTicket,
+  type RepairIntakeTicketWork,
+} from '@/lib/repair/create-repair-intake-ticket';
 
 interface SubmitRepairIntakeInput {
   customer?: { name?: string | null; phone?: string | null; email?: string | null } | null;
@@ -38,8 +41,13 @@ interface SubmitRepairIntakeInput {
   assignedTechId?: unknown;
   signatureDataUrl?: string | null;
   signatureStrokes?: unknown;
-  /** Dedupes the Zendesk ticket if the request is replayed. */
+  /** Dedupes the helpdesk ticket if the request is replayed. */
   idempotencyKey?: string;
+  /**
+   * `'create'` (default) — immediate helpdesk create + outbox fallback.
+   * `'skip'` — counter owns enqueue via ticket_work_outbox (avoids double create).
+   */
+  ticketWork?: RepairIntakeTicketWork;
 }
 
 export interface SubmitRepairIntakeResult {
@@ -52,6 +60,8 @@ export interface SubmitRepairIntakeResult {
   documentId: number | null;
   signatureUrl: string | null;
   signatureWarning: string | null;
+  /** Non-fatal helpdesk warning when create was deferred or failed. */
+  ticketWarning: string | null;
 }
 
 /** Thrown when required intake fields are missing — callers map this to HTTP 400. */
@@ -80,6 +90,7 @@ export async function submitRepairIntake(
     signatureDataUrl,
     signatureStrokes,
     idempotencyKey,
+    ticketWork,
   } = input;
 
   const normalizedProductTitle = String(product?.model || '').trim();
@@ -228,34 +239,27 @@ export async function submitRepairIntake(
     }
   }
 
-  // Step 4: Create Zendesk ticket via the Zendesk REST API.
-  // A client-supplied Idempotency-Key dedupes the ticket if the request is
-  // replayed (full route-level idempotency for the repair row is a follow-up).
-  let zendeskTicketNumber: string | null = null;
-  try {
-    zendeskTicketNumber = await createZendeskTicket(
-      {
-        repairServiceId: dbId,
-        repairServiceNumber: finalRSNumber,
-        customerName: customer.name,
-        customerPhone: customer.phone,
-        customerEmail: customer.email || '',
-        productTitle: productString,
-        contactInfo: contactInfo,
-        issue: issueString,
-        serialNumber: normalizedSerialNumber,
-        price: normalizedPrice,
-        notes: normalizedNotes,
-      },
-      { idempotencyKey },
-    );
-    logger.info(`Zendesk ticket created: ${zendeskTicketNumber ?? 'missing ticket number'}`);
-    if (zendeskTicketNumber) {
-      await updateRepairField(dbId, 'ticket_number', zendeskTicketNumber, orgId);
-    }
-  } catch (error: unknown) {
-    console.error('Failed to create Zendesk ticket:', error);
-  }
+  // Step 4: Create helpdesk ticket via the capability facade (claim parity).
+  // Never blocks intake — failures enqueue CREATE_TICKET for retry. Counter
+  // passes ticketWork: 'skip' because it owns the outbox enqueue itself.
+  const ticketResult = await createRepairIntakeTicket({
+    orgId,
+    repairServiceId: dbId,
+    repairServiceNumber: finalRSNumber,
+    customerName: customer.name,
+    customerPhone: customer.phone,
+    customerEmail: customer.email || '',
+    productTitle: productString,
+    contactInfo,
+    issue: issueString,
+    serialNumber: normalizedSerialNumber,
+    price: normalizedPrice,
+    notes: normalizedNotes,
+    idempotencyKey,
+    ticketWork,
+  });
+  const zendeskTicketNumber = ticketResult.zendeskTicketNumber;
+  const ticketWarning = ticketResult.ticketWarning;
 
   // Step 5: Insert work_assignment
   try {
@@ -286,5 +290,6 @@ export async function submitRepairIntake(
     documentId,
     signatureUrl,
     signatureWarning,
+    ticketWarning,
   };
 }

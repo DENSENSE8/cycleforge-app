@@ -4,6 +4,14 @@
  * Inbound desk chrome — Pipeline (on the way) | Docked (landed activity).
  *
  * Unbox Sheets three-band recipe (Incoming consumer):
+ *   House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
+ *   for every staffer — never Chrome-style unpin of a system stage · Pin-list
+ *   cube omitted (honest absence — this is the L1 inbound desk; Unbox embeds the
+ *   inbound collection, not the reverse) · Views on Band 3 (`WorkbenchViewsMenu`
+ *   in the triage `views` slot, never Band-1 leading) · page-pin in GlobalHeader.
+ *   Three pin scopes never share a trigger/store. SoT: source-of-truth.md →
+ *   Workbench Band-1 strip · Left-edge → SCOPE decides its home.
+ *
  *   Band 1 — Pipeline | Docked tabs · labeled Check / Import / Add
  *   Facet  — Triage / Unbox (Docked only; Pipeline has no facet strip)
  *   Band 2 — KPI (+ Pipeline lane note)
@@ -91,6 +99,12 @@ import {
   type IncomingKind,
 } from './IncomingKindFilters';
 import { TILES, TONE } from './incoming-tiles';
+import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
+import {
+  SAVED_VIEW_PARAM_KEYS,
+  SAVED_VIEW_STORAGE_KEY,
+} from '@/lib/station/table-url-params';
+import { parseIncomingView } from '@/lib/receiving/incoming-view';
 
 const LANE_TABS = [
   { id: 'pipeline', label: 'Pipeline', color: 'blue' as const },
@@ -144,6 +158,9 @@ export function IncomingWorkspaceHeader({
 
   const lane: InboundLane = parseInboundLane(searchParams.get('lane'));
   const isPipeline = lane === 'pipeline';
+  const incomingView = parseIncomingView(searchParams.get('incview'));
+  /** Saved views only refine the POS collection — not Email / Recently removed. */
+  const showIncomingViews = isPipeline && incomingView === 'pos';
   const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
     useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.incoming);
   const incomingDetailOpen = useRightRailOccupantOpen(INCOMING_DETAILS_RAIL_ID);
@@ -504,11 +521,19 @@ export function IncomingWorkspaceHeader({
         ) : null}
       </WorkbenchKpiBand>
 
-      {/* Band 3 — find-only command row (Unbox History SoT). Dominant find with
-          in-field refine (source · attention · search field); the right zone is
-          view toggles only — pagination · sort · ▦ · KPI · inspector park. */}
+      {/* Band 3 — find + Views ▾ (POS Pipeline) + view toggles (pagination ·
+          sort · ▦ · KPI · inspector). */}
       <WorkbenchTriageBand
         controlsSlotRef={controlsSlotRef}
+        views={
+          showIncomingViews ? (
+            <WorkbenchViewsMenu
+              storageKey={SAVED_VIEW_STORAGE_KEY.receiving_incoming}
+              paramKeys={SAVED_VIEW_PARAM_KEYS.receiving_incoming}
+              emptyHint="No saved views yet — filter Incoming (source, delivery, PO date), then save it here."
+            />
+          ) : null
+        }
         trailing={
           <WorkbenchInspectorToggle
             open={incomingDetailOpen}

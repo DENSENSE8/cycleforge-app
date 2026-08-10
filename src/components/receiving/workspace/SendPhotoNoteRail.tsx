@@ -31,7 +31,7 @@ export function SendPhotoNoteRail({
     <DetailStackRailRegistrar
       id="detail:photo-note"
       // Station edge: /unbox, /triage and /testing already push this edge with
-      // `UnboxPushColumn`, and two push mechanisms on one edge is exactly what
+      // `StationDisplaysPushColumn`, and two push mechanisms on one edge is exactly what
       // the right-rail store exists to prevent. Stays a float pending the
       // right-edge ownership ruling.
       push={false}

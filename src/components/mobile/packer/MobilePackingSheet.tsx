@@ -14,6 +14,10 @@ import {
   SerialChip,
   getLast8,
 } from '@/components/ui/CopyChip';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 
 interface MobilePackingSheetProps {
@@ -70,28 +74,35 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
   return (
     <BottomSheet open={open} onClose={onClose} maxWidth="32rem">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${getSourceDotBg(row)}`} />
-            <div className="line-clamp-2 text-sm font-semibold text-text-default">
-              {productTitle}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pl-4">
-            <span className="shrink-0 text-role-caption font-semibold uppercase tracking-widest">
-              <span className={quantity > 1 ? 'text-text-warning' : 'text-text-muted'}>
+        <div className="flex items-start gap-2">
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${getSourceDotBg(row)}`} />
+          <StackedRowIdentity
+            className="min-w-0 flex-1"
+            title={
+              <div className="line-clamp-2 text-sm font-semibold text-text-default">
+                {productTitle}
+              </div>
+            }
+            keys={joinStackedIdentityKeys([
+              <span
+                key="qty"
+                className={`shrink-0 text-role-caption font-semibold uppercase tracking-widest ${
+                  quantity > 1 ? 'text-text-warning' : 'text-text-muted'
+                }`}
+              >
                 {quantity}
-              </span>
-            </span>
-
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <OrderIdChip value={orderId} display={getLast8(orderId)} />
-              <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} />
-              <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />
-              <SerialChip value={serialValue} />
-            </div>
-          </div>
+              </span>,
+              <OrderIdChip key="order" value={orderId} display={getLast8(orderId)} dense />,
+              <SkuScanRefChip key="sku" value={skuValue} display={getLast8(skuValue)} dense />,
+              <TrackingChip
+                key="tracking"
+                value={trackingValue}
+                display={getLast8(trackingValue)}
+                dense
+              />,
+              <SerialChip key="serial" value={serialValue} />,
+            ])}
+          />
         </div>
 
         <OrderPackChecklist

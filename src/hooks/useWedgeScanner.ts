@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 /**
  * Listens globally for HID wedge / Bluetooth scanner input.
@@ -30,14 +31,6 @@ export interface UseWedgeScannerOptions {
   minLength?: number;
   /** Disable the listener entirely. */
   disabled?: boolean;
-}
-
-function isEditable(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  return false;
 }
 
 export function useWedgeScanner(opts: UseWedgeScannerOptions): void {
@@ -90,7 +83,7 @@ export function useWedgeScanner(opts: UseWedgeScannerOptions): void {
         reset();
         return;
       }
-      if (isEditable(e.target)) {
+      if (isEditableKeyTarget(e.target)) {
         // User is typing into a real field — let it through.
         reset();
         return;

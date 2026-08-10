@@ -49,6 +49,17 @@ describe('conditionGradeStatusChip', () => {
     assert.equal(a.dotClass, 'bg-emerald-600');
   });
 
+  it('paints PARTS brown (orange-900), not Brand New yellow / amber', () => {
+    const chip = conditionGradeStatusChip('PARTS');
+    assert.ok(chip);
+    assert.match(chip.toneClass, /bg-orange-50/);
+    assert.match(chip.toneClass, /text-orange-900/);
+    assert.doesNotMatch(chip.toneClass, /amber|yellow/);
+    assert.equal(chip.dotClass, 'bg-orange-900');
+    assert.doesNotMatch(CONDITION_GRADE_TONE.PARTS.inactive, /amber|yellow/);
+    assert.match(CONDITION_GRADE_TONE.PARTS.inactive, /text-orange-900/);
+  });
+
   it('returns null for empty / dash so callers keep the set control', () => {
     assert.equal(conditionGradeStatusChip(null), null);
     assert.equal(conditionGradeStatusChip(''), null);

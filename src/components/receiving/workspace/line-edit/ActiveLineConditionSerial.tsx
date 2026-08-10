@@ -14,6 +14,8 @@ import type { UnitSlotView } from "../UnitSlotList";
 import { markAllEmptyReceivingUnitsSerialAbsent } from "../receiving-label-helpers";
 import { useSetting } from "@/hooks/useSettings";
 import { requestConfirm } from "@/design-system/components/confirm";
+import { useScopedReceivingPhotos } from "@/hooks/useScopedReceivingPhotos";
+import { PoLineItemPhotoPeers } from "./PoLineItemPhotoPeers";
 
 type SerialLookupView = Pick<
   ComponentProps<typeof SerialMatchResult>,
@@ -32,10 +34,9 @@ type SerialLookupView = Pick<
  * handlers. The `requestConfirm` guards on delete are gated by the
  * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
  *
- * Main Unbox omits this card when the Action Dock owns capture (PO meta is the
- * ledger). Testing / unmatched keep the interactive card. Optional
- * `itemPhotoSlot` remains for lanes that still want a labeled item-evidence
- * row; omit it and the row is absent.
+ * Unbox dual loci: dock owns wedge/procedure; active PO line mounts progressive
+ * Condition → Serial → Photos (`progressiveCapture`) for mouse go-back edit
+ * (`autoFocusSerial` off). Testing / unmatched mount without progressive photos.
  */
 export function ActiveLineConditionSerial({
   serials,
@@ -70,6 +71,10 @@ export function ActiveLineConditionSerial({
   autoFocusSerial = true,
   showSavedChips = false,
   forceUnitRows = false,
+  progressiveCapture = false,
+  staffId = 0,
+  poRef = null,
+  poRouteRef = null,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -137,10 +142,18 @@ export function ActiveLineConditionSerial({
   /** Programmatic focus target for the dock Add serial handoff. */
   serialInputRef?: RefObject<HTMLInputElement | null>;
   /**
-   * Optional item-evidence control. Main Unbox omits this (dock owns photos).
-   * When provided, renders the labeled Item photos row above the body.
+   * Optional item-evidence control (Units explosion / flush lanes). Prefer
+   * {@link progressiveCapture} on Unbox centre for the joined Photos stage.
    */
   itemPhotoSlot?: ReactNode;
+  /**
+   * Unbox centre: Condition (left) → Serial (middle) → Photos peers on the
+   * joined bar. Uses {@link PoLineItemPhotoPeers} for send/upload.
+   */
+  progressiveCapture?: boolean;
+  staffId?: number;
+  poRef?: string | null;
+  poRouteRef?: string | null;
   onSubmitSerial: (
     raw?: string,
     conditionGrade?: string | null,
@@ -169,6 +182,23 @@ export function ActiveLineConditionSerial({
   // Units Displays always explodes into per-serial rows. Centre accordion
   // still uses qty>1 for ReceivingUnitRows vs single SerialCard.
   const isMultiQty = forceUnitRows || (quantityExpected ?? 0) > 1;
+  const progressive =
+    progressiveCapture &&
+    !isMultiQty &&
+    !flush &&
+    receivingId != null &&
+    receivingId > 0 &&
+    lineId > 0;
+  const itemPhotoScope = {
+    receivingId: receivingId ?? 0,
+    receivingLineId: lineId,
+    stage: 'unbox_item' as const,
+    poRef: poRef ?? null,
+  };
+  const { photos: itemPhotos } = useScopedReceivingPhotos(itemPhotoScope, {
+    enabled: progressive,
+  });
+  const itemPhotoCount = itemPhotos.length;
   // Match band only for resolved outcomes. Searching is a spinner in the
   // trailing check cell — never a band under the field.
   const matchResult =
@@ -286,7 +316,9 @@ export function ActiveLineConditionSerial({
           <div
             className={
               flush && activeRowLeading
-                ? 'flex min-w-0 items-stretch gap-0 border-b border-border-hairline'
+                ? // Outermost joined shell owns top+bottom hairlines + soft
+                  // column seam into Serial (one seam each, Serial stays border-0).
+                  'flex min-w-0 items-stretch gap-0 border-y border-border-hairline divide-x divide-border-soft'
                 : undefined
             }
           >
@@ -302,10 +334,11 @@ export function ActiveLineConditionSerial({
                 isSubmitting={serialSubmitting}
                 disabled={!receivingId}
                 embedded
+                omitBottomHairline={Boolean(flush && activeRowLeading)}
                 autoFocusInput={autoFocusSerial}
                 focusKey={lineId}
                 externalInputRef={serialInputRef}
-                showSavedChips={showSavedChips}
+                showSavedChips={showSavedChips && !progressive}
                 editingSerial={editingSerial}
                 onEditingSerialChange={onEditingSerialChange}
                 resultSlot={matchResult}
@@ -315,6 +348,23 @@ export function ActiveLineConditionSerial({
                 // Collapsed picker: filled circle (grade hue) + white Tags icon.
                 // Meta-row ConditionGradeChip stays the labeled readout.
                 collapsedConditionLabel={true}
+                progressiveCapture={progressive}
+                photoCount={itemPhotoCount}
+                renderPhotoStage={
+                  progressive
+                    ? ({ expanded }) => (
+                        <PoLineItemPhotoPeers
+                          receivingId={receivingId!}
+                          staffId={staffId}
+                          receivingLineId={lineId}
+                          poRef={poRef}
+                          poRouteRef={poRouteRef}
+                          expanded={expanded}
+                          photoCount={itemPhotoCount}
+                        />
+                      )
+                    : undefined
+                }
                 onAdd={(sn) => onSubmitSerial(sn, cond)}
                 noSerialActive={serialAbsent}
                 onMarkNoSerial={() =>

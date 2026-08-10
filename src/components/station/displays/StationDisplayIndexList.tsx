@@ -10,8 +10,9 @@
  *
  * Character-select: ↑↓ wrap via {@link useArmedCursorList}; armed face =
  * leading `>` + bottom accent track + marker pulse — no left rail / row wash.
- * Enter/Space/click opens the leaf in the **same turn** (never a hit-marker
- * DOM withhold). Footer `Filter displays…` drives the same cursor via
+ * Enter/Space/pointerdown opens the leaf in the **same turn** (never a
+ * hit-marker DOM withhold; mouse matches keyboard — no focus→arm frame before
+ * the rail updates). Footer `Filter displays…` drives the same cursor via
  * {@link StationDisplayIndexFilterKeys} (↑↓ without stealing focus; Enter
  * opens; Esc clears the query). Idle rows stay flush; tone chip stays a
  * trailing sibling. No Tab trap, no bare digits (wedge-safe). No UI audio.
@@ -143,6 +144,8 @@ export const StationDisplayIndexList = forwardRef<
     cursorId,
     setCursorId,
     commitArmed,
+    handleCommitPointerDown,
+    handleCommitClick,
     handleNavKeyDown,
     handleFilterNavKeyDown,
   } = useArmedCursorList({
@@ -357,8 +360,11 @@ export const StationDisplayIndexList = forwardRef<
                         if (el) rowRefs.current.set(row.id, el);
                         else rowRefs.current.delete(row.id);
                       }}
+                      onPointerDown={(e) => {
+                        handleCommitPointerDown(e, row.id, onSelect);
+                      }}
                       onClick={() => {
-                        commitArmed(row.id, onSelect);
+                        handleCommitClick(row.id, onSelect);
                       }}
                       onFocus={() => setCursorId(row.id)}
                       onKeyDown={(e) => onRowKeyDown(e, row.id)}

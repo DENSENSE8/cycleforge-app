@@ -1,19 +1,23 @@
 'use client';
 
 /**
- * Unbox Displays → Units topic — nested Units · Prebox on one carton.
+ * Unbox Displays → Units topic — Units · Prebox on one carton.
  *
- * Strip cell is "Units"; this host owns the verb switcher. URL:
- * `?display=units&unitsAction=units|prebox`.
+ * Armed-row verbs + URL drills (Photos twin):
+ * `?display=units` → Actions list · `?unitsAction=units|prebox` → bodies.
  *
  * Units = active-line explosion (serials · photos · siblings).
  * Prebox = create prebox label checklist (flush, not a floating overlay).
  */
 
-import { useMemo, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Barcode, Package } from '@/components/Icons';
-import { TabDisplay } from '@/design-system/components';
+import { useDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
+import {
+  StationArmedVerbList,
+  type StationArmedVerb,
+} from '@/components/station/displays/StationArmedVerbList';
 import { cn } from '@/utils/_cn';
 import { PreboxWizard, type PreboxWizardSerial } from '@/components/receiving/PreboxWizard';
 import { UnitsExplosionDisplay } from '../UnitsExplosionDisplay';
@@ -25,16 +29,6 @@ import {
   type SerialMatchedOrder,
 } from '../SerialMatchResult';
 import type { ActiveRowSerial } from '../PoLinesAccordion';
-
-const UNITS_TABS = [
-  { id: 'units', label: 'Units', icon: Barcode },
-  { id: 'prebox', label: 'Prebox', icon: Package },
-] as const;
-
-interface ApiResponse {
-  success: boolean;
-  receiving_lines: ReceivingLineRow[];
-}
 
 /** Narrow controller surface shared with {@link UnitsExplosionDisplay}. */
 interface UnitsDisplayController {
@@ -65,7 +59,10 @@ interface UnitsDisplayController {
 
 function usePreboxSerials(receivingId: number | null) {
   const enabled = typeof receivingId === 'number' && receivingId > 0;
-  const { data, isPending } = useQuery<ApiResponse>({
+  const { data, isPending } = useQuery<{
+    success: boolean;
+    receiving_lines: ReceivingLineRow[];
+  }>({
     queryKey: receivingSiblingsQueryKey(receivingId ?? 0),
     queryFn: async () => {
       const res = await fetch(
@@ -123,6 +120,15 @@ function PreboxDisplayBody({ receivingId }: { receivingId: number | null }) {
   );
 }
 
+const UNITS_DRILL_LABEL: Record<'units' | 'prebox', string> = {
+  units: 'Units',
+  prebox: 'Prebox',
+};
+
+function isUnitsDrill(action: UnboxUnitsAction): action is 'units' | 'prebox' {
+  return action === 'units' || action === 'prebox';
+}
+
 export function UnitsDisplayHost({
   receivingId,
   activeLineId,
@@ -138,45 +144,87 @@ export function UnitsDisplayHost({
   c: UnitsDisplayController;
   action: UnboxUnitsAction;
   onActionChange: (action: UnboxUnitsAction) => void;
-  /** When false, Prebox nested tab is hidden (no serials yet). */
+  /** When false, Prebox verb is hidden (no serials yet). */
   hasPrebox: boolean;
 }) {
-  const tabs = hasPrebox ? [...UNITS_TABS] : [UNITS_TABS[0]];
-  const resolved: UnboxUnitsAction =
-    action === 'prebox' && hasPrebox ? 'prebox' : 'units';
+  const { setTrail, setOnNestedPop, setOnNestedRestore } = useDisplaysLeafChrome();
+
+  const verbs = useMemo<StationArmedVerb[]>(() => {
+    const rows: StationArmedVerb[] = [
+      {
+        id: 'units',
+        label: 'Units',
+        preferredKey: 'u',
+        icon: (p) => <Barcode className={p.className} />,
+      },
+    ];
+    if (hasPrebox) {
+      rows.push({
+        id: 'prebox',
+        label: 'Prebox',
+        preferredKey: 'b',
+        icon: (p) => <Package className={p.className} />,
+      });
+    }
+    return rows;
+  }, [hasPrebox]);
+
+  const verb: UnboxUnitsAction = isUnitsDrill(action)
+    ? action === 'prebox' && !hasPrebox
+      ? 'actions'
+      : action
+    : 'actions';
+
+  useEffect(() => {
+    if (verb === 'actions') {
+      setTrail([{ id: 'units', label: 'Units' }]);
+    } else {
+      setTrail([
+        { id: 'units', label: 'Units' },
+        { id: verb, label: UNITS_DRILL_LABEL[verb] },
+      ]);
+    }
+  }, [verb, setTrail]);
+
+  useEffect(() => {
+    setOnNestedPop(() => onActionChange('actions'));
+    return () => setOnNestedPop(null);
+  }, [setOnNestedPop, onActionChange]);
+
+  useEffect(() => {
+    setOnNestedRestore((segmentId) => {
+      if (isUnitsDrill(segmentId as UnboxUnitsAction)) {
+        onActionChange(segmentId as UnboxUnitsAction);
+      }
+    });
+    return () => setOnNestedRestore(null);
+  }, [setOnNestedRestore, onActionChange]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-0" data-testid="unbox-units-display">
-      {tabs.length > 1 ? (
-        <div className="shrink-0">
-          <TabDisplay
-            tabs={tabs}
-            activeTab={resolved}
-            onTabChange={(id) => onActionChange(id as UnboxUnitsAction)}
-            density="nested"
-            fit="fill"
-            appearance="underline"
-            aria-label="Units actions"
-          />
+      {verb === 'actions' ? (
+        <StationArmedVerbList
+          verbs={verbs}
+          listLabel="Units actions"
+          testId="unbox-units-actions"
+          onCommit={(id) => onActionChange(id as UnboxUnitsAction)}
+        />
+      ) : null}
+      {verb === 'prebox' ? (
+        <div className={cn('min-h-0 flex-1 px-0')}>
+          <PreboxDisplayBody receivingId={receivingId} />
         </div>
       ) : null}
-      <div
-        className={cn(
-          'min-h-0 flex-1 px-0',
-          // Units · Prebox both sit edge-to-edge — rows own any readable inset.
-        )}
-      >
-        {resolved === 'prebox' ? (
-          <PreboxDisplayBody receivingId={receivingId} />
-        ) : (
+      {verb === 'units' ? (
+        <div className={cn('min-h-0 flex-1 px-0')}>
           <UnitsExplosionDisplay
             receivingId={receivingId}
             activeLineId={activeLineId}
             staffId={staffId}
             c={c}
           />
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

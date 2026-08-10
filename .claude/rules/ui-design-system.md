@@ -101,7 +101,7 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Workbench (`ops`):** primary = list **or** table **or** board **or** master–detail (data shape decides). Fact stacks for record bodies. Scroll region `flex-1 overflow-y-auto`; sticky chrome with `border-t`/`border-b` as needed.
   - **Scoped search chrome:** always-open `TechRailSearchBar` `variant="chrome"` (`@/components/sidebar/tech/TechRailSearchBar`) — same primitive as MasterNav / station-rail footers (`variant="rail"`). Leading Search glyph **inside** the field + **hover-reveal paste** (leftmost trailing control). Field-density filters seat in `trailingSuffix` (after paste); context-panel rail footers auto-seat `RailFilterCollapseButton` in the age column. The retired icon-first `ToolbarSearchToggle` is deleted.
     - **Entry-path surfaces** may still mount a bare always-open `SearchField` / `SearchBar` when search **is** the job (not a list refinement):
-      1. **`/ops/photos` (Media Library)** — always-open `SearchField` in the `WorkbenchChromeHeader` `search` slot (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket).
+      1. **`/ops/photos` (Media Library)** — always-open `SearchField` (approved 2026-07-28). Photo-*evidence* archive whose #1 job is exact-identifier retrieval (PO / serial / claim ticket). **It owns a whole band** (2026-08-09): the surface is rail-less with Band 1 tabs · **Band 2 search** · Band 3 path strip, a documented inversion of Band 2 = KPI / Band 3 = find — there is no KPI band to displace, and a control that IS the job does not share a row with layout toggles. Row-narrowing facets ride the field's `trailingSuffix`. Recipe: [`display/media-library.md`](display/media-library.md).
       2. **`/search`** — cross-entity find; **`GlobalHeaderSearch`** is the sole
          entry field (synced to `?q=`). Typing / resolving here *is* the job —
          the header `SearchPendingBar` is the **only** pending chrome while
@@ -212,7 +212,9 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
   activity face — `CompactActivityRow` + `RailRowBody`: status **dot** · title · **one** fact
   (qty / state) · short age (`formatLaneAgeCompact` → `4h`). Never a chat-notification twin
   (large kind glyph · `4 hrs ago` · chip/pill parade). Distinct from `StackedRowIdentity`
-  (title → typed `CopyChip` keys). Detail + guard: `source-of-truth.md` → Compact activity row.
+  (title → typed `CopyChip` keys — the **narrow / small-width two-row** face for drill
+  parents, pickers, sync rows, repair trays; join keys with `joinStackedIdentityKeys`).
+  Detail + guard: `source-of-truth.md` → Compact activity row · Stacked row identity.
 - **Queue/station left edge — list & accordion rows only** (`QUEUE_ROW` in
   `src/components/ui/queue-row-chrome.ts` + `META_COL` in `RowMetaColumns.tsx`):
   - Stack: `QUEUE_ROW.px` → optional select gutter (`QUEUE_ROW.selectGutter`) → `META_COL` dot track → title.

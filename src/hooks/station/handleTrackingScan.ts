@@ -19,6 +19,13 @@ export async function handleTrackingScan(
 
   try {
     const normalizedInput = normalizeTrackingNumber(input);
+    const packLocationId = ctx.getArmedPackLocationId?.() ?? null;
+    if (packLocationId == null) {
+      ctx.setErrorMessage('Scan or select a packing station before marking ready to pack');
+      ctx.setIsLoading(false);
+      return;
+    }
+
     const res = await fetch('/api/tech/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -27,6 +34,7 @@ export async function handleTrackingScan(
         value: normalizedInput,
         techId: ctx.userId,
         idempotencyKey: ctx.newIdempotencyKey(),
+        packLocationId,
       }),
     });
     const data = await res.json();
@@ -34,7 +42,9 @@ export async function handleTrackingScan(
     if (!res.ok || !data.found) {
       const msg = data?.error
         ? `Scan error: ${data.error}`
-        : 'Tracking number not found — logged to exceptions queue.';
+        : data?.code === 'PACK_STATION_REQUIRED'
+          ? 'Scan or select a packing station before marking ready to pack'
+          : 'Tracking number not found — logged to exceptions queue.';
       ctx.setErrorMessage(msg);
       ctx.syncActiveOrderState(null);
       ctx.clearManuals();
@@ -72,7 +82,13 @@ export async function handleTrackingScan(
       sourceType: data.orderFound === false ? 'exception' : undefined,
       scanSessionId: typeof data.scanSessionId === 'string' ? data.scanSessionId : null,
       inlineMicrocopy: trackingMicrocopy,
+      packLocationId: data.packPlacement?.locationId ?? null,
+      packLocationName: data.packPlacement?.locationName ?? null,
     });
+    if (data.packPlacement) {
+      void ctx.queryClient.invalidateQueries({ queryKey: ['orders', 'pack-placement'] });
+      void ctx.queryClient.invalidateQueries({ queryKey: ['orders', 'queue-counts'] });
+    }
 
     // Exception sessions are amber-card honesty — never a success flash that
     // reads as "order loaded" (Station §6 / CF-02). Matched orders may whisper.

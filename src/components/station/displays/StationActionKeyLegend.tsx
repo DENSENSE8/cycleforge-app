@@ -1,18 +1,21 @@
 'use client';
 
 /**
- * Station Action Plane — persistent key-legend floor for Displays leaves.
+ * Station Action Plane — leaf key bindings for Displays.
  *
- * Leaf-scoped F-keys / modifiers. Skips when focus is on an editable
- * (aligns with {@link useWedgeScanner} `isEditable` skip). Esc stays on
- * {@link StationDisplaysPushStack} — do not bind Escape here.
+ * Leaf-scoped F-keys / modifiers via {@link useStationActionKeyBindings}.
+ * Skips when focus is on an editable ({@link isEditableKeyTarget}). Esc stays
+ * on {@link StationDisplaysPushStack} — do not bind Escape here.
+ *
+ * Painted KeyLegend floor chrome was retired with Inventory's leaf-dismiss
+ * footer (stack `→|` only). Bindings stay silent; reintroduce a painted floor
+ * only by growing this module when a leaf needs visible chords again.
  *
  * Not desk {@link InspectorActionFloor}. Law: Station Action vs Context planes.
  */
 
-import { useEffect, useRef, type ReactNode } from 'react';
-import { FlushTerminalFooter } from '@/design-system/primitives';
-import { cn } from '@/utils/_cn';
+import { useEffect, useRef } from 'react';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 export type StationActionKeyBinding = {
   /** Operator-facing chord, e.g. `F2` or `⌘S`. */
@@ -26,13 +29,6 @@ export type StationActionKeyBinding = {
   disabled?: boolean;
   onAction: () => void;
 };
-
-function isEditable(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-}
 
 function matchBinding(e: KeyboardEvent, b: StationActionKeyBinding): boolean {
   if (b.disabled) return false;
@@ -60,7 +56,14 @@ export function useStationActionKeyBindings(
     if (!enabled || typeof window === 'undefined') return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isEditable(e.target)) return;
+      // Textareas block most chords — but F-keys (Refresh) and ⌘/Ctrl+S (Save)
+      // must still work inside Inventory PO notes / line description fields.
+      if (isEditableKeyTarget(e.target)) {
+        const isFunctionKey = /^F\d{1,2}$/.test(e.code);
+        const isSaveChord =
+          e.code === 'KeyS' && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey;
+        if (!isFunctionKey && !isSaveChord) return;
+      }
       for (const b of bindingsRef.current) {
         if (!matchBinding(e, b)) continue;
         e.preventDefault();
@@ -77,47 +80,4 @@ export function useStationActionKeyBindings(
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [enabled]);
-}
-
-export function StationActionKeyLegend({
-  bindings,
-  leading,
-  className,
-  'data-testid': testId = 'station-action-key-legend',
-}: {
-  bindings: StationActionKeyBinding[];
-  leading?: ReactNode;
-  className?: string;
-  'data-testid'?: string;
-}) {
-  if (bindings.length === 0 && leading == null) return null;
-
-  return (
-    <FlushTerminalFooter
-      layout="cluster"
-      leading={leading}
-      className={cn(className)}
-      data-testid={testId}
-    >
-      <div
-        className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5"
-        data-testid={`${testId}-chords`}
-      >
-        {bindings.map((b) => (
-          <span
-            key={`${b.chord}-${b.label}`}
-            className={cn(
-              'inline-flex items-baseline gap-1 text-role-micro font-medium text-text-muted',
-              b.disabled && 'opacity-40',
-            )}
-          >
-            <kbd className="rounded-none border border-border-hairline bg-surface-sunken px-1 py-0.5 font-mono text-role-micro text-text-default">
-              {b.chord}
-            </kbd>
-            <span>{b.label}</span>
-          </span>
-        ))}
-      </div>
-    </FlushTerminalFooter>
-  );
 }

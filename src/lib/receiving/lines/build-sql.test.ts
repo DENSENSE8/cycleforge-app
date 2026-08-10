@@ -457,6 +457,30 @@ test('serials column: rlt.serial_projection surfaced as `serials` in all list bu
   // suites above; this just pins the projection read as intentional, not incidental.
 });
 
+test('?id= and ?receiving_id= surface zoho_status from zoho_po_mirror', () => {
+  // Inventory Refresh re-fetches via ?id= then dispatchLine. Dropping these
+  // columns nulls client zoho_status → coarse paint stays UNBOXED while the
+  // Information leaf (dossier/mirror) shows RECEIVED.
+  const byId = buildReceivingLineByIdSql(4821, ORG);
+  const byReceiving = buildReceivingLinesByReceivingIdSql(917, ORG);
+  for (const [label, sql] of [
+    ['by-id', byId.sql],
+    ['by-receiving', byReceiving.lines.sql],
+  ] as const) {
+    assert.match(sql, /mirror\.status\s+AS zoho_status/, `${label} must SELECT zoho_status`);
+    assert.match(
+      sql,
+      /mirror\.last_synced_at::text\s+AS zoho_status_synced_at/,
+      `${label} must SELECT zoho_status_synced_at`,
+    );
+    assert.match(
+      sql,
+      /LEFT JOIN zoho_po_mirror mirror/,
+      `${label} must join zoho_po_mirror`,
+    );
+  }
+});
+
 // ── ?tracking_in= — the bulk paste filter, and the lane relaxation it earns ───
 
 const listFor = (qs: string, opts: Partial<LegacySqlOpts> = {}) =>

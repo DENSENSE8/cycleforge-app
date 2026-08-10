@@ -109,7 +109,7 @@ async function hoverRotateTooltip(page: Page) {
 
 async function openLightbox(page: Page) {
   await page.goto('/ops/photos?view=grid-sm');
-  await expect(page.getByText(/photos? in view/i)).toBeVisible();
+  await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
   const tile = page.getByTestId('photo-tile').first();
   if (!(await tile.count())) test.skip(true, 'no photos seeded in this environment');
   await tile.click();

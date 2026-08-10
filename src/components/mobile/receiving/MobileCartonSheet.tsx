@@ -15,6 +15,10 @@ import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import {
   conditionGradeTableLabel,
@@ -273,51 +277,55 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
   return (
     <BottomSheet open={open} onClose={onClose} maxWidth="32rem">
       <div className="flex flex-col gap-4">
-        {/* Header — mirrors MobileReceivingRow: title + meta on the left, chips on the right. */}
-        <div className="flex flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <HoverTooltip label={statusDotTip} asChild>
+        {/* Header — StackedRowIdentity: title → qty/condition · PO · tracking. */}
+        <div className="flex items-start gap-2">
+          <HoverTooltip label={statusDotTip} asChild>
+            <span
+              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(row.workflow_status, qtyReceived, row.quantity_expected)}`}
+            />
+          </HoverTooltip>
+          <StackedRowIdentity
+            className="min-w-0 flex-1"
+            title={
+              <div className="line-clamp-2 text-sm font-semibold text-text-default">
+                {productTitle}
+              </div>
+            }
+            keys={joinStackedIdentityKeys([
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(row.workflow_status, qtyReceived, row.quantity_expected)}`}
-              />
-            </HoverTooltip>
-            <div className="line-clamp-2 text-sm font-semibold text-text-default">
-              {productTitle}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pl-4">
-            <span className="flex shrink-0 items-center gap-1 text-role-caption font-semibold uppercase tracking-widest">
-              <span
-                className={
-                  qtyExpected > 1 && qtyReceived < qtyExpected
-                    ? 'text-text-warning'
-                    : row.quantity_expected && qtyReceived >= row.quantity_expected
-                      ? 'text-emerald-600'
-                      : 'text-text-muted'
-                }
+                key="qty-cond"
+                className="flex shrink-0 items-center gap-1 text-role-caption font-semibold uppercase tracking-widest"
               >
-                {quantityText}
-              </span>
-              <span className="text-text-faint">•</span>
-              <span
-                className={cn(
-                  conditionGradeTextClass(condGrade),
-                  conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
-                )}
-              >
-                {conditionLabel}
-              </span>
-            </span>
-
-            {/* No serial chip: a carton's serials render as one comma-joined
-                value, so a multi-unit carton blows the row out. Serials stay on
-                the surfaces that show them per unit. */}
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <OrderIdChip value={poValue} display={getLast8(poValue)} />
-              <TrackingChip value={trackingValue} display={getLast8(trackingValue)} />
-            </div>
-          </div>
+                <span
+                  className={
+                    qtyExpected > 1 && qtyReceived < qtyExpected
+                      ? 'text-text-warning'
+                      : row.quantity_expected && qtyReceived >= row.quantity_expected
+                        ? 'text-emerald-600'
+                        : 'text-text-muted'
+                  }
+                >
+                  {quantityText}
+                </span>
+                <span className="text-text-faint">•</span>
+                <span
+                  className={cn(
+                    conditionGradeTextClass(condGrade),
+                    conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
+                  )}
+                >
+                  {conditionLabel}
+                </span>
+              </span>,
+              <OrderIdChip key="po" value={poValue} display={getLast8(poValue)} dense />,
+              <TrackingChip
+                key="tracking"
+                value={trackingValue}
+                display={getLast8(trackingValue)}
+                dense
+              />,
+            ])}
+          />
         </div>
 
         {receivingId != null && row.receiving_source === 'unmatched' ? (

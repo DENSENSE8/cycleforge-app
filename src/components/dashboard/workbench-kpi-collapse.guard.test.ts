@@ -162,14 +162,23 @@ describe('Workbench KPI snap-collapse SoT', () => {
     );
   });
 
-  it('KPI band keeps children mounted (height animate — no AnimatePresence unmount)', () => {
+  it('KPI band snaps instantly — no layout tween; children stay mounted', () => {
     const src = read('src/components/dashboard/workbench-kpi-collapse.tsx');
     assert.doesNotMatch(
       src,
-      /AnimatePresence/,
-      'unmounting KPI body on hide remount-flashes the metrics cluster',
+      /AnimatePresence|framerPresence|framerTransition|from ['"]@\/design-system\/motion['"]|\bmotion\./,
+      'Band 2 show/hide must be instant — never collapseHeight / motion tween that pushes the sheet',
     );
-    assert.match(src, /framerPresence\.collapseHeight\.(animate|exit)/);
+    assert.doesNotMatch(
+      src,
+      /transition[-:]|duration-|animate=/,
+      'no CSS or motion transition on KPI open/close',
+    );
+    assert.match(
+      src,
+      /hidden=\{!open\}/,
+      'closed band uses hidden (instant layout free; React tree stays mounted)',
+    );
     assert.match(src, /\{children\}/);
   });
 });

@@ -79,8 +79,10 @@ type OpenMenu = 'none' | 'more' | 'history' | 'feedback' | 'phone-qr';
  *
  * Floor band = {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-8` · full spine
  * width · shared hairline with context-rail filters / Displays `→|`). Identity
- * is one truncated name line; role stays in the ⋯ menu — a two-line stack
- * cannot share the station floor height.
+ * is one truncated name line inside the flex-1 ⋯ hit target; role stays in the
+ * ⋯ menu — a two-line stack cannot share the station floor height. Sign-out
+ * is a flush trailing square — idle muted like the ⋯ peer; the full hit
+ * square (wash + glyph + glow) turns danger-red on hover, never idle.
  */
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -102,39 +104,50 @@ export function StaffAccountFooter({ className }: { className?: string }) {
   const staffName = user.name ?? '';
   const showPhoneHistory = !!settings.actions.phoneHistory;
   const moreOpen = menu === 'more';
+  const displayName = staffName || `Staff #${user.staffId}`;
 
   return (
     <div className={cn('w-full shrink-0', className)} data-staff-account-footer>
       <div
         ref={rowRef}
-        className={cn(STATION_COLUMN_FOOTER_BAND_FACE, 'gap-1 px-2')}
+        className={cn(STATION_COLUMN_FOOTER_BAND_FACE, 'gap-0 pl-2 pr-0')}
       >
         {/* Click the mark to change colour / photo — not Settings. */}
         <StaffAvatarEditor markSize="xs" />
-        <div className="min-w-0 flex-1 truncate text-role-nav font-medium leading-none text-text-default">
-          {staffName || `Staff #${user.staffId}`}
-        </div>
+        {/* Flex-1 ⋯ fills everything left of sign-out — name + dots, no dead gap. */}
         <HoverTooltip label="Account details" asChild>
-          <IconButton
+          <button
             type="button"
-            size="xs"
             onClick={() => setMenu((m) => (m === 'more' ? 'none' : 'more'))}
-            ariaLabel="Account details"
+            aria-label="Account details"
             aria-expanded={moreOpen}
-            className="shrink-0 rounded-none text-text-faint hover:bg-surface-hover hover:text-text-default"
-            icon={<MoreHorizontal className="h-3.5 w-3.5" />}
-          />
+            className={cn(
+              'ds-raw-button flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-none px-1.5',
+              'text-text-faint hover:bg-surface-hover hover:text-text-default',
+              moreOpen && 'bg-surface-hover text-text-default',
+            )}
+          >
+            <span className="min-w-0 flex-1 truncate text-left text-role-nav font-medium leading-none text-text-default">
+              {displayName}
+            </span>
+            <MoreHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          </button>
         </HoverTooltip>
         <HoverTooltip label="Sign out" asChild>
           <IconButton
             type="button"
-            size="xs"
+            size="md"
             onClick={() => {
               void signOut();
             }}
             ariaLabel="Sign out"
-            className="shrink-0 rounded-none text-text-faint hover:bg-surface-hover hover:text-text-default"
-            icon={<Power className="h-3.5 w-3.5" />}
+            className="group shrink-0 rounded-none text-text-faint hover:bg-surface-danger hover:text-text-danger"
+            icon={
+              <Power
+                className="h-3.5 w-3.5 group-hover:drop-shadow-[0_0_6px_currentColor]"
+                aria-hidden
+              />
+            }
           />
         </HoverTooltip>
       </div>

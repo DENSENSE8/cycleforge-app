@@ -35,6 +35,8 @@ export const OUTBOUND_FACET_OWNER = {
   TESTED: 'tabs',
   attention: 'kpi',
   BLOCKED: 'kpi',
+  packPlaced: 'kpi',
+  packStation: 'kpi',
   mine: 'rail',
 } as const satisfies Record<string, 'tabs' | 'kpi' | 'rail'>;
 
@@ -59,6 +61,8 @@ const UNSHIPPED_VIEW_PARAMS = [
   'staff',
   'late',
   'attention',
+  'packPlaced',
+  'packStation',
 ] as const;
 
 /** Shipped board saved views — matches DashboardShippedTable. */
@@ -79,9 +83,9 @@ export const PACKED_SAVED_VIEWS_KEY = 'packed_saved_views';
 
 /**
  * Mode → saved-views (storageKey, paramKeys) — the ONE resolver both the rail
- * list ({@link OutboundSavedViewsList}) and the Band-1 Views menu
- * ({@link OutboundViewsMenu}) read, so the two faces over `useSavedViews` cannot
- * disagree about what a view captures on a given lane.
+ * list ({@link OutboundSavedViewsList}) and the Band-3 Views menu
+ * ({@link OutboundViewsMenu} → {@link WorkbenchViewsMenu}) read, so the faces
+ * over `useSavedViews` cannot disagree about what a view captures on a lane.
  */
 export function outboundSavedViewsConfig(mode: 'unshipped' | 'packed' | 'shipped'): {
   storageKey: string;

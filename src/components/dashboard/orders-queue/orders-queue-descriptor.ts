@@ -45,6 +45,10 @@ function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unkn
       return (row) => queueRowTesterNameRaw(row as QueueRowRecord);
     case 'testedAt':
       return (row) => queueRowTestedAtRaw(row as QueueRowRecord);
+    case 'packStation':
+      return (row) =>
+        String((row as { pack_location_name?: string | null }).pack_location_name ?? '').trim() ||
+        null;
     case 'order':
       return (row) => String(row.order_id ?? '');
     case 'tracking':

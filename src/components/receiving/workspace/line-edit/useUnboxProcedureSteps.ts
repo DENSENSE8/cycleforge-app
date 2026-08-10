@@ -71,6 +71,8 @@ import {
 } from '@/utils/date';
 import type { ProcedureStepRow } from '@/design-system/components/procedure';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { resolveStepRailLeaf } from './steps/rail';
+import type { UnboxSideTab } from './unbox-side-tabs';
 
 /**
  * A settled step's completion instant, for the deck's history rows.
@@ -104,7 +106,7 @@ function later(a: string | null, b: string | null | undefined): string | null {
 function stepSummary(
   key: string,
   ctx: {
-    arrival: number;
+    arrivalAspect: Partial<Record<PhotoAspect, number>>;
     cartonAspect: Partial<Record<PhotoAspect, number>>;
     item: number;
     serialCount: number;
@@ -126,9 +128,13 @@ function stepSummary(
     case 'classify':
       // Dock mounts TriageClassifySection (Band 1 grows) — › still advances.
       return ctx.classified ? 'Classified' : 'Use › when ready';
-    case 'arrival_check':
-      // Actionless in the dock — summary is the advance cue (door evidence).
-      return ctx.arrival > 0 ? shots(ctx.arrival) : 'Use › when ready';
+    // Door + bench photo steps share the aspect-count summary shape; the map
+    // (arrivalAspect vs cartonAspect) is chosen by stage below.
+    case 'arrival_label_photo':
+    case 'arrival_box_photo': {
+      const n = ctx.aspect ? (ctx.arrivalAspect[ctx.aspect] ?? 0) : 0;
+      return n > 0 ? shots(n) : undefined;
+    }
     // The three bench carton shots share a stage and are told apart by aspect —
     // a stage count would let one photo report itself on all three cards.
     case 'shipping_label_photo':
@@ -179,6 +185,14 @@ interface UnboxProcedureStepsResult {
   flowLabel: string;
   /** The step the operator is on. `null` ⇒ every step settled. */
   activeKey: string | null;
+  /**
+   * The Displays leaf the cockpit rail auto-shows for the active step — the KNOW
+   * half of the DO/KNOW split (`display/scan-cockpit.md`). `null` when the step
+   * is settled or its reference is the work plane (declared reference-less).
+   * Derived from `activeKey` here so the ONE derivation drives both the centre
+   * action and the rail leaf — never a second store.
+   */
+  railLeaf: UnboxSideTab | null;
   /** What a skip would advance TO — the skip target, not the next card. */
   nextStep: ProcedureStepRow | null;
   /**
@@ -312,7 +326,9 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     const map: Record<string, string | null> = {};
     for (const [key, meta] of Object.entries(stepMeta)) {
       if (meta.stage === 'arrival_package') {
-        map[key] = counts.arrivalFirstAt;
+        map[key] = meta.aspect
+          ? (counts.arrivalAspectFirstAt[meta.aspect] ?? null)
+          : counts.arrivalFirstAt;
       } else if (meta.stage === 'unbox_carton') {
         map[key] = meta.aspect ? (counts.cartonAspectFirstAt[meta.aspect] ?? null) : null;
       } else if (meta.stage === 'unbox_item') {
@@ -339,6 +355,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       arrivalPhotoCount: counts.arrivalPackage,
       unboxCartonPhotoCount: counts.unboxCarton,
       itemPhotoCount: counts.item,
+      arrivalAspectCounts: counts.arrivalAspect,
       cartonAspectCounts: counts.cartonAspect,
       itemAspectCounts: counts.itemAspect,
       requiredItemAspects,
@@ -367,9 +384,12 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
 
   const derived = useMemo(() => deriveProcedureSteps(input), [input]);
 
+  const labelPrinted = Boolean(row.label_printed_at);
+  const stageDone = Boolean(row.staged_at && row.staged_location_id);
+
   const steps: ProcedureStepRow[] = useMemo(() => {
     const ctx = {
-      arrival: counts.arrivalPackage,
+      arrivalAspect: counts.arrivalAspect,
       cartonAspect: counts.cartonAspect,
       item: counts.item,
       serialCount,
@@ -380,7 +400,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       classified,
       labelPreviewed: !!row.label_previewed_at,
     };
-    return derived.map((step) => ({
+    const captureRows: ProcedureStepRow[] = derived.map((step) => ({
       key: step.key,
       label: step.label,
       // `deriveProcedureSteps` never reports `skipped` — completion is derived
@@ -394,6 +414,23 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       // `undefined` (not an empty string) so the row renders nothing at all.
       at: formatStepAt(step.at),
     }));
+    // Commit `stage` folds into the dock pointer after print — not into the
+    // capture derivation (print must not gate capture). Appears once every
+    // capture step is done and the label has been printed.
+    const captureComplete = captureRows.every((s) => s.state === 'done');
+    if (captureComplete && labelPrinted) {
+      captureRows.push({
+        key: 'stage',
+        label: 'Location',
+        state: stageDone ? 'done' : 'active',
+        position: captureRows.length + 1,
+        summary: stageDone
+          ? row.staged_location_name?.trim() || 'Location staged'
+          : 'Scan a putaway bin barcode',
+        at: formatStepAt(row.staged_at ?? null),
+      });
+    }
+    return captureRows;
   }, [
     derived,
     counts,
@@ -403,6 +440,12 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     row.condition_grade,
     row.condition_graded_at,
     row.label_previewed_at,
+    row.label_printed_at,
+    row.staged_at,
+    row.staged_location_id,
+    row.staged_location_name,
+    labelPrinted,
+    stageDone,
     classified,
     aspectByKey,
   ]);
@@ -410,10 +453,19 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   // ONE pointer, shared with the receipt read model. Not a local "first pending"
   // scan — once skips exist that rule is wrong, and a second reader would park
   // the operator on a step they already waived.
-  const pointerSteps = useMemo(
-    () => derived.map((step) => ({ key: step.key, done: step.state === 'done' })),
-    [derived],
-  );
+  // After capture settles + print, append `stage` so Band 1 can arm
+  // LocationScanDockControl (print · receive stay on the dogfood strip).
+  const pointerSteps = useMemo(() => {
+    const capture = derived.map((step) => ({
+      key: step.key,
+      done: step.state === 'done',
+    }));
+    const captureComplete = capture.every((s) => s.done);
+    if (captureComplete && labelPrinted) {
+      capture.push({ key: 'stage', done: stageDone });
+    }
+    return capture;
+  }, [derived, labelPrinted, stageDone]);
 
   // Evidence that settles a step which was pending at focus time must release
   // the override — otherwise › onto shipping_label → shoot → dock stays on a
@@ -481,6 +533,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     flow,
     flowLabel,
     activeKey,
+    railLeaf: resolveStepRailLeaf(activeKey),
     nextStep,
     prevStep,
     nextNeighbour,

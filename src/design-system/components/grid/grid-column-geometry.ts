@@ -53,8 +53,24 @@ interface FrozenTrackLike extends TrackLike {
  * column key. Set on the grid surface; header + rows + group summaries inherit
  * it, which is what keeps a drag-resize in sync across all three.
  */
+/**
+ * Column keys are not all valid CSS ident tails. Org custom columns key as
+ * `custom:<defKey>`, and a custom-property name **may not contain a colon** —
+ * `var(--cf-col-custom:rack_slot, 5rem)` is a parse error, which invalidates the
+ * whole `grid-template-columns` declaration and drops EVERY track on the row,
+ * not just that one. Measured on Unbox History (2026-08-09): the row's inline
+ * template came back empty and the computed value collapsed to a single
+ * full-width track.
+ *
+ * Everything already in use (`title`, `qty`, `last_counted`, …) is unchanged by
+ * this mapping, so it cannot move an existing surface.
+ */
+function cssIdentTail(key: string): string {
+  return key.replace(/[^A-Za-z0-9_-]/g, '-');
+}
+
 export function gridColVar(key: string): string {
-  return `--cf-col-${key}`;
+  return `--cf-col-${cssIdentTail(key)}`;
 }
 
 /**

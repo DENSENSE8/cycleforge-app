@@ -5,6 +5,7 @@ import { Pencil } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FnskuChip } from '@/components/ui/CopyChip';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
 import type { StationTheme } from '@/utils/staff-colors';
@@ -29,7 +30,10 @@ export interface FbaSelectedLineRowProps {
   hideCheckbox?: boolean;
 }
 
-/** Optional microcopy + title + FNSKU below, left; optional right column (e.g. qty stepper). */
+/**
+ * FBA selected-line face — checkbox · {@link StackedRowIdentity} (title → FNSKU)
+ * · qty stepper. Edit rides the keys trailing edge beside the chip.
+ */
 export function FbaSelectedLineRow({
   displayTitle,
   fnsku,
@@ -49,14 +53,13 @@ export function FbaSelectedLineRow({
   const gridCols = showLeading
     ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
     : 'grid-cols-[minmax(0,1fr)_auto]';
-  const titleColStart = showLeading ? 'col-start-2' : 'col-start-1';
-  const metaColStart = showLeading ? 'col-start-2' : 'col-start-1';
-  const rightColStart = showLeading ? 'col-start-3' : 'col-start-2';
 
   return (
-    <div className={`grid ${gridCols} grid-rows-[auto_auto] items-start gap-x-2.5 gap-y-1 border-b border-border-hairline px-3 py-2 last:border-b-0`}>
-      {showLeading && (
-        <div className="row-span-2">
+    <div
+      className={`grid ${gridCols} items-start gap-x-2.5 border-b border-border-hairline px-3 py-2 last:border-b-0`}
+    >
+      {showLeading ? (
+        <div className="self-center">
           {leadingSlot ?? (
             <PrintTableCheckbox
               checked={checked}
@@ -67,38 +70,42 @@ export function FbaSelectedLineRow({
             />
           )}
         </div>
-      )}
-      <div className={`${titleColStart} row-start-1 flex min-w-0 flex-col items-start gap-0.5 self-start`}>
-        {microcopyAboveTitle ? (
-          <p className={`w-full ${fieldLabel} ${microcopyColor}`}>
-            {microcopyAboveTitle}
-          </p>
-        ) : null}
-        <p className={`min-w-0 w-full whitespace-normal break-words leading-snug ${dataValue}`}>
-          {displayTitle}
-        </p>
-      </div>
-      <div className={`${metaColStart} row-start-2 flex items-center justify-end gap-1.5 self-end pt-0.5`}>
-        {onEditDetails ? (
-          <HoverTooltip label="Edit catalog details" asChild>
-            <IconButton
-              icon={<Pencil className="h-4 w-4 shrink-0" />}
-              onPointerDown={(e) => {
-                /* Beat parent taps / drag handlers that might steal activation on touch */
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditDetails();
-              }}
-              className="relative z-10 flex min-h-[2.25rem] min-w-[2.25rem] shrink-0 items-center justify-center rounded-md hover:bg-surface-sunken active:bg-surface-strong"
-              ariaLabel={`Edit catalog details for ${fnsku}`}
-            />
-          </HoverTooltip>
-        ) : null}
-        <FnskuChip value={fnsku} />
-      </div>
-      <div className={`${rightColStart} row-span-2 flex shrink-0 flex-col items-start pt-0.5`}>{rightSlot}</div>
+      ) : null}
+      <StackedRowIdentity
+        title={
+          <div className="flex min-w-0 flex-col items-start gap-0.5">
+            {microcopyAboveTitle ? (
+              <p className={`w-full ${fieldLabel} ${microcopyColor}`}>{microcopyAboveTitle}</p>
+            ) : null}
+            <p className={`min-w-0 w-full whitespace-normal break-words leading-snug ${dataValue}`}>
+              {displayTitle}
+            </p>
+          </div>
+        }
+        keys={
+          <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
+            {onEditDetails ? (
+              <HoverTooltip label="Edit catalog details" asChild>
+                <IconButton
+                  icon={<Pencil className="h-4 w-4 shrink-0" />}
+                  onPointerDown={(e) => {
+                    /* Beat parent taps / drag handlers that might steal activation on touch */
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditDetails();
+                  }}
+                  className="relative z-10 flex min-h-[2.25rem] min-w-[2.25rem] shrink-0 items-center justify-center rounded-md hover:bg-surface-sunken active:bg-surface-strong"
+                  ariaLabel={`Edit catalog details for ${fnsku}`}
+                />
+              </HoverTooltip>
+            ) : null}
+            <FnskuChip value={fnsku} />
+          </div>
+        }
+      />
+      <div className="flex shrink-0 flex-col items-start pt-0.5">{rightSlot}</div>
     </div>
   );
 }

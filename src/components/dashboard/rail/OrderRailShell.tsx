@@ -8,15 +8,21 @@
  * mounts and which this component deliberately does not touch; exactly two is
  * `OrderRailCompare`; three or more is this shell.
  *
- * Phase 3 took the exactly-two case away from here — comparing two orders is a
- * divergence read, and a roster that just lists them answers a different
- * question. Phase 4 gives each roster row a `[×]` so the set can be refined
- * against the rows on screen.
- * Plan: `docs/todo/order-rail-selection-plane-PLAN.md`.
+ * Roster rows compose {@link RailSelectionRosterRow} / {@link StackedRowIdentity}
+ * (wrapping title → platform-aware {@link OrderIdChip}) — never a single-line
+ * title | mono id twin. Hash glyph tone + hover label come from
+ * `usePlatformMeta` / `platformMetaIconTone` (SoT).
  */
 
 import { useCallback, useMemo } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import {
+  RailSelectionRoster,
+  RailSelectionRosterRow,
+} from '@/components/right-rail/RailSelectionRoster';
+import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { usePlatformMeta } from '@/hooks/useCatalog';
+import { platformMetaIconTone } from '@/lib/source-platform';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import {
   isRailOccupantActive,
@@ -40,6 +46,9 @@ type RosterRow = {
   item_name?: string | null;
   product_title?: string | null;
   sku?: string | null;
+  /** Raw platform key for OrderIdChip hover + `#` glyph tone. */
+  account_source?: string | null;
+  source_platform?: string | null;
 };
 
 function rosterTitle(row: RosterRow): string {
@@ -49,6 +58,37 @@ function rosterTitle(row: RosterRow): string {
   if (sku) return sku;
   // Honest absence — never a blank row, never an invented "Untitled order".
   return '—';
+}
+
+function platformRawOf(row: RosterRow): string {
+  return String(row.account_source || row.source_platform || '').trim();
+}
+
+/** Platform-aware order key — tooltip `eBay 08-…`, `#` glyph from catalog tone. */
+function OrderRosterKey({
+  orderId,
+  platformRaw,
+}: {
+  orderId: string;
+  platformRaw: string;
+}) {
+  const resolvePlatformMeta = usePlatformMeta();
+  const platformMeta = platformRaw ? resolvePlatformMeta(platformRaw) : null;
+  const platformLabel = platformMeta?.label ?? null;
+  const iconTone = platformMeta ? platformMetaIconTone(platformMeta) : null;
+
+  return (
+    <OrderIdChip
+      value={orderId}
+      display={getLast8(orderId)}
+      dense
+      fitDisplayWidth
+      displayWidth="last8"
+      platformLabel={platformLabel}
+      iconClass={iconTone?.className}
+      iconStyle={iconTone?.style}
+    />
+  );
 }
 
 export function OrderRailShell() {
@@ -72,9 +112,8 @@ export function OrderRailShell() {
 
   return (
     <DetailStackRailRegistrar
-      // Stable per MODE, never per record — the host keys AnimatePresence on
-      // this id, so folding the ids into it would exit/enter the whole panel on
-      // every checkbox. See selection-occupancy.ts.
+      // Stable per MODE, never per record — a per-record id would remount the
+      // whole push column on every checkbox. See selection-occupancy.ts.
       id="detail:order-batch"
       enabled={active}
       onClose={handleClose}
@@ -96,20 +135,26 @@ export function OrderRailShell() {
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <ul className="divide-y divide-border-soft">
-            {(rows as RosterRow[]).map((row) => (
-              <li key={String(row.id)} className="flex items-center gap-2 px-4 py-1.5">
-                <span className="truncate text-role-caption font-semibold text-text-default">
-                  {rosterTitle(row)}
-                </span>
-                <span className="ml-auto shrink-0 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  {String(row.order_id || '').trim() || '—'}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <RailSelectionRoster>
+          {(rows as RosterRow[]).map((row) => {
+            const orderId = String(row.order_id || '').trim();
+            return (
+              <RailSelectionRosterRow
+                key={String(row.id)}
+                title={rosterTitle(row)}
+                keys={
+                  orderId ? (
+                    <OrderRosterKey orderId={orderId} platformRaw={platformRawOf(row)} />
+                  ) : (
+                    <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                      —
+                    </span>
+                  )
+                }
+              />
+            );
+          })}
+        </RailSelectionRoster>
 
         <RailActionRegion />
       </div>

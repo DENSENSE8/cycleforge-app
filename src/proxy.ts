@@ -23,6 +23,7 @@ import {
   isBareKioskPlatformHost,
   isKioskHost,
   isKioskHostAllowedPath,
+  kioskPathDogfoodActive,
   staffKioskRedirectOrigin,
 } from '@/lib/tenancy/kiosk-host';
 
@@ -641,11 +642,13 @@ export function proxy(req: NextRequest): NextResponse {
     requestHeaders.set('x-tenant-slug', tenantSlug);
   }
 
-  // Legacy staff-host `/kiosk` → permanent redirect to the tenant kiosk origin.
-  // Production apex with DEFAULT_TENANT_SLUG → that tenant's kiosk host (dogfood
-  // bridge). Production apex without a bridge → sign-in. Non-production without
-  // a slug keeps serving `/kiosk` on the staff host so local E2E / tunnels work.
-  if (pathname === '/kiosk' || pathname.startsWith('/kiosk/')) {
+  // Staff-host `/kiosk*` → tenant kiosk origin (308) once subdomain DNS is live.
+  // While `kioskPathDogfoodActive()` (HUMAN-TODO J7b pending), serve the path on
+  // the staff host so tablets can use `https://app.cycleforge.ai/kiosk/v2`.
+  if (
+    !kioskPathDogfoodActive() &&
+    (pathname === '/kiosk' || pathname.startsWith('/kiosk/'))
+  ) {
     const kioskDest = staffKioskRedirectOrigin({
       tenantSlug,
       defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG,

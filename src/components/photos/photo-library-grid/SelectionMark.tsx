@@ -1,6 +1,7 @@
 'use client';
 
 import { Check } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -30,7 +31,12 @@ export function SelectionMark({
         onToggle({ shift: e.shiftKey });
       }}
       className={cn(
-        'ds-raw-button absolute left-2 top-2 z-20 inline-flex h-6 w-6 items-center justify-center rounded-full border shadow-sm transition',
+        'ds-raw-button absolute left-2 top-2 z-20 inline-flex h-6 w-6 items-center justify-center border shadow-sm transition',
+        // Flush, not `rounded-full`: this is an `aria-pressed` toggle CONTROL,
+        // and `rounded-full` survives only on status dots · avatars · Switch
+        // tracks. A circle check on a flush-square tile also reads as leftover
+        // chrome. Same ruling for {@link GroupSelectionMark}.
+        cornerClass('flush'),
         checked
           ? 'border-blue-600 bg-blue-600 text-white opacity-100'
           : cn(

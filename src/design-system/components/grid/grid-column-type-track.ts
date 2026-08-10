@@ -45,6 +45,15 @@ export const MIN_TRACK_REM_BY_DATE_FACE: Record<DateColumnFace, number> = {
  */
 export const MIN_TRACK_REM_EXTERNAL = 4;
 
+/**
+ * Qty / number track floor.
+ *
+ * Sized for worst-case received/expected fraction (`9999/9999`) + cell inset
+ * (`px-2` × 2). A 3.5rem floor was sized for the header word "Qty" and clipped
+ * tabular-nums.
+ */
+export const MIN_TRACK_REM_QTY_FRACTION = 4.5;
+
 type MinTrackColumn = Pick<LedgerGridColumnModel, 'type' | 'dateFace' | 'minTrackRem'>;
 
 /**
@@ -60,6 +69,7 @@ export function resolveGridColumnMinTrackRem(column: MinTrackColumn): number {
     return MIN_TRACK_REM_BY_DATE_FACE[face];
   }
   if (column.type === 'external') return MIN_TRACK_REM_EXTERNAL;
+  if (column.type === 'number') return MIN_TRACK_REM_QTY_FRACTION;
   return 0;
 }
 

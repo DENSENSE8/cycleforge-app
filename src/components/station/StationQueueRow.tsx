@@ -95,8 +95,6 @@ export function StationQueueRow({
       packerId={null}
       rowStatus={rowStatus}
       serialChip={serialChip}
-      hasOutOfStock={false}
-      notesValue={String(record.notes || '')}
       daysLate={null}
       disableEnterAnimation
       onToggleSelect={

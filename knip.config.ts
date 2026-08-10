@@ -86,6 +86,10 @@ const config: KnipConfig = {
     'src/design-system/motion/DenseList.tsx',
     'src/design-system/motion/DenseRowReveal.tsx',
 
+    // Replenishment tooltip SoT — Pending OOS corner retired; revive when a
+    // rollup consumer remounts `replenishmentTooltip`.
+    'src/lib/orders/replenishment-display.ts',
+
   ],
 
   ignoreDependencies: [

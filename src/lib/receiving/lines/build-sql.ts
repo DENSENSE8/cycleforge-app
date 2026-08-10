@@ -79,6 +79,22 @@ const STAGING_LOCATION_LABEL_SQL = `CASE
 const STAGING_LOCATION_JOIN_SQL =
   'LEFT JOIN locations loc ON loc.id = rt.staging_location_id';
 
+/**
+ * Unbox commit `stage` — intended putaway bin on receiving_line_putaway.
+ * Alias `stg_loc` so it never collides with Arrival `loc` (door shelf).
+ */
+const PUTAWAY_STAGED_SELECT_SQL = `rlp.staged_at::text AS staged_at,
+                rlp.staged_location_id AS staged_location_id,
+                stg_loc.name AS staged_location_name,
+                stg_loc.barcode AS staged_location_barcode,
+                stg_loc.room AS staged_location_room,
+                stg_loc.row_label AS staged_location_row_label,
+                stg_loc.col_label AS staged_location_col_label`;
+
+const PUTAWAY_STAGED_JOIN_SQL = `LEFT JOIN receiving_line_putaway rlp
+           ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
+         LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id`;
+
 /** Arrival staged = shelf + lane (mirrors `isArrivalStaged`). */
 const STAGING_STAGED_PREDICATE_SQL =
   `(rt.staging_location_id IS NOT NULL AND NULLIF(BTRIM(COALESCE(rt.priority_lane, '')), '') IS NOT NULL)`;
@@ -229,6 +245,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
                 rlt.label_previewed_at::text                       AS label_previewed_at,
+                ${PUTAWAY_STAGED_SELECT_SQL},
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -243,6 +260,12 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 rz.zoho_synced_at                            AS zoho_synced_at,
                 rz.zoho_notes                                AS zoho_notes,
                 rz.unit_price                                AS unit_price,
+                -- Mirror receipt status — REQUIRED on ?id=. Inventory Refresh
+                -- re-fetches through this builder then dispatchLine; without
+                -- these columns the client zoho_status is null forever and
+                -- coarse paint stays UNBOXED while Information shows RECEIVED.
+                mirror.status                                AS zoho_status,
+                mirror.last_synced_at::text                  AS zoho_status_synced_at,
                 stn.tracking_number_raw AS receiving_tracking_number,
                 r.carrier,
                 r.source                     AS receiving_source,
@@ -295,6 +318,10 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         ${PUTAWAY_STAGED_JOIN_SQL}
+         LEFT JOIN zoho_po_mirror mirror
+           ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
+          AND mirror.organization_id = rl.organization_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback. Partial
          -- unique index ux_receiving_zoho_po_matched (source='zoho_po') ensures
          -- at most one PO-matched receiving row per PO, so no dedup needed.
@@ -396,6 +423,7 @@ export function buildReceivingLinesByReceivingIdSql(
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
                 rlt.label_previewed_at::text                       AS label_previewed_at,
+                ${PUTAWAY_STAGED_SELECT_SQL},
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -410,6 +438,10 @@ export function buildReceivingLinesByReceivingIdSql(
                 rz.zoho_synced_at                            AS zoho_synced_at,
                 rz.zoho_notes                                AS zoho_notes,
                 rz.unit_price                                AS unit_price,
+                -- Mirror receipt status — same wire as ?id= / view=activity so
+                -- sibling refresh after receive/Refresh cannot clobber zoho_status.
+                mirror.status                                AS zoho_status,
+                mirror.last_synced_at::text                  AS zoho_status_synced_at,
                   stn.tracking_number_raw AS receiving_tracking_number,
                   r.carrier,
                   r.source                     AS receiving_source,
@@ -459,6 +491,10 @@ export function buildReceivingLinesByReceivingIdSql(
            ${sqlLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
            LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+           ${PUTAWAY_STAGED_JOIN_SQL}
+           LEFT JOIN zoho_po_mirror mirror
+             ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
+            AND mirror.organization_id = rl.organization_id
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (
@@ -1332,11 +1368,16 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // The activity rail needs it so a line whose PO Zoho already received reads
   // "Received" (green) instead of falling back to its local unbox-pipeline
   // workflow_status — see getReceivingStatusDot.
+  // Unbox rail (unbox_opened) + History (activity/all) need mirror status so
+  // coarse paint / Received meters flip after Inventory Refresh without waiting
+  // on a live Zoho round-trip — same wire as ?id= / ?receiving_id=.
   const needsZohoMirror =
     view === 'incoming'
     || view === 'incoming_removed'
     || view === 'scanned'
-    || view === 'activity';
+    || view === 'activity'
+    || view === 'all'
+    || view === 'unbox_opened';
   const zohoStatusSelect = needsZohoMirror
     ? `, mirror.status AS zoho_status, mirror.last_synced_at::text AS zoho_status_synced_at`
     : '';
@@ -1430,6 +1471,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 ru.contents_confirmed_at::text                         AS contents_confirmed_at,
                 rlt.label_printed_at                         AS label_printed_at,
                 rlt.label_previewed_at::text                       AS label_previewed_at,
+                ${PUTAWAY_STAGED_SELECT_SQL},
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1504,6 +1546,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         ${PUTAWAY_STAGED_JOIN_SQL}
          -- Soft JOIN: direct FK when set, else PO#-based fallback (see note above).
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po

@@ -140,7 +140,7 @@ registering the same `SupportContextHub` correctly. Deleted, not migrated. Guard
 `service-workspace.guard.test.ts`.
 
 **The rail's `push` is decided by the HOST, not the panel.** `SupportContextDetailPanel` has two
-hosts with opposite answers — Unbox nests it inside an `UnboxPushColumn` (float, or two columns fight
+hosts with opposite answers — Unbox nests it inside an `StationDisplaysPushColumn` (float, or two columns fight
 one edge), `/support` gives it the edge outright (push). So `push` is a **required prop with no
 default**: a default is a silent opt-out at every call site nobody visited
 (`backend-patterns.md` → a safety classification is a required parameter). Guard:

@@ -90,12 +90,14 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     dotClass: 'bg-slate-700', // ds-allow-raw-neutral: identity/tone hue — USED_C slate dot
   },
   PARTS: {
-    active: 'bg-amber-700 text-white shadow-none ring-amber-800',
-    inactive: 'bg-surface-card text-amber-800 ring-amber-200 hover:bg-amber-50',
-    badge: 'bg-amber-50 text-amber-700 ring-amber-200',
-    text: 'text-amber-700',
-    chipIconClass: 'inline-flex items-center justify-center text-amber-700',
-    dotClass: 'bg-amber-700',
+    // Brown (orange-900) — must stay distinct from BRAND_NEW yellow; amber
+    // read as the same warm highlight on the grade bar.
+    active: 'bg-orange-900 text-white shadow-none ring-orange-900',
+    inactive: 'bg-surface-card text-orange-900 ring-orange-200 hover:bg-orange-50',
+    badge: 'bg-orange-50 text-orange-900 ring-orange-200',
+    text: 'text-orange-900',
+    chipIconClass: 'inline-flex items-center justify-center text-orange-900',
+    dotClass: 'bg-orange-900',
   },
 };
 
@@ -142,7 +144,7 @@ export function conditionGradeStatusChip(
 
 /**
  * Marketplace / order-queue condition string tone (NEW / USED / `--` — not only grade codes).
- * NEW / BRAND_NEW warns; PARTS keeps amber; empty dash + everything else muted for scan.
+ * NEW / BRAND_NEW warns; PARTS is brown (orange-900); empty dash + everything else muted for scan.
  */
 export function orderRowConditionTone(condition: string | null | undefined): string {
   const normalized = String(condition || '')
@@ -153,7 +155,7 @@ export function orderRowConditionTone(condition: string | null | undefined): str
     return 'text-text-muted';
   }
   if (normalized === 'NEW' || normalized === 'BRAND_NEW') return 'text-text-warning';
-  if (normalized === 'PARTS') return 'text-amber-800';
+  if (normalized === 'PARTS') return 'text-orange-900';
   return 'text-text-muted';
 }
 
@@ -184,12 +186,32 @@ export function conditionGradeChipStyleOrPending(code: string | null | undefined
   return { ...conditionGradeChipStyle(normalized), isPending: false };
 }
 
+/**
+ * Density for expanded grade segments.
+ * - `pill` — compact abbreviated strip (scroll host; px inset + uppercase).
+ * - `barDistribute` — progressive Unbox full-name bar: flush `p-0`, equal
+ *   `flex-1` cells across the row (no left-clump dead air).
+ */
+export type ConditionPillDensity = 'pill' | 'barDistribute';
+
 /** Tailwind classes for a single condition picker pill — square flush face. */
-export function conditionPillClass(gradeValue: string, isActive: boolean): string {
+export function conditionPillClass(
+  gradeValue: string,
+  isActive: boolean,
+  density: ConditionPillDensity = 'pill',
+): string {
   const tone = conditionGradeTone(gradeValue);
   // Same h-11 as Tags / image / serial cells — expanded grades fill the
-  // joined bar edge-to-edge (no top/bottom float). Horizontal label inset
-  // only; never soft py that shrinks the face inside the row.
+  // joined bar edge-to-edge (no top/bottom float). Never soft py that
+  // shrinks the face inside the row.
+  if (density === 'barDistribute') {
+    // Full-name progressive strip: share remaining width evenly; no pad /
+    // uppercase tracking (labels come from conditionLabel(..., 'full')).
+    return `inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-none p-0 text-center text-role-caption font-semibold leading-tight ring-1 ring-inset transition-colors active:scale-[0.98] ${
+      isActive ? tone.active : tone.inactive
+    }`;
+  }
+  // Compact pill strip: horizontal label inset + uppercase abbreviation.
   return `inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-none px-2.5 text-role-caption font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
     isActive ? tone.active : tone.inactive
   }`;

@@ -14,11 +14,14 @@
  * - `placement: 'inset'` — hit sash lives **inside** the panel; paint sits on
  *   the panel's own edge seam (trailing `border-r` / leading `border-l`).
  *   Prefer for every flush rail (context · right-rail · Displays). Parent may
- *   keep `overflow-hidden`. Stacking (low → high): leaf eyebrows / armed-row
- *   faces / hairlines (`z-base`·`z-raised`) → this sash (`z-sticky`) → top
- *   chrome `→|` / fullscreen / `DeskRailChromeRow` (`z-header`). Same-token
- *   `z-raised` on content used to tie the sash and steal the left-edge hit.
- *   Never shorten the hairline with `top-*` clearance.
+ *   keep `overflow-hidden`. Stacking (low → high): armed-row faces / body
+ *   hairlines (`z-base`·`z-raised`) → this sash (`z-sticky`) → chrome bands
+ *   that opt into the top-band twin (`z-header` + `pointer-events-none`, with
+ *   interactive children re-enabled): column fullscreen / carton cursor,
+ *   Displays leaf ← → eyebrow (`StationDisplayLeafHeader`), desk rail chrome.
+ *   Same-token `z-raised` on body content used to tie the sash and steal the
+ *   left-edge hit — do not raise body rows to `z-header`. Never shorten the
+ *   hairline with `top-*` clearance.
  * - `placement: 'outset'` — grip straddles the panel border (legacy). Prefer
  *   `inset` so hover paint cannot read as a line to the right of the seam.
  *
