@@ -1134,6 +1134,20 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
         QA_FIXTURE_SKUS.speaker,
       ],
     );
+    // Re-provisioning is the documented clean slate, so the pack floor must come
+    // back EMPTY. A bench placement survives the upsert above (it keys on the
+    // unit, not the row), so a spec that stages the fixture unit passed once and
+    // then 409'd `SAME_LOCATION` on every later run — the placement it created
+    // was still there. Clear the current-placement ledgers; the `*_events`
+    // history is append-only and deliberately left intact.
+    await client.query(
+      `DELETE FROM unit_pack_placements WHERE organization_id = $1::uuid`,
+      [orgId],
+    );
+    await client.query(
+      `DELETE FROM order_pack_placements WHERE organization_id = $1::uuid`,
+      [orgId],
+    );
     await seedReceivingFixture(client, orgId, adminStaffId);
     await seedPhotoFixtures(client, orgId, adminStaffId);
     await seedIncomingFixture(client, orgId);

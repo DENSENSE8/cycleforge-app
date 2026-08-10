@@ -2,8 +2,9 @@
 
 Ready-to-Pack **bench placement**: labeled orders (Phase 1) and loose serialized
 units (Phase 2) are staged on packing DESK/STAGING benches, counted per bench for
-"who needs to pack" triage. **Phases 1 & 2 are built, verified, and E2E-green on
-the QA org** (uncommitted). This doc hands off the remaining phases.
+"who needs to pack" triage. **Phases 1–2 and P3a–P3d are built, verified, and
+E2E-green on the QA org** (uncommitted). Only the two ask-first phases remain —
+see the status table below.
 
 Do **not** edit any `.cursor/plans/*` file. The user manages commits — commit only
 when asked, stage only your own files, never `git stash`.
@@ -45,12 +46,12 @@ when asked, stage only your own files, never `git stash`.
 | **KPIs** | `src/components/tech/shipping/ShippingKpiStrip.tsx` (Ready-to-Pack per-station ORDER tiles + arm-on-click), `PackStationPlacementControl.tsx`, `src/components/dashboard/OutboundKpiStrip.tsx` (To-ship aggregate "At stations") |
 | **Queries** | `src/lib/queries/pack-placement-queries.ts` · `unit-pack-placement-queries.ts` |
 | **Tests** | `pack-placement.test.ts` (2), `pack-placement-domain.test.ts` (10), `unit-pack-placement-domain.test.ts` (6), `no-pack-station-twin.guard.test.ts` (3, covers both count SoTs) |
-| **E2E (QA org)** | `tests/e2e/pack-placement.spec.ts` (5) · `tests/e2e/unit-pack-placement.spec.ts` (2) — all pass on `--project=qa-desktop` |
+| **E2E (QA org)** | `tests/e2e/pack-placement.spec.ts` (6, incl. the P3d bench chips) · `tests/e2e/unit-pack-placement.spec.ts` (3) — **9/9** on `--project=qa-desktop` |
 | **QA seed** | `scripts/provision-qa-org.ts` → `seedPackingStationsForOrg` (benches, `QA-PACK-DESK-01..03`/`QA-PACK-STAGING`) + a loose unit fixture (`QA_FIXTURE_UNIT.unitUid = 'QAUNIT-2621-000042'`, on-floor `TESTED`) |
 | **Facet ownership** | `src/components/unshipped/outbound-sidebar-shared.ts` → `packPlaced`/`packStation` are `'kpi'`-owned |
 
 **Status as of this handoff:** `tsc` clean · knip clean · all packing unit tests +
-guards pass · migration/schema/route-auth guards pass · **E2E 7/7 on QA**. Nothing
+guards pass · migration/schema/route-auth guards pass · **E2E 9/9 on QA**. Nothing
 committed.
 
 ---
@@ -75,9 +76,40 @@ committed.
 
 ---
 
-## Next phases (prioritized)
+## Phase status (updated 2026-08-10)
 
-### P3a — Ship-clear for units (clear `unit_pack_placements` when a unit leaves the floor)
+| Phase | State |
+|---|---|
+| P3a — unit ship-clear | **DONE** — `clearUnitPackPlacement` called per shipped unit in `/api/pack/ship` (same txn as the order clear); 3 domain tests |
+| P3b — per-bench UNIT KPI | **DONE** — `unit-bench` chips on Ready-to-Pack; E2E asserts the count |
+| P3c — workstation → bench auto-arm | **DONE** — see below |
+| P3d — To-ship per-bench ORDER breakdown | **DONE** — see below |
+| P3e — unified board | not started (**ask-first**, needs product sign-off) |
+| P3f — QC prepack matrix | not started (**ask-first**, scope with the user) |
+
+### P3c + P3d — what shipped
+
+- **Bench binding:** `cf.workstation.packBenchLocationId` (Settings → Workstation
+  picker) references a DESK/STAGING `locations` row. `useArmedPackStation` seeds
+  the armed bench from it when nothing is armed and the operator has not cleared
+  by hand this session (`isAutoArmSuppressed`). Arms only — never writes
+  `?packStation=`.
+- **Bench chips:** one `PackBenchChipRow` primitive serves both ledgers —
+  Ready-to-Pack `unit-bench` (units, read-only) and To-ship `order-bench`
+  (orders, click → `?packStation=`). Shipping's local chip markup + label helper
+  were folded into it rather than forked.
+- **Two bugs found and fixed on the way:**
+  1. The RSC seed (`seedUnshippedQueue`) wrote the queue-counts cache key with a
+     hand-narrowed payload that dropped `packPlacement`, so To-ship's existing
+     **"At stations" tile was silently missing for the first 60s of every load**.
+     Both writers now share `normalizeQueueCountsPayload`.
+  2. `provision:qa-org` did not clear the placement ledgers, so the unit specs
+     passed once and then `409 SAME_LOCATION` on every later run.
+- **Verified:** 136 unit tests over the touched surfaces + **9/9 E2E on QA**.
+
+## Remaining phases
+
+### ~~P3a~~ — DONE. Ship-clear for units (clear `unit_pack_placements` when a unit leaves the floor)
 **Why:** Today a unit placement clears only on `/move`. The count already excludes
 off-floor statuses (`SHIPPED/SCRAPPED/RETURNED/RMA`) so it stays honest, but the row
 lingers. Phase 1 clears order placement in `pack/ship`; units need the parallel.
@@ -96,7 +128,7 @@ lingers. Phase 1 clears order placement in `pack/ship`; units need the parallel.
 **Scope note:** this touches the shared `transition()`/`pack/ship` path → treat as
 ask-first if it widens beyond a single call site.
 
-### P3b — Dedicated per-bench UNIT KPI on Ready-to-Pack
+### ~~P3b~~ — DONE. Dedicated per-bench UNIT KPI on Ready-to-Pack
 **Why:** the user asked to "see how many at each bench." Orders already have
 per-station tiles in `ShippingKpiStrip`; units only show on the armed chip today.
 **Do:** add a separate unit-count readout per bench (a compact strip or a secondary
@@ -106,7 +138,7 @@ merged number). Do **not** rewrite the order-tile logic. Add a `data-testid` and
 E2E assertion (arm a bench, place a unit via the loose-unit path, assert the tile
 shows the count).
 
-### P3c — Phase 1.5: Settings workstation → bench auto-arm
+### ~~P3c~~ — DONE. Phase 1.5: Settings workstation → bench auto-arm
 **Why:** operators re-arm a bench each session. Bind a staffer's saved workstation
 to a `location_id` so it auto-arms.
 **Do:** add a `location_id` binding to the workstation/staff-preferences setting
@@ -115,7 +147,7 @@ to a `location_id` so it auto-arms.
 bench SoT the `locations` row — the setting only *references* a DESK/STAGING id.
 Never make the setting a count SoT.
 
-### P3d — To-ship per-station order breakdown (optional parity)
+### ~~P3d~~ — DONE. To-ship per-station order breakdown
 To-ship (`OutboundKpiStrip`) shows only the aggregate "At stations". If the desk
 operator wants per-station order counts there too, surface them from
 `queue-counts.packPlacement.counts` (already present) — a small addition, no schema
