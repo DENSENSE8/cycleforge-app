@@ -129,6 +129,54 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await expect(kpi).toBeVisible({ timeout: 20_000 });
   });
 
+  test('To-ship per-bench ORDER chips render and filter the board (P3d)', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+    const strip = page.locator('[data-testid="order-bench-strip"]').first();
+    await expect(strip, 'per-bench order strip renders').toBeVisible({ timeout: 20_000 });
+
+    // Separate from the loose-UNIT strip on Ready-to-Pack: the two ledgers keep
+    // their own counts, so the To-ship row is labelled for orders.
+    await expect(strip).toHaveAttribute('aria-label', 'Orders at bench');
+
+    const placement = await apiGet(page, '/api/orders/pack-placement');
+    const desks = ((placement.body.locations ?? []) as Array<{ id: number; locationKind: string }>)
+      .filter((l) => l.locationKind === 'DESK');
+    if (desks.length < 1) {
+      test.skip(true, 'need ≥1 packing desk — run pnpm provision:qa-org');
+    }
+    const chip = strip.locator(`[data-testid="order-bench-${desks[0].id}"]`);
+    await expect(chip, 'desk chip is present').toBeVisible();
+    await page.screenshot({ path: 'test-results/pack-placement-toship-bench-chips.png' });
+    await expect(chip, 'a bench chip is a filter toggle, not a readout').toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    // Clicking filters the board to that bench (`?packStation=`), and clears the
+    // aggregate `?packPlaced=` — "placed anywhere" and "placed HERE" are one question.
+    await chip.click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('packStation'), {
+        message: 'bench click writes ?packStation=',
+        timeout: 10_000,
+      })
+      .toBe(String(desks[0].id));
+    expect(new URL(page.url()).searchParams.get('packPlaced')).toBeNull();
+    await expect(chip, 'the filtered bench reads as pressed').toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // Clicking the same bench again clears the filter rather than re-applying it.
+    await chip.click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('packStation'), {
+        message: 'clicking the armed bench again clears the filter',
+        timeout: 10_000,
+      })
+      .toBeNull();
+  });
+
   test('a TRACKING scan places an order at an armed bench; counts increment; /move shifts it', async ({
     page,
   }) => {
