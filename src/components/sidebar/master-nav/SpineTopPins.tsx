@@ -6,7 +6,8 @@
  * ## Two mounts, one SoT
  *
  * - **Open spine** — {@link SpineTopPins} fills the spine's 40px top band
- *   (header seam geometry). Layout is `justify-between` across the band width.
+ *   (header seam geometry). Layout is equal `flex-1` cells across the band
+ *   width so hover washes abut with no gaps.
  * - **Closed spine** — {@link TopDestinationPins} peeks from the header
  *   sidebar toggle (`SidebarCollapseControl`) so cold-load reachability does
  *   not wait on opening the map. Layout is a compact `HEADER_ICON_CLUSTER`.
@@ -32,8 +33,7 @@
  *
  * Icon-only is what makes the band affordable: all five are conventional glyphs
  * (house · magnifier · images · zap · message), each carrying its label as a
- * tooltip and its `aria-label`. Five still fit the 40px seam under
- * `justify-between`.
+ * tooltip and its `aria-label`. Five equal-fill cells span the 40px seam.
  *
  * Active state is query-aware ({@link isSidebarTopPinActive}): on forge, Plans
  * is current and Home is idle so the two never both light.
@@ -61,6 +61,7 @@ import {
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_GAP,
   HEADER_ICON_WRAP,
+  SPINE_TOP_PIN_WRAP,
   TOP_CHROME_ICON_GLYPH,
 } from '@/components/layout/header-shell';
 
@@ -93,7 +94,9 @@ export function TopDestinationPins({
     <nav
       aria-label="Quick destinations"
       className={cn(
-        layout === 'band' && 'flex w-full min-w-0 items-stretch justify-between px-0',
+        // Band: equal flex-1 cells fill the seam — hover washes abut (no
+        // justify-between air between fixed w-8 islands).
+        layout === 'band' && 'flex h-full w-full min-w-0 items-stretch px-0',
         layout === 'cluster' && cn('flex shrink-0 items-stretch', HEADER_ICON_GAP),
       )}
     >
@@ -101,7 +104,10 @@ export function TopDestinationPins({
         const Icon = pin.icon;
         const active = isSidebarTopPinActive(pin, { pathname, searchParams });
         return (
-          <div key={pin.id} className={HEADER_ICON_WRAP}>
+          <div
+            key={pin.id}
+            className={layout === 'band' ? SPINE_TOP_PIN_WRAP : HEADER_ICON_WRAP}
+          >
             <HoverTooltip label={pin.label} asChild>
               <IconButton
                 size="md"
@@ -124,9 +130,9 @@ export function TopDestinationPins({
   );
 }
 
-/** Spine-band mount — spreads pins across the 40px header seam. */
+/** Spine-band mount — equal-fill pins across the 40px header seam. */
 export function SpineTopPins() {
-  // `px-1` + `justify-between` live on the shared component's `band` layout so
-  // the first/last glyphs sit on the same edges as every map row beneath.
+  // `SPINE_TOP_PIN_WRAP` (`flex-1`) lives on the shared component's `band`
+  // layout so hover washes meet edge-to-edge with the map rows beneath.
   return <TopDestinationPins layout="band" />;
 }

@@ -12,7 +12,7 @@
  * OrdersDrillHost (`olayout=drill`), or OrdersCompareHost (`clayout=split|quad`).
  */
 
-import { Suspense, useEffect, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
@@ -35,6 +35,7 @@ import { OrdersDrillHost } from '@/components/outbound/orders/OrdersDrillHost';
 import { OrdersCompareHost } from '@/components/outbound/orders/OrdersCompareHost';
 import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewControlsRail';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
+import { CsvImportStagingHost } from '@/components/outbound/orders/CsvImportStagingHost';
 import {
   isPrePackOrderView,
   type DashboardOrderView,
@@ -44,6 +45,12 @@ import {
   ORDERS_COMPARE_LAYOUT_PARAM,
   parseOrdersCompareLayout,
 } from '@/lib/shipping/orders-compare-layout';
+import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
+import {
+  clearTableImportDraft,
+  useTableImportDraft,
+} from '@/lib/tables/import/staging-store';
+import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { cn } from '@/utils/_cn';
 
 function TableFallback() {
@@ -78,10 +85,44 @@ export function DashboardOrdersView({
   onPrimaryPainted,
 }: DashboardOrdersViewProps) {
   const searchParams = useSearchParams();
+  const csvDraft = useTableImportDraft(ORDER_IMPORT_DESCRIPTOR.surfaceId);
+  // Paint-pending: the popover writes this from another tree, so the desk must
+  // not wait on soft-replace to know staging owns the surface.
+  const { active: importCsvActive, setActive: setImportCsvActive } =
+    useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
+  const showCsvStaging = importCsvActive && Boolean(csvDraft);
   const showOutboundChrome =
-    isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped';
+    !showCsvStaging &&
+    (isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped');
   const { controlsEl, kpiOpen, onToggleKpi, setViewShellOpen } = useOrdersViewChrome();
   const { rows } = useRailActionSnapshot();
+
+  // Stale `?import=csv` after refresh (draft is session-only) — clear the flag.
+  useEffect(() => {
+    if (!importCsvActive || csvDraft) return;
+    setImportCsvActive(false);
+  }, [csvDraft, importCsvActive, setImportCsvActive]);
+
+  // Leaving staging via URL (back) should drop the in-memory draft — but ONLY
+  // once staging was genuinely open for THIS draft. The store publishes a new
+  // draft synchronously while the flag is still catching up, and a bare
+  // `!importCsvActive` test tore the draft down on that very frame, so the
+  // surface could never open. Sync-guard, not paint-pending (`source-of-truth.md`
+  // → Optimistic URL-param paint).
+  const stagingWasOpen = useRef(false);
+  useEffect(() => {
+    if (!csvDraft) {
+      stagingWasOpen.current = false;
+      return;
+    }
+    if (importCsvActive) {
+      stagingWasOpen.current = true;
+      return;
+    }
+    if (!stagingWasOpen.current) return;
+    stagingWasOpen.current = false;
+    clearTableImportDraft(ORDER_IMPORT_DESCRIPTOR.surfaceId);
+  }, [csvDraft, importCsvActive]);
 
   // Order / batch occupant outranks the View-only shell.
   useEffect(() => {
@@ -164,9 +205,11 @@ export function DashboardOrdersView({
         ) : undefined
       }
     >
-      <div className={showOutboundChrome ? WORKBENCH_SHEET_HOST : 'relative flex min-w-0 flex-col'}>
+      <div className={showOutboundChrome || showCsvStaging ? WORKBENCH_SHEET_HOST : 'relative flex min-w-0 flex-col'}>
         <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-          {showCompare ? (
+          {showCsvStaging ? (
+            <CsvImportStagingHost />
+          ) : showCompare ? (
             <OrdersCompareHost
               selectMode={selectMode}
               columnTriggerPortalTarget={controlsEl}
@@ -182,7 +225,7 @@ export function DashboardOrdersView({
         </Suspense>
       </div>
 
-      {selectionEnabled ? (
+      {showCsvStaging ? null : selectionEnabled ? (
         <>
           <OrderRailCompare />
           <OrderRailShell />

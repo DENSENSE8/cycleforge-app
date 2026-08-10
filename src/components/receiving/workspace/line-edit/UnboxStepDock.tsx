@@ -10,54 +10,13 @@
  * step that is the camera and `Link a photo`; on `label` it is *Face is right*;
  * on `condition` it is the grade chips.
  *
- * Two reasons, and the second is the one that is easy to miss:
+ * ## Always-left procedure waist
  *
- *   1. **The hand is already here.** The composer, the pager and the
- *      Print · Receive terminal are in this band. A control in a card asks the
- *      operator to leave the one place they never leave.
- *   2. **A card scrolls; the dock does not.** The deck is content inside the
- *      station's scroll port, so a control in a card sits at whatever offset the
- *      deck happens to be at — including under the dock itself, which is exactly
- *      how the label preview came to slide beneath the composer before it became
- *      a step. A control whose position depends on scroll is a control you have
- *      to look for.
- *
- * ## IN the dock — which is now only this and the terminal (2026-08-02)
- *
- * This mounted as its own row floating above the note composer until the
- * operator looked at it: a pill and a link on bare canvas, reading as chrome
- * that belonged to nothing. Two moves followed, in one session at the bench —
- * first into the composer's own footer strip, then the composer came out of the
- * Unbox band entirely. What is left is the dock this docblock always described:
- * the active step's CTA leading, the carton's Print · Receive terminal
- * trailing, inside one `Panel`.
- *
- * Two consequences, both load-bearing:
- *
- *   • **It costs the band no row of its own**, so it needs no clearance
- *     variant. Two were added for taller compositions during that session
- *     (`…STEP_ACTION…`, `…STEP_CUE…`) and both were deleted with the rows they
- *     measured.
- *   • **The controls dropped their prose prompts.** A sentence reads as
- *     instruction copy on a canvas and as clutter in a control strip, and the
- *     deck's own active row names the step directly above. The prompt survives
- *     as each control's accessible label, so a screen reader still hears it.
- *
- * ## It does not re-open the cross-region ban
- *
- * `station-workbench.md` bans a control in one region re-labelling a control in
- * ANOTHER — the Displays column on the right edge rewriting the bottom button.
- * The active step is set in the column **directly above** this band: same
- * region, adjacent, and it is the operator's current work. What that ban
- * protects is that the COMMIT stays unambiguous, and it does — the trailing
- * terminal is carton-scoped and Receive means the same thing on every step.
- *
- * ## Honest absence
- *
- * A step with no dock entry renders nothing at all — not a disabled button, not
- * an empty frame. `arrival_check` reads the door's evidence and must not offer a
- * camera. See `UNBOX_STEPS_WITHOUT_DOCK_ACTION`. `classify` mounts the shared
- * editor via `classifySlot` (Band 1 grows for that step only).
+ * Band 1 leads with a **compact** {@link UnboxDockScanEntry} (`w-8`
+ * collapse-strip twin — Plus idle, glow + caret, no placeholder) on every
+ * shared-entry step — **including photo** (`UNBOX_PHOTO_STRIP_KEYS`). Step
+ * ACTION (ack · grades · photo Link|Upload|Send) fills the remaining width.
+ * Serial and classify own Band 1 alone (serial field *is* the waist).
  *
  * ## Motion and focus
  *
@@ -121,9 +80,10 @@ export function UnboxStepDock({
     classifySlot,
   };
 
-  // Serial + classify own the band — skip the shared wedge there.
-  const fillsBand = activeKey === 'serial' || activeKey === 'classify';
-  const showScanEntry = settled && activeKey != null && !fillsBand;
+  // Serial · classify own the band alone — shared waist would dual-mount.
+  // Photo steps keep the left waist; strip mounts as the right flex-1 sibling.
+  const ownsBandAlone = activeKey === 'serial' || activeKey === 'classify';
+  const showScanEntry = settled && activeKey != null && !ownsBandAlone;
   const growBand = settled && activeKey === 'classify';
 
   return (
@@ -132,8 +92,8 @@ export function UnboxStepDock({
     // play the exit. An empty presence renders no element and costs nothing.
     <div
       className={cn(
-        'flex w-full min-w-0 gap-2',
-        growBand ? 'min-h-11 flex-col items-stretch' : 'h-11 items-center',
+        'flex w-full min-w-0 gap-0',
+        growBand ? 'min-h-11 flex-col items-stretch' : 'h-11 items-stretch',
       )}
     >
       {showScanEntry ? (
@@ -147,21 +107,22 @@ export function UnboxStepDock({
             animate={presence.animate}
             exit={presence.exit}
             transition={transition}
-            // Fixed h-11 host for compact CTAs; classify grows (Band 1 expand).
-            // The wedge fills Band 1 and the step control trails content-sized
-            // (shrink-0). Serial / classify hide the wedge, so they fill alone.
+            // Full-height flush segment. With the wedge, both flex-1 so CTAs
+            // claim remaining Band 1 width (never a content-sized chip in air).
+            // Serial / classify hide the wedge and fill alone. Host gap-0 —
+            // step control owns a leading hairline when it trails the wedge.
             className={cn(
-              'flex min-w-0 items-center',
-              growBand ? 'min-h-11 w-full flex-1' : 'h-11',
-              showScanEntry ? 'shrink-0' : 'flex-1',
+              'flex min-w-0 items-stretch',
+              growBand ? 'min-h-11 w-full flex-1' : 'h-11 flex-1',
+              showScanEntry && 'border-l border-border-hairline',
             )}
             data-unbox-step-dock={activeKey}
           >
             <Control {...ctx} />
           </motion.div>
         ) : null}
-        {/* Actionless steps (arrival_check) render the wedge alone — no empty
-            flex-1 sibling, or the wedge would only claim half the band. */}
+        {/* Actionless steps render the wedge alone — no empty flex-1 sibling,
+            or the wedge would only claim half the band. */}
       </AnimatePresence>
     </div>
   );

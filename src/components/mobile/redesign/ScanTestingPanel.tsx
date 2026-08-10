@@ -5,7 +5,10 @@ import { toast } from '@/lib/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, ShieldCheck } from '@/components/Icons';
 import { OrderIdChip, TrackingChip, SerialChip, getLast8 } from '@/components/ui/CopyChip';
-import { ChipColumns, CHIP_COL } from '@/components/ui/ChipColumns';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
 import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
 import { TestingLinePanel, type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import {
@@ -232,22 +235,31 @@ export function ScanTestingPanel({ query }: { query: string }) {
           const cond = conditionGradeTableLabel(line.condition_grade);
           return (
             <div key={line.id} className="rounded-2xl border border-blue-100 bg-surface-card p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
-              <p className="text-base font-semibold leading-snug tracking-tight text-blue-950">{title}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-role-caption font-semibold uppercase tracking-widest text-text-soft">
-                  <span className="text-text-default">{qty}</span>
-                  <span className="text-text-faint">·</span>
-                  <span>{cond}</span>
-                </span>
-                <ChipColumns
-                  className="ml-auto"
-                  columns={[
-                    { key: 'po', width: CHIP_COL.id, node: <OrderIdChip value={po} display={getLast8(po)} /> },
-                    { key: 'tracking', width: CHIP_COL.tracking, node: <TrackingChip value={tracking} display={getLast8(tracking)} /> },
-                    { key: 'serial', width: CHIP_COL.serial, node: <SerialChip value={serialsCsv} width="w-auto" /> },
-                  ]}
-                />
-              </div>
+              <StackedRowIdentity
+                title={
+                  <p className="text-base font-semibold leading-snug tracking-tight text-blue-950">
+                    {title}
+                  </p>
+                }
+                keys={joinStackedIdentityKeys([
+                  <span
+                    key="qty-cond"
+                    className="flex shrink-0 items-center gap-1 whitespace-nowrap text-role-caption font-semibold uppercase tracking-widest text-text-soft"
+                  >
+                    <span className="text-text-default">{qty}</span>
+                    <span className="text-text-faint">·</span>
+                    <span>{cond}</span>
+                  </span>,
+                  <OrderIdChip key="po" value={po} display={getLast8(po)} dense />,
+                  <TrackingChip
+                    key="tracking"
+                    value={tracking}
+                    display={getLast8(tracking)}
+                    dense
+                  />,
+                  <SerialChip key="serial" value={serialsCsv} width="w-auto" />,
+                ])}
+              />
 
               <div className="mt-4 border-t border-blue-50 pt-3">
                 <TestingLinePanel

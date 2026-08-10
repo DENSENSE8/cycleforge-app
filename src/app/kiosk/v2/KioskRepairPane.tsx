@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Button } from '@/design-system/primitives';
+import { Button, FlushTerminalFooter } from '@/design-system/primitives';
 import { Loader2, Check } from '@/components/Icons';
 import { ReasonSelector } from '@/components/repair/ReasonSelector';
 import { CustomerInfoForm, CONTACT_FIELDS } from '@/components/repair/CustomerInfoForm';
@@ -19,6 +19,12 @@ import {
 import { useRepairIntakeData } from '@/components/repair/useRepairIntakeData';
 import { buildRepairIntakeReceiptProps } from '@/lib/repair/repair-intake-receipt';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import {
+  KIOSK_PANE_HEADER_BAND,
+  KIOSK_PANE_HEADER_TITLE,
+} from '@/app/kiosk/kiosk-chrome';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 interface KioskRepairPaneProps {
   selectedProduct: ProductSelection | null;
@@ -34,6 +40,9 @@ function formatReceiptToday(): string {
     year: 'numeric',
   });
 }
+
+const SECTION_LABEL =
+  'border-b border-border-hairline px-4 py-2 text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
 /**
  * Landscape right-pane repair intake. Composes the same validation + receipt
@@ -121,22 +130,29 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
 
     return (
       <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center justify-center bg-emerald-50 py-4 text-emerald-700">
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-center bg-emerald-50 py-4 text-emerald-700',
+            cornerClass('flush'),
+          )}
+        >
           <Check className="mr-2 h-5 w-5" />
           <span className="font-semibold uppercase tracking-widest text-emerald-800">
             Repair Submitted
             {submitted.zendeskTicketNumber ? `: Ticket ${submitted.zendeskTicketNumber}` : ''}
           </span>
         </div>
-        <div className="flex-1 overflow-y-auto bg-surface-sunken p-6">
-          <RepairPaperworkCanvas>
-            <RepairServiceForm {...receiptProps} surface="screen" />
-          </RepairPaperworkCanvas>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface-sunken p-0">
+          <div className="px-4 py-4">
+            <RepairPaperworkCanvas>
+              <RepairServiceForm {...receiptProps} surface="screen" />
+            </RepairPaperworkCanvas>
+          </div>
         </div>
-        <div className="shrink-0 border-t border-border-soft bg-surface-card p-6">
+        <FlushTerminalFooter layout="bleed">
           <Button
             size="lg"
-            className="w-full"
+            className={cn('w-full', cornerClass('flush'))}
             onClick={() => {
               repairIdemKey.current = null;
               setSubmitted(null);
@@ -148,12 +164,11 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
           >
             Done / Next Customer
           </Button>
-        </div>
+        </FlushTerminalFooter>
       </div>
     );
   }
 
-  const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
   const blockReason = getRepairSubmitBlockReason(formData, !!signatureData);
   const canSubmit = canSubmitRepairIntake(formData, !!signatureData);
   const issueText = [...formData.repairReasons, formData.repairNotes].filter(Boolean).join(', ');
@@ -161,8 +176,8 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-3 border-b border-border-soft bg-surface-card p-5">
-        <h2 className="min-w-0 flex-1 text-lg font-semibold tracking-tight">Repair Details</h2>
+      <div className={KIOSK_PANE_HEADER_BAND}>
+        <h2 className={KIOSK_PANE_HEADER_TITLE}>Repair Details</h2>
         <RepairPaperworkSheet
           active={showPaperwork}
           onToggle={() => setShowPaperwork((v) => !v)}
@@ -171,12 +186,13 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
       </div>
 
       <div
-        className={`min-h-0 flex-1 overflow-y-auto ${
-          showPaperwork && hasProduct ? 'bg-surface-sunken' : 'p-6 sm:p-8'
-        }`}
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto p-0',
+          showPaperwork && hasProduct && 'bg-surface-sunken',
+        )}
       >
         {!hasProduct ? (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex h-full items-center justify-center px-4">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-text-default">No product selected</h3>
               <p className="mt-2 text-text-soft">
@@ -185,17 +201,18 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
             </div>
           </div>
         ) : showPaperwork ? (
-          <div className="px-4 py-4 sm:px-6 sm:py-5">
+          <div className="px-4 py-4">
             <RepairPaperworkCanvas>
               <RepairServiceForm {...draftReceiptProps} surface="screen" />
             </RepairPaperworkCanvas>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-2xl space-y-12">
-            <section className="space-y-4">
+          <div className="flex w-full flex-col divide-y divide-border-hairline">
+            <section>
               <h3 className={SECTION_LABEL}>1. Issue Details</h3>
-              <div className="rounded-xl border border-border-soft bg-surface-card p-5">
+              <div className="bg-surface-card">
                 <ReasonSelector
+                  appearance="flush"
                   selectedReasons={formData.repairReasons}
                   notes={formData.repairNotes}
                   onReasonsChange={(reasons) =>
@@ -207,9 +224,9 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               </div>
             </section>
 
-            <section className="space-y-4">
+            <section>
               <h3 className={SECTION_LABEL}>2. Customer Information</h3>
-              <div className="rounded-xl border border-border-soft bg-surface-card p-5">
+              <div className="bg-surface-card px-4 py-4">
                 <CustomerInfoForm
                   customer={formData.customer}
                   serialNumber={formData.serialNumber}
@@ -228,9 +245,9 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               </div>
             </section>
 
-            <section className="space-y-4">
+            <section>
               <h3 className={SECTION_LABEL}>3. Authorization</h3>
-              <div className="rounded-xl border border-border-soft bg-surface-card p-5">
+              <div className="bg-surface-card px-4 py-4">
                 <SignaturePad
                   variant="dropoff"
                   label="Sign to authorize the service"
@@ -240,32 +257,39 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               </div>
             </section>
 
-            <section className="space-y-3 pt-4">
-              {submitError && (
-                <p className="text-center font-semibold text-text-danger">{submitError}</p>
-              )}
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={!canSubmit || isSubmitting}
-                onClick={() => void handleSubmit()}
-                title={blockReason}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…
-                  </>
-                ) : (
-                  'Submit repair'
+            {(submitError || (blockReason && !canSubmit)) && (
+              <section className="space-y-1 px-4 py-3">
+                {submitError && (
+                  <p className="text-center font-semibold text-text-danger">{submitError}</p>
                 )}
-              </Button>
-              {blockReason && !submitError && (
-                <p className="text-center text-sm font-semibold text-text-soft">{blockReason}</p>
-              )}
-            </section>
+                {blockReason && !submitError && (
+                  <p className="text-center text-sm font-semibold text-text-soft">{blockReason}</p>
+                )}
+              </section>
+            )}
           </div>
         )}
       </div>
+
+      {hasProduct && !showPaperwork && (
+        <FlushTerminalFooter layout="bleed">
+          <Button
+            size="lg"
+            className={cn('w-full', cornerClass('flush'))}
+            disabled={!canSubmit || isSubmitting}
+            onClick={() => void handleSubmit()}
+            title={blockReason}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…
+              </>
+            ) : (
+              'Submit repair'
+            )}
+          </Button>
+        </FlushTerminalFooter>
+      )}
     </div>
   );
 }

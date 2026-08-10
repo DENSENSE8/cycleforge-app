@@ -21,6 +21,11 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { scheduleEnsureOutboundDocsOnPackReady } from '@/lib/documents/ensure-outbound-docs';
+import {
+  PackPlacementError,
+  placeOrderAtLocation,
+} from '@/lib/packing/pack-placement';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 const ROUTE = 'tech.scan';
 type ScanSourceStation = 'TECH' | 'FBA';
@@ -157,6 +162,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const stationSource = sourceStation === 'FBA' ? 'fba.scan' : ROUTE;
   const salStation = sourceStation;
   const isFbaSource = sourceStation === 'FBA';
+  const packLocationIdRaw = body.packLocationId ?? body.pack_location_id;
+  const packLocationId =
+    packLocationIdRaw != null && Number.isFinite(Number(packLocationIdRaw))
+      ? Number(packLocationIdRaw)
+      : null;
+  const packLocationBarcode = String(
+    body.packLocationBarcode || body.pack_location_barcode || '',
+  ).trim() || null;
   if (!value) return NextResponse.json({ success: false, found: false, error: 'Scan value is required' }, { status: 400 });
 
   // Explicit type override or auto-detect
@@ -428,6 +441,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       const trackingValue = order.shipping_tracking_number || value;
       const testDateTime = formatPSTTimestamp();
 
+      // Ready-to-Pack handoff requires a packing DESK / STAGING place (not FBA).
+      // Check before any writes so the tenant txn can commit cleanly as a no-op.
+      let packPlacement: Awaited<ReturnType<typeof placeOrderAtLocation>> | null = null;
+      if (!isFbaSource && packLocationId == null && !packLocationBarcode) {
+        return NextResponse.json(
+          {
+            success: false,
+            found: true,
+            orderFound: true,
+            error: 'Scan or select a packing station before marking ready to pack',
+            code: 'PACK_STATION_REQUIRED',
+          },
+          { status: 400 },
+        );
+      }
+
       const salId = await createStationActivityLog(client, {
         organizationId: ctx.organizationId,
         station: salStation,
@@ -435,9 +464,31 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         staffId: testedBy,
         shipmentId: matchedShipmentId,
         scanRef: resolved.scanRef ?? value,
-        metadata: { source: stationSource, order_found: true, order_id: order.order_id, order_row_id: Number(order.id), tracking: trackingValue },
+        metadata: {
+          source: stationSource,
+          order_found: true,
+          order_id: order.order_id,
+          order_row_id: Number(order.id),
+          tracking: trackingValue,
+          pack_location_id: packLocationId,
+          pack_location_barcode: packLocationBarcode,
+        },
         createdAt: testDateTime,
       });
+
+      if (!isFbaSource && (packLocationId != null || packLocationBarcode)) {
+        packPlacement = await placeOrderAtLocation(
+          ctx.organizationId,
+          {
+            orderId: Number(order.id),
+            locationId: packLocationId,
+            barcode: packLocationBarcode,
+            staffId: testedBy,
+            source: 'tech_scan',
+          },
+          client,
+        );
+      }
 
       // Get existing serials for this shipment (via any SAL row for same shipment)
       const existingSerials = salId ? await getSerialsBySalId(client as any, salId) : [];
@@ -452,7 +503,23 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (salId && !isFbaSource) await publishTechLogChanged({ organizationId: ctx.organizationId, techId: testedBy, action: 'insert', rowId: salId, source: ROUTE });
       if (salId) publishActivityLogged({ organizationId: ctx.organizationId, id: salId, station: salStation, activityType: 'TRACKING_SCANNED', staffId: testedBy, scanRef: resolved.scanRef ?? value, fnsku: null, source: stationSource }).catch(() => {});
       if (!isFbaSource) {
-        await publishOrderTested({ organizationId: ctx.organizationId, orderId: Number(order.id), testedBy, source: ROUTE });
+        await publishOrderTested({
+          organizationId: ctx.organizationId,
+          orderId: Number(order.id),
+          testedBy,
+          source: ROUTE,
+          packLocationId: packPlacement?.locationId ?? null,
+          packLocationName: packPlacement?.locationName ?? null,
+        });
+        if (packPlacement) {
+          await recordAudit(pool, ctx, req, {
+            source: 'tech-scan',
+            action: AUDIT_ACTION.ORDER_PACK_PLACE,
+            entityType: AUDIT_ENTITY.ORDER,
+            entityId: Number(order.id),
+            after: { ...packPlacement },
+          });
+        }
         // JIT Phase 4: pre-fetch outbound docs while packer queue warms (print stays on pack).
         scheduleEnsureOutboundDocsOnPackReady(
           ctx.organizationId,
@@ -478,6 +545,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         techActivityId: salId,
         techSerialId: null,
         scanSessionId,
+        packPlacement,
         order: buildOrderPayload(order, {
           tracking: trackingValue,
           serialNumbers: existingSerials,
@@ -489,8 +557,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (idemKey) await saveApiIdempotencyResponse(pool, { orgId: ctx.organizationId, idempotencyKey: idemKey, route: ROUTE, staffId: testedBy, statusCode: 200, responseBody: out });
       return NextResponse.json(out);
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof PackPlacementError) {
+      return NextResponse.json(
+        {
+          success: false,
+          found: true,
+          orderFound: true,
+          error: error.message,
+          code: error.code,
+        },
+        { status: 400 },
+      );
+    }
+    const message = error instanceof Error ? error.message : 'Scan failed';
     console.error('Error in tech scan:', error);
-    return NextResponse.json({ success: false, found: false, error: 'Scan failed', details: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, found: false, error: 'Scan failed', details: message }, { status: 500 });
   }
 }, { permission: 'tech.scan_serial' });

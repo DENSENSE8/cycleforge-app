@@ -53,8 +53,12 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { Popover } from '@/design-system/primitives/Popover';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ListingUrlChip, OrderIdChip, SerialChip } from '@/components/ui/CopyChip';
+import { ListingUrlChip, OrderIdChip, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { getLast8 } from '@/lib/copy-chip-format';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
@@ -494,26 +498,36 @@ function OrderSuggestList({
           <button
             type="button"
             onClick={() => onPick(c)}
-            className="flex w-full items-center justify-between gap-2 inset-field text-left hover:bg-blue-50"
+            className="ds-raw-button w-full inset-field text-left hover:bg-blue-50"
           >
-            <span className="min-w-0">
-              {c.product_title ? (
-                // ds-allow-title
-                <span className="block truncate text-role-caption font-semibold text-text-default">
-                  {c.product_title}
-                </span>
-              ) : (
-                <span className="block text-role-caption font-semibold text-text-muted">Order</span>
-              )}
-              {c.sku ? (
-                <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                  {c.sku}
-                </span>
-              ) : null}
-            </span>
-            <span className="shrink-0">
-              <OrderIdChip value={c.order_id} display={getLast8(c.order_id)} />
-            </span>
+            <StackedRowIdentity
+              title={
+                c.product_title ? (
+                  // ds-allow-title
+                  <span
+                    className="block truncate text-role-caption font-semibold text-text-default"
+                    title={c.product_title}
+                  >
+                    {c.product_title}
+                  </span>
+                ) : (
+                  <span className="block text-role-caption font-semibold text-text-muted">
+                    Order
+                  </span>
+                )
+              }
+              keys={joinStackedIdentityKeys([
+                c.sku ? (
+                  <SkuScanRefChip key="sku" value={c.sku} display={getLast8(c.sku)} dense />
+                ) : null,
+                <OrderIdChip
+                  key="order"
+                  value={c.order_id}
+                  display={getLast8(c.order_id)}
+                  dense
+                />,
+              ])}
+            />
           </button>
         </li>
       ))}
@@ -595,36 +609,44 @@ function CompareResult({
 
   return (
     <div className="space-y-2.5 rounded-none bg-surface-card px-3 py-2.5 ring-1 ring-inset ring-border-soft">
-      {/* Identity — title leads, order id chip + clear on the right. */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          {order.product_title ? (
+      {/* Identity — StackedRowIdentity: title → order/SKU keys; Clear trails. */}
+      <StackedRowIdentity
+        title={
+          order.product_title ? (
             // ds-allow-title
-            <p className="truncate text-role-caption font-semibold text-text-default" title={order.product_title}>
+            <p
+              className="truncate text-role-caption font-semibold text-text-default"
+              title={order.product_title}
+            >
               {order.product_title}
             </p>
           ) : (
             <p className="text-role-caption font-semibold text-text-muted">Order found</p>
-          )}
-          {order.sku ? (
-            <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-              {order.sku}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {order.order_id ? (
-            <OrderIdChip value={order.order_id} display={getLast8(order.order_id)} />
-          ) : null}
+          )
+        }
+        keys={joinStackedIdentityKeys([
+          order.sku ? (
+            <SkuScanRefChip key="sku" value={order.sku} display={getLast8(order.sku)} dense />
+          ) : null,
+          order.order_id ? (
+            <OrderIdChip
+              key="order"
+              value={order.order_id}
+              display={getLast8(order.order_id)}
+              dense
+            />
+          ) : null,
+        ])}
+        trailing={
           <button
             type="button"
             onClick={onClear}
-            className="text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
+            className="ds-raw-button text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
           >
             Clear
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Serial compare & contrast — the crux. Character-level diff of the serial
           we shipped vs the one in hand; differing characters highlighted. */}

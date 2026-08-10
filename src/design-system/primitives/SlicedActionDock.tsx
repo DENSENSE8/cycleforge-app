@@ -10,8 +10,8 @@
  * Placement:
  *   - `bottom` (default) — absolute float at host bottom
  *   - `bottom` + `docked` — in-flow band under other docked bands (receive feedback)
- *   - `embedded` — bare pill track inside another control's chrome (Unbox
- *     overview mounts it in the {@link OmnichannelComposerDock} footer)
+ *   - `embedded` — bare flush-square track inside another control's chrome
+ *     (Unbox Band 1 trailing Print · Receive). Ops chrome — never a soft pill.
  *
  * Host must be `position: relative` + full-height; scroll body reserves
  * {@link STATION_TERMINAL_SCROLL_CLEARANCE} (`pb-32`) when absolute.
@@ -83,9 +83,9 @@ export interface SlicedActionDockProps {
    */
   docked?: boolean;
   /**
-   * Render ONLY the pill track — no dock band, no centering column, no
+   * Render ONLY the flush-square track — no dock band, no centering column, no
    * safe-area padding. For mounting the CTA inside another control's chrome
-   * (Unbox overview: the notes composer footer). Track shrinks to `h-9`.
+   * (Unbox Band 1 trailing). Track fills `h-11` (Band 1).
    */
   embedded?: boolean;
   /** Dock placement. Default `bottom`. */
@@ -111,8 +111,11 @@ const TONE_BG_SOLID: Record<SlicedActionTone, string> = {
 
 /** Fully rounded floating pill chrome (all four corners). */
 const PILL_TRACK = 'rounded-2xl shadow-lg shadow-black/15 ring-1 ring-black/5';
-/** Embedded chrome — the host card already carries the elevation. */
-const EMBEDDED_TRACK = 'rounded-xl shadow-sm shadow-black/10 ring-1 ring-black/5';
+/**
+ * Embedded ops chrome — flush-square (Unbox Band 1 / Testing / Arrival).
+ * Soft `rounded-xl` + drop shadow on an embedded station floor is banned debt.
+ */
+const EMBEDDED_TRACK = 'rounded-none shadow-none ring-0';
 
 const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
 
@@ -177,11 +180,11 @@ export function SlicedActionDock({
 
   const wrapperClass = slicedActionDockWrapperClass({ edge, docked, embedded });
 
-  // Embedded shrinks the track to sit in a control footer; radii follow suit.
+  // Embedded fills Band 1 height as a flush-square segment (ops chrome).
   const trackChrome = embedded ? EMBEDDED_TRACK : PILL_TRACK;
-  const segmentH = embedded ? 'h-9' : 'h-12';
-  const radiusL = embedded ? 'rounded-l-xl' : 'rounded-l-2xl';
-  const radiusR = embedded ? 'rounded-r-xl' : 'rounded-r-2xl';
+  const segmentH = embedded ? 'h-11' : 'h-12';
+  const radiusL = embedded ? 'rounded-none' : 'rounded-l-2xl';
+  const radiusR = embedded ? 'rounded-none' : 'rounded-r-2xl';
 
   const track = (
     <>

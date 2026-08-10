@@ -1,16 +1,11 @@
 'use client';
 
 /**
- * `arrival_check` — READ what the door already shot. It never captures.
+ * Door photo step body — `arrival_label_photo` / `arrival_box_photo`.
  *
- * The distinction is the whole point of the step. `arrival_package` is the
- * pre-opening insurance photo, and it is the only stage the `require_one`
- * receive gate counts, precisely so that gate cannot be satisfied after the box
- * is open. So this body offers no camera: the bench verifies the door's evidence
- * exists, and captures its own shots at `unbox_carton` in the three steps that
- * follow ({@link CartonPhotoStepBody}).
- *
- * A capture affordance here would be one click away from voiding the control.
+ * Reads what the door already shot for THIS aspect. Capture of missing door
+ * evidence lives in the dock (`ArrivalPhotosDockControl`, `arrival_package` +
+ * step aspect). Never shows bench `unbox_carton` shots.
  */
 
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
@@ -19,10 +14,11 @@ import { useMemo } from 'react';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { photoIntentFromStage } from '@/lib/receiving/photo-intent';
+import { photoAspectLabel } from '@/lib/photos/photo-aspects';
+import type { UnboxStepBodyContext } from './types';
 
 /** Door evidence only — never the bench's own `unbox_carton` shots. */
 const ARRIVAL_LIST_INTENT = photoIntentFromStage('arrival_package');
-import type { UnboxStepBodyContext } from './types';
 
 interface ArrivalPhotoRow {
   id: number;
@@ -34,14 +30,15 @@ interface ArrivalPhotoRow {
   clientCapturedAt?: string | null;
 }
 
-export function ArrivalCheckStepBody({ receivingId, poRef }: UnboxStepBodyContext) {
+export function ArrivalCheckStepBody({ receivingId, aspect, poRef }: UnboxStepBodyContext) {
   const { data, isPending, isError } = useQuery<{ photos: ArrivalPhotoRow[] }>({
-    queryKey: [...receivingPhotosQueryKey(receivingId), ARRIVAL_LIST_INTENT],
+    queryKey: [...receivingPhotosQueryKey(receivingId), ARRIVAL_LIST_INTENT, aspect ?? 'any'],
     queryFn: async () => {
       const params = new URLSearchParams({
         receivingId: String(receivingId),
         photoIntent: ARRIVAL_LIST_INTENT,
       });
+      if (aspect) params.set('photoAspect', aspect);
       const res = await fetch(`/api/receiving-photos?${params.toString()}`, {
         cache: 'no-store',
       });
@@ -60,22 +57,21 @@ export function ArrivalCheckStepBody({ receivingId, poRef }: UnboxStepBodyContex
     [data, poRef],
   );
 
+  const aspectNoun = aspect ? photoAspectLabel(aspect).toLowerCase() : 'door photo';
+
   if (isPending) {
-    return <p className="text-role-caption text-text-soft">Loading arrival photos…</p>;
+    return <p className="text-role-caption text-text-soft">Loading {aspectNoun}…</p>;
   }
 
-  // A failed fetch is NOT "no arrival photos". Saying the door shot nothing when
-  // the request simply failed would send the operator to re-shoot evidence that
-  // exists — and a bench shot cannot stand in for a door shot anyway.
   if (isError) {
-    return <p className="text-role-caption text-text-soft">Arrival photos unavailable.</p>;
+    return <p className="text-role-caption text-text-soft">{aspectNoun} unavailable.</p>;
   }
 
   if (photos.length === 0) {
     return (
       <p className="text-role-caption text-text-soft">
-        No arrival photos on this carton. They are shot at the door, before the box is
-        opened — this step reads them, it cannot take them.
+        No {aspectNoun} on this carton yet. Shot at the door before the box is
+        opened — use Link, Upload, or Send to phone on the floor.
       </p>
     );
   }

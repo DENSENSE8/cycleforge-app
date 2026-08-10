@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Check, Loader2, Plus, Trash2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { requestConfirm } from '@/design-system/components/confirm';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import {
   useMediaLibrarySavedViews,
   readMediaViewPayload,
@@ -74,7 +76,10 @@ export function MediaSavedViewsSection({
             <button
               type="button"
               onClick={() => setSaving(true)}
-              className="-my-0.5 flex items-center gap-1 rounded px-1 py-0.5 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50"
+              className={cn(
+                '-my-0.5 flex items-center gap-1 px-1 py-0.5 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50',
+                cornerClass('flush'),
+              )}
             >
               <Plus className="h-3.5 w-3.5" /> Save
             </button>
@@ -83,7 +88,12 @@ export function MediaSavedViewsSection({
       </div>
 
       {saving ? (
-        <div className="space-y-1.5 rounded-lg border border-border-soft bg-surface-canvas p-2">
+        <div
+          className={cn(
+            'space-y-1.5 border border-border-soft bg-surface-canvas p-2',
+            cornerClass('flush'),
+          )}
+        >
           <input
             autoFocus
             value={name}
@@ -93,7 +103,10 @@ export function MediaSavedViewsSection({
               if (e.key === 'Escape') setSaving(false);
             }}
             placeholder="View name…"
-            className="w-full rounded border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400"
+            className={cn(
+              'w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400',
+              cornerClass('flush'),
+            )}
           />
           {canManage ? (
             <label className="flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
@@ -112,7 +125,10 @@ export function MediaSavedViewsSection({
               type="button"
               onClick={submit}
               disabled={!name.trim() || creating}
-              className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-role-micro uppercase tracking-widest text-white disabled:opacity-50"
+              className={cn(
+                'flex items-center gap-1 bg-blue-600 px-2 py-1 text-role-micro uppercase tracking-widest text-white disabled:opacity-50',
+                cornerClass('flush'),
+              )}
             >
               {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               Save
@@ -121,7 +137,10 @@ export function MediaSavedViewsSection({
             <button
               type="button"
               onClick={() => setSaving(false)}
-              className="rounded px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted"
+              className={cn(
+                'px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted',
+                cornerClass('flush'),
+              )}
             >
               Cancel
             </button>
@@ -147,7 +166,12 @@ export function MediaSavedViewsSection({
                 {view.name}
               </button>
               {view.is_shared ? (
-                <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                <span
+                  className={cn(
+                    'shrink-0 bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200',
+                    cornerClass('chip'),
+                  )}
+                >
                   Shared
                 </span>
               ) : null}
@@ -164,7 +188,10 @@ export function MediaSavedViewsSection({
                     if (ok) remove(view.id);
                   }}
                   aria-label={`Delete ${view.name}`}
-                  className="shrink-0 rounded p-1 text-text-faint opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                  className={cn(
+                    'shrink-0 p-1 text-text-faint opacity-0 transition group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600',
+                    cornerClass('flush'),
+                  )}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

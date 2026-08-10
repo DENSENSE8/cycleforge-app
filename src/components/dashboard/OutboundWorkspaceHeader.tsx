@@ -3,9 +3,16 @@
 /**
  * Outbound workspace chrome — To-ship Sheets flush stack (Unbox History recipe):
  *
- *   Band 1 — tabs + Import / Add
+ *   Band 1 — fixed lifecycle system tabs + Import / Add
  *   Band 2 — KPI (DashboardOrdersView)
- *   Band 3 — find-only command row + Show/Hide inspector (View topics on rail)
+ *   Band 3 — find-only command row + Views + Show/Hide inspector (View topics on rail)
+ *
+ * House Band-1 law (Unbox is golden; To-ship is the first desk exemplar):
+ * fixed process tabs for every staffer · Pin-list cube omitted (honest absence —
+ * no closed outbound foreign-collection catalog yet) · Views on Band 3 · page-pin
+ * in GlobalHeader. Never Chrome-style unpin of Pending · Tested · Packed · Shipped;
+ * never embed Unbox receiving here. SoT: source-of-truth.md → Workbench Band-1 strip
+ * · Left-edge occupant → SCOPE decides its home.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -48,7 +55,10 @@ export interface OutboundWorkspaceHeaderProps {
   className?: string;
 }
 
-/** Band 1 — tabs + trailing CTAs. Find / inspector park live on {@link OutboundTriageBand}. */
+/**
+ * Band 1 — fixed lifecycle tabs + trailing CTAs. No Pin-list `leading` (honest
+ * absence). Find / Views / inspector park live on {@link OutboundTriageBand}.
+ */
 export function OutboundWorkspaceHeader({
   orderView,
   onSelectView,
@@ -85,6 +95,11 @@ export function OutboundWorkspaceHeader({
   return (
     <WorkbenchChromeHeader
       density="band"
+      // Three pin scopes (never merge):
+      //   WEBSITE-WIDE page-pin → GlobalHeader `HeaderPinsSwitcher`
+      //   STATION Band-1 list-pin → omitted here (no closed outbound catalog)
+      //   PAGE-WIDE Views → Band 3 `OutboundTriageBand` → `OutboundViewsMenu`
+      // SoT: source-of-truth.md → Workbench Band-1 strip · SCOPE decides its home.
       tabs={tabs}
       activeTab={active}
       onTabChange={(id) => onSelectView(id as DashboardOrderView)}
@@ -92,7 +107,9 @@ export function OutboundWorkspaceHeader({
       className={className}
       trailing={
         <WorkbenchTrailingCluster
-          before={<OutboundViewsMenu />}
+          // The hairline walls SOLID CTAs off the quiet icon rail; the data-in
+          // control is a quiet glyph now, so it would read as a broken pair.
+          divide={false}
           actions={<OutboundOrderChromeActions onNewOrder={openIntakeForm} />}
         />
       }
@@ -101,9 +118,9 @@ export function OutboundWorkspaceHeader({
 }
 
 /**
- * Band 3 — find-only command row (Unbox History golden): flex-1 search +
- * far-right Show/Hide inspector. Sheet refine / layout / KPI live on the
- * pushing right inspector View cluster.
+ * Band 3 — find + Views (Bookmark; page-scoped inner refinement) + far-right
+ * Show/Hide inspector. Sheet refine / layout / KPI live on the pushing right
+ * inspector View cluster. Never a Band-1 peer of lifecycle tabs.
  */
 export function OutboundTriageBand({
   orderView,
@@ -145,6 +162,7 @@ export function OutboundTriageBand({
           className="min-w-0 flex-1"
         />
       }
+      views={<OutboundViewsMenu />}
       trailing={inspectorToggle}
     />
   );

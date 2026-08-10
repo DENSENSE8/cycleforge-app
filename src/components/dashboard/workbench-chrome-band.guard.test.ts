@@ -30,7 +30,7 @@ const BAND_CONSUMERS = [
   'src/components/fba/FbaWorkspaceHeader.tsx',
   'src/components/walk-in/WalkInDeskHeader.tsx',
   'src/components/repair/RepairWorkspaceHeader.tsx',
-  'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
+  'src/components/photos/PhotoLibraryScopeBand.tsx',
   'src/components/labels/LabelsProductsWorkspaceHeader.tsx',
   'src/components/support/zendesk/SupportTicketsBoard.tsx',
   'src/components/receiving/pickup/PickupWorkspace.tsx',

@@ -153,5 +153,6 @@ test("Unit floor serial CTA is emerald + neutral focus (no blue glow)", () => {
     "multi-qty add serial must match SerialCard emerald submit",
   );
   assert.match(SERIAL, /tone=\{embedded \? ['"]neutral['"] : ['"]blue['"]\}/);
-  assert.match(SERIAL, /border-0[\s\S]{0,40}divide-x/);
+  assert.match(SERIAL, /divide-x divide-border-soft/);
+  assert.match(SERIAL, /border-y border-border-hairline/);
 });

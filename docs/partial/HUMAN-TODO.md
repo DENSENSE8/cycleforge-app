@@ -602,11 +602,17 @@ Staff wildcard `*.app.cycleforge.ai` does **not** cover `usav.kiosk.app.cyclefor
 (DNS wildcards match one label only). Kiosk routing is already in the app
 (`src/lib/tenancy/kiosk-host.ts` + `src/proxy.ts`).
 
+**Dogfood bridge (until this gate closes):** tablets use
+`https://app.cycleforge.ai/kiosk/v2` (`kioskPathDogfoodActive() === true`). After
+DNS is live, flip that gate to `false` so staff `/kiosk*` 308s to the subdomain
+again and prod pairing requires the kiosk host.
+
 - ☐ Create DNS wildcard **`*.kiosk.app.cycleforge.ai`** → Vercel project `cycleforge-app`.
 - ☐ Attach the custom domain (and cert) on that project; confirm
   `https://usav.kiosk.app.cycleforge.ai` resolves and serves the kiosk (`/` → intake).
 - ☐ Optional: refuse bare `kiosk.app.cycleforge.ai` (app already 404s it).
-- ☐ Update MDM / Guided Access home URL to `https://usav.kiosk.app.cycleforge.ai`.
+- ☐ Flip `kioskPathDogfoodActive()` → `false`; update MDM / Guided Access home URL to
+  `https://usav.kiosk.app.cycleforge.ai`.
 - ☐ Re-pair every tablet after cutover (`cf_kiosk` is host-only; old staff-host cookies do not move).
 - ☐ Optional local: set `NEXT_PUBLIC_KIOSK_HOST_SUFFIX=kiosk.localhost` and
   `/etc/hosts` → `127.0.0.1 usav.kiosk.localhost` (document in lockdown runbook).

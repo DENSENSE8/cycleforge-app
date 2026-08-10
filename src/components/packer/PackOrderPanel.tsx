@@ -10,17 +10,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
-import {
-  staggerRevealContainer,
-  staggerRevealRiseItem,
-  STAGGER_REVEAL_STEP,
-} from '@/design-system/primitives/StaggerReveal';
 import { Camera, ExternalLink, History } from '@/components/Icons';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import {
@@ -46,6 +35,7 @@ import {
   StationDisplaysEdgeToggle,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-index';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
@@ -65,14 +55,6 @@ interface PackOrderPanelProps {
 }
 
 export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
-  const reduceMotion = useReducedMotion();
-  const cardPresence = useMotionPresence(framerPresence.stationCard);
-  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
-  const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
-  const revealItem: Variants = reduceMotion
-    ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
-    : staggerRevealRiseItem;
-
   const { data: packingPolicy } = usePackingPolicy();
   const { data: checklist, isLoading } = useOrderPackChecklist({
     orderRowId: activeOrder.orderRowId,
@@ -121,6 +103,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     tracking.length > 0 || orderId.length > 0 || timelineSerials.length > 0;
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   /**
    * `←|` Open displays → the Root Index, never a guessed leaf.
@@ -230,15 +213,9 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     </div>
   );
 
+  // Host (`PackOrderWorkspace`) owns scan-cadence swap; paint content immediately.
   return (
-    <motion.div
-      key={resetKey}
-      initial={cardPresence.initial}
-      animate={cardPresence.animate}
-      exit={cardPresence.exit}
-      transition={cardTransition}
-      className="relative flex h-full w-full min-h-0 flex-col"
-    >
+    <div className="relative flex h-full w-full min-h-0 flex-col">
       <StationScanPaneHost
         displaysOpen={Boolean(resolvedSideTab)}
         hostDataAttrs={{ 'data-pack-pane-host': true }}
@@ -250,16 +227,9 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
               <StationContextBar
                 placement="flow"
                 identity={
-                  <motion.div
-                    initial="hidden"
-                    animate="show"
-                    variants={revealContainer}
-                    className="w-full min-w-0"
-                  >
-                    <motion.div variants={revealItem} className="w-full min-w-0">
-                      <PackOrderIdentity activeOrder={activeOrder} />
-                    </motion.div>
-                  </motion.div>
+                  <div className="w-full min-w-0">
+                    <PackOrderIdentity activeOrder={activeOrder} />
+                  </div>
                 }
                 moreDetails={
                   <StationMoreDetails>
@@ -313,36 +283,32 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 reserveIdentityClearance={false}
                 bodyGap="none"
               >
-                <motion.div initial="hidden" animate="show" variants={revealContainer}>
-                  <motion.div variants={revealItem}>
-                    {isUnitScan ? (
-                      <div className="space-y-3">
-                        <p className="text-role-caption font-semibold text-text-muted">
-                          Packing photos for this prepacked unit — linked to the unit
-                          label and visible on the timeline.
-                        </p>
-                        {hasUnitPhotos ? (
-                          <UnitPackPhotoPeek
-                            serialUnitId={Number(activeOrder.serialUnitId)}
-                            preferSource="packing"
-                          />
-                        ) : null}
-                      </div>
-                    ) : (
-                      <OrderPackChecklist
-                        lines={checklist?.lines ?? []}
-                        enforcement={
-                          packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'
-                        }
-                        resetKey={resetKey}
-                        isLoading={isLoading}
-                        variant="panel"
-                        isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
-                        unknownCondition={activeOrder.condition}
+                {isUnitScan ? (
+                  <div className="space-y-3">
+                    <p className="text-role-caption font-semibold text-text-muted">
+                      Packing photos for this prepacked unit — linked to the unit
+                      label and visible on the timeline.
+                    </p>
+                    {hasUnitPhotos ? (
+                      <UnitPackPhotoPeek
+                        serialUnitId={Number(activeOrder.serialUnitId)}
+                        preferSource="packing"
                       />
-                    )}
-                  </motion.div>
-                </motion.div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <OrderPackChecklist
+                    lines={checklist?.lines ?? []}
+                    enforcement={
+                      packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'
+                    }
+                    resetKey={resetKey}
+                    isLoading={isLoading}
+                    variant="panel"
+                    isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
+                    unknownCondition={activeOrder.condition}
+                  />
+                )}
               </StationWorkbench>
             </div>
           </StationPanelRoot>
@@ -363,6 +329,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
           ) : null
         }
       />
-    </motion.div>
+    </div>
   );
 }

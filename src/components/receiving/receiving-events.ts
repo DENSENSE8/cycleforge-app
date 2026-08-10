@@ -73,6 +73,24 @@ export interface ReceivingEventDetail {
   'receiving-lookup-scan': UnboxLookupScanDetail;
   /** Hand focus back to the scan wedge after a procedure face/chip click. */
   'receiving-focus-scan': undefined;
+  /**
+   * Arm the **sidebar ingestion** scan bar for the next carton (clear + focus).
+   * Distinct from `receiving-focus-scan` (dock-first wedge while a carton is
+   * open). Preferred producer today is the ⌘. owner in `scan-hotkey/store`
+   * (StationScanBar clears itself via `armNext`); this name is reserved for
+   * typed producers that need the same semantics without a mounted bar stack.
+   */
+  'receiving-arm-next-scan': undefined;
+  /**
+   * Procedure locus → **ingest** hand-back: a payload the open-carton dock
+   * scanned but does not own (i.e. not a shelf) is a tracking, so it goes to
+   * the sidebar bar's own submit rather than being swallowed.
+   *
+   * This is the one direction that is legal. The reverse — the sidebar bar
+   * placing cartons — is not: ingest and procedure are two loci, and the
+   * sidebar's job is "which carton", never "which shelf".
+   */
+  'receiving-submit-tracking': { tracking: string };
   /** Table row pulse after MRU / deep-link navigation. */
   'receiving-highlight-line': number;
   /** Workspace / triage / History chrome: step prev/next line in the open table. */
@@ -91,6 +109,12 @@ export interface ReceivingEventDetail {
   };
   /** Close the History triage slide-over. */
   'receiving-close-history-triage': undefined;
+  /**
+   * Export the current Unbox History view as CSV. The Band-1 trailing button
+   * triggers it; the table (which holds the rows in hand) formats + downloads —
+   * never a second query. History surface only.
+   */
+  'receiving-export-history': undefined;
 }
 
 /** Payload of `receiving-lookup-scan`. */

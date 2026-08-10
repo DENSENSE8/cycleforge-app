@@ -96,8 +96,13 @@ describe('Compact activity row SoT', () => {
       /formatDistanceToNow|inboxRelativeTime|hrs ago|hours ago/,
       'inbox must not invent a prose relative age',
     );
-    // Tech-queue identity uses house OrderIdChip / TrackingChip (last-8) —
-    // not mono `Ready · ${id}` prose. Still ban kind glyphs + soft pill parade.
+    // Tech-queue identity uses house OrderIdChip / TrackingChip (last-8) via
+    // joinStackedIdentityKeys — not mono `Ready · ${id}` prose.
+    assert.match(
+      INBOX,
+      /joinStackedIdentityKeys/,
+      'ready/return identity keys join through the stacked-identity SoT helper',
+    );
     assert.match(
       INBOX,
       /OrderIdChip/,

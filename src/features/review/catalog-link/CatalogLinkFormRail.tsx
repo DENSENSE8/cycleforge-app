@@ -23,10 +23,9 @@
  * Recipe: `display/right-rail-inspector.md`.
  *
  * **Occupant ids are STABLE** (`detail:catalog-link` / `detail:import-exception`),
- * not per-record: walking the queue row by row is the loop here, and
- * `RightRailHost` keys its `AnimatePresence` on the id — a per-record id plays
- * exit → empty → enter on every step (`display/motion-crossfade.md`). The
- * exception's preconditions hold because each BODY is keyed on the record, so a
+ * not per-record: walking the queue row by row is the loop here, and a per-record
+ * id would remount the whole push column on every step (`display/motion-crossfade.md`).
+ * The exception's preconditions hold because each BODY is keyed on the record, so a
  * swap remounts it and every field re-seeds; nothing is auto-saved, so there is
  * no dirty draft to flush (a catalog pick for chore A must never survive onto
  * chore B).

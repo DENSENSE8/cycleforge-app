@@ -45,8 +45,12 @@ import {
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import { StationTerminalDock } from '@/components/station/terminal';
-import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
-import { StationDisplaysEdgeToggle } from '@/components/station/displays';
+import {
+  StationDisplaysEdgeToggle,
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+  useYieldStationDisplaysOnAssistantOpen,
+} from '@/components/station/displays';
 import { buildReviewDisplayIndexRows } from '@/features/review/packer/review-display-index';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { toast } from '@/lib/toast';
@@ -177,6 +181,7 @@ export function PackerReviewMode({
   /** `←|` Open displays → the Root Index, not a guessed leaf. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   const displayTabs = useMemo(
     () =>

@@ -97,6 +97,19 @@ export function InventoryPoHeader({
               value: fmtDateTime(po.last_synced_at),
               mono: true,
             },
+            // Carton receive trail (website do/undo) — dense facts on Information,
+            // never a second trust-strip chrome (guard forbids data-inventory-receive-fact).
+            {
+              label: 'Received',
+              value: fmtDateTime(data.receiving?.inventory_received_at ?? null),
+              mono: true,
+            },
+            {
+              label: 'Purchase receive',
+              value: data.receiving?.zoho_purchase_receive_id?.trim() || '—',
+              copyValue: data.receiving?.zoho_purchase_receive_id?.trim() || undefined,
+              mono: true,
+            },
           ]}
         />
       </header>

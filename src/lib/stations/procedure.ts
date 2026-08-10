@@ -57,8 +57,10 @@ import { applyCaptureOrderOverride } from './unbox-flow-capture-order';
  *             reads the checklist it has already happened.
  *   capture — the per-carton / per-unit acts. THIS is the slice the station's
  *             right-rail checklist renders.
- *   commit  — the terminal acts that close the carton out (print, receive).
- *             Driven from the terminal dock, not the checklist.
+ *   commit  — the terminal acts that close the carton out
+ *             (print → stage → receive). Print · Receive live on the dogfood
+ *             strip; `stage` (location scan) arms Band 1 after print. Never the
+ *             capture checklist.
  *
  * Without this, the two surfaces disagreed about what "the Unbox procedure" is
  * — Studio said 7 steps, the bench said 5, and both docblocks claimed to be the
@@ -268,11 +270,7 @@ export function procedureForNodeType(type: string): ProcedureDefinition | undefi
 }
 
 /** Carrier dunnage shots — omitted when `modifiers.isLocalPickup`. */
-const LOCAL_PICKUP_OMIT = new Set([
-  'shipping_label_photo',
-  'box_photo',
-  'packing_material',
-]);
+const LOCAL_PICKUP_OMIT = new Set(['packing_material']);
 
 function isResolveContext(
   value: ProcedureResolveContext | ProcedureVariant,
@@ -419,16 +417,31 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     ],
     writes: [{ table: 'receiving_carton' }],
   },
-  arrival_check: {
-    key: 'arrival_check',
-    label: 'Arrival photos',
+  arrival_label_photo: {
+    key: 'arrival_label_photo',
+    label: 'Label photo',
     summary:
-      'Read the door\u2019s pre-opening shot. A VERIFY step, never a capture: a bench photo stamped here would satisfy the receive gate with a post-opening image and void the control \u2014 which is why its endpoint is the GET, not the POST.',
+      'Door evidence before the box is opened — the carrier label on the unopened carton. Dock Band 1 is Link | Upload | Send to phone stamped arrival_package · shipping_label only \u2014 never unbox_carton (a bench shot here would void the receive-gate control).',
     phase: 'capture',
     photoStage: 'arrival_package',
+    photoAspect: 'shipping_label',
     composed: false,
-    endpoint: { method: 'GET', path: '/api/receiving-photos' },
+    endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
+    writes: RECEIVING_PHOTO_WRITES,
+  },
+  arrival_box_photo: {
+    key: 'arrival_box_photo',
+    label: 'Box photo',
+    summary:
+      'Door evidence before the box is opened — the carton exterior (crush, punctures, water, tape). Dock Band 1 stamps arrival_package · box_exterior only \u2014 never unbox_carton.',
+    phase: 'capture',
+    photoStage: 'arrival_package',
+    photoAspect: 'box_exterior',
+    composed: false,
+    endpoint: { method: 'POST', path: '/api/receiving-photos' },
+    reads: RECEIVING_PHOTO_READS,
+    writes: RECEIVING_PHOTO_WRITES,
   },
   shipping_label_photo: {
     key: 'shipping_label_photo',
@@ -547,11 +560,26 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     reads: [{ table: 'receiving_line' }],
     writes: [{ table: 'receiving_line_testing' }],
   },
+  stage: {
+    key: 'stage',
+    label: 'Location',
+    summary:
+      'Scan the putaway bin barcode where this unit will live after receive. Dock Band 1 owns the wedge; the middle Placement panel confirms room · bin · barcode. Distinct from Arrival door carton staging.',
+    phase: 'commit',
+    composed: false,
+    endpoint: { method: 'POST', path: '/api/receiving/lines/:id/stage' },
+    reads: [
+      { table: 'receiving_line' },
+      { table: 'receiving_line_putaway' },
+      { table: 'locations' },
+    ],
+    writes: [{ table: 'receiving_line_putaway' }],
+  },
   receive: {
     key: 'receive',
     label: 'Receive to the purchase order',
     summary:
-      'Commit the received quantities: units become inventory, the line advances, and the receipt is pushed to the inventory provider.',
+      'Commit the received quantities: units become inventory, the line advances, and the receipt is pushed to the inventory provider. Prefer the staged location when present; otherwise org default putaway.',
     phase: 'commit',
     composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/mark-received-po' },
@@ -578,7 +606,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
 const UNBOX_CATALOG_ORDER = [
   'scan',
   'classify',
-  'arrival_check',
+  'arrival_label_photo',
+  'arrival_box_photo',
   'shipping_label_photo',
   'box_photo',
   'packing_material',
@@ -588,19 +617,22 @@ const UNBOX_CATALOG_ORDER = [
   'serial',
   'label',
   'print',
+  'stage',
   'receive',
 ] as const;
 
-/** Found: serial anchors the unit before grade + evidence (same trio as return). */
+/**
+ * Found capture walk — door Label/Box photos own shipping-label + exterior
+ * evidence; bench `shipping_label_photo` / `box_photo` / `item_photos` stay in
+ * the catalog for lineage / Studio but are not on the operator walk.
+ */
 const FOUND_CAPTURE = [
-  'arrival_check',
-  'shipping_label_photo',
-  'box_photo',
+  'arrival_label_photo',
+  'arrival_box_photo',
   'packing_material',
   'contents',
   'serial',
   'condition',
-  'item_photos',
   'label',
 ] as const;
 
@@ -608,19 +640,17 @@ const UNFOUND_CAPTURE = ['classify', ...FOUND_CAPTURE] as const;
 
 /** Return: serial before condition — the scan names the unit being graded. */
 const RETURN_CAPTURE = [
-  'arrival_check',
-  'shipping_label_photo',
-  'box_photo',
+  'arrival_label_photo',
+  'arrival_box_photo',
   'packing_material',
   'contents',
   'serial',
   'condition',
-  'item_photos',
   'label',
 ] as const;
 
 const UNBOX_INTAKE = ['scan'] as const;
-const UNBOX_COMMIT = ['print', 'receive'] as const;
+const UNBOX_COMMIT = ['print', 'stage', 'receive'] as const;
 
 const UNBOX_FLOWS: Record<UnboxFlowId, UnboxFlowDefinition> = {
   found: {

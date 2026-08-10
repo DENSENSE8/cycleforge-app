@@ -9,6 +9,8 @@ import {
   NOTE_INSERT_MENU_ICON_TONE,
   NOTE_INSERT_TRIGGER_BTN,
   NOTE_INSERT_TRIGGER_BTN_ACTIVE,
+  NOTE_INSERT_TRIGGER_DOCK_BTN,
+  NOTE_INSERT_TRIGGER_DOCK_BTN_ACTIVE,
   NOTE_OVERLAY_ICON,
 } from './note-composer-helpers';
 import { WORKSPACE_NESTED_OVERLAY_CORNER } from '@/design-system/components';
@@ -31,6 +33,8 @@ export type NoteComposerInsertAction = {
  *
  * @param placement — `overlay` (default) absolute corner; `inline` for
  *   OmnichannelComposerDock footer rows (no absolute positioning).
+ * @param trigger — `chip` (default 22×22); `dock` = flush h-11 edge cell,
+ *   transparent at rest · white only while open (Unbox dogfood label-note).
  * @param className — absolute inset override when `placement="overlay"`.
  *   Default is {@link WORKSPACE_NESTED_OVERLAY_CORNER}.
  */
@@ -38,18 +42,29 @@ export function NoteComposerInsertRail({
   actions,
   className,
   placement = 'overlay',
+  trigger: triggerVariant = 'chip',
 }: {
   actions: NoteComposerInsertAction[];
   className?: string;
   placement?: 'overlay' | 'inline';
+  trigger?: 'chip' | 'dock';
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  if (actions.length === 0) return null;
+  // Chip/overlay hide when empty; dock always paints the flush white `+`.
+  if (actions.length === 0 && triggerVariant !== 'dock') return null;
+
+  const triggerIdle =
+    triggerVariant === 'dock' ? NOTE_INSERT_TRIGGER_DOCK_BTN : NOTE_INSERT_TRIGGER_BTN;
+  const triggerActive =
+    triggerVariant === 'dock'
+      ? NOTE_INSERT_TRIGGER_DOCK_BTN_ACTIVE
+      : NOTE_INSERT_TRIGGER_BTN_ACTIVE;
+  const hasActions = actions.length > 0;
 
   const trigger = (
-    <div className="pointer-events-auto">
+    <div className={cn('pointer-events-auto', triggerVariant === 'dock' && 'h-11 w-11')}>
       <HoverTooltip label="Insert into note" asChild>
         {/* ds-raw-button */}
         <button
@@ -58,17 +73,25 @@ export function NoteComposerInsertRail({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-label="Insert into note"
-          onClick={() => setMenuOpen((open) => !open)}
-          className={cn(NOTE_INSERT_TRIGGER_BTN, menuOpen && NOTE_INSERT_TRIGGER_BTN_ACTIVE)}
+          disabled={!hasActions}
+          onClick={() => {
+            if (!hasActions) return;
+            setMenuOpen((open) => !open);
+          }}
+          className={cn(
+            triggerIdle,
+            menuOpen && triggerActive,
+            !hasActions && 'cursor-not-allowed opacity-50',
+          )}
         >
           <Plus className={NOTE_OVERLAY_ICON} />
         </button>
       </HoverTooltip>
       <Popover
-        open={menuOpen}
+        open={menuOpen && hasActions}
         onClose={() => setMenuOpen(false)}
         anchorRef={triggerRef}
-        placement={placement === 'inline' ? 'top-start' : 'bottom-end'}
+        placement={placement === 'inline' || triggerVariant === 'dock' ? 'top-start' : 'bottom-end'}
         level="panelOverlay"
         role="menu"
         aria-label="Insert into note"
@@ -107,8 +130,18 @@ export function NoteComposerInsertRail({
     </div>
   );
 
-  if (placement === 'inline') {
-    return <div className={cn('relative shrink-0', className)}>{trigger}</div>;
+  if (placement === 'inline' || triggerVariant === 'dock') {
+    return (
+      <div
+        className={cn(
+          'relative shrink-0',
+          triggerVariant === 'dock' && 'h-11 w-11',
+          className,
+        )}
+      >
+        {trigger}
+      </div>
+    );
   }
 
   return (

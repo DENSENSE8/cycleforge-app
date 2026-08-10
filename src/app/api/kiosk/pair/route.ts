@@ -13,8 +13,9 @@
  * host (`{slug}.kiosk.app…`) the host slug's org must match the enroll row
  * (defense in depth); mismatch → same 404 as a bad code.
  *
- * Production requires a tenant kiosk host. Non-production still allows pairing
- * on the staff host path so local E2E works before DNS.
+ * Dogfood path mode (`kioskPathDogfoodActive`): pairing is allowed on the staff
+ * host (`/kiosk/v2`). When subdomain DNS (J7b) is live and path dogfood flips
+ * off, require a tenant kiosk host again in production.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,7 +31,7 @@ import {
 } from '@/lib/auth/session';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
-import { isKioskHost, parseKioskHost } from '@/lib/tenancy/kiosk-host';
+import { isKioskHost, kioskPathDogfoodActive, parseKioskHost } from '@/lib/tenancy/kiosk-host';
 import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const runtime = 'nodejs';
@@ -53,7 +54,8 @@ async function handlePair(req: NextRequest) {
     const onKioskHost = isKioskHost(host);
     const isProd = process.env.NODE_ENV === 'production';
 
-    if (!onKioskHost && isProd) {
+    // Path dogfood: allow pair on staff host. After J7b, require kiosk host in prod.
+    if (!onKioskHost && isProd && !kioskPathDogfoodActive()) {
       return NextResponse.json({ error: 'KIOSK_HOST_REQUIRED' }, { status: 403 });
     }
 

@@ -35,6 +35,7 @@ import {
   StationDisplaysEdgeToggle,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { buildSupportOrdersDisplayIndexRows } from '@/components/support/orders/support-orders-display-index';
 import { SupportContextHub } from '@/components/support/context';
@@ -88,6 +89,7 @@ function SupportOrderFocus({
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
   /**
    * `←|` Open displays → the Root Index, never a guessed leaf — with 2
    * displays declared, landing on a guess IS the whole surface

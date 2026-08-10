@@ -4,7 +4,7 @@
  *
  * Hairline = drag-to-resize only (`useHorizontalEdgeResize` +
  * `HorizontalEdgeResizeHandle` without `onCollapse`). Unbox Displays
- * (`UnboxPushColumn`) is the golden twin.
+ * (`StationDisplaysPushColumn`) is the golden twin.
  *
  * SoT: detail-stack/layout.ts → DETAIL_STACK_COLLAPSE
  * Host: RightRailHost.tsx
@@ -105,14 +105,24 @@ test('Incoming details opts out of host park strip (collapsedStrip=false)', () =
   assert.match(panel, /collapsedStrip=\{false\}/);
 });
 
-test('push column width tweens only on open/close — not live resize', () => {
-  assert.match(HOST_SRC, /pushWidthSettled/);
-  assert.match(HOST_SRC, /pushWidthTransition/);
-  assert.match(HOST_SRC, /isDragging \|\| pushWidthSettled/);
-  assert.match(HOST_SRC, /duration:\s*0/);
-  // Exit must keep the rail tween so close still animates.
-  assert.match(HOST_SRC, /exit=\{\{[\s\S]*?transition:\s*pushTransition/);
-  // Mid-drag must not re-ladder park via live desiredWidthPx.
+test('push column snaps instantly — Unbox Displays / context-rail twin', () => {
+  // Open ↔ park is a one-frame style.width write, never motionRole.push.rail.
+  assert.match(HOST_SRC, /data-right-rail-mode="push"/);
+  assert.match(HOST_SRC, /width,/);
+  assert.equal(
+    /motionRole\.push\.rail/.test(HOST_SRC),
+    false,
+    'desk push must not tween width — Station Displays is the golden',
+  );
+  assert.equal(
+    /pushWidthSettled|pushWidthTransition|pushTransition|pushPresence/.test(HOST_SRC),
+    false,
+    'push width-settled tween gate is retired',
+  );
+  // Push branch is a plain <aside>; overlay alone keeps motion.aside.
+  assert.match(HOST_SRC, /<aside\b/);
+  assert.match(HOST_SRC, /data-right-rail-mode="overlay"/);
+  // Mid-drag must not thrash desiredWidthPx.
   assert.match(HOST_SRC, /publishedDesireRef/);
 });
 test('collapse / expand affordances use IconButton (not raw buttons)', () => {

@@ -2,12 +2,16 @@
 
 import { StaffRecipientList, type StaffRecipient } from '@/components/quick-access/StaffRecipientList';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import { RECEIVING_PHOTO_STAGES } from '@/lib/receiving/photo-intent';
 import { photoStageLabel } from '@/lib/photos/stages';
 import { isPhotoLibraryStage, type PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
 
-const fieldClass =
-  'h-10 w-full rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10';
+const fieldClass = cn(
+  'h-10 w-full border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10',
+  cornerClass('flush'),
+);
 const labelClass = 'mb-1.5 block text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint';
 
 interface PhotoLibraryFilterDropdownProps {
@@ -35,7 +39,12 @@ export function PhotoLibraryFilterDropdown({
               : 'Any staff'}
           </span>
         </div>
-        <div className="rounded-2xl border border-border-hairline bg-surface-canvas/50 p-2">
+        <div
+          className={cn(
+            'border border-border-hairline bg-surface-canvas/50 p-2',
+            cornerClass('flush'),
+          )}
+        >
           <StaffRecipientList
             staff={staffOptions}
             onPick={(staff) => onPatch({ staffId: String(staff.id) })}
@@ -50,7 +59,10 @@ export function PhotoLibraryFilterDropdown({
               variant="ghost"
               size="sm"
               onClick={() => onPatch({ staffId: undefined })}
-              className="mt-2 h-auto w-full rounded-lg border border-dashed border-border-soft px-3 py-2 text-role-caption font-semibold uppercase tracking-wider text-text-soft hover:bg-surface-card hover:text-text-default"
+              className={cn(
+                'mt-2 h-auto w-full border border-dashed border-border-soft px-3 py-2 text-role-caption font-semibold uppercase tracking-wider text-text-soft hover:bg-surface-card hover:text-text-default',
+                cornerClass('flush'),
+              )}
             >
               Clear staff
             </Button>
@@ -116,7 +128,10 @@ export function PhotoLibraryFilterDropdown({
         type="button"
         variant="brand"
         onClick={onClose}
-        className="h-auto w-full rounded-2xl py-3.5 text-sm font-semibold uppercase tracking-widest"
+        className={cn(
+          'h-auto w-full py-3.5 text-sm font-semibold uppercase tracking-widest',
+          cornerClass('flush'),
+        )}
       >
         Done
       </Button>

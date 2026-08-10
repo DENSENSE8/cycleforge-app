@@ -137,13 +137,14 @@ export function SidebarNavColumn({ open, children }: { open: boolean; children: 
       //
       // It used to spend 240ms growing 0 → 240 on `motionRole.push.rail`,
       // justified as the sanctioned deliberate-toggle exception to the
-      // layout-animation ban (see "Mechanism" above). The exception is real
-      // and still stands for the surfaces that use it — the right-rail
-      // inspector, the photo drawer — but it is permission, not obligation,
-      // and this column failed the cost test the same way every other spine
-      // motion did: it is the app's most-repeated navigation, the operator
-      // is reaching for a row they already know the position of, and 240ms
-      // of grow is time inserted before they can hit it.
+      // layout-animation ban (see "Mechanism" above). Desk `RightRailHost`
+      // push and Station Displays also snap now — `push.rail` remains
+      // permission for surfaces that still want a deliberate width flourish
+      // (e.g. photo drawer), not obligation. This column failed the cost
+      // test the same way every other spine motion did: it is the app's
+      // most-repeated navigation, the operator is reaching for a row they
+      // already know the position of, and 240ms of grow is time inserted
+      // before they can hit it.
       //
       // The `overflow-hidden` + `absolute` inner column stays exactly as it
       // was. It was built so the content slid out from behind the frame edge

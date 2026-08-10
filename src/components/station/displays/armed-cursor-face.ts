@@ -19,10 +19,11 @@
  * reads as a broken pulse. Skip the pulse class in JS when
  * `useReducedMotion()` is true instead. Never full-row / sky Infinity.
  *
- * **Right-rail commit never withholds DOM.** Enter / Space / click calls
- * `onSelect` / leaf mount in the same turn — no hit-marker timer before paint.
- * Press / selectionPulse **depth juice** stays on the scan-station **middle**
- * (procedure pager), not on Displays open.
+ * **Right-rail commit never withholds DOM.** Enter / Space / pointerdown / click
+ * calls `onSelect` / leaf mount in the same turn — no hit-marker timer before
+ * paint. Press / selectionPulse **depth juice** stays on the scan-station
+ * **middle** (procedure pager), not on Displays open. Mouse matches keyboard
+ * via primary `pointerdown` commit (click deduped).
  *
  * Next cohort (MasterNav / other armed lists): compose these tokens +
  * {@link useArmedCursorList} — never a page-local twin.

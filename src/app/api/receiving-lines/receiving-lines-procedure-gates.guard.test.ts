@@ -32,8 +32,13 @@ const ROOT = path.resolve(__dirname, '../../../..');
 const ROUTE = path.join(ROOT, 'src/app/api/receiving-lines/route.ts');
 const BUILD_SQL = path.join(ROOT, 'src/lib/receiving/lines/build-sql.ts');
 
-/** Gate columns read by `deriveCaptureStepFlags` off the line row. */
-const GATE_COLUMNS = ['condition_graded_at', 'contents_confirmed_at', 'label_previewed_at'];
+/** Gate columns read by `deriveCaptureStepFlags` / Unbox commit `stage` off the line row. */
+const GATE_COLUMNS = [
+  'condition_graded_at',
+  'contents_confirmed_at',
+  'label_previewed_at',
+  'staged_at',
+];
 
 /** The three builders whose rows reach the client through `normalizeRow`. */
 const BUILDER_COUNT = 3;
@@ -41,7 +46,13 @@ const BUILDER_COUNT = 3;
 test('every procedure gate column is SELECTed by all three line builders', () => {
   const sql = readFileSync(BUILD_SQL, 'utf8');
   for (const col of GATE_COLUMNS) {
-    const hits = sql.split(`AS ${col}`).length - 1;
+    // `staged_at` lives in the shared PUTAWAY_STAGED_SELECT_SQL fragment —
+    // count fragment mounts, not expanded aliases (the source never inlines
+    // `AS staged_at` three times).
+    const hits =
+      col === 'staged_at'
+        ? sql.split('${PUTAWAY_STAGED_SELECT_SQL}').length - 1
+        : sql.split(`AS ${col}`).length - 1;
     assert.equal(
       hits,
       BUILDER_COUNT,
@@ -49,6 +60,11 @@ test('every procedure gate column is SELECTed by all three line builders', () =>
         'A builder that omits it renders the step permanently un-completable on that view.',
     );
   }
+  assert.equal(
+    sql.split('${PUTAWAY_STAGED_JOIN_SQL}').length - 1,
+    BUILDER_COUNT,
+    'PUTAWAY_STAGED_JOIN_SQL must mount in every builder that selects staged_*',
+  );
 });
 
 test('normalizeRow names every procedure gate column', () => {
@@ -57,7 +73,7 @@ test('normalizeRow names every procedure gate column', () => {
   assert.ok(start > 0, 'normalizeRow not found — did the normalizer move?');
   const body = route.slice(start);
 
-  for (const col of GATE_COLUMNS) {
+  for (const col of [...GATE_COLUMNS, 'staged_location_id']) {
     assert.ok(
       new RegExp(`^\\s*${col}\\s*:`, 'm').test(body),
       `${col} is missing from normalizeRow's allowlist. The column is SELECTed but ` +

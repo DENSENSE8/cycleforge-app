@@ -2,28 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { surfaceFromStorageKey } from '@/lib/saved-views/surfaces';
 
 /**
  * `useSavedViews` — the ONE storage + URL-apply core behind every generic
- * saved-views surface (dashboard outbound + station/testing history). A "view"
- * is a named, encoded subset of the surface's `paramKeys`; views persist in the
- * polymorphic `saved_views` table (via `/api/saved-views`) and apply by writing
- * those params into the URL, so an applied view is shareable/bookmarkable.
+ * saved-views surface (dashboard outbound + station/testing history + Incoming).
+ * A "view" is a named, encoded subset of the surface's `paramKeys`; views persist
+ * in the polymorphic `saved_views` table (via `/api/saved-views`) and apply by
+ * writing those params into the URL.
  *
- * Consumers — exactly TWO, each supplying only `storageKey` + `paramKeys` and its
- * own UI: `OutboundSavedViewsList` (dashboard outbound sidebar, per lifecycle
- * mode) and `TableOptionsMenu` (station + testing history ⋮ menu). Ops and Media
- * Library keep their dedicated hooks/routes (`useOperationsSavedViews`,
- * `useMediaLibrarySavedViews`).
+ * Consumers supply only `storageKey` + `paramKeys` and their own UI face
+ * (`WorkbenchViewsMenu` on Band 3 is the ops-queue golden; `SavedViewsList` /
+ * `TableOptionsMenu` remain sibling faces). Ops and Media Library keep their
+ * dedicated hooks/routes.
  *
- * **Saved views are operator-defined facet combinations. They are NOT the
- * lifecycle strip** — that boundary is the rule in
- * `.claude/rules/display/workbench.md` → Tabs vs. saved views. Do not add a
- * saved view that merely reproduces one lifecycle tab.
+ * **Saved views are operator-defined facet combinations (inner refinement).
+ * They are NOT the lifecycle strip** — see
+ * `.claude/rules/display/workbench-ops-queue.md` → Tabs vs. saved views.
  *
- * The `storageKey` prop is preserved for call-site stability; it maps to a DB
- * `surface` via `src/lib/saved-views/surfaces.ts` (no longer writes localStorage).
+ * Sharing: personal by default (`is_shared=false`); optional org-share. List =
+ * own ∪ org-shared; only the owner mutates.
  */
 
 export interface SavedView {
@@ -31,6 +30,14 @@ export interface SavedView {
   name: string;
   /** Encoded subset of the view's params (stable key order). */
   query: string;
+  /** Org-wide visibility. */
+  isShared: boolean;
+  /** True when the signed-in staffer owns this row (can edit/delete/share). */
+  isMine: boolean;
+}
+
+export interface SaveViewOptions {
+  isShared?: boolean;
 }
 
 export interface UseSavedViewsResult {
@@ -43,9 +50,13 @@ export interface UseSavedViewsResult {
   hasActiveFilters: boolean;
   /** Apply a saved view: replace this surface's params with the view's, keep the rest. */
   applyView: (view: SavedView) => void;
-  /** Save the current params under a name (replaces a same-name view). */
-  saveView: (name: string) => void;
-  /** Delete a saved view by id. */
+  /** Clear every `paramKeys` key from the URL (idle board for this surface). */
+  clearView: () => void;
+  /** Save the current params under a name (replaces a same-name owned view). */
+  saveView: (name: string, options?: SaveViewOptions) => void;
+  /** Toggle org-share on an owned view. */
+  setViewShared: (id: string, isShared: boolean) => void;
+  /** Delete a saved view by id (owner only). */
   removeView: (id: string) => void;
 }
 
@@ -53,11 +64,20 @@ type ServerView = {
   id: number;
   name: string;
   filters: Record<string, unknown>;
+  is_shared?: boolean;
+  staff_id?: number;
 };
 
-function toClientView(row: ServerView): SavedView {
+function toClientView(row: ServerView, staffId: number | null): SavedView {
   const query = typeof row.filters?.query === 'string' ? row.filters.query : '';
-  return { id: String(row.id), name: row.name, query };
+  const ownerId = typeof row.staff_id === 'number' ? row.staff_id : null;
+  return {
+    id: String(row.id),
+    name: row.name,
+    query,
+    isShared: row.is_shared === true,
+    isMine: staffId != null && ownerId === staffId,
+  };
 }
 
 async function reqJson(url: string, method: string, body?: unknown) {
@@ -81,17 +101,14 @@ export function useSavedViews({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const staffId = user?.staffId ?? null;
   const surface = surfaceFromStorageKey(storageKey);
 
   const [views, setViews] = useState<SavedView[]>([]);
 
   useEffect(() => {
     if (!surface) {
-      // An unmapped storageKey silently disables the whole feature: the list
-      // renders empty and save/remove become no-ops, which looks exactly like
-      // "this staffer has no saved views yet". Say so, or a new surface ships
-      // with a dead Views menu nobody notices. Fix = add the key to
-      // SAVED_VIEW_SURFACES *and* the saved_views_surface_chk CHECK.
       console.error(
         `[useSavedViews] no saved-views surface is mapped for storageKey "${storageKey}" — ` +
           'saved views are disabled here. Register it in src/lib/saved-views/surfaces.ts.',
@@ -109,7 +126,7 @@ export function useSavedViews({
         }
         const json = await res.json();
         const rows: ServerView[] = Array.isArray(json?.views) ? json.views : [];
-        if (!cancelled) setViews(rows.map(toClientView));
+        if (!cancelled) setViews(rows.map((r) => toClientView(r, staffId)));
       } catch {
         if (!cancelled) setViews([]);
       }
@@ -117,10 +134,8 @@ export function useSavedViews({
     return () => {
       cancelled = true;
     };
-  }, [surface, storageKey]);
+  }, [surface, storageKey, staffId]);
 
-  // Encode only the params that define a view, in a stable order so equality is
-  // reliable regardless of how they sit in the live URL.
   const currentQuery = useMemo(() => {
     const out = new URLSearchParams();
     for (const key of [...paramKeys].sort()) {
@@ -145,12 +160,22 @@ export function useSavedViews({
     [paramKeys, searchParams, router, pathname],
   );
 
+  const clearView = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const key of paramKeys) params.delete(key);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname || '/'}?${qs}` : pathname || '/', { scroll: false });
+  }, [paramKeys, searchParams, router, pathname]);
+
   const saveView = useCallback(
-    (name: string) => {
+    (name: string, options?: SaveViewOptions) => {
       const trimmed = name.trim();
       if (!trimmed || !surface) return;
       const filters = { query: currentQuery };
-      const existing = views.find((v) => v.name.toLowerCase() === trimmed.toLowerCase());
+      const isShared = options?.isShared === true;
+      const existing = views.find(
+        (v) => v.isMine && v.name.toLowerCase() === trimmed.toLowerCase(),
+      );
 
       void (async () => {
         try {
@@ -158,14 +183,17 @@ export function useSavedViews({
             const json = await reqJson(`/api/saved-views/${existing.id}`, 'PATCH', {
               name: trimmed,
               filters,
+              isShared,
             });
             const updated = json?.view
-              ? toClientView(json.view as ServerView)
-              : { ...existing, name: trimmed, query: currentQuery };
+              ? toClientView(json.view as ServerView, staffId)
+              : { ...existing, name: trimmed, query: currentQuery, isShared };
             setViews((prev) =>
               prev
                 .filter(
-                  (v) => v.id === existing.id || v.name.toLowerCase() !== trimmed.toLowerCase(),
+                  (v) =>
+                    v.id === existing.id ||
+                    !(v.isMine && v.name.toLowerCase() === trimmed.toLowerCase()),
                 )
                 .map((v) => (v.id === existing.id ? updated : v)),
             );
@@ -174,11 +202,14 @@ export function useSavedViews({
               surface,
               name: trimmed,
               filters,
+              isShared,
             });
             if (json?.view) {
-              const created = toClientView(json.view as ServerView);
+              const created = toClientView(json.view as ServerView, staffId);
               setViews((prev) => [
-                ...prev.filter((v) => v.name.toLowerCase() !== trimmed.toLowerCase()),
+                ...prev.filter(
+                  (v) => !(v.isMine && v.name.toLowerCase() === trimmed.toLowerCase()),
+                ),
                 created,
               ]);
             }
@@ -188,12 +219,38 @@ export function useSavedViews({
         }
       })();
     },
-    [views, currentQuery, surface],
+    [views, currentQuery, surface, staffId],
+  );
+
+  const setViewShared = useCallback(
+    (id: string, isShared: boolean) => {
+      if (!surface) return;
+      const target = views.find((v) => v.id === id);
+      if (!target?.isMine) return;
+      setViews((prev) => prev.map((v) => (v.id === id ? { ...v, isShared } : v)));
+      void (async () => {
+        try {
+          const json = await reqJson(`/api/saved-views/${id}`, 'PATCH', { isShared });
+          if (json?.view) {
+            const updated = toClientView(json.view as ServerView, staffId);
+            setViews((prev) => prev.map((v) => (v.id === id ? updated : v)));
+          }
+        } catch (err) {
+          console.error('[useSavedViews] share toggle failed:', err);
+          setViews((prev) =>
+            prev.map((v) => (v.id === id ? { ...v, isShared: target.isShared } : v)),
+          );
+        }
+      })();
+    },
+    [views, surface, staffId],
   );
 
   const removeView = useCallback(
     (id: string) => {
       if (!surface) return;
+      const target = views.find((v) => v.id === id);
+      if (target && !target.isMine) return;
       const prev = views;
       setViews(prev.filter((v) => v.id !== id));
       void (async () => {
@@ -208,5 +265,15 @@ export function useSavedViews({
     [views, surface],
   );
 
-  return { views, currentQuery, activeView, hasActiveFilters, applyView, saveView, removeView };
+  return {
+    views,
+    currentQuery,
+    activeView,
+    hasActiveFilters,
+    applyView,
+    clearView,
+    saveView,
+    setViewShared,
+    removeView,
+  };
 }

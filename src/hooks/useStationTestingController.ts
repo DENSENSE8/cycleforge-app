@@ -17,6 +17,12 @@ import { normalizeTrackingKey } from '@/lib/tracking-format';
 import { rebuildSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import {
+  looksLikePackStationBarcode,
+  readArmedPackStation,
+  writeArmedPackStation,
+} from '@/lib/packing/pack-station-arm';
+import { looksLikeUnitId } from '@/lib/testing/resolve-testing-scan';
 
 // Re-export types consumed by external components — import paths unchanged.
 export type { StationInputMode, StationScanType };
@@ -27,7 +33,6 @@ export type StationThemeColor = StationTheme;
 type ForcedStationScanType = 'TRACKING' | 'SERIAL' | 'FNSKU' | 'REPAIR';
 
 const LAST_MANUAL_STORAGE_PREFIX = 'cf:last-manual:tech:';
-const COMPLETED_ORDER_AUTO_HIDE_MS = 2 * 60 * 1000;
 
 function newStationIdempotencyKey(): string {
   return safeRandomUUID();
@@ -66,7 +71,6 @@ export function useStationTestingController({
   themeColor,
   onTrackingScan,
   onTrackingOrderLoaded,
-  onActiveOrderCardAutoHidden,
   onFnskuOrderLoaded,
   onUnitLabelScanned,
 }: {
@@ -76,7 +80,6 @@ export function useStationTestingController({
   themeColor: StationThemeColor;
   onTrackingScan?: () => void;
   onTrackingOrderLoaded?: () => void;
-  onActiveOrderCardAutoHidden?: () => void;
   onFnskuOrderLoaded?: () => void;
   /** Fired with the RAW scanned value after a serial scan resolves — the host
    *  gates it to genuine unit labels and fires the packer photo request. */
@@ -85,10 +88,8 @@ export function useStationTestingController({
   const queryClient = useQueryClient();
 
   // Keep callback refs so handlers always call the latest prop without re-creating ctx.
-  const onAutoHiddenRef = useRef(onActiveOrderCardAutoHidden);
   const onFnskuOrderLoadedRef = useRef(onFnskuOrderLoaded);
   const onUnitLabelScannedRef = useRef(onUnitLabelScanned);
-  useEffect(() => { onAutoHiddenRef.current = onActiveOrderCardAutoHidden; }, [onActiveOrderCardAutoHidden]);
   useEffect(() => { onFnskuOrderLoadedRef.current = onFnskuOrderLoaded; }, [onFnskuOrderLoaded]);
   useEffect(() => { onUnitLabelScannedRef.current = onUnitLabelScanned; }, [onUnitLabelScanned]);
 
@@ -99,37 +100,20 @@ export function useStationTestingController({
   const [activeOrder, setActiveOrder] = useState<ActiveStationOrder | null>(null);
   const lastScannedOrderRef = useRef<ActiveStationOrder | null>(null);
   const scanSessionIdRef = useRef<string | null>(null);
-  const [isActiveOrderVisible, setIsActiveOrderVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [trackingNotFoundAlert, setTrackingNotFoundAlert] = useState<string | null>(null);
   const [resolvedManuals, setResolvedManuals] = useState<ResolvedProductManual[]>([]);
   const [isManualLoading, setIsManualLoading] = useState(false);
   const manualRequestIdRef = useRef(0);
-  const completedOrderHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeColor = stationThemeColors[themeColor];
 
-  // ── timer management ──────────────────────────────────────────────────────────
-  const clearCompletedOrderHideTimer = () => {
-    if (!completedOrderHideTimerRef.current) return;
-    clearTimeout(completedOrderHideTimerRef.current);
-    completedOrderHideTimerRef.current = null;
-  };
-
-  const isOrderComplete = (order: ActiveStationOrder | null) => {
-    if (!order) return false;
-    const quantity = Math.max(1, Number(order.quantity) || 1);
-    return order.serialNumbers.length >= quantity;
-  };
-
-  const syncActiveOrderState = (nextOrder: ActiveStationOrder | null, options?: { preserveHidden?: boolean }) => {
+  const syncActiveOrderState = (nextOrder: ActiveStationOrder | null) => {
     setActiveOrder(nextOrder);
     if (!nextOrder) {
       lastScannedOrderRef.current = null;
       scanSessionIdRef.current = null;
-      clearCompletedOrderHideTimer();
-      setIsActiveOrderVisible(false);
       return;
     }
     lastScannedOrderRef.current = nextOrder;
@@ -137,15 +121,6 @@ export function useStationTestingController({
     // scanSessionId doesn't leave a stale tracking session.
     if (nextOrder.scanSessionId !== undefined) {
       scanSessionIdRef.current = nextOrder.scanSessionId ?? null;
-    }
-    const shouldShow = options?.preserveHidden ? isActiveOrderVisible : true;
-    setIsActiveOrderVisible(shouldShow);
-    clearCompletedOrderHideTimer();
-    if (isOrderComplete(nextOrder) && shouldShow) {
-      completedOrderHideTimerRef.current = setTimeout(() => {
-        setIsActiveOrderVisible(false);
-        onAutoHiddenRef.current?.();
-      }, COMPLETED_ORDER_AUTO_HIDE_MS);
     }
   };
 
@@ -156,7 +131,6 @@ export function useStationTestingController({
     syncActiveOrderState(contextOrder);
     return contextOrder;
   };
-  const reopenLastActiveOrderCard = () => Boolean(reopenScanContextOrder());
 
   // ── manual management ─────────────────────────────────────────────────────────
   const publishLastManual = (manuals: ResolvedProductManual[]) => {
@@ -221,8 +195,6 @@ export function useStationTestingController({
   };
 
   // ── effects ───────────────────────────────────────────────────────────────────
-  useEffect(() => () => clearCompletedOrderHideTimer(), []);
-
   useEffect(() => {
     if (errorMessage || successMessage) {
       const timer = setTimeout(() => {
@@ -254,11 +226,11 @@ export function useStationTestingController({
   // `tech-active-order-changed` — payload is null when nothing is active.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const payload = activeOrder && isActiveOrderVisible
+    const payload = activeOrder
       ? { activeOrder, manuals: resolvedManuals, isManualLoading }
       : null;
     window.dispatchEvent(new CustomEvent('tech-active-order-changed', { detail: payload }));
-  }, [activeOrder, isActiveOrderVisible, resolvedManuals, isManualLoading]);
+  }, [activeOrder, resolvedManuals, isManualLoading]);
 
   useEffect(() => {
     const handleUndoApplied = (e: any) => {
@@ -280,18 +252,15 @@ export function useStationTestingController({
       const removedSerial = e?.detail?.removedSerial;
       if (!activeOrder) return;
       if (!salMatch && !trackingMatch) return;
-      syncActiveOrderState(
-        {
-          ...activeOrder,
+      syncActiveOrderState({
+        ...activeOrder,
+        serialNumbers,
+        skuSerialGroups: rebuildSkuSerialGroups(
+          activeOrder.skuSerialGroups,
           serialNumbers,
-          skuSerialGroups: rebuildSkuSerialGroups(
-            activeOrder.skuSerialGroups,
-            serialNumbers,
-            activeOrder.sku,
-          ),
-        },
-        { preserveHidden: true },
-      );
+          activeOrder.sku,
+        ),
+      });
       if (removedSerial) {
         setSuccessMessage(`Undo successful: removed ${removedSerial}`);
       } else {
@@ -339,6 +308,7 @@ export function useStationTestingController({
     clearManuals,
     newIdempotencyKey: newStationIdempotencyKey,
     onUnitLabelScanned: (raw: string) => onUnitLabelScannedRef.current?.(raw),
+    getArmedPackLocationId: () => readArmedPackStation()?.locationId ?? null,
   });
 
   // ── main submit router ────────────────────────────────────────────────────────
@@ -352,6 +322,76 @@ export function useStationTestingController({
     if (!input) return;
 
     clearFeedback();
+
+    // Packing-station barcode arms the Ready-to-Pack place target (batch sort).
+    if (!options?.forcedType && looksLikePackStationBarcode(input)) {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/orders/pack-placement');
+        const data = await res.json().catch(() => null);
+        const match = Array.isArray(data?.locations)
+          ? data.locations.find(
+              (loc: { barcode?: string | null; id: number; name: string; locationKind: string }) =>
+                String(loc.barcode || '').toUpperCase() === input.toUpperCase(),
+            )
+          : null;
+        if (!match) {
+          setErrorMessage(`Unknown packing station barcode: ${input}`);
+          return;
+        }
+        writeArmedPackStation({
+          locationId: Number(match.id),
+          name: String(match.name),
+          barcode: match.barcode ?? null,
+          locationKind: match.locationKind === 'STAGING' ? 'STAGING' : 'DESK',
+        });
+        window.dispatchEvent(new CustomEvent('cf-pack-station-armed'));
+        setSuccessMessage(`Armed: ${match.name}`);
+        setInputValue('');
+        void queryClient.invalidateQueries({ queryKey: ['orders', 'pack-placement'] });
+      } catch {
+        setErrorMessage('Could not arm packing station');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Ready-to-Pack loose-unit staging (Phase 2): a printed unit-id sticker
+    // ({SKU}-{YYWW}-{SEQ6}) scanned while a packing bench is armed places that
+    // loose unit on the bench. Raw manufacturer serials are NOT unit-id-shaped,
+    // so they still attach to the active order — the Phase 1 order flow is
+    // unchanged, and this only diverts when a bench is actually armed.
+    if (!options?.forcedType && looksLikeUnitId(input)) {
+      const armedUnitBench = readArmedPackStation();
+      if (armedUnitBench) {
+        setIsLoading(true);
+        try {
+          const res = await fetch('/api/units/pack-placement/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              unitScan: input,
+              locationId: armedUnitBench.locationId,
+              idempotencyKey: newStationIdempotencyKey(),
+            }),
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.success) {
+            setErrorMessage(data?.error || 'Could not place unit on the bench');
+            return;
+          }
+          setSuccessMessage(`Placed unit at ${data.placement.locationName}`);
+          setInputValue('');
+          void queryClient.invalidateQueries({ queryKey: ['units', 'pack-placement'] });
+        } catch {
+          setErrorMessage('Could not place unit on the bench');
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+    }
 
     const contextOrder = getScanContextOrder();
     const forcedType = options?.forcedType;
@@ -379,7 +419,6 @@ export function useStationTestingController({
     inputRef,
     activeOrder,
     setActiveOrder: syncActiveOrderState,
-    isActiveOrderVisible,
     errorMessage,
     successMessage,
     trackingNotFoundAlert,
@@ -389,6 +428,5 @@ export function useStationTestingController({
     handleSubmit,
     triggerGlobalRefresh,
     clearFeedback,
-    reopenLastActiveOrderCard,
   };
 }

@@ -1,8 +1,9 @@
 'use client';
 
 // MOUNT: drop <CsvOrderImport /> into a settings/integrations surface (e.g. an
-// "Import orders from CSV" card under Settings → Integrations) or behind a tab in
-// the OrdersSyncPopover. Self-contained: file input → in-browser parse → mapping → POST.
+// "Import orders from CSV" card under Settings → Integrations). Desk staging
+// lives on To-Ship (`CsvImportStagingHost`); this card stays a Settings wrapper
+// over the shared parse / map / POST SoT in `csv-order-import.ts`.
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
@@ -15,88 +16,15 @@ import {
   Loader2,
 } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
-
-// ── Canonical fields ─────────────────────────────────────────────────────────
-// Must match the route's CANONICAL_FIELDS. order_number is required.
-const CANONICAL_FIELDS = [
-  { key: 'order_number', label: 'Order number', required: true },
-  { key: 'sku', label: 'SKU', required: false },
-  { key: 'quantity', label: 'Quantity', required: false },
-  { key: 'customer_name', label: 'Customer name', required: false },
-  { key: 'tracking_number', label: 'Tracking number', required: false },
-  { key: 'platform', label: 'Platform', required: false },
-] as const;
-
-type CanonicalKey = (typeof CANONICAL_FIELDS)[number]['key'];
-
-interface ImportResult {
-  inserted: number;
-  skipped: number;
-  errors: Array<{ row: number; reason: string }>;
-}
-
-// ── Dependency-free CSV parser ───────────────────────────────────────────────
-// Handles quoted fields, escaped quotes (""), commas/newlines inside quotes, and
-// both \n and \r\n line endings. Returns { headers, rows }.
-function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
-  const records: string[][] = [];
-  let field = '';
-  let record: string[] = [];
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i += 1) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') { field += '"'; i += 1; }
-        else inQuotes = false;
-      } else {
-        field += ch;
-      }
-      continue;
-    }
-    if (ch === '"') { inQuotes = true; continue; }
-    if (ch === ',') { record.push(field); field = ''; continue; }
-    if (ch === '\r') continue;
-    if (ch === '\n') { record.push(field); records.push(record); field = ''; record = []; continue; }
-    field += ch;
-  }
-  // Flush trailing field/record (file may not end in a newline).
-  if (field.length > 0 || record.length > 0) { record.push(field); records.push(record); }
-
-  // Drop fully-empty records (e.g. trailing blank line).
-  const nonEmpty = records.filter((r) => r.some((c) => c.trim() !== ''));
-  if (nonEmpty.length === 0) return { headers: [], rows: [] };
-
-  const headers = nonEmpty[0].map((h) => h.trim());
-  const rows = nonEmpty.slice(1).map((r) => {
-    const obj: Record<string, string> = {};
-    headers.forEach((h, idx) => { obj[h] = (r[idx] ?? '').trim(); });
-    return obj;
-  });
-  return { headers, rows };
-}
-
-// Best-effort auto-map: match a canonical key against detected headers by a
-// normalized comparison (strip non-alphanumerics, lowercase).
-function autoMap(headers: string[]): Record<string, string> {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const mapping: Record<string, string> = {};
-  const aliases: Record<CanonicalKey, string[]> = {
-    order_number: ['ordernumber', 'orderid', 'order', 'ordno', 'orderno'],
-    sku: ['sku', 'itemsku', 'productsku'],
-    quantity: ['quantity', 'qty', 'count'],
-    customer_name: ['customername', 'customer', 'buyer', 'buyername', 'name'],
-    tracking_number: ['trackingnumber', 'tracking', 'trackingno'],
-    platform: ['platform', 'channel', 'source', 'marketplace'],
-  };
-  for (const field of CANONICAL_FIELDS) {
-    const want = aliases[field.key];
-    const hit = headers.find((h) => want.includes(norm(h)));
-    if (hit) mapping[field.key] = hit;
-  }
-  return mapping;
-}
+import {
+  CSV_ORDER_CANONICAL_FIELDS,
+  autoMapCsvOrderHeaders,
+  parseCsv,
+  postCsvOrderImport,
+  type CsvOrderImportResult,
+} from '@/lib/orders/csv-order-import';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 export function CsvOrderImport() {
   const [fileName, setFileName] = useState<string | null>(null);
@@ -107,7 +35,7 @@ export function CsvOrderImport() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [result, setResult] = useState<CsvOrderImportResult | null>(null);
 
   const canSubmit = useMemo(
     () => rows.length > 0 && Boolean(mapping.order_number) && !submitting,
@@ -131,7 +59,7 @@ export function CsvOrderImport() {
       }
       setHeaders(hdrs);
       setRows(parsedRows);
-      setMapping(autoMap(hdrs));
+      setMapping(autoMapCsvOrderHeaders(hdrs));
     } catch {
       setParseError('Could not read this file.');
     }
@@ -151,26 +79,16 @@ export function CsvOrderImport() {
     setSubmitting(true);
     setSubmitError(null);
     setResult(null);
-    try {
-      const res = await fetch('/api/orders/import-csv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, mapping }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setSubmitError(json?.error || 'Import failed.');
-        return;
-      }
-      setResult(json as ImportResult);
-    } catch {
-      setSubmitError('Network error — could not reach the import endpoint.');
-    } finally {
+    const outcome = await postCsvOrderImport({ rows, mapping });
+    if (!outcome.ok) {
+      setSubmitError(outcome.error);
       setSubmitting(false);
+      return;
     }
+    setResult(outcome.result);
+    setSubmitting(false);
   }
 
-  // ── Result summary ──────────────────────────────────────────────────────────
   if (result) {
     return (
       <div className="space-y-4">
@@ -213,14 +131,13 @@ export function CsvOrderImport() {
     );
   }
 
-  // ── No file yet: teaching empty + file picker ─────────────────────────────────
   if (rows.length === 0) {
     return (
       <div className="space-y-4">
         <EmptyState
           icon={<FileText className="h-6 w-6 text-text-faint" />}
           title="Import orders from CSV"
-          description="Upload a CSV export from any channel. You'll map its columns to order fields on the next step."
+          description="Upload a CSV export from any channel. You'll map its columns to order fields on the next step. On To-Ship, Import → CSV opens desk staging with Ready / Action required triage before confirm."
           action={
             <label className="inline-flex cursor-pointer">
               <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-semibold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500">
@@ -248,11 +165,10 @@ export function CsvOrderImport() {
     );
   }
 
-  // ── Mapping step ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <FileText className="h-4 w-4 shrink-0 text-text-soft" />
           <span className="truncate text-role-caption font-semibold text-text-default">{fileName}</span>
           <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
@@ -265,7 +181,7 @@ export function CsvOrderImport() {
       <div className="space-y-3">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Map columns</p>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">
-          {CANONICAL_FIELDS.map((field) => {
+          {CSV_ORDER_CANONICAL_FIELDS.map((field) => {
             const selected = mapping[field.key] ?? '';
             const missingRequired = field.required && !selected;
             return (
@@ -285,15 +201,17 @@ export function CsvOrderImport() {
                       const v = e.target.value;
                       setMapping((m) => {
                         const next = { ...m };
-                        if (v) next[field.key] = v; else delete next[field.key];
+                        if (v) next[field.key] = v;
+                        else delete next[field.key];
                         return next;
                       });
                     }}
-                    className={`h-8 rounded-lg border bg-surface-card px-2 text-role-caption font-semibold text-text-default focus:outline-none focus:ring-1 ${
+                    className={cn(
+                      'h-8 rounded-lg border bg-surface-card px-2 text-role-caption font-semibold text-text-default',
                       missingRequired
-                        ? 'border-rose-300 ring-rose-200'
-                        : 'border-border-soft focus:border-blue-400 focus:ring-blue-400'
-                    }`}
+                        ? cn('border-rose-300', focusRing('field', 'danger'))
+                        : cn('border-border-soft', focusRing('field', 'accent')),
+                    )}
                   >
                     <option value="">— Not mapped —</option>
                     {headers.map((h) => (

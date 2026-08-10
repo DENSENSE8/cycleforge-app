@@ -1,6 +1,6 @@
 /**
  * kiosk-host SoT — hostname parsing + origin builders for
- * `{slug}.kiosk.app.cycleforge.ai`.
+ * `{slug}.kiosk.app.cycleforge.ai` + path dogfood helpers.
  */
 
 import { test } from 'node:test';
@@ -10,10 +10,14 @@ import {
   isBareKioskPlatformHost,
   isKioskHost,
   isKioskHostAllowedPath,
+  isKioskUiPath,
   isStaffAppHost,
   kioskOriginForSlug,
+  kioskPathDogfoodActive,
+  KIOSK_DOGFOOD_UI_PATH,
   normalizeKioskRequestHost,
   parseKioskHost,
+  resolveKioskDogfoodUrl,
   staffKioskRedirectOrigin,
   staffOriginForSlug,
 } from '@/lib/tenancy/kiosk-host';
@@ -154,16 +158,35 @@ test('isKioskHostAllowedPath allowlist', () => {
   strictEqual(isKioskHostAllowedPath('/_next/static/chunk.js'), true);
 });
 
-test('staffKioskRedirectOrigin — slug host, prod apex bridge, fail-closed', () => {
+test('isKioskUiPath + path dogfood URL', () => {
+  strictEqual(isKioskUiPath('/kiosk'), true);
+  strictEqual(isKioskUiPath('/kiosk/v2'), true);
+  strictEqual(isKioskUiPath('/kiosk/v2/'), true);
+  strictEqual(isKioskUiPath('/api/kiosk/pair'), false);
+  strictEqual(isKioskUiPath('/settings'), false);
+  strictEqual(isKioskUiPath(null), false);
+  strictEqual(kioskPathDogfoodActive(), true);
+  strictEqual(KIOSK_DOGFOOD_UI_PATH, '/kiosk/v2');
+  withEnv({ NEXT_PUBLIC_APP_URL: 'https://app.cycleforge.ai' }, () => {
+    strictEqual(
+      resolveKioskDogfoodUrl({ origin: 'https://app.cycleforge.ai' }),
+      'https://app.cycleforge.ai/kiosk/v2',
+    );
+  });
+});
+
+test('staffKioskRedirectOrigin — null while path dogfood active (J7b pending)', () => {
   withEnv(
     {
       NEXT_PUBLIC_KIOSK_HOST_SUFFIX: 'kiosk.app.cycleforge.ai',
       NEXT_PUBLIC_APP_URL: 'https://app.cycleforge.ai',
     },
     () => {
+      // Dogfood bridge: never 308 staff /kiosk* to unresolved subdomain.
+      strictEqual(kioskPathDogfoodActive(), true);
       strictEqual(
         staffKioskRedirectOrigin({ tenantSlug: 'usav', isProduction: true }),
-        'https://usav.kiosk.app.cycleforge.ai',
+        null,
       );
       strictEqual(
         staffKioskRedirectOrigin({
@@ -171,29 +194,13 @@ test('staffKioskRedirectOrigin — slug host, prod apex bridge, fail-closed', ()
           defaultTenantSlug: 'usav',
           isProduction: true,
         }),
-        'https://usav.kiosk.app.cycleforge.ai',
+        null,
       );
-      // Non-prod apex keeps serving /kiosk for local E2E even when a bridge is set.
       strictEqual(
         staffKioskRedirectOrigin({
           tenantSlug: null,
           defaultTenantSlug: 'usav',
           isProduction: false,
-        }),
-        null,
-      );
-      strictEqual(
-        staffKioskRedirectOrigin({
-          tenantSlug: null,
-          defaultTenantSlug: '',
-          isProduction: true,
-        }),
-        null,
-      );
-      strictEqual(
-        staffKioskRedirectOrigin({
-          tenantSlug: 'kiosk',
-          isProduction: true,
         }),
         null,
       );

@@ -37,6 +37,7 @@ import {
   writeStoredGridZoom,
   type GridZoomPercent,
 } from '@/design-system/components/grid/grid-zoom';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 
 type HistoryViewChromeValue = {
   /** Portal host for ▦ column trigger (inside View cluster). Week / staff live on Band 3 Refine. */
@@ -94,15 +95,10 @@ export function HistoryViewChromeProvider({ children }: { children: ReactNode })
   // right column beside it — the dual-right-column ban. `historyTriage` is
   // cleared on these same two events by `useReceivingDetailOverlays`; the shell
   // is owned here, so it is cleared here.
-  useEffect(() => {
-    const close = () => setViewShellOpen(false);
-    window.addEventListener('receiving-workspace-open', close);
-    window.addEventListener('receiving-select-line', close);
-    return () => {
-      window.removeEventListener('receiving-workspace-open', close);
-      window.removeEventListener('receiving-select-line', close);
-    };
-  }, []);
+  useReceivingEvents({
+    'receiving-workspace-open': () => setViewShellOpen(false),
+    'receiving-select-line': () => setViewShellOpen(false),
+  });
 
   const value = useMemo(
     () => ({

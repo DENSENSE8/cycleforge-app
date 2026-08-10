@@ -6,8 +6,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  clampPortalSideMenuPosition,
   clampPortalTooltipPosition,
   isTrustedPortalAnchor,
+  PORTAL_SIDE_MENU_GAP,
   PORTAL_TOOLTIP_MARGIN,
   readTrustedTriggerRect,
 } from './portal-anchor';
@@ -118,6 +120,56 @@ test('legitimate top-left chrome still gets a corner-clamped tip', () => {
   assert.ok(pos);
   assert.equal(pos!.left, PORTAL_TOOLTIP_MARGIN);
   assert.ok(pos!.top > anchor.bottom);
+});
+
+test('clampPortalSideMenuPosition prefers trailing (right) mid-viewport', () => {
+  const anchor = rect({ top: 300, left: 400, width: 80, height: 24 });
+  const bubble = { width: 120, height: 64 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'auto',
+    align: 'start',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.side, 'end');
+  assert.equal(pos!.left, anchor.right + PORTAL_SIDE_MENU_GAP);
+  assert.equal(pos!.top, anchor.top);
+  // Must clear the vertical strip under the chip (next table row).
+  assert.ok(pos!.left >= anchor.right);
+  assert.ok(!(pos!.top >= anchor.bottom && pos!.left < anchor.right));
+});
+
+test('clampPortalSideMenuPosition flips to leading near the right edge', () => {
+  const anchor = rect({ top: 300, left: 1100, width: 80, height: 24 });
+  const bubble = { width: 140, height: 64 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'auto',
+    align: 'start',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.side, 'start');
+  assert.equal(pos!.left, anchor.left - bubble.width - PORTAL_SIDE_MENU_GAP);
+});
+
+test('clampPortalSideMenuPosition rejects mid-screen top-left flash path', () => {
+  const anchor = rect({ top: 400, left: 600, width: 40, height: 20 });
+  const bubble = { width: 2000, height: 500 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'auto',
+  });
+  assert.equal(
+    pos,
+    null,
+    `mid-screen trigger must not yield a top-left-pinned side menu, got ${JSON.stringify(pos)}`,
+  );
 });
 
 test('readTrustedTriggerRect rejects disconnected / display:none', () => {

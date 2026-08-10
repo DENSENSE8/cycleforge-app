@@ -113,6 +113,9 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     const orderInspector = page.locator('aside[role="region"][aria-label^="Order "]');
     await expect(orderInspector).toBeVisible({ timeout: 20_000 });
 
+    // Import + Add are one Band-1 control now: open it, pick Add, then enter.
+    await page.getByRole('button', { name: /add or import orders/i }).click();
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('button', { name: 'New order entry' }).click();
 
     const intake = page.locator('aside[role="region"][aria-label="New order entry"]');

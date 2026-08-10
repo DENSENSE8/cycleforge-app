@@ -7,7 +7,7 @@ import {
 } from './procedure-pointer';
 
 const steps = [
-  { key: 'arrival_check', done: true },
+  { key: 'arrival_label_photo', done: true },
   { key: 'shipping_label_photo', done: false },
   { key: 'box_photo', done: false },
   { key: 'contents', done: false },
@@ -37,8 +37,8 @@ test('a skipped step is NOT done — it never satisfies a later reader', () => {
 
 test('a focused step wins, so reopening a finished step is possible', () => {
   assert.equal(
-    resolveActiveStep(steps, { focusedKey: 'arrival_check' }),
-    'arrival_check',
+    resolveActiveStep(steps, { focusedKey: 'arrival_label_photo' }),
+    'arrival_label_photo',
   );
 });
 
@@ -74,7 +74,7 @@ test('the peek is null when skipping this step settles the carton', () => {
 
 test('evidence on a focused pending step releases focus so the pointer advances', () => {
   const afterShot = [
-    { key: 'arrival_check', done: true },
+    { key: 'arrival_label_photo', done: true },
     { key: 'shipping_label_photo', done: true },
     { key: 'box_photo', done: false },
   ];
@@ -91,7 +91,7 @@ test('evidence on a focused pending step releases focus so the pointer advances'
 test('reopening an already-done step does not release focus on the next tick', () => {
   assert.equal(
     shouldReleaseFocusAfterEvidence({
-      focusedKey: 'arrival_check',
+      focusedKey: 'arrival_label_photo',
       steps,
       wasDoneAtFocus: true,
     }),

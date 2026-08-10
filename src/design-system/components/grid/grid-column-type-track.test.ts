@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   MIN_TRACK_REM_BY_DATE_FACE,
   MIN_TRACK_REM_EXTERNAL,
+  MIN_TRACK_REM_QTY_FRACTION,
   gridTrackRemToPx,
   resolveGridColumnMinTrackRem,
 } from './grid-column-type-track';
@@ -37,7 +38,7 @@ describe('resolveGridColumnMinTrackRem', () => {
   });
 
   it('returns 0 for types without a floor yet', () => {
-    assert.equal(resolveGridColumnMinTrackRem({ type: 'number' }), 0);
+    assert.equal(resolveGridColumnMinTrackRem({ type: 'number' }), MIN_TRACK_REM_QTY_FRACTION);
     assert.equal(resolveGridColumnMinTrackRem({ type: 'tracking' }), 0);
     assert.equal(resolveGridColumnMinTrackRem({}), 0);
   });

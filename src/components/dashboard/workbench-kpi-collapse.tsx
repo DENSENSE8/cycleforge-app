@@ -3,6 +3,11 @@
 /**
  * Workbench sheet-chrome KPI snap-collapse — Band 2 binary open/closed.
  *
+ * **Instant** — no height/opacity tween. Warehouse ops chrome must snap; a
+ * layout animation that pushes the sheet open/closed is banned here (and for
+ * sibling Band-2 doors). Children stay mounted while closed (`hidden`) so KPI
+ * queries do not remount on every Hide→Show.
+ *
  * Compose with {@link WorkbenchTriageBand} `kpiToggle` =
  * {@link WorkbenchKpiCollapseToggle} (right-side view-toggle zone, immediately
  * left of the inspector `trailing` when present). Persist via
@@ -14,14 +19,11 @@
 
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system';
 import { ChevronDown, ChevronUp } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
@@ -153,9 +155,8 @@ function KpiSnapHandle({
  * Band 2 shell — open: KPI chrome + snap-drag hairline; closed: thin residual
  * grab strip so drag-down can expand (Band 3 toggle remains the primary door).
  *
- * Children stay mounted while closed (height/opacity only) so KPI queries and
- * layout don't remount on every Hide→Show — that remount was a flash twin of
- * the prefs snap-back race.
+ * Instant binary snap (`hidden` ↔ visible). Children stay mounted while closed
+ * so KPI queries and layout don't remount on every Hide→Show.
  */
 export function WorkbenchKpiBand({
   open,
@@ -170,30 +171,14 @@ export function WorkbenchKpiBand({
   children: ReactNode;
   className?: string;
 }) {
-  const [bodySettled, setBodySettled] = useState(open);
-  const openRef = useRef(open);
-  openRef.current = open;
-
-  // Clip immediately on collapse so a rapid Hide→Show can't leave
-  // overflow-visible mid-exit (content flash under Band 3).
-  useEffect(() => {
-    if (!open) setBodySettled(false);
-  }, [open]);
-
   return (
     <div className="relative shrink-0" data-workbench-kpi-band="" data-open={open ? '' : undefined}>
-      <motion.div
-        initial={false}
-        animate={open ? framerPresence.collapseHeight.animate : framerPresence.collapseHeight.exit}
-        transition={framerTransition.sidebarNavColumnMount}
-        onAnimationComplete={() => {
-          if (openRef.current) setBodySettled(true);
-        }}
-        className={cn(
-          bodySettled && open ? 'overflow-visible' : 'overflow-hidden',
-          !open && 'pointer-events-none',
-        )}
+      <div
+        // Instant: no motion / collapseHeight / transition. `hidden` keeps the
+        // React tree mounted (queries stay warm) while freeing layout height.
+        hidden={!open}
         aria-hidden={!open}
+        className={cn(!open && 'pointer-events-none')}
       >
         <div
           className={cn(
@@ -210,7 +195,7 @@ export function WorkbenchKpiBand({
             />
           ) : null}
         </div>
-      </motion.div>
+      </div>
       {!open ? (
         <div
           className="relative h-0 border-b border-r border-border-soft"

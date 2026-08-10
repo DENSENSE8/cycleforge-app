@@ -17,6 +17,8 @@ import {
   readTrustedTriggerRect,
   type PortalTooltipPlacement,
 } from '@/lib/ui/portal-anchor';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 /**
  * Lightweight hover/focus tooltip for plain meaning/help text.
@@ -166,7 +168,10 @@ export function HoverTooltip({
               left: pos?.left ?? -9999,
               visibility: pos ? 'visible' : 'hidden',
             }}
-            className="pointer-events-none z-tooltip max-w-[15rem] rounded-md bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line"
+            className={cn(
+              'pointer-events-none z-tooltip max-w-[15rem] bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line',
+              cornerClass('flush'),
+            )}
           >
             {label}
           </span>,

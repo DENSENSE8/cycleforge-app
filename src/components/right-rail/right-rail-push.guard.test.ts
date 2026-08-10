@@ -6,11 +6,11 @@
  * things about that are invisible until an operator hits them, so they are
  * asserted here rather than left to a browser run:
  *
- *  1. **The host composes the sanctioned push tween**, not a new preset and
- *     never a spring — a spring overshoots the width every sibling lays out
- *     against (`display/motion-crossfade.md`).
+ *  1. **The host snaps width instantly** — Unbox `StationDisplaysPushColumn` /
+ *     `ContextPanelLayout` twin. No `motionRole.push.rail` width tween on desk
+ *     open ↔ park (`display/motion-crossfade.md`).
  *  2. **Occupants that must NOT push say so explicitly.** The station benches
- *     already push their right edge with `UnboxPushColumn`; a second push
+ *     already push their right edge with `StationDisplaysPushColumn`; a second push
  *     mechanism on one edge is the exact collision the right-rail store exists
  *     to prevent. This list only ever SHRINKS — an entry leaves when the
  *     edge-ownership question is settled for that surface, never because a
@@ -48,13 +48,13 @@ const HOST = 'src/components/right-rail/RightRailHost.tsx';
  *
  * An entry names the file that DECIDES the float, which is not always the file
  * that registers. `SupportContextDetailPanel` has two hosts with opposite
- * answers — Unbox nests it inside an `UnboxPushColumn`, `/support` gives it the
+ * answers — Unbox nests it inside an `StationDisplaysPushColumn`, `/support` gives it the
  * edge outright — so its `push` is a required prop and the decision moved up to
  * `SupportTicketDetail`, the host that nests. The panel itself left this list
  * because its edge ownership was settled, not because a refactor lost the prop.
  */
 const FLOAT_ONLY: readonly string[] = [
-  // Station edge — `UnboxPushColumn` already pushes it on /unbox, /triage, /testing.
+  // Station edge — `StationDisplaysPushColumn` already pushes it on /unbox, /triage, /testing.
   'src/components/station/ReceivingDetailsStack.tsx',
   'src/components/sidebar/TestingSidebarPanel.tsx',
   'src/components/support/zendesk/chat/SupportTicketDetail.tsx',
@@ -66,18 +66,21 @@ const FLOAT_ONLY: readonly string[] = [
 ];
 
 describe('right-rail push — the host', () => {
-  it('composes the sanctioned push tween, and never a spring', () => {
+  it('snaps the push column instantly — never a layout tween or spring', () => {
     const src = code(HOST);
     assert.ok(
-      // Either spelling is the SAME object: `motionRole.push.rail.transition`
-      // IS `framerTransition.sidebarNavColumnMount`, asserted by identity (not
-      // deep equality) in `src/design-system/motion/roles.test.ts`. That test
-      // also pins the tween-never-spring and opacity-only halves of this
-      // contract at the role, so the chain host → role → preset is covered end
-      // to end and neither link can drift silently.
-      src.includes('motionRole.push.rail') ||
-        src.includes('framerTransition.sidebarNavColumnMount'),
-      'the push must reuse the spine / context-rail tween (via motionRole.push.rail), not a new preset',
+      src.includes('data-right-rail-mode="push"'),
+      'push branch must stay marked for frame / e2e',
+    );
+    assert.equal(
+      /motionRole\.push\.rail/.test(src),
+      false,
+      'desk push must snap like Station Displays — no push.rail width tween',
+    );
+    assert.equal(
+      /framerPresence\.detailStackPush/.test(src),
+      false,
+      'push must not opacity-presence the column joining the flow',
     );
     assert.equal(
       /type:\s*['"]spring['"]/.test(src),
@@ -86,20 +89,21 @@ describe('right-rail push — the host', () => {
     );
   });
 
-  it('routes both presence presets through the reduced-motion bridge', () => {
+  it('routes overlay presence through the reduced-motion bridge', () => {
     const src = code(HOST);
-    assert.ok(src.includes('useMotionPresence'), 'presence must go through the bridge');
-    assert.ok(src.includes('useMotionTransition'), 'transitions must go through the bridge');
+    // Overlay (modal / intake / assistant) still fades; push does not.
+    assert.ok(src.includes('useMotionPresence'), 'overlay presence must go through the bridge');
+    assert.ok(src.includes('useMotionTransition'), 'overlay transitions must go through the bridge');
+    assert.ok(
+      src.includes('framerPresence.detailStackOverlay'),
+      'overlay branch keeps the x-slide overlay preset',
+    );
   });
 
-  it('uses the opacity-only PUSH preset, not the overlay one with its x-slide', () => {
+  it('keeps the overlay x-slide OFF the push branch', () => {
     const src = code(HOST);
-    assert.ok(
-      src.includes('motionRole.push.rail') || src.includes('framerPresence.detailStackPush'),
-      'an in-flow column must not translate out of the slot it reserved',
-    );
-    // Whichever spelling the host uses, it must not ALSO reach for the overlay
-    // preset's x-slide on the push branch — that is the specific regression.
+    // Push is a plain <aside> with style.width — overlay alone owns motion.aside.
+    assert.match(src, /data-right-rail-mode="push"/);
     assert.equal(
       /pushPresence\s*=\s*useMotionPresence\(\s*framerPresence\.detailStackOverlay/.test(src),
       false,

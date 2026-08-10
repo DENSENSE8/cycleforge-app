@@ -25,6 +25,7 @@ import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView'
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { SupportOrdersFocusHost } from '@/components/support/orders/SupportOrdersFocusHost';
+import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import {
   ORDERS_DESK_CONTEXT_KEY,
   ORDERS_DESK_SUPPORT_CONTEXT,
@@ -47,8 +48,14 @@ function OutboundOrdersDeskContent({
     searchParams.get(ORDERS_DESK_CONTEXT_KEY),
   );
   const isSupportContext = context === ORDERS_DESK_SUPPORT_CONTEXT;
-  const { detailsEnabled, orderView, searchQuery, setOrderView } =
-    useDashboardSearchController();
+  const {
+    detailsEnabled,
+    orderView,
+    searchQuery,
+    setOrderView,
+    showIntakeForm,
+    closeIntakeForm,
+  } = useDashboardSearchController();
 
   const { selectionEnabled, selectMode, selectionOverlays } =
     useOrderRailSelection(orderView);
@@ -115,6 +122,13 @@ function OutboundOrdersDeskContent({
           />
         ) : null}
       </div>
+      {/*
+        Pattern E (rail-less) does not mount OutboundSidebarPanel on desktop —
+        desk owns Add / ?new=true intake so Band-1 Add always has a host.
+      */}
+      {!isSupportContext ? (
+        <NewOrderEntryOverlay open={showIntakeForm} onClose={closeIntakeForm} />
+      ) : null}
     </OrdersViewChromeProvider>
   );
 }

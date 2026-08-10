@@ -7,7 +7,6 @@ import { useTechTableController } from '@/hooks/station/useTechTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
 import { techRecordToDetail, getTechDetailId } from '@/components/station/tech-record-mappers';
-import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { Calendar, Clock, Package } from '@/components/Icons';
 import { toPSTDateKey } from '@/utils/date';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -150,8 +149,6 @@ export function TechTable({
       daySections={daySections}
       getRowKey={(record) => getRowKey(record)}
       tableId="tech"
-      savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
-      savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"
       firstRunEmpty={<ContextualEmptyState state="no-work" />}
       toolbarPortalTarget={toolbarPortalTarget}

@@ -1,50 +1,43 @@
 'use client';
 
 /**
- * Active step context — bottom-left under the Unbox dock Panel.
+ * Active step context — Band 2 left under the Unbox dock floor.
  *
- * Names the step the operator must execute right now (e.g. SHIPPING LABEL).
+ * Names the step the operator must execute right now (e.g. Label photo).
  * Prev / next chevrons page POSITIONALLY in vocabulary order — same contract
  * as ← / → (`useUnboxProcedureArrowKeys`) and the checklist. Not a skip walk.
  *
- * Selected face = amber bottom track + one-shot boxed selection pulse on
- * `activeKey` change (Displays armed-face tokens — never a page-local glow).
+ * **Band 2 face (every step / phase):**
+ *   [‹?][ Label · summary ][›?] ……………… | [progress]
  *
- * Lives under the flush floor as the step prompt — never above the dock and
- * never top-right orientation chrome.
+ * Label + chevrons are a **left cluster** — the next arrow sits **just to the
+ * right of the text**, never at the far right of the band (progress owns that).
+ * Sentence case (never CSS `uppercase`). White floor.
+ * Guard: `unbox-dock-one-shell.guard.test.ts`.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-} from '@/design-system/motion';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
-const LABEL_CLASS =
-  'inline-flex min-w-0 max-w-[14rem] items-center gap-0.5 text-role-micro uppercase leading-none tracking-widest text-text-soft transition-colors hover:text-text-default';
+const CHEVRON_CELL =
+  'inline-flex h-full w-8 shrink-0 items-center justify-center text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default disabled:pointer-events-none disabled:opacity-35';
+
+/**
+ * Label is content-sized (not flex-1) so › sits immediately after the text.
+ * `leading-tight` (not `leading-none`) — Band 2 is h-8; none clips caption
+ * descenders (g / p / y in "Shipping label").
+ */
+const LABEL_FACE =
+  'flex min-w-0 max-w-full items-center justify-start gap-1 overflow-visible px-2 text-role-caption font-medium leading-tight tracking-normal text-text-default';
 
 export function UnboxProcedurePager({ row }: { row: ReceivingLineRow }) {
   const { steps, activeKey, prevStep, nextNeighbour, settled, focusStep } =
     useUnboxProcedureSteps(row);
-  const reduce = useReducedMotion();
-  const selectionPulseTransition = useMotionTransition(
-    framerTransition.selectionPulse,
-  );
-  const [pulseKey, setPulseKey] = useState(0);
-
-  useEffect(() => {
-    if (!activeKey) return;
-    setPulseKey((n) => n + 1);
-  }, [activeKey]);
 
   const go = useCallback(
     (key: string) => {
@@ -56,126 +49,84 @@ export function UnboxProcedurePager({ row }: { row: ReceivingLineRow }) {
 
   const active = settled && activeKey ? steps.find((s) => s.key === activeKey) : null;
 
-  // Settled / loading — keep the under-row face mounted so the floor never
-  // collapses to a lone chip. Prev jumps to the last vocabulary step.
-  if (!active) {
-    const last = steps.length > 0 ? steps[steps.length - 1] : null;
-    return (
-      <div
-        className="flex min-w-0 items-center gap-1"
-        data-procedure-pager
-        data-procedure-active-step={settled ? 'complete' : 'pending'}
-      >
-        {last ? (
-          <button
-            type="button"
-            onClick={() => go(last.key)}
-            className={cn(
-              'ds-raw-button inline-flex shrink-0 items-center justify-center p-0.5 text-text-soft transition-colors hover:text-text-default',
-              focusRing('control', 'neutral'),
-            )}
-            aria-label={`Back to ${last.label}`}
-            data-procedure-pager-prev
-          >
-            <ChevronLeft className="h-3 w-3" />
-          </button>
-        ) : (
-          <span className="inline-flex w-4 shrink-0" aria-hidden />
-        )}
+  // Both chevrons always mount (same w-8 cells) so left/right chrome matches.
+  // Disabled at the ends. Settled / loading: ‹ rewinds to the last step.
+  const prevTarget = (() => {
+    if (!active) {
+      return steps.length > 0 ? steps[steps.length - 1] : null;
+    }
+    return prevStep;
+  })();
+  const nextTarget = active ? nextNeighbour : null;
+
+  const prevCell: ReactNode = (
+    // ds-raw-button: Band 2 flush chevron — full-height abutting segment
+    <button
+      type="button"
+      onClick={() => {
+        if (prevTarget) go(prevTarget.key);
+      }}
+      disabled={!prevTarget}
+      className={cn('ds-raw-button', CHEVRON_CELL, focusRing('control', 'neutral'))}
+      aria-label={prevTarget ? `Back to ${prevTarget.label}` : 'Back'}
+      data-procedure-pager-prev
+    >
+      <ChevronLeft className="h-3 w-3" />
+    </button>
+  );
+
+  const nextCell: ReactNode = (
+    // ds-raw-button: Band 2 flush chevron — mirrors prev width / pad
+    <button
+      type="button"
+      onClick={() => {
+        if (nextTarget) go(nextTarget.key);
+      }}
+      disabled={!nextTarget}
+      className={cn('ds-raw-button', CHEVRON_CELL, focusRing('control', 'neutral'))}
+      aria-label={nextTarget ? `Next: ${nextTarget.label}` : 'Next'}
+      data-procedure-pager-next
+    >
+      <ChevronRight className="h-3 w-3" />
+    </button>
+  );
+
+  const labelBody: ReactNode = !active ? (
+    <span className={LABEL_FACE} data-procedure-pager-active>
+      <span className="truncate leading-tight">{settled ? 'Complete' : 'Loading…'}</span>
+    </span>
+  ) : (
+    <span className={LABEL_FACE} data-procedure-pager-active>
+      <span className="truncate leading-tight">{active.label}</span>
+      {active.summary ? (
         <span
-          className={cn(LABEL_CLASS, 'px-1 py-0.5 text-text-default')}
-          data-procedure-pager-active
+          className="shrink-0 normal-case leading-tight tracking-normal text-text-soft"
+          data-procedure-pager-summary
         >
-          <span className="truncate">
-            {settled ? 'Complete' : 'Loading…'}
-          </span>
+          · {active.summary}
         </span>
-        <span className="inline-flex w-4 shrink-0" aria-hidden />
-      </div>
-    );
-  }
+      ) : null}
+    </span>
+  );
 
   return (
     <div
-      className="flex min-w-0 items-center gap-1"
+      className="flex h-full w-full min-w-0 items-stretch gap-0 bg-surface-card"
       data-procedure-pager
-      data-procedure-active-step={active.key}
+      data-procedure-active-step={
+        active ? active.key : settled ? 'complete' : 'pending'
+      }
     >
-      {prevStep ? (
-        <button
-          type="button"
-          onClick={() => go(prevStep.key)}
-          className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center justify-center p-0.5 text-text-soft transition-colors hover:text-text-default',
-            focusRing('control', 'neutral'),
-          )}
-          aria-label={`Back to ${prevStep.label}`}
-          data-procedure-pager-prev
-        >
-          <ChevronLeft className="h-3 w-3" />
-        </button>
-      ) : (
-        <span className="inline-flex w-4 shrink-0" aria-hidden />
-      )}
-
-      <span
-        className={cn(
-          LABEL_CLASS,
-          'relative pointer-events-none px-1 py-0.5 text-text-default',
-        )}
-        data-procedure-pager-active
+      {/* Left cluster — chevrons hug the label; remaining width stays empty. */}
+      <div
+        className="flex h-full min-w-0 max-w-full items-stretch gap-0"
+        data-procedure-pager-cluster
       >
-        {/* Instant armed face — amber bottom track (Displays recipe). */}
-        <span
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-raised h-0.5 bg-amber-400"
-          aria-hidden
-          data-procedure-pager-armed-track=""
-        />
-        <AnimatePresence>
-          {pulseKey > 0 ? (
-            <motion.span
-              key={`pulse-${active.key}-${pulseKey}`}
-              aria-hidden
-              initial={
-                reduce
-                  ? { opacity: 0.4, scale: 1 }
-                  : { opacity: 0.9, scale: 0.98 }
-              }
-              animate={{ opacity: 0, scale: reduce ? 1 : 1.04 }}
-              exit={{ opacity: 0 }}
-              transition={selectionPulseTransition}
-              className="pointer-events-none absolute inset-0 z-0 border border-amber-400 will-change-transform"
-              data-procedure-pager-selection-pulse=""
-            />
-          ) : null}
-        </AnimatePresence>
-        <span className="relative z-raised truncate">{active.label}</span>
-        {active.summary ? (
-          <span
-            className="relative z-raised shrink-0 normal-case tracking-normal text-text-soft"
-            data-procedure-pager-summary
-          >
-            · {active.summary}
-          </span>
-        ) : null}
-      </span>
-
-      {nextNeighbour ? (
-        <button
-          type="button"
-          onClick={() => go(nextNeighbour.key)}
-          className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center justify-center p-0.5 text-text-soft transition-colors hover:text-text-default',
-            focusRing('control', 'neutral'),
-          )}
-          aria-label={`Next: ${nextNeighbour.label}`}
-          data-procedure-pager-next
-        >
-          <ChevronRight className="h-3 w-3" />
-        </button>
-      ) : (
-        <span className="inline-flex w-4 shrink-0" aria-hidden />
-      )}
+        {prevCell}
+        {labelBody}
+        {nextCell}
+      </div>
+      <div className="min-w-0 flex-1" aria-hidden />
     </div>
   );
 }

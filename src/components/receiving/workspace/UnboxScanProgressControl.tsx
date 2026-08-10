@@ -4,10 +4,9 @@
  * Unbox adapter for {@link ScanStationProgressControl}.
  *
  * Derives procedure % from {@link useUnboxProcedureSteps}. Mounted under the
- * Unbox dock (`UnboxDockHost` `progress` slot, bottom-right) with compact
- * `variant="default"` — status-bar density beside the active step pager
- * (bottom-left). Click opens the Checklist Displays leaf in-station — never a
- * route hop.
+ * Unbox dock (`UnboxDockHost` `progress` slot, bottom-right) with flush
+ * `variant="floor"` — fills the Band 2 progress cell beside the active step
+ * pager. Click opens the Checklist Displays leaf in-station — never a route hop.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -45,7 +44,7 @@ export function UnboxScanProgressControl({
 
   return (
     <ScanStationProgressControl
-      variant="default"
+      variant="floor"
       percent={percent}
       done={done}
       total={total}

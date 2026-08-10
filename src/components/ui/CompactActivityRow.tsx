@@ -9,10 +9,11 @@
  * (`ActivityInboxPopover`).
  *
  * Distinct from {@link StackedRowIdentity} (title → typed `CopyChip` keys for
- * pickers / subjects). This face is an **ops activity feed**: one scannable
- * fact on row 2, never a tone-pill parade, never `4 hrs ago`, never a large
- * kind glyph as the leading mark. Inbox tech-queue ready/return rows may paint
- * house `OrderIdChip` / `TrackingChip` on meta (identity SoT), not mono prose.
+ * pickers / subjects / drill parents). This face is an **ops activity feed**:
+ * one scannable fact on row 2, never a tone-pill parade, never `4 hrs ago`,
+ * never a large kind glyph as the leading mark. Inbox tech-queue ready/return
+ * rows may paint house `OrderIdChip` / `TrackingChip` via
+ * {@link joinStackedIdentityKeys} on meta (identity SoT), not mono prose.
  *
  * Detail: `.claude/rules/source-of-truth.md` → Compact activity row.
  * Guard: `compact-activity-row.guard.test.ts`.

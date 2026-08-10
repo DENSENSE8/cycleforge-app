@@ -25,6 +25,7 @@ function code(src: string): string {
 const PO_LINE_ROW = code(sourceOf('./PoLineRow.tsx'));
 const QUEUE_ROW_CHROME = code(sourceOf('../../ui/queue-row-chrome.ts'));
 const PO_UNBOX = code(sourceOf('./line-edit/POUnboxingSection.tsx'));
+const LINE_PO_ITEMS = code(sourceOf('./line-edit/LinePoItemsSection.tsx'));
 const ACCORDION = code(sourceOf('./PoLinesAccordion.tsx'));
 const GLOW = code(sourceOf('../../station/scan-bar/ScanBandGlowHost.tsx'));
 const SCAN_FEEDBACK = code(sourceOf('../../../lib/scan-feedback/useScanFeedback.ts'));
@@ -138,8 +139,13 @@ test('PoLineRow thumb is square flush (left rail continuous stack)', () => {
   );
   assert.match(
     PO_LINE_ROW,
-    /border-t border-border-hairline bg-surface-card/,
-    'expanded curtain body must paint an opaque white face with a neutral hairline seam',
+    /overflow-hidden bg-surface-card/,
+    'expanded curtain body paints an opaque white face — no hairline seam under the ledger',
+  );
+  assert.doesNotMatch(
+    PO_LINE_ROW,
+    /activeRowSlot[\s\S]{0,400}?border-t border-border-hairline/,
+    'under-row editor must not draw a hairline between the PO line and the edit body',
   );
 });
 
@@ -224,6 +230,14 @@ test('ScanBandGlowHost listens for success/reject locus flash', () => {
   assert.match(GLOW, /SCAN_BAND_FLASH_EVENT/);
   assert.match(GLOW, /bg-emerald-400/);
   assert.match(GLOW, /bg-rose-400/);
+});
+
+test('ScanBandGlowHost stays glow + outcome flash — ready HUD lives on StationScanBar', () => {
+  assert.match(GLOW, /SCAN_BAND_FLASH_EVENT/);
+  assert.doesNotMatch(GLOW, /scanBandReadySweep/);
+  assert.doesNotMatch(GLOW, /STATION_SCAN_BAR_READY_RETICLE_CLASS/);
+  assert.doesNotMatch(GLOW, /from ['"]motion\/react['"]/);
+  assert.doesNotMatch(GLOW, /from ['"]framer-motion['"]/);
 });
 
 test('useScanFeedback always flashes the scan band with the outcome', () => {
@@ -316,5 +330,35 @@ test('identity panel is a white flush curtain face', () => {
     IDENTITY,
     /stationIdentityPanelClass[\s\S]*?bg-surface-sunken/,
     'identity band must not stay sunken once the curtain is white',
+  );
+});
+
+test('Unbox dual loci: dock chips + ActiveLineConditionSerial under active line', () => {
+  // Dock owns scanner/procedure; active line mounts mouse editor; wedge stays
+  // dock-owned via autoFocusSerial={false} when dockOwnsCapture.
+  assert.match(LINE_PO_ITEMS, /onEditConditionInDock/);
+  assert.match(LINE_PO_ITEMS, /onEditSerialInDock/);
+  assert.match(LINE_PO_ITEMS, /onFocusCaptureStep\('condition'\)/);
+  assert.match(LINE_PO_ITEMS, /onFocusCaptureStep\('serial'\)/);
+  assert.match(LINE_PO_ITEMS, /<ActiveLineConditionSerial\b/);
+  assert.match(
+    LINE_PO_ITEMS,
+    /dockOwnsCapture && line\.id !== row\.id/,
+    'dockOwnsCapture mounts under-row editor on the active line only',
+  );
+  assert.match(
+    LINE_PO_ITEMS,
+    /autoFocusSerial=\{isControllerLine && !dockOwnsCapture\}/,
+    'wedge autofocus stays off when the dock owns capture',
+  );
+  assert.match(
+    LINE_PO_ITEMS,
+    /onViewAllUnits=\{unitsChrome \? onViewAllUnits : undefined\}/,
+    'Units Displays stays reachable with dockOwnsCapture',
+  );
+  assert.match(
+    LINE_PO_ITEMS,
+    /progressiveCapture=\{dockOwnsCapture && isControllerLine\}/,
+    'Unbox active line mounts progressive Condition → Serial → Photos',
   );
 });

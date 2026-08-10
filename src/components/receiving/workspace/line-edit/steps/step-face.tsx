@@ -49,7 +49,8 @@ export const STEP_FACE_QUANTITY = 'text-text-soft';
 
 const FACES: Record<string, StepFace> = {
   classify: { Icon: SlidersHorizontal },
-  arrival_check: { Icon: Camera },
+  arrival_label_photo: { Icon: Tag },
+  arrival_box_photo: { Icon: Package },
   shipping_label_photo: { Icon: Tag },
   box_photo: { Icon: Package },
   packing_material: { Icon: PackageOpen },

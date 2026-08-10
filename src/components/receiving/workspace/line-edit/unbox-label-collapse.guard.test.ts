@@ -43,6 +43,13 @@ test('Show CTA always mounts under PO lines when collapsed', () => {
     /POUnboxingSection[\s\S]*UnboxLabelPreview/,
     'preview must sit under the PO items section in overview',
   );
+  // One hairline per seam: last PoLineRow owns border-b into Show label —
+  // preview host must not also paint border-t.
+  assert.doesNotMatch(
+    PREVIEW,
+    /border-t border-border-hairline/,
+    'UnboxLabelPreview must not hand-roll a top hairline above Show label',
+  );
 });
 
 test('notes rising edge opens the sticker via collapseHeight', () => {

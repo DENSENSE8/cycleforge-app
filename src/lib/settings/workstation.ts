@@ -11,13 +11,36 @@ export interface WorkstationSettings {
   stationName: string;
   defaultWarehouse: string;
   defaultRole: WorkstationRole;
+  /**
+   * Packing bench this device sits at — a REFERENCE to a `locations` row
+   * (`location_kind` DESK/STAGING), never a bench record of its own and never a
+   * placement COUNT source (that stays `order_pack_placements` /
+   * `unit_pack_placements`; guard: `no-pack-station-twin.guard.test.ts`).
+   *
+   * Ready-to-Pack seeds the armed place target from it when nothing is armed,
+   * so an operator does not re-arm the same bench every session. Device-local
+   * on purpose: the binding describes where the TERMINAL is, so a staffer who
+   * walks to another bench's terminal inherits that bench, not their own.
+   */
+  packBenchLocationId: number | null;
 }
 
 export const DEFAULT_WORKSTATION: WorkstationSettings = {
   stationName: '',
   defaultWarehouse: '',
   defaultRole: '',
+  packBenchLocationId: null,
 };
+
+/**
+ * A bench binding is a positive `locations.id` or nothing. A stored `0`, a
+ * string, or a stale `null` all mean "no bench" — never a falsy id the arm
+ * path would try to resolve.
+ */
+export function normalizePackBenchLocationId(raw: unknown): number | null {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 export function getWorkstation(): WorkstationSettings {
   if (typeof window === 'undefined') return DEFAULT_WORKSTATION;
@@ -29,6 +52,7 @@ export function getWorkstation(): WorkstationSettings {
       stationName: String(parsed.stationName ?? ''),
       defaultWarehouse: String(parsed.defaultWarehouse ?? ''),
       defaultRole: (parsed.defaultRole ?? '') as WorkstationRole,
+      packBenchLocationId: normalizePackBenchLocationId(parsed.packBenchLocationId),
     };
   } catch {
     return DEFAULT_WORKSTATION;

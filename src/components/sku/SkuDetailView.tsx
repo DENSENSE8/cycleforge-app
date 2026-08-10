@@ -3,7 +3,7 @@
 import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { FLOOR_DELETE_PEER_CLASS, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { useSkuDetailView } from './sku-detail/useSkuDetailView';
 import type { SkuDetailViewProps } from './sku-detail/sku-detail-types';
@@ -89,16 +89,16 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
               </p>
             ) : undefined
           }
-          delete={
-            <InspectorFlushDelete
-              onConfirm={c.handleDeactivate}
-              onDeleted={c.handleClose}
-              label="Deactivate SKU"
-              confirmLabel="Click again to deactivate"
-              data-testid="sku-details-deactivate"
-            />
-          }
-        />
+        >
+          <InspectorFlushDelete
+            onConfirm={c.handleDeactivate}
+            onDeleted={c.handleClose}
+            label="Deactivate SKU"
+            confirmLabel="Click again to deactivate"
+            data-testid="sku-details-deactivate"
+            className={FLOOR_DELETE_PEER_CLASS}
+          />
+        </InspectorActionFloor>
       ) : null}
 
       <PhotoViewerPortal g={c.gallery} />

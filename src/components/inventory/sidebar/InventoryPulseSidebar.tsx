@@ -6,6 +6,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { UnitListRow, UnitListResponse } from '@/components/inventory/types';
@@ -120,39 +124,50 @@ export function InventoryPulseSidebar() {
                                     }
                                 }}
                                 className={cn(
-                                    'flex w-full cursor-pointer flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-colors',
+                                    'w-full cursor-pointer rounded-lg px-2.5 py-2 text-left transition-colors',
                                     active ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-surface-hover',
                                 )}
                             >
-                                {/* Title on top + status */}
-                                <div className="flex w-full items-start justify-between gap-2">
-                                    <span
-                                        className={cn(
-                                            'min-w-0 flex-1 truncate text-role-data font-semibold',
-                                            active ? 'text-blue-900' : 'text-text-default',
-                                        )}
-                                    >
-                                        {row.product_title || row.sku || row.serial_number}
-                                    </span>
-                                    <span
-                                        className={cn(
-                                            'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide',
-                                            unitStatusBadgeClass(row.current_status),
-                                        )}
-                                    >
-                                        {row.current_status}
-                                    </span>
-                                </div>
-                                {/* SKU + serial copy chips, flush right */}
-                                <div className="flex w-full items-center justify-between gap-2">
-                                    <span className="min-w-0 truncate font-mono text-role-caption text-text-faint">
-                                        {meta}
-                                    </span>
-                                    <div className="flex shrink-0 items-center gap-1.5">
-                                        {row.sku ? <SkuScanRefChip value={row.sku} display={getLast8(row.sku)} /> : null}
-                                        <SerialChip value={row.serial_number} />
-                                    </div>
-                                </div>
+                                <StackedRowIdentity
+                                    title={
+                                        <span
+                                            className={cn(
+                                                'min-w-0 truncate text-role-data font-semibold',
+                                                active ? 'text-blue-900' : 'text-text-default',
+                                            )}
+                                        >
+                                            {row.product_title || row.sku || row.serial_number}
+                                        </span>
+                                    }
+                                    keys={joinStackedIdentityKeys([
+                                        meta ? (
+                                            <span
+                                                key="meta"
+                                                className="min-w-0 truncate font-mono text-role-caption text-text-faint"
+                                            >
+                                                {meta}
+                                            </span>
+                                        ) : null,
+                                        row.sku ? (
+                                            <SkuScanRefChip
+                                                key="sku"
+                                                value={row.sku}
+                                                display={getLast8(row.sku)}
+                                            />
+                                        ) : null,
+                                        <SerialChip key="serial" value={row.serial_number} />,
+                                    ])}
+                                    trailing={
+                                        <span
+                                            className={cn(
+                                                'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide',
+                                                unitStatusBadgeClass(row.current_status),
+                                            )}
+                                        >
+                                            {row.current_status}
+                                        </span>
+                                    }
+                                />
                             </div>
                         </li>
                     );

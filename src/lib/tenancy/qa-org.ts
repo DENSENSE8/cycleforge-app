@@ -177,6 +177,17 @@ export const QA_FIXTURE_TESTED_LINE = {
   sku: QA_FIXTURE_SKUS.speaker,
 } as const;
 
+/**
+ * A loose serialized UNIT for Phase-2 unit pack placement. `unitUid` is in the
+ * printed unit-id shape ({base}-{YYWW}-{SEQ6}) so `looksLikeUnitId` matches it
+ * and the Ready-to-Pack loose-unit trigger fires; the move route resolves it by
+ * `unit_uid`. `current_status` stays on-floor so it counts at a bench.
+ */
+export const QA_FIXTURE_UNIT = {
+  unitUid: 'QAUNIT-2621-000042',
+  normalizedSerial: 'QAUNIT2621000042',
+} as const;
+
 export const QA_FIXTURE_ORDERS = {
   awaiting: 'QA-TEST-UNSHIP-AWAIT',
   pending: 'QA-TEST-UNSHIP-PENDING',
@@ -281,6 +292,43 @@ export const QA_FIXTURE_SUPPORT = {
   subject: 'QA Assist — carton label paste contract',
 } as const;
 
+/**
+ * Org custom-column fixture — one `custom_field_defs` row plus a value on two
+ * receiving lines, so a LedgerGrid column sort has something to order.
+ *
+ * **The values are decimals on purpose.** `2.5` vs `2.25` is the one pair that
+ * distinguishes a real numeric compare from the string fallback: `numeric: true`
+ * collation treats `.` as a separator and reads them as `5` vs `25`, inverting
+ * the pair. Whole numbers (`2` vs `10`) would pass either way and prove nothing
+ * — the unit suite learned that by mutation
+ * (`receiving-grid-compare.test.ts`), and the E2E asserts the same contract
+ * through the real stack.
+ *
+ * Values ride on the two lines that already exist for the testing feeds rather
+ * than on `QA-MOCK-LINE-1`/`-2`: a custom value is additive (its own table, no
+ * workflow state touched), so this cannot disturb the note-vs-label grain walk
+ * the way mutating those two would.
+ *
+ * The def is `tier: 'optional'` once merged into the column model, so the
+ * provisioner also opts the QA admin in via `staff_preferences` — under BOTH
+ * the `receiving` and `testing` buckets, which is what proves the Unbox History
+ * and Testing History mounts of the same binding each resolve it.
+ */
+export const QA_FIXTURE_CUSTOM_FIELD = {
+  entityType: 'RECEIVING',
+  key: 'qa_rack_slot',
+  label: 'QA Rack Slot',
+  type: 'number',
+  /** The grid column key the def merges in as (`custom:<key>`). */
+  columnKey: 'custom:qa_rack_slot',
+  /** Staff-prefs buckets opted in, so the optional column renders unaided. */
+  prefsTableIds: ['receiving', 'testing'],
+  /** Lower value — sorts FIRST ascending. Rides the tested line. */
+  lower: { value: 2.25, title: QA_FIXTURE_TESTED_LINE.title },
+  /** Higher value — sorts FIRST descending. Rides the awaiting-test line. */
+  upper: { value: 2.5, title: QA_FIXTURE_TESTING_LINE.title },
+} as const;
+
 export const QA_FIXTURE_TRACKING_PENDING = '9400100000000000000199';
 export const QA_FIXTURE_TRACKING_PENDING_SECOND = '9400100000000000000205';
 export const QA_FIXTURE_TRACKING_PENDING_THIRD = '9400100000000000000229';
@@ -299,6 +347,77 @@ export const QA_STATION_STAFF: ReadonlyArray<QaStationStaffSeed> = [
   { name: 'QA Technician', role: 'technician', homePath: '/tech' },
   { name: 'QA Shipper', role: 'shipper', homePath: '/shipping' },
 ];
+
+/**
+ * Media Library evidence fixtures (2026-08-09) — a real photo stream on
+ * `/ops/photos` for the QA org.
+ *
+ * Before this, `provision-qa-org.ts` seeded **zero** photos (the word did not
+ * appear in the file), so every Media Library spec either failed on
+ * `--project=qa-desktop` or skipped itself with "no photos seeded in this
+ * environment". That is the coverage gap `verify.md` says to seed away rather
+ * than skip around.
+ *
+ * **Metadata-only, deliberately — there are no storage bytes.** The library list
+ * query is `FROM photos p` with no `photo_storage` join
+ * (`src/lib/photos/queries/library.ts:839`), so a row lists and every routing,
+ * filter, day-band and count assertion works while its thumbnail 404s. Seeding
+ * bytes would put a GCS dependency in the provisioner and buy no assertion.
+ *
+ * **The limit of metadata-only, measured 2026-08-09.** Routing / filter / count
+ * / day-band assertions pass on these rows — `photos-library-deep-link.spec.ts`
+ * is 6/6 green in ~18s, three consecutive runs. **Viewer specs do not**:
+ * clicking a tile opens the lightbox, which waits on an image that will never
+ * load, so `photos-library-context-panel.spec.ts` and
+ * `photo-viewer-dismiss.spec.ts` time out on the click rather than failing an
+ * assertion. That is not a bug in those specs and not something a bigger
+ * fixture of this shape can fix — they need real bytes (the
+ * `photos-gcs-upload.spec.ts` path) or an explicit broken-image tolerance in
+ * the viewer. Do not "fix" them by seeding more metadata rows.
+ *
+ * **Stage is DERIVED, never stored.** `stageFromPhotoType` →
+ * `receivingStageFromPhotoType` (`src/lib/receiving/photo-intent.ts:161`):
+ * `RECEIVING_LINE` ⇒ `unbox_item` (any photo_type) · `RECEIVING` +
+ * `receiving_unbox_carton` ⇒ `unbox_carton` · `RECEIVING` +
+ * `receiving_package` ⇒ `arrival_package`. `sourceScope` is derived the same
+ * way — a link to `RECEIVING` or `RECEIVING_LINE` yields `unboxing`
+ * (`library.ts:832-834`). So the shape of the links below IS the fixture; do
+ * not add a `stage` column expecting it to be read.
+ *
+ * `poRef` doubles as the idempotency scope: re-provisioning deletes by
+ * `(organization_id, po_ref)` and re-inserts, and `photo_entity_links` cascades
+ * on `photo_id`.
+ *
+ * `captured` decides whether `client_captured_at` is stamped. The mix is
+ * deliberate: `clientCapturedAt` is the device shutter clock and is NOT
+ * server-attested, so NULL is the correct and common value for desktop uploads
+ * (see the column's docblock in `drizzle/schema.ts`). A fixture where every row
+ * was "Captured" would let a Captured-vs-Uploaded assertion pass without ever
+ * exercising the absent case.
+ */
+export const QA_FIXTURE_PHOTOS = {
+  /** Idempotency scope AND an honest value — these are that PO's captures. */
+  poRef: QA_FIXTURE_PO_NUMBER,
+  /**
+   * Ages in days, so the flat stream renders more than one sticky
+   * `DateGroupHeader` band. Day bands are warehouse civil days
+   * (`groupPhotosByCaptureDay`), so two distinct offsets are enough.
+   */
+  carton: [
+    { photoType: 'receiving_package', ageDays: 0, stage: 'arrival_package', captured: true },
+    { photoType: 'receiving_unbox_carton', ageDays: 0, stage: 'unbox_carton', captured: false },
+    { photoType: 'receiving_package', ageDays: 2, stage: 'arrival_package', captured: true },
+  ],
+  /** Linked to a receiving LINE ⇒ stage `unbox_item`, which the deep-link spec asserts. */
+  line: [
+    { photoType: 'receiving_item', ageDays: 0, stage: 'unbox_item', captured: true },
+    { photoType: 'receiving_item', ageDays: 2, stage: 'unbox_item', captured: false },
+  ],
+} as const;
+
+/** Total seeded photos — the count a "N photos in view" assertion can rely on. */
+export const QA_FIXTURE_PHOTO_COUNT =
+  QA_FIXTURE_PHOTOS.carton.length + QA_FIXTURE_PHOTOS.line.length;
 
 export function resolveQaOrgId(): OrgId {
   const fromEnv = process.env.QA_ORG_ID?.trim();

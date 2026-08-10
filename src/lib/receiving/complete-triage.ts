@@ -9,7 +9,8 @@
  *
  * Does NOT require a PO link (B5) or intake photos (D8). DOES require a shelf
  * (`staging_location_id`) and a lane (`priority_lane`) — A1, now enforceable
- * since Phase 2's `StagingSection` picker gives the operator a way to set both.
+ * since Phase 2's Arrival staging dock (`ArrivalStagingDockControl`) gives
+ * the operator a way to set both.
  *
  * Does NOT advance `workflow_status` — that remains the unbox street's job via
  * the one guarded `transitionReceivingLine()` chokepoint (never duplicated here).

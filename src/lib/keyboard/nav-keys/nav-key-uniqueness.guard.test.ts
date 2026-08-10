@@ -24,11 +24,17 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DISPLAY_LEAF_NAV_KEY } from '@/components/station/displays/display-index';
 import { UNBOX_BAND3_NAV_KEY } from '@/lib/receiving/unbox-band3-nav-keys';
+import { UNBOX_MIDDLE_CARTON_NAV_KEY } from '@/lib/receiving/unbox-middle-carton-nav-keys';
+import { PHOTO_VERB_NAV_KEY } from '@/components/receiving/workspace/line-edit/photo-verb-nav-keys';
 
 /** Every region that hand-declares co-located nav keys. Add new maps here. */
 const DECLARED_KEY_MAPS: Record<string, Record<string, string>> = {
   'right / Station Displays leaves': DISPLAY_LEAF_NAV_KEY,
-  'middle / Unbox Band 3': UNBOX_BAND3_NAV_KEY,
+  // Mode-split Middle: browse Band 3 XOR carton-open — never live together.
+  'middle / Unbox Band 3 (browse)': UNBOX_BAND3_NAV_KEY,
+  'middle / Unbox carton-open': UNBOX_MIDDLE_CARTON_NAV_KEY,
+  // Second armed layer (Right) while a Photos leaf is open.
+  'right / Photos verb layer': PHOTO_VERB_NAV_KEY,
 };
 
 describe('nav-keys declared-key uniqueness', () => {

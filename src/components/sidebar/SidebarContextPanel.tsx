@@ -31,10 +31,6 @@ const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarP
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
-// Static: Media library facet rail owns `scope-icons` + `date-tree`. A dynamic
-// import left those SoT modules invisible to knip (and paid no bundle win —
-// `/ops/photos` is the only consumer and already code-splits the page).
-import { PhotoLibrarySidebarPanel } from '@/components/photos/PhotoLibrarySidebarPanel';
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context
@@ -83,9 +79,11 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
     );
   }
 
-  // Media library: lifecycle scope + capture-day drill live in the resident rail;
-  // search / filters / media type / sort stay in the workbench chrome header.
-  if (routeKey === 'ops-photos') return <PhotoLibrarySidebarPanel />;
+  // `ops-photos` has no branch and no rail — the Media library is RAIL-LESS
+  // (Pattern E, 2026-08-09). Its lifecycle scopes are Band-1 tabs and its
+  // capture days ride the Band-2 refine popover; `CONTEXT_PANEL_ROUTE_KEYS`
+  // drops the key so the column collapses rather than reserving 360px of empty
+  // chrome. SoT: `.claude/rules/display/media-library.md`.
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;

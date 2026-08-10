@@ -253,4 +253,14 @@ export const FLAG_LIFECYCLE: Readonly<Record<string, FlagLifecycle>> = {
     // Remove the flag (and its 404 branches) once it has.
     disposition: { kind: 'rollout', plannedRemoval: '2026-10-26' },
   },
+  isViewMonitors: {
+    env: 'VIEW_MONITORS',
+    bornAt: '2026-08-10',
+    area: 'monitors',
+    // Rollout from birth: dogfood-first (seeded ON for USAV only by
+    // 2026-08-10b_seed_view_monitors_usav.sql), widened past dogfood once the
+    // evaluation CU-hour budget is tracked (plan → Cost budget). Remove the flag
+    // and the arm/route 404 branches once it has proven out.
+    disposition: { kind: 'rollout', plannedRemoval: '2026-11-10' },
+  },
 };

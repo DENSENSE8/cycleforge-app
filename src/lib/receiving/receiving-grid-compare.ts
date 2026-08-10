@@ -8,6 +8,10 @@ import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
+import {
+  isCustomFieldColumnKey,
+  parseCustomFieldDefKey,
+} from '@/lib/tables/custom-field-keys';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   resolveReceivingRowStageStamp,
@@ -71,6 +75,45 @@ function serialValue(row: ReceivingLineRow): string {
   return resolveReceivingLineSerialsCsv(row);
 }
 
+type CustomFieldValue = string | number | boolean | null | undefined;
+
+function customFieldValue(row: ReceivingLineRow, defKey: string): CustomFieldValue {
+  return row.customFields?.[defKey];
+}
+
+function isBlankCustomValue(value: CustomFieldValue): boolean {
+  return value == null || value === '';
+}
+
+/**
+ * Compare two org custom-field values by their RUNTIME type.
+ *
+ * `hydrateCustomFieldMaps` already emits each value typed per its def —
+ * `to_jsonb(value_number)` → number, `to_jsonb(value_date)` → `YYYY-MM-DD`,
+ * boolean → boolean, everything else → text. So this reads the value's own
+ * type and never needs the def loaded, which is what keeps the comparator pure
+ * and synchronous (it runs inside a `useMemo` on every sorted render).
+ *
+ * That typing is exactly what the TYPED value columns buy: had custom fields
+ * been stored as one JSON blob, a number would compare lexically and `10`
+ * would sort between `1` and `2` — sortability down a column being the entire
+ * point of a column.
+ *
+ * Dates need no `Date` parse: Postgres emits zero-padded ISO `YYYY-MM-DD`, so
+ * string collation already orders them correctly.
+ */
+function compareCustomFieldValues(a: CustomFieldValue, b: CustomFieldValue): number {
+  // Numbers MUST take this branch, never the string fallback below: `numeric`
+  // collation treats `.` as a separator, so "2.5" vs "2.25" compares 5 against
+  // 25 and orders them backwards. Pinned by the decimal test.
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b);
+  return String(a).localeCompare(String(b), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
 /**
  * Compare two receiving-line rows for a column sort. Negative ⇒ `a` before `b`
  * under the given direction (ASC: smaller first).
@@ -83,6 +126,32 @@ export function compareReceivingGridRows(
   activityAxis: ReceivingActivityAxis = 'unboxed',
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
+
+  // Org custom columns are merged into the model at RUNTIME, so they cannot be
+  // a `switch` case — they are matched by key shape and handled first.
+  if (isCustomFieldColumnKey(column)) {
+    const defKey = parseCustomFieldDefKey(column);
+    const aValue = defKey ? customFieldValue(a, defKey) : undefined;
+    const bValue = defKey ? customFieldValue(b, defKey) : undefined;
+    const aBlank = isBlankCustomValue(aValue);
+    const bBlank = isBlankCustomValue(bValue);
+
+    // Blanks sort LAST in BOTH directions, so this comparison deliberately
+    // escapes `sign` (spreadsheet convention — Sheets and Airtable both do it).
+    // It differs on purpose from `date`'s `+Infinity` above, which floats
+    // undated rows to the TOP under `desc`: that is tolerable for a column
+    // every row fills, and wrong for a custom column that is empty on most rows
+    // until an operator backfills it — otherwise the first click opens on a
+    // screen of `—`.
+    if (aBlank || bBlank) {
+      if (aBlank && bBlank) return a.id - b.id;
+      return aBlank ? 1 : -1;
+    }
+
+    const customPrimary = compareCustomFieldValues(aValue, bValue);
+    return customPrimary !== 0 ? sign * customPrimary : a.id - b.id;
+  }
+
   let primary = 0;
 
   switch (column) {

@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import {
   Barcode,
   Check,
@@ -37,15 +37,14 @@ import {
   Loader2,
   X,
 } from '@/components/Icons';
-import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { ScanBandShell, ThemedStationScanBar } from '@/components/station/scan-bar';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { conditionLabel } from '@/lib/conditions';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStationTheme } from '@/hooks/useStationTheme';
 
 type DispositionCode = 'ACCEPT' | 'HOLD' | 'RTV' | 'REWORK' | 'SCRAP';
 
@@ -109,10 +108,9 @@ interface DispositionResult {
   at: number;
 }
 
-const AUTO_HIDE_MS = 4000;
-
 function DispositionStationInner() {
   const { user } = useAuth();
+  const { theme: themeColor } = useStationTheme({ staffId: user?.staffId ?? 0 });
   const searchParams = useSearchParams();
   const [scan, setScan] = useState('');
   const [unit, setUnit] = useState<ActiveUnit | null>(null);
@@ -124,25 +122,14 @@ function DispositionStationInner() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const autoScannedRef = useRef(false);
 
-  const cardPresence = useMotionPresence(framerPresence.stationCard);
-  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
+  // Scan-cadence swap — exit is instant so the next unit paints without a gap.
+  const { presence: cardPresence, transition: cardTransition } = useMotionRole(
+    motionRole.swap.scan,
+  );
 
   const refocus = useCallback(() => {
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
-
-  // Act-and-clear: a completed decision auto-clears the card so the bench is
-  // visibly ready for the next scan (station.md §5).
-  useEffect(() => {
-    if (!result) return;
-    const t = setTimeout(() => {
-      setUnit(null);
-      setResult(null);
-      setNotes('');
-      refocus();
-    }, AUTO_HIDE_MS);
-    return () => clearTimeout(t);
-  }, [result, refocus]);
 
   const lookupSerial = useCallback(async (value: string) => {
     const trimmed = value.trim();
@@ -235,21 +222,23 @@ function DispositionStationInner() {
       </header>
 
       <div>
-        <ThemedStationScanBar
-          value={scan}
-          onChange={setScan}
-          onSubmit={(e) => {
-            e?.preventDefault();
-            void handleSubmit();
-          }}
-          inputRef={inputRef}
-          staffId={user?.staffId}
-          placeholder="Scan serial number"
-          autoFocus
-          icon={<Barcode className="h-[17px] w-[17px] text-emerald-600" />}
-          isResolving={loading}
-          className="w-full"
-        />
+        <ScanBandShell themeColor={themeColor}>
+          <ThemedStationScanBar
+            value={scan}
+            onChange={setScan}
+            onSubmit={(e) => {
+              e?.preventDefault();
+              void handleSubmit();
+            }}
+            inputRef={inputRef}
+            staffId={user?.staffId}
+            placeholder="Scan serial number"
+            autoFocus
+            icon={<Barcode className="h-[17px] w-[17px] text-emerald-600" />}
+            isResolving={loading}
+            className="w-full"
+          />
+        </ScanBandShell>
         {error && (
           <div className="mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700">
             {error}

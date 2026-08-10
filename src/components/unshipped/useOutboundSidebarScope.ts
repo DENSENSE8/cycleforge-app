@@ -20,7 +20,7 @@ import type { FilterRefinement } from '@/design-system/components/FilterRefineme
 
 export type OutboundSidebarMode = 'unshipped' | 'tested' | 'packed' | 'shipped';
 
-export type UnshippedSegmentId =
+type UnshippedSegmentId =
   | 'all'
   | 'mine'
   | 'attention'

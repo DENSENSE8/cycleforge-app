@@ -6,6 +6,13 @@
  *   Band 1 — tabs (Queue · Recent) + solid Import / Add CTAs
  *   Band 2 — KPI (`WorkbenchKpiBand` in LabelsWorkspaceView)
  *   Band 3 — triage: search · Urgent/lane filters · icon-sort · KPI-collapse kpiToggle
+ *
+ * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
+ * for every staffer — never Chrome-style unpin of a system stage · Pin-list cube
+ * omitted (honest absence — no closed foreign-collection catalog) · no page Views
+ * yet (honest absence; if added they mount on Band 3, never Band-1 leading) ·
+ * page-pin in GlobalHeader. Three pin scopes never share a trigger/store. SoT:
+ * source-of-truth.md → Workbench Band-1 strip · Left-edge → SCOPE decides its home.
  */
 
 import { useMemo, type Ref } from 'react';
@@ -98,6 +105,9 @@ export function LabelsWorkspaceHeader({
       className={className}
       trailing={
         <WorkbenchTrailingCluster
+          // The hairline walls SOLID CTAs off the quiet icon rail; the data-in
+          // control is a quiet glyph now, so it would read as a broken pair.
+          divide={false}
           actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
         />
       }

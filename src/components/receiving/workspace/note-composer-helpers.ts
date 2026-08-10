@@ -83,6 +83,17 @@ export const NOTE_INSERT_TRIGGER_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint
 export const NOTE_INSERT_TRIGGER_BTN_ACTIVE =
   'bg-surface-card text-text-muted shadow-sm ring-1 ring-border-soft';
 
+/**
+ * Flush dock `+` — fills an h-11 edge cell, no inset pad / rounded chip.
+ * Quieter at rest (transparent · faint glyph); white surface only while open
+ * (click / menu armed). Used on the Unbox dogfood label-note strip.
+ */
+export const NOTE_INSERT_TRIGGER_DOCK_BTN =
+  'ds-raw-button inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-none bg-transparent text-text-faint transition hover:text-text-muted';
+
+export const NOTE_INSERT_TRIGGER_DOCK_BTN_ACTIVE =
+  'bg-surface-card text-text-muted';
+
 export const NOTE_TAG_BTN = `${NOTE_OVERLAY_ICON_BTN} text-orange-500 transition hover:bg-orange-100/60 hover:text-orange-600 hover:shadow-sm hover:ring-1 hover:ring-orange-200/80`;
 
 export const NOTE_DOWNLOAD_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-blue-600 transition hover:bg-blue-100/60 hover:text-blue-700 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
@@ -104,6 +115,7 @@ export const NOTE_INSERT_MENU_ICON_TONE: Record<string, string> = {
   'sync-notes': 'text-blue-600',
   'product-title': 'text-yellow-600',
   serial: 'text-emerald-600',
+  'last-notes': 'text-text-faint',
   'internal-notes': 'text-text-faint',
 };
 

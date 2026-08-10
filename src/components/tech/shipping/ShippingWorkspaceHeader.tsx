@@ -8,6 +8,13 @@
  *   Band 3 — triage: search · filters / staff · portal
  *
  * Row select lives in the table left gutter (always on), not chrome.
+ *
+ * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
+ * for every staffer — never Chrome-style unpin of a system stage · Pin-list cube
+ * omitted (honest absence — no closed foreign-collection catalog) · Views on
+ * Band 3 (`WorkbenchViewsMenu` in the triage `views` slot, never Band-1 leading)
+ * · page-pin in GlobalHeader. Three pin scopes never share a trigger/store. SoT:
+ * source-of-truth.md → Workbench Band-1 strip · Left-edge → SCOPE decides its home.
  */
 
 import { useMemo, type Ref } from 'react';
@@ -32,6 +39,11 @@ import {
   SHIPPING_WORKSPACE_TABS,
   type ShippingWorkspaceTab,
 } from '@/utils/shipping-workspace-state';
+import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
+import {
+  SAVED_VIEW_PARAM_KEYS,
+  SAVED_VIEW_STORAGE_KEY,
+} from '@/lib/station/table-url-params';
 
 const TAB_COLOR: Record<ShippingWorkspaceTab, 'red' | 'blue' | 'gray' | 'emerald'> = {
   urgent: 'red',
@@ -83,6 +95,9 @@ export function ShippingWorkspaceHeader({
       trailing={
         onNewOrder ? (
           <WorkbenchTrailingCluster
+            // The hairline walls SOLID CTAs off the quiet icon rail; the data-in
+            // control is a quiet glyph now, so it would read as a broken pair.
+            divide={false}
             actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
           />
         ) : undefined
@@ -148,7 +163,16 @@ export function ShippingTriageBand({
       kpiToggle={
         <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
       }
-      search={search}
+      views={
+        tab === 'history' ? (
+          <WorkbenchViewsMenu
+            storageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
+            paramKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
+            emptyHint="No saved views yet — refine Shipping History, then save it here."
+          />
+        ) : null
+      }
+      search={search ?? <div className="min-w-0 flex-1" />}
       right={right}
       controlsSlotRef={controlsSlotRef}
       controlsSlotProps={{ 'data-shipping-controls': '' }}

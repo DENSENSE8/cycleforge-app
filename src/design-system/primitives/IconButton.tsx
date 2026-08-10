@@ -23,11 +23,17 @@ type IconButtonTone = 'neutral' | 'accent';
  * Never put a primary blue text `Button` inside a repeating list row — that
  * is Macro work for {@link FlushTerminalFooter}.
  *
+ * **Macro spread peers** (`FlushTerminalFooter` `layout="spread"`): use
+ * `size="fill"` so every icon owns an equal full-height / full-width hit
+ * column, with glyph `FLUSH_TERMINAL_SPREAD_GLYPH_CLASS` (`h-5 w-5`, same
+ * rung as `touch`). Never `size="touch"` + justify-between dead air, and
+ * never micro `h-4` glyphs on an h-11 fill peer.
+ *
  * Never re-invent the box via className `h-*`/`w-*` — the control-size guard
  * ratchets those call sites (escape: `ds-allow-control-size` for genuinely
  * bespoke geometry).
  */
-export type IconButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'touch';
+export type IconButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'touch' | 'fill';
 
 const sizeClassName: Record<IconButtonSize, string> = {
   /** 24px — dense rail rows. */
@@ -40,6 +46,11 @@ const sizeClassName: Record<IconButtonSize, string> = {
   lg: 'h-9 w-9',
   /** 44px — mobile tap floor (iOS HIG). */
   touch: 'h-11 w-11',
+  /**
+   * Macro spread peer — fills an equal column of {@link FlushTerminalFooter}
+   * `layout="spread"` (Station Displays carton Macro golden).
+   */
+  fill: 'h-full min-h-0 w-full min-w-0 flex-1 self-stretch',
 };
 
 const toneClassName: Record<IconButtonTone, string> = {

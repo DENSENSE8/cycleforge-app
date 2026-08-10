@@ -20,9 +20,12 @@ import {
  * Superhuman all do; nobody puts a segmented band *inside* the sidebar.
  *
  * This is a promotion, not an invention: `IncomingSidebarPanel` ("Views") and
- * `PhotoLibrarySidebarPanel` ("Sources") each reached for this exact markup
- * independently, and both hand-copied the same wrapper. With the rest of the
- * rails migrating onto it, a third copy would be the fork the rules ban.
+ * the since-deleted Media Library facet rail ("Sources") each reached for this
+ * exact markup independently, and both hand-copied the same wrapper. With the
+ * rest of the rails migrating onto it, a third copy would be the fork the rules
+ * ban. (The Media Library went rail-less 2026-08-09 — its scopes are Band-1
+ * tabs now — so its row here is history, not a live consumer; the live ones are
+ * `IncomingSidebarPanel`, `VoicemailQueue` and `CallLogSidebar`.)
  *
  * **`density="ops"` is baked in on purpose.** The list's default `comfortable`
  * register is the Settings navigator shape (`py-3`, `text-sm`, a hairline under

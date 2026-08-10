@@ -7,15 +7,16 @@
  * ## Two contracts, one host
  *
  * **PUSH (desktop record inspectors).** A non-modal occupant is an **in-flow column**: a flex
- * sibling of `ContextPanelLayout`'s host inside `<main>` that tweens its own
- * width from 0, so the work surface reflows BESIDE it instead of under it. This
- * is the house ruling — "every resident edge PUSHES; nothing floats over the
- * work surface" (`source-of-truth.md` → Right-rail modality) — and it is the
- * left edge's recipe mirrored, not a new one: `ContextPanelLayout` already
- * animates its card's own width at `overflow-visible` with an inner clip shell,
- * through `framerTransition.sidebarNavColumnMount`.
+ * sibling of `ContextPanelLayout`'s host inside `<main>` that claims its width
+ * instantly (no layout tween), so the work surface reflows BESIDE it instead of
+ * under it. This is the house ruling — "every resident edge PUSHES; nothing floats
+ * over the work surface" (`source-of-truth.md` → Right-rail modality) — and it is
+ * the Unbox Displays / context-rail recipe mirrored, not a new one:
+ * `StationDisplaysPushColumn` and `ContextPanelLayout` both snap `style.width`
+ * on open ↔ park; desk inspectors do the same. Live sash drag still paints every
+ * frame.
  *
- * The card is the animating element ON PURPOSE. The leading resize grip is
+ * The card is the sizing element ON PURPOSE. The leading resize grip is
  * `placement="inset"` — hit sash inside the panel, 1px paint on the panel's
  * own `border-l` seam (the display hairline). Nothing hangs into the work
  * surface; Unbox Displays is the golden twin. Left context rail still uses
@@ -23,20 +24,18 @@
  *
  * **OVERLAY (explicit contracts only).** Modal / intake occupants, ambient
  * assistant, station-edge opt-outs, chromeless routes, and mobile keep the
- * fixed overlay shell. Width pressure alone NEVER turns a desktop resident
- * inspector into a floating rounded card.
+ * fixed overlay shell (presence + backdrop fade). Width pressure alone NEVER
+ * turns a desktop resident inspector into a floating rounded card.
  *
- * ## Two AnimatePresence, and why
+ * ## Stable occupant id, no exit→empty→enter
  *
- * The OUTER one (push mode) keys on a **constant** — it owns the column arriving
- * and leaving the flow. The INNER one keys on the **occupant id** — it owns the
- * crossfade between occupants. Keying the outer on the occupant id would collapse
- * the column to 0 and grow it again on every genuine record→record swap, which is
- * the exact "exit → empty → enter" the stable-occupant-id rule exists to prevent.
+ * The push column mounts once while an occupant is present. Record→record swaps
+ * keep a stable id (`detail:order`, …) so the column never remounts and content
+ * updates in place — the same instant cut Unbox Displays uses when a leaf swaps.
  */
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -93,9 +92,6 @@ const BACKDROP_FADE = {
   ease: motionBezier.easeOut,
 } as const;
 
-/** Stable key for the push column's own arrive/leave — NEVER the occupant id. */
-const PUSH_COLUMN_KEY = 'right-rail-push-column';
-
 export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const top = useSyncExternalStore(subscribeRightRail, getRightRailTop, getServerRightRailTop);
   const frame = useSyncExternalStore(
@@ -105,13 +101,6 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   );
   const overlayPresence = useMotionPresence(framerPresence.detailStackOverlay);
   const overlayTransition = useMotionTransition(framerTransition.detailStackOverlayMount);
-  // `motionRole.push.rail` — the sanctioned push pair (opacity-only presence +
-  // the layout tween the spine and the context rail also use). Taking them as
-  // one role is what keeps a spring out of a width every sibling lays out
-  // against (`display/motion-crossfade.md`).
-  const { presence: pushPresence, transition: pushTransition } = useMotionRole(
-    motionRole.push.rail,
-  );
 
   const renderable = top && top.node != null ? top : null;
   const isAssistantDock = renderable?.id === 'assistant';
@@ -198,16 +187,6 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     testId: 'detail-inspector-resize',
   });
 
-  // Width tween ONLY on open / close. Drag + double-click snap must write
-  // width instantly — otherwise the hairline / panel lag the pointer
-  // (`motionRole.push.rail` is for presence, not live resize).
-  const pushColumnOpen = isPush && !!renderable && !isCollapsed;
-  const [pushWidthSettled, setPushWidthSettled] = useState(false);
-  useEffect(() => {
-    if (!pushColumnOpen) setPushWidthSettled(false);
-  }, [pushColumnOpen]);
-  const pushWidthTransition =
-    isDragging || pushWidthSettled ? { duration: 0 } : pushTransition;
   // Freeze `desiredWidthPx` while dragging so hosts that still publish desire
   // do not thrash on every pointer move; publish the final width on pointerup.
   const publishedDesireRef = useRef(width);
@@ -248,16 +227,6 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const showPush = isPush && !!renderable;
   const showOverlay = !isPush && !!renderable;
 
-  // BOTH layers are always mounted, and each one's CHILD is what is conditional.
-  //
-  // An `AnimatePresence` that mounts together with its child suppresses the
-  // enter animation under `initial={false}`, and one that unmounts together with
-  // its child can never play the exit at all — the two halves of the
-  // "`AnimatePresence` inside the conditional" anti-pattern
-  // (`display/motion-crossfade.md`). Keeping the presence resident and toggling
-  // the child is what makes the width tween play in both directions.
-  //
-  // An empty push layer costs nothing in the flow: it renders no element.
   return (
     <>
       {/* ── PUSH: an in-flow column beside the work surface ─────────────── */}
@@ -276,68 +245,38 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
             </HoverTooltip>
           </div>
         ) : null}
-        {/* Outer presence keyed on a CONSTANT — it owns the column joining and
-            leaving the flow, not the occupant swap (see the docblock).
-            NO `initial={false}` here: the enter tween IS the push gesture's
-            feedback, and suppressing it would make the column appear at full
-            width with the work surface snapping sideways beside it. */}
-        <AnimatePresence>
-          {showPush && !isCollapsed ? (
-            <motion.aside
-              key={PUSH_COLUMN_KEY}
-              role="region"
-              aria-label={renderable?.ariaLabel ?? 'Details'}
-              data-right-rail-column
-              data-right-rail-mode="push"
-              className={DETAIL_STACK_PUSH_COLUMN_CLASS}
-              // The header+content column is `relative` and seven workspaces
-              // mount `zIndex.panel` overlays inside it, so an in-flow column
-              // with `z-index: auto` would paint under them.
-              style={{ zIndex: isElevated ? zIndex.detailStack : zIndex.panel }}
-              initial={{ width: 0, opacity: pushPresence.initial?.opacity as number }}
-              animate={{
-                width,
-                opacity: 1,
-                transition: pushWidthTransition,
-              }}
-              exit={{
-                width: 0,
-                opacity: pushPresence.exit?.opacity as number,
-                // Close must still tween even when width settled to instant.
-                transition: pushTransition,
-              }}
-              onAnimationComplete={() => {
-                if (pushColumnOpen) setPushWidthSettled(true);
-              }}
-              // Default transition matches the gated width rule — do not leave
-              // a lingering push.rail tween that re-targets mid-drag.
-              transition={pushWidthTransition}
-            >
-              {/* Drag ONLY — inset on the panel's own border-l seam. No
-                  `onCollapse` sash chevron (twins header `→|` / Band 3). */}
-              <HorizontalEdgeResizeHandle
-                edgeHandleProps={edgeHandleProps}
-                isDragging={isDragging}
-                edge="leading"
-                placement="inset"
-              />
-              {/* Inner presence keyed on the OCCUPANT — the record→record
-                  crossfade, unchanged from the float. */}
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={renderable?.id ?? PUSH_COLUMN_KEY}
-                  className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]" // ds-allow-radius: clip shell inherits the card radius
-                  initial={pushPresence.initial}
-                  animate={pushPresence.animate}
-                  exit={pushPresence.exit}
-                  transition={pushTransition}
-                >
-                  {renderable?.node}
-                </motion.div>
-              </AnimatePresence>
-            </motion.aside>
-          ) : null}
-        </AnimatePresence>
+        {/* Instant width snap — Unbox Displays / ContextPanelLayout twin.
+            No `motionRole.push.rail` width tween, no opacity presence, no
+            occupant crossfade: selecting a row must land the inspector on the
+            same frame the selection commits. */}
+        {showPush && !isCollapsed ? (
+          <aside
+            role="region"
+            aria-label={renderable?.ariaLabel ?? 'Details'}
+            data-right-rail-column
+            data-right-rail-mode="push"
+            className={DETAIL_STACK_PUSH_COLUMN_CLASS}
+            // The header+content column is `relative` and seven workspaces
+            // mount `zIndex.panel` overlays inside it, so an in-flow column
+            // with `z-index: auto` would paint under them.
+            style={{
+              width,
+              zIndex: isElevated ? zIndex.detailStack : zIndex.panel,
+            }}
+          >
+            {/* Drag ONLY — inset on the panel's own border-l seam. No
+                `onCollapse` sash chevron (twins header `→|` / Band 3). */}
+            <HorizontalEdgeResizeHandle
+              edgeHandleProps={edgeHandleProps}
+              isDragging={isDragging}
+              edge="leading"
+              placement="inset"
+            />
+            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]"> {/* ds-allow-radius: clip shell inherits the card radius */}
+              {renderable?.node}
+            </div>
+          </aside>
+        ) : null}
       </>
 
       {/* ── OVERLAY: the historical fixed inset card ────────────────────── */}

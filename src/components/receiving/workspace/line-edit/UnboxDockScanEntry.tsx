@@ -1,44 +1,60 @@
 'use client';
 
 /**
- * Always-present Unbox dock keyboard entry — the wedge waist for every
- * procedure step except `serial` (that step mounts {@link UnboxSerialStepSurface}
- * as the entry).
+ * Always-left Unbox dock procedure waist — compact scan cell twin of the
+ * parked-rail {@link CollapseStripScanCell} (`w-8`, Plus idle, glow + caret
+ * when focused, **no placeholder**). Step ACTION (ack · grades · photo strip)
+ * owns the remaining Band 1 width to the right.
  *
- * Sidebar Unbox scan is ingestion-only while this marker is mounted
- * (`[data-unbox-dock-scan]`). Submit meaning follows `activeKey`:
+ * `serial` mounts {@link UnboxSerialStepSurface} instead; `classify` owns Band 1
+ * alone (grow editor). Sidebar Unbox scan stays ingestion-only while
+ * `[data-unbox-dock-scan]` is mounted.
+ *
+ * Submit meaning follows `activeKey`:
  *   - condition → grade letter / alias
  *   - contents / label → confirm ack (or advance when already stamped)
- *   - arrival_check / classify → positional next (›)
- *   - carton / item photos → Enter advances when the step is settled; empty no-op
- *
- * Capture stays pointer (Link · Send · camera). Notes mode swaps the leading
- * zone entirely — this surface does not mount then.
+ *   - photo strip keys → advance / skip (Link | Upload | Send sit to the right)
+ *   - stage → location barcode
+ *   - classify → positional next (›) when mounted
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Plus } from '@/components/Icons';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
+import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
+import {
+  STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS,
+  STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS,
+  STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
+} from '@/components/station/scan-bar/tokens';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useAuth } from '@/contexts/AuthContext';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
+import { useStationTheme } from '@/hooks/useStationTheme';
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
+import { extractArrivalLocationBarcode } from '@/lib/receiving/arrival-command-routing';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { toast } from '@/lib/toast';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { UNBOX_PHOTO_STRIP_KEYS } from './steps/dock/PhotoStepDockStrip';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
-const PHOTO_KEYS = new Set([
-  'shipping_label_photo',
-  'box_photo',
-  'packing_material',
-  'item_photos',
-]);
+const ADVANCE_KEYS = new Set(['classify']);
 
-const ADVANCE_KEYS = new Set(['arrival_check', 'classify']);
+/** Match parked-rail collapse strip + CONTEXT_PANEL_COLLAPSE.stripWidthPx. */
+const DOCK_SCAN_CELL_WIDTH = 'w-8';
+const DOCK_SCAN_ICON_CLASS = 'h-3.5 w-3.5';
 
 function isKnownGrade(raw: string): string | null {
   const resolved = resolveConditionGrade(raw);
@@ -50,7 +66,9 @@ function isKnownGrade(raw: string): string | null {
 function focusEntry(el: HTMLInputElement | null) {
   if (!el || el.disabled) return;
   el.focus({ preventScroll: true });
-  el.select();
+  // Caret blink — do not select-all (collapse-strip recipe).
+  const len = el.value.length;
+  el.setSelectionRange(len, len);
 }
 
 export function UnboxDockScanEntry({
@@ -63,7 +81,17 @@ export function UnboxDockScanEntry({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
+  const [focused, setFocused] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { theme, inputBorder } = useStationTheme({
+    staffId: user?.staffId ?? 0,
+  });
+  const collapseHover =
+    STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS[theme] ??
+    STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS;
+  const bottomRule = inputBorder || STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
+
   const {
     activeKey,
     steps,
@@ -82,14 +110,20 @@ export function UnboxDockScanEntry({
   useEffect(() => {
     if (hidden) return;
     setValue('');
-    const t = window.setTimeout(() => focusEntry(inputRef.current), 0);
+    const t = window.setTimeout(() => {
+      setFocused(true);
+      focusEntry(inputRef.current);
+    }, 0);
     return () => window.clearTimeout(t);
   }, [hidden, activeKey, row.id]);
 
   useReceivingEvents({
     'receiving-focus-scan': () => {
       if (hidden) return;
-      requestAnimationFrame(() => focusEntry(inputRef.current));
+      requestAnimationFrame(() => {
+        setFocused(true);
+        focusEntry(inputRef.current);
+      });
     },
   });
 
@@ -154,6 +188,58 @@ export function UnboxDockScanEntry({
     }
   }, [advance, row.id, row.label_previewed_at]);
 
+  const stageLocation = useCallback(
+    async (rawBarcode: string) => {
+      if (row.id <= 0) return;
+      const code = extractArrivalLocationBarcode(rawBarcode) ?? rawBarcode.trim();
+      if (!code) {
+        toast.error('Scan a location barcode');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/receiving/lines/${row.id}/stage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode: code }),
+        });
+        const json = (await res.json().catch(() => null)) as {
+          success?: boolean;
+          error?: string;
+          line?: { staged_at?: string | null; staged_location_id?: number | null };
+          location?: {
+            id: number;
+            name: string;
+            barcode: string | null;
+            room: string | null;
+          } | null;
+        } | null;
+        if (!res.ok || !json?.success) {
+          toast.error(json?.error || 'Location not found');
+          return;
+        }
+        dispatchLineUpdated({
+          id: row.id,
+          staged_at: json.line?.staged_at ?? new Date().toISOString(),
+          staged_location_id: json.line?.staged_location_id ?? json.location?.id ?? null,
+          staged_location_name: json.location?.name ?? null,
+          staged_location_barcode: json.location?.barcode ?? null,
+          staged_location_room: json.location?.room ?? null,
+        });
+        invalidateReceivingFeeds(queryClient);
+        toast.success(
+          json.location?.name
+            ? `Staged → ${json.location.name}`
+            : 'Location staged',
+        );
+      } catch {
+        toast.error('Could not stage the location.');
+      } finally {
+        setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+      }
+    },
+    [queryClient, row.id],
+  );
+
   /**
    * Apply a dock payload — shared by Enter on the focused input and the
    * Action scan sink (wedge while focus is on a PO line / chrome).
@@ -189,17 +275,21 @@ export function UnboxDockScanEntry({
         return;
       }
 
-      if (ADVANCE_KEYS.has(activeKey)) {
+      if (activeKey === 'stage') {
+        if (!raw) return;
+        setValue('');
+        void stageLocation(raw);
+        return;
+      }
+
+      // Photo steps: Enter / wedge advances (strip verbs stay pointer).
+      if (UNBOX_PHOTO_STRIP_KEYS.has(activeKey)) {
         setValue('');
         advance();
         return;
       }
 
-      if (PHOTO_KEYS.has(activeKey)) {
-        // Empty Enter no-ops while pending; advance when evidence already settled.
-        if (!raw && active.state !== 'done') {
-          return;
-        }
+      if (ADVANCE_KEYS.has(activeKey)) {
         setValue('');
         advance();
         return;
@@ -211,12 +301,18 @@ export function UnboxDockScanEntry({
         advance();
       }
     },
-    [ackContents, ackLabel, active, activeKey, advance, onSetCondition],
+    [ackContents, ackLabel, active, activeKey, advance, onSetCondition, stageLocation],
   );
 
   const onSubmit = useCallback(() => {
     applyScan(value);
   }, [applyScan, value]);
+
+  const arm = useCallback((e?: MouseEvent) => {
+    e?.stopPropagation();
+    setFocused(true);
+    requestAnimationFrame(() => focusEntry(inputRef.current));
+  }, []);
 
   // Action sink — wedge while focus is NOT in this input (row / chrome).
   // Exclusive with UnboxSerialStepSurface (this surface is hidden on serial).
@@ -226,52 +322,81 @@ export function UnboxDockScanEntry({
     id: `po-line:${row.id}`,
     enabled: !hidden && row.id > 0,
     onScan: applyScan,
-    focus: () => focusEntry(inputRef.current),
+    focus: () => {
+      setFocused(true);
+      focusEntry(inputRef.current);
+    },
   });
 
   if (hidden) return null;
 
-  const placeholder =
-    activeKey === 'condition'
-      ? 'Grade…'
-      : activeKey === 'contents' || activeKey === 'label'
-        ? 'Enter to confirm'
-        : ADVANCE_KEYS.has(activeKey)
-          ? 'Enter to continue'
-          : PHOTO_KEYS.has(activeKey)
-            ? 'Enter when ready'
-            : 'Scan…';
+  const ariaLabel = `Scan — ${active?.label ?? 'procedure step'}`;
 
   return (
     <div
-      className="flex h-11 w-full min-w-0 flex-1 items-center"
+      className={cn(
+        'relative flex h-11 shrink-0 items-center justify-center',
+        DOCK_SCAN_CELL_WIDTH,
+      )}
       data-unbox-dock-scan
       data-unbox-dock-scan-step={activeKey}
+      data-unbox-dock-scan-compact=""
+      data-focused={focused ? 'true' : undefined}
     >
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key !== 'Enter') return;
-          e.preventDefault();
-          e.stopPropagation();
-          onSubmit();
-        }}
-        placeholder={placeholder}
-        aria-label={`Dock entry — ${active?.label ?? 'procedure step'}`}
-        autoComplete="off"
-        spellCheck={false}
+      {!focused ? (
+        <HoverTooltip label={ariaLabel} asChild>
+          <button
+            type="button"
+            aria-label={ariaLabel}
+            data-unbox-dock-scan-idle=""
+            className={cn(
+              'ds-raw-button ds-allow-control-size',
+              'flex h-11 w-full items-center justify-center border-0 border-b-2 border-b-transparent',
+              'text-text-faint transition-colors',
+              focusRing('control', 'neutral'),
+              collapseHover,
+            )}
+            onClick={arm}
+          >
+            <Plus className={DOCK_SCAN_ICON_CLASS} aria-hidden />
+          </button>
+        </HoverTooltip>
+      ) : null}
+
+      {/* Keep the input mounted while idle so receiving-focus-scan can land. */}
+      <ScanBandGlowHost
+        themeColor={theme}
         className={cn(
-          // Full-band wedge — never a content-sized chip on the flush floor.
-          'box-border h-9 w-full min-w-0 flex-1 border border-border-soft bg-surface-sunken px-3',
-          'text-role-caption text-text-default placeholder:text-text-faint',
-          cornerClass('flush'),
-          focusRing('control', 'neutral'),
+          'h-11 w-full',
+          focused ? 'relative' : 'pointer-events-none absolute inset-0 opacity-0',
         )}
-        data-unbox-dock-scan-input
-      />
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            e.stopPropagation();
+            onSubmit();
+          }}
+          // No placeholder — glow + caret are the focus signal (collapse-strip twin).
+          placeholder=""
+          aria-label={ariaLabel}
+          autoComplete="off"
+          spellCheck={false}
+          className={cn(
+            'box-border h-11 w-full bg-transparent px-0 text-center',
+            'text-role-micro font-semibold text-text-default outline-none',
+            bottomRule,
+          )}
+          data-unbox-dock-scan-input
+        />
+      </ScanBandGlowHost>
     </div>
   );
 }

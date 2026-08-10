@@ -57,10 +57,20 @@ export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
  * (not a floated pill).
  *
  * Zone grammar (scanner left · workspace config right):
- * - **Left** — data entry / queue filter (`search` flush to the sheet edge).
- * - **Right** — refine (`right` + controls portal) then **view toggles**
- *   (`kpiToggle` → `trailing` inspector). KPI hide sits immediately left of
- *   the right-rail inspector so layout-modifying controls share one cluster.
+ * - **Left** — data entry / queue filter, and nothing else: `search` owns the
+ *   whole left at `min-w-0 flex-1`, flush to the sheet edge.
+ * - **Right** — ONE control cluster, in order: refine (`right` + controls
+ *   portal) → **Views** (`WorkbenchViewsMenu`, page-scoped saved views) →
+ *   **view toggles** (`kpiToggle` → `trailing` inspector). KPI hide sits
+ *   immediately left of the right-rail inspector so layout-modifying controls
+ *   share one cluster.
+ *
+ * Views moved out of the find group 2026-08-10: it is a page-scoped *control*,
+ * not part of the query, so abutting the search field read as chrome belonging
+ * to find. On the lean cohort the row is exactly four controls —
+ * `search · Views · KPI · inspector` — and the right three read as peers.
+ * Never Band-1 beside lifecycle tabs (that promotes an inner refinement to an
+ * outer scope). SoT: source-of-truth.md → Left-edge occupant.
  *
  * Consumers: Unbox (golden), Incoming, Locations, To-ship, cohort stations.
  * KPI snap-collapse: {@link WorkbenchKpiBand} + {@link WorkbenchKpiCollapseToggle}
@@ -70,6 +80,7 @@ export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
 
 export function WorkbenchTriageBand({
   search,
+  views,
   right,
   kpiToggle,
   trailing,
@@ -78,6 +89,13 @@ export function WorkbenchTriageBand({
   className,
 }: {
   search: ReactNode;
+  /**
+   * Page-scoped saved views — {@link WorkbenchViewsMenu}. Renders in the RIGHT
+   * control cluster, immediately before {@link kpiToggle}, so the row reads
+   * `search · Views · KPI · inspector`. It is a control, not part of the find
+   * field — never re-attach it to the search group.
+   */
+  views?: ReactNode;
   right?: ReactNode;
   /**
    * View-toggle zone — {@link WorkbenchKpiCollapseToggle}. Renders after the
@@ -104,6 +122,7 @@ export function WorkbenchTriageBand({
         className,
       )}
     >
+      {/* Find owns the whole left — no control shares the search group. */}
       <div className="flex min-w-0 flex-1 items-stretch">{search}</div>
       <div className="flex shrink-0 items-center gap-2 self-center">
         {right}
@@ -114,6 +133,7 @@ export function WorkbenchTriageBand({
             {...controlsSlotProps}
           />
         ) : null}
+        {views}
         {kpiToggle}
         {trailing}
       </div>

@@ -39,8 +39,11 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  */
 export interface OrderIdentityChipsProps {
   platformLabel: string;
-  /** Icon color for the platform chip (gray when not linkable). */
-  platformIconClass: string;
+  /**
+   * Icon color for the platform chip (gray when not linkable). Optional when
+   * {@link showPlatform} is false — surfaces that omit platform never color-map.
+   */
+  platformIconClass?: string;
   /** Product/listing URL; primary action is **copy**, open is secondary. */
   productPageUrl: string | null;
   /** Marketplace order detail URL (secondary open on order chip). */
@@ -67,6 +70,12 @@ export interface OrderIdentityChipsProps {
   /** Opens the host row's listing-link (`item_number`) editor — surfaces the
    *  "Edit listing link" hover action on the platform cell (Pending grid). */
   onEditListingLink?: () => void;
+  /**
+   * When false, omit PlatformChip / PlatformMark from cluster and cells layouts
+   * (To-ship orders queue — order + tracking only; platform lives on the chip
+   * tooltip via `platformLabel`). Default true for other surfaces.
+   */
+  showPlatform?: boolean;
   /** Optional 4th column — serial chip on station (Tech) rows. */
   serialChip?: React.ReactNode;
   isMobile: boolean;
@@ -276,7 +285,7 @@ export function useOrderIdentityCellNodes({
     <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems} onOpenChange={handleMenuOpenChange}>
       <PlatformChip
         label={platformLabel}
-        iconClass={platformIconClass}
+        iconClass={platformIconClass ?? ''}
         showIcon={!plain}
         tooltipValue={productPageUrl ? 'Open listing' : 'No listing link'}
         onClick={() => {
@@ -330,6 +339,7 @@ export function OrderIdentityChips(props: OrderIdentityChipsProps) {
     isMobile,
     layout = 'cluster',
     gridCellClass,
+    showPlatform = true,
   } = props;
   // Grid `cells` layout honors the per-staff column config so the per-column
   // header "Hide field" actually drops platform/order/tracking (their hide-keys
@@ -343,9 +353,11 @@ export function OrderIdentityChips(props: OrderIdentityChipsProps) {
   if (layout === 'cells') {
     return (
       <>
-        <div data-col="platform" className={cn('flex min-w-0 items-center', gridCellClass?.('platform'))}>
-          {isColumnHidden('platform') ? null : nodes.platformMark}
-        </div>
+        {showPlatform ? (
+          <div data-col="platform" className={cn('flex min-w-0 items-center', gridCellClass?.('platform'))}>
+            {isColumnHidden('platform') ? null : nodes.platformMark}
+          </div>
+        ) : null}
         <div data-col="order" className={cn('flex min-w-0 items-center', gridCellClass?.('order'))}>
           {isColumnHidden('orderid') ? null : nodes.order}
         </div>
@@ -357,7 +369,9 @@ export function OrderIdentityChips(props: OrderIdentityChipsProps) {
   }
 
   const columns: ChipColumn[] = [
-    { key: 'platform', width: CHIP_COL.platform, node: nodes.platformChip },
+    ...(showPlatform
+      ? [{ key: 'platform' as const, width: CHIP_COL.platform, node: nodes.platformChip }]
+      : []),
     { key: 'orderid', width: CHIP_COL.id, node: nodes.order },
     {
       key: 'tracking',

@@ -17,6 +17,7 @@ import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queri
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/types/orders';
 import { useRefreshSignal } from '@/lib/refresh/bus';
+import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 
 /**
  * Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping
@@ -140,6 +141,13 @@ export function UnshippedTable({
   // its meaning is now "urgent only", not the legacy blocked ∪ late fire queue.
   const urgentOnly =
     searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
+  /** Packing-station placement: any placed package or one bench id. */
+  const packPlacedOnly =
+    searchParams.get(PACK_PLACED_PARAM) === '1' ||
+    searchParams.get(PACK_PLACED_PARAM) === 'true';
+  const packStationParam = Number(searchParams.get(PACK_STATION_PARAM));
+  const packStationId =
+    Number.isFinite(packStationParam) && packStationParam > 0 ? packStationParam : null;
   // Universal staff filter (P1-WORK-02): `?staff=` narrows to one staff's
   // assigned work. Absent = ALL staff (current behavior preserved).
   const staffParam = Number(searchParams.get('staff'));
@@ -150,7 +158,7 @@ export function UnshippedTable({
   const [rowLimit, setRowLimit] = useState(200);
   useEffect(() => {
     setRowLimit(200);
-  }, [stageFilter, staffId, searchQuery, statusFilter, urgentOnly]);
+  }, [stageFilter, staffId, searchQuery, statusFilter, urgentOnly, packPlacedOnly, packStationId]);
 
   const query = useQuery({
     ...unshippedOrdersQuery({
@@ -298,6 +306,7 @@ export function UnshippedTable({
       is_urgent?: boolean;
       tracking_number?: string | null;
       shipping_tracking_number?: string | null;
+      pack_location_id?: number | null;
     };
     // Pre-pack board is labeled + tracked only — no-tracking rows belong on Labels.
     // Server fulfillmentScope / queue-counts already require non-empty tracking_number_raw;
@@ -320,6 +329,12 @@ export function UnshippedTable({
       return false;
     }
     if (urgentOnly && !row.is_urgent) return false;
+    const placedId = row.pack_location_id != null ? Number(row.pack_location_id) : null;
+    if (packStationId != null) {
+      if (placedId !== packStationId) return false;
+    } else if (packPlacedOnly && !(placedId != null && placedId > 0)) {
+      return false;
+    }
     return true;
   });
 

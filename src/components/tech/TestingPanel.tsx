@@ -10,7 +10,11 @@ import {
   StationScanPaneHost,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import {
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+  useYieldStationDisplaysOnAssistantOpen,
+} from '@/components/station/displays';
 import { UnboxDisplaysUtilityRailBody } from '@/components/receiving/workspace/UnboxDisplaysUtilityRailBody';
 import { UnboxLabelPreview } from '@/components/receiving/workspace/line-edit/UnboxLabelPreview';
 import { WorkspaceNotesCard } from '@/components/receiving/workspace/line-edit/WorkspaceNotesCard';
@@ -88,6 +92,7 @@ export function TestingPanel({
   } | null>(null);
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
   const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
 
   /**
@@ -99,6 +104,7 @@ export function TestingPanel({
   const openUnits = useCallback(
     (line: ReceivingLineRow) => {
       if (line.id !== row.id) dispatchSelectLine(line);
+      // Contextual Units leaf (Testing has no nested unitsAction URL).
       openDisplays('units');
     },
     [row.id, openDisplays],

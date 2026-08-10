@@ -2,24 +2,24 @@
 
 /**
  * Triage right-pane shell — browse workbench always mounted; focused carton
- * workspace crossfades over it (UnboxLineWorkspace pattern). Uses the heavier
- * `workbenchPaneSettle` preset for carton→carton swaps.
+ * workspace crossfades over it (UnboxLineWorkspace pattern).
+ *
+ * Motion is the STATION cadence preset (`motionRole.swap.scan`), not the pointer
+ * `workbenchPaneSettle`. Exit is instant.
+ *
+ * - Browse→first open: `mode="wait"` + enter fade (~0.12s).
+ * - Carton→carton (next scan): `mode="sync"` + hard-cut enter so the new opaque
+ *   pane covers the old one — `mode="wait"` would punch a hole through the host.
  */
 
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { useRef } from 'react';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 import { TriageWorkspaceView } from '@/components/receiving/triage/TriageWorkspaceView';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type {
@@ -43,12 +43,23 @@ export function TriageLineWorkspace({
   scanInFlight,
   onCloseWorkspace,
 }: TriageLineWorkspaceProps) {
-  const panePresence = useMotionPresence(framerPresence.workbenchPaneSettle);
-  const paneTransition = useMotionTransition(framerTransition.workbenchPaneSettle);
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(
+    motionRole.swap.scan,
+  );
   const row = workspace?.row ?? null;
   const showOverlay = !!workspace;
   const showScanLoader =
     !!scanInFlight && scanInFlight.surface === 'triage' && !showOverlay;
+
+  const overlayWasOpenRef = useRef(false);
+  const cartonSwapHardCut = showOverlay && overlayWasOpenRef.current;
+  overlayWasOpenRef.current = showOverlay;
+
+  const paneKey = workspace
+    ? workspace.scanDriven
+      ? `scan-${workspace.row.client_event_id ?? workspace.row.tracking_number ?? workspace.row.id}`
+      : `row-${workspace.row.receiving_id ?? workspace.row.id}`
+    : 'carton:none';
 
   return (
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
@@ -65,20 +76,22 @@ export function TriageLineWorkspace({
         )}
       </div>
 
-      <AnimatePresence initial={false} mode="wait">
+      <AnimatePresence
+        initial={false}
+        mode={cartonSwapHardCut ? 'sync' : 'wait'}
+      >
         {showOverlay && workspace ? (
           <motion.div
-            key={
-              workspace.scanDriven
-                ? `scan-${workspace.row.client_event_id ?? workspace.row.tracking_number ?? workspace.row.id}`
-                : `row-${workspace.row.receiving_id ?? workspace.row.id}`
-            }
-            initial={panePresence.initial}
+            key={paneKey}
+            initial={cartonSwapHardCut ? false : panePresence.initial}
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel }}
-            className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
+            style={{ zIndex: zIndex.panel + (cartonSwapHardCut ? 1 : 0) }}
+            className={cn(
+              'absolute inset-0 flex min-h-0 flex-col',
+              appSurfaceFillClass('chrome'),
+            )}
           >
             <ReceivingLineWorkspace
               row={workspace.row}

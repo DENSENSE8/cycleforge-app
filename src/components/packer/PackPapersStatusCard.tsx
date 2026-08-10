@@ -5,15 +5,13 @@
  *
  * Reprint must not steal wedge focus: preventDefault on mousedown keeps the
  * scan input focused; emitPackerFocusScan hands focus back after the act.
+ *
+ * Status flaps use scan-cadence swap (exit instant) — never full station-card
+ * physics that delay the next scan.
  */
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives';
 import {
   dispatchPackPrintBundleUi,
@@ -25,8 +23,7 @@ import {
 import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 
 export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null }) {
-  const cardPresence = useMotionPresence(framerPresence.stationCard);
-  const cardTransition = useMotionTransition(framerTransition.stationCardMount);
+  const { presence, transition } = useMotionRole(motionRole.swap.scan);
   const [printBundleUi, setPrintBundleUi] = useState<PrintBundleUiState | null>(null);
 
   useEffect(() => {
@@ -80,11 +77,13 @@ export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null
 
   return (
     <div className={`shrink-0 ${STATION_WORKBENCH_IDENTITY_COLUMN}`}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={`print-${printBundleUi.status}-${printBundleUi.orderRowId}`}
-          {...cardPresence}
-          transition={cardTransition}
+          initial={presence.initial}
+          animate={presence.animate}
+          exit={presence.exit}
+          transition={transition}
           className={
             printBundleUi.status === 'failed' || printBundleUi.status === 'missing'
               ? 'rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5'

@@ -7,6 +7,7 @@ import {
   DEFAULT_PHOTO_LIBRARY_VIEW,
   type PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { PhotoGridDisplayControls } from './PhotoGridDisplayControls';
 import { photoLibraryControlButtonClass, photoLibraryControlGroupClass } from './photo-library-controls';
@@ -71,7 +72,10 @@ export function PhotoDisplayControls({
           aria-label="Refresh photos"
           disabled={isRefreshing}
           onClick={onRefresh}
-          className="ds-raw-button flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border-soft bg-surface-card text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60"
+          className={cn(
+            'ds-raw-button flex h-8 w-8 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60',
+            cornerClass('flush'),
+          )}
         >
           {isRefreshing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

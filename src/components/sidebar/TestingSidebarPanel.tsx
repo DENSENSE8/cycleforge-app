@@ -492,7 +492,7 @@ export function TestingSidebarPanel({
           id={`box:${boxPanel.id}`}
           // Scan-opened on a Station bench: a width tween that reflows the bench at
           // the instant a barcode fires is not the explicit gesture the push
-          // mechanism requires, and `UnboxPushColumn` already owns this edge here.
+          // mechanism requires, and `StationDisplaysPushColumn` already owns this edge here.
           push={false}
           onClose={() => setBoxPanel(null)}
           modal={false}
@@ -511,7 +511,7 @@ export function TestingSidebarPanel({
           id={`manifest:${manifestPanel.ref}`}
           // Scan-opened on a Station bench: a width tween that reflows the bench at
           // the instant a barcode fires is not the explicit gesture the push
-          // mechanism requires, and `UnboxPushColumn` already owns this edge here.
+          // mechanism requires, and `StationDisplaysPushColumn` already owns this edge here.
           push={false}
           onClose={() => setManifestPanel(null)}
           modal={false}

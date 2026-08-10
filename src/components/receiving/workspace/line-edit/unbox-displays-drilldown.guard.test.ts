@@ -52,7 +52,7 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
   it('push stack uses index + leaf chrome; Esc pops via onEscape', () => {
     const stack = read(STACK);
     const column = read(COLUMN);
-    assert.match(stack, /StationDisplayIndexList/);
+    assert.match(stack, /DisplaysIndexLeafStage/);
     assert.match(stack, /StationDisplayLeafHeader/);
     assert.match(stack, /DisplaysLeafChromeProvider/);
     assert.match(stack, /leafTrail|setTrail/);
@@ -82,8 +82,8 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     );
     assert.match(
       panel,
-      /openDisplays\('units'\)/,
-      'serials View All still skips index',
+      /openDisplays\('units',\s*\{\s*unitsAction:\s*'units'\s*\}\)/,
+      'serials View All still skips index (lands Units drill, not Actions list)',
     );
     assert.match(
       panel,
@@ -109,6 +109,9 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     const host = read('src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx');
     const sync = read('src/components/receiving/workspace/line-edit/hooks/useZohoSync.ts');
     const panel = read(PANEL);
+    const floor = read(
+      'src/components/receiving/workspace/line-edit/UnboxDisplaysActionFloor.tsx',
+    );
     const claim = read('src/components/receiving/workspace/ReceivingClaimPanel.tsx');
     assert.match(tabs, /\| 'inventory'/);
     assert.match(builders, /id: 'inventory'/);
@@ -127,6 +130,16 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
       'Inventory uses secondary child-row drill (index → sub-leaf)',
     );
     assert.match(host, /data-inventory-sub-index/);
+    assert.match(
+      host,
+      /StationArmedVerbList/,
+      'Secondary index is the armed SoT list — not a hand-rolled <ul>',
+    );
+    assert.doesNotMatch(
+      host,
+      /data-inventory-sub-row|tone === 'action'|Open' : r\.tone/,
+      'No tone-pill / raw sub-row twin — StationArmedVerbList owns the face',
+    );
     // ONE Back row — stack owns LeafHeader; Inventory reports trail UP.
     assert.doesNotMatch(
       host,
@@ -153,20 +166,30 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
       /data-claim-chrome=\{chrome\}/,
       'Claim panel owns the chrome attribute SoT',
     );
-    assert.match(
+    assert.doesNotMatch(
       host,
       /StationActionKeyLegend/,
-      'Macro floor CTAs exist for sub-leaves (Action KeyLegend / Claim File twin)',
+      'No Action KeyLegend floor — stack owns leaf-dismiss only',
+    );
+    assert.doesNotMatch(
+      host,
+      /showFloor|floorLeading/,
+      'No hand-rolled Inventory floor CTAs',
     );
     assert.match(
       host,
-      /showFloor/,
-      'Floor is contextual — hidden on the Inventory sub-index',
+      /setLeafTrailing/,
+      'Save mounts in sticky leaf header trailing when PO notes dirty path needs it',
     );
     assert.match(
       host,
-      /subLeaf !== 'info'|subLeaf === 'info'/,
-      'Information is facts-only — floor / hotkeys exclude info',
+      /data-inventory-leaf-trailing/,
+      'Header trailing cluster is Inventory-owned (Save notes)',
+    );
+    assert.match(
+      host,
+      /variant="instrument"/,
+      'Information is StationDenseFactStrip instrument SoT',
     );
     assert.doesNotMatch(
       host,
@@ -203,8 +226,18 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     assert.doesNotMatch(host, /data-inventory-receive-fact/);
     assert.match(host, /baseLastModifiedZoho|base_last_modified_zoho/, 'Cmd+S sends block-if-stale base stamp');
     assert.match(host, /inlineNotes/, 'Line notes paint inline (no expand-to-reveal)');
-    assert.match(host, /'Refresh'|Refreshing/, 'Operator copy is Refresh, not Sync');
+    assert.match(host, /'Refresh'|Refreshing|Refresh inventory/, 'Pull copy is Refresh (not Sync)');
     assert.match(host, /dossier\.invalidate\(\)/, 'Refresh busts incoming-details cache');
+    assert.match(
+      floor,
+      /unbox-displays-floor-inventory-sync|RefreshCw/,
+      'Zoho inventory Refresh is the Macro-floor refresh icon — not the Inventory breadcrumb',
+    );
+    assert.doesNotMatch(
+      host,
+      /ariaLabel="Refresh inventory"/,
+      'Inventory breadcrumb must not host the Refresh CTA',
+    );
     // Nested drill: sections live behind sub-index rows, not one stacked scroll.
     assert.match(host, /subLeaf === 'info'|id: 'info'/);
     assert.match(host, /subLeaf === 'lines'|id: 'lines'/);
@@ -218,6 +251,35 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     assert.match(sync, /incoming\/sync-one/);
     assert.match(panel, /refreshInventoryDossier/);
     assert.match(panel, /inventoryRefreshing/);
+    assert.match(
+      panel,
+      /onLoadZohoNotes:[\s\S]*?refreshInventoryDossier/,
+      'PO notes lazy pull uses full dossier refresh (not carton-only sync)',
+    );
+    assert.match(host, /from '@\/lib\/toast'/, 'Refresh toasts via house toast waist');
+    assert.match(host, /Inventory refreshed/, 'Success toast names Inventory refreshed');
+    assert.match(host, /Inventory refresh failed/, 'Failure toast names Inventory refresh failed');
+    assert.match(
+      host,
+      /Inventory status updated locally/,
+      'Partial Refresh (local paint, live Zoho failed) warns via toast',
+    );
+    // Receive stays on the Unbox dock — Inventory never forks a receive engine.
+    assert.doesNotMatch(
+      host,
+      /onMarkReceived|onUnreceive|Mark received|handleReceive/,
+      'Inventory leaf has no receive CTAs — dock owns mark-received-po',
+    );
+    assert.doesNotMatch(
+      host,
+      /\/api\/receiving\/mark-received-po|\/api\/zoho\/purchase/,
+      'Inventory host must not fetch receive APIs',
+    );
+    assert.match(
+      host,
+      /setLeafCommands\(null\)/,
+      'Inventory clears leaf-commands so footer stays leaf-dismiss (no / Commands)',
+    );
     assert.doesNotMatch(host, /RightRailHost|DetailStackRailRegistrar/);
     assert.doesNotMatch(host, /CartonMatchHub/, 'Change PO opens Linkage — no second match hub');
     assert.doesNotMatch(host, /InspectorActionFloor/);
@@ -269,6 +331,61 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     assert.match(details, /inventory_received_at/);
     assert.match(details, /po_notes/, 'Details exposes synced PO header notes');
     assert.match(details, /r\.zoho_notes/, 'Carton zoho_notes selected for po_notes');
+
+    // Stream C — receive/unreceive trail honesty (do/undo stay on dock).
+    const activity = read(
+      'src/components/receiving/inventory/InventoryActivityPanel.tsx',
+    );
+    const header = read(
+      'src/components/receiving/inventory/InventoryPoHeader.tsx',
+    );
+    const lines = read(
+      'src/components/receiving/inventory/InventoryPoLineList.tsx',
+    );
+    const controller = read(
+      'src/components/receiving/workspace/line-edit/hooks/useUnboxLineController.ts',
+    );
+    assert.match(
+      activity,
+      /notes\.includes\('unreceive'\)/,
+      'Unreceive labels NOTE + ADJUSTED spine rows — not ADJUSTED-only',
+    );
+    assert.match(
+      header,
+      /label:\s*'Received'/,
+      'Information dense facts surface carton inventory_received_at',
+    );
+    assert.match(
+      header,
+      /label:\s*'Purchase receive'/,
+      'Information dense facts surface zoho_purchase_receive_id',
+    );
+    assert.doesNotMatch(header, /data-inventory-receive-fact/);
+    assert.match(
+      lines,
+      /localQty > 0 && isZohoReceivedLikeStatus/,
+      'Lines trust face ignores stale Zoho received when local qty is 0 (post-unreceive)',
+    );
+    assert.match(
+      controller,
+      /if \(ok\) void core\.refreshInventoryDossier\(\)/,
+      'Dock receive/unreceive refreshes Inventory dossier after local commit',
+    );
+    assert.match(
+      controller,
+      /isUnreceiveSerialBlocking/,
+      'Unreceive menu pre-disables outbound / fulfillment serials',
+    );
+    assert.match(
+      controller,
+      /from '@\/lib\/receiving\/unreceive-serial-guard'/,
+      'Unreceive serial guard must stay client-safe — never import receive-line (pulls @/lib/db)',
+    );
+    assert.doesNotMatch(
+      controller,
+      /from '@\/lib\/receiving\/receive-line'/,
+      'receive-line is server-only; Client Component import ships Neon into the station bundle',
+    );
   });
 
   it('Open displays paints from the shared optimistic URL SoT — not a local twin', () => {
@@ -285,6 +402,11 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     );
     assert.match(
       view,
+      /flushSync\([\s\S]*?setPending\(snapshot\)/,
+      'pending paint flushSyncs so leaf mounts in the same pointer/key turn',
+    );
+    assert.match(
+      view,
       /resolveOptimisticParam\(urlDisplay,\s*pending\?\.display\)/,
       'requestedDisplay prefers pending over lagged useSearchParams',
     );
@@ -297,6 +419,28 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
       view,
       /readLiveSearchParams/,
       'param edits seed from the live address bar',
+    );
+  });
+
+  it('Displays open preloads deferred leaf chunks so index→leaf is not a cold dynamic()', () => {
+    const panel = read(PANEL);
+    const tabsMod = read(
+      'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
+    );
+    assert.match(
+      tabsMod,
+      /export function preloadUnboxDisplayLeafChunks/,
+      'deferred Photos/Ticket/… loaders share one preload SoT',
+    );
+    assert.match(
+      panel,
+      /preloadUnboxDisplayLeafChunks/,
+      'LineEditPanel warms leaf chunks when Displays opens',
+    );
+    assert.match(
+      panel,
+      /if \(!showDisplays\) return[\s\S]*preloadUnboxDisplayLeafChunks/,
+      'preload runs only while the push column is open',
     );
   });
 });

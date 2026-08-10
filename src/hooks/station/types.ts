@@ -35,6 +35,9 @@ export interface ActiveStationOrder {
   scannedSkuCodes?: string[];
   /** SKU ↔ serial pairings for the shipping workspace ship tab. */
   skuSerialGroups?: SkuSerialGroup[];
+  /** Current packing DESK / STAGING placement (Ready-to-Pack). */
+  packLocationId?: number | null;
+  packLocationName?: string | null;
 }
 
 export interface ResolvedProductManual {
@@ -61,7 +64,7 @@ export interface ScanHandlerContext {
   userName: string;
   getScanContextOrder: () => ActiveStationOrder | null;
   reopenScanContextOrder: () => ActiveStationOrder | null;
-  syncActiveOrderState: (order: ActiveStationOrder | null, opts?: { preserveHidden?: boolean }) => void;
+  syncActiveOrderState: (order: ActiveStationOrder | null) => void;
   setIsLoading: (v: boolean) => void;
   setErrorMessage: (v: string | null) => void;
   setSuccessMessage: (v: string | null) => void;
@@ -81,4 +84,9 @@ export interface ScanHandlerContext {
    * blocks the scan loop. Undefined when the feature is off.
    */
   onUnitLabelScanned?: (rawInput: string) => void;
+  /**
+   * Armed packing DESK/STAGING location id for Ready-to-Pack TRACKING scans.
+   * Required by POST /api/tech/scan when marking an order TESTED.
+   */
+  getArmedPackLocationId?: () => number | null;
 }

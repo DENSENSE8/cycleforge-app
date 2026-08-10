@@ -1,6 +1,6 @@
 'use client';
 
-import { photoHeroLayoutId } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { TicketNasBackupButton } from '../TicketNasBackupButton';
@@ -57,7 +57,12 @@ export function PhotoListView({
                 <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
                   {group.label}
                 </span>
-                <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft">
+                <span
+                  className={cn(
+                    'shrink-0 bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft',
+                    cornerClass('chip'),
+                  )}
+                >
                   {group.photos.length}
                 </span>
                 {showNasBackup && ticketNumber ? (
@@ -70,7 +75,12 @@ export function PhotoListView({
                 ) : null}
               </header>
             ) : null}
-            <ul className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border bg-card">
+            <ul
+              className={cn(
+                'divide-y divide-border-hairline overflow-hidden border border-border bg-card',
+                cornerClass('flush'),
+              )}
+            >
               {group.photos.map((photo) => {
                 const isSelected = selected.has(photo.id);
                 const takenAt = formatDateTimePST(photo.createdAt);
@@ -109,13 +119,17 @@ export function PhotoListView({
                         isSelected && 'bg-blue-50/50',
                       )}
                     >
-                      <div className="relative h-12 w-12 shrink-0 rounded-md border border-border">
+                      <div
+                        className={cn(
+                          'relative h-12 w-12 shrink-0 border border-border',
+                          cornerClass('flush'),
+                        )}
+                      >
                         <PhotoThumb
                           src={photo.thumbUrl}
                           alt=""
                           damage={Boolean(photo.damageDetected)}
-                          heroId={photoHeroLayoutId(photo.id)}
-                          className="rounded-md"
+                          className={cornerClass('flush')}
                         />
                       </div>
                       <div className="min-w-0 flex-1">

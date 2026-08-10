@@ -76,6 +76,8 @@ export interface OutboundMetricCtx {
     blocked: number;
     /** Operator-flagged expedited rows (`orders.is_urgent`). */
     urgent: number;
+    /** Open ready-to-pack packages currently at a packing DESK/STAGING. */
+    atStations?: number;
   };
   /** Org throughput ROI (null when ungated / no data). */
   roi: OperationsRoiData | null;
@@ -123,6 +125,11 @@ export interface ComputedMetric {
    * Mutually exclusive with {@link filterState} and {@link filterUstatus}.
    */
   filterAttention?: boolean;
+  /**
+   * When set, the tile toggles packing-station placement filter (`?packPlaced=1`).
+   * Mutually exclusive with lifecycle filters.
+   */
+  filterPackPlaced?: boolean;
 }
 
 /** Pinned left queue cluster on the unshipped strip — fixed display order. */
@@ -380,6 +387,26 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         status: 'In queue',
         tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}. Click to filter the board.`,
         filterUstatus: 'TESTED',
+      };
+    },
+  },
+  {
+    id: 'atStations',
+    label: 'At stations',
+    modes: ['unshipped'],
+    compute: ({ unshipped }) => {
+      const n = unshipped.atStations ?? 0;
+      if (n <= 0) return null;
+      return {
+        id: 'atStations',
+        label: 'At stations',
+        value: n.toLocaleString(),
+        fraction: share(n, unshipped.tested || n),
+        intent: 'neutral',
+        severity: 1,
+        status: 'Placed',
+        tooltip: `Ready-to-pack packages currently at a packing station or staging · ${n}. Click to filter placed packages.`,
+        filterPackPlaced: true,
       };
     },
   },

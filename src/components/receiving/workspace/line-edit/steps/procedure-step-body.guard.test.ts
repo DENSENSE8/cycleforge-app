@@ -90,14 +90,17 @@ test('the three bench carton shots share ONE body', () => {
   );
 });
 
-test('arrival_check does NOT share the bench capture body', () => {
-  // It reads the door's `arrival_package` evidence; the bench shots write
-  // `unbox_carton`. Wiring it to the capture body would put a camera on the one
-  // step whose whole job is that it cannot take one — and `arrival_package` is
-  // the only stage the `require_one` receive gate counts.
+test('door photo steps do NOT share the bench carton capture body', () => {
+  // Door bodies read `arrival_package`; the bench shots write `unbox_carton`.
+  // Sharing the bench body would mix stages and void the receive-gate control.
   assert.notEqual(
-    UNBOX_STEP_BODIES.arrival_check,
+    UNBOX_STEP_BODIES.arrival_label_photo,
     UNBOX_STEP_BODIES.box_photo,
-    'arrival_check must not mount the bench carton capture body',
+    'arrival_label_photo must not mount the bench carton capture body',
+  );
+  assert.equal(
+    UNBOX_STEP_BODIES.arrival_label_photo,
+    UNBOX_STEP_BODIES.arrival_box_photo,
+    'the two door steps share one aspect-parameterised body',
   );
 });

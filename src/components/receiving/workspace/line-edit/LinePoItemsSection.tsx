@@ -20,7 +20,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PoLinesAccordion } from "../PoLinesAccordion";
 import { UnmatchedItemsSection } from "../UnmatchedItemsSection";
 import { ActiveLineConditionSerial } from "./ActiveLineConditionSerial";
-import { SerialMatchResult } from "../SerialMatchResult";
 import type { ReceivingLineRow } from "@/components/station/receiving-line-row";
 import type { UnboxLineController } from "./unbox-line-controller";
 import {
@@ -54,9 +53,11 @@ interface LinePoItemsSectionProps {
   /** Serial-number entry on the active line (unbox captures serials; triage doesn't). */
   serialScan: boolean;
   /**
-   * Unbox Action Dock owns serial/condition/photos — accordion paints a ledger
-   * and click focuses the dock step. When false, ActiveLineConditionSerial edits
-   * in-place (Testing / unmatched).
+   * Unbox dual loci: dock owns scanner/procedure; meta chips forward via
+   * {@link onFocusCaptureStep}. Active line mounts progressive
+   * Condition → Serial → Photos (`ActiveLineConditionSerial` +
+   * `autoFocusSerial` off so the wedge stays dock-owned). When false,
+   * under-row editors mount on every editable line (Testing / unmatched).
    */
   dockOwnsCapture?: boolean;
   onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
@@ -246,9 +247,7 @@ export function LinePoItemsSection({
             }
           : undefined
       }
-      onViewAllUnits={
-        unitsChrome && !dockOwnsCapture ? onViewAllUnits : undefined
-      }
+      onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
       onEditConditionInDock={
         dockOwnsCapture && onFocusCaptureStep
           ? (line) => {
@@ -292,99 +291,91 @@ export function LinePoItemsSection({
           : undefined
       }
       activeRowSlot={
-        // Dock owns capture: PO meta is the ledger — no under-row editor.
-        // Mount a body only for RETURN match band (otherwise empty curtain).
-        unitsChrome &&
-        serialScan &&
-        dockOwnsCapture &&
-        c.serialLookup &&
-        (c.serialLookup.state === 'found' || c.serialLookup.state === 'not-found')
-          ? ({ line }) => {
-              if (line.id !== row.id) return null;
-              const lookup = c.serialLookup;
+        // Dual loci (Unbox `dockOwnsCapture`): active line mounts mouse editor;
+        // chips still forward to the dock. Testing / unmatched (`!dockOwnsCapture`)
+        // keep under-row editors on every editable line. RETURN match evidence
+        // rides inside ActiveLineConditionSerial via serialLookup.
+        unitsChrome && serialScan
+          ? ({ serials, units, line }) => {
+              if (dockOwnsCapture && line.id !== row.id) return null;
+              const isControllerLine = line.id === row.id;
               return (
-                <SerialMatchResult
-                  state={lookup.state}
-                  unit={lookup.unit}
-                  serial={lookup.serial}
-                  matchedOrder={lookup.matchedOrder}
-                  onFileClaim={c.handleFileReturnClaim}
-                  onOpenHistory={onOpenReturnHistory}
+                <ActiveLineConditionSerial
+                  serials={serials}
+                  lineId={line.id}
+                  receivingId={receivingId}
+                  quantityExpected={line.quantity_expected ?? null}
+                  cond={
+                    isControllerLine
+                      ? c.cond
+                      : line.condition_grade || 'USED_A'
+                  }
+                  serialSubmitting={c.serialSubmitting}
+                  editingSerial={c.headerSerialEdit}
+                  serialLookup={
+                    isControllerLine ? c.serialLookup : IDLE_SERIAL_LOOKUP
+                  }
+                  onFileReturnClaim={
+                    isControllerLine ? c.handleFileReturnClaim : undefined
+                  }
+                  onOpenReturnHistory={
+                    isControllerLine ? onOpenReturnHistory : undefined
+                  }
+                  onSubmitSerial={(sn, grade) =>
+                    c.enqueueSerial(sn, grade, line.id)
+                  }
+                  onDeleteSerialUnit={(id, lineId) =>
+                    void c.deleteSerialUnit(id, lineId ?? line.id)
+                  }
+                  onReplaceSerialUnit={(original, next) =>
+                    void c.replaceSerialUnit(original, next, line.id)
+                  }
+                  onSetUnitGrade={(id, grade) =>
+                    void c.setUnitGrade(id, grade, line.id)
+                  }
+                  onActiveConditionChange={(next) => {
+                    if (isControllerLine) c.setUnitLabelCondition(next);
+                  }}
+                  onConditionChange={(next) => {
+                    if (isControllerLine) c.setCond(next);
+                    patchReceivingLineCondition(line.id, next);
+                  }}
+                  onEditingSerialChange={c.setHeaderSerialEdit}
+                  serialAbsent={
+                    isControllerLine
+                      ? c.serialAbsent
+                      : (line.serial_absent ?? false)
+                  }
+                  serialAbsentReason={
+                    isControllerLine
+                      ? c.serialAbsentReason
+                      : (line.serial_absent_reason ?? null)
+                  }
+                  requireSerialConfirmation={c.requireSerialConfirmation}
+                  onSerialAbsentChange={(next) => {
+                    if (isControllerLine) {
+                      c.commitSerialAbsent(next);
+                      return;
+                    }
+                    markReceivingSerialAbsent(line.id, next);
+                  }}
+                  units={units}
+                  serialInputRef={isControllerLine ? c.serialRef : undefined}
+                  autoFocusSerial={isControllerLine && !dockOwnsCapture}
+                  onEditFilledSerial={onEditFilledSerial}
+                  stationCompact
+                  progressiveCapture={dockOwnsCapture && isControllerLine}
+                  staffId={Number(staffId) || 0}
+                  poRef={row.zoho_purchaseorder_number ?? null}
+                  poRouteRef={
+                    row.zoho_purchaseorder_id ??
+                    row.zoho_purchaseorder_number ??
+                    null
+                  }
                 />
               );
             }
-          : unitsChrome && serialScan && !dockOwnsCapture
-            ? ({ serials, units, line }) => {
-                const isControllerLine = line.id === row.id;
-                return (
-                  <ActiveLineConditionSerial
-                    serials={serials}
-                    lineId={line.id}
-                    receivingId={receivingId}
-                    quantityExpected={line.quantity_expected ?? null}
-                    cond={
-                      isControllerLine
-                        ? c.cond
-                        : line.condition_grade || 'USED_A'
-                    }
-                    serialSubmitting={c.serialSubmitting}
-                    editingSerial={c.headerSerialEdit}
-                    serialLookup={
-                      isControllerLine ? c.serialLookup : IDLE_SERIAL_LOOKUP
-                    }
-                    onFileReturnClaim={
-                      isControllerLine ? c.handleFileReturnClaim : undefined
-                    }
-                    onOpenReturnHistory={
-                      isControllerLine ? onOpenReturnHistory : undefined
-                    }
-                    onSubmitSerial={(sn, grade) =>
-                      c.enqueueSerial(sn, grade, line.id)
-                    }
-                    onDeleteSerialUnit={(id, lineId) =>
-                      void c.deleteSerialUnit(id, lineId ?? line.id)
-                    }
-                    onReplaceSerialUnit={(original, next) =>
-                      void c.replaceSerialUnit(original, next, line.id)
-                    }
-                    onSetUnitGrade={(id, grade) =>
-                      void c.setUnitGrade(id, grade, line.id)
-                    }
-                    onActiveConditionChange={(next) => {
-                      if (isControllerLine) c.setUnitLabelCondition(next);
-                    }}
-                    onConditionChange={(next) => {
-                      if (isControllerLine) c.setCond(next);
-                      patchReceivingLineCondition(line.id, next);
-                    }}
-                    onEditingSerialChange={c.setHeaderSerialEdit}
-                    serialAbsent={
-                      isControllerLine
-                        ? c.serialAbsent
-                        : (line.serial_absent ?? false)
-                    }
-                    serialAbsentReason={
-                      isControllerLine
-                        ? c.serialAbsentReason
-                        : (line.serial_absent_reason ?? null)
-                    }
-                    requireSerialConfirmation={c.requireSerialConfirmation}
-                    onSerialAbsentChange={(next) => {
-                      if (isControllerLine) {
-                        c.commitSerialAbsent(next);
-                        return;
-                      }
-                      markReceivingSerialAbsent(line.id, next);
-                    }}
-                    units={units}
-                    serialInputRef={isControllerLine ? c.serialRef : undefined}
-                    autoFocusSerial={isControllerLine}
-                    onEditFilledSerial={onEditFilledSerial}
-                    stationCompact
-                  />
-                );
-              }
-            : undefined
+          : undefined
       }
     />
   );

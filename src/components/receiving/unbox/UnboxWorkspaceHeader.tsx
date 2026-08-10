@@ -67,6 +67,11 @@ import {
   type HistoryCommandScanKind,
 } from '@/lib/receiving/history-command-scan';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
+import {
+  SAVED_VIEW_PARAM_KEYS,
+  SAVED_VIEW_STORAGE_KEY,
+} from '@/lib/station/table-url-params';
 import { NAV_KEY_HINT_CLASS, useNavRegion, type NavRegionId } from '@/lib/keyboard/nav-keys';
 import { UNBOX_BAND3_NAV_KEY } from '@/lib/receiving/unbox-band3-nav-keys';
 import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
@@ -931,22 +936,32 @@ export function UnboxWorkspaceHeader({
              (SoT: display/workbench.md → Multi-region — every scan station). */
           <WorkbenchTrailingCluster
             actions={
-              <ReceivingBoxChromeActions
-                onCheck={() => setCheckOrdersOpen(true)}
-                onAdd={() => setAddInboundOpen(true)}
-                resumeLabel="Unbox"
-                resumeAriaLabel="Unbox"
-                resumeIcon={<ReceivingModeUnbox />}
-                onResume={handleReturnToUnbox}
-              />
+              <>
+                {/* Export is a TABLE action, History-only — the browse view is
+                    the only tab a spreadsheet pull makes sense from. It rides
+                    as a TAB of the one data cube, never its own glyph. */}
+                <ReceivingBoxChromeActions
+                  onCheck={() => setCheckOrdersOpen(true)}
+                  onAdd={() => setAddInboundOpen(true)}
+                  onExport={
+                    tab === 'history'
+                      ? () => emitReceiving('receiving-export-history')
+                      : undefined
+                  }
+                  resumeLabel="Unbox"
+                  resumeAriaLabel="Unbox"
+                  resumeIcon={<ReceivingModeUnbox />}
+                  onResume={handleReturnToUnbox}
+                />
+              </>
             }
           />
         }
       />
       {/*
-        KPI row — snap-collapsible Band 2 (`WorkbenchKpiBand`). Grok-like
-        analytics canvas (`UnboxKpiCanvas` via UnboxChromeKpiCluster): time ·
-        facets · viz toggle · charts; `?ukpi=` still filters the table.
+        KPI row — instant snap-collapsible Band 2 (`WorkbenchKpiBand` — no
+        height tween). Compact Usage strip via UnboxChromeKpiCluster;
+        `?ukpi=` still filters the table.
         Persist collapse: staff_preferences.kpiCollapsed.unbox.
         Honest absence on pinned Inbound (foreign collection — not Unbox KPI).
       */}
@@ -981,6 +996,15 @@ export function UnboxWorkspaceHeader({
       {isIncomingTab ? null : (
         <WorkbenchTriageBand
           search={triageSearch}
+          views={
+            isHistoryTab ? (
+              <WorkbenchViewsMenu
+                storageKey={SAVED_VIEW_STORAGE_KEY.receiving_history}
+                paramKeys={SAVED_VIEW_PARAM_KEYS.receiving_history}
+                emptyHint="No saved views yet — refine History, then save it here."
+              />
+            ) : null
+          }
           kpiToggle={
             <WorkbenchKpiCollapseToggle
               open={!kpiCollapsed}

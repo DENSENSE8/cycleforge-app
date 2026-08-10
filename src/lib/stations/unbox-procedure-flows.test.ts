@@ -32,28 +32,24 @@ const captureKeys = (ctx: ProcedureResolveContext) =>
   resolveProcedureSteps(unbox(), ctx, 'capture').map((s) => s.key);
 
 const FOUND_CAPTURE = [
-  'arrival_check',
-  'shipping_label_photo',
-  'box_photo',
+  'arrival_label_photo',
+  'arrival_box_photo',
   'packing_material',
   'contents',
   'serial',
   'condition',
-  'item_photos',
   'label',
 ];
 
 const UNFOUND_CAPTURE = ['classify', ...FOUND_CAPTURE];
 
 const RETURN_CAPTURE = [
-  'arrival_check',
-  'shipping_label_photo',
-  'box_photo',
+  'arrival_label_photo',
+  'arrival_box_photo',
   'packing_material',
   'contents',
   'serial',
   'condition',
-  'item_photos',
   'label',
 ];
 
@@ -77,13 +73,15 @@ test('return + needsClassify prepends classify (unfound return)', () => {
   );
 });
 
-test('local-pickup modifier omits dunnage on every flow', () => {
+test('local-pickup modifier omits packing material on every flow', () => {
   for (const flow of UNBOX_FLOW_IDS) {
     const keys = captureKeys({ flow, modifiers: { isLocalPickup: true } });
-    assert.ok(!keys.includes('shipping_label_photo'), `${flow}: no shipping label`);
-    assert.ok(!keys.includes('box_photo'), `${flow}: no box photo`);
     assert.ok(!keys.includes('packing_material'), `${flow}: no packing`);
-    assert.ok(keys.includes('arrival_check'), `${flow}: arrival still present`);
+    assert.ok(!keys.includes('shipping_label_photo'), `${flow}: no bench shipping label`);
+    assert.ok(!keys.includes('box_photo'), `${flow}: no bench box photo`);
+    assert.ok(!keys.includes('item_photos'), `${flow}: no item photos`);
+    assert.ok(keys.includes('arrival_label_photo'), `${flow}: door label still present`);
+    assert.ok(keys.includes('arrival_box_photo'), `${flow}: door box still present`);
     assert.ok(keys.includes('contents'), `${flow}: contents still present`);
   }
 });
@@ -109,11 +107,11 @@ test('legacy boolean flags map to the same capture keys as named flows', () => {
   }
 });
 
-test('commit phase is print → receive on every flow', () => {
+test('commit phase is print → stage → receive on every flow', () => {
   for (const flow of UNBOX_FLOW_IDS) {
     assert.deepEqual(
       resolveProcedureSteps(unbox(), { flow }, 'commit').map((s) => s.key),
-      ['print', 'receive'],
+      ['print', 'stage', 'receive'],
       `${flow} commit`,
     );
   }
@@ -135,12 +133,12 @@ test('captureOrderOverride reorders allowed keys and drops unknowns', () => {
   const keys = captureKeys({
     flow: 'found',
     modifiers: {
-      captureOrderOverride: ['serial', 'condition', 'bogus', 'arrival_check'],
+      captureOrderOverride: ['serial', 'condition', 'bogus', 'arrival_label_photo'],
     },
   });
   assert.equal(keys[0], 'serial');
   assert.equal(keys[1], 'condition');
-  assert.equal(keys[2], 'arrival_check');
+  assert.equal(keys[2], 'arrival_label_photo');
   assert.ok(!keys.includes('bogus'));
   assert.deepEqual(
     [...keys].sort(),
@@ -154,12 +152,21 @@ test('captureOrderOverride composes with local-pickup omit', () => {
     flow: 'found',
     modifiers: {
       isLocalPickup: true,
-      captureOrderOverride: ['serial', 'contents', 'shipping_label_photo', 'arrival_check'],
+      captureOrderOverride: ['serial', 'contents', 'packing_material', 'arrival_label_photo'],
     },
   });
   assert.deepEqual(
     keys.slice(0, 3),
-    ['serial', 'contents', 'arrival_check'],
+    ['serial', 'contents', 'arrival_label_photo'],
   );
-  assert.ok(!keys.includes('shipping_label_photo'));
+  assert.ok(!keys.includes('packing_material'));
+});
+
+test('default walks omit bench shipping label, the box, and item photos', () => {
+  for (const flow of UNBOX_FLOW_IDS) {
+    const keys = captureKeys({ flow });
+    assert.ok(!keys.includes('shipping_label_photo'), `${flow}: no Shipping label`);
+    assert.ok(!keys.includes('box_photo'), `${flow}: no The box`);
+    assert.ok(!keys.includes('item_photos'), `${flow}: no Item photos`);
+  }
 });

@@ -493,9 +493,12 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
  * The To-ship order feed reserves **no** desktop context rail: the dedicated
  * desk (`/shipping/orders`) and the `/dashboard` outbound domain both run
  * toolbar-only (the Zendesk / Linear / Shopify-Admin shape). Lifecycle stages
- * own the Band-1 tabs, attention owns the Band-2 KPI strip, and saved views +
- * personal scope live in the Band-1 **Views** menu (`OutboundViewsMenu`) — so
- * the left column is pure reclaimed table width, not a fourth navigation.
+ * own the Band-1 tabs, attention owns the Band-2 KPI strip, and PAGE-WIDE saved
+ * views live on Band 3 trailing find (`WorkbenchViewsMenu`, flush Bookmark icon) —
+ * never Band-1 beside lifecycle tabs, never merged into the WEBSITE-WIDE
+ * page-pin (`HeaderPinsSwitcher`, unchanged in the GlobalHeader). So the left
+ * column is pure reclaimed table width, not a fourth
+ * navigation.
  *
  * `/dashboard` is multi-domain, so the answer is param-aware for it: inbound
  * (recents) and sales (walk-in history) keep their pickers; only the outbound
@@ -560,12 +563,14 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // (`manuals-library` dropped — `/manuals/library` was a bookmark-only second
   // copy of the manuals library, deleted 2026-08-01. The surface lives at
   // `/products?view=manuals`.)
-  // The Media library holds the two NAVIGATIONAL facets (lifecycle scope +
-  // capture day) in a resident rail; refinements (search, filters, media type,
-  // sort) stay in its workbench chrome header. It used to be excluded here, which
-  // made it the one desktop route reserving no column — so the transient spine
-  // painted over the photo grid instead of landing on a reserved column.
-  'ops-photos',
+  // `ops-photos` dropped 2026-08-09 — the Media library is RAIL-LESS (Pattern
+  // E). Its facet rail held lifecycle scope + capture day; the scopes are now
+  // Band-1 tabs and the days ride the Band-2 refine popover, so nothing is left
+  // for a left column to hold that the chrome cannot say. Removing the key is
+  // the honest mechanism — the same one `/search` and `/reports` already use;
+  // `isRaillessOrderFeedSurface` is deliberately NOT widened (it is named for,
+  // and guarded as, the To-ship ORDER feed). SoT:
+  // `.claude/rules/display/media-library.md`.
   // `/search` is header find + browse/detail in main (no context rail)
   // when `?sel=` is set. See `SearchBrowseShell` / `SearchDetailWorkspace`.
 ]);

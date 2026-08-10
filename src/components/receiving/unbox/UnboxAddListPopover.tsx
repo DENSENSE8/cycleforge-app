@@ -10,8 +10,9 @@
  * is exactly the closed-catalog job. Popover copy stays catalog label +
  * description — no "Create…" verbs (Gemini D6 / D12 · C14).
  *
- * Face: same boxed cube as carton Exit / Back-to-list
- * ({@link STATION_CONTEXT_BOXED_CUBE_CLASS}) — never a naked header glyph.
+ * Face: the Band-1 cube ({@link WORKBENCH_CHROME_CUBE_CLASS}) — the same boxed
+ * face as carton Exit / Back-to-list and as every trailing utility CTA on the
+ * row, so the band reads as one set of peer cells. Never a naked header glyph.
  *
  * Plan: `docs/todo/unbox-pinned-inbound-tab-PLAN.md`.
  */
@@ -21,7 +22,10 @@ import * as Popover from '@radix-ui/react-popover';
 import { Pin } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkbenchFilterGroupLabel } from '@/components/dashboard/workbench-filter-popover';
-import { STATION_CONTEXT_BOXED_CUBE_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import {
+  WORKBENCH_CHROME_CUBE_CLASS,
+  WORKBENCH_CHROME_CUBE_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-chrome-cube';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
@@ -52,12 +56,11 @@ export function UnboxAddListPopover({
             aria-expanded={open}
             data-testid="unbox-pin-list"
             className={cn(
-              STATION_CONTEXT_BOXED_CUBE_CLASS,
-              'h-full aspect-square',
+              WORKBENCH_CHROME_CUBE_CLASS,
               open && 'bg-surface-hover text-text-muted',
             )}
           >
-            <Pin className="block h-3.5 w-3.5 shrink-0" aria-hidden />
+            <Pin className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} aria-hidden />
           </button>
         </Popover.Trigger>
       </HoverTooltip>

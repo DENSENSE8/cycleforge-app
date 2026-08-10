@@ -173,14 +173,14 @@ export function conditionDescription(code: string | null | undefined): string {
 /**
  * Inline-TEXT color for a condition — the substring-matched, lenient style used
  * by the "condition + title" inline text (not chips): new → yellow-500,
- * for-parts → amber-800, else (used/unknown) → black. Single source of truth;
- * `ConditionText.getConditionColor` delegates here. (Chip/badge condition tones
- * are a separate, per-surface concern — see receiving-constants
- * `conditionBadgeTone`.)
+ * for-parts → orange-900 (brown), else (used/unknown) → black. Single source of
+ * truth; `ConditionText.getConditionColor` delegates here. (Chip/badge condition
+ * tones are a separate, per-surface concern — see receiving-constants
+ * `conditionBadgeTone` / {@link CONDITION_GRADE_TONE}.)
  */
 export function conditionTextColor(condition: string | null | undefined): string {
   const c = String(condition || '').toLowerCase().trim();
   if (c.includes('new')) return 'text-yellow-500';
-  if (c.includes('part')) return 'text-amber-800';
+  if (c.includes('part')) return 'text-orange-900';
   return 'text-black';
 }

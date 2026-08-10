@@ -228,7 +228,7 @@ const listeners = new Set<Listener>();
 /**
  * Frame inputs are split across writers:
  *  - RightRailHost → `wantsPush` / `desiredWidthPx` (inspector / assistant slot)
- *  - UnboxPushColumn → `stationPushActive` / `stationPushDesiredWidthPx`
+ *  - StationDisplaysPushColumn → `stationPushActive` / `stationPushDesiredWidthPx`
  *
  * `resolveRightRailFrame` sees the OR of both push demands so a station push
  * still publishes into the shared width budget (cap) while the assistant stays
@@ -368,7 +368,7 @@ export function setRightRailDemand(next: {
 }
 
 /**
- * Unbox station push (`UnboxPushColumn`) — separate writer from RightRailHost so
+ * Unbox station push (`StationDisplaysPushColumn`) — separate writer from RightRailHost so
  * assistant `push: false` cannot clear the width-budget demand a Displays/Claim/
  * Ticket/tool column needs at 1440.
  */

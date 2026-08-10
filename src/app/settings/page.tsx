@@ -6,6 +6,7 @@ import { HardwareSection } from '@/components/settings/sections/HardwareSection'
 import { WorkstationSection } from '@/components/settings/sections/WorkstationSection';
 import { QuickAccessSection } from '@/components/settings/sections/QuickAccessSection';
 import { AppearanceSection } from '@/components/settings/sections/AppearanceSection';
+import { KeyboardSection } from '@/components/settings/sections/KeyboardSection';
 import { AboutSection } from '@/components/settings/sections/AboutSection';
 import { SecuritySection } from '@/components/settings/sections/SecuritySection';
 import { SessionsSection } from '@/components/settings/sections/SessionsSection';
@@ -51,6 +52,7 @@ export default function SettingsPage() {
           {active === 'workstation' && <WorkstationSection />}
           {active === 'quick-access' && <QuickAccessSection />}
           {active === 'appearance' && <AppearanceSection />}
+          {active === 'keyboard' && <KeyboardSection />}
           {active === 'receiving' && <SettingsPanel page="receiving" />}
           {active === 'security' && <SecuritySection />}
           {active === 'sessions' && <SessionsSection />}

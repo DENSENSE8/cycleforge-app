@@ -3,17 +3,20 @@
 import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { priorityBadge, statusBadge, statusDot } from '../badges';
 
 /**
- * One ticket row — house one-row anatomy: status dot → subject → priority chip,
- * with a status/id/time meta eyebrow beneath. Selection is background + ring only,
- * from the queue-row chrome SoT, so it never size-shifts.
+ * One ticket row — {@link TicketPickRow} / {@link StackedRowIdentity} SoT:
+ * subject leads; typed {@link TicketChip} on the keys row (never mono `#{id}`).
+ * Status · priority sit beside the chip; age trails. Leading status dot stays
+ * outside the stack (queue chrome).
+ *
+ * Host is `div role=button` (not `<button>`) so TicketChip copy buttons nest
+ * without invalid HTML — same pattern as station RailRow / InventoryPulseSidebar.
  *
  * THE ticket row. Both consumers compose it: the full queue in `SupportTicketsBoard`
- * and the recent dock in `SupportTicketsRecentRail`, which carried a byte-identical
- * copy of this markup until 2026-08-01. (`badges.ts` had already de-forked the
- * `STATUS_DOT` map out of those same two files; the markup fork was left standing.)
+ * and the recent dock in `SupportTicketsRecentRail`.
  *
  * The one thing that genuinely differed between them is the trailing instant — the
  * queue shows when the ticket last changed, the dock shows when this operator opened
@@ -46,38 +49,51 @@ export function SupportTicketRow({
   const dot = statusDot(status);
 
   return (
-    // ds-raw-button: text-left queue row (status dot + subject + #id), not a standard action Button
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       className={cn(
-        'ds-raw-button block w-full py-2 text-left transition',
+        'flex w-full cursor-pointer items-start gap-2 py-2 text-left transition',
         QUEUE_ROW.px,
         selected ? QUEUE_ROW.selectedClass : 'hover:bg-surface-hover',
       )}
     >
-      <div className="flex items-center gap-2">
-        <span className={cn('h-2 w-2 shrink-0 rounded-full', dot)} />
-        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-          {subject || '(no subject)'}
-        </span>
-        {pb ? (
-          <span
-            className={cn(
-              'shrink-0 rounded px-1 py-0.5 text-role-micro uppercase tracking-widest',
-              pb.className,
-            )}
-          >
-            {pb.label}
+      <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', dot)} />
+      <TicketPickRow
+        className="min-w-0 flex-1"
+        ticketId={id}
+        subject={subject}
+        emptySubject="(no subject)"
+        meta={
+          <>
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              {sb.label}
+            </span>
+            {pb ? (
+              <span
+                className={cn(
+                  'rounded px-1 py-0.5 text-role-micro uppercase tracking-widest',
+                  pb.className,
+                )}
+              >
+                {pb.label}
+              </span>
+            ) : null}
+          </>
+        }
+        trailing={
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            {timeAgo(at)}
           </span>
-        ) : null}
-      </div>
-      <div className="mt-0.5 flex items-center gap-1.5 pl-4 text-role-eyebrow uppercase tracking-widest text-text-soft">
-        <span>{sb.label}</span>
-        <span>·</span>
-        <span>#{id}</span>
-        <span className="ml-auto">{timeAgo(at)}</span>
-      </div>
-    </button>
+        }
+      />
+    </div>
   );
 }

@@ -1,214 +1,189 @@
 'use client';
 
-import { useState } from 'react';
-import * as Popover from '@radix-ui/react-popover';
-import { Database, RefreshCw, X, Loader2, Check } from '@/components/Icons';
+import { Database, FileText, Loader2, Plus, X, Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
-
-type SyncTab = 'sync' | 'backfill';
+import { WORKBENCH_CHROME_CUBE_GLYPH_CLASS } from '@/components/dashboard/workbench-chrome-cube';
+import {
+  WorkbenchChromeCubeMenu,
+  WorkbenchChromeMenuAction,
+  type WorkbenchChromeMenuTab,
+} from '@/components/dashboard/workbench-chrome-cube-menu';
+import { TableImportFileButton } from '@/components/tables/import/TableImportFileButton';
+import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 
 /**
- * One **Sync** button → a tabbed popover that unifies the two order-sync
- * surfaces the merged Unshipped sidebar needs:
- *   - **Sync** — Google Sheets + Ecwid Direct transfer + Resolved Exceptions
- *     (the "Import Latest Orders" flow), via {@link useOrdersSync}; detailed
- *     stacked per-source progress shows in the non-modal {@link OrderSyncDialog} right rail.
- *   - **Backfill** — eBay/Ecwid order backfill + integrity check
- *     ({@link AwaitingEbayPanel}).
- * Replaces the old split (main Sync lived in DashboardManagementPanel, Backfill
- * in a standalone AwaitingEbayPanel).
+ * The desk's ONE data cube — Import · Add · Backfill as tabs behind a single
+ * `+`, never a row of separated glyphs (`AGENTS.md` → Band-1 same-topic
+ * controls are tabs; detail in `display/workbench-ops-queue.md`).
+ *
+ * Import leads with the CSV file (the operator-driven path) and keeps the
+ * channel sync below it; detailed stacked per-source progress opens in the
+ * non-modal {@link OrderSyncDialog} right rail. Add is manual single-order
+ * entry. Backfill is the eBay/Ecwid catch-up + integrity check.
+ *
+ * The `sidebar` trigger variant and the `iconOnly` flag were deleted with this
+ * consolidation: both had zero call sites, and the cube menu is now the only
+ * shape this control has.
  */
 export function OrdersSyncPopover({
   onRefresh,
-  triggerVariant = 'sidebar',
-  iconOnly = false,
+  onNewOrder,
 }: {
   onRefresh?: () => void;
-  /**
-   * `sidebar` (default) — the full-width blue fill for a SidebarShell slot.
-   * `header` — a compact control matching workbench-chrome
-   * (`WorkbenchChromeHeader` right cluster), for the labels-station header.
-   */
-  triggerVariant?: 'sidebar' | 'header';
-  /** Header only — square icon control (RefreshCw) with no "Import" label. */
-  iconOnly?: boolean;
+  /** Manual single-order entry — omit and the Add tab is honestly absent. */
+  onNewOrder?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<SyncTab>('sync');
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
   const sync = useOrdersSync();
 
-  return (
-    <>
-      <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger asChild>
-          {triggerVariant === 'header' ? (
-            /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone. */
-            <button
-              type="button"
-              aria-label={sync.isTransferring ? 'Syncing orders' : 'Import orders'}
-              // ds-allow-title: Radix Trigger asChild — HoverTooltip would disturb the Slot clone.
-              title={sync.isTransferring ? 'Syncing…' : 'Import orders'}
-              className={
-                iconOnly
-                  ? 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-transparent text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default active:scale-95'
-                  : cn(
-                      'inline-flex h-8 shrink-0 items-center gap-1.5 bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95',
-                      WORKBENCH_CHROME_PILL_CLASS,
-                    )
-              }
+  const tabs: WorkbenchChromeMenuTab[] = [
+    {
+      id: 'import',
+      label: 'Import',
+      content: canImportOrders ? (
+        <div className="space-y-3">
+          {/* Shared seam control — the entry point is not hardcoded to this
+              popover or to this desk. A file is the operator-driven path, so it
+              leads; the channel sync below it is the scheduled one. */}
+          <TableImportFileButton
+            descriptor={ORDER_IMPORT_DESCRIPTOR}
+            icon={<FileText className="h-3.5 w-3.5" />}
+            className="w-full text-role-micro uppercase tracking-[0.2em]"
+            disabled={sync.isTransferring}
+            description="Opens desk staging — triage Ready / Action required, then confirm into To-Ship."
+          />
+
+          <div className="border-t border-border-hairline pt-3">
+            <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+              Channel sync
+            </p>
+          </div>
+          <input
+            type="text"
+            value={sync.manualSheetName}
+            onChange={(e) => sync.setManualSheetName(e.target.value)}
+            placeholder="e.g., Sheet_01_14_2026"
+            className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent"
+            disabled={sync.isTransferring}
+          />
+          {sync.isTransferring ? (
+            <Button
+              variant="danger"
+              size="lg"
+              onClick={sync.handleCancelTransfer}
+              icon={<X className="h-3.5 w-3.5" />}
+              className="w-full text-role-micro uppercase tracking-[0.2em]"
             >
-              {sync.isTransferring ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              {!iconOnly ? (
-                <span className="text-role-eyebrow uppercase tracking-widest text-white">
-                  {sync.isTransferring ? 'Syncing…' : 'Import'}
-                </span>
-              ) : null}
-            </button>
+              Cancel Import
+            </Button>
           ) : (
-            /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone + title. */
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={sync.handleTransfer}
+              icon={<Database className="h-3.5 w-3.5" />}
+              className="w-full text-role-micro uppercase tracking-[0.2em]"
+            >
+              Import Latest Orders
+            </Button>
+          )}
+
+          {sync.isTransferring ||
+          sync.sheetsTask.status !== 'idle' ||
+          sync.ecwidTask.status !== 'idle' ? (
+            // ds-raw-button: composite text-left status row (icon + label +
+            // "View details" + elapsed time), justify-between — not a standard
+            // action button.
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-white shadow-lg shadow-blue-600/10 transition-all hover:bg-blue-700 active:scale-95"
-              // ds-allow-title: single child of a Radix Popover.Trigger asChild — wrapping in HoverTooltip would disturb the Slot's single-child clone.
-              title="Sync & backfill orders"
+              onClick={() => sync.setIsSyncDialogOpen(true)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-accent bg-surface-accent/60 px-3 py-2.5 text-left transition hover:bg-surface-accent/80"
             >
-              {sync.isTransferring ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              {/* Explicit white — the button is a fixed blue fill in every theme. */}
-              <span className="text-role-micro uppercase tracking-[0.2em] text-white">
-                {sync.isTransferring ? 'Syncing…' : 'Sync Orders'}
+              <div className="flex min-w-0 items-center gap-2">
+                {sync.isTransferring ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" />
+                ) : (
+                  <Check className="h-3.5 w-3.5 text-text-accent" />
+                )}
+                <span className={`${sectionLabel} text-text-accent`}>
+                  {sync.isTransferring ? 'Importing…' : 'Import complete'}
+                </span>
+                <span className="text-role-eyebrow text-text-accent">View details</span>
+              </div>
+              <span className="text-role-caption font-mono font-semibold tabular-nums text-text-accent">
+                {(sync.elapsedMs / 1000).toFixed(1)}s
               </span>
             </button>
-          )}
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content
-            align={triggerVariant === 'header' ? 'end' : 'start'}
-            sideOffset={8}
-            // Sidebar: match the trigger width via Radix's trigger-width var so the
-            // popover never over/under-hangs. Header: the trigger is a compact pill,
-            // so use a fixed comfortable panel width instead.
-            style={
-              triggerVariant === 'header'
-                ? { width: '20rem' }
-                : { width: 'var(--radix-popover-trigger-width)' }
-            }
-            className="z-dropdown rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5 focus:outline-none"
-          >
-            <div className="mb-3 flex items-center gap-1 rounded-xl bg-surface-sunken p-1">
-              {(['sync', 'backfill'] as SyncTab[]).map((t) => (
-                // ds-raw-button: segmented tab toggle (conditional active fill), not a single-variant Button
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTab(t)}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-role-eyebrow uppercase tracking-wider transition-colors ${
-                    tab === t ? 'bg-surface-card text-text-accent shadow-sm' : 'text-text-soft hover:text-text-muted'
-                  }`}
-                >
-                  {t === 'sync' ? 'Sync' : 'Backfill'}
-                </button>
-              ))}
+          ) : null}
+
+          {sync.status ? (
+            <div
+              className={`rounded-xl border px-3 py-2 ${
+                sync.status.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              <p className="text-role-eyebrow leading-relaxed">{sync.status.message}</p>
             </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="px-1 py-6 text-center text-role-caption text-text-faint">
+          You don&apos;t have permission to import orders.
+        </p>
+      ),
+    },
+  ];
 
-            {tab === 'sync' ? (
-              <div className="space-y-3">
-                {canImportOrders ? (
-                  <>
-                    <input
-                      type="text"
-                      value={sync.manualSheetName}
-                      onChange={(e) => sync.setManualSheetName(e.target.value)}
-                      placeholder="e.g., Sheet_01_14_2026"
-                      className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent"
-                      disabled={sync.isTransferring}
-                    />
-                    {sync.isTransferring ? (
-                      <Button
-                        variant="danger"
-                        size="lg"
-                        onClick={sync.handleCancelTransfer}
-                        icon={<X className="h-3.5 w-3.5" />}
-                        className="w-full text-role-micro uppercase tracking-[0.2em]"
-                      >
-                        Cancel Import
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={sync.handleTransfer}
-                        icon={<Database className="h-3.5 w-3.5" />}
-                        className="w-full text-role-micro uppercase tracking-[0.2em]"
-                      >
-                        Import Latest Orders
-                      </Button>
-                    )}
+  if (onNewOrder) {
+    tabs.push({
+      id: 'add',
+      label: 'Add',
+      content: (
+        <WorkbenchChromeMenuAction
+          label="New order"
+          ariaLabel="New order entry"
+          description="Opens the intake form on the right rail — one order, typed by hand."
+          icon={<Plus className="h-3.5 w-3.5" />}
+          onClick={onNewOrder}
+        />
+      ),
+    });
+  }
 
-                    {sync.isTransferring || sync.sheetsTask.status !== 'idle' || sync.ecwidTask.status !== 'idle' ? (
-                      // ds-raw-button: composite text-left status row (icon + label + "View details" + elapsed time), justify-between — not a standard action button
-                      <button
-                        type="button"
-                        onClick={() => sync.setIsSyncDialogOpen(true)}
-                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-accent bg-surface-accent/60 px-3 py-2.5 text-left transition hover:bg-surface-accent/80"
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          {sync.isTransferring ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" />
-                          ) : (
-                            <Check className="h-3.5 w-3.5 text-text-accent" />
-                          )}
-                          <span className={`${sectionLabel} text-text-accent`}>
-                            {sync.isTransferring ? 'Importing…' : 'Import complete'}
-                          </span>
-                          <span className="text-role-eyebrow text-text-accent">View details</span>
-                        </div>
-                        <span className="text-role-caption font-mono font-semibold tabular-nums text-text-accent">
-                          {(sync.elapsedMs / 1000).toFixed(1)}s
-                        </span>
-                      </button>
-                    ) : null}
+  tabs.push({
+    id: 'backfill',
+    label: 'Backfill',
+    content: <AwaitingEbayPanel onRefresh={onRefresh} />,
+  });
 
-                    {sync.status ? (
-                      <div
-                        className={`rounded-xl border px-3 py-2 ${
-                          sync.status.type === 'success'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-red-200 bg-red-50 text-red-700'
-                        }`}
-                      >
-                        <p className="text-role-eyebrow leading-relaxed">{sync.status.message}</p>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="px-1 py-6 text-center text-role-caption text-text-faint">
-                    You don&apos;t have permission to import orders.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <AwaitingEbayPanel onRefresh={onRefresh} />
-            )}
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+  return (
+    <>
+      <WorkbenchChromeCubeMenu
+        label={
+          sync.isTransferring
+            ? 'Syncing orders'
+            : onNewOrder
+              ? 'Add or import orders'
+              : 'Import orders'
+        }
+        icon={
+          sync.isTransferring ? (
+            <Loader2 className={`${WORKBENCH_CHROME_CUBE_GLYPH_CLASS} animate-spin`} />
+          ) : (
+            <Plus className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+          )
+        }
+        tabs={tabs}
+        data-testid="orders-data-menu"
+      />
 
       <OrderSyncDialog
         open={sync.isSyncDialogOpen}

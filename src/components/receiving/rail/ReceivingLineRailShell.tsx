@@ -10,6 +10,9 @@
  *   (never this batch shell)
  *
  * Close clears the selection (order-rail D4 / receiving R6).
+ *
+ * Roster rows compose {@link RailSelectionRosterRow} / {@link StackedRowIdentity}
+ * (title → PO · tracking · SKU chips) — never a single-line title | mono id twin.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -19,6 +22,20 @@ import {
   RailSelectionBand,
   useRailActionSnapshot,
 } from '@/components/right-rail/RailSelectionActions';
+import {
+  RailSelectionRoster,
+  RailSelectionRosterRow,
+} from '@/components/right-rail/RailSelectionRoster';
+import {
+  OrderIdChip,
+  SkuScanRefChip,
+  TrackingChip,
+  getLast8,
+} from '@/components/ui/CopyChip';
+import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
+import { usePlatformMeta } from '@/hooks/useCatalog';
+import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import { platformMetaIconTone } from '@/lib/source-platform';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import {
   isReceivingRailBatchActive,
@@ -37,13 +54,48 @@ function rosterTitle(row: ReceivingLineRow): string {
   return '—';
 }
 
-function rosterMeta(row: ReceivingLineRow): string {
-  const po = String(row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
-  if (po) return po;
+/** Platform-aware PO / order key for the receiving batch roster. */
+function ReceivingRosterPoKey({ row }: { row: ReceivingLineRow }) {
+  const resolvePlatformMeta = usePlatformMeta();
+  const { poValue, platformLabel } = getReceivingPoIdentityParts(row, (raw) =>
+    resolvePlatformMeta(raw).label,
+  );
+  if (!poValue) return null;
+  const platformRaw = String(
+    row.source_platform || row.source_platform_pill || '',
+  ).trim();
+  const platformMeta = platformRaw ? resolvePlatformMeta(platformRaw) : null;
+  const iconTone = platformMeta ? platformMetaIconTone(platformMeta) : null;
+  return (
+    <OrderIdChip
+      value={poValue}
+      display={getLast8(poValue)}
+      dense
+      fitDisplayWidth
+      displayWidth="last8"
+      platformLabel={platformLabel || platformMeta?.label || null}
+      iconClass={iconTone?.className}
+      iconStyle={iconTone?.style}
+    />
+  );
+}
+
+function ReceivingRosterKeys({ row }: { row: ReceivingLineRow }) {
   const tracking = String(row.tracking_number || '').trim();
-  if (tracking) return tracking;
   const sku = String(row.sku || '').trim();
-  return sku || '—';
+  const po = String(row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
+  const keys = joinStackedIdentityKeys([
+    po ? <ReceivingRosterPoKey key="po" row={row} /> : null,
+    tracking ? <TrackingChip key="tracking" value={tracking} dense /> : null,
+    sku && !po ? (
+      <SkuScanRefChip key="sku" value={sku} display={getLast8(sku)} dense />
+    ) : null,
+  ]);
+  return (
+    keys ?? (
+      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">—</span>
+    )
+  );
 }
 
 export function ReceivingLineRailShell({
@@ -90,20 +142,15 @@ export function ReceivingLineRailShell({
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
         <RailSelectionBand onClose={handleClose} />
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <ul className="divide-y divide-border-soft">
-            {lineRows.map((row) => (
-              <li key={row.id} className="flex items-center gap-2 px-4 py-1.5">
-                <span className="truncate text-role-caption font-semibold text-text-default">
-                  {rosterTitle(row)}
-                </span>
-                <span className="ml-auto shrink-0 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  {rosterMeta(row)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <RailSelectionRoster>
+          {lineRows.map((row) => (
+            <RailSelectionRosterRow
+              key={row.id}
+              title={rosterTitle(row)}
+              keys={<ReceivingRosterKeys row={row} />}
+            />
+          ))}
+        </RailSelectionRoster>
 
         <RailActionRegion />
       </div>

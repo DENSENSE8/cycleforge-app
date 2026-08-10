@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Check, Loader2, Plus, Tag } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,10 @@ export function PhotoLabelEditor({
   // Explicit user toggles, keyed by label id; absent = "leave as-is".
   const [desired, setDesired] = useState<Record<number, boolean>>({});
   const [saving, setSaving] = useState(false);
+  /** Inline "New label" composer — replaces the retired `window.prompt`. */
+  const [addingLabel, setAddingLabel] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const creatingLabel = createLabel.isPending;
 
   const initial = useMemo(() => {
     const map = new Map<number, TriState>();
@@ -74,12 +79,21 @@ export function PhotoLabelEditor({
     });
   };
 
+  /**
+   * Inline create — the same DS input path `MediaSavedViewsSection` and the
+   * Band-1 media-type cube use. It replaced a `window.prompt` (2026-08-09): a
+   * native dialog is unstyleable, untestable, and steals keyboard-wedge focus,
+   * which is why the house bans them outright. Pinned by
+   * `media-library-chrome.guard.test.ts`.
+   */
   const addLabel = async () => {
-    const name = window.prompt('New label name')?.trim();
-    if (!name) return;
+    const name = newLabel.trim();
+    if (!name || creatingLabel) return;
     try {
       const created = await createLabel.mutateAsync({ label: name, scopeImageType });
       setDesired((prev) => ({ ...prev, [created.id]: true }));
+      setNewLabel('');
+      setAddingLabel(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create label');
     }
@@ -120,7 +134,10 @@ export function PhotoLabelEditor({
         if (!next && !saving) onClose();
       }}
     >
-      <DialogContent hideClose className="max-w-md gap-0 overflow-hidden p-0 sm:rounded-2xl">
+      {/* No `sm:rounded-2xl` override — DialogContent's own shell is already
+          flush (`cornerClass('flush')`), and that override was the one thing
+          making this editor soft at `sm+`. */}
+      <DialogContent hideClose className="max-w-md gap-0 overflow-hidden p-0">
         <DialogHeader className="flex flex-row items-center gap-2 space-y-0 border-b border-border-hairline px-4 py-3">
           <Tag className="h-4 w-4 text-text-soft" />
           <DialogTitle className="text-sm font-semibold text-text-default">
@@ -134,7 +151,12 @@ export function PhotoLabelEditor({
               <Loader2 className="h-4 w-4 animate-spin" /> Loading labels…
             </div>
           ) : labels.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
+            <div
+              className={cn(
+                'border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-soft',
+                cornerClass('flush'),
+              )}
+            >
               No labels yet. Create one to get started.
             </div>
           ) : (
@@ -150,7 +172,8 @@ export function PhotoLabelEditor({
                     onClick={() => toggle(lbl.id)}
                     aria-pressed={checked}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest transition',
+                      'inline-flex items-center gap-1 px-1.5 py-0.5 text-role-micro uppercase tracking-widest transition',
+                      cornerClass('chip'),
                       labelChipClasses(lbl.color),
                       checked
                         ? 'ring-2 ring-offset-1 ring-blue-500'
@@ -169,14 +192,54 @@ export function PhotoLabelEditor({
         </div>
 
         <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border-hairline px-4 py-3 sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={addLabel}
-            icon={<Plus className="h-3.5 w-3.5" />}
-          >
-            New label
-          </Button>
+          {addingLabel ? (
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <input
+                autoFocus
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void addLabel();
+                  if (e.key === 'Escape') setAddingLabel(false);
+                }}
+                placeholder="Label name…"
+                aria-label="New label name"
+                data-testid="photo-label-name"
+                className={cn(
+                  'min-w-0 flex-1 border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400',
+                  cornerClass('flush'),
+                )}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void addLabel()}
+                disabled={!newLabel.trim() || creatingLabel}
+                icon={
+                  creatingLabel ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )
+                }
+              >
+                Create
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setAddingLabel(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAddingLabel(true)}
+              icon={<Plus className="h-3.5 w-3.5" />}
+              data-testid="photo-label-add"
+            >
+              New label
+            </Button>
+          )}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={onClose}>
               Cancel

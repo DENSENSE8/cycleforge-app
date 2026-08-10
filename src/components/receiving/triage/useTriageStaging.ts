@@ -88,8 +88,13 @@ export function useTriageStaging(row: ReceivingLineRow) {
     [row.receiving_id, row.id, queryClient],
   );
 
+  /**
+   * Assign the shelf (and auto-route the lane). Returns whether the write
+   * landed so a scan-driven caller can name the shelf in a success toast
+   * without claiming a placement that rolled back.
+   */
   const selectShelf = useCallback(
-    async (locationId: number | null) => {
+    async (locationId: number | null): Promise<boolean> => {
       setStagingLocationId(locationId);
       setSavingLocation(true);
       const autoLane = resolveTriageLane(priorityLane, {
@@ -106,6 +111,7 @@ export function useTriageStaging(row: ReceivingLineRow) {
         setPriorityLane(row.priority_lane ?? null);
       }
       setSavingLocation(false);
+      return ok;
     },
     [patchStaging, row, priorityLane],
   );

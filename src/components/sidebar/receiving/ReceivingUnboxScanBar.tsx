@@ -48,11 +48,18 @@ export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
   },
 ] as const;
 
-/** Full operator name for tooltips — short `label` stays on the dense face. */
+/** Full operator name for tooltips / rail aria — not the dense ready face. */
 const UNBOX_SCAN_MODE_FULL_LABEL: Record<UnboxScanMode, string> = {
   ticket: 'Ticket #',
   tracking: 'Tracking #',
   order: 'Purchase order #',
+};
+
+/** Dense ready-arm face — always `PO #` for order (never "Purchase order"). */
+const UNBOX_SCAN_MODE_FACE_LABEL: Record<UnboxScanMode, string> = {
+  ticket: 'Ticket #',
+  tracking: 'Tracking #',
+  order: 'PO #',
 };
 
 function modeMeta(mode: UnboxScanMode): UnboxScanModeMeta {
@@ -95,9 +102,20 @@ export function ReceivingUnboxScanBar({
 
   const effective: UnboxScanMode = armedMode ?? classifyUnboxScan(value);
   const active = modeMeta(effective);
-  // Un-armed: neutral barcode — mode lives in the right rail + short placeholder.
+  // Un-armed: neutral barcode — mode lives in the right rail + ready-arm face.
   const LeadingIcon = armedMode ? active.Icon : Barcode;
   const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
+  const readyArm = armedMode
+    ? {
+        label: `${UNBOX_SCAN_MODE_FACE_LABEL[armedMode]} armed`,
+        Icon: active.Icon,
+        tintClassName: active.iconClass,
+      }
+    : {
+        label: 'Auto',
+        Icon: Barcode,
+        tintClassName: 'text-text-faint',
+      };
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -113,7 +131,9 @@ export function ReceivingUnboxScanBar({
       onSubmit={handleSubmit}
       inputRef={inputRef ?? fallbackRef}
       staffId={staffId}
-      placeholder={armedMode ? `Scan ${active.label}` : 'Ticket · Tracking · PO'}
+      // No `Scan …` prose — armed identity lives on readyArm + mode rail.
+      placeholder=""
+      readyArm={readyArm}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
@@ -130,7 +150,7 @@ export function ReceivingUnboxScanBar({
           }
           title={
             armedMode
-              ? `Next scan forced to ${active.label}. Click the icon again to auto-detect.`
+              ? `Next scan forced to ${active.label}. Click the mode again to auto-detect.`
               : 'Auto — looks the scan up as a Ticket, PO #, and Tracking before creating a carton'
           }
         />

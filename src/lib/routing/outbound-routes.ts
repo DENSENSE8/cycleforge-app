@@ -74,7 +74,12 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     ustatus: paramText,
     stage: paramText,
     late: paramFlag,
+    /** Packing DESK/STAGING placement filter (Ready-to-Pack → To-ship). */
+    packStation: paramPositiveInt,
+    packPlaced: paramFlag,
     new: paramEnum(['true'] as const),
+    /** CSV import staging surface on the To-Ship desk (session draft in memory). */
+    import: paramEnum(['csv'] as const),
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
     shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
     shippedWeekOffset: paramPositiveInt,

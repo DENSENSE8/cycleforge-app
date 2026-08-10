@@ -17,6 +17,7 @@ Operators need to know **exactly where a unit sits** after receive, after test, 
 ## What’s happening now
 
 - **Rooms and bins exist** and are scannable; the warehouse map and bin tools work for day-to-day put/take.
+- **`location_kind`** types places (`ROOM` · `DESK` · `STAGING` · `BIN` · …). Packing benches are **DESK** (or packing-room **STAGING**) under a Packing Floor room — not a separate packing-stations table. Ready-to-Pack order place = `order_pack_placements` (counts on Ready to Pack + To-ship).
 - **Racks** are mostly encoded in barcode labels, not shown as a clear “rack” object in the product story.
 - A unit’s “current location” is sometimes a **text label**, not a reliable click-through to the bin page.
 - Movement history exists in the event log, but staff don’t always see a clean “moved from → to” story next to the unit.

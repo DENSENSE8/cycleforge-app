@@ -4,16 +4,18 @@
  * TriagePanel — the standalone right-pane editor for the **Receiving (Arrival /
  * triage)** mode: the fast "identify the carton before unbox" pass.
  *
- * Station column anatomy (Arrival carve-out of the Unbox-family host):
+ * Station column anatomy (Arrival port of the Unbox golden — see
+ * `display/station-port-from-unbox.md`):
  *   - CENTRE is the door flow — identity ({@link StationContextBar}
  *     `placement="flow"`) → one white door-flow plane (`DISPLAYS_FLUSH_HOST` +
  *     `appSurfaceFillClass('chrome')`) holding PO / unfound **items** (no units
- *     chrome) → **Classify** → **Staging**. Identity abuts items with zero air
- *     (`reserveIdentityClearance={false}`, `bodyGap="none"`).
- *   - The bottom **dock** floats the internal item-note composer
- *     (`WorkspaceNotesCard` → `receiving_line.notes`) + the Save-for-unbox CTA.
- *     The note is not printed on Arrival; it carries to Unbox and displays there
- *     as the item's internal note.
+ *     chrome) → **Classify**. Identity abuts items with zero air
+ *     (`reserveIdentityClearance={false}`, `bodyGap="none"`). No centre Staging
+ *     card, no advisory strip, no Omnichannel notes float.
+ *   - The bottom **dock** is Unbox flush geometry: dogfood strip =
+ *     Save-for-unbox (`data-arrival-dogfood-terminal`); Band 1 =
+ *     {@link ArrivalStagingDockControl} (shelf · lane ACTION); Band 2 =
+ *     quiet "Staging" pager cell. Notes live on Unbox, not Arrival.
  *   - Pairing/Linkage is the right-edge **Displays** push
  *     ({@link StationDisplaysPushStack} + {@link buildTriageDisplayTabs}),
  *     never a centre `SectionTabsSlider` strip.
@@ -41,7 +43,6 @@ import {
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
 import { StationContextBar } from '@/components/station/entity-context';
-import { slicedActionDockWrapperClass } from '@/design-system/primitives';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -50,17 +51,22 @@ import { ReceivingPhotoPeek } from '../workspace/line-edit/ReceivingPhotoPeek';
 import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
 import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
-import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
-import { StationDisplaysPushStack, STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import { UnboxDockHost } from '../workspace/line-edit/UnboxDockHost';
+import {
+  StationDisplaysPushStack,
+  STATION_DISPLAY_INDEX,
+  useYieldStationDisplaysOnAssistantOpen,
+} from '@/components/station/displays';
 import { UnboxDisplaysUtilityRailBody } from '../workspace/UnboxDisplaysUtilityRailBody';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { markTriageCompleted, hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
 import { useTriageStaging } from './useTriageStaging';
-import { WorkflowRecommendationsStrip } from '../WorkflowRecommendationsStrip';
+import { ArrivalStagingDockControl } from './ArrivalStagingDockControl';
+import { ArrivalDockScanEntry } from './ArrivalDockScanEntry';
+import { ArrivalDisplaysActionFloor } from './ArrivalDisplaysActionFloor';
 import { TriageClassifySection } from './TriageClassifySection';
-import { StagingSection } from './StagingSection';
 import { deriveTriageFocusFacts, resolveTriageFocus } from '@/lib/receiving/triage-focus';
 import { buildTriageDisplayTabs, type TriageDisplayTab } from './build-triage-displays';
 import { buildTriageDisplayIndexRows } from './triage-display-index';
@@ -116,7 +122,7 @@ export function TriagePanel({
   } | null>(null);
 
   const classifySectionRef = useRef<HTMLDivElement | null>(null);
-  const stagingSectionRef = useRef<HTMLDivElement | null>(null);
+  const stagingDockRef = useRef<HTMLDivElement | null>(null);
 
   const claimDisplays = useCallback(
     (tab: TriageDisplayTab | typeof STATION_DISPLAY_INDEX) => {
@@ -131,6 +137,7 @@ export function TriagePanel({
     [claimDisplays],
   );
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   useEffect(() => {
     const onAddClaimsEdge = () => closeDisplays();
@@ -157,9 +164,8 @@ export function TriagePanel({
     [],
   );
 
-  // The pane "expand" toggle: unmet Pairing → open Displays; unmet Classify /
-  // Staging → scroll the centre door-flow section (those live under items now).
-  // Already-done / none → open Pairing (the only Displays body).
+  // The pane "expand" toggle: unmet Classify → scroll centre; unmet Staging →
+  // scroll the flush dock ACTION; unmet Pairing / none → open Displays.
   const openDisplaysForExpand = useCallback(() => {
     const facts = deriveTriageFocusFacts(
       row,
@@ -171,7 +177,7 @@ export function TriagePanel({
       return;
     }
     if (target === 'stage') {
-      stagingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      stagingDockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
     openDisplays('linkage');
@@ -219,8 +225,7 @@ export function TriagePanel({
 
   // On open, tell the operator when there is nothing left to do — the carton is
   // already staged. Pairing opens on demand (PO chip / the pane expand toggle);
-  // Classify · Staging live in the centre, so the Displays push is not
-  // auto-opened on focus (matches Unbox).
+  // Classify stays in the centre; Staging lives in the flush dock.
   useEffect(() => {
     const facts = deriveTriageFocusFacts(
       row,
@@ -318,6 +323,14 @@ export function TriagePanel({
     build: buildTerminal,
   });
 
+  const embeddedTerminal = (
+    <StationTerminalDock
+      embedded
+      vm={terminalVm}
+      className="h-full w-full min-w-0 shrink-0 self-stretch"
+    />
+  );
+
   // Scan-station chrome: utility rail when Displays closed (`←|` bottom
   // footer); ↑↓ on details panel top-right when open.
   const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
@@ -388,15 +401,15 @@ export function TriagePanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                reserveScrollClearance
+                // Flush dock + staging Band 1 needs pager clearance (Unbox SoT).
+                reserveScrollClearance="pager"
                 // Identity is in-flow (`StationContextBar placement="flow"`)
                 // above this workbench — no guessed stacked pt clearance.
                 reserveIdentityClearance={false}
                 // Flat data floor — no vertical air between centre surfaces.
                 bodyGap="none"
-                entityContext={<WorkflowRecommendationsStrip row={row} surface="triage" />}
-                // `tabs` is deliberately EMPTY: Pairing is Displays; Classify ·
-                // Staging stack under items in the centre door flow.
+                // `tabs` is deliberately EMPTY: Pairing is Displays; Classify
+                // stacks under items; Staging is the flush dock ACTION.
                 feedback={
                   <WorkspaceActionFeedbackSlot
                     feedback={actionFeedback}
@@ -404,32 +417,67 @@ export function TriagePanel({
                   />
                 }
                 dock={
-                  // ONE elevated shell floating over the canvas — the internal
-                  // item-note composer + Save for unbox. The note (`receiving_line.
-                  // notes`) is not printed here; it carries to Unbox and displays
-                  // there as the item's internal note. Placement SoT =
-                  // slicedActionDockWrapperClass({ docked: false }).
-                  <div className={slicedActionDockWrapperClass({ docked: false })}>
-                    <div className={`pointer-events-auto ${STATION_WORKBENCH_COLUMN}`}>
+                  // Unbox flush floor — inset-x-0, safe-area only. Never a raised
+                  // OmnichannelComposerDock / WorkspaceNotesCard float.
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-fab pb-[env(safe-area-inset-bottom,0px)] pt-0" // ds-allow-spacing: fixed-overlay safe-area geometry
+                    data-arrival-dock-float
+                  >
+                    <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
                       {terminalVm?.disabled && terminalVm.disabledReason ? (
                         <p
                           role="status"
-                          className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
+                          className="mb-1 text-right text-role-caption font-semibold text-amber-700"
                         >
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
-                      <WorkspaceNotesCard
-                        row={row}
-                        c={c}
-                        onActionFeedback={setActionFeedback}
-                        // Enter in the notes field commits Save for unbox.
-                        onPrimaryAction={
-                          terminalVm ? () => void terminalVm.onClick() : undefined
-                        }
-                        primaryActionDisabled={Boolean(terminalVm?.disabled)}
-                        trailingAction={<StationTerminalDock embedded vm={terminalVm} />}
-                      />
+                      {terminalVm ? (
+                        <div
+                          className="mb-0 flex h-11 w-full min-w-0 items-stretch border-t border-border-hairline bg-surface-card"
+                          data-arrival-dogfood-terminal
+                        >
+                          <div
+                            className="flex min-w-0 flex-1 items-stretch"
+                            data-arrival-dock-terminal
+                          >
+                            {embeddedTerminal}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div ref={stagingDockRef}>
+                        <UnboxDockHost
+                          mode="entry"
+                          onOpenNotes={() => {}}
+                          onCloseNotes={() => {}}
+                          hasItemNote={false}
+                          showNotesToggle={false}
+                          expandBand
+                          omitTopSeam={Boolean(terminalVm)}
+                          stepContext={
+                            <div className="flex h-full min-w-0 flex-1 items-center inset-cozy">
+                              <p className="truncate text-role-caption font-semibold text-text-muted">
+                                Staging
+                              </p>
+                            </div>
+                          }
+                          leading={
+                            <ArrivalStagingDockControl
+                              staging={staging}
+                              // Procedure locus: scan a shelf, place THIS carton.
+                              // The sidebar bar stays ingest-only.
+                              scanCell={
+                                <ArrivalDockScanEntry
+                                  receivingId={row.receiving_id}
+                                  staging={staging}
+                                />
+                              }
+                            />
+                          }
+                          trailing={null}
+                          progress={<span className="sr-only">Door staging</span>}
+                        />
+                      </div>
                     </div>
                   </div>
                 }
@@ -468,9 +516,6 @@ export function TriagePanel({
                         expandRequestId={classifyExpand?.requestId ?? 0}
                       />
                     </div>
-                    <div ref={stagingSectionRef}>
-                      <StagingSection staging={staging} eyebrow="Staging" />
-                    </div>
                   </div>
                 </div>
               </StationWorkbench>
@@ -507,6 +552,21 @@ export function TriagePanel({
               }}
               onClose={closeDisplays}
               headerTrailing={displaysCartonCursor}
+              actionFloor={
+                <ArrivalDisplaysActionFloor
+                  receivingId={row.receiving_id}
+                  isUnfound={shouldUseUnmatchedItemsSurface(row)}
+                  openDisplays={openDisplays}
+                  onDeleted={closeDisplays}
+                  editSelected={activeSideTab === 'linkage'}
+                  onInventorySync={() => c.refreshInventoryDossier()}
+                  inventorySyncing={Boolean(c.inventoryRefreshing)}
+                  canInventorySync={
+                    row.receiving_id != null &&
+                    Boolean((row.zoho_purchaseorder_id || '').trim())
+                  }
+                />
+              }
             />
           ) : null
         }

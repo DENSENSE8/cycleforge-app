@@ -14,9 +14,9 @@
  * Units · Photos · Ticket · Tracking · Timeline · Support. Ticket is presence-exclusive
  * (Claim vs Chat). Inventory is a **secondary vertical drill** (Information · Lines ·
  * PO notes · Activity) via `useDisplaysLeafChrome` — never a nested TabDisplay and
- * never a second LeafHeader. Photos is **armed-row verbs + URL drills** (golden).
- * Units · Linkage still nest parent underline (debt — migrate to armed rows); Prebox
- * mode is child segment. `checklist` is a Displays leaf (never a floor % ring).
+ * never a second LeafHeader. Photos · Linkage · Units are **armed-row verbs +
+ * URL drills**. Prebox mode is child segment. `checklist` is a Displays leaf
+ * (never a floor % ring).
  *
  * Legacy aliases (one release): `pairing` / `po-note` → `linkage`;
  * `claim` → `ticket` (with `ticketAction=claim`).
@@ -69,10 +69,17 @@ export const UNBOX_PHOTO_ACTION_ORDER = [
   'compare',
 ] as const satisfies readonly UnboxPhotoAction[];
 
-/** Nested Linkage topic actions (`?linkageAction=`). */
-export type UnboxLinkageAction = 'link' | 'note';
+/**
+ * Linkage leaf surfaces (`?linkageAction=`). Absent → armed Actions rows;
+ * `link` · `note` are URL drill-downs (Photos twin).
+ */
+export type UnboxLinkageAction = 'actions' | 'link' | 'note';
 
-const UNBOX_LINKAGE_ACTION_ORDER = ['link', 'note'] as const satisfies readonly UnboxLinkageAction[];
+const UNBOX_LINKAGE_ACTION_ORDER = [
+  'actions',
+  'link',
+  'note',
+] as const satisfies readonly UnboxLinkageAction[];
 
 /**
  * Ticket topic surface derived from linked-ticket presence (`?ticketAction=`
@@ -82,10 +89,17 @@ export type UnboxTicketAction = 'chat' | 'claim';
 
 const UNBOX_TICKET_ACTION_ORDER = ['chat', 'claim'] as const satisfies readonly UnboxTicketAction[];
 
-/** Nested Units topic actions (`?unitsAction=`). */
-export type UnboxUnitsAction = 'units' | 'prebox';
+/**
+ * Units leaf surfaces (`?unitsAction=`). Absent → armed Actions rows;
+ * `units` · `prebox` are URL drill-downs.
+ */
+export type UnboxUnitsAction = 'actions' | 'units' | 'prebox';
 
-const UNBOX_UNITS_ACTION_ORDER = ['units', 'prebox'] as const satisfies readonly UnboxUnitsAction[];
+const UNBOX_UNITS_ACTION_ORDER = [
+  'actions',
+  'units',
+  'prebox',
+] as const satisfies readonly UnboxUnitsAction[];
 
 /** All display body ids — includes Displays-leaf `checklist`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
@@ -206,7 +220,9 @@ export function parseUnboxUnitsAction(
   gates: { hasPrebox: boolean },
 ): UnboxUnitsAction {
   if (raw === 'prebox' && gates.hasPrebox) return 'prebox';
-  return 'units';
+  if (raw === 'units') return 'units';
+  // Absent / explicit `actions` / gated-away prebox → armed verb list.
+  return 'actions';
 }
 
 /** Wire tokens `?unitsAction=` may carry (hygiene). Gate resolution is separate. */
@@ -220,7 +236,9 @@ export function parseUnboxLinkageAction(
   gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>,
 ): UnboxLinkageAction {
   if (raw === 'note' && gates.hasPoNoteTab) return 'note';
-  return 'link';
+  if (raw === 'link') return 'link';
+  // Absent / explicit `actions` / gated-away note → armed verb list.
+  return 'actions';
 }
 
 /** Wire tokens `?linkageAction=` may carry (hygiene). Gate resolution is separate. */

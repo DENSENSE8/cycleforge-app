@@ -1,6 +1,8 @@
 'use client';
 
 import { Layers } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import { photoGridLeafClass, photoGridTileProps, type PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { formatDateTimePST } from '@/utils/date';
 import { TicketNasBackupButton } from '../TicketNasBackupButton';
@@ -37,7 +39,12 @@ export function PhotoTicketGrid({
               <span className="truncate text-sm font-semibold text-text-default">
                 {group.label}
               </span>
-              <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft">
+              <span
+                className={cn(
+                  'shrink-0 bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft',
+                  cornerClass('chip'),
+                )}
+              >
                 {group.photos.length}
               </span>
               <time className="shrink-0 text-role-micro tabular-nums text-text-faint">

@@ -1,11 +1,8 @@
 /**
- * Displays nested verb switchers must use industrial TabDisplay — never soft
- * TabSwitch pills. Photos is armed rows only (no parent strip). Ticket is
- * presence-exclusive (no Chat·Claim nested underline).
- *
- * Debt allowlist (shrink-only): Linkage · Units still use parent
- * `appearance="underline"`. Claim child mode (New·Link) uses
- * `appearance="segment"` in ClaimWizardNav — never a second inverse fill.
+ * Displays nested verbs: Photos · Linkage · Units are armed rows only (no
+ * parent underline strip). Ticket is presence-exclusive. Child tool modes use
+ * TabDisplay `appearance="segment"` (Claim New·Link · Move · Prebox) — never
+ * soft TabSwitch pills / inverse fill.
  */
 
 import assert from 'node:assert/strict';
@@ -21,62 +18,53 @@ function stripComments(src: string): string {
 
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
-/** Hosts that nest underline parent verbs (Linkage · Units). Photos is rows-only. */
-const UNDERLINE_VERB_HOSTS = [
+/** Armed-row leaf hosts — no parent TabDisplay underline. */
+const ARMED_VERB_HOSTS = [
+  'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
 ] as const;
 
-/** Hosts that still nest verb switchers (Ticket · Photos do not). */
-const NESTED_VERB_HOSTS = [...UNDERLINE_VERB_HOSTS] as const;
-
 const FLUSH_STACK_HOSTS = [
-  'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
-  ...NESTED_VERB_HOSTS,
+  ...ARMED_VERB_HOSTS,
   'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
 ] as const;
 
 const TAB_DISPLAY = 'src/design-system/components/TabDisplay.tsx';
 const CLAIM_NAV = 'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx';
 
-describe('Displays nested verbs use TabDisplay', () => {
-  for (const host of NESTED_VERB_HOSTS) {
-    it(`${host} imports TabDisplay and not TabSwitch`, () => {
+describe('Displays nested verbs — armed rows + child segment', () => {
+  for (const host of ARMED_VERB_HOSTS) {
+    it(`${host} is armed rows only — no nested TabDisplay strip`, () => {
       const src = read(host);
       assert.match(
         src,
-        /TabDisplay/,
-        `${host} must compose TabDisplay for nested verbs`,
+        /StationArmedVerbList|PhotosActionsArmedList/,
+        `${host} must compose an armed verb list`,
+      );
+      assert.doesNotMatch(
+        src,
+        /\bTabDisplay\b/,
+        `${host} dropped parent underline tabs`,
       );
       assert.doesNotMatch(
         src,
         /\bTabSwitch\b/,
         `${host} must not import soft TabSwitch pills`,
       );
-    });
-  }
-
-  for (const host of UNDERLINE_VERB_HOSTS) {
-    it(`${host} parent verbs use underline appearance`, () => {
-      const src = read(host);
-      assert.match(
+      assert.doesNotMatch(
         src,
         /appearance="underline"/,
-        `${host} parent verbs must use underline appearance (not inverse fill)`,
+        `${host}: parent underline debt is retired`,
       );
     });
   }
 
-  it('PhotosDisplayHost is armed rows only — no nested TabDisplay strip', () => {
+  it('PhotosDisplayHost keeps Actions launcher contract', () => {
     const src = read(
       'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
     );
     assert.match(src, /PhotosActionsArmedList/);
-    assert.doesNotMatch(
-      src,
-      /\bTabDisplay\b/,
-      'Photos dropped Actions·Compare·Move·Send underline tabs',
-    );
     assert.doesNotMatch(
       src,
       /launcherLayout="toolbar"|CopyChipHoverMenuPanel/,
@@ -199,17 +187,23 @@ describe('Displays nested verbs use TabDisplay', () => {
     );
   });
 
-  it('Unbox Displays drill-down sits on DISPLAYS_FLUSH_HOST (no icon plate)', () => {
+  it('Unbox Displays drill-down uses DisplaysIndexLeafStage (no icon plate)', () => {
     const src = read('src/components/station/displays/StationDisplaysPushStack.tsx');
+    const stage = read('src/components/station/displays/DisplaysIndexLeafStage.tsx');
     assert.match(
       src,
-      /DISPLAYS_FLUSH_HOST/,
-      'Displays body uses flush host SoT (px-0)',
+      /DisplaysIndexLeafStage/,
+      'PushStack composes the shared index→leaf stage waist',
     );
     assert.match(
-      src,
+      stage,
+      /DISPLAYS_FLUSH_HOST/,
+      'stage body uses flush host SoT (px-0)',
+    );
+    assert.match(
+      stage,
       /StationDisplayIndexList/,
-      'Root Index is the Displays navigator',
+      'Root Index list lives in the shared stage',
     );
     assert.doesNotMatch(
       src,
@@ -244,14 +238,14 @@ describe('Displays nested verbs use TabDisplay', () => {
     }
   });
 
-  it('StagingSection Displays body is flush — no glass WorkspaceCard island', () => {
-    const src = read('src/components/receiving/triage/StagingSection.tsx');
+  it('ArrivalStagingDockControl is flush — no glass WorkspaceCard island', () => {
+    const src = read('src/components/receiving/triage/ArrivalStagingDockControl.tsx');
     assert.doesNotMatch(
       src,
       /WorkspaceCard/,
-      'StagingSection mounts as a Displays body — flush, no glass card',
+      'ArrivalStagingDockControl mounts as a flush dock ACTION — no glass card',
     );
-    // Arrival door-flow: host is px-0; content rows own inset-cozy (see
+    // Flush dock: host is px-0; content rows own inset-cozy (see
     // arrival-displays-push.guard — not DISPLAYS_BODY_INSET on the host).
     assert.doesNotMatch(src, /DISPLAYS_BODY_INSET/);
     assert.match(src, /inset-cozy/);

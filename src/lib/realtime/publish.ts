@@ -36,6 +36,8 @@ type OrderTestedPayload = {
   orderId: number;
   testedBy: number | null;
   source: string;
+  packLocationId?: number | null;
+  packLocationName?: string | null;
 };
 
 type RepairChangedPayload = {
@@ -471,6 +473,11 @@ export async function publishOrderTested(payload: OrderTestedPayload) {
     orderId,
     testedBy,
     source: payload.source,
+    packLocationId:
+      payload.packLocationId != null && Number.isFinite(Number(payload.packLocationId))
+        ? Number(payload.packLocationId)
+        : null,
+    packLocationName: payload.packLocationName ?? null,
     timestamp: formatPSTTimestamp(),
   });
 }

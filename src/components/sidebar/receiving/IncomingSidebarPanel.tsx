@@ -3,16 +3,10 @@
 /**
  * Incoming-mode facet rail — the route's OWN sidebar, resident in the spine.
  *
- * On Pipeline: answers **POS vs Email Triage** (`?incview=`). Purchasing-source
- * tabs (All / Zoho / eBay) live in {@link IncomingWorkspaceHeader}. On the POS
- * (main incoming collection) view it also mounts the durable **Saved Views**
- * rail — the Workbench half of the regional split (scan periphery ≠ saved-views
- * rail; see `regional-sidebar-split-HANDOFF.md`). A saved view is an
- * operator-named facet combination over the incoming collection
- * (`SAVED_VIEW_PARAM_KEYS.receiving_incoming`: source · delivery state · PO date
- * range · sort · layout · density), applied through {@link SavedViewsList} /
- * `useSavedViews` by writing those URL params — never a Band-1 tab and never a
- * `tableId` (prefs-bucket) mutation.
+ * On Pipeline: answers **POS vs Email Triage / Recently removed** (`?incview=`).
+ * Purchasing-source filters and **saved views** (Band-3 Views ▾) live in
+ * {@link IncomingWorkspaceHeader}. Scan periphery ≠ saved-views (see
+ * `regional-sidebar-split-HANDOFF.md`).
  *
  * On Docked: short lane copy only — Triage / Unbox live in the workbench chrome.
  */
@@ -23,11 +17,6 @@ import { Archive, Inbox, Mail } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import type { SidebarSection } from '@/components/sidebar/SidebarSectionList';
 import { SidebarFacetGroup } from '@/components/sidebar/SidebarFacetGroup';
-import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
-import {
-  SAVED_VIEW_PARAM_KEYS,
-  SAVED_VIEW_STORAGE_KEY,
-} from '@/lib/station/table-url-params';
 import { useIncomingEmailCount } from '@/components/receiving/EmailTriagePanel';
 import { parseIncomingView, type IncomingView } from '@/lib/receiving/incoming-view';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
@@ -118,19 +107,6 @@ export function IncomingSidebarPanel() {
       bodyClassName="pb-4"
     >
       {laneHint ? <p className="text-role-caption text-text-soft">{laneHint}</p> : null}
-
-      {/* Durable Workbench saved-views rail — the incoming collection's facet
-          combinations. Only on the POS view, where the captured facets actually
-          drive the grid; Email Triage / Recently removed are ancillary lanes.
-          Composes the ONE store (`useSavedViews`) + the `receiving_incoming`
-          SoT param keys; applying a view writes URL params, never a tableId. */}
-      {value === 'pos' ? (
-        <SavedViewsList
-          storageKey={SAVED_VIEW_STORAGE_KEY.receiving_incoming}
-          paramKeys={SAVED_VIEW_PARAM_KEYS.receiving_incoming}
-          emptyHint="No saved views yet — filter Incoming (source, delivery, PO date), then save it here."
-        />
-      ) : null}
     </SidebarShell>
   );
 }

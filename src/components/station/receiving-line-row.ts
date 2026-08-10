@@ -326,6 +326,18 @@ export interface ReceivingLineRow {
    */
   label_previewed_at?: string | null;
   /**
+   * Unbox commit `stage` — intended putaway bin stamped on
+   * `receiving_line_putaway` after print. Distinct from Arrival
+   * `staging_location_id` on the carton triage street.
+   */
+  staged_at?: string | null;
+  staged_location_id?: number | null;
+  staged_location_name?: string | null;
+  staged_location_barcode?: string | null;
+  staged_location_room?: string | null;
+  staged_location_row_label?: string | null;
+  staged_location_col_label?: string | null;
+  /**
    * Operator waived the serial for this line (no serial available — cable / bulk
    * part / return with none). Durable `receiving_line_testing.serial_absent`;
    * completes the Unbox stepper's Serial step alongside a captured serial.

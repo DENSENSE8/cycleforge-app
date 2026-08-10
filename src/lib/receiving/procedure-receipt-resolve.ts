@@ -75,13 +75,15 @@ interface LineRow {
   per_unit_absent_count: number | string | null;
   label_printed_at: string | null;
   label_previewed_at: string | null;
+  staged_at: string | null;
   serial_count: number | string | null;
   serial_last_at: string | null;
   photo_count: number | string | null;
 }
 
 interface AspectRow {
-  scope: 'carton' | 'line';
+  /** Door (`arrival_package`) · bench carton · per-line item aspects. */
+  scope: 'arrival' | 'carton' | 'line';
   line_id: number | null;
   photo_aspect: string | null;
   n: number | string;
@@ -194,6 +196,7 @@ export async function resolveUnboxProcedureReceipt(
             COALESCE(rlt.serial_absent, false)  AS serial_absent,
             rlt.label_printed_at::text          AS label_printed_at,
             rlt.label_previewed_at::text        AS label_previewed_at,
+            rlp.staged_at::text                 AS staged_at,
             (SELECT COUNT(*) FROM receiving_line_unit rlu
               WHERE rlu.receiving_line_id = rl.id
                 AND rlu.organization_id = rl.organization_id
@@ -227,6 +230,8 @@ export async function resolveUnboxProcedureReceipt(
               ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
        LEFT JOIN receiving_line_zoho rz
               ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+       LEFT JOIN receiving_line_putaway rlp
+              ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
        LEFT JOIN staff cg ON cg.id = rlt.condition_graded_by
       WHERE rl.receiving_id = $2::int AND rl.organization_id = $1
       ORDER BY rl.id ASC`,
@@ -236,7 +241,26 @@ export async function resolveUnboxProcedureReceipt(
 
   const aspectRes = await deps.query<AspectRow>(
     orgId,
-    `SELECT 'carton'::text AS scope,
+    `SELECT 'arrival'::text AS scope,
+            NULL::int      AS line_id,
+            p.photo_aspect,
+            COUNT(DISTINCT p.id)          AS n,
+            MIN(p.created_at)::text       AS first_at,
+            MAX(p.created_at)::text       AS last_at,
+            MIN(p.client_captured_at)::text AS first_captured_at,
+            MIN(p.taken_by_staff_id)      AS staff_id,
+            NULL::text                    AS staff_name
+       FROM photos p
+       INNER JOIN photo_entity_links l
+               ON l.photo_id = p.id AND l.organization_id = p.organization_id
+      WHERE p.organization_id = $1
+        AND l.entity_type = 'RECEIVING'
+        AND l.entity_id = $2::int
+        AND p.photo_aspect IS NOT NULL
+        AND COALESCE(p.photo_type, '') IN ('receiving_package', 'receiving', '')
+      GROUP BY p.photo_aspect
+      UNION ALL
+     SELECT 'carton'::text AS scope,
             NULL::int      AS line_id,
             p.photo_aspect,
             COUNT(DISTINCT p.id)          AS n,
@@ -327,6 +351,8 @@ export async function resolveUnboxProcedureReceipt(
   // Every fold is "the carton is done when EVERY line is". A carton with one
   // ungraded line is not a graded carton, and saying so would be the receipt's
   // one unforgivable failure.
+  const arrivalAspectCounts: Partial<Record<PhotoAspect, number>> = {};
+  const arrivalAspectRows = new Map<PhotoAspect, AspectRow>();
   const cartonAspectCounts: Partial<Record<PhotoAspect, number>> = {};
   const cartonAspectRows = new Map<PhotoAspect, AspectRow>();
   const lineAspectByLine = new Map<number, Partial<Record<PhotoAspect, number>>>();
@@ -334,7 +360,10 @@ export async function resolveUnboxProcedureReceipt(
   for (const row of aspectRes.rows) {
     const aspect = parsePhotoAspect(row.photo_aspect);
     if (!aspect) continue;
-    if (row.scope === 'carton') {
+    if (row.scope === 'arrival') {
+      arrivalAspectCounts[aspect] = (arrivalAspectCounts[aspect] ?? 0) + num(row.n);
+      arrivalAspectRows.set(aspect, row);
+    } else if (row.scope === 'carton') {
       cartonAspectCounts[aspect] = (cartonAspectCounts[aspect] ?? 0) + num(row.n);
       cartonAspectRows.set(aspect, row);
     } else if (row.line_id != null) {
@@ -403,6 +432,7 @@ export async function resolveUnboxProcedureReceipt(
     arrivalPhotoCount: num(arrival?.n),
     unboxCartonPhotoCount: num(unboxCarton?.n),
     itemPhotoCount: lines.reduce((n, l) => n + num(l.photo_count), 0),
+    arrivalAspectCounts,
     cartonAspectCounts,
     itemAspectCounts,
     requiredItemAspects,
@@ -428,8 +458,11 @@ export async function resolveUnboxProcedureReceipt(
     quantityExpected: lines.reduce((n, l) => n + num(l.quantity_expected), 0),
   };
 
-  const aspectEvidence = (aspect: PhotoAspect): StepEvidence => {
-    const row = cartonAspectRows.get(aspect);
+  const aspectEvidence = (
+    rows: Map<PhotoAspect, AspectRow>,
+    aspect: PhotoAspect,
+  ): StepEvidence => {
+    const row = rows.get(aspect);
     if (!row) return {};
     return {
       at: row.first_at,
@@ -445,16 +478,11 @@ export async function resolveUnboxProcedureReceipt(
       at: carton.classified_at,
       detail: carton.carton_intake_type ?? firstLine?.line_intake_type ?? null,
     },
-    arrival_check: {
-      at: arrival?.first_at ?? null,
-      byStaffId: arrival?.staff_id ?? null,
-      byStaffName: arrival?.staff_name ?? null,
-      detail: num(arrival?.n) > 0 ? shots(num(arrival?.n)) : null,
-      capturedAt: arrival?.first_captured_at ?? null,
-    },
-    shipping_label_photo: aspectEvidence('shipping_label'),
-    box_photo: aspectEvidence('box_exterior'),
-    packing_material: aspectEvidence('packing_material'),
+    arrival_label_photo: aspectEvidence(arrivalAspectRows, 'shipping_label'),
+    arrival_box_photo: aspectEvidence(arrivalAspectRows, 'box_exterior'),
+    shipping_label_photo: aspectEvidence(cartonAspectRows, 'shipping_label'),
+    box_photo: aspectEvidence(cartonAspectRows, 'box_exterior'),
+    packing_material: aspectEvidence(cartonAspectRows, 'packing_material'),
     contents: {
       at: carton.contents_confirmed_at,
       byStaffId: carton.contents_confirmed_by,
@@ -504,6 +532,10 @@ export async function resolveUnboxProcedureReceipt(
     labelPrintedAt:
       lines.length > 0 && lines.every((l) => l.label_printed_at)
         ? latest(lines.map((l) => l.label_printed_at))
+        : null,
+    stagedAt:
+      lines.length > 0 && lines.every((l) => l.staged_at)
+        ? latest(lines.map((l) => l.staged_at))
         : null,
     receivedAt: carton.received_at,
   });

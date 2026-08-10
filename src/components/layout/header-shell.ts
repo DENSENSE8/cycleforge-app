@@ -187,6 +187,14 @@ export const appContentShellClass = cn(
 export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-stretch justify-center';
 
 /**
+ * Equal-fill hit-box for the MasterNav spine top pin band ({@link SpineTopPins}).
+ * `flex-1` cells abut so hover / active washes run edge-to-edge across the seam —
+ * never fixed `w-8` islands with `justify-between` air between them.
+ */
+export const SPINE_TOP_PIN_WRAP =
+  'relative flex h-full min-h-0 min-w-0 flex-1 items-stretch justify-center';
+
+/**
  * Desktop navigation-header seam — GlobalHeader and the MasterNav spine top
  * band must share this box model so their bottom hairlines meet at one Y.
  *

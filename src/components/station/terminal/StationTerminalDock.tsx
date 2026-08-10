@@ -1,9 +1,9 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { SlicedActionDock } from '@/design-system/primitives';
+import { useStationTheme } from '@/hooks/useStationTheme';
 import type { TerminalActionVm } from '@/lib/station-terminal';
-import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -28,37 +28,26 @@ export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
  * without a pager must not pay dead canvas for one that has one. Same shape as
  * `reserveIdentityClearance`'s `'stacked'`.
  *
- * Main Unbox: Print·Receive mounts in UnboxDockHost trailing on settle only
- * (not an under-dock row). This clearance still over-reserves for the notes
- * composer when expanded — the safe direction.
+ * Main Unbox float ≈ dogfood Print·Receive strip (h-11) + Band 1 (h-11) +
+ * Band 2 pager (h-8) ≈ 120px; `pb-56` (224px) clears that plus disabled-reason /
+ * receive-feedback lines and notes expand — the safe direction.
  */
-export const STATION_TERMINAL_PAGER_SCROLL_CLEARANCE = 'pb-48';
-
-
-/** VM tone, tinted with the assigned tech's station theme when unset. */
-function resolveDockToneClasses(
-  vm: TerminalActionVm | null,
-  assignedTechId?: number | null,
-): { bg: string; hover: string } | undefined {
-  if (vm?.toneClasses) return vm.toneClasses;
-  if (assignedTechId == null) return undefined;
-  const theme = stationThemeColors[getStaffThemeById(assignedTechId)];
-  return theme ? { bg: theme.bg, hover: theme.hover } : undefined;
-}
+export const STATION_TERMINAL_PAGER_SCROLL_CLEARANCE = 'pb-56';
 
 /**
  * Renders a TerminalActionVm as the panel-level bottom-edge sliced action dock.
- * Cross-fades (200–250ms) when the VM label / kind swaps on tab change;
- * reduced-motion collapses to an instant swap.
+ * Scan-cadence swap (`motionRole.swap.scan`) — exit is instant so Receive ↔ Save
+ * never leaves an empty dock band between verbs.
  *
  * When `assignedTechId` is set and the VM has no explicit `toneClasses`,
- * tints the track with the assigned tech's station theme (unbox receive bar).
+ * tints the track via {@link useStationTheme} — same scan-theme path as the
+ * station scan bar (operator accent CSS vars for self; staff palette otherwise).
  *
- * `embedded` renders ONLY the pill track — no band, no `disabledReason` line,
- * no crossfade — for mounting inside another control's chrome (Unbox mounts it
- * at the trailing edge of its one-row dock `Panel`, across from the active
- * step's CTA). The host owns placement and the disabled-reason line; the
- * VM→dock mapping stays here so the registry remains the single terminal path.
+ * `embedded` renders ONLY the flush-square track — no band, no `disabledReason`
+ * line, no crossfade — for mounting inside another control's chrome (Unbox
+ * dogfood strip above the floor). The host owns placement and the
+ * disabled-reason line; the VM→dock mapping stays here so the registry remains
+ * the single terminal path.
  */
 export function StationTerminalDock({
   vm,
@@ -71,8 +60,14 @@ export function StationTerminalDock({
   embedded?: boolean;
   className?: string;
 }) {
-  const reduceMotion = useReducedMotion();
-  const toneClasses = resolveDockToneClasses(vm, assignedTechId);
+  const { presence, transition } = useMotionRole(motionRole.swap.scan);
+  // Same SoT as ThemedStationScanBar — self → dynamic accent; other staff → palette.
+  const { colors: scanColors } = useStationTheme({ staffId: assignedTechId });
+  const toneClasses =
+    vm?.toneClasses ??
+    (assignedTechId != null
+      ? { bg: scanColors.bg, hover: scanColors.hover }
+      : undefined);
 
   if (embedded) {
     if (!vm) return null;
@@ -90,6 +85,7 @@ export function StationTerminalDock({
         menu={vm.menu}
         menuLabel={vm.menuLabel}
         menuTitle={vm.menuTitle}
+        fullWidth={vm.fullWidth}
         className={className}
       />
     );
@@ -104,14 +100,10 @@ export function StationTerminalDock({
       {vm ? (
         <motion.div
           key={presenceKey}
-          initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-          transition={
-            reduceMotion
-              ? { duration: 0.001 }
-              : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }
-          }
+          initial={presence.initial}
+          animate={presence.animate}
+          exit={presence.exit}
+          transition={transition}
           className={cn('flex shrink-0 flex-col', className)}
         >
           {vm.disabled && vm.disabledReason ? (

@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { isGridColumnResizable } from '@/design-system/components/grid/grid-column-editability';
+import { MIN_TRACK_REM_QTY_FRACTION } from '@/design-system/components/grid/grid-column-type-track';
 import { RECEIVING_GRID_COLUMNS } from './receiving-grid-layout';
 
 const FIXED_FACT_KEYS = [
@@ -73,6 +74,18 @@ describe('RECEIVING_GRID_COLUMNS — fixed facts · resizable Product + Status �
         `missing fixed fact ${key}`,
       );
     }
+  });
+
+  it('qty track obeys the type floor', () => {
+    const qtyCol = RECEIVING_GRID_COLUMNS.find((c) => c.key === 'qty');
+    assert.ok(qtyCol, 'missing qty column');
+    const remMatch = qtyCol.width.match(/^minmax\(([\d.]+)rem,\s*\1rem\)$/);
+    assert.ok(remMatch, 'qty must be content-hard minmax(X,X)');
+    const floor = parseFloat(remMatch[1]);
+    assert.ok(
+      floor >= MIN_TRACK_REM_QTY_FRACTION,
+      `qty track (${floor}rem) must be >= MIN_TRACK_REM_QTY_FRACTION (${MIN_TRACK_REM_QTY_FRACTION}rem)`,
+    );
   });
 
   it('order / tracking / serial start; date / qty / price end (strict alignment)', () => {

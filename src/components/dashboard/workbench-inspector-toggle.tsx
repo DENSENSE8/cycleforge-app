@@ -38,20 +38,10 @@ import {
   toggleDetailInspectorCollapsed,
   type DetailInspectorCollapseDetail,
 } from '@/design-system/shells/detail-stack';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 
 const SHOW_LABEL = 'Show inspector';
 const HIDE_LABEL = 'Hide inspector';
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return (
-    tag === 'INPUT' ||
-    tag === 'TEXTAREA' ||
-    tag === 'SELECT' ||
-    target.isContentEditable
-  );
-}
 
 function useWorkbenchInspectorToggle({
   open,
@@ -104,7 +94,7 @@ function useWorkbenchInspectorToggle({
         (e.metaKey || e.ctrlKey) && (e.key === '\\' || e.code === 'Backslash');
       // Bare `]` is a printable character — yield to the find field.
       const isBracket =
-        !e.metaKey && !e.ctrlKey && !e.altKey && e.key === ']' && !isEditableTarget(e.target);
+        !e.metaKey && !e.ctrlKey && !e.altKey && e.key === ']' && !isEditableKeyTarget(e.target);
       if (!isCmdBackslash && !isBracket) return;
       e.preventDefault();
       toggle();

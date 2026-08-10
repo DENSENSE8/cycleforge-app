@@ -1,8 +1,16 @@
 'use client';
 
 import { Image as ImageIcon } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
-/** Loading shimmer — a grid of placeholder tiles matching the small-grid rhythm. */
+/**
+ * Loading skeleton — a grid of placeholder tiles at the small-grid rhythm.
+ *
+ * Static, not a shimmer (2026-08-09). Reserving the real geometry is the part
+ * an operator reads; 24 tiles breathing in unison is the part that reads as the
+ * page failing to settle. Same call as `PhotoThumb`'s per-tile placeholder.
+ */
 export function PhotoGridSkeleton() {
   return (
     <div
@@ -11,7 +19,10 @@ export function PhotoGridSkeleton() {
       aria-label="Loading photos"
     >
       {Array.from({ length: 24 }).map((_, i) => (
-        <div key={i} className="aspect-square animate-pulse rounded-lg bg-surface-sunken" />
+        <div
+          key={i}
+          className={cn('aspect-square animate-pulse bg-surface-sunken', cornerClass('flush'))}
+        />
       ))}
     </div>
   );
@@ -20,7 +31,12 @@ export function PhotoGridSkeleton() {
 /** Teaching empty state — explains the filter, doesn't just say "nothing here". */
 export function PhotoEmptyState() {
   return (
-    <div className="mx-auto mt-6 flex max-w-sm flex-col items-center gap-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-6 py-10 text-center">
+    <div
+      className={cn(
+        'mx-auto mt-6 flex max-w-sm flex-col items-center gap-2 border border-dashed border-border-soft bg-surface-canvas inset-empty text-center',
+        cornerClass('flush'),
+      )}
+    >
       <ImageIcon className="h-6 w-6 text-text-faint" />
       <p className="text-sm font-semibold text-text-default">No photos in this view</p>
       <p className="text-xs leading-relaxed text-text-soft">

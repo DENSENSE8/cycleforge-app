@@ -38,7 +38,7 @@ import {
   publishReceivingPhotoRequest,
 } from '@/lib/realtime/receiving-photo-request';
 import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
-import { SendToDeviceStatus } from '@/components/station/send-to-device/SendToDeviceStatus';
+import { useSendToDeviceToast } from '@/components/station/send-to-device/useSendToDeviceToast';
 import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
@@ -256,10 +256,13 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   const routeRef = String(poRouteRef ?? '').trim();
   const canSendToPhone = !isItemScope || routeRef.length > 0;
 
-  // Waiting/unreachable state instead of an optimistic "Sent to phone" toast:
-  // an Ably publish resolves with zero subscribers, so the old toast confirmed
-  // only that the desk spoke. Same hook + same card as Pack (P1 · D2).
+  // Waiting/answered/unreachable renders on the house toast surface — NOT the
+  // blind optimistic "Sent to phone" toast this replaced originally (an Ably
+  // publish resolves with zero subscribers, so that one only ever confirmed
+  // the desk had spoken). This toast tracks the real handshake state instead.
+  // Same hook + same toast id shape as Pack (P1 · D2).
   const phone = useSendToDevice('receiving_photo');
+  useSendToDeviceToast(phone.state, phone.retry);
   const ackChannelName = getReceivingPhotoRequestChannelName(orgId, staffId);
 
   const handleRequestOnPhone = useCallback(async () => {
@@ -405,11 +408,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         <HoverTooltip label={title} placement="above" asChild>
           {pillButton}
         </HoverTooltip>
-        {phone.state !== 'idle' ? (
-          <div className="absolute right-0 top-full z-panelPopover w-max max-w-[18rem] pt-1.5">
-            <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -430,17 +428,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       <HoverTooltip label={title} placement="above" asChild disabled={showGalleryPeek}>
         {pillButton}
       </HoverTooltip>
-
-      {/*
-        Pairing state, anchored under the pill that triggered it. Absolute so a
-        two-line "unreachable" row cannot grow the identity row and shove the
-        carton title around mid-scan — the same reason the gallery peek floats.
-      */}
-      {phone.state !== 'idle' ? (
-        <div className="absolute right-0 top-full z-panelPopover w-max max-w-[18rem] pt-1.5">
-          <SendToDeviceStatus state={phone.state} onRetry={phone.retry} />
-        </div>
-      ) : null}
 
       {/*
         Body portal at panelPopover — escapes the locked-720 center

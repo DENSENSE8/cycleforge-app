@@ -2,7 +2,7 @@
 
 **For:** next coding agent (paste § Prompt)  
 **Date:** 2026-08-08 · **Lane:** current checkout — stay on branch; attach to `:3050` (never start/restart). User owns commits.  
-**Status:** Trust **view** path landed (paint + broken line-note write + details fallback). Finish = make Inventory Displays a trustworthy Zoho PO surface for inbound: honest commercial fidelity, block-if-stale Cmd+S, expose receive/unreceive trail, then only the write APIs that already have Zoho client support.  
+**Status:** Trust **view** + leaf chrome landed (Information SoT · Lines focus/SN · PO notes pull · header Refresh/Save). See [`inventory-displays-info-lines-notes-chrome-HANDOFF.md`](./inventory-displays-info-lines-notes-chrome-HANDOFF.md) for the 2026-08-09 leaf + prove checklist. Remaining finish = block-if-stale edge UX, receive/unreceive trail honesty, commercial writes Zoho already supports.  
 **Product success (operator):** *“I can see everything from the webapp without opening Zoho — backend already updates fields; I need trust to view the integration state.”*  
 **Out of scope this leaf:** Create brand-new Zoho PO (inbound scope carve-out) · remounting Units/serial editors into Inventory · reinventing a second search/receive engine.
 
@@ -51,7 +51,7 @@ Attach to the user’s already-running app on `:3050`. Do not start/restart/kill
    | Bill / close / void / delete PO / attachments | NO operator routes; OAuth mostly READ + PO UPDATE + purchasereceive CREATE — do not fake UI |
 
 5. **Chrome**
-   - Edge-to-edge instrument: trust strip → `InventoryPoHeader` `variant="instrument"` → DenseCompose PO notes → line instruments → Activity → `StationActionKeyLegend` floor.
+   - Edge-to-edge instrument: trust strip → `InventoryPoHeader` `variant="instrument"` → DenseCompose PO notes → line instruments → Activity. No KeyLegend floor / `/` leaf-commands (stack leaf-dismiss only).
    - Claim sheet-band (`DenseCompose*`) for editable prose — never `WORKSPACE_NESTED_FIELD` cards.
    - Keyboard: F2 Change PO · F5 Refresh · ⌘S Save · Alt+↑/↓ between note instruments.
    - `data-station-action-dossier` required for Displays focus restore.
@@ -60,7 +60,8 @@ Attach to the user’s already-running app on `:3050`. Do not start/restart/kill
 
 | Piece | Path | Notes |
 |---|---|---|
-| Host | `src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx` | Instrument stack + trust strip + activity + floor |
+| Chrome leaf (2026-08-09) | [`inventory-displays-info-lines-notes-chrome-HANDOFF.md`](./inventory-displays-info-lines-notes-chrome-HANDOFF.md) | Header mutators · notes pull · Lines ring · Information SoT |
+| Host | `src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx` | Armed sub-index · `setLeafTrailing` Refresh/Save · no KeyLegend floor |
 | Header | `src/components/receiving/inventory/InventoryPoHeader.tsx` | `instrument` = PO#·status·total·vendor·ref·dates·modified·pulled |
 | Lines | `src/components/receiving/inventory/InventoryPoLineList.tsx` | `inlineNotes` + rate/qty + DenseCompose |
 | Activity | `src/components/receiving/inventory/InventoryActivityPanel.tsx` | Receive events + zoho_activity; also desk `PoTab` |
@@ -95,7 +96,7 @@ If any step lies, fix data path first (details / sync-one / inventory-note), not
 
 ### C — Receive / unreceive visibility (do not fork domain)
 1. Surface carton/PO receive state on the trust strip or a dense fact (received stamp, purchase_receive id if present).
-2. Optionally wire floor secondary actions to **existing** `c.receive` / unreceive from LineEditPanel controller — labels must match Unbox menus (“Unreceive” / “Unreceive all”). Never a third receive implementation.
+2. **Receive / Unreceive stay on the Unbox dock** (`c.handleReceive` / `mark-received-po`) — Inventory leaf has no Action KeyLegend floor and no `/` leaf-commands (footer = leaf-dismiss only). **Refresh · Save** mount via `setLeafTrailing` on the sticky leaf header; silent F5 / ⌘S also work inside the notes field. Lazy PO-notes pull uses `refreshInventoryDossier` (sync-one + inventory-sync).
 3. Activity panel must list receive + unreceive spine events after Refresh (already reads `receive_events` — fix if events missing).
 
 ### D — Commercial writes only where Zoho client already can

@@ -3,6 +3,8 @@
 import { type MouseEvent as ReactMouseEvent } from 'react';
 import type { LibraryPhoto } from './photo-library-types';
 import { Image as ImageIcon } from '@/components/Icons';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import type { PhotoLibrarySourceScope, PhotoLibraryViewMode } from '@/lib/photos/library-filter-state';
 import type { PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { PhotoEmptyState, PhotoGridSkeleton } from './photo-library-grid/PhotoGridStates';
@@ -61,7 +63,12 @@ export function PhotoLibraryGrid({
   }
   if (error) {
     return (
-      <div className="mx-auto mt-6 flex max-w-sm flex-col items-center gap-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-10 text-center">
+      <div
+        className={cn(
+          'mx-auto mt-6 flex max-w-sm flex-col items-center gap-2 border border-dashed border-rose-200 bg-rose-50 inset-empty text-center',
+          cornerClass('flush'),
+        )}
+      >
         <ImageIcon className="h-6 w-6 text-rose-400" />
         <p className="text-sm font-semibold text-rose-900">Couldn’t load photos</p>
         <p className="text-xs leading-relaxed text-rose-600">{error}</p>

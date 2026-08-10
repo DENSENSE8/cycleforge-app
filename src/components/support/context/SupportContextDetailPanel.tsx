@@ -132,7 +132,7 @@ export function SupportContextDetailPanel({
     <DetailStackRailRegistrar
       id={`detail:support-context:${ticketId}`}
       // Per host, not per panel: inside `SupportTicketDetail` this registers from
-      // within Unbox Displays Ticket (`UnboxPushColumn`) — so pushing
+      // within Unbox Displays Ticket (`StationDisplaysPushColumn`) — so pushing
       // would make them two columns fighting one edge. On `/support` nothing else
       // owns the edge, so it pushes and the thread reflows beside it.
       push={push}

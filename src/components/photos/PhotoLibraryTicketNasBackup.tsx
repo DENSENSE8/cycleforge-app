@@ -23,9 +23,11 @@ export function PhotoLibraryTicketNasBackup({
     <Panel
       data-testid="photo-library-ticket-nas-backup"
       padding="none"
-      radius="xl"
-      elevation="md"
-      className="mb-3 flex flex-wrap items-center gap-3 px-3 py-2.5"
+      elevation="none"
+      borderless
+      // Flush band on the sheet plane — the seam is the hairline below, not a
+      // raised card island floating in the body gutter.
+      className="flex flex-wrap items-center gap-3 border-b border-border-hairline inset-field"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <Folder className="h-3.5 w-3.5 shrink-0 text-text-faint" />

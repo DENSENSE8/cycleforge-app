@@ -86,10 +86,16 @@ describe('Unbox pinned Inbound', () => {
     assert.match(popover, /\bPin\b/);
     assert.match(popover, /data-testid="unbox-pin-list"/);
     assert.doesNotMatch(popover, /\bPlus\b/, 'no leading bare Plus (reads as "create table")');
-    // Same boxed cube as carton Exit / Back-to-list — not a naked IconButton.
-    assert.match(popover, /STATION_CONTEXT_BOXED_CUBE_CLASS/);
+    // Same Band-1 cube SoT as carton Exit / Back-to-list — not a naked IconButton.
+    // Geometry (`h-full aspect-square`) lives on WORKBENCH_CHROME_CUBE_CLASS /
+    // STATION_CONTEXT_BOXED_CUBE_CLASS — never inlined on the popover face.
+    assert.match(popover, /WORKBENCH_CHROME_CUBE_CLASS/);
     assert.doesNotMatch(popover, /\bIconButton\b/);
-    assert.match(popover, /h-full aspect-square/);
+    assert.doesNotMatch(
+      popover,
+      /h-full aspect-square/,
+      'cube geometry stays on the SoT token, not the pin trigger',
+    );
   });
 
   it('catalog SoT is Inbound-only and pin cap is 2', () => {

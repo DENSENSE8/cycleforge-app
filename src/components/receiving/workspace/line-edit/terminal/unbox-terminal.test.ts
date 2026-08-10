@@ -192,6 +192,47 @@ test('resolveUnboxReceiveTerminal: Unreceive all appears when canUnreceive', () 
   assert.equal(unreceived, 1);
 });
 
+test('resolveUnboxReceiveTerminal: when received, Unreceive sits above Receive again', () => {
+  const vm = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        isReceived: true,
+        canUnreceive: true,
+        printReceivePrimaryLabel: 'Print label',
+        receiveMenuLabel: 'Receive again',
+        unreceiveMenuLabel: 'Unreceive',
+      },
+    }),
+  );
+  const labels = (vm.menu ?? []).map((m) => m.label);
+  const unIdx = labels.indexOf('Unreceive');
+  const againIdx = labels.indexOf('Receive again');
+  assert.ok(unIdx >= 0, 'Unreceive present');
+  assert.ok(againIdx >= 0, 'Receive again present');
+  assert.ok(unIdx < againIdx, 'Unreceive promoted above Receive again after receive');
+});
+
+test('resolveUnboxReceiveTerminal: unreceiveMenuDisabled disables Unreceive', () => {
+  const vm = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        isReceived: true,
+        canUnreceive: true,
+        canReceiveReview: true,
+        unreceiveMenuDisabled: true,
+        unreceiveMenuLabel: 'Unreceive',
+        unreceiveMenuTitle: 'Cannot unreceive — a unit is in fulfillment, outbound, or hold',
+      },
+    }),
+  );
+  const item = vm.menu?.find((m) => m.label === 'Unreceive');
+  assert.ok(item);
+  assert.equal(item?.disabled, true);
+  assert.match(String(item?.title ?? ''), /fulfillment|outbound|hold/i);
+});
+
 test('resolveUnboxReceiveTerminal: un-received line still prints AND receives', () => {
   let printed = 0;
   let printAndReceived = 0;

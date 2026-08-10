@@ -11,8 +11,9 @@ export interface ConditionTextProps {
 
 /**
  * Tailwind text color class for an item condition (new→yellow-500,
- * parts→amber-800, else→black). Thin re-export of the SoT in conditions.ts;
- * kept here for the established `@/design-system/primitives` import path.
+ * parts→orange-900 brown, else→black). Thin re-export of the SoT in
+ * conditions.ts; kept here for the established `@/design-system/primitives`
+ * import path.
  */
 export const getConditionColor = conditionTextColor;
 
@@ -32,7 +33,7 @@ export function formatConditionLabel(value: string | null | undefined): string {
  * Renders: `{qty >= 2 ? "x{qty} " : ""}{condition} {title}`
  * with condition-based colors and yellow qty highlight.
  *
- * Uses: semantic.condition tokens (text-yellow-500, text-amber-800, text-black)
+ * Uses: semantic.condition tokens (text-yellow-500, text-orange-900, text-black)
  */
 export function ConditionText({
   condition,

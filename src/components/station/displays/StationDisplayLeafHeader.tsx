@@ -19,10 +19,15 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import type { DisplaysBreadcrumbSegment } from './displays-leaf-chrome';
 
+/**
+ * History ← → — re-enable hits on the pointer-events-none eyebrow (top-band
+ * twin). Enabled ink is `text-text-default` so ← is never mistaken for the
+ * disabled forward twin (`opacity-30` + soft).
+ */
 const HISTORY_BTN =
-  'inline-flex h-full w-6 shrink-0 items-center justify-center text-text-soft ' +
-  'hover:bg-surface-sunken hover:text-text-default ' +
-  'disabled:pointer-events-none disabled:opacity-30 ' +
+  'pointer-events-auto inline-flex h-full w-6 shrink-0 items-center justify-center ' +
+  'text-text-default hover:bg-surface-sunken ' +
+  'disabled:pointer-events-none disabled:opacity-30 disabled:text-text-soft ' +
   `${focusRing('control', 'accent')} outline-none`;
 
 export function StationDisplayLeafHeader({
@@ -92,14 +97,22 @@ export function StationDisplayLeafHeader({
         // 24px eyebrow band — same STATION_SECONDARY_BAND_FACE (h-6) seam as the
         // Displays index group eyebrows, the left-rail eyebrow, and carton
         // commerce row 2. Never a page-local h-10 chrome band.
-        // Sticky at z-base — below the inset resize sash (z-sticky) so ← → /
-        // title / this hairline never steal the left-edge drag. Column top
-        // band stays z-header so →| / fullscreen remain above the sash.
+        //
+        // Stacking matches the column top band (fullscreen / carton cursor):
+        // `z-header` + `pointer-events-none`, with ← → / trailing re-enabled.
+        // Sitting at `z-base` under the inset resize sash (`z-sticky`, full
+        // height `w-3`) made the Back chevron half-dead and look disabled —
+        // the sash ate the leading 12px of the history controls. Empty title
+        // gutter still lets the sash through for a T-junction drag.
         // Hairline via STATION_CHROME_SEAM_HAIRLINE — not border-b (avoids
         // notching the column border-l).
-        'sticky top-0 z-base flex w-full items-stretch bg-surface-card',
+        // `sticky` MUST follow STATION_CHROME_SEAM_HAIRLINE — that token sets
+        // `relative` for the `after:` hairline, and tailwind-merge drops the
+        // earlier position utility when both appear (Back band stopped sticking).
+        'pointer-events-none top-0 z-header flex w-full items-stretch bg-surface-card',
         STATION_SECONDARY_BAND_FACE,
         STATION_CHROME_SEAM_HAIRLINE,
+        'sticky',
         focusRing('control', 'accent'),
         'outline-none',
       )}
@@ -152,7 +165,7 @@ export function StationDisplayLeafHeader({
 
       {trailing != null ? (
         <div
-          className="flex h-full shrink-0 items-stretch py-0 pr-0.5"
+          className="pointer-events-auto flex h-full shrink-0 items-stretch py-0 pr-0.5"
           data-station-displays-leaf-trailing=""
           data-testid="station-displays-leaf-trailing"
         >

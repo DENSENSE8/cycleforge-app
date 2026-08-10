@@ -7,6 +7,7 @@ import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FOCUS_SCAN_HOTKEY_RE } from '@/lib/schemas/staff-preferences';
+import { NEXT_SCAN_CHORD_LABEL } from '@/lib/scan-hotkey/store';
 import { useScanHotkey } from '@/lib/scan-hotkey/useScanHotkey';
 import { cn } from '@/utils/_cn';
 
@@ -16,14 +17,15 @@ interface ScanHotkeyControlProps {
 }
 
 /**
- * The shared focus-scan hotkey affordance that lives in EVERY StationScanBar's
- * left icon slot.
+ * The shared scan-bar hotkey affordance that lives in EVERY StationScanBar's
+ * left icon slot (Ticket · Tracking · PO ingestion).
  *
  * At rest the bar's contextual icon shows. On bar hover the icon cross-fades to
  * a gear in the same 17px slot (opacity only — no slide, no padding push). The
- * current hotkey lives in the reassign dropdown, not beside the gear. Slot
- * geometry comes from `STATION_SCAN_BAR_ICON_SLOT_CLASS` /
- * `SIDEBAR_RAIL_DOT_TRACK` — do not add per-caller `-ml-1` or hover `pl-*`.
+ * dropdown leads with the house **next-scan** chord (`⌘.`) and keeps Insert /
+ * ScrollLock / F1–F12 as the remappable reclaim key. Slot geometry comes from
+ * `STATION_SCAN_BAR_ICON_SLOT_CLASS` / `SIDEBAR_RAIL_DOT_TRACK` — do not add
+ * per-caller `-ml-1` or hover `pl-*`.
  */
 export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
   const { hotkey, setHotkey, setCapturing } = useScanHotkey();
@@ -39,8 +41,8 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
     gearRef.current?.blur();
   }, []);
 
-  // While the popover is open we're in capture mode: stand the global listener
-  // down and grab the next keystroke (capture phase, so we beat every handler).
+  // While the popover is open we're in capture mode for the *reclaim* key only:
+  // stand the global listener down and grab the next bare keystroke.
   useEffect(() => {
     if (!open) return;
     setCapturing(true);
@@ -50,6 +52,11 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
       e.stopPropagation();
       if (e.key === 'Escape') {
         close();
+        return;
+      }
+      // Next-scan is a fixed modifier chord — never capture Meta/Ctrl+. here.
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        setError(`Next scan is fixed at ${NEXT_SCAN_CHORD_LABEL} — pick a reclaim key`);
         return;
       }
       if (FOCUS_SCAN_HOTKEY_RE.test(e.key)) {
@@ -81,14 +88,16 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
         {children}
       </span>
 
-      {/* Gear — same box as the resting icon; opacity cross-fade only. Hotkey
-          chip lives in the dropdown below so the input never shifts. */}
-      <HoverTooltip label={`Focus scan — press ${hotkey}. Click to change.`} asChild>
+      {/* Gear — same box as the resting icon; opacity cross-fade only. */}
+      <HoverTooltip
+        label={`Next scan ${NEXT_SCAN_CHORD_LABEL} · reclaim ${hotkey}. Click for details.`}
+        asChild
+      >
         <button
           ref={gearRef}
           type="button"
           onClick={() => (open ? close() : setOpen(true))}
-          aria-label={`Focus-scan hotkey is ${hotkey}. Click to reassign.`}
+          aria-label={`Next scan ${NEXT_SCAN_CHORD_LABEL}. Reclaim focus is ${hotkey}. Click to change reclaim.`}
           className={cn(
             'ds-raw-button',
             'absolute inset-0 inline-flex items-center justify-center rounded-md text-text-soft transition-opacity duration-150 hover:text-blue-600 focus-visible:opacity-100 focus-visible:outline-none',
@@ -116,33 +125,48 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-role-eyebrow uppercase tracking-wider text-text-soft">
-              Focus-scan hotkey
+              Scan bar hotkeys
             </span>
             <IconButton
               icon={<X className="h-3 w-3" />}
               onClick={close}
-              ariaLabel="Cancel reassign"
+              ariaLabel="Cancel"
               className="inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-surface-sunken"
             />
           </div>
 
+          {/* Primary — next scan (fixed house default for Ticket · Tracking · PO). */}
           <div className="mt-2 flex items-center gap-2">
             <kbd className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-mono text-xs font-semibold text-blue-700">
-              {hotkey}
+              {NEXT_SCAN_CHORD_LABEL}
             </kbd>
             <span className="text-xs font-semibold text-text-muted">
-              Press a key…
+              Next scan — clear + focus
             </span>
           </div>
 
-          <p
-            className={cn(
-              'mt-1.5 text-role-caption font-medium',
-              error ? 'text-rose-600' : 'text-text-faint',
-            )}
-          >
-            {error ?? 'Insert · ScrollLock · F1–F12 · Esc to cancel'}
-          </p>
+          {/* Secondary — remappable reclaim (Insert / F*). */}
+          <div className="mt-2.5 border-t border-border-soft/70 pt-2.5">
+            <p className="text-role-eyebrow uppercase tracking-wider text-text-faint">
+              Reclaim focus
+            </p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <kbd className="rounded-md border border-border-soft bg-surface-canvas px-2 py-1 font-mono text-xs font-semibold text-text-muted">
+                {hotkey}
+              </kbd>
+              <span className="text-xs font-semibold text-text-muted">
+                Press a key…
+              </span>
+            </div>
+            <p
+              className={cn(
+                'mt-1.5 text-role-caption font-medium',
+                error ? 'text-rose-600' : 'text-text-faint',
+              )}
+            >
+              {error ?? 'Insert · ScrollLock · F1–F12 · Esc to cancel'}
+            </p>
+          </div>
         </motion.div>
       </AnchoredLayer>
     </span>

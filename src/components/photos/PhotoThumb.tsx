@@ -1,10 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, useReducedMotion } from '@/design-system/motion';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { AlertTriangle, Image as ImageIcon } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
@@ -21,6 +17,30 @@ const loadedPhotoUrls = new Set<string>();
  * Thumbnails use stable same-origin content URLs. Unknown images defer their
  * request until the tile is near the viewport; previously loaded images render
  * immediately when list/grid view trees remount.
+ *
+ * ## It does not animate (2026-08-09)
+ *
+ * This was a `motion.div` carrying a `layoutId` hero morph paired with
+ * `PhotoViewerModal`'s main image, plus a 500ms opacity fade-in and a pulsing
+ * gradient placeholder. All three are gone, and the file imports no motion at
+ * all. Three reasons, in the order they matter:
+ *
+ *  1. **`layoutId` for list → detail is banned by house law**
+ *     (`display/motion-crossfade.md`): opening the viewer is a *replace*, not a
+ *     *move*, and shared-layout there produces a morphing artifact rather than
+ *     continuity. The tile side was the only thing keeping the pair alive.
+ *  2. **It leaked geometry into unrelated surfaces.** The morph's projected box
+ *     overshot the tile's own grid cell, so the file had to raise `z-index` for
+ *     the duration, `PhotoCard` had to refuse `overflow-hidden`, and the page's
+ *     sheet plane had to refuse `TABLE_SURFACE_SHEET_CLASS` — three unrelated
+ *     files carrying a constraint for one animation.
+ *  3. **A 500ms fade on a contact sheet is 48 fades.** At library density the
+ *     stagger reads as the page failing to settle, which is the opposite of what
+ *     a fade is for.
+ *
+ * Loading is now an honest static placeholder. The other four consumers
+ * (pickers, folder covers, claim attachments) never passed `heroId` and are
+ * unaffected. SoT: `.claude/rules/display/media-library.md`.
  */
 export function PhotoThumb({
   src,
@@ -28,7 +48,6 @@ export function PhotoThumb({
   ratio = 'square',
   damage = false,
   className,
-  heroId,
 }: {
   src: string;
   alt: string;
@@ -40,13 +59,6 @@ export function PhotoThumb({
   /** Surfaces a small damage dot — the one status worth flagging on the tile. */
   damage?: boolean;
   className?: string;
-  /**
-   * Shared `layoutId` (from `photoHeroLayoutId`) pairing this tile with the
-   * fullscreen viewer's main image, so opening it morphs THIS tile into the
-   * lightbox rather than crossfading two unrelated elements. Omit to render a
-   * plain (non-shared-layout) tile.
-   */
-  heroId?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -55,15 +67,7 @@ export function PhotoThumb({
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
     initiallyLoaded ? 'loaded' : 'loading',
   );
-  const reduce = useReducedMotion();
-  const heroTransition = useMotionTransition(framerTransition.photoHeroMorph);
   const cover = ratio === 'square' || ratio === 'fill';
-  // The hero morph's close-side handoff (viewer → this tile) plays a layout
-  // animation ON this element — its projected box briefly overshoots the tile's
-  // own cell into neighboring rows. Grid siblings paint in DOM order by default,
-  // so a later row would otherwise draw over the still-traveling photo; bump
-  // z-index only for that window so it clears every row, then drop back to flow.
-  const [isMorphing, setIsMorphing] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -99,13 +103,8 @@ export function PhotoThumb({
   }, [shouldLoad, src]);
 
   return (
-    <motion.div
+    <div
       ref={containerRef}
-      layoutId={reduce ? undefined : heroId}
-      transition={heroTransition}
-      onLayoutAnimationStart={() => setIsMorphing(true)}
-      onLayoutAnimationComplete={() => setIsMorphing(false)}
-      style={{ zIndex: isMorphing ? zIndex.raised : undefined }}
       className={cn(
         'relative overflow-hidden bg-surface-sunken',
         ratio === 'square' ? 'aspect-square'
@@ -117,14 +116,12 @@ export function PhotoThumb({
         className,
       )}
     >
+      {/* Static placeholder — the tile's own `bg-surface-sunken` at the real
+          geometry. A pulsing gradient here was 48 things breathing at once on a
+          contact sheet; reserving the box is the honest half of that signal and
+          the only half the operator reads. */}
       {status === 'loading' ? (
-        <div
-          aria-hidden="true"
-          className={cn(
-            'absolute inset-0 bg-gradient-to-br from-gray-100 via-gray-200/70 to-gray-100',
-            reduce ? '' : 'animate-pulse',
-          )}
-        />
+        <div aria-hidden="true" className="absolute inset-0 bg-surface-sunken" />
       ) : null}
 
       {status === 'error' ? (
@@ -154,8 +151,9 @@ export function PhotoThumb({
               : cover
                 ? 'h-full w-full object-cover'
                 : 'block h-auto w-full',
-            'transition-opacity',
-            reduce ? 'duration-0' : 'duration-500',
+            // No fade — the image replaces the placeholder on the frame it
+            // decodes. Both boxes are the same size, so there is nothing to
+            // smooth over.
             status === 'loaded' ? 'opacity-100' : 'opacity-0',
           )}
         />
@@ -168,6 +166,6 @@ export function PhotoThumb({
           </span>
         </HoverTooltip>
       ) : null}
-    </motion.div>
+    </div>
   );
 }

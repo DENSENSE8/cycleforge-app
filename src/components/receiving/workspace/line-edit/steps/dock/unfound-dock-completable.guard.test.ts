@@ -1,6 +1,7 @@
 /**
  * Unfound capture is dock-completable — every UNFOUND_CAPTURE step has a dock
- * control OR a stated actionless reason (arrival_check only today).
+ * control OR a stated actionless reason (none today — arrival_label_photo mounts
+ * Upload | Send to phone).
  *
  * HANDOFF: docs/todo/unfound-dock-receive-HANDOFF.md
  *

@@ -41,7 +41,7 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'order', 'age', 'title', 'tester', 'testedAt', 'condition', 'qty', 'tracking', '_fill'],
+      ['select', 'order', 'age', 'title', 'tester', 'testedAt', 'packStation', 'condition', 'qty', 'tracking', '_fill'],
     );
     assert.ok(!defs.some((d) => d.id === 'status'), 'Status pill is not on the TESTED tab');
     assert.ok(!defs.some((d) => d.id === 'platform'), 'Platform column is retired');

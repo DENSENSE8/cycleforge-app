@@ -5,6 +5,9 @@
  *
  * One row is the existing `RepairDetailsPanel` (`detail:repair`). Close clears
  * the check-set (History / order-rail D4).
+ *
+ * Roster rows compose {@link RailSelectionRosterRow} / {@link StackedRowIdentity}
+ * (product title → TicketChip · SKU) — never a single-line ticket | status twin.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -14,27 +17,50 @@ import {
   RailSelectionBand,
   useRailActionSnapshot,
 } from '@/components/right-rail/RailSelectionActions';
+import {
+  RailSelectionRoster,
+  RailSelectionRosterRow,
+} from '@/components/right-rail/RailSelectionRoster';
+import { SkuScanRefChip, TicketChip, getLast8 } from '@/components/ui/CopyChip';
+import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import {
   isRepairRailBatchActive,
   resolveRepairRailOccupancy,
 } from '@/lib/right-rail/repair-selection-occupancy';
 import { repairTicketValue } from '@/lib/repair/repair-grid-layout';
+import { supportTicketIdFace } from '@/lib/support/ticket-refs';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 
 function rosterTitle(row: RSRecord): string {
-  const ticket = repairTicketValue(row);
-  if (ticket) return ticket;
+  const product = String(row.product_title || '').trim();
+  if (product) return product;
   const name = String(row.customer_name || '').trim();
   if (name) return name;
   return '—';
 }
 
-function rosterMeta(row: RSRecord): string {
-  const status = String(row.status || '').trim();
-  if (status) return status;
+function rosterKeys(row: RSRecord) {
+  const ticket = repairTicketValue(row);
+  const face = ticket ? supportTicketIdFace(ticket) : null;
   const sku = String(row.source_sku || '').trim();
-  return sku || '—';
+  const status = String(row.status || '').trim();
+  return joinStackedIdentityKeys([
+    face ? (
+      <TicketChip key="ticket" value={face.value} display={face.display} dense />
+    ) : null,
+    sku ? (
+      <SkuScanRefChip key="sku" value={sku} display={getLast8(sku)} dense />
+    ) : null,
+    status ? (
+      <span
+        key="status"
+        className="text-role-eyebrow uppercase tracking-widest text-text-soft"
+      >
+        {status}
+      </span>
+    ) : null,
+  ]);
 }
 
 export function RepairRailShell() {
@@ -63,20 +89,21 @@ export function RepairRailShell() {
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
         <RailSelectionBand onClose={handleClose} />
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <ul className="divide-y divide-border-soft">
-            {repairRows.map((row) => (
-              <li key={row.id} className="flex items-center gap-2 px-4 py-1.5">
-                <span className="truncate text-role-caption font-semibold text-text-default">
-                  {rosterTitle(row)}
-                </span>
-                <span className="ml-auto shrink-0 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  {rosterMeta(row)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <RailSelectionRoster>
+          {repairRows.map((row) => (
+            <RailSelectionRosterRow
+              key={row.id}
+              title={rosterTitle(row)}
+              keys={
+                rosterKeys(row) ?? (
+                  <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                    —
+                  </span>
+                )
+              }
+            />
+          ))}
+        </RailSelectionRoster>
 
         <RailActionRegion />
       </div>

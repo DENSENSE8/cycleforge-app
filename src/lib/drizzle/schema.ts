@@ -1686,7 +1686,7 @@ export const receivingLineReturn = pgTable('receiving_line_return', {
   orgSourceOrderIdx: index('idx_receiving_line_return_org_source_order').on(table.organizationId, table.sourceOrderId),
 }));
 
-/** Putaway facts (location_code, bin, put_away_*). 1:1. */
+/** Putaway facts (location_code, bin, put_away_* · staged_*). 1:1. */
 export const receivingLinePutaway = pgTable('receiving_line_putaway', {
   receivingLineId: integer('receiving_line_id').primaryKey().references(() => receivingLines.id, { onDelete: 'cascade' }),
   organizationId: orgIdCol(),
@@ -1694,10 +1694,22 @@ export const receivingLinePutaway = pgTable('receiving_line_putaway', {
   bin: text('bin'),
   putAwayAt: timestamp('put_away_at', { withTimezone: true }),
   putAwayBy: integer('put_away_by').references(() => staff.id, { onDelete: 'set null' }),
+  /**
+   * Intended putaway bin scanned on Unbox commit `stage` (after print, before
+   * receive). Distinct from Arrival `receiving_triage.staging_location_id`.
+   * Migration 2026-08-09c.
+   */
+  stagedLocationId: integer('staged_location_id').references(() => locations.id, { onDelete: 'set null' }),
+  stagedAt: timestamp('staged_at', { withTimezone: true }),
+  stagedBy: integer('staged_by').references(() => staff.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   orgLocationIdx: index('idx_receiving_line_putaway_org_location').on(table.organizationId, table.locationCode),
+  orgStagedLocationIdx: index('idx_receiving_line_putaway_org_staged_location').on(
+    table.organizationId,
+    table.stagedLocationId,
+  ),
 }));
 
 /**
@@ -3037,9 +3049,11 @@ export const techVerifications = pgTable('tech_verifications', {
  * The room/row/col triple plus zone_letter encodes each bin; barcode is the
  * scannable surface. NOT to be confused with zoho_locations (Zoho warehouse
  * mirror) which still lives separately above.
+ * `location_kind` (2026-08-09) types ROOM / DESK / STAGING / BIN / … hierarchy.
  */
 export const locations = pgTable('locations', {
   id: serial('id').primaryKey(),
+  organizationId: orgIdCol(),
   name: text('name').notNull().unique(),
   room: text('room'),
   description: text('description'),
@@ -3053,9 +3067,109 @@ export const locations = pgTable('locations', {
   parentId: integer('parent_id'),
   /** Server-of-record letter for the room. NULL on bin rows; set on the parent room row only. */
   zoneLetter: text('zone_letter'),
+  /**
+   * Typed place kind — ROOM / DESK / STAGING / BIN / …
+   * Packing benches are DESK; packing-room overflow is STAGING.
+   */
+  locationKind: text('location_kind').notNull().default('BIN'),
+  /** Inventory v2 role — pickability / replenishment (SQL enum bin_role_enum). */
+  binRole: text('bin_role').notNull().default('RESERVE'),
+  lockedForCount: boolean('locked_for_count').notNull().default(false),
+  warehouseId: integer('warehouse_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * order_pack_placements — current packing-station / staging place for an open
+ * labeled outbound order (Ready-to-Pack → pack). One row per order.
+ * Migration 2026-08-09b.
+ */
+export const orderPackPlacements = pgTable('order_pack_placements', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  locationId: integer('location_id').notNull().references(() => locations.id),
+  placedAt: timestamp('placed_at', { withTimezone: true }).notNull().defaultNow(),
+  placedByStaffId: integer('placed_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  source: text('source').notNull().default('tech_scan'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgOrderUniq: uniqueIndex('order_pack_placements_org_order_unique').on(
+    table.organizationId,
+    table.orderId,
+  ),
+  orgLocationIdx: index('idx_order_pack_placements_org_location').on(
+    table.organizationId,
+    table.locationId,
+  ),
+}));
+
+/** Append-only place/move/clear audit for order_pack_placements. */
+export const orderPackPlacementEvents = pgTable('order_pack_placement_events', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  fromLocationId: integer('from_location_id').references(() => locations.id),
+  toLocationId: integer('to_location_id').notNull().references(() => locations.id),
+  staffId: integer('staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  source: text('source').notNull().default('move'),
+  reason: text('reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgOrderIdx: index('idx_order_pack_placement_events_org_order').on(
+    table.organizationId,
+    table.orderId,
+    table.createdAt,
+  ),
+}));
+
+/**
+ * unit_pack_placements — current packing-station / staging place for a loose
+ * serialized unit staged at Ready-to-Pack (Phase 2 sibling of
+ * order_pack_placements). WIP staging, NOT stock putaway. One row per unit.
+ * Migration 2026-08-09c.
+ */
+export const unitPackPlacements = pgTable('unit_pack_placements', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  unitId: integer('unit_id').notNull().references(() => serialUnits.id, { onDelete: 'cascade' }),
+  locationId: integer('location_id').notNull().references(() => locations.id),
+  placedAt: timestamp('placed_at', { withTimezone: true }).notNull().defaultNow(),
+  placedByStaffId: integer('placed_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  source: text('source').notNull().default('tech_scan'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgUnitUniq: uniqueIndex('unit_pack_placements_org_unit_unique').on(
+    table.organizationId,
+    table.unitId,
+  ),
+  orgLocationIdx: index('idx_unit_pack_placements_org_location').on(
+    table.organizationId,
+    table.locationId,
+  ),
+}));
+
+/** Append-only place/move/clear audit for unit_pack_placements. */
+export const unitPackPlacementEvents = pgTable('unit_pack_placement_events', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  unitId: integer('unit_id').notNull().references(() => serialUnits.id, { onDelete: 'cascade' }),
+  fromLocationId: integer('from_location_id').references(() => locations.id),
+  toLocationId: integer('to_location_id').notNull().references(() => locations.id),
+  staffId: integer('staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  source: text('source').notNull().default('move'),
+  reason: text('reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgUnitIdx: index('idx_unit_pack_placement_events_org_unit').on(
+    table.organizationId,
+    table.unitId,
+    table.createdAt,
+  ),
+}));
 
 /**
  * bin_contents — what SKU lives in which bin, and how many.
@@ -5416,6 +5530,54 @@ export const savedViews = pgTable('saved_views', {
 
 export type SavedViewsRow = typeof savedViews.$inferSelect;
 export type NewSavedViewsRow = typeof savedViews.$inferInsert;
+
+// ─── View monitors (watch-a-view: queue-threshold alerts + digests) ──────────
+//
+// Birth migration: 2026-08-10_view_monitors.sql. Cron-evaluated, edge-triggered
+// alerts on a watched saved view / queue, delivered through the existing
+// notification_outbox → staff_inbox_items → Ably pipeline (or thrown as a task).
+// Decision B: monitor_surface/monitor_params are a SNAPSHOT of the watched view;
+// source_view_id is informational only (ON DELETE SET NULL) and is NEVER joined
+// to resolve a value, so a renamed/deleted personal view never breaks the watch.
+// The three CHECK constraints (threshold_type / action_type / monitor_state)
+// must stay in lockstep with the vocabularies in src/lib/monitors/*.
+export const viewMonitors = pgTable('view_monitors', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  // Owner = recipient (personal-only MVP).
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  // Informational back-link (decision B: snapshot, not dependency).
+  sourceViewId: bigint('source_view_id', { mode: 'number' }).references(() => savedViews.id, {
+    onDelete: 'set null',
+  }),
+  // Snapshot of the watched view at arm time.
+  monitorSurface: text('monitor_surface').notNull(),
+  monitorParams: jsonb('monitor_params').notNull().default({}),
+  /** CHECK view_monitors_threshold_type_chk: count_above|count_below|item_aging|scheduled_digest. */
+  thresholdType: text('threshold_type').notNull(),
+  thresholdValue: numeric('threshold_value'),
+  recoveryValue: numeric('recovery_value'),
+  cooldownInterval: interval('cooldown_interval'),
+  /** CHECK view_monitors_action_type_chk: inbox_notification|throw_task. */
+  actionType: text('action_type').notNull(),
+  cadence: text('cadence'),
+  /** CHECK view_monitors_state_chk: armed|breached. */
+  monitorState: text('monitor_state').notNull().default('armed'),
+  lastValue: numeric('last_value'),
+  lastEvaluatedAt: timestamp('last_evaluated_at', { withTimezone: true }),
+  breachedAt: timestamp('breached_at', { withTimezone: true }),
+  lastFiredAt: timestamp('last_fired_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgStaffIdx: index('idx_view_monitors_org_staff').on(table.organizationId, table.staffId),
+  breachedIdx: index('idx_view_monitors_breached')
+    .on(table.organizationId)
+    .where(sql`monitor_state = 'breached'`),
+}));
+
+export type ViewMonitorRow = typeof viewMonitors.$inferSelect;
+export type NewViewMonitorRow = typeof viewMonitors.$inferInsert;
 
 // ─── Custom field defs / values (2026-08-08f) ────────────────────────────────
 export const customFieldDefs = pgTable('custom_field_defs', {

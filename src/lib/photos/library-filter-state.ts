@@ -320,6 +320,12 @@ export const PHOTO_SOURCE_SCOPE_LABELS: Record<PhotoLibrarySourceScope, string> 
   outbound: 'Outbound',
 };
 
+/**
+ * Outbound's document sub-filter vocabulary. Consumed by the Band-2 refine
+ * popover (`PhotoLibraryWorkspaceHeader`) — the chip strip that used to hold it
+ * was deleted with the facet rail 2026-08-09, but the LABELS are the SoT and
+ * stay here; a facet that narrows rows rides in the find field now.
+ */
 export const OUTBOUND_DOCUMENT_TYPE_LABELS: Record<OutboundDocumentTypeFilter | 'pack_photos', string> = {
   all: 'All documents',
   shipping_label: 'Shipping labels',
@@ -523,26 +529,43 @@ export function parsePhotoLibraryFilters(params: URLSearchParams): PhotoLibraryF
   return next;
 }
 
-/**
- * Display state = `view` + `page` only.
- *
- * There is deliberately no `?photoId=` record selection here. The library's
- * open-a-photo surface is the shared fullscreen viewer, whose selection is
- * EPHEMERAL by design (see `usePhotoGridLightbox`) — it opens on a tile click,
- * pages left/right within that photo's group, and closes. The retired
- * inspector's `?photoId=` went with it; re-adding a durable record param means
- * re-answering what happens when a filter change evicts that photo from the
- * result set, which is exactly the complexity the viewer avoids by staying
- * ephemeral.
- */
-export function parsePhotoLibraryDisplayParams(params: URLSearchParams): {
+/** Display state = `view` + `page` + the open inspector record (`photoId`). */
+interface PhotoLibraryDisplayState {
   view: PhotoLibraryViewMode;
   page: number;
-} {
+  /** The one photo open in the desk inspector, or `undefined` when closed. */
+  photoId?: string;
+}
+
+/**
+ * `?photoId=` is a DISPLAY param, never a filter — it must never reach
+ * `buildLibraryWhere`, or opening a photo would narrow the stream it was picked
+ * from.
+ *
+ * **The eviction rule** (the question the retired inspector never answered, and
+ * the reason `?photoId=` was banned here until 2026-08-09): the param is
+ * *written from selection and cleared with it*. A filter change that drops the
+ * photo from the loaded set clears the selection — which clears the param and
+ * closes the rail. One rule, no second concept: there is no "open photo" state
+ * that can outlive the selection that opened it.
+ *
+ * The tile click is unaffected and still opens the fullscreen viewer, whose own
+ * selection stays EPHEMERAL by design (see `usePhotoGridLightbox`). The
+ * inspector is the n = 1 face of the selection plane, not a second click target.
+ *
+ * Deliberately **not** part of `MediaViewPayload` (`useMediaLibrarySavedViews`):
+ * a saved view that reopened one photo would be a bug, and `applyView` builds a
+ * display bag without `photoId`, so applying one drops it.
+ */
+export function parsePhotoLibraryDisplayParams(
+  params: URLSearchParams,
+): PhotoLibraryDisplayState {
   const pageRaw = parseInt(params.get('page') ?? '1', 10);
+  const photoId = params.get('photoId')?.trim();
   return {
     view: parsePhotoLibraryViewMode(params.get('view')),
     page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,
+    ...(photoId && /^[1-9]\d*$/.test(photoId) ? { photoId } : {}),
   };
 }
 
@@ -598,7 +621,7 @@ export function photoLibraryFiltersToParams(
 
 export function photoLibraryUrlParams(
   filters: PhotoLibraryFilterState,
-  display: { view: PhotoLibraryViewMode; page: number },
+  display: PhotoLibraryDisplayState,
   base?: URLSearchParams,
 ): URLSearchParams {
   const params = photoLibraryFiltersToParams(filters, base);
@@ -610,6 +633,11 @@ export function photoLibraryUrlParams(
   else params.delete('view');
   if (display.page > 1) params.set('page', String(display.page));
   else params.delete('page');
+  // Absent from the display bag = the inspector is closed. This is what makes
+  // `applyView` / `clearAll` drop an open photo without either of them naming
+  // it: they construct a fresh display bag rather than copying this one.
+  if (display.photoId) params.set('photoId', display.photoId);
+  else params.delete('photoId');
   return params;
 }
 

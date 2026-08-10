@@ -24,7 +24,7 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { FLOOR_DELETE_PEER_CLASS, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -278,16 +278,16 @@ export function RepairDetailsPanel({
               )
             ) : undefined
           }
-          delete={
-            <InspectorFlushDelete
-              onConfirm={c.handleDelete}
-              onDeleted={onClose}
-              label="Delete repair"
-              confirmLabel="Click again to confirm delete"
-              data-testid="repair-details-delete"
-            />
-          }
-        />
+        >
+          <InspectorFlushDelete
+            onConfirm={c.handleDelete}
+            onDeleted={onClose}
+            label="Delete repair"
+            confirmLabel="Click again to confirm delete"
+            data-testid="repair-details-delete"
+            className={FLOOR_DELETE_PEER_CLASS}
+          />
+        </InspectorActionFloor>
 
         {c.isMounted && c.showPickupFlow
           ? createPortal(

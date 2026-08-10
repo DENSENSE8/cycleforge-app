@@ -25,8 +25,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Copy, ExternalLink } from '@/components/Icons';
 import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
@@ -35,7 +34,11 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import {
+  FLOOR_DELETE_PEER_CLASS,
+  FloorIconButton,
+  InspectorActionFloor,
+} from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import {
   PaneHeaderIconBadge,
@@ -187,42 +190,35 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
               </p>
             )
           }
-          leading={
-            <div className="flex items-stretch divide-x divide-border-hairline">
-              {c.externalUrl && c.externalLabel ? (
-                <a
-                  href={c.externalUrl}
-                  target={row.kind === 'email_po' ? '_blank' : undefined}
-                  rel={row.kind === 'email_po' ? 'noreferrer' : undefined}
-                  className="inline-flex h-10 items-center gap-1.5 px-2.5 text-role-micro uppercase tracking-wider text-text-muted hover:bg-surface-hover"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {c.externalLabel}
-                </a>
-              ) : null}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void c.handleCopyAll()}
-                className="h-10 rounded-none px-2.5 text-role-micro uppercase tracking-wider text-text-muted"
-              >
-                Copy details
-              </Button>
-            </div>
-          }
-          delete={
-            c.canHardDelete ? (
-              <InspectorFlushDelete
-                isArmed={c.confirmingDelete}
-                isDeleting={c.deleting}
-                onClick={() => void c.handleDelete()}
-                label="Delete row"
-                confirmLabel="Click again to confirm delete"
-                data-testid="unfound-details-delete"
-              />
-            ) : undefined
-          }
-        />
+        >
+          {c.externalUrl && c.externalLabel ? (
+            <FloorIconButton
+              icon={<ExternalLink />}
+              label={c.externalLabel}
+              href={c.externalUrl}
+              hrefTarget={row.kind === 'email_po' ? '_blank' : undefined}
+              hrefRel={row.kind === 'email_po' ? 'noreferrer' : undefined}
+              data-testid="unfound-details-external"
+            />
+          ) : null}
+          <FloorIconButton
+            icon={<Copy />}
+            label="Copy details"
+            onClick={() => void c.handleCopyAll()}
+            data-testid="unfound-details-copy"
+          />
+          {c.canHardDelete ? (
+            <InspectorFlushDelete
+              isArmed={c.confirmingDelete}
+              isDeleting={c.deleting}
+              onClick={() => void c.handleDelete()}
+              label="Delete row"
+              confirmLabel="Click again to confirm delete"
+              data-testid="unfound-details-delete"
+              className={FLOOR_DELETE_PEER_CLASS}
+            />
+          ) : null}
+        </InspectorActionFloor>
       </div>
     </DetailStackRailRegistrar>
   );

@@ -158,7 +158,7 @@ two sanctioned layout jobs below, which may run up to **~400ms** on `motionBezie
 **Sanctioned layout animation #1: a deliberate PUSH toggle.** A panel that makes room for itself — the sidebar
 nav column (`framerTransition.sidebarNavColumnMount`), the right-rail
 inspector (`RightRailHost` in push mode), the photo viewer's details drawer (`photoContextPanelMount`), a
-`collapseHeight` reveal — animates its **own** `width`/`height` as a flex sibling,
+`collapseHeight` reveal **for in-content disclosures** — animates its **own** `width`/`height` as a flex sibling,
 because "make room" *is* a reflow and has no transform-only spelling. Three conditions, all required:
 
 - **The operator asked for it.** It fires on an explicit toggle, once per request — not on selection, keystroke,
@@ -171,23 +171,31 @@ because "make room" *is* a reflow and has no transform-only spelling. Three cond
     slides out from behind the frame edge (`SidebarNavColumn`).
   - **Outset grip → the card animates itself.** `HorizontalEdgeResizeHandle` `placement="outset"` renders the pill
     *outside* the card border, so an `overflow-hidden` host would shear it. Animate the card's own width at
-    `overflow-visible` and clip on an **inner** shell instead (`RightRailHost`). This is the
-    same recipe, not a second drawer — do not "fix" one into the other.
+    `overflow-visible` and clip on an **inner** shell instead (photo drawer and any surface that still
+    elects the tween). This is the same recipe, not a second drawer — do not "fix" one into the other.
   - **Context rail (`ContextPanelLayout`) parks/restores with NO width tween** — instant `style.width`
     snap, same as Station Displays in-flow mount. Live sash drag still paints every frame; only the
     open↔park toggle is animation-free.
+  - **Desk `RightRailHost` push (Orders · History · Incoming · …) also snaps** — plain `<aside style={{ width }}>`
+    with no `motionRole.push.rail`, no opacity presence, no occupant crossfade on open. Row select must land
+    the inspector on the same frame (Unbox Displays twin). Overlay / modal / intake keep their presence fade.
 
-**A push column that mounts and unmounts needs its `AnimatePresence` to OUTLIVE its child.** A presence that mounts
+**Not Workbench KPI Band 2 (or sibling sheet-chrome metric doors).** Those free/occupy height *above the
+grid* and must **snap instantly** (`WorkbenchKpiBand` → `hidden`) — never `collapseHeight` / opacity /
+layout tween. Warehouse ops chrome is a tool door, not a push flourish. Hard law: `AGENTS.md` → Ops chrome
+binary show/hide is instant. Guard: `workbench-kpi-collapse.guard.test.ts`.
+
+**A push column that still tweens** (photo drawer and other surfaces that elect
+`motionRole.push.rail`) needs its `AnimatePresence` to OUTLIVE its child. A presence that mounts
 together with its child suppresses the enter under `initial={false}`; one that unmounts with its child can never play
 the exit at all. Keep the presence resident and toggle the child — an empty presence renders no element and costs
 nothing in the flow. And use an **opacity-only** presence preset (`framerPresence.detailStackPush`): the width tween
 already owns arrive/leave, so an `x` translate would slide the column out of the slot it just reserved.
 `framerPresence.detailStackOverlay`'s `x: 48` is correct **only** for the fixed/overlay branch.
 
-**Two `AnimatePresence`, two keys.** The outer one (the column joining/leaving the flow) keys on a **constant**; the
-inner one (the record→record crossfade) keys on the **occupant id**. Keying the outer on the occupant would collapse
-the column to 0 and grow it again on every genuine record swap — the exit→empty→enter the stable-occupant-id rule
-exists to prevent.
+**Desk `RightRailHost` push does not use that recipe.** It mounts a plain `<aside style={{ width }}>` (instant
+snap). Stable occupant ids (`detail:order`, …) keep the column mounted across record→record swaps so content
+updates in place — never exit→empty→enter. Overlay occupants alone keep `AnimatePresence` + the overlay preset.
 
 Transform-only remains the law for everything that merely *moves* or *swaps*. If a panel can do its job by covering,
 it covers.

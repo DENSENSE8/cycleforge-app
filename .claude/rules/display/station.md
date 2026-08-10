@@ -50,11 +50,16 @@ Top-to-bottom, a station is four parts and nothing more:
 
 - **Compose the scan bar, never re-wire its chrome.** Geometry, padding, icon slot, and placeholder styling live in
   `src/components/station/scan-bar/tokens.ts` (`STATION_SCAN_BAR_INPUT_CLASS`, `STATION_SCAN_BAR_ICON_SLOT_CLASS`, …).
-  Domain benches (tech, testing, receiving, pack, FBA) wrap `ThemedStationScanBar`, which layers the staff-theme border
-  + focus + submit trace onto the core `StationScanBar`. The mode / paste / spinner rail is an **absolute frosted veil**
-  (`backdrop-blur-sm` + translucent card + left fade) over the full-bleed input — long placeholder / typed text
-  soft-peeks under the glyphs. Clearance is **measured** (`ResizeObserver` → `padding-inline-end`), never magic
-  `pr-*` / `rightPadClass`. *Rationale: one geometry SoT; frost beats an opaque wall; measured pad tracks 1–4 modes.*
+  Domain benches (tech, testing, receiving, pack, FBA) wrap `ThemedStationScanBar` inside `ScanBandShell` (glow), which
+  layers the staff-theme border + focus + submit trace onto the core `StationScanBar`. Focused **ready HUD** is low-key
+  and lives on the **input column** only (flush corner reticle + RM-gated sweep + empty block caret) so width tracks
+  every station skin and never underlaps the frosted mode rail — placeholder + leading icon clear on focus. Mode-rail
+  stations pass `readyArm` so the empty focused face shows **icon + `{identity} armed`** (or `Auto`) — never `Scan …`
+  placeholder prose. Never a page-local cyberpunk twin or raw `motion/react` import. The mode / paste / spinner rail is
+  an **absolute frosted veil** (`backdrop-blur-sm` + translucent card + left fade) over the full-bleed input — long
+  typed text soft-peeks under the glyphs when idle. Clearance is **measured** (`ResizeObserver` → `padding-inline-end`),
+  never magic `pr-*` / `rightPadClass`. *Rationale: one geometry SoT; frost beats an opaque wall; measured pad tracks
+  1–4 modes; dropped-focus must name what is armed without fighting idle chrome.*
 - **Compose the entity-context header, never fork it.** Inbound carton benches (Unbox, Triage, Testing)
   and Shipping / Pack / Pickup active-order chrome import `CartonContextCard` + `StationContextBar`
   from `@/components/station/entity-context`. Thin adapters map controller bags → props; omit
@@ -141,9 +146,11 @@ The bar is dumb; classification is a pure layer.
 - **Selection is ephemeral — never URL-addressable.** The controller (`useStationTestingController`) holds the active
   entity in component state (`activeOrder`), not in `searchParams`. It is resolved → acted on → cleared. *Rationale:
   act-and-clear is the station contract; a durable `?id=` selection is a Workbench tell (see ../contextual-display.md).*
-- **Act-and-clear, with an auto-hide for completed work.** On completion the controller starts a timer
-  (`COMPLETED_ORDER_AUTO_HIDE_MS`) and then hides the card, falling back to the empty scan-ready state. *Rationale: a
-  finished entity must get out of the way so the bench is visibly ready for the next scan.*
+- **Act-and-clear — no timed auto-hide.** The active card stays until the next scan
+  replaces it or the operator clears it. Do not start a dwell timer
+  (`COMPLETED_ORDER_AUTO_HIDE_MS` and twins) that hides finished work behind the
+  operator's back. *Rationale: a finished entity must stay readable for confirmation /
+  undo; the next scan is the clear.*
 
 ---
 

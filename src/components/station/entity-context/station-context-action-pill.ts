@@ -36,6 +36,16 @@ export const STATION_CONTEXT_BOXED_CUBE_CLASS = [
 export const STATION_CONTEXT_EXIT_PILL_CLASS = `${STATION_CONTEXT_BOXED_CUBE_CLASS} h-full w-full`;
 
 /**
+ * Photos / Send-to-phone **tone** — the blue face shared by carton chrome
+ * Photos, flush camera cells, and Unbox dock `PhotoStepDockStrip` phone third.
+ *
+ * Geometry (width · seam · pad) stays on the host classes below. Upgrade the
+ * blue recipe HERE — never fork `bg-blue-50 text-blue-700` in a dock twin.
+ */
+export const STATION_CONTEXT_PHOTO_TONE =
+  'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-700';
+
+/**
  * Locked width: camera left, count/plus right (`justify-between`) with inset
  * pad so neither face kisses the border — digit growth must not shift the row.
  * Height fills chrome row 1 (`h-full`) — never Button `size` height.
@@ -45,14 +55,14 @@ export const STATION_CONTEXT_EXIT_PILL_CLASS = `${STATION_CONTEXT_BOXED_CUBE_CLA
  * the trailing vertical rule. Never stack Photos' own bottom+right borders
  * against Claim / Displays (that doubles the seam and optically shifts it).
  */
-export const STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-between px-1.5 text-role-caption border-b-0 border-r-0 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-700`;
+export const STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-between px-1.5 text-role-caption border-b-0 border-r-0 ${STATION_CONTEXT_PHOTO_TONE}`;
 
 /**
  * Square h-11 cell for Units explosion / joined serial rows — same blue face +
  * outline as {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
  */
 export const STATION_CONTEXT_PHOTO_FLUSH_CLASS =
-  `h-11 w-11 shrink-0 justify-center ${cornerClass('flush')} border border-blue-200 bg-blue-50 px-0 text-blue-700 hover:bg-blue-100 hover:text-blue-700`;
+  `h-11 w-11 shrink-0 justify-center ${cornerClass('flush')} border px-0 ${STATION_CONTEXT_PHOTO_TONE}`;
 
 /**
  * Locked width matches Photos / status so Claim does not reflow the commerce

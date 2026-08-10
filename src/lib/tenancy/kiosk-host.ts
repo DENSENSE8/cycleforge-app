@@ -1,5 +1,6 @@
 /**
- * Kiosk host SoT — `{slug}.kiosk.app.cycleforge.ai` (dogfood: usav.kiosk.app…).
+ * Kiosk host SoT — `{slug}.kiosk.app.cycleforge.ai` (long-term) + dogfood
+ * staff-path bridge (`/kiosk/v2` on the app host) until HUMAN-TODO J7b DNS.
  *
  * The host is a locator + isolation boundary. Write auth still comes from the
  * device row via `withKioskAuth` — never from Host alone. Pairing may reject
@@ -12,6 +13,9 @@ import { normalizeEnvValue, resolvePublicAppUrl } from '@/lib/env-utils';
 
 const DEFAULT_APP_HOSTNAME = 'app.cycleforge.ai';
 const DEFAULT_KIOSK_HOST_SUFFIX = 'kiosk.app.cycleforge.ai';
+
+/** Dogfood tablet home path on the staff app host (landscape shell). */
+export const KIOSK_DOGFOOD_UI_PATH = '/kiosk/v2';
 
 /** Labels that must never be treated as a tenant slug on a kiosk host. */
 const BLOCKED_KIOSK_SLUGS = new Set(['kiosk', 'www', 'app', 'api', 'admin']);
@@ -177,11 +181,42 @@ export function kioskOriginForSlug(slug: string, opts?: { port?: string }): stri
 }
 
 /**
+ * Dogfood bridge: serve `/kiosk` (+ `/kiosk/v2`) on the staff app host until
+ * `*.kiosk.app.cycleforge.ai` DNS (HUMAN-TODO J7b) is attached. Flip to false
+ * when subdomain cutover is ready so `staffKioskRedirectOrigin` / proxy 308
+ * resume.
+ */
+export function kioskPathDogfoodActive(): boolean {
+  return true;
+}
+
+/** True for the kiosk UI routes (`/kiosk`, `/kiosk/v2`, …) — not kiosk APIs. */
+export function isKioskUiPath(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return /^\/kiosk(?:$|\/)/.test(pathname);
+}
+
+/**
+ * Copyable dogfood tablet URL (landscape shell). Prefer same-origin when the
+ * browser is on the staff app; otherwise derive from public app URL.
+ */
+export function resolveKioskDogfoodUrl(opts?: { origin?: string | null }): string {
+  const origin =
+    (opts?.origin && opts.origin.replace(/\/+$/, '')) ||
+    (typeof window !== 'undefined' ? window.location.origin : '') ||
+    normalizeEnvValue(process.env.NEXT_PUBLIC_APP_URL).replace(/\/+$/, '') ||
+    (typeof window === 'undefined' ? resolvePublicAppUrl()?.replace(/\/+$/, '') ?? '' : '') ||
+    `https://${DEFAULT_APP_HOSTNAME}`;
+  return `${origin}${KIOSK_DOGFOOD_UI_PATH}`;
+}
+
+/**
  * Where staff-host `/kiosk` should permanently redirect (no trailing slash).
  *
+ * While `kioskPathDogfoodActive()` is true this always returns null — tablets
+ * use the staff-path URL. After J7b DNS:
  * - Tenant staff slug host → that org's kiosk origin
- * - Production apex + `DEFAULT_TENANT_SLUG` → that org's kiosk origin (dogfood
- *   DNS bridge — apex staff bookmarks/MDM must not dump tablets to sign-in)
+ * - Production apex + `DEFAULT_TENANT_SLUG` → that org's kiosk origin
  * - Otherwise → null (caller: serve `/kiosk` in non-prod for E2E, or sign-in
  *   in production when no bridge is configured)
  */
@@ -190,6 +225,9 @@ export function staffKioskRedirectOrigin(opts: {
   defaultTenantSlug?: string | null;
   isProduction: boolean;
 }): string | null {
+  // Path dogfood: do not 308 staff `/kiosk*` to the unresolved kiosk subdomain.
+  if (kioskPathDogfoodActive()) return null;
+
   const fromHost = String(opts.tenantSlug ?? '').trim().toLowerCase();
   if (fromHost) {
     try {

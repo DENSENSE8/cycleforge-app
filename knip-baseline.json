@@ -2,7 +2,7 @@
   "$comment": "Baseline of KNOWN knip findings (dead-code backlog). The gate `npm run knip` (scripts/knip-gate.mjs) fails only on findings NOT listed here — i.e. NEW dead code. Captured with `knip --cache` for determinism. Regenerate after intentional changes with `npm run knip:baseline` and commit this file.",
   "knipVersion": "5.88.1",
   "generatedAt": "2026-08-08",
-  "count": 2352,
+  "count": 2353,
   "findings": [
     "binaries|package.json|json",
     "binaries|package.json|pm2",
@@ -336,6 +336,7 @@
     "exports|src/lib/feature-flags.ts|invalidateFeatureFlagCache",
     "exports|src/lib/feature-flags.ts|isMobileReceivingPipelineV2",
     "exports|src/lib/feature-flags.ts|isShipmentLinksDualWrite",
+    "exports|src/lib/feature-flags.ts|isViewMonitors",
     "exports|src/lib/identity/password.ts|MAX_PASSWORD_LEN",
     "exports|src/lib/identity/password.ts|MIN_PASSWORD_LEN",
     "exports|src/lib/identity/webauthn-account.ts|findAccountPasskeyByCredentialId",

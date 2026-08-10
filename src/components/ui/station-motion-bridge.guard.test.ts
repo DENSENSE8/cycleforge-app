@@ -28,10 +28,10 @@ const REQUIRED_BOTH = [
   // reduced-motion collapse must be inherited by every future consumer rather
   // than re-derived per bench (station realtime + capture visibility, P0 · D10).
   'src/components/station/capture-upload/CaptureUploadStatus.tsx',
-  // The send-to-device waiting card (Waiting on phone… / Phone unreachable).
-  // Same reasoning as its capture-upload sibling: it owns its own entrance, and
-  // every bench mounts this one component (P1 · D2).
-  'src/components/station/send-to-device/SendToDeviceStatus.tsx',
+  // `send-to-device/SendToDeviceStatus.tsx` (Waiting on phone… / Phone
+  // unreachable) is RETIRED — the state now renders on the house toast
+  // surface (`useSendToDeviceToast`, bottom-right), which owns no entrance
+  // motion of its own to bridge.
 ] as const;
 
 /** Transition-only surfaces (progress bars, width anims). */

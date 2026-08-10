@@ -4,10 +4,10 @@ import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Check, MoreHorizontal, Plus, Star, Trash2 } from '@/components/Icons';
+import { Check, MoreHorizontal } from '@/components/Icons';
 import { useTableDensity } from '@/hooks/useTableDensity';
-import { useSavedViews } from '@/hooks/useSavedViews';
 import { useTableColumnConfig } from '@/components/ui/table-column-config/TableColumnConfig';
+import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
 import { TABLE_DENSITIES, TABLE_DENSITY_LABEL, type TableDensity } from '@/lib/tables/table-density';
 import type { StationLayout, StationScope } from '@/lib/station/table-url-params';
 import type { UseStaffFilterResult } from '@/hooks/useStaffFilter';
@@ -50,13 +50,6 @@ export interface TableOptionsMenuProps {
   /** Extra content rendered as its own "Columns" section (a column list). */
   columnsSlot?: ReactNode;
   align?: 'start' | 'end';
-  /**
-   * Trigger face. Default = the stations' quiet `⋮` "Table options". `'views'`
-   * renders a Star + "Views" label — the Zendesk-style top-chrome views control
-   * for a rail-less desk (`OutboundViewsMenu`). Same popover body either way.
-   */
-  triggerIcon?: 'options' | 'views';
-  triggerLabel?: string;
 }
 
 /** One eyebrow-labelled section inside the menu. */
@@ -118,98 +111,9 @@ const DENSITY_OPTIONS: { id: TableDensity; label: string }[] = TABLE_DENSITIES.m
 }));
 
 function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; paramKeys: readonly string[] }) {
-  const { views, activeView, hasActiveFilters, applyView, saveView, removeView } = useSavedViews({
-    storageKey,
-    paramKeys,
-  });
-  const [naming, setNaming] = useState(false);
-  const [draft, setDraft] = useState('');
-
-  const commit = () => {
-    if (!draft.trim()) return;
-    saveView(draft);
-    setDraft('');
-    setNaming(false);
-  };
-
   return (
     <Section label="Saved views">
-      {views.length === 0 ? (
-        <p className="px-1 py-1 text-role-caption italic text-text-faint">No saved views yet.</p>
-      ) : (
-        <ul className="max-h-48 overflow-y-auto">
-          {views.map((view) => {
-            const isActive = view.id === activeView?.id;
-            return (
-              <li key={view.id} className="group flex items-center">
-                {/* ds-raw-button: text-left saved-view apply row */}
-                <button
-                  type="button"
-                  onClick={() => applyView(view)}
-                  className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-role-caption transition-colors hover:bg-surface-hover ${
-                    isActive ? 'font-semibold text-text-default' : 'text-text-muted'
-                  }`}
-                >
-                  <Check className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-blue-600' : 'text-transparent'}`} />
-                  <span className="truncate">{view.name}</span>
-                </button>
-                {/* ds-raw-button: hover-reveal delete affordance */}
-                <button
-                  type="button"
-                  aria-label={`Delete view ${view.name}`}
-                  onClick={() => removeView(view.id)}
-                  className="mr-0.5 shrink-0 rounded p-1 text-text-faint opacity-0 transition-all hover:text-rose-500 group-hover:opacity-100"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <div className="mt-1 border-t border-border-hairline pt-1.5">
-        {naming ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              commit();
-            }}
-            className="flex items-center gap-1.5"
-          >
-            <input
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Name this view…"
-              className="min-w-0 flex-1 rounded-md border border-border-soft px-2 py-1 text-role-caption outline-none focus:border-blue-400"
-            />
-            {/* ds-raw-button: inline save submit */}
-            <button
-              type="submit"
-              disabled={!draft.trim()}
-              className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
-            >
-              Save
-            </button>
-          </form>
-        ) : (
-          <HoverTooltip
-            label={hasActiveFilters ? (activeView ? 'These filters are already saved' : 'Save the current filters as a view') : 'Set a filter first'}
-            focusable={false}
-          >
-            {/* ds-raw-button: full-width save-current-view disclosure */}
-            <button
-              type="button"
-              onClick={() => setNaming(true)}
-              disabled={!hasActiveFilters || Boolean(activeView)}
-              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover disabled:opacity-40"
-            >
-              <Plus className="h-3.5 w-3.5 shrink-0" /> Save current view
-            </button>
-          </HoverTooltip>
-        )}
-      </div>
+      <SavedViewsList storageKey={storageKey} paramKeys={paramKeys} hideHeader />
     </Section>
   );
 }
@@ -252,35 +156,18 @@ export function TableOptionsMenu({
   savedViews,
   columnsSlot,
   align = 'end',
-  triggerIcon = 'options',
-  triggerLabel,
 }: TableOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const { density, setDensity } = useTableDensity();
 
-  const isViews = triggerIcon === 'views';
-  const label = triggerLabel ?? (isViews ? 'Views' : 'Table options');
-  const TriggerGlyph = isViews ? Star : MoreHorizontal;
-
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        {isViews ? (
-          <ToolbarButton active={open} aria-label={label}>
-            <HoverTooltip label="Saved views · staff scope" focusable={false}>
-              <span className="inline-flex items-center gap-1.5">
-                <TriggerGlyph className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-role-caption font-semibold">{label}</span>
-              </span>
-            </HoverTooltip>
-          </ToolbarButton>
-        ) : (
-          <ToolbarButton iconOnly active={open} aria-label={label}>
-            <HoverTooltip label={label} focusable={false}>
-              <TriggerGlyph className="h-3.5 w-3.5 shrink-0" />
-            </HoverTooltip>
-          </ToolbarButton>
-        )}
+        <ToolbarButton iconOnly active={open} aria-label="Table options">
+          <HoverTooltip label="Table options" focusable={false}>
+            <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
+          </HoverTooltip>
+        </ToolbarButton>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

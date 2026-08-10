@@ -364,23 +364,53 @@ test('the facet tabs cover every source scope — no scope stranded off-strip', 
   assert.equal(new Set(PHOTO_LIBRARY_SCOPE_TABS).size, PHOTO_LIBRARY_SCOPE_TABS.length);
 });
 
-test('display state is view + page only — a stale ?photoId= is inert', () => {
-  // The retired inspector owned `?photoId=`. Opening a photo is now the shared
-  // fullscreen viewer, whose selection is ephemeral (usePhotoGridLightbox), so
-  // there is no durable record param to keep in sync with the result set.
+test('?photoId= is a DISPLAY param and never a filter', () => {
+  // Reinstated 2026-08-09 for the desk inspector, on the axis the retired
+  // `PhotoInspectorPanel` failed: it is written from SELECTION (never from the
+  // tile click, which still opens the fullscreen viewer) and it is a display
+  // param, so it cannot reach `buildLibraryWhere` and narrow the very stream the
+  // photo was picked from.
   const display = parsePhotoLibraryDisplayParams(new URLSearchParams('photoId=4210&page=3'));
-  assert.deepEqual(Object.keys(display).sort(), ['page', 'view']);
+  assert.deepEqual(Object.keys(display).sort(), ['page', 'photoId', 'view']);
   assert.equal(display.page, 3);
+  assert.equal(display.photoId, '4210');
 
-  // …and it never leaked into the filter bag either: an old deep link still
-  // resolves its real filters instead of erroring or narrowing on a dead param.
+  // Only positive integer ids parse — a junk deep link resolves to "closed",
+  // never to a rail mounted on a record that cannot exist.
+  for (const junk of ['0', '-3', 'abc', '4210x', '']) {
+    assert.equal(
+      parsePhotoLibraryDisplayParams(new URLSearchParams(`photoId=${junk}`)).photoId,
+      undefined,
+      `?photoId=${junk} must not open the inspector`,
+    );
+  }
+
   const filters = parsePhotoLibraryFilters(new URLSearchParams('photoId=4210&sourceScope=claims'));
   assert.equal((filters as Record<string, unknown>).photoId, undefined);
   assert.equal(filters.sourceScope, 'claims');
   assert.equal(photoLibraryFiltersToParams(filters).get('photoId'), null);
+});
+
+test('a display bag with no photoId DROPS the param — this is the eviction rule', () => {
+  // `applyView` / `clearAll` construct a fresh display bag rather than copying
+  // the current one, so neither has to name `photoId` to close the inspector.
+  // A saved view that reopened one photo would be a bug.
+  const filters = parsePhotoLibraryFilters(new URLSearchParams('sourceScope=claims'));
+  const base = new URLSearchParams('photoId=4210&sourceScope=claims');
+
   assert.equal(
-    photoLibraryUrlParams(filters, { view: DEFAULT_PHOTO_LIBRARY_VIEW, page: 1 }).get('photoId'),
+    photoLibraryUrlParams(filters, { view: DEFAULT_PHOTO_LIBRARY_VIEW, page: 1 }, base).get(
+      'photoId',
+    ),
     null,
+  );
+  assert.equal(
+    photoLibraryUrlParams(
+      filters,
+      { view: DEFAULT_PHOTO_LIBRARY_VIEW, page: 1, photoId: '4210' },
+      base,
+    ).get('photoId'),
+    '4210',
   );
 });
 

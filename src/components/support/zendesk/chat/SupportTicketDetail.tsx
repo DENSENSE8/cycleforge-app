@@ -305,7 +305,7 @@ export function SupportTicketDetail({
           onClose={() => setContextOpen(false)}
           embedded={embedded}
           // FLOAT, not push. One of this component's hosts is
-          // Unbox Displays Ticket (`UnboxPushColumn`) — so pushing
+          // Unbox Displays Ticket (`StationDisplaysPushColumn`) — so pushing
           // would put two columns on one edge. The reason belongs to the HOST,
           // which is why `push` is a required prop rather than a default baked
           // into the panel.

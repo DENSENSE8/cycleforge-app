@@ -86,6 +86,11 @@ import {
 } from '@/features/review/catalog-link/grid/catalog-link-grid-descriptor';
 import { CATALOG_LINK_GRID_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { IMPORT_EXCEPTION_GRID_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
+import {
+  CSV_IMPORT_STAGING_GRID_CAPABILITIES,
+  makeCsvImportStagingGridDescriptor,
+} from '@/components/outbound/orders/import-staging/csv-import-staging-grid-descriptor';
+import { CSV_IMPORT_STAGING_GRID_COLUMNS } from '@/components/outbound/orders/import-staging/csv-import-staging-grid-layout';
 
 const REQUIRED_KEYS: readonly (keyof GridSurfaceCapabilities)[] = [
   'rowTriageFlags',
@@ -122,6 +127,7 @@ const DECLARED_CAPABILITIES: Record<string, GridSurfaceCapabilities> = {
   // ONE bag for both Review · Catalog-link tabs: they differ in what their
   // columns MEAN, not in what the surface may do.
   'catalog-link': CATALOG_LINK_GRID_CAPABILITIES,
+  'orders-import': CSV_IMPORT_STAGING_GRID_CAPABILITIES,
 };
 
 function assertComplete(name: string, caps: GridSurfaceCapabilities) {
@@ -202,6 +208,10 @@ describe('grid surface capabilities', () => {
     assert.deepEqual(
       makeUnfoundGridDescriptor(UNFOUND_GRID_COLUMNS).capabilities,
       UNFOUND_GRID_CAPABILITIES,
+    );
+    assert.deepEqual(
+      makeCsvImportStagingGridDescriptor(CSV_IMPORT_STAGING_GRID_COLUMNS).capabilities,
+      CSV_IMPORT_STAGING_GRID_CAPABILITIES,
     );
     assert.deepEqual(
       makeBinsGridDescriptor(BINS_GRID_COLUMNS).capabilities,
@@ -323,6 +333,7 @@ const MOUNTS: Record<string, string> = {
   'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx': 'catalog-link',
   'src/components/station/StationListTable.tsx': 'station-history',
   'src/components/fba/FbaBoardTable.tsx': 'fba',
+  'src/components/outbound/orders/CsvImportStagingHost.tsx': 'orders-import',
 };
 
 /**

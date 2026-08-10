@@ -87,13 +87,34 @@ describe('HistoryCartonTriagePanel', () => {
     // Edit icon ActionBar + scroll-spy IntersectionObserver are retired.
     assert.doesNotMatch(panel, /PaneHeaderActionBar/);
     assert.doesNotMatch(panel, /IntersectionObserver/);
-    // Multi-button labelled strip banned — one readiness CTA is allowed.
+    // Identity band is a slim key — the queue-redundant icon hero is gone and it
+    // carries no CTA strip (those old labels never return).
+    assert.doesNotMatch(panel, /PaneHeaderIconBadge/);
     assert.doesNotMatch(panel, />\s*Print barcode\s*</);
     assert.doesNotMatch(panel, />\s*Continue Unbox\s*</);
     assert.doesNotMatch(panel, />\s*Match PO\s*</);
     assert.doesNotMatch(panel, />\s*Full log\s*</);
     assert.doesNotMatch(panel, />\s*View listing\s*</);
     assert.doesNotMatch(panel, /variant="secondary"/);
+  });
+
+  test('record actions dock on the bottom InspectorActionFloor (n=1)', () => {
+    // Editing gravity is the bottom dock — primary CTA (Print · Open in Unbox)
+    // + More + flush trailing Delete, all BELOW the topic shell so a Park in the
+    // top chrome never sits beside a Delete.
+    assert.match(panel, /InspectorActionFloor/);
+    assert.match(panel, /InspectorFlushDelete/);
+    assert.match(panel, /data-testid="history-triage-delete"/);
+    assert.match(panel, /data-testid="history-triage-more"/);
+    const identityPos = panel.indexOf('data-testid="history-triage-identity"');
+    const shellPos = panel.indexOf('testId="history-inspector-index"');
+    const floorPos = panel.indexOf('<InspectorActionFloor');
+    const primaryPos = panel.indexOf('data-testid="history-triage-primary-cta"');
+    assert.ok(floorPos > shellPos, 'action floor must dock below the topic shell');
+    assert.ok(
+      primaryPos > shellPos && primaryPos > identityPos,
+      'primary CTA moved off the identity band into the floor',
+    );
   });
 });
 

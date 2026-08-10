@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import {
   AlertTriangle,
   Barcode,
@@ -9,19 +9,12 @@ import {
   RotateCcw,
   ShieldCheck,
 } from '@/components/Icons';
-import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { ScanBandShell, ThemedStationScanBar } from '@/components/station/scan-bar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SerialChip } from '@/components/ui/CopyChip';
 import { Button } from '@/design-system/primitives';
+import { useStationTheme } from '@/hooks/useStationTheme';
 import { conditionLabel } from '@/lib/conditions';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import { cn } from '@/utils/_cn';
 // Type-only import — see useDataWipeController for why this never bundles the
 // server module. The `Record<WipeMethod, …>` below is exhaustiveness-checked
@@ -54,12 +47,13 @@ const META_CHIP_CLASS =
 /**
  * Data-Wipe Station — the Station-archetype surface for the secure-erase bench.
  * Focus-locked scan bar pinned above a single active-entity card that replaces
- * on each scan; act-and-clear; big pass/fail outcome; ephemeral selection.
+ * on each scan; act-and-clear (next scan clears); big pass/fail outcome; ephemeral selection.
  */
 export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
   const c = useDataWipeController();
-  const presence = useMotionPresence(framerPresence.stationCard);
-  const transition = useMotionTransition(framerTransition.stationCardMount);
+  const { theme: themeColor } = useStationTheme({ staffId: Number(staffId) || 0 });
+  // Scan-cadence swap — exit is instant so the next unit paints without a gap.
+  const { presence, transition } = useMotionRole(motionRole.swap.scan);
 
   // Exactly one crossfading region (station.md §9). The key changes only on a
   // genuine state swap so the active card dissolves into the next.
@@ -91,18 +85,20 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
           </div>
         </div>
 
-        <ThemedStationScanBar
-          staffId={staffId}
-          value={c.inputValue}
-          onChange={c.setInputValue}
-          onSubmit={c.handleScan}
-          inputRef={c.inputRef}
-          placeholder="Scan unit serial or printed label"
-          icon={<Barcode className="h-[17px] w-[17px]" />}
-          autoFocus
-          isResolving={c.isResolving}
-          className="w-full"
-        />
+        <ScanBandShell themeColor={themeColor}>
+          <ThemedStationScanBar
+            staffId={staffId}
+            value={c.inputValue}
+            onChange={c.setInputValue}
+            onSubmit={c.handleScan}
+            inputRef={c.inputRef}
+            placeholder="Scan unit serial or printed label"
+            icon={<Barcode className="h-[17px] w-[17px]" />}
+            autoFocus
+            isResolving={c.isResolving}
+            className="w-full"
+          />
+        </ScanBandShell>
 
         <div className="mx-auto w-full max-w-2xl px-4 pb-3 sm:px-6">
           <p className="px-1 text-role-micro text-text-faint">

@@ -10,12 +10,13 @@ import { fmtDateTime } from '@/components/sidebar/receiving/incoming-details/inc
 import { Empty } from '@/components/sidebar/receiving/incoming-details/incoming-details-primitives';
 import { cn } from '@/utils/_cn';
 
-function receiveEventLabel(ev: DetailsResponse['receive_events'][number]): string {
+/** Exported for contract tests — Unreceive spine rows are ADJUSTED *or* NOTE. */
+export function receiveEventLabel(ev: DetailsResponse['receive_events'][number]): string {
   const notes = (ev.notes || '').toLowerCase();
+  // Workflow rewind writes NOTE + "Unreceive: …"; ledger reverse writes ADJUSTED.
+  // Match notes first so neither paints as raw event_type.
+  if (notes.includes('unreceive')) return 'Unreceive';
   if (ev.event_type === 'RECEIVED') return 'Receive';
-  if (ev.event_type === 'ADJUSTED' && notes.includes('unreceive')) {
-    return 'Unreceive';
-  }
   return ev.event_type;
 }
 

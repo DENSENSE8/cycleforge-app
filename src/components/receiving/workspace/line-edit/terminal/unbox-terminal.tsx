@@ -34,6 +34,7 @@ const UNBOX_DOCK_MAX = 'max-w-[720px]';
  */
 const overviewDockBase = {
   docked: true as const,
+  // Dogfood strip — compact trailing Print · Receive (notes toggle leads).
   fullWidth: false,
   align: 'end' as const,
   maxWidth: UNBOX_DOCK_MAX,
@@ -64,6 +65,22 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
     disabled: !r.canPrintReview,
     title: `Use ${opt.name} for the next print`,
   }));
+
+  // After receive, Unreceive is the undo operators look for — promote it above
+  // re-receive / save so it is not buried under inventory commit verbs.
+  const unreceiveMenuItem =
+    r.canUnreceive
+      ? {
+          label: r.unreceiveMenuLabel ?? 'Unreceive',
+          icon: <RotateCcw className="h-3.5 w-3.5 shrink-0" />,
+          separatorBefore: true,
+          onClick: () => void r.handleReceive('unreceive'),
+          disabled: r.unreceiveMenuDisabled ?? !r.canReceiveReview,
+          title:
+            r.unreceiveMenuTitle ??
+            'Undo website receive — quantities and received stamp clear',
+        }
+      : null;
 
   return {
     ...overviewDockBase,
@@ -97,6 +114,8 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
         disabled: !r.canPrintReview,
         title: `Print the selected ${activeName} without receiving`,
       },
+      // Received: Unreceive first (discoverability). Open: keep receive commit verbs first.
+      ...(isReceived && unreceiveMenuItem ? [unreceiveMenuItem] : []),
       ...(r.isUnfound
         ? []
         : [
@@ -119,19 +138,7 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
           ? 'Receive all open lines locally — external inventory is not touched'
           : r.receiveMenuTitle,
       },
-      ...(r.canUnreceive
-        ? [
-            {
-              label: r.unreceiveMenuLabel ?? 'Unreceive',
-              icon: <RotateCcw className="h-3.5 w-3.5 shrink-0" />,
-              onClick: () => void r.handleReceive('unreceive'),
-              disabled: !r.canReceiveReview,
-              title:
-                r.unreceiveMenuTitle ??
-                'Undo website receive — quantities and received stamp clear',
-            },
-          ]
-        : []),
+      ...(!isReceived && unreceiveMenuItem ? [unreceiveMenuItem] : []),
     ],
   };
 }

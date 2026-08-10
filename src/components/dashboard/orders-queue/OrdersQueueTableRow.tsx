@@ -1,20 +1,16 @@
 'use client';
 
-import { Fragment, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, ChevronDown, FileText, Link2, Maximize2, Plus } from '@/components/Icons';
+import { ChevronDown, Plus } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { gridCellAlignClass, LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import {
-  CellTextEditPopover,
-  ConditionSelectPopover,
-  RowInfoMenuPopover,
-} from './cell-editors';
+import { ConditionSelectPopover } from './cell-editors';
 import {
   RowTitle,
   RowMetaColumns,
@@ -29,13 +25,8 @@ import {
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
-import {
-  getOrderPlatformColor,
-  isFbaOrder,
-  marketplaceOrderUrl,
-} from '@/utils/order-platform';
+import { isFbaOrder, marketplaceOrderUrl } from '@/utils/order-platform';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
-import { getExternalUrlByItemNumber, skuScanPrefixBeforeColon } from '@/hooks/useExternalItemUrl';
 import {
   formatDateWithOrdinal,
   formatLaneAgeCompact,
@@ -57,10 +48,6 @@ import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import { resolveOrderRowFlag } from '@/lib/orders/order-row-flags';
 import { conditionGradeTableLabel, isEmptyMetaDash } from '@/lib/conditions';
 import {
-  replenishmentTooltip,
-  rowReplenishmentFacts,
-} from '@/lib/orders/replenishment-display';
-import {
   formatQueueRowDateCell,
   formatSalePrice,
   queueRowShipBySource,
@@ -77,8 +64,6 @@ import {
   GridStaffCellValue,
 } from '@/components/ui/grid-cells';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
-import { useAppendOrderNote } from '@/hooks/useOrderNotes';
-import { useAuth } from '@/contexts/AuthContext';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -98,8 +83,6 @@ export interface OrdersQueueTableRowProps {
   rowStatus: RowStatusMeta;
   trackingAction?: React.ReactNode;
   serialChip?: React.ReactNode;
-  hasOutOfStock: boolean;
-  notesValue: string;
   daysLate: number | null;
   disableEnterAnimation?: boolean;
   disableLayoutAnimation?: boolean;
@@ -114,9 +97,10 @@ export interface OrdersQueueTableRowProps {
   /**
    * Airtable grid-view skin. Always-visible row-select checkbox in the gutter
    * via {@link onToggleSelect} + {@link selectGutterChrome}. Sheets-style
-   * in-cell editors, corner-indicator popovers. Zebra still applies (opaque
-   * canvas / card — required for the frozen identity pane). Off → display-only
-   * cells; Product-cell note/OOS corner indicators stay for every consumer.
+   * in-cell editors for condition / qty. Zebra still applies (opaque canvas /
+   * card — required for the frozen identity pane). Off → display-only cells.
+   * Notes · OOS · listing-link · open-row hover controls live on the record
+   * plane (inspector), not in this collection map.
    */
   gridSkin?: boolean;
   /** Sheets click-select: row click toggles bulk; double-click opens. Gutter
@@ -139,9 +123,6 @@ export interface OrdersQueueTableRowProps {
    *  required on grid skin so the leftmost cell is a real checkbox even when
    *  {@link clickSelect} also lets the row body toggle membership. */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
-  /** Grid skin only — true when this row is the ONLY checked row. Surfaces the
-   *  row info-edit dropdown (Notes · OOS · Details) on the Product cell. */
-  singleSelected?: boolean;
   queueMode?: OrdersQueueMode;
   /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
    *  Default = canonical order. Header + rows + group summaries must receive
@@ -177,14 +158,15 @@ export interface OrdersQueueTableRowProps {
   onRequestReplaceTracking?: (record: ShippedOrder) => void;
 }
 
-/** In-cell / popover editors this row can host (one open at a time).
+/** In-cell editors this row can host (one open at a time).
  *  `title` is deliberately absent — the product title is a read-only identity
- *  anchor in the collection map; correction lives at the record plane. */
-type RowEditField = 'qty' | 'condition' | 'note' | 'link';
+ *  anchor in the collection map; correction lives at the record plane.
+ *  Notes · listing link · OOS are record-plane only. */
+type RowEditField = 'qty' | 'condition';
 
 /**
  * Pending / fulfillment queue row — Sheets-like WMS grid:
- *   select(☐) · product · date · age · qty · cond · order · tracking
+ *   select(☐) · order · age · product · cond · qty · tracking
  * Every fact owns a track; cells render through a per-column registry mapped
  * over ONE ordered column list, so drag-reorder is a list change — header,
  * rows, and group summaries can never disagree (`columns` prop).
@@ -194,12 +176,9 @@ type RowEditField = 'qty' | 'condition' | 'note' | 'link';
  * TRACK — this row never re-tests hidden-ness per cell (the old cell-granular
  * `useIsColumnHidden` path left a dead empty ruled band where the column was).
  *
- * Grid skin adds the adopted industry in-cell editing contract (click → edit ·
- * Enter/F2 start · typing replaces · Esc revert · Tab/blur commit); note + OOS
- * are corner indicators on the frozen Product cell (Excel/Sheets corner
- * vocabulary) with cell-anchored popover editors; the record opens via the
- * explicit expand affordance or any non-editable cell (Airtable's
- * click-to-select vs expand-to-open split).
+ * Grid skin keeps condition / qty in-cell editing. Notes · OOS · listing link
+ * · open-row affordances are record-plane only (inspector). Identity uses
+ * SoT `OrderIdChip` / `TrackingChip` (Hash / MapPin icons); no platform chip.
  */
 export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   record,
@@ -214,8 +193,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   rowStatus,
   trackingAction,
   serialChip,
-  hasOutOfStock,
-  notesValue,
   daysLate,
   isMobile,
   disableEnterAnimation = false,
@@ -227,7 +204,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   rowFillHex = null,
   rowIndex,
   onToggleSelect,
-  singleSelected = false,
   queueMode = 'fulfillment',
   columns = ORDERS_QUEUE_COLUMNS,
   capabilities,
@@ -236,32 +212,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onRequestReplaceTracking,
 }: OrdersQueueTableRowProps) {
   const orderChannelLabel = useOrderChannelLabel();
-  const { has } = useAuth();
   const router = useRouter();
   const assignOrder = useOrderAssignment();
-  // Notes are NOT part of the assign waist: they append to `order_notes`, which
-  // has its own store and its own (append-only) semantics.
-  const appendNote = useAppendOrderNote(Number(record.id));
-  const canOos = has('orders.create');
   const [editing, setEditing] = useState<RowEditField | null>(null);
   const [editSeed, setEditSeed] = useState<string | null>(null);
-  const [infoMenuOpen, setInfoMenuOpen] = useState(false);
-  const infoMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
-  // Un-checking the row (or growing the selection) closes its info menu — a
-  // stale open flag must not resurface on the next single-select.
-  useEffect(() => {
-    if (!singleSelected) setInfoMenuOpen(false);
-  }, [singleSelected]);
-  // Anchors for the cell-anchored editor popovers. Note/OOS editors anchor to
-  // their CORNER INDICATOR (the Sheets note-bubble position) when it exists,
-  // else to the title cell aligned toward that corner; mobile anchors the meta
-  // flag cluster instead.
-  const titleCellRef = useRef<HTMLDivElement | null>(null);
-  const mobileFlagsRef = useRef<HTMLSpanElement | null>(null);
-  const noteIndicatorRef = useRef<HTMLButtonElement | null>(null);
-  const oosIndicatorRef = useRef<HTMLButtonElement | null>(null);
   const conditionCellRef = useRef<HTMLDivElement | null>(null);
-  const editorAnchorRef = isMobile ? mobileFlagsRef : titleCellRef;
 
   const qty = parseInt(String(record.quantity || '1'), 10) || 1;
   const trackingRaw =
@@ -277,15 +232,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     trackingType: record.tracking_type,
     scanRef: scanRefForSku,
   });
+  // Platform label feeds OrderIdChip tooltip only (`Platform full-id` SoT) —
+  // this surface never paints a PlatformChip / PlatformMark or color-maps.
   const platformLabel = orderChannelLabel(record.order_id || '', record.account_source);
   const isFba = isFbaOrder(record.order_id, record.account_source);
-  const platformColor = platformLabel ? getOrderPlatformColor(platformLabel) : '';
-  const productPageUrl = getExternalUrlByItemNumber(
-    String(record.item_number || '').trim() || skuScanPrefixBeforeColon(trackingRaw),
-  );
   const orderMarketplaceUrl = marketplaceOrderUrl(record.order_id, record.account_source);
   const salePrice = formatSalePrice(record.sale_amount, record.currency);
-  const replenishment = rowReplenishmentFacts(record);
 
   const hasTester = Boolean(
     (record.test_date_time || record.test_activity_at) &&
@@ -307,7 +259,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // left gutter is always-on (checkbox toggles; row body opens), so editors
   // stay armed regardless of `selectMode`.
   const gridEditable = gridSkin && !isMobile;
-  const canEditNotes = canOos;
 
   // Zebra is OFF under the airtable skin. That skin already draws a full cell
   // rule grid (right + bottom on every cell) inside a raised card frame, so a
@@ -352,14 +303,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     [assignOrder, record.id],
   );
 
-  const toggleOutOfStock = useCallback(() => {
-    commitAssign(
-      { isOutOfStock: !hasOutOfStock },
-      hasOutOfStock ? 'Cleared out of stock' : 'Marked out of stock',
-      'Failed to save',
-    );
-  }, [commitAssign, hasOutOfStock]);
-
   const onPasteTracking = useCallback(
     (value: string) => {
       const id = Number(record.id);
@@ -374,26 +317,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     },
     [assignOrder, record.id],
   );
-
-  /**
-   * Row annotations. ONE writable home, two things to READ, one mark:
-   *  • `note_count` — the append-only `order_notes` trail (author + timestamp
-   *    per entry). Everything written since 2026-07-31 lands here, including
-   *    the in-cell editor below, which appends rather than overwrites.
-   *  • `notesValue` — the legacy scalar `orders.notes`, now read-only history
-   *    (`.claude/rules/source-of-truth.md` → Order note grain).
-   * The corner triangle answers "does this row carry annotations?", which is
-   * true of either. A second indicator would make the operator learn which
-   * storage a note happened to land in — their problem is the note, not us.
-   */
-  const noteCount = Number(record.note_count ?? 0) || 0;
-  const hasNotes = notesValue.trim().length > 0 || noteCount > 0;
-  const noteSummary = [
-    noteCount > 0 ? `${noteCount} notes` : '',
-    notesValue.trim(),
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   /**
    * Operator-set triage flag — an org-wide shared tag that washes the row.
@@ -416,8 +339,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   const identityChipProps = {
     platformLabel,
-    platformIconClass: platformLabel && productPageUrl ? platformColor : 'text-text-soft',
-    productPageUrl,
+    productPageUrl: null as string | null,
     marketplaceOrderUrl: orderMarketplaceUrl,
     isFba,
     orderId: record.order_id || '',
@@ -433,15 +355,15 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           ? () => onRequestReplaceTracking(record)
           : undefined
         : undefined,
-    onEditListingLink: gridEditable ? () => openEditor('link') : undefined,
     serialChip,
-    // Sheets grid: header already labels Order / Tracking — cell Hash/MapPin
-    // is noise. Mobile cluster keeps the icon family.
-    variant: (gridSkin ? 'plain' : 'icons') as 'plain' | 'icons',
+    // SoT identity: Hash / MapPin tone glyphs on Order + Tracking chips.
+    variant: 'icons' as const,
+    // No platform column on this surface — order + tracking only.
+    showPlatform: false,
   };
 
   // Chip nodes built once per row; the registry places each in its own cell so
-  // platform / order / tracking survive any column order.
+  // order / tracking survive any column order.
   const identityNodes = useOrderIdentityCellNodes(identityChipProps);
 
   const gridTemplate = isMobile ? undefined : ordersQueueGridTemplateFor(columns);
@@ -449,8 +371,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const dataCell = (col: OrdersQueueColumn, rule = true) =>
     cn(ordersQueueGridCell({ rule, inset: cellInset }), gridCellAlignClass(col));
 
-  // Mobile keeps the right-packed icon cluster.
-  const chipsNode = <OrderIdentityChips {...identityChipProps} variant="icons" isMobile={isMobile} />;
+  // Mobile keeps the right-packed icon cluster (order + tracking; no platform).
+  const chipsNode = <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />;
 
   const deadlineKey = toPSTDateKey(record.deadline_at);
   const deadlineLabel = deadlineKey ? formatDateWithOrdinal(deadlineKey) : null;
@@ -525,44 +447,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         }
       : {};
 
-  // ── Corner indicators on the Product cell (Phase 4b) ─────────────────────
-  // Sparse facts never earn a column: note = slate triangle top-right, OOS =
-  // rose triangle top-left (Excel/Sheets corner vocabulary). Both live on the
-  // FROZEN title cell so the exception signal survives horizontal scroll.
-  // Hover/focus = exact text; click (or Shift+F2) = cell-anchored editor.
-  const oosTooltip = [
-    'Out of stock',
-    replenishment.requestId ? replenishmentTooltip(replenishment) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  const oosIndicator = hasOutOfStock ? (
-    <HoverTooltip label={oosTooltip} focusable={false}>
-      <button
-        ref={oosIndicatorRef}
-        type="button"
-        data-indicator="oos"
-        aria-label="Out of stock"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (canOos) toggleOutOfStock();
-        }}
-        onKeyDown={(e) => e.stopPropagation()}
-        className={cn(
-          'absolute left-0 top-0 z-raised flex h-4 w-4 items-start justify-start',
-          focusRing('cell'),
-          canOos ? 'cursor-pointer' : 'cursor-default',
-        )}
-      >
-        <svg viewBox="0 0 8 8" className="h-2 w-2 text-rose-500" aria-hidden>
-          <path d="M0 0h8L0 8Z" fill="currentColor" />
-        </svg>
-        <span className="sr-only">Out of stock</span>
-      </button>
-    </HoverTooltip>
-  ) : null;
-
   /**
    * The flag's dot — the tint's non-colour carrier.
    *
@@ -586,152 +470,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       </span>
     </HoverTooltip>
   ) : null;
-
-  const noteIndicator = hasNotes ? (
-    <HoverTooltip label={noteSummary} focusable={false}>
-      <button
-        ref={noteIndicatorRef}
-        type="button"
-        data-indicator="note"
-        aria-label={`Has note: ${noteSummary}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (canEditNotes) openEditor('note');
-        }}
-        onKeyDown={(e) => e.stopPropagation()}
-        className={cn(
-          'absolute right-0 top-0 z-raised flex h-4 w-4 items-start justify-end',
-          focusRing('cell'),
-          canEditNotes ? 'cursor-pointer' : 'cursor-default',
-        )}
-      >
-        <svg viewBox="0 0 8 8" className="h-2 w-2 text-slate-400" aria-hidden>
-          <path d="M0 0h8v8Z" fill="currentColor" />
-        </svg>
-        <span className="sr-only">Has note</span>
-      </button>
-    </HoverTooltip>
-  ) : null;
-
-  // Explicit expand affordance (Airtable): editable cells select→edit on
-  // click, so opening the record from the Product cell is this control. The
-  // sibling link affordance is the Title-side entry to the shared listing-link
-  // editor (same SoT editor the Platform hover menu opens).
-  const hoverControlClass = cn(
-    'shrink-0 rounded p-0.5 text-text-soft opacity-0 transition-opacity hover:bg-surface-hover hover:text-text-default focus-visible:opacity-100 group-hover/row:opacity-100',
-    focusRing('control'),
-  );
-  // Single-selected info menu (Notes · OOS · Details). The trigger stays in the
-  // DOM on every grid row so geometry never shifts with selection; it becomes
-  // visible (and interactive) only while this is the one checked row.
-  const infoMenuTrigger = (
-    // ds-raw-button: single-select info chevron — opacity/geometry tied to row
-    // selection; IconButton would shift the frozen Product cell chrome.
-    <button
-      ref={infoMenuTriggerRef}
-      type="button"
-      data-row-info-menu
-      aria-label={`Edit info — order ${record.order_id || record.id}`}
-      aria-haspopup="menu"
-      aria-expanded={infoMenuOpen}
-      tabIndex={singleSelected ? 0 : -1}
-      aria-hidden={singleSelected ? undefined : true}
-      onClick={(e) => {
-        e.stopPropagation();
-        setInfoMenuOpen(true);
-      }}
-      onKeyDown={(e) => e.stopPropagation()}
-      className={cn(
-        hoverControlClass,
-        singleSelected ? 'opacity-100 text-text-muted' : 'pointer-events-none !opacity-0',
-      )}
-    >
-      <ChevronDown className="h-3.5 w-3.5" />
-    </button>
-  );
-
-  const expandAffordance =
-    gridSkin && !isMobile ? (
-      <span className="ml-auto inline-flex shrink-0 items-center gap-0.5">
-        {singleSelected ? (
-          <HoverTooltip label="Edit info" focusable={false}>
-            {infoMenuTrigger}
-          </HoverTooltip>
-        ) : (
-          infoMenuTrigger
-        )}
-        <HoverTooltip label="Edit listing link" focusable={false}>
-          <button
-            type="button"
-            data-edit-link
-            aria-label="Edit listing link"
-            onClick={(e) => {
-              e.stopPropagation();
-              openEditor('link');
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
-            className={hoverControlClass}
-          >
-            <Link2 className="h-3.5 w-3.5" />
-          </button>
-        </HoverTooltip>
-        <HoverTooltip label="Open order" focusable={false}>
-          <button
-            type="button"
-            data-expand-row
-            aria-label={`Open order ${record.order_id || record.id}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRowClick(record);
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
-            className={hoverControlClass}
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </button>
-        </HoverTooltip>
-      </span>
-    ) : null;
-
-  // Mobile meta flags — the same note/OOS facts; tap opens the same editors.
-  const notesFlagsNode =
-    hasNotes || hasOutOfStock ? (
-      <span ref={mobileFlagsRef} className="inline-flex shrink-0 items-center gap-0.5">
-        {hasNotes ? (
-          <HoverTooltip label={notesValue.trim()} focusable={false}>
-            <button
-              type="button"
-              aria-label={`Order note: ${notesValue.trim()}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (canEditNotes) openEditor('note');
-              }}
-              className="ds-raw-button inline-flex min-w-0 max-w-[5.5rem] items-center gap-0.5 text-text-muted"
-            >
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              <span className="min-w-0 truncate text-role-caption font-normal normal-case tracking-normal">
-                {notesValue.trim()}
-              </span>
-            </button>
-          </HoverTooltip>
-        ) : null}
-        {hasOutOfStock ? (
-          <HoverTooltip label={oosTooltip} focusable={false}>
-            <button
-              type="button"
-              aria-label="Out of stock"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (canOos) toggleOutOfStock();
-              }}
-              className="ds-raw-button inline-flex items-center text-red-600"
-            >
-              <AlertTriangle className="h-3.5 w-3.5" />
-            </button>
-          </HoverTooltip>
-        ) : null}
-      </span>
-    ) : null;
 
   // Select cell — full-track hit plane + centered checklist face via
   // GridRowCheckbox (To-ship keeps clickSelect row gestures; any click in this
@@ -784,7 +522,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         return (
           <div
             data-col="title"
-            ref={titleCellRef}
             // Identity column — collection-map read-only
             // (`isGridColumnInCellEditable` / GRID_IDENTITY_COLUMN_KEYS). The
             // product title is a catalog fact + this row's identity anchor; a
@@ -792,12 +529,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             // typo one keystroke away. Correction happens at the record plane.
             // No focus ring on the title itself: the ring is the tell that a
             // cell edits, and clicks must fall through to the row (open record).
-            // Note / OOS corners stay here; Cond owns its own column.
             className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5')}
             style={{ left: ordersQueueFrozenLeft('title') }}
             data-frozen-edge
           >
-            {oosIndicator}
             {flagIndicator}
             {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot. */}
             {!gridSkin ? (
@@ -808,8 +543,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {record.product_title || 'Unknown Product'}
             </span>
-            {expandAffordance}
-            {noteIndicator}
           </div>
         );
       case 'condition': {
@@ -897,6 +630,22 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 raw={testedAtRaw}
                 className={cn('text-text-muted', densityClasses.metaText)}
               />
+            ) : (
+              <GridCellDash />
+            )}
+          </div>
+        );
+      }
+      case 'packStation': {
+        const station = String(
+          (record as { pack_location_name?: string | null }).pack_location_name || '',
+        )
+          .replace(/^QA\s+/i, '')
+          .trim();
+        return (
+          <div data-col="packStation" className={dataCell(col, rule)}>
+            {station ? (
+              <span className={cn('min-w-0 truncate', densityClasses.metaText)}>{station}</span>
             ) : (
               <GridCellDash />
             )}
@@ -1030,12 +779,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         if ((selectMode || clickSelect) && event.shiftKey) event.preventDefault();
       }}
       onKeyDown={(event) => {
-        // Sheets' insert/edit-note key (Shift+F2) on the focused row.
-        if (gridEditable && canEditNotes && event.shiftKey && event.key === 'F2') {
-          event.preventDefault();
-          openEditor('note');
-          return;
-        }
         if (clickSelect) {
           if (event.key === ' ') {
             event.preventDefault();
@@ -1140,7 +883,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                   ) : null}
                   {dateNode}
                   {ageNode}
-                  {notesFlagsNode}
                 </>
               }
             />
@@ -1154,22 +896,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           <Fragment key={col.key}>{renderDesktopCell(col, i === columns.length - 1)}</Fragment>
         ))
       )}
-
-      {/* Single-selected row info menu — Notes · OOS · Details, in that order. */}
-      {infoMenuOpen && singleSelected ? (
-        <RowInfoMenuPopover
-          anchorRef={infoMenuTriggerRef}
-          canEditNotes={canEditNotes}
-          canEditOos={canOos}
-          onNotes={() => openEditor('note')}
-          onOutOfStock={() => {
-            setInfoMenuOpen(false);
-            toggleOutOfStock();
-          }}
-          onDetails={() => onRowClick(record)}
-          onDone={() => setInfoMenuOpen(false)}
-        />
-      ) : null}
 
       {/* Cell-anchored editor popovers (body-portaled — never clipped). */}
       {editing === 'condition' && gridEditable ? (
@@ -1186,48 +912,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           onDone={closeEditor}
         />
       ) : null}
-      {editing === 'note' ? (
-        <CellTextEditPopover
-          // Open AT the note corner (Sheets note-bubble): anchor the triangle
-          // itself when present; else the title cell aligned to that corner.
-          anchorRef={!isMobile && hasNotes ? noteIndicatorRef : editorAnchorRef}
-          placement={isMobile ? 'bottom-start' : 'bottom-end'}
-          // APPEND, not edit. The cell used to overwrite the scalar
-          // `orders.notes`; it now adds one attributed entry to the
-          // `order_notes` trail, so the seed is empty and the title says so.
-          // Reading the whole trail (and its authors) is the record plane's job
-          // — the corner tooltip carries the summary until you open it.
-          title="Add note"
-          initialValue=""
-          multiline
-          placeholder="Add a note…"
-          onCommit={(next) => {
-            const body = next.trim();
-            if (!body) return;
-            appendNote.mutate(body, {
-              onSuccess: () => toast.success('Note added'),
-              onError: (e) =>
-                toast.error(e instanceof Error ? e.message : 'Failed to add the note'),
-            });
-          }}
-          onDone={closeEditor}
-          saving={appendNote.isPending}
-        />
-      ) : null}
-      {editing === 'link' ? (
-        <CellTextEditPopover
-          anchorRef={editorAnchorRef}
-          title="Listing link — item #"
-          initialValue={String(record.item_number || '').trim()}
-          placeholder="ASIN / eBay item # / SKU"
-          hint={productPageUrl ? `Opens ${productPageUrl}` : 'Listing URL derives from the item #'}
-          onCommit={(next) =>
-            commitAssign({ itemNumber: next }, 'Listing link updated', 'Failed to update listing link')
-          }
-          onDone={closeEditor}
-          saving={assignOrder.isPending}
-        />
-      ) : null}
     </motion.div>
   );
 }, (prev, next) => {
@@ -1242,13 +926,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.clickSelect !== next.clickSelect) return false;
   if (prev.selectGutterChrome !== next.selectGutterChrome) return false;
   if (prev.rowFillHex !== next.rowFillHex) return false;
-  if (prev.singleSelected !== next.singleSelected) return false;
   if (prev.columns !== next.columns) return false;
   if (prev.rowStatus.dot !== next.rowStatus.dot) return false;
   if (prev.rowStatus.label !== next.rowStatus.label) return false;
   if (prev.rowStatus.pill !== next.rowStatus.pill) return false;
-  if (prev.hasOutOfStock !== next.hasOutOfStock) return false;
-  if (prev.notesValue !== next.notesValue) return false;
   if (prev.daysLate !== next.daysLate) return false;
   if (prev.record.product_title !== next.record.product_title) return false;
   if (prev.record.condition !== next.record.condition) return false;

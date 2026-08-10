@@ -13,8 +13,6 @@ import { StationPipelineBoard } from '@/components/station/StationPipelineBoard'
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import {
   LAYOUT_PARAM,
-  SAVED_VIEW_PARAM_KEYS,
-  SAVED_VIEW_STORAGE_KEY,
   WEEK_OFFSET_PARAM,
   parseLayout,
   parseWeekOffset,
@@ -270,13 +268,10 @@ export function TestingHistoryList({
     },
     [pathname, router, searchParams],
   );
+  // Saved views live on Testing Band-3 Views ▾ — ⋮ keeps layout only.
   const optionsMenu = (
     <TableOptionsMenu
       layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
-      savedViews={{
-        storageKey: SAVED_VIEW_STORAGE_KEY.testing_history,
-        paramKeys: SAVED_VIEW_PARAM_KEYS.testing_history,
-      }}
     />
   );
   const portaledControls =

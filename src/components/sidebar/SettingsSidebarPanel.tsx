@@ -49,6 +49,13 @@ function sectionIcon(id: SettingsSection) {
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
         </svg>
       );
+    case 'keyboard':
+      return (
+        <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2" />
+          <path d="M6 10h0.01M10 10h0.01M14 10h0.01M18 10h0.01M6 14h0.01M10 14h4M18 14h0.01" />
+        </svg>
+      );
     case 'receiving':
       return <PackageOpen className={ICON_CLS} />;
     case 'security':

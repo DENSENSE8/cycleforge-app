@@ -1,0 +1,88 @@
+/**
+ * The **orders** table-import descriptor — the first consumer of the seam.
+ *
+ * Everything family-specific about importing orders lives here: the six
+ * canonical fields, their header aliases, the Ready / Action-required rule, the
+ * grid row shape, and the ingest endpoint. The mechanism (parse · stage ·
+ * select · confirm) is `src/lib/tables/import/`.
+ *
+ * `csv-order-import.ts` stays the pure vocabulary + parse/classify helpers; this
+ * module binds them to the shared shape. Keeping them apart is what lets the
+ * Settings-page `CsvOrderImport` keep using the helpers without dragging the
+ * staging store into its bundle.
+ */
+
+import {
+  CSV_ORDER_CANONICAL_FIELDS,
+  applyCsvOrderCanonicalEdits,
+  autoMapCsvOrderHeaders,
+  classifyCsvOrderStagingRow,
+  postCsvOrderImport,
+  projectCsvOrderRow,
+  type CsvOrderCanonicalKey,
+  type CsvOrderRowStatus,
+} from '@/lib/orders/csv-order-import';
+import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import type { TableImportDescriptor } from '@/lib/tables/import/types';
+
+/** One staging row projected through the mapping — the grid's row shape. */
+export type OrderImportRowView = {
+  index: number;
+  status: CsvOrderRowStatus;
+  missing: CsvOrderCanonicalKey[];
+  orderNumber: string;
+  sku: string;
+  quantity: string;
+  customerName: string;
+  trackingNumber: string;
+  platform: string;
+};
+
+/**
+ * Matches the staging table definition's `entityFamily` — one id for the store
+ * key, the prefs bucket and the fan-out allowlist.
+ */
+export const ORDER_IMPORT_SURFACE_ID = 'orders-import';
+
+export const ORDER_IMPORT_DESCRIPTOR: TableImportDescriptor<
+  CsvOrderCanonicalKey,
+  OrderImportRowView
+> = {
+  surfaceId: ORDER_IMPORT_SURFACE_ID,
+  entityNoun: 'orders',
+  deskPath: SHIPPING_ORDERS_PATH,
+  fields: CSV_ORDER_CANONICAL_FIELDS,
+  autoMap: autoMapCsvOrderHeaders,
+  classify: classifyCsvOrderStagingRow,
+  project: projectCsvOrderRow,
+  applyEdits: applyCsvOrderCanonicalEdits,
+  toRowView(row, mapping, index) {
+    const { status, missing } = classifyCsvOrderStagingRow(row, mapping);
+    const projected = projectCsvOrderRow(row, mapping);
+    return {
+      index,
+      status,
+      missing,
+      orderNumber: projected.order_number,
+      sku: projected.sku,
+      quantity: projected.quantity,
+      customerName: projected.customer_name,
+      trackingNumber: projected.tracking_number,
+      platform: projected.platform,
+    };
+  },
+  searchValues(view) {
+    return [
+      view.orderNumber,
+      view.sku,
+      view.quantity,
+      view.customerName,
+      view.trackingNumber,
+      view.platform,
+    ];
+  },
+  async commit({ rows, mapping }) {
+    const outcome = await postCsvOrderImport({ rows, mapping });
+    return outcome.ok ? { ok: true } : { ok: false, error: outcome.error };
+  },
+};

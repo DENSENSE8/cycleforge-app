@@ -684,7 +684,9 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   height: 0;
 }
 
-/* Sticky column header — soft depth once rows scroll under the frozen band. */
+/* Sticky column header — soft depth once rows scroll under the frozen band.
+   Band stacks at `z-header` (LedgerGrid) so absolute body / sticky-left cells
+   cannot punch through when the sheet narrows (inspector push). */
 [data-cf-grid].cf-grid-scrolled-y [data-grid-col-header] {
   box-shadow: 0 4px 10px -6px rgba(15, 23, 42, 0.16);
 }
@@ -714,13 +716,14 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   background-color: var(--ds-color-background-surface);
 }
 
-/* Ancestor-scroll + h-scroll split (Pending): the header band sits OUTSIDE the
-   horizontal scroll box so `position: sticky` can dock to the PAGE port (an
-   overflow-x scroll container captures sticky on both axes). The band clips;
-   its row translates by the synced scroll offset (`--cf-grid-sx`, set by
-   LedgerGrid from the body box's scrollLeft); the frozen identity cells
-   counter-translate so they stay pinned at the left edge, mirroring the body's
-   sticky-left pane. */
+/* Ancestor-scroll + h-scroll split (Pending) AND self-scroll sheet grids
+   (Unbox History): the header band sits OUTSIDE the body scroll box so rows
+   cannot paint through it. An overflow scroll container captures sticky on
+   both axes; absolute virtualized chips still punch a sticky-inside band when
+   the sheet narrows (inspector push). The band clips; its row translates by
+   the synced scroll offset (`--cf-grid-sx`, set by LedgerGrid from the body
+   box's scrollLeft); the frozen identity cells counter-translate so they stay
+   pinned at the left edge, mirroring the body's sticky-left pane. */
 [data-cf-grid][data-grid-split-x] [data-grid-col-header] [role='row'] {
   transform: translateX(var(--cf-grid-sx, 0px));
 }

@@ -8,17 +8,23 @@
  *   - history (default)  Shipping workspace (Pending · FBA | History), OVER which a
  *     scanned/active order — or an Up Next preview — crossfades and back.
  * Pure presentational; state comes from the dashboard's hooks.
+ *
+ * Shipping motion matches Unbox / Pack: browse underlay stays mounted; overlay
+ * uses `motionRole.swap.scan` (exit instant). Order→order while open hard-cuts
+ * (`mode="sync"`) so the host never flashes empty between entities.
  */
 
-import React from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
+import React, { useRef } from 'react';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';
 import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed';
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
 import { TestingLineWorkspace } from '@/components/tech/TestingLineWorkspace';
 import { previewOrderToActiveShape } from '@/components/tech/tech-dashboard-helpers';
+import { zIndex } from '@/design-system/tokens/z-index';
+import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { cn } from '@/utils/_cn';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { TechActiveOrderPane } from '@/components/tech/useTechOrderPanes';
 import type { TechRightViewMode } from '@/components/tech/useTechRightView';
@@ -51,8 +57,6 @@ export function TechRightPane({
   previewOrder,
   onClosePreview,
 }: TechRightPaneProps) {
-  // Canonical right-pane fade; centralizes prefers-reduced-motion via the hook.
-  const tabFade = useMotionPresence(framerPresence.tableRow);
   if (rightViewMode === 'receiving') {
     return <ReceivingInboundFeed />;
   }
@@ -70,43 +74,104 @@ export function TechRightPane({
     );
   }
 
-  // Shipping mode: Workbench (Pending · FBA | History); active/preview order
-  // crossfades over it and back.
   return (
-    <AnimatePresence initial={false} mode="wait">
-      {activeOrderPane ? (
-        <ActiveOrderWorkspace
-          key={`workspace-active-${activeOrderPane.activeOrder.tracking || activeOrderPane.activeOrder.orderId}`}
-          activeOrder={activeOrderPane.activeOrder}
-          onClose={onCloseActiveOrder}
-          setActiveOrder={(next) => {
-            if (!next) {
-              onCloseActiveOrder();
-              return;
-            }
-            onActiveOrderChange?.(next);
-          }}
-        />
-      ) : previewOrder ? (
-        <ActiveOrderWorkspace
-          key={`workspace-preview-${previewOrder.id}`}
-          activeOrder={previewOrderToActiveShape(previewOrder)}
-          mode="preview"
-          previewOrder={previewOrder}
-          onClose={onClosePreview}
-        />
-      ) : (
-        <motion.div
-          key={`tech-tab-${rightViewMode}`}
-          initial={tabFade.initial}
-          animate={tabFade.animate}
-          exit={tabFade.exit}
-          transition={{ duration: 0.16 }}
-          className="flex h-full min-h-0 w-full flex-col"
-        >
-          <ShippingWorkspaceView techId={techId} />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <ShippingOrderWorkspace
+      techId={techId}
+      activeOrderPane={activeOrderPane}
+      onCloseActiveOrder={onCloseActiveOrder}
+      onActiveOrderChange={onActiveOrderChange}
+      previewOrder={previewOrder}
+      onClosePreview={onClosePreview}
+    />
+  );
+}
+
+function ShippingOrderWorkspace({
+  techId,
+  activeOrderPane,
+  onCloseActiveOrder,
+  onActiveOrderChange,
+  previewOrder,
+  onClosePreview,
+}: {
+  techId: string;
+  activeOrderPane: TechActiveOrderPane | null;
+  onCloseActiveOrder: () => void;
+  onActiveOrderChange?: (next: TechActiveOrderPane['activeOrder']) => void;
+  previewOrder: Order | null;
+  onClosePreview: () => void;
+}) {
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(
+    motionRole.swap.scan,
+  );
+  const showOverlay = !!activeOrderPane || !!previewOrder;
+
+  const overlayWasOpenRef = useRef(false);
+  const entitySwapHardCut = showOverlay && overlayWasOpenRef.current;
+  overlayWasOpenRef.current = showOverlay;
+
+  const overlayKey = activeOrderPane
+    ? `active-${activeOrderPane.activeOrder.tracking || activeOrderPane.activeOrder.orderId}`
+    : previewOrder
+      ? `preview-${previewOrder.id}`
+      : 'none';
+
+  return (
+    <div className={cn(appWorkCanvasClass, 'relative h-full')}>
+      <div
+        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
+        aria-hidden={showOverlay ? true : undefined}
+        inert={showOverlay ? true : undefined}
+        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
+      >
+        <ShippingWorkspaceView techId={techId} />
+      </div>
+
+      <AnimatePresence
+        initial={false}
+        mode={entitySwapHardCut ? 'sync' : 'wait'}
+      >
+        {activeOrderPane ? (
+          <motion.div
+            key={overlayKey}
+            initial={entitySwapHardCut ? false : panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
+          >
+            <ActiveOrderWorkspace
+              activeOrder={activeOrderPane.activeOrder}
+              onClose={onCloseActiveOrder}
+              setActiveOrder={(next) => {
+                if (!next) {
+                  onCloseActiveOrder();
+                  return;
+                }
+                onActiveOrderChange?.(next);
+              }}
+            />
+          </motion.div>
+        ) : previewOrder ? (
+          <motion.div
+            key={overlayKey}
+            initial={entitySwapHardCut ? false : panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
+          >
+            <ActiveOrderWorkspace
+              activeOrder={previewOrderToActiveShape(previewOrder)}
+              mode="preview"
+              previewOrder={previewOrder}
+              onClose={onClosePreview}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
   );
 }

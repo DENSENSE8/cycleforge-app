@@ -25,6 +25,7 @@
  *  - and an unmapped key exits WITHOUT swallowing the keystroke.
  */
 
+import { isEditableActiveElement } from '@/lib/keyboard/is-editable-key-target';
 import { pushOverlay } from '@/lib/overlay-stack/store';
 import {
   NAV_IDLE,
@@ -63,15 +64,7 @@ function emit(): void {
 }
 
 function isEditableTarget(node: EventTarget | null): boolean {
-  const el = node instanceof HTMLElement ? node : null;
-  const active =
-    el ?? (typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null);
-  if (!active) return false;
-  const tag = active.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  if (active.isContentEditable) return true;
-  const role = active.getAttribute('role');
-  return role === 'textbox' || role === 'searchbox' || role === 'combobox';
+  return isEditableActiveElement(node);
 }
 
 /** `⌘;` / `Ctrl+;` — no Shift, no Alt; layout-robust via key OR physical code. */

@@ -33,7 +33,11 @@ import {
   type ProcedureVariant,
 } from '@/lib/stations/procedure';
 import { UNBOX_STEP_BODIES } from '../index';
-import { UNBOX_STEP_DOCK_CONTROLS, UNBOX_STEPS_WITHOUT_DOCK_ACTION } from './index';
+import {
+  UNBOX_COMMIT_DOCK_KEYS,
+  UNBOX_STEP_DOCK_CONTROLS,
+  UNBOX_STEPS_WITHOUT_DOCK_ACTION,
+} from './index';
 
 registerBuiltinProcedures();
 
@@ -114,10 +118,13 @@ test('the dock registry holds no control for a step that is not declared', () =>
   const declared = new Set(
     unbox.steps.filter((step) => step.phase === 'capture').map((step) => step.key),
   );
+  // Commit-phase dock keys (e.g. post-print `stage`) are intentional — see
+  // UNBOX_COMMIT_DOCK_KEYS. They are not capture vocabulary.
+  for (const key of UNBOX_COMMIT_DOCK_KEYS) declared.add(key);
   for (const key of Object.keys(UNBOX_STEP_DOCK_CONTROLS)) {
     assert.ok(
       declared.has(key),
-      `"${key}" has a dock control but is not a declared capture step — a control with no ` +
+      `"${key}" has a dock control but is not a declared capture/commit step — a control with no ` +
         `step is dead code that reads as coverage.`,
     );
   }

@@ -1,13 +1,19 @@
 /**
  * Station Displays — Root Index + push column SoT for scan-station right-edge
- * triage. Desk `RightRailHost` inspectors stay under `components/right-rail/`.
+ * triage.
+ *
+ * **Index→leaf waist (propagates to desk rails):** {@link DisplaysIndexLeafStage}
+ * — composed by {@link StationDisplaysPushStack} and desk
+ * `DeskInspectorIndexShell` (`components/right-rail/`). Upgrade the stage /
+ * {@link StationDisplayIndexList} here; desk peeks must not fork twins.
  *
  * Action Plane densify (Station Action vs Context planes):
- *   StationDenseFactStrip · StationActionDossierShell · StationActionKeyLegend
+ *   StationDenseFactStrip · StationActionDossierShell · useStationActionKeyBindings
  *
  * ```ts
  * import {
  *   StationDisplaysPushStack,
+ *   DisplaysIndexLeafStage,
  *   StationActionDossierShell,
  *   STATION_DISPLAYS_HOST_PAD_CLASS,
  *   type DisplayIndexRow,
@@ -22,19 +28,19 @@ export {
   STATION_DISPLAYS_HOST_PAD_CLASS,
 } from './StationDisplaysPushColumn';
 
+export { DisplaysIndexLeafStage } from './DisplaysIndexLeafStage';
 export { StationDisplaysPushStack } from './StationDisplaysPushStack';
 export type { DisplaysVisitFrame } from './StationDisplaysPushStack';
+export { StationDisplaysActionFloor } from './StationDisplaysActionFloor';
 export { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 export { useDisplaysLeafChrome } from './displays-leaf-chrome';
-export type { DisplaysFooterCommand } from './displays-footer-command';
-
+export { useYieldStationDisplaysOnAssistantOpen } from './useYieldStationDisplaysOnAssistantOpen';
 export { StationDenseFactStrip } from './StationDenseFactStrip';
 
 export { StationActionDossierShell } from './StationActionDossierShell';
 export type { StationActionDossierRow } from './StationActionDossierShell';
 
 export {
-  StationActionKeyLegend,
   useStationActionKeyBindings,
 } from './StationActionKeyLegend';
 export type { StationActionKeyBinding } from './StationActionKeyLegend';

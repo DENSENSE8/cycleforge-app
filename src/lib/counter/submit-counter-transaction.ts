@@ -9,7 +9,7 @@
  *
  *   resolveCounterCustomer()      deterministic identity (phone only)
  *     → counter_transactions      the header + the idempotency anchor
- *     → submitRepairIntake(...)   COMPOSED, UNMODIFIED
+ *     → submitRepairIntake(..., ticketWork: 'skip')  COMPOSED — counter owns ticket enqueue
  *     → stageSquareOrder(...)     staged, NEVER charged
  *     → enqueueTicketWork(...)    the outbox
  *
@@ -419,6 +419,9 @@ export async function submitCounterTransaction(
           signatureDataUrl: service.signatureDataUrl ?? null,
           signatureStrokes: service.signatureStrokes,
           idempotencyKey: clientEventId,
+          // Counter owns CREATE_TICKET / ATTACH via ticket_work_outbox below —
+          // skip the inline create so we never mint two tickets for one visit.
+          ticketWork: 'skip',
         },
         orgId,
       );

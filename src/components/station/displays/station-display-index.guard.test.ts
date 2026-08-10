@@ -102,7 +102,11 @@ describe('Station Displays Root Index chrome', () => {
       /onKeyDown=\{\(e\) => indexFilterKeysRef\.current\?\.onFilterKeyDown\(e\)\}/,
       'index-filter TechRailSearchBar must drive the list from the box',
     );
-    assert.match(stack, /ref=\{indexFilterKeysRef\}/);
+    assert.match(
+      stack,
+      /indexFilterKeysRef=\{indexFilterKeysRef\}/,
+      'PushStack wires filter keys into DisplaysIndexLeafStage',
+    );
     // Face tokens — selection ink = operator accent + bare animate-pulse.
     assert.match(face, /ARMED_CURSOR_TRACK_CLASS/);
     assert.match(face, /ARMED_CURSOR_MARKER_PULSE_CLASS/);
@@ -153,8 +157,18 @@ describe('Station Displays Root Index chrome', () => {
     assert.match(hook, /commitArmed/);
     assert.match(
       hook,
-      /onCommit\(id\);/,
-      'commitArmed must call onCommit in the same turn',
+      /onCommit\(id\);\s*\n\s*setCursorId\(id\)/,
+      'commitArmed must call onCommit before cursor paint (no chevron-first frame)',
+    );
+    assert.match(
+      hook,
+      /handleCommitPointerDown/,
+      'mouse commits on pointerdown — same turn as keyboard Enter',
+    );
+    assert.match(
+      list,
+      /handleCommitPointerDown/,
+      'index rows commit on pointerdown (mouse = keyboard)',
     );
     assert.doesNotMatch(
       hook,
@@ -256,10 +270,10 @@ describe('Station Displays Root Index chrome', () => {
     assert.doesNotMatch(rowBody, /TONE_ICON|iconTone|row\.tone\]\s*,?\s*\)?\s*\}\s*\/>/);
   });
 
-  it('push stack passes lastLeafId as activeId when on index', () => {
+  it('push stack passes lastLeafId into DisplaysIndexLeafStage', () => {
     const stack = read(STACK);
-    assert.match(stack, /lastLeafId/);
-    assert.match(stack, /activeId=\{lastLeafId\}/);
+    assert.match(stack, /DisplaysIndexLeafStage/);
+    assert.match(stack, /lastLeafId=\{lastLeafId\}/);
   });
 
   it('leaf header is top-left ← → + current title only (no ancestor jump crumbs)', () => {
@@ -298,12 +312,24 @@ describe('Station Displays Root Index chrome', () => {
       /\bh-10\b/,
       'leaf header must be the 24px eyebrow band, not a 40px chrome band',
     );
-    // Resize sash is z-sticky; leaf nav must sit below it on the left edge.
-    assert.match(header, /z-base/);
-    assert.doesNotMatch(
+    // Resize sash is z-sticky full-height. Leaf nav matches the column top band:
+    // z-header + pointer-events-none so ← → can re-enable hits above the sash
+    // without blanketing the leading seam (title gutter still lets drag through).
+    assert.match(header, /z-header/);
+    assert.match(
       header,
-      /z-raised|z-sticky|z-header/,
-      'leaf ← → eyebrow must not steal the inset resize sash hit (sash = z-sticky)',
+      /pointer-events-none/,
+      'leaf eyebrow must not blanket the inset resize sash — children re-enable hits',
+    );
+    assert.match(
+      header,
+      /pointer-events-auto/,
+      'history ← → / trailing must re-enable pointer-events above the sash',
+    );
+    assert.match(
+      header,
+      /\bsticky\b/,
+      'leaf eyebrow must stay sticky for scroll — place sticky AFTER seam token so tailwind-merge does not drop it for relative',
     );
     // Must not dump the whole path as the only title control.
     assert.doesNotMatch(
@@ -329,6 +355,16 @@ describe('Station Displays Root Index chrome', () => {
     assert.match(stack, /onVisitNavigate/);
     assert.match(history, /pushVisitFrame/);
     assert.match(history, /goVisitForward/);
+    assert.match(
+      history,
+      /!isIndexTab\(state\.present\.tab\) && !isIndexTab\(next\.tab\)/,
+      'cockpit Photos→Units must not stack prior leaf under Back',
+    );
+    assert.match(
+      stack,
+      /onIndex \|\| !canHistoryBack/,
+      'Root Index Back closes — never "Back to Photos" on the topic list',
+    );
     assert.match(chrome, /useDisplaysLeafChrome/);
     assert.match(chrome, /DisplaysBreadcrumbSegment/);
     assert.match(chrome, /setOnNestedRestore/);

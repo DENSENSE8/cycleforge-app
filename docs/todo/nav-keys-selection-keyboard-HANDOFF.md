@@ -7,11 +7,10 @@
 [`displays-wms-terminal-binary-cut-HANDOFF.md`](./displays-wms-terminal-binary-cut-HANDOFF.md) —
 binary-cut arm + `feedback.hitMarker` commit + optimistic chip on the Displays Root Index.
 That work is the **seed engine** this initiative generalizes; do not re-litigate its motion feel.
-**Status:** SPEC LOCKED (12 decisions interviewed 2026-08-08). **P0 ✅ (Right/Displays) · P1 ✅
-(leader store + 3 regions + Left rail) · P4 ✅ (uniqueness guard + constitution).** Remaining: **P2**
-(Middle region) · **P3** (second armed layer). Waist: `src/lib/keyboard/nav-keys/` — 5 test files
-green (`resolveNavKeymap` · `nav-leader-machine` · `nav-leader-store` DOM · `nav-leader-owner` ·
-`nav-key-uniqueness`).
+**Status:** SPEC LOCKED (12 decisions interviewed 2026-08-08). **P0 ✅ · P1 ✅ · P2 ✅ (Unbox
+Middle carton-open) · P3 ✅ (Photos/Units/Linkage verb letters) · P4 ✅.** Waist:
+`src/lib/keyboard/nav-keys/` + Unbox Middle map
+(`unbox-middle-carton-nav-keys.ts`) + reachability / uniqueness guards.
 **Lane:** stay on the checkout's branch · attach to **`:3050`** · never start/restart/kill the dev
 server · **user owns commits**.
 **Product frame:** Cycle Forge multi-tenant reseller-ops SaaS; USAV is dogfood only.

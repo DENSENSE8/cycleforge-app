@@ -355,6 +355,10 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
     ship: paramRoundTrip(parseShippingWorkspaceTab),
     /** Testing-mode workspace tab — same, from its own SoT. */
     testTab: paramRoundTrip(parseTestingWorkspaceTab),
+    /** Armed packing DESK/STAGING filter (Ready-to-Pack placement). */
+    packStation: paramPositiveInt,
+    /** Any packing-station placement filter. */
+    packPlaced: paramFlag,
   },
   carries: WORKBENCH_CARRIES,
 });

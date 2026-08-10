@@ -21,12 +21,14 @@
  *
  * Mutually exclusive with `detail:receiving` and AI.
  *
- * Paint: `setDisplay` writes a pending snapshot immediately so Open displays
- * mounts in the same click commit; URL remains the durable SoT via
- * `router.replace`. Pending clears when `useSearchParams` catches up.
+ * Paint: `setDisplay` `flushSync`s a pending snapshot so Open displays / leaf
+ * swaps mount in the same pointer/key turn (no armed-chevron frame before the
+ * rail updates); URL remains the durable SoT via `router.replace` inside
+ * `startTransition`. Pending clears when `useSearchParams` catches up.
  */
 
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   readLiveSearchParams,
@@ -121,8 +123,10 @@ export function buildDisplayPending(
   }
 
   let linkageActionRaw: string | null = null;
-  if (tab === 'linkage' && opts?.linkageAction === 'note') {
-    linkageActionRaw = 'note';
+  if (tab === 'linkage') {
+    if (opts?.linkageAction === 'note') linkageActionRaw = 'note';
+    else if (opts?.linkageAction === 'link') linkageActionRaw = 'link';
+    // `actions` / absent → null (parse → actions list)
   }
   // Legacy po-note deep-link intent when opening linkage for note.
   if (rawDisplay === 'po-note' && tab === 'linkage' && !opts?.linkageAction) {
@@ -141,8 +145,9 @@ export function buildDisplayPending(
   }
 
   let unitsActionRaw: string | null = null;
-  if (tab === 'units' && opts?.unitsAction === 'prebox') {
-    unitsActionRaw = 'prebox';
+  if (tab === 'units') {
+    if (opts?.unitsAction === 'prebox') unitsActionRaw = 'prebox';
+    else if (opts?.unitsAction === 'units') unitsActionRaw = 'units';
   }
 
   const photoAction =
@@ -238,11 +243,13 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
         if (tab === 'photos' && opts?.photoAction && opts.photoAction !== 'actions') {
           next.set(PHOTO_ACTION_PARAM, opts.photoAction);
         }
-        if (tab === 'linkage' && opts?.linkageAction === 'note') {
-          next.set(LINKAGE_ACTION_PARAM, 'note');
+        if (tab === 'linkage') {
+          if (opts?.linkageAction === 'note') next.set(LINKAGE_ACTION_PARAM, 'note');
+          else if (opts?.linkageAction === 'link') next.set(LINKAGE_ACTION_PARAM, 'link');
         }
-        if (tab === 'units' && opts?.unitsAction === 'prebox') {
-          next.set(UNITS_ACTION_PARAM, 'prebox');
+        if (tab === 'units') {
+          if (opts?.unitsAction === 'prebox') next.set(UNITS_ACTION_PARAM, 'prebox');
+          else if (opts?.unitsAction === 'units') next.set(UNITS_ACTION_PARAM, 'units');
         }
         if (tab === 'ticket') {
           if (opts?.ticketAction === 'claim') {
@@ -263,8 +270,11 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
         next.delete(DISPLAY_PARAM);
       }
 
-      // Urgent paint — do not wait for App Router soft-replace.
-      setPending(snapshot);
+      // Urgent paint — flush before soft-replace so mouse/keyboard triage never
+      // shows an armed index chevron (or empty leaf shell) waiting on the URL.
+      flushSync(() => {
+        setPending(snapshot);
+      });
       startTransition(() => {
         replaceParams(next);
       });
@@ -339,7 +349,9 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
         return;
       }
       // Close the column in this commit — do not wait for soft-replace.
-      setPending(buildDisplayPending(null, undefined, null));
+      flushSync(() => {
+        setPending(buildDisplayPending(null, undefined, null));
+      });
       const next = readLiveSearchParams(searchParams.toString());
       clearAllUnboxRightEdgeParams(next);
       startTransition(() => {

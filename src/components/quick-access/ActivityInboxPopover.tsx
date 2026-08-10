@@ -5,7 +5,9 @@
  *
  * Rows compose {@link CompactActivityRow} + {@link RailRowBody} (SoT compact
  * activity face): status mark · title · one fact · short age. Never a large
- * kind glyph, prose `4 hrs ago`, or tone-pill parade.
+ * kind glyph, prose `4 hrs ago`, or tone-pill parade. Tech-queue ready/return
+ * identity keys compose {@link joinStackedIdentityKeys} + house CopyChips
+ * (same last-8 grammar as {@link StackedRowIdentity} keys — never mono prose).
  */
 
 import Link from 'next/link';
@@ -33,6 +35,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CompactActivityRow } from '@/components/ui/CompactActivityRow';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { Button, IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { InboxQueueLinks } from './InboxQueueLinks';
@@ -119,33 +122,40 @@ function metaFactFor(
   platformIconTone: ReturnType<typeof platformMetaIconTone> | null,
 ): ReactNode {
   if (it.kind === 'order_ready_ship' || it.kind === 'return_pending_test') {
+    const identityKeys = joinStackedIdentityKeys([
+      it.orderNumber ? (
+        <OrderIdChip
+          key="order"
+          value={it.orderNumber}
+          display={getLast8(it.orderNumber)}
+          dense
+          platformLabel={platformLabel}
+          iconClass={platformIconTone?.className}
+          iconStyle={platformIconTone?.style}
+        />
+      ) : null,
+      it.trackingNumber ? (
+        <TrackingChip
+          key="tracking"
+          value={it.trackingNumber}
+          display={getLast8(it.trackingNumber)}
+          dense
+        />
+      ) : null,
+    ]);
+    const fallback =
+      !it.orderNumber && !it.trackingNumber
+        ? it.kind === 'return_pending_test'
+          ? 'Needs testing'
+          : 'Ready to ship'
+        : null;
     return (
       <span className="inline-flex min-w-0 flex-wrap items-center gap-1">
         {it.kind === 'order_ready_ship' ? (
           <Check className="h-3 w-3 shrink-0 text-emerald-600" aria-hidden />
         ) : null}
-        {it.orderNumber ? (
-          <OrderIdChip
-            value={it.orderNumber}
-            display={getLast8(it.orderNumber)}
-            dense
-            platformLabel={platformLabel}
-            iconClass={platformIconTone?.className}
-            iconStyle={platformIconTone?.style}
-          />
-        ) : null}
-        {it.trackingNumber ? (
-          <TrackingChip
-            value={it.trackingNumber}
-            display={getLast8(it.trackingNumber)}
-            dense
-          />
-        ) : null}
-        {!it.orderNumber && !it.trackingNumber
-          ? it.kind === 'return_pending_test'
-            ? 'Needs testing'
-            : 'Ready to ship'
-          : null}
+        {identityKeys}
+        {fallback}
       </span>
     );
   }

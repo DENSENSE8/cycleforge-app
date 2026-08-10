@@ -5,8 +5,10 @@
  *
  * Parity with {@link TrackingNumberMenuChip} and carton {@link IdentityLinkChip}:
  *   • Chip click = copy (via {@link OrderIdChip})
- *   • Hover → white menu below: **Open** (product / listing / marketplace order
- *     page) · **Edit** (host opens the record inspector)
+ *   • Hover → white side menu (prefer trailing/right): **Open** (product /
+ *     listing / marketplace order page) · **Edit** (host opens the record
+ *     inspector) — never below the chip in LedgerGrid (that blocks vertical
+ *     row travel). Placement lives in {@link CopyChipHoverMenu}.
  *   • Dense uppercase verbs + ExternalLink / Pencil
  *
  * Used by Unbox History / Receiving LedgerGrid ORDER cells. Plain

@@ -1,11 +1,13 @@
 /**
- * Station Displays visit history — browser-style past / present / future for
- * Root Index ↔ leaf navigation (and host nest snapshots). Nested Inventory /
- * Photos / Units / Linkage drills stay on the breadcrumb trail (`popOne`);
- * this stack records leaf-level frames the trail cannot restore.
+ * Station Displays visit history — Root Index ↔ leaf only (plus host nest
+ * snapshots). Nested Inventory / Photos / Units / Linkage drills stay on the
+ * breadcrumb trail (`popOne`); this stack does **not** accumulate leaf→leaf
+ * hops (cockpit auto-swap Photos→Units must not make Back say "Photos").
  *
  * Pure module — no React. {@link StationDisplaysPushStack} owns the state.
  */
+
+import { STATION_DISPLAY_INDEX } from './display-index';
 
 export type DisplaysVisitFrame = {
   /** `index` or a leaf tab id */
@@ -42,12 +44,33 @@ export function createVisitHistory(present: DisplaysVisitFrame): DisplaysVisitHi
   return { past: [], present, future: [] };
 }
 
-/** Record a divergent navigation — clears forward. No-op when equal to present. */
+function isIndexTab(tab: string): boolean {
+  return tab === STATION_DISPLAY_INDEX;
+}
+
+/**
+ * Record a divergent navigation — clears forward. No-op when equal to present.
+ *
+ * **Same-tab nest-only updates replace `present` in place** (do not grow
+ * `past`). In-leaf drills (Photos `photoAction`, Linkage / Units / Ticket nest,
+ * Inventory sub-leaves) are owned by the breadcrumb trail + `nestedForward`.
+ *
+ * **Leaf → leaf also replaces `present`** (do not stack the prior leaf). Visit
+ * history is Index ↔ leaf; cockpit step swaps and topic jumps must not leave
+ * "Back to Photos" on Units. Index ↔ leaf still pushes.
+ */
 export function pushVisitFrame(
   state: DisplaysVisitHistoryState,
   next: DisplaysVisitFrame,
 ): DisplaysVisitHistoryState {
   if (visitFramesEqual(state.present, next)) return state;
+  if (state.present.tab === next.tab) {
+    return { ...state, present: next, future: [] };
+  }
+  // Leaf → leaf: swap the active leaf; keep Index (if any) as the sole Back target.
+  if (!isIndexTab(state.present.tab) && !isIndexTab(next.tab)) {
+    return { ...state, present: next, future: [] };
+  }
   return {
     past: [...state.past, state.present],
     present: next,

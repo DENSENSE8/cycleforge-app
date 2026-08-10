@@ -115,6 +115,9 @@ export function markReceivingLabelPrinted(lineId: number): void {
   window.dispatchEvent(
     new CustomEvent('receiving-label-printed', { detail: { line_id: lineId } }),
   );
+  // Optimistic row patch — arms Unbox commit `stage` on the dock pointer
+  // without waiting for the POST / feed invalidate round-trip.
+  dispatchLineUpdated({ id: lineId, label_printed_at: new Date().toISOString() });
   void fetch(`/api/receiving/lines/${lineId}/label-printed`, { method: 'POST' }).catch(() => {});
 }
 

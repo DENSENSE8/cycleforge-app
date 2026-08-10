@@ -50,6 +50,8 @@ const INSPECTOR_TOGGLE_SURFACES: readonly string[] = [
   'src/components/warehouse/LocationsWorkspace.tsx',
   'src/features/my-day/MyDayWorkspace.tsx',
   'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx',
+  'src/components/outbound/orders/CsvImportStagingHost.tsx',
+  'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
 ];
 
 /**
@@ -244,6 +246,53 @@ describe('Band 3 is find-only', () => {
     }
   });
 
+  it('Views renders in the RIGHT control cluster, before the KPI toggle', () => {
+    // Ruled 2026-08-10. `views` used to sit inside the left flex-1 group,
+    // flush-abutting the find field, which read as chrome belonging to the
+    // query. It is a page-scoped CONTROL, so it belongs with its peers: the row
+    // is `search · Views · KPI · inspector` and the right three are one cluster.
+    //
+    // The anchor is the RIGHT CLUSTER'S OWN opening tag, not the row's
+    // `justify-between` — that class sits on the parent, so it precedes both
+    // clusters and the broken layout satisfied it just as well. A guard whose
+    // anchor cannot tell the two positions apart is the "pins the mechanism,
+    // blesses the defect" shape (pattern-evolution.md → Always #6).
+    const band = code(readFileSync(join(SRC, 'components/dashboard/workbench-shell.tsx'), 'utf8'));
+    const RIGHT_CLUSTER = 'items-center gap-2 self-center';
+    const rightCluster = band.indexOf(RIGHT_CLUSTER);
+    const views = band.indexOf('{views}');
+    const kpi = band.indexOf('{kpiToggle}');
+    const trailing = band.indexOf('{trailing}');
+
+    assert.ok(
+      rightCluster > 0,
+      `WorkbenchTriageBand must keep the right control cluster ("${RIGHT_CLUSTER}") — this guard reads position from it`,
+    );
+    assert.ok(views > 0, 'WorkbenchTriageBand must render the {views} slot');
+    assert.ok(
+      views > rightCluster,
+      'Views belongs to the RIGHT cluster — never back inside the find group',
+    );
+    assert.ok(views < kpi, 'row order is search · Views · KPI · inspector');
+    assert.ok(kpi < trailing, 'the inspector toggle closes the row');
+
+    // Find owns the whole left: the search group holds no second slot.
+    const left = band.slice(band.indexOf('{search}'), rightCluster);
+    assert.doesNotMatch(
+      left,
+      /\{views\}/,
+      'the left group is find and nothing else — Views is not part of the query',
+    );
+
+    // The old wrapper is what made it read as part of find. Its return is the
+    // regression, even if {views} keeps its index.
+    assert.doesNotMatch(
+      band,
+      /items-stretch self-stretch">\{views\}/,
+      'no flush-abut wrapper — Views sits in the gap-2 cluster with its peers',
+    );
+  });
+
   it('no hand-rolled <select> chrome on a Band 3', () => {
     // A native `<select>` in the band is two violations at once: a second
     // filter grammar beside `WorkbenchFilterPopover`, and soft radius on ops
@@ -271,7 +320,7 @@ describe('Show / Hide inspector has one implementation', () => {
     assert.doesNotMatch(toggle, /key === '\]'\s*&&\s*\(e\.metaKey/);
     assert.match(
       toggle,
-      /isEditableTarget/,
+      /isEditableKeyTarget/,
       'the bare `]` chord must stand down inside the find field it sits beside',
     );
   });

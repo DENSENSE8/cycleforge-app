@@ -531,6 +531,26 @@ export async function isHomeInbox(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'home_inbox', 'HOME_INBOX');
 }
 
+/**
+ * Watch-a-view — queue-threshold alerts + scheduled digests
+ * (docs/todo/view-threshold-alerts-and-digests-IMPLEMENTATION-PLAN.md). Per-org,
+ * async, env-fallback.
+ *
+ * Gates the whole vertical slice: the "Watch this view…" item on the Band-3 Views
+ * control, the /api/view-monitors arm/manage routes, and the cron's fire path
+ * (GET /api/cron/view-monitors). Default OFF — dogfood-first: enable per org
+ * (organization_feature_flags(flag='view_monitors')) or globally via
+ * VIEW_MONITORS=true. USAV (DOGFOOD_ORG_ID) is seeded ON by
+ * 2026-08-10b_seed_view_monitors_usav.sql.
+ *
+ * Resolver (`resolveForOrg(orgId, 'view_monitors', 'VIEW_MONITORS')`) lands with
+ * the first arm/manage route. The cron is deliberately NOT gated: it evaluates
+ * whatever monitors EXIST, and a monitor can only be armed while the flag is on.
+ */
+export async function isViewMonitors(orgId: OrgId): Promise<boolean> {
+  return resolveForOrg(orgId, 'view_monitors', 'VIEW_MONITORS');
+}
+
 // ─── Flag lifecycle registry ──────────────────────────────────────────────────
 /**
  * Lives in `./feature-flags-lifecycle` — a dependency-free sibling, because this

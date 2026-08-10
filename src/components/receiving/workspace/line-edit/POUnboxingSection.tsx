@@ -5,9 +5,10 @@
  * condition + serial. No glass card shell — elevation belongs on the action dock.
  *
  * Unbox centre mounts this with `editLines` + `serialScan` + `dockOwnsCapture`
- * so the accordion is a ledger (click → dock step); Arrival (`TriagePanel`)
- * mounts `editLines` with `serialScan={false}` + `unitsChrome={false}` (door
- * flow — no condition · serial / Units). Testing composes it too.
+ * — dual loci: meta chips → dock step; active line mounts mouse editor.
+ * Arrival (`TriagePanel`) mounts `editLines` with `serialScan={false}` +
+ * `unitsChrome={false}` (door flow — no condition · serial / Units). Testing
+ * composes it too.
  *
  * Package Pairing left it on 2026-08-02 and is the `pairing` Displays tab on
  * the right edge ({@link buildUnboxSideTabs}).
@@ -27,8 +28,9 @@ interface POUnboxingSectionProps {
   editLines: boolean;
   serialScan: boolean;
   /**
-   * When true, condition/serial inputs leave the accordion — the bottom dock
-   * owns capture; the row paints a clickable ledger. Unbox centre only.
+   * When true (Unbox centre): bottom dock owns scanner/procedure; meta chips
+   * forward to `focusStep`; active line still mounts mouse
+   * {@link ActiveLineConditionSerial} under the row.
    */
   dockOwnsCapture?: boolean;
   /** Ledger click → focus the matching procedure step in the dock. */

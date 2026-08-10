@@ -13,10 +13,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-header';
 import { SearchableSelectField } from '@/design-system/components';
-import { Button, TextField } from '@/design-system/primitives';
+import { Button, FlushTerminalFooter, TextField } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { useDebounce } from '@/hooks';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
@@ -490,33 +489,35 @@ export function IncomingAddInboundOverlay({
           </div>
         </div>
 
-        <InspectorActionFloor
-          actions={
-            <Button
-              type="button"
-              variant="primary"
-              disabled={!canSubmit}
-              onClick={() => void handleSubmit()}
-              ariaLabel={submitting ? 'Saving inbound' : 'Add to Incoming'}
-              className="min-h-9 w-full flex-1"
-              data-testid="add-inbound-submit"
-            >
-              {submitting ? 'Saving…' : 'Add to Incoming'}
-            </Button>
+        <FlushTerminalFooter
+          layout="cluster"
+          leading={
+            <div className="flex min-w-0 flex-1 items-stretch">
+              <Button
+                type="button"
+                variant="primary"
+                disabled={!canSubmit}
+                onClick={() => void handleSubmit()}
+                ariaLabel={submitting ? 'Saving inbound' : 'Add to Incoming'}
+                className="min-h-9 w-full flex-1"
+                data-testid="add-inbound-submit"
+              >
+                {submitting ? 'Saving…' : 'Add to Incoming'}
+              </Button>
+            </div>
           }
-          delete={
-            <PaneHeaderCloseButton
-              onClick={onClose}
-              ariaLabel="Hide right panel"
-              title="Hide right panel"
-              className={cn(
-                'h-full min-h-9 w-10',
-                cornerClass('flush'),
-                'rounded-none border-l border-border-hairline',
-              )}
-            />
-          }
-        />
+        >
+          <PaneHeaderCloseButton
+            onClick={onClose}
+            ariaLabel="Hide right panel"
+            title="Hide right panel"
+            className={cn(
+              'h-full min-h-9 w-10',
+              cornerClass('flush'),
+              'rounded-none border-l border-border-hairline',
+            )}
+          />
+        </FlushTerminalFooter>
       </div>
     </DetailStackRailRegistrar>
   );

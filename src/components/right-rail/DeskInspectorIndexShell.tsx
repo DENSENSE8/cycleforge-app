@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Desk Context-plane inspector — Unbox rows index → leaf grammar on
- * {@link RightRailHost}. Composes Station DisplayIndexRow + list + leaf header
- * primitives; never mounts {@link StationDisplaysPushStack}.
+ * Desk Context-plane inspector — thin adapter over Unbox
+ * {@link DisplaysIndexLeafStage}. Upgrade the stage / index list / leaf header
+ * in `station/displays/` — this shell only maps leaves ↔ stage + Esc pop.
  *
- * Chrome (→| · ↑↓) stays on {@link DeskRailChromeRow} above this shell.
- * Esc pops leaf → index (does not park the rail — Band 3 / chrome owns that).
+ * Never mounts {@link StationDisplaysPushStack} (Action push column). Chrome
+ * (→| · ↑↓) stays on {@link DeskRailChromeRow} above this shell.
  */
 
 import {
@@ -17,7 +17,6 @@ import {
   type ReactNode,
 } from 'react';
 import type { SectionTab } from '@/design-system/components';
-import { DISPLAYS_FLUSH_HOST } from '@/design-system/shells/detail-stack/layout';
 import {
   STATION_DISPLAY_INDEX,
   defaultDisplayIndexGroup,
@@ -25,7 +24,8 @@ import {
   type DisplayIndexRow,
   type DisplayIndexTone,
 } from '@/components/station/displays/display-index';
-import { StationDisplayIndexList } from '@/components/station/displays/StationDisplayIndexList';
+import { DisplaysIndexLeafStage } from '@/components/station/displays';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
 import { cn } from '@/utils/_cn';
 
@@ -41,14 +41,6 @@ export type DeskInspectorLeaf = {
   icon?: SectionTab['icon'];
   content: ReactNode;
 };
-
-function isEditableKeyTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-  return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
-}
 
 function leafToIndexRow(leaf: DeskInspectorLeaf): DisplayIndexRow {
   return {
@@ -96,7 +88,7 @@ export function DeskInspectorIndexShell({
   defaultActiveId?: string;
   /** Enriched rows; defaults from {@link leaves}. */
   indexRows?: DisplayIndexRow[];
-  /** Index-only trailing (e.g. Orders ⋮ handoffs) — peer of Unbox index chrome. */
+  /** Index-only trailing (e.g. Orders ⋮ handoffs). */
   indexRightSlot?: ReactNode;
   leafTrailing?: ReactNode;
   ariaLabel?: string;
@@ -164,48 +156,44 @@ export function DeskInspectorIndexShell({
     setActiveId(DESK_INSPECTOR_INDEX);
   }, [activeLeaf, onIndex, setActiveId]);
 
+  const stickyHeader = onIndex
+    ? indexRightSlot != null ? (
+        <div
+          className="flex shrink-0 items-center justify-end gap-1 border-b border-border-hairline px-2 py-1"
+          data-desk-inspector-index-trailing=""
+        >
+          {indexRightSlot}
+        </div>
+      ) : null
+    : (
+        <StationDisplayLeafHeader
+          title={activeLeaf?.label ?? ''}
+          onBack={goIndex}
+          backLabel={backLabel}
+          canGoBack
+          canGoForward={false}
+          trailing={leafTrailing}
+        />
+      );
+
   return (
     <div
-      className={cn(DISPLAYS_FLUSH_HOST, 'flex min-h-0 flex-1 flex-col', className)}
       data-testid={testId}
       data-desk-inspector-index=""
-      data-desk-inspector-stage={onIndex ? 'index' : 'leaf'}
       aria-label={ariaLabel}
+      className={cn('flex min-h-0 flex-1 flex-col', className)}
     >
-      {onIndex ? (
-        <>
-          {indexRightSlot != null ? (
-            <div
-              className="flex shrink-0 items-center justify-end gap-1 border-b border-border-hairline px-2 py-1"
-              data-desk-inspector-index-trailing=""
-            >
-              {indexRightSlot}
-            </div>
-          ) : null}
-          <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
-            <StationDisplayIndexList
-              rows={resolvedIndexRows}
-              tabs={tabs}
-              onSelect={setActiveId}
-              activeId={lastLeafId}
-            />
-          </div>
-        </>
-      ) : activeLeaf ? (
-        <>
-          <StationDisplayLeafHeader
-            title={activeLeaf.label}
-            onBack={goIndex}
-            backLabel={backLabel}
-            canGoBack
-            canGoForward={false}
-            trailing={leafTrailing}
-          />
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {activeLeaf.content}
-          </div>
-        </>
-      ) : null}
+      <DisplaysIndexLeafStage
+        onIndex={onIndex}
+        stickyHeader={stickyHeader}
+        rows={resolvedIndexRows}
+        tabs={tabs}
+        onSelectLeaf={setActiveId}
+        lastLeafId={lastLeafId}
+        leafId={activeLeaf?.id}
+        leafTestId="desk-inspector-leaf"
+        leafBody={activeLeaf?.content ?? null}
+      />
     </div>
   );
 }

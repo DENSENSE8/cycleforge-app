@@ -4,6 +4,7 @@ import {
   RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_EDGE_KEY,
   isReceivingGridFrozen,
+  isReceivingGridSortable,
   receivingGridTemplate,
 } from '@/lib/receiving/receiving-grid-layout';
 
@@ -96,5 +97,30 @@ describe('RECEIVING_GRID_COLUMNS — Sheets Product + trailing `_fill`', () => {
     assert.equal(RECEIVING_GRID_COLUMNS.find((c) => c.key === 'price')?.tier, undefined);
     assert.equal(RECEIVING_GRID_COLUMNS.find((c) => c.key === 'condition')?.tier, 'optional');
     assert.equal(RECEIVING_GRID_COLUMNS.find((c) => c.key === 'serial')?.tier, 'optional');
+  });
+});
+
+describe('isReceivingGridSortable — the one sortability answer', () => {
+  it('keeps the static data columns sortable and the chrome tracks not', () => {
+    assert.equal(isReceivingGridSortable('title'), true);
+    assert.equal(isReceivingGridSortable('date'), true);
+    assert.equal(isReceivingGridSortable('select'), false);
+    assert.equal(isReceivingGridSortable('_fill'), false);
+  });
+
+  // Custom columns are merged in at runtime, so they can never appear in the
+  // static sortable-key derivation — they are admitted by key SHAPE. All three
+  // consumers (descriptor `isSortable`, the header, `useUrlColumnSort`'s
+  // `isColumn`) read this one predicate, so this is what makes a custom column
+  // clickable AND durable in `?colsort=` together.
+  it('admits org custom columns by key shape', () => {
+    assert.equal(isReceivingGridSortable('custom:rack_slot'), true);
+    assert.equal(isReceivingGridSortable('custom:vendor_ref'), true);
+  });
+
+  it('still rejects a bare prefix or an unknown system key', () => {
+    assert.equal(isReceivingGridSortable('custom:'), false);
+    assert.equal(isReceivingGridSortable('custom'), false);
+    assert.equal(isReceivingGridSortable('not_a_column'), false);
   });
 });
