@@ -11,6 +11,38 @@ the SoT right rail in Unbox mode."**
 
 ---
 
+> ## ✅ CLOSED — 2026-08-10
+>
+> §2–§5 are done. What landed, and the two decisions this handoff left open:
+>
+> - **Delete moved to the floor.** `PhotoBatchInspectorPanel` mounts
+>   `InspectorActionFloor` with `InspectorFlushDelete` (+ `FLOOR_DELETE_PEER_CLASS`) as a
+>   `shrink-0` sibling after the scroll body; the `delete` verb row, `deleteArmed` /
+>   `deleting` / `handleDelete` / `DELETE_ARM_MS` / the disarm effect and `BatchRow.danger`
+>   are all gone — the control owns arm-then-confirm itself.
+> - **§2.3.3 answered: (a), Delete alone.** Same shape `BinDetailFlyout` · `SkuDetailView` ·
+>   `RepairDetailsPanel` already ship. **Consequence to know:** with one peer the spread floor
+>   gives Delete the whole 419px column, so it reads as a bottom *bar* with a centred trash
+>   rather than the far-right cell of Unbox's five-icon row. Adding a second icon verb is what
+>   makes "far right" literal — the E2E therefore asserts **trailing = last peer**, which
+>   stays true either way, rather than a gap that is trivially 0 today.
+> - **§2.4 answered by the operator: keep the pulse OFF.** The armed face composes the shared
+>   chevron + track tokens without `ARMED_CURSOR_MARKER_PULSE_CLASS`; recorded as a deliberate
+>   divergence from the Unbox golden in `display/media-library.md` and pinned by a guard.
+> - **Guards:** `media-library-chrome.guard.test.ts` 9/9 (Delete-on-floor · no motion / no
+>   `layoutId` across the whole photos dir · pulse off), and the panel joined
+>   `DESK_FLOOR_CONSUMERS` + `DESK_RAIL_CHROME_ROW_GOLDEN`. Right-rail guards 33/33.
+> - **E2E:** three batch tests added to `photos-railless-frame.spec.ts`; the three photo specs
+>   run **21 passed** on `qa-desktop`. `photos-inspector-walk.spec.ts`'s stale "bulk toolbar"
+>   naming was corrected to the batch rail.
+> - **Docs:** `display/media-library.md` (planes · rail-vs-toolbar · no-motion · Delete floor ·
+>   modules · guards), `source-of-truth.md` Media Library row, a dated amendment at the top of
+>   the A3 plan (original kept as evidence), and `PhotoInspectorPanel`'s docblock.
+>
+> Everything below is the original brief, kept verbatim.
+
+---
+
 ## 0. State at handoff — what is green, and what is half-done
 
 **Green, verified, do not redo:**
