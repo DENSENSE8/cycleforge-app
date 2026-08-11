@@ -21,7 +21,8 @@
  *   expected_today: number,      // joined zoho_po_mirror.expected_delivery_date = today (PST)
  * }
  *
- * Polled by IncomingSidebarPanel every 30s via React Query. No write side.
+ * Polled by IncomingWorkspaceHeader attention filters every 30s via React Query.
+ * No write side.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -45,7 +46,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;
-    // 30s-polled Incoming stat tiles (IncomingSidebarPanel). Cache the composed
+    // 30s-polled Incoming attention filter counts. Cache the composed
     // aggregate org-scoped; every receiving write busts receiving-lines.
     const payload = await getOrSet(
       CACHE_NS.receivingIncomingSummary,

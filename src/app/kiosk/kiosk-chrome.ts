@@ -18,21 +18,37 @@ import { cn } from '@/utils/_cn';
  * Upper band owns `border-b`; bodies never add a matching `border-t`.
  */
 export const KIOSK_PANE_HEADER_BAND = cn(
-  'flex h-14 shrink-0 items-center gap-3 bg-surface-card px-4',
+  // pl-0: leading control (KioskSpineToggle) shares the Catalog instrument
+  // column with ProductSelector's flush back cell — same as staff HEADER_INSET_X.
+  'flex h-14 shrink-0 items-center gap-3 bg-surface-card pl-0 pr-4',
   'border-b border-border-soft',
+  cornerClass('flush'),
+);
+
+/**
+ * Touch-friendly pane action floor (~56px) — twin of {@link KIOSK_PANE_HEADER_BAND}.
+ * Owns `border-t border-border-soft` so left (cart actions) and right (submit)
+ * hairlines share one continuous Y with the same token as the header seam.
+ * Never `border-border-hairline` here — that reads as a different weight from the top.
+ */
+export const KIOSK_PANE_FOOTER_BAND = cn(
+  'flex h-14 shrink-0 items-stretch bg-surface-card p-0',
+  'border-t border-border-soft',
   cornerClass('flush'),
 );
 
 /** Pane title face inside {@link KIOSK_PANE_HEADER_BAND}. */
 export const KIOSK_PANE_HEADER_TITLE =
-  'min-w-0 flex-1 text-lg font-semibold tracking-tight text-text-default';
+  // first:pl-4: title-only bands (no leading toggle) keep a readable inset.
+  'min-w-0 flex-1 first:pl-4 text-lg font-semibold tracking-tight text-text-default';
 
 /**
- * Collapsed mode-spine width (icon column). Always visible — never snaps to 0.
- * Inner expanded column stays {@link KIOSK_MODE_SPINE_EXPANDED_W}; the host
- * clips to this width when collapsed.
+ * Collapsed mode-spine width — **0 / off-screen**, matching staff
+ * `SidebarNavColumn`. Open snaps to {@link KIOSK_MODE_SPINE_EXPANDED_W_PX};
+ * there is no intermediate icon-only rail (that ate Catalog width on every
+ * counter visit). Reopen via `KioskSpineToggle` in the Catalog / Pickup header.
  */
-export const KIOSK_MODE_SPINE_ICON_W_PX = 64;
+export const KIOSK_MODE_SPINE_COLLAPSED_W_PX = 0;
 
 /**
  * Expanded mode-spine width (icon + labels). Matches staff MasterNav

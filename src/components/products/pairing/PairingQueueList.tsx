@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { platformStyle } from './platform-style';
+import { sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 import { usePairingQueue } from './usePairingQueue';
 import type { PairingQueueItem, PairingSort } from './types';
 
@@ -148,7 +149,7 @@ function PairingQueueRow({
           </p>
           {item.matchedVia && (
             <p className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-wider text-blue-600">
-              matched {platformStyle(item.matchedVia.platform).label}:{' '}
+              matched {sourcePlatformLabel(item.matchedVia.platform)}:{' '}
               <span className="font-mono normal-case tracking-normal text-text-muted">
                 {item.matchedVia.platform === 'ecwid'
                   ? item.matchedVia.platformSku || item.matchedVia.platformItemId
@@ -156,16 +157,15 @@ function PairingQueueRow({
               </span>
             </p>
           )}
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             {item.platforms.map((p) => {
-              const style = platformStyle(p);
+              const meta = sourcePlatformMeta(p);
               return (
-                <span
-                  key={p}
-                  className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}
-                >
-                  {style.label}
-                </span>
+                <HoverTooltip key={p} label={meta.label} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={meta.label}>
+                    <PlatformMark platformValue={p} meta={meta} />
+                  </span>
+                </HoverTooltip>
               );
             })}
             {item.confirmedCount > 0 && (

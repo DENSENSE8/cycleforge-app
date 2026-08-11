@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/pane-header';
 import { Panel } from '@/design-system/primitives';
 import type { SupportContextTicket } from '@/lib/support/context-types';
+import { openHelpdeskTicketUrl } from '@/lib/desktop/desktop-host';
 import { SupportTicketIdentity } from './SupportTicketIdentity';
 
 export function SupportTicketPaneHeader({
@@ -90,7 +91,9 @@ export function SupportTicketPaneHeader({
             key: 'open-external',
             label: openLabel,
             icon: <ExternalLink className="h-3.5 w-3.5" />,
-            onClick: () => window.open(openUrl, '_blank', 'noopener'),
+            onClick: () => {
+              void openHelpdeskTicketUrl(openUrl, { title: openLabel });
+            },
           } satisfies PaneHeaderActionBarAction,
         ]
       : []),

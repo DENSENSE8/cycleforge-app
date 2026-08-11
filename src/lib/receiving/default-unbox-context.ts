@@ -1,6 +1,6 @@
 /**
  * Bare `/unbox` ReceivingModeContext — shared by nav hover prefetch and RSC
- * spine seed so cache keys stay byte-identical.
+ * Queue spine seed (`seedUnboxQueue`) so cache keys stay byte-identical.
  */
 import type { ReceivingModeContext } from '@/lib/receiving/receiving-modes';
 

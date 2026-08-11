@@ -365,9 +365,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
  *   — OR — { serial_number: string, receiving_line_id: number }
  *
  * Removes a previously-scanned serial from a receiving line:
- *   - Deletes the matching `serial_units` row (only if it still points at the
- *     given receiving_line_id, so we never clobber a unit that's already moved
- *     beyond receiving).
+ *   - Deletes the matching `serial_units` row by stable serial_unit_id + org
+ *     ("Displayed ⟹ Deletable" — the operator removes a serial they can SEE, and
+ *     the Units display keys on the unit's CURRENT line; receiving_line_id is
+ *     recompute/audit context, not an identity filter — see detachSerialFromLine).
  *
  * Serials are sidecar metadata: removing one does NOT change
  * `receiving_lines.quantity_received` and writes NO reversing stock-ledger row.

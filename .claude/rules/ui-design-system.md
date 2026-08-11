@@ -257,10 +257,15 @@ third chat renderer (`SupportChatThread` stays deleted).
   measuring — every row's `getBoundingClientRect().left` must resolve to ONE value.
 - **Read + reply (bubble)** — station Ticket Displays (`streamVariant="bubble"` /
   `variant="bubble"`). The job is prose top-to-bottom then answer; inbound vs
-  outbound is distinguished by the bubble shell (house tokens — soft fill/border,
-  capped width — never the deleted-thread `bg-blue-600 text-white` look). Internal
-  still labels in words. Composer + stream share `DISPLAYS_BODY_INSET` (`px-4`);
-  the Displays host stays flush.
+  outbound is distinguished by the bubble shell (house tokens — soft fill/border
+  — never the deleted-thread `bg-blue-600 text-white` look). Internal still
+  labels in words. **The whole column is flush (ruled 2026-08-10):** host, rows
+  and floating composer sit edge-to-edge, and a bubble is `w-full` rather than
+  percentage-capped. This reverses rows-own-`px-4` **for this stream only** — the
+  Displays column is narrow (station middle locked at ~720 beside it) and the
+  ticket was spending that measure twice, on a `px-4` list wrapping bubbles
+  already capped at 85%. Every other Displays leaf keeps `DISPLAYS_BODY_INSET`.
+  Guard: `ticket-chat-displays-gutter.guard.test.ts`.
 - **Day banding is required** for any thread spanning >24h — compose
   `DateGroupHeader`, never a second one.
 - **No per-row redundancy.** A chip repeated on every row (`PUBLIC`, the author on

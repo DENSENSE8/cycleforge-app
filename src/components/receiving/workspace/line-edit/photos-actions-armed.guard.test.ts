@@ -1,6 +1,7 @@
 /**
- * Unbox Photos → Actions is a Station Action-plane armed list — not hover
- * toolbar chrome. Keyboard: useArmedCursorList; Esc stays on the Displays stack.
+ * Unbox Photos → Actions is a Station Action-plane armed list. Identity hover
+ * PhotoLauncher remains a mouse shortcut; Move / Send from that dropdown open
+ * Displays drills. Keyboard: useArmedCursorList; Esc stays on the Displays stack.
  *
  * Run: node --test --import tsx \
  *        src/components/receiving/workspace/line-edit/photos-actions-armed.guard.test.ts
@@ -19,6 +20,8 @@ function stripComments(src: string): string {
 
 const ACTIONS =
   'src/components/receiving/workspace/line-edit/PhotosActionsArmedList.tsx';
+const TOOLS =
+  'src/components/receiving/workspace/line-edit/PhotosActionsToolRuntime.tsx';
 const HOST = 'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx';
 const PILL =
   'src/components/receiving/workspace/line-edit/ReceivingPhotoButton.tsx';
@@ -26,6 +29,7 @@ const PANEL = 'src/components/receiving/workspace/LineEditPanel.tsx';
 
 describe('Photos Actions keyboard-armed Displays SoT', () => {
   const actions = stripComments(readFileSync(join(process.cwd(), ACTIONS), 'utf8'));
+  const tools = stripComments(readFileSync(join(process.cwd(), TOOLS), 'utf8'));
   const host = stripComments(readFileSync(join(process.cwd(), HOST), 'utf8'));
   const pill = stripComments(readFileSync(join(process.cwd(), PILL), 'utf8'));
   const panel = stripComments(readFileSync(join(process.cwd(), PANEL), 'utf8'));
@@ -72,6 +76,28 @@ describe('Photos Actions keyboard-armed Displays SoT', () => {
       /\bTabDisplay\b/,
       'Actions·Move·Send·Compare underline strip removed',
     );
+    // Default face stays in the Photos host chunk; drills are separate chunks.
+    assert.match(
+      host,
+      /import \{ PhotosActionsArmedList \}/,
+      'Actions list is eager with the host (default face)',
+    );
+    assert.match(host, /dynamic\(/, 'Move·Send·Compare must be dynamic()');
+    assert.doesNotMatch(
+      host,
+      /import \{ MovePhotosBetweenPoPanel \}/,
+      'Move must not ride the Actions chunk',
+    );
+    assert.doesNotMatch(
+      host,
+      /import \{ SendPhotoNotePanel \}/,
+      'Send must not ride the Actions chunk',
+    );
+    assert.doesNotMatch(
+      host,
+      /import \{ ListingPhotoCompareHost \}/,
+      'Compare must not ride the Actions chunk',
+    );
   });
 
   it('armed drill verbs are Move · Send · Compare (tools → evidence)', () => {
@@ -82,15 +108,29 @@ describe('Photos Actions keyboard-armed Displays SoT', () => {
   });
 
   it('Upload opens the native file picker immediately — no PhotoUploadOverlay', () => {
-    assert.match(actions, /usePhotoDropzone/);
-    assert.match(actions, /dz\.openPicker/);
+    // Gallery / dropzone / phone ride a deferred runtime chunk so the Actions
+    // list paints without pulling usePhotoGallery on Index→Photos.
+    assert.match(actions, /PhotosActionsToolRuntime/);
+    assert.match(actions, /dynamic\(/);
     assert.doesNotMatch(
       actions,
+      /import \{ usePhotoGallery \}/,
+      'usePhotoGallery must not ride the Actions list chunk',
+    );
+    assert.doesNotMatch(
+      actions,
+      /import \{ usePhotoDropzone \}/,
+      'usePhotoDropzone must not ride the Actions list chunk',
+    );
+    assert.match(tools, /usePhotoDropzone/);
+    assert.match(tools, /openPicker/);
+    assert.doesNotMatch(
+      tools,
       /PhotoUploadOverlay/,
       'Displays Upload must not mount the dropzone overlay',
     );
     assert.doesNotMatch(
-      actions,
+      tools,
       /openUploadOverlay/,
       'Upload verb opens Finder/Explorer via openPicker — never the overlay',
     );
@@ -111,19 +151,87 @@ describe('Photos Actions keyboard-armed Displays SoT', () => {
     );
   });
 
-  it('Unbox identity Photos pill stays send-to-phone (hover strip suppressed)', () => {
-    assert.match(panel, /suppressPhotoHoverGallery/);
-    assert.doesNotMatch(panel, /onOpenPhotosDisplay/);
-    assert.match(pill, /suppressHoverGallery/);
+  it('Unbox identity Photos pill: hover dropdown · click phone · double-click Displays', () => {
+    assert.doesNotMatch(
+      panel,
+      /suppressPhotoHoverGallery/,
+      'Unbox must keep the PhotoLauncher hover dropdown on the identity pill',
+    );
+    assert.match(
+      panel,
+      /onOpenPhotosDisplay=\{openPhotosDisplay\}/,
+      'double-click must open Displays → Photos Actions',
+    );
+    assert.match(
+      panel,
+      /onOpenMovePhotosExternal=\{openMovePhotosDisplay\}/,
+      'hover Move must open Displays → photos?photoAction=move',
+    );
+    assert.match(
+      panel,
+      /onSendToTicketExternal=\{openSendPhotoNoteDisplay\}/,
+      'hover Ticket/Send must open Displays → photos?photoAction=send',
+    );
+    assert.match(
+      panel,
+      /openDisplays\('photos'\)/,
+      'openPhotosDisplay lands on Actions (no photoAction nest)',
+    );
+    assert.match(
+      panel,
+      /openDisplays\('photos',\s*\{\s*photoAction:\s*'move'\s*\}\)/,
+      'Move drill lands on photoAction=move',
+    );
+    assert.match(
+      panel,
+      /openDisplays\('photos',\s*\{\s*photoAction:\s*'send'\s*\}\)/,
+      'Send drill lands on photoAction=send',
+    );
+    assert.match(pill, /suppressHoverGallery/, 'pill retains opt-out for non-Unbox');
     assert.match(
       pill,
-      /void handleRequestOnPhone\(\)/,
-      'pill click always send-to-phone',
+      /onOpenPhotosDisplay/,
+      'pill accepts Displays open callback',
     );
     assert.match(
       pill,
-      /if \(suppressHoverGallery\)/,
-      'suppressHoverGallery skips AnchoredLayer hover strip',
+      /onDoubleClick/,
+      'double-click opens Displays when callback is wired',
+    );
+    assert.match(
+      pill,
+      /PHONE_CLICK_DEFER_MS|phoneClickTimer/,
+      'single-click phone is deferred so dblclick does not also send',
+    );
+    assert.match(
+      pill,
+      /GALLERY_OPEN_DELAY_MS|galleryOpenTimer/,
+      'hover strip dwells so teaching HoverTooltip can paint first',
+    );
+    assert.match(
+      pill,
+      /Phone · dbl-click details/,
+      'compact tooltip: phone + dbl-click details',
+    );
+    assert.match(
+      pill,
+      /placement=["']right["']/,
+      'teaching tip sits to the right of the Photos pill',
+    );
+    assert.match(
+      pill,
+      /void handleRequestOnPhone\(\)/,
+      'pill click still send-to-phone',
+    );
+    assert.match(
+      pill,
+      /launcherLayout="toolbar"/,
+      'hover peek mounts PhotoLauncher toolbar dropdown',
+    );
+    assert.match(
+      pill,
+      /AnchoredLayer/,
+      'hover dropdown portals via AnchoredLayer',
     );
   });
 });

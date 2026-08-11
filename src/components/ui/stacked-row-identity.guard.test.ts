@@ -85,6 +85,30 @@ describe('StackedRowIdentity SoT', () => {
     assert.match(ORDERS, /function SyncListRow/);
   });
 
+  it('Orders import SyncListRow wraps product titles and paints PlatformMark', () => {
+    assert.match(
+      ORDERS,
+      /SYNC_LIST_TITLE_CLASS[\s\S]{0,200}whitespace-normal break-words/,
+      'SyncListRow titles must wrap (roster grammar), never truncate',
+    );
+    assert.match(
+      ORDERS,
+      /title=\{<p className=\{SYNC_LIST_TITLE_CLASS\}>/,
+      'SyncListRow must use the wrap title class',
+    );
+    assert.doesNotMatch(
+      ORDERS,
+      /title=\{<p className="truncate text-role-caption/,
+      'SyncListRow title face must not truncate',
+    );
+    assert.match(ORDERS, /PlatformMark/, 'SyncListRow channel trailing must be PlatformMark');
+    assert.doesNotMatch(
+      ORDERS,
+      /uppercase tracking-wide text-text-soft[\s\S]{0,80}\{row\.platform/,
+      'Order sync must not paint uppercase {row.platform} prose',
+    );
+  });
+
   it('LedgerDrillParentMap composes StackedRowIdentity — no hand-rolled title/meta flex-col', () => {
     assert.match(DRILL_MAP, /StackedRowIdentity/);
     assert.doesNotMatch(
@@ -117,7 +141,7 @@ describe('StackedRowIdentity SoT', () => {
 
   it('repair ProductSelector selected tray composes StackedRowIdentity', () => {
     assert.match(PRODUCT_SELECTOR, /StackedRowIdentity/);
-    assert.match(PRODUCT_SELECTOR, /Selected items tray/);
+    assert.match(PRODUCT_SELECTOR, /data-kiosk-cart-tray|Selected items tray/);
   });
 
   it('SupportTicketRow composes TicketPickRow — never mono #{id}', () => {

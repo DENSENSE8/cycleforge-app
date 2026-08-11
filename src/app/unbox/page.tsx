@@ -2,7 +2,9 @@ import { HydrationBoundary } from '@tanstack/react-query';
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { seedUnboxSpine } from '@/lib/queries/unbox-spine-seed.server';
+import { UnboxBrowseFirstPaint } from '@/components/receiving/unbox/UnboxBrowseFirstPaint';
+import { UnboxBrowseShell } from '@/components/receiving/unbox/UnboxBrowseShell';
+import { seedUnboxQueue } from '@/lib/queries/unbox-spine-seed.server';
 
 /**
  * `/unbox` — the Unbox operator surface as a first-class, semantic route
@@ -14,20 +16,30 @@ import { seedUnboxSpine } from '@/lib/queries/unbox-spine-seed.server';
  * `'legacy'` escape hatch — the safe default). Legacy `/receiving?mode=receive`
  * and bare `/receiving` redirect here.
  *
- * Paint order: RSC seeds History spine into a HydrationBoundary so
- * `useReceivingLinesQuery` paints from cache on first HTML (Packer / To-ship
- * golden). Route `loading.tsx` already streams {@link UnboxWorkbenchSkeleton}.
+ * Paint order: RSC seeds Queue spine into a HydrationBoundary and streams
+ * {@link UnboxBrowseFirstPaint} as the LCP stand-in; the interactive desk
+ * hydrates over the same cache key (To-ship / Packer golden).
  */
 export default async function UnboxPage() {
-  const seed = await seedUnboxSpine();
+  const seed = await seedUnboxQueue();
 
   return (
     <>
       <SurfaceParamHygiene />
       <HydrationBoundary state={seed.state}>
-        <SurfaceGate surfaceKey="unbox">
-          <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
-        </SurfaceGate>
+        {/*
+          SSR stand-in also rendered here so the LCP element is in the RSC
+          HTML even before the client shell mounts (belt-and-suspenders with
+          UnboxBrowseShell's absolute overlay).
+        */}
+        <div className="sr-only" aria-hidden>
+          <UnboxBrowseFirstPaint rows={seed.rows} />
+        </div>
+        <UnboxBrowseShell firstPaintRows={seed.rows}>
+          <SurfaceGate surfaceKey="unbox">
+            <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
+          </SurfaceGate>
+        </UnboxBrowseShell>
       </HydrationBoundary>
     </>
   );

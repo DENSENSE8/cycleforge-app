@@ -11,6 +11,7 @@ import {
   type WorkstationSettings,
 } from '@/lib/settings/workstation';
 import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 
 const ROLES: { value: WorkstationRole; label: string }[] = [
   { value: '', label: '— No default role —' },
@@ -102,8 +103,14 @@ export function WorkstationSection() {
           >
             <option value="">— No bench —</option>
             {benches.map((bench) => (
+              // The FACE, not the warehouse name — an operator picking their
+              // bench here should read the same word the floor chips show.
               <option key={bench.id} value={String(bench.id)}>
-                {bench.name}
+                {packBenchShortLabel({
+                  locationName: bench.name,
+                  locationDisplayName: bench.displayName,
+                  locationKind: bench.locationKind,
+                })}
                 {bench.locationKind === 'STAGING' ? ' (staging)' : ''}
               </option>
             ))}

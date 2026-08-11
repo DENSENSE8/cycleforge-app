@@ -103,8 +103,30 @@ labelled buttons, and never a labelled `actions` / `leading` / `delete` cluster*
 (that legacy path is deleted). Every desk panel composes the SAME peers so the
 row is identical by construction; test-ids ride on the peer as JSX attrs. Desk
 triage inspectors only (Incoming · Orders Order-leaf · Unfound · Repair · Bin ·
-SKU panel · **History**). Never Station Displays / `StationTerminalDock`. Never a
-host slot on `RightRailHost`. **Intake overlays are NOT this floor** — a labelled
+SKU panel · **History** · **Media Library batch rail**). Never Station Displays /
+`StationTerminalDock`. Never a host slot on `RightRailHost`.
+
+**Two things the spread layout decides for you** (both learned at the bench,
+2026-08-10):
+
+- **A one-peer floor fills the row.** `Bin` · `SKU` · `Repair` mount Delete alone
+  and it spans the column with a centred glyph — legal, and correct when Delete
+  is the record's only Macro verb. But *"flush trailing, far-right"* only becomes
+  literal at two peers. When the corner position is the point, give Delete a
+  partner (Media Library: `⭳ Download` · `🗑 Delete`) rather than shrinking the
+  peer into a floating `w-11` island — that island is banned by
+  `FlushTerminalFooter`.
+- **`surface` is the plane paint, and it defaults to `canvas`.** That step below
+  the card is the depth cue separating a Macro floor from the record it commits.
+  `surface="card"` keeps the floor **coplanar** and is a *per-surface ruling with
+  a stated reason* — today only the Media Library batch rail, whose body is one
+  continuous white plane where a grey band read as a second surface. The
+  `border-t` hairline carries the seam either way. Guard:
+  `inspector-action-floor.guard.test.ts` pins the default and the exception list.
+
+**A floor verb MOVES off the rows it duplicates.** Where a rail also lists verbs
+(the batch rail's armed rows), promoting one to the floor removes it from the
+list — a verb readable in two places is two places to keep in sync. **Intake overlays are NOT this floor** — a labelled
 commit (Import CSV / Add inbound) composes `FlushTerminalFooter layout="cluster"`
 directly. **History mounts the floor when n=1** (ruled 2026-08-09): the record's
 edit gravity is the bottom dock — `⋯` More · Print · Edit (Open/Continue/Match in

@@ -279,6 +279,11 @@ describe('Station Displays Root Index chrome', () => {
   it('leaf header is top-left ← → + current title only (no ancestor jump crumbs)', () => {
     const header = read('src/components/station/displays/StationDisplayLeafHeader.tsx');
     assert.match(header, /data-testid="station-displays-history-back"/);
+    assert.match(
+      header,
+      /station-displays-history-back[\s\S]{0,200}ml-1|ml-1[\s\S]{0,200}station-displays-history-back/,
+      'Back chevron must clear the elevated sash hairline (ml-1) so ← is not half-dead',
+    );
     assert.match(header, /data-testid="station-displays-history-forward"/);
     assert.match(header, /data-station-displays-leaf-title/);
     assert.match(header, /data-breadcrumb-kind="current"/);

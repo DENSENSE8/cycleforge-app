@@ -18,10 +18,12 @@ import {
   GlassButton,
 } from '@/components/mobile/redesign/DesignSystem';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useRouter } from 'next/navigation';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import { toast } from '@/lib/toast';
 
 interface ActivityEntry {
@@ -223,8 +225,18 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
             );
           })()}
         </div>
-        <p className="mt-1.5 text-sm font-medium text-blue-700/60">
-          {`${order.source ? `Channel: ${order.source} • ` : ''}Created ${fmtDate(order.createdAt)}`}
+        <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm font-medium text-blue-700/60">
+          {(() => {
+            const platformMeta = sourcePlatformMeta(order.source);
+            return platformMeta.value ? (
+              <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+                <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                  <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                </span>
+              </HoverTooltip>
+            ) : null;
+          })()}
+          <span>Created {fmtDate(order.createdAt)}</span>
         </p>
       </header>
 

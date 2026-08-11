@@ -51,9 +51,10 @@ describe('Tier-1 paint content order registry', () => {
         const src = read(host);
         if (!/ssr:\s*false/.test(src)) continue;
         // Allowed only when the same file (or declared skeleton) documents a stand-in.
-        const hasStandInComment = /ssr-stand-in|SSR stand-in|OrdersQueueFirstPaint|WorkbenchSkeleton/i.test(
-          src,
-        );
+        const hasStandInComment =
+          /ssr-stand-in|SSR stand-in|OrdersQueueFirstPaint|UnboxBrowseFirstPaint|WorkbenchSkeleton/i.test(
+            src,
+          );
         const hasSkeleton = Boolean(route.skeleton && existsSync(join(root, route.skeleton)));
         assert.ok(
           hasStandInComment || hasSkeleton,
@@ -69,9 +70,13 @@ describe('Tier-1 paint content order registry', () => {
     assert.match(page, /seedUnshippedQueue|OrdersQueueFirstPaint/);
   });
 
-  it('Unbox page seeds spine paint', () => {
+  it('Unbox page seeds Queue spine + first-paint stand-in (To-ship golden)', () => {
     const page = read('src/app/unbox/page.tsx');
-    assert.match(page, /HydrationBoundary|seedUnboxSpine/);
+    assert.match(page, /HydrationBoundary/);
+    assert.match(page, /seedUnboxQueue|UnboxBrowseFirstPaint/);
+    const seed = read('src/lib/queries/unbox-spine-seed.server.ts');
+    assert.match(seed, /unbox_queue/);
+    assert.match(seed, /['"]spine['"]/);
   });
 
   it('Search LCP is header find + browse shell — not a desk remount', () => {

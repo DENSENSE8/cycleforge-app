@@ -11,8 +11,9 @@ import {
 } from '@/components/station/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
-import { sourcePlatformMeta, UNKNOWN_PLATFORM } from '@/lib/source-platform';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import { getLast8 } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
@@ -151,29 +152,6 @@ function formatAgo(iso: string | null | undefined): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-/** Page-only labels for values the source-platform SoT doesn't carry. */
-const EXTRA_SOURCE_LABEL: Record<string, string> = {
-  zoho: 'Zoho',
-};
-
-function platformLabel(c: Carton): string {
-  const sp = (c.source_platform || '').toLowerCase();
-  if (sp) {
-    // Canonical label from the SoT (src/lib/source-platform.ts) — this page
-    // previously inlined its own map, which drifted (fba/ecwid/square rendered
-    // as raw slugs). Unknown values keep the raw-slug fallback, never 'Unknown'.
-    const meta = sourcePlatformMeta(sp);
-    if (meta !== UNKNOWN_PLATFORM) return meta.label;
-    return EXTRA_SOURCE_LABEL[sp] || sp;
-  }
-  if (c.is_return) {
-    return c.return_platform
-      ? `Return · ${c.return_platform.replace(/_/g, ' ')}`
-      : 'Return';
-  }
-  return 'PO';
-}
-
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 function CartonPageInner() {
@@ -239,11 +217,19 @@ function CartonPageInner() {
           <div className="flex flex-col items-end gap-1.5">
             <ScanAgainBar />
             <NetworkChip compact />
-            {carton ? (
-              <span className="inline-flex items-center rounded-full bg-surface-inverse px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">
-                {platformLabel(carton)}
-              </span>
-            ) : null}
+            {carton?.source_platform ? (() => {
+              const meta = sourcePlatformMeta(carton.source_platform);
+              return (
+                <HoverTooltip label={meta.label || carton.source_platform} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={meta.label || carton.source_platform}>
+                    <PlatformMark
+                      platformValue={meta.value || carton.source_platform}
+                      meta={meta.value ? meta : undefined}
+                    />
+                  </span>
+                </HoverTooltip>
+              );
+            })() : null}
             <Button
               variant="secondary"
               size="sm"

@@ -70,8 +70,7 @@ function stepBodyFiles(): string[] {
  *
  * `Button`/`IconButton` are the house action primitives; `ReceivingPhotoButton`
  * is the capture pill. A body needing one of these is a body doing the dock's
- * job. `CartonPhotoPairPanel` is exempt as a FILE (it is dock popover content,
- * it just lives in this directory beside its step) — see the allowlist.
+ * job.
  */
 const BANNED_IN_BODY = [
   { needle: 'ReceivingPhotoButton', why: 'the capture pill belongs in the dock control' },
@@ -83,8 +82,6 @@ const BANNED_IN_BODY = [
  * allowlist cannot quietly become the escape hatch that voids the rule.
  */
 const NOT_A_BODY: Readonly<Record<string, string>> = {
-  'CartonPhotoPairPanel.tsx':
-    'dock popover CONTENT — hosted by CartonPhotoDockControl, not rendered by any card',
   'types.ts': 'types',
   'index.ts': 'registry',
   'step-face.tsx': 'face glyph + hue registry, not a body',

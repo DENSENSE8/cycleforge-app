@@ -14,6 +14,7 @@ import { useSwitchOrg } from '@/lib/identity/use-switch-org';
 import { Gs1ComplianceCard } from './Gs1ComplianceCard';
 import { SupportVisionLaneCard } from './SupportVisionLaneCard';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { KioskAttractMediaCard } from './KioskAttractMediaCard';
 
 /**
  * "Which workspace am I in" card + deliberate org switcher. Always-on switching
@@ -568,16 +569,12 @@ export function OrganizationSection() {
             placeholder="#2563EB"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-text-muted">Kiosk attract media URL</span>
-          <input
-            type="url"
-            value={draft.brand.attractMediaUrl ?? ''}
-            onChange={(e) => setDraft({ ...draft, brand: { ...draft.brand, attractMediaUrl: e.target.value } })}
-            className={FIELD_CLS}
-            placeholder="https://… (public image or muted video URL — Blob upload later)"
-          />
-        </label>
+        <KioskAttractMediaCard
+          attractMediaUrl={draft.brand.attractMediaUrl ?? ''}
+          onUrlChange={(url) =>
+            setDraft({ ...draft, brand: { ...draft.brand, attractMediaUrl: url } })
+          }
+        />
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-text-muted">
             Customer website for QR scans

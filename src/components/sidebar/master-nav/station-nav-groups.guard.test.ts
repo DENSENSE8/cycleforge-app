@@ -293,6 +293,9 @@ test('The flat map reads stationSubgroupMembers — subgroup headers come from S
  * What is still banned is the GAP — whitespace at 8px × 8 boundaries would
  * push rows below the fold — and any hairline BETWEEN peer rows or inside a
  * nest, which would break the nesting rail into horizontal ticks.
+ *
+ * Bottom rule (not top-on-index>0): every section owns its trailing hairline
+ * so the last map entry (Inventory) is not left undivided below.
  */
 test('the flat map separates sections with a hairline, never a gap — rows stay box to box', () => {
   assert.doesNotMatch(LIST_SRC, /index > 0 \? 'mt-1/);
@@ -301,11 +304,12 @@ test('the flat map separates sections with a hairline, never a gap — rows stay
   // does not break into horizontal ticks.
   assert.doesNotMatch(LIST_SRC, /expanded && 'space-y-/);
   // The boundary rule lives on the SECTION <li> and nowhere else — one
-  // hairline per boundary, never one per row.
+  // hairline per section (bottom), never one per nested peer row.
   const map = LIST_SRC.match(/const renderMap[\s\S]*?\n {2}\};\n/)?.[0] ?? '';
-  assert.match(map, /index > 0 \? 'border-t border-border-soft'/);
+  assert.match(map, /const seam = 'border-b border-border-soft'/);
+  assert.doesNotMatch(map, /index > 0 \? 'border-t border-border-soft'/);
   assert.equal(
-    (map.match(/border-t border-border-soft/g) ?? []).length,
+    (map.match(/border-b border-border-soft/g) ?? []).length,
     1,
     'exactly one hairline expression — a per-row rule would tick the whole map',
   );

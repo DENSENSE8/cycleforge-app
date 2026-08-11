@@ -62,25 +62,37 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
     assert.equal(order.align, 'start');
   });
 
-  it('every data column is headerGlyphOnly (icon-only headers)', () => {
+  // Inbound ↔ History one family (2026-08-10): the icon-only exception is
+  // OVERTURNED. Incoming follows History sentence-case — no data column declares
+  // headerGlyphOnly, and geometry (`gridHeaderShowsLabel`) owns the narrow-track
+  // glyph fallback, the same rule History already lives by.
+  it('no data column declares headerGlyphOnly (History sentence-case parity)', () => {
     for (const col of INCOMING_GRID_COLUMNS) {
-      if (col.key === 'select') continue;
+      if (col.key === 'select') continue; // chrome gutter — no label, no header
       assert.equal(
         col.headerGlyphOnly,
-        true,
-        `${col.key} must declare headerGlyphOnly — Incoming Pipeline icon-only headers`,
+        undefined,
+        `${col.key} must NOT declare headerGlyphOnly — Incoming follows History sentence-case`,
       );
-      assert.ok(col.label, `${col.key} keeps label for sr-only / tip`);
-      assert.equal(incomingGridHeaderShowsLabel(col), false);
+      assert.ok(col.label, `${col.key} keeps a label`);
     }
   });
 
-  it('the qty header is glyph-only — label Qty survives for a11y', () => {
-    // Incoming Pipeline icon-only (2026-08-04): order + qty both Hash type
-    // glyphs; distinguish by column position. Full label is sr-only.
+  it('the wide identity/reference headers show their sentence-case word', () => {
+    for (const key of ['order', 'title', 'tracking']) {
+      const col = INCOMING_GRID_COLUMNS.find((c) => c.key === key)!;
+      assert.equal(
+        incomingGridHeaderShowsLabel(col),
+        true,
+        `${key} header should read its word like History`,
+      );
+    }
+  });
+
+  it('the qty header keeps its Qty word via labelFitRem 3.5 (History parity)', () => {
     const qty = INCOMING_GRID_COLUMNS.find((c) => c.key === 'qty')!;
-    assert.equal(qty.headerGlyphOnly, true);
-    assert.equal(incomingGridHeaderShowsLabel(qty), false);
+    assert.equal(qty.headerGlyphOnly, undefined);
+    assert.equal(qty.labelFitRem, 3.5);
     assert.equal(qty.label, 'Qty');
   });
 
@@ -158,10 +170,10 @@ describe('incomingContentMinWidthRem / header label fit', () => {
     assert.ok(sum > 40, 'content min is wide enough to force h-scroll on narrow panes');
   });
 
-  it('title header is glyph-only (icon-only headers)', () => {
+  it('title header shows Product Title (sentence-case parity)', () => {
     const title = INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')!;
-    assert.equal(incomingGridHeaderShowsLabel(title), false);
-    assert.equal(title.headerGlyphOnly, true);
+    assert.equal(title.headerGlyphOnly, undefined);
+    assert.equal(incomingGridHeaderShowsLabel(title), true);
   });
 });
 

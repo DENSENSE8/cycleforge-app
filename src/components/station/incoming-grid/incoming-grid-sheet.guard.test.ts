@@ -104,16 +104,31 @@ describe('Incoming grid Sheets recipe (Unbox golden)', () => {
       'src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx',
     );
     assert.match(header, /WorkbenchTriageBand/);
-    assert.match(
+    assert.doesNotMatch(
       header,
-      /IncomingKpiStrip/,
-      'KPI lives in IncomingWorkspaceHeader Band 2 (Unbox parity)',
+      /IncomingKpiStrip|WorkbenchKpiBand/,
+      'KPI Band 2 was deleted — no IncomingKpiStrip / WorkbenchKpiBand',
+    );
+    assert.doesNotMatch(
+      header,
+      /LANE_TABS|label: 'Pipeline'|label: 'Docked'/,
+      'Pipeline|Docked big tabs were deleted — Band-1 is POS | Email',
+    );
+    assert.doesNotMatch(
+      header,
+      /Recently removed/,
+      'Retired removed-lane facet must not reappear as a Band-1 label',
+    );
+    assert.doesNotMatch(
+      header,
+      /id: 'removed'/,
+      'PIPELINE_VIEW_TABS must not include removed',
     );
     // Band 1 keeps labeled CTAs — not icon-only refine density.
     const actions = read(
       'src/components/sidebar/receiving/incoming/IncomingChromeActions.tsx',
     );
-    assert.match(actions, />\s*Check\s*</);
+    assert.match(actions, /ChromeCheckButton/, 'Check CTA composes the shared chrome face');
     assert.match(actions, /Import/);
     assert.match(actions, />\s*Add\s*</);
     assert.doesNotMatch(

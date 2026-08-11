@@ -15,8 +15,9 @@
  * Centre `ProcedureDeck` stays parked. Capture lives in {@link UnboxDockHost}
  * as a polymorphic flush floor (Active Step Studio on Band 1). **Dogfood
  * validation lane:** top commit strip (`data-unbox-dogfood-print`) =
- * always-on label note (`+` insert · field) · compact Print · Receive.
- * Never Band 1 / Band 2. Displays-independent; Band 1 trailing null.
+ * always-on label note (`+` insert · field · Enter = Print · Receive) ·
+ * compact Print · Receive. Never Band 1 / Band 2. Displays-independent;
+ * Band 1 trailing null.
  *
  * Triage (the identify-before-unbox pass) is its own lean panel
  * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
@@ -36,14 +37,12 @@ import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
 import { RECEIVING_PHOTO_LIST_INTENT_CARTON } from '@/lib/receiving/photo-intent';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { useUnboxDisplayView } from './line-edit/hooks/useUnboxDisplayView';
-import {
-  clearAllUnboxRightEdgeParams,
-  yieldUnboxStationPushesOnAssistantOpen,
-} from './line-edit/unbox-right-edge';
+import { yieldUnboxStationPushesOnAssistantOpen } from './line-edit/unbox-right-edge';
 import {
   StationDisplaysPushStack,
   STATION_DISPLAYS_HOST_PAD_CLASS,
@@ -51,7 +50,6 @@ import {
 } from '@/components/station/displays';
 import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
 import { ASSISTANT_DOCK_OPEN_EVENT } from '@/utils/events';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
@@ -87,6 +85,8 @@ import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
 import { useUnboxMiddleCartonNav } from './line-edit/useUnboxMiddleCartonNav';
 import { nudgeUnboxPrintReceive } from '@/lib/keyboard/shortcut-nudge';
 import { emitReceiving } from '@/components/receiving/receiving-events';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
+import { scheduleFocusUnboxCaptureSerial } from './line-edit/focus-unbox-capture-serial';
 import { UnboxScanProgressControl } from './UnboxScanProgressControl';
 import {
   UNBOX_DISPLAY_INDEX,
@@ -96,7 +96,6 @@ import {
   type UnboxPhotoAction,
   type UnboxSideTab,
   type UnboxTicketAction,
-  type UnboxUnitsAction,
 } from './line-edit/unbox-side-tabs';
 import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
@@ -131,10 +130,6 @@ export function LineEditPanel({
   // All state, effects, and handlers live in the controller — this panel is pure
   // composition. See useUnboxLineController / useReceivingLineCore.
   const qc = useQueryClient();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
   const {
     requestedDisplay: requestedSideTab,
     setDisplay: setRequestedSideTab,
@@ -142,8 +137,10 @@ export function LineEditPanel({
     claimMode,
     resolveLinkageAction,
     resolveTicketAction,
-    resolveUnitsAction,
-  } = useUnboxDisplayView(row.id ?? null);
+    // Key the Displays column on the CARTON, not the active child line — switching
+    // between sibling PO lines of the same parent carton must not close+reopen the
+    // column (the right-rail flash). A genuinely different carton still clears it.
+  } = useUnboxDisplayView(row.receiving_id ?? row.id ?? null);
 
   const onOpenClaim = useCallback(
     (mode: 'create' | 'link') => {
@@ -173,6 +170,12 @@ export function LineEditPanel({
   /** Carton `# ----` handoff — which pairing avenue Linkage opens on. */
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po';
+    requestId: number;
+  } | null>(null);
+  /** Photo Link handoff — PO item and/or carton aspect for Photos → Link leaf. */
+  const [photoLinkTarget, setPhotoLinkTarget] = useState<{
+    lineId?: number | null;
+    cartonAspect?: PhotoAspect | null;
     requestId: number;
   } | null>(null);
 
@@ -215,8 +218,6 @@ export function LineEditPanel({
   const linkageAction = resolveLinkageAction(sideGates);
   const hasTicketId = c.providerTicketId != null;
   const ticketAction = resolveTicketAction(hasTicketId);
-  const hasPrebox = serialCount > 0;
-  const unitsAction = resolveUnitsAction({ hasPrebox });
   const ticketViewActive = activeSideTab === 'ticket';
   const claimViewActive = ticketViewActive && ticketAction === 'claim';
 
@@ -227,7 +228,6 @@ export function LineEditPanel({
     const nest: Record<string, string> = {};
     if (tab === 'photos') nest.photoAction = photoAction;
     if (tab === 'linkage') nest.linkageAction = linkageAction;
-    if (tab === 'units') nest.unitsAction = unitsAction;
     if (tab === 'ticket') {
       nest.ticketAction = ticketAction;
       if (ticketAction === 'claim') nest.claimMode = claimMode;
@@ -237,7 +237,6 @@ export function LineEditPanel({
     activeSideTab,
     photoAction,
     linkageAction,
-    unitsAction,
     ticketAction,
     claimMode,
   ]);
@@ -253,7 +252,6 @@ export function LineEditPanel({
       setRequestedSideTab(tab, {
         photoAction: nest.photoAction as UnboxPhotoAction | undefined,
         linkageAction: nest.linkageAction as UnboxLinkageAction | undefined,
-        unitsAction: nest.unitsAction as UnboxUnitsAction | undefined,
         ticketAction: nest.ticketAction as UnboxTicketAction | undefined,
         claimMode:
           nest.claimMode === 'link' || nest.claimMode === 'create'
@@ -327,24 +325,13 @@ export function LineEditPanel({
     syncKey: row.receiving_id ?? row.id,
   });
 
-  const clearDisplaysUrl = useCallback(() => {
-    const seed =
-      typeof window !== 'undefined' ? window.location.search : searchParams.toString();
-    const next = new URLSearchParams(seed);
-    clearAllUnboxRightEdgeParams(next);
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
-  }, [router, pathname, searchParams]);
-
-  // AI open → yield Displays (one details column).
+  // AI open → yield Displays (one details column) — local close only.
   const assistantOpen = useAssistantDockOpen();
   const yieldPeersRef = useRef({
-    clearAllUrl: clearDisplaysUrl,
-    clearDisplay: () => setRequestedSideTab(null),
+    closeDisplays: () => setRequestedSideTab(null),
   });
   yieldPeersRef.current = {
-    clearAllUrl: clearDisplaysUrl,
-    clearDisplay: () => setRequestedSideTab(null),
+    closeDisplays: () => setRequestedSideTab(null),
   };
   useEffect(() => {
     const onOpen = () => {
@@ -361,14 +348,17 @@ export function LineEditPanel({
     yieldUnboxStationPushesOnAssistantOpen(yieldPeersRef.current);
   }, [assistantOpen]);
 
-  // Cockpit auto-follow yields to an EXPLICIT close (per carton). Holds the
-  // row.id the operator closed the rail on; a different carton passes the gate
-  // and defaults open again (`display/scan-cockpit.md`).
-  const cockpitClosedForRowRef = useRef<number | null>(null);
+  // Cockpit auto-follow yields to an EXPLICIT close (per CARTON — the parent, not
+  // the active child line). Holds the carton the operator closed the rail on;
+  // a different carton passes the gate and defaults open again. Keying this on
+  // the child line let a sibling switch re-open the rail every time
+  // (`display/scan-cockpit.md`).
+  const cartonKey = row.receiving_id ?? row.id ?? null;
+  const cockpitClosedForCartonRef = useRef<number | null>(null);
   const closeDisplays = useCallback(() => {
-    cockpitClosedForRowRef.current = row.id;
+    cockpitClosedForCartonRef.current = row.receiving_id ?? row.id ?? null;
     setRequestedSideTab(null);
-  }, [row.id, setRequestedSideTab]);
+  }, [row.receiving_id, row.id, setRequestedSideTab]);
 
   const openDisplays = useCallback(
     (tab: UnboxDisplayNav, opts?: Parameters<typeof setRequestedSideTab>[1]) => {
@@ -382,6 +372,19 @@ export function LineEditPanel({
     () => openDisplays(UNBOX_DISPLAY_INDEX),
     [openDisplays],
   );
+
+  // Deep Link (PO-line strip / arrival·carton dock) → open Photos → Link leaf.
+  // `lineId` and/or `cartonAspect` default the leaf's "Link to" combobox.
+  useReceivingEvents({
+    'receiving-open-photo-link': ({ lineId, cartonAspect }) => {
+      setPhotoLinkTarget((prev) => ({
+        lineId: lineId ?? null,
+        cartonAspect: cartonAspect ?? null,
+        requestId: (prev?.requestId ?? 0) + 1,
+      }));
+      openDisplays('photos', { photoAction: 'link' });
+    },
+  });
 
   const onPhotoActionChange = useCallback(
     (action: UnboxPhotoAction) => {
@@ -417,18 +420,30 @@ export function LineEditPanel({
   // Cockpit auto-follow — the right rail is the CURRENT step's reference
   // (`display/scan-cockpit.md`, DO/KNOW split). On carton open and each step
   // advance, open the step's `railLeaf`; the leaf swaps as the step changes.
-  // Yields to: an explicit close this carton (cockpitClosedForRowRef); an
+  // Yields to: an explicit close this carton (cockpitClosedForCartonRef); an
   // operator reading an exception surface (Ticket); a mid photo drill
   // (Move/Send); Displays Root Index **or any other leaf the operator picked**
   // (Photos while the beat is Units must stick — do not yank until the step
-  // advances). `item_photos` is owned by the bespoke Compare effect above.
-  const prevCockpitActiveKeyRef = useRef(activeKey);
+  // advances or a new carton opens). `item_photos` is owned by the bespoke
+  // Compare effect above.
+  // Seed refs as unset so the FIRST effect for a mounted carton counts as
+  // carton open (scan-cockpit: default-open to railLeaf). Initializing to the
+  // live activeKey/row.id made stepChanged+cartonChanged both false on mount,
+  // so a sticky `?display=photos` was treated as operator browse and never
+  // swapped to listings.
+  const prevCockpitActiveKeyRef = useRef<string | null>(null);
+  const prevCockpitCartonRef = useRef<number | null>(null);
   useEffect(() => {
     const stepChanged = prevCockpitActiveKeyRef.current !== activeKey;
     prevCockpitActiveKeyRef.current = activeKey;
+    // Carton (parent) identity — a sibling CHILD switch is NOT a record change,
+    // so it must not re-open the leaf and yank a display the operator chose
+    // (e.g. Units, opened to edit a serial). Only carton open + step advance do.
+    const cartonChanged = prevCockpitCartonRef.current !== cartonKey;
+    prevCockpitCartonRef.current = cartonKey;
 
     if (activeKey == null || activeKey === 'item_photos') return;
-    if (cockpitClosedForRowRef.current === row.id) return;
+    if (cockpitClosedForCartonRef.current === cartonKey) return;
     if (!railLeaf) return; // reference-less step — its reference is the work plane
     if (activeSideTab === 'ticket') return; // never yank claim/chat
     if (
@@ -439,14 +454,16 @@ export function LineEditPanel({
     }
     if (showDisplays && activeSideTab === railLeaf) return; // already showing it
     // Operator browse — Index (Back/Esc) OR a leaf that is not this beat's
-    // reference (picked Photos while railLeaf is Units). Resume only on
-    // stepChanged so a beat advance can still swap the cockpit leaf.
-    if (showDisplays && activeSideTab !== railLeaf && !stepChanged) return;
+    // reference (picked Photos while railLeaf is Units). Resume on step
+    // advance OR a new carton (same first step must still land on railLeaf).
+    if (showDisplays && activeSideTab !== railLeaf && !stepChanged && !cartonChanged) {
+      return;
+    }
     openDisplays(railLeaf);
   }, [
     activeKey,
     railLeaf,
-    row.id,
+    cartonKey,
     activeSideTab,
     showDisplays,
     photoAction,
@@ -456,13 +473,6 @@ export function LineEditPanel({
   const onLinkageActionChange = useCallback(
     (action: UnboxLinkageAction) => {
       setRequestedSideTab('linkage', { linkageAction: action });
-    },
-    [setRequestedSideTab],
-  );
-
-  const onUnitsActionChange = useCallback(
-    (action: UnboxUnitsAction) => {
-      setRequestedSideTab('units', { unitsAction: action });
     },
     [setRequestedSideTab],
   );
@@ -485,6 +495,11 @@ export function LineEditPanel({
 
   const openSendPhotoNoteDisplay = useCallback(() => {
     openDisplays('photos', { photoAction: 'send' });
+  }, [openDisplays]);
+
+  /** Identity Photos pill double-click — Actions list (clears any photoAction drill). */
+  const openPhotosDisplay = useCallback(() => {
+    openDisplays('photos');
   }, [openDisplays]);
 
   const toggleTicketView = useCallback(() => {
@@ -646,6 +661,11 @@ export function LineEditPanel({
   const onFocusCaptureStep = useCallback(
     (key: 'serial' | 'condition' | 'item_photos') => {
       focusStep(key);
+      if (key === 'serial') {
+        // Centre capture owns serial entry after a PO scan — not the dock wedge.
+        scheduleFocusUnboxCaptureSerial(60);
+        return;
+      }
       setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
     },
     [focusStep],
@@ -666,16 +686,22 @@ export function LineEditPanel({
         staffId,
         c,
         accordionBootstrap,
+        // The ONE derivation drives both the dock action and the in-line moving
+        // outline (scan-cockpit DO plane) — no second store.
+        activeStep: activeKey,
         onFocusCaptureStep,
         onEditFilledSerial: (serial) => {
-          openDisplays('units', { unitsAction: 'units' });
+          // Edit-in-Displays (ruled): clicking a FILLED serial opens the Units
+          // Displays leaf for this line, never the in-row/dock field. Seed the
+          // edit target so the Units display lands on that serial.
           c.setHeaderSerialEdit(serial);
+          openDisplays('units');
         },
         onViewAllUnits: (line) => {
           if (line.id !== row.id) {
             dispatchSelectLine(line);
           }
-          openDisplays('units', { unitsAction: 'units' });
+          openDisplays('units');
         },
         onOpenReturnHistory: () => openDisplays('timeline'),
       }),
@@ -684,6 +710,7 @@ export function LineEditPanel({
       staffId,
       c,
       accordionBootstrap,
+      activeKey,
       onFocusCaptureStep,
       openDisplays,
     ],
@@ -715,14 +742,14 @@ export function LineEditPanel({
         poNote,
         photoAction,
         onPhotoActionChange,
+        photoLinkTargetLineId: photoLinkTarget?.lineId ?? null,
+        photoLinkTargetCartonAspect: photoLinkTarget?.cartonAspect ?? null,
+        photoLinkTargetRequestId: photoLinkTarget?.requestId ?? 0,
         linkageAction,
         onLinkageActionChange,
         onInventoryChangePo: openPoPairing,
         onInventorySync: () => c.refreshInventoryDossier(),
         inventorySyncing: Boolean(c.inventoryRefreshing),
-        unitsAction,
-        onUnitsActionChange,
-        hasPrebox,
         claimMode,
         onCloseClaim: closeClaimView,
         onCloseTicket: closeDisplays,
@@ -758,9 +785,6 @@ export function LineEditPanel({
       linkageAction,
       onLinkageActionChange,
       openPoPairing,
-      unitsAction,
-      onUnitsActionChange,
-      hasPrebox,
       claimMode,
       closeClaimView,
       closeDisplays,
@@ -769,6 +793,7 @@ export function LineEditPanel({
       accordionBootstrap,
       classifyExpand,
       pairingFocus,
+      photoLinkTarget,
       openFindTicketDisplay,
       openDisplays,
     ],
@@ -865,8 +890,10 @@ export function LineEditPanel({
           claimViewActive={claimViewActive}
           onOpenMovePhotosExternal={openMovePhotosDisplay}
           onSendToTicketExternal={openSendPhotoNoteDisplay}
-          // Pill click stays send-to-phone; multi-verbs live in Displays Actions.
-          suppressPhotoHoverGallery
+          // Hover = PhotoLauncher action dropdown (View · Upload · Move · …).
+          // Move / Send rows open Displays (right rail). Click = phone;
+          // double-click = Displays → Photos Actions list.
+          onOpenPhotosDisplay={openPhotosDisplay}
           // Identity pills open the Displays column on their own tab — the
           // editors moved right, so the header route follows them.
           onEditTracking={hasTrackingTab ? () => openDisplays('tracking') : undefined}
@@ -1015,6 +1042,16 @@ export function LineEditPanel({
                               void c.patch({ notes: phrase });
                               return true;
                             }}
+                            onPrimaryAction={() => {
+                              if (c.isReceived) {
+                                c.runPrintLabel();
+                                nudgeUnboxPrintReceive('print');
+                                return;
+                              }
+                              void c.handlePrintAndReceive();
+                              nudgeUnboxPrintReceive('cta');
+                            }}
+                            primaryActionDisabled={Boolean(terminalVm?.disabled)}
                           />
                           <div
                             className="flex shrink-0 items-stretch border-l border-border-hairline"
@@ -1030,7 +1067,9 @@ export function LineEditPanel({
                         onCloseNotes={() => {}}
                         hasItemNote={hasItemNote}
                         showNotesToggle={false}
-                        expandBand={activeKey === 'classify'}
+                        // Classify is h-11 Continue — editor is Displays KNOW.
+                        // Never expandBand (that shoved Print · Receive up).
+                        expandBand={false}
                         omitTopSeam={Boolean(terminalVm)}
                         stepContext={<UnboxProcedurePager row={row} />}
                         leading={stepDock}

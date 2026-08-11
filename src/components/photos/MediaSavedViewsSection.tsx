@@ -24,6 +24,13 @@ interface MediaSavedViewsSectionProps {
   /** Org-wide sharing needs `photos.manage`. */
   canManage: boolean;
   onApply: (payload: MediaViewPayload) => void;
+  /**
+   * Teaching line for "no views, nothing to save". Pass it wherever this
+   * section is the WHOLE body of a surface (the Band-3 Views menu) — without
+   * it the section renders nothing at all, which is right for one block inside
+   * a shared funnel and wrong for a panel the operator deliberately opened.
+   */
+  emptyHint?: string;
 }
 
 /**
@@ -37,14 +44,17 @@ export function MediaSavedViewsSection({
   savable,
   canManage,
   onApply,
+  emptyHint,
 }: MediaSavedViewsSectionProps) {
   const { views, isLoading, create, creating, remove } = useMediaLibrarySavedViews();
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
   const [shareWithOrg, setShareWithOrg] = useState(false);
 
-  // Nothing to show and nothing to save — stay out of the way.
-  if (!isLoading && views.length === 0 && !savable) return null;
+  const barren = !isLoading && views.length === 0 && !savable;
+  // Nothing to show and nothing to save. Inside a shared funnel that means
+  // stay out of the way; as a panel's whole body it means teach.
+  if (barren && !emptyHint) return null;
 
   const submit = () => {
     const trimmed = name.trim();
@@ -152,6 +162,10 @@ export function MediaSavedViewsSection({
         <p className="flex items-center gap-1.5 py-1 text-role-caption text-text-faint">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
         </p>
+      ) : views.length === 0 && emptyHint ? (
+        // Settled and genuinely empty — an absence, so it teaches the next
+        // action rather than rendering a bare `<ul>` with nothing in it.
+        <p className="py-1 text-role-caption text-text-soft">{emptyHint}</p>
       ) : (
         <ul className="divide-y divide-border-hairline">
           {views.map((view) => (

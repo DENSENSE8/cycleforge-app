@@ -54,8 +54,8 @@ export function UnboxDockHost({
   hasItemNote: boolean;
   showNotesToggle?: boolean;
   /**
-   * Grow Band 1 past fixed h-11 (classify editor). Notes mode also grows;
-   * compact capture steps stay h-11.
+   * Grow Band 1 past fixed h-11. Notes mode grows; Unbox classify stays h-11
+   * (Displays owns the editor). Arrival Staging may still pass true.
    */
   expandBand?: boolean;
   /**
@@ -85,7 +85,7 @@ export function UnboxDockHost({
       data-unbox-dock-mode={mode}
       data-unbox-dock-expand={expandBand ? '1' : undefined}
     >
-      {/* Band 1 — current step (full width). Notes / classify may grow past h-11. */}
+      {/* Band 1 — current step (full width). Notes may grow; classify stays h-11. */}
       <div
         className={cn(
           'flex w-full min-w-0 flex-col',

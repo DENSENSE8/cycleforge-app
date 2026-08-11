@@ -139,15 +139,29 @@ describe('Scan-station edge-to-edge middle measure (Unbox golden)', () => {
       'StationScanPaneHost must not justify-between',
     );
     const push = readSrc('components/station/displays/StationDisplaysPushColumn.tsx');
+    // Option A: Displays is an explicitly-sized `shrink-0` sibling of the elastic
+    // center — it abuts the center with no gray band (the center flex-1 eats all
+    // leftover), the sash clamps at the local stationDisplaysCapPx, and there is
+    // no inverse coupling that would move the far context rail.
     assert.match(
       push,
-      /min-w-0 flex-1 self-stretch/,
-      'Displays in-flow must flex-1 fill leftover (always expanded)',
+      /shrink-0 self-stretch/,
+      'Displays in-flow must be a sized shrink-0 sibling (center absorbs, no flex-1 invader)',
     );
     assert.equal(
       /'ml-auto shrink-0 self-stretch'/.test(push),
       false,
       'Displays must not ml-auto detach (gray band between middle and Displays)',
+    );
+    assert.match(
+      push,
+      /stationDisplaysCapPx/,
+      'Displays sash must clamp at the local cap (frame − leftCost − 720)',
+    );
+    assert.equal(
+      /station-dual-rail/.test(push),
+      false,
+      'Displays must not couple the far rail (rails resize independently — Option A)',
     );
     const layout = readSrc('components/station/workbench/workbench-layout.ts');
     assert.match(

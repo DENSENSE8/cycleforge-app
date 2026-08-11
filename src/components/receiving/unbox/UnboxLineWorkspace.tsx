@@ -36,12 +36,32 @@
  * *remount* needs those resets first.
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
-import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
+
+// Phase 2 (lazy carton graph): `ReceivingLineWorkspace` pulls the ~1.1k-LOC
+// `LineEditPanel` + the whole Displays registry — the heaviest module on
+// `/unbox`. Browse is the route's declared LCP surface and renders only
+// `UnboxWorkspaceView`, so the carton instrument must NOT sit in the browse
+// bundle. `next/dynamic` code-splits it: the chunk downloads on the FIRST
+// carton open (or a deep-link restore) and is cached, so the carton→carton
+// remount below stays flash-free. `ssr: false` keeps it out of the browse
+// server tree; the loading fallback only paints during that first-open fetch —
+// never on browse (browse renders `UnboxWorkspaceView`, not this component).
+// The mount stays gated on `showOverlay && workspace`, so the chunk is fetched
+// only when a carton is actually open.
+const ReceivingLineWorkspace = dynamic(
+  () =>
+    import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
+      (m) => m.ReceivingLineWorkspace,
+    ),
+  { ssr: false, loading: () => <ReceivingWorkspaceSkeleton /> },
+);
 import { UnboxWorkspaceView } from '@/components/receiving/unbox/UnboxWorkspaceView';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
+import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
@@ -125,6 +145,16 @@ export function UnboxLineWorkspace({
   // stale receipt can never sit over a different box.
   const showLookupReceipt =
     !!lookupReceipt && !!row && lookupReceipt.receivingId === row.receiving_id;
+
+  // Carton open / deep-link restore owns the centre — release the Queue SSR
+  // stand-in so it never covers the station workspace.
+  const unboxPrimaryPaint = useUnboxPrimaryPaintOptional();
+  useEffect(() => {
+    if (!unboxPrimaryPaint) return;
+    if (showOverlay || showRestoreSkeleton) {
+      unboxPrimaryPaint.onPrimaryPainted();
+    }
+  }, [unboxPrimaryPaint, showOverlay, showRestoreSkeleton]);
 
   return (
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>

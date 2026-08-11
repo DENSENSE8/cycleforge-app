@@ -1502,6 +1502,46 @@ export const receivingLines = pgTable('receiving_line', {
 });
 
 /**
+ * receiving_listing_links — N labeled listing links per inbound carton
+ * (2026-08-10f). A Goodwill lot is four auctions in one box, and the buyer
+ * names each link so the unboxer can tell which physical item is which; the
+ * scalar `receiving_carton.listing_url` / `receiving_line.listing_url` hold one
+ * url and no name, so links two through four only ever survived as free text in
+ * `zoho_notes`.
+ *
+ * TWO real FKs rather than a polymorphic entity_type/entity_id: both parents
+ * are known at write time, so both get enforced delete integrity.
+ * `receivingLineId` NULL = not yet bound to a line; binding is a recorded act
+ * (`boundBy` / `boundAt`), never inferred.
+ *
+ * INBOUND only. Sell-side listings live in `skuPlatformIds`; no outbound table
+ * has a listing url at all. `source` is CHECK-constrained to the two DURABLE
+ * tiers ('manual' | 'sync_notes') — 'catalog' and 'derived' stay computed at
+ * read time in collectCartonListingLinks.
+ *
+ * EXPAND ONLY so far: no reader, no writer, and the scalar columns are
+ * untouched. Backfill → resolver flip → writers → DROP are later steps.
+ */
+export const receivingListingLinks = pgTable('receiving_listing_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  receivingId: integer('receiving_id').notNull().references(() => receiving.id, { onDelete: 'cascade' }),
+  receivingLineId: integer('receiving_line_id').references(() => receivingLines.id, { onDelete: 'set null' }),
+  /** Absolute http(s) — normalizeListingHref output, CHECK-enforced. */
+  href: text('href').notNull(),
+  /** Buyer's own name for this link; NULL = nobody named it. */
+  label: text('label'),
+  /** CHECK: 'manual' | 'sync_notes' — durable tiers only. */
+  source: text('source').notNull(),
+  /** The buyer's ordering IS the unboxer's triage order. */
+  sortOrder: integer('sort_order').notNull().default(0),
+  boundBy: integer('bound_by'),
+  boundAt: timestamp('bound_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * receiving_exceptions — line-level exception/claim domain (decomposed from the
  * receiving god-table: return_reason/support_notes/zendesk_ticket/exception_code
  * move to the LINE so multi-line cartons attribute per line). Written by the
@@ -3055,6 +3095,12 @@ export const locations = pgTable('locations', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
   name: text('name').notNull().unique(),
+  /**
+   * Operator-facing nickname (2026-08-10d). NULL = read `name`. Deliberately
+   * NOT unique — a label, never an identity; nothing joins on it. Resolve at
+   * display reads with `COALESCE(NULLIF(BTRIM(display_name), ''), name)`.
+   */
+  displayName: text('display_name'),
   room: text('room'),
   description: text('description'),
   barcode: text('barcode').unique(),
@@ -5578,6 +5624,55 @@ export const viewMonitors = pgTable('view_monitors', {
 
 export type ViewMonitorRow = typeof viewMonitors.$inferSelect;
 export type NewViewMonitorRow = typeof viewMonitors.$inferInsert;
+
+// ─── Kiosk attract slides (front-desk screensaver reel) ─────────────────────
+//
+// Birth migration: 2026-08-10e_kiosk_attract_slides.sql. An ordered, curated
+// reel for the idle customer tablet (`/kiosk/v2` → AttractLoop), superseding the
+// single-URL scalar `organizations.settings.brand.attractMediaUrl` (which stays
+// readable until the carousel UI ships).
+//
+// NOT a photos(id) FK, and the migration header states why at length: the
+// polymorphic hub is BIGINT-keyed while orgs are UUID, uploadPhoto() requires an
+// (entityType, entityId) pair this asset has no candidate for, and the kiosk
+// host holds a device token rather than a staff session so session-gated photo
+// content is unreachable there. Brand chrome on public Blob — deliberately
+// outside the evidence platform.
+//
+// media_kind carries the CHECK because the renderer branches on it; content_type
+// is informational and its allowlist lives in src/lib/kiosk/attract-media.ts
+// (ATTRACT_ALLOWED_MIME) so there is exactly one copy of that vocabulary.
+export const kioskAttractSlides = pgTable('kiosk_attract_slides', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** Public Vercel Blob URL under `orgs/{orgId}/kiosk-attract/`. */
+  mediaUrl: text('media_url').notNull(),
+  /** Retained so replace/clear can del() the exact object. */
+  blobObjectKey: text('blob_object_key'),
+  /** CHECK kiosk_attract_slides_media_kind_chk: image|video. */
+  mediaKind: text('media_kind').notNull(),
+  contentType: text('content_type'),
+  fileSizeBytes: integer('file_size_bytes'),
+  sortOrder: smallint('sort_order').notNull().default(0),
+  /** NULL = org default for images / natural length for video. */
+  durationMs: integer('duration_ms'),
+  isEnabled: boolean('is_enabled').notNull().default(true),
+  /** NULL = always. A seasonal slide is disabled or windowed, never deleted. */
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  caption: text('caption'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgOrderIdx: index('idx_kiosk_attract_slides_org_order')
+    .on(table.organizationId, table.sortOrder)
+    .where(sql`is_enabled = TRUE`),
+  orgMediaUq: uniqueIndex('ux_kiosk_attract_slides_org_media')
+    .on(table.organizationId, table.mediaUrl),
+}));
+
+export type KioskAttractSlideRow = typeof kioskAttractSlides.$inferSelect;
+export type NewKioskAttractSlideRow = typeof kioskAttractSlides.$inferInsert;
 
 // ─── Custom field defs / values (2026-08-08f) ────────────────────────────────
 export const customFieldDefs = pgTable('custom_field_defs', {

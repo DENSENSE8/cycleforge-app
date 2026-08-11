@@ -24,16 +24,14 @@ function read(rel: string): string {
   return readFileSync(join(ROOT, rel), 'utf8');
 }
 
-/** Every Band-1 icon cell across the scan stations + To-Ship. */
+/** Every Band-1 icon cell that still wears the quiet cube face. */
 const CUBE_CONSUMERS: readonly string[] = [
   // Leading pin — the face the rest of the row matches.
   'src/components/receiving/unbox/UnboxAddListPopover.tsx',
-  // The one shared tabbed shell every trailing data cube composes.
+  // The one shared tabbed shell (default trigger = cube; labeledTrigger opt-in).
   'src/components/dashboard/workbench-chrome-cube-menu.tsx',
-  // Trailing data cubes.
-  'src/components/receiving/ReceivingBoxChromeActions.tsx',
+  // Trailing data cubes (box stations + To-ship use labeled CTAs instead).
   'src/components/repair/RepairChromeActions.tsx',
-  'src/components/unshipped/OrdersSyncPopover.tsx',
 ];
 
 describe('Band-1 chrome cube', () => {
@@ -65,28 +63,36 @@ describe('Band-1 chrome cube', () => {
     }
   });
 
-  it('same-topic verbs are TABS in one cube — never a row of glyphs', () => {
-    // The shape the operator rejected: [⇩] [☑] [+] on one band.
-    for (const rel of [
-      'src/components/receiving/ReceivingBoxChromeActions.tsx',
-      'src/components/unshipped/OrdersSyncPopover.tsx',
-    ]) {
-      const source = read(rel);
-      assert.match(source, /WorkbenchChromeCubeMenu/, rel);
-      // Exactly ONE cube trigger per topic.
-      assert.equal(
-        (source.match(/<WorkbenchChromeCubeMenu/g) ?? []).length,
-        1,
-        `${rel} must expose one cube for its topic`,
-      );
-      // …and no sibling bare cube buttons beside it.
-      assert.doesNotMatch(source, /<WorkbenchChromeCubeButton/, rel);
-    }
+  it('same-topic verbs are TABS in one menu — never a row of glyphs', () => {
+    // The shape the operator rejected: [⇩] [☑] [+] on one band for ONE topic.
+    // Box stations use labeled Check · resume · Add CTAs (ReceivingBoxChromeActions);
+    // To-ship uses labeled Import · Add — Import hosts Import · Backfill tabs.
+    const source = read('src/components/unshipped/OrdersSyncPopover.tsx');
+    assert.match(source, /WorkbenchChromeCubeMenu/);
+    assert.match(source, /labeledTrigger/);
+    assert.equal(
+      (source.match(/<WorkbenchChromeCubeMenu/g) ?? []).length,
+      1,
+      'OrdersSyncPopover must expose one Import menu for its topic',
+    );
+    assert.doesNotMatch(source, /<WorkbenchChromeCubeButton/);
+    assert.doesNotMatch(source, /label: 'Add'/);
 
     // The Unbox header delegates rather than growing its own glyphs.
     const unbox = read('src/components/receiving/unbox/UnboxWorkspaceHeader.tsx');
     assert.doesNotMatch(unbox, /<WorkbenchChromeCubeButton/);
     assert.match(unbox, /onExport=\{/);
+  });
+
+  it('To-ship Band 1 is labeled Import · Add — not a Plus cube', () => {
+    const actions = read('src/components/dashboard/OutboundOrderChromeActions.tsx');
+    assert.match(actions, /<OrdersSyncPopover/);
+    assert.match(actions, /data-testid="outbound-chrome-add"/);
+    assert.match(actions, /WORKBENCH_CHROME_PILL_CLASS/);
+    assert.doesNotMatch(actions, /WorkbenchChromeCubeButton/);
+    const importIdx = actions.indexOf('<OrdersSyncPopover');
+    const addIdx = actions.indexOf('data-testid="outbound-chrome-add"');
+    assert.ok(importIdx >= 0 && addIdx > importIdx, '[ Import ] [ Add ]');
   });
 
   it('utility CTAs stopped being coloured pills', () => {
@@ -103,20 +109,25 @@ describe('Band-1 chrome cube', () => {
 
   it('the return-to-scan CTA stays SOLID — the one exception, still present', () => {
     const box = read('src/components/receiving/ReceivingBoxChromeActions.tsx');
-    // Resume keeps a solid primary Button; only Check / Add became cubes.
+    // Resume keeps a solid primary Button; Check / Add are labeled peers.
     assert.match(box, /variant="primary"/);
     assert.match(box, /data-testid="receiving-box-resume"/);
     assert.match(box, /WORKBENCH_CHROME_PILL_CLASS/);
     assert.match(box, /\{resumeLabel\}/);
-    // …and it is NOT a cube.
-    const resumeBlock = box.slice(box.indexOf('<Button'));
-    assert.doesNotMatch(resumeBlock, /WorkbenchChromeCubeButton/);
+    assert.doesNotMatch(box, /WorkbenchChromeCubeButton/);
   });
 
-  it('Plus data cube is after resume — far-right when both exist', () => {
+  it('Add is a labeled CTA after resume — Export honest when earned', () => {
     const box = read('src/components/receiving/ReceivingBoxChromeActions.tsx');
+    const check = box.indexOf('<ChromeCheckButton');
     const resume = box.indexOf('data-testid="receiving-box-resume"');
-    const menu = box.indexOf('data-testid="receiving-box-data-menu"');
-    assert.ok(resume >= 0 && menu > resume, '[ RESUME ] [+] — Plus after resume');
+    const add = box.indexOf('data-testid="receiving-box-add"');
+    const exportIdx = box.indexOf('data-testid="unbox-history-export"');
+    assert.ok(
+      check >= 0 && resume > check && add > resume,
+      '[ Check ] [ RESUME ] [ Add ]',
+    );
+    assert.ok(exportIdx > add, 'Export follows Add when History earns it');
+    assert.doesNotMatch(box, /WorkbenchChromeCubeMenu/);
   });
 });

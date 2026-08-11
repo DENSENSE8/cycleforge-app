@@ -12,6 +12,7 @@ import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency'
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import pool from '@/lib/db';
 
 /**
@@ -250,8 +251,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 (organization_id, entity_type, entity_id, work_type, assigned_packer_id,
                  completed_by_packer_id, status, priority, notes, completed_at)
             VALUES ($1, 'ORDER', $2, 'PACK', $3, $3, 'DONE', 100, 'Auto-completed on mobile pack scan', NOW())
-            ON CONFLICT (entity_type, entity_id, work_type)
-                WHERE status IN ('ASSIGNED', 'IN_PROGRESS')
+            ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT}
             DO UPDATE
                 SET assigned_packer_id     = EXCLUDED.assigned_packer_id,
                     completed_by_packer_id = EXCLUDED.completed_by_packer_id,
@@ -269,8 +269,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               (organization_id, entity_type, entity_id, work_type, assigned_packer_id,
                completed_by_packer_id, status, priority, notes, completed_at)
           VALUES ($1, 'ORDER', $2, 'PACK', $3, $3, 'DONE', 100, 'Auto-completed on mobile pack scan', NOW())
-          ON CONFLICT (entity_type, entity_id, work_type)
-              WHERE status IN ('ASSIGNED', 'IN_PROGRESS')
+          ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT}
           DO UPDATE
               SET assigned_packer_id     = EXCLUDED.assigned_packer_id,
                   completed_by_packer_id = EXCLUDED.completed_by_packer_id,

@@ -43,14 +43,22 @@ describe('station-scan-sink guard', () => {
     assert.match(src, /scope:\s*'sibling'/);
     assert.match(src, /useRecordCursorKeyboard/);
     assert.match(src, /setActiveSinkId/);
-    assert.match(src, /receiving-focus-scan/);
+    // Sibling open focuses the capture-row serial — not the dock wedge.
+    assert.match(src, /scheduleFocusUnboxCaptureSerialInLine/);
+    assert.doesNotMatch(
+      src,
+      /receiving-focus-scan/,
+      'sibling open must not steal focus back to the dock wedge',
+    );
   });
 
-  it('PoLineRow mouse/focus arms the sink and reclaims dock focus', () => {
+  it('PoLineRow mouse/focus arms the sink; capture serial outranks dock when mounted', () => {
     const src = read('components/receiving/workspace/PoLineRow.tsx');
     assert.match(src, /setActiveSinkId/);
     assert.match(src, /onFocus/);
+    assert.match(src, /scheduleFocusUnboxCaptureSerialInLine/);
     assert.match(src, /receiving-focus-scan/);
+    assert.match(src, /data-po-line-units/);
   });
 
   it('never introduces a GridNavigationProvider Context twin', () => {

@@ -3,6 +3,7 @@ import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { toPSTDateKey } from '@/utils/date';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 function normalizeHeader(value: unknown) {
   return String(value || '')
@@ -317,7 +318,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             `INSERT INTO work_assignments
                (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at, notes, assigned_at, created_at, updated_at)
              VALUES ($3, 'ORDER', $1, 'TEST', NULL, 'OPEN', 100, $2::timestamptz, 'Canonical deadline row from shipstation sync', NOW(), NOW(), NOW())
-             ON CONFLICT ON CONSTRAINT ux_work_assignments_active_entity DO UPDATE
+             ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO UPDATE
                SET deadline_at = EXCLUDED.deadline_at, updated_at = NOW()
              WHERE work_assignments.status = 'OPEN'`,
             [affectedOrderId, payload.shipByDate, orgId]

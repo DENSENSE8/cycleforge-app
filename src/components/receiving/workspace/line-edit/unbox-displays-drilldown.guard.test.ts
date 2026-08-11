@@ -82,8 +82,8 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     );
     assert.match(
       panel,
-      /openDisplays\('units',\s*\{\s*unitsAction:\s*'units'\s*\}\)/,
-      'serials View All still skips index (lands Units drill, not Actions list)',
+      /openDisplays\('units'\)/,
+      'serials View All still skips index (lands Units leaf)',
     );
     assert.match(
       panel,
@@ -388,37 +388,37 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     );
   });
 
-  it('Open displays paints from the shared optimistic URL SoT — not a local twin', () => {
+  it('Open displays paints from local state — no App Router soft-replace', () => {
     const view = read(DISPLAY_VIEW);
-    assert.match(
+    assert.doesNotMatch(
       view,
       /from '@\/lib\/routing\/optimistic-url-param'/,
-      'Unbox composes the paint-pending SoT — never a feature-local resolve/clear fork',
+      'Displays leaf selection is local — not paint-pending URL SoT',
+    );
+    assert.doesNotMatch(
+      view,
+      /useRouter|useSearchParams|router\.replace/,
+      'setDisplay must not soft-replace the URL on leaf / nest swaps',
+    );
+    assert.doesNotMatch(
+      view,
+      /flushSync|setPending/,
+      'pending paint bridge is retired — React state is the SoT',
     );
     assert.match(
       view,
-      /setPending\(snapshot\)/,
-      'setDisplay must flip pending before router.replace so the column mounts in the click commit',
+      /stripStaleUnboxRightEdgeParamsFromUrl/,
+      'mount silently strips stale ?display= leftovers without hydrating UI',
     );
     assert.match(
       view,
-      /flushSync\([\s\S]*?setPending\(snapshot\)/,
-      'pending paint flushSyncs so leaf mounts in the same pointer/key turn',
+      /setSnapshot|buildDisplayPending/,
+      'setDisplay writes a local nest snapshot',
     );
     assert.match(
       view,
-      /resolveOptimisticParam\(urlDisplay,\s*pending\?\.display\)/,
-      'requestedDisplay prefers pending over lagged useSearchParams',
-    );
-    assert.match(
-      view,
-      /shouldClearOptimisticParam\(urlDisplay,\s*pending\?\.display\)/,
-      'pending clears only when the URL catches the write (index→leaf race safe)',
-    );
-    assert.match(
-      view,
-      /readLiveSearchParams/,
-      'param edits seed from the live address bar',
+      /STATION_DISPLAYS_CLOSE_EVENT/,
+      'desk Add / Check close Displays via the station event',
     );
   });
 

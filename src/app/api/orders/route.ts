@@ -503,7 +503,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         staff_packed_by.name     AS packed_by_name,
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
         opp.location_id AS pack_location_id,
-        loc_pack.name AS pack_location_name,
+        COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
         loc_pack.location_kind AS pack_location_kind,
         o.sku_catalog_id,
         sc.image_url AS catalog_image_url,

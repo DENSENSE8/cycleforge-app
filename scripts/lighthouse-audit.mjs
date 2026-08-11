@@ -35,6 +35,13 @@ export const ROUTES = [
   { path: '/signin', tier: 1, auth: false },
   { path: '/dashboard', tier: 1, auth: true },
   { path: '/receiving', tier: 1, auth: true },
+  // Desktop `/unbox` is the operator's real Unbox surface (the seeded
+  // `UnboxBrowseShell` first-paint path). It is pinned `formFactor: 'desktop'`
+  // because on MOBILE the proxy rewrites `/unbox` → `/m/receiving` (the mobile
+  // photo feed), so a mobile audit here would measure the wrong surface — the
+  // exact gap that hid the `/unbox` LCP work from this tooling. `/receiving`
+  // (legacy) and `/m/unbox` (tier 2) still cover the other two surfaces.
+  { path: '/unbox', tier: 1, auth: true, formFactor: 'desktop' },
   { path: '/triage', tier: 1, auth: true },
   { path: '/packer', tier: 1, auth: true },
   { path: '/test', tier: 1, auth: true }, // testing station (the old /tech redirects here)
@@ -80,15 +87,21 @@ const median = (nums) => {
   return s[Math.floor(s.length / 2)];
 };
 
-/** Lighthouse config: simulated slow-4G mobile (LH defaults) or desktop preset. */
-function lhOptions(port) {
+/**
+ * Lighthouse config: simulated slow-4G mobile (LH defaults) or desktop preset.
+ * A route may pin its own `formFactor` (e.g. desktop `/unbox`) — that override
+ * wins over the run-wide default so a mixed run still measures each surface on
+ * the device its operator actually uses.
+ */
+function lhOptions(port, routeFormFactor) {
+  const ff = routeFormFactor ?? formFactor;
   return {
     port,
     output: 'json',
     logLevel: 'error',
-    formFactor,
+    formFactor: ff,
     screenEmulation:
-      formFactor === 'desktop'
+      ff === 'desktop'
         ? { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false }
         : { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false },
     throttlingMethod: 'simulate',
@@ -104,7 +117,7 @@ async function auditRoute(route) {
   for (let i = 0; i < runsPerRoute; i++) {
     const chrome = await launch({ chromeFlags: ['--headless=new', '--no-first-run', '--disable-gpu'] });
     try {
-      const result = await lighthouse(url, lhOptions(chrome.port));
+      const result = await lighthouse(url, lhOptions(chrome.port, route.formFactor));
       lastLhr = result.lhr;
       runs.push({
         performance: Math.round((result.lhr.categories.performance?.score ?? 0) * 100),

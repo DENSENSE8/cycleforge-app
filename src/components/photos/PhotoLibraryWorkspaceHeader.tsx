@@ -1,13 +1,18 @@
 'use client';
 
 /**
- * Media Library **Band 2** — the search band.
+ * Media Library **Band 2** — the house lean row, on `WorkbenchTriageBand`.
  *
  * One dominant find field (`min-w-0 flex-1`) with every row-narrowing facet
- * riding *inside* it as a refine popover, and display **order** (`?sort=`) on
- * the right. That split is the house grammar: a control that changes WHICH rows
- * are on screen goes in the field beside the query it refines; a control that
- * changes how the same rows are laid out stays right.
+ * riding *inside* it as ONE refine popover, then the right control cluster:
+ * display **order** (`?sort=`), **Views**, and the inspector toggle. That split
+ * is the house grammar: a control that changes WHICH rows are on screen goes in
+ * the field beside the query it refines; a control that changes how the same
+ * rows are laid out — or which named snapshot they came from — stays right.
+ *
+ * The row is `search · Views · inspector`. There is deliberately **no**
+ * `kpiToggle`: this surface has no KPI band, and a toggle with no band behind
+ * it is a dead control.
  *
  * ## The 2026-07-29 ban this file used to carry, and why it is lifted
  *
@@ -94,7 +99,7 @@ import { PhotoLibraryFilterDropdown } from './PhotoLibraryFilterDropdown';
 import { PhotoLibraryNasBackup } from './PhotoLibraryNasBackup';
 import { PhotoLabelsSection } from './PhotoLabelsSection';
 import { PhotoSortMenu } from './PhotoSortMenu';
-import { MediaSavedViewsSection } from './MediaSavedViewsSection';
+import { MediaViewsMenu } from './MediaViewsMenu';
 
 /**
  * The field is dominant on its own band now, so the placeholder can carry the
@@ -365,22 +370,29 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
               </div>
               <WorkbenchFilterDivider />
               <div className="px-1 pb-1">
-                <MediaSavedViewsSection
-                  currentFilters={filters}
-                  currentView={display.view}
-                  savable={savable}
-                  canManage={canManagePhotos}
-                  onApply={(payload) => applyView(payload.filters, payload.view)}
-                />
-              </div>
-              <WorkbenchFilterDivider />
-              <div className="px-1 pb-1">
                 <PhotoLibraryNasBackup />
               </div>
             </WorkbenchFilterPopover>
           }
         />
       }
+      // Saved views are a page-scoped CONTROL, not a row-narrowing facet, so
+      // they left the refine funnel for the band's own `views` slot
+      // (2026-08-10) — same ruling that moved Views out of the find group
+      // house-wide. `MediaViewsMenu` keeps this surface's own store
+      // (`useMediaLibrarySavedViews`, a JSON snapshot rather than URL params)
+      // and composes the shared Bookmark face.
+      views={
+        <MediaViewsMenu
+          currentFilters={filters}
+          currentView={display.view}
+          savable={savable}
+          canManage={canManagePhotos}
+          onApply={(payload) => applyView(payload.filters, payload.view)}
+        />
+      }
+      // No `kpiToggle`: this surface has no KPI band. Honest absence — never
+      // mount one to make the row look symmetrical.
       trailing={
         <WorkbenchTrailingCluster
           divide={false}

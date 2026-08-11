@@ -62,9 +62,13 @@
  *
  * ## Displays gutter
  *
- * On `variant="bubble"` the list owns {@link DISPLAYS_BODY_INSET} (`px-4`) so
- * conversation rows share the readable gutter with the floating composer. The
- * Displays column host stays flush (`DISPLAYS_FLUSH_HOST`).
+ * On `variant="bubble"` rows carry NO horizontal gutter (ruled 2026-08-10):
+ * bubbles and the floating composer fill the Displays column edge to edge. This
+ * reverses the 2026-08-05 rows-own-`px-4` grammar FOR THE TICKET STREAM ONLY —
+ * a Displays column is already narrow and locked at ~720 behind it, and a 85%
+ * bubble cap inside a `px-4` list spent that scarce measure twice. The host was
+ * flush before and stays flush (`DISPLAYS_FLUSH_HOST`); every other Displays
+ * leaf keeps `DISPLAYS_BODY_INSET`.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -86,7 +90,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityMark, StaffAvatar } from '@/components/identity';
 import { staffInitials } from '@/design-system/components/StaffBadge';
 import { Button, Spinner } from '@/design-system/primitives';
-import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { Lock } from '@/components/Icons';
 import { formatDateTimePST, toPSTDateKey } from '@/utils/date';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
@@ -347,7 +350,10 @@ function StreamRow({
         <RowMark item={item} compact={compact} />
         <div
           className={cn(
-            'min-w-0 max-w-[min(100%,85%)] stack-tight rounded-2xl border px-3 py-2',
+            // Fills the column (ruled 2026-08-10): a Displays column is already
+            // narrow and locked, so an 85% cap spent the scarce measure on empty
+            // gutter. Direction still reads from the row's reverse + the mark.
+            'min-w-0 w-full stack-tight rounded-2xl border px-3 py-2',
             internal
               ? 'border-amber-200/80 bg-amber-50'
               : ours
@@ -370,7 +376,7 @@ function StreamRow({
       data-internal={internal ? 'true' : undefined}
       className={cn(
         'flex gap-2',
-        // Bubble list already owns DISPLAYS_BODY_INSET — vertical pad only.
+        // Bubble rows are flush to the column — vertical pad only.
         variant === 'bubble'
           ? 'py-1.5'
           : compact
@@ -492,7 +498,6 @@ export function MergedRecordStream({
       <div
         className={cn(
           'flex items-center justify-center py-16',
-          bubble && DISPLAYS_BODY_INSET,
         )}
       >
         <Spinner />
@@ -505,7 +510,7 @@ export function MergedRecordStream({
         className={cn(
           'text-center text-rose-600',
           bubble
-            ? cn(DISPLAYS_BODY_INSET, 'py-4 text-role-micro')
+            ? 'py-4 text-role-micro'
             : compact
               ? 'px-3 py-4 text-role-micro'
               : 'px-5 py-6 text-role-caption',
@@ -521,7 +526,7 @@ export function MergedRecordStream({
         className={cn(
           'text-center',
           bubble
-            ? cn(DISPLAYS_BODY_INSET, 'py-10')
+            ? 'py-10'
             : compact
               ? 'px-3 py-10'
               : 'px-5 py-16',
@@ -549,7 +554,7 @@ export function MergedRecordStream({
       data-testid="support-merged-stream"
       data-stream-variant={variant}
       className={cn(
-        bubble ? cn(DISPLAYS_BODY_INSET, 'stack-tight') : 'divide-y divide-border-hairline',
+        bubble ? 'stack-tight' : 'divide-y divide-border-hairline',
       )}
     >
       {hiddenCount > 0 ? (
@@ -579,7 +584,7 @@ export function MergedRecordStream({
               <DateGroupHeader
                 date={dayKey}
                 total={dayTotals.get(dayKey) ?? 0}
-                // Bubble list already owns DISPLAYS_BODY_INSET — drop QUEUE_ROW.px.
+                // Bubble rows are flush to the column — drop QUEUE_ROW.px.
                 className={bubble ? 'px-0' : undefined}
               />
             ) : null}

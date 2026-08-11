@@ -61,8 +61,8 @@ describe('Unbox pinned Inbound', () => {
     assert.doesNotMatch(embed, /<IncomingWorkspaceHeader/, 'embed must not mount the Incoming desk header');
     assert.doesNotMatch(embed, /<IncomingChromeActions/, 'embed must not mount the Incoming CTA cluster');
     // Unbox chrome never imports the Incoming desk CTA cluster (Import lives
-    // on `/incoming` only). Box-station Add is ReceivingBoxChromeActions —
-    // Check · Add · Unbox — not IncomingChromeActions.
+    // on `/incoming` only). Box-station CTAs are ReceivingBoxChromeActions —
+    // Check · Unbox · Add (+ Export on History) — not IncomingChromeActions.
     const header = read('src/components/receiving/unbox/UnboxWorkspaceHeader.tsx');
     assert.doesNotMatch(header, /IncomingChromeActions/);
     assert.doesNotMatch(header, /IncomingWorkspaceHeader/);

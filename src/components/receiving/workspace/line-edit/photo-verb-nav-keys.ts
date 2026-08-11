@@ -11,6 +11,7 @@ export const PHOTO_VERB_NAV_KEY = {
   upload: 'u',
   download: 'd',
   media: 'm',
+  link: 'l',
   compare: 'c',
   move: 'o',
   send: 's',

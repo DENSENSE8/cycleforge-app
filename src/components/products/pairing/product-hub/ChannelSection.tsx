@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { ChevronDown } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { platformStyle } from '../platform-style';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMeta } from '@/lib/source-platform';
+import { cn } from '@/utils/_cn';
 import type { HubCandidate, HubConfirmed } from '../types';
 import { ConfirmedRow } from './ConfirmedRow';
 import { SuggestionRow } from './SuggestionRow';
@@ -35,16 +38,22 @@ export function ChannelSection({
   onPreview: (url: string, label: string) => void;
   activePreviewUrl: string | null;
 }) {
-  const style = platformStyle(platform);
+  const meta = sourcePlatformMeta(platform);
   const [showAll, setShowAll] = useState(false);
+
+  const mark = (
+    <HoverTooltip label={meta.label} asChild focusable={false}>
+      <span className="inline-flex shrink-0" aria-label={meta.label}>
+        <PlatformMark platformValue={platform} meta={meta} />
+      </span>
+    </HoverTooltip>
+  );
 
   if (confirmed.length === 0 && suggestions.length === 0) {
     return (
-      <section className={`border-l-2 py-2 pl-3 ${style.ring}`}>
+      <section className={cn('border-l-2 py-2 pl-3', meta.border)}>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${style.chip}`}>
-            {style.label}
-          </span>
+          {mark}
           <span className="text-role-micro text-text-faint">empty</span>
         </div>
         <ChannelManualAdd platform={platform} skuCatalogId={skuCatalogId} onAdded={onAdded} />
@@ -56,12 +65,8 @@ export function ChannelSection({
   const moreCount = suggestions.length - visibleSuggestions.length;
 
   return (
-    <section className={`border-l-2 py-2 pl-3 ${style.ring}`}>
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${style.chip}`}>
-          {style.label}
-        </span>
-      </div>
+    <section className={cn('border-l-2 py-2 pl-3', meta.border)}>
+      <div className="mb-1.5 flex items-center gap-2">{mark}</div>
 
       <div className="space-y-1">
         {confirmed.map((c) => (

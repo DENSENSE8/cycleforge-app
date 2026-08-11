@@ -17,6 +17,7 @@
  * shared-entry step — **including photo** (`UNBOX_PHOTO_STRIP_KEYS`). Step
  * ACTION (ack · grades · photo Link|Upload|Send) fills the remaining width.
  * Serial and classify own Band 1 alone (serial field *is* the waist).
+ * Classify stays **h-11** — editor is Displays KNOW, never expandBand.
  *
  * ## Motion and focus
  *
@@ -43,7 +44,6 @@ export function UnboxStepDock({
   conditionSlot,
   itemPhotoSlot,
   serialSlot,
-  classifySlot,
   onSetCondition,
 }: {
   row: ReceivingLineRow;
@@ -54,8 +54,6 @@ export function UnboxStepDock({
   itemPhotoSlot?: ReactNode;
   /** Serial scan field + waiver for `serial`. */
   serialSlot?: ReactNode;
-  /** Shared classify editor (`TriageClassifySection`) for unfound dock walk. */
-  classifySlot?: ReactNode;
   /** Keyboard grade commit from {@link UnboxDockScanEntry}. */
   onSetCondition?: (grade: string) => void;
 }) {
@@ -77,25 +75,18 @@ export function UnboxStepDock({
     conditionSlot,
     itemPhotoSlot,
     serialSlot,
-    classifySlot,
   };
 
   // Serial · classify own the band alone — shared waist would dual-mount.
   // Photo steps keep the left waist; strip mounts as the right flex-1 sibling.
   const ownsBandAlone = activeKey === 'serial' || activeKey === 'classify';
   const showScanEntry = settled && activeKey != null && !ownsBandAlone;
-  const growBand = settled && activeKey === 'classify';
 
   return (
     // The presence OUTLIVES its child: one that mounts with the child suppresses
     // the enter under `initial={false}`, and one that unmounts with it can never
     // play the exit. An empty presence renders no element and costs nothing.
-    <div
-      className={cn(
-        'flex w-full min-w-0 gap-0',
-        growBand ? 'min-h-11 flex-col items-stretch' : 'h-11 items-stretch',
-      )}
-    >
+    <div className="flex h-11 w-full min-w-0 items-stretch gap-0">
       {showScanEntry ? (
         <UnboxDockScanEntry row={row} onSetCondition={onSetCondition} />
       ) : null}
@@ -112,8 +103,7 @@ export function UnboxStepDock({
             // Serial / classify hide the wedge and fill alone. Host gap-0 —
             // step control owns a leading hairline when it trails the wedge.
             className={cn(
-              'flex min-w-0 items-stretch',
-              growBand ? 'min-h-11 w-full flex-1' : 'h-11 flex-1',
+              'flex h-11 min-w-0 flex-1 items-stretch',
               showScanEntry && 'border-l border-border-hairline',
             )}
             data-unbox-step-dock={activeKey}

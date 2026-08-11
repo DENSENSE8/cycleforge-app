@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { getAccountSourceLabel, getOrderIdUrl } from '@/utils/order-links';
+import { getOrderIdUrl } from '@/utils/order-links';
 import { formatDateTimePST } from '@/utils/date';
 import { Pencil, Copy, Check, Zap } from '@/components/Icons';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { IconButton } from '@/design-system/primitives';
 import { StnTicketLinkModal } from '@/components/support/link/StnTicketLinkModal';
+import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 
 import {
@@ -62,7 +65,11 @@ export function ShippingInformationSection({
   prepackedSku,
   replaceTrackingNonce = 0,
 }: ShippingInformationSectionProps) {
-  const accountSourceLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
+  const orderChannelLabel = useOrderChannelLabel();
+  const resolvePlatformMeta = usePlatformMeta();
+  const channelLabel = orderChannelLabel(shipped.order_id, shipped.account_source);
+  const fromLabel = sourcePlatformMetaFromLabel(channelLabel);
+  const platformMeta = fromLabel.value ? resolvePlatformMeta(fromLabel.value) : fromLabel;
 
   const { ef, internalFieldSave } = useEditableShippingFields(shipped, editableShippingFields, onUpdate);
 
@@ -213,8 +220,15 @@ export function ShippingInformationSection({
           onChange={ef.onOrderNumberChange}
           onBlur={ef.onBlur}
           externalUrl={getOrderIdUrl(ef.orderNumber)}
-          headerAccessory={accountSourceLabel || undefined}
-          headerAccessoryClassName="text-role-micro tracking-wide text-text-info"
+          headerAccessory={
+            platformMeta.value ? (
+              <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+                <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                  <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                </span>
+              </HoverTooltip>
+            ) : null
+          }
           allowEdit={false}
         />
 

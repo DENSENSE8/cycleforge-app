@@ -60,6 +60,7 @@ export function defaultDisplayIndexGroup(id: string): DisplayIndexGroup {
       return 'verification';
     case 'inventory':
     case 'units':
+    case 'prebox':
     case 'photos':
     case 'condition':
     case 'checklist':
@@ -89,6 +90,7 @@ export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
   classify: 'c',
   inventory: 'i',
   units: 'u',
+  prebox: 'b',
   listings: 'l',
   condition: 'd',
   support: 's',

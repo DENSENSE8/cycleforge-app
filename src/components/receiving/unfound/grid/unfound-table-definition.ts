@@ -30,4 +30,5 @@ export const UNFOUND_TABLE_BINDING: TableSurfaceBinding<QueueRow, UnfoundGridCol
   definition: UNFOUND_TABLE_DEFINITION,
   columns: UNFOUND_GRID_COLUMNS,
   makeDescriptor: makeUnfoundGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:unfound' },
 };

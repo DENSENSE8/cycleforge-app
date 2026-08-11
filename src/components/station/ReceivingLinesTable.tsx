@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
+import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
@@ -54,7 +55,6 @@ import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
 import { IncomingGridColumnHeader } from '@/components/station/incoming-grid/IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from '@/components/station/incoming-grid/IncomingGridGroupRow';
-import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
@@ -506,6 +506,16 @@ export default function ReceivingLinesTable({
   useSurfacePaintMark('unbox:table', embedded && !isLoading);
   useSurfacePaintMark('unbox:primary', embedded && !isLoading);
 
+  // SSR first-paint handoff — seeded spine (or settled fetch) → drop stand-in.
+  const unboxPrimaryPaint = useUnboxPrimaryPaintOptional();
+  useEffect(() => {
+    if (!embedded || !unboxPrimaryPaint) return;
+    // Paintable = settled with any result (including empty queue) or seeded data.
+    if (data != null && !isLoading) {
+      unboxPrimaryPaint.onPrimaryPainted();
+    }
+  }, [embedded, unboxPrimaryPaint, data, isLoading]);
+
   const emptyMessage = mode.emptyMessage(modeContext);
 
   // Fourth settled state (degraded): the authoritative list fetch failed AND we
@@ -848,16 +858,6 @@ export default function ReceivingLinesTable({
                   : Number(data?.total ?? localRows.length)
               }
               page={isIncomingMode ? incomingPage : 1}
-              laneNote={
-                isIncomingMode
-                  ? {
-                      view: mode.apiView,
-                      trackingFiltered: modeContext.trackingIn.length > 0,
-                      rowCount: orderedVisibleRows.length,
-                      providerLabel: providerCatalogLabel('zoho'),
-                    }
-                  : null
-              }
             />
           </div>
           {isIncomingMode ? (

@@ -51,6 +51,14 @@ export const PLATFORM_BRAND_ICON_PATHS: Readonly<Record<string, string>> = {
   ecwid:
     'M10 6V3.5a2 2 0 014 0V6h1.5V3.5a3.5 3.5 0 00-7 0V6H10zM5.5 7A1.5 1.5 0 004 8.5v12A1.5 1.5 0 005.5 22h13a1.5 1.5 0 001.5-1.5v-12A1.5 1.5 0 0018.5 7h-13z',
 
+  /** Ledger book — Zoho Books / inventory channel. */
+  zoho:
+    'M5 3.5h14A1.5 1.5 0 0120.5 5v14a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 19V5A1.5 1.5 0 015 3.5zm2.5 3.25v1.5h9v-1.5h-9zm0 3.5v1.5h9v-1.5h-9zm0 3.5v1.5h6v-1.5h-6z',
+
+  /** Tag — Mercari marketplace listing. */
+  mercari:
+    'M4.5 7.5 12 3.25l7.5 4.25v2.1L12 5.85 4.5 9.6V7.5zm0 4.1 7.5-3.75 7.5 3.75V19a1.5 1.5 0 01-1.5 1.5H6A1.5 1.5 0 014.5 19v-7.4zM9 13.25h6v1.5H9v-1.5z',
+
   /** Generic storefront — catch-all "Other" channel. */
   other:
     'M2.5 10.75 12 3.25l9.5 7.5V12.5H19v8.25h-5.25V14.5h-3.5v6.25H5V12.5H2.5v-1.75z',

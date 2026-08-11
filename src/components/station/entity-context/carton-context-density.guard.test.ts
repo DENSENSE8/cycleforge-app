@@ -169,8 +169,8 @@ describe('carton-context-density', () => {
     );
     assert.match(
       identity,
-      /STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0'/,
-      'classify group chips abut (gap-0) and fill the chrome row height',
+      /STATION_IDENTITY_GROUP_CLASS\s*=\s*[\s\S]*?gap-0[\s\S]*?-ml-px/,
+      'classify group chips abut (gap-0) and overlap side borders (-ml-px) as one token',
     );
     assert.doesNotMatch(
       identity,
@@ -287,6 +287,11 @@ describe('carton-context-density', () => {
       pillsCode,
       /h-full shrink-0 self-stretch items-stretch/,
       'Collapsed urgency · platform · type hosts stretch to the chrome row (not content height)',
+    );
+    assert.match(
+      pillsCode,
+      /className="flex h-full shrink-0 items-stretch"/,
+      'Collapsed motion wrap fills chrome row height so classify faces match Exit',
     );
     assert.match(
       pillsCode,
@@ -445,7 +450,7 @@ describe('carton-context-density', () => {
     );
   });
 
-  it('Unbox Photos suppresses hover strip; pill click stays send-to-phone', () => {
+  it('Unbox Photos: hover dropdown · click phone · double-click Displays', () => {
     const card = readFileSync(
       join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
       'utf8',
@@ -455,12 +460,17 @@ describe('carton-context-density', () => {
     assert.match(
       card,
       /suppressHoverGallery=\{suppressPhotoHoverGallery\}/,
-      'Carton context threads hover-strip suppress for Unbox',
+      'Carton context threads optional hover-strip suppress',
+    );
+    assert.match(
+      card,
+      /onOpenPhotosDisplay=\{onOpenPhotosDisplay\}/,
+      'Carton context threads double-click → Displays Photos',
     );
     assert.match(
       card,
       /galleryPlacement\s*=\s*["']left["']/,
-      'Arrival hover strip (when not suppressed) opens left of the pill',
+      'hover strip opens left of the pill (Claim stays clear)',
     );
 
     const panel = readFileSync(
@@ -469,15 +479,25 @@ describe('carton-context-density', () => {
     )
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
-    assert.match(
-      panel,
-      /suppressPhotoHoverGallery/,
-      'Unbox identity suppresses Photos hover strip',
-    );
     assert.doesNotMatch(
       panel,
-      /onOpenPhotosDisplay/,
-      'pill click must not open Displays — send-to-phone stays the click action',
+      /suppressPhotoHoverGallery/,
+      'Unbox identity must keep Photos hover dropdown',
+    );
+    assert.match(
+      panel,
+      /onOpenPhotosDisplay=\{openPhotosDisplay\}/,
+      'double-click opens Displays → Photos Actions',
+    );
+    assert.match(
+      panel,
+      /onOpenMovePhotosExternal=\{openMovePhotosDisplay\}/,
+      'hover Move opens Displays Move drill',
+    );
+    assert.match(
+      panel,
+      /onSendToTicketExternal=\{openSendPhotoNoteDisplay\}/,
+      'hover Ticket opens Displays Send drill',
     );
 
     const pill = readFileSync(
@@ -486,18 +506,38 @@ describe('carton-context-density', () => {
     )
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
-    assert.match(pill, /suppressHoverGallery/, 'pill can suppress hover strip');
+    assert.match(pill, /suppressHoverGallery/, 'pill retains opt-out suppress');
     assert.match(
       pill,
       /void handleRequestOnPhone\(\)/,
-      'pill click always send-to-phone',
+      'pill click still send-to-phone',
     );
-    assert.doesNotMatch(
+    assert.match(
       pill,
       /onOpenPhotosDisplay/,
-      'pill must not route click to Displays',
+      'pill accepts Displays open on double-click',
     );
-    assert.match(pill, /AnchoredLayer/, 'non-suppressed paths still portal via AnchoredLayer');
+    assert.match(
+      pill,
+      /onDoubleClick/,
+      'double-click wired when Displays callback is set',
+    );
+    assert.match(
+      pill,
+      /GALLERY_OPEN_DELAY_MS|galleryOpenTimer/,
+      'hover strip dwells so teaching HoverTooltip can paint first',
+    );
+    assert.match(
+      pill,
+      /Phone · dbl-click details/,
+      'compact tooltip: phone + dbl-click details',
+    );
+    assert.match(
+      pill,
+      /placement=["']right["']/,
+      'teaching tip sits to the right of the Photos pill',
+    );
+    assert.match(pill, /AnchoredLayer/, 'hover dropdown portals via AnchoredLayer');
     assert.match(
       pill,
       /level\s*=\s*["']panelPopover["']/,

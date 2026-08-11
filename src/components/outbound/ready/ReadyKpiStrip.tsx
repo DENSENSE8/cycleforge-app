@@ -1,13 +1,10 @@
 'use client';
 
-import { KpiTile } from '@/design-system/components/monitor';
+import { KpiTile, OpsKpiBand, OpsKpiBandCell } from '@/design-system/components/monitor';
 import type {
   ReadyWorkspaceCounts,
   ReadyWorkspaceTab,
 } from '@/utils/ready-workspace-state';
-
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-32';
 
 export function ReadyKpiStrip({
   counts,
@@ -51,9 +48,9 @@ export function ReadyKpiStrip({
   ];
 
   return (
-    <div className={TILE_BAND_CLASS}>
+    <OpsKpiBand aria-label="Ready to pack metrics">
       {metrics.map((metric) => (
-        <div key={metric.id} className={TILE_CELL_CLASS}>
+        <OpsKpiBandCell key={metric.id} compact>
           <KpiTile
             label={metric.label}
             value={metric.value}
@@ -62,8 +59,8 @@ export function ReadyKpiStrip({
             onOpen={metric.tab ? () => onSelectTab(metric.tab as ReadyWorkspaceTab) : undefined}
             className="h-full"
           />
-        </div>
+        </OpsKpiBandCell>
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }

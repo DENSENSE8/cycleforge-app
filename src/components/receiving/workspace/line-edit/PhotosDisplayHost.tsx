@@ -3,35 +3,59 @@
 /**
  * Unbox Displays → Photos leaf — armed rows + drill-down bodies (no nested tabs).
  *
- * Nest altitude (`UNBOX_PHOTO_ACTION_ORDER`): Actions (default) → Move · Send →
- * Compare. Default (`?display=photos` / absent `photoAction`): keyboard-armed
- * verb list ({@link PhotosActionsArmedList}). Drill-downs via URL:
- * `?photoAction=move|send|compare` (legacy `browse` → Actions list).
+ * Nest altitude (`UNBOX_PHOTO_ACTION_ORDER`): Actions (default) → Link · Move ·
+ * Send → Compare. Default (`photos` leaf / absent `photoAction`): keyboard-armed
+ * verb list ({@link PhotosActionsArmedList}). Drill-downs via local nest:
+ * `photoAction` link|move|send|compare (legacy `browse` → Actions list).
+ *
+ * **Chunk split:** Actions rides this host module (default face). Link · Move ·
+ * Send · Compare are `dynamic()` so opening Photos does not download those panels.
  *
  * Drill trail reports via {@link useDisplaysLeafChrome} so sticky Back / Esc
- * pops Compare|Move|Send → Actions → index (never a second LeafHeader).
+ * pops Compare|Move|Send|Link → Actions → index (never a second LeafHeader).
  *
- * Identity Photos pill click stays send-to-phone (hover toolbar suppressed).
- * Column `→|` / Esc own dismiss; Back from a drill-down returns to the row list.
+ * Identity Photos pill: click = send-to-phone; hover = PhotoLauncher dropdown
+ * (Move / Send open this leaf's drills); double-click = open this leaf's
+ * Actions list. Column `→|` / Esc own dismiss; Back from a drill-down returns
+ * to the row list.
  */
 
 import { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
-import { MovePhotosBetweenPoPanel } from './MovePhotosBetweenPoPanel';
-import { SendPhotoNotePanel } from '../SendPhotoNotePanel';
-import { ListingPhotoCompareHost } from './ListingPhotoCompareHost';
 import { PhotosActionsArmedList } from './PhotosActionsArmedList';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { UnboxPhotoAction } from './unbox-side-tabs';
 
+const PhotoLinkDisplay = dynamic(
+  () => import('./PhotoLinkDisplay').then((m) => m.PhotoLinkDisplay),
+  { loading: () => null },
+);
+const MovePhotosBetweenPoPanel = dynamic(
+  () =>
+    import('./MovePhotosBetweenPoPanel').then((m) => m.MovePhotosBetweenPoPanel),
+  { loading: () => null },
+);
+const SendPhotoNotePanel = dynamic(
+  () => import('../SendPhotoNotePanel').then((m) => m.SendPhotoNotePanel),
+  { loading: () => null },
+);
+const ListingPhotoCompareHost = dynamic(
+  () =>
+    import('./ListingPhotoCompareHost').then((m) => m.ListingPhotoCompareHost),
+  { loading: () => null },
+);
+
 const PHOTO_DRILL_LABEL: Record<Exclude<UnboxPhotoAction, 'actions'>, string> = {
+  link: 'Link',
   move: 'Move',
   send: 'Send',
   compare: 'Compare',
 };
 
 function isPhotoDrill(action: UnboxPhotoAction): action is Exclude<UnboxPhotoAction, 'actions'> {
-  return action === 'move' || action === 'send' || action === 'compare';
+  return action === 'link' || action === 'move' || action === 'send' || action === 'compare';
 }
 
 export function PhotosDisplayHost({
@@ -39,17 +63,26 @@ export function PhotosDisplayHost({
   staffId,
   action,
   onActionChange,
+  linkTargetLineId,
+  linkTargetCartonAspect = null,
+  linkFocusRequestId = 0,
 }: {
   row: ReceivingLineRow;
   /** Desk staff id — Phone verb publishes the carton capture request. */
   staffId: number;
   action: UnboxPhotoAction;
   onActionChange: (action: UnboxPhotoAction) => void;
+  /** `link` drill: which PO item the "Link to" combobox defaults to (else this row). */
+  linkTargetLineId?: number | null;
+  /** `link` drill: carton aspect handoff from Arrival / bench dock Link. */
+  linkTargetCartonAspect?: PhotoAspect | null;
+  /** Bump to re-default the "Link to" target from a fresh handoff. */
+  linkFocusRequestId?: number;
 }) {
   const verb: UnboxPhotoAction = isPhotoDrill(action) ? action : 'actions';
   const { setTrail, setOnNestedPop, setOnNestedRestore } = useDisplaysLeafChrome();
 
-  // Sticky Back / Esc: Actions = leaf root; drill = Photos → Move|Send|Compare.
+  // Sticky Back / Esc: Actions = leaf root; drill = Photos → Link|Move|Send|Compare.
   useEffect(() => {
     if (verb === 'actions') {
       setTrail([{ id: 'photos', label: 'Photos' }]);
@@ -83,9 +116,20 @@ export function PhotosDisplayHost({
           <PhotosActionsArmedList
             row={row}
             staffId={staffId}
+            onOpenLink={() => onActionChange('link')}
             onOpenCompare={() => onActionChange('compare')}
             onOpenMove={() => onActionChange('move')}
             onOpenSend={() => onActionChange('send')}
+          />
+        ) : null}
+        {verb === 'link' ? (
+          <PhotoLinkDisplay
+            key={`link-${row.receiving_id ?? row.id}`}
+            receivingId={row.receiving_id ?? 0}
+            defaultTargetLineId={linkTargetLineId ?? row.id}
+            defaultCartonAspect={linkTargetCartonAspect}
+            focusRequestId={linkFocusRequestId}
+            onClose={() => onActionChange('actions')}
           />
         ) : null}
         {verb === 'compare' ? <ListingPhotoCompareHost row={row} /> : null}

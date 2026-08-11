@@ -210,22 +210,23 @@ describe('typed external (platform) track floors', () => {
 
 /**
  * Incoming freezes `select` only. Receiving freezes `select · order` (PO
- * identity). Receiving keeps the Qty word so `# Order` and bare `#` do
- * not share one scan path. Incoming Pipeline is the icon-only exception
- * (`headerGlyphOnly` on every data column).
+ * identity). BOTH keep the Qty word. The 2026-08-04 Incoming icon-only
+ * exception is OVERTURNED (Inbound ↔ History one family, 2026-08-10): Incoming
+ * no longer declares `headerGlyphOnly` on any data column, so both views share
+ * one header grammar.
  */
 describe('Sheets-class freeze + Qty header (receiving family)', () => {
-  it('incoming: qty is glyph-only while order scrolls (icon-only headers)', () => {
+  it('incoming: qty keeps its word (no headerGlyphOnly) while order scrolls', () => {
     const qty = INCOMING_GRID_COLUMNS.find((c) => c.key === 'qty');
     assert.ok(qty, 'incoming has no qty column');
-    assert.equal(qty.headerGlyphOnly, true);
+    assert.equal(qty.headerGlyphOnly, undefined);
     assert.equal(qty.label, 'Qty');
     assert.equal(qty.type, 'number');
 
     const order = INCOMING_GRID_COLUMNS.find((c) => c.key === 'order');
     assert.ok(order, 'incoming has no order column');
     assert.equal(order.frozen, undefined);
-    assert.equal(order.headerGlyphOnly, true);
+    assert.equal(order.headerGlyphOnly, undefined);
   });
 
   it('incoming: only select is frozen (Sheets-class)', () => {

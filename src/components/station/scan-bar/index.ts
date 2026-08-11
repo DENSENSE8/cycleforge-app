@@ -2,11 +2,10 @@
  * Station scan bar — master module.
  *
  * Layers (outer → inner):
- *   1. {@link ScanBandShell} — flush chrome-row sidebar band + {@link ScanBandGlowHost}
- *      (Framer glow + outcome flash).
+ *   1. {@link ScanBandShell} — flush 40px sidebar band + {@link ScanBandGlowHost}
+ *      (Framer glow).
  *   2. {@link ThemedStationScanBar} — staff theme border + focus + submit trace
- *   3. {@link StationScanBar} — full-bleed input + frosted absolute mode rail +
- *      focused ready HUD on the input column (reticle / sweep / readyArm face)
+ *   3. {@link StationScanBar} — full-bleed input + frosted absolute mode rail
  *   4. {@link StationScanModeRail} — full-height flush mode segments (armed =
  *      solid surface-card, same plane as the work canvas)
  *   5. {@link ./tokens.ts} — padding, height, icon geometry (single knob)
@@ -16,10 +15,7 @@
  */
 
 export { ScanBandShell } from './ScanBandShell';
-export {
-  StationScanBar,
-  type StationScanBarProps,
-} from './StationScanBar';
+export { StationScanBar, type StationScanBarProps } from './StationScanBar';
 export { ThemedStationScanBar, type ThemedStationScanBarProps } from './ThemedStationScanBar';
 export { StationScanLeadingIcon } from './StationScanLeadingIcon';
 export { StationScanModeRail, type StationScanModeDefinition } from './StationScanModeRail';

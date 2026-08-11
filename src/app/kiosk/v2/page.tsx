@@ -13,13 +13,11 @@ import { Button, Panel } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { resolveKioskIdleTiming } from '@/lib/kiosk/idle';
 import { AttractLoop } from '../AttractLoop';
 import { KioskShell } from '../KioskShell';
 
 type Mode = 'ready' | 'pair' | 'attract' | 'prompt';
-
-const IDLE_PROMPT_AT_S = 60;
-const IDLE_ATTRACT_AT_S = 70;
 
 export default function KioskV2Page() {
   const [mode, setMode] = useState<Mode>('ready');
@@ -30,6 +28,9 @@ export default function KioskV2Page() {
   const [brandName, setBrandName] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [idleTime, setIdleTime] = useState(0);
+  // Resolved from org settings; defaults to 60 → 70 until settings land, so a
+  // slow/failed fetch never leaves the tablet without an idle path.
+  const [idleTiming, setIdleTiming] = useState(() => resolveKioskIdleTiming(undefined));
 
   useEffect(() => {
     fetch('/api/kiosk/settings')
@@ -41,7 +42,9 @@ export default function KioskV2Page() {
         return res.json();
       })
       .then((data) => {
-        if (!data?.brand) return;
+        if (!data) return;
+        setIdleTiming(resolveKioskIdleTiming(data.kiosk?.idleTimeoutSeconds));
+        if (!data.brand) return;
         if (typeof data.brand.attractMediaUrl === 'string') {
           setAttractMediaUrl(data.brand.attractMediaUrl);
         }
@@ -72,9 +75,9 @@ export default function KioskV2Page() {
 
   useEffect(() => {
     if (mode === 'pair' || mode === 'attract') return;
-    if (idleTime === IDLE_PROMPT_AT_S) setMode('prompt');
-    else if (idleTime >= IDLE_ATTRACT_AT_S) setMode('attract');
-  }, [idleTime, mode]);
+    if (idleTime === idleTiming.promptAtS) setMode('prompt');
+    else if (idleTime >= idleTiming.attractAtS) setMode('attract');
+  }, [idleTime, mode, idleTiming]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
@@ -126,7 +129,7 @@ export default function KioskV2Page() {
             <div className="w-full max-w-sm rounded-2xl bg-surface-card p-8 text-center shadow-xl">
               <h2 className="text-2xl font-semibold text-text-default">Are you still there?</h2>
               <p className="mt-2 text-text-soft">
-                This screen will reset in {IDLE_ATTRACT_AT_S - idleTime} seconds.
+                This screen will reset in {Math.max(0, idleTiming.attractAtS - idleTime)} seconds.
               </p>
               <Button size="lg" className="mt-6 w-full" onClick={resetIdle}>
                 I&apos;m still here

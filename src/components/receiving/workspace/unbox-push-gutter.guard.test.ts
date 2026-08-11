@@ -1,17 +1,22 @@
 /**
  * Station flush planes + Flex-Grow Sandwich (Unbox golden).
  *
- * SoT (ruled 2026-08-03 · sandwich 2026-08-07):
+ * SoT (ruled 2026-08-03 · elastic-center Option A 2026-08-10 · enclose-don't-
+ * hide 2026-08-10):
  *   - Context rail + Unbox push are **flush** coplanar columns (no outer `m-*`
  *     islands). Depth = surface steps on `CONTEXT_PANEL_HOST` ground.
- *   - Center = `bg-surface-sunken` via `StationPanelRoot`.
- *   - Displays invader = `flex-1` (always fills leftover — never `ml-auto`
- *     detach band from sticky painted width).
+ *   - Center = `bg-surface-sunken` via `StationPanelRoot`, ELASTIC with a 720
+ *     floor (the single absorber); the rails resize against it.
+ *   - Displays = an explicitly-sized `shrink-0` sibling; it abuts the center
+ *     with no `ml-auto` detach band, and its sash clamps at the local
+ *     `stationDisplaysCapPx` (no inverse coupling to the far rail).
  *   - No host `justify-between` / host `gap-*` / gutter div / leading spacer.
  *     `RIGHT_RAIL_GUTTER_PX = 0`.
  *   - `STATION_IDENTITY_INSET_TOP` (`top-0`) = identity flush under
  *     GlobalHeader — same flush-planes ruling as the retired rail `m-2`.
- *   - Narrow push overlay may float (exception) with the same top inset.
+ *   - Displays is **in-flow when it fits**; on a tight frame the left rail
+ *     parks first so Displays stays open; Displays auto-parks only when even a
+ *     parked left cannot seat it (never overlay, never off-screen).
  *
  * Run: `npx tsx --test src/components/receiving/workspace/unbox-push-gutter.guard.test.ts`
  */
@@ -89,7 +94,7 @@ describe('Station flush planes — Unbox golden', () => {
     );
   });
 
-  it('StationDisplaysPushColumn is flush wide; narrow overlay keeps identity top inset', () => {
+  it('StationDisplaysPushColumn is in-flow when it fits; frame-narrow auto-parks (never overlay)', () => {
     const src = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.equal(
       src.includes('CONTEXT_PANEL_OUTER_MARGIN_Y'),
@@ -98,11 +103,29 @@ describe('Station flush planes — Unbox golden', () => {
     );
     assert.ok(
       src.includes('DETAIL_STACK_PUSH_COLUMN_CLASS'),
-      'wide push must compose the flush push surface',
+      'must compose the flush push surface',
+    );
+    assert.equal(
+      src.includes('DETAIL_STACK_ASIDE_SURFACE'),
+      false,
+      'must not use the rounded float aside surface',
+    );
+    assert.equal(
+      /absolute inset-y-0/.test(src) || /absolute inset-0/.test(src) || /'absolute /.test(src),
+      false,
+      'must never absolute-overlay the middle / dock',
     );
     assert.ok(
-      src.includes('STATION_IDENTITY_INSET_TOP'),
-      'narrow overlay must use STATION_IDENTITY_INSET_TOP',
+      /'shrink-0 self-stretch'/.test(src),
+      'must stay an in-flow shrink-0 sibling when open',
+    );
+    assert.ok(
+      src.includes('stationDisplaysCollapsed'),
+      'must read the frame auto-park latch',
+    );
+    assert.ok(
+      /data-displays-frame-parked/.test(src),
+      'frame auto-park must mark the slim strip',
     );
     assert.ok(
       src.includes('UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX'),
@@ -110,24 +133,24 @@ describe('Station flush planes — Unbox golden', () => {
     );
     assert.ok(
       src.includes('setStationPushDemand'),
-      'wide push must publish station demand into the shared width budget',
-    );
-    assert.equal(
-      /inset-y-0/.test(src),
-      false,
-      'narrow overlay must not use inset-y-0',
+      'must publish station demand into the shared width budget',
     );
   });
 
-  it('fullscreen expand is square and edge-to-edge', () => {
+  it('widen control maximizes the sash in-flow (never a fullscreen cover)', () => {
     const src = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.ok(
-      src.includes("'absolute inset-0'"),
-      'expanded fullscreen must use absolute inset-0',
+      src.includes('unbox-push-fullscreen'),
+      'widen control keeps the stable test id',
     );
     assert.ok(
-      src.includes("expanded && 'rounded-none shadow-none'"),
-      'expanded fullscreen must drop card radius + float shadow',
+      src.includes('toggleMaximize') || src.includes('setMaximized'),
+      'widen is an in-flow sash maximize latch',
+    );
+    assert.equal(
+      src.includes("'absolute inset-0'"),
+      false,
+      'widen must not cover the pane with absolute inset-0',
     );
   });
 
@@ -173,7 +196,7 @@ describe('Station flush planes — Unbox golden', () => {
     );
   });
 
-  it('LineEditPanel composes StationScanPaneHost for locked-720 middle + pinned Displays', () => {
+  it('LineEditPanel composes StationScanPaneHost with an elastic-floor-720 center', () => {
     const src = code('src/components/receiving/workspace/LineEditPanel.tsx');
     assert.ok(src.includes('unbox-station-center'));
     assert.ok(
@@ -192,42 +215,37 @@ describe('Station flush planes — Unbox golden', () => {
       'host must NOT justify-between when Displays is open — that leaves a gray gutter',
     );
     assert.equal(STATION_WORKBENCH_LOCK_PX, 720);
+    // Option A: ONE elastic center class (`flex-1 min-w-[720px]`) — the center
+    // is the row's single absorber, floored at 720, never a locked/max-w variant.
     const layout = code('src/components/station/workbench/workbench-layout.ts');
-    assert.match(
-      layout,
-      new RegExp(
-        `STATION_CENTER_COLUMN_CLASS\\s*=\\s*'[^']*min-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
-      ),
-      'open-Displays center must min-w at STATION_WORKBENCH_LOCK_PX (720 lock)',
-    );
-    assert.match(
-      layout,
-      new RegExp(
-        `STATION_CENTER_COLUMN_CLASS\\s*=\\s*'[^']*max-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
-      ),
-      'open-Displays center must max-w at STATION_WORKBENCH_LOCK_PX',
-    );
     assert.equal(
-      /STATION_CENTER_COLUMN_CLASS\s*=\s*'[^']*\bmin-w-0\b/.test(layout),
+      layout.includes('STATION_CENTER_COLUMN_CLASS'),
       false,
-      'open-Displays center must NOT be min-w-0 (middle must not yield below 720)',
-    );
-    assert.equal(
-      /STATION_CENTER_COLUMN_CLASS\s*=\s*'[^']*\bflex-1\b/.test(layout),
-      false,
-      'open-Displays center must NOT be flex-1 — that parks surplus AFTER Displays',
-    );
-    assert.match(
-      layout,
-      /STATION_WORKBENCH_COLUMN\s*=\s*'w-full min-w-0'/,
-      'middle content must be edge-to-edge (no max-w / mx-auto gutters)',
+      'the locked-720 center variant is retired — the center is always elastic',
     );
     assert.match(
       layout,
       new RegExp(
         `STATION_CENTER_COLUMN_OPEN_CLASS\\s*=\\s*'[^']*min-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
       ),
-      'Displays-closed center must min-w at STATION_WORKBENCH_LOCK_PX (floor)',
+      'elastic center must min-w at STATION_WORKBENCH_LOCK_PX (720 floor)',
+    );
+    assert.match(
+      layout,
+      /STATION_CENTER_COLUMN_OPEN_CLASS\s*=\s*'[^']*\bflex-1\b/,
+      'elastic center must be flex-1 (the single absorber — the rails resize against it)',
+    );
+    assert.equal(
+      new RegExp(
+        `STATION_CENTER_COLUMN_OPEN_CLASS\\s*=\\s*'[^']*max-w-\\[${STATION_WORKBENCH_LOCK_PX}px\\][^']*'`,
+      ).test(layout),
+      false,
+      'elastic center must NOT max-w at 720 (that is the retired lock)',
+    );
+    assert.match(
+      layout,
+      /STATION_WORKBENCH_COLUMN\s*=\s*'w-full min-w-0'/,
+      'middle content must be edge-to-edge (no max-w / mx-auto gutters)',
     );
     for (const panel of [
       'src/components/receiving/triage/TriagePanel.tsx',
@@ -292,18 +310,24 @@ describe('Station flush planes — Unbox golden', () => {
       'Displays resize must use the station min (280), not desk DETAIL_STACK 360',
     );
     assert.ok(
-      /'min-w-0 flex-1 self-stretch'/.test(push) ||
-        push.includes("'min-w-0 flex-1 self-stretch'"),
-      'in-flow Displays must be flex-1 (always fills leftover)',
+      /'shrink-0 self-stretch'/.test(push),
+      'in-flow Displays must be an explicitly-sized shrink-0 sibling (Option A — the elastic center absorbs; Displays does not flex-1 fill)',
     );
     assert.equal(
       /'ml-auto shrink-0 self-stretch'/.test(push),
       false,
       'in-flow Displays must NOT use ml-auto detach (that parks a gray band)',
     );
+    assert.equal(
+      push.includes('station-dual-rail') ||
+        push.includes('applyStationDisplaysDelta') ||
+        push.includes('isStationDualRailCouplingActive'),
+      false,
+      'Displays sash must NOT couple the far rail (Option A — the sash resizes only Displays; the center absorbs)',
+    );
     assert.ok(
-      push.includes('applyStationDisplaysDelta') || push.includes('station-dual-rail'),
-      'Displays sash must wire station dual-rail coupling',
+      push.includes('stationDisplaysCapPx'),
+      'Displays sash must clamp at the local stationDisplaysCapPx (frame − leftCost − 720), not a coupling ceiling',
     );
     const host = code('src/components/station/workbench/StationScanPaneHost.tsx');
     assert.equal(
@@ -360,12 +384,12 @@ describe('Station flush planes — Unbox golden', () => {
     assert.equal(src.includes('ReceivingPushExpandStrip'), false);
   });
 
-  it('Displays push always fills leftover (flex-1); no per-surface taste ceiling', () => {
+  it('Displays push is a sized local splitter (Option A); no per-surface hard ceiling', () => {
     const stack = code('src/components/station/displays/StationDisplaysPushStack.tsx');
     assert.equal(
       /DISPLAYS_PUSH_MAX_WIDTH_PX/.test(stack),
       false,
-      'StationDisplaysPushStack must not ship a hard maxWidth constant',
+      'StationDisplaysPushStack must not ship a hard maxWidth constant (the cap is the frame-derived stationDisplaysCapPx)',
     );
     assert.equal(
       /maxWidthPx=\{/.test(stack),
@@ -375,15 +399,15 @@ describe('Station flush planes — Unbox golden', () => {
     const push = code('src/components/station/displays/StationDisplaysPushColumn.tsx');
     assert.ok(
       /maxWidthPx\?:/.test(push) || /maxWidthPx\?\s*:/.test(push),
-      'StationDisplaysPushColumn.maxWidthPx must be optional',
+      'StationDisplaysPushColumn.maxWidthPx must stay an optional taste ceiling',
     );
     assert.ok(
-      /min-w-0 flex-1 self-stretch/.test(push),
-      'in-flow Displays must flex-1 fill leftover (pinned to pane right)',
+      /shrink-0 self-stretch/.test(push),
+      'in-flow Displays must be an explicitly-sized shrink-0 sibling (center absorbs)',
     );
     assert.ok(
-      /width:\s*overlay\s*\?/.test(push) || /width: overlay \?/.test(push),
-      'in-flow must not paint a fixed width — only overlay/expanded set width',
+      /width:\s*layoutWidth/.test(push),
+      'in-flow Displays must paint its own resized width (layoutWidth) — the center flexes',
     );
   });
 

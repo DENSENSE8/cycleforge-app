@@ -90,6 +90,36 @@ test('clampPortalTooltipPosition places a mid-viewport tip above the trigger', (
   assert.ok(!(pos!.top <= PORTAL_TOOLTIP_MARGIN && pos!.left <= PORTAL_TOOLTIP_MARGIN));
 });
 
+test('clampPortalTooltipPosition places a tip to the right of the trigger', () => {
+  const anchor = rect({ top: 300, left: 500, width: 60, height: 24 });
+  const bubble = { width: 140, height: 28 };
+  const pos = clampPortalTooltipPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'right',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.left, anchor.right + PORTAL_TOOLTIP_MARGIN);
+  assert.equal(
+    pos!.top,
+    anchor.top + anchor.height / 2 - bubble.height / 2,
+  );
+});
+
+test('clampPortalTooltipPosition flips right tip to the left near the trailing edge', () => {
+  const anchor = rect({ top: 300, left: 1100, width: 60, height: 24 });
+  const bubble = { width: 140, height: 28 };
+  const pos = clampPortalTooltipPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'right',
+  });
+  assert.ok(pos);
+  assert.equal(pos!.left, anchor.left - bubble.width - PORTAL_TOOLTIP_MARGIN);
+});
+
 test('bad mid-screen clamp path cannot paint a visible tip at ~(MARGIN,MARGIN)', () => {
   // Trusted mid-screen anchor + oversized bubble → both axes clamp to MARGIN.
   // Without the corner-belonging guard that would flash a stray top-left tip.

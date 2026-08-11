@@ -26,7 +26,7 @@ export function ArrivalBatchCaptureStrip({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-1.5 border-b border-border-faint bg-amber-50/80 px-3 py-2',
+        'flex flex-wrap items-center gap-1.5 border-b border-border-soft bg-amber-50/80 px-3 py-2',
         className,
       )}
       role="list"

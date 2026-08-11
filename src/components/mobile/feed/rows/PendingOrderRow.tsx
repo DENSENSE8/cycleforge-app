@@ -1,11 +1,14 @@
 'use client';
 
 import { OrderIdChip, SkuScanRefChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { orderRowQtyTone } from '@/lib/condition-tone';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 
 /**
  * Pending-order row for the mobile Picks / Checklists feeds — the phone view of
@@ -55,6 +58,7 @@ export function PendingOrderRow({
   const itemNumber = (row.item_number || '').trim();
 
   const daysLate = getDaysLateNullable(deadlineOf(row));
+  const platformMeta = sourcePlatformMeta(row.account_source);
 
   return (
     <CaptureStackRow variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'order-row-id', value: row.id }}>
@@ -64,11 +68,13 @@ export function PendingOrderRow({
         <div className="min-w-0 flex-1">
           <RowTitle dot={dotTone(daysLate)} dotTrack={META_COL.dotTrackWide} title={productTitle} />
         </div>
-        {row.account_source && (
-          <span className="shrink-0 rounded-full border border-blue-100/60 bg-blue-50 px-2 py-0.5 text-role-micro uppercase tracking-widest text-blue-500">
-            {row.account_source}
-          </span>
-        )}
+        {platformMeta.value ? (
+          <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+            <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+              <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+            </span>
+          </HoverTooltip>
+        ) : null}
       </div>
 
       <div className="pointer-events-auto mt-0.5 flex items-center gap-2">

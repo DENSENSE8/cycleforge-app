@@ -576,7 +576,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
    * filter, see 34, and the six the vendor already marked received vanish with
    * no explanation — the exact invisibility `?tracking_in=` exists to end. The
    * bypass is scoped to this param and never applied globally; the default lane
-   * keeps its predicate, and `IncomingLaneNote` suppresses its claim here
+   * keeps its predicate under paste filter
    * because the claim is no longer true.
    */
   const trackingInActive = trackingIn.length > 0;

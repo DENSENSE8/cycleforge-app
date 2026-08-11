@@ -2,15 +2,19 @@ import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 
 /**
- * Minimal ticket scan sticker — large `#ticket` face + DataMatrix carrying
+ * Minimal ticket scan sticker — same corner grammar as the carton face
+ * (platform top-left · `#ticket` bottom-right) + DataMatrix carrying
  * `T-{providerTicketId}` (routeScan → `/support?ticket=…`).
  */
 export interface TicketLabelPayload {
   /** Provider ticket digits (Zendesk id), no `#`. */
   ticketDigits: string;
-  /** Optional SKU / PO shorthand for the top row. */
+  /**
+   * Optional SKU / PO shorthand. Kept for callers; not painted on the face
+   * (corners are platform · `#ticket` only).
+   */
   context?: string | null;
-  /** Optional platform for the bottom-right. */
+  /** Optional platform for the top-left. */
   platform?: string | null;
   /**
    * Tenant slug, carried for the encode SoT. Unused today — a ticket resolves
@@ -41,11 +45,11 @@ export function ticketPayloadToFace(payload: TicketLabelPayload): LabelFaceModel
   const { value, symbology, hri } = ticketLabelMatrix(payload);
   return {
     kind: 'receiving',
-    topLeft: (payload.context || '').trim() || 'TICKET',
+    topLeft: (payload.platform || '').trim(),
     topRight: '',
-    center: digits ? `#${digits}` : '',
+    center: '',
     bottomLeft: '',
-    bottomRight: (payload.platform || '').trim(),
+    bottomRight: digits ? `#${digits}` : '',
     matrix: { value, symbology, scale: 4 },
     hri,
   };

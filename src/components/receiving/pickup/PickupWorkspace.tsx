@@ -380,7 +380,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
               }}
               placeholder="Seller / customer"
               className={cn(
-                'rounded-md border border-border-subtle bg-surface-card px-3 py-2 text-role-body text-text-primary',
+                'rounded-md border border-border-soft bg-surface-card px-3 py-2 text-role-body text-text-primary',
                 focusRing('control'),
               )}
             />

@@ -78,7 +78,7 @@ export function ArrivalDisplaysActionFloor({
 }: {
   receivingId: number | null | undefined;
   isUnfound: boolean;
-  /** Arrival Displays is Pairing-only — Edit / Resolve open the linkage leaf. */
+  /** Arrival Displays = Ticket + Pairing — Edit / Resolve open the Pairing leaf. */
   openDisplays: (tab: TriageDisplayTab) => void;
   /** After successful delete — close Displays / workspace. */
   onDeleted?: () => void;

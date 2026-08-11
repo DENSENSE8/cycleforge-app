@@ -110,12 +110,15 @@ describe('outbound Focus rail does not duplicate tabs / KPI (report P1/P5/P8)', 
 });
 
 describe('the To-ship order feed runs rail-less (Pattern E — report D9/D10)', () => {
-  it('the dedicated desk + dashboard outbound domain reserve no left column', () => {
+  it('the dedicated desk + dashboard outbound domain + Inbound desk reserve no left column', () => {
     assert.equal(isRaillessOrderFeedSurface('/shipping/orders', false), true);
     assert.equal(isRaillessOrderFeedSurface('/shipping/orders/anything', false), true);
     // /dashboard is param-aware: only the outbound domain goes rail-less.
     assert.equal(isRaillessOrderFeedSurface('/dashboard', true), true);
     assert.equal(isRaillessOrderFeedSurface('/dashboard', false), false);
+    // Inbound desk — ops-queue Pattern E (POS / Email / Removed are chrome facets).
+    assert.equal(isRaillessOrderFeedSurface('/incoming', false), true);
+    assert.equal(isRaillessOrderFeedSurface('/incoming/anything', false), true);
   });
 
   it('other outbound station modes keep their rails (Labels / Scan-out / FBA)', () => {

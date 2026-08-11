@@ -9,7 +9,7 @@ import { framerPresence, framerTransition } from '@/design-system/foundations/mo
 import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 
-/** Units tab — flush serial capture rollup (no WorkspaceCard island). */
+/** Units Displays leaf — flush serial capture rollup (no WorkspaceCard island). */
 export function ShippingCapturedUnits({
   activeOrder,
   onRemoveSerial,

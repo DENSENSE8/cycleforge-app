@@ -6,6 +6,9 @@ import { Loader2, ExternalLink } from '@/components/Icons';
 import type { ProductDetailPayload } from './types';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import { ProductGtinField } from '@/components/products/ProductGtinField';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 
 interface ProductDetailProps {
     sku: string;
@@ -192,9 +195,19 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                                     className="flex flex-wrap items-baseline justify-between gap-2 py-2"
                                 >
                                     <div className="flex flex-wrap items-baseline gap-2">
-                                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide text-blue-700">
-                                            {p.platform}
-                                        </span>
+                                        {(() => {
+                                            const meta = sourcePlatformMeta(p.platform);
+                                            return (
+                                                <HoverTooltip label={meta.label || p.platform} asChild focusable={false}>
+                                                    <span className="inline-flex shrink-0" aria-label={meta.label || p.platform}>
+                                                        <PlatformMark
+                                                            platformValue={meta.value || p.platform}
+                                                            meta={meta.value ? meta : undefined}
+                                                        />
+                                                    </span>
+                                                </HoverTooltip>
+                                            );
+                                        })()}
                                         {p.account_name ? (
                                             <span className="text-xs text-text-soft">{p.account_name}</span>
                                         ) : null}

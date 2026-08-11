@@ -43,7 +43,7 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
         />
       </div>
       {c.reason.trim() ? (
-        <div className="space-y-1 border-b border-border-subtle px-3 pb-3" data-claim-issue>
+        <div className="space-y-1 border-b border-border-hairline px-3 pb-3" data-claim-issue>
           <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
             Issue
           </p>

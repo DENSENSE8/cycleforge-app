@@ -17,7 +17,6 @@ import {
   parseUnboxLinkageAction,
   parseUnboxPhotoAction,
   parseUnboxPhotoActionWire,
-  parseUnboxUnitsAction,
   resolveUnboxDisplayNav,
   resolveUnboxSideTab,
   resolveUnboxTicketAction,
@@ -65,7 +64,7 @@ test('a request gated off falls back to first visible strip leaf', () => {
   assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'classify');
 });
 
-test('ticket · photos · checklist · support survive every gate', () => {
+test('ticket · photos · prebox · checklist · support survive every gate', () => {
   const nothing: UnboxSideTabGates = {
     hasClassifyTab: false,
     hasLinkageTab: false,
@@ -78,10 +77,11 @@ test('ticket · photos · checklist · support survive every gate', () => {
   };
   assert.equal(isUnboxSideTabVisible('ticket', nothing), true);
   assert.equal(isUnboxSideTabVisible('photos', nothing), true);
+  assert.equal(isUnboxSideTabVisible('prebox', nothing), true);
   assert.equal(isUnboxSideTabVisible('checklist', nothing), true);
   assert.equal(isUnboxSideTabVisible('support', nothing), true);
   assert.equal(resolveUnboxSideTab('checklist', nothing), 'checklist');
-  assert.equal(resolveUnboxSideTab('units', nothing), 'photos');
+  assert.equal(resolveUnboxSideTab('units', nothing), 'prebox');
 });
 
 test('checklist is a Displays leaf — on the strip / index order', () => {
@@ -129,11 +129,12 @@ test('legacy pairing / po-note / claim canonicalize', () => {
   assert.equal(canonicalizeUnboxSideTab('not-a-tab'), null);
 });
 
-test('photo / linkage / ticket / units nested action parsers', () => {
+test('photo / linkage / ticket nested action parsers', () => {
   // absent / legacy browse = Actions (in-column hover-strip selections)
   assert.equal(parseUnboxPhotoAction(null), 'actions');
   assert.equal(parseUnboxPhotoAction('browse'), 'actions');
   assert.equal(parseUnboxPhotoAction('actions'), 'actions');
+  assert.equal(parseUnboxPhotoAction('link'), 'link');
   assert.equal(parseUnboxPhotoAction('move'), 'move');
   assert.equal(parseUnboxPhotoAction('send'), 'send');
   assert.equal(parseUnboxPhotoAction('compare'), 'compare');
@@ -141,7 +142,7 @@ test('photo / linkage / ticket / units nested action parsers', () => {
   // Nested altitude: nest order + absent URL lands bench verb.
   assert.deepEqual(
     [...UNBOX_PHOTO_ACTION_ORDER],
-    ['actions', 'move', 'send', 'compare'],
+    ['actions', 'link', 'move', 'send', 'compare'],
   );
   assert.equal(parseUnboxPhotoAction(null), UNBOX_PHOTO_ACTION_ORDER[0]);
   assert.equal(parseUnboxPhotoActionWire('compare'), 'compare');
@@ -154,10 +155,15 @@ test('photo / linkage / ticket / units nested action parsers', () => {
   // Presence-only: linked ticket → chat; no ticket → claim (URL verb ignored).
   assert.equal(resolveUnboxTicketAction(true), 'chat');
   assert.equal(resolveUnboxTicketAction(false), 'claim');
-  assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: true }), 'prebox');
-  assert.equal(parseUnboxUnitsAction('prebox', { hasPrebox: false }), 'actions');
-  assert.equal(parseUnboxUnitsAction('units', { hasPrebox: true }), 'units');
-  assert.equal(parseUnboxUnitsAction(null, { hasPrebox: true }), 'actions');
+});
+
+test('prebox is an always-on Assets peer leaf (not nested under Units)', () => {
+  assert.ok(UNBOX_SIDE_TAB_ORDER.includes('prebox'));
+  assert.ok(UNBOX_STRIP_TAB_ORDER.includes('prebox'));
+  assert.equal(isUnboxSideTabVisible('prebox', MATCHED), true);
+  assert.equal(isUnboxSideTabVisible('prebox', SPARSE), true);
+  assert.deepEqual(resolveUnboxDisplayNav('prebox', MATCHED), { open: true, leaf: 'prebox' });
+  assert.deepEqual(resolveUnboxDisplayNav('prebox', SPARSE), { open: true, leaf: 'prebox' });
 });
 
 test('overview is NOT a side tab — the carton owns the centre', () => {

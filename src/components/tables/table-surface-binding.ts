@@ -31,6 +31,59 @@ import type {
 } from '@/design-system/components/grid';
 import type { TableDefinition } from '@/lib/tables/table-definition';
 
+/**
+ * How a picked row on this surface reaches its RECORD plane.
+ *
+ * ## Why this is DECLARED rather than left to each mount
+ *
+ * "Open a row" had **eight** implementations across the eighteen registered
+ * tables — `DetailStackRailRegistrar` on eight of them, two different custom DOM
+ * events, three flavours of `router.push`, a URL param that only highlights, a
+ * page-local `useState` beside a private panel, and three surfaces where a click
+ * did nothing at all. One job, eight answers, and no way to ask a table which
+ * one it had picked.
+ *
+ * Declaring it here does two things a page-local wiring block cannot. The HOST
+ * can read it at the mount (which is what lets the gesture — click vs
+ * double-click — be derived once from `capabilities.multiSelect` instead of
+ * hand-wired per row component), and **absence becomes a claim the surface makes
+ * out loud** rather than a silence that reads identically to an oversight.
+ *
+ * ## Absence is a legitimate answer, and it carries its reason
+ *
+ * Three of these surfaces are ruled honest-absence and must NOT grow a peek to
+ * make the family look symmetrical — the reasons live in
+ * `band3-find-only.guard.test.ts`'s `NO_DESK_PEEK_SURFACES` and are restated on
+ * the binding so the next agent reads them at the mount they are about. The
+ * `reason` string is the whole point of the non-`inspector` arms: a bare
+ * `kind: 'none'` would be a silence with a type annotation.
+ */
+export type TableRecordPlane =
+  /** A `RightRailHost` occupant — the house desk peek. */
+  | {
+      readonly kind: 'inspector';
+      /**
+       * The occupant id, or its stable PREFIX when {@link keyedByRecord} is set.
+       */
+      readonly occupantId: `detail:${string}`;
+      /**
+       * Why this surface may key its occupant id per RECORD. `RightRailHost`
+       * keys its `AnimatePresence` on the occupant id, so a per-record id plays
+       * exit → empty → enter on every prev/next step — tolerable only on a
+       * surface with no queue walk. Stating the reason is what keeps that a
+       * decision instead of a default.
+       */
+      readonly keyedByRecord?: string;
+    }
+  /** The row opens a station work surface (scan bench), not a desk peek. */
+  | { readonly kind: 'station'; readonly reason: string }
+  /** The row navigates to a route — a page, not a panel. */
+  | { readonly kind: 'navigate'; readonly reason: string }
+  /** The row opens a modal / dialog. */
+  | { readonly kind: 'dialog'; readonly reason: string }
+  /** Honest absence — this surface has no record plane at all. */
+  | { readonly kind: 'none'; readonly reason: string };
+
 export interface TableSurfaceBinding<Row, C extends LedgerGridColumnModel> {
   /** The authored, Zod-validated half. Owns identity, shell + column data. */
   readonly definition: TableDefinition;
@@ -46,4 +99,9 @@ export interface TableSurfaceBinding<Row, C extends LedgerGridColumnModel> {
    * would rebuild the state engine's column list every render.
    */
   readonly makeDescriptor: (visible: readonly C[]) => GridSurfaceDescriptor<Row, C>;
+  /**
+   * What a picked row opens. See {@link TableRecordPlane} — every registered
+   * binding declares one, and the non-`inspector` arms state why.
+   */
+  readonly recordPlane: TableRecordPlane;
 }

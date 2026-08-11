@@ -1,12 +1,11 @@
 'use client';
 
 /**
- * Flush chrome-row sidebar scan band — **station scan-bar SoT** (layer 1).
+ * Flush 40px sidebar scan band — **station scan-bar SoT** (layer 1).
  *
  * Animated, staff-tinted container for a scan bar. Full-bleed flat chrome
  * (depth 2 — no card shadow). Framer glow ramps on focus/click and pulses on
- * submit; ready HUD (reticle + sweep + caret) mounts on the scan bar input
- * column; work canvas owns the elevated plane via border only.
+ * submit; work canvas owns the elevated plane via border only.
  * Mode segments inside the bar own the solid card plane when armed.
  * Opacity-only entrance so the band is not clipped by sidebar overflow.
  *

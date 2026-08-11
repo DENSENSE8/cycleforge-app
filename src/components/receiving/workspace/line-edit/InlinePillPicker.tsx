@@ -208,6 +208,8 @@ export function InlinePillPicker({
     // Flat face — classify pills match Photos · Claim (`shadow-none`), even if a
     // tone SoT regresses to `shadow-sm`.
     'shadow-none',
+    // Paint over the sibling `-ml-px` seam so one-token classify stays crisp.
+    'relative z-base hover:z-raised focus-visible:z-raised',
     focusRing('control', 'accent'),
     readOnly && 'pointer-events-none',
   );
@@ -344,7 +346,9 @@ export function InlinePillPicker({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={swapTransition}
-            className="shrink-0"
+            // Fill the chrome row — a content-sized wrap left urgency ·
+            // platform shorter than type / Exit (the "hairline gap" misread).
+            className="flex h-full shrink-0 items-stretch"
           >
             {isBookmark ? (
               <HoverTooltip label={tooltipLabel} asChild>

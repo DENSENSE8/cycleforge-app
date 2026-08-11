@@ -8,16 +8,21 @@
  * stage SoT (`@/lib/receiving/photo-scope`).
  *
  * One pill: camera pinned left + (count when photos exist, else "+") pinned
- * right. **Click always sends a capture request to the paired phone** — that
- * action never moves. Hover reveals the gallery action strip (upload /
- * library / …) unless {@link suppressHoverGallery} (Unbox carton identity —
- * multi-verbs live in Displays → Photos Actions). Count and "+" never share
- * the face — when a count is shown the plus is omitted. Width is locked
- * (`justify-between`) so digit growth does not shift the identity row.
+ * right. **Click sends a capture request to the paired phone** — that action
+ * never moves. When {@link onOpenPhotosDisplay} is set (Unbox carton identity),
+ * **double-click opens Displays → Photos** (Actions list; replaces whatever
+ * leaf is open). Single-click is deferred briefly so a double-click does not
+ * also fire phone. Hover reveals the PhotoLauncher action dropdown (View ·
+ * Upload · Download · Move · Ticket · Media · Details) unless
+ * {@link suppressHoverGallery}. On Unbox, Move / Ticket open Displays (right
+ * rail) via {@link onOpenMovePhotosExternal} / {@link onSendToTicket}. Count
+ * and "+" never share the face — when a count is shown the plus is omitted.
+ * Width is locked (`justify-between`) so digit growth does not shift the
+ * identity row.
  *
  * Default hover strip is an {@link AnchoredLayer} at `panelPopover` (body
- * portal) so it escapes the scan-station center's `overflow-hidden`. Item
- * dock / Arrival keep the hover strip; Unbox passes `suppressHoverGallery`.
+ * portal) so it escapes the scan-station center's `overflow-hidden`. Unbox
+ * carton identity, item dock, and Arrival keep the hover strip.
  *
  * While a gallery-owned upload/move overlay is open, the peek stays pinned so
  * the upload controller is not unmounted mid-pick.
@@ -72,8 +77,21 @@ interface PhotosPayload {
 }
 
 const HOVER_LEAVE_MS = 140;
-/** Gap between the pill and the portaled gallery — matches prior `pt/pl/pb-1.5`. */
-const GALLERY_GAP_PX = 6;
+/**
+ * Delay before single-click → phone when {@link onOpenPhotosDisplay} is wired.
+ * Long enough to absorb a double-click without sending; short enough that a
+ * real phone tap still feels immediate.
+ */
+const PHONE_CLICK_DEFER_MS = 280;
+/**
+ * Delay before the hover PhotoLauncher strip opens. Instant open used to
+ * `disabled` the teaching {@link HoverTooltip} on the same frame — operators
+ * never saw “click = phone · double-click = details”. Short dwell keeps the
+ * tip readable; longer hover still lands the action strip.
+ */
+const GALLERY_OPEN_DELAY_MS = 420;
+/** Gap between the pill and the portaled gallery — flush abut (no air). */
+const GALLERY_GAP_PX = 0;
 
 function galleryAnchoredPlacement(
   placement: 'below' | 'above' | 'right' | 'left',
@@ -96,6 +114,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   appearance = 'pill',
   onSendToTicket,
   onOpenMovePhotosExternal,
+  onOpenPhotosDisplay,
   suppressHoverGallery = false,
 }: {
   receivingId: number;
@@ -163,9 +182,17 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
   onOpenMovePhotosExternal?: () => void;
   /**
-   * Unbox carton identity — suppress the hover gallery strip (multi-verbs live
-   * in Displays → Photos Actions). Pill click stays send-to-phone. Omit on
-   * item dock / Arrival so those surfaces keep the hover toolbar.
+   * Unbox carton identity — double-click opens Displays → Photos (Actions).
+   * Replaces whatever Displays leaf is open; opens the column when closed.
+   * Single-click stays send-to-phone (deferred so dblclick does not also send).
+   * Omit on item dock / Arrival.
+   */
+  onOpenPhotosDisplay?: () => void;
+  /**
+   * Suppress the hover PhotoLauncher strip (rare). Unbox carton identity keeps
+   * the strip — Move / Ticket open Displays via the external callbacks. Pill
+   * click stays send-to-phone; double-click opens Displays when
+   * {@link onOpenPhotosDisplay} is set.
    */
   suppressHoverGallery?: boolean;
 }) {
@@ -321,6 +348,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   /** Pin while Move photos modal is open (same hover-host unmount hazard). */
   const [galleryMovePinned, setGalleryMovePinned] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+  const galleryOpenTimer = useRef<ReturnType<typeof setTimeout>>();
+  const phoneClickTimer = useRef<ReturnType<typeof setTimeout>>();
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   // Hover peek is available with or without photos — empty cartons still get
@@ -328,25 +357,50 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   // without using the pill click (pill click = send-to-phone only).
   const showGalleryPeek = galleryHover || galleryUploadPinned || galleryMovePinned;
 
-  const openGallery = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    setGalleryHover(true);
+  const clearGalleryOpenTimer = useCallback(() => {
+    if (galleryOpenTimer.current) {
+      clearTimeout(galleryOpenTimer.current);
+      galleryOpenTimer.current = undefined;
+    }
   }, []);
 
+  /** Schedule the hover strip — delayed so the teaching tooltip can paint first. */
+  const openGallery = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    // Already open / pinned — keep it; do not re-arm the dwell.
+    if (galleryHover || galleryUploadPinned || galleryMovePinned) {
+      clearGalleryOpenTimer();
+      setGalleryHover(true);
+      return;
+    }
+    if (galleryOpenTimer.current) return;
+    galleryOpenTimer.current = setTimeout(() => {
+      galleryOpenTimer.current = undefined;
+      setGalleryHover(true);
+    }, GALLERY_OPEN_DELAY_MS);
+  }, [clearGalleryOpenTimer, galleryHover, galleryMovePinned, galleryUploadPinned]);
+
   const scheduleCloseGallery = useCallback(() => {
+    clearGalleryOpenTimer();
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setGalleryHover(false), HOVER_LEAVE_MS);
-  }, []);
+  }, [clearGalleryOpenTimer]);
 
   /** AnchoredLayer outside-click / Escape — pins keep the gallery mounted. */
   const closeGalleryPeek = useCallback(() => {
+    clearGalleryOpenTimer();
     if (hideTimer.current) clearTimeout(hideTimer.current);
     setGalleryHover(false);
-  }, []);
+  }, [clearGalleryOpenTimer]);
 
-  useEffect(() => () => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      if (galleryOpenTimer.current) clearTimeout(galleryOpenTimer.current);
+      if (phoneClickTimer.current) clearTimeout(phoneClickTimer.current);
+    },
+    [],
+  );
 
   // One consistent resting state across every PO — a calm blue-tinted pill.
   // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
@@ -357,24 +411,53 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       : STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const noun = isItemScope ? 'item' : 'carton';
+  const opensPhotosDisplay = typeof onOpenPhotosDisplay === 'function';
 
-  const title = hasGallery
-    ? `Photos ${count} · ${canSendToPhone ? 'phone' : 'upload'}`
+  // Compact teaching tip — sits to the right of the pill (short copy so it
+  // never spills the viewport). Displays Photos wired → phone + dbl-click.
+  const title = opensPhotosDisplay
+    ? canSendToPhone
+      ? 'Phone · dbl-click details'
+      : `Upload ${noun} photos`
     : canSendToPhone
       ? 'Send to phone'
       : `Upload ${noun} photos`;
 
-  const ariaLabel = hasGallery
-    ? suppressHoverGallery
-      ? `Photos ${count}; send to phone`
-      : `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
-    : canSendToPhone
-      ? 'Send to phone'
-      : `Upload ${noun} photos`;
+  const ariaLabel = opensPhotosDisplay
+    ? hasGallery
+      ? `Photos ${count}; send to phone; double-click opens photo details`
+      : canSendToPhone
+        ? 'Send to phone; double-click opens photo details'
+        : `Upload ${noun} photos`
+    : hasGallery
+      ? suppressHoverGallery
+        ? `Photos ${count}; send to phone`
+        : `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
+      : canSendToPhone
+        ? 'Send to phone'
+        : `Upload ${noun} photos`;
 
   const handlePillClick = useCallback(() => {
-    void handleRequestOnPhone();
-  }, [handleRequestOnPhone]);
+    if (!opensPhotosDisplay) {
+      void handleRequestOnPhone();
+      return;
+    }
+    // Defer phone so a double-click can cancel and open Displays instead.
+    if (phoneClickTimer.current) clearTimeout(phoneClickTimer.current);
+    phoneClickTimer.current = setTimeout(() => {
+      phoneClickTimer.current = undefined;
+      void handleRequestOnPhone();
+    }, PHONE_CLICK_DEFER_MS);
+  }, [handleRequestOnPhone, opensPhotosDisplay]);
+
+  const handlePillDoubleClick = useCallback(() => {
+    if (!onOpenPhotosDisplay) return;
+    if (phoneClickTimer.current) {
+      clearTimeout(phoneClickTimer.current);
+      phoneClickTimer.current = undefined;
+    }
+    onOpenPhotosDisplay();
+  }, [onOpenPhotosDisplay]);
 
   const pillButton = (
     <Button
@@ -382,6 +465,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       variant="ghost"
       size="sm"
       onClick={handlePillClick}
+      onDoubleClick={opensPhotosDisplay ? handlePillDoubleClick : undefined}
       // Item scope with no PO route ref: the phone leg has nowhere to land, but
       // the pill must stay hoverable for device upload — so it is click-inert,
       // not `disabled` (a disabled button swallows the hover the strip needs).
@@ -401,11 +485,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     </Button>
   );
 
-  // Unbox carton identity: phone-only face — multi-verbs live in Displays.
+  // Opt-out: phone-only face (no hover action dropdown).
   if (suppressHoverGallery) {
     return (
       <div ref={hostRef} className="relative h-full shrink-0">
-        <HoverTooltip label={title} placement="above" asChild>
+        <HoverTooltip label={title} placement="right" asChild>
           {pillButton}
         </HoverTooltip>
       </div>
@@ -425,7 +509,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     >
       {/* Stable mount — peek disables the tooltip instead of unwrapping the
           pill (unwrap remounted the trigger mid-press and ate the click). */}
-      <HoverTooltip label={title} placement="above" asChild disabled={showGalleryPeek}>
+      <HoverTooltip label={title} placement="right" asChild disabled={showGalleryPeek}>
         {pillButton}
       </HoverTooltip>
 

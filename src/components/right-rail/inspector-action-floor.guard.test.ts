@@ -93,6 +93,27 @@ describe('InspectorActionFloor Macro SoT', () => {
     }
   });
 
+  it('the desk floor stays canvas by default — `card` is a named exception', () => {
+    // The prop exists because the Media Library batch rail's body is one
+    // continuous white plane, where a grey floor read as a second surface
+    // (operator-ruled 2026-08-10). Everywhere else the canvas step IS the depth
+    // cue that separates a Macro floor from the record it commits — so the
+    // default must stay canvas and the exception list must stay short.
+    assert.match(
+      floor,
+      /surface = 'canvas'/,
+      "InspectorActionFloor must default to the desk canvas plane",
+    );
+    const cardConsumers = DESK_FLOOR_CONSUMERS.filter((path) =>
+      /<InspectorActionFloor[^>]*surface="card"/.test(read(path)),
+    );
+    assert.deepEqual(
+      cardConsumers,
+      ['src/components/photos/photo-inspector/PhotoBatchInspectorPanel.tsx'],
+      'a coplanar (white) desk floor is a per-surface ruling — add the reason before adding the rail',
+    );
+  });
+
   it('OrderUpdateDock keeps order-update-delete test id via InspectorFlushDelete', () => {
     const dock = read(
       'src/components/shipped/details-panel/OrderUpdateDock.tsx',

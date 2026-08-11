@@ -121,20 +121,14 @@ export function SearchOrderFactsColumn({ order }: { order: ShippedOrder }) {
             label="Platform"
             value={
               platformMeta.value ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <HoverTooltip label={platformMeta.label} asChild>
-                    <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
-                      <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
-                    </span>
-                  </HoverTooltip>
-                  <span className="text-role-caption font-medium text-text-default">
-                    {platformMeta.label}
+                <HoverTooltip label={platformMeta.label} asChild>
+                  <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                    <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
                   </span>
-                </span>
+                </HoverTooltip>
               ) : null
             }
           />
-          <OrderFactRow label="Account source" value={order.account_source} />
           <OrderFactRow label="Fulfillment channel" value={channel || null} omitWhenEmpty />
           <OrderFactRow
             label="Order #"

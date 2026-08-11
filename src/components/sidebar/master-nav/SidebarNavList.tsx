@@ -25,7 +25,7 @@ import { StaffAccountFooter } from './StaffAccountFooter';
  *
  * The body is every reachable destination in {@link SPINE_SECTIONS} order —
  * **Scan Stations first (2026-08-03)**, because the benches are what this
- * product is for — grouped by a `border-t`; a footer-pinned {@link TechRailSearchBar} (`density="row"`,
+ * product is for — grouped by a trailing `border-b`; a footer-pinned {@link TechRailSearchBar} (`density="row"`,
  * the shared ~33px band used by station recent rails too) sits above the
  * footer band — Operations Studio · Admin · Settings — then
  * {@link StaffAccountFooter}.
@@ -770,11 +770,11 @@ export function SidebarNavList({
 
     return (
       <ul role="group" aria-label="Sections" className="list-none p-0">
-        {groups.map(({ section, pages }, index) => {
+        {groups.map(({ section, pages }) => {
           const accent = spineAccentFor(section.id);
           /**
-           * A hairline at each section boundary — the ONLY thing marking
-           * where one section ends now that hue is gone (2026-08-08).
+           * A hairline BELOW every section — the ONLY thing marking where one
+           * section ends now that hue is gone (2026-08-08).
            *
            * Deleting the per-section colour deleted the last section marker:
            * sections draw no header row (pages sit directly on the map, so a
@@ -784,12 +784,18 @@ export function SidebarNavList({
            * axis is deliberately mixed (Scan Stations is an INPUT MODEL sitting
            * among business DOMAINS).
            *
+           * Bottom rule, not top: a `border-t` on `index > 0` left the LAST
+           * section (Inventory) with no trailing hairline — every other entry
+           * inherited its neighbour's top rule, the tail had nothing below it.
+           * `border-b` on every section closes that gap without doubling seams
+           * between peers.
+           *
            * A hairline and not a gap: 8px × 8 boundaries is 64px against a
            * scrollport that already measures 732px of map into a 685px port on
            * the widest page, so whitespace here would push rows below the fold.
            * A rule costs zero vertical space and survives greyscale.
            */
-          const seam = index > 0 ? 'border-t border-border-soft' : undefined;
+          const seam = 'border-b border-border-soft';
 
           // Scan Stations — enter row only; benches live inside the drill.
           if (section.id === 'floor') {

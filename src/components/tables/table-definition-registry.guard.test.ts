@@ -24,25 +24,6 @@ import {
   RECEIVING_BROWSE_DEFINITION,
   RECEIVING_TABLE_BINDING,
 } from '@/components/station/receiving-grid/receiving-table-definition';
-import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
-import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
-import { PICKUP_TABLE_BINDING } from '@/components/receiving/pickup/grid/pickup-table-definition';
-import { UNFOUND_TABLE_BINDING } from '@/components/receiving/unfound/grid/unfound-table-definition';
-import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
-import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
-import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
-import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
-import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
-import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
-import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
-import {
-  CATALOG_LINK_TABLE_BINDING,
-  IMPORT_EXCEPTION_TABLE_BINDING,
-} from '@/features/review/catalog-link/grid/catalog-link-table-definition';
-import {
-  ORDERS_DEFAULT_TABLE_BINDING,
-  ORDERS_TESTED_TABLE_BINDING,
-} from '@/components/dashboard/orders-queue/orders-table-definition';
 import {
   MAX_DEFAULT_VISIBLE_TRACKS,
   defaultVisibleTrackKeys,
@@ -53,29 +34,7 @@ import {
   getTableDefinition,
   tableDefinitionIds,
 } from './table-definition-registry';
-
-/**
- * Bindings under the registry's care. Grows one line per migrated surface —
- * plan Phase 3 walks the `*GridView` forest onto this list.
- */
-const BINDINGS = [
-  RECEIVING_TABLE_BINDING,
-  INCOMING_TABLE_BINDING,
-  READY_TABLE_BINDING,
-  PICKUP_TABLE_BINDING,
-  UNFOUND_TABLE_BINDING,
-  TECH_ALL_TABLE_BINDING,
-  TRACKING_EXCEPTIONS_TABLE_BINDING,
-  WARRANTY_TABLE_BINDING,
-  MY_DAY_TABLE_BINDING,
-  CATALOG_TABLE_BINDING,
-  REPAIR_TABLE_BINDING,
-  BINS_TABLE_BINDING,
-  CATALOG_LINK_TABLE_BINDING,
-  IMPORT_EXCEPTION_TABLE_BINDING,
-  ORDERS_DEFAULT_TABLE_BINDING,
-  ORDERS_TESTED_TABLE_BINDING,
-] as const;
+import { REGISTERED_BINDINGS } from './registered-bindings';
 
 describe('table definition registry', () => {
   it('every registered definition still satisfies the schema', () => {
@@ -99,7 +58,7 @@ describe('table definition registry', () => {
   });
 
   it('every binding is registered under its own definition id', () => {
-    for (const binding of BINDINGS) {
+    for (const binding of REGISTERED_BINDINGS) {
       assert.equal(
         getTableDefinition(binding.definition.id),
         binding.definition,
@@ -109,7 +68,7 @@ describe('table definition registry', () => {
   });
 
   it('the authored columns match the typed column model', () => {
-    for (const binding of BINDINGS) {
+    for (const binding of REGISTERED_BINDINGS) {
       assert.deepEqual(
         binding.definition.columns,
         binding.columns,
@@ -119,7 +78,7 @@ describe('table definition registry', () => {
   });
 
   it('the authored capabilities match the descriptor the family builds', () => {
-    for (const binding of BINDINGS) {
+    for (const binding of REGISTERED_BINDINGS) {
       assert.deepEqual(
         binding.makeDescriptor(binding.columns).capabilities,
         binding.definition.capabilities,

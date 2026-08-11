@@ -1,7 +1,6 @@
 "use client";
 
 import { type ComponentProps, type ReactNode, type RefObject } from "react";
-import { ConditionPills } from "../ConditionPills";
 import { SerialCard } from "../SerialCard";
 import {
   SerialMatchResult,
@@ -14,8 +13,8 @@ import type { UnitSlotView } from "../UnitSlotList";
 import { markAllEmptyReceivingUnitsSerialAbsent } from "../receiving-label-helpers";
 import { useSetting } from "@/hooks/useSettings";
 import { requestConfirm } from "@/design-system/components/confirm";
-import { useScopedReceivingPhotos } from "@/hooks/useScopedReceivingPhotos";
-import { PoLineItemPhotoPeers } from "./PoLineItemPhotoPeers";
+import { resolveCaptureEntry } from "../line-receive-mode";
+import { PoLineUnitCaptureList } from "./PoLineUnitCaptureList";
 
 type SerialLookupView = Pick<
   ComponentProps<typeof SerialMatchResult>,
@@ -24,19 +23,23 @@ type SerialLookupView = Pick<
 
 /**
  * Body rendered inside each PO line's `activeRowSlot` (PoLinesAccordion).
- * Branches on line quantity:
- *  - Multi-qty same-product line → one selectable {@link ReceivingUnitRows} row
- *    per physical unit, each with its own condition grade + serial.
- *  - Single-qty line → one {@link ConditionPills} picker + a flat serial list.
- * When a serial lookup is active, surfaces the serial-match band (RETURN flow).
+ *
+ * Unbox capture (`resolveCaptureEntry`): always {@link PoLineUnitCaptureList}
+ * — one always-accessible capture row per physical unit (qty 1 or N).
+ *
+ * Legacy lanes (Testing / Arrival / Units Displays):
+ *  - Multi-qty or `forceUnitRows` → {@link ReceivingUnitRows}
+ *  - Single-qty → one {@link SerialCard}
  *
  * Purely presentational: every mutation is delegated to the parent's existing
  * handlers. The `requestConfirm` guards on delete are gated by the
  * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
  *
- * Unbox dual loci: dock owns wedge/procedure; active PO line mounts progressive
- * Condition → Serial → Photos (`progressiveCapture`) for mouse go-back edit
- * (`autoFocusSerial` off). Testing / unmatched mount without progressive photos.
+ * Unbox dual loci: dock owns wedge/procedure; every editable PO line mounts
+ * the capture face — condition + in-row Serial / Photos dock strip
+ * the capture face — condition Tags (USED_A default) + open SerialScanField;
+ * hover Tags expands pills; grade click collapses (centre serial autofocus on
+ * the controller-active line).
  */
 export function ActiveLineConditionSerial({
   serials,
@@ -69,12 +72,16 @@ export function ActiveLineConditionSerial({
   flush = false,
   activeRowLeading,
   autoFocusSerial = true,
+  autoCommitDefaultGrade = false,
   showSavedChips = false,
   forceUnitRows = false,
-  progressiveCapture = false,
+  dockOwnsCapture = false,
+  isActiveLine = false,
+  activeStep = null,
   staffId = 0,
   poRef = null,
   poRouteRef = null,
+  onArmCapture,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -84,7 +91,7 @@ export function ActiveLineConditionSerial({
   serialSubmitting: boolean;
   editingSerial: ActiveRowSerial | null;
   serialLookup: SerialLookupView;
-  /** No-serial waiver state (single-qty only) + handler, from the controller. */
+  /** No-serial waiver state (single-qty / stamp-all) + handler, from the controller. */
   serialAbsent: boolean;
   serialAbsentReason: string | null;
   onSerialAbsentChange: (next: SerialAbsentState) => void;
@@ -124,6 +131,11 @@ export function ActiveLineConditionSerial({
    */
   autoFocusSerial?: boolean;
   /**
+   * Fresh scan / ungraded line: commit the default USED_A grade once on mount
+   * (optimistic stamp via onConditionChange) so the face + procedure agree.
+   */
+  autoCommitDefaultGrade?: boolean;
+  /**
    * Show saved serial chips under the scan field. Centre PO accordion keeps
    * chips in the meta row (`false`); rarely used when {@link forceUnitRows}
    * is on (Units Displays lists one row per serial instead).
@@ -142,18 +154,32 @@ export function ActiveLineConditionSerial({
   /** Programmatic focus target for the dock Add serial handoff. */
   serialInputRef?: RefObject<HTMLInputElement | null>;
   /**
-   * Optional item-evidence control (Units explosion / flush lanes). Prefer
-   * {@link progressiveCapture} on Unbox centre for the joined Photos stage.
+   * Optional item-evidence control (Units explosion / flush lanes). Unbox
+   * centre uses the capture row's Photos segment instead.
    */
   itemPhotoSlot?: ReactNode;
   /**
-   * Unbox centre: Condition (left) → Serial (middle) → Photos peers on the
-   * joined bar. Uses {@link PoLineItemPhotoPeers} for send/upload.
+   * FACTS, not a conclusion — {@link resolveCaptureEntry} owns whether this
+   * line mounts the capture row.
    */
-  progressiveCapture?: boolean;
+  dockOwnsCapture?: boolean;
+  /** Autofocus / controller binding only — does not gate capture mount. */
+  isActiveLine?: boolean;
+  /**
+   * The dock's `activeKey` (Unbox `dockOwnsCapture` only), passed ONLY for the
+   * controller-active line — drives the capture face's moving outline. Threaded
+   * into {@link PoLineUnitCaptureList} → {@link PoLineCaptureRow}; the legacy
+   * ReceivingUnitRows / SerialCard lanes ignore it.
+   */
+  activeStep?: string | null;
   staffId?: number;
   poRef?: string | null;
   poRouteRef?: string | null;
+  /**
+   * Sibling capture faces: promote this line to the workspace controller before
+   * arming serial so `data-active-step` / scan sink catch up with the click.
+   */
+  onArmCapture?: () => void;
   onSubmitSerial: (
     raw?: string,
     conditionGrade?: string | null,
@@ -179,26 +205,35 @@ export function ActiveLineConditionSerial({
     "receiving.confirmSerialRemoval",
   );
   const shouldConfirmRemoval = confirmSerialRemoval ?? true;
-  // Units Displays always explodes into per-serial rows. Centre accordion
-  // still uses qty>1 for ReceivingUnitRows vs single SerialCard.
-  const isMultiQty = forceUnitRows || (quantityExpected ?? 0) > 1;
-  const progressive =
-    progressiveCapture &&
-    !isMultiQty &&
-    !flush &&
-    receivingId != null &&
-    receivingId > 0 &&
-    lineId > 0;
-  const itemPhotoScope = {
-    receivingId: receivingId ?? 0,
-    receivingLineId: lineId,
-    stage: 'unbox_item' as const,
-    poRef: poRef ?? null,
-  };
-  const { photos: itemPhotos } = useScopedReceivingPhotos(itemPhotoScope, {
-    enabled: progressive,
+  const mode = resolveCaptureEntry({
+    dockOwnsCapture,
+    isActiveLine,
+    flush,
+    forceUnitRows,
+    receivingId,
+    lineId,
+    quantityExpected: quantityExpected ?? 0,
+    serialCount: serials.length,
   });
-  const itemPhotoCount = itemPhotos.length;
+  const capture = mode === 'capture-unit' || mode === 'capture-rollup';
+  const isMultiQty = mode === 'unit-rows';
+
+  const confirmDelete = async (serialUnitId: number, label?: string) => {
+    if (
+      shouldConfirmRemoval &&
+      !(await requestConfirm({
+        description: label
+          ? `Remove serial ${label}?`
+          : "Remove this serial?",
+        tone: "danger",
+        confirmLabel: "Remove",
+      }))
+    ) {
+      return;
+    }
+    onDeleteSerialUnit(serialUnitId, lineId);
+  };
+
   // Match band only for resolved outcomes. Searching is a spinner in the
   // trailing check cell — never a band under the field.
   const matchResult =
@@ -215,7 +250,7 @@ export function ActiveLineConditionSerial({
   const lookupBusy = serialLookup.state === "searching";
 
   return (
-    <div className={flush ? 'min-w-0' : 'min-w-0 space-y-2'}>
+    <div className={flush ? "min-w-0" : "min-w-0 space-y-2"}>
       {/* Item photos — house eyebrow header + right action slot. Labeled, so the
           step the checklist points at is legible on the work surface itself.
           Units explosion uses activeRowLeading instead (after condition on every unit row). */}
@@ -232,11 +267,68 @@ export function ActiveLineConditionSerial({
         </div>
       ) : null}
 
-      {isMultiQty ? (
-        // Multi-qty same-product line: split into one selectable row per
-        // physical unit, each with its own condition grade and serial. The
-        // selected unit's grade is reported up via onActiveConditionChange so
-        // the header badge + label preview track that unit.
+      {capture ? (
+        <PoLineUnitCaptureList
+          lineId={lineId}
+          receivingId={receivingId}
+          quantityExpected={Math.max(
+            quantityExpected ?? 1,
+            serials.length,
+            units?.length ?? 0,
+            1,
+          )}
+          saved={serials as UnitSerial[]}
+          units={units}
+          lineCondition={cond}
+          disabled={!receivingId}
+          serialAbsent={serialAbsent}
+          activeStep={activeStep}
+          staffId={staffId}
+          poRef={poRef}
+          poRouteRef={poRouteRef}
+          onConditionChange={onConditionChange}
+          onAddSerial={(sn) => onSubmitSerial(sn, cond)}
+          onReplaceSerial={(original, nextSerial) => {
+            if (original.id == null) return;
+            onReplaceSerialUnit(
+              {
+                id: original.id,
+                serial_number: original.serial_number,
+                condition_grade: original.condition_grade,
+              },
+              nextSerial,
+            );
+          }}
+          onMarkNoSerial={() =>
+            onSerialAbsentChange(
+              serialAbsent
+                ? { absent: false, reason: null }
+                : {
+                    absent: true,
+                    reason: serialAbsentReason ?? "NOT_SERIALIZED",
+                  },
+            )
+          }
+          noSerialSlot={
+            <NoSerialControl
+              absent
+              fullWidth
+              hideClear
+              reason={serialAbsentReason}
+              required={requireSerialConfirmation}
+              disabled={!receivingId}
+              onChange={onSerialAbsentChange}
+            />
+          }
+          lookupBusy={lookupBusy}
+          editingSerial={editingSerial}
+          onEditingSerialChange={onEditingSerialChange}
+          autoFocusSerial={autoFocusSerial}
+          autoCommitDefaultGrade={autoCommitDefaultGrade}
+          onArmCapture={onArmCapture}
+        />
+      ) : isMultiQty ? (
+        // Units Displays / non-progressive multi: compact unit rows.
         <>
           <ReceivingUnitRows
             lineId={lineId}
@@ -259,17 +351,7 @@ export function ActiveLineConditionSerial({
             }
             onAddSerial={(sn, grade) => onSubmitSerial(sn, grade)}
             onDeleteSerial={async (id) => {
-              if (
-                shouldConfirmRemoval &&
-                !(await requestConfirm({
-                  description: "Remove this serial?",
-                  tone: "danger",
-                  confirmLabel: "Remove",
-                }))
-              ) {
-                return;
-              }
-              onDeleteSerialUnit(id, lineId);
+              await confirmDelete(id);
             }}
             onReplaceSerial={(original, next) =>
               onReplaceSerialUnit(original, next)
@@ -277,8 +359,6 @@ export function ActiveLineConditionSerial({
             onSetUnitGrade={(id, grade) => onSetUnitGrade(id, grade)}
             onConditionChange={onConditionChange}
             onActiveConditionChange={onActiveConditionChange}
-            // Icon-only no-serial toggle in the top-right of the unit list.
-            // Line-level waiver also stamps empty unit rows (qty roll-up / bulk).
             noSerialControl={
               <NoSerialControl
                 variant="check"
@@ -305,20 +385,17 @@ export function ActiveLineConditionSerial({
             flush={flush}
             activeRowLeading={activeRowLeading}
           />
-          {/* RETURN-only: serial-match result under the unit rows. */}
           {matchResult ?? null}
         </>
       ) : (
-        // Single-qty line (incl. a PARTS product carrying several part-serials
-        // under one unit): integrated condition picker + serial card. The
-        // no-serial waiver sits directly under the input when no serial exists.
+        // Non-progressive single-qty (Testing / Arrival / unmatched).
         <>
           <div
             className={
               flush && activeRowLeading
                 ? // Outermost joined shell owns top+bottom hairlines + soft
                   // column seam into Serial (one seam each, Serial stays border-0).
-                  'flex min-w-0 items-stretch gap-0 border-y border-border-hairline divide-x divide-border-soft'
+                  "flex min-w-0 items-stretch gap-0 border-y border-border-hairline divide-x divide-border-soft"
                 : undefined
             }
           >
@@ -338,33 +415,16 @@ export function ActiveLineConditionSerial({
                 autoFocusInput={autoFocusSerial}
                 focusKey={lineId}
                 externalInputRef={serialInputRef}
-                showSavedChips={showSavedChips && !progressive}
+                showSavedChips={showSavedChips}
                 editingSerial={editingSerial}
                 onEditingSerialChange={onEditingSerialChange}
                 resultSlot={matchResult}
                 lookupBusy={lookupBusy}
                 condition={hideCondition ? undefined : cond}
-                onConditionChange={hideCondition ? undefined : onConditionChange}
-                // Collapsed picker: filled circle (grade hue) + white Tags icon.
-                // Meta-row ConditionGradeChip stays the labeled readout.
-                collapsedConditionLabel={true}
-                progressiveCapture={progressive}
-                photoCount={itemPhotoCount}
-                renderPhotoStage={
-                  progressive
-                    ? ({ expanded }) => (
-                        <PoLineItemPhotoPeers
-                          receivingId={receivingId!}
-                          staffId={staffId}
-                          receivingLineId={lineId}
-                          poRef={poRef}
-                          poRouteRef={poRouteRef}
-                          expanded={expanded}
-                          photoCount={itemPhotoCount}
-                        />
-                      )
-                    : undefined
+                onConditionChange={
+                  hideCondition ? undefined : onConditionChange
                 }
+                collapsedConditionLabel={true}
                 onAdd={(sn) => onSubmitSerial(sn, cond)}
                 noSerialActive={serialAbsent}
                 onMarkNoSerial={() =>
@@ -401,17 +461,7 @@ export function ActiveLineConditionSerial({
                 }}
                 onDeleteSerial={async (s) => {
                   if (s.id == null) return;
-                  if (
-                    shouldConfirmRemoval &&
-                    !(await requestConfirm({
-                      description: `Remove serial ${s.serial_number}?`,
-                      tone: "danger",
-                      confirmLabel: "Remove",
-                    }))
-                  ) {
-                    return;
-                  }
-                  onDeleteSerialUnit(s.id, lineId);
+                  await confirmDelete(s.id, s.serial_number);
                 }}
               />
             </div>

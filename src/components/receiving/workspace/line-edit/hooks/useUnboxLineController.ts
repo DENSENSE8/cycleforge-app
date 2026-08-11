@@ -632,7 +632,6 @@ export function useUnboxLineController(
       return;
     }
     if (!staged) {
-      toast.message('Scan a location barcode in the dock');
       setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
       return;
     }
@@ -751,7 +750,8 @@ export function useUnboxLineController(
         : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
   // Bench-visible reason for the disabled Receive bar. A hover `title` is
   // invisible to an operator standing at a station — the bar renders this
-  // line above the pill so the blocker names itself.
+  // line above the pill so the blocker names itself. Stage waits stay silent
+  // here: Band 1 already reads "Scan location" / the wedge owns the scan.
   const combinedReviewDisabledReason = isReceived
     ? !canPrintReview
       ? 'Add a PO number or SKU before printing'
@@ -761,7 +761,7 @@ export function useUnboxLineController(
         ? 'Add a PO number or SKU before printing'
         : null
       : !locationStaged
-        ? 'Scan a location barcode in the dock'
+        ? null
         : !canReceiveReview
           ? 'Link this carton to a shipment to receive'
           : !canPrintReview
@@ -841,7 +841,7 @@ export function useUnboxLineController(
     : !labelPrinted
       ? 'Print the label — then scan a putaway location'
       : !locationStaged
-        ? 'Scan a location barcode in the dock to stage this unit'
+        ? 'Scan a location barcode to stage this unit'
         : row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
           ? 'Need a shipment link or SKU to continue'
           : isUnfound

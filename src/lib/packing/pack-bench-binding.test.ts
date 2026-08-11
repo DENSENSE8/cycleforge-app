@@ -29,19 +29,30 @@ test('a bench binding normalizes to a positive locations.id or null', () => {
 // ── resolving the binding against the live bench list ────────────────────────
 
 const BENCHES = [
-  { id: 7, name: 'QA Packing Desk 1', barcode: 'QA-PACK-DESK-01', locationKind: 'DESK' },
+  // id 7 carries an operator nickname; id 9 has none, so it falls back to `name`.
+  {
+    id: 7,
+    name: 'QA Packing Desk 1',
+    displayName: 'Packing Station 1',
+    barcode: 'QA-PACK-DESK-01',
+    locationKind: 'DESK',
+  },
   { id: 9, name: 'QA Packing Staging', barcode: 'QA-PACK-STAGING', locationKind: 'STAGING' },
 ];
 
 test('resolveWorkstationBench arms the bound bench from the live locations list', async () => {
   const { resolveWorkstationBench } = await import('./pack-station-arm');
+  // `name` on the armed station is the FACE — "Placing at …" is a display
+  // string, so the nickname is resolved once here rather than at each caller.
   assert.deepEqual(resolveWorkstationBench(BENCHES, 7), {
     locationId: 7,
-    name: 'QA Packing Desk 1',
+    name: 'Packing Station 1',
     barcode: 'QA-PACK-DESK-01',
     locationKind: 'DESK',
   });
   assert.equal(resolveWorkstationBench(BENCHES, 9)?.locationKind, 'STAGING');
+  // No nickname → the canonical name, minus the QA fixture prefix.
+  assert.equal(resolveWorkstationBench(BENCHES, 9)?.name, 'Packing Staging');
 });
 
 test('resolveWorkstationBench refuses a binding the bench list no longer carries', async () => {
@@ -111,12 +122,49 @@ test('clearing the bench by hand suppresses auto-arm; arming again lifts it', as
 
 // ── bench display ────────────────────────────────────────────────────────────
 
-test('packBenchShortLabel reduces a stored bench name to what an operator reads', () => {
-  assert.equal(packBenchShortLabel({ locationName: 'QA Packing Desk 2', locationKind: 'DESK' }), 'Station 2');
-  assert.equal(packBenchShortLabel({ locationName: 'Packing 11', locationKind: 'DESK' }), 'Station 11');
-  // Kind wins over the name — a staging area is never "Station N".
-  assert.equal(packBenchShortLabel({ locationName: 'QA Packing Staging 3', locationKind: 'STAGING' }), 'Staging');
-  // No trailing number: drop the QA prefix, keep the name rather than blanking it.
-  assert.equal(packBenchShortLabel({ locationName: 'QA Overflow Bench', locationKind: 'DESK' }), 'Overflow Bench');
-  assert.equal(packBenchShortLabel({ locationName: 'Overflow', locationKind: 'DESK' }), 'Overflow');
+test('packBenchShortLabel prefers the operator nickname over the warehouse name', () => {
+  // The whole point of `locations.display_name`: Settings → Stations maps the
+  // backend name to the face the floor reads.
+  assert.equal(
+    packBenchShortLabel({
+      locationName: 'Pack Desk 1',
+      locationDisplayName: 'Packing Station 1',
+      locationKind: 'DESK',
+    }),
+    'Packing Station 1',
+  );
+  // Cleared / never-set nickname falls back to the canonical name — never blank.
+  for (const empty of [null, undefined, '', '   ']) {
+    assert.equal(
+      packBenchShortLabel({
+        locationName: 'Pack Desk 1',
+        locationDisplayName: empty,
+        locationKind: 'DESK',
+      }),
+      'Pack Desk 1',
+    );
+  }
+  // Count rows arrive display-RESOLVED from SQL, so they pass no nickname and
+  // the resolved value is already sitting in `locationName`.
+  assert.equal(
+    packBenchShortLabel({ locationName: 'Packing Station 1', locationKind: 'DESK' }),
+    'Packing Station 1',
+  );
+});
+
+test('packBenchShortLabel shows the name the operator stored on the bench', () => {
+  // With no nickname, the canonical `locations.name` is the face.
+  assert.equal(packBenchShortLabel({ locationName: 'Pack Desk 2', locationKind: 'DESK' }), 'Pack Desk 2');
+  assert.equal(packBenchShortLabel({ locationName: 'Bench 1', locationKind: 'DESK' }), 'Bench 1');
+  assert.equal(packBenchShortLabel({ locationName: 'Fragile wrap', locationKind: 'DESK' }), 'Fragile wrap');
+  // A renamed STAGING row is NOT overridden with the word "Staging" — the kind
+  // is carried by the row, and a face that ignores the rename is the derived
+  // label this rule replaced.
+  assert.equal(packBenchShortLabel({ locationName: 'Overflow shelf', locationKind: 'STAGING' }), 'Overflow shelf');
+  // Fixture prefix only — no tenant types "QA ".
+  assert.equal(packBenchShortLabel({ locationName: 'QA Packing Desk 2', locationKind: 'DESK' }), 'Packing Desk 2');
+  assert.equal(packBenchShortLabel({ locationName: 'QA Packing Staging', locationKind: 'STAGING' }), 'Packing Staging');
+  // Empty face is never a blank chip.
+  assert.equal(packBenchShortLabel({ locationName: '   ', locationKind: 'STAGING' }), 'Staging');
+  assert.equal(packBenchShortLabel({ locationName: '', locationKind: 'DESK' }), 'Bench');
 });

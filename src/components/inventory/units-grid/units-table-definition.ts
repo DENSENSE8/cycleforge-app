@@ -33,4 +33,7 @@ export const UNITS_TABLE_BINDING: TableSurfaceBinding<UnitsOverviewRow, UnitsGri
   definition: UNITS_TABLE_DEFINITION,
   columns: UNITS_GRID_COLUMNS,
   makeDescriptor: makeUnitsGridDescriptor,
+  // `detail:inventory-<kind>` — keyed on the record KIND, not the record, so a
+  // same-kind ref change swaps the node in place (see InventoryInspectorRail).
+  recordPlane: { kind: 'inspector', occupantId: 'detail:inventory-unit' },
 };

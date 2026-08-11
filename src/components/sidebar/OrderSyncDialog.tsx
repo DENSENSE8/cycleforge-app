@@ -11,7 +11,9 @@ import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRai
 import { Button, IconButton } from '@/design-system/primitives';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
+import { platformMetaIconTone, sourcePlatformMeta } from '@/lib/source-platform';
 import type {
   ExceptionsTabState,
   OrderExceptionResolutionDetail,
@@ -67,29 +69,53 @@ function badge(kind: 'inserted' | 'updated' | 'deleted' | 'unknown' | 'resolved'
   return `inline-flex items-center ${FLUSH} inset-chip text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
 }
 
+/** Long product titles wrap — same grammar as RailSelectionRoster. */
+const SYNC_LIST_TITLE_CLASS =
+  'min-w-0 w-full whitespace-normal break-words text-role-caption text-text-muted';
+
 /**
  * Transfer / recovered / skipped list row — {@link StackedRowIdentity}: title
  * leads; order + tracking sit on the second line as typed CopyChips.
+ * Channel face is {@link PlatformMark} (never typed platform prose).
  */
 function SyncListRow({
   title,
   orderId,
   tracking,
+  platform,
   trailing,
 }: {
   title: ReactNode;
   orderId?: string | null;
   tracking?: string | null;
+  /** Stored / sheet channel slug — paints {@link PlatformMark}, never uppercase text. */
+  platform?: string | null;
   trailing?: ReactNode;
 }) {
+  const platformMeta = sourcePlatformMeta(platform);
+  const platformLabel = platformMeta.value ? platformMeta.label : null;
+  const iconTone = platformMeta.value ? platformMetaIconTone(platformMeta) : null;
+  const channelTrailing = platform != null && String(platform).trim() !== ''
+    ? <PlatformMark platformValue={platform} meta={platformMeta} />
+    : platform === undefined
+      ? null
+      : <PlatformMark empty />;
+
   return (
     <li className="border-b border-border-hairline inset-field last:border-b-0">
       <StackedRowIdentity
-        title={<p className="truncate text-role-caption text-text-muted">{title}</p>}
+        title={<p className={SYNC_LIST_TITLE_CLASS}>{title}</p>}
         keys={
           <>
             {orderId ? (
-              <OrderIdChip value={orderId} display={getLast8(orderId)} dense />
+              <OrderIdChip
+                value={orderId}
+                display={getLast8(orderId)}
+                dense
+                platformLabel={platformLabel}
+                iconClass={iconTone?.className}
+                iconStyle={iconTone?.style}
+              />
             ) : (
               <span className="font-mono text-role-micro text-text-faint">—</span>
             )}
@@ -100,7 +126,7 @@ function SyncListRow({
             )}
           </>
         }
-        trailing={trailing}
+        trailing={trailing ?? channelTrailing}
       />
     </li>
   );
@@ -225,11 +251,7 @@ function TransferSection({
                 title={row.productTitle || <span className="text-text-faint">(no title)</span>}
                 orderId={row.orderId}
                 tracking={row.tracking}
-                trailing={
-                  <span className="text-role-micro uppercase tracking-wide text-text-soft">
-                    {row.platform || '—'}
-                  </span>
-                }
+                platform={row.platform}
               />
             ))}
           </ul>
@@ -254,11 +276,7 @@ function TransferSection({
                 title={row.productTitle}
                 orderId={row.orderId}
                 tracking={row.tracking}
-                trailing={
-                  <span className="text-role-micro uppercase tracking-wide text-text-soft">
-                    {row.platform || '—'}
-                  </span>
-                }
+                platform={row.platform}
               />
             ))}
           </ul>
@@ -519,11 +537,7 @@ function SkippedRowsPanel({
                       title={row.productTitle || <span className="text-text-faint">(no title)</span>}
                       orderId={row.orderId}
                       tracking={row.tracking}
-                      trailing={
-                        <span className="text-role-micro uppercase tracking-wide text-text-soft">
-                          {row.platform || '—'}
-                        </span>
-                      }
+                      platform={row.platform}
                     />
                   ))}
                 </ul>

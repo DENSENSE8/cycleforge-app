@@ -9,11 +9,11 @@
  * owns inset.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Copy, ExternalLink, FileText, Link2 } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
+import { InlineNotice, SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
 import { WorkspaceFieldLabel } from '@/components/receiving/workspace/WorkspaceSectionLabel';
 import { RECEIVING_SCAN_RULE_LINE_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -22,6 +22,7 @@ import { recordCopy } from '@/lib/clipboard-history';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { OpenListingLinksPanel } from './OpenListingLinksPanel';
+import { ListingVendorViewPanel } from './ListingVendorViewPanel';
 
 /** Flush Displays body — parent push column owns inset; no glass island. */
 const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
@@ -75,10 +76,7 @@ function ListingLinkPanel({
   return (
     <div className="space-y-3">
       {href ? (
-        <div className="rounded-lg border border-border-hairline bg-surface-card/70 px-3 py-2.5">
-          <p className="mb-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-            URL
-          </p>
+        <InlineNotice tone="neutral" size="sm" title="URL">
           <p className="break-all font-mono text-role-caption text-text-default">{href}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Button
@@ -117,9 +115,11 @@ function ListingLinkPanel({
               </HoverTooltip>
             ) : null}
           </div>
-        </div>
+        </InlineNotice>
       ) : (
-        <p className="text-role-caption text-text-faint">No listing URL on this slot yet.</p>
+        <InlineNotice tone="neutral" size="sm">
+          No listing URL on this slot yet.
+        </InlineNotice>
       )}
 
       {isManualSlot ? (
@@ -175,7 +175,12 @@ export function ListingLinksTab({
 
   const tabs: SectionTab[] = useMemo(() => {
     const fromLinks = listingLinks.map((l, i) => {
-      const label = sourceLabel(l.source, (l.label || '').trim() || `Listing ${i + 1}`);
+      // The buyer's own name for the link wins — it is the only thing that
+      // tells several links of one source apart (three sync-note links all
+      // resolve `sourceLabel` to "Synced"). The source stays readable as the
+      // row's icon. Falls back to the kind, then a positional name.
+      const authored = (l.title || '').trim();
+      const label = authored || sourceLabel(l.source, (l.label || '').trim() || `Listing ${i + 1}`);
       const Icon = sourceIcon(l.source);
       return {
         id: `link-${i}-${l.source}`,
@@ -212,34 +217,67 @@ export function ListingLinksTab({
   const [active, setActive] = useState(tabs[0]?.id ?? 'manual-override');
   const activeId = tabs.some((t) => t.id === active) ? active : tabs[0]?.id ?? 'manual-override';
 
+  /**
+   * While a listing is embedded, the viewport IS the display — the URL band,
+   * the manual-override field and the per-link slider below it were the exact
+   * height the marketplace page needed, and they say nothing the page in front
+   * of the operator does not already show. Everything they offered is still
+   * reachable: pick / close from the combo, and "Edit listing link…" inside it.
+   */
+  const [embedOpen, setEmbedOpen] = useState(false);
+  const handleEmbedOpenChange = useCallback((next: boolean) => setEmbedOpen(next), []);
+
   if (tabs.length === 0) {
     return (
-      <div className={FLUSH_HOST_CLASS}>
-        <ListingLinkPanel
-          link={null}
+      <div className={cn(FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col')}>
+        <ListingVendorViewPanel
+          links={listingLinks}
           listingLink={listingLink}
           setListingLink={setListingLink}
-          isManualSlot
+          onOpenChange={handleEmbedOpenChange}
+          className={embedOpen ? 'min-h-0 flex-1' : 'mb-4'}
         />
+        {embedOpen ? null : (
+          <ListingLinkPanel
+            link={null}
+            listingLink={listingLink}
+            setListingLink={setListingLink}
+            isManualSlot
+          />
+        )}
       </div>
     );
   }
 
   return (
-    <div className={cn(FLUSH_HOST_CLASS, 'space-y-4')}>
-      {showOpenAll ? (
-        <div className="min-w-0">
-          <OpenListingLinksPanel hrefs={hrefs} compact />
-        </div>
-      ) : null}
-      <div className="min-w-0">
-        <SectionTabsSlider
-          tabs={tabs}
-          value={activeId}
-          onChange={setActive}
-          ariaLabel="Listing links"
-        />
-      </div>
+    <div className={cn(FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col', embedOpen ? null : 'space-y-4')}>
+      {/* Embedded marketplace browser leads the display on the desktop shell —
+          the combo box is the pick surface for multi-link cartons. Renders
+          nothing in a browser, where Open/Copy below stays the whole story. */}
+      <ListingVendorViewPanel
+        links={listingLinks}
+        listingLink={listingLink}
+        setListingLink={setListingLink}
+        onOpenChange={handleEmbedOpenChange}
+        className={embedOpen ? 'min-h-0 flex-1' : undefined}
+      />
+      {embedOpen ? null : (
+        <>
+          {showOpenAll ? (
+            <div className="min-w-0">
+              <OpenListingLinksPanel hrefs={hrefs} compact />
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            <SectionTabsSlider
+              tabs={tabs}
+              value={activeId}
+              onChange={setActive}
+              ariaLabel="Listing links"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ import { useEntitySupportTicket } from '@/hooks/useEntitySupportTicket';
 import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
-import { collectCartonListingLinks } from '@/lib/receiving/listing-links';
+import { collectCartonListingLinks, normalizeListingHref } from '@/lib/receiving/listing-links';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
@@ -26,7 +26,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   readReceivingLineDetailsScratch,
   writeReceivingLineDetailsScratch,
-  listingUrlForOpen,
   receivingShareUrl,
   randomId,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -604,7 +603,7 @@ export function useReceivingLineCore(
   // Zoho PO: never invent a usavshop/Ecwid URL from the inventory SKU.
   const listingOpenHref =
     listingLinks[0]?.href ??
-    (listingUrlForOpen(listingLink) ||
+    (normalizeListingHref(listingLink) ||
       (isUnmatched || isZohoPo ? null : getExternalUrlByItemNumber(row.sku)));
   const poOpenHref = (() => {
     const id = (row.zoho_purchaseorder_id || '').trim();

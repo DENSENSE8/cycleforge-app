@@ -108,8 +108,15 @@ interface LineCartonContextSectionProps {
   /** Unbox: open Photos → Send in Displays. */
   onSendToTicketExternal?: () => void;
   /**
-   * Unbox: suppress Photos hover toolbar (multi-verbs in Displays Actions).
-   * Pill click stays send-to-phone.
+   * Unbox: double-click Photos pill → Displays → Photos (Actions).
+   * Replaces whatever Displays leaf is open; opens the column when closed.
+   */
+  onOpenPhotosDisplay?: () => void;
+  /**
+   * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
+   * Send open Displays via the external callbacks. Pill click stays
+   * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
+   * is set.
    */
   suppressPhotoHoverGallery?: boolean;
 }
@@ -140,6 +147,7 @@ export function LineCartonContextSection({
   photoStage,
   onOpenMovePhotosExternal,
   onSendToTicketExternal,
+  onOpenPhotosDisplay,
   suppressPhotoHoverGallery = false,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
@@ -232,6 +240,7 @@ export function LineCartonContextSection({
         onSendToTicketExternal ?? (() => c.setPhotoNoteOpen(true))
       }
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+      onOpenPhotosDisplay={onOpenPhotosDisplay}
       suppressPhotoHoverGallery={suppressPhotoHoverGallery}
     />
   );

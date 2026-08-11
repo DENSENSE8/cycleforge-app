@@ -1,6 +1,5 @@
 'use client';
 
-import { AnimatePresence } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
 import { WarrantyClaimsTable } from '@/components/warranty/WarrantyClaimsTable';
 import { WarrantyClaimDetailPanel } from '@/components/warranty/WarrantyClaimDetailPanel';
@@ -10,8 +9,14 @@ import { useWarrantyUrlState } from '@/hooks/useWarrantyClaims';
 /**
  * Right-pane workspace for Support › Warranty mode (`/support?mode=warranty`):
  * a coverage-lookup card (the "is this order under warranty?" phone-support
- * check) above the claims table + a slide-in detail panel driven by `?open`.
- * Self-contained so the support page only switches one component in.
+ * check) above the claims table. Self-contained so the support page only
+ * switches one component in.
+ *
+ * The claim inspector is a `RightRailHost` occupant (`detail:warranty`), so it
+ * is NOT a child of this workspace — it registers itself and the host owns the
+ * right edge. It used to be a private `w-[420px]` column mounted right here
+ * inside an `AnimatePresence` keyed per claim; see `WarrantyClaimDetailPanel`
+ * for what that cost.
  */
 export function WarrantyWorkspace() {
   const { openClaimId, openClaim } = useWarrantyUrlState();
@@ -22,15 +27,13 @@ export function WarrantyWorkspace() {
         <WarrantyCoverageCard query={search} />
         <WarrantyClaimsTable />
       </div>
-      <AnimatePresence>
-        {openClaimId != null && (
-          <WarrantyClaimDetailPanel
-            key={openClaimId}
-            claimId={openClaimId}
-            onClose={() => openClaim(null)}
-          />
-        )}
-      </AnimatePresence>
+      {openClaimId != null && (
+        <WarrantyClaimDetailPanel
+          key={openClaimId}
+          claimId={openClaimId}
+          onClose={() => openClaim(null)}
+        />
+      )}
     </>
   );
 }

@@ -64,4 +64,26 @@ describe('TriageClassifySection flush Displays', () => {
     assert.match(unbox, /id: 'classify'/);
     assert.match(unbox, /<TriageClassifySection/);
   });
+
+  it('Unbox classify editor is Displays-only — dock never remounts TriageClassifySection', () => {
+    const unbox = readFileSync(UNBOX_TABS, 'utf8');
+    const dock = code(
+      readFileSync(
+        join(
+          process.cwd(),
+          'src/components/receiving/workspace/line-edit/steps/dock/ClassifyDockControl.tsx',
+        ),
+        'utf8',
+      ),
+    );
+    // Displays strip still mounts the shared section.
+    assert.match(unbox, /id: 'classify'/);
+    assert.match(unbox, /<TriageClassifySection/);
+    // Dock is one-row Continue — never a second classifySlot / top-stretch stack.
+    assert.doesNotMatch(unbox, /classifySlot=/);
+    assert.doesNotMatch(dock, /import[\s\S]*TriageClassifySection|<TriageClassifySection/);
+    assert.doesNotMatch(dock, /max-h-\[min\(50vh/);
+    assert.match(dock, /data-unbox-classify-dock/);
+    assert.match(dock, /h-11/);
+  });
 });

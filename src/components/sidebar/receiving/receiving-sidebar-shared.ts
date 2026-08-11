@@ -247,20 +247,13 @@ export function randomId(): string {
 }
 
 // ── Listing URL helpers ─────────────────────────────────────────────────────
-
-/** Safe http(s) href for opening a pasted or typed listing URL. */
-export function listingUrlForOpen(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  try {
-    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
-    const u = new URL(withProto);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
+// `listingUrlForOpen` lived here until 2026-08-10. It was a copy of
+// `normalizeListingHref` (@/lib/receiving/listing-links) that predated that
+// function's non-http-scheme fix, so it "repaired" `ftp://example.com/itm/1`
+// into `https://ftp//example.com/itm/1` — a parseable URL with a nonsense host
+// whose Open listing led nowhere. Deleted rather than aliased: an alias is a
+// second name for one answer, which is how the fork happened. Import
+// `normalizeListingHref` directly.
 
 /** Desktop Unbox surface deep link (`/unbox?recvId=…&lineId=…`). */
 export function receivingShareUrl(receivingId: number, lineId?: number): string {

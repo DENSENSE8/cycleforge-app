@@ -51,7 +51,7 @@
 | Host shell | `StationScanPaneHost` + `StationPanelRoot` + `StationWorkbench` (`bodyGap="none"`, `reserveIdentityClearance={false}`) |
 | Identity | `StationContextBar` `placement="flow"` + `LineCartonContextSection` → `CartonContextCard` |
 | Centre overview | `buildUnboxOverview` → `POUnboxingSection` (`dockOwnsCapture`) + `UnboxLabelPreview` |
-| Dual edit loci | Dock owns wedge/scanner; active line mounts `ActiveLineConditionSerial` for mouse go-back (Condition → Serial → Photos peers) |
+| Dual edit loci | Dock owns wedge/scanner; **every editable line** mounts `ActiveLineConditionSerial` → `PoLineCaptureRow` (rest: condition + Serial/Photos; **condition pick → Tags + serial**; Serial open: Tags + `SerialScanField` + Photos; Photos open: Tags + Serial + `ItemPhotoCaptureStrip` / `PhotoStepDockStrip`; found **and** lined unfound; empty stub hides Photos until a line exists; snap, no layout tween) |
 | Procedure pointer | `deriveProcedureSteps` / `resolveActiveStep` via `useUnboxProcedureSteps` |
 | Dock ACTION map | `UNBOX_STEP_DOCK_CONTROLS` (`line-edit/steps/dock/`) |
 | Cockpit KNOW map | `UNBOX_STEP_RAIL_LEAF` (`line-edit/steps/rail/`) |
@@ -82,8 +82,21 @@ Phases outside capture:
 | **Intake** | `scan` | Station scan bar (already done when the panel opens) |
 | **Commit** | `print` · **`stage`** · `receive` | Print · Receive on dogfood strip `data-unbox-dogfood-print` (always-on; Band 1 trailing null). After print, Band 1 arms **`LocationScanDockControl`** (`stage`) — wedge scans a putaway barcode; middle scrolls to Placement confirmation. Never sticky-lock / collapse the capture centre. |
 
-**Capture trio law:** Serial → Condition → Photos. Multi-qty Phase 2 = fill every
-serial (or waive), then **one** line-level condition + item-photos — not the trio × N.
+**Capture trio law:** Serial → Condition → Photos (dock procedure order). Centre
+face is invariant **`PoLineCaptureRow`** per editable line — **new scan mounts
+collapsed Tags (`USED_A` default) + open `SerialScanField`** (optimistic);
+**hover Tags expands** full `ConditionPills`; **grade click selects (never
+clears), collapses Tags, keeps serial open**. **Photos expands in-row**
+(`[ Tags | Serial | ItemPhotoCaptureStrip ]` — Link \| Upload \| Send, same
+dock strip; Link opens the Photos → Link Displays leaf — `PhotoLinkDisplay`, Photos → Link nest (`photoAction: 'link'`): **Link to** carton step (Shipping label · The box ·
+Packing material) or PO item · **Link as** aspect (item targets only) · shared
+`PhotoAttachGrid` → claim-stage / aspect / reassign — a right-rail drill via
+`receiving-open-photo-link`, **never** a popover. Guard:
+`item-photo-link-display.guard.test.ts`). Found and lined unfound
+share this face when `dockOwnsCapture`; empty return stub mounts Serial only
+until a line exists. Dock Band 1 stays procedure instruments; under-row is
+mouse go-back (snap mount). Qty roll-up over the display cap keeps
+`BulkQuantityPanel` Apply under the capture face.
 
 ---
 
@@ -95,16 +108,27 @@ listed in the matching either-or map with a reason. Guards:
 
 | Step key | Label | Gate / evidence | Dock ACTION (`UNBOX_STEP_DOCK_CONTROLS`) | KNOW `railLeaf` | Band 1 geometry |
 |---|---|---|---|---|---|
-| `classify` | Classify | Intake classified (`isIntakeClassified`) | `ClassifyDockControl` → `TriageClassifySection` | `classify` | **Grows** past `h-11` |
-| `arrival_label_photo` | Label photo | ≥1 `arrival_package` · `shipping_label` | `ArrivalPhotosDockControl` → `PhotoStepDockStrip` | `photos` | Left waist + right thirds: Link \| Upload \| Send |
-| `arrival_box_photo` | Box photo | ≥1 `arrival_package` · `box_exterior` | `ArrivalPhotosDockControl` → `PhotoStepDockStrip` | `photos` | Left waist + right thirds: Link \| Upload \| Send |
-| `packing_material` | Packing material | `unbox_carton` · `packing_material` | `CartonPhotoDockControl` | `photos` | Left waist + photo strip thirds |
+| `classify` | Classify | Intake classified (`isIntakeClassified`) | `ClassifyDockControl` → one-row Continue (h-11) | `classify` (`TriageClassifySection` KNOW) | Fixed `h-11` — never `expandBand` (editor is Displays only) |
+| `arrival_label_photo` | Label photo | ≥1 `arrival_package` · `shipping_label` | `ArrivalPhotosDockControl` → `PhotoStepDockStrip` | `listings` | Left waist + right thirds: Link \| Upload \| Send |
+| `arrival_box_photo` | Box photo | ≥1 `arrival_package` · `box_exterior` | `ArrivalPhotosDockControl` → `PhotoStepDockStrip` | `listings` | Left waist + right thirds: Link \| Upload \| Send |
+| `packing_material` | Packing material | `unbox_carton` · `packing_material` | `CartonPhotoDockControl` | `listings` | Left waist + photo strip thirds |
 | `contents` | Contents | `receiving_unbox.contents_confirmed_at` | `ContentsDockControl` (ack) | `inventory` | Full-height ack segment + wedge Enter |
 | `serial` | Serial | Serials filled / waived to expected qty | `SerialDockControl` | `units` | Full-height serial segment (**no** scan-entry wedge — dock owns serial sink) |
 | `condition` | Condition | `condition_graded_at` stamp | `ConditionDockControl` (`barDistribute`) | `units` | Grade bar fill + wedge accepts grade codes |
 | `label` | Label | `label_previewed_at` | `LabelDockControl` (ack) | **none** — work plane (`UnboxLabelPreview`) | Ack segment; reference-less (declared in `UNBOX_STEPS_WITHOUT_RAIL_LEAF`) |
 | `stage` | Location | `receiving_line_putaway.staged_at` (after `label_printed_at`) | `LocationScanDockControl` | **none** — work plane Placement panel | Full-height scan CTA + wedge; middle `UnboxPlacementSection` scrolls into view |
 | *(settle)* | — | `activeKey === null` (capture done · not yet printed, or stage done) | *(no step control)* | *(cockpit idle)* | Band 1 empty of terminal — Print · Receive stays on dogfood strip above |
+
+**KNOW on the DO plane — the moving outline.** The KNOW column above is the
+right-edge Displays cockpit. On the **in-line capture face** (`PoLineCaptureRow`,
+controller-active line only) the DO plane carries its own step pointer: the
+dock's `activeKey` stamps `data-active-step` and a `2px` inset accent outline
+snaps around the segment / condition it names — **`serial` → serial segment ·
+`condition` → condition host · `item_photos` → photos segment** (the other
+`activeKey`s have no in-line target, so nothing lights). Same `activeKey`, no
+second store; inset + instant so the flush bar never shifts. SoT:
+[`../source-of-truth.md`](../source-of-truth.md) → Unbox centre (main) ·
+Active-step outline. Guard: `active-step-ring.guard.test.ts`.
 
 Catalog-only (not on the default Found / Unfound / Return walk — door Label/Box
 own shipping + exterior; item evidence is Displays-side): `shipping_label_photo`
@@ -172,16 +196,16 @@ Notes escalate via `UnboxDockNotesEntry` + `DenseComposeFields` inside the same 
 
 ## Displays (KNOW + browse)
 
-Vocabulary: `unbox-side-tabs.ts`. Navigation is Root→Leaf (`?display=`), never a
-horizontal icon plate in the centre.
+Vocabulary: `unbox-side-tabs.ts`. Navigation is Root→Leaf (local
+`useUnboxDisplayView` — Arrival parity), never a horizontal icon plate in the
+centre and never `?display=` URL wires.
 
 | Leaf | Job |
 |---|---|
 | Index | Status rows (`STATION_DISPLAY_INDEX`) |
-| `listings` · `classify` · `linkage` · `inventory` · `units` · `photos` · `ticket` · `tracking` · `timeline` · `support` · `checklist` | Operator tools + cockpit targets |
+| `listings` · `classify` · `linkage` · `inventory` · `units` · `prebox` · `photos` · `ticket` · `tracking` · `timeline` · `support` · `checklist` | Operator tools + cockpit targets |
 
-**Leaf verb grammar:** armed rows + URL drills (`?photoAction=` / `?linkageAction=` /
-`?unitsAction=`) — never a nested parent `TabDisplay` for leaf actions. Photos golden:
+**Leaf verb grammar:** armed rows + local nest drills (`setDisplay(tab, { photoAction | linkageAction })`) — never a nested parent `TabDisplay` for leaf actions. Prebox is an Assets peer leaf (not a Units nest). Photos golden:
 `PhotosActionsArmedList`. Inventory stays secondary vertical chrome.
 
 **Cockpit behaviour** (live on Unbox): default-open / swap on `activeKey` change to
@@ -200,8 +224,12 @@ When `dockOwnsCapture`:
 1. Bottom dock owns scanner / procedure advance.
 2. PO meta chips **forward** via `onEditConditionInDock` / `onEditSerialInDock` →
    `focusStep` + select line.
-3. **Active line only** mounts progressive Condition → Serial → Photos peers for
-   mouse go-back (`ActiveLineConditionSerial` / `PoLineItemPhotoPeers`).
+3. **Every editable line** mounts `PoLineCaptureRow` via `PoLineUnitCaptureList`
+   (`ActiveLineConditionSerial`) — rest condition + Serial/Photos; Serial expands
+   in-row (`ConditionGradeCircle` Tags square + `SerialScanField`); Photos expands
+   in-row (`ItemPhotoCaptureStrip` / dock Link \| Upload \| Send). Applies to
+   **found and lined unfound** (`dockOwnsCapture`); empty stub hides Photos until
+   a line exists. List body mount/update **snaps** (`animateLayout={false}`).
 4. `autoFocusSerial` off so the wedge stays dock-owned.
 5. Dock + row share controller writes — no third path.
 
@@ -242,6 +270,6 @@ When `dockOwnsCapture`:
 
 - Do now: keep dogfood tuning of `UNBOX_STEP_RAIL_LEAF` at the bench (map is tunable; either-or is not).
 - Port next (one station at a time): see [`station-port-from-unbox.md`](station-port-from-unbox.md).
-- Deferred: multi-qty true per-unit trio loop (Phase 3); centre ProcedureDeck retirement on any remaining `unbox-work` lane remount.
+- Deferred: centre ProcedureDeck retirement on any remaining `unbox-work` lane remount.
 
 Indexed by [`../contextual-display.md`](../contextual-display.md)

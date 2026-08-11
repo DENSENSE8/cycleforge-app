@@ -40,14 +40,6 @@ import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
 import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-// Dependency-free vocabulary module (no React, no imports) — safe at this altitude.
-import {
-  parseUnboxDisplayNav,
-  parseUnboxLinkageActionWire,
-  parseUnboxPhotoActionWire,
-  parseUnboxTicketActionWire,
-  parseUnboxUnitsActionWire,
-} from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
 import {
   defineRouteParams,
   paramDateKey,
@@ -95,13 +87,6 @@ const historySortParam = () =>
   );
 
 /**
- * `?display=` — round-tripped via {@link parseUnboxDisplayNav} (Root Index
- * `index` + leaves; legacy `pairing` / `po-note` → `linkage`). Never a
- * hand-copied enum.
- */
-const unboxDisplayParam = () => paramRoundTrip((raw) => parseUnboxDisplayNav(raw));
-
-/**
  * `?unboxview=` — round-tripped via {@link parseUnboxViewWire}. Queue omits the
  * param; History / Inbound / Recent (`viewed`) / All / urgent-migration write
  * explicit wires. A hand-copied enum here drifted when History got its own wire
@@ -122,38 +107,6 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * — see `utils/unbox-workspace-state.ts`. Never a hand-copied enum.
      */
     unboxview: unboxViewParam(),
-    /**
-     * Compat — rewritten to `display=ticket` by useUnboxDisplayView. Kept so
-     * surface hygiene does not strip mid-redirect.
-     */
-    ticketView: paramFlag,
-    /** Compat — rewritten to `display=ticket&ticketAction=claim`. */
-    claimView: paramFlag,
-    /** Claim wizard mode when Ticket → Claim — omit / create = New; link = Link. */
-    claimMode: paramEnum(['create', 'link'] as const),
-    /**
-     * Unbox Displays push column — which side display is open. Absence IS
-     * closed (no separate flag). Ticket nests Chat · Claim; Photos tools nest
-     * under Photos. NOT `unboxview` (queue/viewed BROWSE tab on this route).
-     */
-    display: unboxDisplayParam(),
-    /**
-     * Nested Photos topic action when `display=photos`. Round-trip the SoT wire
-     * (`actions|move|send|compare` + legacy `browse`) — a hand-copied enum
-     * stripped `compare` and bounced Compare → Actions.
-     */
-    photoAction: paramRoundTrip(parseUnboxPhotoActionWire),
-    /** Nested Linkage topic action when `display=linkage`. */
-    linkageAction: paramRoundTrip(parseUnboxLinkageActionWire),
-    /**
-     * Legacy — Inventory no longer nests Items·Notes·Activity. Cleared on
-     * Displays open; kept so stale deep links do not 404 the param registry.
-     */
-    inventoryAction: paramEnum(['items', 'notes', 'activity'] as const),
-    /** Nested Ticket topic action when `display=ticket`. */
-    ticketAction: paramRoundTrip(parseUnboxTicketActionWire),
-    /** Nested Units topic action when `display=units`. */
-    unitsAction: paramRoundTrip(parseUnboxUnitsActionWire),
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */

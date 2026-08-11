@@ -1,3 +1,23 @@
+## Progress log — 2026-08-10 (Unbox Phase 1 — kill skeleton-as-LCP)
+
+**Phase 1 shipped (verified corrections to Gemini D9):**
+
+- `UnboxBrowseFirstPaint` empty seed → hard text
+  (`Queue empty — scan Ticket · Tracking · PO`) — **no** `animate-pulse` bars.
+- `UnboxWorkbenchSkeleton` flush (`cornerClass('flush')` / `!rounded-none`);
+  stripped `rounded-lg` / `rounded-full` / `shadow-sm`; table skeleton pad gone.
+- `UnboxWorkspaceView` **static** import of `ReceivingLinesTable` (dropped
+  `dynamic` + `UnboxTableCardSkeleton` loading flash). RightPane already
+  static-imported the same module — Gemini’s “dual dynamic” claim was stale.
+- **Kept** `UnboxBrowseShell` `opacity-0` handoff (To-ship
+  `OutboundOrdersDeskShell` parity) — deleting it while children can paint a
+  skeleton body would cover FirstPaint and worsen LCP.
+- Guard: `unbox-browse-first-paint.guard.test.ts`. SoT Paint: skeletons are
+  geometry, not LCP. **Do not** ratchet `lighthouse-baseline.json` until a
+  measured win.
+
+---
+
 ## Progress log — 2026-08-06 (paint content order + To-ship / Unbox seeds)
 
 **SoT law shipped:** P0 shell → P1 primary → P2 context → P3 trailing in
@@ -10,10 +30,17 @@
 stand-in. Dropped `ssr: false` on `DashboardShippedTable`. Filter URL writes
 use `startTransition`; Unshipped search uses `useDeferredValue`.
 
-**Unbox / Arrival:** RSC `seedUnboxSpine` dehydrates History spine into the
-same key `useReceivingLinesQuery` mounts with. Displays P3 bodies
-(Ticket / Photos / Timeline / Support) are `dynamic()` in `unbox-tabs` and
-Testing `build-testing-displays`.
+**Unbox / Arrival:** RSC `seedUnboxQueue` dehydrates **Queue** spine (bare
+`/unbox` default tab) into the same key `useReceivingLinesQuery` mounts with,
+and streams `UnboxBrowseFirstPaint` as the LCP stand-in (To-ship
+`OrdersQueueFirstPaint` dual-mount: page `sr-only` + `UnboxBrowseShell`
+opacity handoff). Arrival still warms History via `seedUnboxSpine`. Displays
+P3 bodies (Ticket / Photos / Timeline / Support) are `dynamic()` in
+`unbox-tabs` and Testing `build-testing-displays`.
+
+**Progress — 2026-08-10 (Unbox SSR row stand-in):** Seed retargeted History →
+Queue; `{ state, rows }` + `UnboxBrowseFirstPaint` + `UnboxBrowseShell`. Measure
+`/unbox` with the workflow below before ratcheting `lighthouse-baseline.json`.
 
 **Search:** `GlobalHeaderSearch` + `SearchBrowseShell` are LCP (marks
 `search:chrome` / `search:primary`). No locked-width stage field.

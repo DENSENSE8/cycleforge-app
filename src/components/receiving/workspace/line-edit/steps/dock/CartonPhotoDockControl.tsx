@@ -7,14 +7,14 @@
  * Band 1 right strip (left waist is {@link UnboxDockScanEntry}):
  *   [ Link a photo | Upload photos | Send to phone ]
  *
- * Link opens {@link CartonPhotoPairPanel} (`unbox_carton` + step aspect).
- * Upload / phone stamp the same stage + aspect via the photo-scope SoT.
+ * Link opens the Photos Displays → Link rail leaf with this step's aspect
+ * preselected (never a dock popover). Upload / phone stamp the same stage +
+ * aspect via the photo-scope SoT.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import { Popover } from '@/design-system/primitives';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
@@ -29,7 +29,6 @@ import {
 } from '@/lib/realtime/receiving-photo-request';
 import { photoAspectLabel } from '@/lib/photos/photo-aspects';
 import { toast } from '@/lib/toast';
-import { CartonPhotoPairPanel } from '../CartonPhotoPairPanel';
 import { PhotoStepDockStrip } from './PhotoStepDockStrip';
 import type { UnboxStepDockContext } from './types';
 
@@ -51,8 +50,6 @@ export function CartonPhotoDockControl({
   const phone = useSendToDevice('receiving_photo');
   useSendToDeviceToast(phone.state, phone.retry);
   const [uploading, setUploading] = useState(false);
-  const [pairOpen, setPairOpen] = useState(false);
-  const linkRef = useRef<HTMLButtonElement>(null);
   const staffNum = Number(staffId) || 0;
   const ackChannelName = getReceivingPhotoRequestChannelName(orgId, staffNum);
 
@@ -132,54 +129,38 @@ export function CartonPhotoDockControl({
     staffNum,
   ]);
 
+  const openLinkLeaf = useCallback(() => {
+    if (aspect) {
+      emitReceiving('receiving-open-photo-link', { cartonAspect: aspect });
+    } else {
+      emitReceiving('receiving-open-photo-link', {});
+    }
+  }, [aspect]);
+
   return (
-    <>
-      <PhotoStepDockStrip
-        hostMarker="data-unbox-carton-photo-dock"
-        rootProps={dz.rootProps}
-        link={{
-          onClick: () => setPairOpen((v) => !v),
-          ariaLabel: aspect
-            ? `Link an existing photo of the ${photoAspectLabel(aspect).toLowerCase()}`
-            : 'Link an existing carton photo',
-          label: 'Link a photo',
-          buttonRef: linkRef,
-          buttonProps: { 'aria-expanded': pairOpen },
-        }}
-        upload={{
-          onClick: () => dz.openPicker(),
-          disabled: !target || uploading,
-          ariaLabel: uploading ? 'Uploading carton photos' : 'Upload carton photos',
-          label: uploading ? 'Uploading…' : 'Upload photos',
-        }}
-        phone={{
-          onClick: () => void sendToPhone(),
-          disabled: phone.pending || !receivingId,
-          ariaLabel: phone.pending ? 'Sending to phone…' : 'Send to phone',
-          label: phone.pending ? 'Sending…' : 'Send to phone',
-        }}
-        fileInput={target ? <input ref={dz.inputRef} {...dz.inputProps} /> : null}
-      />
-      <Popover
-        open={pairOpen}
-        onClose={() => {
-          setPairOpen(false);
-          handFocusBack();
-        }}
-        anchorRef={linkRef}
-        placement="top-end"
-        className="w-[22rem] max-w-[90vw]"
-      >
-        <CartonPhotoPairPanel
-          receivingId={receivingId}
-          aspect={aspect ?? null}
-          stage="unbox_carton"
-          onPaired={() => {
-            setPairOpen(false);
-            handFocusBack();
-          }}
-        />
-      </Popover>
-    </>
+    <PhotoStepDockStrip
+      hostMarker="data-unbox-carton-photo-dock"
+      rootProps={dz.rootProps}
+      link={{
+        onClick: openLinkLeaf,
+        ariaLabel: aspect
+          ? `Link an existing photo of the ${photoAspectLabel(aspect).toLowerCase()}`
+          : 'Link an existing carton photo',
+        label: 'Link a photo',
+      }}
+      upload={{
+        onClick: () => dz.openPicker(),
+        disabled: !target || uploading,
+        ariaLabel: uploading ? 'Uploading carton photos' : 'Upload carton photos',
+        label: uploading ? 'Uploading…' : 'Upload photos',
+      }}
+      phone={{
+        onClick: () => void sendToPhone(),
+        disabled: phone.pending || !receivingId,
+        ariaLabel: phone.pending ? 'Sending to phone…' : 'Send to phone',
+        label: phone.pending ? 'Sending…' : 'Send to phone',
+      }}
+      fileInput={target ? <input ref={dz.inputRef} {...dz.inputProps} /> : null}
+    />
   );
 }

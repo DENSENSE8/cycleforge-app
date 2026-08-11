@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { cn } from '@/utils/_cn';
 import { ProductSelector, type ProductSelection, type SelectedItem } from '@/components/repair/ProductSelector';
 import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
 import {
@@ -19,13 +18,17 @@ function catalogBasePath(mode: KioskServiceId): string {
   return mode === 'sales' ? '/api/kiosk/sales' : '/api/kiosk/repair';
 }
 
+type CatalogPhase = 'browse' | 'checkout';
+
 export function KioskShell() {
   const liveModes = useMemo(() => KIOSK_SERVICES.filter((s) => s.status === 'live'), []);
   const [activeMode, setActiveMode] = useState<KioskServiceId>(
     () => liveModes[0]?.id ?? 'repair',
   );
-  /** Default expanded — counter clarity on landscape iPad; snap collapse frees Catalog width. */
-  const [spineExpanded, setSpineExpanded] = useState(true);
+  /** Default closed (off-screen) — Catalog owns the floor; open via header toggle. */
+  const [spineExpanded, setSpineExpanded] = useState(false);
+  /** Browse = products stage; checkout = repair/sales detail in the same right slot. */
+  const [catalogPhase, setCatalogPhase] = useState<CatalogPhase>('browse');
 
   const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
@@ -35,6 +38,7 @@ export function KioskShell() {
     setSelectedProduct(null);
     setSelectedItems([]);
     setServicePrice('');
+    setCatalogPhase('browse');
   }, []);
 
   const handleModeSwitch = (mode: KioskServiceId) => {
@@ -56,6 +60,31 @@ export function KioskShell() {
     <KioskSpineToggle expanded={spineExpanded} onExpandedChange={setSpineExpanded} />
   );
 
+  const checkoutStage =
+    activeMode === 'repair' ? (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <KioskRepairPane
+          selectedProduct={selectedProduct}
+          price={servicePrice}
+          onReset={resetState}
+        />
+      </div>
+    ) : activeMode === 'sales' ? (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className={KIOSK_PANE_HEADER_BAND}>
+          <h2 className={KIOSK_PANE_HEADER_TITLE}>Buy / Sell Details</h2>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+          <KioskCounterPane
+            selectedItems={selectedItems}
+            selectedProduct={selectedProduct}
+            servicePrice={servicePrice}
+            onReset={resetState}
+          />
+        </div>
+      </div>
+    ) : null;
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-surface-canvas text-text-default">
       <KioskModeSpine
@@ -64,71 +93,50 @@ export function KioskShell() {
         onModeSwitch={handleModeSwitch}
       />
 
-      {/* Landscape: catalog | detail. Portrait: stacked catalog band above detail. */}
+      {/* Landscape: category sidebar | browse/checkout stage. Portrait: stacked. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
-        {showCatalog && (
-          <div
-            className={cn(
-              'flex min-h-0 flex-col border-border-soft bg-surface-card',
-              // Portrait: horizontal band (top). Landscape: left rail.
-              'max-h-[40vh] w-full border-b md:max-h-none md:w-1/3 md:min-w-80 md:max-w-md md:border-b-0 md:border-r',
-            )}
-          >
+        {showCatalog ? (
+          <ProductSelector
+            key={activeMode}
+            apiBasePath={catalogBasePath(activeMode)}
+            appearance="flush"
+            layout="kiosk-split"
+            hideManualEntry
+            flowInPage
+            catalogPhase={catalogPhase}
+            onContinue={() => setCatalogPhase('checkout')}
+            onAddAnotherItem={() => setCatalogPhase('browse')}
+            selectedProduct={selectedProduct}
+            onSelect={setSelectedProduct}
+            selectedItems={selectedItems}
+            onSelectedItemsChange={setSelectedItems}
+            onPriceChange={setServicePrice}
+            sidebarHeader={
+              <div className={KIOSK_PANE_HEADER_BAND}>
+                {spineToggle}
+                <h2 className={KIOSK_PANE_HEADER_TITLE}>
+                  {activeMode === 'sales' ? 'Categories' : 'Catalog'}
+                </h2>
+              </div>
+            }
+            browseHeader={
+              <div className={KIOSK_PANE_HEADER_BAND}>
+                <h2 className={KIOSK_PANE_HEADER_TITLE}>Products</h2>
+              </div>
+            }
+            stageContent={checkoutStage}
+          />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
             <div className={KIOSK_PANE_HEADER_BAND}>
               {spineToggle}
-              <h2 className={KIOSK_PANE_HEADER_TITLE}>
-                {activeMode === 'sales' ? 'Products' : 'Catalog'}
-              </h2>
+              <h2 className={KIOSK_PANE_HEADER_TITLE}>{activeMode} Details</h2>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-0">
-              <ProductSelector
-                key={activeMode}
-                apiBasePath={catalogBasePath(activeMode)}
-                appearance="flush"
-                hideManualEntry
-                flowInPage
-                selectedProduct={selectedProduct}
-                onSelect={setSelectedProduct}
-                selectedItems={selectedItems}
-                onSelectedItemsChange={setSelectedItems}
-                onPriceChange={setServicePrice}
-              />
+            <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+              <KioskPickupPane onReset={resetState} />
             </div>
           </div>
         )}
-
-        <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
-          {/* Repair owns its detail header (paperwork toggle). Sales/pickup use shell title. */}
-          {activeMode !== 'repair' && (
-            <div className={KIOSK_PANE_HEADER_BAND}>
-              {!showCatalog ? spineToggle : null}
-              <h2 className={KIOSK_PANE_HEADER_TITLE}>
-                {activeMode === 'sales' ? 'Buy / Sell' : activeMode} Details
-              </h2>
-            </div>
-          )}
-          {activeMode === 'repair' ? (
-            <div className="min-h-0 flex-1">
-              <KioskRepairPane
-                selectedProduct={selectedProduct}
-                price={servicePrice}
-                onReset={resetState}
-              />
-            </div>
-          ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
-              {activeMode === 'sales' && (
-                <KioskCounterPane
-                  selectedItems={selectedItems}
-                  selectedProduct={selectedProduct}
-                  servicePrice={servicePrice}
-                  onReset={resetState}
-                />
-              )}
-              {activeMode === 'pickup' && <KioskPickupPane onReset={resetState} />}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

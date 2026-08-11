@@ -28,6 +28,7 @@ import {
   isCustomFieldColumnKey,
   type CustomFieldColumnKey,
 } from '@/lib/tables/custom-field-keys';
+import { SHARED_LINE_TRACK_META } from '@/lib/receiving/shared-line-tracks';
 
 export type ReceivingGridColumnKey =
   | 'select'
@@ -103,9 +104,7 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   {
     key: 'order',
     width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Order',
-    type: 'id',
-    align: 'start',
+    ...SHARED_LINE_TRACK_META.order,
     frozen: true,
     resizable: false,
     labelFitRem: 4.5,
@@ -117,10 +116,8 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   {
     key: 'title',
     width: 'minmax(16rem, 16rem)',
-    label: 'Product Title',
+    ...SHARED_LINE_TRACK_META.title,
     gridLabel: 'Product',
-    type: 'text',
-    align: 'start',
     resizable: true,
     minTrackRem: 8,
     labelFitRem: 8,
@@ -128,7 +125,7 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   // The row's lifecycle STATE — dot · stage name (`ReceivingStatusCell`).
   // Drag-resizable (2026-08-06): content-hard 6rem floor, widened via
   // `--cf-col-status` for long stage names.
-  { key: 'status', width: 'minmax(6rem, 6rem)', label: 'Status', type: 'tag', align: 'start', hideKey: 'status', resizable: true, labelFitRem: 4.5 },
+  { key: 'status', width: 'minmax(6rem, 6rem)', ...SHARED_LINE_TRACK_META.status, hideKey: 'status', resizable: true, labelFitRem: 4.5 },
   // WHEN it reached that stage — civil day floor (`MIN_TRACK_REM_BY_DATE_FACE.day`).
   // Full day + time stays on the cell tooltip. Scrolls with facts (not identity).
   // Sits AFTER Product/Status so the day stamp is not jammed against the title.
@@ -144,11 +141,11 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     labelFitRem: 4.5,
   },
   // Qty — magnitude → end + tabular-nums.
-  { key: 'qty', width: 'minmax(4.5rem, 4.5rem)', label: 'Qty', type: 'number', align: 'end', hideKey: 'qty', resizable: false, labelFitRem: 3.5 },
+  { key: 'qty', width: 'minmax(4.5rem, 4.5rem)', ...SHARED_LINE_TRACK_META.qty, hideKey: 'qty', resizable: false, labelFitRem: 3.5 },
   // Zoho PO line unit cost — magnitude → end. Header owns the Receipt glyph;
   // dense Sheets face keeps the cell mark omitted (`omitCellIcon`).
   { key: 'price', width: 'minmax(5.5rem, 5.5rem)', label: 'Price', type: 'price', align: 'end', omitCellIcon: true, hideKey: 'price', resizable: false, labelFitRem: 4.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', align: 'start', hideKey: 'condition', tier: 'optional', resizable: false, labelFitRem: 4.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.condition, hideKey: 'condition', tier: 'optional', resizable: false, labelFitRem: 4.5 },
   {
     key: 'location',
     width: 'minmax(6.5rem, 6.5rem)',
@@ -164,16 +161,14 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   {
     key: 'tracking',
     width: 'minmax(8rem, 8rem)',
-    label: 'Tracking',
-    type: 'tracking',
-    align: 'start',
+    ...SHARED_LINE_TRACK_META.tracking,
     omitCellIcon: true,
     hideKey: 'tracking',
     resizable: false,
     labelFitRem: 4.5,
   },
   { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', align: 'start', hideKey: 'serial', tier: 'optional', resizable: false, labelFitRem: 4.5 },
-  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', label: 'Vendor', type: 'tag', align: 'start', hideKey: 'zoho', tier: 'optional', resizable: false, labelFitRem: 4.5 },
+  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.zoho, hideKey: 'zoho', tier: 'optional', resizable: false, labelFitRem: 4.5 },
   // Trailing filler — geometry only. Absorbs zoom-out / wide-card slack so fact
   // tracks stay content-hard. No label, type, hideKey, or tier: never in Column
   // display; Column discovery stays triage ▦ / header menus.

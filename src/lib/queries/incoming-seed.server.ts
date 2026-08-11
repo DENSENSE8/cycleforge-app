@@ -3,7 +3,8 @@
  * `useReceivingLinesQuery` mounts with on bare `/incoming`, so the Inbound grid
  * paints rows on the first HTML frame instead of hydrating → firing one
  * client-side fetch → skeleton (the "feels broken" symptom). Mirrors
- * `seedUnboxSpine`; Incoming has no spine phase, so it seeds `full` directly.
+ * `seedUnboxQueue` / `seedUnboxSpine`; Incoming has no spine phase, so it seeds
+ * `full` directly.
  *
  * Bare `/incoming` shares the default receiving context object (all mode-specific
  * facets null/empty). A tenant that lands with filter params in the URL just

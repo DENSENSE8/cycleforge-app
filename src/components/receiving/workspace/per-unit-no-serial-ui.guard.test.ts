@@ -144,6 +144,7 @@ test("Joined / flush unit trailing actions stay square (no soft NoSerialOfferChe
 
 test("Unit floor serial CTA is emerald + neutral focus (no blue glow)", () => {
   const SERIAL = code(sourceOf("./SerialCard.tsx"));
+  const FIELD = code(sourceOf("./SerialScanField.tsx"));
   assert.match(UNIT_SLOTS, /tone=["']neutral["']/);
   assert.match(UNIT_SLOTS, /focus-visible:ring-border-strong\/20/);
   assert.match(UNIT_SLOTS, /bg-emerald-600/);
@@ -152,7 +153,8 @@ test("Unit floor serial CTA is emerald + neutral focus (no blue glow)", () => {
     /bg-blue-600/,
     "multi-qty add serial must match SerialCard emerald submit",
   );
-  assert.match(SERIAL, /tone=\{embedded \? ['"]neutral['"] : ['"]blue['"]\}/);
+  assert.match(FIELD, /tone=\{embedded \? ['"]neutral['"] : ['"]blue['"]\}/);
   assert.match(SERIAL, /divide-x divide-border-soft/);
   assert.match(SERIAL, /border-y border-border-hairline/);
+  assert.match(SERIAL, /<SerialScanField/);
 });

@@ -212,7 +212,7 @@ Band-1 strip**. Cohort bullets below are exemplars under this law.
 - **Unbox Band 3 = the LEAN row, every sheet tab (2026-08-08; Refine funnel 2026-08-05).** Dominant `TechRailSearchBar` (`flex-1`) with in-field `WorkbenchFilterPopover density="field"` **Refine** funnel — top labeled facet tabs (`HISTORY_REFINE_FACETS`: Staff · Source · Field · Week) showing **one** option body at a time; query facets wire `staff` · `rh_scope` · `rh_field` · `weekOffset` — **no** Band 3 refine icon cluster. Sheet **layout** chrome (paint · Drill|List · compare · zoom · ▦) lives on the `detail:history` inspector **View** topic cluster (`history-inspector-topics.ts` + `HistoryCartonTriagePanel`), reachable from **every** sheet tab since 2026-08-08 — on the non-History tabs the cluster is always `viewOnly`, so it renders compare · zoom · ▦ only (paint + Drill need a picked carton). **KPI collapse is NOT in that cluster** — it is the Band 3 `kpiToggle`, one door, because Band 3 is on screen while the inspector is parked. Far-right **inspector toggle** (`trailing`) parks/reopens via `DETAIL_STACK_COLLAPSE` and opens a View-only shell when no row is selected — which is now the only path to compare/zoom/▦, so it is `enabled` on every sheet tab (gating it to History would strand an operator in `?clayout=split` with no way back to one pane). Four amendments are load-bearing: the View cluster publishes a **null** ▦ portal target while hidden or parked (else ▦ vanishes into an inert node — and there is no fallback behind it; parked simply means no ▦ until the operator unparks from Band 3); the ⌘+/⌘-/⌘0 zoom chords live in `HistoryViewChromeProvider`, not in `UnboxCompareChrome` (which now unmounts with the rail); the View-only shell must **not** feed `ReceivingLineRailShell.inspectOpen` (it owns no row selection, so it would silently kill multi-select print / claim / copy); and it clears on `receiving-workspace-open` / `receiving-select-line`, or it sits beside `LineEditPanel` as a banned second right column. Operator copy: **Show / Hide inspector** — **not** Station pane **Open displays** (`StationDisplaysEdgeToggle` opens the Displays column on `LineEditPanel`). The inspector is **`HistoryCartonTriagePanel`** (RightRailHost push) — **not** Band 3, **not** Arrival `TriagePanel`, and **not** Station Displays. Wedge find writes the same `?rh_q=` bag (`classifyHistoryCommandScan`). Law: source-of-truth.md → Displays vs inspector. Guard: `receiving-grid-sheet.guard.test.ts` + `history-carton-triage.guard.test.ts` + `workbench-kpi-collapse.guard.test.ts`.
 - **Why this doesn't reopen the "never stack two sticky bands" hazard:** bands are fixed siblings in one non-scrolling chrome slot, not independently sticky layers that must infer each other's height. The grid column header shares `PRIMARY_CHROME_ROW_FACE` with bands 1 and 3.
 - **Three-band shape** — History query facets (staff · scope · field · week) stay in-field on Band 3 find; View cluster owns layout chrome only. Never invent an Unbox-only triage-band twin. Do not invent twins for surfaces that already park search/filters on Band 1 — except when matching the flush Sheets recipe.
-- **Incoming three-band flush (2026-08-04; find-only 2026-08-08; Band-3 Views 2026-08-09).** `/incoming` (`IncomingWorkspaceHeader`): Band 1 **fixed** Pipeline|Docked + labeled Check/Import/Add (no Pin-list — L1 desk owns the collection; Unbox embeds triage-only via system Inbound) · Band 2 `IncomingKpiStrip` · Band 3 `WorkbenchTriageBand` — **flex-1 find** with source + attention/date refine **in-field** · **Views** (Bookmark) on POS only; right = icon pagination · icon sort · ▦ · KPI; far-right **Show / Hide inspector**. `IncomingDetailsPanel` dropped `edgeCollapse={false}` and took `collapsedStrip={false}` in the same change (To-ship twin): Band 3 owns park / reopen, the header `→|` still closes. KPI owns `border-b`; triage `border-r` only. Column headers icon-only (`headerGlyphOnly`). Click-select on Pipeline. Guard: `incoming-grid-sheet.guard.test.ts`.
+- **Incoming chrome (2026-08-04; find-only 2026-08-08; Band-3 Views 2026-08-09; rail-less 2026-08-10; Band-1 POS|Email 2026-08-10).** `/incoming` (`IncomingWorkspaceHeader`): Band 1 **Incoming POS | Email Triage** + labeled Check/Import/Add (no Pipeline|Docked parent · no Pin-list · no Recently removed · no KPI Band 2) · Band 3 `WorkbenchTriageBand` — **flex-1 find** with source + attention/date refine **in-field** · **Views** (Bookmark) on POS only; right = icon pagination · icon sort · ▦; far-right **Show / Hide inspector**. No left context column (Pattern E). Docked (`?lane=docked`) keeps Arrival|Unbox on Band-1 for legacy redirects. Guard: `incoming-grid-sheet.guard.test.ts` · `regional-sidebar-split.guard.test.ts`.
 - **To-ship three-band flush (2026-08-04; find-only Band 3 + View topics 2026-08-05; Band-3 Views 2026-08-09).** `/shipping/orders` (`DashboardOrdersView`): Band 1 **fixed lifecycle tabs** + Import/Add only (no Views, no Pin-list — honest absence of a foreign-collection catalog) · Band 2 `OutboundKpiStrip` · Band 3 `OutboundTriageBand` (`WorkbenchTriageBand` — **flex-1 find** · **Views** (Bookmark) · far-right **Show / Hide inspector**; **no** Band 3 refine icon cluster). Sheet layout / refine (paint · List|Drill · compare · filters · icon Priority · staff · ▦ · KPI collapse) lives on the pushing right inspector **View** topic cluster (`OrdersViewTopicsCluster` via `orders-view-chrome-context` bridge) — mounted on `detail:order` / `detail:order-compare` / `detail:order-batch` and View-only `detail:orders-view` when no row is selected. Inspector park: `edgeCollapse` + `collapsedStrip={false}` (Band 3 owns reopen). **▦ is portal-only** — house-wide since 2026-08-08, so the `columnTriggerPortalOnly` opt-out prop no longer exists; no View host means no ▦. Tab band: `rounded-none border-l-0 border-t-0`. KPI: `border-b border-r`. Triage: `border-r` only (sheet owns `border-t`). **Sheets click-select** when `railSelection`: row click toggles bulk, double-click opens; select track keeps the painted `'always'` checkbox gutter (header select-all + every leftmost row cell via `GridRowCheckbox`). Condition on Product is a dot-led `GridStatusCellValue` chip (not bare caption text). Body may be list, `OrdersDrillHost` (`olayout=drill`), or `OrdersCompareHost` (`clayout=split|quad`) — mutually exclusive. Guards: `dashboard-orders-sheet.guard.test.ts`.
 - **Testing three-band flush (2026-08-04).** `/test` (`TestingWorkspaceView`): Band 1 **fixed** Urgent|Returns|Pending|All|History (no Pin-list until a closed catalog ships) · Band 2 `WorkbenchKpiBand` → `TestingKpiStrip` · Band 3 `TestingTriageBand` (`WorkbenchTriageBand` + `WorkbenchKpiCollapseToggle` — search left; right = staff · icon Priority · controls portal). All → `TechAllTriageTable` (typed triage). No `WorkbenchTablePane`. Guard: `testing-workspace-sheet.guard.test.ts`.
 - **Pack three-band flush (2026-08-04).** `/pack` (`PackWorkspaceView`): Band 1 **fixed** Queue|History + New Order · Band 2 `WorkbenchKpiBand` → `PackKpiStrip` · Band 3 `PackTriageBand` (`WorkbenchTriageBand` + KPI collapse — search/filters on Queue; staff on History · controls portal). Guard: `pack-workspace-sheet.guard.test.ts`.
@@ -231,17 +231,17 @@ Band-1 strip**. Cohort bullets below are exemplars under this law.
 **Trailing Display & Actions (`WorkbenchTrailingCluster`).** Display sort (`QueueSortSwitch`) lives in the **pinned page chrome trailing cluster** on most workbenches — not an in-card Sheets-like action bar (that would stack a second sticky band — forbidden above) and not GlobalHeader. **Incoming exception:** icon-only sort + pagination live on Band 3 triage; Band 1 trailing is solid CTAs only. **To-ship exception (Unbox History twin):** icon Priority + sheet refine live on the right inspector **View** cluster — Band 1 trailing is solid CTAs only (Import/Add); Band 3 is find + inspector park only. Compose `WorkbenchTrailingCluster` as `WorkbenchChromeHeader`’s `trailing` prop with honest absence: **Sort → actions** (`before` / `after` escapes for pagination / refresh only); a surface with neither passes no `trailing` at all. `actions` holds solid CTAs — Import / Add on desk queues, and on **hybrid scan stations** the mandatory **return-to-scan** primary (every strip tab, top-right of the pinned chrome — same row as or above any KPI display, never below it — [`workbench.md`](workbench.md) → Multi-region). Filters / refine stay in `right` on Band 1 **or** Band 3 triage when the surface uses the three-band Sheets recipe (query ≠ display) — **except** Unbox History + To-ship, where refine lives on the inspector View cluster. Leading hairline only when `actions` are present. Solid CTAs (and the Unbox History week calendar beside that hairline) use `WORKBENCH_CHROME_PILL_CLASS` — the band History tab radius on **all** sides (`… quiet rail [Calendar]|[CTA] …`); never square-flat against the hairline. Law: `source-of-truth.md` → Workbench chrome pill. Multi-select triage stays on `ContextualSelectionBar` (bottom) — never morph the top bar. Guard: `workbench-trailing-cluster.guard.test.ts`.
 
 **Band-1 controls under ONE topic are TABS in one cube, never a row of separated
-icons** (ruled 2026-08-09, from an operator report against a band this repo had
-just shipped).
+icons** (ruled 2026-08-09; Unbox/Arrival Check · Add restored as labeled CTAs
+2026-08-10).
 
 ```text
-BANNED                          REQUIRED
-[⇩] [☑] [+] [ UNBOX ]           [ UNBOX ] [+]
- three cells, no words           resume, then one Plus cell → Add · Check · Export
+BANNED                          REQUIRED (Unbox / Arrival)
+[⇩] [☑] [+] [ UNBOX ]           [ Check ] [ UNBOX ] [ Add ]
+ three icon cells, no words      labeled peer CTAs (Export honest on History)
 [+] [ UNBOX ]   (cube left of resume)
 ```
 
-- **Why it is not taste.** Three glyphs is three things to parse before an
+- **Why it is not taste.** Three *icon* glyphs is three things to parse before an
   operator finds the one they want, at a bench, at distance, with no labels —
   and it spends three cells of the row whose width the *tab rail* yields first
   when Band 1 overflows. Tabs inside one cube cost one cell and say the verbs in
@@ -255,25 +255,31 @@ BANNED                          REQUIRED
   BOTH, and a hand-set `h-8` overflows the `h-7` row.
 - **A multi-verb cube composes `WorkbenchChromeCubeMenu`** — one trigger, one
   panel, a tab per verb, everyday verb first. Never a second tabbed-popover
-  implementation.
+  implementation. Default trigger is the quiet cube; pass `labeledTrigger` when
+  the face must be an Unbox-style solid peer (To-ship Import). Repair and other
+  icon-only utilities stay on the cube path.
 - **Separate cells are for separate TOPICS.** The leading Pin-list (which list
-  is on this strip) is not the trailing data cube (this table's rows), so it
-  keeps its own cell. Two cubes on a band is a claim that the row has two topics
-  — be able to say what they are.
-- **The return-to-scan CTA is the standing exception** and stays a solid
-  `Button`: a scan station must expose a visible way back to the bench
-  (`AGENTS.md` → return-to-scan; [`workbench.md`](workbench.md) → Multi-region
-  pages), and it is the only control on the row that is not a utility. When both
-  resume and a Plus data cube exist, order is **`[ RESUME ] [+]`** — Plus is
-  always the far-right utility cell (honest absence: Plus alone stays far-right).
+  is on this strip) is not the trailing data control (this table's rows), so it
+  keeps its own cell. On Unbox / Arrival, **Check · resume · Add** are labeled
+  peer CTAs (Add = Plus icon + **"Add"** text — a global intake CTA, never an
+  icon-only Plus cube). On To-ship / Labels / Shipping / Pack,
+  **Import · Add** are labeled peer CTAs — Import hosts CSV · channel sync ·
+  Backfill as tabs; Add opens manual new-order directly. **Export** is
+  browse-only (History) and mounts as a labeled peer after Add when earned.
+- **The return-to-scan CTA stays a solid `Button`:** a scan station must expose
+  a visible way back to the bench (`AGENTS.md` → return-to-scan;
+  [`workbench.md`](workbench.md) → Multi-region pages). Trailing order is
+  **`[ Check ] [ RESUME ] [ Add ]`** (+ Export when earned) on box stations;
+  outbound desks use **`[ Import ] [ Add ]`**.
 - **Never** re-colour utilities to tell them apart (`bg-emerald-600` Add beside
   `bg-slate-700` Check beside a blue Import was the shape this replaced) — hue
-  is not a substitute for a word.
+  is not a substitute for a word; use the DS Button variants.
 
-Goldens: To-ship `OrdersSyncPopover` (Import · Add · Backfill) · Unbox / Arrival
-`ReceivingBoxChromeActions` (Add · Check · Export). Guard:
-`workbench-chrome-cube.guard.test.ts` pins both halves — one cube per topic,
-resume still solid, and Plus after resume (`[ RESUME ] [+]`).
+Goldens: To-ship `OutboundOrderChromeActions` (labeled Import · Add) · Unbox /
+Arrival `ReceivingBoxChromeActions` (labeled Check · Unbox|Arrival · Add).
+Guard: `workbench-chrome-cube.guard.test.ts` +
+`receiving-box-chrome-actions.guard.test.ts` +
+`csv-import-staging.guard.test.ts`.
 
 **Column display is NOT chrome — it belongs to the grid, and it reserves nothing** (ratified 2026-08-02). `WorkbenchTrailingCluster` has **no `fields` slot**, and `GridFieldsMenu` is deleted. The single operator entry is `GridColumnGutter` — mounted by `LedgerGridSurface` (`columnDetails={{ open, onOpen }}`), or hand-wrapped by a view that composes `LedgerGrid` directly (Orders) — and it opens the non-modal **pushing** `GridColumnDetailsPanel` rail (`detail:grid-column-details`, `PaneHeaderCloseButton` `→|`): visibility · any-color highlight · chip · **Reset to default** (widths included). **The `▦` trigger portals into the surface's Band-3 `WorkbenchTriageBand` controls slot (the norm, generalized 2026-08-06 — pass the slot as the grid's `columnTriggerPortalTarget`), sitting resident among the refine icons (staff / filter / week / sort);** **Unbox History + To-ship exception:** ▦ portals into the inspector **View** topics controls host instead. It hover-reveals over the card's top-right corner only as a fallback for a surface that has no Band-3 / View host.
 
@@ -373,11 +379,14 @@ LedgerGrid family.
    - **Unbox / Receiving** (order frozen as identity): keep the **word**
      `Qty` so `# Order` and bare `#` do not share one scan path (`number` and
      `id` both map to Hash).
-   - **Incoming Pipeline (2026-08-04):** every data column is
-     `headerGlyphOnly` (icon-only headers). `order` + `qty` both Hash — distinguish
-     by column position; a11y keeps “Order” / “Qty”. Band 3 triage refine
-     (filter · pagination · sort) is icon-only; Band 1 Check / Import / Add stay
-     **labeled** solid pills (Unbox CTA altitude).
+   - **Incoming (Inbound desk) — OVERTURNED 2026-08-10 (Inbound ↔ History one
+     family):** the 2026-08-04 icon-only exception is retired. Incoming follows
+     History **sentence-case** headers — no data column declares `headerGlyphOnly`;
+     shared-key grammar (label · type · align) resolves from `SHARED_LINE_TRACK_META`
+     (`src/lib/receiving/shared-line-tracks.ts`), and `gridHeaderShowsLabel` geometry
+     owns the narrow-track glyph fallback (the same rule History lives by). Band 3
+     triage refine (filter · pagination · sort) stays icon-only; Band 1 Check /
+     Import / Add stay **labeled** solid pills (Unbox CTA altitude).
    - **Not by starving `labelFitRem`** into the glyph fallback — that makes the
      intent depend on geometry, so it flips back to the word the moment someone
      widens the track or changes density.

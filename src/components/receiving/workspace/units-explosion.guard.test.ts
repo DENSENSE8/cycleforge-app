@@ -1,7 +1,8 @@
 /**
- * Source guard: Unbox Units Displays body is flush, nested Units · Prebox
- * armed rows (not a RightPaneOverlay modal). Condition pills are square-flush
- * with re-click clear (no trailing clear control).
+ * Source guard: Unbox Units Displays body is flush (not a RightPaneOverlay
+ * modal). Prebox is a peer Assets leaf (`PreboxDisplayHost`), not nested under
+ * Units. Condition pills are square-flush with re-click clear (no trailing
+ * clear control).
  *
  * Handoff: docs/todo/units-explosion-display-flush-HANDOFF.md
  *
@@ -24,33 +25,37 @@ function code(src: string): string {
 
 const TABS = code(sourceOf('./line-edit/terminal/unbox-tabs.tsx'));
 const HOST = code(sourceOf('./line-edit/UnitsDisplayHost.tsx'));
+const PREBOX_HOST = code(sourceOf('./line-edit/PreboxDisplayHost.tsx'));
 const EXPLOSION = code(sourceOf('./UnitsExplosionDisplay.tsx'));
 const PILLS = code(sourceOf('./ConditionPills.tsx'));
 const UNIT_ROWS = code(sourceOf('./ReceivingUnitRows.tsx'));
 const PREBOX = code(sourceOf('../PreboxWizard.tsx'));
 const SIDE = code(sourceOf('./line-edit/unbox-side-tabs.ts'));
 
-test('Units tab mounts UnitsDisplayHost (nested Units · Prebox)', () => {
-  const unitsBlock = TABS.match(/id:\s*'units'[\s\S]*?id:\s*'checklist'/);
-  assert.ok(unitsBlock, 'units tab block present');
+test('Units tab mounts UnitsDisplayHost; Prebox is a peer Assets leaf', () => {
+  const unitsBlock = TABS.match(/id:\s*'units'[\s\S]*?id:\s*'prebox'/);
+  assert.ok(unitsBlock, 'units tab block present before prebox');
   assert.match(unitsBlock[0], /<UnitsDisplayHost/);
   assert.doesNotMatch(
     unitsBlock[0],
     /WorkspaceCard\s+variant=["']glass["']/,
     'Units Displays body must sit flush on the push column — no glass island',
   );
+  assert.match(TABS, /id:\s*'prebox'/);
+  assert.match(TABS, /<PreboxDisplayHost/);
+  assert.match(SIDE, /\| 'prebox'/);
+  assert.match(SIDE, /case 'prebox':/);
+  assert.doesNotMatch(SIDE, /hasPreboxTab/);
 });
 
-test('UnitsDisplayHost nests Units · Prebox via armed rows + unitsAction', () => {
+test('UnitsDisplayHost is Units body only — Prebox lives on PreboxDisplayHost', () => {
   assert.match(HOST, /data-testid="unbox-units-display"/);
-  assert.match(HOST, /StationArmedVerbList/);
-  assert.doesNotMatch(HOST, /\bTabDisplay\b/);
-  assert.match(HOST, /id:\s*'prebox'/);
-  assert.match(HOST, /<PreboxWizard[\s\S]*embedded/);
   assert.match(HOST, /<UnitsExplosionDisplay/);
-  assert.match(SIDE, /UnboxUnitsAction/);
-  assert.match(SIDE, /parseUnboxUnitsAction/);
-  assert.match(SIDE, /'actions'/);
+  assert.doesNotMatch(HOST, /StationArmedVerbList|PreboxWizard|id:\s*'prebox'/);
+  assert.doesNotMatch(HOST, /\bTabDisplay\b/);
+  assert.match(PREBOX_HOST, /data-testid="unbox-prebox-display"/);
+  assert.match(PREBOX_HOST, /<PreboxWizard[\s\S]*embedded/);
+  assert.doesNotMatch(SIDE, /UnboxUnitsAction|parseUnboxUnitsAction/);
 });
 
 test('ActiveLineExplosion is square-flush (no rounded-xl card shell)', () => {
@@ -102,8 +107,8 @@ test('Units explosion body does not mount Prebox overlay', () => {
 
 test('Embedded Prebox uses TabDisplay child segment + Macro FlushTerminalFooter', () => {
   assert.match(PREBOX, /TabDisplay/);
-  // Child mode (One master · One per unit) under Units · Prebox parent —
-  // nested grammar: segment, never underline (parent owns underline).
+  // Child mode (One master · One per unit) under the Prebox Assets leaf —
+  // nested grammar: segment, never underline (leaf owns the title).
   assert.match(PREBOX, /appearance="segment"/);
   assert.match(PREBOX, /One master label/);
   assert.match(PREBOX, /One label per unit/);
@@ -113,7 +118,7 @@ test('Embedded Prebox uses TabDisplay child segment + Macro FlushTerminalFooter'
     'prebox mode must not be hand-rolled ds-raw-button pills',
   );
   assert.doesNotMatch(PREBOX, /appearance="underline"/);
-  // Embedded path skips the "Create prebox label" header (Units · Prebox names it).
+  // Embedded path skips the "Create prebox label" header (Prebox leaf names it).
   assert.match(PREBOX, /!embedded \? \(/);
   assert.match(PREBOX, /Create prebox label/);
   // Macro floor — always mounted via FlushTerminalFooter (Claim golden).
@@ -163,13 +168,22 @@ test('Units Displays feed shows in-row condition with flush expand pairing', () 
   assert.match(SLOTS, /condExpanded/);
 });
 
-test('ConditionPills clears selected grade on re-click (no trailing clear)', () => {
-  assert.match(PILLS, /selected === g\.value/);
-  assert.match(PILLS, /onChange\(""\)/);
+test('ConditionPills select-never-clear (no trailing clear, no re-click clear)', () => {
+  assert.match(PILLS, /onChange\(g\.value\)/);
+  assert.doesNotMatch(
+    PILLS,
+    /onChange\(\s*['"]{2}\s*\)/,
+    'grade re-click never clears — select-never-clear',
+  );
+  assert.doesNotMatch(
+    PILLS,
+    /click again to clear/,
+    'active tooltip must not invite clear-on-reselect',
+  );
   assert.doesNotMatch(
     PILLS,
     /Clear condition|aria-label="Clear condition"/,
-    'trailing clear control removed — re-click active grade clears',
+    'trailing clear control stays removed',
   );
   // Flush joined row: no gap / outer pad between grade faces.
   assert.match(PILLS, /gap-0/);
@@ -180,33 +194,37 @@ test('ConditionPills clears selected grade on re-click (no trailing clear)', () 
   );
 });
 
-test('ConditionPills collapsible strip confirms via trailing check (not auto-collapse on pick)', () => {
-  assert.match(
-    PILLS,
-    /Confirm condition/,
-    'expanded collapsible strip must expose a confirm control',
-  );
-  assert.match(PILLS, /setExpanded\(false\)/);
-  // Grade pick must NOT collapse — only the trailing confirm closes the strip.
+test('ConditionPills collapsible strip confirms by picking a grade (no trailing check)', () => {
   assert.doesNotMatch(
     PILLS,
+    /Confirm condition/,
+    'expanded collapsible strip must not expose a trailing confirm control',
+  );
+  assert.doesNotMatch(
+    PILLS,
+    /<Check\b/,
+    'condition confirm is the pill click — never a Check button',
+  );
+  // Picking a grade collapses — same grammar as TestingStatusPills.
+  assert.match(
+    PILLS,
     /onChange\(g\.value\);\s*if \(collapsible\) setExpanded\(false\)/,
-    'picking a grade must leave the strip open until confirm',
+    'picking a grade must confirm and collapse the strip',
   );
 });
 
-test('Progressive Unbox condition strip uses full labels + barDistribute (no left-clump)', () => {
-  const SERIAL = code(sourceOf('./SerialCard.tsx'));
-  // Progressive SerialCard opts into full SoT names + edge-to-edge distribute.
+test('Capture row condition strip uses full labels + barDistribute (no left-clump)', () => {
+  const CAPTURE = code(sourceOf('./line-edit/PoLineCaptureRow.tsx'));
+  // Condition owns the full width in SoT names on the capture face.
   assert.match(
-    SERIAL,
-    /labelVariant=\{progressive \? ['"]full['"]/,
-    'progressive Unbox must request conditionLabel full names',
+    CAPTURE,
+    /labelVariant="full"/,
+    'capture row must request conditionLabel full names',
   );
   assert.match(
-    SERIAL,
-    /layout=\{progressive \? ['"]barDistribute['"]/,
-    'progressive Unbox must distribute grades across the full bar',
+    CAPTURE,
+    /layout="barDistribute"/,
+    'capture row must distribute grades across the full bar',
   );
   // ConditionPills scopes the layout; defaults stay pill + scroll for Units.
   assert.match(PILLS, /labelVariant = ["']pill["']/);
@@ -221,14 +239,14 @@ test('Progressive Unbox condition strip uses full labels + barDistribute (no lef
     /justify-between overflow-hidden/,
     'barDistribute radiogroup must justify-between (no left-clump dead air)',
   );
-  // Density SoT: flush p-0 + flex-1 grade cells (confirm stays w-11).
+  // Density SoT: flush p-0 + flex-1 grade cells (no trailing confirm cell).
   const TONE = code(sourceOf('../../../lib/condition-tone.ts'));
   assert.match(
     TONE,
     /barDistribute[\s\S]{0,300}flex-1[\s\S]{0,200}p-0/,
     'barDistribute density must be flex-1 flush (p-0) — not padded pills',
   );
-  assert.match(PILLS, /w-11 shrink-0/);
+  assert.match(PILLS, /h-11 w-11 shrink-0/);
 });
 
 test('Condition grade pills are square-flush (not rounded-full sausages)', () => {
@@ -268,8 +286,13 @@ test('Units explosion forces per-serial unit rows (not SerialCard chips)', () =>
   const ACTIVE = code(sourceOf('./line-edit/ActiveLineConditionSerial.tsx'));
   assert.match(
     ACTIVE,
-    /forceUnitRows\s*\|\|\s*\(quantityExpected/,
-    'ActiveLineConditionSerial must prefer ReceivingUnitRows when forceUnitRows',
+    /forceUnitRows,/,
+    'ActiveLineConditionSerial must report forceUnitRows to resolveCaptureEntry',
+  );
+  assert.match(
+    ACTIVE,
+    /isMultiQty = mode === 'unit-rows'/,
+    'the ReceivingUnitRows branch is the resolver answer, not a local qty check',
   );
   const SLOTS = code(sourceOf('./UnitSlotList.tsx'));
   assert.match(
@@ -356,5 +379,132 @@ test('Units flush / stationCompact joined bars are border-0 (parent divide owns 
     PILLS_SRC,
     /COLLAPSED_ICON_BTN[\s\S]{0,400}ring-1 ring-inset/,
     'collapsed grade cell must not paint an inset ring against divide-x',
+  );
+});
+
+test('Progressive Unbox uses PoLineUnitCaptureList for qty 1 and N (no !isMultiQty gate)', () => {
+  const ACTIVE = code(sourceOf('./line-edit/ActiveLineConditionSerial.tsx'));
+  const LIST = code(sourceOf('./line-edit/PoLineUnitCaptureList.tsx'));
+  const DOCK_SERIAL = code(
+    sourceOf('./line-edit/steps/UnboxSerialStepSurface.tsx'),
+  );
+
+  assert.match(
+    ACTIVE,
+    /PoLineUnitCaptureList/,
+    'capture path must mount PoLineUnitCaptureList',
+  );
+  // THE gate is a pure resolver, not a local conjunction. This is the whole
+  // point of the refactor: one answer, three reporters.
+  assert.match(
+    ACTIVE,
+    /resolveCaptureEntry\(\{/,
+    'ALS must resolve the capture gate, never compute it inline',
+  );
+  assert.doesNotMatch(
+    ACTIVE,
+    /dockOwnsCapture\s*&&/,
+    'no local capture conjunction — resolveCaptureEntry owns it',
+  );
+  assert.doesNotMatch(
+    ACTIVE,
+    /!isMultiQty\s*&&/,
+    'no !isMultiQty conjunction on the capture path',
+  );
+
+  assert.match(
+    LIST,
+    /<PoLineCaptureRow/,
+    'unit capture list must mount PoLineCaptureRow',
+  );
+  assert.match(
+    LIST,
+    /data-po-line-unit-capture/,
+    'unit capture list must expose a stable data hook for guards',
+  );
+  assert.match(
+    LIST,
+    /onAddSerial/,
+    'capture face Serial expands in-row via onAddSerial',
+  );
+  assert.doesNotMatch(
+    LIST,
+    /onOpenSerial/,
+    'Serial no longer opens Displays from the capture list',
+  );
+  assert.doesNotMatch(
+    LIST,
+    /captureRow/,
+    'Unbox centre capture has no SerialCard captureRow',
+  );
+
+  assert.match(
+    DOCK_SERIAL,
+    /hideCondition/,
+    'dock multi serial must hide compact condition pills (ConditionDockControl owns grade)',
+  );
+});
+
+test('Unfound Unbox capture parity — dockOwnsCapture threads into ALS + ReturnScanCard', () => {
+  const SHARED = code(sourceOf('./unmatched-items/unmatched-items-shared.ts'));
+  const SURFACE = code(sourceOf('./unmatched-items/UnmatchedAccordionSurface.tsx'));
+  const RETURN = code(sourceOf('./unmatched-items/ReturnScanCard.tsx'));
+  const LINE_PO = code(sourceOf('./line-edit/LinePoItemsSection.tsx'));
+  const SERIAL = code(sourceOf('./SerialCard.tsx'));
+
+  assert.match(
+    SHARED,
+    /dockOwnsCapture\?:/,
+    'unfound props must expose dockOwnsCapture',
+  );
+  assert.match(
+    LINE_PO,
+    /dockOwnsCapture=\{dockOwnsCapture\}/,
+    'LinePoItemsSection must pass dockOwnsCapture into UnmatchedItemsSection',
+  );
+  assert.match(
+    SURFACE,
+    /dockOwnsCapture=\{dockOwnsCapture\}[\s\S]{0,80}isActiveLine=\{isActiveLine\}/,
+    'lined unfound must report facts to ALS like matched — never a local &&',
+  );
+  assert.match(
+    SURFACE,
+    /autoFocusSerial=\{isActiveLine\}/,
+    'unfound: controller-active line autofocuses centre serial (optimistic scan)',
+  );
+  assert.match(
+    SURFACE,
+    /autoCommitDefaultGrade=\{[\s\S]*?isActiveLine && !line\.condition_graded_at/,
+    'ungraded active line stamps default USED_A on mount',
+  );
+  assert.match(
+    SURFACE,
+    /dockOwnsCapture=\{dockOwnsCapture\}/,
+    'empty ReturnScanCard must receive dockOwnsCapture',
+  );
+  assert.match(
+    RETURN,
+    /<PoLineCaptureRow/,
+    'ReturnScanCard must mount PoLineCaptureRow under Unbox',
+  );
+  assert.match(
+    RETURN,
+    /resolveCaptureEntry\(\{[\s\S]*lineId: null/,
+    'the empty stub is a resolver answer (no line yet), not a local &&',
+  );
+  assert.doesNotMatch(
+    SERIAL,
+    /progressiveStage|data-progressive-|data-capture-row|captureRow/,
+    'SerialCard no longer owns Unbox capture — progressive + captureRow retired',
+  );
+  assert.match(
+    RETURN,
+    /showPhotos=\{false\}/,
+    'empty unfound stub hides Photos until a real line exists',
+  );
+  assert.doesNotMatch(
+    RETURN,
+    /onOpenPhotos/,
+    'empty unfound stub must not open Displays for Photos',
   );
 });

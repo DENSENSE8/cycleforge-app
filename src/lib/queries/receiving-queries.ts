@@ -10,6 +10,12 @@ import type {
   ReceivingModeDescriptor,
 } from '@/lib/receiving/receiving-modes';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { receivingRailCartonKey } from '@/lib/receiving/rail/rail-carton-key';
+
+// Re-exported for this module's existing client importers (useTrackingScan,
+// scan-apply, …); the definition moved to a server-safe module so the RSC rail
+// seed can share it. See `@/lib/receiving/rail/rail-carton-key`.
+export { receivingRailCartonKey };
 
 /**
  * Query-key roots for every receiving feed (Phase 1 of the receiving-triage
@@ -414,11 +420,6 @@ export function deferInvalidateReceivingFeeds(queryClient: QueryClient): void {
   } else {
     setTimeout(run, 16);
   }
-}
-
-/** Stable React list key for one carton across stub → server reconcile. */
-export function receivingRailCartonKey(receivingId: number): string {
-  return `carton:${receivingId}`;
 }
 
 /**

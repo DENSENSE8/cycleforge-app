@@ -10,9 +10,9 @@
 
 import {
   PRODUCT_HUB_PLATFORMS,
-  platformStyle,
   type ProductHubPlatform,
-} from '@/components/products/pairing/platform-style';
+} from '@/components/products/pairing/product-hub-platforms';
+import { sourcePlatformLabel } from '@/lib/source-platform';
 
 type CatalogPlatformTab = 'zoho' | ProductHubPlatform;
 
@@ -142,10 +142,10 @@ export function applyCatalogRefine<T extends CatalogRefineRow>(
 /** Chrome tab list — Zoho inventory master + Product Hub channels. */
 export function catalogPlatformTabs(): Array<{ id: CatalogPlatformTab; label: string }> {
   return [
-    { id: 'zoho', label: platformStyle('zoho').label },
+    { id: 'zoho', label: sourcePlatformLabel('zoho') },
     ...PRODUCT_HUB_PLATFORMS.map((id) => ({
       id: id as CatalogPlatformTab,
-      label: platformStyle(id).label,
+      label: sourcePlatformLabel(id),
     })),
   ];
 }

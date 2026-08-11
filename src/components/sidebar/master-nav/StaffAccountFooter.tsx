@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   Clipboard,
+  Download,
   MessageSquare,
   Monitor,
   MoreHorizontal,
@@ -40,6 +41,8 @@ import { PhoneSignInQrDialog } from '@/components/quick-access/PhoneSignInQrButt
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
+import { isDesktopHost } from '@/lib/desktop/desktop-host';
+import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktop/desktop-download';
 import { openKioskShellPreview } from '@/lib/kiosk/preview-url';
 import { cn } from '@/utils/_cn';
 
@@ -92,6 +95,11 @@ export function StaffAccountFooter({ className }: { className?: string }) {
   // The QR overlay is a Dialog, not an anchored layer, so it does not belong in
   // the `menu` union — it must survive the menu closing behind it.
   const [phoneQrOpen, setPhoneQrOpen] = useState(false);
+  // Resolved after mount, never during render: the bridge only exists in the
+  // shell, so reading it inline would render one thing on the server and
+  // another on the client and trip hydration.
+  const [inDesktopShell, setInDesktopShell] = useState(false);
+  useEffect(() => setInDesktopShell(isDesktopHost()), []);
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -257,6 +265,26 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                 Kiosk shell preview
               </span>
             </button>
+            {/* Get-this-on-another-device sits with its siblings (phone, kiosk).
+                Hidden inside the shell itself — advertising a download in the
+                app you downloaded is chrome telling a second story. This is an
+                overflow row and not a header icon by the same rule the clipboard
+                and phone-QR followed: a persistent slot is earned by FREQUENCY,
+                and installing the desktop app happens once per bench. */}
+            {!inDesktopShell && (
+              <a
+                href={DESKTOP_DOWNLOAD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenu('none')}
+                className={SIDEBAR_SPINE_MENU_ACTION_CLASS}
+              >
+                <Download className="h-3 w-3 shrink-0 text-text-muted" />
+                <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                  Download desktop app
+                </span>
+              </a>
+            )}
             <button
               type="button"
               onClick={() => setMenu('feedback')}

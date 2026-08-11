@@ -32,6 +32,16 @@ describe('Displays P3 bodies deferred', () => {
       /import\s+\{\s*TicketDisplayHost\s*\}\s+from/,
       'TicketDisplayHost must not be a static import',
     );
+    assert.match(
+      tabs,
+      /DisplaysLeafBodySkeleton/,
+      'cold leaf chunks must paint a flush armed-row skeleton — not loading:()=>null',
+    );
+    assert.doesNotMatch(
+      tabs,
+      /loading:\s*\(\)\s*=>\s*null/,
+      'empty-body loading fallback banned — leaves ← chrome looking broken',
+    );
   });
 
   it('Testing displays dynamic-import TicketDisplayHost + Timeline', () => {
@@ -41,6 +51,17 @@ describe('Displays P3 bodies deferred', () => {
     assert.match(testing, /WorkspaceTimelineTab/);
     assert.doesNotMatch(
       testing,
+      /import\s+\{\s*TicketDisplayHost\s*\}\s+from/,
+      'TicketDisplayHost must not be a static import',
+    );
+  });
+
+  it('Arrival displays dynamic-import TicketDisplayHost', () => {
+    const arrival = read('src/components/receiving/triage/build-triage-displays.tsx');
+    assert.match(arrival, /dynamic\(/);
+    assert.match(arrival, /TicketDisplayHost/);
+    assert.doesNotMatch(
+      arrival,
       /import\s+\{\s*TicketDisplayHost\s*\}\s+from/,
       'TicketDisplayHost must not be a static import',
     );

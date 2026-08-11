@@ -110,8 +110,11 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await expect(kpi).toBeVisible({ timeout: 20_000 });
 
     // Station tiles come from the placement query (always the seeded benches),
-    // so "Staging" is a stable label unless the strip collapses to All clear.
-    const staging = kpi.getByText('Staging', { exact: true }).first();
+    // so the staging bench is a stable label unless the strip collapses to All
+    // clear. The face is the bench's stored NAME (`packBenchShortLabel` shows
+    // what Settings → Packing benches wrote, minus the `QA ` fixture prefix) —
+    // it is no longer the derived word "Staging".
+    const staging = kpi.getByText('Pack Staging', { exact: true }).first();
     const hasStaging = await staging
       .waitFor({ state: 'visible', timeout: 8_000 })
       .then(() => true)
@@ -159,10 +162,11 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await refine.click();
 
     // Rows name every bench and carry its count — including empty benches, so
-    // "Station 3 · 0" is a real answer rather than a missing row.
+    // "Pack Desk 3 · 0" is a real answer rather than a missing row. The seed
+    // names every bench `Pack …` (QA prefixes `QA `, which the label strips).
     const benchRow = page
       .getByRole('menuitem')
-      .filter({ hasText: /^Station|^Staging/ })
+      .filter({ hasText: /^Pack / })
       .first();
     await expect(benchRow, 'bench rows list inside the funnel').toBeVisible();
     await page.screenshot({ path: 'test-results/pack-placement-toship-bench-facet.png' });
@@ -183,7 +187,7 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await refine.click();
     await page
       .getByRole('menuitem')
-      .filter({ hasText: /^Station|^Staging/ })
+      .filter({ hasText: /^Pack / })
       .first()
       .click();
     await expect
@@ -251,8 +255,9 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     );
     expect(withCol, 'Station appears once opted in').toContain('packStation');
 
-    // The staged row names its bench through the SoT label (`Station 1`), and
-    // every other row shows the quiet em dash — never a blank cell.
+    // The staged row names its bench through the SoT label (the bench's own
+    // name, e.g. `Pack Desk 1`), and every other row shows the quiet em dash —
+    // never a blank cell.
     const cells = page.locator('[data-col="packStation"]');
     await expect
       .poll(

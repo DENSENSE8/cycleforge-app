@@ -74,7 +74,17 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
   it('is the triage scan order and derives the CSS-var template (no drift)', () => {
     assert.deepEqual(
       ORDERS_QUEUE_COLUMNS.map((c) => c.key),
-      ['select', 'order', 'age', 'title', 'condition', 'qty', 'tracking', '_fill'],
+      [
+        'select',
+        'order',
+        'age',
+        'title',
+        'condition',
+        'qty',
+        'tracking',
+        'packStation',
+        '_fill',
+      ],
     );
     // Each track = its width CSS var with the model width as the fallback, so a
     // persisted/resized width overrides with zero template rebuild. Flex tracks
@@ -121,6 +131,7 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
       condition: 'condition',
       qty: 'qty',
       tracking: 'tracking',
+      packStation: 'packStation',
     });
   });
 });

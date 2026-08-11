@@ -6,7 +6,7 @@
  * flash before a later remeasure. Trust the rect first; only then clamp.
  *
  * Two placement families:
- *   • {@link clampPortalTooltipPosition} — above/below (read-only tips).
+ *   • {@link clampPortalTooltipPosition} — above/below/right/left (read-only tips).
  *   • {@link clampPortalSideMenuPosition} — end/start side flyouts for dense
  *     table hover menus (clears the vertical row-scan path).
  */
@@ -20,7 +20,7 @@ type PortalRect = Pick<DOMRect, 'width' | 'height' | 'top' | 'left' | 'bottom' |
 
 type PortalViewport = { width: number; height: number };
 
-export type PortalTooltipPlacement = 'auto' | 'above' | 'below';
+export type PortalTooltipPlacement = 'auto' | 'above' | 'below' | 'right' | 'left';
 
 /**
  * Horizontal side for dense-table hover menus (LTR).
@@ -99,18 +99,36 @@ export function clampPortalTooltipPosition(args: {
 
   const roomAbove = anchor.top - margin;
   const roomBelow = vh - anchor.bottom - margin;
+  const roomRight = vw - anchor.right - margin;
+  const roomLeft = anchor.left - margin;
+
   let rawTop: number;
-  if (placement === 'below') {
+  let rawLeft: number;
+
+  if (placement === 'right' || placement === 'left') {
+    // Side tip — vertically center on the trigger; prefer the pinned side and
+    // flip only when that side cannot seat the bubble.
+    rawTop = anchor.top + anchor.height / 2 - bubble.height / 2;
+    const preferRight =
+      placement === 'right'
+        ? roomRight >= bubble.width || roomRight >= roomLeft
+        : roomLeft < bubble.width && roomRight >= roomLeft;
+    rawLeft = preferRight
+      ? anchor.right + margin
+      : anchor.left - bubble.width - margin;
+  } else if (placement === 'below') {
     rawTop = anchor.bottom + margin;
+    rawLeft = anchor.left + anchor.width / 2 - bubble.width / 2;
   } else if (placement === 'above') {
     rawTop = anchor.top - bubble.height - margin;
+    rawLeft = anchor.left + anchor.width / 2 - bubble.width / 2;
   } else {
     const preferAbove = roomAbove >= bubble.height || roomAbove > roomBelow;
     rawTop = preferAbove ? anchor.top - bubble.height - margin : anchor.bottom + margin;
+    rawLeft = anchor.left + anchor.width / 2 - bubble.width / 2;
   }
 
   const top = Math.min(Math.max(rawTop, margin), Math.max(margin, vh - bubble.height - margin));
-  const rawLeft = anchor.left + anchor.width / 2 - bubble.width / 2;
   const left = Math.min(Math.max(rawLeft, margin), Math.max(margin, vw - bubble.width - margin));
 
   // Both axes pinned to the margin = top-left corner. Only accept when the

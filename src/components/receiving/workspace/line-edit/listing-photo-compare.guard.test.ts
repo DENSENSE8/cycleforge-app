@@ -22,6 +22,11 @@ test('Photos host mounts Compare leaf + parseUnboxPhotoAction knows compare', ()
   assert.match(photos, /ListingPhotoCompareHost/, 'Compare body mounted under Photos');
   assert.match(
     photos,
+    /dynamic\([\s\S]*ListingPhotoCompareHost/,
+    'Compare is dynamic() — not bundled with Actions',
+  );
+  assert.match(
+    photos,
     /onOpenCompare|onActionChange\('compare'\)/,
     'Compare opens from armed rows (no TabDisplay strip)',
   );
@@ -39,7 +44,7 @@ test('Photos host mounts Compare leaf + parseUnboxPhotoAction knows compare', ()
   assert.match(
     tabs,
     /if \(raw === 'compare'\) return 'compare'/,
-    'URL photoAction=compare parses',
+    'photoAction wire parse accepts compare',
   );
 });
 

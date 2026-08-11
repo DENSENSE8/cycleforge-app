@@ -13,6 +13,7 @@ import {
   type SellerClaimedCondition,
 } from '@/lib/receiving/seller-claimed-condition';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 
@@ -34,7 +35,10 @@ export function TestingListingVerifyHost({
       matchedOrderCondition,
       listingCondition,
     });
-  const listingHref = String(row.receiving_listing_url ?? '').trim();
+  // Resolver, not the bare column: a Zoho PO carries its links in sync notes,
+  // so a carton with four auction links and an empty `receiving_listing_url`
+  // had no Open target here at all.
+  const listingHref = listingLinksForReceivingRow(row)[0]?.href ?? '';
 
   return (
     <div

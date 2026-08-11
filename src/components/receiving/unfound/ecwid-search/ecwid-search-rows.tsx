@@ -2,6 +2,9 @@ import { microBadge } from '@/design-system/tokens/typography/presets';
 import {
   PairingCandidateRow,
 } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import type { SearchItem } from './ecwid-search-shared';
 
 interface ModeButtonProps {
@@ -78,14 +81,19 @@ export function ResultRow({
         </span>
       ) : null}
       {!showOrderMeta &&
-        platforms.slice(0, 4).map((p, i) => (
-          <span
-            key={`${p.platform}-${i}`}
-            className={`${microBadge} rounded bg-surface-sunken inset-chip text-text-muted`}
-          >
-            {p.platform}
-          </span>
-        ))}
+        platforms.slice(0, 4).map((p, i) => {
+          const meta = sourcePlatformMeta(p.platform);
+          return (
+            <HoverTooltip key={`${p.platform}-${i}`} label={meta.label || p.platform} asChild focusable={false}>
+              <span className="inline-flex shrink-0" aria-label={meta.label || p.platform}>
+                <PlatformMark
+                  platformValue={meta.value || p.platform}
+                  meta={meta.value ? meta : undefined}
+                />
+              </span>
+            </HoverTooltip>
+          );
+        })}
     </div>
   );
 

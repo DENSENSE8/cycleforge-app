@@ -3,11 +3,17 @@
 /**
  * Unbox Displays → Photos → Actions — keyboard-armed verb list.
  *
- * Replaces the identity hover PhotoLauncher toolbar (`CopyChipHoverMenuPanel`)
- * with Station Action-plane rows: ↑↓ / Home / End via {@link useArmedCursorList};
- * Enter / Space / click runs the verb in the same turn (no hit-marker DOM
- * withhold). Esc stays on the Displays push stack. Mounts gallery viewer +
- * hidden file input — Upload opens the native picker immediately (no overlay).
+ * Station Action-plane rows for the Photos Displays leaf (↑↓ / Home / End via
+ * {@link useArmedCursorList}). The carton-identity hover PhotoLauncher
+ * (`CopyChipHoverMenuPanel`) remains a mouse shortcut into the same verbs —
+ * Move / Send from that dropdown open these URL drills. Enter / Space / click
+ * runs the verb in the same turn (no hit-marker DOM withhold). Esc stays on
+ * the Displays push stack.
+ *
+ * **Mount budget:** this module paints the nine verb rows + photo-count query
+ * only. Gallery viewer · dropzone · Ably phone ride
+ * {@link PhotosActionsToolRuntime} via `dynamic()` — first View / Phone /
+ * Upload / Download / Details commit mounts that chunk and runs the verb.
  *
  * Verbs: View · Phone · Upload · Download · Media · Move · Send · Compare ·
  * Details. Drill altitude (tools → evidence): Move · Send · Compare open
@@ -19,9 +25,11 @@ import {
   useId,
   useMemo,
   useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -42,23 +50,11 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { LIST_KEY_OWNER_ATTR } from '@/lib/keyboard/list-key-scope';
 import { NAV_KEY_HINT_CLASS, useNavRegion } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
-import { useAuth } from '@/contexts/AuthContext';
-import { useAblyClient } from '@/contexts/AblyContext';
-import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
-import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { RECEIVING_PHOTO_LIST_INTENT_CARTON } from '@/lib/receiving/photo-intent';
 import { resolveReceivingPhotoTarget } from '@/lib/receiving/photo-scope';
-import {
-  getReceivingPhotoRequestChannelName,
-  publishReceivingPhotoRequest,
-} from '@/lib/realtime/receiving-photo-request';
-import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
-import { useSendToDeviceToast } from '@/components/station/send-to-device/useSendToDeviceToast';
-import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
-import { toast } from '@/lib/toast';
 import {
   ARMED_CURSOR_CHEVRON_CLASS,
   ARMED_CURSOR_MARKER_PULSE_CLASS,
@@ -69,6 +65,16 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ChevronRight } from '@/components/Icons';
 import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
 import { PHOTO_VERB_NAV_KEY } from './photo-verb-nav-keys';
+import type {
+  PhotosHeavyVerb,
+  PhotosToolStatus,
+} from './PhotosActionsToolRuntime';
+
+const PhotosActionsToolRuntime = dynamic(
+  () =>
+    import('./PhotosActionsToolRuntime').then((m) => m.PhotosActionsToolRuntime),
+  { ssr: false, loading: () => null },
+);
 
 interface PhotoRow {
   id: number;
@@ -90,6 +96,7 @@ type VerbId =
   | 'upload'
   | 'download'
   | 'media'
+  | 'link'
   | 'compare'
   | 'move'
   | 'send'
@@ -102,15 +109,29 @@ type VerbDef = {
   disabled?: boolean;
 };
 
+const HEAVY_VERBS = new Set<VerbId>([
+  'view',
+  'phone',
+  'upload',
+  'download',
+  'details',
+]);
+
+function isHeavyVerb(id: VerbId): id is PhotosHeavyVerb {
+  return HEAVY_VERBS.has(id);
+}
+
 export function PhotosActionsArmedList({
   row,
   staffId,
+  onOpenLink,
   onOpenCompare,
   onOpenMove,
   onOpenSend,
 }: {
   row: ReceivingLineRow;
   staffId: number;
+  onOpenLink: () => void;
   onOpenCompare: () => void;
   onOpenMove: () => void;
   onOpenSend: () => void;
@@ -121,9 +142,6 @@ export function PhotosActionsArmedList({
     row.zoho_purchaseorder_id ?? row.zoho_purchaseorder_number ?? null;
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const orgId = user?.organizationId;
-  const { getClient } = useAblyClient();
 
   const queryKey = useMemo(
     () =>
@@ -187,55 +205,17 @@ export function PhotosActionsArmedList({
     poRef,
   });
 
-  const g = usePhotoGallery({
-    photos,
-    orderId: `RCV-${receivingId}`,
-    receivingId,
-    uploadTarget,
-    allowReassign: true,
-    launcherLayout: 'toolbar',
-    toolbarShowLabel: false,
-    compact: true,
-    libraryHref,
-    onPhotoDeleted: (photoId) => refresh(photoId),
-    onPhotoReassigned: () => refresh(),
-    onPhotoUploaded: () => refresh(),
-    onOpenMovePhotosExternal: onOpenMove,
-    onSendToTicket: onOpenSend,
-  });
+  const [toolsMounted, setToolsMounted] = useState(false);
+  const [pendingHeavy, setPendingHeavy] = useState<PhotosHeavyVerb | null>(null);
+  const [toolStatus, setToolStatus] = useState<PhotosToolStatus | null>(null);
 
-  // Upload verb → native Finder / Explorer immediately (no PhotoUploadOverlay).
-  const dz = usePhotoDropzone(g.handleUploadFiles);
-
-  const routeRef = String(poRouteRef ?? '').trim();
-  const phone = useSendToDevice('receiving_photo');
-  // Waiting / answered / unreachable renders on the house toast surface
-  // (bottom-right) — never a card competing with the rows for header space.
-  useSendToDeviceToast(phone.state, phone.retry);
-  const ackChannelName = getReceivingPhotoRequestChannelName(orgId, staffId);
-
-  const handleRequestOnPhone = useCallback(async () => {
-    if (!orgId || staffId <= 0) {
-      toast.error('Sign in on your phone to take photos');
-      return;
-    }
-    await phone.send({
-      channelName: ackChannelName,
-      publish: async (requestId) => {
-        const client = await getClient();
-        await publishReceivingPhotoRequest(client, orgId, staffId, receivingId, {
-          stage: 'unbox_carton',
-          receivingLineId: null,
-          poRef: routeRef || null,
-          requestId,
-        });
-      },
-    });
-  }, [ackChannelName, getClient, orgId, phone, receivingId, routeRef, staffId]);
-
-  const hasPhotos = g.photoItems.length > 0;
+  const hasPhotos = photos.length > 0;
+  const canUpload = toolStatus?.canUpload ?? uploadTarget != null;
+  const uploading = toolStatus?.uploading ?? false;
+  const downloading = toolStatus?.downloading ?? false;
+  const phonePending = toolStatus?.phonePending ?? false;
   const canDownload =
-    !g.downloading && hasPhotos && !g.photoItems.every((p) => p.status === 'error');
+    !downloading && hasPhotos && !(toolStatus && !toolStatus.hasGalleryPhotos);
 
   const verbs = useMemo<VerbDef[]>(
     () => [
@@ -247,26 +227,26 @@ export function PhotosActionsArmedList({
       },
       {
         id: 'phone',
-        label: phone.pending ? 'Sending…' : 'Send to phone',
+        label: phonePending ? 'Sending…' : 'Send to phone',
         icon: (p) => <Smartphone className={p.className} />,
-        disabled: phone.pending,
+        disabled: phonePending,
       },
       {
         id: 'upload',
-        label: g.uploading ? 'Uploading…' : 'Upload',
+        label: uploading ? 'Uploading…' : 'Upload',
         icon: (p) =>
-          g.uploading ? (
+          uploading ? (
             <Loader2 className={cn(p.className, 'animate-spin')} />
           ) : (
             <Upload className={p.className} />
           ),
-        disabled: !g.canUpload || g.uploading,
+        disabled: !canUpload || uploading,
       },
       {
         id: 'download',
-        label: g.downloading ? 'Downloading…' : 'Download',
+        label: downloading ? 'Downloading…' : 'Download',
         icon: (p) =>
-          g.downloading ? (
+          downloading ? (
             <Loader2 className={cn(p.className, 'animate-spin')} />
           ) : (
             <Download className={p.className} />
@@ -278,6 +258,11 @@ export function PhotosActionsArmedList({
         label: 'Media library',
         icon: (p) => <Images className={p.className} />,
         disabled: !libraryHref,
+      },
+      {
+        id: 'link',
+        label: 'Link a photo',
+        icon: (p) => <Images className={p.className} />,
       },
       {
         id: 'move',
@@ -302,7 +287,15 @@ export function PhotosActionsArmedList({
         disabled: !hasPhotos,
       },
     ],
-    [canDownload, g.canUpload, g.downloading, g.uploading, hasPhotos, libraryHref, phone.pending],
+    [
+      canDownload,
+      canUpload,
+      downloading,
+      hasPhotos,
+      libraryHref,
+      phonePending,
+      uploading,
+    ],
   );
 
   const orderedIds = useMemo(() => verbs.map((v) => v.id), [verbs]);
@@ -341,26 +334,33 @@ export function PhotosActionsArmedList({
     [orderedIds],
   );
 
+  const armHeavyVerb = useCallback((verb: PhotosHeavyVerb) => {
+    setToolsMounted(true);
+    setPendingHeavy(verb);
+  }, []);
+
+  const clearPendingHeavy = useCallback(() => {
+    setPendingHeavy(null);
+  }, []);
+
   const runVerb = useCallback(
     (id: string) => {
       const verb = verbById.get(id as VerbId);
       if (!verb || verb.disabled) return;
       switch (verb.id) {
         case 'view':
-          g.openViewer(0);
-          break;
         case 'phone':
-          void handleRequestOnPhone();
-          break;
         case 'upload':
-          dz.openPicker();
-          break;
         case 'download':
-          void g.handleDownloadAll();
+        case 'details':
+          if (isHeavyVerb(verb.id)) armHeavyVerb(verb.id);
           break;
         case 'media':
           // Same-tab app nav to /ops/photos — never a browser new-tab display.
           if (libraryHref) router.push(libraryHref);
+          break;
+        case 'link':
+          onOpenLink();
           break;
         case 'compare':
           onOpenCompare();
@@ -371,16 +371,12 @@ export function PhotosActionsArmedList({
         case 'send':
           onOpenSend();
           break;
-        case 'details':
-          g.openViewer(0, { details: true });
-          break;
       }
     },
     [
-      dz.openPicker,
-      g,
-      handleRequestOnPhone,
+      armHeavyVerb,
       libraryHref,
+      onOpenLink,
       onOpenCompare,
       onOpenMove,
       onOpenSend,
@@ -409,6 +405,19 @@ export function PhotosActionsArmedList({
     [commitArmed, handleNavKeyDown, runVerb, verbById],
   );
 
+  const onPhotoDeleted = useCallback(
+    (photoId: number) => {
+      refresh(photoId);
+    },
+    [refresh],
+  );
+  const onPhotoReassigned = useCallback(() => {
+    refresh();
+  }, [refresh]);
+  const onPhotoUploaded = useCallback(() => {
+    refresh();
+  }, [refresh]);
+
   if (!(receivingId > 0)) {
     return (
       <div className="px-3 py-4 text-role-caption text-text-soft">
@@ -419,7 +428,24 @@ export function PhotosActionsArmedList({
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="unbox-photos-actions">
-      {g.canUpload ? <input ref={dz.inputRef} {...dz.inputProps} /> : null}
+      {toolsMounted ? (
+        <PhotosActionsToolRuntime
+          receivingId={receivingId}
+          staffId={staffId}
+          photos={photos}
+          uploadTarget={uploadTarget}
+          libraryHref={libraryHref}
+          poRouteRef={poRouteRef}
+          onOpenMove={onOpenMove}
+          onOpenSend={onOpenSend}
+          onPhotoDeleted={onPhotoDeleted}
+          onPhotoReassigned={onPhotoReassigned}
+          onPhotoUploaded={onPhotoUploaded}
+          pendingVerb={pendingHeavy}
+          onPendingConsumed={clearPendingHeavy}
+          onStatusChange={setToolStatus}
+        />
+      ) : null}
       <div
         ref={rootRef}
         data-station-action-dossier=""
@@ -507,7 +533,6 @@ export function PhotosActionsArmedList({
           })}
         </ul>
       </div>
-      {g.photoItems.length > 0 ? <PhotoViewerPortal g={g} /> : null}
     </div>
   );
 }

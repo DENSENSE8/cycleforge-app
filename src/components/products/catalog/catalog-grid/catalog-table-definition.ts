@@ -29,4 +29,9 @@ export const CATALOG_TABLE_BINDING: TableSurfaceBinding<CatalogListRow, CatalogG
   definition: CATALOG_TABLE_DEFINITION,
   columns: CATALOG_GRID_COLUMNS,
   makeDescriptor: makeCatalogGridDescriptor,
+  // Ruled honest-absence — `NO_DESK_PEEK_SURFACES` in band3-find-only.guard.
+  recordPlane: {
+    kind: 'navigate',
+    reason: 'catalog browse — rows navigate to the SKU page (productDetailHref)',
+  },
 };
