@@ -129,52 +129,69 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await expect(kpi).toBeVisible({ timeout: 20_000 });
   });
 
-  test('To-ship per-bench ORDER chips render and filter the board (P3d)', async ({ page }) => {
+  test('the bench facet lives IN the find field and filters the board (P3d)', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
-    const strip = page.locator('[data-testid="order-bench-strip"]').first();
-    await expect(strip, 'per-bench order strip renders').toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('input[placeholder*="Filter orders" i]').first()).toBeVisible({
+      timeout: 20_000,
+    });
 
-    // Separate from the loose-UNIT strip on Ready-to-Pack: the two ledgers keep
-    // their own counts, so the To-ship row is labelled for orders.
-    await expect(strip).toHaveAttribute('aria-label', 'Orders at bench');
+    // The bench breakdown is a row-narrowing FACET, so it rides in the find
+    // field (house law, `band3-find-only.guard.test.ts`) — never its own band
+    // under the KPI tiles, and never inside the Views menu (a different store).
+    await expect(
+      page.locator('[data-testid="order-bench-strip"]'),
+      'the KPI-band chip row is retired',
+    ).toHaveCount(0);
 
     const placement = await apiGet(page, '/api/orders/pack-placement');
-    const desks = ((placement.body.locations ?? []) as Array<{ id: number; locationKind: string }>)
-      .filter((l) => l.locationKind === 'DESK');
+    const desks = ((placement.body.locations ?? []) as Array<{
+      id: number;
+      name: string;
+      locationKind: string;
+    }>).filter((l) => l.locationKind === 'DESK');
     if (desks.length < 1) {
       test.skip(true, 'need ≥1 packing desk — run pnpm provision:qa-org');
+      return;
     }
-    const chip = strip.locator(`[data-testid="order-bench-${desks[0].id}"]`);
-    await expect(chip, 'desk chip is present').toBeVisible();
-    await page.screenshot({ path: 'test-results/pack-placement-toship-bench-chips.png' });
-    await expect(chip, 'a bench chip is a filter toggle, not a readout').toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
 
-    // Clicking filters the board to that bench (`?packStation=`), and clears the
-    // aggregate `?packPlaced=` — "placed anywhere" and "placed HERE" are one question.
-    await chip.click();
+    const refine = page.getByRole('button', { name: /packing bench/i }).first();
+    await expect(refine, 'the bench refine sits in the find field').toBeVisible();
+    await refine.click();
+
+    // Rows name every bench and carry its count — including empty benches, so
+    // "Station 3 · 0" is a real answer rather than a missing row.
+    const benchRow = page
+      .getByRole('menuitem')
+      .filter({ hasText: /^Station|^Staging/ })
+      .first();
+    await expect(benchRow, 'bench rows list inside the funnel').toBeVisible();
+    await page.screenshot({ path: 'test-results/pack-placement-toship-bench-facet.png' });
+    await benchRow.click();
+
+    // Picking a bench writes `?packStation=` and clears the aggregate
+    // `?packPlaced=` — "placed anywhere" and "placed HERE" are one question.
     await expect
       .poll(() => new URL(page.url()).searchParams.get('packStation'), {
-        message: 'bench click writes ?packStation=',
+        message: 'bench pick writes ?packStation=',
         timeout: 10_000,
       })
-      .toBe(String(desks[0].id));
+      .not.toBeNull();
     expect(new URL(page.url()).searchParams.get('packPlaced')).toBeNull();
-    await expect(chip, 'the filtered bench reads as pressed').toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
 
-    // Clicking the same bench again clears the filter rather than re-applying it.
-    await chip.click();
+    // Re-picking the active bench clears it rather than re-applying.
+    const picked = new URL(page.url()).searchParams.get('packStation');
+    await refine.click();
+    await page
+      .getByRole('menuitem')
+      .filter({ hasText: /^Station|^Staging/ })
+      .first()
+      .click();
     await expect
       .poll(() => new URL(page.url()).searchParams.get('packStation'), {
-        message: 'clicking the armed bench again clears the filter',
+        message: 're-picking the active bench clears the filter',
         timeout: 10_000,
       })
-      .toBeNull();
+      .not.toBe(picked);
   });
 
   test('the Station column is opt-in, and paints a bench chip once enabled', async ({ page }) => {
