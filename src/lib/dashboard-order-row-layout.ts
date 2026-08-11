@@ -40,9 +40,6 @@ import {
   ledgerGridRowShellClass,
   ledgerGridWidthVarValue,
 } from '@/design-system/components/grid/grid-cell-chrome';
-/** Sticky column header docks at the scrollport top. */
-export const ORDERS_QUEUE_COL_HEADER_STICKY = 'top-0';
-
 /** Stable key set for the desktop orders-queue columns (scan order). */
 export type OrdersQueueColumnKey =
   | 'select'

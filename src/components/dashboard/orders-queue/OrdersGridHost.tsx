@@ -345,11 +345,10 @@ export function OrdersGridHost({
       }) => (
         <OrdersQueueColumnHeader
           isMobile={isMobile}
-          selectMode={selectMode}
           selectionScope={selectionScope}
-          gridSkin
           selectGutterChrome="always"
           columns={visible}
+          tableId={tableId}
           activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
           sortDir={columnSortDir}
           onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
