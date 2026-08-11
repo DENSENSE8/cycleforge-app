@@ -39,6 +39,16 @@ export interface ShippedOrder {
   shipped_out_by?: number | null;
   shipped_out_by_name?: string | null;
   next_pack_activity_at?: string | null;
+  /**
+   * Current packing-bench placement (`order_pack_placements` → `locations`),
+   * selected on EVERY orders row by `/api/orders`. Declared here so the grid
+   * cell and the `?packStation=` board filter stop casting the row inline —
+   * both did, which is how a field on the wire stayed invisible to the type.
+   * Null when the order is not staged at a bench.
+   */
+  pack_location_id?: number | null;
+  pack_location_name?: string | null;
+  pack_location_kind?: string | null;
   pack_duration?: string | null;
   test_duration?: string | null;
   packer_photos_url: any;

@@ -62,7 +62,12 @@ import {
   GridDateCellValue,
   GridMonthDayTimeCellValue,
   GridStaffCellValue,
+  GridStatusCellValue,
 } from '@/components/ui/grid-cells';
+import {
+  PACK_BENCH_CHIP_TONE,
+  packBenchShortLabel,
+} from '@/lib/packing/pack-bench-display';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { toast } from '@/lib/toast';
@@ -637,18 +642,26 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         );
       }
       case 'packStation': {
-        const station = String(
-          (record as { pack_location_name?: string | null }).pack_location_name || '',
-        )
-          .replace(/^QA\s+/i, '')
-          .trim();
+        // Bench label resolves from the SoT (`Station 2` / `Staging`), never a
+        // cell-local regex — this hand-rolled its own `QA ` strip until
+        // 2026-08-10, so it drifted from the chip row showing the same benches.
+        // `GridStatusCellValue` falls back to `GridCellDash` on an empty value,
+        // so an unstaged order needs no branch of its own.
+        const benchName = record.pack_location_name;
         return (
           <div data-col="packStation" className={dataCell(col, rule)}>
-            {station ? (
-              <span className={cn('min-w-0 truncate', densityClasses.metaText)}>{station}</span>
-            ) : (
-              <GridCellDash />
-            )}
+            <GridStatusCellValue
+              label={
+                benchName
+                  ? packBenchShortLabel({
+                      locationName: String(benchName),
+                      locationKind: String(record.pack_location_kind || ''),
+                    })
+                  : null
+              }
+              toneClass={PACK_BENCH_CHIP_TONE}
+              tooltip={benchName ? `Staged at ${benchName}` : null}
+            />
           </div>
         );
       }
