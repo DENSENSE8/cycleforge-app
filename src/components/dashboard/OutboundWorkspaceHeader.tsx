@@ -15,7 +15,7 @@
  * · Left-edge occupant → SCOPE decides its home.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -23,7 +23,18 @@ import {
   isPrePackOrderView,
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
-import { useToShipFilterHotkeys } from '@/components/dashboard/OutboundFilterStrip';
+import {
+  useToShipFilterActions,
+  useToShipFilterHotkeys,
+} from '@/components/dashboard/OutboundFilterStrip';
+import {
+  WorkbenchFilterDivider,
+  WorkbenchFilterGroupLabel,
+  WorkbenchFilterMenuRow,
+  WorkbenchFilterPopover,
+} from '@/components/dashboard/workbench-filter-popover';
+import { PackageCheck } from '@/components/Icons';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
@@ -107,8 +118,8 @@ export function OutboundWorkspaceHeader({
       className={className}
       trailing={
         <WorkbenchTrailingCluster
-          // The hairline walls SOLID CTAs off the quiet icon rail; the data-in
-          // control is a quiet glyph now, so it would read as a broken pair.
+          // Band 1 trailing is solid Import · Add only (no sort rail here —
+          // Priority / refine live on the inspector View cluster). No hairline.
           divide={false}
           actions={<OutboundOrderChromeActions onNewOrder={openIntakeForm} />}
         />
@@ -118,9 +129,92 @@ export function OutboundWorkspaceHeader({
 }
 
 /**
- * Band 3 — find + Views (Bookmark; page-scoped inner refinement) + far-right
- * Show/Hide inspector. Sheet refine / layout / KPI live on the pushing right
- * inspector View cluster. Never a Band-1 peer of lifecycle tabs.
+ * Bench facet — rides IN the find field, because it narrows the ROWS.
+ *
+ * House law (2026-08-08, `band3-find-only.guard.test.ts`): a facet that filters
+ * rows sits in `trailingSuffix` beside the query it refines; the Band-3 right
+ * zone is view toggles only. This replaced a full-width chip row under the KPI
+ * tiles — a whole band of height on the densest desk in the app — and it is NOT
+ * inside the Views menu: Views is a saved-snapshot store (`saved_views`), and a
+ * facet is not a saved view. The relationship runs the other way, and already
+ * works: `packStation` is one of To-ship's saved-view `paramKeys`, so a view
+ * REMEMBERS the bench rather than hosting the control.
+ *
+ * Counts come from the queue-counts payload the KPI band already reads, so the
+ * facet costs no extra fetch. Every bench renders, including empty ones —
+ * spatial predictability, and "Station 3 · 0" is a real answer.
+ */
+function BenchRefineFacet() {
+  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
+  const { data } = useQuery(unshippedQueueCountsQuery({ staffId }));
+  const { packStationId, packPlacedOnly, togglePackStation, togglePackPlaced, clearPackPlacement } =
+    useToShipFilterActions();
+
+  const benches = data?.packPlacement?.counts ?? [];
+  // Honest absence: an org with no packing benches gets no control at all.
+  if (benches.length === 0) return null;
+
+  const activeBench = benches.find((b) => b.locationId === packStationId) ?? null;
+  const hot = Boolean(packStationId || packPlacedOnly);
+  const hotLabel = activeBench
+    ? packBenchShortLabel(activeBench)
+    : packPlacedOnly
+      ? 'At a bench'
+      : undefined;
+
+  return (
+    <WorkbenchFilterPopover
+      open={open}
+      onOpenChange={setOpen}
+      hot={hot}
+      hotActiveLabel={hotLabel}
+      label="Filter by packing bench"
+      density="field"
+      icon={<PackageCheck className="h-3.5 w-3.5" aria-hidden />}
+    >
+      <WorkbenchFilterGroupLabel>Packing bench</WorkbenchFilterGroupLabel>
+      <WorkbenchFilterMenuRow
+        label="Any bench"
+        active={!packStationId && !packPlacedOnly}
+        onClick={() => {
+          clearPackPlacement();
+          setOpen(false);
+        }}
+      />
+      <WorkbenchFilterMenuRow
+        label="At a bench"
+        count={data?.packPlacement?.totalPlaced ?? 0}
+        active={packPlacedOnly}
+        onClick={() => {
+          togglePackPlaced();
+          setOpen(false);
+        }}
+      />
+      <WorkbenchFilterDivider />
+      {benches.map((bench) => (
+        <WorkbenchFilterMenuRow
+          key={bench.locationId}
+          label={packBenchShortLabel(bench)}
+          count={bench.count}
+          active={packStationId === bench.locationId}
+          onClick={() => {
+            togglePackStation(bench.locationId);
+            setOpen(false);
+          }}
+        />
+      ))}
+    </WorkbenchFilterPopover>
+  );
+}
+
+/**
+ * Band 3 — find (+ in-field bench refine) + Views (Bookmark; page-scoped inner
+ * refinement) + far-right Show/Hide inspector. Sheet LAYOUT chrome (paint,
+ * List|Drill, compare, ▦, KPI) stays on the pushing right inspector View
+ * cluster; row-narrowing facets ride in the field. Never a Band-1 peer of
+ * lifecycle tabs.
  */
 export function OutboundTriageBand({
   orderView,
@@ -150,6 +244,9 @@ export function OutboundTriageBand({
     />
   );
 
+  // Bench placement is a pre-pack concern — Packed / Shipped lanes have left it.
+  const showBenchFacet = isPrePackOrderView(active);
+
   return (
     <WorkbenchTriageBand
       className={className}
@@ -160,6 +257,7 @@ export function OutboundTriageBand({
           onChange={setSearch}
           placeholder="Filter orders…"
           className="min-w-0 flex-1"
+          trailingSuffix={showBenchFacet ? <BenchRefineFacet /> : undefined}
         />
       }
       views={<OutboundViewsMenu />}

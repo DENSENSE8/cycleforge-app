@@ -338,34 +338,26 @@ function UnshippedStrip() {
     atStations: data?.packPlacement?.totalPlaced ?? 0,
   };
 
-  const benchCounts = data?.packPlacement?.counts ?? [];
-
-  return (
-    <>
-      {OutboundStripLayout({
-        mode: 'unshipped',
-        metrics: resolveOutboundMetrics({
-          mode: 'unshipped',
-          total: unshipped.total,
-          shipped: ZERO_OUTBOUND_METRICS,
-          unshipped,
-          roi,
-        }),
-        reservedSlots: 5,
-        toShipFilter,
-        isPending: query.isPending || roiPending,
-        isError: query.isError,
-        refetch: query.refetch,
-      })}
-      {query.isPending || query.isError ? null : (
-        <OrderBenchStrip
-          counts={benchCounts}
-          activeLocationId={activePackStationId}
-          onSelect={(row) => togglePackStation(row.locationId)}
-        />
-      )}
-    </>
-  );
+  // The per-bench ORDER breakdown moved into the Band-3 find field on
+  // 2026-08-10 (`BenchRefineFacet`) — it narrows rows, so it belongs beside the
+  // query, and a full-width chip row here cost a band of height on the densest
+  // desk in the app. The aggregate "At stations" tile stays: that is the
+  // at-a-glance number, and it is an attention metric rather than a facet.
+  return OutboundStripLayout({
+    mode: 'unshipped',
+    metrics: resolveOutboundMetrics({
+      mode: 'unshipped',
+      total: unshipped.total,
+      shipped: ZERO_OUTBOUND_METRICS,
+      unshipped,
+      roi,
+    }),
+    reservedSlots: 5,
+    toShipFilter,
+    isPending: query.isPending || roiPending,
+    isError: query.isError,
+    refetch: query.refetch,
+  });
 }
 
 export function OutboundKpiStrip({ mode }: { mode: 'unshipped' | 'tested' | 'shipped' }) {
