@@ -131,7 +131,7 @@ Each station owns:
 - `StationContextBar` · `CartonContextCard` (or order adapter)
 - `StationDisplaysPushStack` / `StationDisplaysPushColumn`
 - `StationDisplaysActionFloor` · `StationDisplaysEdgeToggle`
-- `STATION_WORKBENCH_*` / Flex-Grow Sandwich (`STATION_PUSH_CENTER_FLOOR_PX` = 720)
+- `STATION_WORKBENCH_*` / elastic-center cascade (`STATION_PUSH_CENTER_FLOOR_PX` = 720)
 - Terminal via `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or typed exempt)
 
 ---
@@ -141,10 +141,10 @@ Each station owns:
 | Station | Centre | Dock | Displays | Procedure | Next delete / port |
 |---|---|---|---|---|---|
 | **Unbox** | Golden | `UnboxDockHost` | Full + cockpit | Full | — |
-| **Arrival** | Door-flow OK (items + Classify) | Flush `UnboxDockHost` + dogfood Save | Pairing only | Staging in Band 1 | Advisory strip out; notes stay Unbox-only |
+| **Arrival** | Door-flow OK (items + Classify) | Flush `UnboxDockHost` + dogfood Save | Ticket + Pairing | Staging in Band 1 | Advisory strip out; notes stay Unbox-only |
 | **Testing** | Lines + label OK | Raised `TestingDockHost` | Full | Vocab only | Replace dock; add derivation + railLeaf; flip `testing-qc-dock.guard` |
 | **Pack** | Checklist + papers/rollup debt | Terminal-exempt | Photos·Timeline·Listings | N/A | Move papers/rollup off centre; keep exempt |
-| **Shipping** | Pack·Units tabs + banners | `UpNextActionDock` preview | Condition·Timeline·Listings | N/A | Strip advisory; decide Units→Displays |
+| **Shipping** | Pack pairing + banners | `UpNextActionDock` preview | Units·Condition·Timeline·Listings | N/A | Strip advisory; Units Displays leaf landed |
 | **Labels** | Centre tabs **by design** | In-flow terminal | No push | N/A | Registry slice only — do **not** force Displays |
 
 Detail paths and greps: keep this table honest when a port lands (shrink rows, don't soft-check).
@@ -153,10 +153,10 @@ Detail paths and greps: keep this table honest when a port lands (shrink rows, d
 
 ## Recommended port order
 
-1. **Arrival** — done (2026-08-09): centre advisory out; flush `UnboxDockHost` + dogfood Save; Staging Band 1; notes Unbox-only.
+1. **Arrival** — done (2026-08-09): centre advisory out; flush `UnboxDockHost` + dogfood Save; Staging Band 1; notes Unbox-only. **Certified reference 2026-08-10** — 6-layer audit re-verified (`npm run verify` green); the Band-1 `w-8` procedure waist (`ArrivalDockScanEntry`) is now pinned as CODE by `arrival-displays-push.guard.test.ts` → *Unbox scan-entry parity* (`w-8` · Plus idle · no placeholder · no ingest-hotkey claim · forked `receiving_triage` storage). Displays strip is **Ticket + Pairing**.
 2. **Testing** — flush dock → procedure hook → `railLeaf` cockpit (named port target in `station-workbench.md`).
 3. **Pack** — centre chrome only; keep terminal-exempt.
-4. **Shipping** — advisory out; Pack·Units redesign only with an explicit ops-plane decision.
+4. **Shipping** — advisory out; Pack centre + Units Displays leaf landed (centre tab strip deleted).
 5. **Labels / Packer review** — registry / hand-VM only (FOLLOWUPS), not anatomy clone.
 
 Never port N stations in one pass. Never pre-port cockpit to a station that still

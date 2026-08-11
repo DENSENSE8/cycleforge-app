@@ -60,8 +60,9 @@ export function HoverTooltip({
   asChild?: boolean;
   /**
    * Bubble placement relative to the trigger. `auto` prefers above and flips
-   * below when there isn't room; `below` / `above` pin to that side (still
-   * viewport-clamped).
+   * below when there isn't room; `below` / `above` / `right` / `left` pin to
+   * that side (still viewport-clamped; side tips flip when the pinned side
+   * cannot seat the bubble).
    */
   placement?: PortalTooltipPlacement;
   /**

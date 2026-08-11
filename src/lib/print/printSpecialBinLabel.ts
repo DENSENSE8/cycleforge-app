@@ -1,6 +1,12 @@
 /**
- * Special-bin 2×1" thermal labels — bare-barcode bins (RETURNS-TEST,
- * TECH-PARTS, UNSORTED) that cannot use the warehouse 3×2 location printer.
+ * Flat-barcode 2×1" thermal labels — locations whose barcode is a bare code
+ * rather than a structured zone/aisle/bay/level/position one, so the warehouse
+ * 3×2 builder (which MINTS the code from those five steps) cannot emit them.
+ *
+ * Two members today: special bins (RETURNS-TEST, TECH-PARTS, UNSORTED) and
+ * **station benches** (`PACK-DESK-01`, `PACK-STAGING`). They share this module
+ * because they are one job — one face, one print shell — not because a bench is
+ * a bin. Splitting them would give the same 2×1 sticker two encoders.
  *
  * Reuses the shared {@link LabelFaceModel} / {@link printLabel} shell (matrix
  * on the right, HRI under it). Bottom-right slot stays empty — room only on
@@ -13,6 +19,7 @@ import {
   returnsTestBinSymbol,
 } from '@/lib/inventory/returns-test-bin-symbol';
 import { SPECIAL_BIN_BARCODES } from '@/lib/inventory/special-bins';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 
 interface SpecialBinLabelPayload {
   barcode: string;
@@ -20,6 +27,8 @@ interface SpecialBinLabelPayload {
   badge?: string | null;
   notes?: string | null;
   room?: string | null;
+  /** Print-dialog document name. Defaults to `Bin <code>` — bins are the origin. */
+  docName?: string | null;
 }
 
 /** Built-in presets for seeded special bins. */
@@ -116,15 +125,15 @@ export function specialBinPayloadToFace(payload: SpecialBinLabelPayload): LabelF
   };
 }
 
-/** Print a 2×1 special-bin label (browser print shell). */
-function printSpecialBinLabel(payload: SpecialBinLabelPayload): void {
+/** Print a 2×1 flat-barcode location label (browser print shell). */
+function printFlatLocationTag(payload: SpecialBinLabelPayload): void {
   if (typeof window === 'undefined') return;
   const face = specialBinPayloadToFace(payload);
   if (!face.matrix.value) return;
 
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
-      name: `Bin ${face.matrix.value}`,
+      name: payload.docName?.trim() || `Bin ${face.matrix.value}`,
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
@@ -140,7 +149,7 @@ export function printSpecialBinLabelFromRow(row: {
 }, returnsOverride?: string | null): boolean {
   const code = (row.barcode ?? '').trim();
   if (!isSpecialBinBarcode(code, returnsOverride)) return false;
-  printSpecialBinLabel(
+  printFlatLocationTag(
     specialBinFaceForBarcode(code, {
       room: row.room,
       name: row.name,
@@ -170,3 +179,38 @@ export function returnsBinPayloadToFace(payload: {
   });
 }
 
+/**
+ * Print a station bench's tag — the 2×1 face for a DESK / STAGING `locations`
+ * row (Settings → Stations).
+ *
+ * The CENTER is the operator face (`packBenchShortLabel`), not the warehouse
+ * name: the sticker is read at the bench by the person who named it, so a tag
+ * that says `Pack Desk 2` while every screen says `Packing Station 2` is the
+ * derived-label problem back on a physical object nobody re-prints.
+ *
+ * Returns false (and prints nothing) when the bench has no barcode — there is
+ * no matrix to draw, and a tag with an empty code is worse than no tag.
+ */
+export function printStationTagFromRow(row: {
+  barcode: string | null;
+  name: string;
+  displayName?: string | null;
+  locationKind: string;
+  room?: string | null;
+}): boolean {
+  const code = (row.barcode ?? '').trim();
+  if (!code) return false;
+  printFlatLocationTag({
+    barcode: code,
+    docName: `Station ${code}`,
+    topLeft: 'STATION',
+    badge: row.locationKind === 'STAGING' ? 'STAGING' : 'DESK',
+    notes: packBenchShortLabel({
+      locationName: row.name,
+      locationDisplayName: row.displayName,
+      locationKind: row.locationKind,
+    }),
+    room: row.room ?? null,
+  });
+  return true;
+}

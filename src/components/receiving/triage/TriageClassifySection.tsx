@@ -68,6 +68,7 @@ export function TriageClassifySection({
   c,
   expandDimension = null,
   expandRequestId = 0,
+  listPlacement = 'bottom-stretch',
 }: {
   row: ReceivingLineRow;
   c: UnboxLineController;
@@ -78,6 +79,12 @@ export function TriageClassifySection({
   expandDimension?: ClassifyExpandDimension | null;
   /** Monotonic bump so a closed row can be re-opened from the header pill. */
   expandRequestId?: number;
+  /**
+   * Combobox list edge. Default opens down (Displays / Arrival centre).
+   * Unbox unfound dock Band 1 sits on the floor — pass `top-stretch` so
+   * Urgency · Platform · Type open upward into free canvas.
+   */
+  listPlacement?: 'bottom-stretch' | 'top-stretch';
 }) {
   const queryClient = useQueryClient();
   const isUnmatched = row.receiving_source === 'unmatched';
@@ -232,6 +239,7 @@ export function TriageClassifySection({
       >
         <SearchableSelectField
           appearance="flush"
+          placement={listPlacement}
           label="Urgency"
           value={urgencyValue}
           onChange={(id) => {
@@ -247,6 +255,7 @@ export function TriageClassifySection({
         />
         <SearchableSelectField
           appearance="flush"
+          placement={listPlacement}
           label="Platform"
           value={c.sourcePlatform}
           disabled={row.receiving_id == null}
@@ -266,6 +275,7 @@ export function TriageClassifySection({
         />
         <SearchableSelectField
           appearance="flush"
+          placement={listPlacement}
           label="Type"
           value={c.receivingType || null}
           onChange={(id) => {

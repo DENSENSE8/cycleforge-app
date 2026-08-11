@@ -17,9 +17,7 @@ import { cn } from '@/utils/_cn';
  * long placeholder / typed text can soft-peek under the glyphs. Clearance is
  * measured (`ResizeObserver` → padding-inline-end), never magic per-station
  * `pr-*`. Stacking (low → high): input @ z-base → icon @ z-raised → submit
- * trace @ z-raised → frosted rail @ z-dropdown → armed mode @ z-dropdown →
- * ready HUD @ z-dropdown+1 (full-width scan display over the rail; the HUD is
- * pointer-events-none so mode glyphs beneath stay clickable).
+ * trace @ z-raised → frosted rail @ z-dropdown → armed mode @ z-dropdown.
  *
  * Left column has two modes ({@link StationScanBarProps.leadingColumn}):
  *   • `masternav` (default) — icon under the MasterNav mode glyph
@@ -147,55 +145,6 @@ export const STATION_SCAN_BAR_SUBMIT_TRACE_CLASS: Record<StationTheme, string> =
 };
 
 export const STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS = 'bg-blue-500';
-
-/**
- * Empty-focused ready block caret — quiet staff-theme ink. Consumed by
- * {@link StationScanBar} when focused + empty.
- */
-export const STATION_SCAN_BAR_READY_CURSOR_CLASS: Record<StationTheme, string> = {
-  green: 'bg-emerald-500/70',
-  blue: 'bg-blue-500/70',
-  purple: 'bg-purple-500/70',
-  yellow: 'bg-amber-500/70',
-  black: 'bg-slate-700/70', // ds-allow-raw-neutral: identity hue among staff themes
-  red: 'bg-red-500/70',
-  lightblue: 'bg-sky-500/70',
-  pink: 'bg-pink-500/70',
-};
-
-export const STATION_SCAN_BAR_DEFAULT_READY_CURSOR_CLASS = 'bg-blue-500/70';
-
-/**
- * Focused ready reticle corners — low-key staff stroke framing the **full bar**
- * inside {@link StationScanBar}. The HUD sits above the frosted mode rail
- * (pointer-events-none), so the scan display reads edge-to-edge; only the armed
- * identity text stops at the rail's left edge.
- */
-export const STATION_SCAN_BAR_READY_RETICLE_CLASS: Record<StationTheme, string> = {
-  green: 'border-emerald-500/35',
-  blue: 'border-blue-500/35',
-  purple: 'border-purple-500/35',
-  yellow: 'border-amber-500/35',
-  black: 'border-slate-700/35', // ds-allow-raw-neutral: identity hue among staff themes
-  red: 'border-red-500/35',
-  lightblue: 'border-sky-500/35',
-  pink: 'border-pink-500/35',
-};
-
-/**
- * Focused ready sweep line — whisper staff fill spanning the full bar (above
- * the frosted mode rail). Transform-only; off under reduced motion.
- */
-export const STATION_SCAN_BAR_READY_SWEEP_CLASS: Record<StationTheme, string> = {
-  green: 'bg-emerald-400/35',
-  blue: 'bg-blue-400/35',
-  purple: 'bg-purple-400/35',
-  yellow: 'bg-amber-400/35',
-  black: 'bg-slate-500/35', // ds-allow-raw-neutral: identity hue among staff themes
-  red: 'bg-red-400/35',
-  lightblue: 'bg-sky-400/35',
-  pink: 'bg-pink-400/35',
-};
 
 /**
  * Parked-strip mini scan cell — idle Plus hover wash + bottom-rule preview in

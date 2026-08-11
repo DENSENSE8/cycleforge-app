@@ -15,6 +15,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
   PACK_PLACEABLE_KINDS,
+  locationDisplayNameSql,
   type PackPlaceableKind,
   type PackPlacementSource,
 } from '@/lib/packing/pack-placement-constants';
@@ -155,7 +156,7 @@ export async function placeUnitAtLocation(
     return {
       unitId,
       locationId: location.id,
-      locationName: location.name,
+      locationName: location.displayName?.trim() || location.name,
       locationBarcode: location.barcode,
       locationKind: location.locationKind,
       placedAt: new Date().toISOString(),
@@ -236,7 +237,8 @@ export async function countOpenUnitPlacementsByLocation(
       location_kind: string;
       n: number;
     }>(
-      `SELECT l.id AS location_id, l.name AS location_name, l.barcode AS location_barcode,
+      `SELECT l.id AS location_id, ${locationDisplayNameSql('l')} AS location_name,
+              l.barcode AS location_barcode,
               l.location_kind, COALESCE(c.n, 0)::int AS n
          FROM locations l
          LEFT JOIN (

@@ -11,7 +11,10 @@ export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
   if (!settings) {
     return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
   }
+  // `kiosk` is behaviour (idle timing), `brand` is identity — the shell reads
+  // both and resolves idle timing through src/lib/kiosk/idle.ts.
   return NextResponse.json({
     brand: settings.brand ?? {},
+    kiosk: settings.kiosk ?? {},
   });
 });

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Plus, Link2, Loader2 } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { platformStyle } from './platform-style';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 import type { SearchUnmatchedResponse, UnmappedPlatformId } from './types';
 
 interface Props {
@@ -79,7 +81,7 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
       {unmapped.length > 0 && (
         <ul className="max-h-52 divide-y divide-border-hairline overflow-y-auto border-t border-border-hairline bg-surface-card">
           {unmapped.map((id) => {
-            const style = platformStyle(id.platform);
+            const meta = sourcePlatformMeta(id.platform);
             // Ecwid's item id is an internal numeric product id — show its SKU
             // instead. Other platforms key on the marketplace item id (ASIN, etc.).
             const value =
@@ -93,9 +95,11 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
                   onClick={() => onPairIdentifier(id)}
                   className={`ds-raw-button flex w-full items-center gap-2 ${SIDEBAR_GUTTER} py-2 text-left transition-colors hover:bg-blue-50`}
                 >
-                  <span className={`inline-flex shrink-0 items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
-                    {style.label}
-                  </span>
+                  <HoverTooltip label={sourcePlatformLabel(id.platform)} asChild focusable={false}>
+                    <span className="inline-flex shrink-0" aria-label={meta.label}>
+                      <PlatformMark platformValue={id.platform} meta={meta} />
+                    </span>
+                  </HoverTooltip>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate font-mono text-xs font-semibold text-text-default">{value}</span>

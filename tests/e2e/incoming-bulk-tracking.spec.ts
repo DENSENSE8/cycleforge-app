@@ -231,52 +231,13 @@ test.describe('Incoming · bulk tracking paste', () => {
   });
 });
 
-test.describe('Incoming · the lane note is a claim about the predicate', () => {
-  const NOTE = /None of these are received in/i;
-
-  test('it states the constant on the default lane, and RETRACTS it under a paste', async ({
-    page,
-  }) => {
-    await openIncoming(page);
-    // On the default lane every row is not-vendor-received BY CONSTRUCTION, so
-    // the note is true. (It is also suppressed on an empty lane — a caption
-    // stacked on a teaching empty is noise — so this asserts the pair, not a
-    // bare presence: whatever the lane holds, the note and the rows agree.)
-    const notedOnDefault = await page.getByText(NOTE).isVisible().catch(() => false);
-    const hasRows = (await page.locator('[data-line-row-id]').count()) > 0;
-    expect(
-      notedOnDefault,
-      'the note must show exactly when the lane has rows to make the claim about',
-    ).toBe(hasRows);
-
-    // `?tracking_in=` deliberately relaxes that predicate, so the claim becomes
-    // false. A lane note that outlives its predicate is worse than no note: it
-    // is a confident false statement above the rows that contradict it.
-    await openIncoming(page, `?${TRACKING_IN_PARAM}=QAE2E0000000001,QAE2E0000000002`);
-    await expect(page.getByText(NOTE)).toHaveCount(0);
-  });
-});
-
-test.describe('Incoming · recently removed', () => {
-  test('the lane is a VIEW on the rail, and accepts the same paste', async ({ page }) => {
-    await openIncoming(page);
-
-    // A lane, not a tile: tiles are attention buckets ("this needs you"), and
-    // this is a lookup surface, so it lives on the view axis the rail owns.
-    const lane = page.getByRole('button', { name: /Recently removed/i });
-    await expect(lane).toBeVisible();
-    await lane.click();
-
-    await expect.poll(() => new URL(page.url()).searchParams.get('incview')).toBe('removed');
-    // Deliberately un-counted — a count would read as work outstanding, and
-    // nothing on this lane is outstanding.
-    await expect(page.getByText(/left Incoming in the last 7 days/i)).toBeVisible();
-
-    // It is where a fruitless paste lands, so it must carry one.
+test.describe('Incoming · recently removed (retired)', () => {
+  test('incview=removed coerces off the desk — no Recently removed tab', async ({ page }) => {
     await openIncoming(page, `?incview=removed&${TRACKING_IN_PARAM}=QAE2E0000000001`);
-    await expect.poll(() => new URL(page.url()).searchParams.get('incview')).toBe('removed');
-    await expect
-      .poll(() => new URL(page.url()).searchParams.get(TRACKING_IN_PARAM))
-      .toBe('QAE2E0000000001');
+
+    await expect(page.getByRole('button', { name: /Recently removed/i })).toHaveCount(0);
+    // Wire token is stripped / ignored — POS is the default collection face.
+    await expect.poll(() => new URL(page.url()).searchParams.get('incview')).not.toBe('removed');
+    await expect(page.getByRole('button', { name: /Incoming POS/i }).first()).toBeVisible();
   });
 });

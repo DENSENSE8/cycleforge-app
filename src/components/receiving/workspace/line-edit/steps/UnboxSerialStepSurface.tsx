@@ -17,11 +17,11 @@
  * wedge land where Print · Receive already sit. Saved chips stay on the items
  * panel; the step body is empty on purpose.
  *
- * Multi-qty branches to one selectable row per physical unit; single-qty renders
- * the integrated serial card. The no-serial waiver is the EXISTING
- * `serial_absent` store via {@link NoSerialControl} — the serial step must never
- * grow a second waiver, which would be the note-vs-label grain mistake in a new
- * shape.
+ * Multi-qty branches to one selectable serial row per physical unit
+ * (`ReceivingUnitRows` with `hideCondition` — grade lives on `ConditionDockControl`,
+ * not compact pills in Band 1); single-qty renders the integrated serial card.
+ * The no-serial waiver is the EXISTING `serial_absent` store via
+ * {@link NoSerialControl} — the serial step must never grow a second waiver.
  */
 
 import { useCallback, useEffect, type RefObject } from 'react';
@@ -152,6 +152,9 @@ export function UnboxSerialStepSurface({
     ) : undefined;
 
   if (isMultiQty) {
+    // Dock Band 1 is serial-only — condition is ConditionDockControl. Never
+    // remount compact NEW/A·B·C pills here; progressive trio × N lives under
+    // the active PO line (PoLineUnitCaptureList).
     return (
       <div className="flex h-11 min-w-0 items-center overflow-x-auto overflow-y-hidden">
         <ReceivingUnitRows
@@ -168,6 +171,7 @@ export function UnboxSerialStepSurface({
           serialEditTarget={
             c.headerSerialEdit?.id != null ? (c.headerSerialEdit as UnitSerial) : null
           }
+          hideCondition
           onAddSerial={(sn: string, grade: string | null) => c.enqueueSerial(sn, grade)}
           onDeleteSerial={async (id: number) => {
             if (

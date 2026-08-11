@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { UnitsDisplayHost } from '../UnitsDisplayHost';
+import { PreboxDisplayHost } from '../PreboxDisplayHost';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { UnboxPlacementSection } from '../UnboxPlacementSection';
 import { POUnboxingSection } from '../POUnboxingSection';
@@ -14,6 +15,7 @@ import { ConditionPills } from '../../ConditionPills';
 import { patchReceivingLineCondition } from '../../patch-receiving-line-condition';
 import { LinkageDisplayHost } from '../LinkageDisplayHost';
 import { InventoryDisplayHost } from '../InventoryDisplayHost';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import {
@@ -25,6 +27,7 @@ import {
   Link2,
   MapPin,
   MessageSquare,
+  Boxes,
   Package,
   SlidersHorizontal,
   Ticket,
@@ -35,23 +38,23 @@ import type {
   UnboxLinkageAction,
   UnboxPhotoAction,
   UnboxSideTab,
-  UnboxUnitsAction,
 } from '../unbox-side-tabs';
 import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
 import type { ClaimModalMode } from '../../claim/claim-types';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
+import { DisplaysLeafBodySkeleton } from '@/components/station/displays/DisplaysLeafBodySkeleton';
 
 /**
  * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
  * Ticket / Photos / Timeline / Support chat must not ride the P1 paint path.
  * (ssr OK — they only mount when the topic is selected.)
  *
- * **Triage speed:** `loading: () => null` + a cold `import()` paints the leaf
- * header ← chevron with an empty body until the chunk lands — reads as lag.
- * {@link preloadUnboxDisplayLeafChunks} warms every deferred leaf when Displays
- * opens so index→leaf is a binary cut (mouse + keyboard).
+ * **Triage speed:** cold `import()` used to paint ← over an empty body
+ * (`loading: () => null`). {@link DisplaysLeafBodySkeleton} holds armed-row
+ * density while the chunk lands; {@link preloadUnboxDisplayLeafChunks} warms
+ * every deferred leaf when Displays opens so index→leaf is a binary cut.
  */
 const loadTicketDisplayHost = () =>
   import('../TicketDisplayHost').then((m) => m.TicketDisplayHost);
@@ -64,14 +67,24 @@ const loadSupportContextHub = () =>
 const loadReceivingAuditPanel = () =>
   import('../../ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel);
 
-const TicketDisplayHost = dynamic(loadTicketDisplayHost, { loading: () => null });
-const PhotosDisplayHost = dynamic(loadPhotosDisplayHost, { loading: () => null });
-const WorkspaceTimelineTab = dynamic(loadWorkspaceTimelineTab, {
-  loading: () => null,
+function LeafBodyLoading() {
+  return <DisplaysLeafBodySkeleton />;
+}
+
+const TicketDisplayHost = dynamic(loadTicketDisplayHost, {
+  loading: LeafBodyLoading,
 });
-const SupportContextHub = dynamic(loadSupportContextHub, { loading: () => null });
+const PhotosDisplayHost = dynamic(loadPhotosDisplayHost, {
+  loading: LeafBodyLoading,
+});
+const WorkspaceTimelineTab = dynamic(loadWorkspaceTimelineTab, {
+  loading: LeafBodyLoading,
+});
+const SupportContextHub = dynamic(loadSupportContextHub, {
+  loading: LeafBodyLoading,
+});
 const ReceivingAuditPanel = dynamic(loadReceivingAuditPanel, {
-  loading: () => null,
+  loading: LeafBodyLoading,
 });
 
 /** Warm deferred Displays leaf chunks once the push column is open. */
@@ -113,6 +126,12 @@ export interface BuildUnboxTabsInput {
   poNote: PoNoteTabState;
   photoAction: UnboxPhotoAction;
   onPhotoActionChange: (action: UnboxPhotoAction) => void;
+  /** Photos `link` drill — which PO item the "Link to" combobox defaults to. */
+  photoLinkTargetLineId?: number | null;
+  /** Photos `link` drill — carton aspect (Shipping label · The box · Packing material). */
+  photoLinkTargetCartonAspect?: PhotoAspect | null;
+  /** Bump to re-default the "Link to" target from a fresh Link handoff. */
+  photoLinkTargetRequestId?: number;
   linkageAction: UnboxLinkageAction;
   onLinkageActionChange: (action: UnboxLinkageAction) => void;
   onInventoryChangePo: () => void;
@@ -122,10 +141,6 @@ export interface BuildUnboxTabsInput {
     | void
   >;
   inventorySyncing?: boolean;
-  unitsAction: UnboxUnitsAction;
-  onUnitsActionChange: (action: UnboxUnitsAction) => void;
-  /** Nested Prebox tab — gated on carton serials. */
-  hasPrebox: boolean;
   claimMode: ClaimModalMode;
   onCloseClaim: () => void;
   onCloseTicket: () => void;
@@ -142,8 +157,8 @@ export interface BuildUnboxTabsInput {
   /** Bump to re-select the PO tab when linkage is already showing. */
   pairingFocusRequestId?: number;
   /**
-   * Auto-match "Find ticket" → Ticket Displays (claim · link). Unbox only —
-   * Arrival has no Ticket topic.
+   * Auto-match "Find ticket" → Ticket Displays (claim · link).
+   * Wired on Unbox · Arrival · Testing.
    */
   onFindTicket?: () => void;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
@@ -184,6 +199,13 @@ export function buildUnboxOverview(
   > & {
     /** Click ledger chips → focus the matching procedure step in the dock. */
     onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
+    /**
+     * The dock's `activeKey` (`useUnboxProcedureSteps` — the ONE derivation).
+     * The active line's capture face lights the moving outline around the
+     * segment / condition the dock is asking for. The ledger reads, the dock
+     * acts, and the outline ties them — one pointer.
+     */
+    activeStep?: string | null;
   },
 ): ReactNode {
   const {
@@ -195,6 +217,7 @@ export function buildUnboxOverview(
     onViewAllUnits,
     onOpenReturnHistory,
     onFocusCaptureStep,
+    activeStep = null,
   } = input;
 
   return (
@@ -209,6 +232,7 @@ export function buildUnboxOverview(
         serialScan
         dockOwnsCapture
         onFocusCaptureStep={onFocusCaptureStep}
+        activeStep={activeStep}
         c={c}
         suppressItemsHeader
         accordionBootstrap={accordionBootstrap}
@@ -255,9 +279,8 @@ export function buildUnboxStepDock(
         />
       }
       // item_photos Band 1 is ItemPhotoDockControl (Link | Upload | Send to phone).
-      // Progressive line peers still mount ReceivingPhotoButton via PoLineItemPhotoPeers.
+      // Centre Photos junction opens Displays — item camera lives there / Units.
       serialSlot={<UnboxSerialStepSurface row={row} c={c} />}
-      classifySlot={<TriageClassifySection row={row} c={c} />}
     />
   );
 }
@@ -292,14 +315,14 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     poNote,
     photoAction,
     onPhotoActionChange,
+    photoLinkTargetLineId = null,
+    photoLinkTargetCartonAspect = null,
+    photoLinkTargetRequestId = 0,
     linkageAction,
     onLinkageActionChange,
     onInventoryChangePo,
     onInventorySync,
     inventorySyncing = false,
-    unitsAction,
-    onUnitsActionChange,
-    hasPrebox,
     claimMode,
     onCloseClaim,
     onCloseTicket,
@@ -409,9 +432,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
           receivingId={row.receiving_id ?? null}
           activeLineId={row.id ?? null}
           staffId={staffId}
-          action={unitsAction}
-          onActionChange={onUnitsActionChange}
-          hasPrebox={hasPrebox}
           c={{
             cond: c.cond,
             setCond: c.setCond,
@@ -437,6 +457,16 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       ),
     },
     {
+      id: 'prebox',
+      label: 'Prebox',
+      icon: Boxes,
+      count: serialCount,
+      content:
+        activeSideTab === 'prebox' ? (
+          <PreboxDisplayHost receivingId={row.receiving_id ?? null} />
+        ) : null,
+    },
+    {
       id: 'photos',
       label: 'Photos',
       icon: Images,
@@ -447,6 +477,9 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             staffId={Number(staffId) || 0}
             action={photoAction}
             onActionChange={onPhotoActionChange}
+            linkTargetLineId={photoLinkTargetLineId}
+            linkTargetCartonAspect={photoLinkTargetCartonAspect}
+            linkFocusRequestId={photoLinkTargetRequestId}
           />
         ) : null,
     },

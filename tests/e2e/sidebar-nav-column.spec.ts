@@ -119,11 +119,15 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     });
   }
 
-  test('/incoming?lane=docked: Docked keeps the inbound sidebar panel', async ({ page }) => {
-    // Docked (former Receiving Board) lives on the Inbound desk with a resident
-    // facet rail — not a panel-less Monitor.
+  test('/incoming: Inbound desk is rail-less (Pattern E)', async ({ page }) => {
+    // POS / Email / Removed ride Pipeline facet chrome — no left Views rail.
+    await gotoSurface(page, '/incoming');
+    await expect(page.locator(CONTEXT_PANEL)).toHaveCount(0);
+    expect(await residentColumnWidth(page)).toBe(0);
+
     await gotoSurface(page, '/incoming?lane=docked');
-    await expect(page.locator(CONTEXT_PANEL).first()).toBeVisible();
+    await expect(page.locator(CONTEXT_PANEL)).toHaveCount(0);
+    expect(await residentColumnWidth(page)).toBe(0);
   });
 
   for (const route of [...SIDEBAR_ROUTES, ...STATION_ROUTES]) {

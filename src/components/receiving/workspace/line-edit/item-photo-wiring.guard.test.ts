@@ -145,31 +145,25 @@ test('item scope and the line id travel together, both ways', () => {
   }
 });
 
-test('PO-line progressive Photos peers mount the shared item camera', () => {
-  // Unbox dual loci: progressive bar mounts ReceivingPhotoButton via
-  // PoLineItemPhotoPeers (Upload peer + Send-to-phone trailing). Unmatched
-  // centre still leaves capture to Units / dock — no PO-body camera.
+test('PO-line centre Photos junction opens Displays — no in-row item camera', () => {
+  // Unbox dual loci: PoLineCaptureRow Photos segment → Displays Photos.
+  // Item camera lives on Units explosion / Photos Displays, not under the line.
   const peers = MOUNTS.filter(
     (m) =>
       m.file ===
       'components/receiving/workspace/line-edit/PoLineItemPhotoPeers.tsx',
   );
-  assert.ok(
-    peers.length > 0,
-    'PoLineItemPhotoPeers must mount ReceivingPhotoButton',
-  );
-  assert.ok(
-    peers.every(itemScope),
-    'PoLineItemPhotoPeers item camera must use photoStage="unbox_item"',
-  );
-  assert.ok(
-    peers.every((m) => has(m, 'receivingLineId')),
-    'PoLineItemPhotoPeers item camera must pass receivingLineId',
+  assert.equal(
+    peers.length,
+    0,
+    'in-row PoLineItemPhotoPeers is retired — Photos edit is Displays',
   );
 
   for (const lane of [
     'components/receiving/workspace/line-edit/LinePoItemsSection.tsx',
     'components/receiving/workspace/unmatched-items/UnmatchedAccordionSurface.tsx',
+    'components/receiving/workspace/line-edit/PoLineCaptureRow.tsx',
+    'components/receiving/workspace/line-edit/PoLineUnitCaptureList.tsx',
   ]) {
     const mounts = MOUNTS.filter((m) => m.file === lane);
     assert.equal(

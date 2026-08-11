@@ -105,6 +105,7 @@ Treat as written and verified; do not re-implement.
 |---|---|
 | [`order-import-exceptions-PLAN.md`](order-import-exceptions-PLAN.md) | Why / design notes for the durable queue (raw_row + open-only upsert). Entry for this work is **this** handoff now. |
 | [`sheet-import-visibility-FINISH-PROMPT.md`](sheet-import-visibility-FINISH-PROMPT.md) | Recovery rules, skip-dialog ship notes, backlog §5, traps §6. Contract migrate item 1 is **done** — see that file §1. |
+| [`review-listing-propose-approve-PLAN.md`](review-listing-propose-approve-PLAN.md) | **Next:** propose listing (catalog / URL paste / marketplace + Hermes rank) → Approve → existing Resolve. Grows this queue’s rail; does not replace it. |
 
 Do **not** edit the Cursor plan file for this workstream.
 

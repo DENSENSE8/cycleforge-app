@@ -1,11 +1,16 @@
 /**
- * Single source of truth for a receiving `source_platform` value → its display
- * name + chip tone. Before this module the same platform read three different
- * ways: the pill said "AliExp" while the printed label said "AliExpress", the
- * order-derived helper returned a lowercase "ebay", and "ECWID" vs "ECWID-RS"
- * drifted between surfaces. Everything that turns a platform value into a name
- * or a color now derives from {@link SOURCE_PLATFORMS} so a platform can never
- * present two ways again. Mirrors the condition-label SoT pattern.
+ * Single source of truth for a `source_platform` / channel value → mark, tone,
+ * and display label. Ops UI paints the **colored mark** ({@link PlatformMark}
+ * lettermark / brand glyph, or order `#` via {@link platformMetaIconTone}) —
+ * never uppercase prose like "ECWID" as the channel face. {@link label} is for
+ * tooltip / aria / select-option text / physical print only.
+ *
+ * Before this module the same platform read three different ways: the pill said
+ * "AliExp" while the printed label said "AliExpress", the order-derived helper
+ * returned a lowercase "ebay", and "ECWID" vs "ECWID-RS" drifted between
+ * surfaces. Everything that turns a platform value into a name or a color now
+ * derives from {@link SOURCE_PLATFORMS} so a platform can never present two
+ * ways again.
  */
 
 import { platformPaintFromHex } from '@/lib/color-contrast';
@@ -14,7 +19,10 @@ import { PLATFORM_BRAND_ICON_PATHS } from '@/lib/platform-brand-icons';
 export interface SourcePlatformMeta {
   /** Stored `source_platform` value (lowercase, what the DB holds). */
   value: string;
-  /** Canonical display name — the ONE label shown anywhere a platform appears. */
+  /**
+   * Canonical display name — tooltip / aria / select-option / print prose.
+   * Dense ops faces use {@link mark} via {@link PlatformMark}, not this string.
+   */
   label: string;
   /**
    * Fixed 1–2 char lettermark for icon-only listing chrome. Keeps the listing
@@ -79,6 +87,10 @@ export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
   { value: 'ecwid',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600', icon: PLATFORM_BRAND_ICON_PATHS.ecwid },
   { value: 'square',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600',  dot: 'bg-slate-500', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
   { value: 'shopify',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600',  dot: 'bg-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
+  // Order / Product Hub channels (not door-intake defaults) — still need a
+  // mark + tone so PlatformMark never falls back to typed prose.
+  { value: 'zoho',       label: 'Zoho',       mark: 'Zo', text: 'text-red-600',    border: 'border-red-600',    dot: 'bg-red-600', icon: PLATFORM_BRAND_ICON_PATHS.zoho },
+  { value: 'mercari',    label: 'Mercari',    mark: 'Me', text: 'text-purple-600', border: 'border-purple-600', dot: 'bg-purple-600', icon: PLATFORM_BRAND_ICON_PATHS.mercari },
   { value: 'other',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis', dot: 'bg-border-emphasis', icon: PLATFORM_BRAND_ICON_PATHS.other },
 ];
 

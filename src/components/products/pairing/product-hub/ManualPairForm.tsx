@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Link2, Plus, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { PRODUCT_HUB_PLATFORMS, platformStyle } from '../platform-style';
+import { PRODUCT_HUB_PLATFORMS } from '../product-hub-platforms';
+import { sourcePlatformLabel } from '@/lib/source-platform';
 import { manualAddPairing } from './sku-pair-api';
 
 /**
@@ -81,7 +82,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
           >
             {PRODUCT_HUB_PLATFORMS.map((p) => (
               <option key={p} value={p}>
-                {platformStyle(p).label}
+                {sourcePlatformLabel(p)}
               </option>
             ))}
           </select>

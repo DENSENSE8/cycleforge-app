@@ -592,12 +592,16 @@ for (const factor of TABLET_FACTORS) {
       try {
         await pairViaUiV2(page, code);
 
-        await expect(page.getByTestId('kiosk-mode-spine')).toBeVisible();
+        // Spine starts closed (off-screen width 0) — Catalog owns first paint.
+        await expect(page.getByTestId('kiosk-mode-spine')).toHaveAttribute('data-expanded', 'false');
         await expect(page.getByRole('heading', { name: /catalog/i })).toBeVisible();
         await expect(page.getByRole('heading', { name: /repair details/i })).toBeVisible();
-        // Mode selection lives in the left spine — never a bottom dock tablist.
-        await expect(page.getByRole('tablist', { name: /kiosk service mode/i })).toBeVisible();
         await expect(page.locator('[class*="fixed"][class*="bottom-0"]')).toHaveCount(0);
+
+        // Open via Catalog header toggle, then switch modes from the push spine.
+        await page.getByTestId('kiosk-spine-toggle').click();
+        await expect(page.getByTestId('kiosk-mode-spine')).toHaveAttribute('data-expanded', 'true');
+        await expect(page.getByRole('tablist', { name: /kiosk service mode/i })).toBeVisible();
 
         await page.getByRole('tab', { name: /buy \/ sell/i }).click();
         await expect(page.getByRole('heading', { name: /buy \/ sell details/i })).toBeVisible();

@@ -19,6 +19,7 @@ import {
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import { SHARED_LINE_TRACK_META } from '@/lib/receiving/shared-line-tracks';
 
 export type IncomingGridColumnKey =
   | 'select'
@@ -68,40 +69,39 @@ export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
 export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   // Scrolls with facts — Unbox Sheets golden freezes `select` only (2026-08-04).
-  // Icon-only headers (2026-08-04): `headerGlyphOnly` — full `label` is sr-only /
-  // tip. `order` + `qty` both map to Hash; distinguish by column position.
-  { key: 'order', width: 'minmax(7rem, 7rem)', label: 'Order', type: 'id', align: 'start', headerGlyphOnly: true },
+  // Header grammar (label · type · align) resolves from SHARED_LINE_TRACK_META so
+  // Incoming and History never drift. `headerGlyphOnly` overturned 2026-08-10
+  // (Inbound ↔ History one family): Incoming now follows History sentence-case;
+  // `gridHeaderShowsLabel` geometry decides the narrow-track glyph fallback.
+  { key: 'order', width: 'minmax(7rem, 7rem)', ...SHARED_LINE_TRACK_META.order },
   // Fixed preferred track — NOT `1fr`. Incoming is the Notion-overflow pilot:
   // columns are content-sized so the row can exceed the card and scroll
   // horizontally; when the sum is narrower than the card, slack is empty canvas
   // right of the last column (not a stretched Product). Other LedgerGrid
   // families keep the fill track until they opt in the same way. Drag-resize
   // still owns the live width via `--cf-col-title`.
-  {
-    key: 'title',
-    width: 'minmax(16rem, 16rem)',
-    label: 'Product Title',
-    type: 'text',
-    headerGlyphOnly: true,
-  },
+  { key: 'title', width: 'minmax(16rem, 16rem)', ...SHARED_LINE_TRACK_META.title },
   // Expected / PO civil date — Pending's "Ship by" / By track.
   // `type: 'date'` end-aligns via `ALIGN_BY_TYPE` (comparable civil day).
   // Day face (default): typed floor 4.5rem — not the stamp floor.
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', type: 'date', dateFace: 'day', headerGlyphOnly: true },
+  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', type: 'date', dateFace: 'day' },
   // Duration face (`12d` / `4h`) — typed `date` for the clock glyph; end-align
   // comes from the type map (same as By / qty). Floor 3rem via `dateFace`.
-  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', dateFace: 'duration', headerGlyphOnly: true },
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', headerGlyphOnly: true },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', headerGlyphOnly: true },
+  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', dateFace: 'duration' },
+  // labelFitRem 3.5 so the `Qty` word shows at the 3.5rem floor, matching History.
+  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', ...SHARED_LINE_TRACK_META.qty, hideKey: 'qty', labelFitRem: 3.5 },
+  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.condition, hideKey: 'condition', tier: 'optional' },
   // Receiving-specific delivery status (hide with meta `rest` in TableColumnConfig).
   // Icon + short Unv. chip when it adds signal (full phrase in tooltip).
   // 4.75rem fits icon + 4-char eyebrow; cells clip via ledgerGridCell grid inset.
-  { key: 'status', width: 'minmax(4.75rem, 4.75rem)', label: 'Status', type: 'tag', hideKey: 'rest', headerGlyphOnly: true },
+  // Header grammar (`Status`, tag, start) is shared; the CELL vocabulary
+  // (delivery_state) stays Incoming's own (`IncomingGridStatusCell`).
+  { key: 'status', width: 'minmax(4.75rem, 4.75rem)', ...SHARED_LINE_TRACK_META.status, hideKey: 'rest' },
   // Channel mark — same 4rem external floor as Receiving (mark + inset +
   // hairline breathing). Glyph-only header by intent.
-  { key: 'platform', width: 'minmax(4rem, 4rem)', label: 'Platform', type: 'external', hideKey: 'platform', tier: 'optional', headerGlyphOnly: true },
+  { key: 'platform', width: 'minmax(4rem, 4rem)', label: 'Platform', type: 'external', hideKey: 'platform', tier: 'optional' },
   // Fits icon + last-8 tracking face (or + TRK# attach face).
-  { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', type: 'tracking', omitCellIcon: true, hideKey: 'tracking', headerGlyphOnly: true },
+  { key: 'tracking', width: 'minmax(8rem, 8rem)', ...SHARED_LINE_TRACK_META.tracking, omitCellIcon: true, hideKey: 'tracking' },
   // Vendor receipt state (`zoho_po_mirror.status`).
   //
   // `optional` on the DEFAULT lane and that is not a hedge — it is the whole
@@ -115,7 +115,7 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   // `?tracking_in=` paste (which relaxes the predicate on purpose) and the
   // recently-removed lane (where "the vendor received it" IS one of the exits).
   // See `incomingGridColumnsFor`.
-  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', label: 'Vendor', type: 'tag', hideKey: 'zoho', tier: 'optional', headerGlyphOnly: true },
+  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.zoho, hideKey: 'zoho', tier: 'optional' },
 ] as const;
 
 /**
@@ -133,7 +133,6 @@ const INCOMING_REMOVED_REASON_COLUMN: IncomingGridColumn = {
   width: 'minmax(7rem, 7rem)',
   label: 'Left because',
   type: 'tag',
-  headerGlyphOnly: true,
 };
 
 /**

@@ -51,15 +51,14 @@ Top-to-bottom, a station is four parts and nothing more:
 - **Compose the scan bar, never re-wire its chrome.** Geometry, padding, icon slot, and placeholder styling live in
   `src/components/station/scan-bar/tokens.ts` (`STATION_SCAN_BAR_INPUT_CLASS`, `STATION_SCAN_BAR_ICON_SLOT_CLASS`, …).
   Domain benches (tech, testing, receiving, pack, FBA) wrap `ThemedStationScanBar` inside `ScanBandShell` (glow), which
-  layers the staff-theme border + focus + submit trace onto the core `StationScanBar`. Focused **ready HUD** is low-key
-  and lives on the **input column** only (flush corner reticle + RM-gated sweep + empty block caret) so width tracks
-  every station skin and never underlaps the frosted mode rail — placeholder + leading icon clear on focus. Mode-rail
-  stations pass `readyArm` so the empty focused face shows **icon + `{identity} armed`** (or `Auto`) — never `Scan …`
-  placeholder prose. Never a page-local cyberpunk twin or raw `motion/react` import. The mode / paste / spinner rail is
-  an **absolute frosted veil** (`backdrop-blur-sm` + translucent card + left fade) over the full-bleed input — long
-  typed text soft-peeks under the glyphs when idle. Clearance is **measured** (`ResizeObserver` → `padding-inline-end`),
-  never magic `pr-*` / `rightPadClass`. *Rationale: one geometry SoT; frost beats an opaque wall; measured pad tracks
-  1–4 modes; dropped-focus must name what is armed without fighting idle chrome.*
+  layers the staff-theme border + focus + submit trace onto the core `StationScanBar`. Focused chrome is the staff
+  bottom-rule + glow host — not a page-local ready HUD / armed-face overlay (reverted 2026-08-10 after it fought
+  Enter/wedge submit speed). Mode-rail stations keep short placeholders + leading mode icons. Never a page-local
+  cyberpunk twin or raw `motion/react` import. The mode / paste / spinner rail is an **absolute frosted veil**
+  (`backdrop-blur-sm` + translucent card + left fade) over the full-bleed input — long typed text soft-peeks under
+  the glyphs when idle. Clearance is **measured** (`ResizeObserver` → `padding-inline-end`), never magic `pr-*` /
+  `rightPadClass`. *Rationale: one geometry SoT; frost beats an opaque wall; measured pad tracks 1–4 modes;
+  wedge Enter must stay a plain form submit.*
 - **Compose the entity-context header, never fork it.** Inbound carton benches (Unbox, Triage, Testing)
   and Shipping / Pack / Pickup active-order chrome import `CartonContextCard` + `StationContextBar`
   from `@/components/station/entity-context`. Thin adapters map controller bags → props; omit

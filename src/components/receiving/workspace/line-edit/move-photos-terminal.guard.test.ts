@@ -98,6 +98,16 @@ describe('Move / Send Macro terminal SoT', () => {
     assert.match(photos, /ListingPhotoCompareHost/);
     assert.match(photos, /MovePhotosBetweenPoPanel/);
     assert.match(photos, /SendPhotoNotePanel/);
+    assert.match(
+      photos,
+      /dynamic\(/,
+      'Move·Send·Compare load per drill — not with the Actions list',
+    );
+    assert.doesNotMatch(
+      photos,
+      /import \{ MovePhotosBetweenPoPanel \}|import \{ SendPhotoNotePanel \}|import \{ ListingPhotoCompareHost \}/,
+      'drills must not be static imports on the Photos host',
+    );
   });
 
   it('Move display chrome resets in place after success (no browse handoff)', () => {

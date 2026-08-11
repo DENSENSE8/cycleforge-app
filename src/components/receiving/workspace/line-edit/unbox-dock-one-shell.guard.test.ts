@@ -245,6 +245,30 @@ test('Under-dock pager is a quiet status-bar face — no amber armed track / pul
   );
 });
 
+test('Classify dock stays h-11 — never expandBand / never remount TriageClassifySection', () => {
+  const stepDock = codeOnly(join(ROOT, 'line-edit/UnboxStepDock.tsx'));
+  const classifyDock = codeOnly(
+    join(ROOT, 'line-edit/steps/dock/ClassifyDockControl.tsx'),
+  );
+  const panel = codeOnly(LINE_EDIT);
+  assert.doesNotMatch(
+    stepDock,
+    /\bgrowBand\b/,
+    'UnboxStepDock must not grow Band 1 for classify',
+  );
+  assert.match(
+    panel,
+    /expandBand=\{false\}/,
+    'LineEditPanel keeps UnboxDockHost expandBand off (classify is h-11)',
+  );
+  assert.doesNotMatch(
+    classifyDock,
+    /import[\s\S]*TriageClassifySection|<TriageClassifySection/,
+  );
+  assert.match(classifyDock, /h-11/, 'ClassifyDockControl is one fixed row');
+  assert.match(classifyDock, /Continue|Classify in Displays/);
+});
+
 test('Dock always mounts left procedure waist (except serial / classify own the band)', () => {
   const stepDock = src(join(ROOT, 'line-edit/UnboxStepDock.tsx'));
   assert.match(stepDock, /UnboxDockScanEntry/, 'shared dock scan entry composed');
@@ -371,6 +395,16 @@ test('Notes always-on as a single h-11 top-row entry — flush Plus insert, not 
   assert.match(notes, /staff-stamp/, 'staff stamp insert action');
   assert.match(notes, /last-notes|Add last notes/, 'last-notes → label insert action');
   assert.match(notes, /ticket-subject|unit-price|product-title|sync-notes|serial/, 'full LineNotesCard insert set');
+  assert.match(
+    notes,
+    /onPrimaryAction/,
+    'Enter fires Print · Receive primary (chat Send) — blur still saves only',
+  );
+  assert.match(
+    notes,
+    /e\.key === ['"]Enter['"][\s\S]{0,500}onPrimaryAction/,
+    'Enter key path calls onPrimaryAction after persist',
+  );
   assert.doesNotMatch(code, /DenseComposeBodyBand|DenseComposeBodyTextarea/, 'no tall DenseCompose escalate');
   assert.doesNotMatch(code, /OmnichannelComposerDock/, 'no raised composer shell');
   assert.doesNotMatch(code, /FileText/, 'no FileText notes toggle in the entry');
@@ -379,6 +413,16 @@ test('Notes always-on as a single h-11 top-row entry — flush Plus insert, not 
     panelCode,
     /data-unbox-dogfood-print[\s\S]{0,2500}UnboxDockNotesEntry/,
     'notes entry always mounts on the dogfood top row',
+  );
+  assert.match(
+    panelCode,
+    /UnboxDockNotesEntry[\s\S]{0,2500}onPrimaryAction=\{[\s\S]{0,400}handlePrintAndReceive/,
+    'dogfood notes Enter wires the Print · Receive primary',
+  );
+  assert.match(
+    panelCode,
+    /primaryActionDisabled=\{Boolean\(terminalVm\?\.disabled\)\}/,
+    'Enter respects the same disabled gate as the Print · Receive CTA',
   );
   assert.doesNotMatch(
     panelCode,
@@ -679,13 +723,18 @@ test('COUNTER-EXAMPLE ratchet: Unbox dock stays full-width flush — no chip / g
   );
   assert.match(
     arrival,
-    /stage=["']arrival_package["']/,
-    'arrival Link hosts CartonPhotoPairPanel at arrival_package (claim mode)',
+    /emitReceiving\('receiving-open-photo-link'/,
+    'arrival Link opens the Photos → Link Displays leaf via event — never a popover',
   );
   assert.match(
     arrival,
-    /aspect=\{aspect \?\? null\}/,
+    /cartonAspect:\s*aspect/,
     'arrival Link / upload are aspect-scoped to the active door step',
+  );
+  assert.doesNotMatch(
+    arrival,
+    /CartonPhotoPairPanel|<Popover\b/,
+    'arrival Link is a rail drill, not a dock popover',
   );
   assert.doesNotMatch(
     arrival,
@@ -698,18 +747,36 @@ test('COUNTER-EXAMPLE ratchet: Unbox dock stays full-width flush — no chip / g
   );
   assert.match(
     item,
+    /ItemPhotoCaptureStrip/,
+    'item_photos Band 1 uses shared ItemPhotoCaptureStrip (Link | Upload | Send)',
+  );
+  const itemStrip = codeOnly(
+    join(ROOT, 'line-edit/ItemPhotoCaptureStrip.tsx'),
+  );
+  assert.match(
+    itemStrip,
     /PhotoStepDockStrip/,
-    'item_photos Band 1 uses Link | Upload | Send to phone',
+    'item strip paints Link | Upload | Send to phone',
   );
   assert.match(
-    item,
+    itemStrip,
     /stage: 'unbox_item'/,
-    'item dock stamps unbox_item + line id',
+    'item strip stamps unbox_item + line id',
   );
   assert.match(
-    item,
+    itemStrip,
+    /emitReceiving\('receiving-open-photo-link'/,
+    'item Link opens the Photos → Link Displays leaf via event — never a popover',
+  );
+  assert.doesNotMatch(
+    itemStrip,
+    /CartonPhotoPairPanel|<Popover\b/,
+    'item Link is a rail drill, not an off-screen popover',
+  );
+  assert.doesNotMatch(
+    itemStrip,
     /buildUnboxingCartonLibraryHref|router\.push/,
-    'item Link opens media library',
+    'item Link must not navigate to media library',
   );
 
   const ack = codeOnly(

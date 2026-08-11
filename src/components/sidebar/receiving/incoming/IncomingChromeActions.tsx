@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, RefreshCw, Loader2, Package, ClipboardList, Upload } from '@/components/Icons';
+import { Plus, RefreshCw, Loader2, Package, Upload } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import {
@@ -16,6 +16,7 @@ import {
   WorkbenchFilterMenuRow,
 } from '@/components/dashboard/workbench-filter-popover';
 import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { ChromeCheckButton } from '@/components/receiving/ChromeCheckButton';
 import { cn } from '@/utils/_cn';
 
 export function IncomingChromeActions({
@@ -63,18 +64,11 @@ export function IncomingChromeActions({
   return (
     <>
       {canCheckZoho ? (
-        <Button
-          size="sm"
+        <ChromeCheckButton
           onClick={onCheckZoho}
           ariaLabel="Check Zoho received by tracking"
-          icon={<ClipboardList />}
-          className={cn(
-            WORKBENCH_CHROME_PILL_CLASS,
-            'font-semibold uppercase tracking-widest bg-slate-700 shadow-sm shadow-slate-700/25 hover:bg-slate-600 active:bg-slate-800',
-          )}
-        >
-          Check
-        </Button>
+          testId="incoming-check"
+        />
       ) : null}
       {hasAnyImport ? (
         <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>

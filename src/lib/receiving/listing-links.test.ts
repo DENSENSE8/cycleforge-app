@@ -4,6 +4,8 @@ import {
   collectCartonListingLinks,
   formatListingLinkMenuOptions,
   listingUrlIdentityKey,
+  listingUrlPlatform,
+  normalizeListingHref,
   buildOpenLinksHubHref,
 } from './listing-links';
 import { getExternalUrlByPlatform } from '@/utils/external-item-url';
@@ -185,6 +187,42 @@ test('sync notes links suppress catalog and derived fallbacks', () => {
   );
 });
 
+test("each sync-note link keeps the buyer's own title, in the buyer's order", () => {
+  // The triage case: one PO, four auctions, one box. `label` is identical on
+  // all four ("Listing"/"Synced"), so the title is the ONLY thing that lets an
+  // unboxer say which physical item is which link.
+  const links = collectCartonListingLinks({
+    listingLink: '',
+    syncNotes: [
+      'Bose Acoustimass AM-500: https://shopgoodwill.com/item/267952401',
+      'Bose CineMate 15: https://shopgoodwill.com/item/267830257',
+      'Bose Model 141: https://shopgoodwill.com/item/267831532',
+      '(2) Bose Companion 2: https://shopgoodwill.com/item/268362819',
+    ].join('\n'),
+    sku: 'WIDGET-01',
+    sourcePlatform: 'goodwill',
+    isUnmatched: false,
+  });
+  assert.deepEqual(
+    links.map((l) => l.title),
+    [
+      'Bose Acoustimass AM-500',
+      'Bose CineMate 15',
+      'Bose Model 141',
+      '(2) Bose Companion 2',
+    ],
+  );
+  // Untitled links report absence honestly rather than echoing the kind.
+  const untitled = collectCartonListingLinks({
+    listingLink: '',
+    syncNotes: 'https://shopgoodwill.com/item/267952401',
+    sku: '',
+    isUnmatched: false,
+  });
+  assert.equal(untitled[0]?.title, null);
+  assert.equal(untitled[0]?.label, 'Listing');
+});
+
 test('manual listing URL stays first when sync notes are present', () => {
   const links = collectCartonListingLinks({
     listingLink: 'https://shopgoodwill.com/item/999999999',
@@ -258,6 +296,25 @@ test('listingUrlIdentityKey extracts marketplace item ids for last-8 chips', () 
   assert.equal(listingUrlIdentityKey('https://shopgoodwill.com/item/267952401'), '267952401');
   assert.equal(listingUrlIdentityKey(''), '');
   assert.equal(listingUrlIdentityKey('not-a-url'), '');
+});
+
+test('listingUrlPlatform reads the marketplace off the host, ccTLDs included', () => {
+  assert.equal(listingUrlPlatform('https://www.ebay.com/itm/123456789012'), 'ebay');
+  assert.equal(listingUrlPlatform('https://m.ebay.co.uk/itm/123456789012'), 'ebay');
+  assert.equal(listingUrlPlatform('https://www.amazon.de/dp/B012345678'), 'amazon');
+  assert.equal(listingUrlPlatform('https://shopgoodwill.com/item/267952401'), 'goodwill');
+  assert.equal(listingUrlPlatform('https://usavshop.com/products/1018'), 'ecwid');
+  // Unrecognised host is '' — never guessed into a platform we would then paint.
+  assert.equal(listingUrlPlatform('https://example.com/itm/123456789012'), '');
+  assert.equal(listingUrlPlatform(''), '');
+});
+
+test('normalizeListingHref rejects non-http schemes instead of repairing them', () => {
+  assert.equal(normalizeListingHref('www.ebay.com/itm/1'), 'https://www.ebay.com/itm/1');
+  assert.equal(normalizeListingHref('ftp://example.com/itm/123456'), null);
+  assert.equal(normalizeListingHref('javascript:evil(1)'), null);
+  // A bare host:port is not a scheme — the port must survive.
+  assert.equal(normalizeListingHref('example.com:8080/itm/1'), 'https://example.com:8080/itm/1');
 });
 
 test('buildOpenLinksHubHref encodes hrefs as a JSON query param', () => {

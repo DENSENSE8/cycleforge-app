@@ -48,4 +48,5 @@ export const INCOMING_TABLE_BINDING: TableSurfaceBinding<ReceivingLineRow, Incom
   definition: INCOMING_TABLE_DEFINITION,
   columns: INCOMING_GRID_COLUMNS,
   makeDescriptor: makeIncomingGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:incoming' },
 };

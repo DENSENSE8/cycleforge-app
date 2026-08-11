@@ -20,6 +20,7 @@ import {
   RECEIVING_PHOTO_LIST_INTENT_CARTON,
 } from '@/lib/receiving/photo-intent';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 
 const ITEM_LIST_INTENT = photoIntentFromStage('unbox_item');
 
@@ -93,7 +94,8 @@ function useItemPhotos(receivingId: number, lineId: number) {
 export function ListingPhotoCompareHost({ row }: { row: ReceivingLineRow }) {
   const receivingId = row.receiving_id ?? 0;
   const lineId = row.id ?? 0;
-  const listingHref = String(row.receiving_listing_url ?? '').trim();
+  // Resolver, not the bare column — see TestingListingVerifyHost.
+  const listingHref = listingLinksForReceivingRow(row)[0]?.href ?? '';
   const skuId = row.sku_catalog_id ?? null;
 
   const listingTarget = useMemo(

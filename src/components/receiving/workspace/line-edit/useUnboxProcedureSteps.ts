@@ -126,8 +126,8 @@ function stepSummary(
 
   switch (key) {
     case 'classify':
-      // Dock mounts TriageClassifySection (Band 1 grows) — › still advances.
-      return ctx.classified ? 'Classified' : 'Use › when ready';
+      // Dock = one-row Continue; editor is Displays KNOW — › still advances.
+      return ctx.classified ? 'Classified' : 'Set in Displays';
     // Door + bench photo steps share the aspect-count summary shape; the map
     // (arrivalAspect vs cartonAspect) is chosen by stage below.
     case 'arrival_label_photo':

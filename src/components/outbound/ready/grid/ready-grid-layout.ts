@@ -13,11 +13,7 @@
  * so it is structural and the Fields menu never offers to hide a control.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import {
-  gridFrozenLeft,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { makeGridLayout } from '@/design-system/components/grid/make-grid-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -112,38 +108,41 @@ export const READY_GRID_COLUMNS: readonly ReadyGridColumn[] = [
   { key: 'action', width: 'minmax(6.5rem, 6.5rem)', sortable: false },
 ] as const;
 
-/** Frozen identity pane — `select · title`, derived from the model's own flag. */
-const READY_GRID_LOCKED_KEYS: readonly ReadyGridColumnKey[] = gridFrozenKeys(READY_GRID_COLUMNS);
+/**
+ * Layout DERIVED from the column model — template, sticky offsets, frozen and
+ * sortable answers, default sort direction. The hand-written versions of these
+ * were the same six functions in every family with the names swapped; see
+ * `make-grid-layout.ts` for the breakdown and `make-grid-layout.test.ts` for
+ * the goldens that pinned the outputs across this migration.
+ */
+const READY_GRID_LAYOUT = makeGridLayout<ReadyGridColumn>({
+  columns: READY_GRID_COLUMNS,
+  descFirstKeys: ['tested'],
+});
 
-const READY_GRID_SORTABLE_KEYS: readonly ReadyGridColumnKey[] = READY_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
+/** Narrowing wrapper — the derived answer, with this family's key type. */
 export function isReadyGridSortable(key: string): key is ReadyGridColumnKey {
-  return (READY_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+  return READY_GRID_LAYOUT.isSortable(key);
 }
 
 export function isReadyGridFrozen(key: string): boolean {
-  return READY_GRID_LOCKED_KEYS.includes(key as ReadyGridColumnKey);
+  return READY_GRID_LAYOUT.isFrozen(key);
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
 export function readyGridTemplate(
   columns: readonly ReadyGridColumn[] = READY_GRID_COLUMNS,
 ): string {
-  return gridTemplate(columns);
+  return READY_GRID_LAYOUT.template(columns);
 }
 
-/** Sticky offset for a frozen cell — row px + the widths of the locked columns before it. */
+/** Sticky offset for a frozen cell — row px + the locked widths before it. */
 export function readyGridFrozenLeft(key: ReadyGridColumnKey): string {
-  return gridFrozenLeft(READY_GRID_COLUMNS, key);
+  return READY_GRID_LAYOUT.frozenLeft(key);
 }
 
-
-/** Default direction on first activation — tested history reads newest-first. */
 export function defaultDirForReadyGridSort(key: ReadyGridColumnKey): GridSortDir {
-  if (key === 'tested') return 'desc';
-  return 'asc';
+  return READY_GRID_LAYOUT.defaultDir(key);
 }
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.

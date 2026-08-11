@@ -27,6 +27,22 @@ describe('Kiosk V2 flush chrome', () => {
     assert.match(chrome, /h-14/);
     assert.match(chrome, /border-b border-border-soft/);
     assert.match(chrome, /cornerClass\('flush'\)/);
+    // Flush leading: spine toggle aligns with Catalog flush back cell (not px-4).
+    assert.match(chrome, /pl-0 pr-4/);
+    assert.doesNotMatch(chrome, /KIOSK_PANE_HEADER_BAND[\s\S]*?px-4/);
+    assert.match(chrome, /KIOSK_PANE_HEADER_TITLE[\s\S]*?first:pl-4/);
+  });
+
+  it('exports a shared pane-footer band twin of the header hairline', () => {
+    const chrome = read('src/app/kiosk/kiosk-chrome.ts');
+    assert.match(chrome, /export const KIOSK_PANE_FOOTER_BAND/);
+    assert.match(chrome, /KIOSK_PANE_FOOTER_BAND[\s\S]*?h-14/);
+    assert.match(chrome, /KIOSK_PANE_FOOTER_BAND[\s\S]*?border-t border-border-soft/);
+    // Same soft seam token as the header — never hairline weight on the floor.
+    assert.doesNotMatch(
+      chrome,
+      /KIOSK_PANE_FOOTER_BAND[\s\S]*?border-border-hairline/,
+    );
   });
 
   it('Catalog and Repair Details headers compose the shared band', () => {
@@ -45,9 +61,12 @@ describe('Kiosk V2 flush chrome', () => {
     const spine = read('src/app/kiosk/KioskModeSpine.tsx');
 
     assert.match(shell, /KioskModeSpine/);
-    assert.match(chrome, /KIOSK_MODE_SPINE_ICON_W_PX/);
+    assert.match(chrome, /KIOSK_MODE_SPINE_COLLAPSED_W_PX = 0/);
     assert.match(chrome, /KIOSK_MODE_SPINE_EXPANDED_W_PX/);
     assert.match(spine, /KioskModeSpine/);
+    assert.match(spine, /KIOSK_MODE_SPINE_COLLAPSED_W_PX/);
+    // Default closed — counter floor starts with Catalog, spine off-screen.
+    assert.match(shell, /useState\(false\)/);
 
     assert.doesNotMatch(shell, /KIOSK_MODE_DOCK/);
     assert.doesNotMatch(chrome, /KIOSK_MODE_DOCK/);
@@ -76,5 +95,40 @@ describe('Kiosk V2 flush chrome', () => {
   it('kiosk catalog mounts ProductSelector flush appearance', () => {
     const shell = read('src/app/kiosk/KioskShell.tsx');
     assert.match(shell, /appearance=["']flush["']/);
+  });
+
+  it('kiosk catalog is a split: category+cart sidebar · products browse stage', () => {
+    const shell = read('src/app/kiosk/KioskShell.tsx');
+    const selector = read('src/components/repair/ProductSelector.tsx');
+
+    assert.match(shell, /layout=["']kiosk-split["']/);
+    assert.match(shell, /catalogPhase/);
+    assert.match(shell, /onContinue/);
+    assert.match(shell, /onAddAnotherItem/);
+    assert.match(selector, /data-kiosk-catalog-split/);
+    assert.match(selector, /data-kiosk-catalog-sidebar/);
+    assert.match(selector, /categoryLevelsByParent/);
+    assert.match(selector, /renderAccordionSiblingLevel/);
+    assert.match(selector, /CATEGORY_ROOT_KEY/);
+    assert.match(selector, /data-kiosk-product-browse/);
+    assert.match(selector, /data-kiosk-cart-tray/);
+    assert.match(selector, /Add another item/);
+    assert.match(selector, /data-kiosk-add-another/);
+    assert.match(selector, /data-kiosk-continue/);
+    assert.match(selector, /KIOSK_PANE_FOOTER_BAND/);
+    assert.match(selector, /data-kiosk-footer-band/);
+    // Products grid must not live inside the sidebar host — browse stage only.
+    const sidebarFn = selector.slice(
+      selector.indexOf('renderCategoryAccordion'),
+      selector.indexOf('renderStackedCategories'),
+    );
+    assert.doesNotMatch(sidebarFn, /data-kiosk-product-browse/);
+  });
+
+  it('repair checkout floor composes the shared footer band', () => {
+    const repair = read('src/app/kiosk/v2/KioskRepairPane.tsx');
+    assert.match(repair, /KIOSK_PANE_FOOTER_BAND/);
+    assert.match(repair, /data-kiosk-footer-band/);
+    assert.doesNotMatch(repair, /FlushTerminalFooter/);
   });
 });

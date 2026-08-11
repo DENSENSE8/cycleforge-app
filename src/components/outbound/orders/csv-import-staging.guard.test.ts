@@ -151,26 +151,26 @@ describe('csv-import-staging placement', () => {
     assert.match(control, /Import from CSV/);
   });
 
-  it('Band 1 carries ONE data-in CTA — Import and Add share a control', () => {
+  it('Band 1 carries labeled Import · Add peers — Add is direct intake', () => {
     const actions = read('src/components/dashboard/OutboundOrderChromeActions.tsx');
-    // Two solid pills side by side spent the band's whole trailing budget on
-    // two spellings of "get orders into this queue".
+    // Import and Add are different topics at button altitude (data-in vs intake),
+    // so they are labeled peer CTAs — never one quiet Plus burying both.
     assert.match(actions, /<OrdersSyncPopover/);
-    assert.match(actions, /onNewOrder=\{onNewOrder\}/);
-    assert.doesNotMatch(actions, /<Button/);
-    assert.doesNotMatch(actions, /Add<\/Button>/);
+    assert.match(actions, /data-testid="outbound-chrome-add"/);
+    assert.match(actions, /onClick=\{onNewOrder\}/);
+    assert.match(actions, /Add\s*<\/Button>/);
+    assert.match(actions, /WORKBENCH_CHROME_PILL_CLASS/);
+    assert.match(actions, /ariaLabel="New order entry"/);
 
-    // One quiet cube — a peer of the band's other cells, not a solid fill
-    // competing with the lifecycle tabs. The verbs are named in WORDS as tabs
-    // inside the panel, never as a row of separated glyphs.
+    // Import panel keeps Import · Backfill tabs; Add no longer lives inside.
     const pop = read('src/components/unshipped/OrdersSyncPopover.tsx');
     assert.match(pop, /WorkbenchChromeCubeMenu/);
-    for (const label of ["label: 'Import'", "label: 'Add'", "label: 'Backfill'"]) {
+    assert.match(pop, /labeledTrigger/);
+    for (const label of ["label: 'Import'", "label: 'Backfill'"]) {
       assert.ok(pop.includes(label), `the panel must carry a ${label} tab`);
     }
-    // Add stays reachable by the SAME accessible name it had as a pill, so the
-    // only thing that changed for an operator is the path to it.
-    assert.match(pop, /ariaLabel="New order entry"/);
+    assert.doesNotMatch(pop, /label: 'Add'/);
+    assert.doesNotMatch(pop, /onNewOrder/);
   });
 
   it('the To-Ship surface reads the seam, not an orders-only staging store', () => {

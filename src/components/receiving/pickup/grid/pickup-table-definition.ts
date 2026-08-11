@@ -29,4 +29,9 @@ export const PICKUP_TABLE_BINDING: TableSurfaceBinding<PickupLine, PickupGridCol
   definition: PICKUP_TABLE_DEFINITION,
   columns: PICKUP_GRID_COLUMNS,
   makeDescriptor: makePickupGridDescriptor,
+  // Ruled honest-absence — `NO_DESK_PEEK_SURFACES` in band3-find-only.guard.
+  recordPlane: {
+    kind: 'navigate',
+    reason: 'pickup browse — rows navigate to the order (?lcpu=)',
+  },
 };

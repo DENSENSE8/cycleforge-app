@@ -43,6 +43,7 @@ const LABELS: Record<UnboxSideTab, string> = {
   classify: 'Classify',
   listings: 'Listings',
   units: 'Units',
+  prebox: 'Prebox',
   support: 'Support',
   tracking: 'Tracking',
   timeline: 'Timeline',
@@ -56,6 +57,7 @@ const GROUPS: Record<UnboxSideTab, DisplayIndexGroup> = {
   linkage: 'verification',
   inventory: 'assets',
   units: 'assets',
+  prebox: 'assets',
   photos: 'assets',
   ticket: 'context',
   tracking: 'context',
@@ -122,6 +124,15 @@ function unitsRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'sub
   };
 }
 
+function preboxRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  const n = signals.serialCount;
+  if (n <= 0) return { subtitle: 'Need serials', tone: 'neutral' };
+  return {
+    subtitle: n === 1 ? '1 unit ready' : `${n} units ready`,
+    tone: 'action',
+  };
+}
+
 function listingsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   return { subtitle: 'Listing links', tone: 'neutral' };
 }
@@ -169,6 +180,8 @@ function rowMeta(
       return listingsRow();
     case 'units':
       return unitsRow(signals);
+    case 'prebox':
+      return preboxRow(signals);
     case 'support':
       return supportRow();
     case 'tracking':

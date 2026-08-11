@@ -52,4 +52,13 @@ export const RECEIVING_TABLE_BINDING: TableSurfaceBinding<ReceivingLineRow, Rece
   definition: RECEIVING_BROWSE_DEFINITION,
   columns: RECEIVING_GRID_COLUMNS,
   makeDescriptor: makeReceivingGridDescriptor,
+  /**
+   * The History plane. This binding has THREE mounts and they do not agree:
+   * Unbox Recent/Queue and Testing open the station work surface
+   * (`LineEditPanel` / `TestingPanel`) rather than a desk peek, and both pass a
+   * `recordPlane` override at the mount — the same "a real second mount, never
+   * a preference" escape `tableId` / `ariaLabel` / `testId` already use. The
+   * binding declares the desk default; a station mount says so out loud.
+   */
+  recordPlane: { kind: 'inspector', occupantId: 'detail:history' },
 };

@@ -45,6 +45,16 @@ function walk(dir: string): string[] {
   });
 }
 
+/**
+ * Strip comments before asserting on structure. Prose in this tree deliberately
+ * names the things the code may not do (the deleted rail, the hook this surface
+ * cannot use) — that reasoning is the evidence, and a guard that read it would
+ * punish the file for explaining itself.
+ */
+function code(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+}
+
 const PHOTO_SOURCES = walk(PHOTOS_DIR).map((path) => ({
   path,
   rel: relative(ROOT, path),
@@ -144,11 +154,113 @@ describe('media library chrome — rail-less, one scope writer', () => {
     );
   });
 
+  it('Band 2 is the house lean row — Views in the slot, no KPI toggle', () => {
+    // Ported onto `WorkbenchTriageBand` rather than staying a bespoke band, so
+    // the four-control grammar applies here too. Two halves, both load-bearing:
+    //
+    //   1. Saved views ride the band's `views` slot. They were a block INSIDE
+    //      the refine funnel until 2026-08-10, which put a page-scoped control
+    //      in the row-narrowing drawer — the same conflation that had Views
+    //      abutting the find field house-wide.
+    //   2. No `kpiToggle`. There is no KPI band on this surface, and a toggle
+    //      with no band behind it is a dead control (honest absence).
+    const header = code(readFileSync(join(PHOTOS_DIR, 'PhotoLibraryWorkspaceHeader.tsx'), 'utf8'));
+
+    assert.match(header, /<WorkbenchTriageBand/, 'Band 2 composes the house band');
+    assert.match(header, /views=\{/, 'saved views mount in the band `views` slot');
+    assert.match(header, /<MediaViewsMenu/, 'the Views control is the Media adapter');
+    assert.doesNotMatch(
+      header,
+      /kpiToggle=/,
+      'no KPI band on this surface — never mount the toggle to make the row symmetrical',
+    );
+
+    // The funnel is row-narrowing facets only. `MediaSavedViewsSection` is the
+    // menu's body now, reached through `MediaViewsMenu` — a direct mount here
+    // means it slid back into the drawer.
+    assert.doesNotMatch(
+      header,
+      /<MediaSavedViewsSection/,
+      'saved views belong to the `views` slot, not the refine funnel',
+    );
+  });
+
+  it('Media Library owns its saved-views STORE and composes the shared FACE', () => {
+    // Three client hooks over one `saved_views` table is the ruling — Media
+    // persists a JSON {filters, view} snapshot, not a URL-param set, so it
+    // cannot route through `useSavedViews`. What it must NOT own is the face:
+    // a second Bookmark trigger is the fork this asserts against.
+    // Code only — the docblock NAMES `WorkbenchViewsMenu` to explain why this
+    // adapter cannot compose it, and that prose is the evidence for the split
+    // (same reason the rail-less test above reads imports and JSX, not words).
+    const menu = code(readFileSync(join(PHOTOS_DIR, 'MediaViewsMenu.tsx'), 'utf8'));
+
+    assert.match(menu, /ViewsMenuShell/, 'compose the shared Views face, never a second trigger');
+    assert.doesNotMatch(
+      menu,
+      /useSavedViews|<WorkbenchViewsMenu/,
+      'Media keeps `useMediaLibrarySavedViews` — do not route it through the URL-param hook',
+    );
+    for (const glyph of [/<Bookmark/, /HeaderChromeMenu/, /AnchoredLayer/]) {
+      assert.doesNotMatch(
+        menu,
+        glyph,
+        'the trigger, its panel and its anchoring live in ViewsMenuShell — do not re-declare them',
+      );
+    }
+
+    // A view is applied by rewriting the URL state, which is where filters live.
+    const header = code(readFileSync(join(PHOTOS_DIR, 'PhotoLibraryWorkspaceHeader.tsx'), 'utf8'));
+    assert.match(
+      header,
+      /onApply=\{\(payload\) => applyView\(/,
+      'applying a view writes the URL — the filters SoT, not component state',
+    );
+  });
+
   it('Band 1 carries no trailing CTA cluster (honest absence)', () => {
     const band = readFileSync(join(PHOTOS_DIR, 'PhotoLibraryScopeBand.tsx'), 'utf8');
     assert.ok(
       !/trailing=/.test(band),
       'Band 1 has no import / add / return-to-scan CTA on this surface — do not invent one',
+    );
+  });
+
+  it('the batch rail floor is the terminal pair — Download MOVED, Delete trailing', () => {
+    const src = readFileSync(
+      join(PHOTOS_DIR, 'photo-inspector/PhotoBatchInspectorPanel.tsx'),
+      'utf8',
+    );
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+
+    // Download joins Delete so "far right" is literal: a one-peer spread floor
+    // gives its only child the whole column.
+    assert.match(
+      code,
+      /FLOOR_ACTION_KEYS[^=]*=\s*\[\s*'download'\s*\]/,
+      'the floor carries the terminal verb (download) beside Delete',
+    );
+    // MOVED, not copied — a verb readable in two places is two to keep in sync.
+    assert.ok(
+      /rowActions\s*=[\s\S]*?!FLOOR_ACTION_KEYS\.includes/.test(code),
+      'row verbs must be the complement of the floor keys, never the whole set',
+    );
+    assert.ok(
+      /floorActions\s*=[\s\S]*?FLOOR_ACTION_KEYS\.includes/.test(code) &&
+        /for \(const action of rowActions\)/.test(code),
+      'the rows must iterate `rowActions`, so a floor verb cannot also be a row',
+    );
+    // Delete is LAST inside the floor — the trailing child, by source order.
+    const floor = code.slice(code.indexOf('<InspectorActionFloor'));
+    assert.ok(
+      floor.indexOf('FloorIconButton') < floor.indexOf('InspectorFlushDelete'),
+      'Delete must be the floor’s trailing peer — icon verbs lead it',
+    );
+    // Coplanar white plane, not the desk canvas step (operator-ruled).
+    assert.match(
+      code,
+      /<InspectorActionFloor surface="card"/,
+      'this rail’s floor stays coplanar with its white body',
     );
   });
 

@@ -547,12 +547,11 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
         /setPairingFocus\(/,
         'the PO-tab intent travels as a prop, read at mount',
       );
-      // Durable open is still `router.replace`, but paint is optimistic in
-      // `useUnboxDisplayView` (pending snapshot). A dispatched focus event —
-      // even one deferred a frame, which is what shipped until 2026-08-02 —
-      // races the hub mount and lands on the default tab. Intent travels as
-      // the `focusTab` prop handoff instead. Verified in a browser on the QA
-      // org, which is the only way this was ever going to be caught.
+      // Displays open is local state (`useUnboxDisplayView`). A dispatched
+      // focus event — even one deferred a frame, which is what shipped until
+      // 2026-08-02 — races the hub mount and lands on the default tab. Intent
+      // travels as the `focusTab` prop handoff instead. Verified in a browser
+      // on the QA org, which is the only way this was ever going to be caught.
       assert.doesNotMatch(
         openPairing,
         /requestAnimationFrame|dispatchReceivingOpenPairingPo/,

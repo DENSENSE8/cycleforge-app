@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 /**
  * POST /api/repair-service/out-of-stock
@@ -36,14 +37,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         [partText, assignmentId, orgId],
       );
     } else {
-      // The active unique index ux_work_assignments_active_entity is on
-      // (entity_type, entity_id, work_type) and does NOT include organization_id,
-      // so the ON CONFLICT target spans tenants. Because repair_service.id is a
-      // single global sequence, a guessed repairId could collide with another
-      // org's active REPAIR row. Pre-validate that repairId belongs to this org,
-      // and guard the DO UPDATE with organization_id so a cross-tenant conflict
-      // row can never be overwritten (the INSERT path would 0-row on conflict
-      // with a foreign org, never reaching here because we 404 first).
+      // Active uniqueness is org-led (`ux_work_assignments_active_entity`). Still
+      // pre-validate repair ownership so a guessed repairId 404s instead of
+      // creating a dangling REPAIR assignment.
       const owner = await tenantQuery(
         orgId,
         `SELECT 1
@@ -62,8 +58,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         `INSERT INTO work_assignments
               (entity_type, entity_id, work_type, status, out_of_stock, priority, assigned_at, organization_id)
          VALUES ('REPAIR', $1, 'REPAIR', 'ASSIGNED', $2, 100, NOW(), $3)
-         ON CONFLICT (entity_type, entity_id, work_type)
-         WHERE status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
+         ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT}
          DO UPDATE SET
            out_of_stock = EXCLUDED.out_of_stock,
            updated_at   = NOW()

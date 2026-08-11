@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-09T22:04:32Z",
-  "totalRoutes": 930,
+  "generatedAt": "2026-08-11T02:48:43Z",
+  "totalRoutes": 931,
   "summary": {
-    "permissionGated": 790,
+    "permissionGated": 791,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -155,6 +155,16 @@
     {
       "path": "/api/admin/org/export/route.ts",
       "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/admin/organization/attract-media/route.ts",
+      "methods": [
+        "DELETE",
         "POST"
       ],
       "gate": "withAuth",

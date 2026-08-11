@@ -41,13 +41,12 @@ import { HEADER_ICON_BTN_CLASS, HEADER_ICON_BTN_OPEN_CLASS, HEADER_ICON_WRAP } f
  *   goal set would be chrome inventing a second story.
  * - Neither, once both have settled → nothing. Absent, never disabled.
  *
- * ## One mark, with precedence — not two dots
+ * ## Corner mark is recurring-due only
  *
- * A recurring task coming due is time-critical and already owns the corner with
- * a rose ping; a waiting work order is a standing fact. Two marks on a 32px
- * button read as noise (the same argument that rejected two rings in the
- * header), so the corner shows the recurring ping when it is due and the
- * work-order dot otherwise. The panel always shows both.
+ * A recurring task coming due is time-critical and owns the corner with a rose
+ * ping. A waiting work order is a standing fact already named in the tooltip
+ * and panel row — no second corner mark on a 32px button (same argument that
+ * rejected two rings in the header).
  */
 export function HeaderGoalChip() {
   const g = useHeaderGoalChip();
@@ -115,17 +114,12 @@ export function HeaderGoalChip() {
         />
       </HoverTooltip>
 
-      {/* One corner mark, recurring-due first — see the docblock. */}
+      {/* Recurring-due corner ping only — see the docblock. */}
       {g.recurDue ? (
         <span className="pointer-events-none absolute right-0.5 top-0.5 flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
         </span>
-      ) : wo.top ? (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-white"
-        />
       ) : null}
 
       <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-end" gap={0}>

@@ -40,4 +40,9 @@ export const TRACKING_EXCEPTIONS_TABLE_BINDING: TableSurfaceBinding<
   definition: TRACKING_EXCEPTIONS_TABLE_DEFINITION,
   columns: TRACKING_EXCEPTIONS_GRID_COLUMNS,
   makeDescriptor: makeTrackingExceptionsGridDescriptor,
+  // Ruled honest-absence — `NO_DESK_PEEK_SURFACES` in band3-find-only.guard.
+  recordPlane: {
+    kind: 'dialog',
+    reason: 'ops triage — rows open an edit dialog, not a RightRailHost desk peek',
+  },
 };

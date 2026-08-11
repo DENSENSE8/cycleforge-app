@@ -12,6 +12,7 @@ import { SecuritySection } from '@/components/settings/sections/SecuritySection'
 import { SessionsSection } from '@/components/settings/sections/SessionsSection';
 import { KioskDevicesSection } from '@/components/settings/sections/KioskDevicesSection';
 import { CatalogSection } from '@/components/settings/sections/CatalogSection';
+import { StationsSection } from '@/components/settings/sections/StationsSection';
 import { LegalSection } from '@/components/settings/sections/LegalSection';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { getActiveSettingsSection } from '@/components/settings/settings-sections';
@@ -58,6 +59,7 @@ export default function SettingsPage() {
           {active === 'sessions' && <SessionsSection />}
           {active === 'devices' && <KioskDevicesSection />}
           {active === 'catalog' && <CatalogSection />}
+          {active === 'stations' && <StationsSection />}
           {active === 'about' && <AboutSection />}
           {active === 'legal' && <LegalSection />}
         </div>

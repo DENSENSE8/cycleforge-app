@@ -42,6 +42,8 @@ function isFalsePositive(line: string): boolean {
   if (/open\s+alert/i.test(line) && !/\balert\s*\(/.test(line.replace(/open\s+alert/i, ''))) {
     return true;
   }
+  // XSS / scheme fixtures in unit tests — not a native browser alert() call.
+  if (/javascript:\s*alert\s*\(/i.test(line)) return true;
   return false;
 }
 

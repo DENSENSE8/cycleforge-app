@@ -9,9 +9,9 @@ import { seedUnboxSpine } from '@/lib/queries/unbox-spine-seed.server';
  * unboxing). Shares the scan-bar + recent-rail sidebar body with Unbox; only
  * the right pane differs. Bare `/triage` derives the `triage` mode path-first.
  *
- * Paint: reuses Unbox History spine seed for the shared receiving-lines cache
- * root so the station does not cold-start the feed after a To-ship → Arrival
- * hop. Centre LCP remains scan + carton work (not the History table).
+ * Paint: reuses History spine seed (`seedUnboxSpine`) for the shared
+ * receiving-lines cache root so the station does not cold-start the feed after
+ * a To-ship → Arrival hop. Centre LCP remains scan + carton work (not a table).
  */
 export default async function TriagePage() {
   const seed = await seedUnboxSpine();

@@ -14,9 +14,10 @@
  * directly. The draft live-drives the carton sticker center (preview + Print ·
  * Receive); carton print stamps `label_note`.
  *
- * Ghost autocomplete: personal MRU phrases in localStorage
- * (`label-note-phrases`) + live `previousLineNotes`. Tab / ArrowRight / click
- * accept; Escape dismisses the ghost before blur.
+ * Enter = chat Send: persist the draft, then fire {@link onPrimaryAction}
+ * (Print · Receive primary — same as the trailing CTA). Empty notes still
+ * allow Enter. Blur still saves only. Ghost Tab / ArrowRight / click accept;
+ * Escape dismisses the ghost before blur.
  *
  * Never auto-focuses — wedge / scan bar keeps the hand (station focus law).
  */
@@ -62,6 +63,8 @@ export function UnboxDockNotesEntry({
   value,
   onChange,
   onSave,
+  onPrimaryAction,
+  primaryActionDisabled = false,
   previousLineNotes,
   skuTitle,
   unitPrice,
@@ -80,6 +83,13 @@ export function UnboxDockNotesEntry({
    * a write happened.
    */
   onSave: (next?: string) => boolean;
+  /**
+   * Enter → same primary as the trailing Print · Receive CTA (chat Send).
+   * Blur still saves only.
+   */
+  onPrimaryAction?: () => void;
+  /** When true, Enter saves but does not fire primary (mirrors disabled CTA). */
+  primaryActionDisabled?: boolean;
   /** Prior line note — insert menu appends it into the label draft. */
   previousLineNotes?: string;
   skuTitle?: string | null;
@@ -377,11 +387,19 @@ export function UnboxDockNotesEntry({
               } else {
                 persistDraft();
               }
+              // Chat-Send: save then Print · Receive (empty note still OK).
+              if (onPrimaryAction && !primaryActionDisabled) {
+                onPrimaryAction();
+              }
               el.blur();
             }
           }}
-          placeholder="Label center (prints on carton)"
-          aria-label="Label note"
+          placeholder="Label center (prints on carton · Enter to print)"
+          aria-label={
+            onPrimaryAction
+              ? 'Label note — Enter to print and receive'
+              : 'Label note'
+          }
           aria-autocomplete="inline"
           className="relative h-11 w-full min-w-0 border-0 bg-transparent px-2.5 text-role-caption text-text-default outline-none placeholder:text-text-faint"
         />

@@ -137,8 +137,16 @@ interface OmnichannelComposerDockProps {
    * `compact` — one short row: field + trailing action inline (paste docks).
    */
   density?: 'default' | 'compact';
-  /** Auto-grow between min/max. Default true. Ignored when `density="compact"`. */
+  /** Auto-grow between min/max. Default true. Ignored when `density="compact"` or `manualResize`. */
   autoGrow?: boolean;
+  /**
+   * CSS drag-resize on the textarea (`resize-y`). Disables auto-grow and
+   * compact single-row lock so the operator can pull the paste field taller
+   * inside a sidebar (e.g. Checking unreceived orders).
+   */
+  manualResize?: boolean;
+  /** Floor height in px when `manualResize` is on. Default 72. */
+  manualResizeMinPx?: number;
   className?: string;
   /** Skip mount entrance (e.g. when already in a presence tree). */
   animateMount?: boolean;
@@ -168,6 +176,8 @@ export const OmnichannelComposerDock = forwardRef<
     chrome = 'raised',
     density = 'default',
     autoGrow = true,
+    manualResize = false,
+    manualResizeMinPx = 72,
     className,
     animateMount = true,
     onBlur,
@@ -177,8 +187,10 @@ export const OmnichannelComposerDock = forwardRef<
   ref,
 ) {
   const localRef = useRef<HTMLTextAreaElement | null>(null);
-  const compact = density === 'compact';
-  const growEnabled = autoGrow && !compact;
+  // Manual resize needs a stacked field the operator can pull — never the
+  // compact single-row lock (that pins h-8 and fights the grip).
+  const compact = density === 'compact' && !manualResize;
+  const growEnabled = autoGrow && !compact && !manualResize;
   useImperativeHandle(ref, () => ({
     focus: () => localRef.current?.focus(),
     blur: () => localRef.current?.blur(),
@@ -279,15 +291,22 @@ export const OmnichannelComposerDock = forwardRef<
           });
         }}
         className={cn(
-          'block w-full resize-none bg-transparent text-role-caption leading-5 text-text-default placeholder:text-text-faint',
+          'block w-full bg-transparent text-role-caption leading-5 text-text-default placeholder:text-text-faint',
           'focus:outline-none',
-          compact
+          manualResize
+            ? 'max-h-64 overflow-y-auto px-3.5 pt-3 pb-1.5 resize-y'
+            : 'resize-none',
+          !manualResize && compact
             ? 'h-8 min-h-8 max-h-8 flex-1 overflow-y-auto px-2.5 py-1.5 leading-5'
-            : cn(
+            : null,
+          !manualResize && !compact
+            ? cn(
                 'px-3.5 pt-3 pb-1.5',
                 growEnabled ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
-              ),
+              )
+            : null,
         )}
+        style={manualResize ? { minHeight: manualResizeMinPx } : undefined}
       />
       {compact ? (
         <div className="flex shrink-0 items-center gap-1 pr-1.5">

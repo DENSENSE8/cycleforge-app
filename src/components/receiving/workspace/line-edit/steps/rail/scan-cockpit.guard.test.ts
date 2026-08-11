@@ -14,7 +14,7 @@
  *   3. No rail entry names a non-capture step (dead coverage).
  *   4. Reasons are real (an exemption list without reasons is the escape hatch).
  *   5. `LineEditPanel` wires the cockpit: it drives the rail from `railLeaf`,
- *      auto-follow yields to an explicit close (the closed-for-row ref), and it
+ *      auto-follow yields to an explicit close (the closed-for-carton ref), and it
  *      mounts the shared push column — not a new always-on region.
  *
  *   node --import tsx --test \
@@ -142,26 +142,37 @@ describe('scan cockpit — LineEditPanel wiring', () => {
   it('auto-follow yields to an explicit close, per carton', () => {
     assert.match(
       panel,
-      /cockpitClosedForRowRef/,
+      /cockpitClosedForCartonRef/,
       'an explicit close must be recorded so auto-follow yields until the next carton',
     );
     assert.match(
       panel,
-      /cockpitClosedForRowRef\.current === row\.id/,
-      'the cockpit effect must skip a carton the operator explicitly closed',
+      /cockpitClosedForCartonRef\.current === cartonKey/,
+      'the cockpit effect must skip a carton (not a child line) the operator explicitly closed',
     );
   });
 
   it('auto-follow yields to Index or a picked leaf (Photos), until the step advances', () => {
     assert.match(
       panel,
-      /showDisplays && activeSideTab !== railLeaf && !stepChanged/,
+      /showDisplays && activeSideTab !== railLeaf && !stepChanged && !cartonChanged/,
       'picking Photos while railLeaf is Units must not be immediately re-yanked',
     );
     assert.match(
       panel,
       /prevCockpitActiveKeyRef/,
       'stepChanged is derived so a beat advance can still swap the cockpit leaf',
+    );
+    assert.match(
+      panel,
+      /prevCockpitCartonRef/,
+      'cartonChanged resumes auto-follow on a new carton even when activeKey is unchanged',
+    );
+    assert.match(
+      panel,
+      /const cartonChanged = prevCockpitCartonRef\.current !== cartonKey/,
+      'a sibling CHILD switch (same carton) is NOT a record change — the cockpit ' +
+        'must key on the parent carton so it never yanks a display the operator chose',
     );
   });
 

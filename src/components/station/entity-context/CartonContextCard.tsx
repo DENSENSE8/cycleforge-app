@@ -154,6 +154,7 @@ export function CartonContextCard({
   qty = null,
   onSendToTicket,
   onOpenMovePhotosExternal,
+  onOpenPhotosDisplay,
   suppressPhotoHoverGallery = false,
 }: {
   receivingId: number | null;
@@ -322,8 +323,15 @@ export function CartonContextCard({
    */
   onOpenMovePhotosExternal?: () => void;
   /**
-   * Unbox: suppress Photos hover toolbar (multi-verbs in Displays Actions).
-   * Pill click stays send-to-phone. Omit on Arrival so hover strip remains.
+   * Unbox: double-click Photos pill → Displays → Photos (Actions). Replaces
+   * whatever leaf is open. Omit on Arrival.
+   */
+  onOpenPhotosDisplay?: () => void;
+  /**
+   * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
+   * Ticket open Displays via the external callbacks. Pill click stays
+   * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
+   * is set.
    */
   suppressPhotoHoverGallery?: boolean;
 }) {
@@ -605,11 +613,13 @@ export function CartonContextCard({
         staffId={Number(staffId) || 0}
         poRef={effectiveOrder || null}
         photoStage={photoStage}
-        // Open left of the pill when hover strip remains (Arrival). Unbox
-        // suppresses the strip — pill click stays send-to-phone.
+        // Open left of the pill so Claim under Photos stays clear. Unbox keeps
+        // the hover action dropdown; Move / Ticket open Displays (right rail).
+        // Click = phone; double-click = Displays Photos.
         galleryPlacement="left"
         onSendToTicket={onSendToTicket}
         onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+        onOpenPhotosDisplay={onOpenPhotosDisplay}
         suppressHoverGallery={suppressPhotoHoverGallery}
       />
     ) : null;

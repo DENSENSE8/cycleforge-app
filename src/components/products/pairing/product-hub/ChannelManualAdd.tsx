@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link2, Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { TextField } from '@/design-system/primitives/TextField';
-import { platformStyle } from '../platform-style';
+import { sourcePlatformLabel } from '@/lib/source-platform';
 import { manualAddPairing } from './sku-pair-api';
 import { PasteButton } from './PasteButton';
 
@@ -70,7 +70,7 @@ export function ChannelManualAdd({
         icon={<Plus className="h-3 w-3" />}
         className="mt-1.5 h-auto gap-1 px-0 text-role-eyebrow uppercase tracking-wider text-text-faint hover:bg-transparent hover:text-blue-600"
       >
-        Add {platformStyle(platform).label} identifier
+        Add {sourcePlatformLabel(platform)} identifier
       </Button>
     );
   }

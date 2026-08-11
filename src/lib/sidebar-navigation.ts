@@ -488,17 +488,20 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
 }
 
 /**
- * Rail-less order-feed surfaces (Pattern E — no left context column).
+ * Rail-less ops-queue desks (Pattern E — no left context column).
  *
- * The To-ship order feed reserves **no** desktop context rail: the dedicated
- * desk (`/shipping/orders`) and the `/dashboard` outbound domain both run
- * toolbar-only (the Zendesk / Linear / Shopify-Admin shape). Lifecycle stages
- * own the Band-1 tabs, attention owns the Band-2 KPI strip, and PAGE-WIDE saved
- * views live on Band 3 trailing find (`WorkbenchViewsMenu`, flush Bookmark icon) —
- * never Band-1 beside lifecycle tabs, never merged into the WEBSITE-WIDE
- * page-pin (`HeaderPinsSwitcher`, unchanged in the GlobalHeader). So the left
- * column is pure reclaimed table width, not a fourth
- * navigation.
+ * Named historically for the To-ship order feed; the extension point for every
+ * pointer-driven triage desk that earns no left column (SoT → Left-edge
+ * occupant). Today:
+ *   - `/shipping/orders` + `/dashboard` outbound domain (To-ship)
+ *   - `/incoming` (Inbound Pipeline | Docked — POS / Email / Removed ride the
+ *     Pipeline facet chrome, not a left "Views" rail)
+ *
+ * Lifecycle stages own the Band-1 tabs, attention owns the Band-2 KPI strip,
+ * and PAGE-WIDE saved views live on Band 3 trailing find (`WorkbenchViewsMenu`,
+ * flush Bookmark icon) — never Band-1 beside lifecycle tabs, never merged into
+ * the WEBSITE-WIDE page-pin (`HeaderPinsSwitcher`, unchanged in the GlobalHeader).
+ * So the left column is pure reclaimed table width, not a fourth navigation.
  *
  * `/dashboard` is multi-domain, so the answer is param-aware for it: inbound
  * (recents) and sales (walk-in history) keep their pickers; only the outbound
@@ -507,8 +510,10 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
  * empty; here `hasPanel` goes false and the frame collapses the column outright,
  * exactly as `/search` already does.
  *
- * Frame consumer: `ContextPanelLayout` via `useIsRaillessOrderFeed`. Guard:
- * `outbound-rail-dedup.guard.test.ts`.
+ * Media Library (`/ops/photos`) is also rail-less but drops from
+ * `CONTEXT_PANEL_ROUTE_KEYS` instead of widening this predicate (it is not an
+ * ops-queue desk). Frame consumer: `ContextPanelLayout` via
+ * `useIsRaillessOrderFeed`. Guard: `outbound-rail-dedup.guard.test.ts`.
  */
 export function isRaillessOrderFeedSurface(
   pathname: string | null,
@@ -519,6 +524,13 @@ export function isRaillessOrderFeedSurface(
     pathname === SHIPPING_ORDERS_PATH ||
     pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`)
   ) {
+    return true;
+  }
+  // Inbound desk — ops-queue (Pattern E). `/incoming` shares the `receiving`
+  // route key with scan stations, so without this path check
+  // `isStationSurfaceRoute` would keep reserving a column for a facet rail
+  // the chrome already owns.
+  if (pathname === '/incoming' || pathname.startsWith('/incoming/')) {
     return true;
   }
   return getSidebarRouteKey(pathname) === 'dashboard' && isDashboardOutboundDomain;

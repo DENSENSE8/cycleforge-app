@@ -73,6 +73,7 @@ const ThrowTaskHost = dynamic(
   () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
   { ssr: false },
 );
+import { VendorViewMaskHost } from '@/components/desktop/VendorViewMaskHost';
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
   { ssr: false },
@@ -411,6 +412,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         <CommandBar />
         <ClipboardHistoryHost />
         <ThrowTaskHost />
+        <VendorViewMaskHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
         </Suspense>

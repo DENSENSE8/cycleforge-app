@@ -22,12 +22,11 @@ import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line
 import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
 import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
 
-// Built-in allowlist = SoT registry values + internal `zoho`. Must stay in sync
-// with `@/lib/source-platform` — a local Set that omitted `fba`/`shopify`/
+// Built-in allowlist = SoT registry values. Must stay in sync with
+// `@/lib/source-platform` — a local Set that omitted `fba`/`shopify`/
 // `square` caused the classify pill to paint FBA while PATCH 400'd and the
 // claim subject stayed "Unknown - Return".
 const SOURCE_PLATFORMS = new Set([
-  'zoho',
   ...SOURCE_PLATFORM_REGISTRY.map((p) => p.value),
 ]);
 
@@ -122,6 +121,11 @@ export async function GET(
          r.zoho_warehouse_id,
          r.support_notes,
          r.listing_url,
+         -- Zoho PO header notes carry the buyer's listing links, one per line
+         -- as "title: https://...". The read surface resolves them through
+         -- collectCartonListingLinks, so a multi-auction PO shows every link
+         -- instead of only the single pasted listing_url.
+         r.zoho_notes,
          -- 3-stage operator lifecycle: Scanned (tracking_scanned_*, door scan) →
          -- Unboxed (ru.unboxed_at, first Unbox-surface scan) → Received (the terminal
          -- DONE time = MAX(receiving_lines.received_done_at)). "Received" is NOT the

@@ -127,13 +127,17 @@ Pack placement (bench binding, chip anatomy, ledger clear on provision), the new
 **"queue-counts has TWO cache writers"** section, and the retired header-fork
 row. Coordinate with whoever owns the Unbox-dock hunks in the same file.
 
-### 3. ASK THE USER — Cond column tier (do not decide this alone)
+### 3. ~~ASK THE USER — Cond column tier~~ ANSWERED 2026-08-10 — **Cond is optional**
 
-Unbox History marks `condition` **`tier: 'optional'`**; To-ship keeps it core
-(visible). Fully aligning would **hide Cond by default on the main outbound
-queue**. That is a UX decision, not a config detail. Same question applies to
-`qty` / `tracking`. I deliberately did not touch them — only *added*
-`packStation` as optional.
+The operator ruled: *"no cond should be optional, hide it by default."*
+`condition` now carries `tier: 'optional'` on **both** To-ship column sets
+(`ORDERS_QUEUE_COLUMNS` and `ORDERS_QUEUE_TESTED_COLUMNS`) — both lanes, because
+they share one `orders` prefs bucket and a column present on one tab and absent
+on the other reads as a bug. It stays in the canonical column ORDER and is opted
+back in from the ▦ column display, exactly like Serial / Vendor / Station.
+
+`qty` / `tracking` were **not** touched — that question was not asked and the
+answer does not carry over.
 
 ### 4. Views trigger label (approved, not started)
 

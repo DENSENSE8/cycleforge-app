@@ -551,8 +551,11 @@ test('SidebarNavList: Scan Stations is the only Vercel drill; domains stay flat'
   // pass deleted per-section hue and left nothing else doing the job. A gap
   // was rejected on measured geometry: 8px × 8 boundaries against a
   // scrollport that already runs 732px of map into a 685px port.
+  // Bottom rule (not top-on-index>0): the last section must keep a trailing
+  // hairline too — a top seam left Inventory undivided below.
   assert.doesNotMatch(LIST_SRC, /index > 0 \? 'mt-1/);
-  assert.match(LIST_SRC, /index > 0 \? 'border-t border-border-soft'/);
+  assert.match(LIST_SRC, /const seam = 'border-b border-border-soft'/);
+  assert.doesNotMatch(LIST_SRC, /index > 0 \? 'border-t border-border-soft'/);
 });
 
 /**

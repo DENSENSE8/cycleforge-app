@@ -38,7 +38,6 @@ export {
   LayoutGroup,
   Reorder,
   useReducedMotion,
-  useInView,
   useAnimationControls,
   useMotionValue,
   useTransform,

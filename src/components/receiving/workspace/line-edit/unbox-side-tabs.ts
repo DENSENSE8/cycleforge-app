@@ -5,18 +5,19 @@
  * (`overview` IS the centre), so this vocabulary covers only the surfaces
  * that live in {@link StationDisplaysPushStack}.
  *
- * Navigation is Root-to-Leaf drill-down (not a horizontal icon plate):
- *   - `?display=index` → Root Index (status rows)
- *   - `?display=<leaf>` → full-height leaf body
- *   - absence → column CLOSED
+ * Navigation is Root-to-Leaf drill-down (local React state via
+ * `useUnboxDisplayView` — Arrival parity; never URL wires):
+ *   - `display === 'index'` → Root Index (status rows)
+ *   - `display === <leaf>` → full-height leaf body
+ *   - `null` → column CLOSED
  *
  * Index / leaf order (PO-identity first): Listings · Classify · Pairing · Inventory ·
- * Units · Photos · Ticket · Tracking · Timeline · Support. Ticket is presence-exclusive
- * (Claim vs Chat). Inventory is a **secondary vertical drill** (Information · Lines ·
- * PO notes · Activity) via `useDisplaysLeafChrome` — never a nested TabDisplay and
- * never a second LeafHeader. Photos · Linkage · Units are **armed-row verbs +
- * URL drills**. Prebox mode is child segment. `checklist` is a Displays leaf
- * (never a floor % ring).
+ * Units · Prebox · Photos · Ticket · Tracking · Timeline · Support. Ticket is
+ * presence-exclusive (Claim vs Chat). Inventory is a **secondary vertical drill**
+ * (Information · Lines · PO notes · Activity) via `useDisplaysLeafChrome` — never
+ * a nested TabDisplay and never a second LeafHeader. Photos · Linkage are
+ * **armed-row verbs + local nest drills**. Prebox is an Assets peer leaf (not
+ * nested under Units). `checklist` is a Displays leaf (never a floor % ring).
  *
  * Legacy aliases (one release): `pairing` / `po-note` → `linkage`;
  * `claim` → `ticket` (with `ticketAction=claim`).
@@ -25,7 +26,7 @@
 import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
 
 /**
- * Sentinel URL value — Displays open on the Root Index (no leaf body).
+ * Sentinel — Displays open on the Root Index (no leaf body).
  *
  * DERIVED from {@link STATION_DISPLAY_INDEX}, never re-typed: a hand-written
  * `'index'` twin here would go on compiling if the station SoT ever moved, and
@@ -43,35 +44,41 @@ export type UnboxSideTab =
   | 'classify'
   | 'listings'
   | 'units'
+  | 'prebox'
   | 'checklist'
   | 'support'
   | 'tracking'
   | 'timeline';
 
-/** URL / nav id: closed is `null`; open is index or a content leaf. */
+/** Nav id: closed is `null`; open is index or a content leaf. */
 export type UnboxDisplayNav = typeof UNBOX_DISPLAY_INDEX | UnboxSideTab;
 
 /**
- * Photos leaf surfaces (`?photoAction=`). Absent / legacy `browse` → armed
- * Actions rows (no nested TabDisplay). Move · Send · Compare are URL
+ * Photos leaf surfaces (`photoAction` nest). Absent / legacy `browse` → armed
+ * Actions rows (no nested TabDisplay). Move · Send · Compare are nest
  * drill-downs from those rows (Compare = listing vs bench — trailing).
  *
  * {@link UNBOX_PHOTO_ACTION_ORDER}: default first, then drill surfaces — not a
- * horizontal tab strip. Never land a trailing verb when URL omits `photoAction`.
+ * horizontal tab strip. Never land a trailing verb when `photoAction` is absent.
+ *
+ * `link` is the exact-linkage attach surface (select carton photos → Link to a
+ * PO item · Link as an aspect → reassign). It replaced the off-screen dock
+ * popover — the attach grid lives in the rail, never a floating panel.
  */
-export type UnboxPhotoAction = 'actions' | 'move' | 'send' | 'compare';
+export type UnboxPhotoAction = 'actions' | 'link' | 'move' | 'send' | 'compare';
 
-/** Photos URL surfaces — Actions (default) → Move · Send → Compare. */
+/** Photos nest surfaces — Actions (default) → Link · Move · Send → Compare. */
 export const UNBOX_PHOTO_ACTION_ORDER = [
   'actions',
+  'link',
   'move',
   'send',
   'compare',
 ] as const satisfies readonly UnboxPhotoAction[];
 
 /**
- * Linkage leaf surfaces (`?linkageAction=`). Absent → armed Actions rows;
- * `link` · `note` are URL drill-downs (Photos twin).
+ * Linkage leaf surfaces (`linkageAction` nest). Absent → armed Actions rows;
+ * `link` · `note` are nest drill-downs (Photos twin).
  */
 export type UnboxLinkageAction = 'actions' | 'link' | 'note';
 
@@ -82,24 +89,11 @@ const UNBOX_LINKAGE_ACTION_ORDER = [
 ] as const satisfies readonly UnboxLinkageAction[];
 
 /**
- * Ticket topic surface derived from linked-ticket presence (`?ticketAction=`
- * is written for URL hygiene — not a nested verb switcher).
+ * Ticket topic surface derived from linked-ticket presence.
  */
 export type UnboxTicketAction = 'chat' | 'claim';
 
 const UNBOX_TICKET_ACTION_ORDER = ['chat', 'claim'] as const satisfies readonly UnboxTicketAction[];
-
-/**
- * Units leaf surfaces (`?unitsAction=`). Absent → armed Actions rows;
- * `units` · `prebox` are URL drill-downs.
- */
-export type UnboxUnitsAction = 'actions' | 'units' | 'prebox';
-
-const UNBOX_UNITS_ACTION_ORDER = [
-  'actions',
-  'units',
-  'prebox',
-] as const satisfies readonly UnboxUnitsAction[];
 
 /** All display body ids — includes Displays-leaf `checklist`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
@@ -109,6 +103,7 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'linkage',
   'inventory',
   'units',
+  'prebox',
   'photos',
   'ticket',
   'tracking',
@@ -117,8 +112,9 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
 ];
 
 /**
- * Index-visible leaves — PO-identity first; `checklist` trails (was ring-only;
- * now a Root Index row, never a floor % ring).
+ * Index-visible leaves — PO-identity first; Assets = Inventory · Units · Prebox ·
+ * Photos; `checklist` trails (was ring-only; now a Root Index row, never a floor
+ * % ring).
  */
 export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
   'listings',
@@ -126,6 +122,7 @@ export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
   'linkage',
   'inventory',
   'units',
+  'prebox',
   'photos',
   'ticket',
   'tracking',
@@ -150,7 +147,7 @@ export interface UnboxSideTabGates {
   hasInventoryTab: boolean;
   /** Matched cartons only (an unfound carton has no listing to link). */
   hasListingsTab: boolean;
-  /** At least one serial scanned on the line. */
+  /** At least one serial scanned on the line / qty expected. */
   hasUnits: boolean;
   /** Matched + a real carton row — Zoho note nested under Linkage / Inventory. */
   hasPoNoteTab: boolean;
@@ -169,7 +166,7 @@ export function canonicalizeUnboxSideTab(raw: string): UnboxSideTab | null {
 }
 
 /**
- * Parse `?display=` into nav. `index` opens the Root Index; leaf ids canonicalize;
+ * Parse a display id into nav. `index` opens the Root Index; leaf ids canonicalize;
  * bogus → closed.
  */
 export function parseUnboxDisplayNav(raw: string | null): UnboxDisplayNav | null {
@@ -195,6 +192,7 @@ export function resolveUnboxDisplayNav(
 }
 
 export function parseUnboxPhotoAction(raw: string | null): UnboxPhotoAction {
+  if (raw === 'link') return 'link';
   if (raw === 'send') return 'send';
   if (raw === 'move') return 'move';
   if (raw === 'compare') return 'compare';
@@ -203,7 +201,7 @@ export function parseUnboxPhotoAction(raw: string | null): UnboxPhotoAction {
 }
 
 /**
- * Wire tokens `?photoAction=` may carry (route-param hygiene).
+ * Wire tokens a Photos nest may carry (parsers / legacy hygiene strip).
  *
  * Includes live {@link UNBOX_PHOTO_ACTION_ORDER} plus legacy `browse`. Do not
  * round-trip {@link parseUnboxPhotoAction} — it always coerces to `actions`.
@@ -213,22 +211,6 @@ export function parseUnboxPhotoActionWire(raw: string): string | null {
   if ((UNBOX_PHOTO_ACTION_ORDER as readonly string[]).includes(key)) return key;
   if (key === 'browse') return key;
   return null;
-}
-
-export function parseUnboxUnitsAction(
-  raw: string | null,
-  gates: { hasPrebox: boolean },
-): UnboxUnitsAction {
-  if (raw === 'prebox' && gates.hasPrebox) return 'prebox';
-  if (raw === 'units') return 'units';
-  // Absent / explicit `actions` / gated-away prebox → armed verb list.
-  return 'actions';
-}
-
-/** Wire tokens `?unitsAction=` may carry (hygiene). Gate resolution is separate. */
-export function parseUnboxUnitsActionWire(raw: string): string | null {
-  const key = raw.trim().toLowerCase();
-  return (UNBOX_UNITS_ACTION_ORDER as readonly string[]).includes(key) ? key : null;
 }
 
 export function parseUnboxLinkageAction(
@@ -241,23 +223,11 @@ export function parseUnboxLinkageAction(
   return 'actions';
 }
 
-/** Wire tokens `?linkageAction=` may carry (hygiene). Gate resolution is separate. */
-export function parseUnboxLinkageActionWire(raw: string): string | null {
-  const key = raw.trim().toLowerCase();
-  return (UNBOX_LINKAGE_ACTION_ORDER as readonly string[]).includes(key) ? key : null;
-}
-
-/** Wire tokens `?ticketAction=` may carry (hygiene). Presence still owns the body. */
-export function parseUnboxTicketActionWire(raw: string): string | null {
-  const key = raw.trim().toLowerCase();
-  return (UNBOX_TICKET_ACTION_ORDER as readonly string[]).includes(key) ? key : null;
-}
-
 /**
  * Resolve Ticket surface from linked-ticket presence only.
  *
  * No linked ticket → Claim (New ticket · Link existing). Linked ticket → Chat.
- * URL `?ticketAction=` is ignored for which body mounts — presence wins.
+ * Nest `ticketAction` is ignored for which body mounts — presence wins.
  */
 export function resolveUnboxTicketAction(hasTicketId: boolean): UnboxTicketAction {
   return hasTicketId ? 'chat' : 'claim';
@@ -279,9 +249,11 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
       return gates.hasTrackingTab;
     case 'timeline':
       return gates.hasTimelineTab;
-    // Ticket · Photos · Checklist · Support — always on an open carton.
+    // Ticket · Photos · Prebox · Checklist · Support — always on an open carton.
+    // Prebox is an Assets peer leaf (empty body when no serials — never gated off).
     case 'ticket':
     case 'photos':
+    case 'prebox':
     case 'checklist':
     case 'support':
       return true;

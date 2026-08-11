@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Paperclip, Plus, X } from '@/components/Icons';
 import { IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
-import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
@@ -23,6 +22,8 @@ import {
   NOTE_OVERLAY_ICON_BTN,
 } from '@/components/receiving/workspace/note-composer-helpers';
 import { SupportPhotoLibraryPicker } from './SupportPhotoLibraryPicker';
+import { TicketReplyPresetsBar } from './TicketReplyPresetsBar';
+import type { TicketReplyPreset } from '@/lib/support/ticket-reply-presets';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -147,6 +148,22 @@ export function SupportChatComposer({
         },
       },
     );
+  };
+
+  /** One-click presets — REST only (never VendorView DOM macros). */
+  const applyPreset = (preset: TicketReplyPreset) => {
+    if (reply.isPending || staging.uploading || !canPost) return;
+    let finalText = preset.body;
+    if (!preset.isPublic && staffName) {
+      const sig = `— ${staffName}`;
+      finalText = finalText.trimEnd().endsWith(sig) ? finalText : `${finalText}\n\n${sig}`;
+    }
+    reply.mutate({
+      ticketId,
+      body: finalText,
+      isPublic: preset.isPublic,
+      htmlBody: markdownToHtml(finalText),
+    });
   };
 
   useEffect(() => {
@@ -319,6 +336,7 @@ export function SupportChatComposer({
       {ccStrip}
       {stagedThumbs}
       {libraryPicker}
+      <TicketReplyPresetsBar disabled={busy} onPick={applyPreset} />
       <OmnichannelComposerDock
         value={body}
         onChange={setBody}
@@ -358,9 +376,8 @@ export function SupportChatComposer({
   // Floating composer: the dock is already a rounded, elevated bubble, so it
   // sits on transparent air — never on a padded `bg-surface-canvas` plane with
   // a hairline behind it (that reads as a docked toolbar, not a floating
-  // composer). Horizontal air is the Displays body gutter (`DISPLAYS_BODY_INSET`);
-  // `py-2` is vertical breath around the bubble only — never stack a second `px-*`.
-  return (
-    <div className={cn(DISPLAYS_BODY_INSET, 'min-w-0 shrink-0 py-2')}>{dock}</div>
-  );
+  // composer). Fills the column width (ruled 2026-08-10, with the bubble stream):
+  // no horizontal gutter, so the composer's edges line up with the messages it
+  // answers. `py-2` is vertical breath around the bubble only.
+  return <div className="min-w-0 shrink-0 py-2">{dock}</div>;
 }

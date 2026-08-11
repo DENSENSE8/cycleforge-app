@@ -100,3 +100,7 @@ scripts/.shipped-test-snapshot.json
 # Lighthouse audit output (scripts/lighthouse-audit.mjs) — keep summary.md snapshots in docs, not raw LHR blobs
 /lighthouse/
 /.next-perf/
+
+# Desktop shell app-manifest deps (installed by `pnpm desktop:deps`)
+electron/node_modules/
+electron/package-lock.json

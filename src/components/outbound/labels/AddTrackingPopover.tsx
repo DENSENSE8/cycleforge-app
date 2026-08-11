@@ -4,14 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Link2, Clipboard, Check, Loader2, ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { AddValueChipFace } from '@/components/ui/CopyChip';
+import { AddValueChipFace, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
-import { useOrderChannelLabel } from '@/hooks/useCatalog';
+import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useAddTrackingNav } from '@/components/outbound/labels/add-tracking-context';
 import { orderRowConditionLabel } from '@/lib/conditions';
+import { platformMetaIconTone, sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 
 interface SkuResolution {
   title: string | null;
@@ -94,7 +96,11 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sku, open]);
 
-  const platformLabel = orderChannelLabel(record.order_id || '', record.account_source);
+  const resolvePlatformMeta = usePlatformMeta();
+  const channelLabel = orderChannelLabel(record.order_id || '', record.account_source);
+  const fromLabel = sourcePlatformMetaFromLabel(channelLabel);
+  const platformMeta = fromLabel.value ? resolvePlatformMeta(fromLabel.value) : fromLabel;
+  const iconTone = platformMeta.value ? platformMetaIconTone(platformMeta) : null;
   const qty = parseInt(String(record.quantity || '1'), 10) || 1;
   const pos = nav?.positionOf(orderId);
 
@@ -181,11 +187,26 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
 
           <div className="mb-3 rounded-xl bg-surface-canvas px-3 py-2">
             <p className="truncate text-role-caption font-semibold text-text-default">{record.product_title || 'Unknown product'}</p>
-            <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
-              {[platformLabel, record.order_id ? `#${record.order_id}` : null, `${orderRowConditionLabel(record.condition)} · ×${qty}`]
-                .filter(Boolean)
-                .join('  ·  ')}
-            </p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
+              {platformMeta.value ? (
+                <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                    <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                  </span>
+                </HoverTooltip>
+              ) : null}
+              {record.order_id ? (
+                <OrderIdChip
+                  value={record.order_id}
+                  display={getLast8(record.order_id)}
+                  dense
+                  platformLabel={platformMeta.value ? platformMeta.label : null}
+                  iconClass={iconTone?.className}
+                  iconStyle={iconTone?.style}
+                />
+              ) : null}
+              <span>{`${orderRowConditionLabel(record.condition)} · ×${qty}`}</span>
+            </div>
           </div>
 
           <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">Tracking #</label>

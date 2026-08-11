@@ -88,6 +88,7 @@ import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 import { getLast8 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
+import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 import {
   cartonContentsSummary,
   cartonDisposition,
@@ -264,7 +265,8 @@ function RecordFactCell({
 }
 
 /** Quiet egress to the marketplace listing — secondary to facts, not a hero CTA. */
-function SourceListingButton({ href }: { href: string }) {
+function SourceListingButton({ href, label }: { href: string; label?: string | null }) {
+  const name = (label || '').trim();
   return (
     <Button
       type="button"
@@ -272,11 +274,52 @@ function SourceListingButton({ href }: { href: string }) {
       size="sm"
       icon={<ExternalLink className="h-3.5 w-3.5" />}
       onClick={() => window.open(href, '_blank', 'noopener,noreferrer')}
-      ariaLabel="Open source listing"
+      ariaLabel={name ? `Open listing: ${name}` : 'Open source listing'}
       className="h-auto px-0 text-text-muted hover:text-text-default"
     >
-      Source listing
+      {name || 'Source listing'}
     </Button>
+  );
+}
+
+/**
+ * Every listing link on the carton, not just the pasted one. A Zoho PO carries
+ * its links in header sync notes — a four-auction PO used to render nothing
+ * here, because `listing_url` alone was empty. Each link shows the buyer's own
+ * title so the reader can tell them apart.
+ *
+ * No SKU is passed on purpose: this is a READ surface and must not invent a
+ * storefront-search link from an inventory SKU.
+ */
+function SourceListingLinks({
+  receiving,
+  className,
+}: {
+  receiving: CartonInspectorReceiving;
+  className?: string;
+}) {
+  const links = useMemo(
+    () =>
+      listingLinksForReceivingRow({
+        receiving_listing_url: receiving.listing_url,
+        receiving_zoho_notes: receiving.zoho_notes,
+        source_platform: receiving.source_platform,
+        zoho_purchaseorder_id: receiving.zoho_purchaseorder_id,
+      }),
+    [
+      receiving.listing_url,
+      receiving.zoho_notes,
+      receiving.source_platform,
+      receiving.zoho_purchaseorder_id,
+    ],
+  );
+  if (links.length === 0) return null;
+  return (
+    <div className={cn('flex flex-col items-start', className)}>
+      {links.map((l) => (
+        <SourceListingButton key={l.href} href={l.href} label={l.title} />
+      ))}
+    </div>
   );
 }
 
@@ -641,15 +684,11 @@ function ContentsColumn({
             </div>
           ) : null}
 
-          {receiving.listing_url?.trim() ? (
-            <SourceListingButton href={receiving.listing_url.trim()} />
-          ) : null}
+          <SourceListingLinks receiving={receiving} />
         </div>
-      ) : receiving.listing_url?.trim() ? (
-        <div className="inset-card">
-          <SourceListingButton href={receiving.listing_url.trim()} />
-        </div>
-      ) : null}
+      ) : (
+        <SourceListingLinks receiving={receiving} className="inset-card" />
+      )}
 
       {(purchaseOrders?.length ?? 0) > 1 ? (
         <div className="inset-card space-y-2">

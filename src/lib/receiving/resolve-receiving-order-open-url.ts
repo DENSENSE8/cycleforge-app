@@ -4,20 +4,8 @@
  */
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { normalizeListingHref } from '@/lib/receiving/listing-links';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
-
-function listingHref(raw: string | null | undefined): string | null {
-  const t = String(raw || '').trim();
-  if (!t) return null;
-  try {
-    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
-    const u = new URL(withProto);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
 
 export function resolveReceivingOrderOpenUrl(
   row: Pick<
@@ -29,7 +17,7 @@ export function resolveReceivingOrderOpenUrl(
   >,
   poValue: string,
 ): string | null {
-  const listing = listingHref(row.receiving_listing_url);
+  const listing = normalizeListingHref(row.receiving_listing_url);
   if (listing) return listing;
 
   const orderId = (row.source_order_id || poValue || '').trim();

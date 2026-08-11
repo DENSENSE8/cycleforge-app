@@ -90,3 +90,31 @@ describe('Workbench Band 2 KPI densify (flush instrument)', () => {
     });
   }
 });
+
+// Card-altitude strips keep the default (gap-3) density rather than the flush
+// Band-2 look, but must still compose the OpsKpiBand SoT container — never a
+// per-strip `const TILE_BAND_CLASS = 'flex flex-wrap gap-3'` fork.
+const DEFAULT_DENSITY_STRIPS = [
+  'src/components/walk-in/SalesKpiStrip.tsx',
+  'src/components/outbound/ready/ReadyKpiStrip.tsx',
+  'src/components/fba/FbaKpiStrip.tsx',
+] as const;
+
+describe('KPI band container SoT — default-density strips compose OpsKpiBand', () => {
+  for (const file of DEFAULT_DENSITY_STRIPS) {
+    it(`${file} composes OpsKpiBand — no hand-rolled TILE_BAND_CLASS fork`, () => {
+      const src = read(file);
+      assert.match(src, /OpsKpiBand/, `${file} must compose the OpsKpiBand SoT`);
+      assert.doesNotMatch(
+        src,
+        /const TILE_BAND_CLASS/,
+        `${file} must not re-declare a local band class`,
+      );
+      assert.doesNotMatch(
+        src,
+        /flex flex-wrap gap-3/,
+        `${file} band container is the SoT, not a hand-rolled 'flex flex-wrap gap-3'`,
+      );
+    });
+  }
+});

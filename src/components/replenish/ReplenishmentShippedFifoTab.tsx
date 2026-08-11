@@ -93,7 +93,6 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                         </p>
                         <p className={`${fieldLabel} mt-0.5 truncate`}>
                           {row.sku}
-                          {row.account_source && ` · ${row.account_source}`}
                         </p>
                         {!zohoLinked && (
                           <p className="text-role-eyebrow text-amber-600 mt-0.5">Not linked to Zoho item</p>

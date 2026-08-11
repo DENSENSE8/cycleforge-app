@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Button, FlushTerminalFooter } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { Loader2, Check } from '@/components/Icons';
 import { ReasonSelector } from '@/components/repair/ReasonSelector';
 import { CustomerInfoForm, CONTACT_FIELDS } from '@/components/repair/CustomerInfoForm';
@@ -20,6 +20,7 @@ import { useRepairIntakeData } from '@/components/repair/useRepairIntakeData';
 import { buildRepairIntakeReceiptProps } from '@/lib/repair/repair-intake-receipt';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
+  KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
 } from '@/app/kiosk/kiosk-chrome';
@@ -149,10 +150,10 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
             </RepairPaperworkCanvas>
           </div>
         </div>
-        <FlushTerminalFooter layout="bleed">
+        <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
           <Button
             size="lg"
-            className={cn('w-full', cornerClass('flush'))}
+            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
             onClick={() => {
               repairIdemKey.current = null;
               setSubmitted(null);
@@ -164,7 +165,7 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
           >
             Done / Next Customer
           </Button>
-        </FlushTerminalFooter>
+        </div>
       </div>
     );
   }
@@ -272,10 +273,10 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
       </div>
 
       {hasProduct && !showPaperwork && (
-        <FlushTerminalFooter layout="bleed">
+        <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
           <Button
             size="lg"
-            className={cn('w-full', cornerClass('flush'))}
+            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
             disabled={!canSubmit || isSubmitting}
             onClick={() => void handleSubmit()}
             title={blockReason}
@@ -288,7 +289,7 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               'Submit repair'
             )}
           </Button>
-        </FlushTerminalFooter>
+        </div>
       )}
     </div>
   );

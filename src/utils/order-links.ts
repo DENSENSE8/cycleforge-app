@@ -1,4 +1,3 @@
-import { getOrderPlatformLabel } from './order-platform';
 export { getTrackingUrl } from '@/lib/tracking-format';
 
 export function getOrderIdUrl(orderId: string): string | null {
@@ -10,8 +9,4 @@ export function getOrderIdUrl(orderId: string): string | null {
     return `https://my.ecwid.com/store/16593703#order:id=${orderId}&use_cache=true&return=orders`;
   }
   return null;
-}
-
-export function getAccountSourceLabel(orderId: string, accountSource: string | null | undefined): string {
-  return getOrderPlatformLabel(orderId, accountSource);
 }

@@ -191,7 +191,7 @@ interface ReceivingRightPaneProps {
   isTriageMode: boolean;
   isIncomingMode: boolean;
   /** Incoming right-pane sub-view (`?incview=`): the POS table or Email Triage.
-   *  The toggle control lives in the sidebar (IncomingSidebarPanel headerRows);
+   *  The toggle control lives in IncomingWorkspaceHeader (Pipeline facet strip);
    *  here we only read it to pick which sub-view to render. */
   incomingView: IncomingView;
   selectMode: boolean;

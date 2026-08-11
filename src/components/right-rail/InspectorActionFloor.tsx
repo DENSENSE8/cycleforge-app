@@ -59,6 +59,7 @@ export const FLOOR_DELETE_PEER_CLASS = cn(FLUSH_TERMINAL_SPREAD_PEER_CLASS, 'bor
 export function InspectorActionFloor({
   above,
   children,
+  surface = 'canvas',
   className,
   'data-testid': testId = 'inspector-action-floor',
 }: {
@@ -69,6 +70,16 @@ export function InspectorActionFloor({
    * `<FloorIconButton>` verbs · trailing `<InspectorFlushDelete>`.
    */
   children?: ReactNode;
+  /**
+   * Plane paint. `canvas` (default) is the desk floor's own step below the
+   * card — the depth cue that separates a Macro floor from the record body it
+   * commits. `card` keeps the floor **coplanar with the panel**, for a rail
+   * whose body is one continuous white plane and where a grey band would read
+   * as a second surface rather than a floor (Media Library batch rail,
+   * operator-ruled 2026-08-10). Hairline + `border-t` still carry the seam
+   * either way — this is a paint choice, never a geometry one.
+   */
+  surface?: 'card' | 'canvas';
   className?: string;
   'data-testid'?: string;
 }) {
@@ -78,12 +89,17 @@ export function InspectorActionFloor({
   return (
     <div className={cn('shrink-0', className)} data-testid={testId}>
       {above != null ? (
-        <div className="border-t border-border-hairline bg-surface-canvas">
+        <div
+          className={cn(
+            'border-t border-border-hairline',
+            surface === 'card' ? 'bg-surface-card' : 'bg-surface-canvas',
+          )}
+        >
           {above}
         </div>
       ) : null}
       {hasRow ? (
-        <IconActionFloor surface="canvas" data-testid={`${testId}-bar`}>
+        <IconActionFloor surface={surface} data-testid={`${testId}-bar`}>
           {children}
         </IconActionFloor>
       ) : null}

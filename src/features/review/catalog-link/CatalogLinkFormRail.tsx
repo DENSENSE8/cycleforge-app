@@ -33,7 +33,8 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { AlertTriangle, Check, Flag, Link2, Loader2, Package } from '@/components/Icons';
-import { SearchField, TextField } from '@/design-system/primitives';
+import { SearchField } from '@/design-system/primitives';
+import { ListingApprovalSection } from '@/features/review/catalog-link/ListingApprovalSection';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 import {
@@ -46,7 +47,9 @@ import {
 } from '@/components/ui/pane-header';
 import { formatDateTimePST } from '@/utils/date';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { sourcePlatformLabel } from '@/lib/source-platform';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
 import { cn } from '@/utils/_cn';
@@ -346,7 +349,20 @@ function CatalogLinkFormBody({
               fitDisplayWidth
             />
           </FieldRow>
-          <FieldRow label="Account">{sourcePlatformLabel(chore.accountSource)}</FieldRow>
+          <FieldRow label="Account">
+            {(() => {
+              const meta = sourcePlatformMetaFromLabel(chore.accountSource);
+              return meta.value ? (
+                <HoverTooltip label={meta.label} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={meta.label}>
+                    <PlatformMark platformValue={meta.value} meta={meta} />
+                  </span>
+                </HoverTooltip>
+              ) : (
+                '—'
+              );
+            })()}
+          </FieldRow>
           <FieldRow label="Orders blocked">
             <span className="tabular-nums">{chore.orderCount}</span>
           </FieldRow>
@@ -466,8 +482,14 @@ function ImportExceptionFormBody({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submitResolve = async () => {
-    const trimmed = itemNumber.trim();
+  /**
+   * `explicit` is the one-shot Approve & resolve path: that flow sets the field
+   * and commits in the same beat, and `itemNumber` would still hold the PREVIOUS
+   * render's value at this point — so the approved candidate is passed in rather
+   * than read back out of state.
+   */
+  const submitResolve = async (explicit?: string) => {
+    const trimmed = (explicit ?? itemNumber).trim();
     if (!trimmed) {
       setError('Item Number is required');
       return;
@@ -564,7 +586,20 @@ function ImportExceptionFormBody({
               fitDisplayWidth
             />
           </FieldRow>
-          <FieldRow label="Account">{sourcePlatformLabel(row.accountSource)}</FieldRow>
+          <FieldRow label="Account">
+            {(() => {
+              const meta = sourcePlatformMetaFromLabel(row.accountSource);
+              return meta.value ? (
+                <HoverTooltip label={meta.label} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={meta.label}>
+                    <PlatformMark platformValue={meta.value} meta={meta} />
+                  </span>
+                </HoverTooltip>
+              ) : (
+                '—'
+              );
+            })()}
+          </FieldRow>
           {row.tracking ? (
             <FieldRow label="Tracking">
               <TrackingChip value={row.tracking} dense />
@@ -582,25 +617,14 @@ function ImportExceptionFormBody({
         </>
       }
     >
-      {/* The floating label IS the placeholder (TextField's contract) — the
-          accepted shapes go in the helper line, not a second hint inside the box. */}
-      <TextField
-        label="Item number"
-        value={itemNumber}
-        onChange={setItemNumber}
-        mono
-        autoFocus
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            void submitResolve();
-          }
-        }}
+      <ListingApprovalSection
+        accountSource={row.accountSource}
+        productTitle={row.productTitle}
+        itemNumber={itemNumber}
+        onItemNumberChange={setItemNumber}
+        onSubmit={() => void submitResolve()}
+        disabled={submitting}
       />
-      <p className="text-role-caption text-text-muted">
-        eBay item # / ASIN / listing id. Resolve re-runs the same sheet → order import path with
-        this Item Number filled in, which creates the order that row was missing.
-      </p>
 
       {error ? <RailError message={error} /> : null}
     </RecordRailShell>

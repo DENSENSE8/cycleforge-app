@@ -61,7 +61,7 @@ S1 report had blamed on the rail. Pinned by `photos-railless-frame.spec.ts`.
 │ [▤] │ All · Unboxing · Pickups · Packing · Repair · Claims · Outbound        │
 │  cube abuts the rail (gap-0)                            trailing: none¹      │
 ├─ Band 2 ── WorkbenchTriageBand ──────────────────────────────────────────────┤
-│ 🔍 PO, order, tracking, serial…            ▽ refine    ↕ Newest   ▥ inspector│
+│ 🔍 PO, order, tracking, serial…   ▽ refine    🔖 Views  ↕ Newest  ▥ inspector│
 ├─ Band 3 ── PhotoLibraryHeader (the path strip) ──────────────────────────────┤
 │ ▤ All dates › Aug › Aug 9   PHOTOS 48 · …        [density][⟳][✎][▦ ▤]        │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -100,6 +100,39 @@ lower two.** Three facts, not taste:
 
 Band 3 therefore keeps the breadcrumb + its display controls (density · refresh ·
 select · icons/list). It does **not** grow a second find field.
+
+### Views — this surface's own STORE, the house FACE
+
+Saved views sit in Band 2's right control cluster (`views` slot), between the
+find field and the sort + inspector toggles — the house order, and the same
+2026-08-10 ruling that moved Views out of the find group everywhere else.
+
+**They were inside the refine funnel until then**, which put a page-scoped
+control in the row-narrowing drawer: the funnel answers *which rows*, and a
+named snapshot is not a facet. Pulling them out is what makes the funnel
+honest — everything left in it (document type · capture days · staff · damage ·
+labels) narrows rows.
+
+**Media owns the store and composes the face.** A Media view persists a JSON
+`{filters, view}` snapshot through `useMediaLibrarySavedViews` and applies by
+rewriting the URL state wholesale, so there is no `paramKeys` set to hand
+`useSavedViews` — it cannot compose `WorkbenchViewsMenu`. It composes
+**`ViewsMenuShell`** instead (the exported Bookmark trigger + `HeaderChromeMenu`
+panel), so the control is byte-identical to every other desk while the store
+stays its own. Three client hooks over ONE `saved_views` table is the standing
+ruling; three *faces* never was.
+
+**It claims no active view, and that is deliberate.** Applying keeps no
+identity, so the surface cannot say which view is showing. Deep-comparing
+current filters against each payload would answer it — and would answer it
+wrongly on the first normalization mismatch. A false "active" is chrome
+inventing a second story; an honest silence is not. The trigger lights while
+its menu is open and not otherwise.
+
+**The menu teaches when empty.** `MediaSavedViewsSection` renders nothing when
+there is neither a view nor anything to save — right for one block inside a
+shared funnel, wrong for a panel the operator deliberately opened — so the menu
+passes an `emptyHint`.
 
 ### Band-1 tabs carry a paired glyph
 
@@ -176,17 +209,37 @@ which are Station keyboard-region concerns, and `⌘;` region arm on this surfac
 is **ask-first** (A3 → C-NAV). Occupant id is the stable `detail:photo-batch` —
 a per-selection id would play exit → empty → enter on every tick.
 
-**Delete is the flush trailing child of the bottom `InspectorActionFloor`, never
-a verb row** (2026-08-10). A destructive verb does not sit in the list beside its
-peers, and park stays on `DeskRailChromeRow` so a dismiss never sits beside a
-delete ([`right-rail-inspector.md`](right-rail-inspector.md) → *Workbench
-inspector action floor*). It is the floor's **only** peer — every other bulk verb
-is a set operation that reads better as a named row, so Delete is there because
-it is destructive, not because floors are where verbs go (same shape as
-`BinDetailFlyout` · `SkuDetailView` · `RepairDetailsPanel`). Desk floor, **not**
+**The floor carries the TERMINAL pair — `⭳ Download` then `🗑 Delete`** (ruled
+2026-08-10), with Delete as the flush trailing child of `InspectorActionFloor`
+and never a verb row ([`right-rail-inspector.md`](right-rail-inspector.md) →
+*Workbench inspector action floor*). Park stays on `DeskRailChromeRow`, so a
+dismiss never sits beside a delete. Desk floor, **not**
 `StationDisplaysActionFloor` — that is the Station half of the same display
-method (C2). The floor stays **mounted and disabled** at zero selected rather
-than unmounting, so the row above never shifts mid-tick.
+method (C2).
+
+- **Why two peers and not one.** A single-peer floor is legal (`BinDetailFlyout`
+  · `SkuDetailView` · `RepairDetailsPanel` ship one) but the spread layout then
+  gives that peer the whole column, so "far right" is not literal — the delete
+  reads as a full-width bottom bar with a centred glyph. The second peer is what
+  puts Delete in the corner the operator asked for.
+- **Download is the right partner, and the only one.** It is *terminal* — it ends
+  the selection's business rather than reshaping it — and it is the other verb an
+  operator hits without reading. Everything else (add · copy links · share page ·
+  labels) stays a named row.
+- **A floor verb MOVES, it does not copy.** `FLOOR_ACTION_KEYS` partitions the
+  incoming `SelectionAction[]`; the rows render the complement. A verb readable
+  in two places is two places to keep in sync, and the rows exist so each verb is
+  read once. Keep that list short — the floor's affordance is that its glyphs are
+  the few you can hit blind.
+- **The floor is `surface="card"`, coplanar with the panel** — not the desk
+  default `canvas`. This rail's body is one continuous white plane, and a grey
+  band under it read as a second surface rather than as its floor. The `border-t`
+  hairline still carries the seam; only the paint changed. `InspectorActionFloor`
+  grew the prop for this and **defaults to `canvas`** — every other desk rail is
+  unchanged, and a second white floor is a per-surface ruling with a stated
+  reason (guard: `inspector-action-floor.guard.test.ts`).
+- The floor stays **mounted with its peers disabled** at zero selected rather
+  than unmounting, so the row above never shifts mid-tick.
 
 ### The surface runs NO motion
 
@@ -242,7 +295,9 @@ ban. Its `heroLayoutId` is now a lone `layoutId` with no partner, which is inert
   reach it.
 - A second control that writes `sourceScope` / `imageType`.
 - A find field on Band 3, or a KPI band invented to make Band 2 look
-  house-standard.
+  house-standard — including a `kpiToggle` with no band behind it.
+- Saved views back inside the refine funnel, a second Bookmark trigger beside
+  `ViewsMenuShell`, or Media views routed through `useSavedViews`.
 - `window.prompt` (unstyleable, untestable, steals keyboard-wedge focus).
 - Porting the stream to `LedgerGrid` (deferred — History dogfoods first).
 - Touching `MediaLibraryPicker*`, `shipped/photo-gallery/**`, or the lightbox
@@ -255,7 +310,8 @@ ban. Its `heroLayoutId` is now a lone `layoutId` with no partner, which is inert
 | Concern | Module |
 |---|---|
 | Band 1 (tabs + media-type cube; the scope writer) | `src/components/photos/PhotoLibraryScopeBand.tsx` |
-| Band 2 (search + in-field refine + sort + inspector toggle) | `src/components/photos/PhotoLibraryWorkspaceHeader.tsx` |
+| Band 2 (search + in-field refine + Views + sort + inspector toggle) | `src/components/photos/PhotoLibraryWorkspaceHeader.tsx` |
+| Views control (own store, shared face) | `src/components/photos/MediaViewsMenu.tsx` → `ViewsMenuShell` (`saved-views/WorkbenchViewsMenu.tsx`) + `MediaSavedViewsSection` |
 | Band 3 (path strip) | `src/components/photos/PhotoLibraryHeader.tsx` |
 | Chrome host + planes | `src/components/photos/PhotoLibraryPage.tsx` |
 | Scope vocabulary + patches | `src/lib/photos/library-filter-state.ts` |

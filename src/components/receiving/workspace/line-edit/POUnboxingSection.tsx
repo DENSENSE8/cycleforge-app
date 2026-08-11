@@ -36,6 +36,11 @@ interface POUnboxingSectionProps {
   /** Ledger click → focus the matching procedure step in the dock. */
   onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
   /**
+   * The dock's `activeKey` (Unbox centre) — drives the capture face's moving
+   * outline. Threaded from LineEditPanel's one `useUnboxProcedureSteps(row)`.
+   */
+  activeStep?: string | null;
+  /**
    * When false, meta is qty | SKU | price only and unit editors stay off
    * (Arrival). Defaults true.
    */
@@ -71,6 +76,7 @@ export function POUnboxingSection({
   serialScan,
   dockOwnsCapture = false,
   onFocusCaptureStep,
+  activeStep = null,
   unitsChrome = true,
   c,
   includeLinkedPoItems = true,
@@ -97,6 +103,7 @@ export function POUnboxingSection({
         editLines={editLines}
         dockOwnsCapture={dockOwnsCapture}
         onFocusCaptureStep={onFocusCaptureStep}
+        activeStep={activeStep}
         unitsChrome={unitsChrome}
         c={c}
         embedded

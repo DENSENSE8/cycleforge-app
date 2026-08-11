@@ -28,10 +28,8 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  *
  * ## Slots are how the composite steps stay presentational
  *
- * `contents` and `classify` compose surfaces with a dozen handlers each
- * (`PoLinesAccordion`, `TriageClassifySection`). Threading those handlers
- * through this bag would make it the controller in all but name, so the adapter
- * renders those nodes and passes them in. A slot is a boundary, not a shortcut.
+ * `contents` composes `PoLinesAccordion` via a slot. `classify` has no body
+ * slot — KNOW is Displays (`TriageClassifySection`); DO is the dock Continue.
  * `serial` has no body slot — its scan field is the dock's `serialSlot`.
  */
 export interface UnboxStepBodyContext {
@@ -51,8 +49,6 @@ export interface UnboxStepBodyContext {
   poRef?: string | null;
   /** The carton's line list — the `contents` step's whole body. */
   contentsSlot?: ReactNode;
-  /** The classify editor — the `classify` step's whole body. */
-  classifySlot?: ReactNode;
   /**
    * The line's item photos, read-only — the `item_photos` step's whole body.
    * The CAMERA is not here; it is the dock's `ItemPhotoDockControl`.

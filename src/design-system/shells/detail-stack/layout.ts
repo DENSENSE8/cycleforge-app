@@ -88,7 +88,7 @@ export function detailStackCollapseStripStyle(): CSSProperties {
  * overlay inspectors and the **narrow-viewport** Unbox push exception.
  * In-flow flush push columns use {@link DETAIL_STACK_PUSH_COLUMN_CLASS} instead.
  */
-export const DETAIL_STACK_ASIDE_SURFACE =
+const DETAIL_STACK_ASIDE_SURFACE =
   'isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
 
 /**

@@ -105,8 +105,11 @@ export const TRACKING_PATTERNS: ReadonlyArray<{ carrier: CarrierCode; regex: Reg
   { carrier: 'UPS_MI',        regex: /^MI\d{20,30}$/ },
   { carrier: 'UPS_MI',        regex: /^9274\d{22,28}$/ },
 
-  // FedEx Express — 12 digits, commonly prefixed with 3 or 9
-  { carrier: 'FEDEX',         regex: /^[39]\d{11}$/ },
+  // FedEx Express — 12-digit human STN (any leading digit). Older folklore
+  // limited to [39]; FedEx 2024 FDX1D expanded Express product indexes to 0–8,
+  // and real Express STNs also start with 4/7/8/etc. Pure 12-digit is unique
+  // among our carrier set (DHL is 10–11; USPS is 16–22).
+  { carrier: 'FEDEX',         regex: /^\d{12}$/ },
 
   // FedEx Ground — 15 digits, frequently prefixed with 96 or 7
   { carrier: 'FEDEX',         regex: /^(96\d{13}|7\d{14})$/ },

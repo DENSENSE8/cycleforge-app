@@ -264,12 +264,13 @@ export function NoSerialControl({
         onClose={() => setPickerOpen(false)}
         anchorRef={anchorRef}
         placement="bottom-start"
+        matchWidth
+        gap={0}
         role="menu"
         aria-label="No-serial reason"
-        // Roomy fixed width so reason labels ("No Serial", "Missing label")
-        // never truncate — the committed bar can be narrow, but the menu is not
-        // tied to it (no matchWidth).
-        className="min-w-[248px] p-1"
+        // Match the trigger width; min-w floors compact chips so labels stay
+        // readable. fullWidth abuts the Serial field as a boxed extension.
+        className={`min-w-[248px] p-1 ${fullWidth ? 'border-t-0' : ''}`}
       >
         {reasons.map((r) => {
           const selected = r.code === reason;
@@ -283,7 +284,7 @@ export function NoSerialControl({
                 role="menuitemradio"
                 aria-checked={selected}
                 onClick={() => pick(r.code)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-role-caption font-semibold transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-none px-2.5 py-2 text-left text-role-caption font-semibold transition-colors ${
                   selected ? rowTone.rowSel : 'text-text-muted hover:bg-surface-hover'
                 }`}
               >
@@ -302,7 +303,7 @@ export function NoSerialControl({
           type="button"
           role="menuitem"
           onClick={clear}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-role-caption font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+          className="flex w-full items-center gap-2.5 rounded-none px-2.5 py-2 text-left text-role-caption font-semibold text-rose-600 transition-colors hover:bg-rose-50"
         >
           <X className="h-4 w-4 shrink-0" />
           <span className="flex-1 truncate">Undo — has a serial</span>

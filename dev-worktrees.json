@@ -45,6 +45,14 @@
       "note": "WS-GLASS · :3030"
     },
     {
+      "id": "head-check",
+      "label": "head-check · detached",
+      "path": "../head-check",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "home",
       "label": "Home / My Day",
       "path": "../cycleforge-home",

@@ -45,21 +45,14 @@ export function isFbaOrder(orderId: string | null | undefined, accountSource: st
 /**
  * Order-channel tones converge on the source-platform SoT
  * (`src/lib/source-platform.ts`) so a platform can never present two hues.
- * Only channels with NO `source_platform` entry keep a local tone here
- * (zoho / mercari — order-derived labels that aren't receiving platforms).
  */
-const EXTRA_PLATFORM_COLORS: Record<string, { text: string; border: string }> = {
-  zoho: { text: 'text-red-600', border: 'border-red-600' },
-  mercari: { text: 'text-purple-600', border: 'border-purple-600' },
-};
-
 const DEFAULT_PLATFORM_COLOR = { text: 'text-text-faint', border: 'border-border-emphasis' };
 
 function orderPlatformTone(label: string): { text: string; border: string } {
   const key = label.toLowerCase().split(/\s*-\s*/)[0].trim();
   const meta = sourcePlatformMetaFromLabel(key);
   if (meta.value) return { text: meta.text, border: meta.border };
-  return EXTRA_PLATFORM_COLORS[key] || DEFAULT_PLATFORM_COLOR;
+  return DEFAULT_PLATFORM_COLOR;
 }
 
 export function getOrderPlatformColor(label: string): string {

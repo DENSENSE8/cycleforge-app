@@ -113,7 +113,7 @@ describe('Station Displays — every declared display is reachable', () => {
       const panel = read(station.file);
       const declared = countDeclaredDisplays(read(station.union));
       // A one-display station SHOULD land its single leaf directly — an index
-      // with one row is a tap that teaches nothing (Arrival · Pairing only).
+      // with one row is a tap that teaches nothing.
       if (declared <= 1) return;
       assert.match(
         panel,

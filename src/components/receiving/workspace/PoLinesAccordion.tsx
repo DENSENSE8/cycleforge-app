@@ -1,11 +1,10 @@
 'use client';
 
 import { useCallback, useMemo, useRef } from 'react';
-import { LayoutGroup, useInView } from '@/design-system/motion';
+import { LayoutGroup } from '@/design-system/motion';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
-import { emitReceiving } from '@/components/receiving/receiving-events';
 import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';
 import { markReceivingSerialAbsent } from './receiving-label-helpers';
@@ -19,6 +18,7 @@ import { singleBand } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
+import { scheduleFocusUnboxCaptureSerialInLine } from './line-edit/focus-unbox-capture-serial';
 
 // Type re-exports — ActiveLineConditionSerial / Units hosts import from here.
 export type {
@@ -152,15 +152,9 @@ export function PoLinesAccordion({
     placeholderActiveRow,
   });
 
-  // Tab-panel visibility gate for framer `layout`. When this accordion sits in a
-  // hidden tab (`display:none`, e.g. the Units display is active), its rows
-  // measure as a zero-box at the origin; re-enabling `layout` on show would fly
-  // them in from the top-left. `useInView` is false while display:none (the ref
-  // has no box → never intersects) and flips true once the panel is displayed,
-  // so framer captures the baseline at the correct position — no fly-in — while
-  // the in-tab sibling-reorder animation still runs when the panel is visible.
+  // Ops capture bodies snap open — never Framer `layout` tween when under-row
+  // faces mount or update (reads as a dropdown).
   const listRef = useRef<HTMLUListElement>(null);
-  const layoutActive = useInView(listRef, { margin: '600px' });
 
   const paintRows = useMemo((): ReceivingLineRow[] => {
     if (rows.length > 0) return rows;
@@ -175,7 +169,9 @@ export function PoLinesAccordion({
   const openSiblingLine = useCallback((line: ReceivingLineRow) => {
     setActiveSinkId(`po-line:${line.id}`);
     dispatchSelectLine(line);
-    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+    // Focus THIS line's capture serial — not active-step (lags a paint) and
+    // not the dock wedge. Same target as qty click / in-field ↑↓.
+    scheduleFocusUnboxCaptureSerialInLine(line.id, 60);
   }, []);
 
   const handleSiblingCursorOpen = useCallback(
@@ -237,7 +233,7 @@ export function PoLinesAccordion({
               line={line}
               isActive={line.id === activeLineId}
               readOnly={readOnly}
-              animateLayout={layoutActive}
+              animateLayout={false}
               serialsLoading={serialsLoading}
               activeConditionOverride={unitsChrome ? activeConditionOverride : undefined}
               activeSerialActions={unitsChrome ? activeSerialActions : undefined}

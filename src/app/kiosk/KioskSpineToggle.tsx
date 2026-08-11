@@ -32,7 +32,7 @@ export function KioskSpineToggle({
   expanded: boolean;
   onExpandedChange: (next: boolean) => void;
 }) {
-  const label = expanded ? 'Collapse service menu' : 'Expand service menu';
+  const label = expanded ? 'Hide service menu' : 'Show service menu';
   return (
     <HoverTooltip label={label} asChild>
       <IconButton

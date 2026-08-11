@@ -6,6 +6,7 @@
  * Ecwid/usavshop auto-links are not invented from inventory SKUs.
  */
 
+import { normalizeListingHref } from '@/lib/receiving/listing-href';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { parseListingLinksFromSyncNotes } from '@/lib/zoho-po-prefill';
 import {
@@ -15,7 +16,21 @@ import {
 
 export interface CartonListingLink {
   href: string;
+  /**
+   * What KIND of link this is — `Listing`, a platform row (`eBay · acct`),
+   * `Storefront`. Always present, never operator-authored.
+   */
   label: string;
+  /**
+   * The human name for THIS link, when someone gave it one — today the title
+   * a buyer wrote before the URL in the Zoho PO sync notes
+   * (`Bose QC35 black: https://…`). Absent for links nobody named.
+   *
+   * Distinct from `label` on purpose: a surface picking between several links
+   * needs the name that tells them apart, and `label` is identical across every
+   * link from one source (three sync-note links are all `Synced`).
+   */
+  title?: string | null;
   source: 'manual' | 'sync_notes' | 'catalog' | 'derived';
 }
 
@@ -27,18 +42,15 @@ export interface CatalogPlatformLinkInput {
   listingUrl?: string | null;
 }
 
-function normalizeHref(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  try {
-    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
-    const u = new URL(withProto);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
+/**
+ * Re-exported from the leaf `listing-href` module, which is where the function
+ * lives so `zoho-po-prefill` (imported above) can share it without a cycle.
+ * This stays the public import path — a second `new URL(...)` + protocol check
+ * anywhere in the listing path is the fork.
+ */
+export { normalizeListingHref };
+
+const normalizeHref = normalizeListingHref;
 
 function platformRowLabel(p: CatalogPlatformLinkInput): string {
   const base = sourcePlatformLabel(p.platform) || p.platform;
@@ -92,12 +104,17 @@ export function collectCartonListingLinks(args: {
   const platformOrder = new Map<string, string>();
   const suppressEcwid = Boolean(args.suppressEcwidStorefront);
 
-  const push = (href: string | null, label: string, source: CartonListingLink['source']) => {
+  const push = (
+    href: string | null,
+    label: string,
+    source: CartonListingLink['source'],
+    title?: string | null,
+  ) => {
     if (!href) return;
     const key = href.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    candidates.push({ href, label, source });
+    candidates.push({ href, label, source, title: title?.trim() || null });
   };
 
   const manual = normalizeHref(args.listingLink);
@@ -106,7 +123,10 @@ export function collectCartonListingLinks(args: {
   const syncNoteLinks = parseListingLinksFromSyncNotes(args.syncNotes);
   if (syncNoteLinks.length > 0) {
     for (const l of syncNoteLinks) {
-      push(l.href, l.title ?? 'Listing', 'sync_notes');
+      // `label` stays the kind; the buyer's own title rides in `title`, which is
+      // the only thing that tells three sync-note links apart. Order is the
+      // note's order — the buyer's order — so these deliberately skip the sort.
+      push(l.href, l.title ?? 'Listing', 'sync_notes', l.title);
     }
     return candidates;
   }
@@ -136,6 +156,45 @@ export function collectCartonListingLinks(args: {
   });
 }
 
+/**
+ * The listing-link inputs a receiving ROW carries, named structurally so any
+ * row shape with these fields satisfies it — `ReceivingLineRow` does, without
+ * `lib/` importing a component type.
+ */
+interface ReceivingRowListingInput {
+  receiving_listing_url?: string | null;
+  receiving_zoho_notes?: string | null;
+  sku?: string | null;
+  source_platform?: string | null;
+  zoho_purchaseorder_id?: string | null;
+}
+
+/**
+ * Every openable listing link for a receiving line row — the adapter three
+ * surfaces share (Testing verify, photo compare, inventory linkage) so none of
+ * them re-derives an open target from a bare column.
+ *
+ * `platforms` is optional because the catalog tier comes from `useSkuIdentity`,
+ * a hook: a surface that has not resolved SKU identity gets the manual,
+ * sync-note and derived tiers, and honestly no catalog rows — rather than a
+ * silently different answer from the same inputs.
+ */
+export function listingLinksForReceivingRow(
+  row: ReceivingRowListingInput,
+  opts?: { platforms?: CatalogPlatformLinkInput[]; isUnmatched?: boolean },
+): CartonListingLink[] {
+  const isZohoPo = Boolean((row.zoho_purchaseorder_id || '').trim());
+  return collectCartonListingLinks({
+    listingLink: row.receiving_listing_url ?? '',
+    syncNotes: row.receiving_zoho_notes ?? null,
+    sku: row.sku ?? '',
+    sourcePlatform: row.source_platform ?? null,
+    isUnmatched: opts?.isUnmatched ?? false,
+    suppressEcwidStorefront: isZohoPo,
+    platforms: opts?.platforms,
+  });
+}
+
 export interface ListingLinkMenuOption {
   href: string;
   label: string;
@@ -149,10 +208,12 @@ export interface ListingLinkMenuOption {
  */
 export function listingUrlIdentityKey(href: string | null | undefined): string {
   const raw = String(href ?? '').trim();
-  if (!raw) return '';
+  // Same normalizer as every other listing path — parsing an identity key out
+  // of a URL we would refuse to OPEN would hand a chip a face for a dead link.
+  const normalized = normalizeListingHref(raw);
+  if (!normalized) return '';
   try {
-    const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    const u = new URL(withProto);
+    const u = new URL(normalized);
     const path = u.pathname;
     const ebay = path.match(/\/itm\/(\d{6,})/i);
     if (ebay?.[1]) return ebay[1];
@@ -175,6 +236,89 @@ export function listingUrlIdentityKey(href: string | null | undefined): string {
     const digits = raw.replace(/\D/g, '');
     return digits.length >= 4 ? digits : '';
   }
+}
+
+/**
+ * The marketplace item id a listing URL **structurally** carries — `''` when
+ * the URL does not positively attribute one.
+ *
+ * The strict sibling of {@link listingUrlIdentityKey}, and the two answer
+ * different questions on purpose:
+ *
+ * - `listingUrlIdentityKey` answers *"give me something stable to print on a
+ *   chip"*. Its last-path-segment fallback is right there — a cosmetic face
+ *   that is merely unhelpful when the URL is odd.
+ * - `listingUrlItemId` answers *"give me an id I may WRITE"*. That same
+ *   fallback is a **silent wrong id** here: `/sch/i.html` yields `ihtml`,
+ *   `/usr/someseller` yields `someseller`, and a usavshop search yields
+ *   `search`. Resolving with one of those creates a real order carrying a
+ *   fabricated item number, which is exactly what the propose→approve plan
+ *   forbids. So this one refuses instead of guessing.
+ *
+ * Do not "unify" them by loosening this or tightening that — the split IS the
+ * safety property.
+ */
+export function listingUrlItemId(href: string | null | undefined): string {
+  const normalized = normalizeListingHref(href);
+  if (!normalized) return '';
+  let u: URL;
+  try {
+    u = new URL(normalized);
+  } catch {
+    return '';
+  }
+  const path = u.pathname;
+
+  // eBay carries the id last, with or without a title slug in front of it:
+  //   /itm/123456789012        and        /itm/Vintage-Sony-Walkman/123456789012
+  const ebay = path.match(/\/itm\/(?:[^/]*\/)?(\d{6,})(?:\/|$)/i);
+  if (ebay?.[1]) return ebay[1];
+
+  const amazon = path.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})(?:\/|$)/i);
+  if (amazon?.[1]) return amazon[1].toUpperCase();
+
+  const goodwill = path.match(/\/item\/(\d{6,})(?:\/|$)/i);
+  if (goodwill?.[1]) return goodwill[1];
+
+  const walmart = path.match(/\/ip\/(?:[^/]*\/)?(\d{6,})(?:\/|$)/i);
+  if (walmart?.[1]) return walmart[1];
+
+  // An explicit id PARAM is structural too — but only when it holds an id-shaped
+  // value. `?id=widget` is a slug, not an item number.
+  const param =
+    u.searchParams.get('itemId') ?? u.searchParams.get('item') ?? u.searchParams.get('id');
+  if (param && /^\d{6,}$/.test(param.trim())) return param.trim();
+
+  return '';
+}
+
+/**
+ * Canonical `SOURCE_PLATFORMS` value for the marketplace a listing URL points
+ * at — `''` when the host is not one we recognise.
+ *
+ * A pasted URL names its own marketplace, which beats inferring one from the
+ * order's account source: the same seller account can hold listings the sheet
+ * labels differently, and an id pattern (`getPlatformLabelByItemNumber`) is a
+ * guess where the hostname is a fact.
+ */
+export function listingUrlPlatform(href: string | null | undefined): string {
+  const normalized = normalizeListingHref(href);
+  if (!normalized) return '';
+  let host: string;
+  try {
+    host = new URL(normalized).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+  // `ebay.` / `amazon.` prefix-match so every ccTLD storefront (ebay.co.uk,
+  // amazon.de) resolves — the item id is the same id on any of them.
+  if (/(^|\.)ebay\./.test(host)) return 'ebay';
+  if (/(^|\.)amazon\./.test(host)) return 'amazon';
+  if (/(^|\.)walmart\./.test(host)) return 'walmart';
+  if (/(^|\.)shopgoodwill\.com$/.test(host)) return 'goodwill';
+  if (/(^|\.)mercari\.com$/.test(host)) return 'mercari';
+  if (/(^|\.)usavshop\.com$/.test(host)) return 'ecwid';
+  return '';
 }
 
 /** 1-indexed menu rows for the listing chip hover menu (only when count > 1). */

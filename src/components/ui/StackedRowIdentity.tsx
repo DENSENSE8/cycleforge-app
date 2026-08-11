@@ -67,7 +67,11 @@ export function StackedRowIdentity({
   trailing,
   className,
 }: {
-  /** Leading title / subject — truncates or clamps inside the slot. */
+  /**
+   * Leading title / subject. Long product / sheet titles wrap
+   * (`whitespace-normal break-words` — RailSelectionRoster / SyncListRow
+   * grammar); truncate is not the default for those faces.
+   */
   title: ReactNode;
   /**
    * Second-row typed keys — `TicketChip` · `OrderIdChip` · `PoChip` ·

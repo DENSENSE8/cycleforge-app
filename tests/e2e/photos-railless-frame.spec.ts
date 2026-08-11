@@ -207,8 +207,8 @@ test.describe('Media Library · rail-less frame', () => {
  * The bulk verbs used to be `PhotoLibraryToolbar`, a chrome band that swapped
  * itself in OVER Bands 1–3 — so ticking two photos took the lifecycle tabs, the
  * search field and the breadcrumb away. They are armed rows on the right edge
- * now, and Delete is the flush trailing child of the Macro floor rather than a
- * row beside its peers.
+ * now, and the terminal pair — Download then Delete — sits on the Macro floor
+ * rather than in the list beside the reshaping verbs.
  */
 test.describe('Media Library · batch rail', () => {
   test('two selected opens the batch rail and the chrome bands stay put', async ({ page }) => {
@@ -233,7 +233,7 @@ test.describe('Media Library · batch rail', () => {
     await expect(page.locator('[data-right-rail-mode="push"]')).toBeVisible();
   });
 
-  test('Delete sits on the bottom floor as its trailing peer, and arms before it commits', async ({
+  test('the floor is Download then Delete, coplanar and far-right, arming before it commits', async ({
     page,
   }) => {
     await landOnStream(page);
@@ -246,36 +246,41 @@ test.describe('Media Library · batch rail', () => {
     await expect(del).toBeVisible();
     await expect(del).toHaveAttribute('aria-label', /Delete 2/);
 
-    // Geometry, not vibes. Delete is the TRAILING peer of a floor that sits
-    // below the verb rows, flush to the panel's bottom-right corner. It is the
-    // floor's only peer today, so the spread layout gives it the whole column
-    // (the shape `BinDetailFlyout` / `SkuDetailView` / `RepairDetailsPanel`
-    // already ship) — "trailing" is asserted as last-child, which stays true
-    // the day a second icon verb joins it and the gaps stop being trivial.
+    // Geometry + paint, not vibes:
+    //  - Download leads, Delete trails — with two peers "far right" is literal,
+    //    which a one-peer spread floor cannot be (its only child fills the row).
+    //  - the floor sits BELOW the verb rows, flush to the bottom-right corner;
+    //  - and it is COPLANAR with the panel — white, not the desk canvas step.
     const box = await page.evaluate(() => {
       const panel = document.querySelector('[data-testid="photo-batch-inspector-panel"]');
       const button = document.querySelector('[data-testid="photo-batch-delete"]');
       const rows = document.querySelector('[data-testid="photo-batch-actions-list"]');
-      if (!panel || !button || !rows) return null;
+      const chrome = panel?.firstElementChild ?? null;
+      if (!panel || !button || !rows || !button.parentElement) return null;
       const p = panel.getBoundingClientRect();
       const b = button.getBoundingClientRect();
       return {
         below: Math.round(b.top) >= Math.round(rows.getBoundingClientRect().bottom),
-        // Last peer of the spread row it sits in — true today with one peer,
-        // and still true the day an icon verb joins it on the left.
-        trailing: button.parentElement?.lastElementChild === button,
+        peers: [...button.parentElement.children].map((c) => c.getAttribute('data-testid')),
         rightGap: Math.round(p.right - b.right),
         bottomGap: Math.round(p.bottom - b.bottom),
+        // Delete occupies its own column rather than the whole row.
+        fillsRow: Math.round(b.width) >= Math.round(p.width),
+        floorPaint: getComputedStyle(button.parentElement).backgroundColor,
+        chromePaint: chrome ? getComputedStyle(chrome).backgroundColor : null,
       };
     });
     expect(box).not.toBeNull();
     expect(box!.below).toBe(true);
-    expect(box!.trailing).toBe(true);
+    expect(box!.peers).toEqual(['photo-batch-floor-download', 'photo-batch-delete']);
     expect(box!.rightGap).toBe(0);
     expect(box!.bottomGap).toBe(0);
+    expect(box!.fillsRow).toBe(false);
+    expect(box!.floorPaint).toBe(box!.chromePaint);
 
-    // Never a row: the verb list must not carry a delete entry.
+    // Never rows: neither floor verb may also be listed above.
     await expect(page.getByTestId('photo-batch-action-delete')).toHaveCount(0);
+    await expect(page.getByTestId('photo-batch-action-download')).toHaveCount(0);
 
     // Arm-then-confirm. Assert the ARMED face and stop — a real bulk delete
     // against the QA org would eat the fixtures every other photo spec reads.

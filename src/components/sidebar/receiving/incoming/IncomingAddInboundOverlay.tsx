@@ -24,11 +24,11 @@ import {
   inboundSourcePlatformForRaw,
   inboundSourceTypeForPlatform,
 } from '@/lib/inbound/desk-csv';
-import { yieldStationRightEdgeForAddInbound } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
+import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
 import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { toast } from '@/lib/toast';
-import { INCOMING_ADD_INBOUND_CLOSE_EVENT } from '@/utils/events';
+import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
 import { cn } from '@/utils/_cn';
 
 /** Prefer purchase sources operators fix unfound cartons with. */
@@ -175,7 +175,7 @@ export function IncomingAddInboundOverlay({
     setSubmitting(false);
     // One right-edge wrapper: yield Station Displays (+ details / AI) before
     // this RightRailHost claim paints — never stack two push columns.
-    yieldStationRightEdgeForAddInbound((qs) => {
+    yieldStationRightEdgeForDeskOccupant((qs) => {
       router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
     });
   }, [open, initialOrderId, initialPlatform, initialType, router, pathname]);
@@ -183,8 +183,8 @@ export function IncomingAddInboundOverlay({
   useEffect(() => {
     if (!open) return;
     const onPeerOpen = () => onClose();
-    window.addEventListener(INCOMING_ADD_INBOUND_CLOSE_EVENT, onPeerOpen);
-    return () => window.removeEventListener(INCOMING_ADD_INBOUND_CLOSE_EVENT, onPeerOpen);
+    window.addEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
+    return () => window.removeEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
   }, [open, onClose]);
 
   const isReturn = receivingType === 'RETURN';

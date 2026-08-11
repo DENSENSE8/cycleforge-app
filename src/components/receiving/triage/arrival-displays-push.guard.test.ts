@@ -8,7 +8,7 @@
  * (`DISPLAYS_FLUSH_HOST` + chrome) — identity + PO / unfound items **without
  * units chrome** + Classify. Staging is the flush dock Band 1 ACTION
  * (`ArrivalStagingDockControl` via `UnboxDockHost`); Save-for-unbox rides the
- * dogfood strip. Pairing/Linkage is the right-edge **Displays** push
+ * dogfood strip. Ticket + Pairing/Linkage are the right-edge **Displays** push
  * (`StationDisplaysPushStack` / `StationDisplaysPushColumn`), never a centre
  * `SectionTabsSlider` strip and never a `RightRailHost` occupant. Unbox
  * (`LineEditPanel`) remains the golden for the host. See
@@ -16,7 +16,7 @@
  * `display/station-port-from-unbox.md`.
  *
  * The `# ----` PO chip opens the Linkage display and hands the PO avenue over
- * as DATA (`setPairingFocus`), like Unbox.
+ * as DATA (`setPairingFocus`), like Unbox. Auto-match Find ticket opens Ticket.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -98,8 +98,11 @@ describe('Arrival Displays push — scan-station Displays SoT', () => {
     assert.match(panel, /data-arrival-dogfood-terminal|data-arrival-dock-float/);
   });
 
-  it('Arrival Displays strip is Pairing-only (no Classify · Staging tabs)', () => {
+  it('Arrival Displays strip is Ticket + Pairing (no Classify · Staging tabs)', () => {
+    assert.match(displays, /id:\s*['"]ticket['"]/);
     assert.match(displays, /id:\s*['"]linkage['"]/);
+    assert.match(displays, /TicketDisplayHost/);
+    assert.match(displays, /onFindTicket/);
     assert.doesNotMatch(
       displays,
       /id:\s*['"]classify['"]/,
@@ -249,6 +252,7 @@ describe('Phase E — Testing Displays push', () => {
  */
 describe('Arrival pane controls — expand · cursor · flush dock', () => {
   const panel = read(TRIAGE_PANEL);
+  const displays = read(TRIAGE_DISPLAYS);
 
   it('ScanStationUtilityRail carries the Displays expand toggle (only while closed)', () => {
     assert.match(panel, /StationScanPaneHost/, 'Arrival composes StationScanPaneHost');
@@ -271,6 +275,44 @@ describe('Arrival pane controls — expand · cursor · flush dock', () => {
       panel,
       /!activeSideTab \?[\s\S]{0,200}UnboxDisplaysUtilityRailBody/,
       'the `←|` expand toggle mounts only while the Displays column is closed (the `→|` close lives on the open column footer)',
+    );
+  });
+
+  it('Open displays lands Root Index — never divert to Classify / Staging scroll', () => {
+    assert.match(
+      panel,
+      /onOpenDisplays=\{openDisplaysIndex\}/,
+      'utility-rail Open displays must land the Root Index (Ticket + Pairing)',
+    );
+    const handler = panel.match(
+      /const openDisplaysIndex = useCallback\(\(\) => \{([\s\S]*?)\}, \[claimDisplays\]\)/,
+    );
+    assert.ok(handler, 'openDisplaysIndex must claim STATION_DISPLAY_INDEX');
+    const body = handler[1] ?? '';
+    assert.match(
+      body,
+      /STATION_DISPLAY_INDEX|claimDisplays\(\s*STATION_DISPLAY_INDEX\s*\)/,
+      '←| must open the Displays Root Index, not a guessed leaf',
+    );
+    assert.doesNotMatch(
+      body,
+      /resolveTriageFocus|scrollIntoView/,
+      'Open displays must not scroll Classify / Staging — those keep their own loci',
+    );
+    assert.match(
+      panel,
+      /StationDisplaysPushStack/,
+      'Ticket + Pairing mount via StationDisplaysPushStack when activeSideTab is set',
+    );
+    assert.match(
+      displays,
+      /CartonMatchHub/,
+      'Pairing leaf body is Package Pairing (CartonMatchHub)',
+    );
+    assert.match(
+      panel,
+      /openFindTicketDisplay/,
+      'Auto-match Find ticket must open Ticket Displays',
     );
   });
 
@@ -417,5 +459,108 @@ describe('Arrival Displays carton Macro floor', () => {
   it('no floating island / touch peers (hit target is the fill column)', () => {
     assert.doesNotMatch(floor, /size="touch"/);
     assert.doesNotMatch(floor, /\bw-11\b/);
+  });
+});
+
+/**
+ * Arrival dock procedure waist (2026-08-10 — Unbox scan-entry parity) — the
+ * compact `w-8` scan cell that LEADS {@link ArrivalStagingDockControl}'s
+ * shelf/lane row. Twin of the Unbox golden {@link UnboxDockScanEntry} + the
+ * parked-rail `CollapseStripScanCell`: Plus idle, glow + caret when focused,
+ * **no placeholder**. This is exactly the COUNTER-EXAMPLE the Unbox dock guard
+ * bans (a content-sized chip / wide "Enter to continue" field floating in dead
+ * Band-1 white); pinned as CODE so a future edit cannot silently regress it.
+ *
+ * The two loci are load-bearing (`ArrivalDockScanEntry` docblock): the sidebar
+ * `StationScanBar` is INGEST (which carton), this cell is PROCEDURE (which
+ * shelf) — so it must NOT claim the Insert / F-key ingest hotkey
+ * (`useRegisterScanTarget`) and must fork storage to `receiving_triage`
+ * (`useTriageStaging.selectShelf`), never the Unbox line putaway or the pack
+ * ledger. What ports between stations is the INTERACTION, not the storage.
+ */
+describe('Arrival dock procedure waist — Unbox scan-entry parity', () => {
+  const panel = read(TRIAGE_PANEL);
+  const entry = read('src/components/receiving/triage/ArrivalDockScanEntry.tsx');
+  const stagingDock = read(
+    'src/components/receiving/triage/ArrivalStagingDockControl.tsx',
+  );
+
+  it('TriagePanel leads the Staging Band 1 with ArrivalDockScanEntry as the scanCell', () => {
+    assert.match(
+      panel,
+      /scanCell=\{[\s\S]{0,160}ArrivalDockScanEntry/,
+      'the procedure waist mounts as ArrivalStagingDockControl’s leading scanCell (never a bare mouse-only <select>)',
+    );
+  });
+
+  it('the shelf/lane row leads with the scanCell as a full-height abutting segment', () => {
+    assert.match(
+      stagingDock,
+      /h-11 w-full min-w-0 items-stretch gap-0/,
+      'Band 1 shelf row is the Unbox h-11 abutting-segment floor (never gap-* air)',
+    );
+    assert.match(
+      stagingDock,
+      /items-stretch[\s\S]{0,90}\{scanCell\}/,
+      'scanCell leads the row (always-left), abutting the shelf select',
+    );
+    assert.match(
+      stagingDock,
+      /scanCell \?[\s\S]{0,60}border-l/,
+      'the neighbour segment abuts the scanCell with a hairline, never dead white',
+    );
+  });
+
+  it('is a compact collapse-strip twin — w-8, Plus idle, no placeholder', () => {
+    assert.match(entry, /w-8/, 'collapse-strip width (parked-rail + Unbox waist)');
+    assert.match(entry, /<Plus /, 'idle Plus face like CollapseStripScanCell');
+    assert.match(entry, /ScanBandGlowHost/, 'focused face uses the station glow host');
+    assert.match(entry, /data-arrival-dock-scan/, 'dock scan marker');
+    assert.match(
+      entry,
+      /placeholder=""/,
+      'no placeholder text — glow + caret are the focus signal',
+    );
+    assert.doesNotMatch(
+      entry,
+      /placeholder="[^"]/,
+      'banned: any non-empty placeholder copy on the compact waist',
+    );
+    assert.doesNotMatch(
+      entry,
+      /w-full min-w-0 flex-1/,
+      'banned: a flex-1 sunken field that steals Band 1 from the shelf/lane selects',
+    );
+  });
+
+  it('two loci — the dock waist does NOT claim the sidebar ingest hotkey', () => {
+    assert.doesNotMatch(
+      entry,
+      /useRegisterScanTarget/,
+      'Insert / F-key focus stays on ingest (the sidebar StationScanBar); the dock is procedure-only',
+    );
+    assert.match(
+      entry,
+      /useRegisterScanSink/,
+      'the wedge Action sink lands a shelf while focus is on the centre / chrome',
+    );
+    assert.match(
+      entry,
+      /receiving-submit-tracking/,
+      'a payload it does not own (a tracking) is handed back to ingest, not swallowed',
+    );
+  });
+
+  it('forks storage to receiving_triage — never the Unbox putaway or pack ledger', () => {
+    assert.match(
+      entry,
+      /selectShelf/,
+      'writes via useTriageStaging.selectShelf (receiving_triage.staging_location_id)',
+    );
+    assert.doesNotMatch(
+      entry,
+      /receiving_line_putaway|order_pack_placements/,
+      'three jobs, three storages — what ports between stations is the INTERACTION',
+    );
   });
 });

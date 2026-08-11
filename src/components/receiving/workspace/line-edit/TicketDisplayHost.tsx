@@ -10,7 +10,7 @@
  *   hosts a Tickets avenue or in-strip finder).
  * - Linked ticket → Chat only
  *
- * URL: `?display=ticket` (+ `claimMode` while on the claim surface).
+ * Nest: `ticket` leaf (+ `claimMode` while on the claim surface).
  * `ticketAction` is derived from linked-ticket presence, not a verb switcher.
  *
  * **Column fill:** Displays uses `DISPLAYS_FLUSH_HOST` (`px-0`) — Claim / Chat

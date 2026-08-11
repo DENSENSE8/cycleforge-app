@@ -19,8 +19,9 @@ test.describe('inbound desk docked lane', () => {
 
     await page.goto('/incoming?lane=docked');
 
-    // Lane + Docked secondary: Pipeline | Docked, then Arrival | Unbox.
-    await expect(page.getByRole('button', { name: 'Docked', exact: true })).toBeVisible();
+    // Docked URL keeps Arrival | Unbox on Band-1 (Pipeline|Docked parent deleted).
+    await expect(page.getByRole('button', { name: 'Docked', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Pipeline', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Arrival', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Unbox', exact: true })).toBeVisible();
 

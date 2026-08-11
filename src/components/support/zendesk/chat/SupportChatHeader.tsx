@@ -2,6 +2,7 @@
 
 import type { ZendeskTicket } from '@/lib/zendesk';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { openHelpdeskTicketUrl } from '@/lib/desktop/desktop-host';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { ChevronLeft, ExternalLink, Link2, Package } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
@@ -181,15 +182,17 @@ export function SupportChatHeader({
             <SupportDetailsStack ticket={ticket} fields="edit" />
             {url ? (
               <HoverTooltip label={openLabel} asChild>
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                {/* ds-raw-button — desktop opens N5 VendorView; browser deep-links */}
+                <button
+                  type="button"
                   aria-label={openLabel}
+                  onClick={() => {
+                    void openHelpdeskTicketUrl(url, { title: openLabel });
+                  }}
                   className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-none bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
                 >
                   <ExternalLink className="h-4 w-4" />
-                </a>
+                </button>
               </HoverTooltip>
             ) : null}
           </div>

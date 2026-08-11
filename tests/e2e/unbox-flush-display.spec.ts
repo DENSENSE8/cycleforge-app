@@ -23,7 +23,7 @@ const uniq = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}
 
 import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
 
-/** Station workbench lock — center hugs this when both rails stay open. */
+/** Station center floor — the elastic center holds at/above this (never below). */
 const STATION_CENTER_LOCK_PX = STATION_WORKBENCH_LOCK_PX;
 
 async function hasQaSession(request: APIRequestContext): Promise<boolean> {
@@ -57,6 +57,19 @@ async function openUnbox(page: Page, receivingId: number, lineId: number, extra 
   await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}${extra}`);
   await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('unbox-station-center')).toBeVisible({ timeout: 15_000 });
+}
+
+async function openDisplaysLeaf(page: Page, label: string) {
+  await page.getByTestId('unbox-displays-pane-toggle').click();
+  await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+  const displays = page.getByTestId('receiving-displays-push');
+  const onStrip = displays.getByRole('button', { name: new RegExp(`^${label}\\b`, 'i') });
+  if ((await onStrip.count()) > 0) {
+    await onStrip.first().click();
+  } else {
+    await displays.getByRole('button', { name: /more displays/i }).click();
+    await page.getByRole('menuitem', { name: new RegExp(label, 'i') }).click();
+  }
 }
 
 interface FlushGeometry {
@@ -181,7 +194,8 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
       await page.setViewportSize(viewport);
       const receivingId = await createCarton(request);
       const lineId = await addLine(request, receivingId);
-      await openUnbox(page, receivingId, lineId, '&display=units');
+      await openUnbox(page, receivingId, lineId);
+      await openDisplaysLeaf(page, 'Units');
 
       const push = page.getByTestId('receiving-displays-push');
       await expect(push).toBeVisible({ timeout: 15_000 });
@@ -202,10 +216,11 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
         expect(seam, `workspace|push seam at ${viewport.width}`).toBeLessThanOrEqual(2);
       }
 
-      // Center hugs the station workbench lock (~720); both side rails stay open.
+      // The elastic center never drops below its 720 floor; both side rails stay
+      // open (Option A — the center absorbs the slack, so it is ≥ 720, often more).
       expect(
         g.workspace!.width,
-        `center hugs ≥ ${STATION_CENTER_LOCK_PX} at ${viewport.width}`,
+        `center holds ≥ ${STATION_CENTER_LOCK_PX} floor at ${viewport.width}`,
       ).toBeGreaterThanOrEqual(STATION_CENTER_LOCK_PX - 8);
     });
   }
@@ -219,9 +234,10 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
-    await openUnbox(page, receivingId, lineId, '&claimView=1');
+    await openUnbox(page, receivingId, lineId);
+    await page.getByRole('button', { name: /File claim|claim/i }).first().click();
 
-    await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('receiving-claim-panel')).toBeVisible({ timeout: 15_000 });
 
     // Ensure assistant starts closed (persist can leave it open across tests).
     await page.evaluate(() => {
@@ -234,12 +250,12 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
 
     await openAssistant(page);
 
-    await expect(page.getByTestId('receiving-claim-push')).toHaveCount(0, { timeout: 15_000 });
-    await expect(page).not.toHaveURL(/claimView=1/);
+    await expect(page.getByTestId('receiving-claim-panel')).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.getByTestId('receiving-displays-push')).toHaveCount(0, { timeout: 15_000 });
     await expect(page.getByRole('region', { name: 'Operations assistant' })).toBeVisible();
   });
 
-  test('station Claim open closes AI dock (button + cold deep-link)', async ({
+  test('station Claim open closes AI dock (button path)', async ({
     page,
     request,
   }) => {
@@ -253,45 +269,24 @@ test.describe('Unbox flush display — geometry + AI yield', () => {
     await openAssistant(page);
     await expect(page.getByRole('region', { name: 'Operations assistant' })).toBeVisible();
 
-    // Operator path: identity Claim pill → setClaimView(true).
+    // Operator path: identity Claim pill → Ticket Displays claim nest.
     await page.getByRole('button', { name: /File claim/i }).click();
-    await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
-    await expectAssistantClosed(page);
-
-    // Persist AI open, then cold deep-link with claim — mount effect must yield AI.
-    await page.evaluate(() => {
-      try {
-        window.localStorage.setItem('assistant:dock-open', '1');
-      } catch {
-        /* ignore */
-      }
-    });
-    await page.goto(
-      `/unbox?openReceivingId=${receivingId}&lineId=${lineId}&claimView=1`,
-    );
-    await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('receiving-claim-panel')).toBeVisible({ timeout: 15_000 });
     await expectAssistantClosed(page);
   });
 
-  test('Displays deep-link closes AI dock', async ({ page, request }) => {
+  test('Displays open closes AI dock', async ({ page, request }) => {
     test.skip(!(await hasQaSession(request)), 'no QA session — run pnpm provision:qa-org');
 
     await page.setViewportSize({ width: 1440, height: 900 });
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
 
-    await page.evaluate(() => {
-      try {
-        window.localStorage.setItem('assistant:dock-open', '1');
-      } catch {
-        /* ignore */
-      }
-    });
-    await page.goto(
-      `/unbox?openReceivingId=${receivingId}&lineId=${lineId}&display=units`,
-    );
-    await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
+    await openUnbox(page, receivingId, lineId);
+    await openAssistant(page);
+    await expect(page.getByRole('region', { name: 'Operations assistant' })).toBeVisible();
+
+    await openDisplaysLeaf(page, 'Units');
     await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
     await expectAssistantClosed(page);
   });

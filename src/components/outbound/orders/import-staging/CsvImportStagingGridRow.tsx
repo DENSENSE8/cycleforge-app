@@ -26,7 +26,8 @@
 
 import { memo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
-import { GridCellDash, GridStatusCellValue } from '@/components/ui/grid-cells';
+import { GridCellDash, GridPlatformMarkValue, GridStatusCellValue } from '@/components/ui/grid-cells';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
   LedgerCellEditor,
@@ -211,12 +212,18 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
         ) : (
           <GridCellDash />
         );
-      case 'platform':
-        return row.platform ? (
-          <span className="truncate">{row.platform}</span>
+      case 'platform': {
+        const platform = sourcePlatformMeta(row.platform);
+        return platform.value || row.platform ? (
+          <GridPlatformMarkValue
+            platformValue={platform.value || null}
+            label={platform.label || row.platform}
+            meta={platform.value ? platform : undefined}
+          />
         ) : (
           <GridCellDash />
         );
+      }
       default:
         return null;
     }

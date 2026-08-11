@@ -31,6 +31,24 @@ const GLOW = code(sourceOf('../../station/scan-bar/ScanBandGlowHost.tsx'));
 const SCAN_FEEDBACK = code(sourceOf('../../../lib/scan-feedback/useScanFeedback.ts'));
 const VISUAL = code(sourceOf('../../../lib/scan-feedback/visual.ts'));
 
+test('PoLineRow stamps line id and units qty focuses capture serial', () => {
+  assert.match(
+    PO_LINE_ROW,
+    /data-receiving-line-id=\{line\.id\}/,
+    'row stamps line id for serial arrow / qty focus targeting',
+  );
+  assert.match(
+    PO_LINE_ROW,
+    /data-po-line-units/,
+    'qty ProgressBadge is the units click face',
+  );
+  assert.match(
+    PO_LINE_ROW,
+    /scheduleFocusUnboxCaptureSerialInLine/,
+    'units / row activate focuses capture serial, not only the dock wedge',
+  );
+});
+
 test('PoLineRow title band carries no collapse chevron (capture is in the bottom dock)', () => {
   // The per-line collapse chevron was removed 2026-08-08: capture and item
   // detail moved to the bottom dock + right-edge Displays, so the PO line row
@@ -139,13 +157,18 @@ test('PoLineRow thumb is square flush (left rail continuous stack)', () => {
   );
   assert.match(
     PO_LINE_ROW,
-    /overflow-hidden bg-surface-card/,
-    'expanded curtain body paints an opaque white face — no hairline seam under the ledger',
+    /data-po-line-entry/,
+    'under-row capture entry must expose a stable data hook',
   );
-  assert.doesNotMatch(
+  assert.match(
     PO_LINE_ROW,
-    /activeRowSlot[\s\S]{0,400}?border-t border-border-hairline/,
-    'under-row editor must not draw a hairline between the PO line and the edit body',
+    /border-t border-border-hairline bg-surface-sunken/,
+    'entry is boxed off the ledger — sunken well + hairline seam',
+  );
+  assert.match(
+    PO_LINE_ROW,
+    /border border-border-soft border-t-0 bg-surface-card/,
+    'entry body is a card instrument frame inside the sunken well',
   );
 });
 
@@ -174,8 +197,8 @@ test('PoLineRow meta is a bordered boxed sub-grid (gap-x whitespace, no divide-x
   assert.match(PO_LINE_ROW, /Barcode/);
   assert.match(
     PO_LINE_ROW,
-    /aria-label=\{[\s\S]*Edit serial in dock[\s\S]*Edit units/,
-    'serial preview opens Units or focuses the Unbox dock step (View All removed)',
+    /aria-label=\{[\s\S]*Edit serial in dock[\s\S]*View serials/,
+    'serial preview focuses the Unbox dock step or opens Units (View All removed)',
   );
   assert.doesNotMatch(
     PO_LINE_ROW,
@@ -315,7 +338,7 @@ test('identity pad is horizontal-only (zero vertical pad)', () => {
   );
   assert.match(
     IDENTITY,
-    /STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0'/,
+    /STATION_IDENTITY_GROUP_CLASS\s*=\s*[\s\S]*?gap-0[\s\S]*?-ml-px/,
     'classify group must be gap-0 flush pills filling the chrome row',
   );
 });
@@ -333,9 +356,27 @@ test('identity panel is a white flush curtain face', () => {
   );
 });
 
-test('Unbox dual loci: dock chips + ActiveLineConditionSerial under active line', () => {
-  // Dock owns scanner/procedure; active line mounts mouse editor; wedge stays
-  // dock-owned via autoFocusSerial={false} when dockOwnsCapture.
+test('sibling capture arm promotes the line to the workspace controller', () => {
+  assert.match(
+    LINE_PO_ITEMS,
+    /onArmCapture=\{\(\) => \{/,
+    'LinePoItemsSection wires onArmCapture for every editable capture face',
+  );
+  assert.match(
+    LINE_PO_ITEMS,
+    /setActiveSinkId\(`po-line:\$\{line\.id\}`\)/,
+    'arm stamps the po-line scan sink for the touched line',
+  );
+  assert.match(
+    LINE_PO_ITEMS,
+    /if \(!isControllerLine\) dispatchSelectLine\(line\)/,
+    'sibling arm promotes controller via receiving-select-line',
+  );
+});
+
+test('Unbox dual loci: dock chips + ActiveLineConditionSerial under every editable line', () => {
+  // Dock owns scanner/procedure; every editable line mounts the capture face;
+  // controller-active line autofocuses centre serial for optimistic scan.
   assert.match(LINE_PO_ITEMS, /onEditConditionInDock/);
   assert.match(LINE_PO_ITEMS, /onEditSerialInDock/);
   assert.match(LINE_PO_ITEMS, /onFocusCaptureStep\('condition'\)/);
@@ -343,13 +384,13 @@ test('Unbox dual loci: dock chips + ActiveLineConditionSerial under active line'
   assert.match(LINE_PO_ITEMS, /<ActiveLineConditionSerial\b/);
   assert.match(
     LINE_PO_ITEMS,
-    /dockOwnsCapture && line\.id !== row\.id/,
-    'dockOwnsCapture mounts under-row editor on the active line only',
+    /autoFocusSerial=\{isControllerLine\}/,
+    'controller-active line autofocuses centre serial on new scan',
   );
-  assert.match(
+  assert.doesNotMatch(
     LINE_PO_ITEMS,
-    /autoFocusSerial=\{isControllerLine && !dockOwnsCapture\}/,
-    'wedge autofocus stays off when the dock owns capture',
+    /dockOwnsCapture && line\.id !== row\.id\) return null/,
+    'capture face mounts on every editable line — not active-only',
   );
   assert.match(
     LINE_PO_ITEMS,
@@ -358,7 +399,37 @@ test('Unbox dual loci: dock chips + ActiveLineConditionSerial under active line'
   );
   assert.match(
     LINE_PO_ITEMS,
-    /progressiveCapture=\{dockOwnsCapture && isControllerLine\}/,
-    'Unbox active line mounts progressive Condition → Serial → Photos',
+    /staffId=\{Number\(staffId\) \|\| 0\}/,
+    'Photos strip receives staff context for send-to-phone',
   );
+  assert.doesNotMatch(
+    LINE_PO_ITEMS,
+    /onOpenSerial=\{/,
+    'Serial expands in-row — not a Displays junction from LinePoItemsSection',
+  );
+  assert.match(
+    LINE_PO_ITEMS,
+    /dockOwnsCapture=\{dockOwnsCapture\}[\s\S]{0,80}isActiveLine=\{isControllerLine\}/,
+    'Unbox lines report facts to ALS — resolveCaptureEntry owns the gate',
+  );
+});
+
+test('capture-row moving outline is a flat data-attribute cursor, not a glow', () => {
+  // The active-step cursor lights via data-active-step + an inset accent outline
+  // (globals.css), never a persistent shadow / ring / blur border on the flat
+  // data floor. Radius stays flush (the ring token is cornerClass('flush')).
+  const CAPTURE_ROW = code(sourceOf('./line-edit/PoLineCaptureRow.tsx'));
+  const CAPTURE_CHROME = code(sourceOf('./po-line-capture-chrome.ts'));
+  assert.match(
+    CAPTURE_ROW,
+    /data-active-step=\{activeStep \?\? undefined\}/,
+    'the outline is driven by a stamped data-attribute (moving cursor), not a class swap',
+  );
+  assert.doesNotMatch(
+    CAPTURE_ROW,
+    /shadow-[a-z]|box-shadow|\bblur\b|ring-emerald|ring-rose/,
+    'the active-line cursor is an outline, never a glow / persistent coloured border',
+  );
+  // The joined bar stays flush; the inset outline draws inside it (unclippable).
+  assert.match(CAPTURE_CHROME, /cornerClass\('flush'\)/);
 });

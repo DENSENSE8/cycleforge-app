@@ -110,14 +110,16 @@ test('drag-past-min collapse wires onCollapseBeyondMin into CONTEXT_PANEL_COLLAP
 });
 
 test('park/restore snaps — no push.rail width tween (Displays twin)', () => {
-  // Instant width via style — never motion.div / motionRole.push.rail.
-  assert.match(LAYOUT_SRC, /style=\{\{\s*width: isCollapsed \? 0 : paintWidthPx\s*\}\}/);
+  // Instant width via style — never motion.div / motionRole.push.rail. Paints
+  // from the rail's own local `width` (Option A — no cross-rail coupling / no
+  // paint-from-coupled hop).
+  assert.match(LAYOUT_SRC, /style=\{\{\s*width: isCollapsed \? 0 : width\s*\}\}/);
   assert.doesNotMatch(LAYOUT_SRC, /motionRole\.push\.rail/);
   assert.doesNotMatch(LAYOUT_SRC, /from '@\/design-system\/motion'/);
   assert.doesNotMatch(LAYOUT_SRC, /widthTransition|collapseSettled/);
-  // Mid-drag cost must not re-publish into the park ladder.
+  // Rail cost is published (frame budget) but never via the retired coupling bus.
   assert.match(LAYOUT_SRC, /publishedCostRef/);
-  assert.match(LAYOUT_SRC, /if \(!isDragging\)/);
+  assert.doesNotMatch(LAYOUT_SRC, /station-dual-rail/);
 });
 
 test('recent rail: no Framer layout projection on column resize (Displays twin)', () => {

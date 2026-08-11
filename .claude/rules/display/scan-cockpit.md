@@ -63,8 +63,9 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
 - **Auto-follow yields to Displays browse.** Back / Esc to the topic index, **or
   any leaf the operator picked that is not this beat's `railLeaf`** (e.g. Photos
   while the beat is Units), stays put — auto-follow must not immediately re-open
-  `railLeaf`. A **step advance** (`activeKey` change) resumes auto-follow and
-  swaps the new beat's reference.
+  `railLeaf`. A **step advance** (`activeKey` change) **or a new carton** resumes
+  auto-follow and swaps the beat's reference (same first step on a new carton
+  must still land on `railLeaf`, not stick on the prior carton's leaf).
 - **Single-purpose + auto-swap.** The rail shows *only* what THIS step needs and
   changes as the step changes. Never a static wall of everything.
 - **Position folds in.** The procedure **checklist** ("where am I") is a compact
@@ -91,7 +92,7 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
   `dynamic()` — the manual / timeline never enter first paint
   (`source-of-truth.md` → Paint content order).
 - **Frame budget intact.** Center locks `STATION_PUSH_CENTER_FLOOR_PX` (720);
-  Displays fills leftover (the Flex-Grow Sandwich already handles both-open).
+  Displays is a sized sibling and the elastic center absorbs (the cascade already handles both-open).
   Default-open changes *when* the rail is open, never the width math.
 
 ---

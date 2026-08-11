@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ExternalLink, History, Tags } from '@/components/Icons';
+import { AlertTriangle, ExternalLink, History, Package, Tags } from '@/components/Icons';
 import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
@@ -26,6 +26,7 @@ import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { UpNextActionDock } from './UpNextActionDock';
 import { ShippingScanWorkspace } from './shipping/ShippingScanWorkspace';
+import { ShippingCapturedUnits } from './shipping/ShippingCapturedUnits';
 import {
   ShippingEntityContextHeader,
   ShippingOutOfStockNotice,
@@ -38,8 +39,8 @@ import { useOrderAmendments } from '@/hooks/fulfillment/useSubstitution';
 import { canShowTechSubstitution } from '@/lib/tech/substitution-eligibility';
 import { useOrderAssignment } from '@/hooks';
 
-/** Condition · Timeline · Listings (trailing — upgrade slot). */
-type ShippingDisplayTab = 'condition' | 'timeline' | 'listings';
+/** Units · Condition · Timeline · Listings (trailing — upgrade slot). */
+type ShippingDisplayTab = 'units' | 'condition' | 'timeline' | 'listings';
 
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 type ShippingDisplayNav = typeof STATION_DISPLAY_INDEX | ShippingDisplayTab;
@@ -68,8 +69,8 @@ interface ActiveOrderWorkspaceProps {
 
 /**
  * Focused work-item view rendered in the `/test` right pane while an order is
- * active. Unbox-family host: StationScanPaneHost + StationPanelRoot; Ship · Units
- * stay centre work; Condition · Timeline · Listings (trailing) clarify on
+ * active. Unbox-family host: StationScanPaneHost + StationPanelRoot; Ship stays
+ * centre work; Units · Condition · Timeline · Listings (trailing) clarify on
  * Displays (Open displays CTA).
  */
 export function ActiveOrderWorkspace({
@@ -155,7 +156,15 @@ export function ActiveOrderWorkspace({
   /** Enriched rows keep Listings in Context (trailing) — default group would
    *  hoist `listings` into Verification and jump it above Condition. */
   const displayIndexRows = useMemo<DisplayIndexRow[]>(() => {
+    const serialCount = activeOrder.serialNumbers.length;
     const rows: DisplayIndexRow[] = [
+      {
+        id: 'units',
+        label: 'Units',
+        subtitle: serialCount > 0 ? `${serialCount} captured` : 'No serials yet',
+        tone: serialCount > 0 ? 'ok' : 'action',
+        group: 'verification',
+      },
       {
         id: 'condition',
         label: 'Condition',
@@ -183,6 +192,7 @@ export function ActiveOrderWorkspace({
     return rows;
   }, [
     activeOrder.condition,
+    activeOrder.serialNumbers.length,
     conditionLabel,
     hasTimelineDisplay,
     listingResolution.listingUrl,
@@ -191,6 +201,17 @@ export function ActiveOrderWorkspace({
   const displayTabs = useMemo(
     () =>
       buildSectionTabs([
+        {
+          id: 'units',
+          label: 'Units',
+          icon: Package,
+          content: (
+            <ShippingCapturedUnits
+              activeOrder={activeOrder}
+              onRemoveSerial={isPreview ? undefined : onRemoveSerial}
+            />
+          ),
+        },
         {
           id: 'condition',
           label: 'Condition',
@@ -235,6 +256,8 @@ export function ActiveOrderWorkspace({
         },
       ]),
     [
+      activeOrder,
+      onRemoveSerial,
       activeOrder.condition,
       activeOrder.serialNumbers,
       handleConditionChange,
@@ -331,7 +354,6 @@ export function ActiveOrderWorkspace({
                 <ShippingScanWorkspace
                   activeOrder={activeOrder}
                   previewOrder={isPreview ? previewOrder : undefined}
-                  onRemoveSerial={isPreview ? undefined : onRemoveSerial}
                 />
               }
               dock={isPreview && previewOrder ? <UpNextActionDock order={previewOrder} /> : null}

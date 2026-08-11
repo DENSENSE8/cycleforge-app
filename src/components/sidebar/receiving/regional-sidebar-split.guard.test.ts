@@ -7,14 +7,14 @@
  *
  * The two receiving operator jobs must stay physically separate so muscle memory
  * holds:
- *   - `/incoming` (Workbench ops-queue) — Band-3 **Views ▾** hosts durable
- *     saved views (operator-named facet combinations over the POS collection).
+ *   - `/incoming` (Workbench ops-queue, Pattern E rail-less) — Band-3 **Views ▾**
+ *     hosts durable saved views; Pipeline POS / Email / Removed are chrome facets.
  *   - `/unbox` scan station (Station, act-and-clear) — the periphery is MRU /
  *     recent scan history / scan bar. It hosts **no** saved-views control.
  *
  * Guard pins:
  *   1. Incoming Band 3 mounts `WorkbenchViewsMenu` wired to `receiving_incoming`.
- *   2. Incoming left rail does NOT remount SavedViewsList (Band 3 is the locus).
+ *   2. Incoming is rail-less — chrome owns `?incview=`; no IncomingSidebarPanel.
  *   3. Scan-station shared panel + recents rail body mount NO SavedViewsList.
  *   4. Facet-apply never mutates a `tableId`.
  *
@@ -22,7 +22,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -40,12 +40,23 @@ describe('Regional sidebar split — scan periphery vs Workbench saved views', (
     assert.match(header, /views=\{/, 'Views must use the WorkbenchTriageBand `views` slot');
   });
 
-  it('Incoming left rail does not remount SavedViewsList (Band 3 is the locus)', () => {
-    const panel = read('src/components/sidebar/receiving/IncomingSidebarPanel.tsx');
+  it('Incoming chrome owns ?incview= (rail-less — no left Views twin)', () => {
+    // Pattern E: POS / Email live on Band-1. Recently removed deleted.
+    const header = read('src/components/sidebar/receiving/incoming/IncomingWorkspaceHeader.tsx');
+    assert.match(header, /setIncomingView/, 'IncomingWorkspaceHeader must write ?incview=');
+    assert.match(header, /PIPELINE_VIEW_TABS/, 'Band-1 hosts POS / Email');
+    assert.doesNotMatch(header, /Recently removed/);
+    assert.doesNotMatch(header, /id: 'removed'/);
+    const panel = read('src/components/sidebar/ReceivingSidebarPanel.tsx');
     assert.doesNotMatch(
       panel,
-      /SavedViewsList/,
-      'IncomingSidebarPanel must not host SavedViewsList — that is Band-3 Views ▾',
+      /IncomingSidebarPanel/,
+      'ReceivingSidebarPanel must not remount IncomingSidebarPanel — Inbound is rail-less',
+    );
+    assert.equal(
+      existsSync(join(ROOT, 'src/components/sidebar/receiving/IncomingSidebarPanel.tsx')),
+      false,
+      'IncomingSidebarPanel.tsx was deleted — do not resurrect the Views rail',
     );
   });
 

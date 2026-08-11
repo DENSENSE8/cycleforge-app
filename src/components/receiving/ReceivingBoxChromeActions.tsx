@@ -1,39 +1,34 @@
 'use client';
 
 /**
- * Band-1 CTAs for box stations (Arrival · Unbox): ONE data cube + the
- * return-to-scan CTA.
+ * Band-1 CTAs for box stations (Arrival · Unbox): Check · return-to-scan · Add
+ * (Export when History earns it).
  *
  * ```text
- *   BANNED                                         REQUIRED
- *   [⇩] [☑] [+] [ UNBOX ]                          [ UNBOX ] [+]
- *   [+] [ UNBOX ]   (cube left of resume)          resume, then Plus far-right
+ *   REQUIRED
+ *   [ Check ] [ UNBOX ] [ Add ]
+ *                       labeled global CTA (Plus + Add)
+ *   History also earns  [ Export ] after Add
  * ```
  *
- * Export · Check · Add are three verbs of ONE topic — this table's data — so
- * they are tabs inside a single cube, not three glyphs an operator has to parse
- * to find one job. House law: `AGENTS.md` → Band-1 same-topic controls are tabs;
- * detail in `display/workbench-ops-queue.md` → Trailing Display & Actions.
- *
- * The return-to-scan CTA keeps its solid primary fill and its own cell: it is a
- * different topic (leave the table, resume the bench), it is the only control
- * on the row that is not a utility, and a scan station must expose it visibly
- * (`AGENTS.md` → return-to-scan; `display/workbench.md` → Multi-region pages).
- * When both exist, resume sits left of the Plus cube — Plus is always the
- * far-right utility cell.
+ * Check · resume · Add are labeled peer CTAs — everyday Band-1 verbs at button
+ * altitude, not buried icon cubes. Export is browse-only (History) and stays a
+ * labeled peer when earned; honest absence otherwise. Plus is the Add icon, not
+ * a separate cell. Detail: `display/workbench-ops-queue.md` → Trailing Display &
+ * Actions (`[ Check | Unbox ]` + Add CTA on Unbox Band 1).
  */
 
 import type { ReactNode } from 'react';
-import { ClipboardList, Download, Plus } from '@/components/Icons';
+import { Download, Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
-import { WORKBENCH_CHROME_CUBE_GLYPH_CLASS } from '@/components/dashboard/workbench-chrome-cube';
-import {
-  WorkbenchChromeCubeMenu,
-  WorkbenchChromeMenuAction,
-  type WorkbenchChromeMenuTab,
-} from '@/components/dashboard/workbench-chrome-cube-menu';
+import { ChromeCheckButton } from './ChromeCheckButton';
 import { cn } from '@/utils/_cn';
+
+const CTA_FACE = cn(
+  WORKBENCH_CHROME_PILL_CLASS,
+  'font-semibold uppercase tracking-widest',
+);
 
 export function ReceivingBoxChromeActions({
   onCheck,
@@ -46,83 +41,51 @@ export function ReceivingBoxChromeActions({
 }: {
   onCheck: () => void;
   onAdd: () => void;
-  /** Browse-only (History) — omit and the Export tab is honestly absent. */
+  /** Browse-only (History) — omit and Export is honestly absent. */
   onExport?: () => void;
   resumeLabel: string;
   resumeAriaLabel: string;
   resumeIcon: ReactNode;
   onResume: () => void;
 }) {
-  const tabs: WorkbenchChromeMenuTab[] = [
-    {
-      id: 'add',
-      label: 'Add',
-      content: (
-        <WorkbenchChromeMenuAction
-          label="Add inbound"
-          ariaLabel="Add inbound purchase or return"
-          description="Opens the intake form on the right rail — one purchase or return."
-          icon={<Plus className="h-3.5 w-3.5" />}
-          onClick={onAdd}
-          data-testid="receiving-box-add"
-        />
-      ),
-    },
-    {
-      id: 'check',
-      label: 'Check',
-      content: (
-        <WorkbenchChromeMenuAction
-          label="Check unreceived"
-          ariaLabel="Check unreceived orders"
-          description="Paste tracking numbers to reconcile what has not been received yet."
-          icon={<ClipboardList className="h-3.5 w-3.5" />}
-          onClick={onCheck}
-          data-testid="receiving-box-check"
-        />
-      ),
-    },
-  ];
-
-  if (onExport) {
-    tabs.push({
-      id: 'export',
-      label: 'Export',
-      content: (
-        <WorkbenchChromeMenuAction
-          label="Export CSV"
-          ariaLabel="Export History view as CSV"
-          description="Downloads the rows this view is showing, with its current columns."
-          icon={<Download className="h-3.5 w-3.5" />}
-          onClick={onExport}
-          data-testid="unbox-history-export"
-        />
-      ),
-    });
-  }
-
   return (
     <>
+      <ChromeCheckButton onClick={onCheck} testId="receiving-box-check" />
       <Button
         size="sm"
         variant="primary"
         icon={resumeIcon}
         ariaLabel={resumeAriaLabel}
         onClick={onResume}
-        className={cn(
-          WORKBENCH_CHROME_PILL_CLASS,
-          'font-semibold uppercase tracking-widest',
-        )}
+        className={CTA_FACE}
         data-testid="receiving-box-resume"
       >
         {resumeLabel}
       </Button>
-      <WorkbenchChromeCubeMenu
-        label="Add or manage this table's data"
-        icon={<Plus className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />}
-        tabs={tabs}
-        data-testid="receiving-box-data-menu"
-      />
+      <Button
+        size="sm"
+        variant="primary"
+        icon={<Plus className="h-3.5 w-3.5" />}
+        ariaLabel="Add inbound purchase or return"
+        onClick={onAdd}
+        className={CTA_FACE}
+        data-testid="receiving-box-add"
+      >
+        Add
+      </Button>
+      {onExport ? (
+        <Button
+          size="sm"
+          variant="secondary"
+          icon={<Download className="h-3.5 w-3.5" />}
+          ariaLabel="Export History view as CSV"
+          onClick={onExport}
+          className={CTA_FACE}
+          data-testid="unbox-history-export"
+        >
+          Export
+        </Button>
+      ) : null}
     </>
   );
 }

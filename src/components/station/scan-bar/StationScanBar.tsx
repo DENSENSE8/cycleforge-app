@@ -5,32 +5,19 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  cloneElement,
-  isValidElement,
-  type ComponentType,
   type CSSProperties,
   type FormEvent,
-  type PointerEvent,
-  type ReactElement,
   type ReactNode,
   type Ref,
-  type SVGProps,
 } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motion';
-import {
-  framerTransition,
-  motionBezier,
-  scanBandReadyBlinkOpacity,
-  scanBandReadySweepY,
-} from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Barcode, Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
 import { usePublishCollapseScan } from '@/components/sidebar/context-panel-collapse-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
-import { zIndex } from '@/design-system/tokens/z-index';
 import {
   PRIMARY_CHROME_ROW_FACE,
   SIDEBAR_RAIL_DOT_TRACK,
@@ -39,13 +26,11 @@ import {
 } from '@/components/layout/header-shell';
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
-import { StationScanLeadingIcon } from './StationScanLeadingIcon';
 import {
   STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS,
   STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS,
   STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
   STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
-  STATION_SCAN_BAR_DEFAULT_READY_CURSOR_CLASS,
   STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
   STATION_SCAN_BAR_ICON_SLOT_CLASS,
   STATION_SCAN_BAR_INPUT_CLASS,
@@ -58,28 +43,11 @@ import {
   STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS,
   STATION_SCAN_BAR_RAIL_PAD_FALLBACK_PX,
   STATION_SCAN_BAR_RAIL_PEEK_PX,
-  STATION_SCAN_BAR_READY_CURSOR_CLASS,
-  STATION_SCAN_BAR_READY_RETICLE_CLASS,
-  STATION_SCAN_BAR_READY_SWEEP_CLASS,
   STATION_SCAN_BAR_RIGHT_CELL,
   STATION_SCAN_BAR_RIGHT_FADE_CLASS,
   STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
   STATION_SCAN_BAR_SUBMIT_TRACE_CLASS,
 } from './tokens';
-
-type ReadyArmIcon = ComponentType<SVGProps<SVGSVGElement>>;
-
-/**
- * Focused-empty ready face — mode icon + short armed identity.
- * Domains pass this instead of `Scan …` placeholder prose.
- */
-export interface StationScanReadyArm {
-  /** Face copy: `PO # armed` · `Tracking # armed` · `Auto`. */
-  label: string;
-  Icon: ReadyArmIcon;
-  /** Mode hue on the glyph (idle leading icon uses the same tint). */
-  tintClassName?: string;
-}
 
 export interface StationScanBarProps {
   value: string;
@@ -135,18 +103,6 @@ export interface StationScanBarProps {
    * Only renders the gear when `leadingIcon` is true (needs the icon slot).
    */
   hotkey?: boolean;
-  /**
-   * Focused-empty ready-arm face (icon + `{identity} armed`). Prefer this over
-   * `Scan …` placeholder prose. Idle a11y stays on the leading icon / mode rail.
-   */
-  readyArm?: StationScanReadyArm;
-  /**
-   * Right-rail content that stays PINNED even while the scan display is active
-   * (e.g. a lookup spinner). Unlike {@link StationScanBarProps.rightContent}
-   * (the mode rail, which tucks away during the focused scan display), this is
-   * never hidden — feedback the operator must not lose mid-scan.
-   */
-  pinnedRight?: ReactNode;
 }
 
 /** Assign a node to both an internal object ref and a forwarded ref of any shape. */
@@ -192,20 +148,10 @@ export function StationScanBar({
   onSelectMode,
   visibleModes = ['plan', 'select'],
   hotkey = true,
-  readyArm,
-  pinnedRight,
 }: StationScanBarProps) {
   const [scanKey, setScanKey] = useState(0);
   const [railWidthPx, setRailWidthPx] = useState(0);
-  const [inputFocused, setInputFocused] = useState(false);
   const shouldReduceMotion = useReducedMotion();
-  const readyBlinkTransition = useMotionTransition(framerTransition.scanBandReadyBlink);
-  const readySweepTransition = useMotionTransition(framerTransition.scanBandReadySweep);
-  const readyHudTransition = useMotionTransition(framerTransition.scanBandGlow);
-
-  // Ready-arm bars never paint native placeholder prose (avoids dark "black"
-  // placeholder competing with the HUD face).
-  const resolvedPlaceholder = readyArm != null ? '' : placeholder;
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -222,25 +168,6 @@ export function StationScanBar({
   }, [onChange]);
   // Insert → focus; ⌘. → clear + focus (arm next carton scan on this bar).
   useRegisterScanTarget(internalInputRef, showHotkeyGear, clearScanValue);
-
-  /** Leading glyph click — reclaim focus like Insert (gear button stays clickable). */
-  const focusScanInput = useCallback(() => {
-    if (disabled) return;
-    const el = internalInputRef.current;
-    if (!el) return;
-    el.focus();
-    el.select();
-  }, [disabled]);
-
-  const handleLeadingPointerDown = useCallback(
-    (event: PointerEvent<HTMLElement>) => {
-      // Hotkey gear is a real <button> over the glyph on hover — leave it alone.
-      if ((event.target as Element | null)?.closest?.('button')) return;
-      event.preventDefault();
-      focusScanInput();
-    },
-    [focusScanInput],
-  );
 
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -263,7 +190,7 @@ export function StationScanBar({
           value,
           onChange,
           onSubmit: () => handleInternalSubmit(),
-          placeholder: resolvedPlaceholder,
+          placeholder,
           bottomRuleClass: bottomRule,
           hoverClass: collapseHover,
           theme: collapseTheme,
@@ -282,9 +209,7 @@ export function StationScanBar({
   const showPaste = !!onPaste;
   const modeButtonCount = showModeButtons ? visibleModes.length : 0;
   const hasActiveRightContent = hasRightContent && rightContent != null;
-  const hasPinnedRight = pinnedRight != null;
-  const showRight =
-    hasActiveRightContent || showPaste || modeButtonCount > 0 || hasPinnedRight;
+  const showRight = hasActiveRightContent || showPaste || modeButtonCount > 0;
 
   // Measure the frosted rail so padding-inline-end tracks real glyph width
   // (3 compact modes ≠ 1 spinner ≠ paste reveal) — never a magic pr-32 twin.
@@ -302,7 +227,7 @@ export function StationScanBar({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [showRight, modeButtonCount, hasActiveRightContent, showPaste, rightContent, pinnedRight]);
+  }, [showRight, modeButtonCount, hasActiveRightContent, showPaste, rightContent]);
 
   // `rail` = structural share of SIDEBAR_SCAN_DOCK_LEADING_ROW (icon in the
   // status-dot track, text on the row title); `masternav` = deep inset under
@@ -315,7 +240,7 @@ export function StationScanBar({
       : STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS;
   const modeBtnShell = modeButtonCount >= 2 ? STATION_SCAN_BAR_MODE_BTN_COMPACT : STATION_SCAN_BAR_MODE_BTN;
 
-  // Peek under the frost so typed text soft-reads past the first glyph;
+  // Peek under the frost so "Purchase order" soft-reads past the first glyph;
   // caret stays mostly clear of the icons.
   const padEndPx = showRight
     ? Math.max(
@@ -326,133 +251,15 @@ export function StationScanBar({
     : 16;
   const inputPadStyle: CSSProperties = { paddingInlineEnd: padEndPx };
 
-  // The ready HUD's frame (reticle + sweep) spans the FULL bar over the frosted
-  // mode rail; only the armed-identity TEXT stops at the rail's left edge so the
-  // label never collides with the mode glyphs.
-  const readyFaceRightPx = showRight
-    ? railWidthPx > 0
-      ? railWidthPx
-      : STATION_SCAN_BAR_RAIL_PAD_FALLBACK_PX
-    : 12;
-
   const traceClass =
     submitTraceClassName
     ?? (theme ? STATION_SCAN_BAR_SUBMIT_TRACE_CLASS[theme] : STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS);
-  const readyCursorClass =
-    theme != null
-      ? STATION_SCAN_BAR_READY_CURSOR_CLASS[theme]
-      : STATION_SCAN_BAR_DEFAULT_READY_CURSOR_CLASS;
-  const readyReticleClass =
-    theme != null ? STATION_SCAN_BAR_READY_RETICLE_CLASS[theme] : 'border-blue-500/35';
-  const readySweepClass =
-    theme != null ? STATION_SCAN_BAR_READY_SWEEP_CLASS[theme] : 'bg-blue-400/35';
-  // Focused → clear placeholder + leading icon so the ready HUD is the only
-  // peripheral cue. Empty + focused → ready-arm face (icon + label) + block caret.
-  const showReadyHud = inputFocused && !disabled;
-  const showReadyCursor = showReadyHud && value.length === 0;
-  const ReadyArmIcon = readyArm?.Icon;
-
-  const leadingInner = (() => {
-    const fallback = <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />;
-    const raw = icon ?? fallback;
-    // Mode-rail bars pass StationScanLeadingIcon — inject focus reclaim.
-    if (isValidElement(raw) && raw.type === StationScanLeadingIcon) {
-      return cloneElement(
-        raw as ReactElement<{ onActivate?: () => void }>,
-        { onActivate: focusScanInput },
-      );
-    }
-    return raw;
-  })();
 
   const leadingGlyph = showHotkeyGear ? (
-    <ScanHotkeyControl>{leadingInner}</ScanHotkeyControl>
+    <ScanHotkeyControl>{icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />}</ScanHotkeyControl>
   ) : (
-    leadingInner
+    icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />
   );
-
-  const readyCaretEl = (
-    <motion.div
-      initial={false}
-      animate={
-        shouldReduceMotion
-          ? { opacity: 0.75 }
-          : { opacity: [...scanBandReadyBlinkOpacity] }
-      }
-      transition={shouldReduceMotion ? { duration: 0 } : readyBlinkTransition}
-      className={cn('h-3 w-px shrink-0', readyCursorClass)}
-    />
-  );
-
-  const readyHudEl = showReadyHud ? (
-    <motion.div
-      key="ready-hud"
-      aria-hidden
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={readyHudTransition}
-      // Above the frosted mode rail (z-dropdown) so the scan display reads
-      // full-width — never clipped by / hidden under the mode glyphs. Stays
-      // pointer-events-none so arming a mode still clicks through.
-      style={{ zIndex: zIndex.dropdown + 1 }}
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-    >
-      <div
-        className={cn(
-          'absolute left-0 top-0 h-2 w-2 border-l border-t',
-          readyReticleClass,
-        )}
-      />
-      <div
-        className={cn(
-          'absolute right-0 top-0 h-2 w-2 border-r border-t',
-          readyReticleClass,
-        )}
-      />
-      <div
-        className={cn(
-          'absolute bottom-0 left-0 h-2 w-2 border-b border-l',
-          readyReticleClass,
-        )}
-      />
-      <div
-        className={cn(
-          'absolute bottom-0 right-0 h-2 w-2 border-b border-r',
-          readyReticleClass,
-        )}
-      />
-      {!shouldReduceMotion ? (
-        <motion.div
-          animate={{ y: [...scanBandReadySweepY] }}
-          transition={readySweepTransition}
-          className={cn('absolute left-0 right-0 top-0 h-px', readySweepClass)}
-        />
-      ) : null}
-      {showReadyCursor ? (
-        readyArm && ReadyArmIcon ? (
-          <div
-            className="absolute inset-y-0 left-3 flex items-center gap-1.5"
-            style={{ right: readyFaceRightPx }}
-          >
-            <ReadyArmIcon
-              className={cn(
-                STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
-                'shrink-0',
-                readyArm.tintClassName ?? 'text-text-faint',
-              )}
-            />
-            <span className="truncate text-role-caption font-semibold text-text-faint">
-              {readyArm.label}
-            </span>
-            {readyCaretEl}
-          </div>
-        ) : (
-          <div className="absolute inset-y-0 left-3 flex items-center">{readyCaretEl}</div>
-        )
-      ) : null}
-    </motion.div>
-  ) : null;
 
   const inputEl = (
     <input
@@ -464,14 +271,8 @@ export function StationScanBar({
       data-station-scan-input={showHotkeyGear ? '' : undefined}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      onFocus={() => setInputFocused(true)}
-      onBlur={() => {
-        setInputFocused(false);
-        onInputBlur?.();
-      }}
-      // Never paint native placeholder when readyArm owns the empty face;
-      // also clear while focused so HUD is the only cue.
-      placeholder={showReadyHud || readyArm != null ? '' : resolvedPlaceholder}
+      onBlur={onInputBlur}
+      placeholder={placeholder}
       autoFocus={autoFocus}
       disabled={disabled}
       style={inputPadStyle}
@@ -479,119 +280,82 @@ export function StationScanBar({
         STATION_SCAN_BAR_INPUT_CLASS,
         // Full-bleed under the frosted rail; border lives on the outer shell.
         'relative z-base min-w-0 flex-1 border-0',
-        // Focused: collapse leading icon pad so the clear field matches every skin.
-        showReadyHud ? 'pl-3' : padLeft,
-        showReadyCursor && 'caret-transparent',
+        padLeft,
         // Hotkey gear cross-fades in the fixed icon slot — never bump pl on hover.
         inputClassName,
       )}
     />
   );
 
-  const showModeGroup = modeButtonCount > 0 || hasActiveRightContent || showPaste;
-
   const rightRail = showRight ? (
     <div
       ref={railRef}
-      className={cn(
-        STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
-        // Scan display is active (focused): drop the frosted veil so the
-        // full-width scan display reads clean; the veil + mode glyphs reveal on
-        // hover. The pinned status cell (spinner) stays visible either way.
-        // Never `focus-within` here — an auto-focused bench would never hide.
-        showReadyHud &&
-          'bg-transparent backdrop-blur-none group-hover:bg-surface-card/70 group-hover:backdrop-blur-sm',
-        rightContentClassName,
-      )}
+      className={cn(STATION_SCAN_BAR_RIGHT_SLOT_CLASS, rightContentClassName)}
     >
-      {/* Mode / control group — tucks away during the scan display, reveals on
-          hover so arming stays one click. mousedown keeps the scan input
-          focused: a mode/paste click must NEVER steal focus off the wedge
-          (the "focus on arm" fix — central, so every station bar inherits it).
-          Stays measured (opacity-0, still laid out) so the input pad holds. */}
-      {showModeGroup ? (
-        <div
-          onMouseDown={(event) => {
-            event.preventDefault();
-            focusScanInput();
-          }}
-          className={cn(
-            'relative flex h-full items-stretch gap-0',
-            showReadyHud &&
-              'opacity-0 pointer-events-none transition-opacity duration-100 group-hover:pointer-events-auto group-hover:opacity-100',
-          )}
-        >
-          <span className={STATION_SCAN_BAR_RIGHT_FADE_CLASS} aria-hidden />
-          {modeButtonCount > 0 ? (
-            <div className="flex h-full shrink-0 items-stretch gap-0" role="group" aria-label="Scan mode">
-              {visibleModes.includes('plan') ? (
-                <HoverTooltip label="Plan mode" asChild>
-                  <button
-                    type="button"
-                    onClick={onPlanMode}
-                    aria-pressed={activeMode === 'plan'}
-                    aria-label={activeMode === 'plan' ? 'Plan mode active' : 'Switch to plan mode'}
-                    className={cn(
-                      'ds-raw-button',
-                      modeBtnShell,
-                      activeMode === 'plan'
-                        ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-purple-700')
-                        : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                    )}
-                  >
-                    <ClipboardList className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
-                  </button>
-                </HoverTooltip>
-              ) : null}
-              {visibleModes.includes('select') ? (
-                <HoverTooltip label="Select mode" asChild>
-                  <button
-                    type="button"
-                    onClick={onSelectMode}
-                    aria-pressed={activeMode === 'select'}
-                    aria-label={activeMode === 'select' ? 'Select mode active' : 'Switch to select mode'}
-                    className={cn(
-                      'ds-raw-button',
-                      modeBtnShell,
-                      activeMode === 'select'
-                        ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-blue-700')
-                        : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                    )}
-                  >
-                    <Pencil className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
-                  </button>
-                </HoverTooltip>
-              ) : null}
-            </div>
+      <span className={STATION_SCAN_BAR_RIGHT_FADE_CLASS} aria-hidden />
+      {modeButtonCount > 0 ? (
+        <div className="flex h-full shrink-0 items-stretch gap-0" role="group" aria-label="Scan mode">
+          {visibleModes.includes('plan') ? (
+            <HoverTooltip label="Plan mode" asChild>
+              <button
+                type="button"
+                onClick={onPlanMode}
+                aria-pressed={activeMode === 'plan'}
+                aria-label={activeMode === 'plan' ? 'Plan mode active' : 'Switch to plan mode'}
+                className={cn(
+                  'ds-raw-button',
+                  modeBtnShell,
+                  activeMode === 'plan'
+                    ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-purple-700')
+                    : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                )}
+              >
+                <ClipboardList className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              </button>
+            </HoverTooltip>
           ) : null}
-          {hasActiveRightContent ? (
-            <div className="flex h-full shrink-0 items-stretch">{rightContent}</div>
-          ) : null}
-          {showPaste ? (
-            <IconButton
-              onClick={() => void handlePasteClick()}
-              className={cn(
-                'ds-allow-control-size rounded-none',
-                STATION_SCAN_BAR_RIGHT_CELL,
-                STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                // Secondary affordance — quiet at rest; reveal only on THIS
-                // scan bar hover/focus, never the whole rail.
-                'pointer-events-none opacity-0 transition-opacity duration-100',
-                'group-hover:pointer-events-auto group-hover:opacity-100',
-                'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
-                'focus-visible:pointer-events-auto focus-visible:opacity-100',
-              )}
-              title="Paste from clipboard"
-              ariaLabel="Paste from clipboard"
-              icon={<Clipboard className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />}
-            />
+          {visibleModes.includes('select') ? (
+            <HoverTooltip label="Select mode" asChild>
+              <button
+                type="button"
+                onClick={onSelectMode}
+                aria-pressed={activeMode === 'select'}
+                aria-label={activeMode === 'select' ? 'Select mode active' : 'Switch to select mode'}
+                className={cn(
+                  'ds-raw-button',
+                  modeBtnShell,
+                  activeMode === 'select'
+                    ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-blue-700')
+                    : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                )}
+              >
+                <Pencil className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              </button>
+            </HoverTooltip>
           ) : null}
         </div>
       ) : null}
-      {/* Pinned status (spinner) — never hidden; stays over the clean scan
-          display so "lookup in flight" feedback survives the tuck-away. */}
-      {hasPinnedRight ? (
-        <div className="relative z-raised flex h-full shrink-0 items-stretch">{pinnedRight}</div>
+      {hasActiveRightContent ? (
+        <div className="flex h-full shrink-0 items-stretch">{rightContent}</div>
+      ) : null}
+      {showPaste ? (
+        <IconButton
+          onClick={() => void handlePasteClick()}
+          className={cn(
+            'ds-allow-control-size rounded-none',
+            STATION_SCAN_BAR_RIGHT_CELL,
+            STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+            // Secondary affordance — quiet at rest; reveal only on THIS
+            // scan bar hover/focus, never the whole rail.
+            'pointer-events-none opacity-0 transition-opacity duration-100',
+            'group-hover:pointer-events-auto group-hover:opacity-100',
+            'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+            'focus-visible:pointer-events-auto focus-visible:opacity-100',
+          )}
+          title="Paste from clipboard"
+          ariaLabel="Paste from clipboard"
+          icon={<Clipboard className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />}
+        />
       ) : null}
     </div>
   ) : null;
@@ -614,41 +378,28 @@ export function StationScanBar({
         )}
       >
         {dense ? (
-          <div className={cn(SIDEBAR_RAIL_INSET_LEFT, 'relative flex min-w-0 flex-1 items-stretch')}>
-            <AnimatePresence initial={false}>{readyHudEl}</AnimatePresence>
-            <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'relative h-full min-w-0 w-full')}>
-              {/* Focused ready HUD clears the leading glyph — collapse the track
-                  so the field width matches every station skin. */}
-              {leadingIcon && !showReadyHud ? (
+          <div className={cn(SIDEBAR_RAIL_INSET_LEFT, 'flex min-w-0 flex-1 items-stretch')}>
+            <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'h-full min-w-0 w-full')}>
+              {leadingIcon ? (
                 <span
                   className={cn(
                     SIDEBAR_RAIL_DOT_TRACK,
                     'relative z-raised flex shrink-0 items-center justify-center',
                     iconClassName,
                   )}
-                  onPointerDown={handleLeadingPointerDown}
                 >
                   {leadingGlyph}
                 </span>
-              ) : !leadingIcon ? (
+              ) : (
                 <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
-              ) : null}
-              <div className="relative min-w-0 flex-1">{inputEl}</div>
+              )}
+              {inputEl}
             </div>
           </div>
         ) : (
           <div className="relative min-w-0 flex-1">
-            <AnimatePresence initial={false}>{readyHudEl}</AnimatePresence>
             {leadingIcon ? (
-              <div
-                className={cn(
-                  STATION_SCAN_BAR_ICON_SLOT_CLASS,
-                  'transition-opacity duration-100',
-                  showReadyHud && 'pointer-events-none opacity-0',
-                  iconClassName,
-                )}
-                onPointerDown={handleLeadingPointerDown}
-              >
+              <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
                 {leadingGlyph}
               </div>
             ) : null}

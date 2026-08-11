@@ -6,6 +6,9 @@
  * Mounted under the label preview. When the pointer enters `stage` (after print),
  * scrolls into view (`nearest`) — never sticky-locks or collapses the capture
  * centre. Spatial predictability: stays mounted once print has happened.
+ *
+ * Empty tip = flush InlineNotice (advisory SoT). Staged confirmation =
+ * PlacementSummary on WORKSPACE_NESTED_FIELD (fact face).
  */
 
 import { useEffect, useRef } from 'react';
@@ -14,10 +17,7 @@ import {
   PlacementSummary,
   type PlacementLocationFace,
 } from '@/components/receiving/PlacementSummary';
-import {
-  WORKSPACE_NESTED_FIELD,
-  WORKSPACE_NESTED_FIELD_PAD,
-} from '@/design-system/components';
+import { InlineNotice } from '@/design-system/components';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -26,6 +26,7 @@ export function UnboxPlacementSection({ row }: { row: ReceivingLineRow }) {
   const ref = useRef<HTMLDivElement>(null);
   const printed = Boolean(row.label_printed_at);
   const staged = Boolean(row.staged_at && row.staged_location_id);
+  const stageArmed = activeKey === 'stage';
 
   useEffect(() => {
     if (activeKey !== 'stage') return;
@@ -51,35 +52,36 @@ export function UnboxPlacementSection({ row }: { row: ReceivingLineRow }) {
       ref={ref}
       className="border-t border-border-hairline"
       data-unbox-placement-section
-      data-unbox-placement-active={activeKey === 'stage' ? 'true' : 'false'}
+      data-unbox-placement-active={stageArmed ? 'true' : 'false'}
     >
-      <div className="flex items-center gap-2 inset-cozy py-2">
-        <MapPin className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Location staging
-        </p>
-        {staged ? (
-          <span className="text-role-micro font-semibold uppercase tracking-wide text-emerald-700">
-            Staged
-          </span>
-        ) : activeKey === 'stage' ? (
-          <span className="text-role-micro font-semibold uppercase tracking-wide text-amber-700">
-            Scan bin
-          </span>
-        ) : null}
-      </div>
-      <div className="inset-cozy pb-3">
-        {location ? (
-          <PlacementSummary location={location} eyebrow="Place unit here" />
-        ) : (
-          <p
-            className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD} text-role-caption text-text-muted`}
-          >
-            Scan a shelf or bin barcode in the dock — the unit will receive into
-            that location.
-          </p>
-        )}
-      </div>
+      {location ? (
+        <>
+          <div className="flex items-center gap-2 inset-cozy py-2">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              Putaway
+            </p>
+            <span className="text-role-micro font-semibold uppercase tracking-wide text-emerald-700">
+              Staged
+            </span>
+          </div>
+          <div className="inset-cozy pb-3">
+            <PlacementSummary location={location} eyebrow="Place unit here" />
+          </div>
+        </>
+      ) : (
+        // Edge-flush white band on the centre plane — no outer inset island.
+        // Mount is gated on label_printed_at above.
+        <InlineNotice
+          tone="neutral"
+          size="sm"
+          icon={<MapPin />}
+          title="Putaway"
+          className="border-x-0 border-t-0 bg-surface-card"
+        >
+          Scan location
+        </InlineNotice>
+      )}
     </div>
   );
 }

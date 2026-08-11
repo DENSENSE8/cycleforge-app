@@ -375,6 +375,15 @@ export function useLineSerials({
   const deleteSerialUnit = useCallback(
     async (serialUnitId: number, lineId: number = row.id) => {
       if (serialUnitId == null) return;
+      // Canonical optimistic-mutation guard (TanStack Query): cancel any in-flight
+      // `?include=serials` refetch for this carton FIRST, so a fetch that began
+      // pre-delete cannot resolve late and overwrite the optimistic removal — the
+      // "deleted serial reappears" race.
+      if (row.receiving_id != null) {
+        await queryClient.cancelQueries({
+          queryKey: receivingSiblingsQueryKey(row.receiving_id),
+        });
+      }
       const current = readLineSerials(lineId);
       const currentUnits = readLineUnits(lineId);
       const nextUnits =
@@ -410,7 +419,7 @@ export function useLineSerials({
         nextUnits,
       );
     },
-    [row.id, readLineSerials, readLineUnits, publish],
+    [row.id, row.receiving_id, queryClient, readLineSerials, readLineUnits, publish],
   );
 
   // Replace a serial in place (typo fix): delete then re-scan via the same

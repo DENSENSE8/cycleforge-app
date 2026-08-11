@@ -22,11 +22,19 @@ const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel
 const ARMED_VERB_HOSTS = [
   'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
-  'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
 ] as const;
+
+/**
+ * Units is a body-only Assets leaf (explosion host). Prebox is a peer leaf
+ * (`PreboxDisplayHost`) — not nested under Units via StationArmedVerbList.
+ * SoT: units-explosion.guard.test.ts.
+ */
+const UNITS_BODY_HOST =
+  'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx';
 
 const FLUSH_STACK_HOSTS = [
   ...ARMED_VERB_HOSTS,
+  UNITS_BODY_HOST,
   'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
 ] as const;
 
@@ -75,6 +83,18 @@ describe('Displays nested verbs — armed rows + child segment', () => {
       /PhotosGalleryBody|mode="view"/,
       'no legacy PhotosGalleryBody under Photos Displays',
     );
+  });
+
+  it('UnitsDisplayHost is body-only — Prebox is a peer Assets leaf', () => {
+    const src = read(UNITS_BODY_HOST);
+    assert.match(src, /<UnitsExplosionDisplay/);
+    assert.doesNotMatch(
+      src,
+      /StationArmedVerbList|PhotosActionsArmedList|PreboxWizard/,
+      'Units dropped nested armed verbs; Prebox lives on PreboxDisplayHost',
+    );
+    assert.doesNotMatch(src, /\bTabDisplay\b/, 'no nested TabDisplay strip');
+    assert.doesNotMatch(src, /\bTabSwitch\b/, 'no soft TabSwitch pills');
   });
 
   it('TicketDisplayHost is presence-exclusive — no Chat · Claim TabDisplay', () => {

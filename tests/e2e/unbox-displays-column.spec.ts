@@ -15,8 +15,8 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
  *  3. **One right-edge surface at a time.** Displays / Ticket / Claim / tool /
  *     `detail:receiving` are mutually exclusive (`source-of-truth.md` →
  *     Right-rail modality). Opening Claim must take the edge.
- *  4. **`?display=` is durable.** The column's tab survives a reload, which is
- *     the gap lane E2 closed.
+ *  4. **Displays are session-local.** Leaf selection is React state (Arrival
+ *     parity) — a reload starts with the column closed; no `?display=` wire.
  *
  * Runs on the QA org (`qa-desktop`), never the dogfood tenant
  * (`.claude/rules/verify.md`) — and provisions the exact carton it asserts on
@@ -93,7 +93,7 @@ async function dockLabel(page: Page): Promise<string> {
 /**
  * Switch display the way an operator does — from the strip, the ⋮ menu, or the
  * scan-progress ring on strip `rightSlot` (Checklist is ring-only).
- * Caller must already have Displays open (←| or `?display=`).
+ * Caller must already have Displays open (←|).
  */
 async function selectDisplay(page: Page, label: string) {
   if (/^checklist$/i.test(label)) {
@@ -114,6 +114,18 @@ async function selectDisplay(page: Page, label: string) {
 async function openDisplaysViaPaneToggle(page: Page) {
   await page.getByTestId('unbox-displays-pane-toggle').click();
   await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+}
+
+/** Open carton, then open Displays and land on a named leaf via UI. */
+async function openUnboxOnDisplay(
+  page: Page,
+  receivingId: number,
+  lineId: number,
+  label: string,
+) {
+  await openUnbox(page, receivingId, lineId);
+  await openDisplaysViaPaneToggle(page);
+  await selectDisplay(page, label);
 }
 
 test.describe('Unbox Displays column', () => {
@@ -153,8 +165,7 @@ test.describe('Unbox Displays column', () => {
   test('selecting a display never re-labels the bottom CTA', async ({ page, request }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
-    // Deep-link straight onto a display — also proves `?display=` opens the column.
-    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await openUnboxOnDisplay(page, receivingId, lineId, 'Classify');
 
     const displays = page.getByTestId('receiving-displays-push');
     await expect(displays).toBeVisible({ timeout: 15_000 });
@@ -163,7 +174,7 @@ test.describe('Unbox Displays column', () => {
 
     // Switch to a display with a very different job.
     await selectDisplay(page, 'Checklist');
-    await expect(page).toHaveURL(/display=checklist/);
+    expect(new URL(page.url()).searchParams.get('display')).toBeNull();
 
     expect(
       await dockLabel(page),
@@ -171,19 +182,19 @@ test.describe('Unbox Displays column', () => {
     ).toBe(before);
   });
 
-  test('the open display survives a reload', async ({ page, request }) => {
+  test('the open display does not survive a reload', async ({ page, request }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
-    await openUnbox(page, receivingId, lineId, '&display=tracking');
+    await openUnboxOnDisplay(page, receivingId, lineId, 'Tracking');
 
     await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
     await page.reload();
     await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
     await expect(
       page.getByTestId('receiving-displays-push'),
-      'a reload must land on the same display — that is what ?display= is for',
-    ).toBeVisible({ timeout: 15_000 });
-    expect(new URL(page.url()).searchParams.get('display')).toBe('tracking');
+      'Displays are session-local — reload starts closed',
+    ).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.get('display')).toBeNull();
   });
 
   /**
@@ -356,12 +367,15 @@ test.describe('Unbox Displays column', () => {
   }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
-    // Claim, NOT Displays — an occupant whose first row is text.
-    await openUnbox(page, receivingId, lineId, '&claimView=1');
-    await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
+    // Claim via UI — Ticket nest, not a URL deep-link.
+    await openUnbox(page, receivingId, lineId);
+    await page.getByRole('button', { name: /File claim|claim/i }).first().click();
+    await expect(page.getByTestId('receiving-claim-panel')).toBeVisible({ timeout: 15_000 });
 
     const measured = await page.evaluate(() => {
-      const col = document.querySelector('[data-testid="receiving-claim-push"]')!;
+      const col =
+        document.querySelector('[data-testid="receiving-displays-push"]') ??
+        document.querySelector('[data-testid="receiving-claim-panel"]')!;
       const colLeft = col.getBoundingClientRect().left;
 
       const svg = document
@@ -431,7 +445,7 @@ test.describe('Unbox Displays column', () => {
     await expect(displays, 'the chip opens the DISPLAY — pairing left the centre').toBeVisible({
       timeout: 15_000,
     });
-    await expect(page).toHaveURL(/display=pairing/);
+    await expect(page).not.toHaveURL(/display=/);
     await expect(
       displays.getByRole('tab', { name: /^PO$/ }),
       'the deferred dispatch must land on a mounted hub, or the PO tab stays unselected',
@@ -452,16 +466,16 @@ test.describe('Unbox Displays column', () => {
   }) => {
     const receivingId = await createCarton(request);
     const lineId = await addLine(request, receivingId);
-    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await openUnboxOnDisplay(page, receivingId, lineId, 'Classify');
     await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: /claim/i }).first().click();
 
-    await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('receiving-displays-push')).toHaveCount(0);
+    await expect(page.getByTestId('receiving-claim-panel')).toBeVisible({ timeout: 15_000 });
+    // Claim nests under Ticket Displays — column stays; classify leaf yields to claim nest.
     expect(
       new URL(page.url()).searchParams.get('display'),
-      'opening Claim must drop ?display= too, or a reload reopens both',
+      'Displays leaf selection must not write ?display=',
     ).toBeNull();
   });
 
@@ -488,7 +502,7 @@ test.describe('Unbox Displays column', () => {
     await openUnbox(page, receivingId, lineId);
     const closed = await geometry(page);
 
-    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await openUnboxOnDisplay(page, receivingId, lineId, 'Classify');
     await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
     const open = await geometry(page);
 
@@ -514,7 +528,7 @@ test.describe('Unbox Displays column', () => {
     await openUnbox(page, receivingId, lineId);
     const closed = await geometry(page);
 
-    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await openUnboxOnDisplay(page, receivingId, lineId, 'Classify');
     await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
     const open = await geometry(page);
 
@@ -539,7 +553,7 @@ test.describe('Unbox Displays column', () => {
       window.localStorage.setItem('unbox-displays-push-width', '560');
     });
 
-    await openUnbox(page, receivingId, lineId, '&display=classify');
+    await openUnboxOnDisplay(page, receivingId, lineId, 'Classify');
     await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
 
     const open = await geometry(page);

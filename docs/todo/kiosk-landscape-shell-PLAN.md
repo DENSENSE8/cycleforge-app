@@ -9,7 +9,7 @@
 | Decision | Choice |
 |---|---|
 | Gate | Proven `/kiosk` default; landscape shell on **`/kiosk/v2`** until cutover |
-| Attract media MVP | URL paste on `brand.attractMediaUrl` (Blob upload follow-on) |
+| Attract media MVP | URL paste on `brand.attractMediaUrl` (**Blob upload shipped** — Settings → Organization) |
 | Sales catalog | Local projection filtered to **non-`-RS`** via `/api/kiosk/sales/*` |
 | Cart SoT | `CounterDraft.retailLines` on kiosk; `salesCartStore` stays staff walk-in |
 | Native wrapper | PWA under MDM — no Capacitor |
@@ -27,8 +27,14 @@
 ### 2. Attract MVP (done / polish later)
 
 - [x] Idle 60s → prompt → attract; reduced-motion; brand/logo fallback
-- [ ] Optional: Blob upload UI in Organization settings
-- [ ] Optional: `idleTimeoutSeconds` in org settings JSON
+- [x] Blob upload UI in Organization settings (`POST /api/admin/organization/attract-media`)
+- [x] `idleTimeoutSeconds` in org settings JSON (`settings.kiosk`; resolver
+      `src/lib/kiosk/idle.ts`, served by `/api/kiosk/settings`, consumed by
+      `/kiosk/v2`. PATCHable via `/api/admin/organization/profile` — **no
+      Settings UI field yet**)
+- [ ] Multi-slide attract reel — table `kiosk_attract_slides` **applied**
+      (2026-08-10e) and inert: no reader, no writer, no carousel UI. The
+      scalar `brand.attractMediaUrl` is still what the kiosk serves
 
 ### 3. Shell QA path (`/kiosk/v2`)
 

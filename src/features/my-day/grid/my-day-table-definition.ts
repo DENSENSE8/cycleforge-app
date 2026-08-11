@@ -30,4 +30,5 @@ export const MY_DAY_TABLE_BINDING: TableSurfaceBinding<MyDayTask, MyDayGridColum
   definition: MY_DAY_TABLE_DEFINITION,
   columns: MY_DAY_GRID_COLUMNS,
   makeDescriptor: makeMyDayGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:my-day' },
 };

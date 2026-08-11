@@ -111,11 +111,16 @@ const STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE;
 export const STATION_IDENTITY_COMMERCE_ROW_CLASS = `flex ${STATION_IDENTITY_COMMERCE_ROW_FACE} items-stretch gap-0`;
 
 /**
- * Classify urgency·platform·type — flush abut (`gap-0`), same grammar as
- * Photos · Claim. Soft drop shadows live off these faces (`shadow-none` on
+ * Classify urgency·platform·type — **one token**: flush abut (`gap-0`) +
+ * overlapping side borders (`-ml-px` on every pill after the first) so the
+ * double-hairline seam between tone faces does not read as air. Same grammar
+ * as Photos · Claim. Soft drop shadows live off these faces (`shadow-none` on
  * the tone SoTs); never reintroduce `gap-1.5` spacing between classify pills.
+ *
+ * Sibling overlap targets `[data-inline-pill]` hosts from {@link InlinePillPicker}.
  */
-export const STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0';
+export const STATION_IDENTITY_GROUP_CLASS =
+  'flex h-full min-h-0 items-stretch gap-0 [&>[data-inline-pill]+[data-inline-pill]]:-ml-px';
 
 /** Vertical step between the two rows — flush (zero gap). */
 export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';

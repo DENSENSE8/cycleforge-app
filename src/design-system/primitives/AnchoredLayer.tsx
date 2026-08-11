@@ -93,6 +93,27 @@ export interface AnchoredLayerProps {
   children: ReactNode;
 }
 
+/** Breathing room kept between a clamped panel and the viewport edge. */
+const VIEWPORT_GUTTER_PX = 8;
+
+/**
+ * Where a vertical-edge (top-/bottom-) panel's LEFT wants to sit, in viewport
+ * coordinates, before any clamp — mirrors {@link computeStyle}'s horizontal
+ * alignment. Returns null for placements the clamp does not own (stretch and
+ * the left-/right-edge placements, which anchor against a viewport edge already).
+ */
+function intendedPanelLeft(
+  rect: DOMRect,
+  placement: AnchoredPlacement,
+  panelWidth: number,
+): number | null {
+  if (!(placement.startsWith('top-') || placement.startsWith('bottom-'))) return null;
+  if (placement.endsWith('-stretch')) return null;
+  if (placement.endsWith('-center')) return rect.left + rect.width / 2 - panelWidth / 2;
+  if (placement.endsWith('-end')) return rect.right - panelWidth;
+  return rect.left; // -start
+}
+
 function computeStyle(
   rect: DOMRect,
   placement: AnchoredPlacement,
@@ -169,6 +190,9 @@ export function AnchoredLayer({
   const panelRef = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
+  // When a vertical-edge panel would overflow the viewport horizontally, the
+  // clamped left it should sit at instead. Null = fits, position as authored.
+  const [clampLeft, setClampLeft] = useState<number | null>(null);
 
   useEffect(() => {
     setTarget(document.body);
@@ -202,6 +226,35 @@ export function AnchoredLayer({
     };
   }, [open, anchorRef]);
 
+  // Horizontal viewport clamp. A wide panel anchored `*-end` / `*-center` from a
+  // trigger near the left/center of the work surface (e.g. an in-row Link on the
+  // Unbox capture strip) would otherwise render its left edge past the viewport
+  // / under chrome. Measure the panel and, ONLY when it overflows, pin a clamped
+  // left. useLayoutEffect runs before paint, so the correction is flash-free; a
+  // panel that already fits gets `null` and positions exactly as before, so no
+  // existing menu moves. Vertical-edge placements only — the left/right-edge and
+  // stretch placements anchor against an edge already.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!open || !rect || !panel) {
+      setClampLeft(null);
+      return;
+    }
+    const width = panel.getBoundingClientRect().width;
+    const intended = intendedPanelLeft(rect, placement, width);
+    if (intended == null) {
+      setClampLeft(null);
+      return;
+    }
+    const maxLeft = Math.max(
+      VIEWPORT_GUTTER_PX,
+      window.innerWidth - width - VIEWPORT_GUTTER_PX,
+    );
+    const clamped = Math.min(Math.max(intended, VIEWPORT_GUTTER_PX), maxLeft);
+    // Only override when we actually moved it — sub-pixel jitter is not overflow.
+    setClampLeft(Math.abs(clamped - intended) > 0.5 ? clamped : null);
+  }, [open, rect, placement, gap]);
+
   // Outside-click that accounts for the (portaled) panel AND the anchor, so a
   // click inside either is not treated as "outside". Replaces each caller's
   // own rootRef.contains() handler, which can't see the portaled panel.
@@ -227,8 +280,16 @@ export function AnchoredLayer({
   if (!open || !target || !rect) return null;
 
   const stretch = placement.endsWith('-stretch');
+  const positioned = computeStyle(rect, placement, gap, matchWidth || stretch, level);
+  if (clampLeft != null) {
+    // Replace whatever horizontal anchoring the placement chose with a concrete
+    // clamped left, dropping the `right` / translateX(-50%) it may have used.
+    positioned.left = clampLeft;
+    delete positioned.right;
+    if (positioned.transform === 'translateX(-50%)') delete positioned.transform;
+  }
   const resolvedStyle = {
-    ...computeStyle(rect, placement, gap, matchWidth || stretch, level),
+    ...positioned,
     ...style,
   };
 

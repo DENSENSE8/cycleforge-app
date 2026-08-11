@@ -3,7 +3,7 @@
  *
  * Root Index = the only subject lateral layer. Inside a leaf:
  *   - **Preferred:** armed-row verb list + stack chrome (Photos · Linkage ·
- *     Units · Inventory) — trail via `useDisplaysLeafChrome`; never a parent
+ *     Inventory) — trail via `useDisplaysLeafChrome`; never a parent
  *     TabDisplay strip or a hand-rolled sub-index.
  * Never a second `StationDisplayLeafHeader`.
  * Child perspectives **inside a tool** use `appearance="segment"` (Claim New·Link ·
@@ -30,12 +30,13 @@ const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel
 const ARMED_VERB_HOSTS = [
   'src/components/receiving/workspace/line-edit/PhotosDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/LinkageDisplayHost.tsx',
-  'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx',
 ] as const;
 
 const LEAF_HOSTS = [
   ...ARMED_VERB_HOSTS,
+  'src/components/receiving/workspace/line-edit/UnitsDisplayHost.tsx',
+  'src/components/receiving/workspace/line-edit/PreboxDisplayHost.tsx',
   'src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx',
 ] as const;
 
@@ -77,7 +78,7 @@ describe('Station Displays nested-leaf grammar', () => {
   });
 
   for (const host of ARMED_VERB_HOSTS) {
-    it(`${host} is armed-row list + URL drills — no parent TabDisplay`, () => {
+    it(`${host} is armed-row list + local nest drills — no parent TabDisplay`, () => {
       const src = read(host);
       assert.match(
         src,
@@ -102,7 +103,7 @@ describe('Station Displays nested-leaf grammar', () => {
     });
   }
 
-  it('Prebox mode is child segment under Units·Prebox parent', () => {
+  it('Prebox mode is child segment under Prebox Assets leaf', () => {
     const src = read('src/components/receiving/PreboxWizard.tsx');
     assert.match(src, /appearance="segment"/);
     assert.doesNotMatch(

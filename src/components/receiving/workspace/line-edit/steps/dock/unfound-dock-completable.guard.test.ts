@@ -38,7 +38,7 @@ test('unfound capture steps are dock-completable (control XOR stated absence)', 
   );
   assert.ok(
     UNBOX_STEP_DOCK_CONTROLS.classify,
-    'classify must have a dock control (TriageClassifySection via classifySlot)',
+    'classify must have a dock control (one-row Continue; editor is Displays)',
   );
   assert.ok(
     !('classify' in UNBOX_STEPS_WITHOUT_DOCK_ACTION),

@@ -10,7 +10,7 @@
 
 import { useMemo } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import type { IncomingDeliveryState } from '@/components/sidebar/receiving/IncomingSidebarPanel';
+import type { IncomingDeliveryState } from '@/components/sidebar/receiving/incoming/incoming-summary-types';
 import {
   getReceivingModeDescriptor,
   getReceivingTableModeDescriptor,
@@ -30,7 +30,6 @@ import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
-import { parseIncomingView } from '@/lib/receiving/incoming-view';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 
 export interface ReceivingModeState {
@@ -59,14 +58,8 @@ function resolveTableMode(
     return resolveUnboxReceivingTableMode(getUnboxWorkspaceTabFromSearch(searchParams));
   }
   const base = getReceivingModeDescriptor(resolveLiveReceivingMode(pathname, searchParams)).id;
-  // Incoming's `?incview=` picks the LANE within the mode. `removed` is the
-  // inverted membership ("where did it go"), and it is a genuinely different
-  // server view — not a filter on `incoming` — so it resolves to its own
-  // descriptor rather than being patched into that one's buildParams.
-  // Only applies on Pipeline; Docked (`history`) ignores `incview`.
-  if (base === 'incoming' && parseIncomingView(searchParams.get('incview')) === 'removed') {
-    return 'incoming_removed';
-  }
+  // Incoming `?incview=email` is a right-pane overlay (Email Triage), not a
+  // table mode. Recently removed (`incview=removed`) was deleted 2026-08-10.
   return base;
 }
 
@@ -75,8 +68,9 @@ export function useReceivingModeContext(): ReceivingModeState {
   const searchParams = useSearchParams();
   const tableMode = resolveTableMode(pathname, searchParams);
   const mode = getReceivingTableModeDescriptor(tableMode);
-  // Both Incoming lanes are "Incoming mode" for chrome purposes — the header,
-  // KPI strip and inspector are the same; only the server view differs.
+  // Incoming chrome (header / inspector) is shared for the POS table mode.
+  // `incoming_removed` stays in RECEIVING_MODES for legacy API tests but is no
+  // longer reachable from the URL.
   const isIncomingMode = mode.id === 'incoming' || mode.id === 'incoming_removed';
   const isHistoryMode = mode.id === 'history';
 
@@ -108,9 +102,9 @@ export function useReceivingModeContext(): ReceivingModeState {
       || incomingStateRaw === 'WRONG_DESTINATION'
       ? (incomingStateRaw as IncomingDeliveryState)
       : null;
-  // Sort axis + PO date range — driven by IncomingPaneHeader (sort) and
-  // IncomingSidebarPanel (date range). All flow straight into the API query
-  // string; no client-side filtering of the date range (server already narrows).
+  // Sort axis + PO date range — driven by IncomingWorkspaceHeader (sort +
+  // Filters date range). All flow straight into the API query string; no
+  // client-side filtering of the date range (server already narrows).
   const incomingSort = isIncomingMode ? (searchParams.get('sort') || '').trim() : '';
   // History reuses the shared `?sort=` param (modes are exclusive). The resolved
   // axis drives client day-banding + within-day order; the same sort is sent to

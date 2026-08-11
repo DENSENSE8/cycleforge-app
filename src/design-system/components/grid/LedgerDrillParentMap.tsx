@@ -87,7 +87,7 @@ export function LedgerDrillParentMap({
           sections.map((section) => (
             <section
               key={section.id || 'unknown'}
-              className="border-b border-border-faint last:border-b-0"
+              className="border-b border-border-hairline last:border-b-0"
             >
               <header className="sticky top-0 z-1 bg-surface-card/95 px-3 py-1.5 backdrop-blur-sm">
                 <span className="text-role-caption font-semibold uppercase tracking-widest text-text-muted">

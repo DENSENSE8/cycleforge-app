@@ -80,7 +80,17 @@ describe('ORDERS_QUEUE_COLUMNS — fixed facts · resizable Product · trailing 
   it('scan order is triage-first with trailing fill', () => {
     assert.deepEqual(
       ORDERS_QUEUE_COLUMNS.map((c) => c.key),
-      ['select', 'order', 'age', 'title', 'condition', 'qty', 'tracking', '_fill'],
+      [
+        'select',
+        'order',
+        'age',
+        'title',
+        'condition',
+        'qty',
+        'tracking',
+        'packStation',
+        '_fill',
+      ],
     );
   });
 });

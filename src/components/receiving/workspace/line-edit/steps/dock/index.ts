@@ -14,8 +14,8 @@
  * a bench, so that registry is total and the guard requires it. Not every step
  * has an ACTION — declare those in `UNBOX_STEPS_WITHOUT_DOCK_ACTION` with a
  * reason. Photo steps mount Link | Upload | Send to phone
- * (`PhotoStepDockStrip`). `classify` mounts `TriageClassifySection` via
- * `classifySlot`.
+ * (`PhotoStepDockStrip`). `classify` is a one-row Continue CTA — the editor
+ * is Displays KNOW (`TriageClassifySection` / `railLeaf: 'classify'`).
  *
  * So the dock band renders **nothing** for a step with no entry, and
  * `procedure-step-dock.guard.test.ts` pins exactly which steps that is —

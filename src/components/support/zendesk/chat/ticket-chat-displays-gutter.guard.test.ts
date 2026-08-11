@@ -1,6 +1,15 @@
 /**
- * Station Ticket Displays — conversation body + floating composer own the
- * readable gutter (`DISPLAYS_BODY_INSET`); the Displays host stays flush.
+ * Station Ticket Displays — the whole column is FLUSH: host, conversation rows
+ * and floating composer all sit edge-to-edge, and a bubble fills the width.
+ *
+ * Ruled 2026-08-10, reversing the 2026-08-05 rows-own-`px-4` grammar FOR THIS
+ * STREAM ONLY. The Displays column is already narrow (the station middle is
+ * locked at ~720 beside it), and the ticket spent that measure twice — a `px-4`
+ * list wrapping bubbles that were themselves capped at 85%. Every other
+ * Displays leaf keeps `DISPLAYS_BODY_INSET`, which is why the token still
+ * exists and why this guard now asserts its ABSENCE here rather than being
+ * deleted.
+ *
  * Bubble variant is opted in from `TicketDisplayHost`, not from `embedded`
  * alone (`/support` focus is also embedded and must stay ledger).
  */
@@ -40,11 +49,17 @@ describe('station Ticket chat Displays gutter + bubble opt-in', () => {
     assert.match(hostCode, /streamVariant="bubble"/);
   });
 
-  it('bubble stream + floating composer own DISPLAYS_BODY_INSET', () => {
-    assert.match(streamCode, /DISPLAYS_BODY_INSET/);
-    assert.match(composerCode, /DISPLAYS_BODY_INSET/);
-    // Vertical breath only on the floating wrapper — not a second horizontal pad.
-    assert.match(composerCode, /DISPLAYS_BODY_INSET,\s*'min-w-0 shrink-0 py-2'/);
+  it('bubble stream + floating composer carry NO horizontal gutter', () => {
+    assert.doesNotMatch(streamCode, /DISPLAYS_BODY_INSET/);
+    assert.doesNotMatch(composerCode, /DISPLAYS_BODY_INSET/);
+    // Vertical breath only on the floating wrapper — and no hand-rolled px-*
+    // replacement sneaking the gutter back in under another name.
+    assert.match(composerCode, /className="min-w-0 shrink-0 py-2"/);
+  });
+
+  it('a bubble fills the column instead of capping at a percentage', () => {
+    assert.doesNotMatch(streamCode, /max-w-\[min\(100%/);
+    assert.match(streamCode, /'min-w-0 w-full stack-tight rounded-2xl border px-3 py-2'/);
   });
 
   it('SupportTicketDetail defaults streamVariant to ledger and forwards it', () => {
