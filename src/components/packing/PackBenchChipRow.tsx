@@ -17,7 +17,10 @@
 
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+import {
+  PACK_BENCH_CHIP_TONE,
+  packBenchShortLabel,
+} from '@/lib/packing/pack-bench-display';
 
 interface PackBenchChipRowItem {
   locationId: number;
@@ -29,8 +32,13 @@ interface PackBenchChipRowItem {
 const CHIP_BASE =
   'inline-flex items-center gap-1 rounded-none inset-chip text-role-micro uppercase ' +
   'tracking-widest ring-1 ring-inset';
-/** Staged vs empty is the only tone here — a bench count is not a lifecycle state. */
-const CHIP_STAGED = 'bg-blue-50 text-blue-700 ring-blue-200';
+/**
+ * Staged vs empty is the only tone here — a bench count is not a lifecycle
+ * state. The staged fill comes from the shared bench tone (bg + text) so this
+ * row and the To-ship Station grid cell cannot drift; the ring is this face's
+ * own, since `GridStatusCellValue` supplies its own on the cell side.
+ */
+const CHIP_STAGED = `${PACK_BENCH_CHIP_TONE} ring-blue-200`;
 const CHIP_EMPTY = 'bg-surface-sunken text-text-faint ring-border-soft';
 const CHIP_ACTIVE = 'bg-blue-600 text-white ring-blue-600';
 

@@ -180,6 +180,23 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
     resizable: false,
     labelFitRem: 5.5,
   },
+  // Which packing bench this order is staged at (`order_pack_placements`).
+  // `tier: 'optional'` — off by default, opted in from the ▦ column display,
+  // the same way Unbox History treats Serial / Vendor. The bench is a real
+  // per-row fact (the data already rides on every row), but it only matters
+  // once someone is working the pack floor, so it must not spend a track on
+  // the default To-ship lane. The Tested lane keeps it always-on.
+  {
+    key: 'packStation',
+    width: 'minmax(7rem, 7rem)',
+    label: 'Station',
+    type: 'location',
+    align: 'start',
+    hideKey: 'packStation',
+    tier: 'optional',
+    resizable: false,
+    labelFitRem: 5,
+  },
   { key: '_fill', width: 'minmax(0rem, 1fr)', resizable: false },
 ] as const;
 

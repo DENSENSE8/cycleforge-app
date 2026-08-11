@@ -10,6 +10,16 @@ interface PackBenchLabelSource {
 }
 
 /**
+ * Bench chip tone — **bg + text only**, no ring.
+ *
+ * `GridStatusCellValue` supplies its own `ring-current/20`, so a ring here
+ * would draw twice on the grid cell. The chip-row face adds its own ring
+ * instead. One tone across the To-ship Station cell and the Ready-to-Pack
+ * count chips, so a bench reads the same wherever it appears.
+ */
+export const PACK_BENCH_CHIP_TONE = 'bg-blue-50 text-blue-700';
+
+/**
  * Short bench label for a dense chip / KPI tile — `Station 2`, `Staging`.
  *
  * A bench's stored name carries tenant and QA prefixes (`QA Packing Desk 2`)
