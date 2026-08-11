@@ -399,11 +399,21 @@ describe('WorkbenchTrailingCluster SoT', () => {
     assert.match(header, /import \{ ColumnResizeHandle \} from '\.\/ColumnResizeHandle'/);
     assert.match(header, /isGridColumnResizable\(column\)/);
 
+    // Orders retired its header fork on 2026-08-10 and is now factory config,
+    // so it composes the DS handle THROUGH `makeLedgerGridColumnHeader` rather
+    // than importing it. Pin the contract (one shared header, hence one shared
+    // handle) instead of the old import line — asserting the import would fail
+    // for a surface that is now MORE shared, not less.
     const orders = readFileSync(join(ROOT, GRID_HEADERS[1]), 'utf8');
     assert.match(
       orders,
-      /from '@\/design-system\/components\/grid\/ColumnResizeHandle'/,
-      'Orders must compose the DS handle, not a queue-local copy',
+      /makeLedgerGridColumnHeader/,
+      'Orders must compose the shared header factory, not a queue-local fork',
+    );
+    assert.doesNotMatch(
+      orders,
+      /ColumnResizeHandle/,
+      'Orders must not re-mount the resize handle beside the factory that owns it',
     );
 
     // The fixed-format types render a last-8 chip or a short numeral run, so a
