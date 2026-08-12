@@ -110,7 +110,6 @@ export function CartonContextCard({
   photoStage,
   listingLink,
   showListing = true,
-  listingEditOpen = false,
   onEditListing,
   listingOpenHref,
   listingLinks = [],
@@ -225,8 +224,6 @@ export function CartonContextCard({
   listingLink: string;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
   showListing?: boolean;
-  /** When true, pulses the listing chip to show edit is active. */
-  listingEditOpen?: boolean;
   /** Called when listing chip edit is requested - opens external editor. */
   onEditListing?: () => void;
   listingOpenHref: string | null | undefined;
@@ -505,7 +502,7 @@ export function CartonContextCard({
         }
         disableCopy={!(listingLink.trim() || listingOpenHref)}
         onEdit={onEditListing}
-        editOpen={listingEditOpen}
+        editOpen={false}
         editLabel="Edit listing"
         actionsInMenu
         chipAction="open"
@@ -691,7 +688,7 @@ export function CartonContextCard({
         data-testid="carton-context-lifecycle-pill"
         aria-label={lifecycle.label}
       >
-        <span className="truncate">{lifecycle.label}</span>
+        {lifecycle.label}
       </span>
     </HoverTooltip>
   ) : null;
