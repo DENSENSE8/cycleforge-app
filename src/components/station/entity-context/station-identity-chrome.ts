@@ -128,7 +128,7 @@ export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
 /**
  * Leading column on chrome row 1 — boxed exit chevron so classify pills
  * share one x with the exit face. Square track on {@link STATION_CHROME_ROW_FACE};
- * child fills flush (`h-full w-full`). Row 2 status is a locked `w-14` pill.
+ * child fills flush (`h-full w-full`). Row 2 status is a content-width pill.
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
