@@ -62,7 +62,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Grid column sort (URL-durable) | `@/hooks/useUrlColumnSort` → `?colsort=` / `?coldir=` — see **Grid column visibility + sort** below |
 | Collection-surface action planes | `display/workbench.md` — in-cell · row-scoped · multi-select · record, one primary plane each |
 | Workbench branch (Layer C recipe) | `SURFACE_REGISTRY.workbenchBranch` + `WORKBENCH_BRANCH_IDS` in `src/lib/stations/surface-keys.ts` — `ops-queue` · `master-detail` · `board` · `fact-stack` · `service-workspace`; null on Station/Monitor/Canvas. Law: `display/workbench.md` + child recipe files |
-| **Scan-station primary work surface** | **Main Unbox (dogfood):** PO-line ledger + label (`POUnboxingSection` + `UnboxLabelPreview`) under carton context; capture in `UnboxDockHost` — see **Unbox centre (main)** below + full walk [`display/unbox-station.md`](display/unbox-station.md). Centre **Procedure focus deck** stays parked. Sibling ports: [`display/station-port-from-unbox.md`](display/station-port-from-unbox.md). |
+| **Scan-station primary work surface** | **Main Unbox (dogfood):** PO-line ledger + label (`POUnboxingSection` + `UnboxLabelPreview`) under carton context; bottom dock = raised notes bubble + Print·Receive (flush procedure floor parked — see **Unbox centre (main)** + [`display/unbox-station.md`](display/unbox-station.md)). Centre **Procedure focus deck** stays parked. Sibling ports: [`display/station-port-from-unbox.md`](display/station-port-from-unbox.md). |
 | **Scan-station centre lines display** | The centre is **ops-flow only** — that station's exact triage / I/O: the carton's **lines** (PO **items** or **unfound** lines via `LinePoItemsSection` / `UnmatchedItemsSection`) under identity, dock below, plus station-owned ops content (Unbox label preview · Arrival Classify · dock Staging · Testing verdict slots). That is the work surface. **Never centre advisory** banners, “needs attention” strips, ticket history, claim wizards, or dossier summaries — those are **contextual detail** and open as right-edge **Displays** leaves beside the middle (`StationDisplaysPushStack` / `StationDisplaysPushColumn`: Ticket · Pairing/Linkage · Photos · Timeline · …) — never a centre `SectionTabsSlider` strip and never a `RightRailHost` occupant. **QC (Testing):** on line open, linked ticket / fail→claim auto-opens Ticket Displays (`resolveTestingTicketContextOpen` + `TicketDisplayHost`); middle stays PO lines + Pass · Print. **Arrival port (2026-08-09):** centre = one white door-flow plane (`DISPLAYS_FLUSH_HOST` + `appSurfaceFillClass('chrome')`) = items **without units chrome** (no condition · serial · Units) + **Classify**; **Staging** is the flush dock Band 1 ACTION (`ArrivalStagingDockControl` via `UnboxDockHost`); dogfood strip = Save-for-unbox (no Omnichannel notes — notes live on Unbox); Displays = **Ticket** + **Pairing**. **Labels** keeps Print · Documents · Timeline as centre tabs on a flush `StationPanelRoot` (Unbox pad grammar — not Displays push). Unbox (`LineEditPanel`) is the golden; Arrival · Testing · Pack · Shipping · Packer review compose Displays; Labels composes the flush column shell. Operator copy: **Open displays** / **Hide right panel** (`StationDisplaysEdgeToggle`) — not “inspector” / “details editor”. Law: [`display/station-workbench.md`](display/station-workbench.md). Guard: `station-centre-ops-flow.guard.test.ts` + `arrival-displays-push.guard.test.ts` + `pack-displays-push.guard.test.ts` + `phase-f-displays-push.guard.test.ts` + `unbox-right-edge-chrome.guard.test.ts` + `testing-ticket-displays.guard.test.ts`. |
 | **Station PO line row (work)** | `PoLineRow` + `PoLineMetaGrid`: nested CSS grid `48px_1fr` (flush thumb \| content — thumb keeps structural `border-r`); title **wraps**; boxed meta `auto×3 + 1fr serials + auto price` with `border-t` + **`gap-x-3` whitespace** (no meta `divide-x` / vertical column hairlines — inline PO meta favors horizontal alignment + gap so the eye can sweep the row). Serials cell = truncated recent last-8 preview + **View All** as a **gap-separated** peer (no `border-l`) → Units Displays (`openDisplays('units')`). Structural vertical `divide-x` stays only on joined scan instruments (`SerialCard` / Units). Identity classify pills use flush `STATION_IDENTITY_GROUP_CLASS` (`gap-0`), same abut grammar as Photos · Claim — flat faces (`shadow-none`), never soft drop shadows or `gap-1.5` air between urgency · platform · type. **Dual edit loci:** when `dockOwnsCapture` (main Unbox), bottom dock owns scanner/procedure; condition · serial chips forward via `onEditConditionInDock` / `onEditSerialInDock` → `focusStep` (+ `receiving-focus-scan`) **and** select the line; **every editable line** mounts `ActiveLineConditionSerial` → `PoLineUnitCaptureList` → `PoLineCaptureRow` (rest: condition + Serial/Photos; Serial open: leading Tags square (`ConditionGradeCircle`) + `SerialScanField`; Photos → Displays; found + lined unfound + empty stub; list body **snaps**) under the row for mouse go-back (`autoFocusSerial` off — wedge stays dock); dock + under-row share `useUnboxLineController` writes (no third path). When `!dockOwnsCapture` (Testing / unmatched), `activeRowSlot` may mount under every editable line (qty>1 → N unit slots via `ReceivingUnitRows`). No title collapse chevron (removed 2026-08-08). Multi-unit browse still lives in Units Displays. See **Unbox centre (main)**. Guard: `po-line-flat-chrome.guard.test.ts` + `po-line-capture-entry.guard.test.ts` + `po-lines-accordion-meta-order.test.ts` + `carton-context-density.guard.test.ts` + `per-unit-no-serial-ui.guard.test.ts`. |
 | Collection map keep-alive | Prefer `display:none` over unmount when focus overlays the map — reference `ReceivingRightPane`. Service-workspace forbids unmounting the queue on ticket open — `display/workbench-service.md` |
@@ -253,12 +253,11 @@ open the same leaf)
 until a line exists; list body snaps). Controller-active line autofocuses
 centre serial; dock + row share controller writes — no third path) →
 `UnboxLabelPreview` → **`UnboxPlacementSection`** (commit `stage` — scrolls into
-view after print; never sticky-lock / collapse the capture centre) → dogfood
-`data-unbox-dogfood-print` (always-on Print · Receive above the floor) →
-`UnboxDockHost` (step CTA; Band 1 trailing null; after print Band 1 arms
-`LocationScanDockControl` for the location barcode) with flush scan-progress
-cell in the under-dock `progress` row (right-aligned — **not** Displays
-`rightSlot`). Commit order is **print → stage → receive**. Capture order for
+view after print; never sticky-lock / collapse the capture centre) → raised
+`WorkspaceNotesCard` bubble with trailing pill Print · Receive (ghost
+label-note autocomplete; flush procedure floor parked on `unbox-work` — see
+`docs/todo/unbox-dock-procedure-parked-HANDOFF.md`). Commit order is **print →
+stage → receive**. Capture order for
 the item trio is **Serial → Condition → Photos** (`FOUND_CAPTURE` /
 `RETURN_CAPTURE`). Displays push column is the step cockpit
 (`railLeaf` via `useUnboxProcedureSteps` — [`display/scan-cockpit.md`](display/scan-cockpit.md))
@@ -281,7 +280,15 @@ isControllerLine` — a settled / non-active sibling row never lights. This is t
 DO-plane half of the scan-cockpit DO/KNOW split (dock = input, in-line row =
 output); the KNOW `railLeaf` is untouched. Guard: `active-step-ring.guard.test.ts`.
 
-### Unbox dock flush floor (geometry — NEVER regress)
+### Unbox dock (main = bubble; flush procedure floor parked)
+
+> **2026-08-11:** Main Unbox dock is the raised Omnichannel notes bubble +
+> divided pill Print·Receive + ghost autocomplete. The flush two-band procedure
+> floor geometry below is **parked** on `unbox-work` (Arrival still uses
+> `UnboxDockHost`). See `docs/todo/unbox-dock-procedure-parked-HANDOFF.md`.
+> Do not remount Band 1 step studio on main until that lane ships.
+
+### Unbox dock flush floor (parked geometry — Arrival / unbox-work)
 
 **Law:** Band 1 + Band 2 are edge-to-edge flush instruments. Host = `w-full` ·
 `p-0` · `gap-0` · `items-stretch`. Every button is a **full-height abutting

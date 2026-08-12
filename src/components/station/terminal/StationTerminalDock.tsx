@@ -43,21 +43,24 @@ export const STATION_TERMINAL_PAGER_SCROLL_CLEARANCE = 'pb-56';
  * tints the track via {@link useStationTheme} — same scan-theme path as the
  * station scan bar (operator accent CSS vars for self; staff palette otherwise).
  *
- * `embedded` renders ONLY the flush-square track — no band, no `disabledReason`
- * line, no crossfade — for mounting inside another control's chrome (Unbox
- * dogfood strip above the floor). The host owns placement and the
- * disabled-reason line; the VM→dock mapping stays here so the registry remains
- * the single terminal path.
+ * `embedded` renders ONLY the track — no band, no `disabledReason`
+ * line, no crossfade — for mounting inside another control's chrome.
+ * Pass `embeddedChrome="pill"` for the Omnichannel composer footer
+ * (rounded divided Print · Receive); default `flush` for Arrival/Testing
+ * Band 1. The host owns placement and the disabled-reason line; the
+ * VM→dock mapping stays here so the registry remains the single terminal path.
  */
 export function StationTerminalDock({
   vm,
   assignedTechId,
   embedded = false,
+  embeddedChrome = 'flush',
   className,
 }: {
   vm: TerminalActionVm | null;
   assignedTechId?: number | null;
   embedded?: boolean;
+  embeddedChrome?: 'flush' | 'pill';
   className?: string;
 }) {
   const { presence, transition } = useMotionRole(motionRole.swap.scan);
@@ -74,6 +77,7 @@ export function StationTerminalDock({
     return (
       <SlicedActionDock
         embedded
+        embeddedChrome={embeddedChrome}
         label={vm.label}
         onClick={() => void vm.onClick()}
         icon={vm.icon}

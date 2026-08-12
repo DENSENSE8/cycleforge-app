@@ -8,11 +8,6 @@ import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { UnboxPlacementSection } from '../UnboxPlacementSection';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
-import { UnboxStepDock } from '../UnboxStepDock';
-import { UnboxSerialStepSurface } from '../steps/UnboxSerialStepSurface';
-import { emitReceiving } from '@/components/receiving/receiving-events';
-import { ConditionPills } from '../../ConditionPills';
-import { patchReceivingLineCondition } from '../../patch-receiving-line-condition';
 import { LinkageDisplayHost } from '../LinkageDisplayHost';
 import { InventoryDisplayHost } from '../InventoryDisplayHost';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
@@ -181,10 +176,9 @@ export interface BuildUnboxTabsInput {
 /**
  * The Unbox CENTRE — PO lines (meta = condition · serial ledger) → label preview.
  *
- * Dual loci: dock ({@link buildUnboxStepDock}) owns scanner/procedure; meta
- * chips focus the dock step; the active line mounts a mouse
- * {@link ActiveLineConditionSerial} under the row. Centre `ProcedureDeck`
- * stays parked.
+ * Dual loci: centre capture rows own serial/condition/photos; the bottom dock
+ * is the notes bubble + Print·Receive (procedure step studio parked on
+ * `unbox-work`). Centre `ProcedureDeck` stays parked.
  */
 export function buildUnboxOverview(
   input: Pick<
@@ -243,45 +237,6 @@ export function buildUnboxOverview(
       <UnboxLabelPreview row={row} c={c} />
       <UnboxPlacementSection row={row} />
     </div>
-  );
-}
-
-/**
- * The Unbox DOCK's leading zone — the active step's action control.
- *
- * Sibling of {@link buildUnboxOverview}: the ledger reads, the dock acts.
- * Capture trio order is Serial → Condition → Photos (`FOUND_CAPTURE`).
- */
-export function buildUnboxStepDock(
-  input: Pick<BuildUnboxTabsInput, 'row' | 'staffId' | 'c'>,
-): ReactNode {
-  const { row, staffId, c } = input;
-
-  const setCondition = (next: string) => {
-    c.setCond(next);
-    // Gate stamp via /condition — a generic line PATCH never writes
-    // `condition_graded_at`, so the Condition step would never settle.
-    if (row.id > 0) patchReceivingLineCondition(row.id, next);
-    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-  };
-
-  return (
-    <UnboxStepDock
-      row={row}
-      staffId={staffId}
-      onSetCondition={setCondition}
-      conditionSlot={
-        <ConditionPills
-          value={c.cond}
-          onChange={setCondition}
-          collapsible={false}
-          layout="barDistribute"
-        />
-      }
-      // item_photos Band 1 is ItemPhotoDockControl (Link | Upload | Send to phone).
-      // Centre Photos junction opens Displays — item camera lives there / Units.
-      serialSlot={<UnboxSerialStepSurface row={row} c={c} />}
-    />
   );
 }
 
@@ -367,6 +322,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
           c={c}
           expandDimension={classifyExpandDimension}
           expandRequestId={classifyExpandRequestId}
+          onFindTicket={onFindTicket}
         />
       ),
     },
@@ -498,6 +454,8 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             onClaimTicketCreated={onClaimTicketCreated}
             onClaimTicketUnlinked={onClaimTicketUnlinked}
             returnClaimPrefill={c.returnClaimPrefill ?? null}
+            // Intake Ticket Displays — no All-good / QC pass·fail chips.
+            showReplyPresets={false}
           />
         ) : null,
     },

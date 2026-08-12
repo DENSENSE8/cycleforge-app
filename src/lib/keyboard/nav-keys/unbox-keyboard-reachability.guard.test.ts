@@ -165,18 +165,22 @@ describe('Unbox keyboard reachability matrix', () => {
     );
   });
 
-  it('procedure-% is never a nav-key target', () => {
-    const progress = read(
-      'src/components/receiving/workspace/UnboxScanProgressControl.tsx',
+  it('procedure-% is never a nav-key target (flush floor parked — no mount on main)', () => {
+    // Progress control files live on unbox-work; main must not remount them as
+    // letter-jump targets when the bubble dock is the golden.
+    const panel = read('src/components/receiving/workspace/LineEditPanel.tsx');
+    assert.doesNotMatch(
+      panel,
+      /UnboxScanProgressControl|ScanStationProgressControl/,
+      'procedure % must not remount on main Unbox bubble dock',
     );
-    assert.doesNotMatch(progress, /useNavRegion|preferredKey|NAV_KEY_HINT/);
   });
 
   it('intentional mouse-only secondaries are documented (notes · carton-hop)', () => {
-    // Notes toggle is off on main Unbox (`showNotesToggle={false}`); carton
-    // hop chrome stays pointer / Left-recent letter — not Middle letters (v1).
+    // Notes live on the raised bubble composer (no Band 1 FileText toggle);
+    // carton hop chrome stays pointer / Left-recent letter — not Middle letters (v1).
     const panel = read('src/components/receiving/workspace/LineEditPanel.tsx');
-    assert.match(panel, /showNotesToggle=\{false\}/);
+    assert.match(panel, /WorkspaceNotesCard/);
     assert.match(panel, /ScanStationCartonCursor/);
   });
 });

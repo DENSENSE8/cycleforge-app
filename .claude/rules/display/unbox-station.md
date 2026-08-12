@@ -24,21 +24,27 @@
 │ (context)     │ PO lines + label preview    │ KNOW cockpit  │
 │               │ empty tabs                  │ step→railLeaf │
 ├───────────────┴─────────────────────────────┴───────────────┤
-│ UnboxDockHost — flush two-band floor (hands)                │
-│ Band 1: step ACTION  XOR  Print·Receive (settle only)       │
-│ Band 2: pager LEFT  ·  procedure-% RIGHT                    │
+│ WorkspaceNotesCard bubble + divided Print·Receive (hands)   │
+│ (flush procedure floor parked — unbox-work / HANDOFF)       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-> **Dock Band 1 ≠ Workbench Band-1 strip.** The diagram above is the **scan-floor
-> dock**. The page's Workbench strip (Pin-list · Inbound · Queue · Recent · History)
-> is a different Band-1 — house law in [`../source-of-truth.md`](../source-of-truth.md)
+> **Main Unbox dock (2026-08-11):** raised `OmnichannelComposerDock` notes bubble
+> with trailing pill Print·Receive + ghost label-note autocomplete. The flush
+> two-band procedure floor (`UnboxDockHost` Band 1 step studio · Band 2 pager/%)
+> is **parked** on worktree `unbox-work` — see
+> [`docs/todo/unbox-dock-procedure-parked-HANDOFF.md`](../../docs/todo/unbox-dock-procedure-parked-HANDOFF.md).
+> Arrival still uses `UnboxDockHost`.
+
+> **Dock Band 1 ≠ Workbench Band-1 strip.** When the procedure floor is remounted,
+> that Band 1 is the **scan-floor dock**. The page's Workbench strip is a
+> different Band-1 — house law in [`../source-of-truth.md`](../source-of-truth.md)
 > → **Workbench Band-1 strip** · [`workbench-ops-queue.md`](workbench-ops-queue.md).
 
 | Plane | Holds | Never |
 |---|---|---|
 | **Centre** | Ops-flow only — `POUnboxingSection` + `UnboxLabelPreview` | Advisory banners, ticket history, claim wizards, `SectionTabsSlider`, centre `ProcedureDeck` |
-| **Dock** | One armed ACTION for `activeKey` on Band 1 · dogfood Print·Receive on `data-unbox-dogfood-print` above host | Raised `Panel`, soft pills, Omnichannel composer as the floor, co-mounted terminal + step studio in Band 1 |
+| **Dock** | Raised notes bubble + trailing Print·Receive (ghost autocomplete) | Flush procedure step studio on main (parked); dual absolute floats |
 | **Displays** | Step cockpit (`railLeaf`) + operator browse (Photos · Ticket · …) | Desk `InspectorActionFloor`, a third right-edge region, centre-tab twins of leaf tools |
 | **Derivation** | ONE hook: `useUnboxProcedureSteps` | A second procedure store, page-local step state, hand-ticked checklists |
 
@@ -55,7 +61,7 @@
 | Procedure pointer | `deriveProcedureSteps` / `resolveActiveStep` via `useUnboxProcedureSteps` |
 | Dock ACTION map | `UNBOX_STEP_DOCK_CONTROLS` (`line-edit/steps/dock/`) |
 | Cockpit KNOW map | `UNBOX_STEP_RAIL_LEAF` (`line-edit/steps/rail/`) |
-| Floor host | `UnboxDockHost` — Band 1 + Band 2 flush instrument |
+| Floor host | **Main:** `WorkspaceNotesCard` / Omnichannel bubble + pill Print·Receive. **Parked / Arrival:** `UnboxDockHost` flush instrument |
 | Displays | `StationDisplaysPushStack` / `StationDisplaysPushColumn` + `unbox-side-tabs.ts` |
 | Macro floor | `UnboxDisplaysActionFloor` → `StationDisplaysActionFloor` (never desk inspector floor) |
 | Progress | `UnboxScanProgressControl` `variant="floor"` in Band 2 only — never `GoalRing`, never a floor % twin on Displays |

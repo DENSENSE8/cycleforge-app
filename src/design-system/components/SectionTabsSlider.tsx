@@ -72,12 +72,12 @@ const ICON_CELL_CLASS = cn(
   FLUSH,
 );
 /** Overflow ⋮ / strip `rightSlot` peer — square cell, height from primary face. */
-export const SECTION_TAB_ICON_OVERFLOW_CELL_CLASS = cn(
+const SECTION_TAB_ICON_OVERFLOW_CELL_CLASS = cn(
   'relative flex aspect-square items-center justify-center transition-colors',
   PRIMARY_CHROME_ROW_FACE,
   FLUSH,
 );
-export const SECTION_TAB_ICON_CELL_IDLE_CLASS =
+const SECTION_TAB_ICON_CELL_IDLE_CLASS =
   'border-b-2 border-b-transparent text-text-soft hover:bg-surface-hover hover:text-text-default';
 /**
  * Selected topic cell: parent underline. Staff accent stays an icon TINT.
@@ -85,7 +85,7 @@ export const SECTION_TAB_ICON_CELL_IDLE_CLASS =
  * Bottom-only color (`border-b-*`) — never `border-transparent` / `border-text-*`
  * on all sides (those fight `divide-x` cell seams).
  */
-export const SECTION_TAB_ICON_CELL_ACTIVE_CLASS =
+const SECTION_TAB_ICON_CELL_ACTIVE_CLASS =
   'border-b-2 border-b-text-default font-semibold text-text-default';
 
 const ICON_OVERFLOW_CELL_CLASS = SECTION_TAB_ICON_OVERFLOW_CELL_CLASS;

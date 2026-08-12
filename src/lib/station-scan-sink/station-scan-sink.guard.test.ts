@@ -26,15 +26,18 @@ describe('station-scan-sink guard', () => {
     assert.ok(sinkIdx > 0 && redirectIdx > sinkIdx, 'sink dispatch must precede route.redirect');
   });
 
-  it('Unbox dock + serial register exclusive po-line sinks', () => {
-    const dock = read('components/receiving/workspace/line-edit/UnboxDockScanEntry.tsx');
-    const serial = read(
-      'components/receiving/workspace/line-edit/steps/UnboxSerialStepSurface.tsx',
+  it('Unbox centre capture + Arrival waist register scan sinks (dock waist parked)', () => {
+    // UnboxDockScanEntry / UnboxSerialStepSurface live on unbox-work with the
+    // procedure floor. Main: centre capture + Arrival Staging waist own sinks.
+    const arrival = read('components/receiving/triage/ArrivalDockScanEntry.tsx');
+    assert.match(arrival, /useRegisterScanSink/);
+    assert.match(arrival, /data-arrival-dock-scan/);
+    const adder = read('components/receiving/workspace/InlineSerialAdder.tsx');
+    assert.match(adder, /useRegisterScanSink/);
+    const capture = read(
+      'components/receiving/workspace/line-edit/PoLineCaptureRow.tsx',
     );
-    assert.match(dock, /useRegisterScanSink/);
-    assert.match(dock, /po-line:\$\{row\.id\}/);
-    assert.match(serial, /useRegisterScanSink/);
-    assert.match(serial, /po-line:\$\{lineId\}/);
+    assert.match(capture, /SerialScanField/, 'centre capture still mounts serial');
   });
 
   it('PoLinesAccordion publishes sibling cursor + ambient ↑/↓', () => {
