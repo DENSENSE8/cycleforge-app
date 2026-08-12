@@ -95,8 +95,6 @@ interface LineCartonContextSectionProps {
   onOrderDetails?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
   trackingEditOpen?: boolean;
-  /** Pulse listing chip while Listings tab is active. */
-  listingEditOpen?: boolean;
   /** Pulse PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
   /** Unbox: open Photos → Move in Displays. */
@@ -137,7 +135,6 @@ export function LineCartonContextSection({
   onEditPo,
   onOrderDetails,
   trackingEditOpen = false,
-  listingEditOpen = false,
   poEditOpen = false,
   photoStage,
   onOpenMovePhotosExternal,
@@ -185,7 +182,6 @@ export function LineCartonContextSection({
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
       onEditListing={onEditListing}
-      listingEditOpen={listingEditOpen}
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={c.poNumber}

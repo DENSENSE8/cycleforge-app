@@ -595,7 +595,6 @@ export function LineEditPanel({
           requestLabelEditor: () => c.requestLabelEditor(),
           handleReceive: (mode) => {
             void c.handleReceive(mode);
-            nudgeUnboxPrintReceive('receive');
           },
         },
       }),
@@ -880,7 +879,6 @@ export function LineEditPanel({
           onEditPo={openPoPairing}
           onOrderDetails={openOrderConnectionDetails}
           trackingEditOpen={activeSideTab === 'tracking'}
-          listingEditOpen={activeSideTab === 'listings'}
           poEditOpen={activeSideTab === 'linkage' && linkageAction === 'link'}
           photoStage="unbox_carton"
         />
