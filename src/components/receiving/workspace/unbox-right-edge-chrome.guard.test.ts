@@ -298,16 +298,16 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('under-dock ring peeks via railOpen prop — no panel-level const', () => {
+    it('under-dock procedure ring is parked — not mounted on main Unbox', () => {
       assert.doesNotMatch(
         panel,
         /const railOpen\s*=/,
         'panel-level railOpen derivation stays deleted — pass showDisplays inline',
       );
-      assert.match(
+      assert.doesNotMatch(
         panel,
-        /<UnboxScanProgressControl[\s\S]{0,240}railOpen/,
-        'ring receives railOpen for ScanStationProgressControl peek gate',
+        /<UnboxScanProgressControl/,
+        'flush floor procedure % is parked on unbox-work — not on main bubble dock',
       );
     });
 
@@ -457,31 +457,26 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       assert.match(desk, /ChevronDown[\s\S]{0,200}onClick=\{onNext\}/);
     });
 
-    it('procedure % ring mounts under the dock; Print·Receive only on settle', () => {
+    it('main Unbox dock is notes bubble + pill Print·Receive (procedure floor parked)', () => {
       assert.match(
         panel,
-        /UnboxDockHost/,
-        'main Unbox dock is UnboxDockHost (step studio XOR Print·Receive on settle)',
+        /WorkspaceNotesCard/,
+        'main Unbox dock is the raised notes bubble',
       );
       assert.match(
         panel,
+        /embeddedChrome=["']pill["']/,
+        'divided rounded pill Print·Receive in composer footer',
+      );
+      assert.doesNotMatch(
+        panel,
         /progress=\{scanProgressControl\}/,
-        'live procedure % ring under the dock (bottom-right)',
+        'no under-dock procedure % on main',
       );
       assert.doesNotMatch(
         panel,
         /rightSlot=\{scanProgressControl\}/,
         'do not mount the ring on Displays rightSlot',
-      );
-      assert.match(
-        panel,
-        /trailing=\{null\}/,
-        'Band 1 trailing stays null — Print·Receive is the dogfood strip above the floor',
-      );
-      assert.match(
-        panel,
-        /data-unbox-dogfood-print[\s\S]{0,2500}embeddedTerminal/,
-        'Print·Receive mounts in the dogfood strip above UnboxDockHost (Displays-independent)',
       );
       assert.doesNotMatch(
         panel,

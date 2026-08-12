@@ -21,6 +21,7 @@ import {
   NOTE_UNIT_PRICE_BTN,
   parseZendeskTicketId,
 } from '../note-composer-helpers';
+import { useLabelNoteGhostAutocomplete } from './hooks/useLabelNoteGhostAutocomplete';
 import type {
   SaveOverallNoteOptions,
   SaveOverallNoteResult,
@@ -40,6 +41,9 @@ import type {
  *
  * When a {@link trailingAction} (Unbox Receive) owns the footer, Enter acts
  * like Send-in-chat: save the note, then fire {@link onPrimaryAction}.
+ *
+ * Ghost autocomplete (label-note MRU via {@link useLabelNoteGhostAutocomplete})
+ * paints an inline suffix; Tab / ArrowRight / click accept; Escape dismisses.
  *
  * Insert rail (staff stamp / ticket / price / synced PO / title) and, for
  * matched cartons, push-to-PO live in the composer footer.
@@ -81,8 +85,11 @@ export function LineNotesCard({
   /** Note from the previous line touched this session — repeat-previous source. */
   previousLineNotes?: string;
   onNotesChange: (next: string) => void;
-  /** Persist the note to `receiving_line.notes`. Returns true if it saved. */
-  onSaveNotes: () => boolean;
+  /**
+   * Persist the note to `receiving_line.notes`. Optional `next` overrides the
+   * live draft (Enter that also accepts a ghost). Returns true if it saved.
+   */
+  onSaveNotes: (next?: string) => boolean;
   /** Append the note into the carton's synced PO note (external push). */
   onSaveOverallNote: (
     text: string,
@@ -117,6 +124,23 @@ export function LineNotesCard({
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
 
+  const {
+    matchedPhrase,
+    ghostSuffix,
+    acceptGhost,
+    dismissGhost,
+    clearGhostDismissal,
+    onValueChange,
+    rememberIfWrote,
+    handleGhostKeyDown,
+    resolveCommitValue,
+  } = useLabelNoteGhostAutocomplete({
+    value: notes,
+    onChange: onNotesChange,
+    previousLineNotes,
+    inputRef: textareaRef,
+  });
+
   // DELETED 2026-08-02 — an auto-focus on the print step.
   //
   // It fired on DERIVED step advance, with no operator gesture: the carton
@@ -144,22 +168,30 @@ export function LineNotesCard({
     savedTimer.current = setTimeout(() => setSavedFlash(false), 1600);
   }, []);
 
-  const commitNotes = useCallback(() => {
-    if (!onSaveNotes()) return;
-    flashSaved();
-  }, [onSaveNotes, flashSaved]);
+  const commitNotes = useCallback(
+    (override?: string) => {
+      const phrase = override ?? notes;
+      const wrote = onSaveNotes(phrase);
+      rememberIfWrote(phrase, wrote);
+      if (!wrote) return;
+      flashSaved();
+    },
+    [notes, onSaveNotes, rememberIfWrote, flashSaved],
+  );
 
   // Enter: with a trailing Receive CTA, behave like chat Send (save → receive).
-  // Without it, Enter is just save (Send button path).
+  // Without it, Enter is just save (Send button path). Accept ghost first when
+  // caret is at end so the MRU phrase is what persists.
   const handleCommit = useCallback(() => {
+    const phrase = resolveCommitValue(textareaRef.current);
     if (onPrimaryAction) {
-      commitNotes();
+      commitNotes(phrase);
       if (primaryActionDisabled) return;
       onPrimaryAction();
       return;
     }
-    commitNotes();
-  }, [onPrimaryAction, primaryActionDisabled, commitNotes]);
+    commitNotes(phrase);
+  }, [onPrimaryAction, primaryActionDisabled, commitNotes, resolveCommitValue]);
 
   // Auto-save on blur when the note changed.
   const handleBlur = useCallback(() => {
@@ -170,10 +202,11 @@ export function LineNotesCard({
     (text: string) => {
       const next = appendNoteLine(notes, text);
       if (next === notes) return;
+      clearGhostDismissal();
       onNotesChange(next);
       requestAnimationFrame(() => focusTextEnd(textareaRef.current));
     },
-    [notes, onNotesChange],
+    [notes, onNotesChange, clearGhostDismissal],
   );
 
   const resolvedTicketId =
@@ -352,7 +385,7 @@ export function LineNotesCard({
   return (
     <OmnichannelComposerDock
       value={notes}
-      onChange={onNotesChange}
+      onChange={onValueChange}
       onCommit={handleCommit}
       onBlur={handleBlur}
       // Receive CTA: Enter must fire even with an empty note (chat-send).
@@ -372,6 +405,11 @@ export function LineNotesCard({
       chrome={chrome}
       animateMount={animateMount}
       textareaRef={textareaRef}
+      ghostSuffix={ghostSuffix || undefined}
+      matchedPhrase={matchedPhrase}
+      onAcceptGhost={acceptGhost}
+      onDismissGhost={dismissGhost}
+      onTextareaKeyDown={handleGhostKeyDown}
     />
   );
 }

@@ -12,12 +12,11 @@
  * right-edge {@link StationDisplaysPushStack}. Not a `RightRailHost` occupant
  * (`detail:receiving` keeps the float host).
  *
- * Centre `ProcedureDeck` stays parked. Capture lives in {@link UnboxDockHost}
- * as a polymorphic flush floor (Active Step Studio on Band 1). **Dogfood
- * validation lane:** top commit strip (`data-unbox-dogfood-print`) =
- * always-on label note (`+` insert · field · Enter = Print · Receive) ·
- * compact Print · Receive. Never Band 1 / Band 2. Displays-independent;
- * Band 1 trailing null.
+ * Centre `ProcedureDeck` stays parked. Bottom dock is the raised Omnichannel
+ * notes bubble ({@link WorkspaceNotesCard}) with trailing divided Print ·
+ * Receive — not the flush two-band procedure floor (that stack is parked on
+ * the `unbox-work` worktree for a later task). Enter on notes = chat Send →
+ * Print · Receive; ghost autocomplete uses the label-note MRU bank.
  *
  * Triage (the identify-before-unbox pass) is its own lean panel
  * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
@@ -68,18 +67,16 @@ import {
   ScanStationCartonCursor,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import {
   buildUnboxOverview,
   buildUnboxSideTabs,
-  buildUnboxStepDock,
   preloadUnboxDisplayLeafChunks,
 } from './line-edit/terminal/unbox-tabs';
-import { UnboxDockHost } from './line-edit/UnboxDockHost';
-import { UnboxDockNotesEntry } from './line-edit/UnboxDockNotesEntry';
+import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
 import { UnboxDisplaysActionFloor } from './line-edit/UnboxDisplaysActionFloor';
-import { UnboxProcedurePager } from './line-edit/UnboxProcedurePager';
 import { useUnboxProcedureArrowKeys } from './line-edit/useUnboxProcedureArrowKeys';
 import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
 import { useUnboxMiddleCartonNav } from './line-edit/useUnboxMiddleCartonNav';
@@ -87,7 +84,6 @@ import { nudgeUnboxPrintReceive } from '@/lib/keyboard/shortcut-nudge';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { scheduleFocusUnboxCaptureSerial } from './line-edit/focus-unbox-capture-serial';
-import { UnboxScanProgressControl } from './UnboxScanProgressControl';
 import {
   UNBOX_DISPLAY_INDEX,
   resolveUnboxDisplayNav,
@@ -642,21 +638,21 @@ export function LineEditPanel({
     setActionFeedback(null);
   }, [row.id]);
 
-  const hasItemNote = Boolean((c.itemNote || row.notes || '').trim());
-
   // Scan-theme tint = operating staff (same SoT as ThemedStationScanBar),
   // falling back to the carton's assigned tech when staffId is absent.
   const terminalThemeStaffId =
     Number(staffId) || row.assigned_tech_id || null;
 
-  const embeddedTerminal = (
-    <StationTerminalDock
-      embedded
-      vm={terminalVm}
-      assignedTechId={terminalThemeStaffId}
-      className="h-full shrink-0 self-stretch"
-    />
-  );
+  const bubbleTerminal = terminalVm ? (
+    <div className="shrink-0" data-unbox-dock-terminal>
+      <StationTerminalDock
+        embedded
+        embeddedChrome="pill"
+        vm={terminalVm}
+        assignedTechId={terminalThemeStaffId}
+      />
+    </div>
+  ) : null;
 
   const onFocusCaptureStep = useCallback(
     (key: 'serial' | 'condition' | 'item_photos') => {
@@ -714,11 +710,6 @@ export function LineEditPanel({
       onFocusCaptureStep,
       openDisplays,
     ],
-  );
-
-  const stepDock = useMemo(
-    () => buildUnboxStepDock({ row, staffId, c }),
-    [row, staffId, c],
   );
 
   const unboxSideTabs = useMemo(
@@ -801,25 +792,6 @@ export function LineEditPanel({
 
   const showRightPushChrome = showDisplays;
 
-  const openChecklistDisplay = useCallback(
-    () => openDisplays('checklist'),
-    [openDisplays],
-  );
-
-  /**
-   * Live procedure % — under-dock bottom-right. Opens the Checklist Displays
-   * leaf in-station (never a route hop).
-   */
-  const scanProgressControl = (
-    <UnboxScanProgressControl
-      row={row}
-      railOpen={showDisplays}
-      checklistActive={showDisplays && activeSideTab === 'checklist'}
-      onOpenChecklist={openChecklistDisplay}
-      onCloseDisplays={closeDisplays}
-    />
-  );
-
   /**
    * Scan-station chrome for Displays `←|` + carton `↑ ↓`.
    *
@@ -885,7 +857,7 @@ export function LineEditPanel({
           ticketViewActive={ticketViewActive}
           onToggleClaimView={() => {
             if (claimViewActive) closeClaimView();
-            else openDisplays('ticket', { ticketAction: 'claim', claimMode: 'create' });
+            else openDisplays('ticket', { ticketAction: 'claim', claimMode: 'link' });
           }}
           claimViewActive={claimViewActive}
           onOpenMovePhotosExternal={openMovePhotosDisplay}
@@ -925,9 +897,9 @@ export function LineEditPanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                // Host + under-dock pager is taller than notes-only —
-                // pager clearance keeps PO lines / label above the float.
-                reserveScrollClearance="pager"
+                // Notes bubble + Print · Receive — shorter than the parked
+                // procedure pager floor; default clearance is enough.
+                reserveScrollClearance
                 // Identity is in-flow (`StationContextBar placement="flow"`)
                 // above this workbench — no guessed stacked pt clearance.
                 reserveIdentityClearance={false}
@@ -944,13 +916,13 @@ export function LineEditPanel({
                   ) : null
                 }
                 // footer left null — ReceiveFeedbackRegion rides in the absolute
-                // dock float stack above UnboxDockHost (an absolute dock would
+                // dock float stack above the notes bubble (an absolute dock would
                 // cover an in-flow footer).
                 dock={
-                  // Flush floor + dogfood Print·Receive strip above it.
-                  // Float is Unbox-owned: inset-x-0, safe-area floor only.
+                  // Raised Omnichannel notes bubble + divided Print · Receive.
+                  // Float uses the shared sliced-action gutters (pre–flush-floor).
                   <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-fab pb-[env(safe-area-inset-bottom,0px)] pt-0" // ds-allow-spacing: fixed-overlay safe-area geometry
+                    className={slicedActionDockWrapperClass({ docked: false })}
                     data-unbox-dock-float
                   >
                     <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
@@ -1014,68 +986,25 @@ export function LineEditPanel({
                           />
                         </div>
                       ) : null}
-                      {/* Dogfood top row: always-on label note (`+` insert) ·
-                          compact Print · Receive. Never Band 1 / Band 2. */}
                       {terminalVm ? (
-                        <div
-                          className="mb-0 flex h-11 w-full min-w-0 items-stretch border-t border-border-hairline bg-surface-card"
-                          data-unbox-dogfood-print
-                        >
-                          <UnboxDockNotesEntry
-                            value={c.itemNote}
-                            onChange={c.setItemNote}
-                            previousLineNotes={c.prevLineNotes}
-                            skuTitle={row.zoho_item_title || row.item_name || null}
-                            unitPrice={row.unit_price ?? null}
-                            overallZohoNotes={row.receiving_zoho_notes ?? null}
-                            zendeskTicket={c.zendeskTrimmed || row.zendesk_ticket || null}
-                            zendeskProviderTicketId={c.providerTicketId}
-                            zendeskTicketSubject={c.supportTicket?.subject ?? null}
-                            serialNumbers={(row.serials ?? [])
-                              .map((s) => String(s.serial_number ?? '').trim())
-                              .filter(Boolean)}
-                            showSyncToPo={!c.isUnfound}
-                            onSave={(next) => {
-                              const phrase = next ?? c.itemNote;
-                              if (phrase !== c.itemNote) c.setItemNote(phrase);
-                              if (phrase === (row.notes || '')) return false;
-                              void c.patch({ notes: phrase });
-                              return true;
-                            }}
-                            onPrimaryAction={() => {
-                              if (c.isReceived) {
-                                c.runPrintLabel();
-                                nudgeUnboxPrintReceive('print');
-                                return;
-                              }
-                              void c.handlePrintAndReceive();
-                              nudgeUnboxPrintReceive('cta');
-                            }}
-                            primaryActionDisabled={Boolean(terminalVm?.disabled)}
-                          />
-                          <div
-                            className="flex shrink-0 items-stretch border-l border-border-hairline"
-                            data-unbox-dock-terminal
-                          >
-                            {embeddedTerminal}
-                          </div>
-                        </div>
+                        <WorkspaceNotesCard
+                          row={row}
+                          c={c}
+                          onActionFeedback={setActionFeedback}
+                          chrome="raised"
+                          trailingAction={bubbleTerminal}
+                          onPrimaryAction={() => {
+                            if (c.isReceived) {
+                              c.runPrintLabel();
+                              nudgeUnboxPrintReceive('print');
+                              return;
+                            }
+                            void c.handlePrintAndReceive();
+                            nudgeUnboxPrintReceive('cta');
+                          }}
+                          primaryActionDisabled={Boolean(terminalVm.disabled)}
+                        />
                       ) : null}
-                      <UnboxDockHost
-                        mode="entry"
-                        onOpenNotes={() => {}}
-                        onCloseNotes={() => {}}
-                        hasItemNote={hasItemNote}
-                        showNotesToggle={false}
-                        // Classify is h-11 Continue — editor is Displays KNOW.
-                        // Never expandBand (that shoved Print · Receive up).
-                        expandBand={false}
-                        omitTopSeam={Boolean(terminalVm)}
-                        stepContext={<UnboxProcedurePager row={row} />}
-                        leading={stepDock}
-                        trailing={null}
-                        progress={scanProgressControl}
-                      />
                     </div>
                   </div>
                 }

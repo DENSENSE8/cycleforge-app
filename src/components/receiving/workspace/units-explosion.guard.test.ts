@@ -385,9 +385,6 @@ test('Units flush / stationCompact joined bars are border-0 (parent divide owns 
 test('Progressive Unbox uses PoLineUnitCaptureList for qty 1 and N (no !isMultiQty gate)', () => {
   const ACTIVE = code(sourceOf('./line-edit/ActiveLineConditionSerial.tsx'));
   const LIST = code(sourceOf('./line-edit/PoLineUnitCaptureList.tsx'));
-  const DOCK_SERIAL = code(
-    sourceOf('./line-edit/steps/UnboxSerialStepSurface.tsx'),
-  );
 
   assert.match(
     ACTIVE,
@@ -436,12 +433,6 @@ test('Progressive Unbox uses PoLineUnitCaptureList for qty 1 and N (no !isMultiQ
     LIST,
     /captureRow/,
     'Unbox centre capture has no SerialCard captureRow',
-  );
-
-  assert.match(
-    DOCK_SERIAL,
-    /hideCondition/,
-    'dock multi serial must hide compact condition pills (ConditionDockControl owns grade)',
   );
 });
 

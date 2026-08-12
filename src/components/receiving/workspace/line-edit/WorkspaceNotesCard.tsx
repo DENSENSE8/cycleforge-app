@@ -85,11 +85,13 @@ export function WorkspaceNotesCard({
         zendeskTicketSubject={c.supportTicket?.subject ?? null}
         previousLineNotes={c.prevLineNotes}
         onNotesChange={c.setItemNote}
-        onSaveNotes={() => {
+        onSaveNotes={(override) => {
           // Returns whether it actually persisted, so the card only flashes
           // "Saved" when the note changed. Writes `notes` ONLY — the printed
-          // face (`label_note`) is never touched from this composer.
-          const next = c.itemNote;
+          // face (`label_note`) is never touched from this composer. Optional
+          // override covers Enter that also accepts a ghost suggestion.
+          const next = override ?? c.itemNote;
+          if (override != null && override !== c.itemNote) c.setItemNote(override);
           if (next === (row.notes || '')) return false;
           void c.patch({ notes: next });
           return true;

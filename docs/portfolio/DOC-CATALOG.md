@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-11T14:56:55.019Z` · Files: **645** · Repo: `cycleforge-app`  
+> Generated: `2026-08-12T03:48:50.024Z` · Files: **646** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `9a0e8b5a4` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `ccdf2df48` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -601,6 +601,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-UNBOX-DISPLAYS-RIGHT-PANEL-SOT-CLAUDE-CODE-PROMP-133C` | `WS-TODO-MISC` | [`todo/unbox-displays-right-panel-SOT-CLAUDE-CODE-PROMPT.md`](../todo/unbox-displays-right-panel-SOT-CLAUDE-CODE-PROMPT.md) |
 | `DOC-TODO-UNBOX-DOCK-FLUSH-FLOOR-ENTRY-GEMINI-RESEARCH-BRI-6409` | `WS-TODO-MISC` | [`todo/unbox-dock-flush-floor-entry-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-dock-flush-floor-entry-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-UNBOX-DOCK-LISTING-COMPARE-LANE1-HANDOFF-BC0C` | `WS-TODO-MISC` | [`todo/unbox-dock-listing-compare-LANE1-HANDOFF.md`](../todo/unbox-dock-listing-compare-LANE1-HANDOFF.md) |
+| `DOC-TODO-UNBOX-DOCK-PROCEDURE-PARKED-HANDOFF-D0AA` | `WS-TODO-MISC` | [`todo/unbox-dock-procedure-parked-HANDOFF.md`](../todo/unbox-dock-procedure-parked-HANDOFF.md) |
 | `DOC-TODO-UNBOX-DOCK-STEP-CONTEXT-PHOTO-PAIRING-HANDOFF-5602` | `WS-TODO-MISC` | [`todo/unbox-dock-step-context-photo-pairing-HANDOFF.md`](../todo/unbox-dock-step-context-photo-pairing-HANDOFF.md) |
 | `DOC-TODO-UNBOX-DOCK-STEP-STUDIO-ONLY-GEMINI-RESEARCH-BRIE-5F62` | `WS-TODO-MISC` | [`todo/unbox-dock-step-studio-only-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-dock-step-studio-only-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-UNBOX-DOCK-TWO-BAND-FLOOR-GEMINI-RESEARCH-BRIEFI-8EE0` | `WS-TODO-MISC` | [`todo/unbox-dock-two-band-floor-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-dock-two-band-floor-GEMINI-RESEARCH-BRIEFING.md) |
@@ -946,7 +947,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (474)
+### `WS-TODO-MISC` (475)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1345,6 +1346,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-UNBOX-DISPLAYS-RIGHT-PANEL-SOT-CLAUDE-CODE-PROMP-133C` — [`todo/unbox-displays-right-panel-SOT-CLAUDE-CODE-PROMPT.md`](../todo/unbox-displays-right-panel-SOT-CLAUDE-CODE-PROMPT.md)
 - `DOC-TODO-UNBOX-DOCK-FLUSH-FLOOR-ENTRY-GEMINI-RESEARCH-BRI-6409` — [`todo/unbox-dock-flush-floor-entry-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-dock-flush-floor-entry-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-UNBOX-DOCK-LISTING-COMPARE-LANE1-HANDOFF-BC0C` — [`todo/unbox-dock-listing-compare-LANE1-HANDOFF.md`](../todo/unbox-dock-listing-compare-LANE1-HANDOFF.md)
+- `DOC-TODO-UNBOX-DOCK-PROCEDURE-PARKED-HANDOFF-D0AA` — [`todo/unbox-dock-procedure-parked-HANDOFF.md`](../todo/unbox-dock-procedure-parked-HANDOFF.md)
 - `DOC-TODO-UNBOX-DOCK-STEP-CONTEXT-PHOTO-PAIRING-HANDOFF-5602` — [`todo/unbox-dock-step-context-photo-pairing-HANDOFF.md`](../todo/unbox-dock-step-context-photo-pairing-HANDOFF.md)
 - `DOC-TODO-UNBOX-DOCK-STEP-STUDIO-ONLY-GEMINI-RESEARCH-BRIE-5F62` — [`todo/unbox-dock-step-studio-only-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-dock-step-studio-only-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-UNBOX-DOCK-TWO-BAND-FLOOR-GEMINI-RESEARCH-BRIEFI-8EE0` — [`todo/unbox-dock-two-band-floor-GEMINI-RESEARCH-BRIEFING.md`](../todo/unbox-dock-two-band-floor-GEMINI-RESEARCH-BRIEFING.md)

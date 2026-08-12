@@ -83,11 +83,16 @@ export interface SlicedActionDockProps {
    */
   docked?: boolean;
   /**
-   * Render ONLY the flush-square track — no dock band, no centering column, no
+   * Render ONLY the track — no dock band, no centering column, no
    * safe-area padding. For mounting the CTA inside another control's chrome
-   * (Unbox Band 1 trailing). Track fills `h-11` (Band 1).
+   * (composer footer · Arrival/Testing Band 1).
    */
   embedded?: boolean;
+  /**
+   * When `embedded`, choose track chrome. `flush` (default) = ops square.
+   * `pill` = rounded-2xl divided track for the Omnichannel composer footer.
+   */
+  embeddedChrome?: 'flush' | 'pill';
   /** Dock placement. Default `bottom`. */
   edge?: SlicedActionEdge;
   /**
@@ -155,6 +160,7 @@ export function SlicedActionDock({
   fullWidth = false,
   docked = false,
   embedded = false,
+  embeddedChrome = 'flush',
   edge = 'bottom',
   align = 'center',
   className,
@@ -180,11 +186,14 @@ export function SlicedActionDock({
 
   const wrapperClass = slicedActionDockWrapperClass({ edge, docked, embedded });
 
-  // Embedded fills Band 1 height as a flush-square segment (ops chrome).
-  const trackChrome = embedded ? EMBEDDED_TRACK : PILL_TRACK;
-  const segmentH = embedded ? 'h-11' : 'h-12';
-  const radiusL = embedded ? 'rounded-none' : 'rounded-l-2xl';
-  const radiusR = embedded ? 'rounded-none' : 'rounded-r-2xl';
+  // Embedded flush = Band 1 ops square. Embedded pill = composer-footer bubble.
+  // Non-embedded always uses the floating pill track.
+  const usePillChrome = !embedded || embeddedChrome === 'pill';
+  const trackChrome = usePillChrome ? PILL_TRACK : EMBEDDED_TRACK;
+  const segmentH = usePillChrome ? 'h-12' : 'h-11';
+  const radiusL = usePillChrome ? 'rounded-l-2xl' : 'rounded-none';
+  const radiusR = usePillChrome ? 'rounded-r-2xl' : 'rounded-none';
+  const dataEmbeddedChrome = embedded ? embeddedChrome : undefined;
 
   const track = (
     <>
@@ -204,6 +213,7 @@ export function SlicedActionDock({
           data-edge={edge}
           data-align={align}
           data-embedded={embedded ? 'true' : undefined}
+          data-embedded-chrome={dataEmbeddedChrome}
           data-segments="menu,primary"
         >
           {/* Menu segment — left half of pill */}
@@ -226,7 +236,7 @@ export function SlicedActionDock({
                 'flex items-center justify-center border-r border-white/20 bg-transparent text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
                 segmentH,
                 radiusL,
-                embedded ? 'px-2' : 'px-3',
+                usePillChrome ? 'px-3' : 'px-2',
               )}
             >
               <ChevronDown
@@ -297,8 +307,8 @@ export function SlicedActionDock({
               'inline-flex min-w-0 items-center justify-center gap-2 bg-transparent text-sm font-semibold text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
               segmentH,
               radiusR,
-              embedded ? 'px-3.5' : 'px-5',
-              fullWidth ? 'flex-1' : embedded ? '' : 'min-w-[9rem]',
+              usePillChrome ? 'px-5' : 'px-3.5',
+              fullWidth ? 'flex-1' : usePillChrome ? 'min-w-[9rem]' : '',
             )}
           >
             {leadingIcon}
@@ -317,11 +327,12 @@ export function SlicedActionDock({
           data-edge={edge}
           data-align={align}
           data-embedded={embedded ? 'true' : undefined}
+          data-embedded-chrome={dataEmbeddedChrome}
           data-segments="primary"
           className={cn(
             'inline-flex items-center justify-center gap-2.5 text-sm font-semibold text-white outline-none transition-[filter] focus-visible:ring-2 focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
             segmentH,
-            embedded ? 'px-4' : 'px-6',
+            usePillChrome ? 'px-6' : 'px-4',
             trackChrome,
             isDisabled ? '' : 'hover:brightness-[0.96] active:brightness-[0.92]',
             solidBg,
