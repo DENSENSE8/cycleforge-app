@@ -3,19 +3,28 @@
  * StationScanBar across the app.
  *
  * Responsibilities:
- *   1. Hold the current focus binding (Insert / ScrollLock / F1–F12, default
- *      "Insert"). Hydrated from localStorage; durable SoT is staff_preferences.
+ *   1. Hold the current focus binding (any non-reserved key; default "Insert").
+ *      Hydrated from localStorage; durable SoT is staff_preferences.
+ *      Insert / ScrollLock / F1–F12 reclaim even while an input is focused;
+ *      other bindings yield over editable targets so typing is not stolen.
  *   2. Keep a stack of mounted scan-bar targets. Most-recently-registered wins.
  *   3. ONE global keydown listener:
- *        - bare Insert/F* → focus + select (reclaim mid-carton)
+ *        - bare reclaim key → focus + select (reclaim mid-carton)
  *        - ⌘. / Ctrl+. → **arm next scan** (clear value + focus + select)
  *          — the station ingestion bar for the next carton, not the Unbox dock
  *          wedge (`receiving-focus-scan` / `⌘; m → s` owns that locus).
+ *   4. Pointer APIs (`requestScanFocus` / `requestScanNext`) for the gear
+ *      popover chips — same focus path as the keys, without entering rebind.
  *
  * Pure module, no React imports — consumed via useScanHotkey / useRegisterScanTarget.
  */
 
-import { DEFAULT_FOCUS_SCAN_HOTKEY, FOCUS_SCAN_HOTKEY_RE } from '@/lib/schemas/staff-preferences';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import {
+  DEFAULT_FOCUS_SCAN_HOTKEY,
+  FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
+  isBindableFocusScanHotkey,
+} from '@/lib/schemas/staff-preferences';
 
 const STORAGE_KEY = 'scan:focus-hotkey';
 
@@ -27,7 +36,7 @@ function readStored(): string {
   if (!isBrowser()) return DEFAULT_FOCUS_SCAN_HOTKEY;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw && FOCUS_SCAN_HOTKEY_RE.test(raw) ? raw : DEFAULT_FOCUS_SCAN_HOTKEY;
+    return raw && isBindableFocusScanHotkey(raw) ? raw : DEFAULT_FOCUS_SCAN_HOTKEY;
   } catch {
     return DEFAULT_FOCUS_SCAN_HOTKEY;
   }
@@ -72,7 +81,7 @@ export function getHotkey(): string {
 
 /** Set + persist (localStorage immediately, server via the registered persister). */
 export function setHotkey(key: string): void {
-  if (!FOCUS_SCAN_HOTKEY_RE.test(key) || key === hotkey) return;
+  if (!isBindableFocusScanHotkey(key) || key === hotkey) return;
   hotkey = key;
   writeStored(key);
   persister?.(key);
@@ -81,7 +90,7 @@ export function setHotkey(key: string): void {
 
 /** Adopt a server value WITHOUT writing it back (hydration only). */
 export function hydrateHotkey(key: string | null | undefined): void {
-  if (!key || !FOCUS_SCAN_HOTKEY_RE.test(key) || key === hotkey) return;
+  if (!key || !isBindableFocusScanHotkey(key) || key === hotkey) return;
   hotkey = key;
   writeStored(key);
   emit();
@@ -146,6 +155,16 @@ function armNextTopTarget(): void {
   topTarget()?.armNext();
 }
 
+/** Pointer reclaim — same path as the bare reclaim key (keep typed text). */
+export function requestScanFocus(): void {
+  focusTopTarget();
+}
+
+/** Pointer next-scan — same path as ⌘. / Ctrl+. (clear + focus). */
+export function requestScanNext(): void {
+  armNextTopTarget();
+}
+
 /**
  * Operator-facing face for the universal next-scan chord (clear + focus the
  * station Ticket · Tracking · PO bar). House glyph is Mac-first (`⌘.`); the
@@ -181,6 +200,14 @@ function ensureGlobalListener(): void {
       // Shift+<hotkey> is a DIFFERENT chord — Pending grid binds Shift+F2.
       if (e.shiftKey) return;
       if (e.key !== hotkey) return;
+      // Printable / custom reclaim keys yield while typing; Insert · F* ·
+      // ScrollLock still reclaim from mid-field (warehouse classic).
+      if (
+        !FOCUS_SCAN_ALWAYS_AVAILABLE_RE.test(hotkey) &&
+        isEditableKeyTarget(e.target)
+      ) {
+        return;
+      }
       e.preventDefault();
       focusTopTarget();
     },

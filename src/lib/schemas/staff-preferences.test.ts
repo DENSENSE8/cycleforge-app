@@ -1,40 +1,49 @@
 /**
- * Guard the focus-scan hotkey allowlist: non-typing keys only (global listener
- * must not steal printable text entry). Insert is the barcode-friendly default.
+ * Guard the focus-scan hotkey allowlist: classic Insert / F-keys / ScrollLock
+ * stay always-available mid-field; any other non-reserved key is bindable.
  */
 
 import { test } from 'node:test';
 import { ok, equal } from 'node:assert';
 import {
   DEFAULT_FOCUS_SCAN_HOTKEY,
+  FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
   FOCUS_SCAN_HOTKEY_RE,
+  isBindableFocusScanHotkey,
   StaffPreferencesPutBody,
 } from './staff-preferences';
 
 test('default focus-scan hotkey is Insert', () => {
   equal(DEFAULT_FOCUS_SCAN_HOTKEY, 'Insert');
   ok(FOCUS_SCAN_HOTKEY_RE.test(DEFAULT_FOCUS_SCAN_HOTKEY));
+  ok(isBindableFocusScanHotkey(DEFAULT_FOCUS_SCAN_HOTKEY));
 });
 
-test('FOCUS_SCAN_HOTKEY_RE accepts Insert, ScrollLock, and F1–F12', () => {
+test('FOCUS_SCAN_ALWAYS_AVAILABLE_RE accepts Insert, ScrollLock, and F1–F12', () => {
   for (const key of ['Insert', 'ScrollLock', 'F1', 'F2', 'F12']) {
-    ok(FOCUS_SCAN_HOTKEY_RE.test(key), `${key} should be allowed`);
+    ok(FOCUS_SCAN_ALWAYS_AVAILABLE_RE.test(key), `${key} should be always-available`);
+    ok(isBindableFocusScanHotkey(key), `${key} should be bindable`);
   }
 });
 
-test('FOCUS_SCAN_HOTKEY_RE rejects printable and out-of-range keys', () => {
-  for (const key of ['a', '1', '`', 'Tab', 'Escape', 'Pause', 'F0', 'F13', 'insert', 'scrolllock']) {
-    ok(!FOCUS_SCAN_HOTKEY_RE.test(key), `${key} should be rejected`);
+test('isBindableFocusScanHotkey accepts custom keys and rejects reserved', () => {
+  for (const key of ['a', '1', 'Tab', 'Pause', 'Home', 'Delete', '`']) {
+    ok(isBindableFocusScanHotkey(key), `${key} should be bindable`);
+  }
+  for (const key of ['Escape', 'Meta', 'Control', 'Alt', 'Shift', 'Dead', 'Unidentified', '']) {
+    ok(!isBindableFocusScanHotkey(key), `${key} should be rejected`);
   }
 });
 
-test('StaffPreferencesPutBody accepts Insert and rejects printable keys', () => {
+test('StaffPreferencesPutBody accepts classic + custom reclaim keys', () => {
   ok(StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Insert' }).success);
   ok(StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'ScrollLock' }).success);
   ok(StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'F8' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Pause' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'a' }).success);
   ok(StaffPreferencesPutBody.safeParse({ focusScanHotkey: null }).success);
-  ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'a' }).success);
-  ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Pause' }).success);
+  ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Escape' }).success);
+  ok(!StaffPreferencesPutBody.safeParse({ focusScanHotkey: 'Meta' }).success);
 });
 
 test('unboxPinnedExtraTabs is bounded — a third pin does not persist (D2 · D14)', () => {

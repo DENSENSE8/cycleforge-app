@@ -4,20 +4,48 @@ import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
 
 /**
- * Bindable focus-scan hotkey. The listener is GLOBAL, so printable letters /
- * digits are banned — they would hijack normal typing. Allowed set is
- * non-typing keys that barcode wedges can emit and operators rarely press:
- *   - Insert (default) — warehouse/POS classic for “jump to scan field”
- *   - ScrollLock — near-zero collision alternate
- *   - F1–F12 — kept for operators who already prefer function keys
+ * Keys that reclaim focus even while an editable field is focused — warehouse
+ * classics a barcode wedge can emit without colliding with typed text.
+ * Printable / named keys outside this set are still bindable, but the global
+ * listener yields over inputs (see `isEditableKeyTarget`).
  */
-export const FOCUS_SCAN_HOTKEY_RE = /^(Insert|ScrollLock|F([1-9]|1[0-2]))$/;
+export const FOCUS_SCAN_ALWAYS_AVAILABLE_RE =
+  /^(Insert|ScrollLock|F([1-9]|1[0-2]))$/;
+
+/** Modifier / cancel / dead keys — never a reclaim binding. */
+const FOCUS_SCAN_RESERVED_KEYS = new Set([
+  'Escape',
+  'Meta',
+  'Control',
+  'Alt',
+  'Shift',
+  'Dead',
+  'Unidentified',
+  'Process',
+  'Compose',
+]);
 
 /**
- * The selectable set behind {@link FOCUS_SCAN_HOTKEY_RE} — one SoT for the regex
- * gate AND the Settings picker, so a rendered option can never be a value the
- * validator would reject. Order is the operator's mental model: the two named
- * keys first, then F1–F12.
+ * True when `key` (`KeyboardEvent.key`) may be stored as the focus-scan reclaim
+ * binding. Any non-reserved key is allowed; always-available keys keep working
+ * mid-field, others yield while typing.
+ */
+export function isBindableFocusScanHotkey(key: string): boolean {
+  if (!key || key.length > 32) return false;
+  if (FOCUS_SCAN_RESERVED_KEYS.has(key)) return false;
+  return true;
+}
+
+/**
+ * Legacy regex kept for call sites / docs that still name the classic set.
+ * Prefer {@link isBindableFocusScanHotkey} for validation — reclaim is open to
+ * any non-reserved key.
+ */
+export const FOCUS_SCAN_HOTKEY_RE = FOCUS_SCAN_ALWAYS_AVAILABLE_RE;
+
+/**
+ * Preset chips in Settings — classic non-typing keys. Operators can also capture
+ * any other bindable key via the scan-bar gear or Settings “Press a key…”.
  */
 export const FOCUS_SCAN_HOTKEY_OPTIONS: readonly string[] = [
   'Insert',
@@ -126,7 +154,9 @@ export const StaffPreferencesPutBody = z
   .object({
     focusScanHotkey: z
       .string()
-      .regex(FOCUS_SCAN_HOTKEY_RE, 'Hotkey must be Insert, ScrollLock, or F1–F12')
+      .min(1)
+      .max(32)
+      .refine(isBindableFocusScanHotkey, 'Hotkey must be a single non-reserved key')
       .nullable()
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
