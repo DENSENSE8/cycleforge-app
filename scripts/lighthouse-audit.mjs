@@ -44,7 +44,13 @@ export const ROUTES = [
   { path: '/unbox', tier: 1, auth: true, formFactor: 'desktop' },
   { path: '/triage', tier: 1, auth: true },
   { path: '/packer', tier: 1, auth: true },
-  { path: '/test', tier: 1, auth: true }, // testing station (the old /tech redirects here)
+  // Testing station (the old `/tech` redirects here). Pinned `formFactor:
+  // 'desktop'` for the same reason as `/unbox`: this is a standing scan bench on
+  // a warehouse monitor, and its default landing (Ready to Pack) is a workbench
+  // sheet that only exists on the desktop tree. `/test` has NO mobile UA rewrite,
+  // so a mobile audit measured the right TREE at the wrong form factor —
+  // throttled 3x-mobile CPU against a desk surface no phone ever loads.
+  { path: '/test', tier: 1, auth: true, formFactor: 'desktop' },
   { path: '/search', tier: 1, auth: true },
   { path: '/m/receive', tier: 1, auth: true },
   { path: '/m/scan', tier: 1, auth: true },

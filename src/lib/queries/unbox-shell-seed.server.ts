@@ -34,7 +34,12 @@
 import 'server-only';
 import type { DehydratedState } from '@tanstack/react-query';
 import { seedUnboxStation } from '@/lib/queries/unbox-spine-seed.server';
+import { seedReadyToPackStation } from '@/lib/queries/ready-to-pack-shell-seed.server';
+import { shouldSeedReadyToPackQueue } from '@/lib/queries/unshipped-seed-gate';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+
+/** Testing station — `/test`, plus the legacy `/tech` the proxy redirects from. */
+const TESTING_SURFACE_ROUTES: ReadonlySet<string> = new Set(['/test', '/tech']);
 
 /**
  * The seed for the app shell, or `null` when this request is not the Unbox
@@ -57,4 +62,42 @@ export async function maybeSeedUnboxShell(
     console.error('maybeSeedUnboxShell failed; client will fetch', error);
     return null;
   }
+}
+
+/**
+ * The shell paint seed for whichever station this request is on, or `null`.
+ *
+ * ONE dispatcher rather than a seed module per route wired into the layout:
+ * these all answer the same question — *what must be in the first HTML that the
+ * page's own `HydrationBoundary` is too late to supply* — and the root layout
+ * should not grow a branch per station.
+ *
+ * A station belongs here only because its first-paint content is mounted by the
+ * SHELL (a rail that is a sibling of `children`, and therefore renders first):
+ *
+ * - `/unbox` — the recents rail owns the largest contentful element.
+ * - `/test` — the left rail's `ShippingScanBand` mounts `packPlacementQuery`
+ *   before the page renders, so a page-level seed of that key lands in
+ *   `HydrationBoundary`'s deferred path and never reaches SSR. (Measured: the
+ *   KPI band still server-rendered its skeleton and swapped at hydration.)
+ *
+ * `search` is the raw query string (`x-search`, set by the proxy), which the
+ * Testing gate needs because its tabs live in the URL and only the default one
+ * reads the seed.
+ */
+export async function maybeSeedShell(
+  pathname: string,
+  search: string,
+): Promise<DehydratedState | null> {
+  if (TESTING_SURFACE_ROUTES.has(pathname)) {
+    const params = Object.fromEntries(new URLSearchParams(search));
+    if (!shouldSeedReadyToPackQueue(params)) return null;
+    try {
+      return await seedReadyToPackStation();
+    } catch (error) {
+      console.error('maybeSeedShell(test) failed; client will fetch', error);
+      return null;
+    }
+  }
+  return maybeSeedUnboxShell(pathname);
 }

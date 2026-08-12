@@ -1,7 +1,17 @@
 {
-  "generatedAt": "2026-08-12T07:21:41.951Z",
+  "generatedAt": "2026-08-12T14:58:26.992Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "ace38c6c31b6f08bc37d346e454e4fce1ecbce44",
+      "shortSha": "ace38c6c3",
+      "date": "2026-08-12T00:22:28-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(unbox): shell-level station seed, claim polish, and workbench sheet shell",
+      "body": "Land immediate-paint Unbox seeding above the layout so the rail hydrates with\nthe page, consolidate Sheets flush chrome into WorkbenchSheetView, and ship\nclaim/label-note and rail shipment-key continuity on main.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "shell-level station seed, claim polish, and workbench sheet shell"
+    },
     {
       "sha": "7f2493852f2792ce448f233a5d3539b447ce0fa1",
       "shortSha": "7f2493852",
@@ -1971,16 +1981,6 @@
       "body": "Add pack verification APIs, review workspace, and LedgerGrid; consolidate station context chrome; migrate eBay tokens to vault; improve unbox/triage rails, dashboard search, mobile packer photos, and Ecwid outbound docs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "feature",
       "title": "pack review station, station entity-context SoT, eBay vault, and receiving rail polish"
-    },
-    {
-      "sha": "6b7aab4cec4f493175b4ad1b19ece6745283336c",
-      "shortSha": "6b7aab4ce",
-      "date": "2026-07-20T08:13:05-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(ci): sync package-lock for lighthouse tooling deps",
-      "body": "Restore npm ci so CI can install and Deploy production can run again after\nlighthouse/chrome-launcher/bundle-analyzer and web-vitals were added without a lockfile update.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "sync package-lock for lighthouse tooling deps"
     }
   ]
 }

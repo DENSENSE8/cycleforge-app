@@ -1665,9 +1665,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
  * Unmatched/unfound cartons live in the `receiving` table with no
  * `receiving_line` row yet, so they never come back from the main query.
  * They're appended as placeholder rows for `all` AND `activity`. For
- * `activity` (Unbox History), only Unbox-touched lineless cartons qualify —
- * door-scan-only Unfound stays in Unfound / triage feeds, not History.
- * `all` stays inclusive for search / resolution.
+ * `activity` (Unbox History) with no search, only Unbox-touched lineless
+ * cartons qualify — door-scan-only Unfound stays in Unfound / triage feeds,
+ * not History. An active History search (same rationale as skipWeekFilter)
+ * widens to lineless `zoho_po` cartons and drops the Unbox-touch gate so a
+ * tracking / PO lookup can resolve a ghost PO package that has an STN but no
+ * lines yet. `all` stays inclusive for search / resolution.
  */
 export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): boolean {
   return (
@@ -1680,7 +1683,8 @@ export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): 
 /**
  * History (`view=activity`) membership for lineless unmatched placeholders:
  * opened or unboxed on the Unbox surface — mirrors when a placeholder would
- * render as non-SCANNED (see buildUnmatchedEmptyReceivingLine).
+ * render as non-SCANNED (see buildUnmatchedEmptyReceivingLine). Skipped when
+ * the operator is actively searching (see {@link buildUnmatchedPlaceholdersSql}).
  */
 const ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL = ` AND (
               ru.unboxed_at IS NOT NULL
@@ -1688,7 +1692,7 @@ const ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL = ` AND (
               OR unbox_open.unbox_opened_at IS NOT NULL
             )`;
 
-/** Placeholder rows + count for lineless unmatched/local-pickup cartons. */
+/** Placeholder rows + count for lineless unmatched/local-pickup/(search) zoho_po cartons. */
 export function buildUnmatchedPlaceholdersSql(
   query: ReceivingLinesQuery,
   orgId: string,
@@ -1718,12 +1722,22 @@ export function buildUnmatchedPlaceholdersSql(
           )`;
     }
   }
-  const activityUnboxTouchSql =
-    query.view === 'activity' ? ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL : '';
+  // Browse History stays Unfound/local-pickup + Unbox-touched. An armed search
+  // must also resolve lineless Zoho PO cartons (STN stamped, lines not yet
+  // materialized — eBay→Zoho ghost packages) and must not hide them behind the
+  // Unbox-touch gate — same "search outranks browse membership" rule as
+  // skipWeekFilter on the History mode descriptor.
+  const searchActive = Boolean(search);
+  const sourceInSql = searchActive
+    ? `('unmatched', 'local_pickup', 'zoho_po')`
+    : `('unmatched', 'local_pickup')`;
+  const activityGatesMembership = query.view === 'activity' && !searchActive;
+  const activityUnboxTouchSql = activityGatesMembership
+    ? ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL
+    : '';
   // Count needs the same unbox joins when History gates membership.
-  const countUnboxJoinsSql =
-    query.view === 'activity'
-      ? `
+  const countUnboxJoinsSql = activityGatesMembership
+    ? `
              LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
              LEFT JOIN LATERAL (
                SELECT MAX(oe_uo.occurred_at) AS unbox_opened_at
@@ -1733,7 +1747,7 @@ export function buildUnmatchedPlaceholdersSql(
                  AND oe_uo.entity_id = r.id
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
              ) unbox_open ON TRUE`
-      : '';
+    : '';
 
   return {
     list: {
@@ -1799,7 +1813,7 @@ export function buildUnmatchedPlaceholdersSql(
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
            ) unbox_open ON TRUE
            WHERE r.organization_id = $1
-             AND r.source IN ('unmatched', 'local_pickup')
+             AND r.source IN ${sourceInSql}
              AND NOT EXISTS (
                SELECT 1 FROM receiving_line rl
                 WHERE rl.receiving_id = r.id
@@ -1817,7 +1831,7 @@ export function buildUnmatchedPlaceholdersSql(
              FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id${countUnboxJoinsSql}
             WHERE r.organization_id = $1
-              AND r.source IN ('unmatched', 'local_pickup')
+              AND r.source IN ${sourceInSql}
               AND NOT EXISTS (
                 SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id

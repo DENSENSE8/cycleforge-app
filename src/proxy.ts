@@ -633,6 +633,12 @@ export function proxy(req: NextRequest): NextResponse {
   // build a `?next=` query when it redirects to /signin.
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-pathname', rewriteTarget ?? pathname);
+  // …and the query beside it. A ROOT LAYOUT is handed no `searchParams`, so a
+  // shell-level paint seed (`maybeSeedShell`) could otherwise only be gated on
+  // the path — and on a station whose tabs live in the URL that means paying
+  // for a seed the mounted tab will never read. Empty string when there is no
+  // query; never used for auth or routing.
+  requestHeaders.set('x-search', req.nextUrl.search);
 
   // Stamp the tenant slug (if any) so downstream handlers can resolve the
   // org without re-parsing the host header. The slug is just a hint —

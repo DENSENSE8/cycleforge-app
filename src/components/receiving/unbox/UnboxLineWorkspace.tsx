@@ -1,35 +1,65 @@
 'use client';
 
 /**
- * Unbox right-pane shell — station-first.
- *
- * - Station (no `?unboxdesk=`): carton overlay OR empty scan shell. Workbench
- *   tables are NOT mounted (including not as a hidden underlay).
- * - Desk (`?unboxdesk=1`): lazy `UnboxWorkspaceView` (Queue / Recent / History).
+ * Unbox right-pane shell — browse workbench always mounted; focused line
+ * workspace crossfades over it (TestingLineWorkspace pattern).
  *
  * Motion is the STATION cadence preset (`stationCartonSwap`), not the pointer
  * `workbenchPaneSettle` its siblings use. Exit is instant.
  *
- * - Desk→first open: `mode="wait"` + enter fade (~0.12s).
+ * - Browse→first open: `mode="wait"` + enter fade (~0.12s).
  * - Carton→carton (rail PO switch / next scan): `mode="sync"` + hard-cut enter
  *   (`initial={false}`). The new opaque pane mounts on top while the old one
  *   exits underneath — `mode="wait"` would remove A before mounting B and
- *   punch a white hole through the card host.
+ *   punch a white hole through the card host while the underlay stays
+ *   `visibility: hidden`. Concurrent *semi-transparent* fades still
+ *   double-image; opaque cover-replace does not.
  *
- * Remount is deliberately KEPT — it re-seeds the editor cleanly per carton.
- * Overlay shell paints `bg-surface-canvas` to match the station body.
+ * Remount is deliberately KEPT — it re-seeds the editor cleanly per carton
+ * (see in-place swap note below). Overlay shell paints `bg-surface-canvas`
+ * to match the station body (not card white).
  *
- * The carton instrument (`ReceivingLineWorkspace` / `LineEditPanel`) stays
- * `next/dynamic` so desk JS never pulls the ~1.1k-LOC panel. Desk tables are
- * also dynamic so cold station land never downloads the grid.
+ * The crossfade is keyed on CARTON identity (`workspace-pane-key.ts`), not on
+ * how the carton was opened. A scan landing on a different box still remounts
+ * the shell; the scan-resolution upgrade (pending stub → matched → hydrated)
+ * and a scan→rail-click of the SAME box reconcile in place.
+ *
+ * DO NOT go further and swap carton→carton IN PLACE (the queue-inspector
+ * exception in `display/motion-crossfade.md`). That exception has stated
+ * preconditions and `LineEditPanel` does not meet them today: `unboxView`,
+ * `classifyExpand`, and `pairingOpen` have no reset keyed on `row.id`, so an
+ * in-place carton swap would carry the open tab and sub-form across two
+ * different boxes — and the notes composer's dirty draft has no
+ * flush-before-swap, which is exactly how one carton's note lands on another.
+ * The remount is what guarantees a clean re-seed. Sync + opaque cover-replace
+ * buys zero-flash rail switches without taking that risk; removing the
+ * *remount* needs those resets first.
  */
 
 import { useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
-import { UnboxStationEmptyShell } from '@/components/receiving/unbox/UnboxStationEmptyShell';
+
+// Phase 2 (lazy carton graph): `ReceivingLineWorkspace` pulls the ~1.1k-LOC
+// `LineEditPanel` + the whole Displays registry — the heaviest module on
+// `/unbox`. Browse is the route's declared LCP surface and renders only
+// `UnboxWorkspaceView`, so the carton instrument must NOT sit in the browse
+// bundle. `next/dynamic` code-splits it: the chunk downloads on the FIRST
+// carton open (or a deep-link restore) and is cached, so the carton→carton
+// remount below stays flash-free. `ssr: false` keeps it out of the browse
+// server tree; the loading fallback only paints during that first-open fetch —
+// never on browse (browse renders `UnboxWorkspaceView`, not this component).
+// The mount stays gated on `showOverlay && workspace`, so the chunk is fetched
+// only when a carton is actually open.
+const ReceivingLineWorkspace = dynamic(
+  () =>
+    import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
+      (m) => m.ReceivingLineWorkspace,
+    ),
+  { ssr: false, loading: () => <ReceivingWorkspaceSkeleton /> },
+);
+import { UnboxWorkspaceView } from '@/components/receiving/unbox/UnboxWorkspaceView';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
@@ -38,7 +68,6 @@ import {
   resolveWorkspacePaneSlot,
   type WorkspacePaneSlot,
 } from '@/components/receiving/workspace-pane-key';
-import { isUnboxDesk } from '@/lib/receiving/unbox-selection-url';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
 import { AppSurfaceFill, appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
@@ -48,27 +77,11 @@ import type {
   WorkspaceState,
 } from '@/components/receiving/useReceivingWorkspacePane';
 
-const ReceivingLineWorkspace = dynamic(
-  () =>
-    import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
-      (m) => m.ReceivingLineWorkspace,
-    ),
-  { ssr: false, loading: () => <ReceivingWorkspaceSkeleton /> },
-);
-
-const UnboxWorkspaceView = dynamic(
-  () =>
-    import('@/components/receiving/unbox/UnboxWorkspaceView').then(
-      (m) => m.UnboxWorkspaceView,
-    ),
-  { ssr: false, loading: () => <ReceivingWorkspaceSkeleton showHeader={false} /> },
-);
-
 interface UnboxLineWorkspaceProps {
   staffId: string;
   workspace: WorkspaceState | null;
   nav: NavState | null;
-  /** A deep-link / MRU restore is resolving — show the workspace skeleton. */
+  /** A deep-link restore is resolving — show the workspace skeleton, not browse. */
   restorePending?: boolean;
   /** Last scan hit an already-unboxed carton — show the read-only receipt over the editor. */
   lookupReceipt?: UnboxLookupScanDetail | null;
@@ -98,9 +111,6 @@ export function UnboxLineWorkspace({
   recordInspectOpen = false,
   inspectorOpen = false,
 }: UnboxLineWorkspaceProps) {
-  const searchParams = useSearchParams();
-  const desk = isUnboxDesk(searchParams);
-
   // `motionRole.swap.scan` — the station-cadence swap, carried as one pair so
   // the carton→carton exit can never drift off its zero-duration contract.
   const { presence: panePresence, transition: paneTransition } = useMotionRole(
@@ -108,7 +118,9 @@ export function UnboxLineWorkspace({
   );
   const row = workspace?.row ?? null;
   const showOverlay = !!workspace;
-  // Deep-link / MRU restore: carton fetch in flight — skeleton, never desk sheet.
+  // Deep-link load (`?openReceivingId=`): the carton is being fetched but the
+  // overlay is not open yet. Show the workspace skeleton in the underlay so a
+  // refresh never flashes the browse feed before the restore lands.
   const showRestoreSkeleton = restorePending && !showOverlay;
 
   // Overlay presence identity — ONE key per physical carton (see
@@ -123,7 +135,7 @@ export function UnboxLineWorkspace({
 
   // Carton→carton while the overlay is already open: sync + hard-cut so the
   // new opaque pane covers the old one — `mode="wait"` would uncover the host
-  // between exit and enter. Desk→first open still uses wait + enter fade.
+  // between exit and enter. Browse→first open still uses wait + enter fade.
   const overlayWasOpenRef = useRef(false);
   const cartonSwapHardCut = showOverlay && overlayWasOpenRef.current;
   overlayWasOpenRef.current = showOverlay;
@@ -134,19 +146,15 @@ export function UnboxLineWorkspace({
   const showLookupReceipt =
     !!lookupReceipt && !!row && lookupReceipt.receivingId === row.receiving_id;
 
-  // Release SSR stand-in only for a settled empty bench (no MRU). Carton opens
-  // signal from ReceivingLineWorkspace after the middle chunk mounts — never
-  // hand LCP to restore skeleton / pulse bars / Browse CTA.
+  // Carton open / deep-link restore owns the centre — release the Queue SSR
+  // stand-in so it never covers the station workspace.
   const unboxPrimaryPaint = useUnboxPrimaryPaintOptional();
   useEffect(() => {
     if (!unboxPrimaryPaint) return;
-    if (!desk && !showOverlay && !showRestoreSkeleton) {
+    if (showOverlay || showRestoreSkeleton) {
       unboxPrimaryPaint.onPrimaryPainted();
     }
-  }, [unboxPrimaryPaint, showOverlay, showRestoreSkeleton, desk]);
-
-  // Desk underlay only when explicitly on desk AND no carton overlay.
-  const showDesk = desk && !showOverlay && !showRestoreSkeleton;
+  }, [unboxPrimaryPaint, showOverlay, showRestoreSkeleton]);
 
   return (
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
@@ -158,15 +166,13 @@ export function UnboxLineWorkspace({
       >
         {showRestoreSkeleton ? (
           <ReceivingWorkspaceSkeleton />
-        ) : showDesk ? (
+        ) : (
           <UnboxWorkspaceView
             selectedLine={row}
             recordInspectOpen={recordInspectOpen}
             inspectorOpen={inspectorOpen}
           />
-        ) : !showOverlay ? (
-          <UnboxStationEmptyShell />
-        ) : null}
+        )}
       </div>
 
       {/* Defensive canvas plate under the keyed overlay — matches station fill
