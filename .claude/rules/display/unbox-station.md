@@ -12,6 +12,11 @@
 
 **Reference implementation:** `src/components/receiving/workspace/LineEditPanel.tsx`
 
+**Cold land (station-first, 2026-08-11):** bare `/unbox` opens the Unboxed MRU
+carton (or an empty scan bench) for immediate wedge work. Workbench tables
+(Queue · Recent · History) mount only after **Back to list** (`?unboxdesk=1`).
+See SoT → Paint content order · `unbox-selection-url.ts`.
+
 ---
 
 ## The anatomy (one picture)

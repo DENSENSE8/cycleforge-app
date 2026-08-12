@@ -19,7 +19,7 @@
  * makes the row's own commit ambiguous at a bench and is unreachable by the
  * keyboard path the row already owns. So the sanctioned shape is a child
  * `TabDisplay appearance="segment"` in the leaf header's trailing slot
- * (`setLeafTrailing`, the Claim New·Link grammar) that says what committing a
+ * (`setLeafTrailing`, the Claim Create|Link body-combobox grammar) that says what committing a
  * row DOES. Rows stay one control; ↑↓ / Enter / click keep working unchanged.
  *
  * **It composes, it does not fork.** Addresses are minted by the same waist the

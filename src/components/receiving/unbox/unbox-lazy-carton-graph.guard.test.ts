@@ -67,6 +67,19 @@ describe('Unbox lazy carton graph (Phase 2)', () => {
     assert.match(src, /ssr:\s*false/);
   });
 
+  it('UnboxLineWorkspace also lazy-loads UnboxWorkspaceView (desk only — station-first)', () => {
+    const src = read('src/components/receiving/unbox/UnboxLineWorkspace.tsx');
+    assert.doesNotMatch(
+      src,
+      /import\s*\{[^}]*UnboxWorkspaceView[^}]*\}\s*from/,
+      'desk tables must not static-import onto the station cold path',
+    );
+    assert.match(
+      src,
+      /import\(\s*['"]@\/components\/receiving\/unbox\/UnboxWorkspaceView['"]\s*\)/,
+    );
+  });
+
   it('ReceivingRightPane statically imports the two workspace shells (they gate the split, not the pane)', () => {
     // The shell may import the shells; the split lives INSIDE each shell. This
     // documents that the pane is allowed to pull both — the carton graph stays

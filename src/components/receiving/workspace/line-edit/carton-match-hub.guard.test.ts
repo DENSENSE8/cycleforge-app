@@ -144,14 +144,13 @@ describe('CartonMatchHub (P1)', () => {
       'utf8',
     );
     assert.match(ticketHost, /ReceivingClaimPanel/);
-    const claimNav = readFileSync(
-      join(process.cwd(), 'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx'),
+    const claimMode = readFileSync(
+      join(process.cwd(), 'src/components/receiving/workspace/claim/components/ClaimModeSelect.tsx'),
       'utf8',
     );
-    assert.match(claimNav, /label: 'New'/);
-    assert.match(claimNav, /label: 'Link'/);
-    assert.match(claimNav, /useSegmentChords/);
-    assert.match(claimNav, /segmentChordHint/);
+    assert.match(claimMode, /label: 'Create'/);
+    assert.match(claimMode, /label: 'Link'/);
+    assert.match(claimMode, /useSegmentChords/);
   });
 
   it('opens PO tab on receiving-open-pairing-po (carton # ---- → Link PO)', () => {

@@ -35,13 +35,11 @@ describe('support chat type hierarchy (embedded)', () => {
   const header = readFileSync(HEADER, 'utf8');
   const subject = readFileSync(SUBJECT, 'utf8');
 
-  it('message body always uses text-role-data (never micro when compact)', () => {
-    assert.match(stream, /text-role-data leading-relaxed/);
-    assert.doesNotMatch(
-      stream,
-      /compact\s*\?\s*['`][^'`]*text-role-micro[^'`]*leading-snug/,
-    );
-    // No compact ternary that shrinks the body role itself.
+  it('ledger body stays text-role-data; bubble densifies via TICKET_BUBBLE_BODY (micro)', () => {
+    assert.match(streamCode, /TICKET_LEDGER_BODY/);
+    assert.match(streamCode, /TICKET_BUBBLE_BODY/);
+    assert.match(streamCode, /dense \? TICKET_BUBBLE_BODY : TICKET_LEDGER_BODY/);
+    // No compact ternary that shrinks the ledger body role itself to micro.
     assert.doesNotMatch(stream, /compact \? 'text-role-micro' : 'text-role-data'/);
   });
 

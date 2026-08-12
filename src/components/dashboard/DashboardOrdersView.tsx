@@ -12,7 +12,7 @@
  * OrdersDrillHost (`olayout=drill`), or OrdersCompareHost (`clayout=split|quad`).
  */
 
-import { Suspense, useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
@@ -22,12 +22,10 @@ import {
   OutboundTriageBand,
   OutboundWorkspaceHeader,
 } from '@/components/dashboard/OutboundWorkspaceHeader';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchKpiBand } from '@/components/dashboard/workbench-kpi-collapse';
+  WorkbenchSheetView,
+  type WorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
@@ -51,7 +49,6 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
-import { cn } from '@/utils/_cn';
 
 function TableFallback() {
   return <div className="flex-1 bg-surface-canvas" aria-hidden />;
@@ -96,6 +93,19 @@ export function DashboardOrdersView({
     (isPrePackOrderView(orderView) || orderView === 'packed' || orderView === 'shipped');
   const { controlsEl, kpiOpen, onToggleKpi, setViewShellOpen } = useOrdersViewChrome();
   const { rows } = useRailActionSnapshot();
+
+  /**
+   * To-ship supplies its OWN chrome controller instead of the shell's local one:
+   * its `controlsEl` + KPI collapse live in `useOrdersViewChrome` because the
+   * View cluster sits on the pushing right inspector, not on Band 3
+   * (`workbench-ops-queue.md` → To-ship three-band flush). `controlsSlotRef` is
+   * `null` for the same reason — Band 3 hosts no controls here, so there is
+   * nothing to portal into.
+   */
+  const sheetChrome: WorkbenchSheetChrome = useMemo(
+    () => ({ controlsEl, controlsSlotRef: null, kpiOpen, toggleKpi: onToggleKpi }),
+    [controlsEl, kpiOpen, onToggleKpi],
+  );
 
   // Stale `?import=csv` after refresh (draft is session-only) — clear the flag.
   useEffect(() => {
@@ -180,61 +190,55 @@ export function DashboardOrdersView({
     );
 
   return (
-    <DashboardScrollShell
-      chrome={
-        showOutboundChrome ? (
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <OutboundWorkspaceHeader
-              orderView={orderView}
-              onSelectView={onSelectView}
-              className="border-l-0 border-t-0 shadow-sm"
-            />
-            <WorkbenchKpiBand
-              open={kpiOpen}
-              onSnapCollapse={() => {
-                if (kpiOpen) onToggleKpi();
-              }}
-              onSnapExpand={() => {
-                if (!kpiOpen) onToggleKpi();
-              }}
-            >
-              <OutboundKpiStrip mode={kpiMode} />
-            </WorkbenchKpiBand>
-            <OutboundTriageBand orderView={orderView} />
-          </div>
-        ) : undefined
+    <WorkbenchSheetView
+      chrome={sheetChrome}
+      // CSV staging OWNS the surface: it replaces the three bands entirely
+      // (there is no lifecycle to tab through mid-import), so the chrome slots
+      // go undefined and the shell renders no chrome at all.
+      tabs={
+        showOutboundChrome
+          ? ({ className }) => (
+              <OutboundWorkspaceHeader
+                orderView={orderView}
+                onSelectView={onSelectView}
+                className={className}
+              />
+            )
+          : undefined
+      }
+      kpi={showOutboundChrome ? <OutboundKpiStrip mode={kpiMode} /> : undefined}
+      // Band 3 is find-only here — no controls portal, no KPI toggle. Both live
+      // on the inspector View cluster.
+      triage={showOutboundChrome ? () => <OutboundTriageBand orderView={orderView} /> : undefined}
+      sheetHostClassName={
+        showOutboundChrome || showCsvStaging ? undefined : 'relative flex min-w-0 flex-col'
+      }
+      overlays={
+        showCsvStaging ? null : selectionEnabled ? (
+          <>
+            <OrderRailCompare />
+            <OrderRailShell />
+            <OrdersViewControlsRail />
+            {selectionOverlays}
+          </>
+        ) : (
+          <OrdersViewControlsRail />
+        )
       }
     >
-      <div className={showOutboundChrome || showCsvStaging ? WORKBENCH_SHEET_HOST : 'relative flex min-w-0 flex-col'}>
-        <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-          {showCsvStaging ? (
-            <CsvImportStagingHost />
-          ) : showCompare ? (
-            <OrdersCompareHost
-              selectMode={selectMode}
-              columnTriggerPortalTarget={controlsEl}
-            />
-          ) : showDrill ? (
-            <OrdersDrillHost
-              selectMode={selectMode}
-              columnTriggerPortalTarget={controlsEl}
-            />
-          ) : (
-            listBody
-          )}
-        </Suspense>
-      </div>
-
-      {showCsvStaging ? null : selectionEnabled ? (
-        <>
-          <OrderRailCompare />
-          <OrderRailShell />
-          <OrdersViewControlsRail />
-          {selectionOverlays}
-        </>
-      ) : (
-        <OrdersViewControlsRail />
-      )}
-    </DashboardScrollShell>
+      {/* The shell hands back the same `controlsEl` this surface supplied, so the
+          body reads it directly from the context rather than shadowing it. */}
+      {() =>
+        showCsvStaging ? (
+          <CsvImportStagingHost />
+        ) : showCompare ? (
+          <OrdersCompareHost selectMode={selectMode} columnTriggerPortalTarget={controlsEl} />
+        ) : showDrill ? (
+          <OrdersDrillHost selectMode={selectMode} columnTriggerPortalTarget={controlsEl} />
+        ) : (
+          listBody
+        )
+      }
+    </WorkbenchSheetView>
   );
 }

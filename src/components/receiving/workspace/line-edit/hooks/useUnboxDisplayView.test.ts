@@ -90,7 +90,21 @@ describe('buildDisplayPending (local snapshot)', () => {
     const closed = buildDisplayPending(null, undefined);
     assert.equal(closed.display, null);
     assert.equal(closed.photoAction, 'actions');
-    assert.equal(closed.claimMode, 'create');
+    assert.equal(closed.claimMode, 'link');
+  });
+
+  it('defaults claimMode to link when opening claim without an explicit mode', () => {
+    const claim = buildDisplayPending('ticket', { ticketAction: 'claim' });
+    assert.equal(claim.ticketActionRaw, 'claim');
+    assert.equal(claim.claimMode, 'link');
+  });
+
+  it('honors explicit create claimMode', () => {
+    const claim = buildDisplayPending('ticket', {
+      ticketAction: 'claim',
+      claimMode: 'create',
+    });
+    assert.equal(claim.claimMode, 'create');
   });
 
   it('maps legacy po-note raw id to linkage note nest', () => {

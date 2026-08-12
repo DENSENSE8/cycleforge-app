@@ -46,6 +46,30 @@ describe('Testing Ticket Displays + centre triage', () => {
     assert.doesNotMatch(panel, /ReceivingClaimModal/);
   });
 
+  it('QC reply presets opt out on Unbox Ticket Displays only', () => {
+    const unbox = read(
+      'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
+    );
+    assert.match(
+      unbox,
+      /showReplyPresets=\{false\}/,
+      'Unbox Ticket Displays hide All-good / QC pass·fail presets',
+    );
+    assert.doesNotMatch(
+      displays,
+      /showReplyPresets=\{false\}/,
+      'Testing Ticket Displays keep QC reply presets',
+    );
+    const arrival = read(
+      'src/components/receiving/triage/build-triage-displays.tsx',
+    );
+    assert.doesNotMatch(
+      arrival,
+      /showReplyPresets=\{false\}/,
+      'Arrival Ticket Displays keep QC reply presets',
+    );
+  });
+
   it('centre keeps PO lines + Pass · Print dock; no needs-attention band', () => {
     assert.match(panel, /TestingPoUnboxingSection/);
     assert.doesNotMatch(panel, /TestingNeedsAttentionBand/);

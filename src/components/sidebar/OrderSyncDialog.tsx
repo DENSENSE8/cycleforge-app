@@ -660,7 +660,7 @@ function ExceptionList({
  * Order import progress — non-modal RightRailHost occupant (`detail:order-sync`).
  * Flush edge-to-edge: parent underline **Orders** / **Exceptions**, child
  * segment **Google Sheets** / **Ecwid Direct** stacked under Orders (same
- * hierarchy as TicketDisplayHost Claim surface → ClaimWizardNav). Cancel is the
+ * hierarchy as TicketDisplayHost Claim surface → ClaimModeSelect). Cancel is the
  * only intentional abort while a transfer is in flight.
  */
 export function OrderSyncDialog({
@@ -701,7 +701,7 @@ export function OrderSyncDialog({
     (exceptions.stillOpen?.length ?? 0);
 
   // Parent underline (Orders · Exceptions) + child segment (Sheets · Ecwid) —
-  // same stacked hierarchy as TicketDisplayHost Claim → ClaimWizardNav.
+  // same stacked hierarchy as TicketDisplayHost Claim → ClaimModeSelect.
   const parentTabs = useMemo(
     () => [
       { id: 'orders' as const, label: 'Orders', count: ordersCount },

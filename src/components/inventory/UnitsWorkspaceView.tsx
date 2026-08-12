@@ -20,10 +20,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import {
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
@@ -99,7 +100,8 @@ export function UnitsWorkspaceView() {
 
   // ▦ column-display portal target — the header renders the portal div, the grid
   // portals its column-display trigger into it (Band-3 norm, minimal here).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  // Band-1 only: no KPI band, no Band-3 triage (honest absence).
+  const chrome = useWorkbenchSheetChrome();
 
   const onRowClick = useCallback(
     (row: UnitsOverviewRow) => {
@@ -146,21 +148,25 @@ export function UnitsWorkspaceView() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className="h-full overflow-y-hidden bg-transparent"
-        chrome={
-          <div className={WORKBENCH_SHEET_CHROME}>
+        // Band-1 only. The ▦ portal host is the CHROME HEADER here, not a
+        // Band-3 triage band — this sheet has no Band 3 — so the header takes
+        // the shell's controls slot ref directly.
+        tabs={({ className }) => (
             <WorkbenchChromeHeader
               density="band"
+              className={className}
               tabs={[{ id: 'units', label: 'Units' }]}
               activeTab="units"
               onTabChange={() => {}}
-              controlsSlotRef={setControlsEl}
+              controlsSlotRef={chrome.controlsSlotRef ?? undefined}
             />
-          </div>
-        }
+        )}
       >
-        <div className={WORKBENCH_SHEET_HOST}>
+        {({ controlsEl }) => (
+          <>
           <NonlinearTableHost<UnitsOverviewRow, UnitsGridColumnKey, UnitsGridColumn>
             binding={UNITS_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
@@ -190,8 +196,9 @@ export function UnitsWorkspaceView() {
             )}
             renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
           />
-        </div>
-      </DashboardScrollShell>
+          </>
+        )}
+      </WorkbenchSheetView>
 
       {/* Geometry-free — registers the picked record with the app-wide
           RightRailHost slot (returns null). */}

@@ -44,7 +44,10 @@ import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttac
 import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { formatDateTimePST } from '@/utils/date';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import {
+  getReceivingPoIdentityParts,
+  receivingProductTitle,
+} from '@/lib/receiving/po-group-title';
 import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
@@ -133,9 +136,7 @@ export function ReceivingLineOrderRow({
   const resolvePlatformMeta = usePlatformMeta();
   // Unfound cartons (no Zoho PO) arrive labelled "Unfound PO" from the server
   // (buildUnmatchedEmptyReceivingLine / UNMATCHED_EMPTY_LINE_LABEL).
-  const productTitle =
-    (row.catalog_product_title || row.zoho_item_title || row.item_name || row.zoho_item_id || '').trim() ||
-    'Unnamed inbound line';
+  const productTitle = receivingProductTitle(row);
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');

@@ -25,9 +25,16 @@ function code(s: string): string {
 describe('Locations Sheets flush mount', () => {
   const workspace = code(src('src/components/warehouse/LocationsWorkspace.tsx'));
 
-  it('uses WORKBENCH_SHEET_CHROME + HOST (not BODY/CHROME gutters)', () => {
-    assert.match(workspace, /WORKBENCH_SHEET_CHROME/);
-    assert.match(workspace, /WORKBENCH_SHEET_HOST/);
+  it('composes the Sheets shell (not BODY/CHROME gutters)', () => {
+    // The recipe moved into WorkbenchSheetView (2d) — the page composes the
+    // shell and no longer holds the tokens. Token ownership is asserted once in
+    // `workbench-sheet-view.guard.test.ts`.
+    //
+    // No `tabs={({ className })` assertion here: `LocationsWorkspaceHeader`
+    // takes no className (it is flush at source), so the page renders it with
+    // the slot's argument unused rather than inventing a prop to forward.
+    assert.match(workspace, /<WorkbenchSheetView/);
+    assert.match(workspace, /useWorkbenchSheetChrome/);
     assert.doesNotMatch(workspace, /WORKBENCH_BODY_COLUMN/);
     assert.doesNotMatch(workspace, /WORKBENCH_CHROME_COLUMN/);
   });

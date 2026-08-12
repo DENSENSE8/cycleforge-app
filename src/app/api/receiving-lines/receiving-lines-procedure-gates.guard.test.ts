@@ -6,12 +6,15 @@ import path from 'node:path';
 /**
  * The Unbox procedure's acknowledgement stamps must survive the whole wire.
  *
- * `normalizeRow` in `/api/receiving-lines` is a strict ALLOWLIST with no
+ * `normalizeRow` is a strict ALLOWLIST with no
  * passthrough: it builds a literal object field by field and drops everything
  * the SELECT returned that it does not name. That is a deliberate API contract,
  * and it is also a silent one — a column added to the builders but not to the
  * normalizer arrives at the client as `undefined`, which is indistinguishable
  * from "not acknowledged".
+ *
+ * Ownership: `src/lib/receiving/lines/normalize-row.ts` (imported by
+ * `/api/receiving-lines`).
  *
  * All three of these shipped exactly that way. The write routes stamped the
  * columns, `build-sql.ts` selected them, `derive-capture-step-states.ts` read
@@ -29,7 +32,7 @@ import path from 'node:path';
  */
 
 const ROOT = path.resolve(__dirname, '../../../..');
-const ROUTE = path.join(ROOT, 'src/app/api/receiving-lines/route.ts');
+const NORMALIZE_ROW = path.join(ROOT, 'src/lib/receiving/lines/normalize-row.ts');
 const BUILD_SQL = path.join(ROOT, 'src/lib/receiving/lines/build-sql.ts');
 
 /** Gate columns read by `deriveCaptureStepFlags` / Unbox commit `stage` off the line row. */
@@ -68,10 +71,10 @@ test('every procedure gate column is SELECTed by all three line builders', () =>
 });
 
 test('normalizeRow names every procedure gate column', () => {
-  const route = readFileSync(ROUTE, 'utf8');
-  const start = route.indexOf('function normalizeRow');
+  const normalizer = readFileSync(NORMALIZE_ROW, 'utf8');
+  const start = normalizer.indexOf('function normalizeRow');
   assert.ok(start > 0, 'normalizeRow not found — did the normalizer move?');
-  const body = route.slice(start);
+  const body = normalizer.slice(start);
 
   for (const col of [...GATE_COLUMNS, 'staged_location_id']) {
     assert.ok(

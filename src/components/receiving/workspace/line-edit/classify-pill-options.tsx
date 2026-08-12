@@ -1,9 +1,10 @@
 /**
  * Classify pill option builders — Urgency / Platform / Type as identity faces.
  *
- * Shared by the carton bookmark (`InlinePillPicker`) and the Classify tab
- * checklist so both surfaces render the same tone-coded faces. Bookmark chrome
- * uses {@link InlinePillOption.shortLabel}; Classify keeps full `label`.
+ * Shared by the carton bookmark (`InlinePillPicker` menu) and the Classify
+ * Displays checklist so both surfaces render the same tone-coded faces.
+ * Bookmark chrome uses {@link InlinePillOption.shortLabel}; Classify keeps
+ * full `label`.
  */
 
 import { Flag } from '@/components/Icons';

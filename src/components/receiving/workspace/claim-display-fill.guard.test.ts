@@ -162,12 +162,31 @@ describe('Unbox Displays claim fill + pinned footer', () => {
     );
   });
 
-  it('create/link opens Chat — presence flips Ticket body after link', () => {
+  it('create/link opens Chat after file or Link & send — presence flips Ticket body', () => {
     const line = read(LINE_EDIT);
+    const controller = read(
+      'src/components/receiving/workspace/claim/hooks/useReceivingClaimController.ts',
+    );
     assert.match(
       line,
       /onClaimTicketCreated[\s\S]*ticketAction:\s*'chat'/,
       'filing/linking a ticket opens Chat (no sticky Claim mid-wizard)',
+    );
+    assert.match(controller, /submitLinkAndUpdate/);
+    // Chat flip is only from the combined Link & send path (and create file).
+    const linkOnly = controller.slice(
+      controller.indexOf('const submitLink = async'),
+      controller.indexOf('const unlinkCommittedTicket'),
+    );
+    assert.doesNotMatch(
+      linkOnly,
+      /onTicketCreated/,
+      'submitLink alone must not flip to Chat',
+    );
+    assert.match(
+      controller.slice(controller.indexOf('const submitLinkAndUpdate')),
+      /onTicketCreated/,
+      'Link & send flips to Chat after thread posts',
     );
     assert.doesNotMatch(
       line,
@@ -519,7 +538,7 @@ describe('Unbox Displays claim fill + pinned footer', () => {
     assert.match(
       move,
       /rounded-none border-x-0 border-t-0/,
-      'To/From matches ClaimWizardNav flush segment chrome',
+      'To/From matches ClaimModeSelect flush combobox chrome',
     );
     assert.doesNotMatch(
       move,

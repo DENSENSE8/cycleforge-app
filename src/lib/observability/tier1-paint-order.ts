@@ -59,12 +59,12 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     aliases: ['/receiving'],
     label: 'Unbox',
     lcpSurface: 'primary',
-    /** Route loading geometry; LCP row stand-in is UnboxBrowseFirstPaint. */
+    /** Route loading geometry; LCP stand-in is UnboxStationFirstPaint (MRU / empty). */
     skeleton: 'src/components/receiving/unbox/UnboxWorkbenchSkeleton.tsx',
     lcpHosts: [
-      'src/components/receiving/unbox/UnboxWorkspaceView.tsx',
-      'src/components/receiving/unbox/UnboxBrowseFirstPaint.tsx',
-      'src/components/station/ReceivingLinesTable.tsx',
+      'src/components/receiving/unbox/UnboxStationFirstPaint.tsx',
+      'src/components/receiving/unbox/UnboxLineWorkspace.tsx',
+      'src/components/receiving/unbox/UnboxStationEmptyShell.tsx',
     ],
     markRoute: 'unbox',
   },

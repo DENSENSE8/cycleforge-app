@@ -518,6 +518,31 @@ async function seedReceivingFixture(client: PoolClient, orgId: string, adminStaf
     [receivingId, QA_FIXTURE_TRACKING],
   );
 
+  // ── The SHIPMENT the carton hangs off ────────────────────────────────────
+  // `receiving_scans` alone is the STN-LESS legacy fallback rung. Every fast
+  // path an operator actually hits — `resolveShipmentForScan`'s exact-normalized
+  // join, and the `?tracking_in=` list filter behind the Unbox local-first probe
+  // — reads `shipping_tracking_numbers ⋈ receiving_carton.shipment_id`, so a
+  // fixture with no STN row exercises only the slow fallback and silently skips
+  // the join under test. Normalized key is upper-alnum (the shared canonical
+  // form), matching `canonicalizeTrackingKey` / `normalizeScanKey`.
+  const stnRes = await client.query<{ id: string }>(
+    `INSERT INTO shipping_tracking_numbers
+       (tracking_number_raw, tracking_number_normalized, carrier, source_system)
+     VALUES ($1, $2, 'Mock', 'qa-fixture')
+     ON CONFLICT (tracking_number_normalized) DO UPDATE
+       SET tracking_number_raw = EXCLUDED.tracking_number_raw
+     RETURNING id`,
+    [QA_FIXTURE_TRACKING, QA_FIXTURE_TRACKING.toUpperCase().replace(/[^A-Z0-9]/g, '')],
+  );
+  const qaShipmentId = stnRes.rows[0]?.id ?? null;
+  if (qaShipmentId) {
+    await client.query(
+      `UPDATE receiving_carton SET shipment_id = $2 WHERE id = $1 AND organization_id = $3`,
+      [receivingId, qaShipmentId, orgId],
+    );
+  }
+
   // ── Org custom column (Horizon C wave 1) ─────────────────────────────────
   // A def + a value on two lines, so a LedgerGrid column sort has something to
   // order. Decimals on purpose — see QA_FIXTURE_CUSTOM_FIELD's docblock.

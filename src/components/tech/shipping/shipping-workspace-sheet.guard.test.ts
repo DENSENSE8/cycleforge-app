@@ -28,10 +28,13 @@ function stripBlockComments(src: string): string {
 }
 
 describe('Shipping Sheets flush chrome', () => {
-  it('ShippingWorkspaceView uses WORKBENCH_SHEET_* hosts (not guttered columns)', () => {
+  it('ShippingWorkspaceView composes the Sheets shell (not guttered columns)', () => {
     const src = stripBlockComments(read(VIEW));
-    assert.match(src, /WORKBENCH_SHEET_CHROME/);
-    assert.match(src, /WORKBENCH_SHEET_HOST/);
+    // The recipe moved into WorkbenchSheetView (2d) — the page composes it and
+    // no longer holds the tokens, so it cannot drift from the other four sheets.
+    // Token ownership is asserted once in `workbench-sheet-view.guard.test.ts`.
+    assert.match(src, /<WorkbenchSheetView/);
+    assert.match(src, /useWorkbenchSheetChrome/);
     assert.doesNotMatch(
       src,
       /WORKBENCH_CHROME_COLUMN/,
@@ -56,8 +59,9 @@ describe('Shipping Sheets flush chrome', () => {
 
   it('chrome stack is tabs · KPI · triage (search not on the tab row)', () => {
     const view = stripBlockComments(read(VIEW));
+    assert.match(view, /triage=\{/, 'Band 3 rides the shell triage slot');
     assert.match(view, /ShippingTriageBand/);
-    assert.match(view, /WorkbenchKpiBand/);
+    assert.match(view, /kpi=\{/, 'Band 2 rides the shell kpi slot');
     const header = stripBlockComments(read(HEADER));
     const headerFn = header.slice(header.indexOf('export function ShippingWorkspaceHeader'));
     const triageFnStart = headerFn.indexOf('export function ShippingTriageBand');
@@ -77,16 +81,15 @@ describe('Shipping Sheets flush chrome', () => {
     assert.match(header, /WorkbenchKpiCollapseToggle/);
   });
 
-  it('KPI sits in pinned chrome stack (not a body mb-4 island)', () => {
+  it('KPI sits in the pinned chrome stack (not a body mb-4 island)', () => {
     const src = stripBlockComments(read(VIEW));
     const kpiJsx = src.indexOf('<ShippingKpiStrip');
     assert.ok(kpiJsx >= 0, 'ShippingKpiStrip must remain mounted as JSX');
-    const bodyUsage = src.indexOf('className={WORKBENCH_SHEET_HOST}');
-    assert.ok(bodyUsage >= 0, 'WORKBENCH_SHEET_HOST must appear as the body className');
-    assert.ok(
-      kpiJsx < bodyUsage,
-      'ShippingKpiStrip must sit inside the sheet chrome stack, above WORKBENCH_SHEET_HOST',
-    );
+    // The shell renders `kpi` inside the chrome stack and `children` in the sheet
+    // host, so KPI preceding the body render-prop IS "above the sheet".
+    const bodyStart = src.indexOf('{({ controlsEl })');
+    assert.ok(bodyStart >= 0, 'body must be the shell children render-prop');
+    assert.ok(kpiJsx < bodyStart, 'ShippingKpiStrip must ride the kpi slot, above the body');
     assert.doesNotMatch(
       src,
       /\bmb-4\b/,
@@ -94,31 +97,26 @@ describe('Shipping Sheets flush chrome', () => {
     );
   });
 
-  it('tab band passes Unbox flush face overrides', () => {
+  it('the tab band takes its flush face from the shell', () => {
     const src = read(VIEW);
     const headerStart = src.indexOf('<ShippingWorkspaceHeader');
     assert.ok(headerStart >= 0, 'ShippingWorkspaceHeader must exist');
     const headerEnd = src.indexOf('/>', headerStart);
-    const headerBlock = src.slice(
-      headerStart,
-      headerEnd > 0 ? headerEnd + 2 : headerStart + 500,
-    );
+    const headerBlock = src.slice(headerStart, headerEnd > 0 ? headerEnd + 2 : headerStart + 500);
+    // The flush face (`rounded-none border-l-0 border-t-0 shadow-sm`) is the
+    // shell's `WORKBENCH_SHEET_TABS_CLASS`, handed to the tabs slot. Re-typing it
+    // here is how five pages drifted; the page just forwards it.
     assert.match(
       headerBlock,
-      /border-l-0/,
-      'Tab band must clear left border — center/rail owns the hairline',
+      /className=\{className\}/,
+      'Band 1 must forward the shell-supplied flush face',
     );
-    assert.match(
-      headerBlock,
-      /border-t-0/,
-      'Band 1 must use border-t-0 — GlobalHeader already owns the top seam',
-    );
-    assert.match(headerBlock, /rounded-none/);
+    assert.match(src, /tabs=\{\(\{ className \}\)/, 'tabs slot must receive the face class');
   });
 
-  it('Band 1 keeps New Order trailing; Band 2 uses Unbox WorkbenchKpiBand', () => {
+  it('Band 1 keeps New Order trailing; Band 2 rides the shell KPI slot', () => {
     const src = stripBlockComments(read(VIEW));
-    assert.match(src, /WorkbenchKpiBand/);
+    assert.match(src, /kpi=\{/);
     assert.match(src, /ShippingTriageBand/);
     const header = stripBlockComments(read(HEADER));
     const headerFn = header.slice(header.indexOf('export function ShippingWorkspaceHeader'));

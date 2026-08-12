@@ -107,6 +107,11 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * — see `utils/unbox-workspace-state.ts`. Never a hand-copied enum.
      */
     unboxview: unboxViewParam(),
+    /**
+     * Desk mode — workbench tables after Back to list. Absent = station-first
+     * (MRU carton or empty scan bench). See `unbox-selection-url.ts`.
+     */
+    unboxdesk: paramFlag,
     /** Server ORDER BY for the History tab (`UnboxWorkspaceHeader` reads + writes it). */
     sort: historySortParam(),
     /** Stock-image preview for the photo peek — no NAS captures needed. */

@@ -24,6 +24,7 @@ import {
 import { SupportPhotoLibraryPicker } from './SupportPhotoLibraryPicker';
 import { TicketReplyPresetsBar } from './TicketReplyPresetsBar';
 import type { TicketReplyPreset } from '@/lib/support/ticket-reply-presets';
+import { TICKET_COMPOSER_PAD } from './ticket-bubble-chrome';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -45,6 +46,7 @@ export function SupportChatComposer({
   onBridgeChange,
   variant = 'inline',
   trailingAction,
+  showReplyPresets = true,
 }: {
   ticketId: number;
   requesterEmail?: string | null;
@@ -60,6 +62,11 @@ export function SupportChatComposer({
   variant?: 'inline' | 'station-dock';
   /** Terminal CTA embedded in the dock footer (replaces blue Send). */
   trailingAction?: ReactNode;
+  /**
+   * All-good / QC pass·fail chip row. Default on. Unbox Ticket Displays
+   * passes `false` — intake chat is not the QC shortcut surface.
+   */
+  showReplyPresets?: boolean;
 }) {
   const [body, setBody] = useState('');
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -336,7 +343,9 @@ export function SupportChatComposer({
       {ccStrip}
       {stagedThumbs}
       {libraryPicker}
-      <TicketReplyPresetsBar disabled={busy} onPick={applyPreset} />
+      {showReplyPresets ? (
+        <TicketReplyPresetsBar disabled={busy} onPick={applyPreset} />
+      ) : null}
       <OmnichannelComposerDock
         value={body}
         onChange={setBody}
@@ -373,11 +382,7 @@ export function SupportChatComposer({
     return <div className="w-full">{dock}</div>;
   }
 
-  // Floating composer: the dock is already a rounded, elevated bubble, so it
-  // sits on transparent air — never on a padded `bg-surface-canvas` plane with
-  // a hairline behind it (that reads as a docked toolbar, not a floating
-  // composer). Fills the column width (ruled 2026-08-10, with the bubble stream):
-  // no horizontal gutter, so the composer's edges line up with the messages it
-  // answers. `py-2` is vertical breath around the bubble only.
-  return <div className="min-w-0 shrink-0 py-2">{dock}</div>;
+  // Floating composer: elevated bubble on transparent air. Pad + gutter live in
+  // {@link TICKET_COMPOSER_PAD} (shared with every Ticket Displays host).
+  return <div className={TICKET_COMPOSER_PAD}>{dock}</div>;
 }

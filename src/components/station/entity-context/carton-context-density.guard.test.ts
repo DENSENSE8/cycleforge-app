@@ -50,6 +50,28 @@ describe('carton-context-density', () => {
     );
   });
 
+  it('classify chips open chip-anchored menus (inline edit; Displays Classify stays separate)', () => {
+    const src = readFileSync(
+      join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
+      'utf8',
+    );
+    assert.match(
+      src,
+      /presentation="menu"/,
+      'CartonContextCard classify pills must use InlinePillPicker menu presentation',
+    );
+    assert.doesNotMatch(
+      src,
+      /onClassifyPillOpen/,
+      'Header chips must not hand off to Displays Classify — chip menu owns inline edit',
+    );
+    assert.equal(
+      (src.match(/presentation="menu"/g) ?? []).length,
+      3,
+      'Urgency · Platform · Type each open a chip-anchored menu',
+    );
+  });
+
   it('two-row commerce order: status · order# · tracking; price · listing · Claim on same bottom row', () => {
     const src = readFileSync(
       join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
@@ -282,6 +304,16 @@ describe('carton-context-density', () => {
       pillsCode,
       /PILL_BASE\s*=\s*['"][^'"]*px-1\.5/,
       'Classify label pills share px-1.5 inset with Claim · Photos · View All',
+    );
+    assert.match(
+      pillsCode,
+      /presentation\s*===\s*['"]menu['"]|presentation\s*=\s*['"]menu['"]/,
+      'InlinePillPicker must support chip-anchored menu presentation for carton-context inline edit',
+    );
+    assert.match(
+      pillsCode,
+      /DropdownMenu/,
+      'Menu presentation must compose house DropdownMenu (not a page-local absolute menu)',
     );
     assert.match(
       pillsCode,

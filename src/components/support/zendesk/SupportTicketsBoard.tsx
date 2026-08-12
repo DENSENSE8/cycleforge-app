@@ -18,10 +18,11 @@ import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, EmptyState, IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
@@ -143,6 +144,8 @@ export function SupportTicketsBoard() {
   const { push } = useRecentTickets();
 
   const [sort, setSort] = useState<SortKey>('recent');
+  // Ticket board has no KPI band and no Band-3 controls portal (honest absence).
+  const chrome = useWorkbenchSheetChrome();
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -187,12 +190,13 @@ export function SupportTicketsBoard() {
 
   return (
     <>
-    <DashboardScrollShell
-      chrome={
-        <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+    <WorkbenchSheetView
+      chrome={chrome}
+      sheetHostClassName="border-t border-border-soft bg-surface-card"
+      tabs={({ className }) => (
           <WorkbenchChromeHeader
             density="band"
-            className="rounded-none border-l-0 border-t-0 shadow-sm"
+            className={className}
             tabs={tabs}
             activeTab={status}
             onTabChange={(id) => setStatus(parseTicketStatus(id))}
@@ -207,7 +211,9 @@ export function SupportTicketsBoard() {
               />
             }
           />
-          {/* Band 3 — find left; refresh · sort right. No KPI band (no metrics). */}
+      )}
+      // Band 3 — find left; refresh · sort right. No KPI band (no metrics).
+      triage={() => (
           <WorkbenchTriageBand
             search={
               <TechRailSearchBar
@@ -236,10 +242,10 @@ export function SupportTicketsBoard() {
               </>
             }
           />
-        </div>
-      }
+      )}
     >
-      <div className={cn(WORKBENCH_SHEET_HOST, 'border-t border-border-soft bg-surface-card')}>
+      {() => (
+        <>
         <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-3">
@@ -337,8 +343,9 @@ export function SupportTicketsBoard() {
               Next
             </Button>
           </div>
-      </div>
-    </DashboardScrollShell>
+        </>
+      )}
+    </WorkbenchSheetView>
 
       <SupportCreateTicketModal
         open={claim.createOpen}

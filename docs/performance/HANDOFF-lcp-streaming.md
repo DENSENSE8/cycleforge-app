@@ -1,3 +1,33 @@
+## Progress log — 2026-08-11 (Unbox LCP = MRU middle carton)
+
+**Shipped:** LCP stand-in is the **MRU carton middle** (identity + PO lines from
+`seed.mruLines`), not Browse lists / restore pulse skeleton.
+
+- Hold `UnboxStationFirstPaint` until `ReceivingLineWorkspace` mounts (or
+  settled empty). Never release onto `showRestoreSkeleton`.
+- Paint order (CWV + WMS ops): P1 above-fold primary work in SSR HTML → P2
+  context rail → P3 Displays bodies stay `dynamic()`. Target Perf ≥ 90 once
+  measured; do **not** ratchet baseline until a real win.
+
+---
+
+## Progress log — 2026-08-11 (Unbox station-first cold load)
+
+**Shipped:** bare `/unbox` is **station-first**, not browse-first.
+
+- RSC `seedUnboxStation` — Unboxed rail (`view=unbox_opened`) + MRU carton
+  siblings; **no** Queue spine on cold land.
+- LCP stand-in: `UnboxStationFirstPaint` (MRU identity or empty scan copy).
+- Client auto-opens MRU when `shouldAutoOpenUnboxMru` (no `openReceivingId`,
+  no `unboxdesk`). Back to list / Browse lists → `?unboxdesk=1` (tables only
+  then). Opening a carton clears desk.
+- `UnboxLineWorkspace` does **not** keep-alive `UnboxWorkspaceView` under the
+  carton; desk sheet is `dynamic()` gated on `unboxdesk`.
+- Guards + SoT Paint updated. **Do not** ratchet `lighthouse-baseline.json`
+  until a measured win.
+
+---
+
 ## Progress log — 2026-08-10 (Unbox Phase 1 — kill skeleton-as-LCP)
 
 **Phase 1 shipped (verified corrections to Gemini D9):**
@@ -15,6 +45,8 @@
 - Guard: `unbox-browse-first-paint.guard.test.ts`. SoT Paint: skeletons are
   geometry, not LCP. **Do not** ratchet `lighthouse-baseline.json` until a
   measured win.
+  *(Superseded for cold `/unbox` LCP by 2026-08-11 station-first — Queue
+  stand-in is desk-only.)*
 
 ---
 

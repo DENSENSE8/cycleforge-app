@@ -1,14 +1,8 @@
 /**
- * Station Ticket Displays — the whole column is FLUSH: host, conversation rows
- * and floating composer all sit edge-to-edge, and a bubble fills the width.
- *
- * Ruled 2026-08-10, reversing the 2026-08-05 rows-own-`px-4` grammar FOR THIS
- * STREAM ONLY. The Displays column is already narrow (the station middle is
- * locked at ~720 beside it), and the ticket spent that measure twice — a `px-4`
- * list wrapping bubbles that were themselves capped at 85%. Every other
- * Displays leaf keeps `DISPLAYS_BODY_INSET`, which is why the token still
- * exists and why this guard now asserts its ABSENCE here rather than being
- * deleted.
+ * Station Ticket Displays — conversation body + floating composer own the
+ * readable gutter via {@link ./ticket-bubble-chrome}; the Displays host stays
+ * flush. Bubbles stay left-aligned and capped, one white shell face, micro
+ * meta + `N hrs` age. Composer keeps bottom pad above the leaf footer.
  *
  * Bubble variant is opted in from `TicketDisplayHost`, not from `embedded`
  * alone (`/support` focus is also embedded and must stay ledger).
@@ -33,10 +27,13 @@ describe('station Ticket chat Displays gutter + bubble opt-in', () => {
   const host = read('src/components/receiving/workspace/line-edit/TicketDisplayHost.tsx');
   const hostCode = code(host);
   const detail = read('src/components/support/zendesk/chat/SupportTicketDetail.tsx');
+  const detailCode = code(detail);
   const stream = read('src/components/support/zendesk/chat/MergedRecordStream.tsx');
   const streamCode = code(stream);
   const composer = read('src/components/support/zendesk/chat/SupportChatComposer.tsx');
   const composerCode = code(composer);
+  const chrome = read('src/components/support/zendesk/chat/ticket-bubble-chrome.ts');
+  const chromeCode = code(chrome);
   const focus = read('src/components/support/service-workspace/SupportTicketFocus.tsx');
   const focusCode = code(focus);
 
@@ -49,22 +46,53 @@ describe('station Ticket chat Displays gutter + bubble opt-in', () => {
     assert.match(hostCode, /streamVariant="bubble"/);
   });
 
-  it('bubble stream + floating composer carry NO horizontal gutter', () => {
-    assert.doesNotMatch(streamCode, /DISPLAYS_BODY_INSET/);
-    assert.doesNotMatch(composerCode, /DISPLAYS_BODY_INSET/);
-    // Vertical breath only on the floating wrapper — and no hand-rolled px-*
-    // replacement sneaking the gutter back in under another name.
-    assert.match(composerCode, /className="min-w-0 shrink-0 py-2"/);
+  it('stream + composer + detail import ticket-bubble-chrome SoT', () => {
+    assert.match(streamCode, /from '\.\/ticket-bubble-chrome'/);
+    assert.match(composerCode, /TICKET_COMPOSER_PAD/);
+    assert.match(detailCode, /TICKET_DETAIL_SURFACE/);
+    assert.match(chromeCode, /TICKET_BUBBLE_SHELL/);
+    assert.match(chromeCode, /formatTicketBubbleAge/);
+    assert.match(chromeCode, /DISPLAYS_BODY_INSET/);
   });
 
-  it('a bubble fills the column instead of capping at a percentage', () => {
-    assert.doesNotMatch(streamCode, /max-w-\[min\(100%/);
-    assert.match(streamCode, /'min-w-0 w-full stack-tight rounded-2xl border px-3 py-2'/);
+  it('QC reply presets default on; Unbox Ticket Displays can opt out', () => {
+    assert.match(
+      composerCode,
+      /showReplyPresets = true/,
+      'presets stay on for Testing · Arrival · /support',
+    );
+    assert.match(composerCode, /showReplyPresets \? \(/);
+  });
+
+  it('bubble chrome is left-aligned, capped, white shell — detail plane stays host-default', () => {
+    assert.match(chromeCode, /max-w-\[min\(100%,75%\)\]/);
+    assert.match(chromeCode, /TICKET_DETAIL_SURFACE = 'bg-surface-canvas\/40'/);
+    assert.match(chromeCode, /TICKET_BUBBLE_SHELL[\s\S]*bg-surface-card/);
+    assert.match(chromeCode, /TICKET_BUBBLE_MARK/);
+    assert.match(streamCode, /TICKET_BUBBLE_ROW/);
+    assert.match(streamCode, /TICKET_BUBBLE_SHELL/);
+    assert.match(streamCode, /dense/);
+    assert.doesNotMatch(chromeCode, /TICKET_DETAIL_SURFACE = 'bg-surface-sunken'/);
+    assert.doesNotMatch(streamCode, /bg-blue-50|bg-amber-50/);
+    assert.doesNotMatch(streamCode, /ours \? 'flex-row-reverse'/);
+  });
+
+  it('bubble Internal chip paints after age (N hrs · Internal)', () => {
+    // Author → age → Internal — never Internal leading the meta line.
+    const metaFn = streamCode.slice(streamCode.indexOf('function MetaLine'));
+    const agePos = metaFn.indexOf('<RowTime');
+    const internalPos = metaFn.indexOf('TICKET_BUBBLE_INTERNAL_CHIP');
+    assert.ok(agePos >= 0 && internalPos > agePos, 'Internal chip must follow RowTime');
+  });
+  it('bubble meta uses micro + formatTicketBubbleAge (N hrs)', () => {
+    assert.match(streamCode, /TICKET_BUBBLE_META/);
+    assert.match(streamCode, /formatTicketBubbleAge/);
+    assert.match(chromeCode, /N hrs|\$\{n\} hrs/);
   });
 
   it('SupportTicketDetail defaults streamVariant to ledger and forwards it', () => {
     assert.match(detail, /streamVariant = 'ledger'/);
-    assert.match(code(detail), /variant=\{streamVariant\}/);
+    assert.match(detailCode, /variant=\{streamVariant\}/);
   });
 
   it('/support focus stays ledger — does not pass streamVariant="bubble"', () => {

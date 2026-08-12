@@ -108,6 +108,14 @@ test('Ghost autocomplete is on the bubble path (LineNotesCard + phrase bank)', (
   const phrases = src(PHRASES);
   assert.match(notes, /useLabelNoteGhostAutocomplete/, 'LineNotesCard mounts ghost hook');
   assert.match(notes, /ghostSuffix|onAcceptGhost/, 'ghost wired into OmnichannelComposerDock');
+  assert.match(notes, /data-unbox-notes-recent/, 'recent (History) control always in footer');
+  assert.match(notes, /recent-label-note|recentLabelNoteQueryKey/, 'Recent reads DB recent-label-note');
+  assert.match(notes, /setRecentHover|recentHover/, 'Recent hover paints ghost preview');
+  assert.doesNotMatch(
+    notes,
+    /last-applied-label-note|sessionStorage|localStorage/,
+    'Recent must not use device-local storage',
+  );
   assert.match(hook, /matchLabelNotePhrase/, 'hook uses phrase bank');
   assert.match(hook, /rememberLabelNotePhrase/, 'hook remembers on save');
   assert.match(phrases, /unbox:label-note-phrases/, 'device-local MRU key');

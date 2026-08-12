@@ -41,17 +41,29 @@ describe('TriageClassifySection flush Displays', () => {
     assert.doesNotMatch(src, /rounded-(?:3xl|2xl|xl|lg|md)\b/);
   });
 
-  it('dimensions are flush SearchableSelectField + repair identify well', () => {
+  it('dimensions are flush SearchableSelectField + ticket + repair identify wells', () => {
     assert.match(src, /<SearchableSelectField/);
     assert.match(src, /appearance="flush"/);
     assert.match(src, /ariaLabel="Urgency"/);
     assert.match(src, /ariaLabel="Platform"/);
     assert.match(src, /ariaLabel="Type"/);
+    // Link ticket (found + unfound) → Ticket Displays; never a second picker.
+    assert.match(src, /data-testid="triage-classify-link-ticket"/);
+    assert.match(src, /Link ticket/);
+    assert.match(src, /onFindTicket/);
+    assert.doesNotMatch(src, /TicketPicker|ClaimTicketPicker|ReceivingClaimPanel/);
     // Repair identify icon well stays flush.
     assert.match(
       src,
       /grid h-5 w-5 shrink-0 place-items-center[\s\S]{0,80}?cornerClass\('flush'\)/,
     );
+  });
+
+  it('Arrival + Unbox wire onFindTicket into Classify', () => {
+    const arrival = readFileSync(ARRIVAL_PANEL, 'utf8');
+    const unbox = readFileSync(UNBOX_TABS, 'utf8');
+    assert.match(arrival, /onFindTicket=\{openFindTicketDisplay\}/);
+    assert.match(unbox, /onFindTicket=\{onFindTicket\}/);
   });
 
   it('Arrival centre + Unbox Displays mount TriageClassifySection', () => {

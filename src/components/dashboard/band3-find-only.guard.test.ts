@@ -197,6 +197,54 @@ describe('Band 3 is find-only', () => {
     }
   });
 
+  it('the faceted refine funnel has ONE implementation (2f)', () => {
+    // `UnboxWorkspaceHeader` grew the same ~30-line `role="tablist"` twice
+    // (History refine + triage refine): identical tab classes, identical
+    // `onMouseDown` preventDefault (which keeps the popover open — drop it and
+    // the funnel shuts on the first facet click), identical hot dot. Two copies
+    // of one a11y-bearing control is two places for `aria-selected` or the
+    // keep-open behavior to drift.
+    //
+    // Scoped to the FACETED funnel. `HistoryWorkspaceHeader`'s refine is a flat
+    // grouped-row menu — every group at once, no tabbing — a different shape,
+    // deliberately not folded in.
+    const SOT = 'src/components/dashboard/workbench-filter-popover.tsx';
+    const sot = code(readFileSync(join(ROOT, SOT), 'utf8'));
+    assert.match(sot, /export function WorkbenchRefineFacetTabs/, `${SOT} owns the funnel tabs`);
+    assert.match(sot, /WORKBENCH_REFINE_BODY_CLASS/, `${SOT} owns the facet body scroll port`);
+    assert.match(
+      sot,
+      /onMouseDown=\{\(e\) => e\.preventDefault\(\)\}/,
+      'the keep-open preventDefault must live in the SoT',
+    );
+
+    const offenders: string[] = [];
+    for (const abs of walk(SRC)) {
+      const rel = relative(ROOT, abs);
+      if (rel === SOT || rel.endsWith('.guard.test.ts')) continue;
+      const body = code(readFileSync(abs, 'utf8'));
+      // A hand-rolled facet tablist: a tablist carrying the funnel's own tab face.
+      if (!body.includes('role="tablist"')) continue;
+      if (!/border-b-2[^'"`]*px-1\.5 py-1\.5 text-role-caption/.test(body)) continue;
+      offenders.push(rel);
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      `Compose WorkbenchRefineFacetTabs — do not hand-roll a second refine funnel. Offenders: ${offenders.join(', ') || '(none)'}`,
+    );
+
+    // Both Unbox funnels actually route through it (a revert is a failure).
+    const unbox = code(
+      readFileSync(join(ROOT, 'src/components/receiving/unbox/UnboxWorkspaceHeader.tsx'), 'utf8'),
+    );
+    assert.equal(
+      (unbox.match(/<WorkbenchRefineFacetTabs/g) ?? []).length,
+      2,
+      'both Unbox refine funnels (History + triage) compose the shared tabs',
+    );
+  });
+
   it('Unbox is the LEAN row — find + KPI + inspector, nothing else', () => {
     // Ruled 2026-08-08. Compare panes, spreadsheet zoom, ▦ column display and
     // the week pill left this row for the inspector View cluster, so the row

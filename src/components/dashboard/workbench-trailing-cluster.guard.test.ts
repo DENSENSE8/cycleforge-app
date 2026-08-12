@@ -296,12 +296,14 @@ describe('WorkbenchTrailingCluster SoT', () => {
     const cases: { file: string; pattern: RegExp; why: string }[] = [
       {
         file: 'src/components/receiving/pickup/PickupWorkspace.tsx',
-        pattern: /controlsSlotRef=\{setPickupControlsEl\}[\s\S]*columnTriggerPortalTarget=\{pickupControlsEl\}/,
+        pattern:
+          /controlsSlotRef=\{controlsSlotRef\}[\s\S]*columnTriggerPortalTarget=\{pickupControlsEl\}/,
         why: 'Pickup',
       },
       {
         file: 'src/components/warehouse/LocationsWorkspace.tsx',
-        pattern: /controlsSlotRef=\{setBinsControlsEl\}[\s\S]*columnTriggerPortalTarget=\{binsControlsEl\}/,
+        pattern:
+          /controlsSlotRef=\{controlsSlotRef\}[\s\S]*columnTriggerPortalTarget=\{controlsEl\}/,
         why: 'Locations / Bins',
       },
       {
@@ -326,7 +328,11 @@ describe('WorkbenchTrailingCluster SoT', () => {
       },
       {
         file: 'src/components/outbound/labels/LabelsWorkspaceView.tsx',
-        pattern: /columnTriggerPortalTarget=\{labelsControlsEl\}/,
+        // Was `labelsControlsEl` — a page-local. Labels now takes the portal
+        // target from `WorkbenchSheetView`'s body render-prop (2d), which hands
+        // back the same controller it gave the Band-3 slot ref, so the two can
+        // no longer be wired to different elements.
+        pattern: /columnTriggerPortalTarget=\{controlsEl\}/,
         why: 'Labels Queue + Recent',
       },
       {

@@ -43,9 +43,10 @@ function parseTicketId(raw: string): number | null {
 /**
  * Filed-ticket chip for the carton identity row. Renders the same
  * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone).
- * Menu: Open → History (Ticket push column) → Message → Archive → Unlink.
- * Outside Unbox there is no History row. Message opens the seller draft.
- * History does not pulse the chip face to `edit` — the ticket id stays visible.
+ * Menu opens flush-square to the left (Photos gallery grammar). Menu: Open →
+ * History (Ticket push column) → Message → Archive → Unlink. Outside Unbox
+ * there is no History row. Message opens the seller draft. History does not
+ * pulse the chip face to `edit` — the ticket id stays visible.
  */
 export function ReceivingTicketChip({
   value,
@@ -180,6 +181,7 @@ export function ReceivingTicketChip({
         iconClass="text-orange-500"
         disableCopy={!value.trim()}
         actionsInMenu
+        menuPlacement="left"
         suppressMenu={sellerOpen}
         menuBetween={
           <>

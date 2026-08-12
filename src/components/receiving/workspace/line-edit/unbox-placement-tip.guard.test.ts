@@ -1,7 +1,7 @@
 /**
- * Empty PUTAWAY tip is edge-flush InlineNotice on white card — never a
- * padded WORKSPACE_NESTED_FIELD tip island. Mounts only after label print.
- * PlacementSummary keeps the nested-field fact face when staged.
+ * Putaway confirmation mounts only when a location is staged after print —
+ * never a grayed empty "Scan location" tip. PlacementSummary keeps the
+ * nested-field fact face when staged.
  *
  * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        --test src/components/receiving/workspace/line-edit/unbox-placement-tip.guard.test.ts`
@@ -28,36 +28,24 @@ function codeOnly(path: string): string {
     .replace(/^\s*\/\/.*$/gm, '');
 }
 
-test('UnboxPlacementSection empty tip is edge-flush white Putaway InlineNotice after print', () => {
+test('UnboxPlacementSection mounts putaway confirmation only when staged', () => {
   const code = codeOnly(SECTION);
   assert.match(code, /label_printed_at/, 'section gates on label print');
-  assert.match(code, /if \(!printed\) return null/, 'hidden until printed');
-  assert.match(code, /InlineNotice/, 'empty tip uses flush InlineNotice');
+  assert.match(code, /staged_at/, 'section gates on staged location');
   assert.match(
     code,
-    /title=["']Putaway["']/,
-    'InlineNotice carries the Putaway title',
-  );
-  assert.match(
-    code,
-    /bg-surface-card/,
-    'empty tip paints white card, not canvas wash',
-  );
-  assert.match(
-    code,
-    /border-x-0/,
-    'empty tip is edge-flush (no side inset island)',
+    /if \(!printed \|\| !staged/,
+    'hidden until printed and staged — no empty Scan location tip',
   );
   assert.doesNotMatch(
     code,
-    /WORKSPACE_NESTED_FIELD/,
-    'empty tip must not wrap instructional copy in WORKSPACE_NESTED_FIELD',
+    /InlineNotice/,
+    'banned: empty Scan location InlineNotice tip',
   );
-  // Empty branch must not wrap InlineNotice in an inset pad host.
   assert.doesNotMatch(
     code,
-    /<div className="[^"]*inset-cozy[^"]*">\s*<InlineNotice/,
-    'no outer inset-cozy around the empty tip',
+    /Scan location/,
+    'banned: Scan location empty-state copy',
   );
   assert.match(
     code,

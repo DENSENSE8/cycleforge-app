@@ -249,8 +249,6 @@ export function ReceivingSidebarPanel() {
     queryClient,
     publishPhotoRequestFor,
     serialInputRef,
-    selectedLine,
-    scanMatchedRows,
     setSelectedLine,
     setScanMatchedRows,
     setLineAccordionBootstrap,

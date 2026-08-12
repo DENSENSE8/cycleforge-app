@@ -9,6 +9,11 @@ interface Params {
   enabled: boolean;
   receivingId: number | null | undefined;
   lineId: number | null | undefined;
+  /**
+   * Seed Link search with a known identifier (carton tracking). Applied once
+   * per link-mode enable cycle via {@link useTicketSearch}.
+   */
+  initialQuery?: string | null;
 }
 
 /**
@@ -48,10 +53,12 @@ export function useClaimTicketSearch({
   enabled,
   receivingId,
   lineId,
+  initialQuery = null,
 }: Params): UseClaimTicketSearch {
   return useTicketSearch({
     open,
     enabled,
+    initialQuery,
     buildUrl: (query) =>
       receivingId
         ? `/api/receiving/zendesk-claim/link?${buildClaimTicketSearchParams({

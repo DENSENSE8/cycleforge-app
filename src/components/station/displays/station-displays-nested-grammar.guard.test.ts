@@ -121,26 +121,24 @@ describe('Station Displays nested-leaf grammar', () => {
     assert.doesNotMatch(src, /appearance="underline"/);
   });
 
-  it('Claim New·Link is child segment', () => {
+  it('Claim Create|Link is a body flush combobox (not leaf-header segment)', () => {
     const src = read(
-      'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx',
+      'src/components/receiving/workspace/claim/components/ClaimModeSelect.tsx',
     );
-    assert.match(src, /appearance="segment"/);
-    assert.match(src, /leaf-header/, 'Displays placement parks New·Link in leaf header');
-    assert.match(src, /label: 'New'/);
+    assert.match(src, /SearchableSelectField/);
+    assert.match(src, /appearance="flush"/);
+    assert.match(src, /label: 'Create'/);
     assert.match(src, /label: 'Link'/);
     assert.match(src, /useSegmentChords/, 'Alt+1/2 owner is the keyboard waist');
+    assert.doesNotMatch(src, /TabDisplay/);
+    assert.doesNotMatch(src, /leaf-header/);
   });
 
-  it('Displays Claim registers New·Link via leaf trailing — not a second leaf header', () => {
+  it('Displays Claim mounts Create|Link in the body — not leaf trailing', () => {
     const panel = read('src/components/receiving/workspace/ReceivingClaimPanel.tsx');
-    const header = read('src/components/station/displays/StationDisplayLeafHeader.tsx');
-    const chrome = read('src/components/station/displays/displays-leaf-chrome.tsx');
-    assert.match(panel, /setLeafTrailing/);
-    assert.match(panel, /placement="leaf-header"/);
-    assert.match(panel, /chrome === 'modal'/);
-    assert.match(chrome, /setLeafTrailing/);
-    assert.match(header, /trailing/);
+    assert.match(panel, /ClaimModeSelect/);
+    assert.doesNotMatch(panel, /setLeafTrailing/);
+    assert.doesNotMatch(panel, /placement="leaf-header"/);
     assert.doesNotMatch(
       panel,
       /StationDisplayLeafHeader/,

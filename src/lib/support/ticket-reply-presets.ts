@@ -5,6 +5,9 @@
  * via VendorView DOM injection. Keep copy capability-neutral (no hardcoded
  * vendor product sentences in operator-facing labels beyond the helpdesk noun
  * resolved at the call site).
+ *
+ * Unbox Ticket Displays opt out (`showReplyPresets={false}`) — intake chat is
+ * not the QC shortcut surface. Testing · Arrival · `/support` keep them on.
  */
 
 export type TicketReplyPreset = {
@@ -17,7 +20,7 @@ export type TicketReplyPreset = {
   isPublic: boolean;
 };
 
-/** Dogfood presets for Unbox / Testing / Support ticket composers. */
+/** Dogfood presets for Testing / Arrival / Support ticket composers. */
 export const TICKET_REPLY_PRESETS: readonly TicketReplyPreset[] = [
   {
     id: 'all-good-public',

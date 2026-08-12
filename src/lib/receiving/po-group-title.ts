@@ -5,6 +5,11 @@
  */
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import {
+  formatReturnSerialProductTitle,
+  parseReturnSerialTitle,
+  resolveReceivingLinePrimarySerial,
+} from '@/components/station/receiving-line-serials';
 
 /** DB / wire sentinel for an unmatched carton line — never paint this raw. */
 export const UNFOUND_PO_SENTINEL = 'Unfound PO';
@@ -179,7 +184,17 @@ export function receivingProductTitle(row: ReceivingLineRow): string {
     row.sku ||
     row.zoho_item_id ||
     `Line #${row.id}`;
-  return raw === UNFOUND_PO_SENTINEL ? UNFOUND_PO_DISPLAY : raw;
+  if (raw === UNFOUND_PO_SENTINEL) return UNFOUND_PO_DISPLAY;
+  const rawStr = String(raw);
+  // Generated return-intake titles: paint from live serial units when present
+  // so a rescan/edit never leaves a stale serial in the title face.
+  if (parseReturnSerialTitle(rawStr) != null) {
+    return formatReturnSerialProductTitle(
+      rawStr,
+      resolveReceivingLinePrimarySerial(row),
+    );
+  }
+  return rawStr;
 }
 
 /**

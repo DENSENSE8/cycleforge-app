@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/CopyChip';
 import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import { getReceivingPoIdentityParts, receivingProductTitle } from '@/lib/receiving/po-group-title';
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import {
@@ -45,13 +45,7 @@ import {
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 function rosterTitle(row: ReceivingLineRow): string {
-  const title = String(
-    row.zoho_item_title || row.catalog_product_title || row.item_name || '',
-  ).trim();
-  if (title) return title;
-  const sku = String(row.sku || '').trim();
-  if (sku) return sku;
-  return '—';
+  return receivingProductTitle(row);
 }
 
 /** Platform-aware PO / order key for the receiving batch roster. */

@@ -383,8 +383,21 @@ export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
 ];
 
 import { normalizeScanKey } from '@/lib/receiving/scan/normalize';
+import {
+  isReceivingRailShipmentKey,
+  receivingRailRowKey,
+  receivingRailShipmentKey,
+} from '@/lib/receiving/rail/rail-carton-key';
 
-/** Stable rail reconcile key for a scan still in flight (no receiving_id yet). */
+/**
+ * Legacy `scan:{value}` key for a scan still in flight.
+ *
+ * The RAIL stub no longer uses this — it keys on the shipment
+ * ({@link receivingRailShipmentKey}) so the resolved carton lands on the SAME
+ * React key and updates in place. This survives for the right-pane stub and as
+ * the second key `applyUnboxCartonOpened` sweeps, so a cache written before the
+ * shipment-key change can still be cleaned up.
+ */
 export function pendingScanReconcileKey(trackingNumber: string): string {
   return `scan:${normalizeScanKey(trackingNumber)}`;
 }
@@ -400,10 +413,16 @@ function pendingScanLineId(trackingNumber: string): number {
 }
 
 /**
- * Instant triage-rail row shown the moment a tracking # is scanned, before
- * lookup-po returns. Title = the tracking #; reconciles in place once the
- * resolved carton prepends under `carton:{receiving_id}` and this leading row
- * clears.
+ * Instant rail row shown the moment a tracking # is scanned, before lookup-po
+ * returns. Title = the tracking #.
+ *
+ * Keyed on the SHIPMENT (`stn:{tracking}`), which is the whole reason the row
+ * now survives the scan: the resolved carton — optimistic, hydrated, and
+ * authoritative — carries that same key, so `mergeRailRows` updates this row in
+ * place. It used to key `scan:{tracking}` and be REMOVED in favour of a freshly
+ * prepended `carton:{id}` row, and the rail's `AnimatePresence` read that key
+ * change as an exit + an enter: the operator's tracking number appeared,
+ * vanished, and came back.
  */
 export function buildPendingScanStubRow(trackingNumber: string): ReceivingLineRow {
   const trimmed = trackingNumber.trim();
@@ -411,7 +430,7 @@ export function buildPendingScanStubRow(trackingNumber: string): ReceivingLineRo
   return {
     id: pendingScanLineId(trimmed),
     receiving_id: null,
-    client_event_id: pendingScanReconcileKey(trimmed),
+    client_event_id: receivingRailShipmentKey(trimmed) ?? pendingScanReconcileKey(trimmed),
     tracking_number: trimmed,
     carrier: null,
     zoho_item_id: null,
@@ -503,12 +522,18 @@ export function isOptimisticUnmatchedPaneStub(row: ReceivingLineRow): boolean {
  * True while a row is the pre-resolve rail leading stub (tracking# title, not
  * clickable). Excludes {@link isOptimisticUnmatchedPaneStub} so Unbox can open
  * the empty unmatched pane while the rail still shows the pending tracking#.
+ *
+ * `receiving_id == null` is what carries this: the instant a scan resolves, the
+ * row has a carton and stops being pending no matter which key it holds. The key
+ * check accepts BOTH prefixes because the rail stub moved to `stn:{tracking}`
+ * (so it survives the resolve in place) while the pane stub stayed `scan:` —
+ * gating on `scan:` alone silently un-disabled the rail's pending row mid-scan.
  */
 export function isPendingTriageScanRow(row: ReceivingLineRow): boolean {
   return (
     row.receiving_id == null
     && typeof row.client_event_id === 'string'
-    && row.client_event_id.startsWith('scan:')
+    && (row.client_event_id.startsWith('scan:') || isReceivingRailShipmentKey(row.client_event_id))
     && !isOptimisticUnmatchedPaneStub(row)
   );
 }
@@ -579,7 +604,10 @@ export function buildUnboxRailUnmatchedRow(
     ...buildUnmatchedStubRow(receivingId, trackingNumber),
     item_name: 'Unfound PO',
     workflow_status: 'DONE',
-    client_event_id: `carton:${receivingId}`,
+    // Shipment-first, so an unfound carton lands on the pending stub's own key.
+    client_event_id: String(
+      receivingRailRowKey({ tracking_number: trackingNumber, receiving_id: receivingId }),
+    ),
     scanned_at: now,
     // Unbox-open MRU stamp — same axis as buildUnboxRailMatchedRow / ops MAX.
     unbox_opened_at: now,

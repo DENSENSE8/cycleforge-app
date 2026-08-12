@@ -227,8 +227,11 @@ test('the line PATCH route accepts label_note as its own field', () => {
     /\['label_note',\s*String\(body\?\.label_note/,
     'receiving-lines PATCH must carry label_note in its text fields',
   );
+  const normalizer = code(
+    sourceOf('../../../../lib/receiving/lines/normalize-row.ts'),
+  );
   assert.match(
-    LINES_ROUTE,
+    normalizer,
     /label_note:\s*\(row\.label_note as string \| null\) \?\? null/,
     'normalizeRow must expose label_note so the controller can hydrate it',
   );

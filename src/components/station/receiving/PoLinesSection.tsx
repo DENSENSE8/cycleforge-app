@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, Loader2, Package } from '@/components/Icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import {
   SkuScanRefChip,
   SerialChip,
@@ -62,9 +63,19 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
     : '';
 
   // Row 1 — full-width product title. No truncation; wraps as needed.
+  // Return-serial titles paint last-8 from the live unit when present.
+  const primarySerial = serialsCsv
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .at(-1) ?? null;
+  const displayTitle = formatReturnSerialProductTitle(
+    line.item_name || line.sku || `Line #${line.id}`,
+    primarySerial,
+  );
   const titleNode = (
     <p className="text-role-caption font-semibold text-text-default leading-snug">
-      {line.item_name || line.sku || `Line #${line.id}`}
+      {displayTitle}
     </p>
   );
 

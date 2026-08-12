@@ -356,6 +356,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                 nodes.push(
                   <RailRow
                     key={rowKey(row)}
+                    reconcileKey={rowKey(row)}
                     row={row}
                     index={idx}
                     staggerItemVariants={staggerItemVariants}

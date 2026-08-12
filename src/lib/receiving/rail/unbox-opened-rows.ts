@@ -14,7 +14,10 @@
  */
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { stampCartonRailTitleContext } from '@/lib/receiving/po-group-title';
-import { receivingRailCartonKey } from '@/lib/receiving/rail/rail-carton-key';
+import {
+  receivingRailCartonKey,
+  receivingRailRowKey,
+} from '@/lib/receiving/rail/rail-carton-key';
 
 /** Rendered-row cap for the Unbox "Unboxed" rail (also the fetch/seed limit). */
 export const UNBOX_SIDEBAR_LIMIT = 50;
@@ -46,11 +49,26 @@ export function transformUnboxOpenedRows(
     }
   }
 
+  // Shipment-first key (`stn:{tracking}`), so the row a tracking scan already
+  // put on the rail is the SAME element the authoritative feed returns — the
+  // pending stub upgrades in place instead of exiting and re-entering. Rows with
+  // no tracking (typed order#, local pickup) keep `carton:{id}`.
+  //
+  // The `seen` guard is the collision floor: the server resolves a tracking to
+  // at most ONE carton (`resolveShipmentForScan`), but nothing in the schema
+  // makes `receiving_carton.shipment_id` unique, so two cartons sharing a
+  // tracking would otherwise render under one React key. The second one falls
+  // back to its carton key rather than silently colliding.
+  const seen = new Set<string | number>();
   return stampCartonRailTitleContext(
     opened,
     order.map((rid) => bestByCarton.get(rid)!).slice(0, UNBOX_SIDEBAR_LIMIT),
-  ).map((r) => ({
-    ...r,
-    client_event_id: receivingRailCartonKey(r.receiving_id as number),
-  }));
+  ).map((r) => {
+    const preferred = receivingRailRowKey(r);
+    const key = seen.has(preferred)
+      ? receivingRailCartonKey(r.receiving_id as number)
+      : preferred;
+    seen.add(key);
+    return { ...r, client_event_id: String(key) };
+  });
 }

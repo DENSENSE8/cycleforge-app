@@ -34,7 +34,7 @@
  * event (mirrors Unbox).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -120,17 +120,11 @@ export function TriagePanel({
   const [activeSideTab, setActiveSideTab] = useState<
     TriageDisplayTab | typeof STATION_DISPLAY_INDEX | null
   >(null);
-  const [claimMode, setClaimMode] = useState<ClaimModalMode>('create');
+  const [claimMode, setClaimMode] = useState<ClaimModalMode>('link');
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
     requestId: number;
   } | null>(null);
-  const [classifyExpand, setClassifyExpand] = useState<{
-    dimension: 'urgency' | 'platform' | 'type';
-    requestId: number;
-  } | null>(null);
-
-  const classifySectionRef = useRef<HTMLDivElement | null>(null);
 
   const claimDisplays = useCallback(
     (tab: TriageDisplayTab | typeof STATION_DISPLAY_INDEX) => {
@@ -172,17 +166,6 @@ export function TriagePanel({
     openDisplays('linkage');
     setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
   }, [openDisplays]);
-
-  const openClassifyFromHeader = useCallback(
-    (picker: 'urgency' | 'platform' | 'type') => {
-      setClassifyExpand((prev) => ({
-        dimension: picker,
-        requestId: (prev?.requestId ?? 0) + 1,
-      }));
-      classifySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    },
-    [],
-  );
 
   // `←|` Open displays → Root Index (Ticket + Pairing). Contextual leaf opens
   // (PO chip / Find ticket / identity ticket chip) skip the index.
@@ -275,7 +258,7 @@ export function TriagePanel({
     setActionFeedback(null);
     setTriageSaved(false);
     setActiveSideTab(null);
-    setClaimMode('create');
+    setClaimMode('link');
     c.setReturnClaimPrefill(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset per carton open
   }, [row.id]);
@@ -474,7 +457,6 @@ export function TriagePanel({
                     expandClassifyWhenPending={false}
                     showClassifyControls
                     classifyInteractive
-                    onClassifyPillOpen={openClassifyFromHeader}
                     onEditPo={openPoPairing}
                     onOrderDetails={openOrderConnectionDetails}
                     poEditOpen={activeSideTab === 'linkage'}
@@ -596,12 +578,11 @@ export function TriagePanel({
                       unitsChrome={false}
                       c={c}
                     />
-                    <div ref={classifySectionRef}>
+                    <div>
                       <TriageClassifySection
                         row={row}
                         c={c}
-                        expandDimension={classifyExpand?.dimension ?? null}
-                        expandRequestId={classifyExpand?.requestId ?? 0}
+                        onFindTicket={openFindTicketDisplay}
                       />
                     </div>
                   </div>

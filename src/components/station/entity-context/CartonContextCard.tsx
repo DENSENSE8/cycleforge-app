@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft } from '@/components/Icons';
 import { getLast8, PoTotalChip, resolveChipDisplay } from '@/components/ui/CopyChip';
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
@@ -12,10 +11,7 @@ import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
-import {
-  InlinePillPicker,
-  INLINE_PILL_LEADING,
-} from '@/components/receiving/workspace/line-edit/InlinePillPicker';
+import { InlinePillPicker } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
 import {
   platformClassifyOptions,
   typeClassifyOptions,
@@ -95,8 +91,9 @@ import {
  *  - Identity editing: listing/tracking editors accessible via chip edit actions,
  *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
  *    Package Pairing → PO when there is no real Zoho PO id.
- *  - Classify opens pills on the left only — right-side identity/actions are
- *    unchanged.
+ *  - Classify chips open chip-anchored menus on the left only — right-side
+ *    identity/actions are unchanged. Full Classify Displays stays the searchable
+ *    editor when staff open that leaf themselves.
  *
  * Purely presentational/controlled — all state lives in the parent.
  */
@@ -107,7 +104,6 @@ export function CartonContextCard({
   classifyPending: _classifyPending = false,
   showClassifyControls = true,
   classifyInteractive = true,
-  onClassifyPillOpen,
   onMakeClaim,
   claimViewActive = false,
   showStaffPhotoRow = true,
@@ -207,15 +203,10 @@ export function CartonContextCard({
   /**
    * When false (with {@link showClassifyControls}), urgency / platform / type
    * render as read-only tone pills — facts for the station bar.
-   * Editing lives in triage Overview / Unbox Classify tab. Default true = Unbox
-   * InlinePillPicker edit.
+   * Default true = chip-anchored {@link InlinePillPicker} menus. Classify
+   * Displays remains available when staff open that leaf themselves.
    */
   classifyInteractive?: boolean;
-  /**
-   * Fired when the operator opens a classify pill picker (Unbox). Lets the
-   * host switch to the Classify tab for unfound cartons.
-   */
-  onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
   /** Opens / toggles the claim push panel. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
   /** True while the Unbox Claim push column is open — Claim pill reads pressed. */
@@ -335,20 +326,11 @@ export function CartonContextCard({
    */
   suppressPhotoHoverGallery?: boolean;
 }) {
-  // Pills always visible when showClassifyControls — no hide/show toggle.
-  // One picker open at a time. Opening any pill unrenders the trailing chip
-  // cluster (the options fill the freed row); selecting / dismissing collapses
-  // back to null and rerenders the chips. See the AnimatePresence swap below.
+  // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
 
-  const openClassifyPicker = (picker: 'urgency' | 'platform' | 'type') => {
-    if (!classifyInteractive) return;
-    // Prefer host handoff (Unbox → Classify tab) over expanding the horizontal
-    // marketplace pill strip in the bookmark header.
-    if (onClassifyPillOpen) {
-      onClassifyPillOpen(picker);
-      return;
-    }
+  const setClassifyMenu = (picker: 'urgency' | 'platform' | 'type' | null) => {
+    if (picker != null && !classifyInteractive) return;
     setOpenPicker(picker);
   };
 
@@ -450,9 +432,9 @@ export function CartonContextCard({
     </HoverTooltip>
   ) : null;
 
-  /* Classify bookmark — WIP dogfood: text-only full SoT names.
-     Unbox/Triage click → Classify dimension (no icon faces).
-     Stacked: this IS row 1's left side (the classification question). */
+  /* Classify chip face — click opens a chip-anchored menu (presentation=menu).
+     Unbox/Triage inline edit stays here; Displays Classify remains the full
+     searchable leaf when staff open it from the rail / dock. */
   const classifyCluster = showClassifyControls ? (
     <div
       data-testid="carton-context-classify-pills"
@@ -467,11 +449,9 @@ export function CartonContextCard({
           collapsedLabel={effectiveUrgencyLabel}
           collapsedClass={effectiveUrgencyClass}
           collapsedFace="label"
-          expandedFace="iconLabel"
-          open={false}
-          onOpenChange={(o) => {
-            if (o) openClassifyPicker('urgency');
-          }}
+          presentation="menu"
+          open={openPicker === 'urgency'}
+          onOpenChange={(o) => setClassifyMenu(o ? 'urgency' : null)}
           disabled={classifyInteractive ? !onPrioritySelect : false}
           readOnly={!classifyInteractive}
         />
@@ -482,11 +462,9 @@ export function CartonContextCard({
         value={platformValue}
         onSelect={onPlatformSelect}
         collapsedFace="label"
-        expandedFace="iconLabel"
-        open={false}
-        onOpenChange={(o) => {
-          if (o) openClassifyPicker('platform');
-        }}
+        presentation="menu"
+        open={openPicker === 'platform'}
+        onOpenChange={(o) => setClassifyMenu(o ? 'platform' : null)}
         disabled={classifyInteractive ? receivingId == null : false}
         readOnly={!classifyInteractive}
         placeholder={isUnmatched ? 'Unfound' : 'Platform'}
@@ -497,11 +475,9 @@ export function CartonContextCard({
         value={receivingType}
         onSelect={onTypeSelect}
         collapsedFace="label"
-        expandedFace="iconLabel"
-        open={false}
-        onOpenChange={(o) => {
-          if (o) openClassifyPicker('type');
-        }}
+        presentation="menu"
+        open={openPicker === 'type'}
+        onOpenChange={(o) => setClassifyMenu(o ? 'type' : null)}
         readOnly={!classifyInteractive}
         placeholder="Type"
       />
@@ -763,80 +739,12 @@ export function CartonContextCard({
       <div className="px-0 py-0">
         <div className={STATION_IDENTITY_ROW_STACK_CLASS}>
           {/* Two-row identity — row 1 classify · Photos; row 2 status · order# ·
-              tracking · price · listing · Claim as ONE flush bottom band. */}
+              tracking · price · listing · Claim as ONE flush bottom band.
+              Classify chips open chip-anchored menus (identity band stays put). */}
           <div className="flex w-full min-w-0 max-w-full items-center">
-            <AnimatePresence initial={false}>
-              {openPicker === null ? (
-                <motion.div
-                  key="bar"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex w-full max-w-full min-w-0 flex-nowrap items-center gap-0"
-                >
-                  {stackedLayout}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="picker"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.12, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex min-w-0 flex-1 items-center"
-                >
-                  {/* Right side unrendered — the chosen picker owns the row.
-                      Selecting (or click-away / Escape) returns openPicker to
-                      null, swapping the chip cluster back in.
-
-                      NOTE: this branch is a ONE-row picker, so the stacked bar
-                      sheds a row while it is open. Unreachable today —
-                      `openClassifyPicker` bails before `setOpenPicker`
-                      whenever `onClassifyPillOpen` is wired, and every
-                      receiving-family host that shows classify pills wires it
-                      (pills hand off to the Classify tab). A future host that
-                      omits `onClassifyPillOpen` must give this branch the
-                      two-row frame first. */}
-                  {openPicker === 'urgency' ? (
-                    <InlinePillPicker
-                      ariaLabel="Urgency"
-                      options={urgencyOptions}
-                      value={urgencyValue}
-                      onSelect={handleUrgencySelect}
-                      open
-                      onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
-                      expandedFace="iconLabel"
-                      leadingIcon={INLINE_PILL_LEADING.urgency}
-                    />
-                  ) : openPicker === 'platform' ? (
-                    <InlinePillPicker
-                      ariaLabel="Platform"
-                      options={platformOptions}
-                      value={platformValue}
-                      onSelect={onPlatformSelect}
-                      open
-                      onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
-                      expandedFace="iconLabel"
-                      placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-                      leadingIcon={INLINE_PILL_LEADING.platform}
-                    />
-                  ) : (
-                    <InlinePillPicker
-                      ariaLabel="Type"
-                      options={typeOptions}
-                      value={receivingType}
-                      onSelect={onTypeSelect}
-                      open
-                      onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
-                      expandedFace="iconLabel"
-                      placeholder="Type"
-                      leadingIcon={INLINE_PILL_LEADING.type}
-                    />
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="flex w-full max-w-full min-w-0 flex-nowrap items-center gap-0">
+              {stackedLayout}
+            </div>
           </div>
         </div>
       </div>

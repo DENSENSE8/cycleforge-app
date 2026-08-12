@@ -1,21 +1,12 @@
 'use client';
 
 /**
- * Testing browse workbench — Sheets flush chrome (Unbox recipe): tabs · KPI ·
- * triage in one pinned sheet-chrome stack; grid body is WORKBENCH_SHEET_HOST.
- * Band 2 uses Unbox SoT {@link WorkbenchKpiBand} (snap-collapse).
+ * Testing browse workbench — the three-band Sheets flush stack, composed from
+ * {@link WorkbenchSheetView} (tabs · KPI · triage over a flush sheet host).
  */
 
-import { Suspense, useState } from 'react';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchKpiBand,
-  WORKBENCH_KPI_SURFACE,
-} from '@/components/dashboard/workbench-kpi-collapse';
+import { WorkbenchSheetView, useWorkbenchSheetChrome } from '@/components/dashboard/WorkbenchSheetView';
+import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 import { TestingHistoryList } from '@/components/tech/TestingHistoryList';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import { TestingKpiStrip } from '@/components/tech/testing/TestingKpiStrip';
@@ -24,8 +15,6 @@ import {
   TestingWorkspaceHeader,
 } from '@/components/tech/testing/TestingWorkspaceHeader';
 import { useTestingWorkspaceTab } from '@/hooks/useTestingWorkspaceTab';
-import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
-import { cn } from '@/utils/_cn';
 
 export function TestingWorkspaceView({
   techId,
@@ -37,60 +26,42 @@ export function TestingWorkspaceView({
   onOpenLine?: () => void;
 }) {
   const { testTab, setTestTab } = useTestingWorkspaceTab();
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
-    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.testing);
+  const chrome = useWorkbenchSheetChrome(WORKBENCH_KPI_SURFACE.testing);
   const parsedTechId = Number(techId);
 
   return (
-    <DashboardScrollShell
+    <WorkbenchSheetView
+      chrome={chrome}
       className="h-full bg-transparent"
-      chrome={
-        <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-          <TestingWorkspaceHeader
-            tab={testTab}
-            onSelectTab={setTestTab}
-            className="rounded-none border-l-0 border-t-0 shadow-sm"
-          />
-          <WorkbenchKpiBand
-            open={!kpiCollapsed}
-            onSnapCollapse={() => setKpiCollapsed(true)}
-            onSnapExpand={() => setKpiCollapsed(false)}
-          >
-            <TestingKpiStrip
-              mode={testTab}
-              techId={Number.isFinite(parsedTechId) ? parsedTechId : undefined}
-            />
-          </WorkbenchKpiBand>
-          <TestingTriageBand
-            tab={testTab}
-            controlsSlotRef={setControlsEl}
-            kpiOpen={!kpiCollapsed}
-            onToggleKpi={toggleKpiCollapsed}
-          />
-        </div>
+      tabs={({ className }) => (
+        <TestingWorkspaceHeader tab={testTab} onSelectTab={setTestTab} className={className} />
+      )}
+      kpi={
+        <TestingKpiStrip
+          mode={testTab}
+          techId={Number.isFinite(parsedTechId) ? parsedTechId : undefined}
+        />
       }
+      triage={(p) => <TestingTriageBand tab={testTab} {...p} />}
     >
-      <div className={WORKBENCH_SHEET_HOST}>
-        <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-          {testTab === 'all' ? (
-            <TechAllTriageTable
-              scope="testing"
-              onOpenTestingLine={onOpenLine}
-              columnTriggerPortalTarget={controlsEl}
-            />
-          ) : (
-            <TestingHistoryList
-              key={testTab}
-              staffId={techId}
-              mode={testTab}
-              selectMode={selectMode}
-              onOpenLine={onOpenLine}
-              toolbarPortalTarget={controlsEl}
-            />
-          )}
-        </Suspense>
-      </div>
-    </DashboardScrollShell>
+      {({ controlsEl }) =>
+        testTab === 'all' ? (
+          <TechAllTriageTable
+            scope="testing"
+            onOpenTestingLine={onOpenLine}
+            columnTriggerPortalTarget={controlsEl}
+          />
+        ) : (
+          <TestingHistoryList
+            key={testTab}
+            staffId={techId}
+            mode={testTab}
+            selectMode={selectMode}
+            onOpenLine={onOpenLine}
+            toolbarPortalTarget={controlsEl}
+          />
+        )
+      }
+    </WorkbenchSheetView>
   );
 }

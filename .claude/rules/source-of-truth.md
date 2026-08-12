@@ -2161,7 +2161,7 @@ Registry SoT: `src/lib/observability/tier1-paint-order.ts`. Marks:
 | Priority | Must paint | May wait |
 |---|---|---|
 | **P0 — Shell** | GlobalHeader + MasterNav spine + route geometry skeleton | — |
-| **P1 — Primary work** | Station: scan bar + centre lines/label. Desk: workbench table / KPI geometry. Search: header find (+ browse/detail body) | Interactive grid hydration over an SSR stand-in |
+| **P1 — Primary work** | **Unbox (station-first):** scan bar + MRU carton centre (or empty scan copy). Desk tables only after Back to list (`?unboxdesk=1`). Other stations: centre lines/label. Desk queues: workbench table / KPI geometry. Search: header find (+ browse/detail body) | Interactive grid hydration over an SSR stand-in; Unbox desk `UnboxWorkspaceView` |
 | **P2 — Context** | Left context rail chrome (scan + recents shell) | Full recents fetch |
 | **P3 — Trailing** | Displays topic **strip** chrome only | Active Displays **body** (Ticket · Photos · Timeline), desk inspector, AI |
 
@@ -2175,14 +2175,25 @@ LCP element is gated behind `ssr: false` (verified 2026-07-20 on `/dashboard`).
 bars as the primary visual payload. Operational columns *are* the card; route /
 chunk skeletons inherit **zero-radius flush** (`cornerClass('flush')`), not
 soft `rounded-lg` / `rounded-full` chip islands. Unbox golden:
-`UnboxBrowseFirstPaint` · `UnboxWorkbenchSkeleton`.
+`UnboxStationFirstPaint` · `UnboxWorkbenchSkeleton` (desk sheet geometry only
+after `?unboxdesk=1`).
+
+**Unbox station-first (ruled 2026-08-11):** bare `/unbox` auto-opens Unboxed MRU
+(`view=unbox_opened` row 0) or an empty scan bench — **never** the Queue table.
+LCP stand-in is the **middle carton** (identity + PO lines from `seedUnboxStation`),
+not Browse lists / restore pulse skeleton. Hold that stand-in until
+`ReceivingLineWorkspace` mounts (or settled empty); Displays bodies stay P3.
+`?unboxdesk=1` (Back to list / Browse lists) is the only door to workbench
+tables. Opening a carton clears desk so resume/scan stay station-primary.
+Helpers: `unbox-selection-url.ts` (`shouldAutoOpenUnboxMru` · `applyUnboxDeskParam`).
 
 **Always**
 
 - Name the LCP surface in `TIER1_PAINT_ORDER` and stamp marks in P0→P3 order
   (`{route}:{chrome|primary|context|trailing}`).
 - Prefer Packer-style RSC prefetch + dehydrate for P1 collections
-  (`PackerSurfacePage` golden; To-ship `/shipping/orders` + Unbox spine follow).
+  (`PackerSurfacePage` golden; To-ship `/shipping/orders`; Unbox
+  `seedUnboxStation` for rail + MRU carton).
 - Keep Displays / inspector / AI topic **bodies** behind `dynamic()` (P3) —
   strip labels stay in the initial tree.
 - Protect CLS ≈ 0 and TBT; never strip Kinetic Ledger density for a score.
@@ -2190,12 +2201,14 @@ soft `rounded-lg` / `rounded-full` chip islands. Unbox golden:
 **Never**
 
 - Put Ticket chat, Photos galleries, Timeline merges, or AI in the P1 paint path.
+- Mount Unbox Queue/Recent/History sheets on cold station land (or keep them
+  hidden under the carton overlay).
 - Re-seed without an SSR-capable LCP element.
 - Let pulse / soft-radius skeleton soup own LCP on an empty seed.
 - Raise Lighthouse baselines or add Lighthouse to `npm run verify`.
 
 Guard: `src/lib/observability/tier1-paint-order.guard.test.ts` ·
-`unbox-browse-first-paint.guard.test.ts`.
+`unbox-browse-first-paint.guard.test.ts` · `unbox-lazy-carton-graph.guard.test.ts`.
 
 ## Optimistic URL-param paint (mount-gated opens)
 

@@ -16,7 +16,7 @@
  * disable the input on `serialSubmitting`.
  */
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -24,6 +24,7 @@ import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unb
 import {
   patchUnboxRailTitleByCarton,
   receivingSiblingsQueryKey,
+  receivingSiblingsSerialsQueryKey,
   publishLineSerials,
 } from '@/lib/queries/receiving-queries';
 import {
@@ -125,39 +126,13 @@ export function useLineSerials({
     [queryClient, row.receiving_id],
   );
 
-  const refreshLineWithSerials = useCallback(async (lineId: number = row.id) => {
-    try {
-      const res = await fetch(`/api/receiving-lines?id=${lineId}&include=serials`);
-      const data = await res.json();
-      if (data?.success && data.receiving_line) {
-        const line = data.receiving_line as ReceivingLineRow;
-        // Serials are sidecar metadata. Do NOT dump the by-id row onto the
-        // shared `receiving-line-updated` bus (Testing's refreshLineWithSerials
-        // pattern). That response cannot reproduce Unboxed's `unbox_opened_at`
-        // axis — normalizeRow fills null — and blanks the rail age on open /
-        // return-serial attach. Accordion + rail chips take the narrow dual-write.
-        // Pass units from the same include=serials payload so multi-qty rows
-        // get durable unit ids for the per-unit green-check (Phase 3).
-        publishLineSerials(
-          queryClient,
-          line.receiving_id ?? row.receiving_id,
-          line.id,
-          line.serials ?? [],
-          line.units ?? [],
-        );
-      }
-    } catch {
-      /* silent */
-    }
-  }, [queryClient, row.id, row.receiving_id]);
-
-  // Parent list (table / sibling accordion) may have stale `row.serials` —
-  // it's fetched on a different cadence than the per-line workspace. Pull
-  // fresh serials whenever the active line changes so SerialCard's chips +
-  // "X/Y SCANNED" tally always agree with what the DB has for this line.
-  useEffect(() => {
-    void refreshLineWithSerials();
-  }, [refreshLineWithSerials]);
+  // NO per-line `?id=&include=serials` refetch here (was a mount-effect on active-
+  // line change). `usePoLinesData`'s carton-wide `serialsQuery` already hydrates
+  // every line's serials/units onto the same `['receiving-siblings']` cache — and
+  // its overlay SKIPS in-flight optimistic rows, which a raw refetch did not. So
+  // the old per-line fetch was both a redundant fourth round-trip AND the "deleted
+  // serial reappears" back-door (a bare `fetch`, so `deleteSerialUnit`'s
+  // `cancelQueries` guard could not stop it from resolving late over the removal).
 
   const submitSerial = useCallback(async (
     raw?: string,
@@ -258,6 +233,23 @@ export function useLineSerials({
             if (Object.keys(titlePatch).length > 0) {
               patchUnboxRailTitleByCarton(queryClient, rid, titlePatch);
             }
+          }
+        }
+        // Attach may rewrite a stale generated `Return serial …` title to the
+        // scanned unit — apply that without waiting on a full line refetch.
+        const syncedName =
+          typeof data.line_state.item_name === 'string'
+            ? data.line_state.item_name.trim()
+            : '';
+        if (syncedName && !data.line_patch?.item_name) {
+          const titlePatch = {
+            id: data.line_state.id as number,
+            item_name: syncedName,
+          };
+          dispatchUnboxRailLineUpdated(titlePatch);
+          const rid = row.receiving_id;
+          if (rid != null && Number.isFinite(rid)) {
+            patchUnboxRailTitleByCarton(queryClient, rid, { item_name: syncedName });
           }
         }
         // Light up the return match band straight from the scan response — works
@@ -378,11 +370,18 @@ export function useLineSerials({
       // Canonical optimistic-mutation guard (TanStack Query): cancel any in-flight
       // `?include=serials` refetch for this carton FIRST, so a fetch that began
       // pre-delete cannot resolve late and overwrite the optimistic removal — the
-      // "deleted serial reappears" race.
+      // "deleted serial reappears" race. BOTH keys: the accordion metadata cache
+      // AND the parallel serials-hydration query (`usePoLinesData`'s serialsQuery)
+      // — either can resurrect the removed serial on a late resolve.
       if (row.receiving_id != null) {
-        await queryClient.cancelQueries({
-          queryKey: receivingSiblingsQueryKey(row.receiving_id),
-        });
+        await Promise.all([
+          queryClient.cancelQueries({
+            queryKey: receivingSiblingsQueryKey(row.receiving_id),
+          }),
+          queryClient.cancelQueries({
+            queryKey: receivingSiblingsSerialsQueryKey(row.receiving_id),
+          }),
+        ]);
       }
       const current = readLineSerials(lineId);
       const currentUnits = readLineUnits(lineId);
@@ -509,7 +508,6 @@ export function useLineSerials({
 
   return {
     serialSubmitting,
-    refreshLineWithSerials,
     submitSerial,
     enqueueSerial,
     deleteSerialUnit,

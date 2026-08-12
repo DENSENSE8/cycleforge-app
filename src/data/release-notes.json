@@ -1,7 +1,47 @@
 {
-  "generatedAt": "2026-08-11T01:49:44.834Z",
+  "generatedAt": "2026-08-12T07:21:41.951Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "7f2493852f2792ce448f233a5d3539b447ce0fa1",
+      "shortSha": "7f2493852",
+      "date": "2026-08-11T20:54:52-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(unbox): restore notes bubble dock with Print·Receive and ghost autocomplete",
+      "body": "Park the flush procedure floor (Band 1 step studio / Band 2 pager) off main onto\nunbox-work, and bring back the raised Omnichannel notes composer with a divided\npill Print·Receive CTA so receive keeps the existing terminal path while label\nghost autocomplete stays on main.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "restore notes bubble dock with Print·Receive and ghost autocomplete"
+    },
+    {
+      "sha": "ccdf2df48999bdad11f7e8490db662a8ccf6b66d",
+      "shortSha": "ccdf2df48",
+      "date": "2026-08-11T09:10:47-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: land Unbox capture, Electron shell, station frame, and Displays polish",
+      "body": "Ship the in-progress ops surface: PO-line capture unification, Prebox as a peer\nDisplays leaf, elastic station frame, desktop VendorView, kiosk attract media,\nand matching SoT/guards so main stays deployable.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "land Unbox capture, Electron shell, station frame, and Displays polish"
+    },
+    {
+      "sha": "9a0e8b5a41f9bc44f88c2b7567e379be1715b0d9",
+      "shortSha": "9a0e8b5a4",
+      "date": "2026-08-10T18:53:56-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs: handoff for finishing the To-ship display alignment",
+      "body": "Covers what landed (seed fix, header fork retirement, opt-in Station column,\nbench facet into the find field), the blocked E2E (concurrent Playwright\nupgrade), the two specs that have never executed, the contested\nsource-of-truth.md, and the Cond-tier question that needs a product answer\nbefore anyone hides a column on the main outbound queue.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "handoff for finishing the To-ship display alignment"
+    },
+    {
+      "sha": "43d7da46282bff8343b2363c94ce959729516666",
+      "shortSha": "43d7da462",
+      "date": "2026-08-10T18:52:51-07:00",
+      "author": "DENSENSE8",
+      "subject": "refactor(outbound): move the bench breakdown into the To-ship find field",
+      "body": "The per-bench ORDER counts shipped as a full-width chip row inside the KPI\nband. That is the wrong home twice over: it spent a whole band of vertical\nheight on the densest desk in the app, and a facet that narrows ROWS belongs\nbeside the query that narrows them (house law 2026-08-08, enforced by\nband3-find-only.guard.test.ts) — the Band-3 right zone is view toggles only.\n\nIt is deliberately NOT inside the Views menu. Views is a saved-snapshot\nstore (`saved_views` / useSavedViews); a facet is not a saved view. The\nrelationship already runs the other way and works: `packStation` is one of\nTo-ship's saved-view `paramKeys`, so a view REMEMBERS the bench rather than\nhosting the control.\n\n- `BenchRefineFacet` mounts in the find field's `trailingSuffix` as a\n  `WorkbenchFilterPopover density=\"field\"`, listing every bench with its\n  count (empty benches included — \"Station 3 · 0\" is a real answer) plus\n  Any bench / At a bench. Counts come from the queue-counts payload the KPI\n  band already reads, so it costs no extra fetch. Pre-pack lanes only.\n- `togglePackStation` / `togglePackPlaced` / `clearPackPlacement` join\n  `useToShipFilterActions` — the surface's ONE URL write path. That is what\n  keeps `?packStation=` and `?packPlaced=` mutually exclusive; a second\n  writer is exactly how those two would drift apart.\n- The aggregate \"At stations\" KPI tile stays. It is an attention metric,\n  not a facet, and it is the at-a-glance number.\n\nE2E rewritten for the new home (the old test asserted the deleted strip).\n\nNOT RUN: Playwright is unusable in this tree — a concurrent session is\nmid-upgrade (package.json + pnpm-lock modified; node_modules at 1.60.0\nagainst a 1.58.2 pin), which breaks `test.skip()` at file scope in specs I\nnever touched. tsc, knip and 42 Band-3 / saved-views guards are green.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "refactor",
+      "title": "move the bench breakdown into the To-ship find field"
+    },
     {
       "sha": "9769e0b1000be359a7a5ba8b0176c37983a78cea",
       "shortSha": "9769e0b10",
@@ -1941,46 +1981,6 @@
       "body": "Restore npm ci so CI can install and Deploy production can run again after\nlighthouse/chrome-launcher/bundle-analyzer and web-vitals were added without a lockfile update.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "fix",
       "title": "sync package-lock for lighthouse tooling deps"
-    },
-    {
-      "sha": "960cf54d2661f100dbadccda6383562d53aa64cc",
-      "shortSha": "960cf54d2",
-      "date": "2026-07-20T02:03:38-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: search order detail, resizable pending grid, photos, kiosk, and eBay incoming",
-      "body": "Add dashboard search order detail shell with uniform tabs, resizable To Ship pending columns persisted per staff, photo upload overlay and move-PO modal consolidation, kiosk tablet intake E2E plus routing/revoke fixes, eBay buyer→incoming sync hardening, stagger v2 rail motion, CartonContextCard polish, and Tier-1 LCP shell-SSR ungate.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "search order detail, resizable pending grid, photos, kiosk, and eBay incoming"
-    },
-    {
-      "sha": "b766dd58f001e8c84941913f026a1eb7900c1958",
-      "shortSha": "b766dd58f",
-      "date": "2026-07-20T00:27:10-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(ui): queue-table SoT, unbox rail stagger, and header/station chrome polish",
-      "body": "Extract shared queue-table shell for To Ship Pending (10-col WMS grid), fix Unbox UNBOXED siderail first-load stagger and flush-right inset, align GlobalHeader/station bookmark chrome to header SoT, and sync unbox line selection via URL.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "queue-table SoT, unbox rail stagger, and header/station chrome polish"
-    },
-    {
-      "sha": "8c65e6c12db06b92548eb3ef2b2df807b0912a65",
-      "shortSha": "8c65e6c12",
-      "date": "2026-07-19T08:53:42-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(unbox): restore sidebar Unboxed rail eyebrow and pencil dismiss",
-      "body": "Re-enable rail edit mode on Unbox scan surfaces so the Unboxed · N eyebrow\nand bulk dismiss work again after the station-depth hide.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "restore sidebar Unboxed rail eyebrow and pencil dismiss"
-    },
-    {
-      "sha": "9aa2c9450c78bd7bb7e81d277eeba581eaeeceb9",
-      "shortSha": "9aa2c9450",
-      "date": "2026-07-19T08:51:59-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(nav): drop duplicate queryClient/handleRowHover in MasterNav",
-      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "drop duplicate queryClient/handleRowHover in MasterNav"
     }
   ]
 }

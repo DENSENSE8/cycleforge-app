@@ -56,6 +56,8 @@ export interface ReceivingPackageUpdatedDetail {
   support_notes?: string | null;
   intake_type?: string | null;
   is_return?: boolean;
+  /** Set with platform save on Return cartons — drives claim subject identity. */
+  return_platform?: string | null;
 }
 
 /** Optimistic row shape after POST /api/receiving/:id/unpair. */

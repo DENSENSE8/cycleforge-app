@@ -41,6 +41,7 @@ import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { useUnboxDisplayView } from './line-edit/hooks/useUnboxDisplayView';
+import { resolveUnboxTicketContextOpen } from './line-edit/unbox-ticket-context';
 import { yieldUnboxStationPushesOnAssistantOpen } from './line-edit/unbox-right-edge';
 import {
   StationDisplaysPushStack,
@@ -159,11 +160,6 @@ export function LineEditPanel({
   const latestRowSerial = String(rowSerials[rowSerials.length - 1]?.serial_number ?? '').trim();
   const linkedOrder = useReturnOrderLinkage(c.serialInput.trim() || latestRowSerial);
 
-  const [classifyExpand, setClassifyExpand] = useState<{
-    dimension: 'urgency' | 'platform' | 'type';
-    requestId: number;
-  } | null>(null);
-  /** Carton `# ----` handoff — which pairing avenue Linkage opens on. */
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po';
     requestId: number;
@@ -216,6 +212,19 @@ export function LineEditPanel({
   const ticketAction = resolveTicketAction(hasTicketId);
   const ticketViewActive = activeSideTab === 'ticket';
   const claimViewActive = ticketViewActive && ticketAction === 'claim';
+
+  // Carton open → Ticket Displays when linked (chat) or unfound (claim Link).
+  // Only on carton open — do not fight a manual Displays close.
+  useEffect(() => {
+    const hasTicket = c.providerTicketId != null;
+    const ctx = resolveUnboxTicketContextOpen(row, hasTicket);
+    if (!ctx.open) return;
+    setRequestedSideTab('ticket', {
+      ticketAction: ctx.ticketAction,
+      claimMode: ctx.claimMode,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- carton gate
+  }, [row.receiving_id ?? row.id]);
 
   /** Visit snapshot for Displays ← → — nest verbs ride with the leaf tab. */
   const displaysVisitFrame = useMemo((): DisplaysVisitFrame => {
@@ -417,30 +426,41 @@ export function LineEditPanel({
   // (`display/scan-cockpit.md`, DO/KNOW split). On carton open and each step
   // advance, open the step's `railLeaf`; the leaf swaps as the step changes.
   // Yields to: an explicit close this carton (cockpitClosedForCartonRef); an
-  // operator reading an exception surface (Ticket); a mid photo drill
-  // (Move/Send); Displays Root Index **or any other leaf the operator picked**
-  // (Photos while the beat is Units must stick — do not yank until the step
-  // advances or a new carton opens). `item_photos` is owned by the bespoke
-  // Compare effect above.
-  // Seed refs as unset so the FIRST effect for a mounted carton counts as
-  // carton open (scan-cockpit: default-open to railLeaf). Initializing to the
-  // live activeKey/row.id made stepChanged+cartonChanged both false on mount,
-  // so a sticky `?display=photos` was treated as operator browse and never
-  // swapped to listings.
+  // operator reading an exception surface (Ticket); ticket-context cartons
+  // (linked chat / unfound claim — Ticket wins, never classify railLeaf);
+  // a mid photo drill (Move/Send); Displays Root Index **or any other leaf
+  // the operator picked**. `item_photos` is owned by the Compare effect above.
+  //
+  // Refs update only after `activeKey` is ready — advancing them on a null
+  // early-return consumed `cartonChanged` and let a later classify settle
+  // overwrite Ticket (unfound recent-click bug).
   const prevCockpitActiveKeyRef = useRef<string | null>(null);
   const prevCockpitCartonRef = useRef<number | null>(null);
   useEffect(() => {
+    if (activeKey == null || activeKey === 'item_photos') return;
+
     const stepChanged = prevCockpitActiveKeyRef.current !== activeKey;
-    prevCockpitActiveKeyRef.current = activeKey;
-    // Carton (parent) identity — a sibling CHILD switch is NOT a record change,
-    // so it must not re-open the leaf and yank a display the operator chose
-    // (e.g. Units, opened to edit a serial). Only carton open + step advance do.
     const cartonChanged = prevCockpitCartonRef.current !== cartonKey;
+    prevCockpitActiveKeyRef.current = activeKey;
     prevCockpitCartonRef.current = cartonKey;
 
-    if (activeKey == null || activeKey === 'item_photos') return;
     if (cockpitClosedForCartonRef.current === cartonKey) return;
     if (!railLeaf) return; // reference-less step — its reference is the work plane
+
+    const ticketCtx = resolveUnboxTicketContextOpen(row, hasTicketId);
+    if (ticketCtx.open) {
+      // Ticket owns Displays for this carton. Open/re-open Ticket on carton
+      // change or when the column is still closed; never auto-follow classify.
+      // If the operator already picked another leaf, leave them alone.
+      if (cartonChanged || !showDisplays) {
+        openDisplays('ticket', {
+          ticketAction: ticketCtx.ticketAction,
+          claimMode: ticketCtx.claimMode,
+        });
+      }
+      return;
+    }
+
     if (activeSideTab === 'ticket') return; // never yank claim/chat
     if (
       activeSideTab === 'photos' &&
@@ -464,6 +484,8 @@ export function LineEditPanel({
     showDisplays,
     photoAction,
     openDisplays,
+    row,
+    hasTicketId,
   ]);
 
   const onLinkageActionChange = useCallback(
@@ -471,18 +493,6 @@ export function LineEditPanel({
       setRequestedSideTab('linkage', { linkageAction: action });
     },
     [setRequestedSideTab],
-  );
-
-  /** Identity-header classify face → open Classify with that picker expanded. */
-  const openClassifyFromHeader = useCallback(
-    (picker: 'urgency' | 'platform' | 'type') => {
-      openDisplays('classify');
-      setClassifyExpand((prev) => ({
-        dimension: picker,
-        requestId: (prev?.requestId ?? 0) + 1,
-      }));
-    },
-    [openDisplays],
   );
 
   const openMovePhotosDisplay = useCallback(() => {
@@ -747,8 +757,6 @@ export function LineEditPanel({
         onClaimTicketCreated,
         onClaimTicketUnlinked,
         accordionBootstrap,
-        classifyExpandDimension: classifyExpand?.dimension ?? null,
-        classifyExpandRequestId: classifyExpand?.requestId ?? 0,
         pairingFocusTab: pairingFocus?.tab ?? null,
         pairingFocusRequestId: pairingFocus?.requestId ?? 0,
         onFindTicket: openFindTicketDisplay,
@@ -782,7 +790,6 @@ export function LineEditPanel({
       onClaimTicketCreated,
       onClaimTicketUnlinked,
       accordionBootstrap,
-      classifyExpand,
       pairingFocus,
       photoLinkTarget,
       openFindTicketDisplay,
@@ -872,7 +879,6 @@ export function LineEditPanel({
           onEditListing={hasListingsTab ? () => openDisplays('listings') : undefined}
           onEditPo={openPoPairing}
           onOrderDetails={openOrderConnectionDetails}
-          onClassifyPillOpen={openClassifyFromHeader}
           trackingEditOpen={activeSideTab === 'tracking'}
           listingEditOpen={activeSideTab === 'listings'}
           poEditOpen={activeSideTab === 'linkage' && linkageAction === 'link'}

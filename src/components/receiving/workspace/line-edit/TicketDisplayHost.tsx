@@ -4,10 +4,9 @@
  * Unbox Displays → Ticket topic — presence-exclusive body.
  *
  * Strip cell is "Ticket". No Chat · Claim tab row on the topic plate:
- * - No linked ticket → {@link ReceivingClaimPanel} with **New · Link** as
- *   leaf-header trailing segment (`ClaimWizardNav` placement `leaf-header`,
- *   always-visible ⌥1/⌥2) — the sole find/create surface (Pairing no longer
- *   hosts a Tickets avenue or in-strip finder).
+ * - No linked ticket → {@link ReceivingClaimPanel} with body **Create | Link**
+ *   flush combobox (`ClaimModeSelect`, ⌥1/⌥2) — shared photos · claim type ·
+ *   subject · body · recipients (Pairing no longer hosts a Tickets avenue).
  * - Linked ticket → Chat only
  *
  * Nest: `ticket` leaf (+ `claimMode` while on the claim surface).
@@ -37,6 +36,11 @@ export function TicketDisplayHost({
   onClaimTicketCreated,
   onClaimTicketUnlinked,
   returnClaimPrefill,
+  /**
+   * QC / All-good reply presets on the composer. Unbox Ticket Displays
+   * passes `false`; Testing · Arrival keep the default on.
+   */
+  showReplyPresets = true,
 }: {
   row: ReceivingLineRow;
   ticketId: number | null | undefined;
@@ -46,6 +50,7 @@ export function TicketDisplayHost({
   onClaimTicketCreated: (ticketNumber: string) => void;
   onClaimTicketUnlinked: () => void;
   returnClaimPrefill?: string | null;
+  showReplyPresets?: boolean;
 }) {
   const hasTicket = ticketId != null;
 
@@ -70,6 +75,7 @@ export function TicketDisplayHost({
               mergeFloorTimeline={false}
               // Station Ticket Displays = read + reply → conversation bubbles.
               streamVariant="bubble"
+              showReplyPresets={showReplyPresets}
             />
           </div>
         ) : (

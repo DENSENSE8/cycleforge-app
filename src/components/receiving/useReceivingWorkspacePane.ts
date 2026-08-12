@@ -6,17 +6,19 @@
  * keeps the pane authoritative across the full lifecycle:
  *   - workspace open/close/update + nav-state (dispatched by the sidebar)
  *   - the skeleton loader's grace-delay show / lingered clear around a scan
- *   - browse-first Unbox (no never-blank auto-open)
- *   - delete recovery onto an empty browse pane
+ *   - station-first Unbox (auto-open Unboxed MRU on bare `/unbox`; desk via
+ *     `?unboxdesk=1` after Back to list — never re-open MRU until resume/scan)
+ *   - delete recovery onto desk (no surprise MRU reopen)
  *   - Unbox URL stickiness (`?openReceivingId=` / `?lineId=`) so refresh
- *     reopens the edit overlay instead of the browse crossfade
+ *     reopens the station overlay
  *
  * Reads the live `?mode=` so a client-side mode switch is honored without a
  * render lag. Extracted from ReceivingDashboard; behaviour is unchanged.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
@@ -24,15 +26,21 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
+import { parseStaffParam } from '@/hooks/useStaffFilter';
 import {
   receivingSurfaceBasePath,
   UNBOX_SURFACE_ROUTE,
 } from '@/lib/receiving/surface-path';
 import {
+  applyUnboxDeskParam,
   applyUnboxOpenReceivingParams,
   pickReceivingLineForDeepLink,
+  shouldAutoOpenUnboxMru,
   shouldRestoreOpenReceiving,
 } from '@/lib/receiving/unbox-selection-url';
+import { RECEIVING_RAIL_FEEDS } from '@/lib/receiving/rail/feeds';
+import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
+import { normalizeUnboxWorkspaceTabParams } from '@/utils/unbox-workspace-state';
 
 export interface WorkspaceState {
   row: ReceivingLineRow;
@@ -79,6 +87,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   // `?openReceivingId=` is the Unbox surface's focused-carton URL SoT. The write
   // side (`syncUnboxOpenUrl`) only stamps it on `/unbox`, so the read side (the
@@ -98,8 +107,11 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   // skeleton immediately — no browse-feed flash before the restore resolves.
   // Unbox-surface only: a leaked param elsewhere must not hold a phantom
   // skeleton (there is no restore for it — see the effect's gate).
+  // Station-first: bare `/unbox` (auto-open MRU pending) also starts pending so
+  // the empty desk sheet never flashes before the MRU resolve.
   const [restorePending, setRestorePending] = useState<boolean>(() =>
-    shouldRestoreOpenReceiving(isUnboxSurface, searchParams.get('openReceivingId')),
+    shouldRestoreOpenReceiving(isUnboxSurface, searchParams.get('openReceivingId')) ||
+      shouldAutoOpenUnboxMru(isUnboxSurface, searchParams),
   );
   const [lookupReceipt, setLookupReceipt] = useState<UnboxLookupScanDetail | null>(null);
   const clearLookupReceipt = useCallback(() => setLookupReceipt(null), []);
@@ -126,16 +138,46 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   // Eager mirror for event handlers (declared before the listener effect).
   const workspaceRef = useRef<WorkspaceState | null>(null);
   workspaceRef.current = workspace;
+  // Last Unboxed-rail MRU receiving_id we auto-opened (avoid re-entry loops).
+  const mruOpenedReceivingIdRef = useRef<number | null>(null);
 
-  const replaceUnboxOpenReceiving = useCallback(
-    (selection: { receivingId: number; lineId?: number | null } | null) => {
+  const wantMruAutoOpen = shouldAutoOpenUnboxMru(isUnboxSurface, searchParams);
+  const unboxRailStaffId = useMemo(() => {
+    const feed = RECEIVING_RAIL_FEEDS.unboxRecent;
+    if (!feed.usesStaffFilter) return null;
+    return parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
+  }, [searchParams]);
+  // Same key as ReceivingFeedRail's Unboxed dock — seed + rail + auto-open share it.
+  const unboxRailQueryKey = useMemo(
+    () =>
+      receivingRailQueryKey(
+        RECEIVING_RAIL_FEEDS.unboxRecent.segment,
+        undefined,
+        '',
+        unboxRailStaffId,
+      ),
+    [unboxRailStaffId],
+  );
+  const unboxRailQuery = useQuery<ReceivingLineRow[]>({
+    queryKey: unboxRailQueryKey,
+    queryFn: async () => {
+      const feed = RECEIVING_RAIL_FEEDS.unboxRecent;
+      const data = await feed.buildFetcher!({
+        staffId: unboxRailStaffId,
+        query: '',
+      })();
+      return data.receiving_lines ?? [];
+    },
+    enabled: wantMruAutoOpen,
+  });
+
+  const replaceUnboxUrl = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
       if (!isUnboxSurface) return;
-      // Live URL seed — concurrent `?display=` writes must not be clobbered by
-      // a stale React `searchParams` snapshot (Open displays looked dead).
       const seed =
         typeof window !== 'undefined' ? window.location.search : searchParams.toString();
       const params = new URLSearchParams(seed);
-      applyUnboxOpenReceivingParams(params, selection);
+      mutate(params);
       const nextSearch = params.toString();
       const currentSearch =
         typeof window !== 'undefined'
@@ -148,6 +190,28 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     [isUnboxSurface, router, searchParams],
   );
 
+  const replaceUnboxOpenReceiving = useCallback(
+    (selection: { receivingId: number; lineId?: number | null } | null) => {
+      replaceUnboxUrl((params) => {
+        applyUnboxOpenReceivingParams(params, selection);
+        // Opening a carton exits desk; closing alone does not enter desk
+        // (Back to list / recover call enterUnboxDesk).
+        if (selection != null) applyUnboxDeskParam(params, false);
+      });
+    },
+    [replaceUnboxUrl],
+  );
+
+  /** Back to list / delete recovery — clear carton + enter desk (tables). */
+  const enterUnboxDesk = useCallback(() => {
+    replaceUnboxUrl((params) => {
+      applyUnboxOpenReceivingParams(params, null);
+      applyUnboxDeskParam(params, true);
+      // Recent = touched set under the carton (resume CTA parity).
+      normalizeUnboxWorkspaceTabParams(params, 'recent');
+    });
+  }, [replaceUnboxUrl]);
+
   const syncUnboxOpenUrl = useCallback(
     (row: ReceivingLineRow | null) => {
       if (!isUnboxSurface) return;
@@ -159,6 +223,8 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         if (currentOpen === String(receivingId) && currentLine === String(row.id)) {
           pendingOpenKeyRef.current = null;
           ignoredOpenKeyRef.current = null;
+          // Still clear desk if a resume landed while desk was sticky.
+          replaceUnboxUrl((params) => applyUnboxDeskParam(params, false));
           return;
         }
         pendingOpenKeyRef.current = nextKey;
@@ -173,10 +239,17 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
           ignoredOpenKeyRef.current = `${currentOpen}:${currentLine ?? ''}`;
         }
         pendingOpenKeyRef.current = null;
-        replaceUnboxOpenReceiving(null);
+        // Back to list / close with an open carton → desk so MRU does not re-open.
+        enterUnboxDesk();
       }
     },
-    [isUnboxSurface, replaceUnboxOpenReceiving, searchParams],
+    [
+      enterUnboxDesk,
+      isUnboxSurface,
+      replaceUnboxOpenReceiving,
+      replaceUnboxUrl,
+      searchParams,
+    ],
   );
 
   useEffect(() => {
@@ -299,7 +372,10 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       // panel on load).
       deepLinkedKeyRef.current = null;
       deepLinkInFlightRef.current = null;
-      setRestorePending(false);
+      // Keep restorePending if station-first MRU auto-open is still pending.
+      if (!shouldAutoOpenUnboxMru(isUnboxSurface, searchParams)) {
+        setRestorePending(false);
+      }
       return;
     }
     const lineIdParam = searchParams.get('lineId');
@@ -362,16 +438,111 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         if (deepLinkInFlightRef.current === deepLinkKey) {
           deepLinkInFlightRef.current = null;
           // Restore resolved (opened, or missed with no carton) — drop the
-          // skeleton so a genuine miss falls back to the browse feed.
+          // skeleton so a genuine miss falls back to the empty station shell.
           setRestorePending(false);
         }
       }
     })();
   }, [searchParams, isUnboxSurface]);
 
-  // Browse-first for Unbox: do NOT auto-open the most-recent line. Operators
-  // land on the Unboxed/Queue/Viewed feed (like Testing) and open a line via
-  // click or scan. Deep-link `openReceivingId` still opens via the effect above.
+  // Station-first: bare `/unbox` opens the Unboxed rail's most-recent carton
+  // (same list the left dock paints). Wait for the shared rail query — never
+  // one-shot miss → Browse-lists empty bench while the rail still has rows.
+  useEffect(() => {
+    if (!wantMruAutoOpen) {
+      mruOpenedReceivingIdRef.current = null;
+      return;
+    }
+    if (workspaceRef.current != null) {
+      setRestorePending(false);
+      return;
+    }
+
+    const rows = unboxRailQuery.data;
+    const mru = rows?.[0];
+    if (!mru) {
+      // Keep pending while the rail is still resolving; settle empty only after
+      // a completed fetch with zero rows (scan bar stays armed — no Browse CTA).
+      if (unboxRailQuery.isFetched && !unboxRailQuery.isFetching) {
+        setRestorePending(false);
+      } else {
+        setRestorePending(true);
+      }
+      return;
+    }
+
+    const receivingId =
+      mru.receiving_id != null && Number.isFinite(Number(mru.receiving_id))
+        ? Number(mru.receiving_id)
+        : null;
+    if (receivingId != null && mruOpenedReceivingIdRef.current === receivingId) {
+      setRestorePending(false);
+      return;
+    }
+
+    setRestorePending(true);
+    let cancelled = false;
+    void (async () => {
+      try {
+        let pick: ReceivingLineRow = mru;
+        if (receivingId != null) {
+          const seeded = queryClient.getQueryData<{
+            receiving_lines?: ReceivingLineRow[];
+          }>(['receiving-siblings', receivingId]);
+          const seededRows = seeded?.receiving_lines;
+          if (Array.isArray(seededRows) && seededRows.length > 0) {
+            const matched = pickReceivingLineForDeepLink(seededRows, String(mru.id));
+            if (matched) pick = matched;
+          } else {
+            try {
+              const res = await fetch(
+                `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
+                { cache: 'no-store' },
+              );
+              const data = res.ok ? await res.json().catch(() => null) : null;
+              const cartonRows = Array.isArray(data?.receiving_lines)
+                ? (data.receiving_lines as ReceivingLineRow[])
+                : [];
+              const matched = pickReceivingLineForDeepLink(cartonRows, String(mru.id));
+              if (matched) pick = matched;
+            } catch {
+              /* rail row is enough to open */
+            }
+          }
+        }
+        if (cancelled || workspaceRef.current != null) return;
+        if (receivingId != null) mruOpenedReceivingIdRef.current = receivingId;
+        const restored: WorkspaceState = {
+          row: pick,
+          accordionBootstrap: 'default',
+          scanDriven: false,
+        };
+        workspaceRef.current = restored;
+        setWorkspace(restored);
+        syncUnboxOpenUrl(pick);
+        dispatchSelectLine(pick);
+        setTimeout(() => {
+          emitReceiving('receiving-focus-scan');
+        }, 60);
+      } catch {
+        /* soft-fail — keep scan bench armed */
+      } finally {
+        if (!cancelled) setRestorePending(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    wantMruAutoOpen,
+    unboxRailQuery.data,
+    unboxRailQuery.isFetched,
+    unboxRailQuery.isFetching,
+    queryClient,
+    syncUnboxOpenUrl,
+  ]);
+
   // Guards delete-recovery while choosing the next line so it doesn't race.
   const recoveringRef = useRef(false);
   // Any mode switch must drop the focused workspace from state — even though
@@ -391,20 +562,26 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   }, [searchParams, syncUnboxOpenUrl]);
 
   // Recover the right pane after the line it's showing is removed — the single
-  // line, or the whole carton it belongs to. Browse-first Unbox: clear to the
-  // feed (no auto-open replacement). Triage / other modes: close the workspace.
+  // line, or the whole carton it belongs to. Station-first: enter desk so MRU
+  // auto-open does not surprise-reopen another carton.
   const recoverRightPane = useCallback(
     (isDeleted: (row: ReceivingLineRow) => boolean) => {
       void isDeleted; // kept for call-site symmetry with prior auto-open recovery
       recoveringRef.current = true;
       setWorkspace(null);
       setNav(null);
-      syncUnboxOpenUrl(null);
+      if (isUnboxSurface) {
+        ignoredOpenKeyRef.current = null;
+        pendingOpenKeyRef.current = null;
+        enterUnboxDesk();
+      } else {
+        syncUnboxOpenUrl(null);
+      }
       dispatchReceivingWorkspaceClose();
       emitReceiving('receiving-clear-line');
       recoveringRef.current = false;
     },
-    [syncUnboxOpenUrl],
+    [enterUnboxDesk, isUnboxSurface, syncUnboxOpenUrl],
   );
 
   // Single line removed (e.g. last item pulled from an unmatched carton).

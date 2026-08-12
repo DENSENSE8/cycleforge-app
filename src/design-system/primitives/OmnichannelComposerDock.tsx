@@ -248,7 +248,7 @@ export const OmnichannelComposerDock = forwardRef<
   const bare = chrome === 'bare';
 
   const trailing = (
-    <div className="flex shrink-0 items-center gap-1.5">
+    <div className="flex shrink-0 items-end gap-1">
       {footerEnd}
       {composerShowsCommit({
         hideCommitButton,
@@ -371,8 +371,8 @@ export const OmnichannelComposerDock = forwardRef<
           {trailing}
         </div>
       ) : (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 px-2 pb-2 pt-0.5">
-          <div className="flex min-w-0 flex-1 items-center gap-1">{footerStart}</div>
+        <div className="flex min-w-0 flex-wrap items-end gap-1 px-2 pb-1.5 pt-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5">{footerStart}</div>
           {trailing}
         </div>
       )}

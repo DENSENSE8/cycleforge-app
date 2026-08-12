@@ -10,12 +10,11 @@
 
 import { useCallback, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import { WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import {
   WorkbenchFilterMenuRow,
@@ -42,40 +41,45 @@ import { WarehouseFloorPlan } from './WarehouseFloorPlan';
 import { LocationsWorkspaceHeader } from './LocationsWorkspaceHeader';
 import { LocationsBinsKpiBand } from './LocationsBinsKpiBand';
 import { parseLocationsTab } from '@/lib/inventory/locations-path';
-import { cn } from '@/utils/_cn';
 
 export function LocationsWorkspace() {
   const searchParams = useSearchParams();
   const tab = parseLocationsTab(searchParams.get('tab'));
   const rackCodeParam = searchParams.get('code');
-  // Band-3 ▦ host — lifted so chrome (pinned) and BinsTabSheet (body) share it.
-  const [binsControlsEl, setBinsControlsEl] = useState<HTMLDivElement | null>(null);
+  // Band-3 ▦ host — the shell lifts it so chrome (pinned) and BinsTabSheet
+  // (body) share one element by construction.
+  //
+  // No `surface` id: Bins DOES have a Band 2, but it is `LocationsBinsKpiBand`
+  // bundled inside `LocationsBinsChrome` — a tab-scoped strip, not the per-staff
+  // snap-collapsible `WorkbenchKpiBand`. There is no collapse control here, so
+  // there is no preference to read.
+  const chrome = useWorkbenchSheetChrome();
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className="h-full bg-transparent"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <LocationsWorkspaceHeader />
-            {tab === 'bins' ? (
-              <LocationsBinsChrome controlsSlotRef={setBinsControlsEl} />
-            ) : null}
-          </div>
+        // LocationsWorkspaceHeader takes no className — it is flush at source.
+        tabs={() => <LocationsWorkspaceHeader />}
+        triage={({ controlsSlotRef }) =>
+          tab === 'bins' && controlsSlotRef ? (
+            <LocationsBinsChrome controlsSlotRef={controlsSlotRef} />
+          ) : null
         }
       >
-        <div className={WORKBENCH_SHEET_HOST}>
-          {tab === 'rooms' ? <RoomDetailForm /> : null}
-          {tab === 'labels' ? <LabelPrintWorkspace /> : null}
-          {tab === 'racks' ? (
-            rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
-          ) : null}
-          {tab === 'map' ? <MapTabBody /> : null}
-          {tab === 'bins' ? (
-            <BinsTabSheet columnTriggerPortalTarget={binsControlsEl} />
-          ) : null}
-        </div>
-      </DashboardScrollShell>
+        {({ controlsEl }) => (
+          <>
+            {tab === 'rooms' ? <RoomDetailForm /> : null}
+            {tab === 'labels' ? <LabelPrintWorkspace /> : null}
+            {tab === 'racks' ? (
+              rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
+            ) : null}
+            {tab === 'map' ? <MapTabBody /> : null}
+            {tab === 'bins' ? <BinsTabSheet columnTriggerPortalTarget={controlsEl} /> : null}
+          </>
+        )}
+      </WorkbenchSheetView>
     </div>
   );
 }

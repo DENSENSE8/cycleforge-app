@@ -91,7 +91,7 @@ const CLOSED_SNAPSHOT: UnboxDisplaySnapshot = {
   photoAction: parseUnboxPhotoAction(null),
   linkageActionRaw: null,
   ticketActionRaw: null,
-  claimMode: 'create',
+  claimMode: 'link',
 };
 
 /**
@@ -117,11 +117,12 @@ export function buildDisplayPending(
   }
 
   let ticketActionRaw: string | null = null;
-  let claimMode: ClaimModalMode = 'create';
+  let claimMode: ClaimModalMode = 'link';
   if (tab === 'ticket') {
     if (opts?.ticketAction === 'claim') {
       ticketActionRaw = 'claim';
-      if (opts.claimMode === 'link') claimMode = 'link';
+      if (opts.claimMode === 'create') claimMode = 'create';
+      else if (opts.claimMode === 'link') claimMode = 'link';
     } else if (opts?.ticketAction === 'chat') {
       ticketActionRaw = 'chat';
     }

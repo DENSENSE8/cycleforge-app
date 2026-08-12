@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useEventBridge } from '@/hooks';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   detectPlatformFromUrl,
@@ -54,6 +55,22 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
       .catch(() => {});
     return () => { cancelled = true; };
   }, [row.receiving_id, row.source_platform]);
+
+  // Mirror platform edits from Classify / claim compose (same carton).
+  useEventBridge({
+    'receiving-package-updated': (e) => {
+      if (row.receiving_id == null) return;
+      const detail = (
+        e as CustomEvent<{
+          receiving_id?: number;
+          source_platform?: string | null;
+        }>
+      ).detail;
+      if (!detail || detail.receiving_id !== row.receiving_id) return;
+      if (detail.source_platform === undefined) return;
+      setSourcePlatform((detail.source_platform || '').toLowerCase());
+    },
+  });
 
   const savePlatform = useCallback(async (
     next: string,
