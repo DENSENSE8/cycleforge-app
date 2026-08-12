@@ -90,6 +90,11 @@ const TABLE_ENTITY_FAMILIES = [
   'receiving',
   'incoming',
   'orders',
+  /**
+   * To-Ship desk queue — desk-local definition + prefs bucket; reuses the
+   * orders cell map (`cellMapKey: 'orders'`) until the fork diverges.
+   */
+  'to-ship',
   /** To-Ship CSV import staging — parsed rows + triage state, not live orders. */
   'orders-import',
   'catalog',

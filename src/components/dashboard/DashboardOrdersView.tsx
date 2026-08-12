@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
-import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
+import { ToShipDeskTable } from '@/components/outbound/orders/to-ship/ToShipDeskTable';
 import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
 import { OutboundKpiStrip } from '@/components/dashboard/OutboundKpiStrip';
 import {
@@ -179,7 +179,7 @@ export function DashboardOrdersView({
         toolbarPortalTarget={controlsEl}
       />
     ) : (
-      <UnshippedTable
+      <ToShipDeskTable
         strictSearchScope
         selectMode={selectMode}
         railSelection
