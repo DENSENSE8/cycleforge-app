@@ -2,6 +2,11 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { buildUnmatchedStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyInput, parseScannedUrl } from '@/lib/scan-resolver';
 import { routeScan } from '@/lib/barcode-routing';
+import {
+  parseTrackingKeys,
+  serializeTrackingIn,
+  TRACKING_IN_PARAM,
+} from '@/lib/receiving/tracking-paste';
 
 /** Minimal carton header from GET /api/receiving/:id — used when lines are empty. */
 type ReceivingCartonHeader = {
@@ -306,12 +311,28 @@ export async function fetchLinesByTracking(tracking: string) {
   // lookup-po entirely. `include=serials` is cheap at this limit and lets the
   // testing multi-picker show serial chips on tracking-resolved rows too (the
   // receiving unbox short-circuit ignores the extra field harmlessly).
+  //
+  // Filter on the SHIPMENT JOIN (`?tracking_in=` → indexed equality against
+  // `stn.tracking_number_normalized` via `receiving_carton.shipment_id`), never
+  // `?search=`. This call blocks the Unbox open, and `?search=` is the generic
+  // field — an eleven-arm `ILIKE '%…%'` (item name, SKU, four PO identities,
+  // three tracking columns) plus an `EXISTS` over `serial_units`, all with a
+  // LEADING wildcard, so no index applies to any arm. Every one of those arms
+  // was dead weight: the caller throws the result away unless the row's
+  // tracking matches EXACTLY, which is the one thing `tracking_in` asks for.
+  // The canonicalization is shared (`normalizeScanKey` ⇔ `canonicalizeTrackingKey`
+  // ⇔ the stored normalized column), so a dashed or spaced scan still hits.
+  const keys = parseTrackingKeys(tracking).keys;
+  // Nothing canonicalizes to a key ⇒ nothing to look up. Sending an empty
+  // `tracking_in` would drop the filter entirely and return an unrelated page of
+  // the feed, which the exact-match narrowing below would then throw away.
+  if (keys.length === 0) return [] as ReceivingLineRow[];
   const params = new URLSearchParams({
     limit: '5',
     offset: '0',
     view: 'all',
     include: 'serials',
-    search: tracking,
+    [TRACKING_IN_PARAM]: serializeTrackingIn(keys),
   });
   const res = await fetch(`/api/receiving-lines?${params.toString()}`);
   if (!res.ok) throw new Error(`receiving-lines fetch failed (${res.status})`);

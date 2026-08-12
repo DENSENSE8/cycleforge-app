@@ -12,6 +12,7 @@ import {
 } from '@/lib/inventory/events';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
+import { parseReturnSerialTitle } from '@/components/station/receiving-line-serials';
 
 /**
  * Serial numbers as a SIDECAR. A `serial_units` row IS the item identity
@@ -267,6 +268,25 @@ export async function attachSerialToLine(
         });
       }
 
+      // Generated return-intake titles bake the scanned serial into item_name.
+      // Keep that face aligned when the operator replaces/rescans the unit —
+      // otherwise the rail/title keep painting a stale serial while the chip
+      // shows the live one.
+      let lineForState = line;
+      const scannedSerial = String(input.serial_number || '').trim();
+      if (scannedSerial && parseReturnSerialTitle(line.item_name) != null) {
+        const nextName = `Return serial ${scannedSerial}`;
+        if (nextName !== line.item_name) {
+          await client.query(
+            `UPDATE receiving_line
+                SET item_name = $2, updated_at = NOW()
+              WHERE id = $1 AND organization_id = $3`,
+            [line.id, nextName, orgId],
+          );
+          lineForState = { ...line, item_name: nextName };
+        }
+      }
+
       return {
         line_id: line.id,
         serial_unit: upserted.unit,
@@ -276,7 +296,7 @@ export async function attachSerialToLine(
         warnings: upserted.warnings,
         already_attached: false,
         inventory_event_id: event.id,
-        line_state: lineState(line),
+        line_state: lineState(lineForState),
       };
     });
 }

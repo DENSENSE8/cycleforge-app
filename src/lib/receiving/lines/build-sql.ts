@@ -564,7 +564,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     view, deliveryStateFilter, poFrom, poTo,
     incomingSort, historySort, wantsPrioritySort, testerId, returnScope, priorityOnly, weekStart, weekEnd, limit, offset,
     inboundSourceParam, incomingLinkParam, inboundKindParam, staffFilterRaw, staffFilterId,
-    unboxQueueStage, unboxQueueLane, trackingIn,
+    unboxQueueStage, unboxQueueLane, trackingIn, receivingIdIn,
   } = input.query;
   /**
    * The operator named specific trackings, so this query is about THOSE ROWS —
@@ -612,6 +612,16 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   if (trackingInActive) {
     conditions.push(`stn.tracking_number_normalized = ANY($${idx++}::text[])`);
     values.push(trackingIn);
+  }
+
+  // Pre-limit: restrict the candidate set to cartons named by the caller, which
+  // ranked them with a cheap read on the ordering column alone. Everything else
+  // about the query is unchanged — this only stops the display laterals from
+  // running over rows that could never reach the page. Omitted when empty, so
+  // the no-param SQL stays byte-identical to `legacy-route-sql.fixture.ts`.
+  if (receivingIdIn.length > 0) {
+    conditions.push(`rl.receiving_id = ANY($${idx++}::int[])`);
+    values.push(receivingIdIn);
   }
 
   if (search) {
@@ -1724,6 +1734,7 @@ export function buildUnmatchedPlaceholdersSql(
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
              ) unbox_open ON TRUE`
       : '';
+
   return {
     list: {
       sql:
@@ -1841,9 +1852,17 @@ export function buildUnboxOpenedPlaceholdersSql(
   unboxRailColumnRead = false,
 ): BuiltListSql {
   const unboxOpenedPredicate = unboxOpenedPredicateSql(unboxRailColumnRead);
-  const { search, searchField } = query;
+  const { search, searchField, receivingIdIn } = query;
   const unboxSearchVals: unknown[] = [orgId];
   let unboxSearchSql = '';
+  // Same pre-limit as the main list: when the caller has already ranked the
+  // cartons, the placeholder scan is restricted to that page instead of walking
+  // every unbox-opened carton in the org. Appended AFTER the search param so
+  // the no-param SQL keeps its `$1`/`$2` numbering byte-for-byte.
+  const receivingIdInSql =
+    receivingIdIn.length > 0
+      ? ` AND r.id = ANY($${search ? 3 : 2}::int[])`
+      : '';
   if (search) {
     unboxSearchVals.push(`%${search}%`);
     if (searchField === 'po') {
@@ -1861,6 +1880,9 @@ export function buildUnboxOpenedPlaceholdersSql(
           )`;
     }
   }
+  // Pushed last so it lands on $3 when a search param already took $2.
+  if (receivingIdIn.length > 0) unboxSearchVals.push(receivingIdIn);
+
   return {
     list: {
       sql:
@@ -1932,7 +1954,7 @@ export function buildUnboxOpenedPlaceholdersSql(
                   AND uo.source_id = r.id::text
                   AND uo.checked IS TRUE
              )
-             ${unboxSearchSql}
+             ${unboxSearchSql}${receivingIdInSql}
            ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`,
@@ -1958,7 +1980,7 @@ export function buildUnboxOpenedPlaceholdersSql(
                    AND uo.source_id = r.id::text
                    AND uo.checked IS TRUE
               )
-              ${unboxSearchSql}`,
+              ${unboxSearchSql}${receivingIdInSql}`,
       params: unboxSearchVals,
     },
   };

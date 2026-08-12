@@ -28,6 +28,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import type { SerialAbsentState } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
@@ -135,8 +136,11 @@ export function PoLineRow({
   const pulseTransition = useMotionTransition(motionRole.feedback.pulse.transition);
   const lineTitle = receivingWorkspaceLineTitle(line);
 
-  const serialNumbers = (Array.isArray(line.serials) ? line.serials : [])
-    .map((s) => (s.serial_number || '').trim())
+  // Persisted units win; optimistic return lines fall back to the title serial
+  // so the meta face stays last-8 before projection catches up.
+  const serialNumbers = resolveReceivingLineSerialsCsv(line)
+    .split(',')
+    .map((s) => s.trim())
     .filter(Boolean);
   const expectedQty = Number(line.quantity_expected) || 0;
   const canOpenUnits =

@@ -14,15 +14,11 @@
 
 import { useCallback, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchKpiBand,
-  WORKBENCH_KPI_SURFACE,
-} from '@/components/dashboard/workbench-kpi-collapse';
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 import {
   LabelsTriageBand,
   LabelsWorkspaceHeader,
@@ -33,8 +29,6 @@ import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTabl
 import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
 import { useLabelsWorkspaceTab } from '@/hooks/useLabelsWorkspaceTab';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
-import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
-import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
 interface LabelsWorkspaceViewProps {
@@ -45,12 +39,10 @@ interface LabelsWorkspaceViewProps {
 export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewProps) {
   const { labelsTab, setLabelsTab } = useLabelsWorkspaceTab();
   const { q, sort, setQ, setSort, openNew } = useOutboundUrlState();
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
-    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.labels);
+  const chrome = useWorkbenchSheetChrome(WORKBENCH_KPI_SURFACE.labels);
   // Recent (staged) detail is local — it must not touch the Queue tab's `?open=`
   // label-print flow.
   const [recentOpenId, setRecentOpenId] = useState<number | null>(null);
-  const [labelsControlsEl, setLabelsControlsEl] = useState<HTMLDivElement | null>(null);
 
   const toggleSort = useCallback(
     () => setSort(sort === 'newest' ? 'priority' : 'newest'),
@@ -65,45 +57,38 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <LabelsWorkspaceHeader
-              tab={labelsTab}
-              onSelectTab={setLabelsTab}
-              onNewOrder={openNew}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            <WorkbenchKpiBand
-              open={!kpiCollapsed}
-              onSnapCollapse={() => setKpiCollapsed(true)}
-              onSnapExpand={() => setKpiCollapsed(false)}
-            >
-              <LabelsKpiStrip tab={labelsTab} />
-            </WorkbenchKpiBand>
-            <LabelsTriageBand
-              tab={labelsTab}
-              search={q}
-              onSearch={setQ}
-              sort={sort}
-              onToggleSort={toggleSort}
-              kpiOpen={!kpiCollapsed}
-              onToggleKpi={toggleKpiCollapsed}
-              controlsSlotRef={setLabelsControlsEl}
-            />
-          </div>
-        }
+        tabs={({ className }) => (
+          <LabelsWorkspaceHeader
+            tab={labelsTab}
+            onSelectTab={setLabelsTab}
+            onNewOrder={openNew}
+            className={className}
+          />
+        )}
+        kpi={<LabelsKpiStrip tab={labelsTab} />}
+        triage={(p) => (
+          <LabelsTriageBand
+            tab={labelsTab}
+            search={q}
+            onSearch={setQ}
+            sort={sort}
+            onToggleSort={toggleSort}
+            {...p}
+          />
+        )}
       >
-        <div className={WORKBENCH_SHEET_HOST}>
-          {labelsTab === 'recent' ? (
+        {({ controlsEl }) =>
+          labelsTab === 'recent' ? (
             <StagedQueueTable
               searchQuery={q}
               onOpenOrder={openRecent}
               onCloseOrder={closeRecent}
               hideHeader
               disableBackfill
-              columnTriggerPortalTarget={labelsControlsEl}
+              columnTriggerPortalTarget={controlsEl}
             />
           ) : (
             <LabelsQueueTable
@@ -112,11 +97,11 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
               onOpenOrder={onOpenLabelOrder}
               onCloseOrder={() => undefined}
               hideHeader
-              columnTriggerPortalTarget={labelsControlsEl}
+              columnTriggerPortalTarget={controlsEl}
             />
-          )}
-        </div>
-      </DashboardScrollShell>
+          )
+        }
+      </WorkbenchSheetView>
 
       <AnimatePresence>
         {recentOpenId ? (

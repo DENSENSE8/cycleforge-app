@@ -30,10 +30,13 @@ function stripBlockComments(src: string): string {
 }
 
 describe('Support Sheets flush chrome', () => {
-  it('SupportTicketsBoard uses WORKBENCH_SHEET_* hosts (not guttered columns)', () => {
+  it('SupportTicketsBoard composes the Sheets shell (not guttered columns)', () => {
     const src = stripBlockComments(read(BOARD));
-    assert.match(src, /WORKBENCH_SHEET_CHROME/);
-    assert.match(src, /WORKBENCH_SHEET_HOST/);
+    // The recipe moved into WorkbenchSheetView (2d): the page composes the shell
+    // and no longer holds the tokens, so it cannot drift from its sibling sheets.
+    // Token ownership is asserted once in `workbench-sheet-view.guard.test.ts`.
+    assert.match(src, /<WorkbenchSheetView/);
+    assert.match(src, /useWorkbenchSheetChrome/);
     assert.doesNotMatch(src, /WORKBENCH_CHROME_COLUMN/);
     assert.doesNotMatch(src, /WORKBENCH_BODY_COLUMN/);
     assert.doesNotMatch(src, /WORKBENCH_GUTTERS/);
@@ -55,13 +58,16 @@ describe('Support Sheets flush chrome', () => {
     assert.doesNotMatch(src, /\bmb-4\b/);
   });
 
-  it('board tab band passes Unbox flush face overrides', () => {
+  it('board the tab band takes its flush face from the shell', () => {
     const src = read(BOARD);
     const headerStart = src.indexOf('<WorkbenchChromeHeader');
     const headerBlock = src.slice(headerStart, headerStart + 400);
-    assert.match(headerBlock, /border-l-0/);
-    assert.match(headerBlock, /border-t-0/);
-    assert.match(headerBlock, /rounded-none/);
+    // The flush face is the shell's WORKBENCH_SHEET_TABS_CLASS, handed to the
+    // tabs slot; the page forwards it. Re-typing it per page is how the sheets
+    // drifted — and four of them carried a redundant `rounded-none` the
+    // header already applies via cornerClass('flush').
+    assert.match(headerBlock, /className=\{className\}/);
+    assert.match(src, /tabs=\{\(\{ className \}\)/);
   });
 
   it('ticket focus thread stays flush — no gutter columns', () => {

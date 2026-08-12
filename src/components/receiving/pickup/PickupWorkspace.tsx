@@ -18,10 +18,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
@@ -127,7 +128,9 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const [customerName, setCustomerName] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [pickupControlsEl, setPickupControlsEl] = useState<HTMLDivElement | null>(null);
+  // No KPI band on this sheet (honest absence) — controller is the ▦ portal only.
+  const chrome = useWorkbenchSheetChrome();
+  const pickupControlsEl = chrome.controlsEl;
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -269,40 +272,41 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
 
   return (
     <>
-      <DashboardScrollShell
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-              tabs={tabs}
-              activeTab={statusTab}
-              onTabChange={(id) =>
-                setParam('status', (id as PickupStatusTab) === 'all' ? null : id)
-              }
-              trailing={
-                <WorkbenchTrailingCluster
-                  actions={<PickupChromeActions onNew={openCreate} busy={creating} />}
-                />
-              }
-            />
-            {/* Band 3 — find + ▦ column display. No KPI band (honest absence). */}
-            <WorkbenchTriageBand
-              controlsSlotRef={setPickupControlsEl}
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={query}
-                  onChange={(v) => setParam('q', v.trim() ? v : null)}
-                  placeholder="Filter pickup items…"
-                  className="min-w-0 flex-1"
-                />
-              }
-            />
-          </div>
-        }
+      <WorkbenchSheetView
+        chrome={chrome}
+        tabs={({ className }) => (
+          <WorkbenchChromeHeader
+            density="band"
+            className={className}
+            tabs={tabs}
+            activeTab={statusTab}
+            onTabChange={(id) =>
+              setParam('status', (id as PickupStatusTab) === 'all' ? null : id)
+            }
+            trailing={
+              <WorkbenchTrailingCluster
+                actions={<PickupChromeActions onNew={openCreate} busy={creating} />}
+              />
+            }
+          />
+        )}
+        // Band 3 — find + ▦ column display. No KPI band (honest absence).
+        triage={({ controlsSlotRef }) => (
+          <WorkbenchTriageBand
+            controlsSlotRef={controlsSlotRef}
+            search={
+              <TechRailSearchBar
+                variant="chrome"
+                value={query}
+                onChange={(v) => setParam('q', v.trim() ? v : null)}
+                placeholder="Filter pickup items…"
+                className="min-w-0 flex-1"
+              />
+            }
+          />
+        )}
       >
-        <div className={WORKBENCH_SHEET_HOST}>
+        {() => (
           <NonlinearTableHost<PickupLine, PickupGridColumnKey, PickupGridColumn>
             binding={PICKUP_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
@@ -346,8 +350,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
               />
             )}
           />
-        </div>
-      </DashboardScrollShell>
+        )}
+      </WorkbenchSheetView>
 
       <Dialog
         open={createOpen}

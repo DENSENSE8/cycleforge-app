@@ -53,7 +53,8 @@ type DisplaysLeafChromeApi = {
   setLeafCommands: (items: DisplaysFooterCommand[] | null) => void;
   /**
    * Leaf-wide perspective control for the sticky header trailing slot
-   * (Claim New·Link). Pass `null` on cleanup. In-tool segments stay in-body.
+   * (e.g. Arrival Locations commit). Pass `null` on cleanup. In-tool segments
+   * stay in-body. Claim Create|Link is a body combobox, not leaf trailing.
    */
   setLeafTrailing: (node: ReactNode | null) => void;
 };
@@ -68,11 +69,6 @@ export function useDisplaysLeafChrome(): DisplaysLeafChromeApi {
     );
   }
   return api;
-}
-
-/** Safe outside the provider (modal Claim) — returns null when not in Displays. */
-export function useOptionalDisplaysLeafChrome(): DisplaysLeafChromeApi | null {
-  return useContext(DisplaysLeafChromeContext);
 }
 
 /** Thin context bridge — PushStack owns trail / nested / leaf-command / trailing. */

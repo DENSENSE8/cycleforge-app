@@ -19,6 +19,8 @@ import {
   upsertReceivingRailRows,
   upsertUnboxQueueRows,
   receivingRailCartonKey,
+  receivingRailRowKey,
+  receivingRailShipmentKey,
 } from '@/lib/queries/receiving-queries';
 import type { QueryClient } from '@tanstack/react-query';
 import type { LookupPoData } from '@/lib/receiving/scan';
@@ -118,10 +120,34 @@ export function applyUnboxCartonOpened(
     poNumber?: string | null;
   },
 ): void {
-  // Always drop the pre-resolve `scan:{tracking}` stub — that row is OUR
-  // optimistic artifact, so clearing it is cleanup, not a mutation of the
-  // operator's rail.
-  removePendingScanRailRow(queryClient, pendingScanReconcileKey(args.trackingNumber));
+  // The carton's own durable key. Shipment-first, so a TRACKING scan resolves to
+  // the very key the pending stub already holds — nothing to drop, and the row
+  // updates in place instead of exiting and re-entering.
+  const cartonKey = String(
+    receivingRailRowKey({
+      tracking_number: args.railRow?.tracking_number ?? args.trackingNumber,
+      receiving_id: args.receivingId,
+    }),
+  );
+
+  // Sweep the pre-resolve stub — OUR optimistic artifact, so clearing it is
+  // cleanup, not a mutation of the operator's rail. Both candidate keys go
+  // (legacy `scan:` and the shipment key).
+  //
+  // ONE key is spared, and only when a row is about to take its place: the work
+  // path's own `cartonKey`. On the common tracking scan that IS the stub's key,
+  // so sparing it is what lets the upsert below UPDATE the row instead of
+  // removing and re-adding it — the flicker this whole ladder exists to remove.
+  // Nothing is spared on a LOOKUP (read-only against the rail, so no upsert
+  // follows) or when there is no `railRow`; sparing there would strand the stub
+  // on the rail forever.
+  const sparedKey = !args.unboxedAt && args.railRow ? cartonKey : null;
+  for (const stale of [
+    pendingScanReconcileKey(args.trackingNumber),
+    receivingRailShipmentKey(args.trackingNumber),
+  ]) {
+    if (stale && stale !== sparedKey) removePendingScanRailRow(queryClient, stale);
+  }
 
   if (args.unboxedAt) {
     // READ-ONLY against the rail. A lookup claimed nothing server-side, so it
@@ -139,9 +165,7 @@ export function applyUnboxCartonOpened(
     });
   } else {
     if (args.railRow) {
-      upsertReceivingRailRows(queryClient, [
-        { ...args.railRow, client_event_id: receivingRailCartonKey(args.receivingId) },
-      ]);
+      upsertReceivingRailRows(queryClient, [{ ...args.railRow, client_event_id: cartonKey }]);
     }
     purgeTriageRailsAfterUnboxOpen(queryClient, args.receivingId);
   }
@@ -214,7 +238,9 @@ function buildUnboxRailMatchedRow(
   const now = new Date().toISOString();
   return {
     ...buildMatchedStubRow(receivingId, tracking, line),
-    client_event_id: receivingRailCartonKey(receivingId),
+    client_event_id: String(
+      receivingRailRowKey({ tracking_number: tracking, receiving_id: receivingId }),
+    ),
     scanned_at: now,
     // Unbox-open milestone for the rail — first-open only (server COALESCE-once).
     // Re-scans still set this optimistically; mergeRailRows keeps the cached
@@ -376,7 +402,12 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
             upsertReceivingRailRows(ctx.queryClient, [
               {
                 ...railPick,
-                client_event_id: receivingRailCartonKey(poCtx.receiving_id),
+                client_event_id: String(
+                  receivingRailRowKey({
+                    tracking_number: railPick.tracking_number ?? ctx.trackingNumber,
+                    receiving_id: poCtx.receiving_id,
+                  }),
+                ),
                 // Do not stamp `now` here — mergeRailRows keeps the first-open
                 // unbox_opened_at so a re-scan cannot reshuffle the Unboxed rail.
               },

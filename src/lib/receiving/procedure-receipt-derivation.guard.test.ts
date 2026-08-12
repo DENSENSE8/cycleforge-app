@@ -266,7 +266,7 @@ test('the commit steps are the receipt’s addition and never reach the capture 
     assert.equal(
       benchKeys.has(key),
       false,
-      `"${key}" is commit — not in deriveProcedureSteps (dock pointer folds stage after print)`,
+      `"${key}" is commit — not in deriveProcedureSteps (Print · Receive owns commit on the dogfood strip)`,
     );
   }
 

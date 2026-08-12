@@ -16,10 +16,12 @@ import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { hasCarrierBrandPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
+import { cn } from '@/utils/_cn';
 
 export function IdentityLinkChip({
   openHref,
@@ -50,6 +52,7 @@ export function IdentityLinkChip({
   linkOptions,
   iconOnly = false,
   iconOnlyMark,
+  menuPlacement = 'below',
 }: {
   openHref: string | null | undefined;
   openTitle: string;
@@ -134,6 +137,12 @@ export function IdentityLinkChip({
   iconOnly?: boolean;
   /** Mark node (e.g. {@link PlatformMark}) when `iconOnly`. */
   iconOnlyMark?: ReactNode;
+  /**
+   * Hover-menu anchor. `below` = under the chip, left-aligned (ops default).
+   * `left` = flush to the chip's left (Photos gallery grammar) — used by the
+   * filed-ticket chip under Photos so the panel clears Claim / Displays.
+   */
+  menuPlacement?: 'below' | 'left';
 }) {
   const [menuHover, setMenuHover] = useState(false);
   const normalizedValue = normalizeCopyText(value);
@@ -342,17 +351,26 @@ export function IdentityLinkChip({
           // Hover-only visibility — focus-within kept menus stuck open after a
           // chip click (especially chips on the wrapped second row).
           // z-panelPopover + station-bar z-10 sibling beat the workbench so the
-          // menu is not covered/clipped when it opens below the identity chips.
-          className={`absolute left-1/2 top-full z-panelPopover -translate-x-1/2 pt-1 transition-opacity duration-100 ${
+          // menu is not covered/clipped when it opens beside/below the chips.
+          // Flush-square + left: same chrome as Photos `CopyChipHoverMenuPanel`
+          // (never `rounded-lg` / centered under the face).
+          className={cn(
+            'absolute z-panelPopover transition-opacity duration-100',
+            menuPlacement === 'left'
+              ? 'right-full top-0'
+              : 'left-0 top-full pt-1',
             menuHover
               ? 'visible pointer-events-auto opacity-100'
-              : 'invisible pointer-events-none opacity-0'
-          }`}
+              : 'invisible pointer-events-none opacity-0',
+          )}
         >
           <div
             role="menu"
             aria-label={`${display} actions`}
-            className="min-w-[128px] overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg"
+            className={cn(
+              'min-w-[128px] overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+              cornerClass('flush'),
+            )}
           >
             {multiLinks ? (
               <>

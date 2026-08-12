@@ -5,7 +5,15 @@
  * so a hard refresh reopens the edit overlay instead of the browse crossfade.
  * Share / inbox still use `?recvId=` via `openInUnboxHref`; this helper strips
  * stray `recvId` when syncing so one session SoT wins.
+ *
+ * **Station-first (2026-08-11):** bare `/unbox` lands the scan bench (MRU carton
+ * or empty station). Workbench tables only mount when `?unboxdesk=1` is set
+ * (Back to list). Opening a carton clears desk so cold land / resume stay
+ * station-primary.
  */
+
+/** Desk mode — workbench tables. Absent = station (scan bench). */
+const UNBOX_DESK_PARAM = 'unboxdesk';
 
 /**
  * Mutates `params` in place. Pass `null` to clear the focused-carton params.
@@ -40,6 +48,39 @@ export function applyUnboxOpenReceivingParams(
   } else {
     params.delete('lineId');
   }
+}
+
+/**
+ * Desk flag — `?unboxdesk=1` keeps Back to list from immediately re-opening MRU.
+ * Opening a carton / resume / scan must clear it.
+ */
+export function applyUnboxDeskParam(params: URLSearchParams, desk: boolean): void {
+  if (desk) params.set(UNBOX_DESK_PARAM, '1');
+  else params.delete(UNBOX_DESK_PARAM);
+}
+
+export function isUnboxDesk(
+  searchParams: Pick<URLSearchParams, 'get'>,
+): boolean {
+  const raw = String(searchParams.get(UNBOX_DESK_PARAM) || '')
+    .trim()
+    .toLowerCase();
+  return raw === '1' || raw === 'true';
+}
+
+/**
+ * Station-first cold land: auto-open Unboxed MRU when Unbox has no focused
+ * carton and the operator has not entered desk (Back to list).
+ */
+export function shouldAutoOpenUnboxMru(
+  isUnboxSurface: boolean,
+  searchParams: Pick<URLSearchParams, 'get'>,
+): boolean {
+  if (!isUnboxSurface) return false;
+  if (isUnboxDesk(searchParams)) return false;
+  const open = searchParams.get('openReceivingId');
+  if (open && /^\d+$/.test(open)) return false;
+  return true;
 }
 
 /**

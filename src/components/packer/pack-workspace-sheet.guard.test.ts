@@ -28,10 +28,13 @@ function stripBlockComments(src: string): string {
 }
 
 describe('Pack Sheets flush chrome', () => {
-  it('PackWorkspaceView uses WORKBENCH_SHEET_* hosts (not guttered columns)', () => {
+  it('PackWorkspaceView composes the Sheets shell (not guttered columns)', () => {
     const src = stripBlockComments(read(VIEW));
-    assert.match(src, /WORKBENCH_SHEET_CHROME/);
-    assert.match(src, /WORKBENCH_SHEET_HOST/);
+    // The recipe moved into WorkbenchSheetView (2d): the page composes it and no
+    // longer holds the tokens, so it cannot drift from its sibling sheets. Token
+    // ownership is asserted once in `workbench-sheet-view.guard.test.ts`.
+    assert.match(src, /<WorkbenchSheetView/);
+    assert.match(src, /useWorkbenchSheetChrome/);
     assert.doesNotMatch(
       src,
       /WORKBENCH_CHROME_COLUMN/,
@@ -75,17 +78,20 @@ describe('Pack Sheets flush chrome', () => {
     assert.match(header, /WorkbenchTriageBand/);
   });
 
-  it('KPI sits in pinned chrome via Unbox WorkbenchKpiBand (not a body mb-4 island)', () => {
+  it('KPI sits in the pinned chrome stack (not a body mb-4 island)', () => {
     const src = stripBlockComments(read(VIEW));
-    assert.match(src, /WorkbenchKpiBand/);
+    assert.match(src, /kpi=\{/);
     const kpiJsx = src.indexOf('<PackKpiStrip');
     assert.ok(kpiJsx >= 0, 'PackKpiStrip must remain mounted as JSX');
-    // Match the body host usage — not the import / file header mention.
-    const bodyUsage = src.indexOf('className={WORKBENCH_SHEET_HOST}');
-    assert.ok(bodyUsage >= 0, 'WORKBENCH_SHEET_HOST must appear as the body className');
+    // The shell renders `kpi` in the chrome stack and `children` in the sheet
+    // host, so preceding the body render-prop IS "above the sheet".
+    const bodyUsage = src.indexOf('{({ controlsEl })') >= 0
+      ? src.indexOf('{({ controlsEl })')
+      : src.indexOf('{() => (');
+    assert.ok(bodyUsage >= 0, 'body must be the shell children render-prop');
     assert.ok(
       kpiJsx < bodyUsage,
-      'PackKpiStrip must sit inside the sheet chrome stack, above WORKBENCH_SHEET_HOST',
+      'PackKpiStrip must sit inside the sheet chrome stack, above the shell body',
     );
     assert.doesNotMatch(
       src,
@@ -94,7 +100,7 @@ describe('Pack Sheets flush chrome', () => {
     );
   });
 
-  it('tab band passes Unbox flush face overrides', () => {
+  it('the tab band takes its flush face from the shell', () => {
     const src = read(VIEW);
     const headerStart = src.indexOf('<PackWorkspaceHeader');
     assert.ok(headerStart >= 0, 'PackWorkspaceHeader must exist');
@@ -103,22 +109,13 @@ describe('Pack Sheets flush chrome', () => {
       headerStart,
       headerEnd > 0 ? headerEnd + 2 : headerStart + 500,
     );
-    assert.match(
-      headerBlock,
-      /border-l-0/,
-      'Tab band must clear left border — center/rail owns the hairline',
-    );
-    assert.match(
-      headerBlock,
-      /border-t-0/,
-      'Band 1 must use border-t-0 — GlobalHeader already owns the top seam',
-    );
-    assert.match(headerBlock, /rounded-none/);
+    assert.match(headerBlock, /className=\{className\}/, 'Band 1 must forward the shell-supplied flush face');
+    assert.match(src, /tabs=\{\(\{ className \}\)/, 'tabs slot must receive the face class');
   });
 
-  it('Band 1 keeps New Order trailing; Band 2 uses Unbox WorkbenchKpiBand', () => {
+  it('Band 1 keeps New Order trailing; Band 2 rides the shell KPI slot', () => {
     const src = stripBlockComments(read(VIEW));
-    assert.match(src, /WorkbenchKpiBand/);
+    assert.match(src, /kpi=\{/);
     assert.match(src, /PackTriageBand/);
     const header = stripBlockComments(read(HEADER));
     assert.match(header, /WorkbenchKpiCollapseToggle/);

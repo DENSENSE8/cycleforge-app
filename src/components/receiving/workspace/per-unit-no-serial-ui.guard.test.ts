@@ -33,7 +33,6 @@ const UNMATCHED = code(
   sourceOf("./unmatched-items/UnmatchedAccordionSurface.tsx"),
 );
 const PO_LINES_DATA = code(sourceOf("./hooks/usePoLinesData.ts"));
-const LINE_SERIALS = code(sourceOf("./line-edit/hooks/useLineSerials.ts"));
 const UNIT_ROWS = code(sourceOf("./ReceivingUnitRows.tsx"));
 const UNIT_SLOTS = code(sourceOf("./UnitSlotList.tsx"));
 const PUBLISH = code(sourceOf("../../../lib/queries/receiving-queries.ts"));
@@ -101,13 +100,6 @@ test("usePoLinesData overlays units from include=serials onto the siblings cache
   assert.match(PO_LINES_DATA, /units:\s*\(r\.units/);
   assert.match(PO_LINES_DATA, /units:\s*incoming\.units/);
   assert.match(PO_LINES_DATA, /prevUnits/);
-});
-
-test("useLineSerials refresh publishes units from the by-id include=serials response", () => {
-  assert.match(
-    LINE_SERIALS,
-    /publishLineSerials\(\s*queryClient,[\s\S]*line\.serials\s*\?\?\s*\[\],\s*line\.units\s*\?\?\s*\[\],\s*\)/,
-  );
 });
 
 test("publishLineSerials accepts optional units without wiping them on serial-only calls", () => {

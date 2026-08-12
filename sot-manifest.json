@@ -30,7 +30,7 @@
     ".claude/rules/display/workbench-service.md",
     ".claude/rules/display/workbench.md"
   ],
-  "count": 456,
+  "count": 457,
   "entries": [
     {
       "job": "Mount-gated URL opens paint via useOptimisticUrlParam / resolveOptimisticParam",
@@ -3380,6 +3380,19 @@
       "snippet": "`GlobalHeaderActions` `data-header-zone=\"actions\"` search · **pace-and-next** · inbox · **assistant**"
     },
     {
+      "job": "P1 — Primary work",
+      "sot": "UnboxWorkspaceView",
+      "path": null,
+      "guard": null,
+      "symbols": [
+        "UnboxWorkspaceView"
+      ],
+      "kind": "table",
+      "source": ".claude/rules/source-of-truth.md",
+      "line": 2164,
+      "snippet": "**Unbox (station-first):** scan bar + MRU carton centre (or empty scan copy). Desk tables only after Back to list (`?unboxdesk=1`). Other stations: centre lines/label. Desk queues: workbench table / KPI geometry. Search: header find (+ bro…"
+    },
+    {
       "job": "Pure resolve / clear / live seed",
       "sot": "optimistic-url-param.ts",
       "path": "src/lib/routing/optimistic-url-param.ts",
@@ -3387,7 +3400,7 @@
       "symbols": [],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2208,
+      "line": 2221,
       "snippet": "`src/lib/routing/optimistic-url-param.ts`"
     },
     {
@@ -3398,7 +3411,7 @@
       "symbols": [],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2209,
+      "line": 2222,
       "snippet": "`src/hooks/useOptimisticUrlParam.ts`"
     },
     {
@@ -3411,7 +3424,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2210,
+      "line": 2223,
       "snippet": "Outbound `open`/`new` · Search `sel` (`useSearchSelParam`) · Inventory `sidebar.open`"
     },
     {
@@ -3426,7 +3439,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2268,
+      "line": 2281,
       "snippet": "`src/lib/tables/table-definition.ts` (`parseTableDefinition`; `superRefine` = frozen contiguous prefix · frozen ≠ hideable · ≤1 flex track · `MAX_DEFAULT_VISIBLE_TRACKS` = 10)"
     },
     {
@@ -3439,7 +3452,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2269,
+      "line": 2282,
       "snippet": "`TableSurfaceBinding` (`src/components/tables/table-surface-binding.ts`)"
     },
     {
@@ -3452,7 +3465,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2270,
+      "line": 2283,
       "snippet": "`NonlinearTableHost` (`src/components/tables/NonlinearTableHost.tsx`)"
     },
     {
@@ -3463,7 +3476,7 @@
       "symbols": [],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2271,
+      "line": 2284,
       "snippet": "`src/components/tables/table-definition-registry.ts`"
     },
     {
@@ -3477,7 +3490,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2320,
+      "line": 2333,
       "snippet": "`CUSTOM_FIELD_LIVE_ENTITY_TYPES` / `isCustomFieldEntityLive` in `src/lib/custom-fields/types.ts`"
     },
     {
@@ -3490,7 +3503,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2321,
+      "line": 2334,
       "snippet": "`customFieldEntityTypeForTableId` in `src/lib/custom-fields/table-entity.ts`"
     },
     {
@@ -3501,7 +3514,7 @@
       "symbols": [],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2322,
+      "line": 2335,
       "snippet": "`src/lib/custom-fields/custom-fields-history-first.guard.test.ts`"
     },
     {
@@ -3515,7 +3528,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2379,
+      "line": 2392,
       "snippet": "`TABLE_SURFACE_CLIP_CLASS` `TABLE_SURFACE_SHEET_CLASS`"
     },
     {
@@ -3530,7 +3543,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2380,
+      "line": 2393,
       "snippet": "`WORKBENCH_BODY_COLUMN` (+ `WORKBENCH_TABLE_VIEWPORT` when bounded) `WORKBENCH_SHEET_HOST`"
     },
     {
@@ -3544,7 +3557,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2381,
+      "line": 2394,
       "snippet": "`WORKBENCH_CHROME_COLUMN` (side gutters) `WORKBENCH_SHEET_CHROME` (rail-abutting, no side pad)"
     },
     {
@@ -3557,7 +3570,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2382,
+      "line": 2395,
       "snippet": "Admin `DataTable`, any island still inside workbench gutters Workbench spreadsheet flush to the context rail"
     },
     {
@@ -3571,7 +3584,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2383,
+      "line": 2396,
       "snippet": "Framed admin / legacy islands **Unbox** (major SoT) · Incoming Pipeline · To-ship (`DashboardOrdersView` sheet chrome + `LedgerGridSurface` `surface=\"sheet\"`)"
     },
     {
@@ -3585,7 +3598,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2707,
+      "line": 2720,
       "snippet": "**line item** Unbox overview live center (preview + Print · Receive); still the Zoho/receive note notes dock (`LineNotesCard` → `OmnichannelComposerDock`) — patches `notes` only"
     },
     {
@@ -3598,7 +3611,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2708,
+      "line": 2721,
       "snippet": "**line item** yes — durable face center (Testing reprint, LabelEditPopover) label editor (`LabelEditPopover`, As Listed); also stamped from dock text on Unbox carton print"
     },
     {
@@ -3612,7 +3625,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2773,
+      "line": 2786,
       "snippet": "Floor work done; inventory confirm still pending Coarse `UNBOXED` / `workflow_status`; tip `unboxed-sync-tooltip.ts`"
     },
     {
@@ -3626,7 +3639,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2774,
+      "line": 2787,
       "snippet": "Inventory integration confirmed, or local-only done `isOperatorReceived` → `inventoryReceivedDisplayQty`"
     },
     {
@@ -3639,7 +3652,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2775,
+      "line": 2788,
       "snippet": "Floor units counted Show floor fraction; tip via `floorQtyFractionTip` (**counted**, never \"received\")"
     },
     {
@@ -3652,7 +3665,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2776,
+      "line": 2789,
       "snippet": "Terminal Received / Passed `getStatusDotBg` — stage only; never qty-complete shortcut"
     },
     {
@@ -3663,7 +3676,7 @@
       "symbols": [],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2809,
+      "line": 2822,
       "snippet": "`receiving_carton.priority_tier` (0) **+** `.is_priority` 4 manual tiers — `receiving/priority-override.ts`"
     },
     {
@@ -3677,7 +3690,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2864,
+      "line": 2877,
       "snippet": "`ActivityInboxContext` (in-memory, ≤20) + `staff_messages` *what just happened to me* dismiss / undo — **ephemeral**"
     },
     {
@@ -3690,7 +3703,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2865,
+      "line": 2878,
       "snippet": "`staff_inbox_items` via `GET /api/inbox` *what I follow / was assigned* `unread · read · done · snoozed` — **durable**, org-flagged"
     },
     {
@@ -3704,7 +3717,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2924,
+      "line": 2937,
       "snippet": "one entry, attributed + timestamped **yes — append only** `OrderNotesTrail` (record plane) · the grid's in-cell **Add note** · both via `useAppendOrderNote`"
     },
     {
@@ -3718,7 +3731,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/source-of-truth.md",
-      "line": 2925,
+      "line": 2938,
       "snippet": "one overwritable string per order **no — read-only in the product** `ingestCanonicalOrders` at INSERT, carrying **the note the SOURCE sent** (a Google Sheet `Note` cell, an Ecwid buyer comment)"
     },
     {
@@ -5650,7 +5663,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 46,
+      "line": 51,
       "snippet": "Ops-flow only — `POUnboxingSection` + `UnboxLabelPreview` Advisory banners, ticket history, claim wizards, `SectionTabsSlider`, centre `ProcedureDeck`"
     },
     {
@@ -5664,7 +5677,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 48,
+      "line": 53,
       "snippet": "Step cockpit (`railLeaf`) + operator browse (Photos · Ticket · …) Desk `InspectorActionFloor`, a third right-edge region, centre-tab twins of leaf tools"
     },
     {
@@ -5677,7 +5690,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 49,
+      "line": 54,
       "snippet": "ONE hook: `useUnboxProcedureSteps` A second procedure store, page-local step state, hand-ticked checklists"
     },
     {
@@ -5692,7 +5705,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 57,
+      "line": 62,
       "snippet": "`StationScanPaneHost` + `StationPanelRoot` + `StationWorkbench` (`bodyGap=\"none\"`, `reserveIdentityClearance={false}`)"
     },
     {
@@ -5707,7 +5720,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 58,
+      "line": 63,
       "snippet": "`StationContextBar` `placement=\"flow\"` + `LineCartonContextSection` → `CartonContextCard`"
     },
     {
@@ -5723,7 +5736,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 59,
+      "line": 64,
       "snippet": "`buildUnboxOverview` → `POUnboxingSection` (`dockOwnsCapture`) + `UnboxLabelPreview`"
     },
     {
@@ -5740,7 +5753,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 60,
+      "line": 65,
       "snippet": "Dock owns wedge/scanner; **every editable line** mounts `ActiveLineConditionSerial` → `PoLineCaptureRow` (rest: condition + Serial/Photos; **condition pick → Tags + serial**; Serial open: Tags + `SerialScanField` + Photos; Photos open: Tag…"
     },
     {
@@ -5755,7 +5768,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 61,
+      "line": 66,
       "snippet": "`deriveProcedureSteps` / `resolveActiveStep` via `useUnboxProcedureSteps`"
     },
     {
@@ -5768,7 +5781,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 62,
+      "line": 67,
       "snippet": "`UNBOX_STEP_DOCK_CONTROLS` (`line-edit/steps/dock/`)"
     },
     {
@@ -5781,7 +5794,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 63,
+      "line": 68,
       "snippet": "`UNBOX_STEP_RAIL_LEAF` (`line-edit/steps/rail/`)"
     },
     {
@@ -5795,7 +5808,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 64,
+      "line": 69,
       "snippet": "**Main:** `WorkspaceNotesCard` / Omnichannel bubble + pill Print·Receive. **Parked / Arrival:** `UnboxDockHost` flush instrument"
     },
     {
@@ -5809,7 +5822,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 65,
+      "line": 70,
       "snippet": "`StationDisplaysPushStack` / `StationDisplaysPushColumn` + `unbox-side-tabs.ts`"
     },
     {
@@ -5823,7 +5836,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 66,
+      "line": 71,
       "snippet": "`UnboxDisplaysActionFloor` → `StationDisplaysActionFloor` (never desk inspector floor)"
     },
     {
@@ -5837,7 +5850,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 67,
+      "line": 72,
       "snippet": "`UnboxScanProgressControl` `variant=\"floor\"` in Band 2 only — never `GoalRing`, never a floor % twin on Displays"
     },
     {
@@ -5848,7 +5861,7 @@
       "symbols": [],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 68,
+      "line": 73,
       "snippet": "`@/lib/stations/procedure` — `found` / `unfound` / `return` capture orders"
     },
     {
@@ -5861,7 +5874,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 89,
+      "line": 94,
       "snippet": "`print` · **`stage`** · `receive` Print · Receive on dogfood strip `data-unbox-dogfood-print` (always-on; Band 1 trailing null). After print, Band 1 arms **`LocationScanDockControl`** (`stage`) — wedge scans a putaway barcode; middle scrol…"
     },
     {
@@ -5877,7 +5890,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 117,
+      "line": 122,
       "snippet": "Classify Intake classified (`isIntakeClassified`) `ClassifyDockControl` → one-row Continue (h-11) `classify` (`TriageClassifySection` KNOW) Fixed `h-11` — never `expandBand` (editor is Displays only)"
     },
     {
@@ -5893,7 +5906,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 118,
+      "line": 123,
       "snippet": "Label photo ≥1 `arrival_package` · `shipping_label` `ArrivalPhotosDockControl` → `PhotoStepDockStrip` `listings` Left waist + right thirds: Link | Upload | Send"
     },
     {
@@ -5909,7 +5922,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 119,
+      "line": 124,
       "snippet": "Box photo ≥1 `arrival_package` · `box_exterior` `ArrivalPhotosDockControl` → `PhotoStepDockStrip` `listings` Left waist + right thirds: Link | Upload | Send"
     },
     {
@@ -5924,7 +5937,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 120,
+      "line": 125,
       "snippet": "Packing material `unbox_carton` · `packing_material` `CartonPhotoDockControl` `listings` Left waist + photo strip thirds"
     },
     {
@@ -5937,7 +5950,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 121,
+      "line": 126,
       "snippet": "Contents `receiving_unbox.contents_confirmed_at` `ContentsDockControl` (ack) `inventory` Full-height ack segment + wedge Enter"
     },
     {
@@ -5950,7 +5963,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 122,
+      "line": 127,
       "snippet": "Serial Serials filled / waived to expected qty `SerialDockControl` `units` Full-height serial segment (**no** scan-entry wedge — dock owns serial sink)"
     },
     {
@@ -5965,7 +5978,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 123,
+      "line": 128,
       "snippet": "Condition `condition_graded_at` stamp `ConditionDockControl` (`barDistribute`) `units` Grade bar fill + wedge accepts grade codes"
     },
     {
@@ -5981,7 +5994,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 124,
+      "line": 129,
       "snippet": "Label `label_previewed_at` `LabelDockControl` (ack) **none** — work plane (`UnboxLabelPreview`) Ack segment; reference-less (declared in `UNBOX_STEPS_WITHOUT_RAIL_LEAF`)"
     },
     {
@@ -5996,7 +6009,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 125,
+      "line": 130,
       "snippet": "Location `receiving_line_putaway.staged_at` (after `label_printed_at`) `LocationScanDockControl` **none** — work plane Placement panel Full-height scan CTA + wedge; middle `UnboxPlacementSection` scrolls into view"
     },
     {
@@ -6012,7 +6025,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 148,
+      "line": 153,
       "snippet": "`arrival_package` + door aspect (`shipping_label` / `box_exterior`) Door pre-open evidence; a bench `unbox_carton` shot here would void the receive gate"
     },
     {
@@ -6025,7 +6038,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 149,
+      "line": 154,
       "snippet": "`unbox_carton` + aspect Bench evidence after open"
     },
     {
@@ -6038,7 +6051,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 150,
+      "line": 155,
       "snippet": "`unbox_item` + aspect set Unit evidence; required aspects = org policy"
     },
     {
@@ -6051,7 +6064,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 163,
+      "line": 168,
       "snippet": "New Ticket · Tracking · PO Left `StationScanBar` Insert / **⌘.**"
     },
     {
@@ -6064,7 +6077,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 164,
+      "line": 169,
       "snippet": "Current carton beat Dock Band 1 **left waist** (`UnboxDockScanEntry` / serial) `receiving-focus-scan` / `⌘; m → s`"
     },
     {
@@ -6077,7 +6090,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 192,
+      "line": 197,
       "snippet": "Left compact waist + right `PhotoStepDockStrip` (three labeled thirds); never “Enter to continue”; never icon-only camera; never photo-only full-band fill"
     },
     {
@@ -6090,7 +6103,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 211,
+      "line": 216,
       "snippet": "Status rows (`STATION_DISPLAY_INDEX`)"
     },
     {
@@ -6103,7 +6116,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 263,
+      "line": 268,
       "snippet": "Enter routing by `activeKey`"
     },
     {
@@ -6116,7 +6129,7 @@
       ],
       "kind": "table",
       "source": ".claude/rules/display/unbox-station.md",
-      "line": 265,
+      "line": 270,
       "snippet": "Step→`railLeaf` either-or + LineEditPanel wiring"
     },
     {

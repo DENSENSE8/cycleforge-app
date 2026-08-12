@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { LineEditPanel } from './LineEditPanel';
 import { TriagePanel } from '../triage/TriagePanel';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
+import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** Which de-coupled right-pane panel to render. */
@@ -62,6 +63,13 @@ export function ReceivingLineWorkspace({
   onClose,
 }: Props) {
   useSurfacePaintMark('unbox:workspace', variant === 'unbox');
+  // Middle carton is P1 LCP — release the SSR stand-in only once this panel
+  // mounts (after the dynamic chunk). Displays bodies stay P3 behind dynamic().
+  const unboxPrimaryPaint = useUnboxPrimaryPaintOptional();
+  useEffect(() => {
+    if (variant !== 'unbox') return;
+    unboxPrimaryPaint?.onPrimaryPainted();
+  }, [variant, unboxPrimaryPaint]);
   // Record this open into the operator's recents (server-backed, per-staff) so
   // the Recent tab can list recently-opened lines. Fire-and-forget — a failure
   // never blocks the workspace. Upsert keys on (staff, line), so re-opening just

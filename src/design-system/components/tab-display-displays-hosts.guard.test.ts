@@ -39,7 +39,7 @@ const FLUSH_STACK_HOSTS = [
 ] as const;
 
 const TAB_DISPLAY = 'src/design-system/components/TabDisplay.tsx';
-const CLAIM_NAV = 'src/components/receiving/workspace/claim/components/ClaimWizardNav.tsx';
+const CLAIM_MODE = 'src/components/receiving/workspace/claim/components/ClaimModeSelect.tsx';
 
 describe('Displays nested verbs — armed rows + child segment', () => {
   for (const host of ARMED_VERB_HOSTS) {
@@ -271,41 +271,26 @@ describe('Displays nested verbs — armed rows + child segment', () => {
     assert.match(src, /inset-cozy/);
   });
 
-  it('ClaimWizardNav child mode uses TabDisplay segment, not PaneHeaderTabs', () => {
-    const src = read(CLAIM_NAV);
-    assert.match(src, /TabDisplay/, 'claim mode switcher is TabDisplay');
-    assert.match(
-      src,
-      /appearance="segment"/,
-      'New · Link is the child segment layer',
-    );
-    assert.match(src, /hint:/, 'Claim segment paints always-visible chord hints');
+  it('ClaimModeSelect is flush Create|Link combobox — not TabDisplay / PaneHeaderTabs', () => {
+    const src = read(CLAIM_MODE);
+    assert.match(src, /SearchableSelectField/, 'claim mode switcher is flush combobox');
+    assert.match(src, /appearance="flush"/);
+    assert.match(src, /label: 'Create'/);
+    assert.match(src, /label: 'Link'/);
+    assert.match(src, /useSegmentChords/, 'Alt+1/2 still owned here');
+    assert.doesNotMatch(src, /TabDisplay/, 'Create|Link is not a segment TabDisplay');
     assert.doesNotMatch(
       src,
       /\bPaneHeaderTabs\b/,
-      'must not reintroduce inverse PaneHeaderTabs on Claim New·Link',
+      'must not reintroduce inverse PaneHeaderTabs on Claim Create|Link',
     );
-    assert.doesNotMatch(src, /\bTabSwitch\b/, 'no soft TabSwitch in claim nav');
+    assert.doesNotMatch(src, /\bTabSwitch\b/, 'no soft TabSwitch in claim mode');
     assert.doesNotMatch(
       src,
       /ScrollSpyNav/,
-      'no ScrollSpy strip under New/Link — sections are the stacked scroll body',
+      'no ScrollSpy strip under Create/Link — sections are the stacked scroll body',
     );
-    assert.match(
-      src,
-      /flex-col gap-0/,
-      'Cybertruck strip stack — no vertical air on the modal mode row',
-    );
-    assert.match(
-      src,
-      /leaf-header/,
-      'Displays placement compresses New·Link into the leaf-header trailing slot',
-    );
-    assert.doesNotMatch(
-      src,
-      /\b(?:pt|pb|py|space-y)-\d+\b/,
-      'ClaimWizardNav must not pad vertically between tab rows',
-    );
+    assert.doesNotMatch(src, /leaf-header/);
   });
 
   it('SupportContextSegments is TabDisplay segment — no soft rounded-full pills', () => {

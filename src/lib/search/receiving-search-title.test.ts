@@ -70,6 +70,21 @@ describe('receiving-search-title', () => {
     );
   });
 
+  it('receivingSearchTitle: return serial paints last-8', () => {
+    assert.equal(
+      receivingSearchTitle({
+        lineCount: 1,
+        distinctSkuCount: 1,
+        poNumber: null,
+        sourceOrderId: null,
+        sourcePlatform: 'amazon',
+        firstItemName: 'Return serial 017817834247',
+        fallback: 'Receiving #1',
+      }),
+      'Return serial 17834247',
+    );
+  });
+
   it('receivingSearchTitle falls back when no product/PO', () => {
     assert.equal(
       receivingSearchTitle({

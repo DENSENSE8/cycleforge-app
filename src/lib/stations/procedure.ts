@@ -59,8 +59,7 @@ import { applyCaptureOrderOverride } from './unbox-flow-capture-order';
  *             right-rail checklist renders.
  *   commit  — the terminal acts that close the carton out
  *             (print → stage → receive). Print · Receive live on the dogfood
- *             strip; `stage` (location scan) arms Band 1 after print. Never the
- *             capture checklist.
+ *             strip. Never the capture checklist.
  *
  * Without this, the two surfaces disagreed about what "the Unbox procedure" is
  * — Studio said 7 steps, the bench said 5, and both docblocks claimed to be the

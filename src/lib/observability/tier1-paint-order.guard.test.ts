@@ -52,7 +52,7 @@ describe('Tier-1 paint content order registry', () => {
         if (!/ssr:\s*false/.test(src)) continue;
         // Allowed only when the same file (or declared skeleton) documents a stand-in.
         const hasStandInComment =
-          /ssr-stand-in|SSR stand-in|OrdersQueueFirstPaint|UnboxBrowseFirstPaint|WorkbenchSkeleton/i.test(
+          /ssr-stand-in|SSR stand-in|OrdersQueueFirstPaint|UnboxStationFirstPaint|UnboxBrowseFirstPaint|WorkbenchSkeleton/i.test(
             src,
           );
         const hasSkeleton = Boolean(route.skeleton && existsSync(join(root, route.skeleton)));
@@ -70,13 +70,23 @@ describe('Tier-1 paint content order registry', () => {
     assert.match(page, /seedUnshippedQueue|OrdersQueueFirstPaint/);
   });
 
-  it('Unbox page seeds Queue spine + first-paint stand-in (To-ship golden)', () => {
+  it('Unbox seeds station above the shell (rail sibling) + first-paint stand-in', () => {
+    // Rail is a sibling of the page — seed must hydrate in the root layout.
+    const layout = read('src/app/layout.tsx');
+    assert.match(layout, /maybeSeedUnboxShell/);
+    assert.match(layout, /ShellQuerySeed/);
+
     const page = read('src/app/unbox/page.tsx');
-    assert.match(page, /HydrationBoundary/);
-    assert.match(page, /seedUnboxQueue|UnboxBrowseFirstPaint/);
+    assert.match(page, /UnboxBrowseShell/);
+    assert.doesNotMatch(page, /HydrationBoundary|seedUnboxStation/);
+
+    const shell = read('src/components/receiving/unbox/UnboxBrowseShell.tsx');
+    assert.match(shell, /UnboxStationFirstPaint/);
+
     const seed = read('src/lib/queries/unbox-spine-seed.server.ts');
-    assert.match(seed, /unbox_queue/);
-    assert.match(seed, /['"]spine['"]/);
+    assert.match(seed, /seedUnboxStation/);
+    assert.match(seed, /unbox_opened/);
+    assert.match(seed, /receiving-siblings/);
   });
 
   it('Search LCP is header find + browse shell — not a desk remount', () => {

@@ -264,7 +264,8 @@ describe('Receiving grid Sheets recipe', () => {
     assert.equal(
       getUnboxWorkspaceTabFromSearch(new URLSearchParams()),
       'queue',
-      'bare /unbox opens the Queue — a process-ordered strip must not default to its own last tab',
+      'desk default tab is Queue — a process-ordered strip must not default to its own last tab ' +
+        '(cold /unbox is station-first; tables mount only with ?unboxdesk=1)',
     );
     assert.equal(
       getUnboxWorkspaceTabFromSearch(new URLSearchParams('unboxview=urgent')),
@@ -312,7 +313,13 @@ describe('Receiving grid Sheets recipe', () => {
     assert.match(header, /HISTORY_REFINE_FACETS/);
     assert.match(header, /HISTORY_REFINE_WEEK_OPTIONS/);
     assert.match(header, /HISTORY_REFINE_SOURCE_OPTIONS/);
-    assert.match(header, /role="tablist"/);
+    // Facet tablist lives on WorkbenchRefineFacetTabs (shared SoT) — not inlined.
+    assert.match(header, /WorkbenchRefineFacetTabs/);
+    assert.match(
+      read('src/components/dashboard/workbench-filter-popover.tsx'),
+      /role="tablist"/,
+      'WorkbenchRefineFacetTabs must own the refine facet tablist',
+    );
     assert.match(header, /isHistoryRefineFacetHot/);
     assert.match(header, /contentClassName="w-72"/);
     const triageIdx = header.indexOf('<WorkbenchTriageBand');

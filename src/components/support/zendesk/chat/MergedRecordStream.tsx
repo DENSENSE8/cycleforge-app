@@ -62,13 +62,9 @@
  *
  * ## Displays gutter
  *
- * On `variant="bubble"` rows carry NO horizontal gutter (ruled 2026-08-10):
- * bubbles and the floating composer fill the Displays column edge to edge. This
- * reverses the 2026-08-05 rows-own-`px-4` grammar FOR THE TICKET STREAM ONLY —
- * a Displays column is already narrow and locked at ~720 behind it, and a 85%
- * bubble cap inside a `px-4` list spent that scarce measure twice. The host was
- * flush before and stays flush (`DISPLAYS_FLUSH_HOST`); every other Displays
- * leaf keeps `DISPLAYS_BODY_INSET`.
+ * On `variant="bubble"` chrome comes from {@link ./ticket-bubble-chrome} —
+ * stream + composer share `DISPLAYS_BODY_INSET`, one white shell face, micro
+ * body type, left-aligned capped width. Host stays flush (`DISPLAYS_FLUSH_HOST`).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -90,6 +86,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityMark, StaffAvatar } from '@/components/identity';
 import { staffInitials } from '@/design-system/components/StaffBadge';
 import { Button, Spinner } from '@/design-system/primitives';
+import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { Lock } from '@/components/Icons';
 import { formatDateTimePST, toPSTDateKey } from '@/utils/date';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
@@ -97,6 +94,18 @@ import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
 import { renderBlockMarkdown } from '@/lib/support/markdown';
 import { resolveAuthor } from './support-chat-utils';
+import {
+  TICKET_BUBBLE_BODY,
+  TICKET_BUBBLE_INTERNAL_CHIP,
+  TICKET_BUBBLE_MARK,
+  TICKET_BUBBLE_MARK_BOX,
+  TICKET_BUBBLE_META,
+  TICKET_BUBBLE_ROW,
+  TICKET_BUBBLE_SHELL,
+  TICKET_BUBBLE_STREAM,
+  TICKET_LEDGER_BODY,
+  formatTicketBubbleAge,
+} from './ticket-bubble-chrome';
 
 /**
  * Rows rendered before the "Show earlier" control appears, and the size of one
@@ -144,13 +153,14 @@ function atMs(at: string | null): number {
 }
 
 /** Relative in the row, absolute on hover — never `title=`. */
-function RowTime({ at }: { at: string | null }) {
+function RowTime({ at, dense }: { at: string | null; dense?: boolean }) {
   // Subscribe so a 12h↔24h flip re-renders the absolute face immediately.
   useTimeFormat();
   if (!at) return <span className="text-text-faint">—</span>;
+  const face = dense ? formatTicketBubbleAge(at) ?? '—' : timeAgo(at);
   return (
     <HoverTooltip label={formatDateTimePST(at)} focusable={false}>
-      <span className="shrink-0 text-text-faint">{timeAgo(at)}</span>
+      <span className="shrink-0 text-text-faint">{face}</span>
     </HoverTooltip>
   );
 }
@@ -161,21 +171,33 @@ function RowTime({ at }: { at: string | null }) {
  * Messages use {@link IdentityMark} with the helpdesk roster photo rather than
  * {@link StaffAvatar}: a helpdesk comment carries an agent id, not a `staff.id`,
  * and an avatar is never guessed from a display name.
+ *
+ * Bubble rows pass `dense` — quieter xs mark via {@link TICKET_BUBBLE_MARK}.
  */
-function RowMark({ item, compact }: { item: MergedRecordItem; compact: boolean }) {
-  const size = compact ? 'xs' : 'sm';
-  const box = compact ? 'w-7' : 'w-10';
+function RowMark({
+  item,
+  compact,
+  dense,
+}: {
+  item: MergedRecordItem;
+  compact: boolean;
+  dense?: boolean;
+}) {
+  const size = dense || compact ? 'xs' : 'sm';
+  const box = dense ? TICKET_BUBBLE_MARK_BOX : compact ? 'flex w-7 shrink-0 justify-start pt-0.5' : 'flex w-10 shrink-0 justify-start pt-0.5';
+  const quiet = dense ? TICKET_BUBBLE_MARK : undefined;
 
   if (item.message) {
     const { authorName, authorPhoto } = item.message;
     return (
-      <div className={cn('flex shrink-0 justify-start pt-0.5', box)}>
+      <div className={box}>
         <IdentityMark
           initials={staffInitials(authorName)}
           src={authorPhoto}
           size={size}
           ring={false}
           alt={authorName}
+          className={quiet}
         />
       </div>
     );
@@ -183,8 +205,14 @@ function RowMark({ item, compact }: { item: MergedRecordItem; compact: boolean }
 
   if (item.actorStaffId) {
     return (
-      <div className={cn('flex shrink-0 justify-start pt-0.5', box)}>
-        <StaffAvatar staffId={item.actorStaffId} name={item.actor} size={size} ring={false} />
+      <div className={box}>
+        <StaffAvatar
+          staffId={item.actorStaffId}
+          name={item.actor}
+          size={size}
+          ring={false}
+          className={quiet}
+        />
       </div>
     );
   }
@@ -192,15 +220,15 @@ function RowMark({ item, compact }: { item: MergedRecordItem; compact: boolean }
   const glyph = resolveTimelineGlyph(item.sourceEventType);
   const Icon = TIMELINE_GLYPH_ICONS[glyph.id];
   return (
-    <div className={cn('flex shrink-0 justify-start pt-0.5', box)}>
+    <div className={box}>
       <HoverTooltip label={glyph.tooltip} focusable={false}>
         <span
           className={cn(
-            'flex items-center justify-center rounded-full bg-surface-sunken text-text-soft',
-            compact ? 'h-5 w-5' : 'h-7 w-7',
+            'flex items-center justify-center rounded-full bg-surface-canvas text-text-soft',
+            dense || compact ? 'h-5 w-5' : 'h-7 w-7',
           )}
         >
-          <Icon className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
+          <Icon className={dense || compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
         </span>
       </HoverTooltip>
     </div>
@@ -247,26 +275,23 @@ function MetaLine({
   msg,
   internal,
   compact,
-  alignEnd,
+  dense,
 }: {
   item: MergedRecordItem;
   msg: TicketMessageDetail | undefined;
   internal: boolean;
   compact: boolean;
-  alignEnd?: boolean;
+  /** Station Ticket bubble — micro meta + `N hrs` age. */
+  dense?: boolean;
 }) {
   return (
     <div
-      className={cn(
-        'flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft',
-        alignEnd && 'flex-row-reverse',
-      )}
+      className={
+        dense
+          ? TICKET_BUBBLE_META
+          : 'flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft'
+      }
     >
-      {internal ? (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1 py-px text-amber-700">
-          <Lock className="h-2.5 w-2.5" /> Internal
-        </span>
-      ) : null}
       <span className="truncate text-text-muted">{msg ? msg.authorName : item.actor || ''}</span>
       {msg?.authorEmail && msg.authorEmail !== msg.authorName && !compact ? (
         <span className="min-w-0 truncate normal-case tracking-normal text-text-faint">
@@ -276,7 +301,23 @@ function MetaLine({
       <span aria-hidden className="text-text-faint">
         ·
       </span>
-      <RowTime at={item.at} />
+      <RowTime at={item.at} dense={dense} />
+      {internal ? (
+        <>
+          <span aria-hidden className="text-text-faint">
+            ·
+          </span>
+          <span
+            className={
+              dense
+                ? TICKET_BUBBLE_INTERNAL_CHIP
+                : 'inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1 py-px text-amber-700'
+            }
+          >
+            <Lock className="h-2.5 w-2.5" /> Internal
+          </span>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -286,22 +327,26 @@ function MessageBody({
   item,
   onOpenPhoto,
   compact,
+  dense,
 }: {
   msg: TicketMessageDetail | undefined;
   item: MergedRecordItem;
   onOpenPhoto?: (url: string) => void;
   compact: boolean;
+  /** Station Ticket bubble — micro density from {@link TICKET_BUBBLE_BODY}. */
+  dense?: boolean;
 }) {
   const refs = item.refs?.length ? item.refs : item.ref ? [item.ref] : [];
+  const bodyRole = dense ? TICKET_BUBBLE_BODY : TICKET_LEDGER_BODY;
   return (
     <>
       {msg ? (
-        <div className="break-words text-role-data leading-relaxed text-text-default">
+        <div className={bodyRole}>
           {renderBlockMarkdown(msg.body, { onOpenPhoto })}
         </div>
       ) : (
         <div className="stack-tight">
-          <p className="text-role-data leading-relaxed text-text-default">{item.title}</p>
+          <p className={bodyRole}>{item.title}</p>
           {item.subtitle ? (
             <p className="text-role-caption text-text-soft">{item.subtitle}</p>
           ) : null}
@@ -345,24 +390,24 @@ function StreamRow({
         data-stream-shell="bubble"
         data-internal={internal ? 'true' : undefined}
         data-ours={ours ? 'true' : undefined}
-        className={cn('flex min-w-0 gap-2 py-1.5', ours ? 'flex-row-reverse' : 'flex-row')}
+        className={TICKET_BUBBLE_ROW}
       >
-        <RowMark item={item} compact={compact} />
-        <div
-          className={cn(
-            // Fills the column (ruled 2026-08-10): a Displays column is already
-            // narrow and locked, so an 85% cap spent the scarce measure on empty
-            // gutter. Direction still reads from the row's reverse + the mark.
-            'min-w-0 w-full stack-tight rounded-2xl border px-3 py-2',
-            internal
-              ? 'border-amber-200/80 bg-amber-50'
-              : ours
-                ? 'border-blue-200/80 bg-blue-50'
-                : 'border-border-soft bg-surface-card',
-          )}
-        >
-          <MetaLine item={item} msg={msg} internal={internal} compact={compact} alignEnd={ours} />
-          <MessageBody msg={msg} item={item} onOpenPhoto={onOpenPhoto} compact={compact} />
+        <RowMark item={item} compact={compact} dense />
+        <div className={TICKET_BUBBLE_SHELL}>
+          <MetaLine
+            item={item}
+            msg={msg}
+            internal={internal}
+            compact={compact}
+            dense
+          />
+          <MessageBody
+            msg={msg}
+            item={item}
+            onOpenPhoto={onOpenPhoto}
+            compact={compact}
+            dense
+          />
         </div>
       </div>
     );
@@ -376,7 +421,7 @@ function StreamRow({
       data-internal={internal ? 'true' : undefined}
       className={cn(
         'flex gap-2',
-        // Bubble rows are flush to the column — vertical pad only.
+        // Bubble list already owns DISPLAYS_BODY_INSET — vertical pad only.
         variant === 'bubble'
           ? 'py-1.5'
           : compact
@@ -418,7 +463,7 @@ export function MergedRecordStream({
    * Omit ⇒ messages only (the stream still renders; it just has one spine).
    */
   events?: TimelineItem[];
-  /** Station / carton push — denser chrome; body stays readable (`text-role-data`). */
+  /** Station / carton push — denser chrome. Ledger body stays data; bubble uses {@link TICKET_BUBBLE_BODY}. */
   compact?: boolean;
   /**
    * Row shell. `ledger` = flat selectable/scannable list (default, `/support`).
@@ -498,6 +543,7 @@ export function MergedRecordStream({
       <div
         className={cn(
           'flex items-center justify-center py-16',
+          bubble && DISPLAYS_BODY_INSET,
         )}
       >
         <Spinner />
@@ -510,7 +556,7 @@ export function MergedRecordStream({
         className={cn(
           'text-center text-rose-600',
           bubble
-            ? 'py-4 text-role-micro'
+            ? cn(DISPLAYS_BODY_INSET, 'py-4 text-role-micro')
             : compact
               ? 'px-3 py-4 text-role-micro'
               : 'px-5 py-6 text-role-caption',
@@ -526,7 +572,7 @@ export function MergedRecordStream({
         className={cn(
           'text-center',
           bubble
-            ? 'py-10'
+            ? cn(DISPLAYS_BODY_INSET, 'py-10')
             : compact
               ? 'px-3 py-10'
               : 'px-5 py-16',
@@ -554,7 +600,7 @@ export function MergedRecordStream({
       data-testid="support-merged-stream"
       data-stream-variant={variant}
       className={cn(
-        bubble ? 'stack-tight' : 'divide-y divide-border-hairline',
+        bubble ? TICKET_BUBBLE_STREAM : 'divide-y divide-border-hairline',
       )}
     >
       {hiddenCount > 0 ? (
@@ -584,7 +630,7 @@ export function MergedRecordStream({
               <DateGroupHeader
                 date={dayKey}
                 total={dayTotals.get(dayKey) ?? 0}
-                // Bubble rows are flush to the column — drop QUEUE_ROW.px.
+                // Bubble list already owns DISPLAYS_BODY_INSET — drop QUEUE_ROW.px.
                 className={bubble ? 'px-0' : undefined}
               />
             ) : null}

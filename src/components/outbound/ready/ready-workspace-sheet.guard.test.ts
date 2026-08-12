@@ -54,9 +54,14 @@ describe('Ready Sheets recipe', () => {
   it('FBA pins the Ready KPI in Band 2 chrome (ReadyKpiBand), above the sheet host', () => {
     const src = read('src/components/fba/FbaOutboundWorkspace.tsx');
     const usageIdx = src.indexOf('<ReadyKpiBand');
-    const bodyHostIdx = src.indexOf('className={WORKBENCH_SHEET_HOST}');
+    // FBA composes WorkbenchSheetView (2d): the KPI rides the `band2` slot —
+    // `band2`, not `kpi`, because this strip is mode-scoped and must NOT
+    // snap-collapse. The shell renders band2 in the chrome stack and `children`
+    // in the sheet host, so preceding the body render-prop IS "above the body".
+    const bodyHostIdx = src.indexOf('{() => (');
     assert.ok(usageIdx >= 0, 'Ready KPI must mount as <ReadyKpiBand> in the FBA chrome');
-    assert.ok(bodyHostIdx >= 0, 'FBA body must be the flush sheet host');
+    assert.ok(src.includes('band2='), 'FBA Band 2 must be the raw strip slot, not the KPI slot');
+    assert.ok(bodyHostIdx >= 0, 'FBA body must be the shell children render-prop');
     assert.ok(
       usageIdx < bodyHostIdx,
       'ReadyKpiBand renders in the pinned chrome (Band 2), above the scroll body',

@@ -87,6 +87,13 @@ const GRID_SURFACES: {
   gridView?: string;
   /** Set once the surface is on the registry host (plan Phase 1). */
   definition?: TableDefinition;
+  /**
+   * `false` for a surface that is deliberately NOT on `WorkbenchSheetView` (2d).
+   * Repair is the case: `RepairTable` renders its own Band-1 chrome over a sheet
+   * host but mounts no `DashboardScrollShell`, so the shell would add a scroll
+   * port it does not have. It keeps the literal-token assertions.
+   */
+  sheetShell?: boolean;
 }[] = [
   {
     label: 'Pickup',
@@ -101,6 +108,7 @@ const GRID_SURFACES: {
     triageFiles: ['src/components/repair/RepairWorkspaceHeader.tsx'],
     gridView: 'src/components/repair/RepairTable.tsx',
     definition: REPAIR_TABLE_DEFINITION,
+    sheetShell: false,
   },
   {
     label: 'Catalog',
@@ -151,10 +159,20 @@ const FLUSH_SURFACES: { label: string; file: string }[] = [
 describe('Sheets-flush cohort — Wave 7 grid surfaces', () => {
   for (const s of GRID_SURFACES) {
     describe(s.label, () => {
-      it('uses WORKBENCH_SHEET_* hosts (no gutters / framed islands)', () => {
+      it('composes the Sheets shell (no gutters / framed islands)', () => {
         const src = stripBlockComments(read(s.view));
-        assert.match(src, /WORKBENCH_SHEET_CHROME/);
-        assert.match(src, /WORKBENCH_SHEET_HOST/);
+        // The recipe moved into WorkbenchSheetView (2d): a migrated page composes
+        // the shell and no longer holds the tokens, so it cannot drift from its
+        // sibling sheets. Token ownership is asserted once in
+        // `workbench-sheet-view.guard.test.ts`. A surface flagged
+        // `sheetShell: false` is a documented divergence and keeps the literals.
+        if (s.sheetShell === false) {
+          assert.match(src, /WORKBENCH_SHEET_CHROME/);
+          assert.match(src, /WORKBENCH_SHEET_HOST/);
+        } else {
+          assert.match(src, /<WorkbenchSheetView/);
+          assert.match(src, /useWorkbenchSheetChrome/);
+        }
         assertNoGutters(src);
       });
 
@@ -165,11 +183,20 @@ describe('Sheets-flush cohort — Wave 7 grid surfaces', () => {
         assert.ok(found, `${s.label} must mount find on a WorkbenchTriageBand`);
       });
 
-      it('tab band passes Unbox flush face overrides', () => {
+      it('the tab band takes its flush face from the shell', () => {
         const src = read(s.view);
-        assert.match(src, /border-l-0/);
-        assert.match(src, /border-t-0/);
-        assert.match(src, /rounded-none/);
+        if (s.sheetShell === false) {
+          // Not on the shell — still must hand-pass the flush seam classes.
+          assert.match(src, /border-l-0/);
+          assert.match(src, /border-t-0/);
+          return;
+        }
+        // The flush face is the shell's WORKBENCH_SHEET_TABS_CLASS, handed to the
+        // tabs slot; the page forwards it rather than re-typing it. (Four pages
+        // had also been passing a redundant `rounded-none` that
+        // WorkbenchChromeHeader already applies via cornerClass('flush').)
+        assert.match(src, /tabs=\{\(\{ className \}\)/);
+        assert.match(src, /className=\{className\}/);
       });
 
       if (s.gridView) {
@@ -201,9 +228,11 @@ describe('Sheets-flush cohort — Wave 7 tool / feed surfaces', () => {
       it('mounts flush — no gutter columns / framed island', () => {
         const src = stripBlockComments(read(s.file));
         assertNoGutters(src);
+        // Prefer the shared shell (`WorkbenchSheetView`); literal tokens remain
+        // valid for surfaces that have not migrated yet.
         assert.match(
           src,
-          /WORKBENCH_SHEET_(CHROME|HOST)/,
+          /WorkbenchSheetView|WORKBENCH_SHEET_(CHROME|HOST)/,
           `${s.label} must mount on a flush sheet host`,
         );
       });

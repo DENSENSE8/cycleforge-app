@@ -1,10 +1,7 @@
-import { HydrationBoundary } from '@tanstack/react-query';
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { UnboxBrowseFirstPaint } from '@/components/receiving/unbox/UnboxBrowseFirstPaint';
 import { UnboxBrowseShell } from '@/components/receiving/unbox/UnboxBrowseShell';
-import { seedUnboxQueue } from '@/lib/queries/unbox-spine-seed.server';
 
 /**
  * `/unbox` — the Unbox operator surface as a first-class, semantic route
@@ -16,31 +13,35 @@ import { seedUnboxQueue } from '@/lib/queries/unbox-spine-seed.server';
  * `'legacy'` escape hatch — the safe default). Legacy `/receiving?mode=receive`
  * and bare `/receiving` redirect here.
  *
- * Paint order: RSC seeds Queue spine into a HydrationBoundary and streams
- * {@link UnboxBrowseFirstPaint} as the LCP stand-in; the interactive desk
- * hydrates over the same cache key (To-ship / Packer golden).
+ * Paint order: selected rail row → middle → right edge → the rest of the rail.
+ *
+ * **The seed is NOT here, and that is structural.** The recents rail is a
+ * sibling of this page (`ResponsiveLayout` renders
+ * `<ContextPanelLayout>{children}</ContextPanelLayout>`), so React renders it
+ * BEFORE this page's tree — a `HydrationBoundary` mounted here could never
+ * reach it, and the rail server-rendered empty while the seed sat unused in the
+ * RSC payload. The seed now hydrates above the shell
+ * (`maybeSeedUnboxShell`, called from the root layout) and covers this page too,
+ * so the middle's carton lines still hydrate from cache exactly as before.
+ *
+ * The middle shows `UnboxStationFirstPaint`'s skeleton until the interactive
+ * workspace hydrates over that same cache. Workbench tables mount only after
+ * Back to list (`?unboxdesk=1`).
+ *
+ * There is no second, `sr-only` copy of the stand-in. One was mounted here as
+ * "belt-and-suspenders" while the app shell was client-gated and nothing the
+ * server rendered ever painted; with that gate gone the shell's own copy IS in
+ * the HTML, so the duplicate only shipped the same markup twice.
  */
 export default async function UnboxPage() {
-  const seed = await seedUnboxQueue();
-
   return (
     <>
       <SurfaceParamHygiene />
-      <HydrationBoundary state={seed.state}>
-        {/*
-          SSR stand-in also rendered here so the LCP element is in the RSC
-          HTML even before the client shell mounts (belt-and-suspenders with
-          UnboxBrowseShell's absolute overlay).
-        */}
-        <div className="sr-only" aria-hidden>
-          <UnboxBrowseFirstPaint rows={seed.rows} />
-        </div>
-        <UnboxBrowseShell firstPaintRows={seed.rows}>
-          <SurfaceGate surfaceKey="unbox">
-            <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
-          </SurfaceGate>
-        </UnboxBrowseShell>
-      </HydrationBoundary>
+      <UnboxBrowseShell>
+        <SurfaceGate surfaceKey="unbox">
+          <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
+        </SurfaceGate>
+      </UnboxBrowseShell>
     </>
   );
 }

@@ -9,11 +9,10 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { cn } from '@/utils/_cn';
 import { LabelsProductsWorkspaceHeader } from '@/components/labels/LabelsProductsWorkspaceHeader';
@@ -44,6 +43,8 @@ export function LabelsProductsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseLabelsView(searchParams.get('labelsView'));
+  // Band-1 only: no KPI band, no Band-3 triage (find rides the header here).
+  const chrome = useWorkbenchSheetChrome();
   const catalogQuery = searchParams.get('q') || '';
   const [historyDraft, setHistoryDraft] = useState('');
 
@@ -93,28 +94,26 @@ export function LabelsProductsWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className={cn('h-full', tab === 'print' || tab === 'history' ? 'overflow-hidden' : undefined)}
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <LabelsProductsWorkspaceHeader
-              tab={tab}
-              onSelectTab={handleSelectTab}
-              search={tab === 'history' ? historyDraft : catalogQuery}
-              onSearch={tab === 'history' ? setHistoryDraft : handleCatalogSearch}
-              onHistorySubmit={handleHistorySubmit}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-          </div>
-        }
+        sheetHostClassName={cn(
+          'px-3 pt-3',
+          (tab === 'print' || tab === 'history') && 'h-full overflow-hidden pb-4',
+        )}
+        tabs={({ className }) => (
+          <LabelsProductsWorkspaceHeader
+            tab={tab}
+            onSelectTab={handleSelectTab}
+            search={tab === 'history' ? historyDraft : catalogQuery}
+            onSearch={tab === 'history' ? setHistoryDraft : handleCatalogSearch}
+            onHistorySubmit={handleHistorySubmit}
+            className={className}
+          />
+        )}
       >
-        <div
-          className={cn(
-            WORKBENCH_SHEET_HOST,
-            'px-3 pt-3',
-            (tab === 'print' || tab === 'history') && 'h-full overflow-hidden pb-4',
-          )}
-        >
+        {() => (
+          <>
           {tab === 'print' ? (
             <div className="flex min-h-0 min-w-0 flex-1 gap-4 overflow-hidden">
               <div
@@ -148,8 +147,9 @@ export function LabelsProductsWorkspace() {
               <UnitDetailWorkspace />
             </div>
           )}
-        </div>
-      </DashboardScrollShell>
+          </>
+        )}
+      </WorkbenchSheetView>
     </div>
   );
 }

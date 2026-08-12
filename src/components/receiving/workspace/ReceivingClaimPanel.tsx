@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 
-import { useOptionalDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
 import {
   claimSectionDomId,
   claimWizardStepsForMode,
@@ -14,7 +13,8 @@ import {
   type ReceivingClaimController,
 } from './claim/hooks/useReceivingClaimController';
 import { ClaimModalHeader } from './claim/components/ClaimModalHeader';
-import { ClaimWizardNav } from './claim/components/ClaimWizardNav';
+import { ClaimModeSelect } from './claim/components/ClaimModeSelect';
+import { ClaimEmptySeedCreateHelper } from './claim/components/ClaimEmptySeedCreateHelper';
 import { ClaimPhotosStep } from './claim/components/ClaimPhotosStep';
 import { ClaimComposeStep } from './claim/components/ClaimComposeStep';
 import { ClaimFiledStep } from './claim/components/ClaimFiledStep';
@@ -24,14 +24,14 @@ import { ClaimActionFooter } from './claim/components/ClaimPhaseActions';
 import { cn } from '@/utils/_cn';
 
 /**
- * Claim wizard body — mode chrome + stacked scroll sections + sticky File footer.
- * Ticket is editable fields only (no duplicate review preview). Backup note
- * sits on the sticky File footer (leading), not a scroll section. Dismiss via
- * header X / Displays →| (no Cancel).
+ * Claim wizard body — Create|Link mode combobox + stacked scroll sections +
+ * sticky File / Link & send footer. Ticket is editable fields only (no
+ * duplicate review preview). Backup note sits on the sticky footer (leading).
+ * Dismiss via header X / Displays →| (no Cancel).
  *
- * Displays chrome (`chrome="display"`): New·Link mounts in
- * {@link StationDisplayLeafHeader} trailing via leaf chrome — not a body strip.
- * Modal keeps the body {@link ClaimWizardNav} strip.
+ * Create and Link share Photos · Claim type · Subject · Body · Recipients.
+ * Link adds the ticket picker above that stack. Mode is a body flush combobox
+ * (never a leaf-header New·Link segment twin).
  */
 export function ReceivingClaimPanel({
   className,
@@ -44,18 +44,6 @@ export function ReceivingClaimPanel({
 }) {
   const c = useReceivingClaimController(props);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const leafChrome = useOptionalDisplaysLeafChrome();
-  const setLeafTrailing = leafChrome?.setLeafTrailing;
-
-  // Displays: park Claim New·Link on the sticky leaf header (essay layout).
-  // Depend on `c.mode` only — `handleModeChange` is recreated each render and
-  // would loop setLeafTrailing → parent setState → remount.
-  useEffect(() => {
-    if (chrome !== 'display' || !setLeafTrailing) return;
-    setLeafTrailing(<ClaimWizardNav c={c} placement="leaf-header" />);
-    return () => setLeafTrailing(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable setters + mode face
-  }, [chrome, setLeafTrailing, c.mode]);
 
   const mountedSteps = useMemo(
     () => claimMountedSteps(c),
@@ -64,7 +52,6 @@ export function ReceivingClaimPanel({
       c.mode,
       c.sellerStepApplicable,
       c.filedTicket,
-      c.linkCommitStatus,
       c.linkUpdateStatus,
     ],
   );
@@ -109,12 +96,12 @@ export function ReceivingClaimPanel({
         onClose={c.onClose}
       />
 
-      {chrome === 'modal' ? <ClaimWizardNav c={c} placement="strip" /> : null}
-
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto px-0 py-0 text-role-data"
       >
+        <ClaimModeSelect c={c} />
+        <ClaimEmptySeedCreateHelper c={c} />
         {mountedSteps.map((step) => {
           const def = stepDefs.find((s) => s.key === step);
           const index = stepDefs.findIndex((s) => s.key === step);
@@ -144,10 +131,9 @@ function claimMountedSteps(c: ReceivingClaimController): ClaimWizardStep[] {
     return draft.filter((s) => all.includes(s));
   }
 
-  const out: ClaimWizardStep[] = ['find'];
-  if (c.linkCommitStatus === 'committed') {
-    out.push('photos', 'compose');
-  }
+  // Link always shows picker + the same Photos · Compose stack as Create
+  // (template body is the linkage message). Filed/seller after send posts.
+  const out: ClaimWizardStep[] = ['find', 'photos', 'compose'];
   if (c.linkUpdateStatus === 'posted') {
     out.push('filed');
     if (c.sellerStepApplicable) out.push('seller');

@@ -9,7 +9,7 @@ import {
 import {
   TRIAGE_RAIL_SEGMENTS,
   UNBOX_RAIL_SEGMENT,
-  receivingRailCartonKey,
+  receivingRailShipmentKey,
   type ReceivingRailRow,
 } from '@/lib/queries/receiving-queries';
 
@@ -34,7 +34,7 @@ function stubFetch() {
 describe('applyUnboxCartonOpened (the unbox-open chokepoint)', () => {
   const TRACKING = '1Z999TEST0001';
 
-  it('drops the pending stub, upserts the carton-keyed row, purges triage, fires touch-scan', () => {
+  it('UPGRADES the pending stub in place (one row, one key), purges triage, fires touch-scan', () => {
     const calls = stubFetch();
     const qc = new QueryClient();
     // Pre-resolve pending stub on the Unboxed rail (painted at scan submit).
@@ -60,11 +60,17 @@ describe('applyUnboxCartonOpened (the unbox-open chokepoint)', () => {
     assert.equal(
       unboxed.some((r) => r.client_event_id === pendingScanReconcileKey(TRACKING)),
       false,
-      'pending scan: stub must be dropped',
+      'legacy scan: stub must be swept',
     );
     const carton = unboxed.find((r) => r.receiving_id === 42);
-    assert.ok(carton, 'carton row upserted onto Unboxed');
-    assert.equal(carton.client_event_id, receivingRailCartonKey(42));
+    assert.ok(carton, 'carton row on Unboxed');
+    // THE regression this test exists for: a tracking scan resolves onto the key
+    // the pending stub already holds, so the rail row is UPDATED, never removed
+    // and re-added. A `carton:42` here means the row changed React key mid-scan,
+    // which the rail's AnimatePresence renders as the operator's tracking number
+    // vanishing and coming back.
+    assert.equal(carton.client_event_id, receivingRailShipmentKey(TRACKING));
+    assert.equal(unboxed.length, 1, 'stub was upgraded, not duplicated');
 
     for (const segment of TRIAGE_RAIL_SEGMENTS) {
       assert.deepEqual(qc.getQueryData(railKey(segment)), [], `triage ${segment} purged`);
@@ -137,7 +143,7 @@ describe('applyUnboxCartonOpened — a LOOKUP is read-only against the rail', ()
     // weeks-old box to the top as if it had just been opened.
     const unboxed = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT)) ?? [];
     assert.equal(
-      unboxed.some((r) => r.client_event_id === receivingRailCartonKey(42)),
+      unboxed.some((r) => r.receiving_id === 42),
       false,
       'a lookup upserted the carton onto the Unboxed rail',
     );
@@ -149,9 +155,16 @@ describe('applyUnboxCartonOpened — a LOOKUP is read-only against the rail', ()
       assert.equal(rows.length, 1, `a lookup purged the ${segment} rail`);
     }
 
-    // Our own optimistic stub is still cleaned up — it is our artifact.
+    // Our own optimistic stub is still cleaned up — it is our artifact. Both
+    // keys are checked: a lookup upserts NOTHING, so the shipment-keyed stub has
+    // no successor row and must not be spared the way the work path spares it.
+    assert.equal(unboxed.length, 0, 'the pending scan stub survived a lookup');
     assert.equal(
-      unboxed.some((r) => r.client_event_id === pendingScanReconcileKey(TRACKING)),
+      unboxed.some(
+        (r) =>
+          r.client_event_id === pendingScanReconcileKey(TRACKING)
+          || r.client_event_id === receivingRailShipmentKey(TRACKING),
+      ),
       false,
       'the pending scan stub survived a lookup',
     );

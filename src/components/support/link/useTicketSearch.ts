@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * One candidate ticket from a link-candidates endpoint. Mirrors
@@ -36,12 +36,23 @@ export interface UseTicketSearch {
   setSelectedTicket: React.Dispatch<React.SetStateAction<TicketCandidate | null>>;
   /** Clear the query/results — used when the host modal resets on open. */
   reset: () => void;
+  /**
+   * Host seed applied for this enable cycle (trimmed), or '' when none.
+   * Claim Link uses this to paint "Suggested from tracking" when the box still
+   * equals the carton tracking.
+   */
+  seededQuery: string;
 }
 
 interface Params {
   open: boolean;
   /** Only search while the picker is actually visible. */
   enabled: boolean;
+  /**
+   * Seed the box when link mode becomes active (e.g. carton tracking). Applied
+   * once per enable cycle; operator edits win until the next New→Link / reopen.
+   */
+  initialQuery?: string | null;
   /**
    * Build the candidates URL for the current query, or return null when the
    * anchor isn't resolvable yet (the hook then idles instead of fetching).
@@ -58,18 +69,53 @@ interface Params {
 /**
  * Link-mode ticket search. Fetches candidate tickets — the most recent ones when
  * the box is empty (the common case: the related ticket was just filed), or a
- * search/id lookup once the operator types. Debounced (300ms), aborts in flight.
+ * search/id lookup once the operator types / a host seed lands. Debounced
+ * (300ms), aborts in flight.
  *
  * Owns the result set + the current selection so a selection that falls out of a
  * refreshed result set is dropped automatically.
  */
-export function useTicketSearch({ open, enabled, buildUrl }: Params): UseTicketSearch {
+export function useTicketSearch({
+  open,
+  enabled,
+  buildUrl,
+  initialQuery = null,
+}: Params): UseTicketSearch {
   const [ticketQuery, setTicketQuery] = useState('');
   const [ticketResults, setTicketResults] = useState<TicketCandidate[]>([]);
   const [hiddenLinked, setHiddenLinked] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<TicketCandidate | null>(null);
+  const [seededQuery, setSeededQuery] = useState('');
+  const seededForEnableRef = useRef(false);
+
+  // Apply / clear host seed when the picker opens into link mode (or New→Link).
+  useEffect(() => {
+    if (!open) {
+      setTicketQuery('');
+      setTicketResults([]);
+      setHiddenLinked(0);
+      setSelectedTicket(null);
+      setSearchError(null);
+      setSeededQuery('');
+      seededForEnableRef.current = false;
+      return;
+    }
+    if (!enabled) {
+      seededForEnableRef.current = false;
+      return;
+    }
+    if (seededForEnableRef.current) return;
+    seededForEnableRef.current = true;
+    const seed = (initialQuery ?? '').trim();
+    setSeededQuery(seed);
+    setTicketQuery(seed);
+    setSelectedTicket(null);
+    setTicketResults([]);
+    setHiddenLinked(0);
+    setSearchError(null);
+  }, [open, enabled, initialQuery]);
 
   // `buildUrl` is called inside the debounce rather than being an effect dep:
   // callers pass an inline closure, so depending on the function identity would
@@ -120,12 +166,17 @@ export function useTicketSearch({ open, enabled, buildUrl }: Params): UseTicketS
   }, [open, enabled, url]);
 
   const reset = () => {
-    setTicketQuery('');
+    const seed = open && enabled ? (initialQuery ?? '').trim() : '';
+    setTicketQuery(seed);
+    setSeededQuery(seed);
     setTicketResults([]);
     setHiddenLinked(0);
     setSelectedTicket(null);
     setSearchError(null);
     setSearchLoading(true);
+    // Keep the enable cycle when still open+enabled (StnTicketLinkModal calls
+    // reset on open to drop a stale selection — must not fight the seed effect).
+    seededForEnableRef.current = Boolean(open && enabled);
   };
 
   return {
@@ -138,5 +189,6 @@ export function useTicketSearch({ open, enabled, buildUrl }: Params): UseTicketS
     selectedTicket,
     setSelectedTicket,
     reset,
+    seededQuery,
   };
 }

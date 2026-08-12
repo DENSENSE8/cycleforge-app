@@ -84,6 +84,7 @@ export function WorkspaceNotesCard({
         zendeskProviderTicketId={c.providerTicketId}
         zendeskTicketSubject={c.supportTicket?.subject ?? null}
         previousLineNotes={c.prevLineNotes}
+        lineId={row.id}
         onNotesChange={c.setItemNote}
         onSaveNotes={(override) => {
           // Returns whether it actually persisted, so the card only flashes

@@ -113,7 +113,10 @@ describe('unbox recents-rail first-paint seed', () => {
     assert.match(railMount, /receivingRailQueryKey\(/);
     assert.match(seed, /receivingRailQueryKey\(/);
 
-    // The seed rides in seedUnboxQueue's QueryClient (one dehydrate state).
-    assert.match(seed, /seedUnboxRecentRail\(queryClient\)/);
+    // The seed rides in seedUnboxStation's QueryClient (one dehydrate state).
+    // It now also takes the pre-limited carton ids — rank on the indexed column,
+    // hydrate only those — so match the call, not the old arity.
+    assert.match(seed, /seedUnboxRecentRail\(\s*queryClient\b/);
+    assert.match(seed, /seedUnboxStation/);
   });
 });

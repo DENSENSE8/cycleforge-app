@@ -3,6 +3,7 @@
  * Server search lives in `photo-move-targets.ts`.
  */
 
+import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
 
 /** Parsed search intent — pure so unit tests stay DB-free. */
@@ -82,6 +83,7 @@ function productField(value?: string | null): string {
  * Carton picker title — same product ladder as Unboxed rail
  * {@link receivingProductTitle}: catalog → Zoho item → listing item_name → sku.
  * PO identity stays on `PoChip`; never invent a platform · PO title here.
+ * Generated return-serial titles paint last-8.
  */
 export function resolvePhotoMoveTargetTitle(row: {
   catalog_product_title?: string | null;
@@ -90,14 +92,14 @@ export function resolvePhotoMoveTargetTitle(row: {
   sku?: string | null;
   zoho_item_id?: string | null;
 }): string {
-  return (
+  const raw =
     productField(row.catalog_product_title) ||
     productField(row.zoho_item_title) ||
     productField(row.item_name) ||
     productField(row.sku) ||
     productField(row.zoho_item_id) ||
-    'Unfound PO'
-  );
+    'Unfound PO';
+  return formatReturnSerialProductTitle(raw);
 }
 
 /** Operator-facing label for a hit (title → PO → ticket → tracking → carton handle). */

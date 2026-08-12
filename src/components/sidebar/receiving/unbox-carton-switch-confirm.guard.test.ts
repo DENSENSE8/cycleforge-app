@@ -1,6 +1,6 @@
 /**
- * Guard: mid-carton known-carrier switch hold must never steal wedge focus via
- * `window.alert` / `alert()`. Stay/Switch lives on a Sonner toast.
+ * Guard: Unbox tracking scan must not hard-stop mid-carton with a Stay/Switch
+ * toast (or `alert()`). Known-carrier / unfound tracking opens immediately.
  *
  *   node --import tsx --test src/components/sidebar/receiving/unbox-carton-switch-confirm.guard.test.ts
  */
@@ -16,21 +16,25 @@ function sourceOf(rel: string): string {
   return readFileSync(join(ROOT, rel), 'utf8');
 }
 
-test('useTrackingScan carton-switch hold uses toast Stay/Switch — never alert()', () => {
+test('useTrackingScan has no mid-carton Stay/Switch hard-stop', () => {
   const src = sourceOf('useTrackingScan.ts');
-  assert.match(
+  assert.doesNotMatch(
     src,
     /shouldConfirmCartonSwitch/,
-    'mid-carton gate must call shouldConfirmCartonSwitch',
+    'mid-carton switch gate must not be wired',
   );
-  assert.match(
+  assert.doesNotMatch(
     src,
     /Incomplete carton/,
-    'operator-facing incomplete-carton copy must be present',
+    'incomplete-carton Stay/Switch toast must not return',
   );
-  assert.match(src, /label:\s*'Stay'/, 'Stay action required (default / safer)');
-  assert.match(src, /label:\s*'Switch'/, 'Switch action required');
-  assert.match(src, /toast\.warning/, 'hold must be a non-blocking toast');
+  assert.doesNotMatch(src, /label:\s*'Stay'/, 'Stay action must not return');
+  assert.doesNotMatch(src, /label:\s*'Switch'/, 'Switch action must not return');
+  assert.doesNotMatch(
+    src,
+    /skipCartonSwitchConfirm/,
+    'skipCartonSwitchConfirm opts must not return',
+  );
   assert.doesNotMatch(
     src,
     /(?:window\.)?\balert\s*\(/,

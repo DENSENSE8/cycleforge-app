@@ -77,15 +77,11 @@ interface LineCartonContextSectionProps {
    */
   showClassifyControls?: boolean;
   /**
-   * When false, header pills are read-only facts (triage — Overview checklist
-   * owns edits). Default true = unbox InlinePillPicker.
+   * When false, header pills are read-only facts. Default true = chip-anchored
+   * InlinePillPicker menus. Classify Displays / Arrival Classify stay available
+   * when staff open those surfaces themselves.
    */
   classifyInteractive?: boolean;
-  /**
-   * Unbox / Arrival: fired when a classify pill is clicked — host opens the
-   * Classify surface and expands that dimension's names list.
-   */
-  onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
   /** Switch Unbox workspace to the Tracking tab. */
   onEditTracking?: () => void;
   /** Switch Unbox workspace to the Listings tab. */
@@ -136,7 +132,6 @@ export function LineCartonContextSection({
   expandClassifyWhenPending = true,
   showClassifyControls = true,
   classifyInteractive = true,
-  onClassifyPillOpen,
   onEditTracking,
   onEditListing,
   onEditPo,
@@ -164,7 +159,6 @@ export function LineCartonContextSection({
       isUnmatched={row.receiving_source === 'unmatched'}
       showClassifyControls={showClassifyControls}
       classifyInteractive={classifyInteractive}
-      onClassifyPillOpen={onClassifyPillOpen}
       poTotal={poTotal}
       showPoTotal
       // Qty left this band on 2026-08-02: Unbox pins it on the Items eyebrow

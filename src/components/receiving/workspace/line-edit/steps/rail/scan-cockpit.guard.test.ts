@@ -112,7 +112,7 @@ describe('scan cockpit — step rail-leaf registry', () => {
   it('settled / non-capture steps resolve to null (no forced rail)', () => {
     assert.equal(resolveStepRailLeaf(null), null, 'settled ⇒ no rail leaf');
     assert.equal(resolveStepRailLeaf('scan'), null, 'intake step ⇒ no rail leaf');
-    assert.equal(resolveStepRailLeaf('stage'), null, 'commit stage ⇒ work-plane Placement');
+    assert.equal(resolveStepRailLeaf('stage'), null, 'commit stage ⇒ no rail leaf');
     assert.equal(resolveStepRailLeaf('receive'), null, 'commit step ⇒ no rail leaf');
   });
 
@@ -173,6 +173,34 @@ describe('scan cockpit — LineEditPanel wiring', () => {
       /const cartonChanged = prevCockpitCartonRef\.current !== cartonKey/,
       'a sibling CHILD switch (same carton) is NOT a record change — the cockpit ' +
         'must key on the parent carton so it never yanks a display the operator chose',
+    );
+  });
+
+  it('Ticket wins on carton open — cockpit opens Ticket, never classify railLeaf', () => {
+    assert.match(
+      panel,
+      /resolveUnboxTicketContextOpen\(row,\s*hasTicketId\)/,
+      'unfound / linked ticket context must drive Displays on carton open',
+    );
+    assert.match(
+      panel,
+      /ticketCtx\.open/,
+      'ticket-context cartons own the right panel',
+    );
+    assert.match(
+      panel,
+      /openDisplays\('ticket'/,
+      'cockpit must open Ticket (not only yield) for ticket-context cartons',
+    );
+    assert.match(
+      panel,
+      /if \(activeKey == null \|\| activeKey === 'item_photos'\) return/,
+      'must not consume cartonChanged while activeKey is still null',
+    );
+    assert.doesNotMatch(
+      panel,
+      /prevCockpitCartonRef\.current = cartonKey;\s*\n\s*if \(activeKey == null/,
+      'advancing carton ref before the null early-return re-opens the classify race',
     );
   });
 

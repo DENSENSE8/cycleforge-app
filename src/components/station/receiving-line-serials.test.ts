@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
+import { resolveReceivingLineSerialsCsv, parseReturnSerialTitle, formatReturnSerialProductTitle, resolveReceivingLinePrimarySerial } from './receiving-line-serials';
 
 test('uses persisted serial units for the table serial column', () => {
   assert.equal(
@@ -32,5 +32,45 @@ test('does not infer serials from ordinary product titles', () => {
       serials: [],
     }),
     '',
+  );
+});
+
+test('parseReturnSerialTitle extracts the scanned serial', () => {
+  assert.equal(parseReturnSerialTitle('Return serial 017817834247'), '017817834247');
+  assert.equal(parseReturnSerialTitle('Bose speaker'), null);
+});
+
+test('formatReturnSerialProductTitle paints last-8 only', () => {
+  assert.equal(
+    formatReturnSerialProductTitle('Return serial 017817834247'),
+    'Return serial 17834247',
+  );
+  assert.equal(
+    formatReturnSerialProductTitle('Return serial ABC'),
+    'Return serial ABC',
+  );
+  assert.equal(
+    formatReturnSerialProductTitle('Bose Companion Speakers'),
+    'Bose Companion Speakers',
+  );
+});
+
+test('formatReturnSerialProductTitle prefers live serial over stale title', () => {
+  assert.equal(
+    formatReturnSerialProductTitle(
+      'Return serial 017817834247',
+      '083424j32000020ae',
+    ),
+    'Return serial 000020ae',
+  );
+});
+
+test('resolveReceivingLinePrimarySerial prefers persisted units', () => {
+  assert.equal(
+    resolveReceivingLinePrimarySerial({
+      item_name: 'Return serial 017817834247',
+      serials: [{ id: 1, serial_number: '083424j32000020ae' }],
+    }),
+    '083424j32000020ae',
   );
 });

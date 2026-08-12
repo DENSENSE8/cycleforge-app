@@ -185,7 +185,8 @@ describe('History topics stay off the Unbox History sheet', () => {
     assert.match(header, /HISTORY_REFINE_SOURCE_OPTIONS/);
     assert.match(header, /HISTORY_REFINE_WEEK_OPTIONS/);
     assert.match(header, /isHistoryRefineFacetHot/);
-    assert.match(header, /role="tablist"/);
+    // Facet tablist lives on WorkbenchRefineFacetTabs (shared SoT) — not inlined.
+    assert.match(header, /WorkbenchRefineFacetTabs/);
     assert.match(header, /setHistoryStaff/);
     assert.match(header, /setHistoryWeek/);
     assert.match(header, /isHistoryCommandFilterHot/);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useEventBridge } from '@/hooks';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /**
@@ -35,6 +36,22 @@ export function useReceivingType(row: ReceivingLineRow) {
     setIntakeType(seed());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.receiving_id, row.carton_intake_type, row.receiving_type]);
+
+  // Mirror type edits from Classify / claim compose (same carton).
+  useEventBridge({
+    'receiving-package-updated': (e) => {
+      if (row.receiving_id == null) return;
+      const detail = (
+        e as CustomEvent<{
+          receiving_id?: number;
+          intake_type?: string | null;
+        }>
+      ).detail;
+      if (!detail || detail.receiving_id !== row.receiving_id) return;
+      if (detail.intake_type === undefined) return;
+      setIntakeType((detail.intake_type || 'PO').toUpperCase());
+    },
+  });
 
   const saveType = useCallback(
     async (next: string) => {

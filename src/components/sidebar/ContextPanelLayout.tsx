@@ -52,9 +52,16 @@ import { cn } from '@/utils/_cn';
 // dispatcher code-splits every route panel behind it, so a shell-chunk static
 // import here would pull each feature's graph into the shared bundle
 // (`.claude/rules/build-gotchas.md` → bundle altitude).
+//
+// `ssr: false` was REMOVED (2026-08-12). It was never what bought the bundle
+// split — `dynamic()` code-splits the client chunk either way — it only meant
+// the rail could not exist in the server HTML. On a scan station the recents
+// rail is the first thing the operator reads (the carton they were last on,
+// already selected), so a rail that cannot server-render cannot paint first no
+// matter how fast its data is; with the seed in the HydrationBoundary it now
+// renders straight from the seeded cache.
 const SidebarContextPanel = dynamic(
   () => import('@/components/sidebar/SidebarContextPanel').then((m) => m.SidebarContextPanel),
-  { ssr: false },
 );
 
 /**

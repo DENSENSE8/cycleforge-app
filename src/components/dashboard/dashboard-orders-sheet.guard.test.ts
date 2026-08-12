@@ -38,10 +38,14 @@ function stripBlockComments(src: string): string {
 }
 
 describe('To-ship Sheets flush chrome', () => {
-  it('DashboardOrdersView uses WORKBENCH_SHEET_* hosts (not guttered columns)', () => {
+  it('DashboardOrdersView composes the Sheets shell with its own chrome controller', () => {
     const src = stripBlockComments(read(ORDERS_VIEW));
-    assert.match(src, /WORKBENCH_SHEET_CHROME/);
-    assert.match(src, /WORKBENCH_SHEET_HOST/);
+    // The recipe moved into WorkbenchSheetView (2d). To-ship supplies its OWN
+    // chrome controller (its View cluster lives on the inspector), which is why
+    // the shell takes `chrome` as a prop instead of always owning the state.
+    // Token ownership: `workbench-sheet-view.guard.test.ts`.
+    assert.match(src, /<WorkbenchSheetView/);
+    assert.match(src, /WorkbenchSheetChrome/);
     assert.doesNotMatch(
       src,
       /WORKBENCH_CHROME_COLUMN/,
@@ -85,11 +89,13 @@ describe('To-ship Sheets flush chrome', () => {
     const src = stripBlockComments(read(ORDERS_VIEW));
     const kpiJsx = src.indexOf('<OutboundKpiStrip');
     assert.ok(kpiJsx >= 0, 'OutboundKpiStrip must remain mounted as JSX');
-    const bodyUsage = src.indexOf('WORKBENCH_SHEET_HOST', src.indexOf('showOutboundChrome ?'));
-    assert.ok(bodyUsage >= 0, 'WORKBENCH_SHEET_HOST must appear in the body className');
+    // The shell renders `kpi` in the chrome stack and `children` in the sheet
+    // host, so preceding the body render-prop IS "above the sheet".
+    const bodyUsage = src.indexOf('{() =>');
+    assert.ok(bodyUsage >= 0, 'body must be the shell children render-prop');
     assert.ok(
       kpiJsx < bodyUsage,
-      'OutboundKpiStrip must sit inside the sheet chrome stack, above WORKBENCH_SHEET_HOST',
+      'OutboundKpiStrip must ride the kpi slot, above the shell body',
     );
     assert.doesNotMatch(
       src,
@@ -107,16 +113,16 @@ describe('To-ship Sheets flush chrome', () => {
       headerStart,
       headerEnd > 0 ? headerEnd + 2 : headerStart + 500,
     );
+    // The seam classes are the shell's WORKBENCH_SHEET_TABS_CLASS, handed to the
+    // tabs slot; the page forwards it. Consolidating the five station copies onto
+    // that token is what surfaced that four of them passed a redundant
+    // `rounded-none` this very test already bans here.
     assert.match(
       headerBlock,
-      /border-l-0/,
-      'Tab band must clear left border — center/rail owns the hairline',
+      /className=\{className\}/,
+      'Band 1 must forward the shell-supplied flush face',
     );
-    assert.match(
-      headerBlock,
-      /border-t-0/,
-      'Band 1 must use border-t-0 — GlobalHeader already owns the top seam',
-    );
+    assert.match(src, /tabs=\{[\s\S]{0,80}\(\{ className \}\)/, 'tabs slot receives the face class');
     // Flush radius lives on WorkbenchChromeHeader SoT — no call-site rounded-none fight.
     assert.doesNotMatch(
       headerBlock,
@@ -256,11 +262,12 @@ describe('To-ship Sheets flush chrome', () => {
 
   it('KPI band reads shared chrome; toggle lives on View topics (not Band 3)', () => {
     const src = stripBlockComments(read(ORDERS_VIEW));
-    const bandJsx = src.indexOf('<WorkbenchKpiBand');
-    assert.ok(bandJsx >= 0, 'KPI must be wrapped in WorkbenchKpiBand (snap-collapse)');
-    const kpiJsx = src.indexOf('<OutboundKpiStrip', bandJsx);
-    assert.ok(kpiJsx >= 0, 'OutboundKpiStrip must sit inside WorkbenchKpiBand');
-    assert.match(src, /open=\{kpiOpen\}/);
+    // WorkbenchKpiBand + its snap wiring now live in the shell (asserted once in
+    // `workbench-sheet-view.guard.test.ts`); the page supplies the strip and the
+    // `kpiOpen` state through its chrome controller.
+    assert.match(src, /kpi=\{/, 'Band 2 rides the shell kpi slot');
+    assert.match(src, /<OutboundKpiStrip/);
+    assert.match(src, /kpiOpen/, 'KPI open state comes from the shared View chrome');
 
     const topics = stripBlockComments(read(VIEW_TOPICS));
     assert.match(topics, /WorkbenchKpiCollapseToggle/);

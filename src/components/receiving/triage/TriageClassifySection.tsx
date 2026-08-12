@@ -1,13 +1,17 @@
 'use client';
 
 /**
- * Classify controls — Urgency / Platform / Type + repair-order identify.
+ * Classify controls — Urgency / Platform / Type + ticket link + repair-order identify.
  *
  * Shared by Arrival (centre door-flow chrome host under items) + Unbox Classify
  * Displays. Flush plane (no WorkspaceCard glass island) — edge-to-edge host
  * (`px-0`); dimension rows are house flush comboboxes
  * ({@link SearchableSelectField} `appearance="flush"`) — same quick-search
  * grammar as receiving claim type / Add Inbound Platform · Type · Priority.
+ *
+ * **Link ticket** opens Ticket Displays → Link (seeded with carton tracking) or
+ * Chat when already linked — found and unfound. Never mounts a second ticket
+ * picker inside Classify.
  *
  * Repair identify composes the same {@link RepairServiceIdentify} host as
  * Arrival Pairing / Unbox Linkage Store — Classify never forks a second Ecwid
@@ -18,7 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, Link2, Unlink, Wrench } from '@/components/Icons';
+import { ChevronRight, Link2, Ticket, Unlink, Wrench } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { SearchableSelectField } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -69,6 +73,7 @@ export function TriageClassifySection({
   expandDimension = null,
   expandRequestId = 0,
   listPlacement = 'bottom-stretch',
+  onFindTicket,
 }: {
   row: ReceivingLineRow;
   c: UnboxLineController;
@@ -85,6 +90,12 @@ export function TriageClassifySection({
    * Urgency · Platform · Type open upward into free canvas.
    */
   listPlacement?: 'bottom-stretch' | 'top-stretch';
+  /**
+   * Open Ticket Displays — Link existing when unlinked (search seeded with
+   * carton tracking), Chat when linked. Required for the Link ticket row;
+   * omit only when the host cannot open Ticket Displays.
+   */
+  onFindTicket?: () => void;
 }) {
   const queryClient = useQueryClient();
   const isUnmatched = row.receiving_source === 'unmatched';
@@ -100,6 +111,11 @@ export function TriageClassifySection({
   const repairLinked = isRepairServiceLinked(row);
   const linkedOrderId = repairServiceLinkedOrderId(row);
   const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
+  const hasTicket = c.providerTicketId != null;
+  const ticketLabel =
+    c.supportTicket?.label?.trim() ||
+    (c.providerTicketId != null ? `#${c.providerTicketId}` : null);
+  const showTicketLink = typeof onFindTicket === 'function' && receivingId != null && receivingId > 0;
 
   // Identify only — do NOT mount useUnmatchedItems here (items accordion owns
   // that controller). A second mount would GET + setLines([]) and flash empty.
@@ -291,6 +307,44 @@ export function TriageClassifySection({
           ariaLabel="Type"
         />
       </div>
+
+      {/* Link ticket — found + unfound. Jumps to Ticket Displays (Link / Chat);
+          never mounts a second TicketPicker here. */}
+      {showTicketLink ? (
+        <div
+          data-testid="triage-classify-link-ticket"
+          className="border-t border-border-hairline"
+        >
+          <button
+            type="button"
+            onClick={onFindTicket}
+            className={cn(
+              'flex w-full items-center gap-2.5 inset-cozy text-left',
+              focusRing('control', 'accent'),
+            )}
+          >
+            <span
+              className={cn(
+                'grid h-5 w-5 shrink-0 place-items-center text-text-muted',
+                cornerClass('flush'),
+              )}
+              aria-hidden
+            >
+              <Ticket className="h-3.5 w-3.5" />
+            </span>
+            {hasTicket && ticketLabel ? (
+              <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+                {ticketLabel} · Linked
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                Link ticket
+              </span>
+            )}
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
+          </button>
+        </div>
+      ) : null}
 
       {/* Same RepairServiceIdentify host as Pairing/Linkage Store — Classify
           never forks Ecwid search. Linked → chip + unlink; unpaired → CTA. */}

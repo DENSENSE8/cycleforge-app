@@ -36,6 +36,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
+import { ShellQuerySeed } from "@/components/providers/ShellQuerySeed";
+import { maybeSeedUnboxShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
 import { cfSans, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
@@ -57,6 +59,10 @@ export default async function RootLayout({
     const h = await headers();
     const pathname = h.get('x-pathname') || '/';
     const kioskHost = isKioskHost(h.get('host')) || isKioskUiPath(pathname);
+
+    // Paint seed for routes whose first-paint content lives in the SHELL rather
+    // than the page (Unbox recents rail). `null` on every other route.
+    const unboxShellSeed = await maybeSeedUnboxShell(pathname);
 
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
     // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
@@ -129,9 +135,16 @@ export default async function RootLayout({
                                         <FbaWorkspaceProvider>
                                             <StudioWorkspaceProvider>
                                                 <AssistantProvider>
-                                                    <ResponsiveLayout kioskHost={kioskHost}>
-                                                        {children}
-                                                    </ResponsiveLayout>
+                                                    {/* Station paint seed. It wraps the SHELL, not
+                                                        the page, because the route's rail is a
+                                                        sibling of `children` and renders first —
+                                                        see `maybeSeedUnboxShell`. Null on every
+                                                        other route, where this renders nothing. */}
+                                                    <ShellQuerySeed state={unboxShellSeed}>
+                                                        <ResponsiveLayout kioskHost={kioskHost}>
+                                                            {children}
+                                                        </ResponsiveLayout>
+                                                    </ShellQuerySeed>
                                                 </AssistantProvider>
                                             </StudioWorkspaceProvider>
                                         </FbaWorkspaceProvider>

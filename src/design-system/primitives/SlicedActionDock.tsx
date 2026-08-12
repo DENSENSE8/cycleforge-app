@@ -186,11 +186,13 @@ export function SlicedActionDock({
 
   const wrapperClass = slicedActionDockWrapperClass({ edge, docked, embedded });
 
-  // Embedded flush = Band 1 ops square. Embedded pill = composer-footer bubble.
-  // Non-embedded always uses the floating pill track.
+  // Embedded flush = Band 1 ops square. Embedded pill = composer-footer bubble
+  // (compact h-8 so + / recent / sync sit on one tight bottom row). Floating
+  // bottom docks keep the 48px HIG track.
   const usePillChrome = !embedded || embeddedChrome === 'pill';
+  const composerPill = embedded && embeddedChrome === 'pill';
   const trackChrome = usePillChrome ? PILL_TRACK : EMBEDDED_TRACK;
-  const segmentH = usePillChrome ? 'h-12' : 'h-11';
+  const segmentH = composerPill ? 'h-8' : usePillChrome ? 'h-12' : 'h-11';
   const radiusL = usePillChrome ? 'rounded-l-2xl' : 'rounded-none';
   const radiusR = usePillChrome ? 'rounded-r-2xl' : 'rounded-none';
   const dataEmbeddedChrome = embedded ? embeddedChrome : undefined;
@@ -236,16 +238,17 @@ export function SlicedActionDock({
                 'flex items-center justify-center border-r border-white/20 bg-transparent text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
                 segmentH,
                 radiusL,
-                usePillChrome ? 'px-3' : 'px-2',
+              composerPill ? 'px-2' : usePillChrome ? 'px-3' : 'px-2',
+            )}
+          >
+            <ChevronDown
+              className={cn(
+                composerPill ? 'h-3.5 w-3.5' : 'h-4 w-4',
+                'opacity-95 transition-transform duration-150',
+                menuOpen && 'rotate-180',
               )}
-            >
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 opacity-95 transition-transform duration-150',
-                  menuOpen && 'rotate-180',
-                )}
-              />
-            </button>
+            />
+          </button>
             <Popover
               open={menuOpen}
               onClose={closeMenu}
@@ -307,8 +310,14 @@ export function SlicedActionDock({
               'inline-flex min-w-0 items-center justify-center gap-2 bg-transparent text-sm font-semibold text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60',
               segmentH,
               radiusR,
-              usePillChrome ? 'px-5' : 'px-3.5',
-              fullWidth ? 'flex-1' : usePillChrome ? 'min-w-[9rem]' : '',
+              composerPill ? 'px-3 text-role-caption' : usePillChrome ? 'px-5' : 'px-3.5',
+              fullWidth
+                ? 'flex-1'
+                : composerPill
+                  ? 'min-w-[5.5rem]'
+                  : usePillChrome
+                    ? 'min-w-[9rem]'
+                    : '',
             )}
           >
             {leadingIcon}

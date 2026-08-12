@@ -21,8 +21,7 @@
  *
  * The commit steps (print · stage · receive) are the receipt's own addition:
  * they are declared `phase: 'commit'`. Print · Receive live on the dogfood
- * strip; `stage` arms Band 1 after print. A closed-carton receipt is incomplete
- * without the acts that closed it.
+ * strip. A closed-carton receipt is incomplete without the acts that closed it.
  *
  * ## `at` is the SERVER instant, never the device's
  *

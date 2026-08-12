@@ -30,6 +30,8 @@ import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
 import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
+import { TICKET_DETAIL_SURFACE } from './ticket-bubble-chrome';
+import { cn } from '@/utils/_cn';
 
 /** Image attachment urls on a single Zendesk comment (full-res `content_url`). */
 function commentImageUrls(c: ZendeskComment): string[] {
@@ -129,6 +131,11 @@ export function SupportTicketDetail({
    * is also embedded and must stay a scannable dense list).
    */
   streamVariant = 'ledger',
+  /**
+   * Forwarded to {@link SupportChatComposer}. Unbox Ticket Displays passes
+   * `false`; Testing · `/support` keep the default on.
+   */
+  showReplyPresets = true,
 }: {
   ticketId: number;
   onBack?: () => void;
@@ -150,6 +157,7 @@ export function SupportTicketDetail({
   photoStaging?: TicketPhotoStaging;
   mergeFloorTimeline?: boolean;
   streamVariant?: 'ledger' | 'bubble';
+  showReplyPresets?: boolean;
 }) {
   const hideRequester = hideRequesterBand ?? embedded;
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
@@ -252,7 +260,10 @@ export function SupportTicketDetail({
   const requester = requesterFrom(ticket);
 
   return (
-    <div {...dz.rootProps} className="relative flex h-full min-h-0 flex-col bg-surface-canvas/40">
+    <div
+      {...dz.rootProps}
+      className={cn('relative flex h-full min-h-0 flex-col', TICKET_DETAIL_SURFACE)}
+    >
       <SupportChatHeader
         ticket={ticket}
         onBack={onBack}
@@ -294,6 +305,7 @@ export function SupportTicketDetail({
           staging={staging}
           receivingId={receivingId}
           onBridgeChange={onComposerBridgeChange}
+          showReplyPresets={showReplyPresets}
         />
       )}
 

@@ -72,6 +72,11 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     );
     assert.match(
       panel,
+      /resolveUnboxTicketContextOpen/,
+      'unfound / linked carton open auto-opens Ticket Displays',
+    );
+    assert.match(
+      panel,
       /openDisplaysIndex|UNBOX_DISPLAY_INDEX/,
       '←| must open Root Index',
     );
@@ -262,7 +267,22 @@ describe('Unbox Displays Root-to-Leaf drill-down', () => {
     assert.match(
       host,
       /Inventory status updated locally/,
-      'Partial Refresh (local paint, live Zoho failed) warns via toast',
+      'Partial Refresh (local paint, live Zoho failed) can warn via toast',
+    );
+    assert.match(
+      sync,
+      /isLocallyReceived/,
+      'Refresh result layer detects already-received lines',
+    );
+    assert.match(
+      sync,
+      /alreadyReceived/,
+      'Refresh suppresses painted warning when already received',
+    );
+    assert.match(
+      sync,
+      /if \(painted && \(alreadyReceived \|\| carton\.painted === true\)\)/,
+      'already-received / local-promoted paint returns ok — never painted warning',
     );
     // Receive stays on the Unbox dock — Inventory never forks a receive engine.
     assert.doesNotMatch(

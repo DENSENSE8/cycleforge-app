@@ -38,10 +38,13 @@ function stripBlockComments(src: string): string {
 describe('Review family Sheets flush chrome', () => {
   for (const rel of FILES) {
     describe(rel, () => {
-      it('uses WORKBENCH_SHEET_* hosts (not guttered columns / framed viewport)', () => {
+      it('composes the Sheets shell (not guttered columns / framed viewport)', () => {
         const src = stripBlockComments(read(rel));
-        assert.match(src, /WORKBENCH_SHEET_CHROME/);
-        assert.match(src, /WORKBENCH_SHEET_HOST/);
+        // The recipe moved into WorkbenchSheetView (2d): the page composes the shell
+        // and no longer holds the tokens, so it cannot drift from its sibling sheets.
+        // Token ownership is asserted once in `workbench-sheet-view.guard.test.ts`.
+        assert.match(src, /<WorkbenchSheetView/);
+        assert.match(src, /useWorkbenchSheetChrome/);
         assert.doesNotMatch(src, /WORKBENCH_CHROME_COLUMN/);
         assert.doesNotMatch(src, /WORKBENCH_BODY_COLUMN/);
         assert.doesNotMatch(src, /WORKBENCH_GUTTERS/);
@@ -59,15 +62,18 @@ describe('Review family Sheets flush chrome', () => {
         assert.doesNotMatch(src, /\bmb-4\b/);
       });
 
-      it('tab band passes Unbox flush face overrides', () => {
+      it('the tab band takes its flush face from the shell', () => {
         const src = read(rel);
         const headerStart = src.indexOf('<WorkbenchChromeHeader');
         assert.ok(headerStart >= 0, 'WorkbenchChromeHeader must exist');
         const headerEnd = src.indexOf('/>', headerStart);
         const headerBlock = src.slice(headerStart, headerEnd > 0 ? headerEnd + 2 : headerStart + 800);
-        assert.match(headerBlock, /border-l-0/);
-        assert.match(headerBlock, /border-t-0/);
-        assert.match(headerBlock, /rounded-none/);
+        // The flush face is the shell's WORKBENCH_SHEET_TABS_CLASS, handed to the
+        // tabs slot; the page forwards it. Re-typing it per page is how the sheets
+        // drifted — and four of them carried a redundant `rounded-none` the
+        // header already applies via cornerClass('flush').
+        assert.match(headerBlock, /className=\{className\}/);
+        assert.match(src, /tabs=\{\(\{ className \}\)/);
       });
     });
   }

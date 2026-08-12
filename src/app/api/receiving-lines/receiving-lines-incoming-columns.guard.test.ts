@@ -25,7 +25,7 @@ import path from 'node:path';
  */
 
 const ROOT = path.resolve(__dirname, '../../../..');
-const ROUTE = path.join(ROOT, 'src/app/api/receiving-lines/route.ts');
+const NORMALIZE_ROW = path.join(ROOT, 'src/lib/receiving/lines/normalize-row.ts');
 const BUILD_SQL = path.join(ROOT, 'src/lib/receiving/lines/build-sql.ts');
 const ROW_TYPE = path.join(ROOT, 'src/components/station/receiving-line-row.ts');
 
@@ -54,10 +54,10 @@ test('the list builder SELECTs every Incoming receipt + removal column', () => {
 });
 
 test('normalizeRow names every Incoming receipt + removal column', () => {
-  const route = readFileSync(ROUTE, 'utf8');
-  const start = route.indexOf('function normalizeRow');
+  const normalizer = readFileSync(NORMALIZE_ROW, 'utf8');
+  const start = normalizer.indexOf('function normalizeRow');
   assert.ok(start > 0, 'normalizeRow not found — did the normalizer move?');
-  const body = route.slice(start);
+  const body = normalizer.slice(start);
 
   for (const col of WIRE_COLUMNS) {
     assert.ok(
