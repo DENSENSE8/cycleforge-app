@@ -37,13 +37,6 @@ export function isBindableFocusScanHotkey(key: string): boolean {
 }
 
 /**
- * Legacy regex kept for call sites / docs that still name the classic set.
- * Prefer {@link isBindableFocusScanHotkey} for validation — reclaim is open to
- * any non-reserved key.
- */
-export const FOCUS_SCAN_HOTKEY_RE = FOCUS_SCAN_ALWAYS_AVAILABLE_RE;
-
-/**
  * Preset chips in Settings — classic non-typing keys. Operators can also capture
  * any other bindable key via the scan-bar gear or Settings “Press a key…”.
  */

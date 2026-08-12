@@ -8700,7 +8700,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 83,
+      "line": 84,
       "snippet": "export STATION_CONTEXT_STATUS_PILL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -13341,7 +13341,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 236,
+      "line": 237,
       "snippet": "export CopyChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13354,7 +13354,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 392,
+      "line": 393,
       "snippet": "export OrderIdChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13367,7 +13367,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 442,
+      "line": 443,
       "snippet": "export OrderIdChipPlaceholder from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13380,7 +13380,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 459,
+      "line": 460,
       "snippet": "export PoChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13393,7 +13393,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 516,
+      "line": 517,
       "snippet": "export TrackingChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13406,7 +13406,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 589,
+      "line": 590,
       "snippet": "export ListingUrlChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13419,7 +13419,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 631,
+      "line": 632,
       "snippet": "export SkuScanRefChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13432,7 +13432,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 667,
+      "line": 668,
       "snippet": "export EmptySkuChipFace from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13445,7 +13445,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 701,
+      "line": 702,
       "snippet": "export UnitPriceChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13458,7 +13458,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 751,
+      "line": 752,
       "snippet": "export PoTotalChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13471,7 +13471,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 788,
+      "line": 789,
       "snippet": "export ConditionGradeChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13484,7 +13484,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 818,
+      "line": 819,
       "snippet": "export TrackingOrSkuScanChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13497,7 +13497,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 871,
+      "line": 872,
       "snippet": "export SerialChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13510,7 +13510,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 931,
+      "line": 932,
       "snippet": "export SerialChipSkeleton from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13523,7 +13523,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 964,
+      "line": 965,
       "snippet": "export SkuSerialChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13536,7 +13536,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 983,
+      "line": 984,
       "snippet": "export TicketChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13549,7 +13549,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1005,
+      "line": 1006,
       "snippet": "export BinChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13562,7 +13562,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1028,
+      "line": 1029,
       "snippet": "export FnskuChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13575,7 +13575,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1032,
+      "line": 1033,
       "snippet": "export SourceOrderChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13588,7 +13588,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1066,
+      "line": 1067,
       "snippet": "export AddValueChipFace from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13601,7 +13601,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1100,
+      "line": 1101,
       "snippet": "export PlatformChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13614,7 +13614,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1177,
+      "line": 1178,
       "snippet": "export CopyableCellValue from src/components/ui/CopyChip.tsx"
     },
     {

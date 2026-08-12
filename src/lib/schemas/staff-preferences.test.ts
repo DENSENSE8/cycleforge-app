@@ -8,14 +8,13 @@ import { ok, equal } from 'node:assert';
 import {
   DEFAULT_FOCUS_SCAN_HOTKEY,
   FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
-  FOCUS_SCAN_HOTKEY_RE,
   isBindableFocusScanHotkey,
   StaffPreferencesPutBody,
 } from './staff-preferences';
 
 test('default focus-scan hotkey is Insert', () => {
   equal(DEFAULT_FOCUS_SCAN_HOTKEY, 'Insert');
-  ok(FOCUS_SCAN_HOTKEY_RE.test(DEFAULT_FOCUS_SCAN_HOTKEY));
+  ok(FOCUS_SCAN_ALWAYS_AVAILABLE_RE.test(DEFAULT_FOCUS_SCAN_HOTKEY));
   ok(isBindableFocusScanHotkey(DEFAULT_FOCUS_SCAN_HOTKEY));
 });
 
