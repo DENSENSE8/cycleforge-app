@@ -6,8 +6,12 @@ import { Settings, X } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { FOCUS_SCAN_HOTKEY_RE } from '@/lib/schemas/staff-preferences';
-import { NEXT_SCAN_CHORD_LABEL } from '@/lib/scan-hotkey/store';
+import { isBindableFocusScanHotkey } from '@/lib/schemas/staff-preferences';
+import {
+  NEXT_SCAN_CHORD_LABEL,
+  requestScanFocus,
+  requestScanNext,
+} from '@/lib/scan-hotkey/store';
 import { useScanHotkey } from '@/lib/scan-hotkey/useScanHotkey';
 import { cn } from '@/utils/_cn';
 
@@ -21,15 +25,20 @@ interface ScanHotkeyControlProps {
  * left icon slot (Ticket · Tracking · PO ingestion).
  *
  * At rest the bar's contextual icon shows. On bar hover the icon cross-fades to
- * a gear in the same 17px slot (opacity only — no slide, no padding push). The
- * dropdown leads with the house **next-scan** chord (`⌘.`) and keeps Insert /
- * ScrollLock / F1–F12 as the remappable reclaim key. Slot geometry comes from
- * `STATION_SCAN_BAR_ICON_SLOT_CLASS` / `SIDEBAR_RAIL_DOT_TRACK` — do not add
- * per-caller `-ml-1` or hover `pl-*`.
+ * a gear in the same 17px slot (opacity only — no slide, no padding push).
+ *
+ * Popover:
+ *   - Click ⌘. → arm next scan (clear + focus) — does NOT enter rebind
+ *   - Click reclaim chip → focus scan bar — does NOT enter rebind
+ *   - Explicit “Change key” enters capture; any non-reserved key binds
+ *
+ * Slot geometry comes from `STATION_SCAN_BAR_ICON_SLOT_CLASS` /
+ * `SIDEBAR_RAIL_DOT_TRACK` — do not add per-caller `-ml-1` or hover `pl-*`.
  */
 export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
   const { hotkey, setHotkey, setCapturing } = useScanHotkey();
   const [open, setOpen] = useState(false);
+  const [rebinding, setRebinding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const gearRef = useRef<HTMLButtonElement>(null);
 
@@ -38,20 +47,36 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
   // focus-visible:opacity-100 even after the mouse leaves. Blurring clears that.
   const close = useCallback(() => {
     setOpen(false);
+    setRebinding(false);
+    setError(null);
     gearRef.current?.blur();
   }, []);
 
-  // While the popover is open we're in capture mode for the *reclaim* key only:
-  // stand the global listener down and grab the next bare keystroke.
+  const runNextScan = useCallback(() => {
+    requestScanNext();
+    close();
+  }, [close]);
+
+  const runReclaim = useCallback(() => {
+    requestScanFocus();
+    close();
+  }, [close]);
+
+  // Capture only while “Change key” is armed — opening the popover alone never
+  // steals the next keystroke (chips are click-to-run).
   useEffect(() => {
-    if (!open) return;
+    if (!open || !rebinding) {
+      setCapturing(false);
+      return;
+    }
     setCapturing(true);
     setError(null);
     const onKey = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (e.key === 'Escape') {
-        close();
+        setRebinding(false);
+        setError(null);
         return;
       }
       // Next-scan is a fixed modifier chord — never capture Meta/Ctrl+. here.
@@ -59,19 +84,20 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
         setError(`Next scan is fixed at ${NEXT_SCAN_CHORD_LABEL} — pick a reclaim key`);
         return;
       }
-      if (FOCUS_SCAN_HOTKEY_RE.test(e.key)) {
+      if (isBindableFocusScanHotkey(e.key)) {
         setHotkey(e.key);
-        close();
-      } else {
-        setError('Pick Insert, ScrollLock, or F1–F12');
+        setRebinding(false);
+        setError(null);
+        return;
       }
+      setError('That key is reserved — try another');
     };
     window.addEventListener('keydown', onKey, true);
     return () => {
       window.removeEventListener('keydown', onKey, true);
       setCapturing(false);
     };
-  }, [open, setHotkey, setCapturing, close]);
+  }, [open, rebinding, setHotkey, setCapturing]);
 
   return (
     <span className="relative inline-flex size-[17px] items-center justify-center leading-none">
@@ -97,7 +123,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           ref={gearRef}
           type="button"
           onClick={() => (open ? close() : setOpen(true))}
-          aria-label={`Next scan ${NEXT_SCAN_CHORD_LABEL}. Reclaim focus is ${hotkey}. Click to change reclaim.`}
+          aria-label={`Next scan ${NEXT_SCAN_CHORD_LABEL}. Reclaim focus is ${hotkey}. Click for scan-bar hotkeys.`}
           className={cn(
             'ds-raw-button',
             'absolute inset-0 inline-flex items-center justify-center rounded-md text-text-soft transition-opacity duration-150 hover:text-blue-600 focus-visible:opacity-100 focus-visible:outline-none',
@@ -130,33 +156,68 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
             <IconButton
               icon={<X className="h-3 w-3" />}
               onClick={close}
-              ariaLabel="Cancel"
+              ariaLabel="Close"
               className="inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-surface-sunken"
             />
           </div>
 
-          {/* Primary — next scan (fixed house default for Ticket · Tracking · PO). */}
-          <div className="mt-2 flex items-center gap-2">
+          {/* Primary — next scan (fixed house default). Click runs it. */}
+          <button
+            type="button"
+            onClick={runNextScan}
+            className={cn(
+              'ds-raw-button',
+              'mt-2 flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors hover:bg-surface-sunken',
+            )}
+            aria-label={`Run next scan (${NEXT_SCAN_CHORD_LABEL})`}
+          >
             <kbd className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-mono text-xs font-semibold text-blue-700">
               {NEXT_SCAN_CHORD_LABEL}
             </kbd>
             <span className="text-xs font-semibold text-text-muted">
               Next scan — clear + focus
             </span>
-          </div>
+          </button>
 
-          {/* Secondary — remappable reclaim (Insert / F*). */}
+          {/* Secondary — reclaim: click runs focus; Change key rebinds. */}
           <div className="mt-2.5 border-t border-border-soft/70 pt-2.5">
             <p className="text-role-eyebrow uppercase tracking-wider text-text-faint">
               Reclaim focus
             </p>
             <div className="mt-1.5 flex items-center gap-2">
-              <kbd className="rounded-md border border-border-soft bg-surface-canvas px-2 py-1 font-mono text-xs font-semibold text-text-muted">
+              <button
+                type="button"
+                onClick={rebinding ? undefined : runReclaim}
+                disabled={rebinding}
+                className={cn(
+                  'ds-raw-button',
+                  'rounded-md border border-border-soft bg-surface-canvas px-2 py-1 font-mono text-xs font-semibold text-text-muted transition-colors',
+                  rebinding
+                    ? 'cursor-default opacity-70'
+                    : 'hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700',
+                )}
+                aria-label={
+                  rebinding
+                    ? `Current reclaim key ${hotkey}. Waiting for a new key.`
+                    : `Focus scan bar (reclaim). Bound to ${hotkey}.`
+                }
+              >
                 {hotkey}
-              </kbd>
-              <span className="text-xs font-semibold text-text-muted">
-                Press a key…
-              </span>
+              </button>
+              {rebinding ? (
+                <span className="text-xs font-semibold text-blue-600">Press a key…</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setRebinding(true);
+                  }}
+                  className="ds-raw-button text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  Change key
+                </button>
+              )}
             </div>
             <p
               className={cn(
@@ -164,7 +225,10 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
                 error ? 'text-rose-600' : 'text-text-faint',
               )}
             >
-              {error ?? 'Insert · ScrollLock · F1–F12 · Esc to cancel'}
+              {error ??
+                (rebinding
+                  ? 'Any key · Esc to cancel'
+                  : 'Click a key to run it · Change key to rebind')}
             </p>
           </div>
         </motion.div>
