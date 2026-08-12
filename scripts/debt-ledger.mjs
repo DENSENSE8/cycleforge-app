@@ -123,7 +123,7 @@ if (knip !== null) {
   console.log(`  ${pad('TOTAL parked findings', 52)}${lpad(knip + ratchetTotal, 8)}`);
 }
 console.log('');
-console.log('  Baselines only ever shrink (verify.md). Raising one to make a gate');
+console.log('  Baselines only ever shrink (AGENTS.md). Raising one to make a gate');
 console.log('  pass is prohibited; migrate the call sites or add the documented');
 console.log('  `ds-*` escape for a genuine one-off.');
 if (rows.length) {

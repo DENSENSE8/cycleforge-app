@@ -37,20 +37,9 @@ const GATES = [
     ? []
     : [
         {
-          name: 'Unit tests + DS guards',
+          name: 'Unit tests + structural guards',
           cmd: 'node',
-          // register-server-only-shim: `import 'server-only'` on db/etc. is a Next
-          // client-boundary guard; node:test runs outside the RSC graph.
-          args: [
-            '--test',
-            '--require',
-            './scripts/register-server-only-shim.cjs',
-            '--import',
-            'tsx',
-            '--test-reporter',
-            'spec',
-            'src/**/*.test.ts',
-          ],
+          args: ['scripts/run-unit-tests.mjs'],
         },
         { name: 'Dead-code (knip)', cmd: 'node', args: ['scripts/knip-gate.mjs'] },
         { name: 'Route-permission drift', cmd: 'npx', args: ['tsx', 'scripts/audit-route-auth.ts', '--check'] },
@@ -108,8 +97,8 @@ if (hardFail) {
     '\n' +
       c('31', 'verify FAILED') +
       ' — fix the ✗ gates above before pushing.\n' +
-      'DS-ratchet gates ratchet DOWN: migrate to the DS primitive or add the\n' +
-      'documented ds-* escape for a genuine one-off. Never raise a baseline to pass.\n\n',
+      'Compose named SoTs from AGENTS.md / sot-lookup; never raise a ratchet\n' +
+      'baseline to pass a gate.\n\n',
   );
   process.exit(1);
 }

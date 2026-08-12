@@ -60,8 +60,7 @@ const TOKEN_RES = Object.keys(TOKEN_MAP).map(
 // Never rewrite the SoT config / merge helper / guard / codemods themselves.
 const SKIP = new Set([
   'utils/_cn.ts',
-  'components/ui/typography-tokens.guard.test.ts',
-]);
+  ]);
 function skip(rel) {
   return rel.startsWith('scripts/codemods/') || SKIP.has(relative(SRC, join(ROOT, rel)).split('\\').join('/'));
 }

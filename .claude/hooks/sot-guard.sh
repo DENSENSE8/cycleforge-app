@@ -2,7 +2,7 @@
 # SoT-guard — PreToolUse hook for Edit|Write|MultiEdit.
 #
 # Blocks NEWLY-WRITTEN violations of the repo's source-of-truth invariants
-# (see .claude/rules/source-of-truth.md + backend-patterns.md). It inspects
+# (see AGENTS.md hard laws). It inspects
 # ONLY the inserted text (new_string / content), never the file on disk, so
 # pre-existing tech debt is never flagged — it only catches what's being added
 # right now. Exit 2 → the edit is blocked and the message is fed back to Claude

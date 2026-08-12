@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-12T07:15:44.985Z` · Files: **649** · Repo: `cycleforge-app`  
+> Generated: `2026-08-12T15:08:23.328Z` · Files: **652** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `7f2493852` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `ace38c6c3` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -478,6 +478,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-SCAN-STATION-DISPLAYS-SOT-PROMPT-E9E7` | `WS-TODO-MISC` | [`todo/scan-station-displays-sot-PROMPT.md`](../todo/scan-station-displays-sot-PROMPT.md) |
 | `DOC-TODO-SCAN-STATION-EDGE-MEASURE-CI-LOOP-PROMPT-64D7` | `WS-TODO-MISC` | [`todo/scan-station-edge-measure-CI-LOOP-PROMPT.md`](../todo/scan-station-edge-measure-CI-LOOP-PROMPT.md) |
 | `DOC-TODO-SCAN-STATION-FLEX-MEASURE-MATH-GEMINI-RESEARCH-B-867E` | `WS-TODO-MISC` | [`todo/scan-station-flex-measure-math-GEMINI-RESEARCH-BRIEFING.md`](../todo/scan-station-flex-measure-math-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-SCAN-STATION-PAINT-PORT-HANDOFF-44A4` | `WS-TODO-MISC` | [`todo/scan-station-paint-port-HANDOFF.md`](../todo/scan-station-paint-port-HANDOFF.md) |
 | `DOC-TODO-SCAN-STATION-SNAPPY-PAIRING-CONTROLLER-HANDOFF-0448` | `WS-TODO-MISC` | [`todo/scan-station-snappy-pairing-controller-HANDOFF.md`](../todo/scan-station-snappy-pairing-controller-HANDOFF.md) |
 | `DOC-TODO-SCAN-VS-DESK-RIGHT-RAIL-SEPARATION-GEMINI-RESEAR-1494` | `WS-TODO-MISC` | [`todo/scan-vs-desk-right-rail-separation-GEMINI-RESEARCH-BRIEFING.md`](../todo/scan-vs-desk-right-rail-separation-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-SCHEMA-WIDE-POLYMORPHIC-REFACTOR-PLAN-47E1` | `WS-POLY` | [`todo/schema-wide-polymorphic-refactor-plan.md`](../todo/schema-wide-polymorphic-refactor-plan.md) |
@@ -571,6 +572,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-TESTING-URGENT-EMPTY-HANDOFF-EECE` | `WS-TODO-MISC` | [`todo/testing-urgent-empty-HANDOFF.md`](../todo/testing-urgent-empty-HANDOFF.md) |
 | `DOC-TODO-THROWABLE-TASKS-HANDOFF-5A32` | `WS-TODO-MISC` | [`todo/throwable-tasks-HANDOFF.md`](../todo/throwable-tasks-HANDOFF.md) |
 | `DOC-TODO-THROWABLE-TASKS-SCAN-COMPLETION-PROMPT-623B` | `WS-TODO-MISC` | [`todo/throwable-tasks-scan-completion-PROMPT.md`](../todo/throwable-tasks-scan-completion-PROMPT.md) |
+| `DOC-TODO-TICKET-BUBBLE-CHROME-PROPAGATE-HANDOFF-68E8` | `WS-TODO-MISC` | [`todo/ticket-bubble-chrome-propagate-HANDOFF.md`](../todo/ticket-bubble-chrome-propagate-HANDOFF.md) |
 | `DOC-TODO-TICKET-STN-MANY-LINK-PLAN-1F33` | `WS-TODO-MISC` | [`todo/ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md) |
 | `DOC-TODO-TO-SHIP-CSV-IMPORT-STAGING-HANDOFF-0E39` | `WS-TODO-MISC` | [`todo/to-ship-csv-import-staging-HANDOFF.md`](../todo/to-ship-csv-import-staging-HANDOFF.md) |
 | `DOC-TODO-TO-SHIP-DESK-VIEWS-VS-PIN-HANDOFF-AAAB` | `WS-TODO-MISC` | [`todo/to-ship-desk-views-vs-pin-HANDOFF.md`](../todo/to-ship-desk-views-vs-pin-HANDOFF.md) |
@@ -681,6 +683,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-WMS-PREMIUM-PARITY-GAP-RESEARCH-ACA9` | `WS-TODO-MISC` | [`todo/wms-premium-parity-gap-RESEARCH.md`](../todo/wms-premium-parity-gap-RESEARCH.md) |
 | `DOC-TODO-WORKBENCH-CHROME-BAND-DENSITY-GEMINI-RESEARCH-BR-DB4F` | `WS-TODO-MISC` | [`todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-WORKBENCH-TABLE-DS-PRINCIPLES-2026-GEMINI-RESEAR-EF9C` | `WS-TODO-MISC` | [`todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-WORKTREE-RESTORE-VERIFY-HANDOFF-326E` | `WS-TODO-MISC` | [`todo/worktree-restore-VERIFY-HANDOFF.md`](../todo/worktree-restore-VERIFY-HANDOFF.md) |
 | `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-HANDOFF-E249` | `WS-TODO-MISC` | [`todo/zoho-received-check-watchlist-HANDOFF.md`](../todo/zoho-received-check-watchlist-HANDOFF.md) |
 | `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-PLAN-92D6` | `WS-TODO-MISC` | [`todo/zoho-received-check-watchlist-PLAN.md`](../todo/zoho-received-check-watchlist-PLAN.md) |
 | `DOC-TODO-ZOMBIE-CODE-ELIMINATION-HANDOFF-3E6B` | `WS-TODO-MISC` | [`todo/zombie-code-elimination-HANDOFF.md`](../todo/zombie-code-elimination-HANDOFF.md) |
@@ -950,7 +953,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (478)
+### `WS-TODO-MISC` (481)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1233,6 +1236,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-SCAN-STATION-DISPLAYS-SOT-PROMPT-E9E7` — [`todo/scan-station-displays-sot-PROMPT.md`](../todo/scan-station-displays-sot-PROMPT.md)
 - `DOC-TODO-SCAN-STATION-EDGE-MEASURE-CI-LOOP-PROMPT-64D7` — [`todo/scan-station-edge-measure-CI-LOOP-PROMPT.md`](../todo/scan-station-edge-measure-CI-LOOP-PROMPT.md)
 - `DOC-TODO-SCAN-STATION-FLEX-MEASURE-MATH-GEMINI-RESEARCH-B-867E` — [`todo/scan-station-flex-measure-math-GEMINI-RESEARCH-BRIEFING.md`](../todo/scan-station-flex-measure-math-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-SCAN-STATION-PAINT-PORT-HANDOFF-44A4` — [`todo/scan-station-paint-port-HANDOFF.md`](../todo/scan-station-paint-port-HANDOFF.md)
 - `DOC-TODO-SCAN-STATION-SNAPPY-PAIRING-CONTROLLER-HANDOFF-0448` — [`todo/scan-station-snappy-pairing-controller-HANDOFF.md`](../todo/scan-station-snappy-pairing-controller-HANDOFF.md)
 - `DOC-TODO-SCAN-VS-DESK-RIGHT-RAIL-SEPARATION-GEMINI-RESEAR-1494` — [`todo/scan-vs-desk-right-rail-separation-GEMINI-RESEARCH-BRIEFING.md`](../todo/scan-vs-desk-right-rail-separation-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-SEARCH-JOURNEY-HANDOFF-PLAN-C10D` — [`todo/search-journey-handoff-plan.md`](../todo/search-journey-handoff-plan.md)
@@ -1319,6 +1323,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-TESTING-URGENT-EMPTY-HANDOFF-EECE` — [`todo/testing-urgent-empty-HANDOFF.md`](../todo/testing-urgent-empty-HANDOFF.md)
 - `DOC-TODO-THROWABLE-TASKS-HANDOFF-5A32` — [`todo/throwable-tasks-HANDOFF.md`](../todo/throwable-tasks-HANDOFF.md)
 - `DOC-TODO-THROWABLE-TASKS-SCAN-COMPLETION-PROMPT-623B` — [`todo/throwable-tasks-scan-completion-PROMPT.md`](../todo/throwable-tasks-scan-completion-PROMPT.md)
+- `DOC-TODO-TICKET-BUBBLE-CHROME-PROPAGATE-HANDOFF-68E8` — [`todo/ticket-bubble-chrome-propagate-HANDOFF.md`](../todo/ticket-bubble-chrome-propagate-HANDOFF.md)
 - `DOC-TODO-TICKET-STN-MANY-LINK-PLAN-1F33` — [`todo/ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md)
 - `DOC-TODO-TO-SHIP-CSV-IMPORT-STAGING-HANDOFF-0E39` — [`todo/to-ship-csv-import-staging-HANDOFF.md`](../todo/to-ship-csv-import-staging-HANDOFF.md)
 - `DOC-TODO-TO-SHIP-DESK-VIEWS-VS-PIN-HANDOFF-AAAB` — [`todo/to-ship-desk-views-vs-pin-HANDOFF.md`](../todo/to-ship-desk-views-vs-pin-HANDOFF.md)
@@ -1427,6 +1432,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-WMS-PREMIUM-PARITY-GAP-RESEARCH-ACA9` — [`todo/wms-premium-parity-gap-RESEARCH.md`](../todo/wms-premium-parity-gap-RESEARCH.md)
 - `DOC-TODO-WORKBENCH-CHROME-BAND-DENSITY-GEMINI-RESEARCH-BR-DB4F` — [`todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-chrome-band-density-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-WORKBENCH-TABLE-DS-PRINCIPLES-2026-GEMINI-RESEAR-EF9C` — [`todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md`](../todo/workbench-table-ds-principles-2026-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-WORKTREE-RESTORE-VERIFY-HANDOFF-326E` — [`todo/worktree-restore-VERIFY-HANDOFF.md`](../todo/worktree-restore-VERIFY-HANDOFF.md)
 - `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-HANDOFF-E249` — [`todo/zoho-received-check-watchlist-HANDOFF.md`](../todo/zoho-received-check-watchlist-HANDOFF.md)
 - `DOC-TODO-ZOHO-RECEIVED-CHECK-WATCHLIST-PLAN-92D6` — [`todo/zoho-received-check-watchlist-PLAN.md`](../todo/zoho-received-check-watchlist-PLAN.md)
 - `DOC-TODO-ZOMBIE-CODE-ELIMINATION-HANDOFF-3E6B` — [`todo/zombie-code-elimination-HANDOFF.md`](../todo/zombie-code-elimination-HANDOFF.md)

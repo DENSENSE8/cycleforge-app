@@ -312,9 +312,10 @@ export async function handleReceivingLinesGet(
 
     // Unmatched/unfound cartons live in the `receiving_carton` table with no
     // `receiving_line` row yet, so they never come back from the main query.
-    // Append them as placeholder rows for `all` AND `activity`. For History
-    // (`activity`), buildUnmatchedPlaceholdersSql requires Unbox-touch
-    // (opened/unboxed) so door-scan-only SCANNED Unfound never lands here.
+    // Append them as placeholder rows for `all` AND `activity`. Browse History
+    // (`activity`, no search) requires Unbox-touch so door-scan-only SCANNED
+    // Unfound never lands here. An armed search also resolves lineless
+    // `zoho_po` cartons and skips Unbox-touch (same rule as skipWeekFilter).
     if (shouldIncludeUnmatchedPlaceholders(query)) {
       const placeholders = buildUnmatchedPlaceholdersSql(query, orgId);
       const [unmatchedPkgsRes, unmatchedCntRes] = await withTenantConnection(orgId, (client) => Promise.all([

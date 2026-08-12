@@ -37,7 +37,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
 import { ShellQuerySeed } from "@/components/providers/ShellQuerySeed";
-import { maybeSeedUnboxShell } from "@/lib/queries/unbox-shell-seed.server";
+import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
 import { cfSans, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
@@ -61,8 +61,10 @@ export default async function RootLayout({
     const kioskHost = isKioskHost(h.get('host')) || isKioskUiPath(pathname);
 
     // Paint seed for routes whose first-paint content lives in the SHELL rather
-    // than the page (Unbox recents rail). `null` on every other route.
-    const unboxShellSeed = await maybeSeedUnboxShell(pathname);
+    // than the page (Unbox recents rail; the Testing station's Ready-to-Pack
+    // grid + KPI band, whose keys the left rail mounts first). `null` on every
+    // other route.
+    const shellSeed = await maybeSeedShell(pathname, h.get('x-search') || '');
 
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
     // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
@@ -140,7 +142,7 @@ export default async function RootLayout({
                                                         sibling of `children` and renders first —
                                                         see `maybeSeedUnboxShell`. Null on every
                                                         other route, where this renders nothing. */}
-                                                    <ShellQuerySeed state={unboxShellSeed}>
+                                                    <ShellQuerySeed state={shellSeed}>
                                                         <ResponsiveLayout kioskHost={kioskHost}>
                                                             {children}
                                                         </ResponsiveLayout>
