@@ -1,7 +1,7 @@
 # HANDOFF — Component SoT consolidation (one family at a time)
 
 **Date:** 2026-08-12 · **Pin this as the goal.** Resume without the originating chat.
-**Status:** three families landed (warranty, NumericStep, carton Displays Macro). Next: SetPinPad vs StaffPinPad (Phase 1 first).
+**Status:** four families landed (warranty, NumericStep, carton Displays Macro, PIN numpad theme). Next: OrderCustomerFacts vs CustomerDetailsTab (Phase 1 first).
 
 **Companions (do not re-litigate):**
 - `docs/todo/design-system-fork-consolidation-2026-PLAN.md` — D1–D12 + ignore set
@@ -48,16 +48,22 @@ jscpd clone baseline was shrunk **114 → 111** after warranty. Re-run `--write`
 - **Recipes kept (do not delete):** `UnboxDisplaysActionFloor` (Print+Sync) · `ArrivalDisplaysActionFloor` (Sync) · `TestingDisplaysActionFloor` (neither)
 - **Guards:** same-usecase `it('one carton Displays Macro compound')`. No retired-symbol (recipes stay).
 
+### Family 4 — Staff PIN numpad theme
+- **SoT:** `THEME_NUMPAD` · `src/components/auth/theme-numpad.ts` (`numpadTheme()`)
+- **Key cell:** `PinPadKey` · `src/components/auth/PinPadKey.tsx`
+- **Identity header:** `PinPadStaffHeader` · `src/components/auth/PinPadStaffHeader.tsx`
+- **Jobs kept (do not delete):** `StaffPinPad` (sign-in / switch / kiosk step-up) · `SetPinPad` (first-time enter+confirm)
+- **Guards:** same-usecase `it('one staff PIN numpad theme')`; `theme-numpad.test.ts`
+
 ---
 
 ## Next family (Phase 1 — ask before coding)
 
 After that (ranked, both doors imported — cannot just delete):
 
-1. `SetPinPad` vs `StaffPinPad` — extract shared `THEME_NUMPAD`, keep both jobs
-2. `OrderCustomerFacts` vs `CustomerDetailsTab` — same shape as warranty (`density`)
-3. `BinBuilderMobile` vs `RackBuilderMobile` — larger than NumericStep; printer-family chrome
-4. `DashboardDetailsStack` vs `TechDetailsStack` — Tech adds armed delete; maybe keep wrappers
+1. `OrderCustomerFacts` vs `CustomerDetailsTab` — same shape as warranty (`density`)
+2. `BinBuilderMobile` vs `RackBuilderMobile` — larger than NumericStep; printer-family chrome
+3. `DashboardDetailsStack` vs `TechDetailsStack` — Tech adds armed delete; maybe keep wrappers
 
 ---
 
@@ -67,11 +73,11 @@ After that (ranked, both doors imported — cannot just delete):
 - Other sessions are dirty on this tree. **Stage only hunter files.** Known reds that are NOT this program: `useOrdersImport.ts` (`phase`), `useGlobalWedgeScanner.ts`, `src/lib/perf/stream-apply.ts`, knip on new grid/perf/wedge exports, `grid-column-details-open.test.ts` (`window`).
 - Do **not** run `scripts/portfolio-sot-sync.mjs` unless this session added a `docs/todo` file **and** `DOC-CATALOG.md` is otherwise clean.
 - After AGENTS.md SoT-table edits: `node scripts/build-sot-manifest.mjs`.
-- Lookup: `node scripts/sot-lookup.mjs "order warranty card"` · `"label-builder numeric step"` · `"station carton Macro verbs"`
+- Lookup: `node scripts/sot-lookup.mjs "order warranty card"` · `"label-builder numeric step"` · `"station carton Macro verbs"` · `"staff PIN numpad theme"`
 
 ## Start-here checklist
 
 1. Read this file + PLAN §1 (D1–D12).
 2. Confirm landed files still exist (losers gone; SoTs have the new props).
-3. Run `node --import tsx --test src/lib/governance/same-usecase-forks.test.ts src/design-system/foundations/retired-symbols.test.ts src/lib/receiving/station-displays-carton-floor.test.ts`
-4. Next family Phase 1: SetPinPad vs StaffPinPad. Halt until pick.
+3. Run `node --import tsx --test src/lib/governance/same-usecase-forks.test.ts src/design-system/foundations/retired-symbols.test.ts src/lib/receiving/station-displays-carton-floor.test.ts src/components/auth/theme-numpad.test.ts`
+4. Next family Phase 1: OrderCustomerFacts vs CustomerDetailsTab. Halt until pick.

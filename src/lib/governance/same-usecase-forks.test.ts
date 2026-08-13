@@ -111,6 +111,56 @@ describe('same-usecase forks — one face per operator job', () => {
     assert.match(mobile, /from '@\/components\/barcode\/bin-label-printer\/NumericStep'/);
   });
 
+  it('one staff PIN numpad theme (THEME_NUMPAD)', () => {
+    const theme = join(ROOT, 'src/components/auth/theme-numpad.ts');
+    const key = join(ROOT, 'src/components/auth/PinPadKey.tsx');
+    const header = join(ROOT, 'src/components/auth/PinPadStaffHeader.tsx');
+    const signIn = join(ROOT, 'src/components/auth/StaffPinPad.tsx');
+    const setPin = join(ROOT, 'src/components/auth/SetPinPad.tsx');
+    assert.ok(existsSync(theme), 'theme-numpad SoT must exist');
+    assert.ok(existsSync(key), 'PinPadKey must exist');
+    assert.ok(existsSync(header), 'PinPadStaffHeader must exist');
+    assert.ok(existsSync(signIn), 'StaffPinPad job must stay');
+    assert.ok(existsSync(setPin), 'SetPinPad job must stay');
+
+    const themeSrc = readFileSync(theme, 'utf8');
+    assert.match(themeSrc, /export const THEME_NUMPAD/);
+    assert.match(themeSrc, /export function numpadTheme/);
+
+    for (const [name, file] of [
+      ['StaffPinPad', signIn],
+      ['SetPinPad', setPin],
+    ] as const) {
+      const src = readFileSync(file, 'utf8');
+      const stripped = code(src);
+      assert.match(
+        src,
+        /from '@\/components\/auth\/theme-numpad'/,
+        `${name} must import THEME_NUMPAD from the shared module`,
+      );
+      assert.match(
+        src,
+        /<PinPadKey/,
+        `${name} must compose PinPadKey`,
+      );
+      assert.match(
+        src,
+        /<PinPadStaffHeader/,
+        `${name} must compose PinPadStaffHeader`,
+      );
+      assert.doesNotMatch(
+        stripped,
+        /const THEME_NUMPAD/,
+        `${name} must not fork THEME_NUMPAD`,
+      );
+      assert.doesNotMatch(
+        stripped,
+        /function Key\(/,
+        `${name} must not fork the numpad Key cell`,
+      );
+    }
+  });
+
   it('one carton Displays Macro compound (CartonDisplaysActionFloor)', () => {
     const compound = join(
       ROOT,

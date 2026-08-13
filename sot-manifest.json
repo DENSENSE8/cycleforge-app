@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2662,
+  "count": 2663,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -450,6 +450,19 @@
       "snippet": "`CartonDisplaysActionFloor` · `src/components/station/displays/CartonDisplaysActionFloor.tsx`"
     },
     {
+      "job": "Staff PIN numpad theme",
+      "sot": "THEME_NUMPAD",
+      "path": "src/components/auth/theme-numpad.ts",
+      "guard": null,
+      "symbols": [
+        "THEME_NUMPAD"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 57,
+      "snippet": "`THEME_NUMPAD` · `src/components/auth/theme-numpad.ts`"
+    },
+    {
       "job": "Tooltips (no native title attr)",
       "sot": "HoverTooltip",
       "path": "src/components/ui/HoverTooltip.tsx",
@@ -459,7 +472,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 57,
+      "line": 58,
       "snippet": "`HoverTooltip` · `src/components/ui/HoverTooltip.tsx`"
     },
     {
@@ -472,7 +485,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 58,
+      "line": 59,
       "snippet": "`ConversationMessageCard` · `src/design-system/primitives/ConversationMessageCard.tsx`"
     },
     {
@@ -483,7 +496,7 @@
       "symbols": [],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 59,
+      "line": 60,
       "snippet": "`conversation-chrome` · `src/design-system/primitives/conversation-chrome.ts`"
     },
     {
@@ -496,7 +509,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 60,
+      "line": 61,
       "snippet": "`ConversationHeaderActionButton` · `src/design-system/primitives/ConversationHeaderActionButton.tsx`"
     },
     {
@@ -509,7 +522,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 61,
+      "line": 62,
       "snippet": "`OmnichannelComposerDock` · `src/design-system/primitives/OmnichannelComposerDock.tsx`"
     },
     {
@@ -522,7 +535,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 62,
+      "line": 63,
       "snippet": "`createWedgeKeyListener` · `src/lib/keyboard/wedge-scan-listener.ts`"
     },
     {
@@ -535,7 +548,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 63,
+      "line": 64,
       "snippet": "`yieldToInput` · `src/lib/perf/yield-to-input.ts`"
     },
     {
@@ -549,7 +562,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 64,
+      "line": 65,
       "snippet": "`streamNdjson` · `applyStreamBudget` · `src/lib/orders-sync/client.ts` · `src/lib/perf/stream-apply.ts`"
     },
     {
@@ -563,7 +576,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 65,
+      "line": 66,
       "snippet": "`LEDGER_GRID_OVERSCAN` · `LEDGER_GRID_ROW_CONTAIN` · `src/design-system/components/grid/`"
     },
     {
@@ -581,7 +594,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 73,
+      "line": 74,
       "snippet": "**Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs \"<job>\"`. New AST-similar copies fail `jscpd` within an interaction contract; station-vs-support clones are filter…"
     },
     {
@@ -594,7 +607,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 74,
+      "line": 75,
       "snippet": "**Do not paint over primitives.** `<Button>` fills and `<Panel>` radii resolve through semantic variants (`variant`, `radius`) — never `className` hue/radius overrides. Grow `button-variants.ts` instead."
     },
     {
@@ -610,7 +623,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 75,
+      "line": 76,
       "snippet": "**New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused). Gu…"
     },
     {
@@ -625,7 +638,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 76,
+      "line": 77,
       "snippet": "**Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false…"
     },
     {
@@ -641,7 +654,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 77,
+      "line": 78,
       "snippet": "**Right-rail dismiss is host-owned.** `RightRailHost` paints the single `→|` and `closeAndCachePanel()` unmounts the occupant, caches `draftData`, and toasts Resume. Child views never mount a second close. Esc and Mod+Shift+R live in `hand…"
     },
     {
@@ -654,7 +667,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 78,
+      "line": 79,
       "snippet": "**Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`."
     },
     {
@@ -668,7 +681,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 79,
+      "line": 80,
       "snippet": "**Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin."
     },
     {
@@ -679,7 +692,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 80,
+      "line": 81,
       "snippet": "**Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`."
     },
     {
@@ -690,7 +703,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 81,
+      "line": 82,
       "snippet": "**Color, spacing, type, elevation, focus, and named z-index tokens** come from `@/design-system/tokens` — no page-local hex; no ad-hoc numeric stacking."
     },
     {
@@ -706,7 +719,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 82,
+      "line": 83,
       "snippet": "**Platform / order identity** resolves from `source-platform.ts` + chip family (`OrderIdChip` / `PoChip` / `TrackingChip` / `PlatformMark`) — never prose platform names as the channel face."
     },
     {
@@ -720,7 +733,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 83,
+      "line": 84,
       "snippet": "**Mount-gated URL opens** paint via `useOptimisticUrlParam` / `resolveOptimisticParam` (`src/hooks/useOptimisticUrlParam.ts`, `src/lib/routing/optimistic-url-param.ts`)."
     },
     {
@@ -731,7 +744,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 84,
+      "line": 85,
       "snippet": "**Status changes only via `transition()`** (`src/lib/inventory/state-machine.ts`) — never a raw status UPDATE outside the state machine."
     },
     {
@@ -745,7 +758,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 85,
+      "line": 86,
       "snippet": "**`orgId` comes from `ctx`**, never the body; org-scoped writes go through `withTenantTransaction` (`src/lib/tenancy/db.ts`)."
     },
     {
@@ -758,7 +771,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 86,
+      "line": 87,
       "snippet": "**Cross-entity urgency** resolves only in `promoteUrgency()` (`src/lib/urgency/`)."
     },
     {
@@ -771,7 +784,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 88,
+      "line": 89,
       "snippet": "**Conversation bubbles / chat cards** compose `ConversationMessageCard` + `conversation-chrome` (`src/design-system/primitives/`) — never a page-local bubble twin, 75% chat bubble, or Lock-icon internal chip. Helpdesk tickets and entity th…"
     },
     {
@@ -785,7 +798,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 89,
+      "line": 90,
       "snippet": "**HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack."
     },
     {
@@ -800,7 +813,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 90,
+      "line": 91,
       "snippet": "**Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload."
     },
     {
