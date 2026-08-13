@@ -27,7 +27,7 @@
     "src/lib/source-platform.ts",
     "src/hooks"
   ],
-  "count": 2503,
+  "count": 2504,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -995,6 +995,19 @@
       "snippet": "export ordersTableBindingFor from src/components/dashboard/orders-queue/orders-table-definition.ts"
     },
     {
+      "job": "Export: OrdersGridHostProps",
+      "sot": "OrdersGridHostProps",
+      "path": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "guard": null,
+      "symbols": [
+        "OrdersGridHostProps"
+      ],
+      "kind": "code",
+      "source": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "line": 43,
+      "snippet": "export OrdersGridHostProps from src/components/dashboard/orders-queue/OrdersGridHost.tsx"
+    },
+    {
       "job": "Export: OrdersGridHost",
       "sot": "OrdersGridHost",
       "path": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
@@ -1004,7 +1017,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
-      "line": 134,
+      "line": 144,
       "snippet": "export OrdersGridHost from src/components/dashboard/orders-queue/OrdersGridHost.tsx"
     },
     {
@@ -13029,7 +13042,7 @@
       ],
       "kind": "code",
       "source": "src/components/tables/registered-bindings.ts",
-      "line": 53,
+      "line": 57,
       "snippet": "export REGISTERED_BINDINGS from src/components/tables/registered-bindings.ts"
     },
     {
