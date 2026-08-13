@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   UNBOX_RIGHT_EDGE_PARAMS,
   clearAllUnboxRightEdgeParams,
@@ -105,7 +106,7 @@ test('yieldUnboxStationPushesOnAssistantOpen closes Displays locally once', () =
 
 test('LineEditPanel wires assistant open through yieldUnboxStationPushesOnAssistantOpen', () => {
   const src = readFileSync(
-    resolve(import.meta.dirname, '../LineEditPanel.tsx'),
+    resolve(dirname(fileURLToPath(import.meta.url)), '../LineEditPanel.tsx'),
     'utf8',
   );
   assert.ok(

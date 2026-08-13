@@ -48,6 +48,10 @@ import {
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
 } from '@/components/dashboard/orders-queue/orders-table-definition';
+import {
+  TO_SHIP_DESK_DEFAULT_BINDING,
+  TO_SHIP_DESK_TESTED_BINDING,
+} from '@/components/outbound/orders/to-ship/to-ship-desk-table-definition';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
 
 export const REGISTERED_BINDINGS = [
@@ -73,6 +77,9 @@ export const REGISTERED_BINDINGS = [
   // Wave 5 — Orders: two column-mode definitions for the shared parametric grid.
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
+  // Wave 5b — To-Ship desk fork: own entityFamily + prefs; stations stay on orders.
+  TO_SHIP_DESK_DEFAULT_BINDING,
+  TO_SHIP_DESK_TESTED_BINDING,
   // Wave 6 — To-Ship CSV import staging: a triage sheet over a session draft,
   // its own family so a staging column pref never touches the live queue.
   CSV_IMPORT_STAGING_TABLE_BINDING,

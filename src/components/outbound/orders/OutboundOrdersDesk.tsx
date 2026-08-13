@@ -24,6 +24,7 @@ import { useSupportOrderOpenParam } from '@/hooks/useSupportOrderOpenParam';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
+import { ToShipWmsShell } from '@/components/outbound/orders/to-ship/ToShipWmsShell';
 import { SupportOrdersFocusHost } from '@/components/support/orders/SupportOrdersFocusHost';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import {
@@ -100,8 +101,8 @@ function OutboundOrdersDeskContent({
 
   return (
     <OrdersViewChromeProvider>
-      <div className="flex min-h-0 w-full flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <ToShipWmsShell
+        process={
           <DashboardOrdersView
             orderView={orderView}
             onSelectView={setOrderView}
@@ -110,18 +111,19 @@ function OutboundOrdersDeskContent({
             selectionOverlays={selectionOverlays}
             onPrimaryPainted={onPrimaryPainted}
           />
-        </div>
-
-        {!isSupportContext ? (
-          <DashboardOrderDetails
-            detailsEnabled={detailsEnabled}
-            selectedShipped={selectedShipped}
-            selectedContext={selectedContext}
-            onClose={requestCloseSelectedOrder}
-            onUpdate={refreshDashboard}
-          />
-        ) : null}
-      </div>
+        }
+        details={
+          !isSupportContext ? (
+            <DashboardOrderDetails
+              detailsEnabled={detailsEnabled}
+              selectedShipped={selectedShipped}
+              selectedContext={selectedContext}
+              onClose={requestCloseSelectedOrder}
+              onUpdate={refreshDashboard}
+            />
+          ) : null
+        }
+      />
       {/*
         Pattern E (rail-less) does not mount OutboundSidebarPanel on desktop —
         desk owns Add / ?new=true intake so Band-1 Add always has a host.

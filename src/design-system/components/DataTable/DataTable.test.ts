@@ -21,11 +21,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { resolveGridColumnAlign } from '../grid/grid-header-align';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
-const SOURCE = readFileSync(resolve(import.meta.dirname, 'DataTable.tsx'), 'utf8');
+const SOURCE = readFileSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), 'DataTable.tsx'),
+  'utf8',
+);
 
 /** Mirrors `columnAlign` in DataTable.tsx — keep the two in step. */
 function expectedAlign(type: ColumnType | undefined, override?: 'left' | 'center' | 'right') {
