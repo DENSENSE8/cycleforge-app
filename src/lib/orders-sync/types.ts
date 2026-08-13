@@ -90,6 +90,7 @@ export interface TransferTabState {
   /** Sheet rows skipped because raw Item Number was blank. */
   skippedNoItemNumber?: number;
   processedRows?: number;
+  phase?: SyncPhase;
 }
 
 export interface ExceptionsTabState {

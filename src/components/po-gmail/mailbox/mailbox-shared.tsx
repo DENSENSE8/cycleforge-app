@@ -1,6 +1,10 @@
 import { AlertTriangle, Check, Search, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { MissingStatus, ReconcileItem } from './po-mailbox-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function ScanControls({
   query, setQuery, limit, setLimit, onRun, loading, actionLabel,
@@ -19,7 +23,7 @@ export function ScanControls({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="is:unread"
-          className="mt-1 w-full rounded-md border border-border-default px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className={cn("mt-1 w-full rounded-md border border-border-default px-2 py-1.5 text-sm", focusRing('field', 'accent'))}
         />
       </label>
       <label>
@@ -30,7 +34,7 @@ export function ScanControls({
           max={50}
           value={limit}
           onChange={(e) => setLimit(Math.min(50, Math.max(1, Number(e.target.value) || 25)))}
-          className="mt-1 w-20 rounded-md border border-border-default px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className={cn("mt-1 w-20 rounded-md border border-border-default px-2 py-1.5 text-sm", focusRing('field', 'accent'))}
         />
       </label>
       <Button

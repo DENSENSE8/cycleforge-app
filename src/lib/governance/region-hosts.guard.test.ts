@@ -1,5 +1,5 @@
 /**
- * Guard — region host modules named in AGENTS.md still exist on disk.
+ * Guard — live region / assembly host modules still exist on disk.
  *
  * Run: node --import tsx --test src/lib/governance/region-hosts.guard.test.ts
  */
@@ -18,6 +18,7 @@ const HOSTS = [
   'src/components/tables/NonlinearTableHost.tsx',
   'src/components/tables/table-definition-registry.ts',
   'src/components/right-rail/RightRailHost.tsx',
+  'src/lib/right-rail/panel-store.ts',
   'src/design-system/components/monitor/MonitorPageShell.tsx',
   'src/lib/right-rail/frame.ts',
   'src/components/sidebar/ContextPanelLayout.tsx',
@@ -30,8 +31,8 @@ const HOSTS = [
   'src/lib/tenancy/db.ts',
 ];
 
-describe('region / SoT hosts', () => {
-  it('keeps AGENTS.md host paths on disk', () => {
+describe('region hosts', () => {
+  it('keeps live host paths on disk', () => {
     const missing = HOSTS.filter((rel) => !existsSync(join(ROOT, rel)));
     assert.deepEqual(missing, [], `missing host file(s):\n  ${missing.join('\n  ')}`);
   });

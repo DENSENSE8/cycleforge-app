@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getOrderIdUrl } from '@/utils/order-links';
 import { formatDateTimePST } from '@/utils/date';
-import { Pencil, Copy, Check, Zap } from '@/components/Icons';
+import { Zap } from '@/components/Icons';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
-import { IconButton } from '@/design-system/primitives';
 import { StnTicketLinkModal } from '@/components/support/link/StnTicketLinkModal';
 import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 import {
@@ -24,11 +24,9 @@ import {
 import { SerialNumbersRow } from './SerialNumbersRow';
 import { buildAllTrackingRows, serialNumberRowsFromShipped, deriveShippingDisplayMeta } from './shipping-information/helpers';
 import { ShippingEditableRow } from './shipping-information/ShippingEditableRow';
-import { ShippingInfoEditModal } from './shipping-information/ShippingInfoEditModal';
 import { PrepackedSkuRow } from './shipping-information/PrepackedSkuRow';
 import { useEditableShippingFields } from './shipping-information/hooks/useEditableShippingFields';
 import { useInlineTrackingDrafts } from './shipping-information/hooks/useInlineTrackingDrafts';
-import { useShippingInfoEditModal } from './shipping-information/hooks/useShippingInfoEditModal';
 import type {
   EditableShippingFields,
   PrepackedSkuInfo,
@@ -39,8 +37,6 @@ export type { EditableShippingFields, PrepackedSkuInfo };
 
 interface ShippingInformationSectionProps {
   shipped: ShippedOrder;
-  copiedAll?: boolean;
-  onCopyAll?: () => void;
   onUpdate?: () => void;
   showSerialNumber?: boolean;
   showShippingTimestamp?: boolean;
@@ -56,8 +52,6 @@ interface ShippingInformationSectionProps {
 
 export function ShippingInformationSection({
   shipped,
-  copiedAll,
-  onCopyAll,
   onUpdate,
   showSerialNumber = true,
   showShippingTimestamp = false,
@@ -81,16 +75,6 @@ export function ShippingInformationSection({
     allTrackingRows,
     onUpdate,
   );
-
-  const modal = useShippingInfoEditModal({
-    shipped,
-    ef,
-    allTrackingRows,
-    serialNumberRows,
-    internalFieldSave,
-    onUpdate,
-    setLinkedTrackingDrafts,
-  });
 
   const {
     daysLate,
@@ -131,52 +115,14 @@ export function ShippingInformationSection({
 
   return (
     <section className="space-y-3">
-      <ShippingInfoEditModal
-        open={modal.isOpen}
-        draft={modal.draft}
-        setDraft={modal.setDraft}
-        isSaving={modal.isSaving}
-        isSaveSuccess={modal.isSaveSuccess}
-        error={modal.error}
-        exceptionMode={modal.exceptionMode}
-        onClose={modal.requestClose}
-        onSave={() => { void modal.handleModalSave(); }}
-      />
-
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-text-default">Order Details</h3>
-        <div className="flex items-center gap-1">
-          {onCopyAll ? (
-            <HoverTooltip label="Copy all order details" asChild>
-              <IconButton
-                onClick={onCopyAll}
-                ariaLabel="Copy all order details"
-                icon={copiedAll ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                className={`flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-sunken ${
-                  copiedAll ? 'text-text-success' : 'text-text-faint hover:text-text-muted'
-                }`}
-              />
-            </HoverTooltip>
-          ) : null}
-          {shippingEditable ? (
-            <HoverTooltip label="Edit shipping information" asChild>
-              <IconButton
-                onClick={modal.openEditModal}
-                ariaLabel="Edit shipping information"
-                icon={<Pencil className="h-3.5 w-3.5" />}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-              />
-            </HoverTooltip>
-          ) : null}
-        </div>
-      </div>
+      <h3 className="text-xs font-semibold text-text-default">Order details</h3>
 
       <div className="space-y-0">
         <ShippingEditableRow
           label="Ship By Date"
           headerAccessory={
             <span className="flex items-center gap-2">
-              <LedgerValue value={daysLate} variant="number" tier="meta" tone={daysLateTone} className="uppercase tracking-wide" />
+              <LedgerValue value={daysLate} variant="number" tier="meta" tone={daysLateTone} />
               <HoverTooltip label={isUrgent ? 'Clear urgent flag' : 'Mark as urgent'} asChild>
                 {/* ds-raw-button: inline urgent/expedited toggle pill — icon + optional label, which IconButton (icon-only) can't express */}
                 <button
@@ -186,7 +132,8 @@ export function ShippingInformationSection({
                   aria-pressed={isUrgent}
                   aria-label={isUrgent ? 'Clear urgent flag' : 'Mark as urgent'}
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest leading-none transition-colors disabled:opacity-40',
+                    'inline-flex items-center gap-1 px-1.5 py-0.5 text-role-micro leading-none transition-colors disabled:opacity-40',
+                    cornerClass('flush'),
                     isUrgent
                       ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
                       : 'text-text-faint hover:bg-surface-sunken hover:text-amber-600',
@@ -202,13 +149,13 @@ export function ShippingInformationSection({
           placeholder="MM-DD-YY"
           onChange={ef.onShipByDateChange}
           onBlur={ef.onShipByDateBlur}
-          allowEdit={false}
+          allowEdit={shippingEditable}
         />
 
         {showShippingTimestamp ? (
           <DetailsPanelRow label="Shipped">
             <p className="text-sm font-semibold text-text-default">
-              {packedAtSource ? formatDateTimePST(packedAtSource) : 'N/A'}
+              {packedAtSource ? formatDateTimePST(packedAtSource) : '—'}
             </p>
           </DetailsPanelRow>
         ) : null}
@@ -229,7 +176,7 @@ export function ShippingInformationSection({
               </HoverTooltip>
             ) : null
           }
-          allowEdit={false}
+          allowEdit={shippingEditable}
         />
 
         {allTrackingRows.length > 0 ? allTrackingRows.map((row, index) => {
@@ -256,7 +203,7 @@ export function ShippingInformationSection({
                         tracking: draftValue || null,
                       })
                     }
-                    className="ds-raw-button rounded text-role-eyebrow uppercase tracking-widest text-text-info hover:underline"
+                    className="ds-raw-button text-role-eyebrow text-text-info hover:underline"
                   >
                     Link ticket
                   </button>
@@ -286,10 +233,10 @@ export function ShippingInformationSection({
         {prepackedSku ? <PrepackedSkuRow sku={prepackedSku} /> : null}
 
         {ef.isSaving ? (
-          <p className="pt-2 text-role-micro uppercase tracking-wide text-text-info">Saving shipping updates...</p>
+          <p className="pt-2 text-role-micro text-text-info">Saving shipping updates...</p>
         ) : null}
         {ef.isSavingShipByDate ? (
-          <p className="pt-1 text-role-micro uppercase tracking-wide text-text-info">Saving ship by date...</p>
+          <p className="pt-1 text-role-micro text-text-info">Saving ship by date...</p>
         ) : null}
       </div>
 

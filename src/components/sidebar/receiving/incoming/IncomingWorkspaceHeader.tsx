@@ -17,7 +17,7 @@
  * for legacy redirects.
  */
 
-import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import {
@@ -116,14 +116,14 @@ interface IncomingWorkspaceHeaderProps {
   total: number;
   /** Current 1-based page index (`?page=`). */
   page: number;
-  /** Band-3 controls slot — hosts the portaled column-display (▦) trigger. */
-  controlsSlotRef?: Ref<HTMLDivElement>;
+  /** Flush Band-1 face from WorkbenchSheetView — never re-type it here. */
+  className?: string;
 }
 
 export function IncomingWorkspaceHeader({
   total,
   page,
-  controlsSlotRef,
+  className,
 }: IncomingWorkspaceHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -445,7 +445,7 @@ export function IncomingWorkspaceHeader({
       */}
       <WorkbenchChromeHeader
         density="band"
-        className="rounded-none border-l-0 border-t-0 shadow-sm"
+        className={className}
         tabs={isPipeline ? pipelineViewTabs : dockedSubTabs}
         activeTab={isPipeline ? incomingView : dockedTab}
         onTabChange={isPipeline ? setIncomingView : setDockedTab}
@@ -484,7 +484,6 @@ export function IncomingWorkspaceHeader({
 
       {/* Band 3 — find + Views ▾ (POS) + view toggles. */}
       <WorkbenchTriageBand
-        controlsSlotRef={controlsSlotRef}
         views={
           showIncomingViews ? (
             <WorkbenchViewsMenu

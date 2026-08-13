@@ -13,6 +13,11 @@ import {
   GRID_HEADER_ROW_INDEX,
   groupRowSpan,
 } from '@/design-system/components/grid/grid-row-index';
+import {
+  LEDGER_GRID_HEADER_ESTIMATE_PX,
+  LEDGER_GRID_OVERSCAN,
+  LEDGER_GRID_ROW_ESTIMATE_PX,
+} from '@/design-system/components/grid/grid-paint';
 
 /**
  * `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered
@@ -94,9 +99,9 @@ interface VirtualGroupedSectionsProps<T> {
   showDayHeaders?: boolean;
 }
 
-const HEADER_ESTIMATE = 36;
+const HEADER_ESTIMATE = LEDGER_GRID_HEADER_ESTIMATE_PX;
 /** Leaf/summary row estimate — Receiving golden is `h-10` (40); measureElement corrects per surface. */
-const ROW_ESTIMATE = 40;
+const ROW_ESTIMATE = LEDGER_GRID_ROW_ESTIMATE_PX;
 
 export function VirtualGroupedSections<T>({
   orderGroupsByDate,
@@ -186,7 +191,7 @@ export function VirtualGroupedSections<T>({
     count: items.length,
     getScrollElement: () => scrollParentRef.current,
     estimateSize: (index) => (items[index].kind === 'header' ? headerEstimate : rowEstimate),
-    overscan: 10,
+    overscan: LEDGER_GRID_OVERSCAN,
     getItemKey: (index) => items[index].key,
     rangeExtractor: useCallback(
       (range: Range) => {

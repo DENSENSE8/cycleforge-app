@@ -15,6 +15,8 @@ import { getSubscription } from '@/lib/billing/subscriptions';
 import { entitlementsForPlan, PLAN_PRICE_IDS } from '@/lib/billing/plans';
 import type { PlatformPlan } from '@/lib/tenancy/constants';
 import { BillingActions, UpgradeButton } from './BillingActions';
+import { Panel } from '@/design-system/primitives';
+
 
 const PLAN_LABELS: Record<PlatformPlan, { label: string; tagline: string }> = {
   trial:      { label: 'Trial',      tagline: 'Try everything for 14 days.' },
@@ -133,9 +135,9 @@ export default async function BillingPage() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm shadow-gray-900/[0.02]">
+    <Panel radius="2xl" padding="lg" className="shadow-gray-900/[0.02]">
       {children}
-    </div>
+    </Panel>
   );
 }
 

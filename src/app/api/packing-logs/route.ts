@@ -542,7 +542,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         orderId: '',
                         productTitle: 'Unmatched tracking — exception queue',
                         qty: 1,
-                        condition: 'N/A',
+                        condition: 'N/A', // ds-allow-na: packing-exception API payload writer
                         tracking: scanInput,
                         sku: null,
                         itemNumber: null,
@@ -721,7 +721,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         orderId: String(order.order_id ?? '').trim(),
                         productTitle: String(order.product_title ?? '').trim() || 'Unknown product',
                         qty: Math.max(1, Number(order.quantity ?? 1) || 1),
-                        condition: String(order.condition ?? '').trim() || 'N/A',
+                        condition: String(order.condition ?? '').trim() || 'N/A', // ds-allow-na: packing-scan API payload writer
                         tracking: String(order.tracking_number ?? scanInput).trim(),
                         sku: order.sku ?? null,
                         itemNumber: order.item_number ?? null,

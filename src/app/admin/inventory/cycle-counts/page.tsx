@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
@@ -210,7 +210,7 @@ export default async function CycleCountsAdminPage({
         ) : null}
 
         {/* Create form */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+        <Panel radius="lg" padding="none">
           <header className="border-b border-border-hairline px-6 py-3">
             <h2 className="text-base font-medium text-text-default">Start a new campaign</h2>
           </header>
@@ -248,7 +248,7 @@ export default async function CycleCountsAdminPage({
             never-counted. Default tolerance 0.05 (5%) — counts within that auto-approve on close;
             beyond it routes to <em>pending review</em>.
           </p>
-        </section>
+        </Panel>
 
         {/* Campaign list */}
         <section className="space-y-3">

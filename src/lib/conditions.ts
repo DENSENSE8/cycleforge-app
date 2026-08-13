@@ -120,7 +120,7 @@ export function orderRowConditionLabel(condition: string | null | undefined): st
   const raw = String(condition || '').trim();
   if (!raw) return EMPTY_META_DASH;
   const upper = raw.toUpperCase();
-  if (upper === 'N/A' || raw === EMPTY_META_DASH || raw === '—' || raw === '---') {
+  if (upper === 'N/A' || raw === EMPTY_META_DASH || raw === '—' || raw === '---') { // ds-allow-na: marketplace empty-vocab reader
     return EMPTY_META_DASH;
   }
   return raw;
@@ -134,7 +134,7 @@ export function isEmptyMetaDash(value: string | null | undefined): boolean {
 /** Compact list-row grade label; empty / legacy N/A read as `--`. */
 export function conditionGradeTableLabel(code: string | null | undefined): string {
   const c = String(code || '').trim().toUpperCase();
-  if (!c || c === 'N/A') return EMPTY_META_DASH;
+  if (!c || c === 'N/A') return EMPTY_META_DASH; // ds-allow-na: marketplace empty-vocab reader
   return conditionLabel(c, 'table');
 }
 

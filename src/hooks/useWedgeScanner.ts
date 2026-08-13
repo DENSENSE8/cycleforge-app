@@ -1,16 +1,22 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { attachWedgeKeyListener } from '@/lib/keyboard/wedge-scan-listener';
+import {
+  WEDGE_IDLE_FLUSH_MS,
+  WEDGE_MAX_INTER_KEY_MS,
+  WEDGE_MIN_LENGTH,
+} from '@/lib/keyboard/wedge-scan-machine';
 
 /**
- * Listens globally for HID wedge / Bluetooth scanner input.
+ * React mount adapter for the HID wedge listener SoT
+ * ({@link attachWedgeKeyListener} / {@link createWedgeKeyListener}).
  *
  * Pro warehouse scanners (Zebra RS5100, Eyoyo ring, Tera 1D/2D) act as a
  * keyboard: they hammer characters with sub-50ms inter-key gaps and finish
- * with Enter. We accept a buffer that meets BOTH criteria:
- *  • All characters land within `maxInterKeyMs` of each other
- *  • Terminated by `Enter` (most scanners), `Tab` (some), or an idle timeout
+ * with Enter. Classification + yield-before-React live in the listener —
+ * this hook only binds it for the component lifetime and keeps `onScan`
+ * on a ref so the native listener is never torn down on render.
  *
  * Skipped when:
  *  • The active element is an editable field (`input`, `textarea`,
@@ -18,10 +24,11 @@ import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
  *    keystrokes hijacked.
  *  • Modifier keys are held (Cmd/Ctrl/Alt/Meta).
  *
- * Two-arg API stays simple — caller owns dispatch.
+ * The listener is native capture-phase `keydown`. It never uses React's
+ * synthetic event system and never drops focus.
  */
 export interface UseWedgeScannerOptions {
-  /** Called when a complete scan buffer is committed. */
+  /** Called when a complete scan buffer is committed (after a main-thread yield). */
   onScan: (value: string) => void;
   /** Inter-key gap that classifies fast-typed input as a scan. Default 50ms. */
   maxInterKeyMs?: number;
@@ -36,94 +43,22 @@ export interface UseWedgeScannerOptions {
 export function useWedgeScanner(opts: UseWedgeScannerOptions): void {
   const {
     onScan,
-    maxInterKeyMs = 50,
-    idleFlushMs = 80,
-    minLength = 3,
+    maxInterKeyMs = WEDGE_MAX_INTER_KEY_MS,
+    idleFlushMs = WEDGE_IDLE_FLUSH_MS,
+    minLength = WEDGE_MIN_LENGTH,
     disabled = false,
   } = opts;
 
-  // Stable handler so we don't rebuild listeners on every render.
   const onScanRef = useRef(onScan);
   onScanRef.current = onScan;
 
   useEffect(() => {
     if (disabled || typeof window === 'undefined') return;
-
-    let buffer = '';
-    let lastKeyAt = 0;
-    let flushTimer: number | null = null;
-
-    const commit = () => {
-      const value = buffer.trim();
-      buffer = '';
-      if (flushTimer != null) {
-        window.clearTimeout(flushTimer);
-        flushTimer = null;
-      }
-      if (value.length >= minLength) {
-        try {
-          onScanRef.current(value);
-        } catch {
-          /* caller-side errors must not break the listener */
-        }
-      }
-    };
-
-    const reset = () => {
-      buffer = '';
-      lastKeyAt = 0;
-      if (flushTimer != null) {
-        window.clearTimeout(flushTimer);
-        flushTimer = null;
-      }
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey || e.metaKey || e.ctrlKey) {
-        reset();
-        return;
-      }
-      if (isEditableKeyTarget(e.target)) {
-        // User is typing into a real field — let it through.
-        reset();
-        return;
-      }
-
-      const now = e.timeStamp || performance.now();
-      const gap = lastKeyAt === 0 ? 0 : now - lastKeyAt;
-
-      // Termination keys → commit whatever's buffered.
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        if (buffer.length > 0) {
-          e.preventDefault();
-          commit();
-        }
-        return;
-      }
-
-      // Printable single-char keys grow the buffer.
-      if (e.key.length === 1) {
-        // If the gap is too long we're probably watching a human type a
-        // search query at a focused page — start a fresh buffer.
-        if (gap > maxInterKeyMs && buffer.length > 0) {
-          buffer = '';
-        }
-        buffer += e.key;
-        lastKeyAt = now;
-
-        if (flushTimer != null) window.clearTimeout(flushTimer);
-        flushTimer = window.setTimeout(commit, idleFlushMs);
-        return;
-      }
-
-      // Any other key (Backspace, arrows, Escape, etc.) cancels the run.
-      reset();
-    };
-
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown, true);
-      if (flushTimer != null) window.clearTimeout(flushTimer);
-    };
+    return attachWedgeKeyListener(window, {
+      onScan: (value) => onScanRef.current(value),
+      maxInterKeyMs,
+      idleFlushMs,
+      minLength,
+    });
   }, [disabled, idleFlushMs, maxInterKeyMs, minLength]);
 }

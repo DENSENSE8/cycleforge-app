@@ -13,7 +13,7 @@
 
 import { icons } from 'lucide-react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { StationProcedurePanel, useStationProcedureMap } from './StationProcedurePanel';
 import type { StudioGraphNode, StudioStationView } from './studio-types';
 
@@ -117,7 +117,7 @@ export function StudioStationPreview({
                 </h3>
                 <div className="space-y-2">
                   {slot.blocks.map((b) => (
-                    <div key={b.id} className="rounded-xl border border-border-soft bg-surface-card p-3 shadow-sm">
+                    <Panel radius="xl" padding="sm" key={b.id}>
                       <div className="flex items-center gap-2">
                         <Icon name={b.blockIcon} className="h-4 w-4 shrink-0 text-text-soft" />
                         <span className="text-sm font-semibold text-text-default">{b.blockLabel}</span>
@@ -182,7 +182,7 @@ export function StudioStationPreview({
                           ))}
                         </div>
                       )}
-                    </div>
+                    </Panel>
                   ))}
                 </div>
               </section>

@@ -11,6 +11,23 @@
  * safe: there is one implementation and both callers share it, so the seeded
  * row cannot drift from the fetched one and cause a rail remount on reconcile.
  */
+
+/**
+ * Wire timestamps as strings. `SELECT rl.*` (and uncast street columns) arrive
+ * from node-pg as `Date`; callers do `(stamp || '').trim()` and crash on Date.
+ */
+function asStampText(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+}
+
 export function normalizeRow(row: Record<string, unknown>) {
   // Tracking identity resolves in priority order:
   //   1. shipping_tracking_numbers (canonical — joined via receiving_carton.shipment_id)
@@ -171,41 +188,42 @@ export function normalizeRow(row: Record<string, unknown>) {
     // "arrived at the door" event; unboxed_at is when items were extracted.
     // *_by_name resolve the staff who performed each (null on views that omit
     // the joins / unmatched stubs).
-    received_at:              (row.receiving_received_at as string | null) ?? null,
+    received_at:              asStampText(row.receiving_received_at),
     received_by_name:         (row.received_by_name as string | null) ?? null,
     // Terminal "Received" (DONE) transition time — distinct from the door-scan
-    // received_at above. Drives History's "Received" sort axis.
-    received_done_at:         (row.received_done_at as string | null) ?? null,
-    unboxed_at:               (row.receiving_unboxed_at as string | null) ?? null,
+    // received_at above. Drives History's "Received" sort axis. Comes from
+    // `rl.*` uncast, so coerce Date → ISO (see {@link asStampText}).
+    received_done_at:         asStampText(row.received_done_at),
+    unboxed_at:               asStampText(row.receiving_unboxed_at),
     unboxed_by_name:          (row.unboxed_by_name as string | null) ?? null,
-    scanned_at:               (row.first_scanned_at as string | null) ?? null,
+    scanned_at:               asStampText(row.first_scanned_at),
     scanned_by_name:          (row.scanned_by_name as string | null) ?? null,
     // First-class "opened for unbox" time (receiving.unbox_opened_at / UNBOX_SCAN_OPENED).
     // Unboxed rail + History `unboxed_newest` read THIS for label + sort — same
     // axis. Selected on view=unbox_opened / activity / all; null elsewhere.
-    unbox_opened_at:          (row.unbox_opened_at as string | null) ?? null,
+    unbox_opened_at:          asStampText(row.unbox_opened_at),
     unbox_only_intake:        row.unbox_only_intake === true,
     triage_complete:          row.triage_complete === true,
-    triage_completed_at:      (row.triage_completed_at as string | null) ?? null,
+    triage_completed_at:      asStampText(row.triage_completed_at),
     staging_location_id:      row.staging_location_id != null ? Number(row.staging_location_id) : null,
     staging_location_label:   (row.staging_location_label as string | null) ?? null,
     priority_lane:            (row.priority_lane as string | null) ?? null,
     pairing_state:            (row.pairing_state as string | null) ?? null,
-    created_at:               (row.created_at as string | null) ?? null,
+    created_at:               asStampText(row.created_at),
     // Last write to the line itself (qty bump, condition, notes, …). Drives
     // the unbox_activity sort's tiebreak in the placeholder merge.
-    updated_at:               (row.updated_at as string | null) ?? null,
+    updated_at:               asStampText(row.updated_at),
     // Most-recent activity timestamp matching the server's sort order. For
     // view=testing this leads with tested_at (the verdict time the feed is
     // ordered by); for view=all/activity it's the last scan. Falls through to
     // received_at / created_at so the rail can render a single "last touched"
     // field regardless of view.
-    last_activity_at:         (row.viewed_at as string | null)
-                              ?? (row.tested_at as string | null)
-                              ?? (row.needs_test_at as string | null)
-                              ?? (row.last_scan_at as string | null)
-                              ?? (row.receiving_received_at as string | null)
-                              ?? (row.created_at as string | null)
+    last_activity_at:         asStampText(row.viewed_at)
+                              ?? asStampText(row.tested_at)
+                              ?? asStampText(row.needs_test_at)
+                              ?? asStampText(row.last_scan_at)
+                              ?? asStampText(row.receiving_received_at)
+                              ?? asStampText(row.created_at)
                               ?? null,
     // Recorded testing verdicts for this line (view=testing only; null elsewhere).
     // Scoped to the tester when the feed is. Drives the rail's "tested k/N".

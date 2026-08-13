@@ -322,7 +322,7 @@ export function TestingHistoryList({
         isHistory={mode === 'history'}
         selectionScope={TESTING_SELECTION_SCOPE}
         testId="testing-grid-body"
-        columnTriggerPortalTarget={toolbarPortalTarget}
+        columnTriggerPortalTarget={null}
       />
     </div>
   );

@@ -414,7 +414,7 @@ export function InventoryPoLineList({
                     'min-h-[5rem] w-full resize-y text-role-caption text-text-default',
                     WORKSPACE_NESTED_FIELD,
                     WORKSPACE_NESTED_FIELD_PAD,
-                    'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20',
+                    focusRing('field', 'accent'),
                   )}
                 />
                 <div className="flex justify-end">

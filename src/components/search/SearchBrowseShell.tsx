@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchRefineControls } from '@/components/search/SearchRefineControls';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
@@ -60,6 +60,7 @@ export function SearchBrowseShell({
   useSurfacePaintMark('search:chrome', true);
   useSurfacePaintMark('search:primary', true);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const q = (searchParams.get('q') ?? '').trim();
   const etype = useMemo(
@@ -161,10 +162,13 @@ export function SearchBrowseShell({
   const selectHit = useCallback(
     (hit: AiSearchHit) => {
       const { entityType, id } = hit;
-      if (!isUiEntityType(entityType)) return;
-      setSel({ entityType, id });
+      if (isUiEntityType(entityType)) {
+        setSel({ entityType, id });
+        return;
+      }
+      if (hit.href) router.push(hit.href);
     },
-    [setSel],
+    [setSel, router],
   );
 
   const handleResults = useCallback(

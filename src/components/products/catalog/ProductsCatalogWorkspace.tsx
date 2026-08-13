@@ -85,7 +85,6 @@ export function ProductsCatalogWorkspace() {
   const [syncing, setSyncing] = useState(false);
   // No KPI band (no metrics) — the controller is the Band-3 ▦ portal only.
   const chrome = useWorkbenchSheetChrome();
-  const catalogControlsEl = chrome.controlsEl;
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared catalog link reproduces the same ordering. NOT
@@ -413,7 +412,7 @@ export function ProductsCatalogWorkspace() {
               loading={loading}
               emptyMessage={emptyMessage}
               className="min-h-0 flex-1"
-              columnTriggerPortalTarget={catalogControlsEl}
+              columnTriggerPortalTarget={null}
               renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
                 <CatalogGridColumnHeader
                   selectionScope={CATALOG_SELECTION_SCOPE}

@@ -244,7 +244,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           label: 'Print',
           icon: Printer,
           content: (
-            <Panel padding="none" elevation="none" className="flex flex-col gap-0 rounded-none">
+            <Panel padding="none" elevation="none" className="flex flex-col gap-0">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-hairline px-3 py-2.5">
                 <div className="min-w-0">
                   <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">

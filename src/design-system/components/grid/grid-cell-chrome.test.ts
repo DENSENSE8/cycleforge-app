@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   LEDGER_GRID_CELL_INSET,
   LEDGER_GRID_FROZEN_CELL,
+  LEDGER_GRID_ROW_CONTAIN,
   LEDGER_GRID_WIDTH_VAR,
   ledgerGridCell,
   ledgerGridRowShellClass,
@@ -52,6 +53,14 @@ describe('ledgerGridRowShellClass / frozen / width var', () => {
     assert.ok(desktop.includes('items-stretch'), 'cells stretch full-height');
     assert.ok(!desktop.includes('gap-x'), 'no inter-cell gap — cells butt together (spreadsheet)');
     assert.ok(desktop.includes('grid'), 'desktop is a CSS grid');
+    assert.ok(
+      desktop.includes(LEDGER_GRID_ROW_CONTAIN),
+      'desktop rows isolate layout so a cell mutation cannot reflow siblings',
+    );
+    assert.ok(
+      !LEDGER_GRID_ROW_CONTAIN.includes('paint'),
+      'contain:paint would clip sticky frozen identity cells',
+    );
   });
 
   it('mobile shell stays a stacked flex column', () => {

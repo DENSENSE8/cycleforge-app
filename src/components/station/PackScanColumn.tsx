@@ -211,7 +211,7 @@ export default function PackScanColumn({
             String(unit.product_title || '').trim() ||
             (sku ? `Prepack · ${sku}` : `Unit ${displayKey}`),
           qty: 1,
-          condition: String(unit.condition_grade || 'N/A').trim() || 'N/A',
+          condition: String(unit.condition_grade || '—').trim() || '—',
           tracking: '',
           scanType: 'UNIT',
           sku: sku || undefined,
@@ -351,7 +351,7 @@ export default function PackScanColumn({
               ? 'Unknown order'
               : String(data?.productTitle || '').trim() || 'Unknown product',
             qty: Math.max(1, Number(data?.qty ?? data?.quantity ?? data?.orderQty ?? 1) || 1),
-            condition: String(data?.condition || '').trim() || 'N/A',
+            condition: String(data?.condition || '').trim() || '—',
             tracking: String(data?.shippingTrackingNumber || scan).trim(),
             scanType: isSku ? 'SKU' : 'ORDERS',
             sku: skuValue || undefined,

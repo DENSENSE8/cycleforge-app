@@ -22,11 +22,11 @@ test('deriveShippingDisplayMeta: falls back to "Not specified" when no name reso
   assert.equal(meta.techNameDisplay, 'Not specified');
 });
 
-test('deriveShippingDisplayMeta: not scanned out → null name, N/A display', () => {
+test('deriveShippingDisplayMeta: not scanned out → null name, honest-absence display', () => {
   const meta = deriveShippingDisplayMeta(makeShipped({}), []);
   assert.equal(meta.isScannedOut, false);
   assert.equal(meta.scannedOutByDisplay, null);
-  assert.equal(meta.scannedOutDisplay, 'N/A');
+  assert.equal(meta.scannedOutDisplay, '—');
 });
 
 test('deriveShippingDisplayMeta: scanned out (sentinel "1" is not a real timestamp)', () => {
@@ -49,14 +49,14 @@ test('deriveShippingDisplayMeta: packedAtSource prefers pack_activity_at, ignore
   assert.equal(deriveShippingDisplayMeta(makeShipped({ pack_activity_at: '1', packed_at: '1' }), []).packedAtSource, null);
 });
 
-test('deriveShippingDisplayMeta: copy text includes serials joined, "N/A" when empty', () => {
+test('deriveShippingDisplayMeta: copy text includes serials joined, em dash when empty', () => {
   const withSerials = deriveShippingDisplayMeta(makeShipped({ order_id: 'ORD-9' }), ['SN1', 'SN2']);
   assert.match(withSerials.returnsCopyText, /Order ID: ORD-9/);
   assert.match(withSerials.returnsCopyText, /Serials: SN1, SN2/);
 
   const noSerials = deriveShippingDisplayMeta(makeShipped({ order_id: '' }), []);
-  assert.match(noSerials.returnsCopyText, /Order ID: N\/A/);
-  assert.match(noSerials.returnsCopyText, /Serials: N\/A/);
+  assert.match(noSerials.returnsCopyText, /Order ID: —/);
+  assert.match(noSerials.returnsCopyText, /Serials: —/);
 });
 
 test('findDuplicateTrackingInDraft: null when unique or blank', () => {

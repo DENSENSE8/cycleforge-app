@@ -131,7 +131,7 @@ export function CartonContextCard({
   filledExtraTrackingsCount,
   carrierHint = null,
   isLocalPickup = false,
-  trackingEditOpen = false,
+  trackingEditOpen: _trackingEditOpen = false,
   onEditTracking,
   platformValue,
   onPlatformSelect,
@@ -243,7 +243,7 @@ export function CartonContextCard({
    * Edit in the hover menu alongside Open + Details.
    */
   onEditPo?: () => void;
-  /** Pulse the PO chip while Package Pairing (PO) is open. */
+  /** Pulse the PO chip while Package Pairing (PO) is open — steady `editing` face, no flash. */
   poEditOpen?: boolean;
   /**
    * Open the in-app Incoming connection panel (PO mirror / sync / link CRUD)
@@ -273,7 +273,7 @@ export function CartonContextCard({
   carrierHint?: string | null;
   /** Local-pickup fulfillment — suppress tracking chip/editor; show Pickup pill. */
   isLocalPickup?: boolean;
-  /** When true, pulses the tracking chip to show edit is active. */
+  /** When true, tracking chip face reads steady `editing` (no pulse). */
   trackingEditOpen?: boolean;
   /** Called when tracking chip edit is requested - opens external editor. */
   onEditTracking?: () => void;
@@ -291,7 +291,7 @@ export function CartonContextCard({
    * omitting it hides Edit (History still opens the thread popover).
    */
   onToggleTicketView?: () => void;
-  /** True while the ticket push column is open — pulses the ticket chip Edit state. */
+  /** True while the ticket push column is open — ticket History stays non-pulsing. */
   ticketViewActive?: boolean;
   /**
    * Far-left back button that closes the active entity so the right pane
@@ -619,7 +619,7 @@ export function CartonContextCard({
       platformLabel={platformValue ? platformMeta.label : null}
       disableCopy={!effectiveOrder}
       onEdit={onEditPo}
-      editOpen={poEditOpen}
+      editOpen={false}
       editLabel={
         poEditOpen
           ? 'Hide package pairing'
@@ -653,7 +653,7 @@ export function CartonContextCard({
         showCarrierBrand
         disableCopy={!primaryTrackingTrimmed}
         onEdit={onEditTracking}
-        editOpen={trackingEditOpen}
+        editOpen={false}
         editLabel="Edit tracking"
         actionsInMenu
       />

@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
@@ -85,7 +85,6 @@ export interface ReceivingWorkspacePane {
 
 export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -137,7 +136,6 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const ignoredOpenKeyRef = useRef<string | null>(null);
   // Eager mirror for event handlers (declared before the listener effect).
   const workspaceRef = useRef<WorkspaceState | null>(null);
-  workspaceRef.current = workspace;
   // Last Unboxed-rail MRU receiving_id we auto-opened (avoid re-entry loops).
   const mruOpenedReceivingIdRef = useRef<number | null>(null);
 
@@ -171,23 +169,61 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     enabled: wantMruAutoOpen,
   });
 
+  /**
+   * Derive the open carton DURING RENDER from the shell seed — not only in an
+   * effect. Effects do not run on the server, so an effect-only open left the
+   * middle blank in the SSR HTML however good the seed was.
+   */
+  const seededWorkspace = useMemo((): WorkspaceState | null => {
+    if (!wantMruAutoOpen) return null;
+    const rows =
+      unboxRailQuery.data ??
+      queryClient.getQueryData<ReceivingLineRow[]>(unboxRailQueryKey);
+    const mru = Array.isArray(rows) ? rows[0] : undefined;
+    if (!mru) return null;
+    const receivingId =
+      mru.receiving_id != null && Number.isFinite(Number(mru.receiving_id))
+        ? Number(mru.receiving_id)
+        : null;
+    let pick: ReceivingLineRow = mru;
+    if (receivingId != null) {
+      const seeded = queryClient.getQueryData<{
+        receiving_lines?: ReceivingLineRow[];
+      }>(['receiving-siblings', receivingId]);
+      const seededRows = seeded?.receiving_lines;
+      if (Array.isArray(seededRows) && seededRows.length > 0) {
+        const matched = pickReceivingLineForDeepLink(seededRows, String(mru.id));
+        if (matched) pick = matched;
+      }
+    }
+    return {
+      row: pick,
+      accordionBootstrap: 'default',
+      scanDriven: false,
+    };
+  }, [
+    wantMruAutoOpen,
+    unboxRailQuery.data,
+    unboxRailQueryKey,
+    queryClient,
+  ]);
+
   const replaceUnboxUrl = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
       if (!isUnboxSurface) return;
-      const seed =
-        typeof window !== 'undefined' ? window.location.search : searchParams.toString();
-      const params = new URLSearchParams(seed);
+      // Client-only URL sync. `router.replace` re-runs the RSC pass (double
+      // `/unbox?…&_rsc=` + double seed); `history.replaceState` keeps the open
+      // carton sticky without a server round-trip.
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
       mutate(params);
       const nextSearch = params.toString();
-      const currentSearch =
-        typeof window !== 'undefined'
-          ? window.location.search.replace(/^\?/, '')
-          : searchParams.toString();
+      const currentSearch = window.location.search.replace(/^\?/, '');
       if (nextSearch === currentSearch) return;
-      const base = UNBOX_SURFACE_ROUTE;
-      router.replace(nextSearch ? `${base}?${nextSearch}` : base, { scroll: false });
+      const url = nextSearch ? `${UNBOX_SURFACE_ROUTE}?${nextSearch}` : UNBOX_SURFACE_ROUTE;
+      window.history.replaceState(window.history.state, '', url);
     },
-    [isUnboxSurface, router, searchParams],
+    [isUnboxSurface],
   );
 
   const replaceUnboxOpenReceiving = useCallback(
@@ -215,11 +251,15 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const syncUnboxOpenUrl = useCallback(
     (row: ReceivingLineRow | null) => {
       if (!isUnboxSurface) return;
+      const liveParams =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : searchParams;
       const receivingId = row?.receiving_id;
       if (row != null && receivingId != null && Number.isFinite(Number(receivingId))) {
         const nextKey = `${receivingId}:${row.id}`;
-        const currentOpen = searchParams.get('openReceivingId');
-        const currentLine = searchParams.get('lineId');
+        const currentOpen = liveParams.get('openReceivingId');
+        const currentLine = liveParams.get('lineId');
         if (currentOpen === String(receivingId) && currentLine === String(row.id)) {
           pendingOpenKeyRef.current = null;
           ignoredOpenKeyRef.current = null;
@@ -232,9 +272,9 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         replaceUnboxOpenReceiving({ receivingId: Number(receivingId), lineId: row.id });
         return;
       }
-      const currentOpen = searchParams.get('openReceivingId');
-      const currentLine = searchParams.get('lineId');
-      if (currentOpen || currentLine || searchParams.get('recvId')) {
+      const currentOpen = liveParams.get('openReceivingId');
+      const currentLine = liveParams.get('lineId');
+      if (currentOpen || currentLine || liveParams.get('recvId')) {
         if (currentOpen) {
           ignoredOpenKeyRef.current = `${currentOpen}:${currentLine ?? ''}`;
         }
@@ -251,6 +291,25 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       searchParams,
     ],
   );
+
+  const effectiveWorkspace = workspace ?? seededWorkspace;
+  workspaceRef.current = effectiveWorkspace;
+
+  // Promote the render-time seed into React state once on the client so URL
+  // sync + rail highlight run, without waiting for the async MRU effect.
+  useEffect(() => {
+    if (!seededWorkspace || workspace != null) return;
+    const receivingId =
+      seededWorkspace.row.receiving_id != null &&
+      Number.isFinite(Number(seededWorkspace.row.receiving_id))
+        ? Number(seededWorkspace.row.receiving_id)
+        : null;
+    if (receivingId != null) mruOpenedReceivingIdRef.current = receivingId;
+    setWorkspace(seededWorkspace);
+    setRestorePending(false);
+    syncUnboxOpenUrl(seededWorkspace.row);
+    dispatchSelectLine(seededWorkspace.row);
+  }, [seededWorkspace, workspace, syncUnboxOpenUrl]);
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -611,12 +670,12 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   }, [recoverRightPane]);
 
   return {
-    workspace,
+    workspace: effectiveWorkspace,
     setWorkspace,
     nav,
     setNav,
     scanInFlight,
-    restorePending,
+    restorePending: effectiveWorkspace ? false : restorePending,
     lookupReceipt,
     clearLookupReceipt,
   };

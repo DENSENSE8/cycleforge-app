@@ -37,7 +37,7 @@ export function CopyableValueFieldBlock({
   keepBottomDivider = false,
 }: CopyableValueFieldBlockProps) {
   const [copied, setCopied] = useState(false);
-  const isEmpty = !value || value === 'Not available' || value === 'N/A';
+  const isEmpty = !value || value === 'Not available' || value === 'N/A'; // ds-allow-na: copy-field empty reader
 
   const handleCopy = () => {
     if (isEmpty) return;

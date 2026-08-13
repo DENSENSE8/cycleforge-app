@@ -8,7 +8,7 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Link2, Search, X } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { toast } from '@/lib/toast';
 import { invalidateSupportContextCaches } from '@/hooks';
@@ -221,7 +221,7 @@ export function TicketLinkPopover({
   };
 
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-3 shadow-lg">
+    <Panel radius="xl" padding="sm" elevation="md">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
         <button
@@ -319,7 +319,7 @@ export function TicketLinkPopover({
       >
         Link ticket
       </Button>
-    </div>
+    </Panel>
   );
 }
 

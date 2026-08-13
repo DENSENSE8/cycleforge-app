@@ -63,6 +63,12 @@ const GATES = [
           cmd: 'node',
           args: ['scripts/schema-model-parity-guard.mjs', '--check'],
         },
+        // Shrink-only clone baseline (DS fork-consolidation 1b). New same-usecase
+        // clones fail; parked by-design siblings live in .jscpd.json ignore.
+        { name: 'Clone baseline (jscpd)', cmd: 'node', args: ['scripts/jscpd-gate.mjs'] },
+        // Assembly import boundaries — feature routes compose the host, not its
+        // internals (DashboardScrollShell, ScanStationUtilityRail, StationAmbientWash).
+        { name: 'Assembly boundaries (depcruise)', cmd: 'node', args: ['scripts/depcruise-gate.mjs'] },
         // Doc catalog drift. Fix is one command: `pnpm portfolio:sot`.
         // Added 2026-08-01 — the check existed but was gated by nothing, and
         // DOC-CATALOG.md had drifted 71 files behind before anyone noticed.

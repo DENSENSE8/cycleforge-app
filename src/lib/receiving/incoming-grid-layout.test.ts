@@ -12,7 +12,7 @@ import {
   incomingGridTemplate,
   isIncomingGridFrozen,
   isIncomingGridSortable,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 import { TABLE_COLUMNS } from '@/lib/tables/table-columns';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';

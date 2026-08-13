@@ -88,7 +88,7 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
               onCloseOrder={closeRecent}
               hideHeader
               disableBackfill
-              columnTriggerPortalTarget={controlsEl}
+              columnTriggerPortalTarget={null}
             />
           ) : (
             <LabelsQueueTable
@@ -97,7 +97,7 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
               onOpenOrder={onOpenLabelOrder}
               onCloseOrder={() => undefined}
               hideHeader
-              columnTriggerPortalTarget={controlsEl}
+              columnTriggerPortalTarget={null}
             />
           )
         }

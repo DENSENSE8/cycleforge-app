@@ -13,6 +13,10 @@ import { qk } from '@/queries/keys';
 import { Button } from '@/design-system/primitives/Button';
 import { AdminEmptyDetail } from '../shared';
 import { Link2 } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface Supplier {
   id: number;
@@ -139,7 +143,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
   );
 }
 
-const inputCls = 'w-full rounded-md border border-border-default inset-field text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+const inputCls = cn('w-full rounded-md border border-border-default inset-field text-sm', focusRing('field', 'accent'));
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (

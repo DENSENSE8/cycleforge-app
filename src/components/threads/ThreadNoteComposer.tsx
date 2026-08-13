@@ -4,6 +4,8 @@ import { useRef } from 'react';
 import { ClipboardList, Send, User } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Warehouse-thread composer — intentionally NOT the Zendesk {@link VisibilityToggle}.
@@ -52,8 +54,8 @@ export function ThreadNoteComposer({
         className={cn(
           'rounded-xl border bg-surface-card transition',
           isOnRecord
-            ? 'border-emerald-300 bg-emerald-50/25 focus-within:ring-2 focus-within:ring-emerald-100'
-            : 'border-violet-200 bg-violet-50/20 focus-within:ring-2 focus-within:ring-violet-100',
+            ? cn('border-emerald-300 bg-emerald-50/25', focusRing('wrapper', 'success'))
+            : 'border-violet-200 bg-violet-50/20 focus-within:ring-2 focus-within:ring-violet-100' /* ds-allow-focus: identity/one-off hue or ring-0 */,
         )}
       >
         <textarea

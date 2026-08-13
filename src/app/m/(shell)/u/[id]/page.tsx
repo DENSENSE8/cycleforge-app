@@ -36,6 +36,10 @@ import {
 import { timeAgo } from '@/utils/_date';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { Button, IconButton } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface UnitDetail {
   id: number;
@@ -471,7 +475,7 @@ function ActionPanel({
         autoFocus
         autoComplete="off"
         spellCheck={false}
-        className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-mono text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-mono text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
       />
       <Button
         type="submit"

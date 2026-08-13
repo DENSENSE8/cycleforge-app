@@ -457,9 +457,10 @@ function ReceivingPopoverContent({
             </HoverTooltip>
           ) : null}
           {/* Phase 2: a physically-present box whose Zoho PO already reads
-              received/closed stays in the queue (not hidden) with this badge,
-              surfacing the physical-vs-financial mismatch instead of vanishing. */}
-          {['billed', 'closed', 'cancelled', 'received', 'rejected'].includes(
+              billed/closed stays in the queue (not hidden) with this badge,
+              surfacing the physical-vs-financial mismatch instead of vanishing.
+              Skip `received` — it duplicates the green workflow RECEIVED chip. */}
+          {['billed', 'closed', 'cancelled', 'rejected'].includes(
             String(row.zoho_status || '').toLowerCase(),
           ) ? (
             <HoverTooltip label={`The inventory system marks this PO "${row.zoho_status}" — already received/closed upstream, but the box is still here to unbox`} asChild>

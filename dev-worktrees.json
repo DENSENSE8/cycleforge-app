@@ -109,6 +109,14 @@
       "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
     },
     {
+      "id": "push-main",
+      "label": "push-main · detached",
+      "path": "../cycleforge-push-main",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "review",
       "label": "review · topic/review",
       "path": "../cycleforge-review",

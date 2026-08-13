@@ -3,6 +3,9 @@
 /**
  * Incoming Import → Upload CSV — flush inspector (Amazon / Goodwill unfound fix).
  *
+ * Accepts Cycle Forge desk CSV and native Amazon Manage Returns exports.
+ * Amazon ASIN rows only land when sku_catalog.sku matches (server-gated).
+ *
  * Macro floor = Import CTA + `→|` close in one FlushTerminalFooter wrapper.
  */
 
@@ -13,7 +16,10 @@ import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-hea
 import { Button, FlushTerminalFooter } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { deskRowFromCsvRecord } from '@/lib/inbound/desk-csv';
+import {
+  deskRowFromCsvRecord,
+  isAmazonNativeReturnsRecord,
+} from '@/lib/inbound/desk-csv';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { parseCsv } from '@/lib/tables/import/parse-csv';
 import { toast } from '@/lib/toast';
@@ -33,11 +39,16 @@ export function IncomingImportCsvOverlay({
   const [error, setError] = useState<string | null>(null);
 
   const rows = useMemo(() => (raw.trim() ? parseCsv(raw).rows : []), [raw]);
+  const amazonNative = useMemo(
+    () => rows.length > 0 && isAmazonNativeReturnsRecord(rows[0]),
+    [rows],
+  );
   const preview = useMemo(
     () =>
       rows.slice(0, 8).map((r, i) => {
         try {
-          return { i, ok: true as const, row: deskRowFromCsvRecord(r) };
+          const row = deskRowFromCsvRecord(r);
+          return { i, ok: true as const, row };
         } catch (err) {
           return {
             i,
@@ -74,6 +85,7 @@ export function IncomingImportCsvOverlay({
         error?: string;
         created?: number;
         updated?: number;
+        skipped?: number;
         failed?: number;
       } | null;
       if (!res.ok) {
@@ -82,11 +94,20 @@ export function IncomingImportCsvOverlay({
       invalidateReceivingFeeds(queryClient);
       const created = data?.created ?? 0;
       const updated = data?.updated ?? 0;
+      const skipped = data?.skipped ?? 0;
       const failed = data?.failed ?? 0;
+      const parts: string[] = [];
+      if (created > 0) parts.push(`${created} new`);
+      if (updated > 0) parts.push(`${updated} refreshed`);
+      if (skipped > 0) parts.push(`${skipped} skipped (no catalog ASIN)`);
       if (failed > 0) {
-        toast.error(`Imported ${created + updated}; ${failed} row(s) failed`);
+        toast.error(
+          `Imported ${created + updated}${skipped ? ` · ${skipped} skipped` : ''}; ${failed} failed`,
+        );
+      } else if (created + updated === 0 && skipped > 0) {
+        toast.success(`No lines imported · ${skipped} skipped (ASIN not in catalog)`);
       } else {
-        toast.success(`Imported ${created} new · ${updated} refreshed`);
+        toast.success(parts.length > 0 ? parts.join(' · ') : 'Import complete');
       }
       onClose();
       setRaw('');
@@ -116,9 +137,16 @@ export function IncomingImportCsvOverlay({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <p className="inset-cozy text-role-caption text-text-faint">
-            Columns: kind, source (amazon|goodwill|ebay), order_id, tracking, listing_url, sku,
-            item_name, qty, seller, rma_id. Goodwill rows ingest as manual + platform stamp.
+            Desk columns: kind, source (amazon|goodwill|ebay), order_id, tracking, listing_url,
+            sku, item_name, qty, seller, rma_id. Or paste Seller Central Manage Returns CSV —
+            only rows whose ASIN matches a catalog SKU are imported; cancelled rows are skipped.
           </p>
+
+          {amazonNative ? (
+            <p className="inset-cozy border-b border-border-hairline text-role-caption font-medium text-text-default">
+              Amazon Manage Returns file detected · ASIN → catalog SKU gate on
+            </p>
+          ) : null}
 
           <label
             className={cn(
@@ -148,13 +176,13 @@ export function IncomingImportCsvOverlay({
             rows={10}
             placeholder={
               'kind,source,order_id,sku,item_name,qty,tracking,listing_url\n'
-              + 'purchase,amazon,111-222-333,SKU1,Widget,1,1Z999,\n'
+              + 'return,amazon,111-222-333,B0EXAMPLE1,Widget,1,1Z999,\n'
               + 'purchase,goodwill,GW-1001,SKU2,Camera,1,,'
             }
             className={cn(
               'w-full resize-y border-0 border-b border-border-hairline bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default',
               cornerClass('flush'),
-              'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500',
+              focusRing('field', 'accent'),
             )}
           />
 
@@ -162,12 +190,23 @@ export function IncomingImportCsvOverlay({
             <div className="divide-y divide-border-hairline border-b border-border-hairline">
               <p className="inset-cozy text-role-micro uppercase tracking-widest text-text-soft">
                 Preview ({rows.length} rows)
+                {amazonNative ? ' · catalog gate at import' : ''}
               </p>
               {preview.map((p) =>
                 p.ok ? (
                   <p key={p.i} className="truncate inset-cozy text-role-caption text-text-default">
-                    {p.row.kind} · {p.row.sourcePlatform || p.row.sourceType} ·{' '}
-                    {p.row.orderId || '—'} · {p.row.sku || p.row.itemName || '—'}
+                    {p.row.skipReason ? (
+                      <span className="text-text-faint">
+                        skip:{p.row.skipReason} · {p.row.orderId || '—'} · {p.row.sku || '—'}
+                      </span>
+                    ) : (
+                      <>
+                        {p.row.kind} · {p.row.sourcePlatform || p.row.sourceType} ·{' '}
+                        {p.row.orderId || '—'} · {p.row.sku || p.row.itemName || '—'}
+                        {p.row.trackingNumber ? ` · ${p.row.trackingNumber}` : ''}
+                        {p.row.amazonNativeReturn ? ' · ASIN' : ''}
+                      </>
+                    )}
                   </p>
                 ) : (
                   <p key={p.i} className="inset-cozy text-role-caption text-rose-600">

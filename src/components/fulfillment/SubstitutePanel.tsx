@@ -8,6 +8,8 @@ import { SkuScanRefChip, SerialChip } from '@/components/ui/CopyChip';
 import { SUBSTITUTION_REASONS, type SubstitutionReason } from '@/lib/fulfillment/substitution-reasons';
 import { SubstituteReasonPicker } from './SubstituteReasonPicker';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Scan-anchored substitution action for the testing / packing card. The operator
@@ -122,7 +124,7 @@ export function SubstitutePanel({
           placeholder="Scan or enter serial"
           autoCapitalize="characters"
           spellCheck={false}
-          className="w-full rounded-lg border border-border-soft px-3 py-2 font-mono text-sm uppercase tracking-wider placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className={cn("w-full rounded-lg border border-border-soft px-3 py-2 font-mono text-sm uppercase tracking-wider placeholder:text-text-faint", focusRing('field', 'accent'))}
         />
       </div>
 
@@ -144,7 +146,7 @@ export function SubstitutePanel({
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder="e.g. customer asked for white"
-          className="w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-sm placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className={cn("w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-sm placeholder:text-text-faint", focusRing('field', 'accent'))}
         />
       </div>
 

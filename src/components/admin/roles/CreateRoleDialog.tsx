@@ -16,6 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface CreateRoleDialogProps {
   open: boolean;
@@ -87,7 +91,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
                 if (!key) setKey(slugify(e.target.value));
               }}
               onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm", focusRing('field', 'accent'))}
               placeholder="Shift Lead"
             />
           </label>
@@ -96,7 +100,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
             <input
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40))}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm font-mono outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm font-mono", focusRing('field', 'accent'))}
               placeholder="shift_lead"
             />
             <span className="mt-0.5 block text-role-micro text-text-faint">Stable identifier; cannot be changed later.</span>

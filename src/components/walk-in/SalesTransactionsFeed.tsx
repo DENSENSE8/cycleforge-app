@@ -18,7 +18,7 @@ import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { RowTitle, META_COL } from '@/components/ui/RowMetaColumns';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { RefreshCw } from '@/components/Icons';
 import { groupRowsBy } from '@/lib/group-rows';
 import { dashboardOrderRowShellClass } from '@/lib/dashboard-order-row-layout';
@@ -99,9 +99,9 @@ export function SalesTransactionsFeed({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-10 text-center">
+      <Panel radius="xl" padding="none" className="border-dashed px-4 py-10 text-center">
         <p className="text-role-caption text-text-faint">{emptyMessage}</p>
-      </div>
+      </Panel>
     );
   }
 

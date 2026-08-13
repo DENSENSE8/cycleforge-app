@@ -18,10 +18,10 @@ once. Treat it as the definition of "done."
    the full `npm run verify` is still required before finishing.)
 2. **Fix every ✗ gate.** The gates are: lint (0 errors), typecheck (0 errors),
    unit tests (including structural governance guards), knip dead-code,
-   route-auth drift + enforce, schema drift.
-3. **Structural guards** (SoT manifest freshness, motion boundary, frame
-   budgets, region hosts) must stay green. Prefer composing named SoTs from
-   `AGENTS.md` / `node scripts/sot-lookup.mjs "<job>"` over page-local twins.
+   jscpd clone baseline, depcruise assembly boundaries, route-auth drift +
+   enforce, schema drift.
+3. **Structural guards** (motion boundary, frame budgets, region hosts) must
+   stay green.
 4. **knip dead-code:** remove the dead export/file or wire it up. Only refresh
    `knip-baseline.json` (`npm run knip:baseline`) for reviewed, intentional
    staged code — say so in the change.

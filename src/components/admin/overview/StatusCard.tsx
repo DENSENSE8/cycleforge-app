@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
+import { SkeletonBase } from '@/design-system/components/Skeletons';
 
 interface StatusCardProps {
   icon: ComponentType<{ className?: string }>;
@@ -76,8 +77,8 @@ export function StatusCard({
           children
         ) : loading ? (
           <div className="space-y-2">
-            <div className="h-7 w-24 animate-pulse rounded bg-surface-sunken" />
-            <div className="h-3 w-40 animate-pulse rounded bg-surface-sunken" />
+            <SkeletonBase width="6rem" height="1.75rem" className="bg-surface-sunken" />
+            <SkeletonBase width="10rem" height="0.75rem" className="bg-surface-sunken" />
           </div>
         ) : error ? (
           <p className="text-sm text-rose-600">{error}</p>

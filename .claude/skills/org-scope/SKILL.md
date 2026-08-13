@@ -8,8 +8,8 @@ allowed-tools: Read, Grep, Glob, Edit, Bash
 
 Threads one unit of work onto the per-org GUC path so RLS (`app.current_org`) can
 back it up. This is the **incremental** tool — the `tier0-*` workflows migrate whole
-route domains at once. Read `.claude/rules/backend-patterns.md` ("Tenant scoping via
-GUC") and `docs/tenancy/multi-tenancy-execution-plan.md` before non-trivial work.
+route domains at once. Read `AGENTS.md` (orgId from ctx / `withTenantTransaction`) and
+`docs/tenancy/multi-tenancy-execution-plan.md` before non-trivial work.
 
 **Strategy anchor:** the plan is *logical RLS* (one DB, `organization_id` + GUC),
 NOT db-per-tenant. Enforcement only bites under the non-BYPASSRLS `app_tenant` role —

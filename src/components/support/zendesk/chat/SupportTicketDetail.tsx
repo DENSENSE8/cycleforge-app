@@ -30,7 +30,7 @@ import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
 import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
-import { TICKET_DETAIL_SURFACE } from './ticket-bubble-chrome';
+import { CONVERSATION_DETAIL_SURFACE } from '@/design-system/primitives/conversation-chrome';
 import { cn } from '@/utils/_cn';
 
 /** Image attachment urls on a single Zendesk comment (full-res `content_url`). */
@@ -125,13 +125,6 @@ export function SupportTicketDetail({
    */
   mergeFloorTimeline = false,
   /**
-   * Conversation row shell for {@link MergedRecordStream}.
-   * Station Ticket Displays pass `bubble` (read + reply). `/support` keeps
-   * default `ledger` — do **not** derive from `embedded` (`SupportTicketFocus`
-   * is also embedded and must stay a scannable dense list).
-   */
-  streamVariant = 'ledger',
-  /**
    * Forwarded to {@link SupportChatComposer}. Unbox Ticket Displays passes
    * `false`; Testing · `/support` keep the default on.
    */
@@ -156,7 +149,6 @@ export function SupportTicketDetail({
    */
   photoStaging?: TicketPhotoStaging;
   mergeFloorTimeline?: boolean;
-  streamVariant?: 'ledger' | 'bubble';
   showReplyPresets?: boolean;
 }) {
   const hideRequester = hideRequesterBand ?? embedded;
@@ -262,7 +254,7 @@ export function SupportTicketDetail({
   return (
     <div
       {...dz.rootProps}
-      className={cn('relative flex h-full min-h-0 flex-col', TICKET_DETAIL_SURFACE)}
+      className={cn('relative flex h-full min-h-0 flex-col', CONVERSATION_DETAIL_SURFACE)}
     >
       <SupportChatHeader
         ticket={ticket}
@@ -293,8 +285,6 @@ export function SupportTicketDetail({
           requesterEmail={requester.email}
           onOpenPhoto={onOpenPhoto}
           events={mergeFloorTimeline ? contextBundle?.timeline : undefined}
-          compact={embedded}
-          variant={streamVariant}
         />
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}

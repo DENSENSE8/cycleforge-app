@@ -51,6 +51,8 @@ certificates
 # Dead code / hygiene reports (large or noisy)
 reports/knip-report-*.json
 reports/dead-code-*.md
+reports/jscpd/
+.jscpd/
 
 # Previous Electron build artifact tree (should never be committed)
 apps/desktop/

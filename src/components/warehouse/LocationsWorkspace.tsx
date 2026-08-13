@@ -76,7 +76,7 @@ export function LocationsWorkspace() {
               rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
             ) : null}
             {tab === 'map' ? <MapTabBody /> : null}
-            {tab === 'bins' ? <BinsTabSheet columnTriggerPortalTarget={controlsEl} /> : null}
+            {tab === 'bins' ? <BinsTabSheet columnTriggerPortalTarget={null} /> : null}
           </>
         )}
       </WorkbenchSheetView>

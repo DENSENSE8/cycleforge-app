@@ -58,6 +58,11 @@ export interface IngestPurchaseInput {
   itemName?: string | null;
   quantityExpected?: number;
   conditionGrade?: string;
+  /**
+   * Optional resolved sku_catalog.id — stamped on INSERT and on existing-row
+   * UPSERT when the caller already resolved the catalog (Amazon returns ASIN gate).
+   */
+  skuCatalogId?: number | null;
 
   // Marketplace payload (→ receiving_line_facts, e.g. ebay_purchase)
   legacyOrderId?: string | null;
@@ -193,6 +198,12 @@ export async function ingestPurchase(
     let receivingLineId = existing.rows[0]?.receiving_line_id ?? null;
     const created = receivingLineId == null;
 
+    const skuCatalogId =
+      input.skuCatalogId != null && Number.isFinite(Number(input.skuCatalogId))
+        ? Number(input.skuCatalogId)
+        : null;
+    const listingUrl = input.listingUrl?.trim() || null;
+
     if (receivingLineId == null) {
       // Create the pre-physical EXPECTED spine row (receiving_id NULL — no carton
       // scanned yet, same shape as a Zoho PO pre-staging line). The zoho/testing
@@ -200,13 +211,13 @@ export async function ingestPurchase(
       // condition_grade lands on receiving_line_testing below.
       const inserted = await client.query<{ id: number }>(
         `INSERT INTO receiving_line (
-           receiving_id, sku, item_name,
+           receiving_id, sku, item_name, sku_catalog_id, listing_url,
            quantity_expected, quantity_received, workflow_status,
            receiving_type, source_system, source_order_id, source_line_item_id,
            inbound_source_type, platform_account_id, organization_id,
            manual_entry_at, created_at, updated_at
          ) VALUES (
-           NULL, $1, $2,
+           NULL, $1, $2, $9, $10,
            $3, 0, 'EXPECTED'::inbound_workflow_status_enum,
            'PO', $4, $5, $6,
            $4, $7, $8::uuid,
@@ -222,6 +233,8 @@ export async function ingestPurchase(
           sourceLineItemId,
           platformAccountId,
           orgId,
+          skuCatalogId,
+          listingUrl,
         ],
       );
       receivingLineId = inserted.rows[0].id;
@@ -242,6 +255,27 @@ export async function ingestPurchase(
           dispositionAudit: [],
         },
         { query: ((_o: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery },
+      );
+    } else if (skuCatalogId != null || listingUrl) {
+      // Re-import: stamp catalog id / listing when still null (Amazon ASIN gate).
+      await client.query(
+        `UPDATE receiving_line
+            SET sku_catalog_id = COALESCE(sku_catalog_id, $2),
+                listing_url = COALESCE(NULLIF(TRIM(listing_url), ''), $3),
+                sku = COALESCE(NULLIF(TRIM(sku), ''), $4),
+                item_name = COALESCE(NULLIF(TRIM(item_name), ''), $5),
+                quantity_expected = GREATEST(quantity_expected, $6),
+                updated_at = NOW()
+          WHERE id = $1 AND organization_id = $7::uuid`,
+        [
+          receivingLineId,
+          skuCatalogId,
+          listingUrl,
+          input.sku?.trim() || null,
+          input.itemName?.trim() || null,
+          quantityExpected,
+          orgId,
+        ],
       );
     }
 

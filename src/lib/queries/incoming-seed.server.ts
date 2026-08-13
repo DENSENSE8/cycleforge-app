@@ -31,7 +31,7 @@ interface IncomingSeed {
  * state. Shorter than the client bound on purpose — the seed is a bonus, the
  * client is the safety net.
  */
-const SEED_FETCH_TIMEOUT_MS = 3_000;
+const SEED_FETCH_TIMEOUT_MS = 400;
 
 /** Prefetch the bare `/incoming` list (`full` phase). Soft-fail — client still fetches. */
 export async function seedIncomingLines(

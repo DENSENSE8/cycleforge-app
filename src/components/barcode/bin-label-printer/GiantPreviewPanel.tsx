@@ -10,6 +10,8 @@ import { encodePrintMatrix } from '@/lib/qr/platform-link';
 import { humanReadable, partialCode } from './utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
+import { Panel } from '@/design-system/primitives';
+
 
 interface GiantPreviewPanelProps {
   zoneLetter?: string;
@@ -44,7 +46,7 @@ export function GiantPreviewPanel({
     : null;
 
   return (
-    <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
+    <Panel radius="2xl" padding="sm">
       <p className="text-role-micro font-semibold uppercase tracking-[0.16em] text-text-faint">
         Live preview · prints at 3″ × 2″
       </p>
@@ -74,6 +76,6 @@ export function GiantPreviewPanel({
           )}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

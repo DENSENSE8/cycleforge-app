@@ -2,7 +2,7 @@
 /**
  * Launch the Cycle Forge desktop shell against the ALREADY-RUNNING dev server.
  *
- * HARD LAW (.claude/rules/workflow-safety.md): the user owns the dev server.
+ * HARD LAW (AGENTS.md): the user owns the dev server.
  * This script ATTACHES to it and never starts, restarts, or kills one — the
  * legacy shell's dev harness spawned `npm run dev` itself, which is exactly the
  * behaviour that rule forbids. If :3050 is not up, we say so and exit; we do not

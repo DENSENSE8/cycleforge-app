@@ -12,17 +12,23 @@ export async function resolvePhotoAccessUrl(
   variant: 'thumb' | 'full' = 'full',
   origin?: string,
 ): Promise<string> {
+  // Thumbs first via the content route — it can synthesize a downscale when
+  // storage has no thumbObjectKey. Hitting signed GCS for full-res tiles made
+  // five peek photos ≈ 1MB and one of them owned LCP.
+  if (variant === 'thumb') {
+    if (origin) {
+      return `${origin.replace(/\/+$/, '')}${photoContentUrl(photoId, 'thumb')}`;
+    }
+    return photoContentUrl(photoId, 'thumb');
+  }
+
   const storage = await getPrimaryPhotoStorage(photoId, organizationId);
   if (storage?.provider === 'gcs' && storage.bucket) {
-    const key =
-      variant === 'thumb' && storage.thumbObjectKey
-        ? storage.thumbObjectKey
-        : storage.objectKey;
     try {
       const adapter = getStorageAdapter('gcs');
       return await adapter.getSignedReadUrl({
         bucket: storage.bucket,
-        objectKey: key,
+        objectKey: storage.objectKey,
         ttlSeconds: TTL,
       });
     } catch {
@@ -31,9 +37,9 @@ export async function resolvePhotoAccessUrl(
   }
 
   if (origin) {
-    return `${origin.replace(/\/+$/, '')}${photoContentUrl(photoId, variant === 'thumb' ? 'thumb' : undefined)}`;
+    return `${origin.replace(/\/+$/, '')}${photoContentUrl(photoId)}`;
   }
-  return photoContentUrl(photoId, variant === 'thumb' ? 'thumb' : undefined);
+  return photoContentUrl(photoId);
 }
 
 export { readPhotoBytesById };

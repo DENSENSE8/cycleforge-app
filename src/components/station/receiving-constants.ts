@@ -109,7 +109,7 @@ export function getStatusDotBg(
   const value = String(status || '').trim().toUpperCase();
   // Terminal dispositions first — never overridden by qty.
   if (value.startsWith('FAILED')) return 'bg-rose-500';
-  if (value === 'SCRAP') return 'bg-slate-600';
+  if (value === 'SCRAP') return 'bg-surface-inverse';
   if (value === 'RTV') return 'bg-purple-500';
   if (value === 'EXPECTED') return 'bg-amber-400';
   if (value === 'ARRIVED' || value === 'MATCHED') return 'bg-blue-500';

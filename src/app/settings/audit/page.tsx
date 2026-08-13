@@ -19,6 +19,10 @@ import pool from '@/lib/db';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface AuditRow {
   id: number;
@@ -150,7 +154,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
               name="source"
               defaultValue={source ?? ''}
               placeholder="e.g. receiving"
-              className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption focus:border-border-emphasis focus:outline-none focus:ring-1 focus:ring-border-soft"
+              className={cn("rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption", focusRing('field', 'neutral'))}
             />
           </label>
           <label className="flex items-center gap-2">
@@ -159,7 +163,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
               name="action"
               defaultValue={action ?? ''}
               placeholder="e.g. mark_received"
-              className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption focus:border-border-emphasis focus:outline-none focus:ring-1 focus:ring-border-soft"
+              className={cn("rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption", focusRing('field', 'neutral'))}
             />
           </label>
           <Button variant="brand" size="sm" type="submit">Apply</Button>

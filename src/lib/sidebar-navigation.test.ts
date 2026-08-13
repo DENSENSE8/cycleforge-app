@@ -533,14 +533,11 @@ test('getSidebarRouteKey does not treat retired /o as a dedicated workspace', ()
 });
 
 // `/search` is header find + browse/detail (no context rail) on `?sel=`.
-test('Home reserves a context column for its saved-views rail', () => {
+test('Home is rail-less — no context column for Today', () => {
   assert.equal(getSidebarRouteKey('/'), 'home');
-  // The set is the DECLARED contract for whether the spine pins a 360px column.
-  // `SidebarContextPanel` gained a `home` branch (HomeContextPanel) on
-  // 2026-08-01; a panel that renders without being declared here paints over
-  // the workspace instead of landing on a reserved column, and a key declared
-  // without a panel reserves 360px of empty chrome.
-  assert.equal(hasSidebarContextPanel('/'), true);
+  // Pattern E (2026-08-12): saved views moved to Band 3 WorkbenchViewsMenu.
+  // Declaring the key without a panel would reserve 360px of empty chrome.
+  assert.equal(hasSidebarContextPanel('/'), false);
 });
 
 test('/search declares its own route key and does not reserve a context column', () => {

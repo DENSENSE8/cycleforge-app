@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, X } from '@/components/Icons';
 import { Layer } from '@/design-system/primitives/Layer';
-import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { Panel, Button, IconButton, TextField } from '@/design-system/primitives';
 import { FormField } from '@/design-system/components';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
@@ -92,7 +92,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
           setOpen(false);
         }}
       />
-      <div className="relative z-panelPopover w-full max-w-lg overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/15">
+      <Panel radius="2xl" padding="none" elevation="md" className="relative z-panelPopover w-full max-w-lg overflow-hidden shadow-zinc-900/15">
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
             <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>Quick add</p>
@@ -233,7 +233,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             )}
           </button>
         </div>
-      </div>
+      </Panel>
     </Layer>
   );
 }

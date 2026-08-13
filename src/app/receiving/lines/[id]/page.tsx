@@ -17,7 +17,11 @@ import { getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -346,7 +350,7 @@ function LinePageInner() {
         )}
 
         {/* Test actions */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+        <Panel radius="lg" padding="sm">
           <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Test status
           </p>
@@ -379,10 +383,10 @@ function LinePageInner() {
               Fail
             </Button>
           </div>
-        </section>
+        </Panel>
 
         {/* Serial scan */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+        <Panel radius="lg" padding="sm">
           <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Scan serial
           </p>
@@ -398,7 +402,7 @@ function LinePageInner() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitSerial();
               }}
-              className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+              className={cn("flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default", focusRing('field', 'accent'))}
             />
             <Button
               variant="brand"
@@ -426,10 +430,10 @@ function LinePageInner() {
               ))}
             </div>
           )}
-        </section>
+        </Panel>
 
         {/* Putaway */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+        <Panel radius="lg" padding="sm">
           <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Stash in bin
           </p>
@@ -444,7 +448,7 @@ function LinePageInner() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitPutaway();
               }}
-              className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+              className={cn("flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default", focusRing('field', 'accent'))}
             />
             <Button
               variant="brand"
@@ -456,10 +460,10 @@ function LinePageInner() {
               Stash
             </Button>
           </div>
-        </section>
+        </Panel>
 
         {/* Note (optional, applied to next action) */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+        <Panel radius="lg" padding="sm">
           <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Note (optional, attached to next action)
           </p>
@@ -468,12 +472,12 @@ function LinePageInner() {
             placeholder="e.g. Power button flaky"
             value={noteInput}
             onChange={(e) => setNoteInput(e.target.value)}
-            className="w-full rounded-md border border-border-default px-3 py-2 text-sm text-text-default focus:border-blue-500 focus:outline-none"
+            className={cn("w-full rounded-md border border-border-default px-3 py-2 text-sm text-text-default", focusRing('field', 'accent'))}
           />
-        </section>
+        </Panel>
 
         {/* Timeline */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+        <Panel radius="lg" padding="sm">
           <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Recent activity
           </p>
@@ -510,7 +514,7 @@ function LinePageInner() {
               ))}
             </ul>
           )}
-        </section>
+        </Panel>
       </main>
     </div>
   );

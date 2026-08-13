@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from '@/components/Icons';
 import { NUMERIC_VALUE_KINDS, type ChecklistStep, type UnitResult } from './sku-testing-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Captures a structured value for one execution step (number / percent / enum /
@@ -54,7 +58,7 @@ export function StepValueControl({
             onSubmit(e.target.value);
           }}
           disabled={busy}
-          className="rounded-md border border-border-soft px-2 py-1 text-role-caption font-medium text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+          className={cn("rounded-md border border-border-soft px-2 py-1 text-role-caption font-medium text-text-default", focusRing('field', 'accent'))}
         >
           <option value="">—</option>
           {(step.value_enum ?? []).map((o) => (
@@ -77,7 +81,7 @@ export function StepValueControl({
             }}
             placeholder={isNumeric ? step.value_unit || (kind === 'PERCENT' ? '%' : 'value') : 'value'}
             disabled={busy}
-            className="w-24 rounded-md border border-border-soft px-2 py-1 text-role-caption font-medium text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+            className={cn("w-24 rounded-md border border-border-soft px-2 py-1 text-role-caption font-medium text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
           {step.value_unit ? (
             <span className="text-role-micro font-semibold text-text-faint">{step.value_unit}</span>

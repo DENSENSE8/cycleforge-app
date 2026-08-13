@@ -30,6 +30,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { WORKBENCH_CHROME_CUBE_CLASS } from '@/components/dashboard/workbench-chrome-cube';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export interface WorkbenchChromeMenuTab {
   id: string;
@@ -122,7 +124,7 @@ export function WorkbenchChromeCubeMenu({
           align={align}
           sideOffset={8}
           style={{ width: panelWidth }}
-          className="z-dropdown rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5 focus:outline-none"
+          className={cn("z-dropdown rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5", focusRing('field', 'accent'))}
         >
           {tabs.length > 1 ? (
             <div className="mb-3 flex items-center gap-1 rounded-xl bg-surface-sunken p-1">

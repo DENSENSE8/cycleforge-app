@@ -14,6 +14,10 @@ import {
   JOURNEY_TYPE_ITEMS,
 } from './operations-sidebar-shared';
 import type { OperationsTimelineUrlState } from './useOperationsTimelineUrlState';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * The Operations → History BROWSE filter panel (plan Phase 3). Renders the
@@ -191,7 +195,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
         <select
           value={url.staffId}
           onChange={(e) => url.setStaffId(e.target.value || null)}
-          className="h-8 w-full rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className={cn("h-8 w-full rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default", focusRing('field', 'accent'))}
           aria-label="Filter by staff"
         >
           <option value="">All staff</option>

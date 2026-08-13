@@ -23,6 +23,10 @@
  */
 
 import type { ReactNode } from 'react';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** One field in a node's configSchema.properties. Loosely typed — schemas are JSON. */
 interface SchemaField {
@@ -141,7 +145,7 @@ export function NodeConfigForm({
                   type="checkbox"
                   checked={value === true}
                   onChange={(e) => onChange(nodeId, { [key]: e.target.checked ? true : null })}
-                  className="h-3.5 w-3.5 rounded border-border-default text-blue-600 focus:ring-blue-400"
+                  className={cn("h-3.5 w-3.5 rounded border-border-default text-blue-600", focusRing('field', 'accent'))}
                   aria-label={title}
                 />
                 <span className="text-role-caption text-text-soft">{value === true ? 'On' : 'Off'}</span>

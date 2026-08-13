@@ -120,7 +120,7 @@ function MyDayTaskInspectorBody({
           so it cannot scroll away from under the operator. The glyph is `→|`
           (the panel parks back against the edge it came from), not an `X`.
           SoT: `display/right-rail-inspector.md`. */}
-      <DeskRailChromeRow onClose={onClose} />
+      <DeskRailChromeRow onClose={onClose} columnDisplay />
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
         {/* Dense identity — eyebrow + short key. Never a hero title: the old

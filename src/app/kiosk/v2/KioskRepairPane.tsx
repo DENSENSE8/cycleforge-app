@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Button } from '@/design-system/primitives';
 import { Loader2, Check } from '@/components/Icons';
 import { ReasonSelector } from '@/components/repair/ReasonSelector';
-import { CustomerInfoForm, CONTACT_FIELDS } from '@/components/repair/CustomerInfoForm';
+import { CustomerInfoForm } from '@/components/repair/CustomerInfoForm';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
@@ -23,6 +23,7 @@ import {
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
+  KIOSK_SECTION_LABEL,
 } from '@/app/kiosk/kiosk-chrome';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -42,8 +43,10 @@ function formatReceiptToday(): string {
   });
 }
 
-const SECTION_LABEL =
-  'border-b border-border-hairline px-4 py-2 text-role-micro uppercase tracking-[0.16em] text-text-soft';
+const SECTION_LABEL = cn(
+  'border-b border-border-hairline px-4 py-2',
+  KIOSK_SECTION_LABEL,
+);
 
 /**
  * Landscape right-pane repair intake. Composes the same validation + receipt
@@ -213,7 +216,7 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               <h3 className={SECTION_LABEL}>1. Issue Details</h3>
               <div className="bg-surface-card">
                 <ReasonSelector
-                  appearance="flush"
+                  appearance="pills"
                   selectedReasons={formData.repairReasons}
                   notes={formData.repairNotes}
                   onReasonsChange={(reasons) =>
@@ -229,13 +232,11 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               <h3 className={SECTION_LABEL}>2. Customer Information</h3>
               <div className="bg-surface-card px-4 py-4">
                 <CustomerInfoForm
+                  layout="all"
                   customer={formData.customer}
                   serialNumber={formData.serialNumber}
                   price={formData.price}
                   notes={formData.notes}
-                  activeField={CONTACT_FIELDS[CONTACT_FIELDS.length - 1]}
-                  fieldIndex={CONTACT_FIELDS.length - 1}
-                  fieldCount={CONTACT_FIELDS.length}
                   onCustomerChange={updateCustomer}
                   onSerialNumberChange={(value) =>
                     setFormData((prev) => ({ ...prev, serialNumber: value }))

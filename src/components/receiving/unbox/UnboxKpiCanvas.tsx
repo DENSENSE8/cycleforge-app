@@ -23,6 +23,8 @@ import {
   type UnboxKpiMetricCard,
   type UnboxKpiRange,
 } from '@/lib/receiving/unbox-metrics';
+import { Panel } from '@/design-system/primitives';
+
 
 const RANGE_SHORT: Record<UnboxKpiRange, string> = {
   '24h': '24h',
@@ -82,14 +84,11 @@ function CanvasSkeleton() {
       </div>
       <div className="flex min-w-0 flex-wrap gap-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="min-h-[4rem] min-w-0 grow basis-36 rounded-xl border border-border-soft bg-surface-card p-2"
-          >
+          <Panel radius="xl" padding="none" className="min-h-[4rem] min-w-0 grow basis-36 p-2" key={i}>
             <div className="h-2.5 w-14 rounded bg-surface-strong" />
             <div className="mt-1.5 h-5 w-10 rounded bg-surface-strong" />
             <div className="mt-2 h-5 w-full rounded bg-surface-strong" />
-          </div>
+          </Panel>
         ))}
       </div>
     </div>

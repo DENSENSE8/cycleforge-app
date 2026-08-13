@@ -46,7 +46,7 @@ function parseTicketId(raw: string): number | null {
  * Menu opens flush-square to the left (Photos gallery grammar). Menu: Open →
  * History (Ticket push column) → Message → Archive → Unlink. Outside Unbox
  * there is no History row. Message opens the seller draft. History does not
- * pulse the chip face to `edit` — the ticket id stays visible.
+ * pulse the chip face — the ticket id stays visible (no `editing` flash).
  */
 export function ReceivingTicketChip({
   value,
@@ -74,7 +74,7 @@ export function ReceivingTicketChip({
   onUnlinked: () => void;
   /** Toggles the Unbox Ticket push column (`?ticketView=1`). Omit outside Unbox. */
   onOpenTicketView?: () => void;
-  /** True while the Ticket push column is open — pulses the chip like listing/tracking Edit. */
+  /** True while the Ticket push column is open — History menu pressed state only (no face pulse). */
   ticketViewActive?: boolean;
 }) {
   const [sellerOpen, setSellerOpen] = useState(false);

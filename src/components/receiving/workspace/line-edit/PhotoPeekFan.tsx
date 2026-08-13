@@ -300,7 +300,14 @@ export function PhotoPeekFan({
                   </div>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.imgUrl} alt={card.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  <img
+                    src={card.imgUrl}
+                    alt={card.alt}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={i === 0 ? 'high' : undefined}
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
                 )}
                 {/* Count badge rides the FRONT card's visible corner. */}
                 {i === 0 && count > 1 ? (

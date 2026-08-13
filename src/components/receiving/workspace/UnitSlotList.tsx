@@ -24,6 +24,8 @@ import {
 } from "./line-edit/NoSerialControl";
 import { unitRowVisibleWindow } from "./line-receive-mode";
 import { bindSerialsToUnitSlots } from "@/lib/receiving/optimistic-serials";
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export interface UnitLike {
   id: number;
@@ -730,7 +732,7 @@ function ExpandedRow({
                 onClick={handleEditFilled}
                 data-unit-serial-readout
                 className={cn(
-                  "flex h-11 w-full min-w-0 items-center truncate px-3 text-left font-mono text-role-caption text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-strong/20 disabled:cursor-not-allowed disabled:opacity-60",
+                  cn("flex h-11 w-full min-w-0 items-center truncate px-3 text-left font-mono text-role-caption text-text-default disabled:cursor-not-allowed disabled:opacity-60", focusRing('cell', 'neutral')),
                   joined
                     ? cn(cornerClass("flush"), "bg-surface-canvas")
                     : "rounded-xl border border-border-soft bg-surface-canvas hover:border-border-strong",

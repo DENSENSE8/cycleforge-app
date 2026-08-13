@@ -19,8 +19,8 @@ import { SpineTopPins } from './SpineTopPins';
  *
  * 1. **Top band (40px)** — {@link SpineTopPins}: Home · Search · Media · Plans ·
  *    Chat as icons when the spine is open. Shares the desktop top-chrome seam
- *    with the GlobalHeader. When the spine is closed, the same destinations peek
- *    from the header toggle (`SidebarCollapseControl` → {@link TopDestinationPins}).
+ *    with the GlobalHeader. When closed, reach them via ⌘K / opening the map —
+ *    the header toggle is click-only (no hover peek).
  * 2. **Body** — flat domain map + Scan Stations Vercel drill → footer
  *    {@link TechRailSearchBar} → Settings/Admin pin → staff account footer.
  *

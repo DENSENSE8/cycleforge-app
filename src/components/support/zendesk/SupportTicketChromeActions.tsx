@@ -20,14 +20,12 @@ export function SupportTicketChromeActions({
   return (
     <Button
       size="sm"
+      variant="success"
       onClick={onAdd}
       disabled={disabled}
       ariaLabel="New ticket"
       icon={<Plus />}
-      className={cn(
-        WORKBENCH_CHROME_PILL_CLASS,
-        'font-semibold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
-      )}
+      className={cn(WORKBENCH_CHROME_PILL_CLASS, 'font-semibold uppercase tracking-widest')}
     >
       Add
     </Button>

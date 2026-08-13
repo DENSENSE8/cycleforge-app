@@ -94,7 +94,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           matchStrategy: 'key18',
           order: {
             id: row.id,
-            orderId: row.order_id || 'N/A',
+            orderId: row.order_id || 'N/A', // ds-allow-na: scan-match API payload writer
             productTitle: row.product_title || 'Unknown Product',
             condition: row.condition || '',
             tracking: row.tracking_number || rawTracking,
@@ -132,7 +132,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             found: true,
             order: {
               id: row.id,
-              orderId: row.order_id || 'N/A',
+              orderId: row.order_id || 'N/A', // ds-allow-na: scan-match API payload writer
               productTitle: row.product_title || 'Unknown Product',
               condition: row.condition || '',
               tracking: row.tracking_number || rawTracking,

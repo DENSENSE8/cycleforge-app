@@ -77,35 +77,42 @@ export function useOrdersImport() {
       let hasWrites = false;
 
       try {
-        await streamNdjson(url, init, (event) => {
-          if (event.type === 'phase') {
-            if (event.phase === 'publishing' && hasWrites) void refreshDashboard();
+        await streamNdjson(url, init, {
+          onBatch: (events) => {
+            let lastPhase: { phase: Parameters<typeof phaseSummary>[0]; count?: number } | undefined;
+            let rowsChanged = false;
+            for (const event of events) {
+              if (event.type === 'phase') {
+                if (event.phase === 'publishing' && hasWrites) void refreshDashboard();
+                lastPhase = { phase: event.phase, count: event.count };
+              } else if (event.type === 'detail') {
+                acc[event.kind].push(event.row);
+                if (event.kind === 'inserted' || event.kind === 'updated' || event.kind === 'deleted') {
+                  hasWrites = true;
+                }
+                rowsChanged = true;
+              } else if (event.type === 'result') {
+                payload = event.result;
+                if (hasWrites) void refreshDashboard();
+              } else if (event.type === 'error') {
+                lastError = event.error;
+              }
+            }
+            if (!lastPhase && !rowsChanged) return;
             setter((prev) => ({
               ...prev,
               status: 'running',
-              summary: phaseSummary(event.phase, event.count),
-              phase: event.phase,
-              details: cloneDetails(acc),
-            } as TransferTabState));
-          } else if (event.type === 'detail') {
-            acc[event.kind].push(event.row);
-            if (event.kind === 'inserted' || event.kind === 'updated' || event.kind === 'deleted') {
-              hasWrites = true;
-            }
-            setter((prev) => ({
-              ...prev,
+              summary: lastPhase
+                ? phaseSummary(lastPhase.phase, lastPhase.count)
+                : prev.summary,
+              phase: lastPhase?.phase ?? prev.phase,
               details: cloneDetails(acc),
               inserted: acc.inserted.length,
               updated: acc.updated.length,
               deleted: acc.deleted.length,
               unresolvedTracking: acc.unresolvedTracking.length,
             } as TransferTabState));
-          } else if (event.type === 'result') {
-            payload = event.result;
-            if (hasWrites) void refreshDashboard();
-          } else if (event.type === 'error') {
-            lastError = event.error;
-          }
+          },
         });
       } catch (err: any) {
         lastError = err?.name === 'AbortError' ? 'Cancelled' : (err?.message || 'Network error');
@@ -156,35 +163,41 @@ export function useOrdersImport() {
       let lastError: string | undefined;
 
       try {
-        await streamNdjson(url, init, (event) => {
-          if (event.type === 'phase') {
+        await streamNdjson(url, init, {
+          onBatch: (events) => {
+            let lastPhase: { phase: Parameters<typeof phaseSummary>[0]; count?: number } | undefined;
+            let rowsChanged = false;
+            for (const event of events) {
+              if (event.type === 'phase') {
+                lastPhase = { phase: event.phase, count: event.count };
+              } else if (event.type === 'exception') {
+                if (event.kind === 'resolved') {
+                  resolved.push(event.row);
+                } else {
+                  stillOpen.push(event.row);
+                }
+                rowsChanged = true;
+              } else if (event.type === 'result') {
+                payload = event.result;
+                if (resolved.length > 0) void refreshDashboard();
+              } else if (event.type === 'error') {
+                lastError = event.error;
+              }
+            }
+            if (!lastPhase && !rowsChanged) return;
             setExceptionsTask((prev) => ({
               ...prev,
               status: 'running',
-              summary: phaseSummary(event.phase, event.count),
-              phase: event.phase,
-              resolved: [...resolved],
-              stillOpen: [...stillOpen],
-            }));
-          } else if (event.type === 'exception') {
-            if (event.kind === 'resolved') {
-              resolved.push(event.row);
-            } else {
-              stillOpen.push(event.row);
-            }
-            setExceptionsTask((prev) => ({
-              ...prev,
+              summary: lastPhase
+                ? phaseSummary(lastPhase.phase, lastPhase.count)
+                : prev.summary,
+              phase: lastPhase?.phase ?? prev.phase,
               resolved: [...resolved],
               stillOpen: [...stillOpen],
               matched: resolved.length,
               scanned: resolved.length + stillOpen.length,
             }));
-          } else if (event.type === 'result') {
-            payload = event.result;
-            if (resolved.length > 0) void refreshDashboard();
-          } else if (event.type === 'error') {
-            lastError = event.error;
-          }
+          },
         });
       } catch (err: any) {
         lastError = err?.name === 'AbortError' ? 'Cancelled' : (err?.message || 'Network error');

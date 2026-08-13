@@ -7,6 +7,7 @@ import { PlatformMark } from '@/components/ui/PlatformMark';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 import { usePairingQueue } from './usePairingQueue';
+import { SkeletonBase } from '@/design-system/components/Skeletons';
 import type { PairingQueueItem, PairingSort } from './types';
 
 interface PairingQueueListProps {
@@ -54,8 +55,8 @@ export function PairingQueueList({ query, sort, selectedSku, onSelect }: Pairing
           <div className="space-y-0">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className={`border-b border-border-hairline ${SIDEBAR_GUTTER} py-3`}>
-                <div className="h-3 w-32 rounded bg-surface-sunken animate-pulse" />
-                <div className="mt-1.5 h-2.5 w-48 rounded bg-surface-canvas animate-pulse" />
+                <SkeletonBase width="8rem" height="0.75rem" className="bg-surface-sunken" />
+                <SkeletonBase width="12rem" height="0.625rem" className="mt-1.5 bg-surface-canvas" />
               </div>
             ))}
           </div>

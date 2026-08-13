@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { INCOMING_GRID_COLUMNS } from '@/lib/receiving/incoming-grid-layout';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { INCOMING_GRID_COLUMNS, RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import {
   SHARED_LINE_TRACK_META,
   type SharedLineTrackKey,

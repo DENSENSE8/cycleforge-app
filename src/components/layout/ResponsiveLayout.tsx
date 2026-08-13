@@ -184,9 +184,8 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
   // covers nothing, and a navigator that collapsed on the first row you clicked
   // would reflow the frame twice per jump for no gain. Closing is the toggle
-  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. Collapsed
-  // hover peeks Home/Search/Media/Chat on the toggle (`SidebarCollapseControl`)
-  // — the old 2s left-edge dwell was removed so that corner has one hover answer.
+  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. The toggle is
+  // click-only — no collapsed hover peek of top destinations.
   // (The spine pre-expands the active page's modes on every route change, so
   // staying open stays coherent with where you are.)
   const [navOpen, setNavOpen] = useState(false);

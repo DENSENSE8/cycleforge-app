@@ -290,7 +290,7 @@ export function resolveReceivingRowStageStamp(
     };
   }
   if (axis === 'received') {
-    const done = (row.received_done_at || '').trim();
+    const done = String(row.received_done_at ?? '').trim();
     if (done) {
       return { instant: done, label: 'Received', staffName: null };
     }

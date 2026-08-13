@@ -52,6 +52,9 @@ export const CODE_SCAN_ROOTS = [
   'src/lib/tenancy',
   'src/lib/routing',
   'src/lib/source-platform.ts',
+  'src/lib/perf',
+  'src/lib/keyboard',
+  'src/lib/orders-sync',
   'src/hooks',
 ];
 

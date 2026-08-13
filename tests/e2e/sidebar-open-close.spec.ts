@@ -33,8 +33,6 @@ const NAV_COLUMN = '[data-sidebar-nav-column]';
 const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
 /** GlobalHeader's sidebar control — the leftmost header button. */
 const SIDEBAR_TOGGLE = 'header button';
-/** Collapsed-toggle pin peek (Home · Search · Media · Chat). */
-const TOP_PINS_PEEK = '[data-testid="sidebar-top-pins-peek"]';
 /** `SIDEBAR_SPINE_WIDTH_PX`. */
 const SPINE_WIDTH = 240;
 
@@ -162,77 +160,21 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineOpen(page);
   });
 
-  test('collapsed toggle hover peeks Home Search Media Chat; click still opens the spine', async ({
-    page,
-  }) => {
+  test('collapsed toggle hover does not peek top destinations', async ({ page }) => {
     await gotoSurface(page, ROUTE);
     await expectSpineClosed(page);
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
     await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
 
-    // Hover peeks the four top destinations (replaced the old 2s left-edge dwell).
     await toggle.hover();
-    const peek = page.locator(TOP_PINS_PEEK);
-    await expect(peek, 'collapsed hover must reveal quick destination pins').toBeVisible();
-    await expect(peek.getByRole('button', { name: 'Home' })).toBeVisible();
-    await expect(peek.getByRole('button', { name: 'Search' })).toBeVisible();
-    await expect(peek.getByRole('button', { name: 'Media' })).toBeVisible();
-    await expect(peek.getByRole('button', { name: 'Chat' })).toBeVisible();
+    // Former peek openDelay was 180ms — wait past it so a regression would flash.
+    await page.waitForTimeout(300);
+    await expect(page.getByTestId('sidebar-top-pins-peek')).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Quick destinations' })).toHaveCount(0);
 
-    // Click the toggle (not a pin) — still opens the full spine.
     await toggle.click();
     await expectSpineOpen(page);
-    await expect(peek).toHaveCount(0);
-  });
-
-  test('one press opens the spine even when the peek timer fires mid-press', async ({ page }) => {
-    // Regression: unwrapping HoverTooltip when peekOpen flipped remounted the
-    // IconButton between mousedown and mouseup → no click → needed a second press.
-    await gotoSurface(page, ROUTE);
-    await expectSpineClosed(page);
-
-    const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    const box = await toggle.boundingBox();
-    expect(box, 'sidebar toggle must have a hit box').toBeTruthy();
-    const x = box!.x + box!.width / 2;
-    const y = box!.y + box!.height / 2;
-
-    await page.mouse.move(x, y);
-    // Peek openDelay is 180ms — start the press just before it fires.
-    await page.waitForTimeout(160);
-    await page.mouse.down();
-    await page.waitForTimeout(60);
-    await page.mouse.up();
-
-    await expectSpineOpen(page);
-  });
-
-  test('peek pin navigates without opening the spine', async ({ page }) => {
-    await gotoSurface(page, ROUTE);
-    await expectSpineClosed(page);
-
-    const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    await toggle.hover();
-    const peek = page.locator(TOP_PINS_PEEK);
-    await expect(peek).toBeVisible();
-
-    await peek.getByRole('button', { name: 'Search' }).click();
-    await expect.poll(() => new URL(page.url()).pathname).toBe('/search');
-    await expectSpineClosed(page);
-  });
-
-  test('open spine does not mount the toggle pin peek', async ({ page }) => {
-    await gotoSurface(page, ROUTE);
-    await toggleSpine(page);
-    await expectSpineOpen(page);
-
-    const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    await expect(toggle).toHaveAttribute('aria-label', 'Hide navigation');
-    await toggle.hover();
-    // Give the old openDelay a beat so a regression would flash the peek.
-    await page.waitForTimeout(300);
-    await expect(page.locator(TOP_PINS_PEEK)).toHaveCount(0);
   });
 
   test('the open spine survives an in-app jump to another page', async ({ page }) => {

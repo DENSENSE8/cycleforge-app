@@ -63,6 +63,11 @@ export const ROUTES = [
   { path: '/m/pack', tier: 2, auth: true },
   { path: '/m/triage', tier: 2, auth: true },
   { path: '/m/unbox', tier: 2, auth: true },
+  // Tablet POS is landscape — desktop form factor, same reason as /unbox.
+  // Auth is the device principal (`cf_kiosk`), not staff `cf_sid`. Mint with
+  // `scripts/lighthouse-mint-kiosk.mjs`. A pair-screen landing is discarded.
+  { path: '/kiosk', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/kiosk/v2', tier: 2, auth: true, formFactor: 'desktop' },
 ];
 
 const args = process.argv.slice(2);
@@ -85,7 +90,15 @@ if (typeof routesArg === 'string') {
   routes = wanted.map((p) => ROUTES.find((r) => r.path === p) ?? { path: p, tier: 0, auth: true });
 }
 
-const cookie = process.env.LH_COOKIE || '';
+const staffCookie = process.env.LH_COOKIE || '';
+/** Device-principal cookie for `/kiosk*`. Staff `cf_sid` lands on the pair screen. */
+const kioskCookie =
+  process.env.LH_KIOSK_COOKIE || (staffCookie.startsWith('cf_kiosk=') ? staffCookie : '');
+
+function cookieFor(route) {
+  if (String(route.path).startsWith('/kiosk')) return kioskCookie || staffCookie;
+  return staffCookie;
+}
 
 const slug = (p) => (p === '/' ? 'root' : p.replace(/^\//, '').replace(/\//g, '-'));
 const median = (nums) => {
@@ -99,7 +112,7 @@ const median = (nums) => {
  * wins over the run-wide default so a mixed run still measures each surface on
  * the device its operator actually uses.
  */
-function lhOptions(port, routeFormFactor) {
+function lhOptions(port, routeFormFactor, cookie) {
   const ff = routeFormFactor ?? formFactor;
   return {
     port,
@@ -116,14 +129,29 @@ function lhOptions(port, routeFormFactor) {
   };
 }
 
+/** Kiosk pair screen (no `cf_kiosk`) is the same class of miss as /signin. */
+async function isKioskPairScreen(route, cookie) {
+  if (!String(route.path).startsWith('/kiosk')) return false;
+  try {
+    const r = await fetch(`${BASE_URL}/api/kiosk/settings`, {
+      headers: cookie ? { Cookie: cookie } : {},
+    });
+    return r.status === 401;
+  } catch {
+    return true;
+  }
+}
+
 async function auditRoute(route) {
   const url = `${BASE_URL}${route.path}`;
+  const cookie = cookieFor(route);
+  const pairScreen = await isKioskPairScreen(route, cookie);
   const runs = [];
   let lastLhr = null;
   for (let i = 0; i < runsPerRoute; i++) {
     const chrome = await launch({ chromeFlags: ['--headless=new', '--no-first-run', '--disable-gpu'] });
     try {
-      const result = await lighthouse(url, lhOptions(chrome.port, route.formFactor));
+      const result = await lighthouse(url, lhOptions(chrome.port, route.formFactor, cookie));
       lastLhr = result.lhr;
       runs.push({
         performance: Math.round((result.lhr.categories.performance?.score ?? 0) * 100),
@@ -131,6 +159,7 @@ async function auditRoute(route) {
         bestPractices: Math.round((result.lhr.categories['best-practices']?.score ?? 0) * 100),
         seo: Math.round((result.lhr.categories.seo?.score ?? 0) * 100),
         lcpMs: Math.round(result.lhr.audits['largest-contentful-paint']?.numericValue ?? 0),
+        siMs: Math.round(result.lhr.audits['speed-index']?.numericValue ?? 0),
         tbtMs: Math.round(result.lhr.audits['total-blocking-time']?.numericValue ?? 0),
         cls: Number((result.lhr.audits['cumulative-layout-shift']?.numericValue ?? 0).toFixed(3)),
         finalUrl: result.lhr.finalDisplayedUrl,
@@ -145,16 +174,19 @@ async function auditRoute(route) {
     bestPractices: median(runs.map((r) => r.bestPractices)),
     seo: median(runs.map((r) => r.seo)),
     lcpMs: median(runs.map((r) => r.lcpMs)),
+    siMs: median(runs.map((r) => r.siMs)),
     tbtMs: median(runs.map((r) => r.tbtMs)),
     cls: median(runs.map((r) => r.cls)),
   };
   // Auth sanity: if an authenticated route ended up on /signin, the cookie is
-  // missing/expired and the numbers are for the wrong page.
-  const redirected = route.auth && runs.some((r) => r.finalUrl?.includes('/signin'));
+  // missing/expired and the numbers are for the wrong page. Kiosk pair-screen
+  // landings are the same miss — discard them.
+  const redirected =
+    pairScreen || (route.auth && runs.some((r) => r.finalUrl?.includes('/signin')));
   if (lastLhr) {
     fs.writeFileSync(path.join(outDir, `${slug(route.path)}.json`), JSON.stringify(lastLhr));
   }
-  return { route: route.path, tier: route.tier, runs, median: med, redirected };
+  return { route: route.path, tier: route.tier, runs, median: med, redirected, pairScreen };
 }
 
 function writeSummary(results) {
@@ -163,12 +195,16 @@ function writeSummary(results) {
     '',
     `Generated: ${new Date().toISOString()} · base: ${BASE_URL}`,
     '',
-    '| Route | Tier | Perf | A11y | BP | SEO | LCP (ms) | TBT (ms) | CLS |',
-    '|---|---|---|---|---|---|---|---|---|',
+    '| Route | Tier | Perf | A11y | BP | SEO | SI (ms) | LCP (ms) | TBT (ms) | CLS |',
+    '|---|---|---|---|---|---|---|---|---|---|',
     ...results.map((r) => {
       const m = r.median;
-      const flag = r.redirected ? ' ⚠ redirected to /signin' : '';
-      return `| ${r.route}${flag} | ${r.tier} | ${m.performance} | ${m.accessibility} | ${m.bestPractices} | ${m.seo} | ${m.lcpMs} | ${m.tbtMs} | ${m.cls} |`;
+      const flag = r.pairScreen
+        ? ' ⚠ redirected — pair screen'
+        : r.redirected
+          ? ' ⚠ redirected to /signin'
+          : '';
+      return `| ${r.route}${flag} | ${r.tier} | ${m.performance} | ${m.accessibility} | ${m.bestPractices} | ${m.seo} | ${m.siMs} | ${m.lcpMs} | ${m.tbtMs} | ${m.cls} |`;
     }),
   ];
   fs.writeFileSync(path.join(outDir, 'summary.md'), lines.join('\n') + '\n');
@@ -227,8 +263,13 @@ async function main() {
       const r = await auditRoute(route);
       results.push(r);
       const m = r.median;
+      const miss = r.pairScreen
+        ? ' ⚠ REDIRECTED→pair'
+        : r.redirected
+          ? ' ⚠ REDIRECTED→/signin'
+          : '';
       console.log(
-        `perf=${m.performance} a11y=${m.accessibility} bp=${m.bestPractices} seo=${m.seo} lcp=${m.lcpMs}ms tbt=${m.tbtMs}ms cls=${m.cls}${r.redirected ? ' ⚠ REDIRECTED→/signin' : ''}`,
+        `perf=${m.performance} a11y=${m.accessibility} bp=${m.bestPractices} seo=${m.seo} si=${m.siMs}ms lcp=${m.lcpMs}ms tbt=${m.tbtMs}ms cls=${m.cls}${miss}`,
       );
     } catch (err) {
       console.log(`ERROR: ${err.message}`);

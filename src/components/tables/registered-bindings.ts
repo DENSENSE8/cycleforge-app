@@ -53,6 +53,7 @@ import {
   TO_SHIP_DESK_TESTED_BINDING,
 } from '@/components/outbound/orders/to-ship/to-ship-desk-table-definition';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
+import { STATION_HISTORY_TABLE_BINDING } from '@/components/station/station-history-grid/station-history-table-definition';
 
 export const REGISTERED_BINDINGS = [
   RECEIVING_TABLE_BINDING,
@@ -83,4 +84,5 @@ export const REGISTERED_BINDINGS = [
   // Wave 6 — To-Ship CSV import staging: a triage sheet over a session draft,
   // its own family so a staging column pref never touches the live queue.
   CSV_IMPORT_STAGING_TABLE_BINDING,
+  STATION_HISTORY_TABLE_BINDING,
 ] as const;

@@ -5,7 +5,7 @@ import { QA_FIXTURE_MY_DAY } from '@/lib/tenancy/qa-org';
  * Home → Today (`/`, the `MyDayWorkspace` region) — the workbench contract.
  *
  * Covers the F0 rebuild's hand-checked invariants plus the four chrome-parity
- * controls added 2026-08-01 (saved-views rail · scoped search · Fields ·
+ * controls added 2026-08-01 (saved views · scoped search · Fields ·
  * due-horizon refine — the last of which moved from a body KPI band into the
  * chrome band in the same pass, which is why its test asserts ALTITUDE as well
  * as behaviour: a chip that filters correctly from the wrong altitude is the
@@ -270,13 +270,12 @@ test.describe('Home → Today workbench', () => {
     await expect(page.locator('[role="columnheader"][data-col="queue"]')).toHaveCount(0);
   });
 
-  test('the saved-views rail is resident and reserves its own column', async ({ page }) => {
+  test('home is rail-less; saved views live on Band 3', async ({ page }) => {
     await openToday(page);
-    const panel = page.locator('main [data-context-panel]');
-    await expect(panel).toBeVisible();
-    // By landmark, not by text — the section's own accessible name, so the empty
-    // hint's prose cannot collide with the heading.
-    await expect(panel.getByRole('region', { name: 'Saved views' })).toBeVisible();
+    await expect(page.locator('main [data-context-panel]')).toHaveCount(0);
+    const views = page.getByRole('button', { name: /Saved views/i });
+    await expect(views).toBeVisible();
+    await views.click();
     // Save is disabled until something is actually narrowed — a view that
     // captures the default view is not a view.
     await expect(page.getByRole('button', { name: /Save current view/i })).toBeDisabled();
@@ -287,6 +286,7 @@ test.describe('Home → Today workbench', () => {
   }) => {
     await openToday(page, '?scope=assigned&colsort=due&coldir=asc');
 
+    await page.getByRole('button', { name: /Saved views/i }).click();
     const save = page.getByRole('button', { name: /Save current view/i });
     await expect(save).toBeEnabled();
     await save.click();
@@ -299,9 +299,11 @@ test.describe('Home → Today workbench', () => {
     await expect(view).toBeVisible({ timeout: 15_000 });
 
     // Walk away from the view, then apply it: the params must come back.
+    // Lane tabs close the Views popover — reopen before applying / deleting.
     await page.getByRole('button', { name: /^All\b/ }).first().click();
     await expect(page).not.toHaveURL(/[?&]scope=assigned\b/);
 
+    await page.getByRole('button', { name: /Saved views/i }).click();
     await view.click();
     await expect(page).toHaveURL(/[?&]scope=assigned\b/);
     await expect(page).toHaveURL(/[?&]colsort=due\b/);
@@ -314,6 +316,7 @@ test.describe('Home → Today workbench', () => {
     // resolves. Ending the test there tears the context down mid-flight and the
     // row survives on the server — a green test that silently accumulates rows
     // (observed on the dogfood org 2026-08-01).
+    // Applying the view leaves the popover open — do not toggle it closed.
     const deleted = page.waitForResponse(
       (r) => /\/api\/saved-views\/\d+$/.test(r.url()) && r.request().method() === 'DELETE',
     );
@@ -324,6 +327,7 @@ test.describe('Home → Today workbench', () => {
     // …and it is gone from the SERVER, not just the optimistic list.
     await page.reload();
     await expect(page.locator(GRID).first()).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: /Saved views/i }).click();
     await expect(view).toHaveCount(0);
   });
 

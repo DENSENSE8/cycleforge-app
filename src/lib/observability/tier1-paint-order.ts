@@ -69,6 +69,17 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     markRoute: 'unbox',
   },
   {
+    path: '/incoming',
+    label: 'Incoming',
+    lcpSurface: 'primary',
+    skeleton: 'src/components/receiving/incoming/IncomingFirstPaint.tsx',
+    lcpHosts: [
+      'src/components/receiving/incoming/IncomingFirstPaint.tsx',
+      'src/components/receiving/ReceivingSurfacePage.tsx',
+    ],
+    markRoute: 'incoming',
+  },
+  {
     path: '/triage',
     label: 'Arrival',
     lcpSurface: 'primary',

@@ -35,7 +35,14 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
               aria-label={`View photo ${index + 1} fullscreen`}
             >
               {photo.status === 'loaded' ? (
-                <img src={photo.url} alt={`Photo ${index + 1}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                <img
+                  src={photo.thumbUrl ?? photo.url}
+                  alt={`Photo ${index + 1}`}
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={index === 0 ? 'high' : undefined}
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
               ) : photo.status === 'error' ? (
                 <div className="flex h-full w-full items-center justify-center bg-red-50">
                   <AlertCircle className="h-4 w-4 text-red-400" />

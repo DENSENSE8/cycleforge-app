@@ -119,7 +119,7 @@ async function pairViaUiV2(page: Page, code: string): Promise<void> {
   await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
   await page.getByPlaceholder(/setup code/i).fill(code);
   await page.getByRole('button', { name: /pair tablet/i }).click();
-  await expect(page.getByRole('button', { name: /buy \/ sell/i })).toBeVisible();
+  await expect(page.getByTestId('kiosk-mode-spine')).toBeVisible();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -592,25 +592,38 @@ for (const factor of TABLET_FACTORS) {
       try {
         await pairViaUiV2(page, code);
 
-        // Spine starts closed (off-screen width 0) — Catalog owns first paint.
-        await expect(page.getByTestId('kiosk-mode-spine')).toHaveAttribute('data-expanded', 'false');
+        // Default collapsed icon rail — Catalog + products keep the floor.
+        const spine = page.getByTestId('kiosk-mode-spine');
+        await expect(spine).toBeVisible();
+        await expect(spine).toHaveAttribute('data-spine-expanded', 'false');
+        await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
+        await expect(spine.getByText('Repair', { exact: true })).toHaveCount(0);
         await expect(page.getByRole('heading', { name: /catalog/i })).toBeVisible();
-        await expect(page.getByRole('heading', { name: /repair details/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /all repairs/i })).toBeVisible();
         await expect(page.locator('[class*="fixed"][class*="bottom-0"]')).toHaveCount(0);
 
-        // Open via Catalog header toggle, then switch modes from the push spine.
-        await page.getByTestId('kiosk-spine-toggle').click();
-        await expect(page.getByTestId('kiosk-mode-spine')).toHaveAttribute('data-expanded', 'true');
         await expect(page.getByRole('tablist', { name: /kiosk service mode/i })).toBeVisible();
+        await expect(page.getByRole('tab', { name: /repair drop-off/i })).toBeVisible();
+
+        await page.getByTestId('kiosk-spine-toggle').click();
+        await expect(spine).toHaveAttribute('data-spine-expanded', 'true');
+        await expect(page.getByTestId('kiosk-spine-search')).toBeVisible();
+        await expect(spine.getByText('Repair', { exact: true })).toBeVisible();
+        await expect(spine.getByText('Buy / Sell', { exact: true })).toBeVisible();
+        await expect(spine.getByText('Pickup', { exact: true })).toBeVisible();
 
         await page.getByRole('tab', { name: /buy \/ sell/i }).click();
-        await expect(page.getByRole('heading', { name: /buy \/ sell details/i })).toBeVisible();
-        await expect(page.getByRole('heading', { name: /products/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /all items/i })).toBeVisible();
 
         await page.getByRole('tab', { name: /order pickup/i }).click();
         await expect(page.getByRole('heading', { name: /pickup details/i })).toBeVisible();
         await expect(page.getByText(/find your order/i)).toBeVisible();
         await expect(page.getByRole('button', { name: /look up order/i })).toBeVisible();
+
+        await page.getByTestId('kiosk-spine-toggle').click();
+        await expect(spine).toHaveAttribute('data-spine-expanded', 'false');
+        await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
+        await expect(page.getByRole('tab', { name: /order pickup/i })).toBeVisible();
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);

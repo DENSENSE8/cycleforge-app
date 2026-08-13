@@ -74,11 +74,20 @@ export function ledgerGridRowShellClass(
     ? 'flex flex-col gap-1.5'
     : [
         'grid items-stretch',
+        LEDGER_GRID_ROW_CONTAIN,
         opts?.scrollMinContent
           ? `w-[var(${LEDGER_GRID_WIDTH_VAR})] min-w-[var(${LEDGER_GRID_WIDTH_VAR})]`
           : 'w-full min-w-0',
       ].join(' ');
 }
+
+/**
+ * Layout/style containment on every desktop row shell. Isolates a cell
+ * mutation so it cannot reflow sibling rows (INP / layout-thrash). Do NOT
+ * add `contain: paint` — frozen sticky identity cells must paint across
+ * the scrolling pane.
+ */
+export const LEDGER_GRID_ROW_CONTAIN = '[contain:layout_style]';
 
 /** CSS custom property: shared row/header width under LedgerGrid `scrollX`. */
 export const LEDGER_GRID_WIDTH_VAR = '--cf-orders-grid-w';

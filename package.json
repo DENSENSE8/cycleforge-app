@@ -14,6 +14,8 @@
     "desktop:dist:win": "npm run desktop:deps && electron-builder --win nsis --x64",
     "desktop:dist:all": "npm run desktop:dist:mac && npm run desktop:dist:mac-intel-legacy && npm run desktop:dist:win",
     "verify": "node scripts/verify.mjs",
+    "jscpd": "node scripts/jscpd-gate.mjs",
+    "jscpd:write": "node scripts/jscpd-gate.mjs --write",
     "debt": "node scripts/debt-ledger.mjs",
     "debt:surfaces": "node scripts/dead-surface-probe.mjs",
     "verify:fast": "node scripts/verify.mjs --fast",
@@ -87,7 +89,7 @@
     "test:auth": "tsx --test src/lib/auth/permission-registry.test.ts src/lib/auth/permissions-shared.test.ts src/lib/auth/route-permission-manifest.test.ts",
     "test:warranty": "tsx --test src/lib/warranty/clock.test.ts src/lib/warranty/transitions.test.ts src/lib/warranty/outputs.test.ts src/lib/warranty/zendesk-format.test.ts",
     "test:vision": "tsx --test src/lib/vision/frame-quality.test.ts",
-    "test:ai-search": "tsx --test src/lib/ai/provider.test.ts src/lib/ai/embed.test.ts src/lib/search/build-search-text.test.ts src/lib/search/search-outbox-worker.test.ts src/lib/search/hybrid-retrieval.test.ts src/lib/search/page-context.test.ts src/lib/ai/search-context.test.ts src/lib/search/search-hit.test.ts src/lib/search/search-recents.test.ts src/lib/search/search-scope-labels.test.ts src/lib/search/support-ticket-search.test.ts src/lib/search/search-refine.test.ts src/components/search/search-tabs.test.ts src/components/search/search-result-chips.test.ts",
+    "test:ai-search": "tsx --test src/lib/ai/provider.test.ts src/lib/ai/embed.test.ts src/lib/search/build-search-text.test.ts src/lib/search/search-outbox-worker.test.ts src/lib/search/hybrid-retrieval.test.ts src/lib/search/page-context.test.ts src/lib/ai/search-context.test.ts src/lib/search/search-hit.test.ts src/lib/search/search-recents.test.ts src/lib/search/search-scope-labels.test.ts src/lib/search/support-ticket-search.test.ts src/lib/search/search-refine.test.ts src/lib/search/order-tracking-match-sql.test.ts src/lib/search/search-result-identity.test.ts src/components/search/search-tabs.test.ts src/components/search/search-result-chips.test.ts",
     "test:station": "tsx --test src/components/station/station-table-logic.test.ts src/lib/station/record-to-queue-row.test.ts src/lib/station/board-lanes.test.ts src/lib/queries/station-cache-patch.test.ts src/lib/station/format-station-copy-row.test.ts",
     "test:stations": "tsx --test src/lib/stations/*.test.ts",
     "test:billing": "tsx --test src/lib/billing/delinquency.test.ts src/lib/billing/activation-events.test.ts",
@@ -139,6 +141,7 @@
     "diagrams:archi": "depcruise src --include-only ^src --config .dependency-cruiser.cjs --output-type archi --output-to docs/diagrams/06-architecture.dot",
     "diagrams:html": "depcruise src --include-only ^src --config .dependency-cruiser.cjs --output-type err-html --output-to docs/diagrams/dep-report.html",
     "diagrams:check": "depcruise src --include-only ^src --config .dependency-cruiser.cjs",
+    "depcruise:gate": "node scripts/depcruise-gate.mjs",
     "diagrams": "npm run diagrams:modules",
     "knip": "node scripts/knip-gate.mjs",
     "knip:baseline": "node scripts/knip-gate.mjs --update",
@@ -150,7 +153,8 @@
     "lighthouse:audit": "node scripts/lighthouse-audit.mjs",
     "lighthouse:check": "node scripts/lighthouse-audit.mjs --tier 1 --check",
     "e2e:install": "playwright install chromium webkit",
-    "test:station-workbench": "tsx --test src/lib/station-terminal/station-terminal.test.ts"
+    "test:station-workbench": "tsx --test src/lib/station-terminal/station-terminal.test.ts",
+    "test:perf": "tsx --test src/lib/perf/*.test.ts src/lib/keyboard/wedge-scan-machine.test.ts src/lib/keyboard/wedge-scan-listener.test.ts src/lib/orders-sync/parse-ndjson.test.ts src/lib/orders-sync/client.test.ts src/hooks/useWedgeScanner.sot.test.ts src/design-system/components/grid/grid-paint.test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.7",
@@ -264,6 +268,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^16.4.0",
+    "jscpd": "^4.2.5",
     "knip": "^5.88.0",
     "lighthouse": "^13.4.0",
     "postcss": "^8",

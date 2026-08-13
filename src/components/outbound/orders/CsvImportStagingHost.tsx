@@ -382,7 +382,7 @@ export function CsvImportStagingHost() {
           emptyMessage="This file has no rows left to import."
           searchEmptyMessage="No rows match this filter."
           isSearching={filterHot || draft.query.trim().length > 0}
-          columnTriggerPortalTarget={controlsEl}
+          columnTriggerPortalTarget={null}
           renderColumnHeader={({
             toggleColumnSort,
             onResizeColumn,

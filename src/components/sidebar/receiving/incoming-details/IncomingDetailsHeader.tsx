@@ -98,6 +98,7 @@ export function IncomingDetailsHeader({
         onNext={() => navigate('next')}
         prevTestId="incoming-details-prev"
         nextTestId="incoming-details-next"
+        columnDisplay
         trailing={
           selectionActions.length > 0 || !hideSync ? (
             <>

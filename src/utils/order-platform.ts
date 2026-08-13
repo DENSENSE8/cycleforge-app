@@ -2,7 +2,7 @@ import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 
 export function getOrderPlatformLabel(orderId: string | null | undefined, accountSource: string | null | undefined): string {
   const oid = String(orderId ?? '').trim();
-  if (oid === 'Not available' || oid === 'N/A') return '';
+  if (oid === 'Not available' || oid === 'N/A') return ''; // ds-allow-na: legacy protocol empty reader
 
   /** Pack/tech rows often lack a linked marketplace order id; still show channel from account_source. */
   if (!oid) {
@@ -79,7 +79,7 @@ export function marketplaceOrderUrl(
   accountSource: string | null | undefined,
 ): string | null {
   const oid = String(orderId ?? '').trim();
-  if (!oid || oid === 'Not available' || oid === 'N/A') return null;
+  if (!oid || oid === 'Not available' || oid === 'N/A') return null; // ds-allow-na: legacy protocol empty reader
   if (isFbaOrder(oid, accountSource)) return null;
 
   const label = getOrderPlatformLabel(oid, accountSource).toLowerCase();

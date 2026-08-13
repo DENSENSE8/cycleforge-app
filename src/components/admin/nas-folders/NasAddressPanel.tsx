@@ -1,6 +1,10 @@
 import { nasConfigured } from '@/lib/nas-photos';
 import { Button } from '@/design-system/primitives';
 import type { StationNasFoldersController } from './useStationNasFolders';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** NAS server address panel — test/prod URLs + active toggle. */
 export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
@@ -47,7 +51,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
               value={servers[slot]}
               onChange={(e) => setServers((p) => ({ ...p, [slot]: e.target.value }))}
               placeholder="https://nas.example.com"
-              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className={cn("min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
             />
           </div>
         ))}

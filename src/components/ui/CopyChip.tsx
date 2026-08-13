@@ -214,9 +214,10 @@ export interface CopyChipProps {
   activationTitle?: string;
   activationDisabled?: boolean;
   /**
-   * Below-row editor is open for this chip. Face swaps to pulsed `editing`
+   * Below-row editor is open for this chip. Face swaps to steady `editing`
    * (8 chars — same footprint as last-8 / `--------`) so the identity row
-   * never reflows when an editor opens. Copy is disabled while editing.
+   * never reflows when an editor opens. No pulse — carton identity stays calm
+   * while the below-row / push editor is open. Copy is disabled while editing.
    */
   editing?: boolean;
   /** Hover-bubble trailing icon; defaults to external-link when `onActivate` is set. */
@@ -373,7 +374,7 @@ export function CopyChip({
             fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           } ${
             isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
-          }${editing ? ' animate-pulse text-text-muted' : ''}`}
+          }${editing ? ' text-text-muted' : ''}`}
         >
           {normalizedDisplay || QUIET_CHIP_EMPTY}
         </span>

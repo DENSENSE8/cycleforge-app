@@ -49,7 +49,7 @@ export function TestingWorkspaceView({
           <TechAllTriageTable
             scope="testing"
             onOpenTestingLine={onOpenLine}
-            columnTriggerPortalTarget={controlsEl}
+            columnTriggerPortalTarget={null}
           />
         ) : (
           <TestingHistoryList

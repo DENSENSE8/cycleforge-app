@@ -48,7 +48,7 @@ test('explicit hour12 override beats the preference in both directions', () => {
 
 test('formatMonthDayTimePST guards empty / sentinel', () => {
   setTimeFormat('12h');
-  assert.equal(formatMonthDayTimePST(null), 'N/A');
-  assert.equal(formatMonthDayTimePST(''), 'N/A');
-  assert.equal(formatMonthDayTimePST('1'), 'N/A');
+  assert.equal(formatMonthDayTimePST(null), '—');
+  assert.equal(formatMonthDayTimePST(''), '—');
+  assert.equal(formatMonthDayTimePST('1'), '—');
 });

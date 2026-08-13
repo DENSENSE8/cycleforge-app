@@ -20,6 +20,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface SetPinDialogProps {
   open: boolean;
@@ -86,7 +90,7 @@ export function SetPinDialog({ open, staffName, onClose, onSubmit }: SetPinDialo
               maxLength={6}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm tracking-widest outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm tracking-widest", focusRing('field', 'accent'))}
               placeholder="••••"
             />
           </label>
@@ -99,7 +103,7 @@ export function SetPinDialog({ open, staffName, onClose, onSubmit }: SetPinDialo
               value={confirm}
               onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ''))}
               onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm tracking-widest outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm tracking-widest", focusRing('field', 'accent'))}
               placeholder="••••"
             />
           </label>

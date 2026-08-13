@@ -5,8 +5,8 @@
  * `[external-link] · [copy value] · [edit]` layout plus a compact action-menu
  * mode where the chip remains the primary action and Open/Edit move below it.
  *
- * When `editOpen`, the {@link CopyChip} face pulses `edit` (4 chars) via the
- * shared `editing` prop — the identity row never drops digits or reflows.
+ * When `editOpen`, the {@link CopyChip} face swaps to steady `editing` via the
+ * shared `editing` prop — the identity row never drops digits, reflows, or pulses.
  */
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
@@ -91,7 +91,7 @@ export function IdentityLinkChip({
   editLabel?: string;
   /**
    * When `actionsInMenu`, render the Edit menuitem. Ticket chip sets false —
-   * History owns the push-column toggle; `onEdit` still drives pulse / chip click.
+   * History owns the push-column toggle; `onEdit` still drives edit face / chip click.
    */
   editInMenu?: boolean;
   /**
@@ -184,7 +184,7 @@ export function IdentityLinkChip({
       ? `${display} — no link available`
       : 'No listing';
 
-  // While editing, chip face is pulsed "edit"; click closes the below-row field.
+  // While editing, chip face reads steady "editing"; click closes the below-row field.
   // Empty chips with onEdit (e.g. unfound `# ----`) activate edit on click —
   // no value to copy, so the face itself is the Link-PO affordance.
   const emptyEditActivate = !canCopy && !!onEdit && !isEditing ? onEdit : undefined;
@@ -263,9 +263,7 @@ export function IdentityLinkChip({
                         : `Copy ${display}`
                 }
                 aria-busy={isEditing || undefined}
-                className={`inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:pointer-events-none${
-                  isEditing ? ' animate-pulse' : ''
-                }`}
+                className="inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:pointer-events-none"
               >
                 {iconOnlyMark}
               </button>

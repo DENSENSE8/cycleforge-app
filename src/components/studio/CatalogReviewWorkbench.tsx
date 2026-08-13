@@ -22,6 +22,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
 import { AlertCircle, Boxes, Check, ClipboardList, Clock, Inbox, Loader2, X } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
+import { Panel } from '@/design-system/primitives';
+
 
 interface CatalogSubmission {
   id: number;
@@ -117,13 +119,13 @@ export function CatalogReviewWorkbench() {
                 <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-rose-400">Reload to try again.</p>
               </div>
             ) : !submissions || submissions.length === 0 ? (
-              <div className="m-4 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-8 text-center">
+              <Panel radius="xl" padding="none" className="m-4 border-dashed px-4 py-8 text-center">
                 <Inbox className="mx-auto h-4 w-4 text-text-faint" />
                 <p className="mt-1 text-role-caption font-semibold text-text-soft">No submissions to review.</p>
                 <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
                   Org submissions land here for curation.
                 </p>
-              </div>
+              </Panel>
             ) : (
               <ul className="divide-y divide-border-hairline">
                 {submissions.map((s) => {

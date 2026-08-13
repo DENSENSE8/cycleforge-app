@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StaffAvatar } from '@/components/identity';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { getStaffTheme, type StationTheme } from '@/utils/staff-colors';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 
@@ -210,9 +210,9 @@ function Group({ label, children }: { label?: string; children: React.ReactNode 
           {label}
         </div>
       )}
-      <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card/80 backdrop-blur-sm shadow-sm shadow-gray-900/[0.03]">
+      <Panel radius="2xl" padding="none" className="overflow-hidden bg-surface-card/80 backdrop-blur-sm shadow-gray-900/[0.03]">
         {children}
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -278,7 +278,7 @@ function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
 
 function StaffPickerSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card/80 backdrop-blur-sm shadow-sm shadow-gray-900/[0.03]">
+    <Panel radius="2xl" padding="none" className="overflow-hidden bg-surface-card/80 backdrop-blur-sm shadow-gray-900/[0.03]">
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
@@ -292,7 +292,7 @@ function StaffPickerSkeleton() {
           <SkeletonBase width="16px" height="16px" className="flex-shrink-0" />
         </div>
       ))}
-    </div>
+    </Panel>
   );
 }
 

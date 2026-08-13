@@ -5,6 +5,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { Button, IconButton } from '@/design-system/primitives';
 import { SKU_STOCK_DESKTOP_SCAN_EVENT } from '@/utils/events';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Desktop-only full-screen SKU camera scanner invoked from Quick tools FAB.
@@ -128,7 +132,7 @@ export function GlobalDesktopSkuScanner() {
             placeholder="Enter SKU manually..."
             autoComplete="off"
             autoCapitalize="characters"
-            className="h-11 flex-1 rounded-xl border border-glass/20 bg-glass/10 px-4 text-sm font-semibold text-white placeholder:text-white/40 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400/50"
+            className={cn("h-11 flex-1 rounded-xl border border-glass/20 bg-glass/10 px-4 text-sm font-semibold text-white placeholder:text-white/40", focusRing('field', 'accent'))}
           />
           <Button type="submit" variant="primary" className="h-11">
             Go

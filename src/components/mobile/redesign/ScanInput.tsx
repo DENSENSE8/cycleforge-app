@@ -12,6 +12,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Mobile scan surface. The input bar IS the canonical desktop
@@ -113,7 +115,7 @@ export function ScanInput({
               aria-pressed={cameraActive}
               aria-label={cameraActive ? 'Close camera scanner' : 'Open camera scanner'}
               className={cn(
-                'ds-raw-button transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400/60',
+                cn('ds-raw-button transition-colors', focusRing('cell', 'accent')),
                 prominentCamera
                   ? STATION_SCAN_BAR_RIGHT_CELL
                   : 'flex h-6 w-6 items-center justify-center rounded-md',

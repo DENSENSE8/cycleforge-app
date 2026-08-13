@@ -84,8 +84,11 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     SELECT o.id, o.order_id, o.product_title, o.sku, o.account_source,
            o.status, o.condition, o.notes, o.order_date, o.created_at,
            COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ' '), '') AS serials,
-           MAX(stn.tracking_number_raw)                              AS tracking_number,
-           MAX(NULLIF(stn.carrier, 'UNKNOWN'))                       AS carrier
+           COALESCE(MAX(stn.tracking_number_raw), MAX(stn_link.tracking_number_raw)) AS tracking_number,
+           COALESCE(STRING_AGG(DISTINCT stn_link.tracking_number_raw, ' ')
+             FILTER (WHERE stn_link.tracking_number_raw IS NOT NULL
+               AND stn_link.id IS DISTINCT FROM o.shipment_id), '') AS linked_trackings,
+           COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier
     FROM orders o
     LEFT JOIN tech_serial_numbers tsn       ON (
       tsn.organization_id = o.organization_id
@@ -105,6 +108,11 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
       )
     )
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+    LEFT JOIN shipment_links sl
+      ON sl.owner_type = 'ORDER'
+     AND sl.owner_id = o.id
+     AND sl.organization_id = o.organization_id
+    LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = sl.shipment_id
     WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])
     GROUP BY o.id`,
   SERIAL_UNIT: `

@@ -34,6 +34,9 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
     clickSelect = false,
   } = ctx;
   const emptyGutter = isEmptyGutterChrome(selectGutterChrome);
+  // Incoming freezes `select` only — the scroll-shadow edge hangs here, not on
+  // History's `order`. Do not pin Incoming's order track.
+  const frozenEdge = ctx.linePhase === 'expected' ? ({ 'data-frozen-edge': true } as const) : {};
 
   // Click-select: the row body owns bulk toggle; gutter paints membership so
   // header select-all still aligns on the select track.
@@ -52,6 +55,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
         )}
         style={{ left: receivingGridFrozenLeft('select') }}
         aria-hidden
+        {...frozenEdge}
       >
         <GridClickSelectFace
           checked={isChecked}
@@ -69,6 +73,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
         emptyGutter ? 'items-stretch p-0' : 'justify-center',
       )}
       style={{ left: receivingGridFrozenLeft('select') }}
+      {...frozenEdge}
     >
       {selectMode && onToggle ? (
         <GridRowCheckbox

@@ -6,6 +6,13 @@ import { openHelpdeskTicketUrl } from '@/lib/desktop/desktop-host';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { ChevronLeft, ExternalLink, Link2, Package } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import {
+  ConversationHeaderActionButton,
+} from '@/design-system/primitives';
+import {
+  CONVERSATION_HEADER_ACTION_BTN,
+  CONVERSATION_HEADER_ACTION_GLYPH,
+} from '@/design-system/primitives/conversation-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { SupportDetailsStack } from './SupportDetailsStack';
@@ -147,33 +154,25 @@ export function SupportChatHeader({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {onOpenContext ? (
-              <HoverTooltip
-                label={contextBadge ? `Support context · ${contextBadge}` : 'Support context'}
-                asChild
-              >
-                <IconButton
-                  icon={<Link2 className="h-4 w-4" />}
-                  onClick={onOpenContext}
-                  ariaLabel="Support context"
-                  aria-pressed={contextOpen}
-                  size="md"
-                  className={cn(
-                    'rounded-none ring-1 ring-inset',
-                    contextOpen
-                      ? 'bg-blue-50 text-blue-700 ring-blue-200'
-                      : 'bg-surface-card ring-border-soft hover:text-text-default',
-                  )}
-                />
-              </HoverTooltip>
+              <ConversationHeaderActionButton
+                label={
+                  contextBadge
+                    ? `Support context · ${contextBadge}`
+                    : 'Support context'
+                }
+                icon={<Link2 className={CONVERSATION_HEADER_ACTION_GLYPH} />}
+                onClick={onOpenContext}
+                active={contextOpen}
+              />
             ) : null}
             {ordersHref ? (
               <HoverTooltip label="Open linked order" asChild>
                 <a
                   href={ordersHref}
                   aria-label="Open linked order"
-                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-none bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+                  className={CONVERSATION_HEADER_ACTION_BTN}
                 >
-                  <Package className="h-4 w-4" />
+                  <Package className={CONVERSATION_HEADER_ACTION_GLYPH} />
                 </a>
               </HoverTooltip>
             ) : null}
@@ -181,19 +180,13 @@ export function SupportChatHeader({
                 with no pane header — see the docblock. */}
             <SupportDetailsStack ticket={ticket} fields="edit" />
             {url ? (
-              <HoverTooltip label={openLabel} asChild>
-                {/* ds-raw-button — desktop opens N5 VendorView; browser deep-links */}
-                <button
-                  type="button"
-                  aria-label={openLabel}
-                  onClick={() => {
-                    void openHelpdeskTicketUrl(url, { title: openLabel });
-                  }}
-                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-none bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </button>
-              </HoverTooltip>
+              <ConversationHeaderActionButton
+                label={openLabel}
+                icon={<ExternalLink className={CONVERSATION_HEADER_ACTION_GLYPH} />}
+                onClick={() => {
+                  void openHelpdeskTicketUrl(url, { title: openLabel });
+                }}
+              />
             ) : null}
           </div>
         </div>

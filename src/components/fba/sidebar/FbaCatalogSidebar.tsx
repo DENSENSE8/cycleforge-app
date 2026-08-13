@@ -7,21 +7,22 @@ import { Plus, X } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { emitOpenAddFba, emitOpenUploadFba, sidebarSubBandClass } from '@/components/fba/sidebar/fba-sidebar-shared';
+import { SkeletonBase } from '@/design-system/components/Skeletons';
 
 /** Suspense fallback for the admin FNSKU catalog sidebar. */
 export function FbaCatalogSidebarFallback() {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
       <div className={`${sidebarSubBandClass} ${SIDEBAR_GUTTER} py-2.5`}>
-        <div className="h-4 w-24 bg-surface-sunken rounded mb-2 animate-pulse" />
-        <div className="h-10 w-full rounded-xl bg-surface-sunken animate-pulse" />
+        <SkeletonBase width="6rem" height="1rem" className="mb-2 bg-surface-sunken" />
+        <SkeletonBase height="2.5rem" className="rounded-xl bg-surface-sunken" />
       </div>
       <div className={`min-h-0 flex-1 space-y-4 ${SIDEBAR_GUTTER} py-3`}>
-        <div className="h-4 w-32 bg-surface-sunken rounded animate-pulse" />
+        <SkeletonBase width="8rem" height="1rem" className="bg-surface-sunken" />
         <div className="space-y-2">
-          <div className="h-14 w-full rounded-xl bg-surface-canvas border border-border-hairline animate-pulse" />
-          <div className="h-14 w-full rounded-xl bg-surface-canvas border border-border-hairline animate-pulse" />
-          <div className="h-14 w-full rounded-xl bg-surface-canvas border border-border-hairline animate-pulse" />
+          <SkeletonBase height="3.5rem" className="rounded-xl bg-surface-canvas" />
+          <SkeletonBase height="3.5rem" className="rounded-xl bg-surface-canvas" />
+          <SkeletonBase height="3.5rem" className="rounded-xl bg-surface-canvas" />
         </div>
       </div>
     </div>

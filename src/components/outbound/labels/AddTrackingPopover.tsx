@@ -14,6 +14,10 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useAddTrackingNav } from '@/components/outbound/labels/add-tracking-context';
 import { orderRowConditionLabel } from '@/lib/conditions';
 import { platformMetaIconTone, sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface SkuResolution {
   title: string | null;
@@ -171,7 +175,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
           onKeyDown={(e) => {
             if (e.key === 'Enter') { e.preventDefault(); void handleSave(); }
           }}
-          className="z-dropdown w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5 focus:outline-none"
+          className={cn("z-dropdown w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5", focusRing('field', 'accent'))}
         >
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className={`${sectionLabel} text-violet-700`}>Add Tracking</span>
@@ -216,7 +220,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
               value={tracking}
               onChange={(e) => setTracking(e.target.value)}
               placeholder="Paste or scan tracking…"
-              className="min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500"
+              className={"min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500" /* ds-allow-focus: identity/one-off hue or ring-0 */}
             />
             <HoverTooltip label="Paste from clipboard" asChild>
               <IconButton
@@ -233,7 +237,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             placeholder="SKU"
-            className="mb-1 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500"
+            className={"mb-1 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500" /* ds-allow-focus: identity/one-off hue or ring-0 */}
           />
           {sku.trim() && sku.trim() !== initialSku ? (
             <p className="mb-2 flex items-center gap-1 text-role-eyebrow font-semibold">
@@ -254,7 +258,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             value={itemNumber}
             onChange={(e) => setItemNumber(e.target.value)}
             placeholder="Item number"
-            className="mb-3 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500"
+            className={"mb-3 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500" /* ds-allow-focus: identity/one-off hue or ring-0 */}
           />
 
           {status === 'error' ? (

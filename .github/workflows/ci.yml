@@ -129,6 +129,20 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run portfolio:sot:check
 
+      # Shrink-only clone baseline. New AST-similar copies fail; by-design
+      # siblings (cell registries, *-grid-layout.ts, C2 station-vs-desk shells)
+      # live in .jscpd.json ignore. Fix: compose the named SoT, then
+      # `npm run jscpd:write` only if the clone count actually shrank.
+      - name: Clone baseline (jscpd)
+        if: ${{ !cancelled() }}
+        run: npm run jscpd
+
+      # Assembly import boundaries (WorkbenchSheetView / StationScanPaneHost /
+      # StationPanelRoot). Feature routes compose the host, not its internals.
+      - name: Assembly import boundaries
+        if: ${{ !cancelled() }}
+        run: node scripts/depcruise-gate.mjs
+
   audit-permissions:
     name: Permission drift audit
     runs-on: ubuntu-latest

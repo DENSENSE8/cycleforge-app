@@ -1,7 +1,67 @@
 {
-  "generatedAt": "2026-08-12T14:58:26.992Z",
+  "generatedAt": "2026-08-13T02:24:07.968Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "bde43947649cffbe04b0d7d74e2cb1fb3d6f7edb",
+      "shortSha": "bde439476",
+      "date": "2026-08-12T08:20:36-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore: refresh sot-manifest for focus-scan schema exports",
+      "body": "Unblocks pre-push verify after reclaim-key bindability landed on main.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "chore",
+      "title": "refresh sot-manifest for focus-scan schema exports"
+    },
+    {
+      "sha": "ef6f8d694ceca86bb22fc390cfd07ab86bddbc95",
+      "shortSha": "ef6f8d694",
+      "date": "2026-08-12T08:19:18-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore: refresh SoT manifest and drop unused focus-scan regex alias",
+      "body": "Unblocks verify so the carton status-pill fix can land on origin/main.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "chore",
+      "title": "refresh SoT manifest and drop unused focus-scan regex alias"
+    },
+    {
+      "sha": "9e0ca14233c0a497cf407c20446b0d18c3ae1c68",
+      "shortSha": "9e0ca1423",
+      "date": "2026-08-12T08:18:18-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(scan): click-to-run scan hotkeys; allow any reclaim key",
+      "body": "Open the gear popover without entering rebind — click ⌘. or the reclaim\nchip to run the action, and use Change key to bind any non-reserved key.\nDrop the Unbox receive shortcut nudge toast.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "click-to-run scan hotkeys; allow any reclaim key"
+    },
+    {
+      "sha": "d8aa016b8f1340fe4bcd1f42ad0eeb0d1c5398a8",
+      "shortSha": "d8aa016b8",
+      "date": "2026-08-12T08:17:06-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(unbox): stop listing chip editing pulse when Listings is open",
+      "body": "Listings Displays must not flip the carton listing chip to a pulsed\n\"editing\" face — remove listingEditOpen wiring so Edit still opens the\nrail without flashing identity chrome.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "stop listing chip editing pulse when Listings is open"
+    },
+    {
+      "sha": "75596c6ee46e72b7eb5813599c4d308a1debfea4",
+      "shortSha": "75596c6ee",
+      "date": "2026-08-12T08:16:14-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(station): show full carton context status label",
+      "body": "Stop locking the row-2 lifecycle pill to w-14 with truncate so Incoming and longer statuses paint in full.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "show full carton context status label"
+    },
+    {
+      "sha": "121e5264a576880ad1da782e2dd2be6fd8e6afe6",
+      "shortSha": "121e5264a",
+      "date": "2026-08-12T08:10:17-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore(governance): controlled burn — reset rules, guards, and SoT catalog",
+      "body": "Archive drifted .claude/rules into legacy-rules-archive, delete 275 stale\n*.guard.test.ts proxies, and rebuild AGENTS.md + sot-manifest from live hosts.\nVerify now runs structural keepers only via scripts/run-unit-tests.mjs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "chore",
+      "title": "controlled burn — reset rules, guards, and SoT catalog"
+    },
     {
       "sha": "ace38c6c31b6f08bc37d346e454e4fce1ecbce44",
       "shortSha": "ace38c6c3",
@@ -1921,66 +1981,6 @@
       "body": "Unify Unbox-family panes on StationPanelRoot/ComposerDock, port catalog and repair to LedgerGrid, rewrite local pickup into receiving, and ship support ticket linkages, NAS ticket archive, and out-of-stock order facts.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "feature",
       "title": "station workbench chrome, catalog/repair ledger grids, and pickup + support polish"
-    },
-    {
-      "sha": "7facbec1859dbdec5993a3116d1f6b8881fc663f",
-      "shortSha": "7facbec18",
-      "date": "2026-07-23T08:53:12-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: ledger grids, products catalog, and DS shell SoT",
-      "body": "Unify pending/incoming/receiving on LedgerGridSurface; ship products\ncatalog + labels workspace; promote Dialog/menus/Switch/Checkbox;\neBay OAuth, Amazon refresh, and receiving-type presentation SoT.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "ledger grids, products catalog, and DS shell SoT"
-    },
-    {
-      "sha": "eb56e97489175cd1843a6f3c4ac7934e40ef8e3a",
-      "shortSha": "eb56e9748",
-      "date": "2026-07-22T09:28:55-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: pending grid editors, media library folders API, and unbox identity polish",
-      "body": "Ship dogfood WIP: Sheets-style grid editors with platform favicons and corner note/OOS anchors; media library folders-first aggregation + picker parity; slim CartonContextCard with tracking/listings tabs; support ticket create host; scan-dock column unification; PhotoViewerPortal dismiss SoT; park Operations behind dogfood wall.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "pending grid editors, media library folders API, and unbox identity polish"
-    },
-    {
-      "sha": "fdd29799507021a779bc2b8b8c93525555ffa401",
-      "shortSha": "fdd297995",
-      "date": "2026-07-21T20:32:17-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: pending grid ledger, support station, DocumentSlideOver, and arrival triage",
-      "body": "Ship dogfood WIP: grid-only Pending queue with sort switch, in-cell editors, and replenishment stock column; DocumentSlideOver SoT for PDF preview; Support ticket focus workbench + ticket_links rekey; arrival triage pipeline and sidebar rail alignment; outbound Import/Add chrome; typed receiving event bus; photo library recency tabs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "pending grid ledger, support station, DocumentSlideOver, and arrival triage"
-    },
-    {
-      "sha": "947234841f1b6e219ecf33fbfd641ff84af0d7f8",
-      "shortSha": "947234841",
-      "date": "2026-07-21T12:27:52-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(unbox): stop Line # stubs on Unboxed rail; ship dogfood WIP",
-      "body": "Identity-only workspace upserts no longer prepend onto an empty Unboxed\ncache (product title + qty stay on scan/fetch membership). Also lands\nsupport orders, review packing, search order detail, station SoT, and\npending-grid polish already in the working tree.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "stop Line # stubs on Unboxed rail; ship dogfood WIP"
-    },
-    {
-      "sha": "360180701a5d271dee5987acb8ad797c7d4c2b05",
-      "shortSha": "360180701",
-      "date": "2026-07-21T09:24:41-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(orders): Airtable grid skin for Pending grid + fix Incoming click-to-open regression",
-      "body": "Pending → Grid view (LedgerGrid) opts into a closed white spreadsheet skin via\n`data-grid-skin=\"airtable\"`: strong themeable gridlines on every cell, opaque\nheader, always-live Airtable-style hover-select checkboxes in the gutter\n(selection works without the pencil; row-body click still opens). Threads\n`gridSkin` through OrdersGridView → column header, table row, and the collapsed\nmulti-product group summary (emits `data-grid-summary-row` so the scoped CSS\ndraws its gridlines too). The vertical shelf-board never opts in — its\nfaint-hairline look is untouched.\n\nFix the Incoming click-to-open regression: `?openReceivingId=` is Unbox-only, so\na stale value that rode a mode switch onto Incoming/Triage must not restore and\npop the details panel on load. New `shouldRestoreOpenReceiving()` gates the\nrestore READ on `isUnboxSurface`, symmetric with the Unbox-only WRITE side; adds\nunit coverage and an e2e spec.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "Airtable grid skin for Pending grid + fix Incoming click-to-open regression"
-    },
-    {
-      "sha": "9d174573d67b9c317abd472aa44108521acf9f2e",
-      "shortSha": "9d174573d",
-      "date": "2026-07-21T00:03:58-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: pack review station, station entity-context SoT, eBay vault, and receiving rail polish",
-      "body": "Add pack verification APIs, review workspace, and LedgerGrid; consolidate station context chrome; migrate eBay tokens to vault; improve unbox/triage rails, dashboard search, mobile packer photos, and Ecwid outbound docs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "pack review station, station entity-context SoT, eBay vault, and receiving rail polish"
     }
   ]
 }

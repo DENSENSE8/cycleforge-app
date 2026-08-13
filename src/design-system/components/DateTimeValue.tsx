@@ -22,15 +22,15 @@ interface DateTimeValueProps {
  * same x) and the TIME filling the rest, right-aligned (so the times sit to the
  * right with their AM/PM edges flush). Tabular figures keep digits equal width.
  *
- * Empty / invalid timestamps still come from `formatDateTimePST` as `"N/A"`;
- * this component maps that sentinel to the honest absence glyph (`—`).
+ * Empty / invalid timestamps come from `formatDateTimePST` as `"—"` (legacy
+ * `"N/A"` still maps to the honest-absence glyph).
  */
 export function DateTimeValue({ value, fallback = '—', className = '' }: DateTimeValueProps) {
   // Subscribe so a 12h↔24h toggle re-renders the ledger instantly.
   useTimeFormat();
   const formatted = formatDateTimePST(value ?? null);
 
-  if (formatted === 'N/A') {
+  if (formatted === '—' || formatted === 'N/A') { // ds-allow-na: legacy date sentinel reader
     return (
       <span
         className={`block w-56 shrink-0 whitespace-nowrap text-left text-role-data font-semibold tabular-nums text-text-faint ${className}`}

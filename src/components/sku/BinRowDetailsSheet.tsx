@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffRole } from '@/hooks/useStaffRole';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 function randomId(): string {
   return safeRandomUUID();
@@ -335,7 +339,7 @@ export function BinRowDetailsSheet({
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
             placeholder="Short label (overrides catalog/storefront)"
-            className="w-full resize-none rounded-md border border-border-default px-3 py-2 text-sm font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+            className={cn("w-full resize-none rounded-md border border-border-default px-3 py-2 text-sm font-semibold text-text-default", focusRing('field', 'accent'))}
           />
           <div className="flex gap-2">
             <Button
@@ -376,7 +380,7 @@ export function BinRowDetailsSheet({
             value={skuDraft}
             onChange={(e) => setSkuDraft(e.target.value)}
             placeholder="New SKU"
-            className="w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-base font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+            className={cn("w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
           />
           <Button
             variant="brand"
@@ -391,7 +395,7 @@ export function BinRowDetailsSheet({
         </section>
 
         {/* Transfer to another bin */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm space-y-2">
+        <Panel radius="lg" padding="sm" className="space-y-2">
           <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Move to another bin
           </p>
@@ -406,7 +410,7 @@ export function BinRowDetailsSheet({
               value={transferToDraft}
               onChange={(e) => setTransferToDraft(e.target.value)}
               placeholder="To bin"
-              className="rounded-md border border-border-default px-3 py-2.5 text-center font-mono text-sm font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+              className={cn("rounded-md border border-border-default px-3 py-2.5 text-center font-mono text-sm font-semibold text-text-default", focusRing('field', 'accent'))}
             />
             <input
               type="number"
@@ -416,7 +420,7 @@ export function BinRowDetailsSheet({
               value={transferQtyDraft}
               onChange={(e) => setTransferQtyDraft(e.target.value)}
               placeholder={`≤ ${row.qty}`}
-              className="rounded-md border border-border-default px-2 py-2.5 text-center font-mono text-sm font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+              className={cn("rounded-md border border-border-default px-2 py-2.5 text-center font-mono text-sm font-semibold text-text-default", focusRing('field', 'accent'))}
             />
           </div>
           <Button
@@ -431,10 +435,10 @@ export function BinRowDetailsSheet({
           >
             {`Move ${transferQtyDraft || '…'} → ${transferToDraft.trim() || '…'}`}
           </Button>
-        </section>
+        </Panel>
 
         {/* Min / max */}
-        <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm space-y-2">
+        <Panel radius="lg" padding="sm" className="space-y-2">
           <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Min / max
           </p>
@@ -449,7 +453,7 @@ export function BinRowDetailsSheet({
                 placeholder="—"
                 value={minDraft}
                 onChange={(e) => setMinDraft(e.target.value)}
-                className="mt-1 w-full rounded-md border border-border-default px-2 py-2 text-center font-mono text-base font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+                className={cn("mt-1 w-full rounded-md border border-border-default px-2 py-2 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
               />
             </label>
             <label className="block">
@@ -462,7 +466,7 @@ export function BinRowDetailsSheet({
                 placeholder="—"
                 value={maxDraft}
                 onChange={(e) => setMaxDraft(e.target.value)}
-                className="mt-1 w-full rounded-md border border-border-default px-2 py-2 text-center font-mono text-base font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+                className={cn("mt-1 w-full rounded-md border border-border-default px-2 py-2 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
               />
             </label>
           </div>
@@ -476,7 +480,7 @@ export function BinRowDetailsSheet({
           >
             Save limits
           </Button>
-        </section>
+        </Panel>
 
         {error && (
           <p className="text-center text-sm font-semibold text-rose-600">{error}</p>

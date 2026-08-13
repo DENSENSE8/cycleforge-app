@@ -8,7 +8,7 @@ import {
   type MobileNavTabId,
 } from '@/lib/auth/mobile-display-config';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button, Switch } from '@/design-system/primitives';
+import { Panel, Button, Switch } from '@/design-system/primitives';
 
 // ─── Mobile defaults card ───────────────────────────────────────────────
 //
@@ -74,7 +74,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
   };
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
+    <Panel radius="2xl" padding="none" className="overflow-hidden">
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Mobile defaults</h2>
@@ -158,6 +158,6 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
           </Button>
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

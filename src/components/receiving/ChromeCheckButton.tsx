@@ -6,7 +6,7 @@
  * Unifies the two forked Check buttons that did the same job (open the
  * check-received rail) with drifted faces:
  *   - Unbox / Arrival (`ReceivingBoxChromeActions`) → golden `variant="secondary"`
- *   - Inbound (`IncomingChromeActions`)             → hand-painted `bg-slate-700`
+ *   - Inbound (`IncomingChromeActions`)             → hand-painted graphite fill
  * Both surfaces now compose this; the per-surface fill override is retired.
  *
  * Only the Check *face* is shared. The clusters stay regionally distinct
@@ -41,7 +41,7 @@ export function ChromeCheckButton({
   return (
     <Button
       size="sm"
-      variant="secondary"
+      variant="execute"
       icon={<ClipboardList />}
       ariaLabel={ariaLabel}
       onClick={onClick}

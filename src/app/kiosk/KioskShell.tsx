@@ -8,7 +8,6 @@ import {
   KIOSK_PANE_HEADER_TITLE,
 } from './kiosk-chrome';
 import { KioskModeSpine } from './KioskModeSpine';
-import { KioskSpineToggle } from './KioskSpineToggle';
 import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskCounterPane } from './v2/KioskCounterPane';
 import { KioskPickupPane } from './v2/KioskPickupPane';
@@ -25,20 +24,23 @@ export function KioskShell() {
   const [activeMode, setActiveMode] = useState<KioskServiceId>(
     () => liveModes[0]?.id ?? 'repair',
   );
-  /** Default closed (off-screen) — Catalog owns the floor; open via header toggle. */
-  const [spineExpanded, setSpineExpanded] = useState(false);
   /** Browse = products stage; checkout = repair/sales detail in the same right slot. */
   const [catalogPhase, setCatalogPhase] = useState<CatalogPhase>('browse');
 
   const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [servicePrice, setServicePrice] = useState('');
+  /** Default collapsed so first paint maximizes the product grid and LCP. */
+  const [spineExpanded, setSpineExpanded] = useState(false);
+  /** One catalog-search engine — spine when expanded, browse stage when collapsed. */
+  const [catalogSearch, setCatalogSearch] = useState('');
 
   const resetState = useCallback(() => {
     setSelectedProduct(null);
     setSelectedItems([]);
     setServicePrice('');
     setCatalogPhase('browse');
+    setCatalogSearch('');
   }, []);
 
   const handleModeSwitch = (mode: KioskServiceId) => {
@@ -55,10 +57,6 @@ export function KioskShell() {
   };
 
   const showCatalog = activeMode === 'repair' || activeMode === 'sales';
-  /** Toggle lives in Catalog when present; Pickup (no catalog) uses the detail band. */
-  const spineToggle = (
-    <KioskSpineToggle expanded={spineExpanded} onExpandedChange={setSpineExpanded} />
-  );
 
   const checkoutStage =
     activeMode === 'repair' ? (
@@ -74,7 +72,7 @@ export function KioskShell() {
         <div className={KIOSK_PANE_HEADER_BAND}>
           <h2 className={KIOSK_PANE_HEADER_TITLE}>Buy / Sell Details</h2>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+        <div className="min-h-0 flex-1 overflow-y-auto p-0">
           <KioskCounterPane
             selectedItems={selectedItems}
             selectedProduct={selectedProduct}
@@ -85,12 +83,18 @@ export function KioskShell() {
       </div>
     ) : null;
 
+  const catalogSearchLabel = activeMode === 'repair' ? 'Search repairs' : 'Search';
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-surface-canvas text-text-default">
       <KioskModeSpine
         activeMode={activeMode}
-        expanded={spineExpanded}
         onModeSwitch={handleModeSwitch}
+        expanded={spineExpanded}
+        onExpandedChange={setSpineExpanded}
+        searchValue={catalogSearch}
+        onSearchChange={setCatalogSearch}
+        searchLabel={catalogSearchLabel}
       />
 
       {/* Landscape: category sidebar | browse/checkout stage. Portrait: stacked. */}
@@ -111,17 +115,12 @@ export function KioskShell() {
             selectedItems={selectedItems}
             onSelectedItemsChange={setSelectedItems}
             onPriceChange={setServicePrice}
+            searchQuery={catalogSearch}
+            onSearchQueryChange={setCatalogSearch}
+            hideBrowseSearch={spineExpanded}
             sidebarHeader={
               <div className={KIOSK_PANE_HEADER_BAND}>
-                {spineToggle}
-                <h2 className={KIOSK_PANE_HEADER_TITLE}>
-                  {activeMode === 'sales' ? 'Categories' : 'Catalog'}
-                </h2>
-              </div>
-            }
-            browseHeader={
-              <div className={KIOSK_PANE_HEADER_BAND}>
-                <h2 className={KIOSK_PANE_HEADER_TITLE}>Products</h2>
+                <h2 className={KIOSK_PANE_HEADER_TITLE}>Catalog</h2>
               </div>
             }
             stageContent={checkoutStage}
@@ -129,7 +128,6 @@ export function KioskShell() {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
             <div className={KIOSK_PANE_HEADER_BAND}>
-              {spineToggle}
               <h2 className={KIOSK_PANE_HEADER_TITLE}>{activeMode} Details</h2>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">

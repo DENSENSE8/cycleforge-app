@@ -51,7 +51,7 @@ export function identityKindFor(
   serial: string,
   _tracking: string | null,
 ): SearchIdentityKind {
-  if (orderId && (hit.entityType === 'order' || hit.entityType === 'receiving')) {
+  if (orderId && (hit.entityType === 'order' || hit.entityType === 'receiving' || hit.entityType === 'import_exception')) {
     return 'order';
   }
   if (serial && hit.entityType === 'unit') return 'serial';

@@ -19,9 +19,13 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import type { PlatformAccountRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useInvalidateCatalog } from '@/hooks/useCatalog';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
 const BASE = '/api/catalog/platform-accounts';
 

@@ -6,6 +6,10 @@ import { Clock } from '@/components/Icons';
 import { jsonFetch, CADENCE_LABEL, cadenceTone } from '../sourcing-shared';
 import type { SavedSearch } from './sourcing-workspace-types';
 import { Centered, Empty } from './WorkspaceShared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Standing searches — the scour watcher re-runs these to auto-fill the watchlist. */
 export function SearchesPane() {
@@ -53,9 +57,9 @@ export function SearchesPane() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="What to watch for, e.g. “SoundLink Mini battery”"
-          className="min-w-0 flex-1 rounded-lg border border-border-soft px-3 py-1.5 text-sm focus:border-blue-400 focus:outline-none"
+          className={cn("min-w-0 flex-1 rounded-lg border border-border-soft px-3 py-1.5 text-sm", focusRing('field', 'accent'))}
         />
-        <select value={cadence} onChange={(e) => setCadence(e.target.value)} className="rounded-lg border border-border-soft px-2 py-1.5 text-sm text-text-muted focus:border-blue-400 focus:outline-none">
+        <select value={cadence} onChange={(e) => setCadence(e.target.value)} className={cn("rounded-lg border border-border-soft px-2 py-1.5 text-sm text-text-muted", focusRing('field', 'accent'))}>
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="off">Manual</option>

@@ -42,6 +42,19 @@ test('groupHitsForPreview: orders first, per-group + total caps respected', () =
   );
 });
 
+test('groupHitsForPreview: import_exception and exception share the Exceptions group', () => {
+  const hits = [hit('import_exception', 100), hit('exception', 2886), hit('order', 1)];
+  const groups = groupHitsForPreview(hits, { perGroup: 2, total: 8 });
+  assert.deepEqual(
+    groups.map((g) => g.label),
+    ['Orders', 'Exceptions'],
+  );
+  assert.deepEqual(
+    flattenPreviewGroups(groups).map((h) => `${h.entityType}:${h.id}`),
+    ['order:1', 'import_exception:100', 'exception:2886'],
+  );
+});
+
 test('groupHitsForPreview: total cap drops trailing groups', () => {
   const hits = [hit('order', 1), hit('order', 2), hit('unit', 3), hit('sku', 4)];
   const groups = groupHitsForPreview(hits, { perGroup: 2, total: 3 });

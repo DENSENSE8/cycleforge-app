@@ -130,7 +130,6 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const [createError, setCreateError] = useState<string | null>(null);
   // No KPI band on this sheet (honest absence) — controller is the ▦ portal only.
   const chrome = useWorkbenchSheetChrome();
-  const pickupControlsEl = chrome.controlsEl;
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -320,7 +319,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             searchEmptyMessage={searchEmptyMessage}
             isSearching={Boolean(normalizedQuery) && !isError}
             scrollRef={scrollRef}
-            columnTriggerPortalTarget={pickupControlsEl}
+            columnTriggerPortalTarget={null}
             renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
               <PickupGridColumnHeader
                 columns={visible}

@@ -30,7 +30,7 @@ test('every token has a full literal chip class string (Tailwind-scannable)', ()
     const cls = LABEL_CHIP_CLASSES[token];
     if (token === 'slate') {
       // The one NEUTRAL token is theme-aware: the 2026-07 theme rollout moved it
-      // from raw neutrals (bg-slate-50 …) to the semantic aliases bound to
+      // from raw neutrals to the semantic aliases bound to
       // --ds-color-* vars (raw neutrals are banned by color-neutrals.guard.test.ts).
       // Still full literal class strings, so still Tailwind-scannable.
       assert.ok(cls.includes('bg-surface-canvas'), 'slate chip has its semantic bg literal');

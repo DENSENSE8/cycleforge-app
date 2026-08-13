@@ -479,7 +479,7 @@ export function ReviewCatalogLinkTable() {
               dir={choreDir}
               onSortChange={setChoreSort}
               loading={choresQuery.isLoading}
-              columnTriggerPortalTarget={controlsEl}
+              columnTriggerPortalTarget={null}
               // Settled-with-nothing is an ALL-CLEAR on this queue, not an
               // absence — say what it means rather than "no rows".
               emptyMessage="Nothing needs a catalog link right now."
@@ -511,7 +511,7 @@ export function ReviewCatalogLinkTable() {
               dir={exceptionDir}
               onSortChange={setExceptionSort}
               loading={exceptionsQuery.isLoading}
-              columnTriggerPortalTarget={controlsEl}
+              columnTriggerPortalTarget={null}
               emptyMessage="Every synced sheet row has an Item Number."
               searchEmptyMessage={`No row matches “${searchQuery}”. Clear the filter to see the rest.`}
               isSearching={isSearching}

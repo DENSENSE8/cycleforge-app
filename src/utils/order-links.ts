@@ -1,7 +1,7 @@
 export { getTrackingUrl } from '@/lib/tracking-format';
 
 export function getOrderIdUrl(orderId: string): string | null {
-  if (!orderId || orderId === 'Not available' || orderId === 'N/A') return null;
+  if (!orderId || orderId === 'Not available' || orderId === 'N/A') return null; // ds-allow-na: legacy protocol empty reader
   if (/^\d{3}-\d+-\d+$/.test(orderId)) {
     return `https://sellercentral.amazon.com/orders-v3/order/${orderId}`;
   }

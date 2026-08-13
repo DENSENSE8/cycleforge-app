@@ -15,6 +15,8 @@ import type {
   PhotoLibraryFilterState,
   PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 interface MediaSavedViewsSectionProps {
   currentFilters: PhotoLibraryFilterState;
@@ -114,7 +116,7 @@ export function MediaSavedViewsSection({
             }}
             placeholder="View name…"
             className={cn(
-              'w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400',
+              cn('w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default', focusRing('field', 'accent')),
               cornerClass('flush'),
             )}
           />

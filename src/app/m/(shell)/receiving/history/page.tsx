@@ -25,6 +25,10 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import { IconButton } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface ApiResponse {
   success: boolean;
@@ -159,7 +163,7 @@ export default function MobileReceivingPipelinePage() {
                 placeholder="Search purchase order #, SKU, or item"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-11 w-full rounded-full border border-border-soft bg-surface-card pl-9 pr-9 text-sm font-semibold text-text-default placeholder:text-text-faint shadow-md shadow-black/10 focus:border-blue-500 focus:outline-none"
+                className={cn("h-11 w-full rounded-full border border-border-soft bg-surface-card pl-9 pr-9 text-sm font-semibold text-text-default placeholder:text-text-faint shadow-md shadow-black/10", focusRing('field', 'accent'))}
               />
               {search && (
                 <IconButton

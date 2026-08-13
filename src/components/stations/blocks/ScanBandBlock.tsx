@@ -13,6 +13,10 @@ import { Barcode } from '@/components/Icons';
 import type { BlockProps } from '@/lib/stations/contract';
 import { classifyUnboxScan } from '@/lib/receiving/classify-unbox-scan';
 import { isSurfaceKey, type SurfaceKey } from '@/lib/stations/surface-keys';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export interface StationScanEventDetail {
   raw: string;
@@ -57,7 +61,7 @@ export function ScanBandBlock({ display }: BlockProps) {
 
   return (
     <form
-      className="flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/10"
+      className={cn("flex items-center gap-2 rounded-lg border border-border-default bg-surface-card px-2.5 py-1.5", focusRing('wrapper', 'accent'))}
       onSubmit={(e) => {
         e.preventDefault();
         submit(value);
@@ -80,7 +84,7 @@ export function ScanBandBlock({ display }: BlockProps) {
         aria-label="Station scan input"
         autoComplete="off"
         spellCheck={false}
-        className="min-w-0 flex-1 bg-transparent text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint focus:outline-none"
+        className={cn("min-w-0 flex-1 bg-transparent text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint", focusRing('field', 'accent'))}
       />
     </form>
   );

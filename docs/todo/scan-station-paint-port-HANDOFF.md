@@ -208,8 +208,9 @@ Ported out of order (ahead of Arrival) on request. Ready to Pack is the bare
 | LCP (median of 3, local) | 2,799ms | 2,415ms |
 | TBT | 31ms | 15ms |
 | Speed Index | 3,229ms | 2,735ms |
+| CLS | 0.03 | **0.0001** (score 1.00) |
 | API calls gating the middle | 5 | **0** |
-| TTFB (warm, local) | 0.78s | ~1.5s |
+| TTFB (warm, local) | 0.78s | ~1.1s |
 
 The whole 13.4s was one request: `/api/orders?listShape=queue&limit=200` took
 **13.0s** under this surface's ~17 concurrent shell fetches (uncontended it is
@@ -217,11 +218,11 @@ The whole 13.4s was one request: `/api/orders?listShape=queue&limit=200` took
 
 **What was done.** Nothing was `ssr: false` and the rail already inherited the
 `mirroredRows` fix, so this station needed exactly one thing: the shell seed.
-`maybeSeedShell` now dispatches per station and warms five keys for `/test` —
-the unshipped list + counts, order and unit pack-placement, and the ROI rollup —
-all issued together (`seedReadyToPackStation`).
+`maybeSeedShell` now dispatches per station and warms six keys for `/test` —
+the unshipped list + counts, order and unit pack-placement, the ROI rollup, and
+the staffer's preferences — all issued together (`seedReadyToPackStation`).
 
-**Three findings the next station will hit:**
+**Four findings the next station will hit:**
 
 1. **A page-level `HydrationBoundary` is too late for any key the RAIL mounts.**
    Seeded from `TechSurfacePage`, the grid rows appeared in SSR but the KPI band
@@ -242,15 +243,45 @@ all issued together (`seedReadyToPackStation`).
    `shouldSeedReadyToPackQueue` (unit-tested). `?view=testing` (Quality Control)
    measures 0.76s TTFB — unchanged from baseline.
 
-**Open / not done:** CLS. It read **0.03 → 0.118** on the 3-run pass after the
-seed, from a client-side grid re-layout — SSR publishes
-`--cf-orders-grid-w: max(100%, calc(31.5rem * var(--cf-density,1)))` and the
-client republishes it with a measured `966px` term plus `--cf-col-title: 654px`,
-which moves every cell. Staff column-width prefs are EMPTY for that staffer, so
-this is the grid engine measuring, not a pref. A later 3-run pass read CLS **0**,
-but the machine was at load 8 and its LCP was noise (12.4s) — **re-measure on an
-idle machine before believing either number.** If it is real, the fix is in the
-shared `LedgerGrid` width publication (≈14 surfaces) — ask before touching it.
+4. **A saved column width is a layout shift waiting for a seeded grid — and it
+   is the fourth key you have to warm.** Seeding the rows took CLS from 0.03 to
+   **0.118**, all of it one shift. `staff_preferences.tableColumns.orders.widths.title`
+   is `654px` for the dogfood operator, while the SoT track is a hard
+   `minmax(12rem, 12rem)` (192px) with the trailing `_fill` absorbing the slack.
+   The server has no preferences, so it renders 192px + a 486px filler; the
+   client loads `/api/staff-preferences`, applies the saved width, and **every
+   cell in every row moves 462px sideways** while the filler collapses to 24px.
+   Seeding `['staff-preferences']` (as `{ prefs }` unwrapped, matching
+   `useStaffPreferences`) puts `--cf-col-title: 654px` in the SSR HTML and the
+   shift disappears: **0.118 → 0.0001**, CLS score **1.00**.
+
+   Any station whose grid the operator has ever resized inherits this, and it is
+   invisible until the rows paint early. It is also invisible on a fast local
+   load — reproduce under **4× CPU / Slow 4G** and read `LayoutShift.sources`
+   (`previousRect` → `currentRect`) rather than guessing from the element
+   selector; that is what turned "the grid engine is measuring something" into
+   the actual answer in one pass.
+
+**Not met — rail rows in SSR HTML.** `ShippingStaffScanHistoryRail` builds its
+`SidebarRecentRailBase` key from client-derived state (a `recordsVersion` string
+hashed off `useTechLogs` data) and its `fetchFn` just returns the already-filtered
+client array. There is no stable key to seed, so the rail server-renders its
+4-row skeleton no matter what the cache holds — the `mirroredRows` fix cannot
+help a key that does not exist yet on the server. Seeding `useTechLogs` itself
+would only move its 69KB onto TTFB while the rail still could not render (dead
+end #6: a 42KB payload growth cost 0.45s of TTFB), so it was left alone. Fixing
+this properly means giving `SidebarRecentRailBase` a stable key for derived
+rails — shared by every station rail, so ask first.
+
+**Not fixed here — a lane-wide paint regression.** LCP on `/test` reads
+**~12.3s** in the current lane, and it is not the seed: the unseeded variants
+measure the same (`?view=testing` 12,149ms, `?ship=history` 12,736ms), `/unbox`
+in the same lane reads 8,630ms against the 2,448ms its own handoff documents,
+and FCP moved 404ms → 1,653ms with TBT 15ms → 385ms. No request lands after
+6.9s, so it is main-thread, not network — long tasks at 10.2s and 13.0s in
+`de6209af…js` / `07e943b5…js`. That belongs to whatever else is in flight in
+this lane; judge the port on the LCP **breakdown** (TTFB 799ms + element render
+delay 823ms) rather than the metric total until it is chased down.
 
 ---
 

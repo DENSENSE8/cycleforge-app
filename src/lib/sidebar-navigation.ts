@@ -554,10 +554,9 @@ export function isRaillessOrderFeedSurface(
  * going blank, so this set never has to model params.
  */
 const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
-  // Home → Today holds the operator's saved views (`HomeContextPanel`). Its
-  // lanes, queue links and search are chrome by rule, so the rail carries only
-  // the one thing the system cannot define for them.
-  'home',
+  // `home` dropped 2026-08-12 — Today is rail-less (Pattern E). Saved views
+  // sit on Band 3 `WorkbenchViewsMenu`; nothing is left for a left column
+  // that chrome cannot say. Same mechanism as `/ops/photos` and `/search`.
   'dashboard',
   'admin',
   'operations',

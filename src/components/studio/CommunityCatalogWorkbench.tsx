@@ -27,6 +27,8 @@ import { AlertCircle, Boxes, Copy, Globe, Layers, Loader2, RefreshCw } from '@/c
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { toast } from '@/lib/toast';
 import type { StudioTemplateSummary } from '@/components/studio/studio-types';
+import { Panel } from '@/design-system/primitives';
+
 
 const CATALOG_KEY = ['studio-catalog'] as const;
 
@@ -148,7 +150,7 @@ export function CommunityCatalogWorkbench() {
                 </div>
               </div>
             ) : !templates || templates.length === 0 ? (
-              <div className="m-4 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-8 text-center">
+              <Panel radius="xl" padding="none" className="m-4 border-dashed px-4 py-8 text-center">
                 <Layers className="mx-auto h-4 w-4 text-text-faint" />
                 <p className="mt-1 text-role-caption font-semibold text-text-soft">
                   No community templates published yet.
@@ -156,7 +158,7 @@ export function CommunityCatalogWorkbench() {
                 <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
                   Curator-approved blueprints appear here to clone.
                 </p>
-              </div>
+              </Panel>
             ) : (
               <ul className="divide-y divide-border-hairline">
                 {templates.map((t) => {

@@ -6,9 +6,9 @@ alwaysApply: false
 
 # Station Workbench (Unbox-family right panes)
 
-Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
-`.claude/rules/display/station-workbench.md`. CI: `station-workbench-chrome.guard.test.ts`
-(+ `station-terminal.test.ts`). Baselines shrink only — never raise one to pass.
+Golden: `receiving/workspace/LineEditPanel.tsx`. Live law: `AGENTS.md` Station hosts
+(`StationWorkbench`, `CartonContextCard`, `StationTerminalDock`). CI:
+`src/lib/station-terminal/station-terminal.test.ts`. Baselines shrink only — never raise one to pass.
 
 ## Always
 - Identity: `StationContextBar` flush under GlobalHeader (`placement="flow"` on Unbox + coplanar flush `stationIdentityPanelClass` — `rounded-none`, hairline `border-b`, no elevation) + entity-context adapter (two-row `CartonContextCard`) **above** `StationWorkbench` (`reserveIdentityClearance={false}`, Unbox `bodyGap="none"`) so identity abuts PO lines with zero air.

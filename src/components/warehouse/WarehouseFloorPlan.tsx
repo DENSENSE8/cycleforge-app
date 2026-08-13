@@ -31,6 +31,8 @@ import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { buildFloorLayout } from './floor-layout';
 import { cellTone, cellValue, cellLabel, type MapViewMode } from './map-tones';
+import { Panel } from '@/design-system/primitives';
+
 
 /* ─────────────────────────── node data + types ─────────────────────────── */
 
@@ -79,7 +81,7 @@ function BinNode({ data }: NodeProps<BinNodeT>) {
 
 function ZoneNode({ data }: NodeProps<ZoneNodeT>) {
   return (
-    <div className="relative h-full w-full rounded-2xl border border-border-soft bg-surface-card">
+    <Panel radius="2xl" padding="none" className="relative h-full w-full">
       <span className="absolute left-4 top-2.5 flex items-baseline gap-2 text-role-caption font-semibold text-text-default">
         {data.room}
         {data.letter && (
@@ -109,7 +111,7 @@ function ZoneNode({ data }: NodeProps<ZoneNodeT>) {
           {r}
         </span>
       ))}
-    </div>
+    </Panel>
   );
 }
 

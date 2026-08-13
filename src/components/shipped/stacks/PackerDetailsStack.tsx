@@ -11,8 +11,6 @@ import { toast } from '@/lib/toast';
 export function PackerDetailsStack({
   shipped,
   durationData,
-  copiedAll,
-  onCopyAll,
   onUpdate,
   actionBar: _actionBar,
   activeSection,
@@ -89,8 +87,6 @@ export function PackerDetailsStack({
       <ShippedDetailsPanelContent
         shipped={shipped}
         durationData={durationData}
-        copiedAll={copiedAll}
-        onCopyAll={onCopyAll}
         onUpdate={onUpdate}
         activeSection={activeSection}
         showQuickLinks={showQuickLinks}

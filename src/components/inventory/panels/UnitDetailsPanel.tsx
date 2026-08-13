@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ByUnitView } from '@/components/inventory/ByUnitView';
 import { Check, Loader2, ShieldCheck } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { microBadge, sectionLabel } from '@/design-system/tokens/typography/presets';
 import { CONDITION_GRADE_VALUES } from '@/components/inventory/types';
 import { toast } from '@/lib/toast';
 import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export interface UnitDetailsPanelProps {
     /** Either a numeric serial_units.id or a serial_number string. */
@@ -134,7 +138,7 @@ function GradeActionCard({ unitId, currentGrade, onMutated }: GradeActionCardPro
     };
 
     return (
-        <section className="rounded-xl border border-border-soft bg-surface-card px-4 py-3">
+        <Panel radius="xl" padding="none" className="px-4 py-3">
             <div className="flex items-center justify-between gap-2">
                 <p className={sectionLabel}>Grade</p>
                 <p className={`${microBadge} text-text-soft`}>Current: {currentGrade ?? '—'}</p>
@@ -165,13 +169,13 @@ function GradeActionCard({ unitId, currentGrade, onMutated }: GradeActionCardPro
                     value={cosmetic}
                     onChange={(e) => setCosmetic(e.target.value)}
                     placeholder="Cosmetic notes (optional)"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm focus:border-blue-400 focus:bg-surface-card focus:outline-none"
+                    className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm focus:bg-surface-card", focusRing('field', 'accent'))}
                 />
                 <input
                     value={functional}
                     onChange={(e) => setFunctional(e.target.value)}
                     placeholder="Functional notes (optional)"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm focus:border-blue-400 focus:bg-surface-card focus:outline-none"
+                    className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm focus:bg-surface-card", focusRing('field', 'accent'))}
                 />
                 {error ? <p className={`${microBadge} text-red-600`}>{error}</p> : null}
                 <Button
@@ -185,7 +189,7 @@ function GradeActionCard({ unitId, currentGrade, onMutated }: GradeActionCardPro
                     {busy ? 'Saving…' : 'Save grade'}
                 </Button>
             </div>
-        </section>
+        </Panel>
     );
 }
 
@@ -233,7 +237,7 @@ function HoldActionCard({ unitId, currentStatus, onMutated }: HoldActionCardProp
     };
 
     return (
-        <section className="rounded-xl border border-border-soft bg-surface-card px-4 py-3">
+        <Panel radius="xl" padding="none" className="px-4 py-3">
             <div className="flex items-center justify-between gap-2">
                 <p className={sectionLabel}>Hold</p>
                 <p className={`${microBadge} ${onHold ? 'text-red-600' : 'text-text-soft'}`}>
@@ -245,7 +249,7 @@ function HoldActionCard({ unitId, currentStatus, onMutated }: HoldActionCardProp
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder={onHold ? 'Release reason (optional)' : 'Hold reason (required)'}
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm focus:border-blue-400 focus:bg-surface-card focus:outline-none"
+                    className={cn("w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm focus:bg-surface-card", focusRing('field', 'accent'))}
                 />
                 {error ? <p className={`${microBadge} text-red-600`}>{error}</p> : null}
                 {/* ds-raw-button — solid-emerald/red conditional hold CTA */}
@@ -262,6 +266,6 @@ function HoldActionCard({ unitId, currentStatus, onMutated }: HoldActionCardProp
                     {busy ? 'Working…' : onHold ? 'Release hold' : 'Place on hold'}
                 </button>
             </div>
-        </section>
+        </Panel>
     );
 }

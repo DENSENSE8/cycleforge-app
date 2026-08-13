@@ -7,6 +7,10 @@ import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -125,7 +129,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           value={purchaseReceiveId}
           onChange={(e) => setPurchaseReceiveId(e.target.value)}
           placeholder="Enter purchase receive ID"
-          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-micro uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
+          className={cn("flex-1 rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-micro uppercase tracking-widest text-text-default", focusRing('field', 'success'))}
         />
         <Button
           variant="primary"

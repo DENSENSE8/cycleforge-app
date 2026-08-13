@@ -13,8 +13,6 @@ import { toast } from '@/lib/toast';
 export function TechDetailsStack({
   shipped,
   durationData,
-  copiedAll,
-  onCopyAll,
   onUpdate,
   actionBar: _actionBar,
   activeSection,
@@ -172,8 +170,6 @@ export function TechDetailsStack({
           shipping_tracking_number: shippingTrackingNumber,
         }}
         durationData={durationData}
-        copiedAll={copiedAll}
-        onCopyAll={onCopyAll}
         onUpdate={onUpdate}
         editableShippingFields={{
           orderNumber,

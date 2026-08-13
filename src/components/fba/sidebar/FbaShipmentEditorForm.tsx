@@ -113,7 +113,7 @@ export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
             type="text" value={c.amazonShipmentId}
             onChange={(e) => c.setAmazonShipmentId(e.target.value.toUpperCase())}
             placeholder="FBA1234ABCD"
-            className="mt-1 w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-role-caption font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+            className={"mt-1 w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-role-caption font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400" /* ds-allow-focus: identity/one-off hue or ring-0 */}
           />
         </div>
 

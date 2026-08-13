@@ -17,6 +17,8 @@ import {
   NOTE_OVERLAY_ICON_BTN,
 } from '@/components/receiving/workspace/note-composer-helpers';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export interface ExpandableComposerFieldProps {
   value: string;
@@ -127,7 +129,7 @@ export function ExpandableComposerField({
             autoFocus
             rows={12}
             className={cn(
-              'block h-full min-h-[14rem] w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default outline-none placeholder:text-text-faint focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20',
+              cn('block h-full min-h-[14rem] w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default placeholder:text-text-faint', focusRing('field', 'neutral')),
             )}
           />
         </div>

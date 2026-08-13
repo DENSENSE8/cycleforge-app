@@ -324,7 +324,7 @@ export function readSelectLineDetail(
 // ── Form input class tokens ─────────────────────────────────────────────────
 
 export const SELECT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
+  cn('w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default', focusRing('field', 'accent'));
 
 // ── Type scale (sidebar + workspace share this) ─────────────────────────────
 /**
@@ -374,7 +374,7 @@ export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
   // Auto-selected by ReceivingClaimModal for RETURN-type intake.
   { value: 'return',           label: 'Return',           active: 'bg-teal-600 text-white',    inactive: 'bg-teal-50 text-teal-700' },
   // Auto-selected when the carton STN is carrier-RETURNED (distinct from return intake).
-  { value: 'return_to_sender', label: 'Return to sender', active: 'bg-slate-700 text-white',   inactive: 'bg-slate-100 text-slate-700' },
+  { value: 'return_to_sender', label: 'Return to sender', active: 'bg-surface-inverse text-white',   inactive: 'bg-surface-sunken text-text-muted' },
   // Auto-selected by ReceivingClaimModal when row.receiving_source === 'unmatched'
   // and no PO# is present; hidden once a PO# is found/filled.
   { value: 'unfound',          label: 'Unfound',          active: 'bg-yellow-600 text-white',  inactive: 'bg-yellow-50 text-yellow-700' },
@@ -388,6 +388,10 @@ import {
   receivingRailRowKey,
   receivingRailShipmentKey,
 } from '@/lib/receiving/rail/rail-carton-key';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Legacy `scan:{value}` key for a scan still in flight.

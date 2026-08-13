@@ -49,7 +49,7 @@ export function OrderPackChecklist({
   className,
   highlightOrderRowId,
   isUnknownOrder = false,
-  unknownCondition = 'N/A',
+  unknownCondition = '—',
 }: OrderPackChecklistProps) {
   const [tickedLines, setTickedLines] = useState<Set<string>>(new Set());
   const [tickedKitParts, setTickedKitParts] = useState<Set<number>>(new Set());
@@ -161,7 +161,7 @@ export function OrderPackChecklist({
         <ReturnScanCard
           title="Unknown order"
           body="none"
-          condition={unknownCondition || 'N/A'}
+          condition={unknownCondition || '—'}
           onConditionChange={() => {}}
           onAdd={() => {}}
         />

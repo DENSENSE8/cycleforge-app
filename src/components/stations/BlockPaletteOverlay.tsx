@@ -15,6 +15,10 @@ import { Search } from '@/components/Icons';
 import { listBlockMeta } from '@/lib/stations';
 import type { BlockMeta, SlotId } from '@/lib/stations/contract';
 import { StationIcon } from './station-icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const CATEGORY_LABELS: Record<BlockMeta['category'], string> = {
   trigger: 'Triggers',
@@ -62,7 +66,7 @@ export function BlockPaletteOverlay({ open, slot, onClose, onPick }: BlockPalett
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search blocks…"
-              className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-2 text-role-caption font-semibold text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className={cn("h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-2 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
             />
           </div>
         </div>

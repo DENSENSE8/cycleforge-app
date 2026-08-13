@@ -1,5 +1,5 @@
-import { RouteLoading } from '@/design-system/components/RouteLoading';
+import { IncomingFirstPaint } from '@/components/receiving/incoming/IncomingFirstPaint';
 
 export default function Loading() {
-  return <RouteLoading label="Loading incoming…" />;
+  return <IncomingFirstPaint />;
 }

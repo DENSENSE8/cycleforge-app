@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 function randomId(): string {
   return safeRandomUUID();
@@ -228,7 +232,7 @@ export function BinAddSkuSheet({
       {!selected ? (
         <>
           <div className="border-b border-border-soft px-3 py-2">
-            <div className="flex items-center gap-2 rounded-md border border-border-default bg-surface-card px-3 py-2 focus-within:border-blue-500">
+            <div className={cn("flex items-center gap-2 rounded-md border border-border-default bg-surface-card px-3 py-2", focusRing('wrapper', 'accent'))}>
               <Search className="h-4 w-4 text-text-faint" />
               <input
                 ref={inputRef}
@@ -306,7 +310,7 @@ export function BinAddSkuSheet({
         </>
       ) : (
         <main className="flex-1 overflow-auto px-4 py-6">
-          <div className="rounded-lg border border-border-soft bg-surface-card p-4 shadow-sm">
+          <Panel radius="lg" padding="sm">
             <p className="font-mono text-base font-semibold text-text-default">
               {selected.sku}
             </p>
@@ -318,7 +322,7 @@ export function BinAddSkuSheet({
             <p className="mt-2 text-role-micro uppercase tracking-widest text-text-faint">
               Currently {selected.stock ?? 0} total on hand
             </p>
-          </div>
+          </Panel>
 
           <label className="mt-6 block">
             <span className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
@@ -331,7 +335,7 @@ export function BinAddSkuSheet({
               value={qtyDraft}
               onChange={(e) => setQtyDraft(e.target.value)}
               autoFocus
-              className="mt-2 w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-2xl font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+              className={cn("mt-2 w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-2xl font-semibold text-text-default", focusRing('field', 'accent'))}
             />
           </label>
 

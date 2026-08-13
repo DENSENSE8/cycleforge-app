@@ -148,7 +148,7 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" />
+          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" columnDisplay />
           <div className="flex items-center gap-2 px-2 pb-2 pt-1">
             <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
             <PaneHeaderLabel

@@ -30,7 +30,7 @@ export const TOAST_CLASSNAMES = {
   icon: 'shrink-0 text-current opacity-90 [&>svg]:block',
   loader: 'shrink-0 text-text-info [&>svg]:block',
   closeButton:
-    'absolute right-1.5 top-1.5 rounded-md p-0.5 text-current/45 transition-colors hover:bg-black/5 hover:text-current',
+    'absolute right-1.5 top-1.5 rounded-md p-0.5 text-current/45 transition-colors hover:bg-scrim/5 hover:text-current',
   actionButton:
     'mt-1.5 rounded-md border border-current/20 bg-surface-card/80 px-2 py-1 text-role-micro font-semibold text-current hover:bg-surface-card',
   cancelButton:

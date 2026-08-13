@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { IncomingGridColumn } from '@/lib/receiving/incoming-grid-layout';
+import type { IncomingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import { IncomingGridRow } from './IncomingGridRow';
 
 interface IncomingGridGroupRowProps {

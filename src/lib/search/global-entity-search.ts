@@ -19,6 +19,8 @@ import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
+import { orderTrackingMatchKeys } from '@/lib/tracking-format';
+import { sqlOrderHasMatchingTracking } from '@/lib/search/order-tracking-match-sql';
 
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
@@ -27,7 +29,15 @@ function normalizeSerialQuery(raw: string): string {
 
 export interface GlobalSearchResult {
   id: number;
-  entityType: 'order' | 'repair' | 'fba' | 'receiving' | 'sku' | 'unit';
+  entityType:
+    | 'order'
+    | 'repair'
+    | 'fba'
+    | 'receiving'
+    | 'sku'
+    | 'unit'
+    | 'exception'
+    | 'import_exception';
   title: string;
   subtitle: string;
   href: string;
@@ -64,8 +74,19 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
   // Tenant scope: the org lock is `o.organization_id`; the tech_serial_numbers /
   // shipping_tracking_numbers joins reach only rows tied to that org-scoped order
   // (the GUC set by tenantQuery is the backstop) — same pattern as searchReceiving.
+  //
+  // Tracking match is relaxed: `orders.shipment_id` (packer-set primary cache)
+  // OR `shipment_links` (ingest / tech / split). Packer_logs are not required.
   const digits = query.replace(/\D/g, '');
   const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+  const keys = orderTrackingMatchKeys(query);
+  const trackingMatch = sqlOrderHasMatchingTracking({
+    orderAlias: 'o',
+    likeParam: '$2',
+    canonicalParam: '$6',
+    key18Param: '$7',
+    last8Param: '$4',
+  });
   const result = await tenantQuery(
     orgId,
     `SELECT o.id,
@@ -78,8 +99,8 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
             o.order_date,
             o.created_at,
             COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ', '), '') AS serial_number,
-            MAX(stn.tracking_number_raw)                              AS tracking_number,
-            MAX(NULLIF(stn.carrier, 'UNKNOWN'))                       AS carrier
+            COALESCE(MAX(stn.tracking_number_raw), MAX(stn_link.tracking_number_raw)) AS tracking_number,
+            COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier
      FROM orders o
      LEFT JOIN tech_serial_numbers tsn       ON (
        tsn.organization_id = o.organization_id
@@ -99,21 +120,25 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
        )
      )
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     LEFT JOIN shipment_links sl
+       ON sl.owner_type = 'ORDER'
+      AND sl.owner_id = o.id
+      AND sl.organization_id = o.organization_id
+     LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = sl.shipment_id
      WHERE o.organization_id = $1
        AND (
             o.order_id ILIKE $2
          OR o.product_title ILIKE $2
          OR o.sku ILIKE $2
          OR tsn.serial_number ILIKE $2
-         OR stn.tracking_number_raw ILIKE $2
          OR CAST(o.id AS TEXT) = $3
          OR ($4 <> '' AND RIGHT(regexp_replace(COALESCE(o.order_id, ''), '[^0-9]', '', 'g'), 8) = $4)
-         OR ($4 <> '' AND RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 8) = $4)
+         OR ${trackingMatch}
        )
      GROUP BY o.id
      ORDER BY o.created_at DESC NULLS LAST
      LIMIT $5`,
-    [orgId, `%${query}%`, query, last8, limit],
+    [orgId, `%${query}%`, query, last8, limit, keys.exact, keys.key18],
   );
 
   return result.rows.map((row: any) => {
@@ -376,6 +401,105 @@ async function searchSerialUnits(
 }
 
 /**
+ * Tech / packer unmatched-tracking holds (`orders_exceptions`) and sheet
+ * import holds (`order_import_exceptions`). These are not live orders — a
+ * tracking can exist only here when ingest failed (no item number) or a
+ * station scan missed the order table. Header find must still surface them.
+ */
+async function searchTrackingHolds(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  const keys = orderTrackingMatchKeys(query);
+  const last8 = /^\d{8}$/.test(keys.last8) ? keys.last8 : '';
+  const like = `%${query}%`;
+
+  const [scanHolds, importHolds] = await Promise.all([
+    tenantQuery(
+      orgId,
+      `SELECT id, shipping_tracking_number, source_station, staff_name,
+              exception_reason, status, created_at
+       FROM orders_exceptions
+       WHERE organization_id = $1
+         AND status = 'open'
+         AND (
+              shipping_tracking_number ILIKE $2
+           OR regexp_replace(UPPER(COALESCE(shipping_tracking_number, '')), '[^A-Z0-9]', '', 'g') = $3
+           OR ($4 <> '' AND RIGHT(regexp_replace(UPPER(COALESCE(shipping_tracking_number, '')), '[^A-Z0-9]', '', 'g'), 18) = $4)
+           OR ($5 <> '' AND RIGHT(regexp_replace(COALESCE(shipping_tracking_number, ''), '[^0-9]', '', 'g'), 8) = $5)
+         )
+       ORDER BY updated_at DESC, id DESC
+       LIMIT $6`,
+      [orgId, like, keys.exact, keys.key18, last8, limit],
+    ).catch(() => ({ rows: [] as Array<Record<string, unknown>> })),
+    tenantQuery(
+      orgId,
+      `SELECT id, account_order_id, account_source, product_title, tracking,
+              reason, status, first_seen_at
+       FROM order_import_exceptions
+       WHERE organization_id = $1
+         AND status = 'open'
+         AND ignored_at IS NULL
+         AND (
+              tracking ILIKE $2
+           OR account_order_id ILIKE $2
+           OR product_title ILIKE $2
+           OR regexp_replace(UPPER(COALESCE(tracking, '')), '[^A-Z0-9]', '', 'g') = $3
+           OR ($4 <> '' AND RIGHT(regexp_replace(UPPER(COALESCE(tracking, '')), '[^A-Z0-9]', '', 'g'), 18) = $4)
+           OR ($5 <> '' AND RIGHT(regexp_replace(COALESCE(tracking, ''), '[^0-9]', '', 'g'), 8) = $5)
+         )
+       ORDER BY last_seen_at DESC NULLS LAST, id DESC
+       LIMIT $6`,
+      [orgId, like, keys.exact, keys.key18, last8, limit],
+    ).catch(() => ({ rows: [] as Array<Record<string, unknown>> })),
+  ]);
+
+  const scanHits: GlobalSearchResult[] = scanHolds.rows.map((row: Record<string, unknown>) => {
+    const tracking = row.shipping_tracking_number != null ? String(row.shipping_tracking_number) : '';
+    const station = row.source_station != null ? String(row.source_station) : 'unknown';
+    const happened = row.created_at ? new Date(String(row.created_at)).toISOString() : null;
+    return {
+      id: Number(row.id),
+      entityType: 'exception' as const,
+      title: `Tracking exception · ${station}`,
+      subtitle: [row.exception_reason, row.staff_name, tracking].filter(Boolean).join(' · '),
+      href: `/shipping/orders?search=${encodeURIComponent(tracking || query)}`,
+      matchField: 'tracking',
+      facets: {
+        status: row.status != null ? String(row.status) : null,
+        tracking_number: tracking || null,
+        happened_at: happened,
+      },
+    };
+  });
+
+  const importHits: GlobalSearchResult[] = importHolds.rows.map((row: Record<string, unknown>) => {
+    const tracking = row.tracking != null ? String(row.tracking) : '';
+    const orderId = row.account_order_id != null ? String(row.account_order_id) : null;
+    const title = String(row.product_title || orderId || `Import exception #${row.id}`);
+    const happened = row.first_seen_at ? new Date(String(row.first_seen_at)).toISOString() : null;
+    return {
+      id: Number(row.id),
+      entityType: 'import_exception' as const,
+      title,
+      subtitle: [orderId, row.account_source, row.reason].filter(Boolean).join(' · '),
+      href: `/review?mode=catalog-link&section=missing-item-number&exceptionId=${Number(row.id)}`,
+      matchField: 'tracking',
+      facets: {
+        status: row.status != null ? String(row.status) : null,
+        source_platform: row.account_source != null ? String(row.account_source) : null,
+        tracking_number: tracking || null,
+        order_id: orderId,
+        happened_at: happened,
+      },
+    };
+  });
+
+  return [...importHits, ...scanHits];
+}
+
+/**
  * Fan out across entity searchers — the same shape global-search's handler
  * uses (per-entity cap, degrade-not-fail per searcher). Ticket-shaped queries
  * (`#4821` / `4821`) resolve via support_tickets FIRST so numeric ids do not
@@ -390,14 +514,15 @@ export async function searchAllEntities(
     const tickets = await searchSupportTickets(orgId, query).catch(() => []);
     if (tickets.length > 0) return tickets.slice(0, limit);
   }
-  const perEntity = Math.ceil(limit / 6);
-  const [orders, repairs, fba, receiving, skus, units] = await Promise.all([
+  const perEntity = Math.ceil(limit / 7);
+  const [orders, repairs, fba, receiving, skus, units, holds] = await Promise.all([
     searchOrders(orgId, query, perEntity).catch(() => []),
     searchRepairs(orgId, query, perEntity).catch(() => []),
     searchFba(orgId, query, perEntity).catch(() => []),
     searchReceiving(orgId, query, perEntity).catch(() => []),
     searchSkus(orgId, query, perEntity).catch(() => []),
     searchSerialUnits(orgId, query, perEntity).catch(() => []),
+    searchTrackingHolds(orgId, query, perEntity).catch(() => []),
   ]);
-  return [...orders, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
+  return [...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
 }

@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 Generates a route that already satisfies what `api-route-reviewer`, `route-auth-check`,
 and `permission-registry-guard` police, so it passes review on the first pass. Read
-`.claude/rules/backend-patterns.md` before starting — this skill operationalizes it.
+`AGENTS.md` (auth / orgId / audit hard laws) before starting — this skill operationalizes them.
 
 The reference templates live next to this file:
 - `templates/collection-route.ts.tmpl` — a non-dynamic `route.ts` (uses `withAuth`).

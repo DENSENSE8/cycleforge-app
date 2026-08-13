@@ -39,11 +39,17 @@ export LH_BASE_URL=http://localhost:3100
 # 2. Mint a session cookie (authenticated routes redirect to /signin without it)
 export LH_COOKIE="$(node scripts/lighthouse-mint-session.mjs)"
 
+# 2b. Tablet POS (`/kiosk`, `/kiosk/v2`) is a device principal. Staff `cf_sid`
+#     measures the pair screen — discard those runs. Mint `cf_kiosk` instead:
+export LH_KIOSK_COOKIE="$(node scripts/lighthouse-mint-kiosk.mjs)"
+# or, for a kiosk-only run:  export LH_COOKIE="$(node scripts/lighthouse-mint-kiosk.mjs)"
+
 # 3. Audit
 pnpm lighthouse:audit                     # every manifest route, mobile, median of 3
 pnpm lighthouse:audit -- --tier 1         # Tier-1 only
 pnpm lighthouse:audit -- --routes /signin,/dashboard --runs 1   # quick spot check
 pnpm lighthouse:audit -- --desktop        # desktop preset instead of mobile
+pnpm lighthouse:audit -- --routes /kiosk,/kiosk/v2 --desktop --runs 3
 ```
 
 Output: `lighthouse/<route>.json` (full LHR of the last run per route) and
@@ -63,6 +69,10 @@ route. Re-mint and re-run; redirected rows are excluded from baseline writes.
   resolves no tenant; the script handles this. The resulting `cf_sid` cookie is
   org-bound, so audits themselves need no tenant header.
 - `LH_BASE_URL` / `LH_TENANT_SLUG` / `LH_STAFF_NAME` override the defaults.
+- `/kiosk` and `/kiosk/v2` are Tier-2 desktop (tablet landscape). Use
+  `LH_KIOSK_COOKIE` from `scripts/lighthouse-mint-kiosk.mjs`. A pair-screen
+  landing is flagged `⚠ redirected` and excluded from baseline writes.
+  `POST /api/kiosk/dev-autopair` 404s in production — do not rely on it here.
 
 ## The ratchet
 

@@ -349,7 +349,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           order: buildOrderPayload(null, {
             orderId: 'FNSKU',
             productTitle: catalog.product_title || fnsku,
-            sku: catalog.sku || 'N/A',
+            sku: catalog.sku || 'N/A', // ds-allow-na: FNSKU scan API payload writer
             condition: 'FBA Scan',
             tracking: fnsku,
             serialNumbers: serials,

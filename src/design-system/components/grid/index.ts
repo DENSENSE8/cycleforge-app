@@ -108,11 +108,17 @@ export type { GridIdentityColumnKey } from './grid-column-editability';
 export {
   LEDGER_GRID_CELL_INSET,
   LEDGER_GRID_FROZEN_CELL,
+  LEDGER_GRID_ROW_CONTAIN,
   LEDGER_GRID_WIDTH_VAR,
   ledgerGridCell,
   ledgerGridRowShellClass,
   ledgerGridWidthVarValue,
 } from './grid-cell-chrome';
+export {
+  LEDGER_GRID_HEADER_ESTIMATE_PX,
+  LEDGER_GRID_OVERSCAN,
+  LEDGER_GRID_ROW_ESTIMATE_PX,
+} from './grid-paint';
 export type { LedgerGridCellInset } from './grid-cell-chrome';
 export {
   applyGridOverflowXClasses,
