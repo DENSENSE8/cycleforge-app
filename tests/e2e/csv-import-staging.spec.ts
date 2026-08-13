@@ -1,7 +1,7 @@
 /**
  * To-Ship CSV import staging — the operator path, end to end, on the QA org.
  *
- *   Band-1 Import → Import from CSV → the sheet paints immediately (no mapping
+ *   Band-1 Add split → Import from file → the sheet paints immediately (no mapping
  *   takeover) → refine IN the find field → fix a row IN THE CELL → fix the
  *   column mapping on the rail → Confirm into the live To-Ship queue.
  *
@@ -41,6 +41,7 @@ function uniqueCsv(stamp: string): string {
 async function openCsvStaging(page: Page, csv: string) {
   await page.goto(DESK);
   await page.getByRole('button', { name: /import orders/i }).click();
+  await expect(page.getByRole('menuitem', { name: /import from file/i })).toBeVisible();
   const fileInput = page.locator('input[type="file"][accept*="csv"]');
   await fileInput.setInputFiles({
     name: 'qa-staging.csv',

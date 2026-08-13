@@ -76,7 +76,7 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     await expect(importBtn).toBeVisible({ timeout: 20_000 });
     await importBtn.click();
 
-    const startImport = page.getByRole('button', { name: /Import Latest Orders/i });
+    const startImport = page.getByRole('menuitem', { name: /Import latest orders/i });
     test.skip(!(await startImport.isVisible().catch(() => false)), 'no orders.import permission');
     await startImport.click();
 
@@ -113,9 +113,7 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     const orderInspector = page.locator('aside[role="region"][aria-label^="Order "]');
     await expect(orderInspector).toBeVisible({ timeout: 20_000 });
 
-    // Import + Add are one Band-1 control now: open it, pick Add, then enter.
-    await page.getByRole('button', { name: /add or import orders/i }).click();
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    // Import + Add are one Band-1 split: primary Add opens new-order entry.
     await page.getByRole('button', { name: 'New order entry' }).click();
 
     const intake = page.locator('aside[role="region"][aria-label="New order entry"]');

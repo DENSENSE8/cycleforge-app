@@ -46,13 +46,11 @@ test.describe('google sheets order import', () => {
 
     await page.goto('/dashboard');
 
-    // /dashboard defaults to the OUTBOUND domain, which mounts UnshippedSidebar
-    // rather than DashboardManagementPanel — so the import entry point is the
-    // chrome's "Import orders" trigger, which opens OrdersSyncPopover. The
-    // "Import Latest Orders" action lives on that popover's Sync tab.
+    // The import entry point is the chrome split-button chevron ("Import orders"),
+    // which opens a flat menu. "Import latest orders" fires channel sync.
     await page.getByRole('button', { name: /Import orders/i }).click();
 
-    const importButton = page.getByRole('button', { name: /Import Latest Orders/i });
+    const importButton = page.getByRole('menuitem', { name: /Import latest orders/i });
     await expect(importButton).toBeVisible({ timeout: 20_000 });
 
     // Arm the wait BEFORE clicking, so a fast job cannot finish between the

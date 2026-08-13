@@ -3,7 +3,7 @@
 /**
  * Outbound workspace chrome — To-ship Sheets flush stack (Unbox History recipe):
  *
- *   Band 1 — fixed lifecycle system tabs + Import / Add
+ *   Band 1 — fixed lifecycle system tabs + Add split (Import in the chevron menu)
  *   Band 2 — KPI (DashboardOrdersView)
  *   Band 3 — find-only command row + Views + Show/Hide inspector (View topics on rail)
  *
@@ -118,10 +118,10 @@ export function OutboundWorkspaceHeader({
       className={className}
       trailing={
         <WorkbenchTrailingCluster
-          // Band 1 trailing is solid Import · Add only (no sort rail here —
-          // Priority / refine live on the inspector View cluster). No hairline.
+          // Band 1 trailing is the Add split (Import lives in the chevron menu).
+          // No sort rail here — Priority / refine live on the inspector View cluster.
           divide={false}
-          actions={<OutboundOrderChromeActions onNewOrder={openIntakeForm} />}
+          actions={<OutboundOrderChromeActions layout="split" onNewOrder={openIntakeForm} />}
         />
       }
     />
